@@ -4,6 +4,7 @@ from rich.console import Console
 from rich.table import Table
 
 from atlas.analysis.company_analysis import MockCompanyAnalysisProvider
+from atlas.analysis.comparison import ComparisonEngine, render_comparison_result
 from atlas.analysis.portfolio import (
     Portfolio,
     PortfolioIntelligenceEngine,
@@ -101,6 +102,26 @@ def analyze_command(ticker: str):
 
     report = build_investment_report(analysis)
     console.print(render_investment_report(report))
+
+
+@app.command("compare")
+def compare_command(tickers: list[str] = typer.Argument(...)):
+    """Compare multiple companies with the Atlas investment engine."""
+    if len(tickers) < 2:
+        console.print("[red]Comparison failed:[/red] At least two tickers are required.")
+        raise typer.Exit(code=1)
+
+    provider = MockCompanyAnalysisProvider()
+    analyses = {}
+    try:
+        for ticker in tickers:
+            analyses[ticker.upper()] = provider.get_company_analysis(ticker)
+    except LookupError as exc:
+        console.print(f"[red]Comparison failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    result = ComparisonEngine().compare(analyses)
+    console.print(render_comparison_result(result))
 
 
 @portfolio_app.command("analyze")

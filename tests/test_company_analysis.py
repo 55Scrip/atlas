@@ -31,6 +31,7 @@ def test_mock_provider_returns_supported_companies():
     provider = MockCompanyAnalysisProvider()
 
     assert provider.get_company_analysis("nvda").company == "NVIDIA (NVDA)"
+    assert provider.get_company_analysis("AMD").company == "Advanced Micro Devices (AMD)"
     assert provider.get_company_analysis("AAPL").company == "Apple (AAPL)"
     assert provider.get_company_analysis("MSFT").company == "Microsoft (MSFT)"
     assert provider.get_company_analysis("EVO").company == "Evolution (EVO)"

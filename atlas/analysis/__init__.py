@@ -3,6 +3,13 @@ from atlas.analysis.company_analysis import (
     MockCompanyAnalysisProvider,
     create_placeholder_company_analysis,
 )
+from atlas.analysis.comparison import (
+    ComparisonCandidate,
+    ComparisonEngine,
+    ComparisonRanking,
+    ComparisonResult,
+    render_comparison_result,
+)
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport, ScoreCategory
 from atlas.analysis.explanation import (
     ExplanationEngine,
@@ -24,6 +31,10 @@ from atlas.analysis.scoring import RecommendationEngine, ScoringEngine, score_co
 __all__ = [
     "AtlasInvestmentEngine",
     "CompanyAnalysis",
+    "ComparisonCandidate",
+    "ComparisonEngine",
+    "ComparisonRanking",
+    "ComparisonResult",
     "ExplanationEngine",
     "InvestmentReport",
     "InvestmentExplanation",
@@ -41,6 +52,7 @@ __all__ = [
     "explain_investment_report",
     "get_mock_company_portfolio_profile",
     "render_portfolio_analysis",
+    "render_comparison_result",
     "render_investment_report",
     "score_company",
 ]

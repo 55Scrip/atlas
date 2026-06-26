@@ -14,6 +14,7 @@ atlas import-financials TSM data/tsm_financials.csv
 atlas list-companies
 atlas report NVDA
 atlas portfolio analyze portfolio.json NVDA
+atlas compare NVDA AMD MSFT
 ```
 
 ## Financial import CSV
@@ -98,6 +99,25 @@ Portfolio JSON uses a `positions` list:
   ]
 }
 ```
+
+## Company comparison
+
+```bash
+atlas compare NVDA AMD MSFT
+```
+
+Sprint 6 adds deterministic company comparison. Atlas evaluates each company
+with the existing `AtlasInvestmentEngine`, compares Atlas Score, recommendation,
+confidence, valuation, quality, growth, financial strength, and risk, then ranks:
+
+- Best Overall
+- Best Quality
+- Best Valuation
+- Best Growth
+- Lowest Risk
+
+The comparison report ends with a deterministic final conclusion beginning:
+`If Atlas could choose only one...`
 
 ## Install locally
 
