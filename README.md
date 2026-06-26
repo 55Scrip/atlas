@@ -13,6 +13,7 @@ atlas add-company TSM --name "Taiwan Semiconductor Manufacturing Company" --atla
 atlas import-financials TSM data/tsm_financials.csv
 atlas list-companies
 atlas report NVDA
+atlas portfolio analyze portfolio.json NVDA
 ```
 
 ## Financial import CSV
@@ -62,6 +63,41 @@ The current CLI uses placeholder analysis signals for:
 - AAPL
 - MSFT
 - EVO
+
+## Portfolio intelligence
+
+```bash
+atlas portfolio analyze portfolio.json NVDA
+```
+
+Sprint 5 adds deterministic portfolio intelligence. Atlas evaluates a target
+company in the context of existing holdings and reports:
+
+- Portfolio Recommendation
+- Diversification Impact
+- Portfolio Risk Impact
+- Portfolio Quality Impact
+- Overlap Analysis
+- Final Reasoning
+
+Portfolio JSON uses a `positions` list:
+
+```json
+{
+  "positions": [
+    {
+      "ticker": "AAPL",
+      "company": "Apple",
+      "sector": "Consumer Electronics",
+      "country": "United States",
+      "market_cap": 3000000000000,
+      "weight": 0.25,
+      "quality_score": 86,
+      "risk_score": 72
+    }
+  ]
+}
+```
 
 ## Install locally
 

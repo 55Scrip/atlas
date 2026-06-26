@@ -4,12 +4,20 @@ from rich.console import Console
 from rich.table import Table
 
 from atlas.analysis.company_analysis import MockCompanyAnalysisProvider
+from atlas.analysis.portfolio import (
+    Portfolio,
+    PortfolioIntelligenceEngine,
+    get_mock_company_portfolio_profile,
+    render_portfolio_analysis,
+)
 from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.services.database_service import init_database
 from atlas.services.company_service import add_company, list_companies
 from atlas.services.financial_import_service import import_financials
 
 app = typer.Typer(help="Atlas investment research platform")
+portfolio_app = typer.Typer(help="Portfolio intelligence commands")
+app.add_typer(portfolio_app, name="portfolio")
 console = Console()
 
 @app.command()
@@ -93,3 +101,17 @@ def analyze_command(ticker: str):
 
     report = build_investment_report(analysis)
     console.print(render_investment_report(report))
+
+
+@portfolio_app.command("analyze")
+def portfolio_analyze_command(portfolio_path: Path, ticker: str):
+    """Analyze a company in the context of an existing portfolio."""
+    try:
+        portfolio = Portfolio.from_json_file(portfolio_path)
+        target = get_mock_company_portfolio_profile(ticker)
+    except (FileNotFoundError, LookupError, ValueError) as exc:
+        console.print(f"[red]Portfolio analysis failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    analysis = PortfolioIntelligenceEngine().analyze(portfolio=portfolio, target=target)
+    console.print(render_portfolio_analysis(analysis))
