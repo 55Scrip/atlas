@@ -27,6 +27,15 @@ from atlas.analysis.portfolio import (
 )
 from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.analysis.scoring import RecommendationEngine, ScoringEngine, score_company
+from atlas.analysis.watchlist import (
+    Watchlist,
+    WatchlistAnalysis,
+    WatchlistEngine,
+    WatchlistItem,
+    WatchlistRecommendation,
+    WatchlistSignal,
+    render_watchlist_analysis,
+)
 
 __all__ = [
     "AtlasInvestmentEngine",
@@ -47,6 +56,12 @@ __all__ = [
     "RecommendationEngine",
     "ScoreCategory",
     "ScoringEngine",
+    "Watchlist",
+    "WatchlistAnalysis",
+    "WatchlistEngine",
+    "WatchlistItem",
+    "WatchlistRecommendation",
+    "WatchlistSignal",
     "build_investment_report",
     "create_placeholder_company_analysis",
     "explain_investment_report",
@@ -54,5 +69,6 @@ __all__ = [
     "render_portfolio_analysis",
     "render_comparison_result",
     "render_investment_report",
+    "render_watchlist_analysis",
     "score_company",
 ]

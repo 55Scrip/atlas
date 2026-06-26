@@ -12,13 +12,16 @@ from atlas.analysis.portfolio import (
     render_portfolio_analysis,
 )
 from atlas.analysis.report import build_investment_report, render_investment_report
+from atlas.analysis.watchlist import Watchlist, WatchlistEngine, render_watchlist_analysis
 from atlas.services.database_service import init_database
 from atlas.services.company_service import add_company, list_companies
 from atlas.services.financial_import_service import import_financials
 
 app = typer.Typer(help="Atlas investment research platform")
 portfolio_app = typer.Typer(help="Portfolio intelligence commands")
+watchlist_app = typer.Typer(help="Watchlist intelligence commands")
 app.add_typer(portfolio_app, name="portfolio")
+app.add_typer(watchlist_app, name="watchlist")
 console = Console()
 
 @app.command()
@@ -136,3 +139,17 @@ def portfolio_analyze_command(portfolio_path: Path, ticker: str):
 
     analysis = PortfolioIntelligenceEngine().analyze(portfolio=portfolio, target=target)
     console.print(render_portfolio_analysis(analysis))
+
+
+@watchlist_app.command("analyze")
+def watchlist_analyze_command(watchlist_path: Path):
+    """Analyze opportunities across a watchlist."""
+    provider = MockCompanyAnalysisProvider()
+    try:
+        watchlist = Watchlist.from_json_file(watchlist_path)
+        analysis = WatchlistEngine().analyze(watchlist=watchlist, provider=provider)
+    except (FileNotFoundError, LookupError, ValueError) as exc:
+        console.print(f"[red]Watchlist analysis failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_watchlist_analysis(analysis))

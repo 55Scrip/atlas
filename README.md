@@ -15,6 +15,7 @@ atlas list-companies
 atlas report NVDA
 atlas portfolio analyze portfolio.json NVDA
 atlas compare NVDA AMD MSFT
+atlas watchlist analyze watchlist.json
 ```
 
 ## Financial import CSV
@@ -118,6 +119,32 @@ confidence, valuation, quality, growth, financial strength, and risk, then ranks
 
 The comparison report ends with a deterministic final conclusion beginning:
 `If Atlas could choose only one...`
+
+## Watchlist intelligence
+
+```bash
+atlas watchlist analyze watchlist.json
+```
+
+Sprint 7 adds deterministic watchlist intelligence. Atlas evaluates every ticker
+with the existing `AtlasInvestmentEngine`, ranks current opportunities, and
+identifies:
+
+- strongest opportunity
+- highest quality company
+- cheapest valuation
+- highest risk company
+- companies to watch
+- companies to avoid
+
+Watchlist JSON uses a name and ticker list:
+
+```json
+{
+  "name": "AI Watchlist",
+  "tickers": ["NVDA", "AMD", "MSFT", "AAPL"]
+}
+```
 
 ## Install locally
 
