@@ -5,6 +5,12 @@ from rich.table import Table
 
 from atlas.analysis.company_analysis import MockCompanyAnalysisProvider
 from atlas.analysis.comparison import ComparisonEngine, render_comparison_result
+from atlas.analysis.memory import (
+    MemoryEngine,
+    MemoryStore,
+    render_memory_comparison,
+    render_memory_entries,
+)
 from atlas.analysis.portfolio import (
     Portfolio,
     PortfolioIntelligenceEngine,
@@ -18,8 +24,10 @@ from atlas.services.company_service import add_company, list_companies
 from atlas.services.financial_import_service import import_financials
 
 app = typer.Typer(help="Atlas investment research platform")
+memory_app = typer.Typer(help="Investment memory commands")
 portfolio_app = typer.Typer(help="Portfolio intelligence commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
+app.add_typer(memory_app, name="memory")
 app.add_typer(portfolio_app, name="portfolio")
 app.add_typer(watchlist_app, name="watchlist")
 console = Console()
@@ -125,6 +133,52 @@ def compare_command(tickers: list[str] = typer.Argument(...)):
 
     result = ComparisonEngine().compare(analyses)
     console.print(render_comparison_result(result))
+
+
+@memory_app.command("save")
+def memory_save_command(ticker: str, memory_path: Path):
+    """Save the current Atlas analysis for a ticker to JSON memory."""
+    provider = MockCompanyAnalysisProvider()
+    try:
+        analysis = provider.get_company_analysis(ticker)
+    except LookupError as exc:
+        console.print(f"[red]Memory save failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    report = build_investment_report(analysis)
+    entry = MemoryEngine().save(
+        store=MemoryStore(memory_path),
+        ticker=ticker,
+        report=report,
+    )
+    console.print(
+        f"[green]Memory saved:[/green] {entry.ticker} at {entry.timestamp} "
+        f"({entry.atlas_score}/100, {entry.recommendation})"
+    )
+
+
+@memory_app.command("show")
+def memory_show_command(memory_path: Path):
+    """Show saved Atlas memory entries."""
+    try:
+        entries = MemoryEngine().load(MemoryStore(memory_path))
+    except ValueError as exc:
+        console.print(f"[red]Memory show failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_memory_entries(entries))
+
+
+@memory_app.command("compare")
+def memory_compare_command(memory_path: Path, ticker: str):
+    """Compare the two latest memory entries for a ticker."""
+    try:
+        comparison = MemoryEngine().compare(MemoryStore(memory_path), ticker)
+    except ValueError as exc:
+        console.print(f"[red]Memory compare failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_memory_comparison(comparison))
 
 
 @portfolio_app.command("analyze")

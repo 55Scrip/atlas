@@ -16,6 +16,14 @@ from atlas.analysis.explanation import (
     InvestmentExplanation,
     explain_investment_report,
 )
+from atlas.analysis.memory import (
+    MemoryComparison,
+    MemoryEngine,
+    MemoryEntry,
+    MemoryStore,
+    render_memory_comparison,
+    render_memory_entries,
+)
 from atlas.analysis.portfolio import (
     Portfolio,
     PortfolioAnalysis,
@@ -47,6 +55,10 @@ __all__ = [
     "ExplanationEngine",
     "InvestmentReport",
     "InvestmentExplanation",
+    "MemoryComparison",
+    "MemoryEngine",
+    "MemoryEntry",
+    "MemoryStore",
     "MockCompanyAnalysisProvider",
     "Portfolio",
     "PortfolioAnalysis",
@@ -69,6 +81,8 @@ __all__ = [
     "render_portfolio_analysis",
     "render_comparison_result",
     "render_investment_report",
+    "render_memory_comparison",
+    "render_memory_entries",
     "render_watchlist_analysis",
     "score_company",
 ]

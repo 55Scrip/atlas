@@ -16,6 +16,9 @@ atlas report NVDA
 atlas portfolio analyze portfolio.json NVDA
 atlas compare NVDA AMD MSFT
 atlas watchlist analyze watchlist.json
+atlas memory save NVDA memory.json
+atlas memory show memory.json
+atlas memory compare memory.json NVDA
 ```
 
 ## Financial import CSV
@@ -145,6 +148,29 @@ Watchlist JSON uses a name and ticker list:
   "tickers": ["NVDA", "AMD", "MSFT", "AAPL"]
 }
 ```
+
+## Memory engine
+
+```bash
+atlas memory save NVDA memory.json
+atlas memory show memory.json
+atlas memory compare memory.json NVDA
+```
+
+Sprint 8 adds JSON-backed memory. Atlas can save previous analyses, load saved
+entries, and compare the two latest entries for a ticker. Memory entries store:
+
+- ticker
+- timestamp
+- Atlas Score
+- recommendation
+- confidence
+- category scores
+- explanation summary
+
+Memory comparison reports score change, recommendation change, confidence
+change, strongest improving category, weakest category, and a deterministic
+explanation of what changed.
 
 ## Install locally
 
