@@ -16,6 +16,9 @@ def test_report_cli_outputs_investment_report():
     assert "Overall Recommendation: Buy" in result.output
     assert "Financial Strength" in result.output
     assert "Reasoning" in result.output
+    assert "Explanation" in result.output
+    assert "Bull Case" in result.output
+    assert "What Could Change Atlas' Mind" in result.output
 
 
 def test_analyze_cli_outputs_company_report_alias():

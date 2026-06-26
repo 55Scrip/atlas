@@ -44,6 +44,9 @@ Sprint 1 introduces the first modular Atlas investment engine. It produces an
 Each category exposes a typed dataclass with a 0-100 score, reasoning, and
 confidence. `AtlasInvestmentEngine` combines replaceable category scorers using
 configurable weights and maps the final Atlas Score to an overall recommendation.
+The Sprint 4 explanation engine then turns the deterministic `InvestmentReport`
+into a bull case, bear case, key strengths, key risks, valuation concern, mind
+changers, and confidence explanation. It does not make external AI calls.
 
 Default recommendation bands:
 

@@ -1,5 +1,6 @@
 from atlas.analysis.company_analysis import CompanyAnalysis
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport
+from atlas.analysis.explanation import explain_investment_report, render_investment_explanation
 
 
 def build_investment_report(
@@ -35,6 +36,7 @@ def render_investment_report(report: InvestmentReport) -> str:
                 "",
             ]
         )
+    sections.extend(["", render_investment_explanation(explain_investment_report(report))])
     return "\n".join(sections).strip()
 
 
