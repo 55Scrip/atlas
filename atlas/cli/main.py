@@ -1,10 +1,13 @@
 import typer
+from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
+from atlas.analysis.company_analysis import MockCompanyAnalysisProvider
+from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.services.database_service import init_database
 from atlas.services.company_service import add_company, list_companies
-from atlas.reports.investment_card import generate_investment_card
+from atlas.services.financial_import_service import import_financials
 
 app = typer.Typer(help="Atlas investment research platform")
 console = Console()
@@ -54,5 +57,39 @@ def list_companies_command():
 
 @app.command("report")
 def report_command(ticker: str):
-    """Generate a basic investment card."""
-    console.print(generate_investment_card(ticker))
+    """Generate a formatted investment report."""
+    provider = MockCompanyAnalysisProvider()
+    try:
+        analysis = provider.get_company_analysis(ticker)
+    except LookupError as exc:
+        console.print(f"[red]Report failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    report = build_investment_report(analysis)
+    console.print(render_investment_report(report))
+
+@app.command("import-financials")
+def import_financials_command(ticker: str, csv_path: Path):
+    """Import annual financial history from CSV."""
+    try:
+        imported_count = import_financials(ticker=ticker, csv_path=csv_path)
+    except (FileNotFoundError, LookupError, ValueError) as exc:
+        console.print(f"[red]Import failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(
+        f"[green]Imported financial history:[/green] {imported_count} rows for {ticker.upper()}"
+    )
+
+@app.command("analyze")
+def analyze_command(ticker: str):
+    """Generate a structured company intelligence report."""
+    provider = MockCompanyAnalysisProvider()
+    try:
+        analysis = provider.get_company_analysis(ticker)
+    except LookupError as exc:
+        console.print(f"[red]Analysis failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    report = build_investment_report(analysis)
+    console.print(render_investment_report(report))
