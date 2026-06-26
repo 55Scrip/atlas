@@ -14,12 +14,13 @@ class ScoringEngine:
     def __init__(self, weights: dict[str, float] | None = None) -> None:
         self.weights = weights or DEFAULT_WEIGHTS.copy()
         self._validate_weights(self.weights)
+        self._engine = AtlasInvestmentEngine(weights=self.weights)
 
     def score(self, analysis: CompanyAnalysis) -> int:
-        return AtlasInvestmentEngine(weights=self.weights).analyze(analysis).atlas_score
+        return self._engine.analyze(analysis).atlas_score
 
     def confidence(self, analysis: CompanyAnalysis) -> int:
-        return AtlasInvestmentEngine(weights=self.weights).analyze(analysis).confidence
+        return self._engine.analyze(analysis).confidence
 
     @staticmethod
     def _validate_weights(weights: dict[str, float]) -> None:
@@ -56,7 +57,3 @@ class RecommendationEngine:
 
 def score_company(analysis: CompanyAnalysis, weights: dict[str, float] | None = None) -> int:
     return ScoringEngine(weights=weights).score(analysis)
-
-
-def _clamp_score(score: int) -> int:
-    return max(0, min(100, score))

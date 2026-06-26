@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from atlas.analysis.company_analysis import CompanyAnalysis
+from atlas.analysis.scores import clamp_score
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,16 @@ class InvestmentReport:
         return self.overall_recommendation
 
 
+def iter_score_categories(report: InvestmentReport) -> tuple[tuple[str, ScoreCategory], ...]:
+    return (
+        ("Quality", report.quality),
+        ("Growth", report.growth),
+        ("Valuation", report.valuation),
+        ("Financial Strength", report.financial_strength),
+        ("Risk", report.risk),
+    )
+
+
 class CategoryScorer(Protocol):
     def score(self, analysis: CompanyAnalysis) -> ScoreCategory:
         """Return a deterministic score category for a company analysis."""
@@ -45,7 +56,7 @@ class RecommendationPolicy(Protocol):
 class QualityScorer:
     def score(self, analysis: CompanyAnalysis) -> ScoreCategory:
         return ScoreCategory(
-            score=_clamp_score(analysis.quality.score),
+            score=clamp_score(analysis.quality.score),
             reasoning=analysis.quality.summary,
             confidence=88,
         )
@@ -54,7 +65,7 @@ class QualityScorer:
 class GrowthScorer:
     def score(self, analysis: CompanyAnalysis) -> ScoreCategory:
         return ScoreCategory(
-            score=_clamp_score(analysis.growth.score),
+            score=clamp_score(analysis.growth.score),
             reasoning=analysis.growth.summary,
             confidence=86,
         )
@@ -63,7 +74,7 @@ class GrowthScorer:
 class ValuationScorer:
     def score(self, analysis: CompanyAnalysis) -> ScoreCategory:
         return ScoreCategory(
-            score=_clamp_score(analysis.valuation.score),
+            score=clamp_score(analysis.valuation.score),
             reasoning=analysis.valuation.summary,
             confidence=74,
         )
@@ -73,7 +84,7 @@ class FinancialStrengthScorer:
     def score(self, analysis: CompanyAnalysis) -> ScoreCategory:
         score = round((analysis.quality.score * 0.65) + (analysis.moat.score * 0.35))
         return ScoreCategory(
-            score=_clamp_score(score),
+            score=clamp_score(score),
             reasoning=(
                 "Financial strength is inferred from business quality and durability "
                 "until balance sheet data is connected."
@@ -91,7 +102,7 @@ class RiskScorer:
             + analysis.sentiment.score * 0.20
         )
         return ScoreCategory(
-            score=_clamp_score(score),
+            score=clamp_score(score),
             reasoning=(
                 "Risk score blends valuation, macro, technical, and sentiment signals. "
                 "Higher scores indicate a more favorable risk profile."
@@ -108,7 +119,9 @@ class ThresholdRecommendationPolicy:
         hold_threshold: int = 60,
         sell_threshold: int = 40,
     ) -> None:
-        if not 0 <= sell_threshold <= hold_threshold <= buy_threshold <= strong_buy_threshold <= 100:
+        if not (
+            0 <= sell_threshold <= hold_threshold <= buy_threshold <= strong_buy_threshold <= 100
+        ):
             raise ValueError(
                 "Thresholds must satisfy 0 <= sell <= hold <= buy <= strong_buy <= 100."
             )
@@ -118,7 +131,7 @@ class ThresholdRecommendationPolicy:
         self.sell_threshold = sell_threshold
 
     def recommend(self, atlas_score: int) -> str:
-        score = _clamp_score(atlas_score)
+        score = clamp_score(atlas_score)
         if score >= self.strong_buy_threshold:
             return "Strong Buy"
         if score >= self.buy_threshold:
@@ -181,14 +194,14 @@ class AtlasInvestmentEngine:
     def _aggregate_score(self, categories: dict[str, ScoreCategory]) -> int:
         total_weight = sum(self.weights.values())
         score = sum(categories[name].score * weight for name, weight in self.weights.items())
-        return _clamp_score(round(score / total_weight))
+        return clamp_score(round(score / total_weight))
 
     def _aggregate_confidence(self, categories: dict[str, ScoreCategory]) -> int:
         total_weight = sum(self.weights.values())
         confidence = sum(
             categories[name].confidence * weight for name, weight in self.weights.items()
         )
-        return _clamp_score(round(confidence / total_weight))
+        return clamp_score(round(confidence / total_weight))
 
     def _validate_configuration(self) -> None:
         required_categories = set(DEFAULT_CATEGORY_WEIGHTS)
@@ -197,16 +210,16 @@ class AtlasInvestmentEngine:
         if scorer_categories != required_categories:
             missing = ", ".join(sorted(required_categories - scorer_categories))
             extra = ", ".join(sorted(scorer_categories - required_categories))
-            raise ValueError(f"Invalid category scorers. Missing: {missing or '-'}; extra: {extra or '-'}.")
+            raise ValueError(
+                f"Invalid category scorers. Missing: {missing or '-'}; extra: {extra or '-'}."
+            )
         if weight_categories != required_categories:
             missing = ", ".join(sorted(required_categories - weight_categories))
             extra = ", ".join(sorted(weight_categories - required_categories))
-            raise ValueError(f"Invalid category weights. Missing: {missing or '-'}; extra: {extra or '-'}.")
+            raise ValueError(
+                f"Invalid category weights. Missing: {missing or '-'}; extra: {extra or '-'}."
+            )
         if any(weight < 0 for weight in self.weights.values()):
             raise ValueError("Category weights must be non-negative.")
         if sum(self.weights.values()) <= 0:
             raise ValueError("At least one category weight must be greater than zero.")
-
-
-def _clamp_score(score: int) -> int:
-    return max(0, min(100, score))

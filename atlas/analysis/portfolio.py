@@ -4,6 +4,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from atlas.analysis.scores import clamp_score
+
 
 @dataclass(frozen=True)
 class PortfolioPosition:
@@ -237,8 +239,8 @@ def _position_from_mapping(payload: dict[str, Any]) -> PortfolioPosition:
         country=str(payload["country"]),
         market_cap=float(payload["market_cap"]),
         weight=_normalize_weight(float(payload["weight"])),
-        quality_score=_clamp_score(round(float(payload["quality_score"]))),
-        risk_score=_clamp_score(round(float(payload["risk_score"]))),
+        quality_score=clamp_score(round(float(payload["quality_score"]))),
+        risk_score=clamp_score(round(float(payload["risk_score"]))),
     )
 
 
@@ -251,7 +253,7 @@ def _diversification_impact(
     country_weight = _weight_by_attribute(portfolio, "country", target.country)
     mega_cap_weight = _mega_cap_weight(portfolio)
     raw_score = 100 - round((sector_weight * 55) + (country_weight * 25) + (mega_cap_weight * 20))
-    score = _clamp_score(raw_score)
+    score = clamp_score(raw_score)
     return PortfolioSignal(
         score=score,
         reasoning=(
@@ -332,7 +334,7 @@ def _overlap_with_existing_holdings(
     ]
     if same_sector_positions:
         tickers = ", ".join(position.ticker for position in same_sector_positions)
-        score = _clamp_score(80 - len(same_sector_positions) * 10)
+        score = clamp_score(80 - len(same_sector_positions) * 10)
         return PortfolioSignal(
             score=score,
             reasoning=f"{target.ticker} overlaps by sector with existing holdings: {tickers}.",
@@ -350,7 +352,7 @@ def _expected_quality_impact(
 ) -> PortfolioSignal:
     current_quality = _weighted_average(portfolio.positions, "quality_score")
     pro_forma_quality = _pro_forma_average(current_quality, target.quality_score, target_weight)
-    score = _clamp_score(round(50 + (pro_forma_quality - current_quality) * 4))
+    score = clamp_score(round(50 + (pro_forma_quality - current_quality) * 4))
     direction = "improve" if pro_forma_quality >= current_quality else "dilute"
     return PortfolioSignal(
         score=score,
@@ -368,7 +370,7 @@ def _expected_risk_impact(
 ) -> PortfolioSignal:
     current_risk = _weighted_average(portfolio.positions, "risk_score")
     pro_forma_risk = _pro_forma_average(current_risk, target.risk_score, target_weight)
-    score = _clamp_score(round(50 + (pro_forma_risk - current_risk) * 4))
+    score = clamp_score(round(50 + (pro_forma_risk - current_risk) * 4))
     direction = "improve" if pro_forma_risk >= current_risk else "weaken"
     return PortfolioSignal(
         score=score,
@@ -397,7 +399,7 @@ def _aggregate_portfolio_score(
         + quality.score * 0.20
         + risk.score * 0.15
     )
-    return _clamp_score(round(weighted_score))
+    return clamp_score(round(weighted_score))
 
 
 def _recommend(score: int) -> PortfolioRecommendation:
@@ -467,7 +469,7 @@ def _concentration_score(weight: float, preferred_limit: float, hard_limit: floa
         return 25
     penalty_range = hard_limit - preferred_limit
     overage = weight - preferred_limit
-    return _clamp_score(round(90 - (overage / penalty_range) * 65))
+    return clamp_score(round(90 - (overage / penalty_range) * 65))
 
 
 def _normalize_weight(weight: float) -> float:
@@ -485,7 +487,3 @@ def _score_line(label: str, score: int) -> str:
 
 def _signal_line(signal: PortfolioSignal) -> str:
     return f"{_score_line('Score', signal.score)}\nReasoning: {signal.reasoning}"
-
-
-def _clamp_score(score: int) -> int:
-    return max(0, min(100, score))

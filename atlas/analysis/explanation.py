@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from atlas.analysis.engine import InvestmentReport, ScoreCategory
+from atlas.analysis.engine import InvestmentReport, ScoreCategory, iter_score_categories
 
 
 @dataclass(frozen=True)
@@ -72,13 +72,7 @@ def _rank_categories(
     report: InvestmentReport,
     reverse: bool,
 ) -> tuple[tuple[str, ScoreCategory], ...]:
-    categories = (
-        ("Quality", report.quality),
-        ("Growth", report.growth),
-        ("Valuation", report.valuation),
-        ("Financial Strength", report.financial_strength),
-        ("Risk", report.risk),
-    )
+    categories = iter_score_categories(report)
     return tuple(sorted(categories, key=lambda item: item[1].score, reverse=reverse))
 
 
