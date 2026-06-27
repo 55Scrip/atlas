@@ -52,6 +52,11 @@ from atlas.profile import (
     render_investor_profile,
 )
 from atlas.principles import PrinciplesEngine, render_principles_check
+from atlas.portfolio_review import (
+    PortfolioReviewEngine,
+    PortfolioReviewInput,
+    render_portfolio_review,
+)
 from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
 from atlas.reasoning import (
     ReasoningEngine,
@@ -460,6 +465,39 @@ def portfolio_analyze_command(
         raise typer.Exit(code=1) from exc
 
     console.print(render_portfolio_analysis(analysis))
+
+
+@portfolio_app.command("review")
+def portfolio_review_command(
+    portfolio_path: Path,
+    profile_path: Path = typer.Option(
+        Path("atlas_profile.json"),
+        "--profile",
+        help="Investor profile JSON path",
+    ),
+    market_path: Path | None = typer.Option(
+        None,
+        "--market",
+        help="Optional market snapshot JSON path",
+    ),
+):
+    """Generate a CIO-style portfolio review."""
+    try:
+        portfolio = Portfolio.from_json_file(portfolio_path)
+        profile = _profile_from_path_or_default(profile_path)
+        market_snapshot = MarketSnapshot.from_json_file(market_path) if market_path else None
+        report = PortfolioReviewEngine().review(
+            PortfolioReviewInput(
+                portfolio=portfolio,
+                investor_profile=profile,
+                market_snapshot=market_snapshot,
+            )
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]Portfolio review failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_portfolio_review(report))
 
 
 @profile_app.command("create")

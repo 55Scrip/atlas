@@ -30,6 +30,7 @@ atlas profile update --risk-profile Growth
 atlas principles check "text to check"
 atlas reason analyze
 atlas portfolio analyze portfolio.json NVDA
+atlas portfolio review portfolio.json
 atlas compare NVDA AMD MSFT
 atlas watchlist analyze watchlist.json
 atlas memory save NVDA memory.json
@@ -173,6 +174,54 @@ The tone is calm, concise, analytical, and not promotional. Atlas Daily uses
 language such as `worth monitoring`, `worth understanding`, `appears stable`,
 `may deserve attention`, `not enough information`, and `depends on investor
 profile`. Opportunities are presented as research directions only.
+
+## Portfolio review engine
+
+```bash
+atlas portfolio review portfolio.json
+atlas portfolio review portfolio.json --profile atlas_profile.json
+atlas portfolio review portfolio.json --market market.json
+```
+
+Sprint 26 adds `atlas.portfolio_review`, a CIO-style portfolio review. This is
+not a performance report and not a trade recommendation. It synthesizes investor
+profile, portfolio structure, suitability, risk drift, market conditions,
+economic signals, and long-term themes into a concise alignment review.
+
+The review uses existing Atlas engines:
+
+- Portfolio and Monitoring engines
+- Investor Profile Engine
+- Suitability Engine
+- Risk Drift Engine
+- Theme Engine
+- Market Health
+- Market Regime
+- Economic Signals
+- Principles Engine
+
+Output sections:
+
+- Bottom Line
+- Atlas Rating
+- Portfolio Strengths
+- Main Risks
+- Investor Alignment
+- Theme Exposure
+- Market Context
+- What Atlas Is Monitoring
+- What Could Change Atlas' View
+- Missing Information
+- Optional Follow-up Questions
+
+Atlas Rating reflects alignment between the portfolio, investor profile, market
+context, and risk profile. It is not a performance rating. Possible ratings are
+Excellent Alignment, Strong Alignment, Balanced, Limited Alignment, and
+Misaligned.
+
+The review uses language such as `appears aligned`, `worth monitoring`, `may
+deserve attention`, and `current evidence suggests`. It avoids trade
+instructions and absolute promises.
 
 ## Investor profile engine
 
