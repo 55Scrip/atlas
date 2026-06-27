@@ -13,6 +13,7 @@ atlas add-company TSM --name "Taiwan Semiconductor Manufacturing Company" --atla
 atlas import-financials TSM data/tsm_financials.csv
 atlas list-companies
 atlas report NVDA
+atlas analyze NVDA --provider yahoo
 atlas portfolio analyze portfolio.json NVDA
 atlas compare NVDA AMD MSFT
 atlas watchlist analyze watchlist.json
@@ -82,9 +83,8 @@ Available providers:
 
 - `MockCompanyAnalysisProvider`: deterministic default provider used by the CLI
   and tests.
-- `YahooFinanceProvider`: skeleton for future Yahoo Finance mapping. It exposes
-  the same interface and raises `NotImplementedError` until live data mapping is
-  implemented.
+- `YahooFinanceProvider`: first real market-data provider. It retrieves Yahoo
+  Finance quote-summary data and adapts it to the existing provider interface.
 
 Provider methods:
 
@@ -92,6 +92,55 @@ Provider methods:
   comparison, watchlist, and memory engines.
 - `get_portfolio_profile(ticker)` returns portfolio context signals for the
   portfolio engine.
+- `get_company(ticker)` returns raw company identity fields from Yahoo.
+- `get_financials(ticker)` returns raw financial fields from Yahoo.
+- `get_market_data(ticker)` returns raw price and market fields from Yahoo.
+
+Provider selection:
+
+```bash
+atlas analyze NVDA --provider mock
+atlas analyze NVDA --provider yahoo
+atlas compare NVDA AMD MSFT --provider yahoo
+atlas portfolio analyze portfolio.json NVDA --provider yahoo
+atlas watchlist analyze watchlist.json --provider yahoo
+```
+
+The default is always `mock`, so tests and offline workflows remain
+deterministic. Yahoo requires internet access and can fail when Yahoo Finance is
+unavailable, rate limited, missing fields, or unable to resolve a ticker. Atlas
+reports those provider failures as user-facing command errors instead of
+crashing. No extra Python package is required for Yahoo support; Atlas uses the
+standard library HTTP client.
+
+Yahoo-supported fields:
+
+- Company name
+- Exchange
+- Sector
+- Industry
+- Market Cap
+- Current Price
+- 52-week High
+- 52-week Low
+- P/E
+- EPS
+- Revenue
+- Gross Margin
+- Operating Margin
+- Net Margin
+- Free Cash Flow
+- Shares Outstanding
+- Beta
+- Dividend Yield, when available
+
+Limitations:
+
+- Yahoo mapping is best-effort and depends on fields Yahoo returns for a ticker.
+- Missing fields lower the quality of derived provider-side estimates.
+- Yahoo-specific parsing remains isolated inside `atlas.providers`.
+- Analysis, portfolio, comparison, watchlist, decision, and risk engines continue
+  to depend only on the provider abstraction.
 
 ## Portfolio intelligence
 

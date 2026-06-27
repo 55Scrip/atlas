@@ -18,7 +18,7 @@ from atlas.analysis.portfolio import (
 from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.analysis.watchlist import Watchlist, WatchlistEngine, render_watchlist_analysis
 from atlas.market import MarketRegimeEngine, MarketSnapshot, render_market_regime
-from atlas.providers import MockCompanyAnalysisProvider
+from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
 from atlas.risk import PositionSizingInput, RiskEngine, render_risk_analysis
 from atlas.services.database_service import init_database
 from atlas.services.company_service import add_company, list_companies
@@ -81,12 +81,15 @@ def list_companies_command():
     console.print(table)
 
 @app.command("report")
-def report_command(ticker: str):
+def report_command(
+    ticker: str,
+    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+):
     """Generate a formatted investment report."""
-    provider = MockCompanyAnalysisProvider()
     try:
+        provider = _provider_from_name(provider_name)
         analysis = provider.get_company_analysis(ticker)
-    except LookupError as exc:
+    except (LookupError, ValueError) as exc:
         console.print(f"[red]Report failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
@@ -107,12 +110,15 @@ def import_financials_command(ticker: str, csv_path: Path):
     )
 
 @app.command("analyze")
-def analyze_command(ticker: str):
+def analyze_command(
+    ticker: str,
+    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+):
     """Generate a structured company intelligence report."""
-    provider = MockCompanyAnalysisProvider()
     try:
+        provider = _provider_from_name(provider_name)
         analysis = provider.get_company_analysis(ticker)
-    except LookupError as exc:
+    except (LookupError, ValueError) as exc:
         console.print(f"[red]Analysis failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
@@ -121,16 +127,19 @@ def analyze_command(ticker: str):
 
 
 @app.command("compare")
-def compare_command(tickers: list[str] = typer.Argument(...)):
+def compare_command(
+    tickers: list[str] = typer.Argument(...),
+    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+):
     """Compare multiple companies with the Atlas investment engine."""
     if len(tickers) < 2:
         console.print("[red]Comparison failed:[/red] At least two tickers are required.")
         raise typer.Exit(code=1)
 
-    provider = MockCompanyAnalysisProvider()
     try:
+        provider = _provider_from_name(provider_name)
         result = ComparisonEngine().compare_tickers(tickers, provider)
-    except LookupError as exc:
+    except (LookupError, ValueError) as exc:
         console.print(f"[red]Comparison failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
@@ -195,10 +204,14 @@ def market_analyze_command(market_path: Path):
 
 
 @portfolio_app.command("analyze")
-def portfolio_analyze_command(portfolio_path: Path, ticker: str):
+def portfolio_analyze_command(
+    portfolio_path: Path,
+    ticker: str,
+    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+):
     """Analyze a company in the context of an existing portfolio."""
-    provider = MockCompanyAnalysisProvider()
     try:
+        provider = _provider_from_name(provider_name)
         portfolio = Portfolio.from_json_file(portfolio_path)
         analysis = PortfolioIntelligenceEngine().analyze_ticker(
             portfolio=portfolio,
@@ -226,10 +239,13 @@ def risk_size_command(risk_input_path: Path):
 
 
 @watchlist_app.command("analyze")
-def watchlist_analyze_command(watchlist_path: Path):
+def watchlist_analyze_command(
+    watchlist_path: Path,
+    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+):
     """Analyze opportunities across a watchlist."""
-    provider = MockCompanyAnalysisProvider()
     try:
+        provider = _provider_from_name(provider_name)
         watchlist = Watchlist.from_json_file(watchlist_path)
         analysis = WatchlistEngine().analyze(watchlist=watchlist, provider=provider)
     except (FileNotFoundError, LookupError, ValueError) as exc:
@@ -237,3 +253,12 @@ def watchlist_analyze_command(watchlist_path: Path):
         raise typer.Exit(code=1) from exc
 
     console.print(render_watchlist_analysis(analysis))
+
+
+def _provider_from_name(provider_name: str) -> CompanyDataProvider:
+    normalized = provider_name.strip().lower()
+    if normalized == "mock":
+        return MockCompanyAnalysisProvider()
+    if normalized == "yahoo":
+        return YahooFinanceProvider()
+    raise ValueError("Unknown provider. Use 'mock' or 'yahoo'.")
