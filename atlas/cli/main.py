@@ -38,6 +38,16 @@ from atlas.market import (
     render_market_regime,
 )
 from atlas.monitoring import MonitoringAlert, MonitoringEngine, render_monitoring_alert
+from atlas.profile import (
+    InvestmentGoal,
+    InvestorProfileEngine,
+    PortfolioPurpose,
+    RiskCapacity,
+    RiskPreference,
+    RiskTolerance,
+    TimeHorizon,
+    render_investor_profile,
+)
 from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
 from atlas.reasoning import (
     ReasoningEngine,
@@ -57,6 +67,7 @@ intelligence_app = typer.Typer(help="Atlas intelligence synthesis commands")
 memory_app = typer.Typer(help="Investment memory commands")
 market_app = typer.Typer(help="Market regime commands")
 portfolio_app = typer.Typer(help="Portfolio intelligence commands")
+profile_app = typer.Typer(help="Investor profile context commands")
 reason_app = typer.Typer(help="Atlas reasoning thesis commands")
 risk_app = typer.Typer(help="Risk and position sizing commands")
 theme_app = typer.Typer(help="Theme intelligence commands")
@@ -66,6 +77,7 @@ app.add_typer(intelligence_app, name="intelligence")
 app.add_typer(memory_app, name="memory")
 app.add_typer(market_app, name="market")
 app.add_typer(portfolio_app, name="portfolio")
+app.add_typer(profile_app, name="profile")
 app.add_typer(reason_app, name="reason")
 app.add_typer(risk_app, name="risk")
 app.add_typer(theme_app, name="theme")
@@ -346,6 +358,151 @@ def portfolio_analyze_command(
     console.print(render_portfolio_analysis(analysis))
 
 
+@profile_app.command("create")
+def profile_create_command(
+    profile_path: Path = typer.Option(
+        Path("atlas_profile.json"),
+        "--path",
+        help="Investor profile JSON path",
+    ),
+    name: str = typer.Option("Atlas Investor", "--name", help="Investor profile name"),
+    goals: list[str] | None = typer.Option(
+        None,
+        "--goal",
+        help="Investment goal. Repeat this option to set multiple goals.",
+    ),
+    portfolio_purpose: str = typer.Option(
+        "Core Portfolio",
+        "--purpose",
+        help="Portfolio purpose",
+    ),
+    risk_preference: str = typer.Option(
+        "Balanced",
+        "--risk-profile",
+        help="Risk profile preference",
+    ),
+    risk_tolerance: str = typer.Option(
+        "Balanced",
+        "--risk-tolerance",
+        help="Emotional risk tolerance",
+    ),
+    risk_capacity: str = typer.Option(
+        "Medium",
+        "--risk-capacity",
+        help="Financial risk capacity",
+    ),
+    time_horizon: str = typer.Option(
+        "10+ years",
+        "--time-horizon",
+        help="Investment time horizon",
+    ),
+    notes: str = typer.Option("", "--notes", help="Optional investor notes"),
+):
+    """Create an investor profile JSON file."""
+    try:
+        engine = InvestorProfileEngine()
+        profile = engine.create_profile(
+            name=name,
+            investment_goals=_parse_profile_goals(goals),
+            portfolio_purpose=_parse_profile_enum(PortfolioPurpose, portfolio_purpose),
+            risk_preference=_parse_profile_enum(RiskPreference, risk_preference),
+            risk_tolerance=_parse_profile_enum(RiskTolerance, risk_tolerance),
+            risk_capacity=_parse_profile_enum(RiskCapacity, risk_capacity),
+            time_horizon=_parse_profile_enum(TimeHorizon, time_horizon),
+            notes=notes,
+        )
+        engine.save_profile(profile, profile_path)
+    except ValueError as exc:
+        console.print(f"[red]Profile create failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_investor_profile(profile))
+
+
+@profile_app.command("show")
+def profile_show_command(
+    profile_path: Path = typer.Option(
+        Path("atlas_profile.json"),
+        "--path",
+        help="Investor profile JSON path",
+    ),
+):
+    """Show an investor profile."""
+    try:
+        profile = InvestorProfileEngine().load_profile(profile_path)
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]Profile show failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_investor_profile(profile))
+
+
+@profile_app.command("update")
+def profile_update_command(
+    profile_path: Path = typer.Option(
+        Path("atlas_profile.json"),
+        "--path",
+        help="Investor profile JSON path",
+    ),
+    name: str | None = typer.Option(None, "--name", help="Investor profile name"),
+    goals: list[str] | None = typer.Option(
+        None,
+        "--goal",
+        help="Replace goals. Repeat this option to set multiple goals.",
+    ),
+    portfolio_purpose: str | None = typer.Option(
+        None,
+        "--purpose",
+        help="Portfolio purpose",
+    ),
+    risk_preference: str | None = typer.Option(
+        None,
+        "--risk-profile",
+        help="Risk profile preference",
+    ),
+    risk_tolerance: str | None = typer.Option(
+        None,
+        "--risk-tolerance",
+        help="Emotional risk tolerance",
+    ),
+    risk_capacity: str | None = typer.Option(
+        None,
+        "--risk-capacity",
+        help="Financial risk capacity",
+    ),
+    time_horizon: str | None = typer.Option(
+        None,
+        "--time-horizon",
+        help="Investment time horizon",
+    ),
+    notes: str | None = typer.Option(None, "--notes", help="Optional investor notes"),
+):
+    """Update an existing investor profile JSON file."""
+    try:
+        engine = InvestorProfileEngine()
+        profile = engine.load_profile(profile_path)
+        updated = engine.update_profile(
+            profile,
+            name=name,
+            investment_goals=_parse_profile_goals(goals) if goals else None,
+            portfolio_purpose=_optional_profile_enum(
+                PortfolioPurpose,
+                portfolio_purpose,
+            ),
+            risk_preference=_optional_profile_enum(RiskPreference, risk_preference),
+            risk_tolerance=_optional_profile_enum(RiskTolerance, risk_tolerance),
+            risk_capacity=_optional_profile_enum(RiskCapacity, risk_capacity),
+            time_horizon=_optional_profile_enum(TimeHorizon, time_horizon),
+            notes=notes,
+        )
+        engine.save_profile(updated, profile_path)
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]Profile update failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_investor_profile(updated))
+
+
 @reason_app.command("analyze")
 def reason_analyze_command(
     ticker: str = typer.Option("NVDA", "--ticker", help="Ticker context"),
@@ -420,6 +577,29 @@ def _parse_intelligence_inputs(inputs: list[str]) -> tuple[Portfolio | None, str
     if len(inputs) == 2:
         return Portfolio.from_json_file(Path(inputs[0])), inputs[1].upper()
     raise ValueError("Use 'atlas intelligence analyze TICKER' or 'portfolio.json TICKER'.")
+
+
+def _parse_profile_goals(goals: list[str] | None) -> tuple[InvestmentGoal, ...]:
+    raw_goals = goals or [InvestmentGoal.WEALTH_ACCUMULATION.value]
+    return tuple(_parse_profile_enum(InvestmentGoal, goal) for goal in raw_goals)
+
+
+def _optional_profile_enum(enum_type, raw_value: str | None):
+    if raw_value is None:
+        return None
+    return _parse_profile_enum(enum_type, raw_value)
+
+
+def _parse_profile_enum(enum_type, raw_value: str):
+    normalized = raw_value.strip().lower().replace("_", " ").replace("-", " ")
+    for item in enum_type:
+        if normalized in {
+            item.name.lower().replace("_", " "),
+            item.value.lower().replace("-", " "),
+        }:
+            return item
+    valid = ", ".join(item.value for item in enum_type)
+    raise ValueError(f"Unknown {enum_type.__name__}: {raw_value}. Valid values: {valid}")
 
 
 def _monitor_from_inputs(

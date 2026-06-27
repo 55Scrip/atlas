@@ -22,6 +22,9 @@ atlas intelligence analyze portfolio.json NVDA
 atlas monitor NVDA
 atlas monitor portfolio.json
 atlas monitor theme "AI infrastructure"
+atlas profile create
+atlas profile show
+atlas profile update --risk-profile Growth
 atlas reason analyze
 atlas portfolio analyze portfolio.json NVDA
 atlas compare NVDA AMD MSFT
@@ -83,6 +86,44 @@ The current CLI uses placeholder analysis signals for:
 - AAPL
 - MSFT
 - EVO
+
+## Investor profile engine
+
+```bash
+atlas profile create
+atlas profile show
+atlas profile update --risk-profile Growth --time-horizon "10+ years"
+```
+
+Sprint 20 adds `atlas.profile`, a deterministic investor context layer. It does
+not provide investment recommendations and is not a financial advisor. The
+profile exists so future Atlas reasoning can account for the user's goals,
+portfolio purpose, risk preferences, risk capacity, and time horizon before
+evaluating portfolio fit.
+
+The profile supports:
+
+- investment goals: wealth accumulation, retirement, income, financial
+  independence, capital preservation, learning, and experimental portfolio
+- portfolio purpose: core portfolio, growth portfolio, income portfolio,
+  exploration portfolio, and high conviction portfolio
+- risk profile: conservative, balanced, growth, and aggressive
+- risk capacity: low, medium, and high
+- time horizon: `<3 years`, `3-10 years`, and `10+ years`
+
+Profile commands read and write `atlas_profile.json` by default. Use `--path` to
+store a profile elsewhere:
+
+```bash
+atlas profile create --path profiles/core.json --goal Retirement --risk-profile Balanced
+atlas profile show --path profiles/core.json
+atlas profile update --path profiles/core.json --risk-capacity High
+```
+
+`InvestorProfileEngine` produces an `InvestorContext` with capital safety
+framing and deterministic reasoning context. The context is designed for future
+onboarding UI and later integration into portfolio, risk, decision, and
+intelligence workflows.
 
 ## Economic signals engine
 
