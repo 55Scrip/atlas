@@ -20,6 +20,7 @@ atlas memory save NVDA memory.json
 atlas memory show memory.json
 atlas memory compare memory.json NVDA
 atlas market analyze market.json
+atlas risk size risk_input.json
 ```
 
 ## Financial import CSV
@@ -234,6 +235,56 @@ The report includes the current market regime, confidence, key indicators,
 opportunities, risks, and suggested investment behaviour. Crisis behaviour
 emphasizes preserving liquidity, avoiding panic selling, investing slowly over
 time, and focusing only on financially strong businesses.
+
+## Risk and position sizing
+
+```bash
+atlas risk size risk_input.json
+```
+
+Sprint 11 adds deterministic position sizing and capital deployment reasoning.
+The Risk Engine evaluates cash reserves, investment horizon, risk profile, market
+regime, existing positions, company score, confidence, and target risk score.
+
+Risk profiles:
+
+- Conservative
+- Balanced
+- Growth
+- Aggressive
+
+Example JSON:
+
+```json
+{
+  "total_capital": 500000,
+  "investable_capital": 200000,
+  "existing_cash_reserve": 100000,
+  "required_cash_reserve": 75000,
+  "investment_horizon_years": 10,
+  "risk_profile": "balanced",
+  "market_regime": "correction",
+  "current_positions": [
+    {"ticker": "MSFT", "market_value": 80000},
+    {"ticker": "NVDA", "market_value": 60000}
+  ],
+  "target_ticker": "TSMC",
+  "target_company_score": 86,
+  "target_confidence": 82,
+  "target_risk_score": 35
+}
+```
+
+The report includes risk profile, investable capital, cash reserve status,
+suggested initial investment, suggested monthly deployment, deployment period,
+maximum position size, concentration risk, liquidity risk, market regime
+adjustment, final recommendation, and reasoning.
+
+The engine never recommends investing money needed in the short term, never
+deploys capital below the required cash reserve, favors gradual deployment in
+Correction, Bear, and Crisis regimes, and caps single-position exposure by risk
+profile. Lower confidence or a weaker target risk score reduces recommended
+position size.
 
 ## Decision engine
 

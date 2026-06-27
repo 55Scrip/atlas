@@ -19,6 +19,7 @@ from atlas.analysis.report import build_investment_report, render_investment_rep
 from atlas.analysis.watchlist import Watchlist, WatchlistEngine, render_watchlist_analysis
 from atlas.market import MarketRegimeEngine, MarketSnapshot, render_market_regime
 from atlas.providers import MockCompanyAnalysisProvider
+from atlas.risk import PositionSizingInput, RiskEngine, render_risk_analysis
 from atlas.services.database_service import init_database
 from atlas.services.company_service import add_company, list_companies
 from atlas.services.financial_import_service import import_financials
@@ -27,10 +28,12 @@ app = typer.Typer(help="Atlas investment research platform")
 memory_app = typer.Typer(help="Investment memory commands")
 market_app = typer.Typer(help="Market regime commands")
 portfolio_app = typer.Typer(help="Portfolio intelligence commands")
+risk_app = typer.Typer(help="Risk and position sizing commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
 app.add_typer(memory_app, name="memory")
 app.add_typer(market_app, name="market")
 app.add_typer(portfolio_app, name="portfolio")
+app.add_typer(risk_app, name="risk")
 app.add_typer(watchlist_app, name="watchlist")
 console = Console()
 
@@ -207,6 +210,19 @@ def portfolio_analyze_command(portfolio_path: Path, ticker: str):
         raise typer.Exit(code=1) from exc
 
     console.print(render_portfolio_analysis(analysis))
+
+
+@risk_app.command("size")
+def risk_size_command(risk_input_path: Path):
+    """Analyze position size, liquidity, concentration, and deployment pacing."""
+    try:
+        sizing_input = PositionSizingInput.from_json_file(risk_input_path)
+        analysis = RiskEngine().analyze(sizing_input)
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]Risk sizing failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_risk_analysis(analysis))
 
 
 @watchlist_app.command("analyze")
