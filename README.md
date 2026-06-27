@@ -18,6 +18,9 @@ atlas ask "Analyze Nvidia"
 atlas ask "How healthy is the market?"
 atlas intelligence analyze NVDA
 atlas intelligence analyze portfolio.json NVDA
+atlas monitor NVDA
+atlas monitor portfolio.json
+atlas monitor theme "AI infrastructure"
 atlas portfolio analyze portfolio.json NVDA
 atlas compare NVDA AMD MSFT
 atlas watchlist analyze watchlist.json
@@ -187,6 +190,48 @@ I monitor?`, `How risky is this company?`, and `What themes are attractive?`.
 Outputs are deterministic research context, not personalized financial advice.
 The architecture is intentionally ready for future GPT integration while keeping
 the current router and reasoning layer testable offline.
+
+## Monitoring engine
+
+```bash
+atlas monitor NVDA
+atlas monitor portfolio.json
+atlas monitor theme "AI infrastructure"
+atlas monitor watchlist watchlist.json
+atlas monitor market-health
+atlas monitor market-regime
+```
+
+Sprint 17 adds `atlas.monitoring`, a deterministic snapshot comparison layer.
+Atlas creates typed monitoring snapshots, compares a previous snapshot with a
+current snapshot, and explains what changed. There are no notifications, no
+database requirements, and no live scheduling yet.
+
+Atlas can monitor:
+
+- Companies
+- Themes
+- Market Health
+- Market Regime
+- Credit indicators through Market Health
+- Portfolio snapshots
+- Watchlists
+
+Monitoring output includes:
+
+- Summary
+- Signals that improved
+- Signals that deteriorated
+- New risks
+- New opportunities
+- Confidence
+- Importance score
+- Atlas recommends monitoring
+
+The CLI currently generates a deterministic previous baseline so monitoring can
+be tested offline without storage. The architecture keeps snapshots explicit so
+future scheduled monitoring, persisted history, and notifications can be added
+without changing the comparison model.
 
 ## Portfolio intelligence
 

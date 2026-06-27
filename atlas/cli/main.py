@@ -35,6 +35,7 @@ from atlas.market import (
     render_market_health,
     render_market_regime,
 )
+from atlas.monitoring import MonitoringAlert, MonitoringEngine, render_monitoring_alert
 from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
 from atlas.risk import PositionSizingInput, RiskEngine, render_risk_analysis
 from atlas.services.database_service import init_database
@@ -117,6 +118,23 @@ def report_command(
 
     report = build_investment_report(analysis)
     console.print(render_investment_report(report))
+
+
+@app.command("monitor")
+def monitor_command(
+    inputs: list[str] = typer.Argument(...),
+    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+):
+    """Compare deterministic monitoring snapshots for a company, portfolio, or theme."""
+    try:
+        provider = _provider_from_name(provider_name)
+        alert = _monitor_from_inputs(inputs, provider)
+    except (FileNotFoundError, LookupError, ValueError) as exc:
+        console.print(f"[red]Monitoring failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_monitoring_alert(alert))
+
 
 @app.command("import-financials")
 def import_financials_command(ticker: str, csv_path: Path):
@@ -366,3 +384,30 @@ def _parse_intelligence_inputs(inputs: list[str]) -> tuple[Portfolio | None, str
     if len(inputs) == 2:
         return Portfolio.from_json_file(Path(inputs[0])), inputs[1].upper()
     raise ValueError("Use 'atlas intelligence analyze TICKER' or 'portfolio.json TICKER'.")
+
+
+def _monitor_from_inputs(
+    inputs: list[str],
+    provider: CompanyDataProvider,
+) -> MonitoringAlert:
+    engine = MonitoringEngine()
+    if not inputs:
+        raise ValueError("Use 'atlas monitor TICKER', 'portfolio.json', or 'theme NAME'.")
+    command = inputs[0].strip().lower()
+    if command == "theme":
+        if len(inputs) < 2:
+            raise ValueError("Use 'atlas monitor theme THEME_NAME'.")
+        return engine.monitor_theme(" ".join(inputs[1:]))
+    if command == "watchlist":
+        if len(inputs) != 2:
+            raise ValueError("Use 'atlas monitor watchlist watchlist.json'.")
+        return engine.monitor_watchlist(Watchlist.from_json_file(Path(inputs[1])), provider)
+    if command in {"market-health", "health"} or inputs == ["market", "health"]:
+        return engine.monitor_market_health()
+    if command in {"market-regime", "regime"}:
+        return engine.monitor_market_regime()
+    if len(inputs) == 1 and inputs[0].lower().endswith(".json"):
+        return engine.monitor_portfolio(Portfolio.from_json_file(Path(inputs[0])))
+    if len(inputs) == 1:
+        return engine.monitor_company(inputs[0], provider)
+    raise ValueError("Use 'atlas monitor TICKER', 'portfolio.json', or 'theme NAME'.")
