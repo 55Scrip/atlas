@@ -25,6 +25,7 @@ atlas monitor theme "AI infrastructure"
 atlas profile create
 atlas profile show
 atlas profile update --risk-profile Growth
+atlas principles check "text to check"
 atlas reason analyze
 atlas portfolio analyze portfolio.json NVDA
 atlas compare NVDA AMD MSFT
@@ -127,6 +128,51 @@ atlas profile update --path profiles/core.json --risk-capacity High
 framing and deterministic reasoning context. The context is designed for future
 onboarding UI and later integration into portfolio, risk, decision, and
 intelligence workflows.
+
+## Atlas principles engine
+
+```bash
+atlas principles check "This depends on the investor profile and risk context."
+```
+
+Sprint 23 adds `atlas.principles`, a deterministic validation layer for Atlas
+communication and product philosophy. It is not an LLM, not a recommendation
+engine, and does not replace existing engines. It checks whether text or rendered
+reports follow Atlas' reasoning guardrails.
+
+Initial principle categories:
+
+- User First
+- Context Before Conclusion
+- Portfolio Before Position
+- Risk Before Return
+- Transparency
+- Suitability
+- Long-term Thinking
+- Humility
+- Educational Value
+- Consistency
+
+The engine outputs:
+
+- Overall Principles Result: Pass, Warning, or Fail
+- principles followed
+- principles potentially missing
+- guardrail warnings
+- missing context
+- suggested improvements
+- confidence
+
+Guardrails flag directive or absolute language such as `Buy`, `Sell`, `Strong
+Buy`, `Strong Sell`, `Guaranteed`, `Can't lose`, `Risk-free`, and `Sure thing`
+unless the phrase is clearly quoted as external text. Atlas should prefer
+language such as `appears compatible`, `appears inconsistent`, `may be worth
+studying`, `Atlas would monitor`, `there is not enough information`, and `this
+depends on the investor profile`.
+
+The package also exposes optional helper functions for validating conversation
+responses, intelligence reports, suitability assessments, and reasoning reports
+without changing those engines' business logic.
 
 ## Suitability engine
 

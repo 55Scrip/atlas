@@ -49,6 +49,7 @@ from atlas.profile import (
     TimeHorizon,
     render_investor_profile,
 )
+from atlas.principles import PrinciplesEngine, render_principles_check
 from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
 from atlas.reasoning import (
     ReasoningEngine,
@@ -81,6 +82,7 @@ memory_app = typer.Typer(help="Investment memory commands")
 market_app = typer.Typer(help="Market regime commands")
 portfolio_app = typer.Typer(help="Portfolio intelligence commands")
 profile_app = typer.Typer(help="Investor profile context commands")
+principles_app = typer.Typer(help="Atlas principles validation commands")
 reason_app = typer.Typer(help="Atlas reasoning thesis commands")
 risk_drift_app = typer.Typer(help="Risk drift review commands")
 risk_app = typer.Typer(help="Risk and position sizing commands")
@@ -93,6 +95,7 @@ app.add_typer(memory_app, name="memory")
 app.add_typer(market_app, name="market")
 app.add_typer(portfolio_app, name="portfolio")
 app.add_typer(profile_app, name="profile")
+app.add_typer(principles_app, name="principles")
 app.add_typer(reason_app, name="reason")
 app.add_typer(risk_drift_app, name="risk-drift")
 app.add_typer(risk_app, name="risk")
@@ -518,6 +521,13 @@ def profile_update_command(
         raise typer.Exit(code=1) from exc
 
     console.print(render_investor_profile(updated))
+
+
+@principles_app.command("check")
+def principles_check_command(text: str):
+    """Validate text against Atlas communication principles and guardrails."""
+    check = PrinciplesEngine().check(text)
+    console.print(render_principles_check(check))
 
 
 @reason_app.command("analyze")
