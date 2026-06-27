@@ -22,6 +22,7 @@ atlas intelligence analyze portfolio.json NVDA
 atlas monitor NVDA
 atlas monitor portfolio.json
 atlas monitor theme "AI infrastructure"
+atlas reason analyze
 atlas portfolio analyze portfolio.json NVDA
 atlas compare NVDA AMD MSFT
 atlas watchlist analyze watchlist.json
@@ -113,6 +114,46 @@ is watching most closely, and what would improve or worsen the outlook.
 
 The module is structured so future FRED, ECB, Yahoo, or other macro data
 providers can supply live inputs without changing the public analysis surface.
+
+## Atlas reasoning engine
+
+```bash
+atlas reason analyze
+atlas reason analyze --ticker NVDA --theme "AI infrastructure"
+```
+
+Sprint 19 adds `atlas.reasoning`, a deterministic thesis synthesis layer. It
+does not call an LLM, does not use live APIs, does not invent missing facts, and
+does not produce buy/sell recommendations. It only synthesizes outputs supplied
+by existing Atlas engines.
+
+Reasoning input can include:
+
+- Company Analysis
+- Portfolio Analysis
+- Theme Analysis
+- Monitoring Report
+- Economic Signals
+- Market Health
+- Market Regime
+- Risk Analysis
+
+The report includes:
+
+- Executive Summary
+- Bullish Factors
+- Bearish Factors
+- Areas of Uncertainty
+- Signals Atlas Trusts Most
+- Signals Atlas Trusts Least
+- Confidence
+- Alternative Scenarios
+- What Could Invalidate The Thesis
+- What Atlas Will Monitor Next
+
+The default CLI path builds a deterministic thesis from the mock company
+provider, theme analysis, monitoring, economic signals, market health, and market
+regime. Missing inputs are listed as uncertainty rather than inferred.
 
 ## Data provider architecture
 

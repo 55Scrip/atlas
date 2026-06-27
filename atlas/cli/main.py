@@ -31,6 +31,7 @@ from atlas.intelligence import (
 )
 from atlas.market import (
     MarketHealthEngine,
+    MarketIndicators,
     MarketRegimeEngine,
     MarketSnapshot,
     render_market_health,
@@ -38,6 +39,12 @@ from atlas.market import (
 )
 from atlas.monitoring import MonitoringAlert, MonitoringEngine, render_monitoring_alert
 from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
+from atlas.reasoning import (
+    ReasoningEngine,
+    ReasoningInput,
+    ReasoningReport,
+    render_reasoning_report,
+)
 from atlas.risk import PositionSizingInput, RiskEngine, render_risk_analysis
 from atlas.services.database_service import init_database
 from atlas.services.company_service import add_company, list_companies
@@ -50,6 +57,7 @@ intelligence_app = typer.Typer(help="Atlas intelligence synthesis commands")
 memory_app = typer.Typer(help="Investment memory commands")
 market_app = typer.Typer(help="Market regime commands")
 portfolio_app = typer.Typer(help="Portfolio intelligence commands")
+reason_app = typer.Typer(help="Atlas reasoning thesis commands")
 risk_app = typer.Typer(help="Risk and position sizing commands")
 theme_app = typer.Typer(help="Theme intelligence commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
@@ -58,6 +66,7 @@ app.add_typer(intelligence_app, name="intelligence")
 app.add_typer(memory_app, name="memory")
 app.add_typer(market_app, name="market")
 app.add_typer(portfolio_app, name="portfolio")
+app.add_typer(reason_app, name="reason")
 app.add_typer(risk_app, name="risk")
 app.add_typer(theme_app, name="theme")
 app.add_typer(watchlist_app, name="watchlist")
@@ -337,6 +346,23 @@ def portfolio_analyze_command(
     console.print(render_portfolio_analysis(analysis))
 
 
+@reason_app.command("analyze")
+def reason_analyze_command(
+    ticker: str = typer.Option("NVDA", "--ticker", help="Ticker context"),
+    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+    theme: str = typer.Option("AI infrastructure", "--theme", help="Theme template context"),
+):
+    """Synthesize existing Atlas outputs into one deterministic investment thesis."""
+    try:
+        provider = _provider_from_name(provider_name)
+        report = _build_reasoning_report(ticker=ticker, provider=provider, theme=theme)
+    except (LookupError, ValueError) as exc:
+        console.print(f"[red]Reasoning failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_reasoning_report(report))
+
+
 @risk_app.command("size")
 def risk_size_command(risk_input_path: Path):
     """Analyze position size, liquidity, concentration, and deployment pacing."""
@@ -421,3 +447,38 @@ def _monitor_from_inputs(
     if len(inputs) == 1:
         return engine.monitor_company(inputs[0], provider)
     raise ValueError("Use 'atlas monitor TICKER', 'portfolio.json', or 'theme NAME'.")
+
+
+def _build_reasoning_report(
+    ticker: str,
+    provider: CompanyDataProvider,
+    theme: str,
+) -> ReasoningReport:
+    company_analysis = provider.get_company_analysis(ticker)
+    investment_report = build_investment_report(company_analysis)
+    theme_analysis = ThemeEngine().analyze(ThemeInput(theme=theme))
+    monitoring_report = MonitoringEngine().monitor_company(ticker, provider)
+    economic_signals = EconomicSignalsEngine().analyze()
+    market_health = MarketHealthEngine().analyze()
+    market_regime = MarketRegimeEngine().analyze(
+        MarketSnapshot(
+            indicators=MarketIndicators(
+                sp500_drawdown=-0.04,
+                nasdaq_drawdown=-0.07,
+                vix=19,
+                interest_rate_trend="stable",
+                inflation_trend="stable",
+            ),
+            source="deterministic-placeholder",
+        )
+    )
+    return ReasoningEngine().analyze(
+        ReasoningInput(
+            company_analysis=investment_report,
+            theme_analysis=theme_analysis,
+            monitoring_report=monitoring_report,
+            economic_signals=economic_signals,
+            market_health=market_health,
+            market_regime=market_regime,
+        )
+    )
