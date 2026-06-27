@@ -23,6 +23,7 @@ from atlas.conversation import (
     render_conversation_response,
 )
 from atlas.dashboard import DashboardEngine, DashboardInput, render_dashboard
+from atlas.daily import DailyBriefEngine, DailyBriefInput, render_daily_brief
 from atlas.economics import EconomicSignalsEngine, render_economic_signal_analysis
 from atlas.intelligence import (
     IntelligenceContext,
@@ -78,6 +79,7 @@ from atlas.themes import ThemeEngine, ThemeInput, render_theme_analysis
 
 app = typer.Typer(help="Atlas investment research platform")
 dashboard_app = typer.Typer(help="Atlas home dashboard commands")
+daily_app = typer.Typer(help="Atlas daily briefing commands")
 economics_app = typer.Typer(help="Economic signals commands")
 intelligence_app = typer.Typer(help="Atlas intelligence synthesis commands")
 memory_app = typer.Typer(help="Investment memory commands")
@@ -92,6 +94,7 @@ suitability_app = typer.Typer(help="Investor suitability context commands")
 theme_app = typer.Typer(help="Theme intelligence commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
 app.add_typer(dashboard_app, name="dashboard")
+app.add_typer(daily_app, name="daily")
 app.add_typer(economics_app, name="economics")
 app.add_typer(intelligence_app, name="intelligence")
 app.add_typer(memory_app, name="memory")
@@ -301,6 +304,45 @@ def dashboard_show_command(
         raise typer.Exit(code=1) from exc
 
     console.print(render_dashboard(summary))
+
+
+@daily_app.command("brief")
+def daily_brief_command(
+    profile_path: Path = typer.Option(
+        Path("atlas_profile.json"),
+        "--profile",
+        help="Investor profile JSON path",
+    ),
+    portfolio_path: Path | None = typer.Option(
+        None,
+        "--portfolio",
+        help="Portfolio JSON path",
+    ),
+    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+    ticker: str | None = typer.Option(
+        None,
+        "--ticker",
+        help="Optional ticker for dashboard context",
+    ),
+):
+    """Show a calm deterministic Atlas Daily briefing."""
+    try:
+        provider = _provider_from_name(provider_name)
+        profile = _profile_from_path_or_default(profile_path)
+        portfolio = Portfolio.from_json_file(portfolio_path) if portfolio_path else None
+        brief = DailyBriefEngine().build(
+            DailyBriefInput(
+                investor_profile=profile,
+                portfolio=portfolio,
+                provider=provider,
+                target_ticker=ticker,
+            )
+        )
+    except (FileNotFoundError, LookupError, ValueError) as exc:
+        console.print(f"[red]Daily brief failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_daily_brief(brief))
 
 
 @economics_app.command("analyze")

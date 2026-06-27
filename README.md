@@ -13,6 +13,7 @@ atlas add-company TSM --name "Taiwan Semiconductor Manufacturing Company" --atla
 atlas import-financials TSM data/tsm_financials.csv
 atlas list-companies
 atlas dashboard show
+atlas daily brief
 atlas report NVDA
 atlas analyze NVDA --provider yahoo
 atlas economics analyze
@@ -131,6 +132,47 @@ The dashboard uses deterministic language such as `Worth monitoring`, `Worth
 understanding`, `Appears stable`, and `May deserve attention`. CLI output is a
 clean text briefing designed so future UI rendering can reuse the same structured
 `DashboardSummary`, `DashboardSection`, and `DashboardCard` objects.
+
+## Atlas Daily Brief
+
+```bash
+atlas daily brief
+atlas daily brief --portfolio portfolio.json
+atlas daily brief --profile atlas_profile.json --portfolio portfolio.json
+```
+
+Sprint 25 adds `atlas.daily`, a calm deterministic daily briefing experience.
+Atlas Daily is not a news feed and does not provide buy or sell recommendations.
+It summarizes what matters today for the investor using existing Atlas engines.
+
+The Daily Brief aggregates:
+
+- Dashboard Engine
+- Investor Profile Engine
+- Portfolio and Monitoring engines
+- Suitability Engine
+- Risk Drift Engine
+- Theme Engine
+- Market Health
+- Market Regime
+- Economic Signals
+- Principles Engine
+
+Daily Brief output includes:
+
+- Opening Summary
+- What Changed
+- Portfolio Notes
+- Market Notes
+- Themes To Watch
+- Risks To Watch
+- Opportunities To Study
+- Suggested Questions
+
+The tone is calm, concise, analytical, and not promotional. Atlas Daily uses
+language such as `worth monitoring`, `worth understanding`, `appears stable`,
+`may deserve attention`, `not enough information`, and `depends on investor
+profile`. Opportunities are presented as research directions only.
 
 ## Investor profile engine
 
