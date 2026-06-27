@@ -194,6 +194,39 @@ Memory comparison reports score change, recommendation change, confidence
 change, strongest improving category, weakest category, and a deterministic
 explanation of what changed.
 
+## Decision engine
+
+Sprint 10 adds `atlas.decision`, the central deterministic reasoning layer that
+orchestrates the existing Atlas subsystems without replacing them:
+
+- Investment Engine
+- Portfolio Engine
+- Comparison Engine
+- Watchlist Engine
+- Memory Engine
+
+`DecisionContext` captures market regime, optional portfolio, optional watchlist,
+optional historical memory, investment horizon, risk profile, available capital,
+cash reserve status, and optional comparison tickers.
+
+`AtlasDecisionEngine` produces a `DecisionResult` with:
+
+- Buy, Hold, Reduce, Avoid, Watch, or Learn More
+- Decision Quality
+- Portfolio Fit
+- Capital Allocation Quality
+- Confidence
+- Reasoning
+- Next Best Action
+- What Could Change My Mind
+- Uncertainty
+
+The decision layer is deterministic, makes no external API calls, and uses no
+LLM. It always explains uncertainty, blocks buy decisions when capital may be
+needed in the short term, and explicitly discusses concentration risk when
+portfolio context is available. It does not provide personal financial advice or
+guarantee outcomes.
+
 ## Install locally
 
 ```bash
