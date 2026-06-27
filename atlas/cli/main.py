@@ -17,6 +17,7 @@ from atlas.analysis.portfolio import (
 )
 from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.analysis.watchlist import Watchlist, WatchlistEngine, render_watchlist_analysis
+from atlas.market import MarketRegimeEngine, MarketSnapshot, render_market_regime
 from atlas.providers import MockCompanyAnalysisProvider
 from atlas.services.database_service import init_database
 from atlas.services.company_service import add_company, list_companies
@@ -24,9 +25,11 @@ from atlas.services.financial_import_service import import_financials
 
 app = typer.Typer(help="Atlas investment research platform")
 memory_app = typer.Typer(help="Investment memory commands")
+market_app = typer.Typer(help="Market regime commands")
 portfolio_app = typer.Typer(help="Portfolio intelligence commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
 app.add_typer(memory_app, name="memory")
+app.add_typer(market_app, name="market")
 app.add_typer(portfolio_app, name="portfolio")
 app.add_typer(watchlist_app, name="watchlist")
 console = Console()
@@ -173,6 +176,19 @@ def memory_compare_command(memory_path: Path, ticker: str):
         raise typer.Exit(code=1) from exc
 
     console.print(render_memory_comparison(comparison))
+
+
+@market_app.command("analyze")
+def market_analyze_command(market_path: Path):
+    """Analyze the current market regime from JSON indicators."""
+    try:
+        snapshot = MarketSnapshot.from_json_file(market_path)
+        analysis = MarketRegimeEngine().analyze(snapshot)
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]Market analysis failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_market_regime(analysis))
 
 
 @portfolio_app.command("analyze")

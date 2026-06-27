@@ -19,6 +19,7 @@ atlas watchlist analyze watchlist.json
 atlas memory save NVDA memory.json
 atlas memory show memory.json
 atlas memory compare memory.json NVDA
+atlas market analyze market.json
 ```
 
 ## Financial import CSV
@@ -193,6 +194,46 @@ entries, and compare the two latest entries for a ticker. Memory entries store:
 Memory comparison reports score change, recommendation change, confidence
 change, strongest improving category, weakest category, and a deterministic
 explanation of what changed.
+
+## Market regime engine
+
+```bash
+atlas market analyze market.json
+```
+
+The Market Regime Engine classifies the current market environment so Atlas can
+adapt future decision, portfolio, and watchlist reasoning to broader conditions.
+It is deterministic, uses no external APIs, and currently accepts manually
+provided or mock indicators.
+
+Supported regimes:
+
+- Bull
+- Neutral
+- Correction
+- Bear
+- Crisis
+
+Market JSON can be flat or nested under `indicators`:
+
+```json
+{
+  "as_of": "2026-06-27",
+  "source": "manual",
+  "indicators": {
+    "sp500_drawdown": 12,
+    "nasdaq_drawdown": 16,
+    "vix": 26,
+    "interest_rate_trend": "stable",
+    "inflation_trend": "stable"
+  }
+}
+```
+
+The report includes the current market regime, confidence, key indicators,
+opportunities, risks, and suggested investment behaviour. Crisis behaviour
+emphasizes preserving liquidity, avoiding panic selling, investing slowly over
+time, and focusing only on financially strong businesses.
 
 ## Decision engine
 
