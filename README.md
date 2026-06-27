@@ -22,6 +22,7 @@ atlas memory show memory.json
 atlas memory compare memory.json NVDA
 atlas market analyze market.json
 atlas risk size risk_input.json
+atlas theme analyze "AI infrastructure"
 ```
 
 ## Financial import CSV
@@ -334,6 +335,31 @@ deploys capital below the required cash reserve, favors gradual deployment in
 Correction, Bear, and Crisis regimes, and caps single-position exposure by risk
 profile. Lower confidence or a weaker target risk score reduces recommended
 position size.
+
+## Theme intelligence
+
+```bash
+atlas theme analyze "AI infrastructure"
+```
+
+Sprint 13 adds deterministic theme intelligence. Atlas analyzes investment
+themes as research maps rather than stock-picking recommendations. The engine
+identifies likely bottlenecks, affected industries, potential beneficiaries,
+related equities, ETFs, commodities where relevant, second-order winners, risks,
+monitoring items, confidence, and what would change Atlas' view.
+
+Supported theme templates:
+
+- AI infrastructure
+- Energy transition
+- Electrification
+- Semiconductors
+- Healthcare innovation
+
+AI infrastructure explicitly tracks bottlenecks such as electricity supply, grid
+capacity, data center construction, cooling, transformers, HBM memory, and
+advanced packaging. Theme outputs are research directions only and are not
+personalized financial recommendations or buy/sell advice.
 
 ## Decision engine
 

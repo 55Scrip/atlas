@@ -23,17 +23,20 @@ from atlas.risk import PositionSizingInput, RiskEngine, render_risk_analysis
 from atlas.services.database_service import init_database
 from atlas.services.company_service import add_company, list_companies
 from atlas.services.financial_import_service import import_financials
+from atlas.themes import ThemeEngine, ThemeInput, render_theme_analysis
 
 app = typer.Typer(help="Atlas investment research platform")
 memory_app = typer.Typer(help="Investment memory commands")
 market_app = typer.Typer(help="Market regime commands")
 portfolio_app = typer.Typer(help="Portfolio intelligence commands")
 risk_app = typer.Typer(help="Risk and position sizing commands")
+theme_app = typer.Typer(help="Theme intelligence commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
 app.add_typer(memory_app, name="memory")
 app.add_typer(market_app, name="market")
 app.add_typer(portfolio_app, name="portfolio")
 app.add_typer(risk_app, name="risk")
+app.add_typer(theme_app, name="theme")
 app.add_typer(watchlist_app, name="watchlist")
 console = Console()
 
@@ -236,6 +239,18 @@ def risk_size_command(risk_input_path: Path):
         raise typer.Exit(code=1) from exc
 
     console.print(render_risk_analysis(analysis))
+
+
+@theme_app.command("analyze")
+def theme_analyze_command(theme: str):
+    """Analyze an investment theme with deterministic Atlas templates."""
+    try:
+        analysis = ThemeEngine().analyze(ThemeInput(theme=theme))
+    except ValueError as exc:
+        console.print(f"[red]Theme analysis failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_theme_analysis(analysis))
 
 
 @watchlist_app.command("analyze")
