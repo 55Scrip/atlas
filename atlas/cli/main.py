@@ -40,6 +40,7 @@ from atlas.market import (
 from atlas.monitoring import MonitoringAlert, MonitoringEngine, render_monitoring_alert
 from atlas.profile import (
     InvestmentGoal,
+    InvestorProfile,
     InvestorProfileEngine,
     PortfolioPurpose,
     RiskCapacity,
@@ -59,6 +60,12 @@ from atlas.risk import PositionSizingInput, RiskEngine, render_risk_analysis
 from atlas.services.database_service import init_database
 from atlas.services.company_service import add_company, list_companies
 from atlas.services.financial_import_service import import_financials
+from atlas.suitability import (
+    SuitabilityAssessment,
+    SuitabilityEngine,
+    SuitabilityInput,
+    render_suitability_assessment,
+)
 from atlas.themes import ThemeEngine, ThemeInput, render_theme_analysis
 
 app = typer.Typer(help="Atlas investment research platform")
@@ -70,6 +77,7 @@ portfolio_app = typer.Typer(help="Portfolio intelligence commands")
 profile_app = typer.Typer(help="Investor profile context commands")
 reason_app = typer.Typer(help="Atlas reasoning thesis commands")
 risk_app = typer.Typer(help="Risk and position sizing commands")
+suitability_app = typer.Typer(help="Investor suitability context commands")
 theme_app = typer.Typer(help="Theme intelligence commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
 app.add_typer(economics_app, name="economics")
@@ -80,6 +88,7 @@ app.add_typer(portfolio_app, name="portfolio")
 app.add_typer(profile_app, name="profile")
 app.add_typer(reason_app, name="reason")
 app.add_typer(risk_app, name="risk")
+app.add_typer(suitability_app, name="suitability")
 app.add_typer(theme_app, name="theme")
 app.add_typer(watchlist_app, name="watchlist")
 console = Console()
@@ -533,6 +542,34 @@ def risk_size_command(risk_input_path: Path):
     console.print(render_risk_analysis(analysis))
 
 
+@suitability_app.command("analyze")
+def suitability_analyze_command(
+    subject: str,
+    profile_path: Path = typer.Option(
+        Path("atlas_profile.json"),
+        "--profile",
+        help="Investor profile JSON path",
+    ),
+    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+    theme: str = typer.Option("AI infrastructure", "--theme", help="Theme template context"),
+):
+    """Assess profile compatibility for a ticker or portfolio JSON file."""
+    try:
+        provider = _provider_from_name(provider_name)
+        profile = _profile_from_path_or_default(profile_path)
+        assessment = _build_suitability_assessment(
+            subject=subject,
+            profile=profile,
+            provider=provider,
+            theme=theme,
+        )
+    except (FileNotFoundError, LookupError, ValueError) as exc:
+        console.print(f"[red]Suitability analysis failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_suitability_assessment(assessment))
+
+
 @theme_app.command("analyze")
 def theme_analyze_command(theme: str):
     """Analyze an investment theme with deterministic Atlas templates."""
@@ -600,6 +637,50 @@ def _parse_profile_enum(enum_type, raw_value: str):
             return item
     valid = ", ".join(item.value for item in enum_type)
     raise ValueError(f"Unknown {enum_type.__name__}: {raw_value}. Valid values: {valid}")
+
+
+def _profile_from_path_or_default(profile_path: Path) -> InvestorProfile:
+    engine = InvestorProfileEngine()
+    if profile_path.exists():
+        return engine.load_profile(profile_path)
+    return engine.create_default_profile()
+
+
+def _build_suitability_assessment(
+    subject: str,
+    profile: InvestorProfile,
+    provider: CompanyDataProvider,
+    theme: str,
+) -> SuitabilityAssessment:
+    engine = SuitabilityEngine()
+    if subject.lower().endswith(".json"):
+        portfolio = Portfolio.from_json_file(Path(subject))
+        return engine.assess(
+            SuitabilityInput(
+                investor_profile=profile,
+                portfolio=portfolio,
+            )
+        )
+
+    ticker = subject.upper()
+    investment_report = build_investment_report(provider.get_company_analysis(ticker))
+    theme_analysis = ThemeEngine().analyze(ThemeInput(theme=theme))
+    intelligence_report = IntelligenceEngine().analyze(
+        IntelligenceInput(
+            ticker=ticker,
+            provider=provider,
+            context=IntelligenceContext(theme=theme),
+        )
+    )
+    return engine.assess(
+        SuitabilityInput(
+            investor_profile=profile,
+            ticker=ticker,
+            investment_report=investment_report,
+            theme_analysis=theme_analysis,
+            intelligence_report=intelligence_report,
+        )
+    )
 
 
 def _monitor_from_inputs(

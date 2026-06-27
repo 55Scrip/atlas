@@ -35,6 +35,8 @@ atlas memory compare memory.json NVDA
 atlas market analyze market.json
 atlas market health
 atlas risk size risk_input.json
+atlas suitability analyze NVDA
+atlas suitability analyze portfolio.json
 atlas theme analyze "AI infrastructure"
 ```
 
@@ -124,6 +126,63 @@ atlas profile update --path profiles/core.json --risk-capacity High
 framing and deterministic reasoning context. The context is designed for future
 onboarding UI and later integration into portfolio, risk, decision, and
 intelligence workflows.
+
+## Suitability engine
+
+```bash
+atlas suitability analyze NVDA
+atlas suitability analyze portfolio.json
+atlas suitability analyze NVDA --profile profiles/core.json
+```
+
+Sprint 21 adds `atlas.suitability`, a deterministic profile compatibility
+engine. It is not a recommendation engine and does not decide whether an
+investment is good or bad. It evaluates whether an investment or portfolio
+appears compatible with the stated investor profile, objectives, risk context,
+and portfolio purpose.
+
+The engine evaluates investor context from `InvestorProfile`:
+
+- investment goals
+- portfolio purpose
+- time horizon
+- risk tolerance
+- risk capacity
+- preferred investment style, when explicitly supplied or inferred
+
+It evaluates investment and portfolio characteristics:
+
+- volatility
+- business quality
+- valuation sensitivity
+- concentration impact
+- cyclicality
+- leverage
+- sector exposure
+- geographic exposure
+
+Suitability output includes:
+
+- Overall Suitability: Excellent Fit, Good Fit, Neutral, or Poor Fit
+- why it fits
+- why it may not fit
+- main strengths
+- main concerns
+- assumptions
+- missing information
+- questions Atlas would ask before increasing confidence
+
+The engine recognizes that higher-risk opportunities may be compatible with an
+Exploration Portfolio or High Conviction Portfolio when the investor has high
+risk capacity, a long time horizon, and accepts volatility. It also recognizes
+that high-quality opportunities may still be unsuitable when they conflict with
+the investor's time horizon, risk tolerance, or portfolio purpose.
+
+The CLI uses `atlas_profile.json` by default when present and otherwise falls
+back to Atlas' default deterministic profile. Use `--profile` to provide a
+specific profile file. Ticker analysis combines company analysis, theme context,
+and intelligence synthesis. Portfolio JSON analysis evaluates the portfolio's
+own quality, risk, concentration, sector, and geographic exposure.
 
 ## Economic signals engine
 
