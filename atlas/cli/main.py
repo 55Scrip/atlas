@@ -17,7 +17,13 @@ from atlas.analysis.portfolio import (
 )
 from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.analysis.watchlist import Watchlist, WatchlistEngine, render_watchlist_analysis
-from atlas.market import MarketRegimeEngine, MarketSnapshot, render_market_regime
+from atlas.market import (
+    MarketHealthEngine,
+    MarketRegimeEngine,
+    MarketSnapshot,
+    render_market_health,
+    render_market_regime,
+)
 from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
 from atlas.risk import PositionSizingInput, RiskEngine, render_risk_analysis
 from atlas.services.database_service import init_database
@@ -204,6 +210,13 @@ def market_analyze_command(market_path: Path):
         raise typer.Exit(code=1) from exc
 
     console.print(render_market_regime(analysis))
+
+
+@market_app.command("health")
+def market_health_command():
+    """Assess deterministic market health signal groups."""
+    report = MarketHealthEngine().analyze()
+    console.print(render_market_health(report))
 
 
 @portfolio_app.command("analyze")

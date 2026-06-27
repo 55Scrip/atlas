@@ -21,6 +21,7 @@ atlas memory save NVDA memory.json
 atlas memory show memory.json
 atlas memory compare memory.json NVDA
 atlas market analyze market.json
+atlas market health
 atlas risk size risk_input.json
 atlas theme analyze "AI infrastructure"
 ```
@@ -285,6 +286,36 @@ The report includes the current market regime, confidence, key indicators,
 opportunities, risks, and suggested investment behaviour. Crisis behaviour
 emphasizes preserving liquidity, avoiding panic selling, investing slowly over
 time, and focusing only on financially strong businesses.
+
+## Market health
+
+```bash
+atlas market health
+```
+
+Sprint 14 adds deterministic Market Health analysis. Atlas evaluates multiple
+signal groups to help users understand whether the market environment looks
+healthy, fragile, stressed, or improving. This is market context, not investment
+advice or a prediction engine.
+
+Signal groups:
+
+- Credit
+- Liquidity
+- Macro
+- Volatility
+- Market Breadth
+
+Each group includes status, score, key signals, interpretation, what Atlas is
+monitoring, what would improve the signal, and what would worsen the signal.
+Credit conditions include deterministic placeholders for high yield spreads,
+investment grade spreads, default rates, and bank lending standards.
+
+The report includes overall market health, overall risk level, credit
+conditions, liquidity conditions, macro conditions, volatility, market breadth,
+Atlas' view, and what could change Atlas' view. The module is designed so future
+providers such as FRED, Yahoo, Reuters, or other data sources can supply live
+inputs later without changing the public analysis surface.
 
 ## Risk and position sizing
 
