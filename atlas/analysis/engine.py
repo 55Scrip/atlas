@@ -3,6 +3,7 @@ from typing import Protocol
 
 from atlas.analysis.company_analysis import CompanyAnalysis
 from atlas.analysis.scores import clamp_score
+from atlas.providers.base import CompanyDataProvider
 
 
 @dataclass(frozen=True)
@@ -190,6 +191,9 @@ class AtlasInvestmentEngine:
             financial_strength=categories["financial_strength"],
             risk=categories["risk"],
         )
+
+    def analyze_ticker(self, ticker: str, provider: CompanyDataProvider) -> InvestmentReport:
+        return self.analyze(provider.get_company_analysis(ticker))
 
     def _aggregate_score(self, categories: dict[str, ScoreCategory]) -> int:
         total_weight = sum(self.weights.values())

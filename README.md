@@ -65,9 +65,31 @@ Default recommendation bands:
 The current CLI uses placeholder analysis signals for:
 
 - NVDA
+- AMD
 - AAPL
 - MSFT
 - EVO
+
+## Data provider architecture
+
+Sprint 9 introduces `atlas.providers` as the data boundary for company analysis.
+Engines depend on the `CompanyDataProvider` interface instead of concrete mock
+data, so future live providers can be injected without changing business logic.
+
+Available providers:
+
+- `MockCompanyAnalysisProvider`: deterministic default provider used by the CLI
+  and tests.
+- `YahooFinanceProvider`: skeleton for future Yahoo Finance mapping. It exposes
+  the same interface and raises `NotImplementedError` until live data mapping is
+  implemented.
+
+Provider methods:
+
+- `get_company_analysis(ticker)` returns analysis signals for the investment,
+  comparison, watchlist, and memory engines.
+- `get_portfolio_profile(ticker)` returns portfolio context signals for the
+  portfolio engine.
 
 ## Portfolio intelligence
 

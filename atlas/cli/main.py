@@ -3,7 +3,6 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-from atlas.analysis.company_analysis import MockCompanyAnalysisProvider
 from atlas.analysis.comparison import ComparisonEngine, render_comparison_result
 from atlas.analysis.memory import (
     MemoryEngine,
@@ -14,11 +13,11 @@ from atlas.analysis.memory import (
 from atlas.analysis.portfolio import (
     Portfolio,
     PortfolioIntelligenceEngine,
-    get_mock_company_portfolio_profile,
     render_portfolio_analysis,
 )
 from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.analysis.watchlist import Watchlist, WatchlistEngine, render_watchlist_analysis
+from atlas.providers import MockCompanyAnalysisProvider
 from atlas.services.database_service import init_database
 from atlas.services.company_service import add_company, list_companies
 from atlas.services.financial_import_service import import_financials
@@ -123,15 +122,12 @@ def compare_command(tickers: list[str] = typer.Argument(...)):
         raise typer.Exit(code=1)
 
     provider = MockCompanyAnalysisProvider()
-    analyses = {}
     try:
-        for ticker in tickers:
-            analyses[ticker.upper()] = provider.get_company_analysis(ticker)
+        result = ComparisonEngine().compare_tickers(tickers, provider)
     except LookupError as exc:
         console.print(f"[red]Comparison failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
-    result = ComparisonEngine().compare(analyses)
     console.print(render_comparison_result(result))
 
 
@@ -140,17 +136,15 @@ def memory_save_command(ticker: str, memory_path: Path):
     """Save the current Atlas analysis for a ticker to JSON memory."""
     provider = MockCompanyAnalysisProvider()
     try:
-        analysis = provider.get_company_analysis(ticker)
+        entry = MemoryEngine().save_ticker(
+            store=MemoryStore(memory_path),
+            ticker=ticker,
+            provider=provider,
+        )
     except LookupError as exc:
         console.print(f"[red]Memory save failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
-    report = build_investment_report(analysis)
-    entry = MemoryEngine().save(
-        store=MemoryStore(memory_path),
-        ticker=ticker,
-        report=report,
-    )
     console.print(
         f"[green]Memory saved:[/green] {entry.ticker} at {entry.timestamp} "
         f"({entry.atlas_score}/100, {entry.recommendation})"
@@ -184,14 +178,18 @@ def memory_compare_command(memory_path: Path, ticker: str):
 @portfolio_app.command("analyze")
 def portfolio_analyze_command(portfolio_path: Path, ticker: str):
     """Analyze a company in the context of an existing portfolio."""
+    provider = MockCompanyAnalysisProvider()
     try:
         portfolio = Portfolio.from_json_file(portfolio_path)
-        target = get_mock_company_portfolio_profile(ticker)
+        analysis = PortfolioIntelligenceEngine().analyze_ticker(
+            portfolio=portfolio,
+            ticker=ticker,
+            provider=provider,
+        )
     except (FileNotFoundError, LookupError, ValueError) as exc:
         console.print(f"[red]Portfolio analysis failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
-    analysis = PortfolioIntelligenceEngine().analyze(portfolio=portfolio, target=target)
     console.print(render_portfolio_analysis(analysis))
 
 

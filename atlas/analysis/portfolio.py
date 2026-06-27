@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from atlas.analysis.scores import clamp_score
+from atlas.providers.base import CompanyDataProvider
 
 
 @dataclass(frozen=True)
@@ -81,46 +82,6 @@ class CompanyPortfolioProfile:
 DEFAULT_TARGET_WEIGHT = 0.05
 
 
-MOCK_COMPANY_PORTFOLIO_PROFILES: dict[str, CompanyPortfolioProfile] = {
-    "NVDA": CompanyPortfolioProfile(
-        ticker="NVDA",
-        company="NVIDIA",
-        sector="Semiconductors",
-        country="United States",
-        market_cap=3_300_000_000_000,
-        quality_score=92,
-        risk_score=77,
-    ),
-    "AAPL": CompanyPortfolioProfile(
-        ticker="AAPL",
-        company="Apple",
-        sector="Consumer Electronics",
-        country="United States",
-        market_cap=3_000_000_000_000,
-        quality_score=86,
-        risk_score=72,
-    ),
-    "MSFT": CompanyPortfolioProfile(
-        ticker="MSFT",
-        company="Microsoft",
-        sector="Software",
-        country="United States",
-        market_cap=3_400_000_000_000,
-        quality_score=90,
-        risk_score=78,
-    ),
-    "EVO": CompanyPortfolioProfile(
-        ticker="EVO",
-        company="Evolution",
-        sector="Gaming Technology",
-        country="Sweden",
-        market_cap=18_000_000_000,
-        quality_score=84,
-        risk_score=70,
-    ),
-}
-
-
 class PortfolioIntelligenceEngine:
     def analyze(
         self,
@@ -169,17 +130,24 @@ class PortfolioIntelligenceEngine:
             ),
         )
 
+    def analyze_ticker(
+        self,
+        portfolio: Portfolio,
+        ticker: str,
+        provider: CompanyDataProvider,
+        target_weight: float = DEFAULT_TARGET_WEIGHT,
+    ) -> PortfolioAnalysis:
+        return self.analyze(
+            portfolio=portfolio,
+            target=provider.get_portfolio_profile(ticker),
+            target_weight=target_weight,
+        )
+
 
 def get_mock_company_portfolio_profile(ticker: str) -> CompanyPortfolioProfile:
-    normalized_ticker = ticker.upper()
-    try:
-        return MOCK_COMPANY_PORTFOLIO_PROFILES[normalized_ticker]
-    except KeyError as exc:
-        available = ", ".join(sorted(MOCK_COMPANY_PORTFOLIO_PROFILES))
-        raise LookupError(
-            f"No mock portfolio profile available for {normalized_ticker}. "
-            f"Available tickers: {available}"
-        ) from exc
+    from atlas.providers.mock import MockCompanyAnalysisProvider
+
+    return MockCompanyAnalysisProvider().get_portfolio_profile(ticker)
 
 
 def render_portfolio_analysis(analysis: PortfolioAnalysis) -> str:

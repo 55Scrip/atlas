@@ -1,6 +1,5 @@
 from atlas.analysis.company_analysis import (
     CompanyAnalysis,
-    MockCompanyAnalysisProvider,
     create_placeholder_company_analysis,
 )
 from atlas.analysis.comparison import (
@@ -44,10 +43,12 @@ from atlas.analysis.watchlist import (
     WatchlistSignal,
     render_watchlist_analysis,
 )
+from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
 
 __all__ = [
     "AtlasInvestmentEngine",
     "CompanyAnalysis",
+    "CompanyDataProvider",
     "ComparisonCandidate",
     "ComparisonEngine",
     "ComparisonRanking",
@@ -74,6 +75,7 @@ __all__ = [
     "WatchlistItem",
     "WatchlistRecommendation",
     "WatchlistSignal",
+    "YahooFinanceProvider",
     "build_investment_report",
     "create_placeholder_company_analysis",
     "explain_investment_report",

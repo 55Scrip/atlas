@@ -4,8 +4,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from atlas.analysis.company_analysis import CompanyAnalysisProvider
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport
+from atlas.providers.base import CompanyDataProvider
 
 
 @dataclass(frozen=True)
@@ -74,10 +74,10 @@ class WatchlistEngine:
     def analyze(
         self,
         watchlist: Watchlist,
-        provider: CompanyAnalysisProvider,
+        provider: CompanyDataProvider,
     ) -> WatchlistAnalysis:
         reports = {
-            item.ticker: self.investment_engine.analyze(provider.get_company_analysis(item.ticker))
+            item.ticker: self.investment_engine.analyze_ticker(item.ticker, provider)
             for item in watchlist.items
         }
         ranked_items = tuple(

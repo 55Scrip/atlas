@@ -4,8 +4,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from atlas.analysis.engine import InvestmentReport, iter_score_categories
+from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport, iter_score_categories
 from atlas.analysis.explanation import explain_investment_report
+from atlas.providers.base import CompanyDataProvider
 
 
 @dataclass(frozen=True)
@@ -124,6 +125,22 @@ class MemoryEngine:
         entry = MemoryEntry.from_report(ticker=ticker, report=report, timestamp=timestamp)
         store.save(entry)
         return entry
+
+    def save_ticker(
+        self,
+        store: MemoryStore,
+        ticker: str,
+        provider: CompanyDataProvider,
+        investment_engine: AtlasInvestmentEngine | None = None,
+        timestamp: datetime | None = None,
+    ) -> MemoryEntry:
+        engine = investment_engine or AtlasInvestmentEngine()
+        return self.save(
+            store=store,
+            ticker=ticker,
+            report=engine.analyze_ticker(ticker, provider),
+            timestamp=timestamp,
+        )
 
     def load(self, store: MemoryStore) -> tuple[MemoryEntry, ...]:
         return store.load()

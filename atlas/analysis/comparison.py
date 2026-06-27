@@ -3,6 +3,7 @@ from typing import Callable
 
 from atlas.analysis.company_analysis import CompanyAnalysis
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport
+from atlas.providers.base import CompanyDataProvider
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,17 @@ class ComparisonEngine:
             lowest_risk=lowest_risk,
             final_conclusion=_final_conclusion(best_overall.winner),
         )
+
+    def compare_tickers(
+        self,
+        tickers: list[str] | tuple[str, ...],
+        provider: CompanyDataProvider,
+    ) -> ComparisonResult:
+        analyses = {
+            ticker.upper(): provider.get_company_analysis(ticker)
+            for ticker in tickers
+        }
+        return self.compare(analyses)
 
 
 def render_comparison_result(result: ComparisonResult) -> str:
