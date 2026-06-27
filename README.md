@@ -12,6 +12,7 @@ atlas init
 atlas add-company TSM --name "Taiwan Semiconductor Manufacturing Company" --atlas-id AI-001 --exchange NYSE --country Taiwan --currency USD --sector Semiconductors --industry Foundry
 atlas import-financials TSM data/tsm_financials.csv
 atlas list-companies
+atlas dashboard show
 atlas report NVDA
 atlas analyze NVDA --provider yahoo
 atlas economics analyze
@@ -90,6 +91,46 @@ The current CLI uses placeholder analysis signals for:
 - AAPL
 - MSFT
 - EVO
+
+## Atlas home dashboard
+
+```bash
+atlas dashboard show
+atlas dashboard show --portfolio portfolio.json
+atlas dashboard show --profile atlas_profile.json --portfolio portfolio.json
+```
+
+Sprint 24 adds `atlas.dashboard`, the first user-facing Atlas home briefing.
+The dashboard is designed to feel like Atlas has already reviewed the current
+context before the user asks a question. It is not a collection of disconnected
+widgets and it does not create buy or sell recommendations.
+
+The Home Dashboard aggregates existing engines only:
+
+- Investor Profile Engine
+- Portfolio and Monitoring engines
+- Suitability Engine
+- Risk Drift Engine
+- Theme Engine
+- Market Regime
+- Market Health
+- Economic Signals
+- Principles Engine
+
+Dashboard output includes:
+
+- Welcome
+- Portfolio Overview
+- Market Overview
+- Themes To Watch
+- Today's Observations
+- Atlas Is Monitoring
+- Suggested Questions
+
+The dashboard uses deterministic language such as `Worth monitoring`, `Worth
+understanding`, `Appears stable`, and `May deserve attention`. CLI output is a
+clean text briefing designed so future UI rendering can reuse the same structured
+`DashboardSummary`, `DashboardSection`, and `DashboardCard` objects.
 
 ## Investor profile engine
 
