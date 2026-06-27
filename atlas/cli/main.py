@@ -17,6 +17,11 @@ from atlas.analysis.portfolio import (
 )
 from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.analysis.watchlist import Watchlist, WatchlistEngine, render_watchlist_analysis
+from atlas.conversation import (
+    ConversationEngine,
+    ConversationInput,
+    render_conversation_response,
+)
 from atlas.intelligence import (
     IntelligenceContext,
     IntelligenceEngine,
@@ -141,6 +146,37 @@ def analyze_command(
 
     report = build_investment_report(analysis)
     console.print(render_investment_report(report))
+
+
+@app.command("ask")
+def ask_command(
+    question: str,
+    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+    ticker: str | None = typer.Option(None, "--ticker", help="Ticker context"),
+    portfolio_path: Path | None = typer.Option(None, "--portfolio", help="Portfolio JSON path"),
+    watchlist_path: Path | None = typer.Option(None, "--watchlist", help="Watchlist JSON path"),
+    theme: str = typer.Option("AI infrastructure", "--theme", help="Theme template context"),
+):
+    """Answer a natural investment question using deterministic Atlas routing."""
+    try:
+        provider = _provider_from_name(provider_name)
+        portfolio = Portfolio.from_json_file(portfolio_path) if portfolio_path else None
+        watchlist = Watchlist.from_json_file(watchlist_path) if watchlist_path else None
+        response = ConversationEngine().answer(
+            ConversationInput(
+                question=question,
+                provider=provider,
+                ticker=ticker,
+                portfolio=portfolio,
+                watchlist=watchlist,
+                theme=theme,
+            )
+        )
+    except (FileNotFoundError, LookupError, ValueError) as exc:
+        console.print(f"[red]Conversation failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_conversation_response(response))
 
 
 @app.command("compare")

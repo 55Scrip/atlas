@@ -14,6 +14,8 @@ atlas import-financials TSM data/tsm_financials.csv
 atlas list-companies
 atlas report NVDA
 atlas analyze NVDA --provider yahoo
+atlas ask "Analyze Nvidia"
+atlas ask "How healthy is the market?"
 atlas intelligence analyze NVDA
 atlas intelligence analyze portfolio.json NVDA
 atlas portfolio analyze portfolio.json NVDA
@@ -145,6 +147,46 @@ Limitations:
 - Yahoo-specific parsing remains isolated inside `atlas.providers`.
 - Analysis, portfolio, comparison, watchlist, decision, and risk engines continue
   to depend only on the provider abstraction.
+
+## Conversation engine
+
+```bash
+atlas ask "Analyze Nvidia"
+atlas ask "Review my portfolio" --portfolio portfolio.json --ticker NVDA
+atlas ask "What is the next bottleneck in AI?"
+atlas ask "How healthy is the market?"
+```
+
+Sprint 16 adds `atlas.conversation`, a deterministic routing layer for natural
+investment questions. It is not an LLM. The `IntentClassifier` maps questions to
+known Atlas intents, and `ConversationEngine` calls the existing engines rather
+than duplicating business logic.
+
+Initial supported intents:
+
+- Company Analysis
+- Portfolio Review
+- Watchlist Review
+- Theme Research
+- Market Health
+- Market Regime
+- Risk Assessment
+- General Investment Guidance
+
+Conversation responses include:
+
+- Short Answer
+- Supporting Reasoning
+- Engines Used
+- Confidence
+- Suggested Follow-up Questions
+
+The engine recognizes questions such as `Analyze Nvidia`, `Review my portfolio`,
+`What is the next bottleneck in AI?`, `How healthy is the market?`, `What should
+I monitor?`, `How risky is this company?`, and `What themes are attractive?`.
+Outputs are deterministic research context, not personalized financial advice.
+The architecture is intentionally ready for future GPT integration while keeping
+the current router and reasoning layer testable offline.
 
 ## Portfolio intelligence
 
