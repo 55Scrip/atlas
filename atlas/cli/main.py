@@ -17,6 +17,12 @@ from atlas.analysis.portfolio import (
 )
 from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.analysis.watchlist import Watchlist, WatchlistEngine, render_watchlist_analysis
+from atlas.intelligence import (
+    IntelligenceContext,
+    IntelligenceEngine,
+    IntelligenceInput,
+    render_intelligence_report,
+)
 from atlas.market import (
     MarketHealthEngine,
     MarketRegimeEngine,
@@ -32,12 +38,14 @@ from atlas.services.financial_import_service import import_financials
 from atlas.themes import ThemeEngine, ThemeInput, render_theme_analysis
 
 app = typer.Typer(help="Atlas investment research platform")
+intelligence_app = typer.Typer(help="Atlas intelligence synthesis commands")
 memory_app = typer.Typer(help="Investment memory commands")
 market_app = typer.Typer(help="Market regime commands")
 portfolio_app = typer.Typer(help="Portfolio intelligence commands")
 risk_app = typer.Typer(help="Risk and position sizing commands")
 theme_app = typer.Typer(help="Theme intelligence commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
+app.add_typer(intelligence_app, name="intelligence")
 app.add_typer(memory_app, name="memory")
 app.add_typer(market_app, name="market")
 app.add_typer(portfolio_app, name="portfolio")
@@ -153,6 +161,30 @@ def compare_command(
         raise typer.Exit(code=1) from exc
 
     console.print(render_comparison_result(result))
+
+
+@intelligence_app.command("analyze")
+def intelligence_analyze_command(
+    inputs: list[str] = typer.Argument(...),
+    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+    theme: str = typer.Option("AI infrastructure", "--theme", help="Theme template to include"),
+):
+    """Synthesize Atlas engine outputs into one deterministic intelligence report."""
+    try:
+        portfolio, ticker = _parse_intelligence_inputs(inputs)
+        provider = _provider_from_name(provider_name)
+        report = IntelligenceEngine().analyze(
+            IntelligenceInput(
+                ticker=ticker,
+                provider=provider,
+                context=IntelligenceContext(portfolio=portfolio, theme=theme),
+            )
+        )
+    except (FileNotFoundError, LookupError, ValueError) as exc:
+        console.print(f"[red]Intelligence analysis failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_intelligence_report(report))
 
 
 @memory_app.command("save")
@@ -290,3 +322,11 @@ def _provider_from_name(provider_name: str) -> CompanyDataProvider:
     if normalized == "yahoo":
         return YahooFinanceProvider()
     raise ValueError("Unknown provider. Use 'mock' or 'yahoo'.")
+
+
+def _parse_intelligence_inputs(inputs: list[str]) -> tuple[Portfolio | None, str]:
+    if len(inputs) == 1:
+        return None, inputs[0].upper()
+    if len(inputs) == 2:
+        return Portfolio.from_json_file(Path(inputs[0])), inputs[1].upper()
+    raise ValueError("Use 'atlas intelligence analyze TICKER' or 'portfolio.json TICKER'.")

@@ -14,6 +14,8 @@ atlas import-financials TSM data/tsm_financials.csv
 atlas list-companies
 atlas report NVDA
 atlas analyze NVDA --provider yahoo
+atlas intelligence analyze NVDA
+atlas intelligence analyze portfolio.json NVDA
 atlas portfolio analyze portfolio.json NVDA
 atlas compare NVDA AMD MSFT
 atlas watchlist analyze watchlist.json
@@ -391,6 +393,48 @@ AI infrastructure explicitly tracks bottlenecks such as electricity supply, grid
 capacity, data center construction, cooling, transformers, HBM memory, and
 advanced packaging. Theme outputs are research directions only and are not
 personalized financial recommendations or buy/sell advice.
+
+## Atlas intelligence engine
+
+```bash
+atlas intelligence analyze NVDA
+atlas intelligence analyze portfolio.json NVDA
+```
+
+Sprint 15 adds `atlas.intelligence`, the first deterministic orchestration layer
+that combines multiple Atlas engines into one coherent reasoning process. It is
+not an LLM and does not make trade instructions. It explains confidence,
+uncertainty, structural context, market context, company positioning, portfolio
+impact, and risks.
+
+The Intelligence Engine can synthesize:
+
+- Company Analysis
+- Portfolio Analysis
+- Watchlist Analysis
+- Risk Engine output
+- Decision Engine output
+- Theme Engine output
+- Market Regime
+- Market Health
+
+The report includes:
+
+- Executive Summary
+- Structural Tailwinds
+- Current Market Environment
+- Company Positioning
+- Portfolio Impact
+- Risk Assessment
+- Atlas Conclusion
+- What Atlas Is Monitoring
+- What Could Change Atlas' View
+
+The CLI uses deterministic defaults for theme, market regime, and market health
+unless additional context is supplied. Portfolio-aware synthesis is available by
+passing `portfolio.json` before the ticker. The engine is structured so future
+LLM augmentation or live data providers can enrich specific report sections
+without replacing the deterministic orchestration layer.
 
 ## Decision engine
 
