@@ -22,6 +22,7 @@ from atlas.conversation import (
     ConversationInput,
     render_conversation_response,
 )
+from atlas.economics import EconomicSignalsEngine, render_economic_signal_analysis
 from atlas.intelligence import (
     IntelligenceContext,
     IntelligenceEngine,
@@ -44,6 +45,7 @@ from atlas.services.financial_import_service import import_financials
 from atlas.themes import ThemeEngine, ThemeInput, render_theme_analysis
 
 app = typer.Typer(help="Atlas investment research platform")
+economics_app = typer.Typer(help="Economic signals commands")
 intelligence_app = typer.Typer(help="Atlas intelligence synthesis commands")
 memory_app = typer.Typer(help="Investment memory commands")
 market_app = typer.Typer(help="Market regime commands")
@@ -51,6 +53,7 @@ portfolio_app = typer.Typer(help="Portfolio intelligence commands")
 risk_app = typer.Typer(help="Risk and position sizing commands")
 theme_app = typer.Typer(help="Theme intelligence commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
+app.add_typer(economics_app, name="economics")
 app.add_typer(intelligence_app, name="intelligence")
 app.add_typer(memory_app, name="memory")
 app.add_typer(market_app, name="market")
@@ -215,6 +218,13 @@ def compare_command(
         raise typer.Exit(code=1) from exc
 
     console.print(render_comparison_result(result))
+
+
+@economics_app.command("analyze")
+def economics_analyze_command():
+    """Analyze deterministic macro and financial signal groups."""
+    analysis = EconomicSignalsEngine().analyze()
+    console.print(render_economic_signal_analysis(analysis))
 
 
 @intelligence_app.command("analyze")

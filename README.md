@@ -14,6 +14,7 @@ atlas import-financials TSM data/tsm_financials.csv
 atlas list-companies
 atlas report NVDA
 atlas analyze NVDA --provider yahoo
+atlas economics analyze
 atlas ask "Analyze Nvidia"
 atlas ask "How healthy is the market?"
 atlas intelligence analyze NVDA
@@ -81,6 +82,37 @@ The current CLI uses placeholder analysis signals for:
 - AAPL
 - MSFT
 - EVO
+
+## Economic signals engine
+
+```bash
+atlas economics analyze
+```
+
+Sprint 18 adds `atlas.economics`, a deterministic macro and financial conditions
+engine. It evaluates multiple economic signal groups rather than relying on a
+single market classification. There are no live APIs yet, no forecasting, and no
+buy/sell advice.
+
+Signal groups:
+
+- Credit Markets: high yield spreads, investment grade spreads, default rates,
+  and bank lending standards
+- Liquidity: central bank balance sheets, money supply, repo stress, and dollar
+  liquidity
+- Interest Rates: yield curve, real rates, and policy rate trend
+- Volatility: VIX, MOVE Index, and cross-asset volatility
+- Macro: PMI, unemployment trend, inflation trend, and GDP trend
+- Market Breadth: advance/decline, new highs versus lows, and sector
+  participation
+
+Each signal includes name, current state, direction, importance, confidence, why
+it matters, and a deterministic score. The report includes overall economic
+health, overall risk score, strongest positive and negative signals, what Atlas
+is watching most closely, and what would improve or worsen the outlook.
+
+The module is structured so future FRED, ECB, Yahoo, or other macro data
+providers can supply live inputs without changing the public analysis surface.
 
 ## Data provider architecture
 
