@@ -56,6 +56,12 @@ from atlas.reasoning import (
     ReasoningReport,
     render_reasoning_report,
 )
+from atlas.risk_drift import (
+    RiskDriftAssessment,
+    RiskDriftEngine,
+    RiskDriftInput,
+    render_risk_drift_assessment,
+)
 from atlas.risk import PositionSizingInput, RiskEngine, render_risk_analysis
 from atlas.services.database_service import init_database
 from atlas.services.company_service import add_company, list_companies
@@ -76,6 +82,7 @@ market_app = typer.Typer(help="Market regime commands")
 portfolio_app = typer.Typer(help="Portfolio intelligence commands")
 profile_app = typer.Typer(help="Investor profile context commands")
 reason_app = typer.Typer(help="Atlas reasoning thesis commands")
+risk_drift_app = typer.Typer(help="Risk drift review commands")
 risk_app = typer.Typer(help="Risk and position sizing commands")
 suitability_app = typer.Typer(help="Investor suitability context commands")
 theme_app = typer.Typer(help="Theme intelligence commands")
@@ -87,6 +94,7 @@ app.add_typer(market_app, name="market")
 app.add_typer(portfolio_app, name="portfolio")
 app.add_typer(profile_app, name="profile")
 app.add_typer(reason_app, name="reason")
+app.add_typer(risk_drift_app, name="risk-drift")
 app.add_typer(risk_app, name="risk")
 app.add_typer(suitability_app, name="suitability")
 app.add_typer(theme_app, name="theme")
@@ -529,6 +537,68 @@ def reason_analyze_command(
     console.print(render_reasoning_report(report))
 
 
+@risk_drift_app.command("analyze")
+def risk_drift_analyze_command(
+    original_profile_path: Path = typer.Option(
+        Path("atlas_profile.json"),
+        "--original-profile",
+        help="Original investor profile JSON path",
+    ),
+    current_profile_path: Path = typer.Option(
+        Path("atlas_profile.json"),
+        "--current-profile",
+        help="Current investor profile JSON path",
+    ),
+    portfolio_path: Path | None = typer.Option(
+        None,
+        "--portfolio",
+        help="Current portfolio JSON path",
+    ),
+    original_portfolio_size: float | None = typer.Option(
+        None,
+        "--original-portfolio-size",
+        help="Original portfolio size",
+    ),
+    current_portfolio_size: float | None = typer.Option(
+        None,
+        "--current-portfolio-size",
+        help="Current portfolio size",
+    ),
+    original_largest_position_weight: float | None = typer.Option(
+        None,
+        "--original-largest-weight",
+        help="Original largest position weight, such as 0.15",
+    ),
+    current_largest_position_weight: float | None = typer.Option(
+        None,
+        "--current-largest-weight",
+        help="Current largest position weight, such as 0.35",
+    ),
+    volatility_exposure: str | None = typer.Option(
+        None,
+        "--volatility",
+        help="Current volatility exposure: low, medium, high, elevated, or aggressive",
+    ),
+):
+    """Detect drift between original profile assumptions and current context."""
+    try:
+        assessment = _build_risk_drift_assessment(
+            original_profile_path=original_profile_path,
+            current_profile_path=current_profile_path,
+            portfolio_path=portfolio_path,
+            original_portfolio_size=original_portfolio_size,
+            current_portfolio_size=current_portfolio_size,
+            original_largest_position_weight=original_largest_position_weight,
+            current_largest_position_weight=current_largest_position_weight,
+            volatility_exposure=volatility_exposure,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]Risk drift analysis failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_risk_drift_assessment(assessment))
+
+
 @risk_app.command("size")
 def risk_size_command(risk_input_path: Path):
     """Analyze position size, liquidity, concentration, and deployment pacing."""
@@ -679,6 +749,49 @@ def _build_suitability_assessment(
             investment_report=investment_report,
             theme_analysis=theme_analysis,
             intelligence_report=intelligence_report,
+        )
+    )
+
+
+def _build_risk_drift_assessment(
+    original_profile_path: Path,
+    current_profile_path: Path,
+    portfolio_path: Path | None,
+    original_portfolio_size: float | None,
+    current_portfolio_size: float | None,
+    original_largest_position_weight: float | None,
+    current_largest_position_weight: float | None,
+    volatility_exposure: str | None,
+) -> RiskDriftAssessment:
+    original_profile = _profile_from_path_or_default(original_profile_path)
+    current_profile = _profile_from_path_or_default(current_profile_path)
+    current_portfolio = Portfolio.from_json_file(portfolio_path) if portfolio_path else None
+    market_regime = MarketRegimeEngine().analyze(
+        MarketSnapshot(
+            indicators=MarketIndicators(
+                sp500_drawdown=-0.08,
+                nasdaq_drawdown=-0.12,
+                vix=22,
+                interest_rate_trend="stable",
+                inflation_trend="stable",
+            ),
+            source="deterministic-risk-drift-placeholder",
+        )
+    )
+    return RiskDriftEngine().assess(
+        RiskDriftInput(
+            original_profile=original_profile,
+            current_profile=current_profile,
+            current_portfolio=current_portfolio,
+            original_market_regime=None,
+            current_market_regime=market_regime,
+            current_market_health=MarketHealthEngine().analyze(),
+            current_economic_signals=EconomicSignalsEngine().analyze(),
+            original_portfolio_size=original_portfolio_size,
+            current_portfolio_size=current_portfolio_size,
+            original_largest_position_weight=original_largest_position_weight,
+            current_largest_position_weight=current_largest_position_weight,
+            volatility_exposure=volatility_exposure,
         )
     )
 

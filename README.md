@@ -35,6 +35,7 @@ atlas memory compare memory.json NVDA
 atlas market analyze market.json
 atlas market health
 atlas risk size risk_input.json
+atlas risk-drift analyze
 atlas suitability analyze NVDA
 atlas suitability analyze portfolio.json
 atlas theme analyze "AI infrastructure"
@@ -628,6 +629,63 @@ deploys capital below the required cash reserve, favors gradual deployment in
 Correction, Bear, and Crisis regimes, and caps single-position exposure by risk
 profile. Lower confidence or a weaker target risk score reduces recommended
 position size.
+
+## Risk drift engine
+
+```bash
+atlas risk-drift analyze
+atlas risk-drift analyze --portfolio portfolio.json
+atlas risk-drift analyze --original-profile old_profile.json --current-profile atlas_profile.json
+```
+
+Sprint 22 adds `atlas.risk_drift`, a deterministic review engine that detects
+when the current investor situation, portfolio, or market environment may have
+drifted away from the assumptions in the original investor profile.
+
+This is not a recommendation engine. It does not tell the user to buy or sell.
+It identifies meaningful changes and asks whether the investor profile,
+portfolio purpose, or risk assumptions should be reviewed.
+
+The engine compares:
+
+- original investor profile and current investor profile
+- optional current portfolio context
+- optional market regime
+- optional market health
+- optional economic signals
+- optional suitability assessment
+
+Risk drift signals include:
+
+- risk tolerance drift
+- risk capacity drift
+- time horizon drift
+- portfolio purpose drift
+- portfolio size growth
+- position concentration
+- market regime stress
+- market health stress
+- economic risk environment
+- volatility exposure
+
+Output includes:
+
+- Overall Drift Level: None, Low, Moderate, or High
+- Drift Summary
+- Signals Detected
+- What Changed
+- Why It Matters
+- Triggers
+- Questions Atlas Should Ask
+- Suggested Profile Review Areas
+- Confidence
+- Missing Information
+
+The engine recognizes that an aggressive portfolio may still show low drift when
+the investor has high risk capacity, a long time horizon, and explicitly accepts
+volatility. It also flags cases where a once-small exploration portfolio has
+grown materially, concentration has risen, or the market backdrop has shifted
+from calm conditions into correction or crisis.
 
 ## Theme intelligence
 
