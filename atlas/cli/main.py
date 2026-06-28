@@ -43,6 +43,7 @@ from atlas.decision_journal import (
 )
 from atlas.economics import EconomicSignalsEngine, render_economic_signal_analysis
 from atlas.evidence import EvidenceQualityEngine, render_evidence_assessment
+from atlas.home import AtlasHomeEngine, AtlasHomeInput, render_atlas_home
 from atlas.intelligence import (
     IntelligenceContext,
     IntelligenceEngine,
@@ -275,6 +276,52 @@ def ask_command(
         raise typer.Exit(code=1) from exc
 
     console.print(render_conversation_response(response))
+
+
+@app.command("home")
+def home_command(
+    profile_path: Path = typer.Option(
+        Path("atlas_profile.json"),
+        "--profile",
+        help="Investor profile JSON path",
+    ),
+    portfolio_path: Path | None = typer.Option(
+        None,
+        "--portfolio",
+        help="Portfolio JSON path",
+    ),
+    watchlist_path: Path | None = typer.Option(
+        None,
+        "--watchlist",
+        help="Watchlist JSON path",
+    ),
+    journal_path: Path = typer.Option(
+        Path(".atlas/decision_journal.json"),
+        "--journal",
+        help="Decision journal JSON path",
+    ),
+    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+):
+    """Show the primary Atlas Home briefing."""
+    try:
+        provider = _provider_from_name(provider_name)
+        profile = _profile_from_path_or_default(profile_path)
+        portfolio = Portfolio.from_json_file(portfolio_path) if portfolio_path else None
+        watchlist = Watchlist.from_json_file(watchlist_path) if watchlist_path else None
+        output = AtlasHomeEngine().build(
+            AtlasHomeInput(
+                investor_profile=profile,
+                portfolio=portfolio,
+                watchlist=watchlist,
+                provider=provider,
+                journal_path=journal_path,
+            )
+        )
+    except (FileNotFoundError, LookupError, ValueError) as exc:
+        console.print(f"[red]Home failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_atlas_home(output))
 
 
 @app.command("compare")

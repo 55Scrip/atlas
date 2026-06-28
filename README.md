@@ -21,6 +21,7 @@ atlas init
 atlas add-company TSM --name "Taiwan Semiconductor Manufacturing Company" --atlas-id AI-001 --exchange NYSE --country Taiwan --currency USD --sector Semiconductors --industry Foundry
 atlas import-financials TSM data/tsm_financials.csv
 atlas list-companies
+atlas home
 atlas dashboard show
 atlas daily brief
 atlas journal create
@@ -110,6 +111,39 @@ The current CLI uses placeholder analysis signals for:
 - AAPL
 - MSFT
 - EVO
+
+## Atlas Home
+
+```bash
+atlas home
+atlas home --portfolio portfolio.json --watchlist watchlist.json
+atlas home --profile atlas_profile.json --journal .atlas/decision_journal.json
+```
+
+Sprint 32 adds `atlas.home`, the primary entry point to Atlas. Atlas Home is a
+one-screen briefing designed to answer one question: what does the investor need
+to understand right now?
+
+It orchestrates existing engines rather than introducing new investment logic:
+
+- Investor Profile Engine
+- Portfolio Review Engine
+- Watchlist Review Engine
+- Market Health Engine
+- Market Regime Engine
+- Economic Signals Engine
+- Decision Journal Engine
+- Atlas Language Engine
+
+The Home output includes a bottom line, Atlas Rating, up to three priorities,
+portfolio health, market context, watchlist highlights, decision journal
+reminders, up to five monitoring items, and meaningful changes since the last
+review. If nothing meaningful changed, Atlas says so rather than inventing
+updates.
+
+This feature follows the [Atlas Constitution](docs/ATLAS_CONSTITUTION.md):
+evidence before opinion, context before conclusion, calm before clever, and
+progressive transparency.
 
 ## Atlas home dashboard
 
