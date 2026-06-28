@@ -193,38 +193,45 @@ atlas daily brief --portfolio portfolio.json
 atlas daily brief --profile atlas_profile.json --portfolio portfolio.json
 ```
 
-Sprint 25 adds `atlas.daily`, a calm deterministic daily briefing experience.
-Atlas Daily is not a news feed and does not provide buy or sell recommendations.
-It summarizes what matters today for the investor using existing Atlas engines.
+Sprint 33 adds `atlas.daily_brief`, a reusable calm briefing layer for Atlas
+Home, the CLI, and future UI surfaces. Atlas Daily is not a news feed, market
+prediction, or recommendation engine. It summarizes what changed, why it
+matters, and whether anything deserves attention.
 
 The Daily Brief aggregates:
 
-- Dashboard Engine
+- Atlas Home Engine
 - Investor Profile Engine
-- Portfolio and Monitoring engines
-- Suitability Engine
-- Risk Drift Engine
-- Theme Engine
+- Portfolio Review Engine
+- Watchlist Review Engine
 - Market Health
 - Market Regime
 - Economic Signals
-- Principles Engine
+- Evidence Quality Engine
+- Atlas Language Engine
+- Decision Journal Engine
+- Monitoring Engine
 
 Daily Brief output includes:
 
-- Opening Summary
+- Bottom Line
 - What Changed
-- Portfolio Notes
-- Market Notes
-- Themes To Watch
-- Risks To Watch
-- Opportunities To Study
-- Suggested Questions
+- Why It Matters
+- Portfolio Context
+- Watchlist Context
+- Market Context
+- Today's Priorities
+- What Atlas Is Monitoring
+- What Could Change This View
+- Full Reasoning
 
-The tone is calm, concise, analytical, and not promotional. Atlas Daily uses
-language such as `worth monitoring`, `worth understanding`, `appears stable`,
-`may deserve attention`, `not enough information`, and `depends on investor
-profile`. Opportunities are presented as research directions only.
+Quiet days are handled explicitly. If nothing meaningful changed, Atlas says
+`No meaningful changes since your last review.` and may show one informational
+priority: `No immediate action appears necessary.`
+
+The tone is calm, concise, analytical, and not promotional. Atlas Daily follows
+the [Atlas Constitution](docs/ATLAS_CONSTITUTION.md) by using evidence before
+opinion, context before conclusion, and progressive transparency.
 
 ## Decision journal engine
 

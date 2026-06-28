@@ -1,4 +1,4 @@
-from atlas.daily_brief import (
+from atlas.daily_brief.engine import (
     DailyBriefEngine,
     DailyBriefInput,
     DailyBriefItem,
@@ -7,15 +7,11 @@ from atlas.daily_brief import (
     render_daily_brief,
 )
 
-# Compatibility for callers that imported the Sprint 25 name from atlas.daily.engine.
-DailyBriefSummary = DailyBriefOutput
-
 __all__ = [
     "DailyBriefEngine",
     "DailyBriefInput",
     "DailyBriefItem",
     "DailyBriefOutput",
     "DailyBriefSection",
-    "DailyBriefSummary",
     "render_daily_brief",
 ]

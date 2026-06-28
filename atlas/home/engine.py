@@ -169,7 +169,7 @@ class AtlasHomeEngine:
             journal_reminders = ("No decision journal reviews require attention today.",)
             monitoring = _quiet_day_monitoring()
             changes = ("No meaningful changes since your last review.",)
-        draft_output = AtlasHomeOutput(
+        return AtlasHomeOutput(
             title="Atlas Home",
             summary=summary,
             priorities=priorities,
@@ -194,7 +194,6 @@ class AtlasHomeEngine:
                 "Atlas Language Engine",
             ),
         )
-        return draft_output
 
 
 def render_atlas_home(output: AtlasHomeOutput) -> str:
