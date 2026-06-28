@@ -3,6 +3,7 @@ from enum import Enum
 
 from atlas.analysis.portfolio import Portfolio
 from atlas.economics import EconomicSignalAnalysis, EconomicSignalsEngine
+from atlas.language import AtlasLanguageEngine, AtlasLanguageReport
 from atlas.market import (
     MarketHealthEngine,
     MarketHealthReport,
@@ -61,6 +62,7 @@ class PortfolioReviewReport:
     sections: tuple[PortfolioReviewSection, ...]
     confidence: int
     principles_check: PrinciplesCheck
+    language_report: AtlasLanguageReport | None = None
 
 
 class PortfolioReviewEngine:
@@ -75,6 +77,7 @@ class PortfolioReviewEngine:
         economic_signals_engine: EconomicSignalsEngine | None = None,
         monitoring_engine: MonitoringEngine | None = None,
         principles_engine: PrinciplesEngine | None = None,
+        language_engine: AtlasLanguageEngine | None = None,
     ) -> None:
         self.profile_engine = profile_engine or InvestorProfileEngine()
         self.suitability_engine = suitability_engine or SuitabilityEngine()
@@ -85,6 +88,7 @@ class PortfolioReviewEngine:
         self.economic_signals_engine = economic_signals_engine or EconomicSignalsEngine()
         self.monitoring_engine = monitoring_engine or MonitoringEngine()
         self.principles_engine = principles_engine or PrinciplesEngine()
+        self.language_engine = language_engine or AtlasLanguageEngine()
 
     def review(self, review_input: PortfolioReviewInput) -> PortfolioReviewReport:
         profile = review_input.investor_profile or self.profile_engine.create_default_profile()
@@ -146,13 +150,22 @@ class PortfolioReviewEngine:
             sections=sections,
             confidence=_confidence(portfolio_snapshot.confidence, suitability.confidence),
         )
-        return PortfolioReviewReport(
+        report_without_language = PortfolioReviewReport(
             title="Atlas Portfolio Review",
             bottom_line=bottom_line,
             atlas_rating=rating,
             sections=sections,
             confidence=_confidence(portfolio_snapshot.confidence, suitability.confidence),
             principles_check=self.principles_engine.check(draft),
+        )
+        return PortfolioReviewReport(
+            title=report_without_language.title,
+            bottom_line=report_without_language.bottom_line,
+            atlas_rating=report_without_language.atlas_rating,
+            sections=report_without_language.sections,
+            confidence=report_without_language.confidence,
+            principles_check=report_without_language.principles_check,
+            language_report=self.language_engine.from_portfolio_review(report_without_language),
         )
 
 

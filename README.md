@@ -21,6 +21,7 @@ atlas ask "Analyze Nvidia"
 atlas ask "How healthy is the market?"
 atlas intelligence analyze NVDA
 atlas intelligence analyze portfolio.json NVDA
+atlas language explain
 atlas monitor NVDA
 atlas monitor portfolio.json
 atlas monitor theme "AI infrastructure"
@@ -218,6 +219,43 @@ Atlas Rating reflects alignment between the portfolio, investor profile, market
 context, and risk profile. It is not a performance rating. Possible ratings are
 Excellent Alignment, Strong Alignment, Balanced, Limited Alignment, and
 Misaligned.
+
+## Atlas language and rating system
+
+```bash
+atlas language explain
+```
+
+Sprint 27 adds `atlas.language`, a reusable language and rating layer for
+standardizing how Atlas explains ratings, views, fit, confidence, thesis,
+rationale, bottom lines, and what could change Atlas' view. It is not a trade
+rating system and does not replace existing analysis engines.
+
+The language layer defines:
+
+- `AtlasRating` for explainable contextual assessments such as Strong Alignment,
+  Balanced, Constructive, Cautious, or Unclear
+- `AtlasView` for directional but non-instructional views such as Constructive,
+  Balanced, Improving, Weakening, or Unclear
+- `AtlasFit` for profile or portfolio compatibility such as Excellent Fit,
+  Strong Fit, Moderate Fit, Limited Fit, or Poor Fit
+- `AtlasConfidence` for confidence level, drivers, uncertainty, and missing
+  information
+- `AtlasThesis` for current thesis, evidence, counter arguments, monitoring
+  items, and what could change Atlas' view
+- `AtlasRationale` for bottom line, key reasons, main risk, and material
+  follow-up questions
+- `AtlasLanguageReport` for progressive transparency across Bottom Line,
+  Reasoning, and Full Reasoning
+
+Guardrails flag or avoid directive and absolute language such as `Strong Buy`,
+`Strong Sell`, `Guaranteed`, `Risk-free`, `Can't lose`, and `Sure thing`.
+Preferred language includes `appears aligned`, `worth monitoring`, `may deserve
+attention`, `current evidence suggests`, and `not enough information for a
+high-confidence assessment`.
+
+Portfolio Review now attaches a structured `AtlasLanguageReport` as an example
+integration point while keeping the existing review output unchanged.
 
 The review uses language such as `appears aligned`, `worth monitoring`, `may
 deserve attention`, and `current evidence suggests`. It avoids trade

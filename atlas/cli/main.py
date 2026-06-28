@@ -31,6 +31,7 @@ from atlas.intelligence import (
     IntelligenceInput,
     render_intelligence_report,
 )
+from atlas.language import AtlasLanguageEngine, render_atlas_language_report
 from atlas.market import (
     MarketHealthEngine,
     MarketIndicators,
@@ -87,6 +88,7 @@ dashboard_app = typer.Typer(help="Atlas home dashboard commands")
 daily_app = typer.Typer(help="Atlas daily briefing commands")
 economics_app = typer.Typer(help="Economic signals commands")
 intelligence_app = typer.Typer(help="Atlas intelligence synthesis commands")
+language_app = typer.Typer(help="Atlas language and rating commands")
 memory_app = typer.Typer(help="Investment memory commands")
 market_app = typer.Typer(help="Market regime commands")
 portfolio_app = typer.Typer(help="Portfolio intelligence commands")
@@ -102,6 +104,7 @@ app.add_typer(dashboard_app, name="dashboard")
 app.add_typer(daily_app, name="daily")
 app.add_typer(economics_app, name="economics")
 app.add_typer(intelligence_app, name="intelligence")
+app.add_typer(language_app, name="language")
 app.add_typer(memory_app, name="memory")
 app.add_typer(market_app, name="market")
 app.add_typer(portfolio_app, name="portfolio")
@@ -379,6 +382,13 @@ def intelligence_analyze_command(
         raise typer.Exit(code=1) from exc
 
     console.print(render_intelligence_report(report))
+
+
+@language_app.command("explain")
+def language_explain_command():
+    """Show an example Atlas language and rating report."""
+    report = AtlasLanguageEngine().example_report()
+    console.print(render_atlas_language_report(report))
 
 
 @memory_app.command("save")
