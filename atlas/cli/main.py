@@ -25,6 +25,7 @@ from atlas.conversation import (
 from atlas.dashboard import DashboardEngine, DashboardInput, render_dashboard
 from atlas.daily import DailyBriefEngine, DailyBriefInput, render_daily_brief
 from atlas.economics import EconomicSignalsEngine, render_economic_signal_analysis
+from atlas.evidence import EvidenceQualityEngine, render_evidence_assessment
 from atlas.intelligence import (
     IntelligenceContext,
     IntelligenceEngine,
@@ -87,6 +88,7 @@ app = typer.Typer(help="Atlas investment research platform")
 dashboard_app = typer.Typer(help="Atlas home dashboard commands")
 daily_app = typer.Typer(help="Atlas daily briefing commands")
 economics_app = typer.Typer(help="Economic signals commands")
+evidence_app = typer.Typer(help="Evidence quality commands")
 intelligence_app = typer.Typer(help="Atlas intelligence synthesis commands")
 language_app = typer.Typer(help="Atlas language and rating commands")
 memory_app = typer.Typer(help="Investment memory commands")
@@ -103,6 +105,7 @@ watchlist_app = typer.Typer(help="Watchlist intelligence commands")
 app.add_typer(dashboard_app, name="dashboard")
 app.add_typer(daily_app, name="daily")
 app.add_typer(economics_app, name="economics")
+app.add_typer(evidence_app, name="evidence")
 app.add_typer(intelligence_app, name="intelligence")
 app.add_typer(language_app, name="language")
 app.add_typer(memory_app, name="memory")
@@ -358,6 +361,13 @@ def economics_analyze_command():
     """Analyze deterministic macro and financial signal groups."""
     analysis = EconomicSignalsEngine().analyze()
     console.print(render_economic_signal_analysis(analysis))
+
+
+@evidence_app.command("assess")
+def evidence_assess_command():
+    """Show an example deterministic evidence quality assessment."""
+    assessment = EvidenceQualityEngine().example_assessment()
+    console.print(render_evidence_assessment(assessment))
 
 
 @intelligence_app.command("analyze")

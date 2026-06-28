@@ -17,6 +17,7 @@ atlas daily brief
 atlas report NVDA
 atlas analyze NVDA --provider yahoo
 atlas economics analyze
+atlas evidence assess
 atlas ask "Analyze Nvidia"
 atlas ask "How healthy is the market?"
 atlas intelligence analyze NVDA
@@ -260,6 +261,59 @@ integration point while keeping the existing review output unchanged.
 The review uses language such as `appears aligned`, `worth monitoring`, `may
 deserve attention`, and `current evidence suggests`. It avoids trade
 instructions and absolute promises.
+
+## Evidence quality engine
+
+```bash
+atlas evidence assess
+```
+
+Sprint 28 adds `atlas.evidence`, a deterministic evidence quality layer. Atlas
+should not treat all information equally: audited reports, regulatory filings,
+exchange data, screenshots, social posts, forum claims, and user statements carry
+different evidentiary weight.
+
+The Evidence Quality Engine classifies structured inputs only. It does not
+browse the web, call live APIs, use LLMs, or independently verify external
+facts. Its job is to explain whether a claim is strong enough to affect Atlas
+Confidence, Atlas View, missing information, what could change Atlas' view, or
+the full reasoning trail.
+
+Supported source categories include:
+
+- audited annual report
+- quarterly report
+- company press release
+- regulatory filing
+- exchange data
+- government / central bank data
+- reputable financial news
+- analyst report
+- investor presentation
+- social media post
+- forum post
+- TikTok / short-form video
+- screenshot without source
+- user statement
+- unknown source
+
+Evidence strength is classified as Very Strong, Strong, Moderate, Weak, Very
+Weak, Unverified, or Insufficient. Atlas then chooses an evidence action such as
+Update assessment, Reduce confidence, Add reservation, Monitor for confirmation,
+Request source, Ignore for now, or Insufficient for assessment.
+
+Example behavior:
+
+- A regulatory filing that materially contradicts Atlas' current view can reduce
+  confidence and trigger `Update assessment`.
+- A screenshot or short-form video claim may be worth investigating, but Atlas
+  asks for the original source, dataset, filing, or report before changing its
+  view.
+- Missing or unknown sources trigger a request for source material.
+
+Every `EvidenceAssessment` includes the claim, source type, evidence strength,
+evidence action, rationale, confidence impact, additional data needed, whether
+Atlas' view should change, and a light `AtlasLanguageReport` integration.
 
 ## Investor profile engine
 
