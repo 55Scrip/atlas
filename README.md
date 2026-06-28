@@ -35,6 +35,8 @@ atlas portfolio analyze portfolio.json NVDA
 atlas portfolio review portfolio.json
 atlas compare NVDA AMD MSFT
 atlas watchlist analyze watchlist.json
+atlas watchlist review watchlist.json
+atlas watchlist review
 atlas memory save NVDA memory.json
 atlas memory show memory.json
 atlas memory compare memory.json NVDA
@@ -314,6 +316,85 @@ Example behavior:
 Every `EvidenceAssessment` includes the claim, source type, evidence strength,
 evidence action, rationale, confidence impact, additional data needed, whether
 Atlas' view should change, and a light `AtlasLanguageReport` integration.
+
+## Watchlist review engine
+
+```bash
+atlas watchlist review watchlist.json
+atlas watchlist review
+```
+
+Sprint 29 adds `atlas.watchlist_review`, a CIO-style watchlist review designed
+to make a watchlist feel actively monitored. This is not a trade instruction
+engine. It helps separate ideas that appear relevant from ideas that are noisy,
+unclear, duplicated, or not yet supported by strong evidence.
+
+The review uses existing Atlas engines where available:
+
+- Watchlist Engine
+- Atlas Language & Rating System
+- Evidence Quality Engine
+- Theme Engine
+- Market Health
+- Market Regime
+- Economic Signals
+- Monitoring Engine
+- Suitability Engine
+- Investor Profile Engine
+- Principles Engine
+
+Output sections include:
+
+- Bottom Line
+- Atlas Watchlist Rating
+- Most Relevant Ideas
+- Ideas Worth Monitoring
+- Ideas Requiring Better Evidence
+- Potential Noise
+- Theme Exposure
+- Fit With Investor Profile
+- Market Context
+- What Atlas Is Monitoring
+- What Could Change Atlas' View
+- Suggested Questions
+
+Atlas Watchlist Rating reflects how useful, focused, evidence-supported, and
+profile-aligned the watchlist appears. Possible ratings are High Quality
+Watchlist, Focused Watchlist, Balanced Watchlist, Noisy Watchlist, and Unclear
+Watchlist.
+
+The CLI supports demo mode when no file is provided. Existing watchlist JSON
+continues to work:
+
+```json
+{
+  "name": "AI Watchlist",
+  "tickers": ["NVDA", "AMD", "MSFT"]
+}
+```
+
+The review also accepts optional broader research ideas and evidence metadata:
+
+```json
+{
+  "name": "AI Watchlist",
+  "tickers": ["NVDA", "AMD", "MSFT"],
+  "ideas": ["AI power bottleneck"],
+  "themes": ["AI infrastructure"],
+  "evidence": {
+    "AI power bottleneck": {
+      "source": "social media post",
+      "claim": "Social posts claim AI power constraints are worsening."
+    }
+  }
+}
+```
+
+When evidence is weak, social-media-driven, or missing, Atlas asks for stronger
+source material instead of elevating the idea. Preferred wording includes
+`appears relevant`, `appears less supported`, `worth monitoring`, `worth
+understanding`, `may deserve attention`, `current evidence suggests`, and `not
+enough information for a high-confidence assessment`.
 
 ## Investor profile engine
 

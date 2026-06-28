@@ -17,6 +17,12 @@ from atlas.analysis.portfolio import (
 )
 from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.analysis.watchlist import Watchlist, WatchlistEngine, render_watchlist_analysis
+from atlas.watchlist_review import (
+    WatchlistReviewEngine,
+    demo_watchlist_review_input,
+    render_watchlist_review,
+    watchlist_review_input_from_json_file,
+)
 from atlas.conversation import (
     ConversationEngine,
     ConversationInput,
@@ -819,6 +825,40 @@ def watchlist_analyze_command(
         raise typer.Exit(code=1) from exc
 
     console.print(render_watchlist_analysis(analysis))
+
+
+@watchlist_app.command("review")
+def watchlist_review_command(
+    watchlist_path: Path | None = typer.Argument(
+        None,
+        help="Optional watchlist JSON path. Uses demo mode when omitted.",
+    ),
+    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+    profile_path: Path = typer.Option(
+        Path("atlas_profile.json"),
+        "--profile",
+        help="Investor profile JSON path",
+    ),
+):
+    """Generate a CIO-style watchlist review."""
+    try:
+        provider = _provider_from_name(provider_name)
+        profile = _profile_from_path_or_default(profile_path)
+        review_input = (
+            watchlist_review_input_from_json_file(
+                watchlist_path,
+                provider=provider,
+                investor_profile=profile,
+            )
+            if watchlist_path
+            else demo_watchlist_review_input(provider=provider, investor_profile=profile)
+        )
+        report = WatchlistReviewEngine().review(review_input)
+    except (FileNotFoundError, LookupError, ValueError) as exc:
+        console.print(f"[red]Watchlist review failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_watchlist_review(report))
 
 
 def _provider_from_name(provider_name: str) -> CompanyDataProvider:
