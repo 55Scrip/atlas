@@ -283,6 +283,50 @@ have an unfavorable outcome, and a poor decision can have a favorable outcome.
 Atlas preserves reasoning so the investor can learn without shame or hindsight
 bias.
 
+## Atlas Memory and Timeline
+
+Sprint 34 adds `atlas.memory`, the historical reasoning foundation for future
+Atlas engines.
+
+This package is infrastructure only. It does not add CLI commands or
+user-facing behavior.
+
+The snapshot architecture provides immutable records for:
+
+- `PortfolioSnapshot`
+- `WatchlistSnapshot`
+- `DailyBriefSnapshot`
+
+Every snapshot contains:
+
+- `timestamp`
+- `source_version`
+- `metadata`
+- `payload`
+
+The `MemoryStore` abstraction defines the storage contract:
+
+- `save(snapshot)`
+- `latest()`
+- `get(timestamp)`
+- `list()`
+- `exists(timestamp)`
+
+`InMemoryMemoryStore` is the first implementation and is intended for tests and
+early orchestration. It has no persistence. Storage is abstracted so later
+implementations can use SQLite, PostgreSQL, or another durable backend without
+changing timeline consumers.
+
+`Timeline` provides deterministic historical comparison:
+
+- latest snapshot
+- snapshot at a timestamp
+- changes since the previous snapshot
+- comparison between two snapshots
+
+Initial comparisons report added, removed, and modified payload items. No AI
+reasoning is included in this layer.
+
 ## Portfolio review engine
 
 ```bash
