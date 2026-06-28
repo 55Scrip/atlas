@@ -5,6 +5,15 @@ Private investment research platform for AI infrastructure.
 ## Version
 v0.1.0 — Foundation
 
+## Project Philosophy
+
+Atlas is guided by a small set of permanent product documents:
+
+- [Atlas Constitution](docs/ATLAS_CONSTITUTION.md)
+- [Atlas Product](docs/ATLAS_PRODUCT.md)
+- [Atlas Architecture](docs/ATLAS_ARCHITECTURE.md)
+- [Atlas Roadmap](docs/ATLAS_ROADMAP.md)
+
 ## MVP commands
 
 ```bash
