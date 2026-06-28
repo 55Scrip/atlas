@@ -35,6 +35,12 @@ from atlas.conversation import (
 )
 from atlas.dashboard import DashboardEngine, DashboardInput, render_dashboard
 from atlas.daily import DailyBriefEngine, DailyBriefInput, render_daily_brief
+from atlas.decision_journal import (
+    DecisionJournalEngine,
+    render_decision_journal_entries,
+    render_decision_journal_entry,
+    render_decision_journal_review,
+)
 from atlas.economics import EconomicSignalsEngine, render_economic_signal_analysis
 from atlas.evidence import EvidenceQualityEngine, render_evidence_assessment
 from atlas.intelligence import (
@@ -101,6 +107,7 @@ daily_app = typer.Typer(help="Atlas daily briefing commands")
 economics_app = typer.Typer(help="Economic signals commands")
 evidence_app = typer.Typer(help="Evidence quality commands")
 intelligence_app = typer.Typer(help="Atlas intelligence synthesis commands")
+journal_app = typer.Typer(help="Decision journal commands")
 language_app = typer.Typer(help="Atlas language and rating commands")
 memory_app = typer.Typer(help="Investment memory commands")
 market_app = typer.Typer(help="Market regime commands")
@@ -118,6 +125,7 @@ app.add_typer(daily_app, name="daily")
 app.add_typer(economics_app, name="economics")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(intelligence_app, name="intelligence")
+app.add_typer(journal_app, name="journal")
 app.add_typer(language_app, name="language")
 app.add_typer(memory_app, name="memory")
 app.add_typer(market_app, name="market")
@@ -407,6 +415,64 @@ def intelligence_analyze_command(
         raise typer.Exit(code=1) from exc
 
     console.print(render_intelligence_report(report))
+
+
+@journal_app.command("create")
+def journal_create_command(
+    journal_path: Path = typer.Option(
+        Path(".atlas/decision_journal.json"),
+        "--path",
+        help="Decision journal JSON path",
+    ),
+):
+    """Create a deterministic demo decision journal entry."""
+    try:
+        engine = DecisionJournalEngine()
+        entry = engine.save_entry(engine.demo_entry(), journal_path)
+    except ValueError as exc:
+        console.print(f"[red]Journal create failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_decision_journal_entry(entry))
+
+
+@journal_app.command("list")
+def journal_list_command(
+    journal_path: Path = typer.Option(
+        Path(".atlas/decision_journal.json"),
+        "--path",
+        help="Decision journal JSON path",
+    ),
+):
+    """List local decision journal entries."""
+    try:
+        entries = DecisionJournalEngine().load_entries(journal_path)
+    except ValueError as exc:
+        console.print(f"[red]Journal list failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_decision_journal_entries(entries))
+
+
+@journal_app.command("review")
+def journal_review_command(
+    journal_path: Path = typer.Option(
+        Path(".atlas/decision_journal.json"),
+        "--path",
+        help="Decision journal JSON path",
+    ),
+):
+    """Review the latest decision journal entry, or a deterministic demo entry."""
+    try:
+        engine = DecisionJournalEngine()
+        entries = engine.load_entries(journal_path)
+        entry = entries[-1] if entries else engine.demo_entry()
+        review = engine.review_entry(entry)
+    except ValueError as exc:
+        console.print(f"[red]Journal review failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_decision_journal_review(review))
 
 
 @language_app.command("explain")

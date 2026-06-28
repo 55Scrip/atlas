@@ -14,6 +14,9 @@ atlas import-financials TSM data/tsm_financials.csv
 atlas list-companies
 atlas dashboard show
 atlas daily brief
+atlas journal create
+atlas journal list
+atlas journal review
 atlas report NVDA
 atlas analyze NVDA --provider yahoo
 atlas economics analyze
@@ -179,6 +182,56 @@ The tone is calm, concise, analytical, and not promotional. Atlas Daily uses
 language such as `worth monitoring`, `worth understanding`, `appears stable`,
 `may deserve attention`, `not enough information`, and `depends on investor
 profile`. Opportunities are presented as research directions only.
+
+## Decision journal engine
+
+```bash
+atlas journal create
+atlas journal list
+atlas journal review
+```
+
+Sprint 31 adds `atlas.decision_journal`, a deterministic decision reasoning
+journal. The journal does not track trades and does not create recommendations.
+Its purpose is to preserve the thesis, context, assumptions, risks, evidence
+quality, Atlas assessment, and review triggers at the time a decision was being
+considered.
+
+Each `DecisionJournalEntry` captures:
+
+- decision title
+- asset or idea
+- decision type: considering, entered, exited, reviewed, or passed
+- decision date
+- investor profile context
+- portfolio context summary
+- Atlas Rating, Atlas View, Atlas Fit, and Atlas Confidence at the time
+- investment thesis
+- supporting reasons
+- main risks
+- evidence quality
+- assumptions
+- what could change Atlas' view
+- monitoring plan
+- planned review date
+- optional user notes
+- lessons learned
+
+The CLI uses a simple local JSON file by default:
+
+```text
+.atlas/decision_journal.json
+```
+
+Use `--path` to point the commands at another file during testing or local
+experimentation. `atlas journal create` writes a deterministic example entry,
+`atlas journal list` shows saved entries, and `atlas journal review` reviews the
+latest saved entry or a deterministic demo entry when no file exists.
+
+The review separates decision quality from outcome quality. A good decision can
+have an unfavorable outcome, and a poor decision can have a favorable outcome.
+Atlas preserves reasoning so the investor can learn without shame or hindsight
+bias.
 
 ## Portfolio review engine
 
