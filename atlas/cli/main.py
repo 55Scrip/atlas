@@ -3,7 +3,12 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-from atlas.analysis.comparison import ComparisonEngine, render_comparison_result
+from atlas.comparison import (
+    InvestmentComparisonEngine,
+    InvestmentComparisonInput,
+    demo_investment_comparison_input,
+    render_investment_comparison,
+)
 from atlas.analysis.memory import (
     MemoryEngine,
     MemoryStore,
@@ -266,22 +271,26 @@ def ask_command(
 
 @app.command("compare")
 def compare_command(
-    tickers: list[str] = typer.Argument(...),
+    ideas: list[str] | None = typer.Argument(
+        None,
+        help="Two or more companies, themes, ETFs, or ideas. Uses demo mode when omitted.",
+    ),
     provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
 ):
-    """Compare multiple companies with the Atlas investment engine."""
-    if len(tickers) < 2:
-        console.print("[red]Comparison failed:[/red] At least two tickers are required.")
-        raise typer.Exit(code=1)
-
+    """Compare investment ideas with deterministic Atlas reasoning."""
     try:
         provider = _provider_from_name(provider_name)
-        result = ComparisonEngine().compare_tickers(tickers, provider)
+        comparison_input = (
+            InvestmentComparisonInput(ideas=tuple(ideas), provider=provider)
+            if ideas
+            else demo_investment_comparison_input(provider=provider)
+        )
+        result = InvestmentComparisonEngine().compare(comparison_input)
     except (LookupError, ValueError) as exc:
         console.print(f"[red]Comparison failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
-    console.print(render_comparison_result(result))
+    console.print(render_investment_comparison(result))
 
 
 @dashboard_app.command("show")

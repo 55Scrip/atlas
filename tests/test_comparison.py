@@ -97,9 +97,9 @@ def test_compare_cli_outputs_comparison_report():
     result = runner.invoke(app, ["compare", "NVDA", "AMD", "MSFT"])
 
     assert result.exit_code == 0
-    assert "Company Comparison" in result.output
+    assert "Investment Comparison" in result.output
     assert "NVDA" in result.output
     assert "AMD" in result.output
     assert "MSFT" in result.output
-    assert "Best Overall" in result.output
-    assert "Final Conclusion" in result.output
+    assert "Comparison Rating" in result.output
+    assert "Full Reasoning" in result.output

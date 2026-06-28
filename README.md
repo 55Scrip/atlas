@@ -34,6 +34,7 @@ atlas reason analyze
 atlas portfolio analyze portfolio.json NVDA
 atlas portfolio review portfolio.json
 atlas compare NVDA AMD MSFT
+atlas compare
 atlas watchlist analyze watchlist.json
 atlas watchlist review watchlist.json
 atlas watchlist review
@@ -395,6 +396,61 @@ source material instead of elevating the idea. Preferred wording includes
 `appears relevant`, `appears less supported`, `worth monitoring`, `worth
 understanding`, `may deserve attention`, `current evidence suggests`, and `not
 enough information for a high-confidence assessment`.
+
+## Investment comparison engine
+
+```bash
+atlas compare NVDA MSFT
+atlas compare NVDA MSFT "AI infrastructure"
+atlas compare
+```
+
+Sprint 30 adds `atlas.comparison`, a deterministic Investment Comparison
+Engine for comparing two or more companies, themes, ETFs, or investment ideas.
+The goal is not to pick a universal winner. Atlas explains meaningful
+differences, investor fit, evidence quality, portfolio role, and what could
+change the view.
+
+The engine uses existing Atlas layers where appropriate:
+
+- Atlas Language & Rating System
+- Evidence Quality Engine
+- Investor Profile Engine
+- Suitability Engine
+- Theme Engine
+- Market Health
+- Market Regime
+- Economic Signals
+- Monitoring Engine
+- Principles Engine
+
+Output sections include:
+
+- Bottom Line
+- Comparison Rating
+- Candidate Summaries
+- Key Differences
+- Investor Fit
+- Evidence Quality
+- Theme and Market Context
+- Portfolio Role
+- What Could Change Atlas' View
+- Suggested Questions
+- Full Reasoning
+
+Comparison Rating is explainable and traceable. Possible ratings include Clearer
+Fit, Similar Quality, Higher Uncertainty, Different Roles, Evidence Gap, and
+Unclear.
+
+Candidate summaries include Atlas Rating, Atlas View, Atlas Fit, Confidence, key
+reasons, main risk, evidence strength, and what Atlas is monitoring. The CLI
+also supports deterministic demo mode when no ideas are provided.
+
+The comparison avoids trade instruction language and uses phrases such as
+`appears better aligned`, `appears less aligned`, `worth monitoring`, `worth
+understanding`, `current evidence suggests`, `not enough information for a
+high-confidence assessment`, `depends on portfolio role`, and `serves a
+different purpose`.
 
 ## Investor profile engine
 

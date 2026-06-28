@@ -32,7 +32,7 @@ def test_compare_cli_accepts_yahoo_provider(monkeypatch):
     result = runner.invoke(app, ["compare", "NVDA", "AMD", "--provider", "yahoo"])
 
     assert result.exit_code == 0
-    assert "Company Comparison" in result.output
+    assert "Investment Comparison" in result.output
 
 
 def test_portfolio_cli_accepts_yahoo_provider(monkeypatch, tmp_path):
