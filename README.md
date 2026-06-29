@@ -327,6 +327,40 @@ changing timeline consumers.
 Initial comparisons report added, removed, and modified payload items. No AI
 reasoning is included in this layer.
 
+## Historical Change Engine
+
+Sprint 35 adds `atlas.history`, the first reusable engine built on top of Atlas
+Memory snapshots.
+
+This package is infrastructure only. It does not add CLI commands or connect to
+Atlas Home or Daily Brief yet.
+
+The comparison pipeline is:
+
+1. Store immutable snapshots in a `MemoryStore`.
+2. Load the previous and latest snapshots.
+3. Compare portfolio and watchlist structures.
+4. Return deterministic `HistoricalChange` objects.
+
+`HistoricalChangeEngine` exposes:
+
+- `compare(previous, current)`
+- `compare_latest()`
+
+The engine currently detects:
+
+- added portfolio positions
+- removed portfolio positions
+- portfolio weight changes
+- watchlist additions
+- watchlist removals
+- significant quality score changes
+- significant risk score changes
+
+The output is structured and deterministic. It contains change type, subject,
+previous value, current value, and severity. It does not generate explanations,
+recommendations, or AI summaries.
+
 ## Portfolio review engine
 
 ```bash
