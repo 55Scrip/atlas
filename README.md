@@ -14,6 +14,31 @@ Atlas is guided by a small set of permanent product documents:
 - [Atlas Architecture](docs/ATLAS_ARCHITECTURE.md)
 - [Atlas Roadmap](docs/ATLAS_ROADMAP.md)
 
+Sprint 36 adds the Atlas Edge foundation documents:
+
+- [Architecture](docs/Architecture.md)
+- [Project Structure](docs/ProjectStructure.md)
+- [Decision Log](docs/DecisionLog.md)
+- [Development Guide](docs/DevelopmentGuide.md)
+
+## Atlas Edge Foundation
+
+The repository is organized around clear long-term boundaries:
+
+- `atlas/shared/` contains canonical entities such as `Portfolio`, `Holding`,
+  `Company`, `Watchlist`, `ResearchNote`, `JournalEntry`, `User`,
+  `MarketEvent`, `Decision`, and `KnowledgeNode`.
+- `atlas/domains/` defines ownership boundaries for portfolio, watchlist,
+  research, decision journal, daily brief, knowledge, AI, and authentication.
+- `atlas/ai/` defines replaceable AI service interfaces for future reasoning,
+  knowledge, summary, discovery, and decision support services.
+- `frontend/`, `backend/`, `shared/`, `ai_services/`, and `infrastructure/`
+  reserve clear repository areas for future Atlas Edge development.
+
+The existing Python backend and CLI remain the working product. Sprint 36 adds
+architecture, documentation, strict TypeScript configuration for future frontend
+work, CI, and local hook configuration without changing user-facing behavior.
+
 ## MVP commands
 
 ```bash
