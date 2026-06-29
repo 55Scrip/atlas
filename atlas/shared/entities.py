@@ -34,8 +34,13 @@ class Holding:
     company_id: str
     ticker: str
     quantity: float = 0.0
+    current_price: float | None = None
     market_value: float = 0.0
     weight: float = 0.0
+    sector: str = ""
+    country: str = ""
+    currency: str = "USD"
+    asset_type: str = "equity"
 
 
 @dataclass(frozen=True)
@@ -46,6 +51,7 @@ class Portfolio:
     name: str
     holdings: tuple[Holding, ...] = ()
     owner_id: str = ""
+    base_currency: str = "USD"
     metadata: Mapping[str, EntityValue] = field(default_factory=dict)
 
     def __post_init__(self) -> None:

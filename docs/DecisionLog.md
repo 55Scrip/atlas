@@ -34,3 +34,12 @@ discovery, and decision support services.
 Rationale: Atlas should remain deterministic and explainable until concrete AI
 services can be evaluated against the Constitution.
 
+## 2026-06-29: Build Portfolio as the First Real Domain
+
+Decision: implement deterministic portfolio calculations, validation, and
+structured observations inside `atlas.domains.portfolio`.
+
+Rationale: portfolio understanding is foundational to Atlas. A portfolio is not
+just a list of positions; it is a collection of investment decisions. The domain
+therefore starts with value, allocation, concentration, and data quality before
+any user-facing action language.

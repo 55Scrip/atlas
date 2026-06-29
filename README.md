@@ -39,6 +39,31 @@ The existing Python backend and CLI remain the working product. Sprint 36 adds
 architecture, documentation, strict TypeScript configuration for future frontend
 work, CI, and local hook configuration without changing user-facing behavior.
 
+## Portfolio Domain
+
+Sprint 37 adds the first real Atlas Edge product domain:
+`atlas.domains.portfolio`.
+
+The Portfolio domain is documented in
+[Portfolio Domain](docs/PortfolioDomain.md). It provides deterministic,
+non-advisory portfolio understanding:
+
+- total portfolio value
+- holding market value
+- holding portfolio weight
+- sector allocation
+- country allocation
+- top holdings
+- concentration level
+- cash weight
+- largest position
+- number of holdings
+- structured validation issues
+- calm portfolio observations
+
+This domain does not create trade recommendations, forecasts, external market
+data integrations, persistence, UI, or AI-generated analysis.
+
 ## MVP commands
 
 ```bash
