@@ -96,3 +96,13 @@ Rationale: a watchlist should help investors track unanswered questions without
 creating noise or trading behavior. Keeping Watchlist Intelligence in
 `atlas.capabilities` preserves clean domain ownership and reinforces the
 Blueprint principle that Atlas supports understanding before action.
+
+## 2026-06-30: Build Discovery as Structured Curiosity
+
+Decision: implement `atlas.capabilities.discovery` as a deterministic consumer
+of Knowledge, Research, Company Analysis, and Watchlist Intelligence structures.
+
+Rationale: Discovery should help investors decide what deserves further study,
+not what action to take. Keeping it in `atlas.capabilities` preserves domain
+ownership boundaries and aligns with the Blueprint principle that discovery is
+the disciplined pursuit of understanding before conviction.

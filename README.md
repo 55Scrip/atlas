@@ -180,6 +180,27 @@ Watchlist Intelligence helps investors understand what deserves study. It does
 not create trade recommendations, forecasts, price targets, external API calls,
 or AI-generated analysis.
 
+## Discovery Capability
+
+Sprint 43 adds the Atlas Discovery capability:
+`atlas.capabilities.discovery`.
+
+The capability is documented in [Discovery Capability](docs/Discovery.md). It
+consumes Knowledge, Research, Company Analysis, and Watchlist Intelligence
+structures to generate deterministic discovery candidates.
+
+Discovery candidates explain:
+
+- why they appeared
+- what evidence supports further research
+- what remains unknown
+- what questions should be investigated next
+- how they relate to existing Atlas context
+
+Discovery helps investors decide what to study next. It does not create trade
+recommendations, forecasts, price targets, external API calls, or AI-generated
+analysis.
+
 ## MVP commands
 
 ```bash
