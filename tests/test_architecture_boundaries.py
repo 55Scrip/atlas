@@ -46,6 +46,7 @@ def test_domains_do_not_import_capabilities_or_providers_or_legacy() -> None:
         "atlas.backend",
         "atlas.database",
         "atlas.services",
+        "atlas.adapters",
     )
 
     violations = []
@@ -105,6 +106,19 @@ def test_no_atlas_edge_naming_in_active_code_paths() -> None:
     violations = [v for v in violations if self_path not in v]
 
     assert not violations, "Atlas Edge naming found in active code paths:\n" + "\n".join(violations)
+
+
+def test_adapters_may_bridge_legacy_and_domain_layers() -> None:
+    """Sprint 45: atlas.adapters is the one layer allowed to import both
+    legacy modules and atlas.domains/atlas.shared. Domains must not import
+    adapters back (see test_domains_do_not_import_capabilities_or_providers_or_legacy)."""
+    adapters_dir = ATLAS_ROOT / "adapters"
+    assert adapters_dir.exists()
+
+    portfolio_adapter = adapters_dir / "portfolio.py"
+    modules = _imported_modules(portfolio_adapter)
+    assert any(m.startswith("atlas.analysis") for m in modules)
+    assert any(m.startswith("atlas.shared") or m.startswith("atlas.domains") for m in modules)
 
 
 def test_default_provider_import_has_no_top_level_network_call() -> None:

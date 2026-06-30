@@ -20,6 +20,8 @@ from atlas.analysis.portfolio import (
     PortfolioIntelligenceEngine,
     render_portfolio_analysis,
 )
+from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
+from atlas.domains.portfolio import portfolio_summary as domain_portfolio_summary
 from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.analysis.watchlist import Watchlist, WatchlistEngine, render_watchlist_analysis
 from atlas.watchlist_review import (
@@ -615,6 +617,20 @@ def portfolio_analyze_command(
     console.print(render_portfolio_analysis(analysis))
 
 
+@portfolio_app.command("summary")
+def portfolio_summary_command(portfolio_path: Path):
+    """Show a deterministic Portfolio Domain summary (read-only, no provider calls)."""
+    try:
+        legacy_portfolio = Portfolio.from_json_file(portfolio_path)
+        domain_portfolio = legacy_portfolio_to_domain_portfolio(legacy_portfolio)
+        summary = domain_portfolio_summary(domain_portfolio)
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]Portfolio summary failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(_render_portfolio_domain_summary(summary))
+
+
 @portfolio_app.command("review")
 def portfolio_review_command(
     portfolio_path: Path,
@@ -981,6 +997,31 @@ def watchlist_review_command(
         raise typer.Exit(code=1) from exc
 
     console.print(render_watchlist_review(report))
+
+
+def _render_portfolio_domain_summary(summary) -> str:
+    lines = [
+        "Portfolio Summary (Portfolio Domain)",
+        "",
+        f"Portfolio: {summary.portfolio_name} ({summary.portfolio_id})",
+        f"Number of holdings: {summary.number_of_holdings}",
+        f"Largest weight: {summary.largest_weight:.1%}",
+        f"Cash weight: {summary.cash_weight:.1%}",
+        f"Concentration: {summary.concentration.level.value}",
+        "",
+        "Sector Allocation",
+    ]
+    for allocation in summary.sector_allocation:
+        lines.append(f"  {allocation.name}: {allocation.weight:.1%}")
+    lines.append("")
+    lines.append("Country Allocation")
+    for allocation in summary.country_allocation:
+        lines.append(f"  {allocation.name}: {allocation.weight:.1%}")
+    lines.append("")
+    lines.append("Top Holdings")
+    for holding in summary.top_holdings:
+        lines.append(f"  {holding.ticker}")
+    return "\n".join(lines)
 
 
 def _provider_from_name(provider_name: str) -> CompanyDataProvider:

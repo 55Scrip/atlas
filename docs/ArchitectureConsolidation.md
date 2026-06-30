@@ -50,11 +50,38 @@ responsibilities; new product capabilities belong in
 ### 4. CLI / runtime layer
 
 `atlas/cli/main.py` is the Typer entry point (`atlas` console script). As of
-this sprint, **every CLI command imports exclusively from the legacy engine
-layer and `atlas.services`** — there are no imports from `atlas.domains` or
-`atlas.capabilities` in the CLI today. This is the central migration gap:
-the Blueprint-aligned layer exists and is tested, but nothing user-facing
-exercises it yet.
+Sprint 44, every CLI command imported exclusively from the legacy engine
+layer and `atlas.services`, with nothing wired to `atlas.domains` or
+`atlas.capabilities`.
+
+**Sprint 45 update:** `atlas portfolio summary <portfolio.json>` is the
+first CLI command that calls `atlas.domains.portfolio` (via the new
+`atlas.adapters.portfolio` bridge described below). It is read-only,
+additive, and does not call providers or external APIs. The two pre-existing
+portfolio commands (`atlas portfolio analyze`, `atlas portfolio review`)
+were left untouched — they answer different questions (ticker-fit analysis,
+CIO-style review with profile/market dependencies) that do not map cleanly
+onto the Portfolio Domain's allocation/concentration/validation scope, so
+migrating them was judged unsafe for this sprint. All other CLI commands
+still call the legacy engine layer exclusively.
+
+### 5. Adapter layer
+
+`atlas/adapters/` is the one layer permitted to import both the legacy
+engine layer and `atlas.domains`/`atlas.shared`. Adapters translate legacy
+runtime data shapes into domain entities. They must stay deterministic,
+must not call external APIs, and must not mutate persisted data. Domains
+must never import adapters back (enforced by
+`tests/test_architecture_boundaries.py`), keeping the dependency direction
+one-way: legacy/CLI -> adapters -> domains.
+
+`atlas.adapters.portfolio.legacy_portfolio_to_domain_portfolio` translates
+the legacy CLI portfolio JSON (positions with a relative `weight`, no
+absolute market value) into `atlas.shared.Portfolio`/`Holding` entities,
+using each position's `weight` as a stand-in `market_value`. This preserves
+all relative domain calculations (allocation, concentration, top holdings)
+exactly, but does not produce a meaningful absolute currency total — that
+limitation is documented in the adapter module itself.
 
 ## Known Duplication
 
@@ -79,11 +106,23 @@ shrinking.
 1. Pick one duplicated concern at a time (e.g. portfolio).
 2. Migrate the corresponding CLI command(s) to call the
    `atlas.domains`/`atlas.capabilities` structures instead of the legacy
-   module.
+   module. If the legacy and domain data shapes differ, add a small,
+   deterministic adapter under `atlas/adapters/` rather than reshaping the
+   domain to fit legacy assumptions.
 3. Add tests proving behavioral parity with the legacy command before
-   removing the legacy call site.
+   removing the legacy call site. If a legacy command has no equivalent
+   domain computation (different question, different inputs), prefer adding
+   a new, additive read-only command over forcing parity — see Sprint 45's
+   `atlas portfolio summary`.
 4. Only delete legacy code once nothing references it and parity is proven.
 5. Repeat per concern. Do not attempt a single big-bang rewrite.
+
+**Sprint 45 status:** portfolio summary/allocation/concentration reporting
+now has a proven bridge (`atlas portfolio summary`) from legacy JSON input
+to `atlas.domains.portfolio`. `atlas portfolio analyze` and
+`atlas portfolio review` remain fully legacy and are the next candidates,
+but require either extending the Portfolio Domain (ticker-fit analysis,
+CIO review) or a larger adapter — out of scope for a narrow sprint.
 
 ## Rules for Future Sprints
 

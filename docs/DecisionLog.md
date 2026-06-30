@@ -106,3 +106,23 @@ Rationale: Discovery should help investors decide what deserves further study,
 not what action to take. Keeping it in `atlas.capabilities` preserves domain
 ownership boundaries and aligns with the Blueprint principle that discovery is
 the disciplined pursuit of understanding before conviction.
+
+## 2026-06-30: Introduce `atlas.adapters` as the Legacy-to-Domain Bridge
+
+Decision: add `atlas.adapters.portfolio.legacy_portfolio_to_domain_portfolio`
+and a new, additive `atlas portfolio summary` CLI command that calls
+`atlas.domains.portfolio` directly, instead of rewriting the existing
+`atlas portfolio analyze`/`atlas portfolio review` commands.
+
+Rationale: the legacy CLI portfolio file format
+(`atlas.analysis.portfolio.Portfolio`, positions with a relative `weight`
+and no absolute market value) answers a different question (ticker-fit
+analysis, CIO review with provider/profile/market dependencies) than the
+Portfolio Domain (portfolio understanding: allocation, concentration,
+validation). Forcing the existing commands onto the domain would have been
+a disguised behavior change, not a safe migration. Adding `atlas.adapters`
+as the one layer permitted to import both legacy and domain code lets the
+CLI begin exercising `atlas.domains.portfolio` today, on a read-only path,
+without touching the two existing commands or their output. Architecture
+boundary tests were updated so domains may never import adapters back,
+keeping the dependency direction one-way (legacy/CLI -> adapters -> domains).
