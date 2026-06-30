@@ -52,3 +52,13 @@ instead of modifying the older action-oriented `atlas.decision` package.
 Rationale: Sprint 38 is about evidence, observations, unknowns, confidence, and
 explainability. Keeping the new domain separate preserves existing behavior and
 gives future AI services a deterministic reasoning contract.
+
+## 2026-06-30: Model Knowledge as Attributed Facts
+
+Decision: implement `atlas.domains.knowledge` as immutable nodes, edges,
+facts, sources, references, and deterministic queries.
+
+Rationale: Atlas knowledge should be structured evidence, not generated
+opinion. The domain should remain independent of AI providers, vector databases,
+and graph storage so future Portfolio, Research, Decision Engine, and AI layers
+can share the same factual foundation.

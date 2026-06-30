@@ -85,6 +85,26 @@ This foundation does not generate trade recommendations, predictions, external
 market data, AI calls, or portfolio instructions. It exists to make future Atlas
 reasoning explainable and traceable.
 
+## Knowledge Domain
+
+Sprint 39 adds the Atlas Knowledge domain:
+`atlas.domains.knowledge`.
+
+The Knowledge domain is documented in
+[Knowledge Domain](docs/KnowledgeDomain.md). It provides deterministic,
+provider-independent structures for:
+
+- knowledge nodes
+- knowledge edges
+- attributed facts
+- sources
+- evidence references
+- relationship creation
+- simple deterministic queries
+
+Knowledge stores facts and explicit relationships. It does not generate
+opinions, use embeddings, call LLMs, or implement a graph database.
+
 ## MVP commands
 
 ```bash
