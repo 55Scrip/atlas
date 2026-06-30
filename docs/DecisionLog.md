@@ -43,3 +43,12 @@ Rationale: portfolio understanding is foundational to Atlas. A portfolio is not
 just a list of positions; it is a collection of investment decisions. The domain
 therefore starts with value, allocation, concentration, and data quality before
 any user-facing action language.
+
+## 2026-06-29: Separate Decision Reasoning From Recommendations
+
+Decision: add `atlas.domains.decision` as a non-advisory reasoning foundation
+instead of modifying the older action-oriented `atlas.decision` package.
+
+Rationale: Sprint 38 is about evidence, observations, unknowns, confidence, and
+explainability. Keeping the new domain separate preserves existing behavior and
+gives future AI services a deterministic reasoning contract.

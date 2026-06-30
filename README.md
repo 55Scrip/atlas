@@ -14,14 +14,14 @@ Atlas is guided by a small set of permanent product documents:
 - [Atlas Architecture](docs/ATLAS_ARCHITECTURE.md)
 - [Atlas Roadmap](docs/ATLAS_ROADMAP.md)
 
-Sprint 36 adds the Atlas Edge foundation documents:
+Sprint 36 adds the Atlas foundation documents:
 
 - [Architecture](docs/Architecture.md)
 - [Project Structure](docs/ProjectStructure.md)
 - [Decision Log](docs/DecisionLog.md)
 - [Development Guide](docs/DevelopmentGuide.md)
 
-## Atlas Edge Foundation
+## Atlas Foundation
 
 The repository is organized around clear long-term boundaries:
 
@@ -33,7 +33,7 @@ The repository is organized around clear long-term boundaries:
 - `atlas/ai/` defines replaceable AI service interfaces for future reasoning,
   knowledge, summary, discovery, and decision support services.
 - `frontend/`, `backend/`, `shared/`, `ai_services/`, and `infrastructure/`
-  reserve clear repository areas for future Atlas Edge development.
+  reserve clear repository areas for future Atlas platform development.
 
 The existing Python backend and CLI remain the working product. Sprint 36 adds
 architecture, documentation, strict TypeScript configuration for future frontend
@@ -41,7 +41,7 @@ work, CI, and local hook configuration without changing user-facing behavior.
 
 ## Portfolio Domain
 
-Sprint 37 adds the first real Atlas Edge product domain:
+Sprint 37 adds the first real Atlas product domain:
 `atlas.domains.portfolio`.
 
 The Portfolio domain is documented in
@@ -63,6 +63,27 @@ non-advisory portfolio understanding:
 
 This domain does not create trade recommendations, forecasts, external market
 data integrations, persistence, UI, or AI-generated analysis.
+
+## Decision Engine Foundation
+
+Sprint 38 adds the Atlas Decision domain:
+`atlas.domains.decision`.
+
+The Decision domain is documented in
+[Decision Engine Foundation](docs/DecisionEngine.md). It transforms structured
+evidence into structured reasoning:
+
+- evidence
+- observations
+- reasoning steps
+- unknowns
+- confidence
+- decision result
+- decision card
+
+This foundation does not generate trade recommendations, predictions, external
+market data, AI calls, or portfolio instructions. It exists to make future Atlas
+reasoning explainable and traceable.
 
 ## MVP commands
 

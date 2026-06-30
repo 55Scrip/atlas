@@ -2,7 +2,7 @@
 
 ## Sprint Mission
 
-Sprint 36 marks Atlas Edge's transition from blueprint to implementation.
+Sprint 36 marks Atlas' transition from blueprint to implementation.
 
 The mission was to strengthen the platform foundation without adding product
 features. The sprint focused on architecture, domain ownership, canonical shared
@@ -144,4 +144,3 @@ Recommended direction:
 - Avoid broad migrations.
 - Keep public behavior unchanged.
 - Add tests proving the new boundary improves clarity without adding coupling.
-
