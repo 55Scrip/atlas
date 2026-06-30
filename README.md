@@ -154,6 +154,32 @@ Company Analysis helps investors understand businesses. It does not create
 trade recommendations, forecasts, price targets, external API calls, or
 AI-generated analysis.
 
+## Watchlist Intelligence Capability
+
+Sprint 42 adds the Atlas Watchlist Intelligence capability:
+`atlas.capabilities.watchlist_intelligence`.
+
+The capability is documented in
+[Watchlist Intelligence Capability](docs/WatchlistIntelligence.md). It consumes
+Research, Knowledge, and Company Analysis structures to generate a calm,
+deterministic watchlist intelligence report.
+
+Reports include:
+
+- Overview
+- Companies Needing Attention
+- Open Questions
+- Research Status
+- Knowledge Context
+- Company Analysis Context
+- Evidence Gaps
+- Unknowns
+- Suggested Next Research Steps
+
+Watchlist Intelligence helps investors understand what deserves study. It does
+not create trade recommendations, forecasts, price targets, external API calls,
+or AI-generated analysis.
+
 ## MVP commands
 
 ```bash

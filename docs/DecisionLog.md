@@ -85,3 +85,14 @@ explainable business understanding. Keeping it in `atlas.capabilities` prevents
 it from owning Knowledge, Research, or Decision responsibilities and preserves
 the Blueprint principle that Atlas helps investors understand businesses before
 forming conviction.
+
+## 2026-06-30: Build Watchlist Intelligence as Structured Observation
+
+Decision: implement `atlas.capabilities.watchlist_intelligence` as a consumer of
+Research, Knowledge, and Company Analysis structures rather than as a domain
+owner.
+
+Rationale: a watchlist should help investors track unanswered questions without
+creating noise or trading behavior. Keeping Watchlist Intelligence in
+`atlas.capabilities` preserves clean domain ownership and reinforces the
+Blueprint principle that Atlas supports understanding before action.
