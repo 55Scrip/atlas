@@ -73,3 +73,15 @@ Rationale: research should connect curiosity, evidence, assumptions, and open
 questions before Atlas reaches conclusions. Keeping Research independent of AI,
 UI, persistence, providers, and recommendations preserves the Blueprint
 principle that understanding comes before judgment.
+
+## 2026-06-30: Build Company Analysis as a Capability
+
+Decision: implement `atlas.capabilities.company_analysis` as a consumer of
+Company, Knowledge, Research, and Decision structures rather than as a new
+domain owner.
+
+Rationale: Company Analysis should organize existing structured evidence into
+explainable business understanding. Keeping it in `atlas.capabilities` prevents
+it from owning Knowledge, Research, or Decision responsibilities and preserves
+the Blueprint principle that Atlas helps investors understand businesses before
+forming conviction.

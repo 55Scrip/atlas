@@ -127,6 +127,33 @@ Research organizes curiosity into structured understanding. It does not create
 recommendations, forecasts, discovery feeds, market data integrations, or
 AI-generated analysis.
 
+## Company Analysis Capability
+
+Sprint 41 adds the Atlas Company Analysis capability:
+`atlas.capabilities.company_analysis`.
+
+The capability is documented in
+[Company Analysis Capability](docs/CompanyAnalysis.md). It consumes existing
+domain structures from Knowledge, Research, and Decision to generate a calm,
+deterministic, non-advisory company analysis report.
+
+Reports include:
+
+- Business Overview
+- What Matters
+- Supporting Evidence
+- Key Risks
+- Open Questions
+- Research Context
+- Knowledge Context
+- Decision Context
+- Confidence
+- What Could Change the View
+
+Company Analysis helps investors understand businesses. It does not create
+trade recommendations, forecasts, price targets, external API calls, or
+AI-generated analysis.
+
 ## MVP commands
 
 ```bash
