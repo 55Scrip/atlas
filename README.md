@@ -105,6 +105,28 @@ provider-independent structures for:
 Knowledge stores facts and explicit relationships. It does not generate
 opinions, use embeddings, call LLMs, or implement a graph database.
 
+## Research Domain
+
+Sprint 40 adds the Atlas Research domain:
+`atlas.domains.research`.
+
+The Research domain is documented in
+[Research Domain](docs/ResearchDomain.md). It provides deterministic structures
+for:
+
+- research projects
+- research notes
+- research questions
+- assumptions
+- thesis fragments
+- evidence references
+- research summaries
+- validation
+
+Research organizes curiosity into structured understanding. It does not create
+recommendations, forecasts, discovery feeds, market data integrations, or
+AI-generated analysis.
+
 ## MVP commands
 
 ```bash

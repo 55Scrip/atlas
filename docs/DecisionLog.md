@@ -62,3 +62,14 @@ Rationale: Atlas knowledge should be structured evidence, not generated
 opinion. The domain should remain independent of AI providers, vector databases,
 and graph storage so future Portfolio, Research, Decision Engine, and AI layers
 can share the same factual foundation.
+
+## 2026-06-30: Model Research as Structured Understanding
+
+Decision: implement `atlas.domains.research` as research projects, notes,
+questions, assumptions, evidence references, thesis fragments, summaries, and
+validation.
+
+Rationale: research should connect curiosity, evidence, assumptions, and open
+questions before Atlas reaches conclusions. Keeping Research independent of AI,
+UI, persistence, providers, and recommendations preserves the Blueprint
+principle that understanding comes before judgment.
