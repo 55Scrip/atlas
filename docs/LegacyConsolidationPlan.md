@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-01 (Sprint 78)  
-**Status:** Active — Sprint 78 target complete; Sprint 79 target to be selected
+**Updated:** 2026-07-01 (Sprint 79)  
+**Status:** Active — Sprint 79 target complete; Sprint 80 target to be selected
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -60,7 +60,7 @@ from legacy modules. This is a known tech debt item.
 
 | Module | Files | Lines | Description | Runtime CLI usage |
 |---|---|---|---|---|
-| `atlas/analysis/` | 18 | 1985 | Company, portfolio, watchlist, memory, scoring engines | `atlas analyze`, `atlas watchlist analyze`, etc. |
+| `atlas/analysis/` | 18 | 1985 | Company, portfolio, watchlist, memory, scoring engines | `atlas analyze`, `atlas watchlist analyze` (deprecated 78), `atlas portfolio analyze` (deprecated 79), etc. |
 | `atlas/home/` | 2 | 625 | AtlasHomeEngine — top-level dashboard aggregator | `atlas home` |
 | `atlas/dashboard/` | 2 | 528 | DashboardEngine — weekly dashboard | `atlas dashboard show` |
 | `atlas/intelligence/` | 2 | 470 | IntelligenceEngine — company intelligence | `atlas intelligence analyze` |
@@ -228,6 +228,27 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 79 Migration Target — COMPLETED
+
+### Completed: `atlas portfolio analyze` command deprecated
+
+**Sprint 79 result:**
+- `atlas portfolio analyze` CLI command now prints a deprecation message and exits cleanly (exit 0)
+- `PortfolioIntelligenceEngine` and `render_portfolio_analysis` removed from `atlas/cli/main.py` imports
+- `atlas portfolio summary` (Blueprint-aligned, no provider calls) is the current supported command
+- `atlas portfolio review` is **unchanged** — separate legacy path, not in Sprint 79 scope
+- `atlas/analysis/portfolio.py` remains on disk; `Portfolio` type still used by summary and review commands
+- 10 new Sprint 79 deprecation tests; 1018 tests passing, 0 failures
+
+**`atlas portfolio review` status:** unchanged. It still uses the legacy `PortfolioReviewEngine`.
+This is separate technical debt documented for a future sprint.
+
+**Future removal criteria for `atlas portfolio analyze` command:**
+1. Remove command body entirely in Sprint 80 (or leave deprecated stub)
+2. `PortfolioIntelligenceEngine` deletion safe once `atlas portfolio review` and other consumers are retired
 
 ---
 

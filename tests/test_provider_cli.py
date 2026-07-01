@@ -64,8 +64,10 @@ def test_portfolio_cli_accepts_yahoo_provider(monkeypatch, tmp_path):
         ["portfolio", "analyze", str(path), "NVDA", "--provider", "yahoo"],
     )
 
+    # Sprint 79: atlas portfolio analyze is deprecated — shows deprecation message regardless of provider
     assert result.exit_code == 0
-    assert "Portfolio Analysis" in result.output
+    assert "deprecated" in result.output.lower()
+    assert "portfolio summary" in result.output.lower()
 
 
 def test_watchlist_cli_accepts_yahoo_provider(monkeypatch, tmp_path):

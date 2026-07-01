@@ -148,8 +148,7 @@ def test_portfolio_cli_outputs_report(tmp_path):
 
     result = runner.invoke(app, ["portfolio", "analyze", str(path), "NVDA"])
 
+    # Sprint 79: atlas portfolio analyze is deprecated — expect deprecation message
     assert result.exit_code == 0
-    assert "Portfolio Analysis" in result.output
-    assert "Portfolio Recommendation: Neutral" in result.output
-    assert "Diversification Impact" in result.output
-    assert "Final Reasoning" in result.output
+    assert "deprecated" in result.output.lower()
+    assert "portfolio summary" in result.output.lower()

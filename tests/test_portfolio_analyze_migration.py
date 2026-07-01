@@ -89,71 +89,48 @@ def _multi_holding_positions() -> list[dict]:
 
 
 def test_analyze_rejects_empty_portfolio_same_as_before(tmp_path: Path) -> None:
+    # Sprint 79: deprecated command exits 0 regardless of portfolio content
     path = _write_portfolio(tmp_path, [])
     result = runner.invoke(app, ["portfolio", "analyze", str(path), "AAPL"])
-    assert result.exit_code == 1
-    assert "Portfolio analysis failed" in result.stdout
+    assert result.exit_code == 0
+    assert "deprecated" in result.stdout.lower()
 
 
 def test_analyze_output_still_contains_original_fit_score_sections(tmp_path: Path) -> None:
+    # Sprint 79: deprecated — shows deprecation message, not legacy analysis sections
     path = _write_portfolio(tmp_path, _single_holding_positions())
     result = runner.invoke(app, ["portfolio", "analyze", str(path), "AAPL"])
 
     assert result.exit_code == 0
-    # Original PortfolioAnalysis sections are unchanged.
-    assert "Portfolio Analysis" in result.stdout
-    assert "Portfolio Recommendation:" in result.stdout
-    assert "Diversification Impact" in result.stdout
-    assert "Sector Concentration" in result.stdout
-    assert "Country Concentration" in result.stdout
-    assert "Market Cap Concentration" in result.stdout
-    assert "Overlap Analysis" in result.stdout
-    assert "Final Reasoning" in result.stdout
-    # No buy/sell/strong-buy language was introduced.
-    forbidden_terms = ("buy", "sell", "strong buy")
-    lowered = result.stdout.lower()
-    for term in forbidden_terms:
-        assert term not in lowered
+    assert "deprecated" in result.stdout.lower()
+    assert "portfolio summary" in result.stdout.lower()
 
 
 def test_analyze_output_now_appends_portfolio_domain_summary(tmp_path: Path) -> None:
+    # Sprint 79: deprecated — directs to atlas portfolio summary instead
     path = _write_portfolio(tmp_path, _multi_holding_positions())
     result = runner.invoke(app, ["portfolio", "analyze", str(path), "AAPL"])
 
     assert result.exit_code == 0
-    assert "Portfolio Summary (Portfolio Domain)" in result.stdout
-    assert "Sector Allocation" in result.stdout
-    assert "Country Allocation" in result.stdout
-    assert "Top Holdings" in result.stdout
-
-    # The appended domain section comes after the original analysis section.
-    analysis_index = result.stdout.index("Final Reasoning")
-    domain_index = result.stdout.index("Portfolio Summary (Portfolio Domain)")
-    assert domain_index > analysis_index
+    assert "deprecated" in result.stdout.lower()
+    assert "portfolio summary" in result.stdout.lower()
 
 
 def test_analyze_domain_summary_matches_independent_domain_calculation(tmp_path: Path) -> None:
-    positions = _multi_holding_positions()
-    path = _write_portfolio(tmp_path, positions)
-
-    legacy_portfolio = LegacyPortfolio.from_mapping({"positions": positions})
-    expected_summary = portfolio_summary(legacy_portfolio_to_domain_portfolio(legacy_portfolio))
-
+    # Sprint 79: deprecated — domain calculation now accessed via atlas portfolio summary directly
+    path = _write_portfolio(tmp_path, _multi_holding_positions())
     result = runner.invoke(app, ["portfolio", "analyze", str(path), "AAPL"])
-
     assert result.exit_code == 0
-    assert f"Largest weight: {expected_summary.largest_weight:.1%}" in result.stdout
-    assert f"Concentration: {expected_summary.concentration.level.value}" in result.stdout
-    assert expected_summary.concentration.level == ConcentrationLevel.HIGH
+    assert "deprecated" in result.stdout.lower()
 
 
 def test_analyze_with_single_holding(tmp_path: Path) -> None:
+    # Sprint 79: deprecated — no legacy output, just deprecation notice
     path = _write_portfolio(tmp_path, _single_holding_positions())
     result = runner.invoke(app, ["portfolio", "analyze", str(path), "AAPL"])
 
     assert result.exit_code == 0
-    assert "Number of holdings: 1" in result.stdout
-    assert "Largest weight: 100.0%" in result.stdout
+    assert "deprecated" in result.stdout.lower()
 
 
 def test_analyze_is_deterministic_across_repeated_runs(tmp_path: Path) -> None:
@@ -180,8 +157,10 @@ def test_analyze_default_provider_makes_no_network_call(tmp_path: Path, monkeypa
 
 
 def test_analyze_unknown_provider_still_fails_cleanly(tmp_path: Path) -> None:
+    # Sprint 79: deprecated command exits 0 and shows deprecation message regardless of provider
     path = _write_portfolio(tmp_path, _single_holding_positions())
     result = runner.invoke(
         app, ["portfolio", "analyze", str(path), "AAPL", "--provider", "bogus"]
     )
-    assert result.exit_code == 1
+    assert result.exit_code == 0
+    assert "deprecated" in result.stdout.lower()

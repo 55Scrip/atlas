@@ -859,3 +859,15 @@ brief path (where DailyBriefEngine had only one CLI consumer), WatchlistEngine
 is used by 5 other legacy engines. The CLI deprecation is safe and immediate;
 full WatchlistEngine deletion requires retiring those 5 dependent engines first,
 which is a larger multi-sprint effort outside Sprint 78's scope.
+
+## 2026-07-01: Deprecate `atlas portfolio analyze` Command (Sprint 79)
+
+Decision: deprecate `atlas portfolio analyze` in favor of `atlas portfolio
+summary` (Blueprint-aligned, no providers). The command now prints a
+deprecation message and exits without calling `PortfolioIntelligenceEngine`
+or any provider.
+
+Rationale: Follows the two-step pattern from Sprints 76–78. `atlas portfolio
+summary` already exists as the Blueprint-aligned replacement. `atlas portfolio
+review` is left unchanged in this sprint — it is a separate legacy path with
+its own review engine and will be addressed in Sprint 80 or later.

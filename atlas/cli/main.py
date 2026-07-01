@@ -15,11 +15,7 @@ from atlas.analysis.memory import (
     render_memory_comparison,
     render_memory_entries,
 )
-from atlas.analysis.portfolio import (
-    Portfolio,
-    PortfolioIntelligenceEngine,
-    render_portfolio_analysis,
-)
+from atlas.analysis.portfolio import Portfolio
 from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
 from atlas.domains.portfolio import portfolio_summary as domain_portfolio_summary
 from atlas.analysis.report import build_investment_report, render_investment_report
@@ -692,27 +688,30 @@ def market_health_command():
 
 @portfolio_app.command("analyze")
 def portfolio_analyze_command(
-    portfolio_path: Path,
-    ticker: str,
-    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+    portfolio_path: Path = typer.Argument(
+        ...,
+        help="[DEPRECATED] Portfolio JSON path. Use 'atlas portfolio summary' instead.",
+    ),
+    ticker: str = typer.Argument(
+        ...,
+        help="[DEPRECATED] Ticker to analyze. Use 'atlas portfolio summary' instead.",
+    ),
+    provider_name: str = typer.Option("mock", "--provider", help="[DEPRECATED] Data provider."),
 ):
-    """Analyze a company in the context of an existing portfolio."""
-    try:
-        provider = _provider_from_name(provider_name)
-        portfolio = Portfolio.from_json_file(portfolio_path)
-        analysis = PortfolioIntelligenceEngine().analyze_ticker(
-            portfolio=portfolio,
-            ticker=ticker,
-            provider=provider,
-        )
-        domain_summary = domain_portfolio_summary(legacy_portfolio_to_domain_portfolio(portfolio))
-    except (FileNotFoundError, LookupError, ValueError) as exc:
-        console.print(f"[red]Portfolio analysis failed:[/red] {exc}")
-        raise typer.Exit(code=1) from exc
+    """[DEPRECATED] Legacy Portfolio Analyze — use 'atlas portfolio summary' instead.
 
-    console.print(render_portfolio_analysis(analysis))
-    console.print("")
-    console.print(_render_portfolio_domain_summary(domain_summary))
+    This command is deprecated and will be removed in a future sprint.
+    Use the Blueprint-aligned command instead:
+
+        atlas portfolio summary
+    """
+    console.print(
+        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas portfolio analyze[/bold] is deprecated.\n"
+        "Use [bold]atlas portfolio summary[/bold] for the Blueprint-aligned Portfolio Domain workflow.\n"
+        "\n"
+        "    atlas portfolio summary --help"
+    )
+    raise typer.Exit(code=0)
 
 
 @portfolio_app.command("summary")
