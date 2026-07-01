@@ -246,7 +246,6 @@ def test_risk_cli_outputs_position_sizing_report(tmp_path):
 
     result = runner.invoke(app, ["risk", "size", str(path)])
 
+    # Sprint 83: atlas risk size is deprecated — expect deprecation message
     assert result.exit_code == 0
-    assert "Risk & Position Sizing Analysis" in result.output
-    assert "Risk Profile: Balanced" in result.output
-    assert "Suggested Initial Investment: $3,000.00" in result.output
+    assert "deprecated" in result.output.lower()

@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-01 (Sprint 82)  
-**Status:** Active — Sprint 82 target complete; Sprint 83 target to be selected
+**Updated:** 2026-07-01 (Sprint 83)  
+**Status:** Active — Sprint 83 target complete; Sprint 84 target to be selected
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -82,7 +82,7 @@ All Group B modules:
 |---|---|---|---|---|
 | `atlas/evidence/` | 2 | 563 | EvidenceQualityEngine — scores evidence claims | `atlas evidence assess` |
 | `atlas/reasoning/` | 2 | 591 | ReasoningEngine — structured reasoning output | `atlas reason analyze` |
-| `atlas/risk/` | 2 | 469 | RiskEngine, PositionSizingInput | `atlas risk size` |
+| `atlas/risk/` | 2 | 469 | RiskEngine, PositionSizingInput | ~~`atlas risk size`~~ (deprecated Sprint 83) |
 | `atlas/risk_drift/` | 2 | 682 | RiskDriftEngine — position drift detection | `atlas risk-drift analyze` |
 | `atlas/economics/` | 2 | 532 | EconomicSignalsEngine | `atlas economics analyze` |
 | `atlas/language/` | 2 | 493 | AtlasLanguageEngine — output language calibration | Used internally by `daily_brief` |
@@ -228,6 +228,25 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 83 Migration Target — COMPLETED
+
+### Completed: `atlas risk size` command deprecated
+
+**Sprint 83 result:**
+- `atlas risk size` CLI command now prints a deprecation message and exits cleanly (exit 0)
+- No replacement command invented — message directs toward Blueprint-aligned portfolio, decision and research capabilities (future)
+- `RiskEngine`, `PositionSizingInput`, `render_risk_analysis` removed from `atlas/cli/main.py` imports
+- `atlas/risk/` engine remains on disk; `RiskAnalysis` type is still imported by `atlas/intelligence/`, `atlas/reasoning/`, and `atlas/conversation/` engines
+- 16 new Sprint 83 deprecation tests (including regression checks for all 6 prior deprecated commands); 1068 tests passing
+
+**`RiskEngine` isolation note:** `RiskEngine` and `PositionSizingInput` are no longer called by any CLI command. Other legacy engines import only `RiskAnalysis` (a data type), not the engine class. The engine class itself is unused.
+
+**Future removal criteria:**
+1. Remove command body in a future sprint (or leave deprecated stub)
+2. `atlas.risk.RiskEngine` deletion requires confirming no other engine instantiates it
 
 ---
 

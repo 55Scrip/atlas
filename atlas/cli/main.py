@@ -101,7 +101,6 @@ from atlas.risk_drift import (
     RiskDriftInput,
     render_risk_drift_assessment,
 )
-from atlas.risk import PositionSizingInput, RiskEngine, render_risk_analysis
 from atlas.services.database_service import init_database
 from atlas.services.company_service import add_company, list_companies
 from atlas.services.financial_import_service import import_financials
@@ -991,16 +990,23 @@ def risk_drift_analyze_command(
 
 
 @risk_app.command("size")
-def risk_size_command(risk_input_path: Path):
-    """Analyze position size, liquidity, concentration, and deployment pacing."""
-    try:
-        sizing_input = PositionSizingInput.from_json_file(risk_input_path)
-        analysis = RiskEngine().analyze(sizing_input)
-    except (FileNotFoundError, ValueError) as exc:
-        console.print(f"[red]Risk sizing failed:[/red] {exc}")
-        raise typer.Exit(code=1) from exc
+def risk_size_command(
+    risk_input_path: Path = typer.Argument(
+        ...,
+        help="[DEPRECATED] Risk sizing input JSON path.",
+    ),
+):
+    """[DEPRECATED] Legacy Risk Size — risk sizing is being consolidated.
 
-    console.print(render_risk_analysis(analysis))
+    This command is deprecated and will be removed in a future sprint.
+    Risk sizing is being consolidated into Blueprint-aligned portfolio,
+    decision and research capabilities.
+    """
+    console.print(
+        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas risk size[/bold] is deprecated.\n"
+        "Risk sizing is being consolidated into Blueprint-aligned portfolio, decision and research capabilities."
+    )
+    raise typer.Exit(code=0)
 
 
 @suitability_app.command("analyze")

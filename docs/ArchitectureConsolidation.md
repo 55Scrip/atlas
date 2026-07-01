@@ -444,3 +444,16 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 14 new Sprint 82 deprecation tests. 1054 tests passing.
 - Recommended Sprint 83 target: continue Group C deprecations — e.g.,
   `atlas risk size` (RiskEngine, self-contained, no providers).
+
+**Sprint 83 (2026-07-01):** `atlas risk size` deprecated.
+- `RiskEngine`, `PositionSizingInput`, `render_risk_analysis` removed from
+  `atlas/cli/main.py` module-level imports.
+- No replacement command invented — message references Blueprint-aligned
+  portfolio, decision and research capabilities (future consolidation direction).
+- `atlas/risk/` engine remains on disk; `RiskAnalysis` type still imported by
+  `atlas/intelligence/`, `atlas/reasoning/`, and `atlas/conversation/` engines.
+  `RiskEngine` class itself has no remaining callers outside deprecated CLI.
+- All 6 prior deprecated commands confirmed still deprecated via regression tests.
+- 16 new Sprint 83 deprecation tests. 1068 tests passing.
+- Recommended Sprint 84 target: continue Group C deprecations — e.g.,
+  `atlas risk-drift analyze` (RiskDriftEngine, self-contained, no providers).

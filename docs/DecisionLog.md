@@ -915,3 +915,24 @@ still lazily imported by `atlas/principles/engine.py`.
 Note: `atlas/domains/decision/engine.py` defines a separate `ReasoningEngine`
 class (Blueprint-aligned protocol) — this is distinct from the legacy
 `atlas.reasoning.ReasoningEngine` and is unaffected by this sprint.
+
+---
+
+## Sprint 83 — 2026-07-01: Deprecate `atlas risk size`
+
+**Decision:** Deprecate `atlas risk size` CLI command (stub, exit 0) rather
+than deleting it immediately.
+
+**Rationale:** Same safe two-step pattern as Sprints 76–82. The `atlas/risk/`
+engine is self-contained (Group C) and has no provider dependencies in the CLI
+path. However, `RiskAnalysis` (a data type) is still imported by
+`atlas/intelligence/`, `atlas/reasoning/`, and `atlas/conversation/` engines.
+`RiskEngine` itself has no remaining non-CLI callers — but engine deletion
+belongs to a future sprint after those consumers are confirmed removable.
+
+**Alternatives considered:**
+- Immediate deletion: too broad; `RiskAnalysis` type still in use elsewhere.
+- Immediate migration: no Blueprint-aligned risk-sizing capability exists yet;
+  inventing a replacement command would be premature.
+
+**Outcome:** 16 new Sprint 83 deprecation tests; 1068 tests passing.
