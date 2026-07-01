@@ -171,13 +171,19 @@ the only CLI-wired input.
 **Sprint 49** added `atlas/capabilities/daily_brief/input_builder.py`, a typed
 builder (`build_daily_brief_input`) that correctly transforms all five supported
 input types into `DailyBriefInput`. The engine's attribute-name mismatches
-against real Atlas types (ResearchNote, WatchlistIntelligenceReport,
-DiscoveryCandidate, CompanyAnalysisReport) were also fixed so duck-typed access
-now resolves to the correct fields. 392 tests pass; 39 new tests cover the
-builder and each integration target end-to-end.
+against real Atlas types were also fixed. 392 tests pass; 39 new tests cover
+the builder and each integration target end-to-end.
+
+**Sprint 50** added `atlas/capabilities/daily_brief/json_loader.py` and extended
+`atlas daily summary` with four new CLI flags: `--research`, `--watchlist`,
+`--discovery`, and `--company-analysis`. Each flag accepts a local JSON file,
+parses it into a lightweight structured type, feeds it through the Sprint 49
+input builder, and generates a deterministic Daily Brief report. No network
+calls are made. 433 tests pass; 41 new tests cover all new CLI flags, error
+handling, multi-flag composition, language safety, and no-network constraints.
 
 The legacy `atlas.daily_brief` engine (powering `atlas daily brief`) is
-untouched in both sprints.
+untouched across all sprints.
 
 ## Rules for Future Sprints
 

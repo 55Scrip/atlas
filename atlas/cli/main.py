@@ -39,7 +39,15 @@ from atlas.dashboard import DashboardEngine, DashboardInput, render_dashboard
 from atlas.daily import DailyBriefEngine, DailyBriefInput, render_daily_brief
 from atlas.capabilities.daily_brief import DailyBriefCapability
 from atlas.capabilities.daily_brief import DailyBriefInput as CapDailyBriefInput
+from atlas.capabilities.daily_brief import build_daily_brief_input
 from atlas.capabilities.daily_brief.engine import render_daily_brief_report
+from atlas.capabilities.daily_brief.json_loader import (
+    load_json_file,
+    parse_company_analysis_json,
+    parse_discovery_json,
+    parse_research_json,
+    parse_watchlist_json,
+)
 from atlas.decision_journal import (
     DecisionJournalEngine,
     render_decision_journal_entries,
@@ -434,21 +442,64 @@ def daily_brief_command(
 @daily_app.command("summary")
 def daily_summary_command(
     portfolio_path: Path | None = typer.Option(
-        None,
-        "--portfolio",
-        help="Portfolio JSON path (optional)",
+        None, "--portfolio", help="Portfolio JSON path (optional)",
+    ),
+    research_path: Path | None = typer.Option(
+        None, "--research", help="Research JSON path (optional)",
+    ),
+    watchlist_path: Path | None = typer.Option(
+        None, "--watchlist", help="Watchlist intelligence JSON path (optional)",
+    ),
+    discovery_path: Path | None = typer.Option(
+        None, "--discovery", help="Discovery report JSON path (optional)",
+    ),
+    company_analysis_path: Path | None = typer.Option(
+        None, "--company-analysis", help="Company analysis JSON path (optional)",
     ),
 ):
-    """Show a deterministic Daily Brief from Blueprint-aligned Portfolio Domain inputs."""
+    """Show a deterministic Daily Brief from Blueprint-aligned domain inputs.
+
+    All flags are optional. With no flags the brief reports no meaningful
+    developments. Each flag accepts a local JSON file — no network calls
+    are made regardless of which flags are provided.
+    """
     try:
         portfolio_summary_data = None
         if portfolio_path is not None:
             legacy_portfolio = Portfolio.from_json_file(portfolio_path)
             domain_portfolio = legacy_portfolio_to_domain_portfolio(legacy_portfolio)
             portfolio_summary_data = domain_portfolio_summary(domain_portfolio)
-        brief = DailyBriefCapability().generate(
-            CapDailyBriefInput(portfolio_summary=portfolio_summary_data)
+
+        research_notes: tuple = ()
+        extra_questions: tuple[str, ...] = ()
+        if research_path is not None:
+            raw = load_json_file(research_path)
+            research_notes, extra_questions = parse_research_json(raw, research_path)
+
+        watchlist_report = None
+        if watchlist_path is not None:
+            raw = load_json_file(watchlist_path)
+            watchlist_report = parse_watchlist_json(raw, watchlist_path)
+
+        discovery_report = None
+        if discovery_path is not None:
+            raw = load_json_file(discovery_path)
+            discovery_report = parse_discovery_json(raw, discovery_path)
+
+        company_reports: tuple = ()
+        if company_analysis_path is not None:
+            raw = load_json_file(company_analysis_path)
+            company_reports = parse_company_analysis_json(raw, company_analysis_path)
+
+        brief_input = build_daily_brief_input(
+            portfolio_summary=portfolio_summary_data,
+            research_notes=research_notes,
+            company_reports=company_reports,
+            watchlist_report=watchlist_report,
+            discovery_report=discovery_report,
+            open_research_questions=extra_questions,
         )
+        brief = DailyBriefCapability().generate(brief_input)
     except (FileNotFoundError, ValueError) as exc:
         console.print(f"[red]Daily summary failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc

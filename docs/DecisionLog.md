@@ -137,6 +137,25 @@ market-cap concentration impact, overlap, expected quality/risk impact, and
 the `Strong Add`/`Add`/`Neutral`/`Reduce`/`Avoid` recommendation) completely
 unchanged.
 
+## 2026-07-01: Extend Daily Brief CLI with Local JSON Input Flags (Sprint 50)
+
+Decision: add `--research`, `--watchlist`, `--discovery`, and `--company-analysis`
+flags to `atlas daily summary`, backed by a new `json_loader.py` module that
+parses local JSON files into lightweight structured types the Daily Brief engine
+can consume, and route those parsed objects through the Sprint 49 `build_daily_brief_input`
+builder before calling `DailyBriefCapability.generate()`.
+
+Rationale: the Sprint 49 capability integration proved all five input types work
+correctly at the library level. Sprint 50 closes the gap between capability-level
+integration and runtime usability without requiring a full JSON serialisation
+round-trip for existing Atlas capability outputs. Each flag reads a local file
+only, validates the JSON shape enough to fail cleanly on bad input, and makes no
+network calls. The `json_loader.py` module uses minimal dataclasses (not the full
+typed Atlas models) because the engine already uses duck-typed `getattr` access —
+this keeps the loader self-contained, easy to test, and easy to extend. The
+`--portfolio` flag was already present from Sprint 48; the four new flags follow
+the same additive pattern.
+
 ## 2026-07-01: Connect Daily Brief to Typed Atlas Structures (Sprint 49)
 
 Decision: create `atlas.capabilities.daily_brief.input_builder.build_daily_brief_input`

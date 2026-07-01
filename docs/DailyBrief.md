@@ -123,14 +123,111 @@ Verified by `tests/test_architecture_boundaries.py` and
 ## CLI Behavior
 
 ```bash
-# Blueprint-aligned (Sprint 48)
+# Blueprint-aligned (Sprint 48–50)
 atlas daily summary                              # no-input mode, always succeeds
 atlas daily summary --portfolio portfolio.json   # with portfolio domain context
+atlas daily summary --research research.json     # with research notes and open questions
+atlas daily summary --watchlist watchlist.json   # with watchlist intelligence context
+atlas daily summary --discovery discovery.json   # with discovery candidates
+atlas daily summary --company-analysis company.json  # with company analysis context
+
+# All flags are composable
+atlas daily summary \
+  --portfolio portfolio.json \
+  --research research.json \
+  --watchlist watchlist.json \
+  --discovery discovery.json \
+  --company-analysis company.json
 
 # Legacy (unchanged)
 atlas daily brief                                # original multi-engine brief
 atlas daily brief --portfolio portfolio.json     # with legacy portfolio context
 ```
+
+All flags are optional. With no flags the command always succeeds and reports
+"No meaningful developments were identified from the available inputs."
+No network calls are made regardless of which flags are supplied.
+
+## JSON Input Formats
+
+### Research JSON (`--research`)
+
+```json
+{
+  "notes": [
+    {
+      "id": "n1",
+      "title": "NVDA deep dive",
+      "body": "Initial thesis forming around GPU demand.",
+      "created_at": "2026-07-01",
+      "related_tickers": ["NVDA"]
+    }
+  ],
+  "open_questions": [
+    "What is the TAM for data centre GPU?",
+    "Who owns the supply chain?"
+  ]
+}
+```
+
+`notes` and `open_questions` are both optional. `open_questions` may be plain
+strings or omitted. Questions appear in "Unresolved Questions" in the output.
+
+### Watchlist JSON (`--watchlist`)
+
+```json
+{
+  "name": "My Watchlist",
+  "open_questions": [
+    {"id": "wq1", "question": "What is NVDA's competitive moat?", "status": "open"}
+  ],
+  "suggested_next_research_steps": [
+    "Research NVDA supply chain constraints."
+  ]
+}
+```
+
+`open_questions` items may also be plain strings. All fields are optional.
+
+### Discovery JSON (`--discovery`)
+
+```json
+{
+  "candidates": [
+    {
+      "identifier": "ASML",
+      "title": "ASML Holding",
+      "reasons": [
+        {"title": "Knowledge Fact", "detail": "Critical semiconductor equipment supplier."}
+      ],
+      "priority": "moderate"
+    }
+  ]
+}
+```
+
+`reasons` is optional; a fallback detail is used if omitted.
+`priority` is informational only and does not imply action.
+
+### Company Analysis JSON (`--company-analysis`)
+
+```json
+{
+  "company": {
+    "id": "nvda", "name": "NVIDIA Corporation",
+    "ticker": "NVDA", "sector": "Semiconductors"
+  },
+  "unknowns": [
+    {"title": "Competitive moat durability", "detail": "Evidence is limited."}
+  ],
+  "evidence_links": [
+    {"id": "ev1", "source": "10-K 2025", "description": "Revenue breakdown."}
+  ]
+}
+```
+
+Accepts a single object or a JSON array of multiple company reports.
+`unknowns` and `evidence_links` are optional.
 
 ## Integrated Input Sources (Sprint 49)
 
@@ -158,19 +255,20 @@ objects were passed without the builder:
 
 ## Known Limitations
 
-- `atlas daily summary` CLI currently only accepts `--portfolio`. Research notes,
-  watchlist reports, discovery reports, and company analysis reports are
-  supported at the capability level (via `build_daily_brief_input`) but are not
-  yet wired to CLI flags — they require structured JSON inputs that are not yet
-  part of the CLI.
+- `atlas daily summary` accepts local JSON files only. It does not export
+  structured JSON from existing Atlas commands (e.g. there is no
+  `atlas watchlist intelligence --output watchlist.json` today).
+  Users must produce these JSON files themselves or via future export commands.
 - The legacy `atlas daily brief` command still calls legacy engines (Market
   Health, Risk Drift, Economics, etc.) with no domain-native equivalents.
+- `knowledge_node_count` is accepted by `build_daily_brief_input` but not
+  yet wired to a CLI flag — there is no structured knowledge JSON export yet.
 
-## Recommendation for Sprint 50
+## Recommendation for Sprint 51
 
-Extend `atlas daily summary` CLI flags to accept structured JSON inputs for
-watchlist and discovery (e.g. `--watchlist watchlist.json`, `--discovery
-discovery.json`) so the capability can surface richer context at runtime.
+Add JSON export commands (e.g. `atlas watchlist intelligence --output watchlist.json`,
+`atlas discovery --output discovery.json`) so Daily Brief can consume
+real Atlas capability outputs without requiring manual JSON authoring.
 Alternatively, begin migrating `atlas journal` commands to the
 Blueprint-aligned decision domain, following the same additive pattern
-established in Sprints 45–49.
+established in Sprints 45–50.
