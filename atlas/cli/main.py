@@ -36,7 +36,6 @@ from atlas.conversation import (
     render_conversation_response,
 )
 from atlas.dashboard import DashboardEngine, DashboardInput, render_dashboard
-from atlas.daily_brief import DailyBriefEngine, DailyBriefInput, render_daily_brief
 from atlas.capabilities.daily_brief import DailyBriefCapability
 from atlas.capabilities.daily_brief import DailyBriefInput as CapDailyBriefInput
 from atlas.capabilities.daily_brief import build_daily_brief_input
@@ -426,38 +425,34 @@ def daily_brief_command(
     profile_path: Path = typer.Option(
         Path("atlas_profile.json"),
         "--profile",
-        help="Investor profile JSON path",
+        help="[DEPRECATED] Investor profile JSON path. Use 'atlas daily summary' instead.",
     ),
     portfolio_path: Path | None = typer.Option(
         None,
         "--portfolio",
-        help="Portfolio JSON path",
+        help="[DEPRECATED] Portfolio JSON path. Use 'atlas daily summary' instead.",
     ),
-    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+    provider_name: str = typer.Option("mock", "--provider", help="[DEPRECATED] Data provider."),
     ticker: str | None = typer.Option(
         None,
         "--ticker",
-        help="Optional ticker for dashboard context",
+        help="[DEPRECATED] Optional ticker for dashboard context.",
     ),
 ):
-    """Show a calm deterministic Atlas Daily briefing."""
-    try:
-        provider = _provider_from_name(provider_name)
-        profile = _profile_from_path_or_default(profile_path)
-        portfolio = Portfolio.from_json_file(portfolio_path) if portfolio_path else None
-        brief = DailyBriefEngine().build(
-            DailyBriefInput(
-                investor_profile=profile,
-                portfolio=portfolio,
-                provider=provider,
-                target_ticker=ticker,
-            )
-        )
-    except (FileNotFoundError, LookupError, ValueError) as exc:
-        console.print(f"[red]Daily brief failed:[/red] {exc}")
-        raise typer.Exit(code=1) from exc
+    """[DEPRECATED] Legacy Daily Brief — use 'atlas daily summary' instead.
 
-    console.print(render_daily_brief(brief))
+    This command is deprecated and will be removed in a future sprint.
+    Use the Blueprint-aligned command instead:
+
+        atlas daily summary
+    """
+    console.print(
+        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas daily brief[/bold] is deprecated.\n"
+        "Use [bold]atlas daily summary[/bold] for the Blueprint-aligned Daily Brief workflow.\n"
+        "\n"
+        "    atlas daily summary --help"
+    )
+    raise typer.Exit(code=0)
 
 
 @daily_app.command("summary")

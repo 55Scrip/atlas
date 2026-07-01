@@ -336,3 +336,17 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
   `atlas.analysis`, `atlas.portfolio_review`, etc.).
 - Domain layer is now clean of legacy imports. The boundary test will catch any
   future re-introduction.
+
+**Sprint 76 — completed:**
+
+- `atlas daily brief` CLI command deprecated. The command now prints a
+  deprecation notice and exits cleanly (exit 0) without calling `DailyBriefEngine`
+  or any provider.
+- `from atlas.daily_brief import ...` removed from `atlas/cli/main.py` module-level
+  imports — the legacy engine is no longer imported by any current code path.
+- `atlas/daily_brief/` (353 lines, provider-coupled legacy engine) remains on disk
+  but is now fully isolated: no CLI command, no test, and no adapter imports it.
+- `atlas daily summary` (Blueprint-aligned) is the current and only supported
+  Daily Brief command.
+- 10 new Sprint 76 deprecation tests. 1001 tests passing.
+- Recommended Sprint 77 target: delete `atlas/daily_brief/` entirely.

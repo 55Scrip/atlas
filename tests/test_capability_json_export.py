@@ -434,7 +434,9 @@ def test_existing_daily_summary_no_flags_still_works() -> None:
     assert "No meaningful developments" in result.stdout
 
 
-def test_existing_daily_brief_still_works() -> None:
+def test_existing_daily_brief_is_now_deprecated() -> None:
+    """Sprint 76: atlas daily brief is deprecated — shows deprecation message."""
     result = runner.invoke(app, ["daily", "brief"])
     assert result.exit_code == 0
-    assert "Atlas Daily Brief" in result.stdout
+    assert "deprecated" in result.stdout.lower()
+    assert "daily summary" in result.stdout.lower()

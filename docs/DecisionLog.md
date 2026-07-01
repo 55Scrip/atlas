@@ -822,3 +822,17 @@ core "Missing X" unknowns are eliminated and engine confidence improves to
 `moderate`. Only "Missing Evidence" remains when no knowledge facts are
 provided. Both flags are entirely optional — omitting them preserves Sprint 56
 behavior exactly. No new files were added; only `atlas/cli/main.py` was modified.
+
+## 2026-07-01: Deprecate `atlas daily brief` Command (Sprint 76)
+
+Decision: deprecate `atlas daily brief` in favor of `atlas daily summary`
+(Blueprint-aligned). The command now prints a deprecation message and exits
+without calling the legacy `DailyBriefEngine` or any provider.
+
+Rationale: Sprint 75 removed the `atlas/daily/` shim. The next natural step is
+to eliminate the remaining consumer of `atlas/daily_brief/` (the legacy
+provider-coupled engine). Option A (deprecate the command) is smaller and
+lower-risk than Option B (wire the command through the new capability). It
+reduces provider coupling without changing the Blueprint-aligned path.
+`atlas/daily_brief/` remains on disk to allow comparison and confirm no
+external consumers exist before deletion in Sprint 77 or later.

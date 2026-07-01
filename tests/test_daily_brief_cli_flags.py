@@ -511,8 +511,9 @@ def test_no_network_calls_with_all_flags(tmp_path: Path, monkeypatch) -> None:
     assert result.exit_code == 0
 
 
-def test_legacy_daily_brief_command_still_works() -> None:
+def test_legacy_daily_brief_command_is_deprecated() -> None:
+    """Sprint 76: atlas daily brief is deprecated — shows deprecation message."""
     result = runner.invoke(app, ["daily", "brief"])
     assert result.exit_code == 0
-    assert "Atlas Daily Brief" in result.stdout
-    assert "Bottom Line" in result.stdout
+    assert "deprecated" in result.stdout.lower()
+    assert "daily summary" in result.stdout.lower()

@@ -227,8 +227,7 @@ def test_daily_brief_cli_outputs_clean_text(tmp_path):
 
     result = runner.invoke(app, ["daily", "brief", "--portfolio", str(portfolio_path)])
 
+    # Sprint 76: atlas daily brief is deprecated — expect deprecation message, not brief content
     assert result.exit_code == 0
-    assert "Atlas Daily Brief" in result.output
-    assert "Bottom Line" in result.output
-    assert "What Changed" in result.output
-    assert "Why It Matters" in result.output
+    assert "deprecated" in result.output.lower()
+    assert "daily summary" in result.output.lower()
