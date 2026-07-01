@@ -253,22 +253,46 @@ objects were passed without the builder:
 - `CompanyAnalysisReport`: now reads `company.ticker` (was `ticker`) and `evidence_links` (was `evidence_gaps`)
 - `CompanyAnalysisUnknown`: now reads `title` as the question text (was `question`)
 
+## End-to-End Local Workflow (Sprint 51)
+
+Sprint 51 added JSON export commands so Daily Brief can consume real Atlas
+capability outputs without requiring manual JSON authoring:
+
+```bash
+# Step 1 — generate and export capability outputs
+atlas watchlist intelligence --output watchlist.json
+atlas discovery export --output discovery.json
+
+# Step 2 — consume exports in Daily Brief
+atlas daily summary \
+  --portfolio portfolio.json \
+  --watchlist watchlist.json \
+  --discovery discovery.json \
+  --research research.json \
+  --company-analysis company.json
+```
+
+Both export commands are local-only, deterministic, and make no network calls.
+
 ## Known Limitations
 
-- `atlas daily summary` accepts local JSON files only. It does not export
-  structured JSON from existing Atlas commands (e.g. there is no
-  `atlas watchlist intelligence --output watchlist.json` today).
-  Users must produce these JSON files themselves or via future export commands.
+- `atlas watchlist intelligence` and `atlas discovery export` run on empty
+  inputs today — they produce valid structural reports but no actual watchlist
+  items or discovery candidates unless the Blueprint-aligned capability inputs
+  (knowledge facts, research projects, company analysis) are wired to their own
+  CLI input flags in a future sprint.
 - The legacy `atlas daily brief` command still calls legacy engines (Market
   Health, Risk Drift, Economics, etc.) with no domain-native equivalents.
 - `knowledge_node_count` is accepted by `build_daily_brief_input` but not
   yet wired to a CLI flag — there is no structured knowledge JSON export yet.
+- Research and Company Analysis export commands do not yet exist; users must
+  author those JSON files manually following the formats in this document.
 
-## Recommendation for Sprint 51
+## Recommendation for Sprint 52
 
-Add JSON export commands (e.g. `atlas watchlist intelligence --output watchlist.json`,
-`atlas discovery --output discovery.json`) so Daily Brief can consume
-real Atlas capability outputs without requiring manual JSON authoring.
-Alternatively, begin migrating `atlas journal` commands to the
-Blueprint-aligned decision domain, following the same additive pattern
-established in Sprints 45–50.
+Wire real inputs to `atlas watchlist intelligence` and `atlas discovery export`
+so they can consume existing Atlas watchlist files, knowledge facts, and research
+projects, producing exports with actual structured content rather than empty reports.
+Alternatively, add `atlas research export --output research.json` and
+`atlas company-analysis export --output company.json` to complete the export
+pipeline for all Daily Brief input types.

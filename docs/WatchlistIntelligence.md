@@ -106,3 +106,35 @@ inputs from existing Atlas data:
 
 Adapters should remain deterministic, provider-free, and non-advisory.
 
+
+## JSON Export (Sprint 51)
+
+`atlas watchlist intelligence` generates a Blueprint-aligned Watchlist
+Intelligence report and optionally exports it as a local JSON file.
+
+```bash
+# Human-readable summary (stdout)
+atlas watchlist intelligence
+
+# Export to local JSON file
+atlas watchlist intelligence --output watchlist.json
+
+# Use the export as Daily Brief input
+atlas daily summary --watchlist watchlist.json
+```
+
+The `--output` flag writes a JSON file compatible with
+`atlas daily summary --watchlist`. The export includes:
+
+| Field | Purpose |
+|---|---|
+| `name` | Watchlist name |
+| `overview` | Plain-text overview |
+| `open_questions` | Questions surfaced across watchlist items |
+| `suggested_next_research_steps` | Deterministic research steps |
+| `companies_needing_attention` | Items that deserve review or more evidence |
+| `unknowns` | Missing evidence across watchlist items |
+| `evidence_gaps` | Specific evidence gaps identified |
+
+The export is local-only. No network calls are made. No recommendations
+are produced. The format is stable across Sprint 51.

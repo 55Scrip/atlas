@@ -137,6 +137,25 @@ market-cap concentration impact, overlap, expected quality/risk impact, and
 the `Strong Add`/`Add`/`Neutral`/`Reduce`/`Avoid` recommendation) completely
 unchanged.
 
+## 2026-07-01: Add Capability JSON Export Commands (Sprint 51)
+
+Decision: add `atlas watchlist intelligence [--output FILE]` and
+`atlas discovery export [--output FILE]` as the first capability export
+commands, backed by new `exporter.py` modules in each capability package that
+serialize the capability's native report type to a JSON dict matching the
+Sprint 50 Daily Brief input format.
+
+Rationale: Sprint 50 added Daily Brief `--watchlist` and `--discovery` CLI
+flags that accept local JSON files, but users had to author those files manually.
+Sprint 51 closes this gap by adding export commands that produce JSON in exactly
+the format the loaders expect, enabling a fully deterministic local workflow
+with no manual JSON authoring required. The exporters are pure functions with no
+side effects; the CLI commands produce human-readable output by default and write
+JSON only when `--output` is supplied, preserving the useful plain-text output
+path. Both commands run on empty inputs (no watchlist items, no discovery inputs)
+which produces valid structural JSON that Daily Brief can consume — wiring real
+structured inputs to the export commands is deferred to Sprint 52.
+
 ## 2026-07-01: Extend Daily Brief CLI with Local JSON Input Flags (Sprint 50)
 
 Decision: add `--research`, `--watchlist`, `--discovery`, and `--company-analysis`

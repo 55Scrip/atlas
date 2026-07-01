@@ -48,6 +48,13 @@ from atlas.capabilities.daily_brief.json_loader import (
     parse_research_json,
     parse_watchlist_json,
 )
+from atlas.capabilities.watchlist_intelligence import (
+    WatchlistIntelligenceEngine,
+    WatchlistIntelligenceInput,
+)
+from atlas.capabilities.watchlist_intelligence.exporter import watchlist_report_to_dict
+from atlas.capabilities.discovery import DiscoveryEngine, DiscoveryInput
+from atlas.capabilities.discovery.exporter import discovery_report_to_dict
 from atlas.decision_journal import (
     DecisionJournalEngine,
     render_decision_journal_entries,
@@ -118,6 +125,7 @@ from atlas.themes import ThemeEngine, ThemeInput, render_theme_analysis
 app = typer.Typer(help="Atlas investment research platform")
 dashboard_app = typer.Typer(help="Atlas home dashboard commands")
 daily_app = typer.Typer(help="Atlas daily briefing commands")
+discovery_app = typer.Typer(help="Discovery capability commands")
 economics_app = typer.Typer(help="Economic signals commands")
 evidence_app = typer.Typer(help="Evidence quality commands")
 intelligence_app = typer.Typer(help="Atlas intelligence synthesis commands")
@@ -136,6 +144,7 @@ theme_app = typer.Typer(help="Theme intelligence commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
 app.add_typer(dashboard_app, name="dashboard")
 app.add_typer(daily_app, name="daily")
+app.add_typer(discovery_app, name="discovery")
 app.add_typer(economics_app, name="economics")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(intelligence_app, name="intelligence")
@@ -1033,6 +1042,84 @@ def theme_analyze_command(theme: str):
     console.print(render_theme_analysis(analysis))
 
 
+@watchlist_app.command("intelligence")
+def watchlist_intelligence_command(
+    output_path: Path | None = typer.Option(
+        None, "--output", help="Write JSON export to this file path.",
+    ),
+):
+    """Generate a Blueprint-aligned Watchlist Intelligence report.
+
+    Runs WatchlistIntelligenceEngine on an empty input and either prints a
+    human-readable summary or writes a JSON export to --output. The JSON
+    export is compatible with `atlas daily summary --watchlist`.
+    """
+    try:
+        report = WatchlistIntelligenceEngine().analyze(
+            WatchlistIntelligenceInput(name="My Watchlist")
+        )
+        if output_path is not None:
+            _write_json_export(output_path, watchlist_report_to_dict(report))
+            console.print(f"Watchlist Intelligence report written to {output_path}")
+            return
+    except (OSError, ValueError) as exc:
+        console.print(f"[red]Watchlist intelligence failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    lines = [
+        "Watchlist Intelligence",
+        "",
+        report.overview,
+    ]
+    if report.open_questions:
+        lines += ["", "Open Questions"]
+        for q in report.open_questions:
+            lines.append(f"  - {q.question}")
+    if report.suggested_next_research_steps:
+        lines += ["", "Suggested Next Research Steps"]
+        for step in report.suggested_next_research_steps:
+            lines.append(f"  - {step}")
+    if not report.open_questions and not report.companies_needing_attention:
+        lines += ["", "No items require attention at this time."]
+    console.print("\n".join(lines))
+
+
+@discovery_app.command("export")
+def discovery_export_command(
+    output_path: Path | None = typer.Option(
+        None, "--output", help="Write JSON export to this file path.",
+    ),
+):
+    """Generate a Blueprint-aligned Discovery report.
+
+    Runs DiscoveryEngine on an empty input and either prints a human-readable
+    summary or writes a JSON export to --output. The JSON export is compatible
+    with `atlas daily summary --discovery`.
+    """
+    try:
+        report = DiscoveryEngine().discover(DiscoveryInput())
+        if output_path is not None:
+            _write_json_export(output_path, discovery_report_to_dict(report))
+            console.print(f"Discovery report written to {output_path}")
+            return
+    except (OSError, ValueError) as exc:
+        console.print(f"[red]Discovery export failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    lines = [
+        "Discovery",
+        "",
+        report.summary,
+    ]
+    if report.candidates:
+        lines += ["", "Candidates"]
+        for c in report.candidates:
+            lines.append(f"  {c.identifier}: {c.title} ({c.priority.value})")
+    else:
+        lines += ["", "No discovery candidates identified from available inputs."]
+    console.print("\n".join(lines))
+
+
 @watchlist_app.command("analyze")
 def watchlist_analyze_command(
     watchlist_path: Path,
@@ -1082,6 +1169,12 @@ def watchlist_review_command(
         raise typer.Exit(code=1) from exc
 
     console.print(render_watchlist_review(report))
+
+
+def _write_json_export(path: Path, data: dict) -> None:
+    """Write a JSON-serializable dict to a local file. Raises OSError on failure."""
+    import json
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def _render_portfolio_domain_summary(summary) -> str:

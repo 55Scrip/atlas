@@ -182,6 +182,16 @@ input builder, and generates a deterministic Daily Brief report. No network
 calls are made. 433 tests pass; 41 new tests cover all new CLI flags, error
 handling, multi-flag composition, language safety, and no-network constraints.
 
+**Sprint 51** added `atlas/capabilities/watchlist_intelligence/exporter.py`,
+`atlas/capabilities/discovery/exporter.py`, a new `atlas watchlist intelligence
+[--output FILE]` command under the existing `watchlist` subapp, and a new
+`atlas discovery export [--output FILE]` command under a new `discovery`
+subapp. Both export commands produce JSON compatible with the Sprint 50 Daily
+Brief input flags, closing the end-to-end local workflow: capability output →
+JSON export → `atlas daily summary`. 474 tests pass; 41 new tests cover export
+unit tests, CLI commands, round-trip export → Daily Brief, and existing behavior
+preservation.
+
 The legacy `atlas.daily_brief` engine (powering `atlas daily brief`) is
 untouched across all sprints.
 
