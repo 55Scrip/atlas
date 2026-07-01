@@ -126,3 +126,27 @@ CLI begin exercising `atlas.domains.portfolio` today, on a read-only path,
 without touching the two existing commands or their output. Architecture
 boundary tests were updated so domains may never import adapters back,
 keeping the dependency direction one-way (legacy/CLI -> adapters -> domains).
+
+## 2026-06-30: Augment, Don't Replace, `atlas portfolio analyze`
+
+Decision: extend `atlas portfolio analyze` to additionally print a Portfolio
+Domain summary (allocation, concentration, cash weight, top holdings) using
+the Sprint 45 adapter, while leaving `PortfolioIntelligenceEngine`'s
+proprietary ticker-fit scoring (diversification impact, sector/country/
+market-cap concentration impact, overlap, expected quality/risk impact, and
+the `Strong Add`/`Add`/`Neutral`/`Reduce`/`Avoid` recommendation) completely
+unchanged.
+
+Rationale: `atlas portfolio analyze` answers "how well would this new
+ticker fit the existing portfolio" — a hypothetical-addition scoring
+question with no Portfolio Domain equivalent. The Portfolio Domain
+deliberately only answers "what does this portfolio currently look like."
+Rewriting the fit-scoring math to route through the domain would require
+either inventing domain concepts that don't belong there (target-weight
+scoring, pro-forma exposure) or producing different numbers under a
+different methodology, which would be a hidden behavior change disguised as
+a migration. Appending the existing domain summary section is additive,
+preserves every existing output byte exactly, and still proves the CLI
+analyze path can pull from `atlas.domains.portfolio` for the parts that
+genuinely overlap (allocation, concentration). The Sprint 45 adapter needed
+no changes.

@@ -65,6 +65,20 @@ onto the Portfolio Domain's allocation/concentration/validation scope, so
 migrating them was judged unsafe for this sprint. All other CLI commands
 still call the legacy engine layer exclusively.
 
+**Sprint 46 update:** `atlas portfolio analyze <portfolio.json> TICKER` now
+also calls `atlas.domains.portfolio` via the same adapter, appending a
+"Portfolio Summary (Portfolio Domain)" section after its existing,
+unchanged `PortfolioAnalysis` output. The command's proprietary fit-scoring
+logic (diversification impact, sector/country/market-cap concentration
+impact, overlap, expected quality/risk impact, the `Strong Add`/`Add`/
+`Neutral`/`Reduce`/`Avoid` recommendation) was **not** migrated and remains
+on `atlas.analysis.portfolio.PortfolioIntelligenceEngine` unchanged — it
+answers "how well would this new ticker fit the portfolio", a question the
+Portfolio Domain does not (and should not) attempt to answer, since the
+domain is about understanding existing portfolio structure, not scoring
+hypothetical additions. `atlas portfolio review` remains entirely legacy
+and out of scope for this sprint.
+
 ### 5. Adapter layer
 
 `atlas/adapters/` is the one layer permitted to import both the legacy
@@ -123,6 +137,15 @@ to `atlas.domains.portfolio`. `atlas portfolio analyze` and
 `atlas portfolio review` remain fully legacy and are the next candidates,
 but require either extending the Portfolio Domain (ticker-fit analysis,
 CIO review) or a larger adapter — out of scope for a narrow sprint.
+
+**Sprint 46 status:** `atlas portfolio analyze` now surfaces Portfolio
+Domain context (allocation, concentration, cash weight, top holdings)
+alongside its unchanged legacy fit-score output, reusing the Sprint 45
+adapter unmodified. `atlas portfolio review` remains the only fully-legacy
+portfolio command and is the next candidate; it depends on investor profile
+and optional market snapshot data that have no Portfolio Domain equivalent
+yet, so migrating it will likely require either a profile/market domain or
+a narrower additive approach similar to this sprint's.
 
 ## Rules for Future Sprints
 

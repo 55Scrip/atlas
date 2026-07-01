@@ -610,11 +610,14 @@ def portfolio_analyze_command(
             ticker=ticker,
             provider=provider,
         )
+        domain_summary = domain_portfolio_summary(legacy_portfolio_to_domain_portfolio(portfolio))
     except (FileNotFoundError, LookupError, ValueError) as exc:
         console.print(f"[red]Portfolio analysis failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
     console.print(render_portfolio_analysis(analysis))
+    console.print("")
+    console.print(_render_portfolio_domain_summary(domain_summary))
 
 
 @portfolio_app.command("summary")
