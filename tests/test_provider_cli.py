@@ -35,7 +35,8 @@ def test_compare_cli_accepts_yahoo_provider(monkeypatch):
     assert "Investment Comparison" in result.output
 
 
-def test_portfolio_cli_accepts_yahoo_provider(monkeypatch, tmp_path):
+def test_portfolio_cli_analyze_is_retired(monkeypatch, tmp_path):
+    # Sprint 89: atlas portfolio analyze command body retired — no longer a valid command
     monkeypatch.setattr("atlas.cli.main.YahooFinanceProvider", MockCompanyAnalysisProvider)
     path = tmp_path / "portfolio.json"
     path.write_text(
@@ -58,16 +59,11 @@ def test_portfolio_cli_accepts_yahoo_provider(monkeypatch, tmp_path):
         encoding="utf-8",
     )
     runner = CliRunner()
-
     result = runner.invoke(
         app,
         ["portfolio", "analyze", str(path), "NVDA", "--provider", "yahoo"],
     )
-
-    # Sprint 79: atlas portfolio analyze is deprecated — shows deprecation message regardless of provider
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
-    assert "portfolio summary" in result.output.lower()
+    assert result.exit_code != 0
 
 
 def test_watchlist_cli_accepts_yahoo_provider(monkeypatch, tmp_path):

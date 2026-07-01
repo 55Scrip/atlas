@@ -1063,3 +1063,23 @@ sprint." — applied exactly as specified.
 now has 4 entries (daily brief, evidence assess, reason analyze, risk size).
 Active deprecated `_REGISTRY` now has 3 entries (watchlist analyze, portfolio analyze,
 portfolio review).
+
+## Sprint 89 — 2026-07-02: Retire `atlas portfolio analyze` Command Body; Retain Engine
+
+**Decision:** Remove `atlas portfolio analyze` command body. Retain `atlas/analysis/portfolio` module.
+
+**Rationale:** The CLI stub was a pure no-op — safe to remove. The underlying
+`PortfolioIntelligenceEngine` (and the shared types `Portfolio` and `PortfolioAnalysis`)
+are still actively imported by 10+ modules across the codebase: `atlas/intelligence`,
+`atlas/conversation`, `atlas/decision`, `atlas/dashboard`, `atlas/reasoning`, `atlas/home`,
+`atlas/suitability`, `atlas/risk_drift`, `atlas/monitoring`, and `atlas/portfolio_review`.
+Deleting the engine would break all those imports. Engine deletion deferred until all
+callers are retired.
+
+**Sprint 89 did not retire `atlas portfolio review`** — it remains an active deprecated
+command (stub only). Retiring it was left for Sprint 90 to avoid scope creep and to allow
+a focused import audit of `PortfolioReviewEngine`.
+
+**Outcome:** Command retired. Engine stays. 1106 tests passing. `_RETIRED_REGISTRY`
+now has 5 entries (daily brief, evidence assess, reason analyze, risk size, portfolio analyze).
+Active deprecated `_REGISTRY` now has 2 entries (watchlist analyze, portfolio review).

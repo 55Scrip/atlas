@@ -521,8 +521,24 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - `test_risk_size_deprecation.py` rewritten as retirement test; includes assertions that
   `RiskAnalysis` callers still exist and `RiskAnalysis` remains importable.
 - 1101 tests passing. CLI surface area reduced by one more command.
-- All 7 originally deprecated commands are now retired from CLI. Active `_REGISTRY` holds
-  only the 3 remaining deprecated commands: watchlist analyze, portfolio analyze, portfolio review.
-- Recommended Sprint 89 target: retire `atlas portfolio analyze` and `atlas portfolio review`
-  command bodies together (both point to `atlas portfolio summary`; retiring simultaneously
-  simplifies the registry and test updates).
+- Active `_REGISTRY` holds only the 3 remaining deprecated commands: watchlist analyze,
+  portfolio analyze, portfolio review.
+- Recommended Sprint 89 target: retire `atlas portfolio analyze` command body.
+
+**Sprint 89 (2026-07-02):** `atlas portfolio analyze` command body retired; `atlas.analysis.portfolio` engine retained.
+- `portfolio_analyze_command` function and `@portfolio_app.command("analyze")` registration removed
+  from `atlas/cli/main.py`. Command is no longer callable.
+- Entry moved from `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`.
+- `atlas/analysis/portfolio` kept on disk — `Portfolio`, `PortfolioAnalysis`, and
+  `PortfolioIntelligenceEngine` are still imported by `atlas/intelligence`, `atlas/conversation`,
+  `atlas/decision`, `atlas/dashboard`, `atlas/reasoning`, `atlas/home`, `atlas/suitability`,
+  `atlas/risk_drift`, `atlas/monitoring`, and `atlas/portfolio_review`. Engine deletion deferred
+  until those callers are retired.
+- `test_portfolio_analyze_deprecation.py` rewritten as retirement test; includes assertions that
+  engine callers still exist and `PortfolioIntelligenceEngine` remains importable.
+- `test_portfolio_analyze_migration.py` updated — all CLI tests now assert `exit_code != 0`;
+  domain adapter tests retained to confirm `atlas portfolio summary` path still works.
+- 1106 tests passing. CLI surface area reduced by one more command.
+- Active `_REGISTRY` holds 2 remaining deprecated commands: watchlist analyze, portfolio review.
+- Recommended Sprint 90 target: retire `atlas portfolio review` command body (`PortfolioReviewEngine`
+  should have no callers outside the deprecated command itself).

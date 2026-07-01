@@ -143,10 +143,9 @@ def test_cli_portfolio_summary_rejects_missing_file_without_crashing(tmp_path: P
     assert result.exit_code != 0
 
 
-def test_portfolio_analyze_is_deprecated_not_removed() -> None:
-    """Sprint 79: atlas portfolio analyze is deprecated — command still exists but shows deprecation message."""
+def test_portfolio_analyze_is_retired() -> None:
+    """Sprint 89: atlas portfolio analyze command body retired — no longer a valid command."""
     from typer.testing import CliRunner as _Runner
     from atlas.cli.main import app as _app
     result = _Runner().invoke(_app, ["portfolio", "analyze", "--help"])
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
+    assert result.exit_code != 0

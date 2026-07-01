@@ -122,7 +122,8 @@ def test_render_portfolio_analysis_includes_required_sections():
     assert "Final Reasoning" in rendered
 
 
-def test_portfolio_cli_outputs_report(tmp_path):
+def test_portfolio_cli_analyze_is_retired(tmp_path):
+    # Sprint 89: atlas portfolio analyze command body retired — no longer a valid command
     path = tmp_path / "portfolio.json"
     path.write_text(
         json.dumps(
@@ -145,10 +146,5 @@ def test_portfolio_cli_outputs_report(tmp_path):
         encoding="utf-8",
     )
     runner = CliRunner()
-
     result = runner.invoke(app, ["portfolio", "analyze", str(path), "NVDA"])
-
-    # Sprint 79: atlas portfolio analyze is deprecated — expect deprecation message
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
-    assert "portfolio summary" in result.output.lower()
+    assert result.exit_code != 0

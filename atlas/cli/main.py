@@ -633,29 +633,6 @@ def market_health_command():
     console.print(render_market_health(report))
 
 
-@portfolio_app.command("analyze")
-def portfolio_analyze_command(
-    portfolio_path: Path = typer.Argument(
-        ...,
-        help="[DEPRECATED] Portfolio JSON path. Use 'atlas portfolio summary' instead.",
-    ),
-    ticker: str = typer.Argument(
-        ...,
-        help="[DEPRECATED] Ticker to analyze. Use 'atlas portfolio summary' instead.",
-    ),
-    provider_name: str = typer.Option("mock", "--provider", help="[DEPRECATED] Data provider."),
-):
-    """[DEPRECATED] Legacy Portfolio Analyze — use 'atlas portfolio summary' instead.
-
-    This command is deprecated and will be removed in a future sprint.
-    Use the Blueprint-aligned command instead:
-
-        atlas portfolio summary
-    """
-    console.print(deprecated_command_message("atlas portfolio analyze"))
-    raise typer.Exit(code=0)
-
-
 @portfolio_app.command("summary")
 def portfolio_summary_command(portfolio_path: Path):
     """Show a deterministic Portfolio Domain summary (read-only, no provider calls)."""

@@ -1,19 +1,11 @@
-"""Sprint 46: `atlas portfolio analyze` migration tests.
+"""Sprint 89: Retirement confirmation for atlas portfolio analyze migration tests.
 
-`atlas portfolio analyze` computes a proprietary ticker-fit score
-(diversification, sector/country/market-cap concentration impact, overlap,
-expected quality/risk impact) that has no equivalent in the Portfolio
-Domain -- the domain answers "what does this portfolio look like", not
-"how well would this new ticker fit". That scoring logic therefore stays on
-the legacy `PortfolioIntelligenceEngine` path unchanged.
+Sprint 46 extended `atlas portfolio analyze` to also print a Portfolio Domain
+summary. Sprint 79 deprecated the command entirely. Sprint 89 retired the
+command body — it is no longer a registered CLI command.
 
-What Sprint 46 migrates: the command now *also* computes and prints a
-Portfolio Domain summary (allocation, concentration, cash weight, top
-holdings) for the existing portfolio, using the same
-`atlas.adapters.portfolio` bridge introduced in Sprint 45. This is a
-purely additive change -- the original `PortfolioAnalysis` output is
-produced and rendered exactly as before, with the domain summary appended
-after it.
+These tests confirm the retired behavior and that the underlying engine and
+domain adapter still work independently (they are still used by active callers).
 """
 
 from __future__ import annotations
@@ -88,79 +80,94 @@ def _multi_holding_positions() -> list[dict]:
     ]
 
 
+# ── Sprint 89: all CLI invocations of `atlas portfolio analyze` must fail ────
+
 def test_analyze_rejects_empty_portfolio_same_as_before(tmp_path: Path) -> None:
-    # Sprint 79: deprecated command exits 0 regardless of portfolio content
+    # Sprint 89: command body retired — no longer a valid CLI command
     path = _write_portfolio(tmp_path, [])
     result = runner.invoke(app, ["portfolio", "analyze", str(path), "AAPL"])
-    assert result.exit_code == 0
-    assert "deprecated" in result.stdout.lower()
+    assert result.exit_code != 0
 
 
 def test_analyze_output_still_contains_original_fit_score_sections(tmp_path: Path) -> None:
-    # Sprint 79: deprecated — shows deprecation message, not legacy analysis sections
+    # Sprint 89: command body retired — no longer a valid CLI command
     path = _write_portfolio(tmp_path, _single_holding_positions())
     result = runner.invoke(app, ["portfolio", "analyze", str(path), "AAPL"])
-
-    assert result.exit_code == 0
-    assert "deprecated" in result.stdout.lower()
-    assert "portfolio summary" in result.stdout.lower()
+    assert result.exit_code != 0
 
 
 def test_analyze_output_now_appends_portfolio_domain_summary(tmp_path: Path) -> None:
-    # Sprint 79: deprecated — directs to atlas portfolio summary instead
+    # Sprint 89: command body retired — no longer a valid CLI command
     path = _write_portfolio(tmp_path, _multi_holding_positions())
     result = runner.invoke(app, ["portfolio", "analyze", str(path), "AAPL"])
-
-    assert result.exit_code == 0
-    assert "deprecated" in result.stdout.lower()
-    assert "portfolio summary" in result.stdout.lower()
+    assert result.exit_code != 0
 
 
 def test_analyze_domain_summary_matches_independent_domain_calculation(tmp_path: Path) -> None:
-    # Sprint 79: deprecated — domain calculation now accessed via atlas portfolio summary directly
+    # Sprint 89: command body retired — domain summary now accessed via atlas portfolio summary
     path = _write_portfolio(tmp_path, _multi_holding_positions())
     result = runner.invoke(app, ["portfolio", "analyze", str(path), "AAPL"])
-    assert result.exit_code == 0
-    assert "deprecated" in result.stdout.lower()
+    assert result.exit_code != 0
 
 
 def test_analyze_with_single_holding(tmp_path: Path) -> None:
-    # Sprint 79: deprecated — no legacy output, just deprecation notice
+    # Sprint 89: command body retired — no longer a valid CLI command
     path = _write_portfolio(tmp_path, _single_holding_positions())
     result = runner.invoke(app, ["portfolio", "analyze", str(path), "AAPL"])
-
-    assert result.exit_code == 0
-    assert "deprecated" in result.stdout.lower()
+    assert result.exit_code != 0
 
 
 def test_analyze_is_deterministic_across_repeated_runs(tmp_path: Path) -> None:
+    # Sprint 89: retired command consistently fails on both invocations
     path = _write_portfolio(tmp_path, _multi_holding_positions())
     first = runner.invoke(app, ["portfolio", "analyze", str(path), "AAPL"])
     second = runner.invoke(app, ["portfolio", "analyze", str(path), "AAPL"])
-
-    assert first.exit_code == second.exit_code == 0
-    assert first.stdout == second.stdout
+    assert first.exit_code != 0
+    assert second.exit_code != 0
 
 
 def test_analyze_default_provider_makes_no_network_call(tmp_path: Path, monkeypatch) -> None:
+    # Sprint 89: command body retired — no provider call possible; exit_code != 0
     import atlas.providers.yahoo as yahoo_module
 
     def _fail_if_called(*args, **kwargs):
-        raise AssertionError("urlopen should not be called for the default mock provider")
+        raise AssertionError("urlopen should not be called")
 
     monkeypatch.setattr(yahoo_module, "urlopen", _fail_if_called)
 
     path = _write_portfolio(tmp_path, _single_holding_positions())
     result = runner.invoke(app, ["portfolio", "analyze", str(path), "AAPL"])
-
-    assert result.exit_code == 0
+    assert result.exit_code != 0
 
 
 def test_analyze_unknown_provider_still_fails_cleanly(tmp_path: Path) -> None:
-    # Sprint 79: deprecated command exits 0 and shows deprecation message regardless of provider
+    # Sprint 89: command body retired — no longer a valid CLI command
     path = _write_portfolio(tmp_path, _single_holding_positions())
     result = runner.invoke(
         app, ["portfolio", "analyze", str(path), "AAPL", "--provider", "bogus"]
     )
-    assert result.exit_code == 0
-    assert "deprecated" in result.stdout.lower()
+    assert result.exit_code != 0
+
+
+# ── Underlying engine and adapter still work independently ───────────────────
+
+def test_legacy_portfolio_loads_from_json(tmp_path: Path) -> None:
+    """atlas.analysis.portfolio.Portfolio must still load from JSON (used by portfolio review)."""
+    path = _write_portfolio(tmp_path, _single_holding_positions())
+    portfolio = LegacyPortfolio.from_json_file(path)
+    assert len(portfolio.positions) == 1
+    assert portfolio.positions[0].ticker == "NVDA"
+
+
+def test_domain_adapter_still_converts_legacy_portfolio() -> None:
+    """The portfolio adapter bridge must still work — used by atlas portfolio summary."""
+    import json
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".json", mode="w", delete=False) as f:
+        json.dump({"positions": _single_holding_positions()}, f)
+        tmp = Path(f.name)
+    legacy = LegacyPortfolio.from_json_file(tmp)
+    domain = legacy_portfolio_to_domain_portfolio(legacy)
+    summary = portfolio_summary(domain)
+    assert summary.number_of_holdings == 1
+    tmp.unlink()

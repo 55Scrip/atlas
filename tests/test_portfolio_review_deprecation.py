@@ -78,12 +78,10 @@ def test_portfolio_summary_command_is_unaffected(tmp_path) -> None:
     assert "deprecated" not in result.output.lower()
 
 
-def test_portfolio_analyze_remains_deprecated(tmp_path) -> None:
-    """atlas portfolio analyze must still be deprecated from Sprint 79."""
+def test_portfolio_analyze_is_retired(tmp_path) -> None:
+    """Sprint 89: atlas portfolio analyze command body retired — no longer a valid command."""
     result = runner.invoke(app, ["portfolio", "analyze", str(_fake_portfolio_path(tmp_path)), "NVDA"])
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
-    assert "portfolio summary" in result.output.lower()
+    assert result.exit_code != 0
 
 
 def test_cli_does_not_import_portfolio_review_engine_at_module_level() -> None:

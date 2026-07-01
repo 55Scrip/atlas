@@ -33,7 +33,6 @@ runner = CliRunner()
 
 EXPECTED_COMMANDS = (
     "atlas watchlist analyze",
-    "atlas portfolio analyze",
     "atlas portfolio review",
 )
 
@@ -42,6 +41,7 @@ RETIRED_COMMANDS = (
     "atlas evidence assess",
     "atlas reason analyze",
     "atlas risk size",
+    "atlas portfolio analyze",
 )
 
 # ── Registry completeness ─────────────────────────────────────────────────────
@@ -168,24 +168,6 @@ def test_watchlist_analyze_message_matches_registry(tmp_path) -> None:
     assert "atlas watchlist intelligence" in result.output
 
 
-def test_portfolio_analyze_exits_cleanly(tmp_path) -> None:
-    p = tmp_path / "portfolio.json"
-    p.write_text(json.dumps({"positions": [{"ticker": "NVDA", "company": "NVIDIA",
-        "sector": "Semiconductors", "country": "US", "market_cap": 1000000,
-        "weight": 1.0, "quality_score": 90, "risk_score": 50}]}), encoding="utf-8")
-    result = runner.invoke(app, ["portfolio", "analyze", str(p), "NVDA"])
-    assert result.exit_code == 0
-
-
-def test_portfolio_analyze_message_matches_registry(tmp_path) -> None:
-    p = tmp_path / "portfolio.json"
-    p.write_text(json.dumps({"positions": [{"ticker": "NVDA", "company": "NVIDIA",
-        "sector": "Semiconductors", "country": "US", "market_cap": 1000000,
-        "weight": 1.0, "quality_score": 90, "risk_score": 50}]}), encoding="utf-8")
-    result = runner.invoke(app, ["portfolio", "analyze", str(p), "NVDA"])
-    assert "atlas portfolio summary" in result.output
-
-
 def test_portfolio_review_exits_cleanly(tmp_path) -> None:
     p = tmp_path / "portfolio.json"
     p.write_text(json.dumps({"positions": [{"ticker": "NVDA", "company": "NVIDIA",
@@ -248,6 +230,25 @@ def test_risk_size_command_is_no_longer_callable(tmp_path) -> None:
     p = tmp_path / "r.json"
     p.write_text(json.dumps({"ticker": "NVDA"}), encoding="utf-8")
     result = runner.invoke(app, ["risk", "size", str(p)])
+    assert result.exit_code != 0
+
+
+def test_portfolio_analyze_is_retired_not_active() -> None:
+    """Sprint 89: atlas portfolio analyze was retired — must not be in active registry."""
+    assert "atlas portfolio analyze" not in all_deprecated_commands()
+
+
+def test_portfolio_analyze_is_in_retired_registry() -> None:
+    assert "atlas portfolio analyze" in all_retired_commands()
+
+
+def test_portfolio_analyze_command_is_no_longer_callable(tmp_path) -> None:
+    """Sprint 89: atlas portfolio analyze is retired — CLI should not recognize it."""
+    p = tmp_path / "portfolio.json"
+    p.write_text(json.dumps({"positions": [{"ticker": "NVDA", "company": "NVIDIA",
+        "sector": "Semiconductors", "country": "US", "market_cap": 1000000,
+        "weight": 1.0, "quality_score": 90, "risk_score": 50}]}), encoding="utf-8")
+    result = runner.invoke(app, ["portfolio", "analyze", str(p), "NVDA"])
     assert result.exit_code != 0
 
 

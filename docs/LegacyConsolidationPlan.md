@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-01 (Sprint 88)  
-**Status:** Active — Sprint 88 target complete; Sprint 89 target to be selected
+**Updated:** 2026-07-02 (Sprint 89)  
+**Status:** Active — Sprint 89 target complete; Sprint 90 target: retire `atlas portfolio review`
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -231,6 +231,36 @@ Provider safety: **confirmed**.
 
 ---
 
+## Sprint 89 Migration Target — COMPLETED
+
+### Completed: `atlas portfolio analyze` command body retired; engine retained
+
+**Sprint 89 result:**
+- `atlas portfolio analyze` command body removed from `atlas/cli/main.py` — command no longer callable
+- `atlas portfolio analyze` moved from active `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`
+- `atlas/analysis/portfolio` engine **intentionally retained** — confirmed active callers:
+  - `atlas/intelligence/engine.py`
+  - `atlas/conversation/engine.py`
+  - `atlas/decision/decision_engine.py`
+  - `atlas/dashboard/engine.py`
+  - `atlas/reasoning/engine.py`
+  - `atlas/home/engine.py`
+  - `atlas/suitability/engine.py`
+  - `atlas/risk_drift/engine.py`
+  - `atlas/monitoring/engine.py`
+  - `atlas/portfolio_review/engine.py`
+  - Plus `atlas/adapters/portfolio.py`, `atlas/providers/`, and several test files
+- Engine deletion deferred until all those callers are retired
+- Tests updated: `test_portfolio_analyze_deprecation.py` rewritten as retirement test; includes engine caller-presence assertions; `test_portfolio_analyze_migration.py` updated to assert `exit_code != 0` for all CLI tests
+- 1106 tests passing
+
+**Engine deletion criteria (deferred):**
+1. All 10+ production callers of `atlas.analysis.portfolio` must stop importing `Portfolio`, `PortfolioAnalysis`, or `PortfolioIntelligenceEngine`
+2. `atlas portfolio review` command body and `PortfolioReviewEngine` must also be retired (uses `Portfolio`)
+3. `atlas/adapters/portfolio.py` bridge must be migrated or removed
+
+---
+
 ## Sprint 88 Migration Target — COMPLETED
 
 ### Completed: `atlas risk size` command body retired; engine retained
@@ -336,8 +366,9 @@ Provider safety: **confirmed**.
 2. `atlas evidence assess` command body + engine — self-contained, no known dependents
 3. `atlas risk size` command body — engine has no callers, but `RiskAnalysis` type dependency must be confirmed
 4. `atlas reason analyze` command body — requires retiring `atlas/principles/` lazy import first
-5. `atlas portfolio analyze` / `atlas portfolio review` — retire together (shared consumers)
-6. `atlas watchlist analyze` — most coupled, retire last
+5. ~~`atlas portfolio analyze`~~ — **DONE Sprint 89** (command retired; 10+ engine callers remain)
+6. `atlas portfolio review` command body — Sprint 90 target; `PortfolioReviewEngine` audit needed
+7. `atlas watchlist analyze` — most coupled, retire last
 
 ---
 

@@ -115,6 +115,26 @@ _RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
             "separating them requires surgery to atlas/risk/engine.py and atlas/risk/__init__.py.",
         ),
     ),
+    DeprecatedCommand(
+        command="atlas portfolio analyze",
+        message=(
+            "[yellow]DEPRECATED:[/yellow] The command [bold]atlas portfolio analyze[/bold] is deprecated.\n"
+            "Use [bold]atlas portfolio summary[/bold] for the Blueprint-aligned Portfolio Domain workflow.\n"
+            "\n"
+            "    atlas portfolio summary --help"
+        ),
+        replacement_command="atlas portfolio summary",
+        consolidation_direction=None,
+        legacy_module="atlas.analysis.portfolio",
+        removal_criteria=(
+            "Command body retired in Sprint 89.",
+            "atlas.analysis.portfolio engine remains on disk — Portfolio, PortfolioAnalysis, and "
+            "PortfolioIntelligenceEngine are still imported by atlas/intelligence, atlas/conversation, "
+            "atlas/decision, atlas/dashboard, atlas/reasoning, atlas/home, atlas/suitability, "
+            "atlas/risk_drift, atlas/monitoring, and atlas/portfolio_review. Engine deletion deferred "
+            "until all those callers are retired.",
+        ),
+    ),
 )
 
 # ── Active deprecated commands (still registered in CLI) ──────────────────────
@@ -135,22 +155,6 @@ _REGISTRY: tuple[DeprecatedCommand, ...] = (
             "WatchlistEngine is still imported by atlas/home, atlas/monitoring, atlas/decision, "
             "atlas/watchlist_review, atlas/conversation, atlas/intelligence — those must be retired first.",
             "Once WatchlistEngine has no non-deprecated callers, engine and command body can be deleted together.",
-        ),
-    ),
-    DeprecatedCommand(
-        command="atlas portfolio analyze",
-        message=(
-            "[yellow]DEPRECATED:[/yellow] The command [bold]atlas portfolio analyze[/bold] is deprecated.\n"
-            "Use [bold]atlas portfolio summary[/bold] for the Blueprint-aligned Portfolio Domain workflow.\n"
-            "\n"
-            "    atlas portfolio summary --help"
-        ),
-        replacement_command="atlas portfolio summary",
-        consolidation_direction=None,
-        legacy_module="atlas.analysis.portfolio",
-        removal_criteria=(
-            "PortfolioIntelligenceEngine must have no remaining non-deprecated callers.",
-            "Confirm atlas.analysis.portfolio is unused before deleting.",
         ),
     ),
     DeprecatedCommand(

@@ -126,15 +126,14 @@ def test_watchlist_analyze_remains_deprecated(tmp_path) -> None:
     assert "deprecated" in result.output.lower()
 
 
-def test_portfolio_analyze_remains_deprecated(tmp_path) -> None:
+def test_portfolio_analyze_is_retired(tmp_path) -> None:
     import json
     p = tmp_path / "portfolio.json"
     p.write_text(json.dumps({"positions": [{"ticker": "NVDA", "company": "NVIDIA",
         "sector": "Semiconductors", "country": "US", "market_cap": 1000000,
         "weight": 1.0, "quality_score": 90, "risk_score": 50}]}), encoding="utf-8")
     result = runner.invoke(app, ["portfolio", "analyze", str(p), "NVDA"])
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
+    assert result.exit_code != 0
 
 
 def test_portfolio_review_remains_deprecated(tmp_path) -> None:
