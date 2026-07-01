@@ -14,6 +14,20 @@
         "AMD has expanded its data centre product portfolio significantly.",
         "Evidence on long-term GPU market share remains incomplete — further research needed."
       ]
+    },
+    {
+      "id": "nvda",
+      "ticker": "NVDA",
+      "company": "NVIDIA Corporation",
+      "status": "researching",
+      "open_questions": [
+        "What evidence supports the long-term durability of NVIDIA's accelerated computing platform?",
+        "How exposed is NVIDIA's revenue to a small number of hyperscaler customers?"
+      ],
+      "manual_observations": [
+        "NVIDIA's CUDA platform is widely adopted in AI research and production contexts.",
+        "Evidence on long-term competitive durability remains an open research question."
+      ]
     }
   ]
 }

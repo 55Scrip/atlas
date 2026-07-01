@@ -361,6 +361,23 @@ longer appends the "Missing Business Description" unknown because
 string. Both flags are entirely optional — omitting them preserves Sprint 55
 behavior exactly.
 
+## 2026-07-01: Extend Demo to Two-Company Daily Brief (Sprint 59)
+
+Decision: extend the Sprint 58 demo dataset from AMD-only to AMD + NVDA.
+Updated `knowledge.json` (9 total facts), `research_input.json` (2 projects, 7
+questions), and `watchlist_input.json` (2 items). Updated
+`run_daily_brief_demo.sh` to generate separate company analysis exports for AMD
+and NVDA, merge them via a Python one-liner into a single JSON array, and pass
+the combined file to `atlas daily summary --company-analysis`. The Daily Brief
+engine already accepts a JSON array of reports via `parse_company_analysis_json`,
+so no CLI redesign was required. The merge step exposes a minor CLI limitation:
+`--company-analysis` accepts one file, not multiple. This is documented as a
+known limitation; Sprint 60 should address it. 739 tests pass; 34 tests in
+`test_daily_brief_demo.py` (11 new vs Sprint 58) cover two-company data
+validity, both company exports, merged array compatibility, two-company pipeline,
+section presence, AMD/NVDA presence, two-report count, language safety,
+determinism, and no-network constraints.
+
 ## 2026-07-01: Add Local Demo Dataset and End-to-End Daily Brief Demo (Sprint 58)
 
 Decision: add a local example dataset under `examples/daily_brief_demo/` and a

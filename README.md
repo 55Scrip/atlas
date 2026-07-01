@@ -201,29 +201,35 @@ Discovery helps investors decide what to study next. It does not create trade
 recommendations, forecasts, price targets, external API calls, or AI-generated
 analysis.
 
-## Daily Brief Demo (Sprint 58)
+## Daily Brief Demo — AMD + NVDA (Sprints 58–59)
 
 A local demo dataset under `examples/daily_brief_demo/` proves the full Atlas
-Daily Brief pipeline end-to-end with no network calls, no AI, and no external
-APIs.
+Daily Brief pipeline end-to-end for two companies with no network calls, no AI,
+and no external APIs.
 
 ```bash
 # Run the full demo (requires: pip install -e . in a virtualenv)
 bash scripts/run_daily_brief_demo.sh
 ```
 
-The demo runs five pipeline steps in sequence:
+The demo runs seven steps:
 
-1. `atlas research export` — converts research projects to Daily Brief JSON
-2. `atlas watchlist intelligence` — runs watchlist intelligence engine
-3. `atlas discovery export` — generates discovery candidates from local inputs
-4. `atlas company-analysis export` — runs company analysis engine on AMD
-5. `atlas daily summary` — produces the Daily Brief from all four inputs
+1. `atlas research export` — AMD + NVDA research projects → Daily Brief JSON
+2. `atlas watchlist intelligence` — AMD + NVDA watchlist items
+3. `atlas discovery export` — discovery candidates from local inputs
+4. `atlas company-analysis export --ticker AMD` — engine-backed AMD analysis
+5. `atlas company-analysis export --ticker NVDA` — engine-backed NVDA analysis
+6. Python merge — combines both reports into a single JSON array
+7. `atlas daily summary` — produces a two-company Daily Brief
+
+Output: 2 company analysis reports, 7 unresolved questions, 2 discovery
+candidates, Research/Watchlist/Company Analysis context for both companies.
 
 All outputs go to `tmp/atlas_demo/`. Clean up with `rm -rf tmp/atlas_demo`.
 
-This is not live market analysis. Demo data represents structured research
-context only. See `examples/daily_brief_demo/README.md` for details.
+This is not live market analysis. AMD and NVDA are demo examples only — no
+comparison between them as investment opportunities is made or implied.
+See `examples/daily_brief_demo/README.md` for full details.
 
 ## MVP commands
 

@@ -25,7 +25,7 @@
     {
       "id": "amd-k3",
       "subject_node_id": "company-amd",
-      "statement": "AMD's EPYC server CPU line competes directly with Intel Xeon in the data centre CPU market.",
+      "statement": "AMD's EPYC server CPU line competes with established data centre CPU offerings in the market.",
       "source": {
         "id": "amd-k3-src",
         "name": "Research Notes — Q2 2024",
@@ -47,13 +47,57 @@
     {
       "id": "amd-k5",
       "subject_node_id": "company-amd",
-      "statement": "Evidence on long-term GPU market share against NVIDIA in AI training workloads remains incomplete.",
+      "statement": "Evidence on long-term GPU market share for AMD in AI training workloads remains incomplete.",
       "source": {
         "id": "amd-k5-src",
         "name": "Research Notes — Q3 2024",
         "source_type": "ResearchNote"
       },
       "confidence": 60
+    },
+    {
+      "id": "nvda-k1",
+      "subject_node_id": "company-nvda",
+      "statement": "NVIDIA designs GPUs and accelerated computing platforms for AI, data centre, gaming, and automotive markets.",
+      "source": {
+        "id": "nvda-k1-src",
+        "name": "NVIDIA Annual Report 2023",
+        "source_type": "Filing"
+      },
+      "confidence": 90
+    },
+    {
+      "id": "nvda-k2",
+      "subject_node_id": "company-nvda",
+      "statement": "NVIDIA operates in the Semiconductors sector and is headquartered in the United States.",
+      "source": {
+        "id": "nvda-k2-src",
+        "name": "NVIDIA Investor Relations",
+        "source_type": "Filing"
+      },
+      "confidence": 95
+    },
+    {
+      "id": "nvda-k3",
+      "subject_node_id": "company-nvda",
+      "statement": "NVIDIA's CUDA software platform is widely used in AI research and production workloads.",
+      "source": {
+        "id": "nvda-k3-src",
+        "name": "Research Notes — Q2 2024",
+        "source_type": "ResearchNote"
+      },
+      "confidence": 85
+    },
+    {
+      "id": "nvda-k4",
+      "subject_node_id": "company-nvda",
+      "statement": "Evidence on whether NVIDIA's data centre GPU market position is durable long-term remains an open research question.",
+      "source": {
+        "id": "nvda-k4-src",
+        "name": "Research Notes — Q3 2024",
+        "source_type": "ResearchNote"
+      },
+      "confidence": 65
     }
   ]
 }

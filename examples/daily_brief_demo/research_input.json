@@ -6,10 +6,21 @@
       "topic": "AMD",
       "status": "researching",
       "questions": [
-        "What is AMD's durable competitive advantage in the data centre GPU market relative to NVIDIA?",
-        "How does AMD's EPYC CPU market share trajectory compare to Intel Xeon over the last four quarters?",
+        "What is AMD's durable competitive advantage in the data centre GPU market?",
+        "How does AMD's EPYC CPU market share trajectory compare to established competitors over the last four quarters?",
         "What evidence supports long-term margin expansion as the Instinct GPU line scales?",
         "How dependent is AMD's data centre revenue on a small number of hyperscaler customers?"
+      ]
+    },
+    {
+      "id": "proj-nvda",
+      "title": "NVDA Research",
+      "topic": "NVDA",
+      "status": "researching",
+      "questions": [
+        "How durable is NVIDIA's data centre GPU market position as competing accelerators mature?",
+        "What evidence supports the long-term durability of NVIDIA's CUDA software moat?",
+        "How concentrated is NVIDIA's data centre revenue across its largest customers?"
       ]
     }
   ]
