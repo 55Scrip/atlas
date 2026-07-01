@@ -176,3 +176,59 @@ def test_decision_log_exists() -> None:
 def test_decision_log_has_sprint_67_entry() -> None:
     content = DECISION_LOG.read_text()
     assert "Sprint 67" in content
+
+
+def test_decision_log_has_sprint_68_entry() -> None:
+    content = DECISION_LOG.read_text()
+    assert "Sprint 68" in content
+
+
+# ── Sprint 68: verification script ────────────────────────────────────────────
+
+VERIFY_SCRIPT = REPO_ROOT / "scripts" / "verify_release_candidate.sh"
+
+
+def test_verify_script_exists() -> None:
+    assert VERIFY_SCRIPT.exists(), "scripts/verify_release_candidate.sh not found"
+
+
+def test_verify_script_does_not_call_network_tools() -> None:
+    content = VERIFY_SCRIPT.read_text()
+    assert "curl" not in content
+    assert "wget" not in content
+
+
+def test_verify_script_does_not_use_python_one_liners() -> None:
+    content = VERIFY_SCRIPT.read_text()
+    assert "python3 -c" not in content
+    assert "python -c" not in content
+
+
+def test_verify_script_has_set_euo_pipefail() -> None:
+    content = VERIFY_SCRIPT.read_text()
+    assert "set -euo pipefail" in content
+
+
+def test_verify_script_runs_pytest() -> None:
+    content = VERIFY_SCRIPT.read_text()
+    assert "pytest" in content
+
+
+def test_verify_script_runs_demo() -> None:
+    content = VERIFY_SCRIPT.read_text()
+    assert "run_daily_brief_demo.sh" in content
+
+
+def test_verify_script_checks_forbidden_language() -> None:
+    content = VERIFY_SCRIPT.read_text()
+    assert "forbidden" in content.lower() or "FORBIDDEN" in content
+
+
+def test_verify_script_cleans_up_after_itself() -> None:
+    content = VERIFY_SCRIPT.read_text()
+    assert "rm -rf" in content
+
+
+def test_release_candidate_doc_references_verify_script() -> None:
+    content = RC_DOC.read_text()
+    assert "verify_release_candidate.sh" in content

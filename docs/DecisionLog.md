@@ -416,6 +416,33 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: Post-RC Smoke Test and Release Verification (Sprint 68)
+
+Decision: verify Atlas Internal RC1 (`atlas-v0.8-internal-rc1`) from a
+clean-user perspective and add a release verification script.
+
+Verification results:
+- `git tag` confirms `atlas-v0.8-internal-rc1` exists on `main` at `178b27f`
+- Compile check: clean
+- Full test suite: 910 passed, 0 failed
+- Demo: all 7 steps completed; all 7 output files present
+- Output sections: Opening Summary, Included Context, What Deserves Attention,
+  Company Analysis Context, What Can Safely Wait, Research Framing — all present
+- Forbidden language: none found in `daily_brief.txt`
+- Cleanup: `rm -rf tmp/atlas_demo` removes all generated files cleanly
+
+Fix: `docs/ReleaseCandidate.md` stated 883 tests (written at Sprint 67 start
+before 27 new release tests were counted). Corrected to 910.
+
+Addition: `scripts/verify_release_candidate.sh` — 7-step local verification
+script (compile, test, demo, file check, section check, language check,
+cleanup). Runs end-to-end in ~20s. No network calls. Self-cleaning.
+
+10 new tests added to `tests/test_release_candidate.py` verifying the
+verification script exists and meets all constraints.
+
+920 tests pass total (910 prior + 10 new).
+
 ## 2026-07-01: First Internal Release Candidate (Sprint 67)
 
 Decision: declare Atlas v0.1.0-rc1 as the first internal release candidate

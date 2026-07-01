@@ -87,7 +87,27 @@ automatically.
 .venv/bin/python -m pytest
 ```
 
-**Result:** 883 tests pass, 0 failures.
+**Result:** 910 tests pass, 0 failures.
+
+## Full Release Verification (Sprint 68)
+
+A single script runs compile check, full test suite, demo, file verification,
+output section check, and forbidden-language check:
+
+```bash
+bash scripts/verify_release_candidate.sh
+```
+
+Steps performed:
+1. Compile check (`python -m compileall atlas tests`)
+2. Full test suite (`pytest`)
+3. Daily Brief demo (`scripts/run_daily_brief_demo.sh`)
+4. Verify all 7 generated files exist in `tmp/atlas_demo/`
+5. Verify expected sections present in `daily_brief.txt`
+6. Forbidden language check on `daily_brief.txt`
+7. Cleanup (`rm -rf tmp/atlas_demo`)
+
+**Result:** All 7 steps green on RC1 verification run.
 
 ---
 
@@ -110,7 +130,7 @@ rm -rf tmp/atlas_demo
 ## Release Checklist
 
 - [x] Compile check passes (`python -m compileall atlas tests`)
-- [x] Full test suite passes (883 tests)
+- [x] Full test suite passes (910 tests)
 - [x] Demo script runs without virtualenv activation
 - [x] No external calls in demo pipeline
 - [x] No recommendation language in CLI output
@@ -118,6 +138,7 @@ rm -rf tmp/atlas_demo
 - [x] Architecture boundary tests pass
 - [x] No Atlas Edge naming in active code or docs
 - [x] `docs/ReleaseCandidate.md` exists
+- [x] `scripts/verify_release_candidate.sh` runs cleanly (Sprint 68)
 - [x] Working tree clean after commit
 
 ---
