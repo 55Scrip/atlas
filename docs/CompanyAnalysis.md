@@ -105,3 +105,87 @@ Sprint 42 should add deterministic adapters that make it easier to build
 
 Adapters should remain deterministic, provider-free, and non-advisory.
 
+## JSON Export (Sprint 54)
+
+`atlas company-analysis export` generates a Daily Brief–compatible company
+analysis JSON file from a local input or an empty structure.
+
+```bash
+# Export from local input file
+atlas company-analysis export --input company.json --output ca_export.json
+
+# Export empty structure (produces [] — no Company Analysis Context in Daily Brief)
+atlas company-analysis export --output ca_export.json
+
+# Print summary to stdout
+atlas company-analysis export --input company.json
+
+# Consume the export in Daily Brief
+atlas daily summary --company-analysis ca_export.json
+```
+
+### Input JSON Format (`--input`)
+
+Accepts a single report object or a list of report objects:
+
+```json
+{
+  "company": {
+    "id": "amd",
+    "name": "AMD Corporation",
+    "ticker": "AMD",
+    "sector": "Semiconductors",
+    "country": "USA"
+  },
+  "unknowns": [
+    {"title": "Competitive moat durability", "detail": "Evidence is limited."}
+  ],
+  "evidence_links": [
+    {"id": "ev-1", "source": "10-K 2024", "description": "Revenue breakdown by segment."}
+  ],
+  "confidence": {
+    "level": "low",
+    "explanation": "Confidence is low because evidence is limited.",
+    "drivers": ["Company name and ticker known"],
+    "limitations": ["No knowledge facts supplied"]
+  },
+  "what_could_change_the_view": [
+    "Evidence on durable competitive advantages."
+  ]
+}
+```
+
+`confidence` may also be a plain string: `"low"`, `"moderate"`, or `"high"`.
+
+| Field | Required | Notes |
+|---|---|---|
+| `company.name` or `company.ticker` | At least one | Company identifier |
+| `company.sector`, `country` | No | Optional context |
+| `unknowns` | No | List of `{"title": "...", "detail": "..."}` |
+| `evidence_links` | No | List of `{"id": "...", "source": "...", "description": "..."}` |
+| `confidence` | No | String (`"low"`) or object with `level` field. Defaults to `low` |
+| `what_could_change_the_view` | No | List of plain strings |
+
+### Output JSON Format (`--output`)
+
+The exported JSON is a list compatible with `parse_company_analysis_json` and
+`atlas daily summary --company-analysis`:
+
+```json
+[
+  {
+    "company": {"id": "amd", "name": "AMD Corporation", "ticker": "AMD", ...},
+    "unknowns": [{"title": "...", "detail": "..."}],
+    "evidence_links": [{"id": "...", "source": "...", "description": "..."}],
+    "confidence": {"level": "low", "explanation": "...", "drivers": [...], "limitations": [...]},
+    "what_could_change_the_view": [...]
+  }
+]
+```
+
+When `--input` is omitted, the export is `[]` — a valid empty list that
+`atlas daily summary --company-analysis` accepts without error (produces no
+Company Analysis Context section).
+
+No network calls are made. No recommendations are produced.
+

@@ -215,6 +215,21 @@ CLI extensions:
 535 tests pass; 61 new tests cover adapters, extended CLI, error handling, round-trip
 pipeline, language safety, determinism, and no-network constraints.
 
+**Sprint 54** added `atlas/capabilities/company_analysis/exporter.py`
+(`company_report_to_dict`, `company_reports_to_list`), `atlas/adapters/company_analysis.py`
+(`company_reports_from_dict`), and an `atlas company-analysis export [--input FILE]
+[--output FILE]` command under a new `company-analysis` subapp. The adapter accepts
+a single report object or a list, parses `company`, `unknowns`, `evidence_links`,
+`confidence` (string or object), and `what_could_change_the_view` into
+`CompanyAnalysisReport` instances. The exporter serializes them to the list format
+accepted by `parse_company_analysis_json` and `atlas daily summary --company-analysis`.
+When `--input` is omitted the command exports `[]` — a valid empty structure that
+produces no Company Analysis Context in the Daily Brief. This closes the last gap in
+the Daily Brief local export pipeline: all five input types (portfolio, watchlist,
+research, discovery, company analysis) can now be produced locally without manual
+JSON authoring of capability output. 637 tests pass; 61 new tests cover adapter,
+exporter, CLI, round-trip, language safety, determinism, and no-network constraints.
+
 **Sprint 53** added `atlas/capabilities/daily_brief/research_exporter.py`
 (`research_projects_to_dict`) and a new `atlas research export [--input FILE]
 [--output FILE]` command under a new `research` subapp. The exporter converts

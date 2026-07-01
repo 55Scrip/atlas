@@ -355,17 +355,30 @@ like tickers (all-uppercase, ≤5 chars) appear in `related_tickers`.
 
 No network calls are made. No recommendations are produced.
 
+## Company Analysis Export (Sprint 54)
+
+`atlas company-analysis export` completes the Daily Brief export pipeline.
+
+```bash
+# Export company analysis from local input
+atlas company-analysis export --input company.json --output ca_export.json
+
+# Consume in Daily Brief
+atlas daily summary --company-analysis ca_export.json
+```
+
+See [CompanyAnalysis.md](CompanyAnalysis.md) for the input JSON format.
+
 ## Known Limitations
 
 - The legacy `atlas daily brief` command still calls legacy engines (Market
   Health, Risk Drift, Economics, etc.) with no domain-native equivalents.
 - `knowledge_node_count` is accepted by `build_daily_brief_input` but not
   yet wired to a CLI flag.
-- Company Analysis export command does not yet exist; users must author
-  company analysis JSON files manually following the format in this document.
 
-## Recommendation for Sprint 54
+## Recommendation for Sprint 55
 
-Add `atlas company-analysis export --output company.json` to complete the
-export pipeline for all five Daily Brief input types. Company analysis is
-the only type still requiring manual JSON authoring.
+Wire `CompanyAnalysisEngine` to the export command via `--knowledge` and
+`--research` flags (mirroring the Discovery export pattern), so company
+analysis reports can be generated from knowledge facts and research projects
+rather than requiring manual JSON authoring of the report fields.

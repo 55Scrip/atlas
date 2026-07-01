@@ -297,3 +297,24 @@ other daily brief modules) because its output format is defined entirely by what
 `parse_research_json` / the Daily Brief engine expect — it is a daily brief
 concern, not a general research concern. No new domain models or capability
 engines were introduced; this is a serialisation adapter only.
+
+## 2026-07-01: Add Company Analysis Export Command to Complete Daily Brief Pipeline (Sprint 54)
+
+Decision: add `atlas/capabilities/company_analysis/exporter.py` with
+`company_report_to_dict` / `company_reports_to_list`, `atlas/adapters/company_analysis.py`
+with `company_reports_from_dict`, and an `atlas company-analysis export [--input FILE]
+[--output FILE]` CLI command under a new `company-analysis` subapp.
+
+Rationale: Company analysis was the last Daily Brief input type that required users
+to author JSON manually. The adapter accepts the same output format that the exporter
+produces (self-consistent round-trip), so users can author company analysis JSON in
+the export format, pass it to `atlas company-analysis export`, and consume the output
+with `atlas daily summary --company-analysis`. When no input is provided the command
+exports `[]` — an empty list that `parse_company_analysis_json` accepts and that
+`build_daily_brief_input` treats as an empty tuple of company reports. `confidence`
+accepts either a plain string (`"low"`) or a structured object with `level`,
+`explanation`, `drivers`, and `limitations` fields, covering both quick authoring
+and detailed structured input. The adapter reuses the existing `CompanyAnalysisReport`
+model without invoking `CompanyAnalysisEngine` — the report is built directly from
+user-supplied JSON fields without running deterministic risk / confidence scoring on
+knowledge facts, since users may not have knowledge facts available at export time.

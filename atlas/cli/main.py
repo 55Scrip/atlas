@@ -59,6 +59,8 @@ from atlas.adapters.watchlist import watchlist_input_from_dict
 from atlas.adapters.knowledge import knowledge_facts_from_dict
 from atlas.adapters.research_input import research_projects_from_dict
 from atlas.capabilities.daily_brief.research_exporter import research_projects_to_dict
+from atlas.capabilities.company_analysis.exporter import company_reports_to_list
+from atlas.adapters.company_analysis import company_reports_from_dict
 from atlas.decision_journal import (
     DecisionJournalEngine,
     render_decision_journal_entries,
@@ -127,6 +129,7 @@ from atlas.suitability import (
 from atlas.themes import ThemeEngine, ThemeInput, render_theme_analysis
 
 app = typer.Typer(help="Atlas investment research platform")
+company_analysis_app = typer.Typer(help="Company analysis export commands")
 dashboard_app = typer.Typer(help="Atlas home dashboard commands")
 daily_app = typer.Typer(help="Atlas daily briefing commands")
 discovery_app = typer.Typer(help="Discovery capability commands")
@@ -147,6 +150,7 @@ risk_app = typer.Typer(help="Risk and position sizing commands")
 suitability_app = typer.Typer(help="Investor suitability context commands")
 theme_app = typer.Typer(help="Theme intelligence commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
+app.add_typer(company_analysis_app, name="company-analysis")
 app.add_typer(dashboard_app, name="dashboard")
 app.add_typer(daily_app, name="daily")
 app.add_typer(discovery_app, name="discovery")
@@ -1219,6 +1223,63 @@ def research_export_command(
             lines.append(f"  - {q}")
     else:
         lines += ["", "No open questions."]
+    console.print("\n".join(lines))
+
+
+@company_analysis_app.command("export")
+def company_analysis_export_command(
+    input_path: Path | None = typer.Option(
+        None, "--input", help="Local company analysis JSON file path (optional).",
+    ),
+    output_path: Path | None = typer.Option(
+        None, "--output", help="Write company analysis JSON to this file path.",
+    ),
+):
+    """Export company analysis context as a Daily Brief–compatible JSON file.
+
+    Reads a local company analysis JSON file via --input, validates the
+    structure, and writes the result to --output in the format accepted by
+    ``atlas daily summary --company-analysis``.
+
+    When --input is omitted the command exports an empty list, which is valid
+    for ``atlas daily summary --company-analysis`` (produces no Company
+    Analysis Context section). When --output is omitted the result is printed
+    to stdout as a human-readable summary.
+
+    Accepts a single company analysis object or a list of objects.
+    No network calls are made. No recommendations are produced.
+    """
+    try:
+        if input_path is not None:
+            raw = load_json_file(input_path)
+            reports = company_reports_from_dict(raw, str(input_path))
+        else:
+            reports = ()
+        data = company_reports_to_list(reports)
+        if output_path is not None:
+            _write_json_export(output_path, data)
+            console.print(f"Company analysis export written to {output_path}")
+            return
+    except (OSError, ValueError) as exc:
+        console.print(f"[red]Company analysis export failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    lines = ["Company Analysis Export", ""]
+    if data:
+        lines.append(f"Reports: {len(data)}")
+        for report_dict in data:
+            company = report_dict.get("company", {})
+            name = company.get("name", "Unknown")
+            ticker = company.get("ticker", "")
+            confidence = report_dict.get("confidence", {})
+            level = confidence.get("level", "") if isinstance(confidence, dict) else str(confidence)
+            lines.append(f"  - {name} ({ticker}): confidence {level}")
+            unknowns = report_dict.get("unknowns", [])
+            if unknowns:
+                lines.append(f"    Unknowns: {len(unknowns)}")
+    else:
+        lines.append("No company analysis inputs provided.")
+        lines.append("Export produces an empty list compatible with atlas daily summary --company-analysis.")
     console.print("\n".join(lines))
 
 
