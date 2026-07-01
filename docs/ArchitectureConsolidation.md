@@ -307,3 +307,26 @@ untouched across all sprints.
 - No naming that implies "Atlas Edge" (a separate, unrelated product) should
   appear in code, filenames, or docs. If found, it is technical debt to
   rename or remove.
+
+## Sprint 74 — Legacy Consolidation Inventory
+
+A full inventory of legacy modules and a migration plan was created in Sprint 74.
+See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
+
+**Key findings from Sprint 74:**
+
+- `atlas/daily/` is a 43-line pure re-export shim with no logic. Only `atlas/cli/main.py`
+  imports it. Removal is the Sprint 75 target.
+- `atlas/domains/daily_brief/__init__.py` imports from the legacy `atlas.daily_brief`
+  module — a boundary violation (domain → legacy). No external code imports from
+  `atlas.domains.daily_brief`, so the fix is safe. Targeted for Sprint 75.
+- Provider safety confirmed: providers are never imported by domains, capabilities,
+  adapters, or the demo/verification scripts.
+- Blueprint-aligned Daily Brief pipeline (`atlas daily summary`) makes zero provider
+  calls. Legacy pipeline (`atlas daily brief`) remains untouched.
+
+**Known boundary violation (as of Sprint 74):**
+
+`atlas/domains/daily_brief/__init__.py` imports from `atlas.daily_brief` (legacy).
+This violates the rule that domains must not import legacy modules. Resolution is
+scheduled for Sprint 75 alongside `atlas/daily/` shim removal.

@@ -104,6 +104,7 @@ See [docs/ArchitectureConsolidation.md](docs/ArchitectureConsolidation.md) for g
 | [docs/ATLAS_PRODUCT.md](docs/ATLAS_PRODUCT.md) | Product scope |
 | [docs/ATLAS_ARCHITECTURE.md](docs/ATLAS_ARCHITECTURE.md) | Architecture intent |
 | [docs/ArchitectureConsolidation.md](docs/ArchitectureConsolidation.md) | Current layer map and guardrails |
+| [docs/LegacyConsolidationPlan.md](docs/LegacyConsolidationPlan.md) | Legacy module inventory and migration plan |
 | [docs/DailyBrief.md](docs/DailyBrief.md) | Daily Brief capability reference |
 | [docs/CompanyAnalysis.md](docs/CompanyAnalysis.md) | Company Analysis reference |
 | [docs/DecisionLog.md](docs/DecisionLog.md) | Sprint decision history |

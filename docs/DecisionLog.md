@@ -416,6 +416,31 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: Legacy Engine Consolidation Plan (Sprint 74)
+
+Decision: create `docs/LegacyConsolidationPlan.md` inventorying all legacy
+Atlas modules, mapping their runtime CLI usage, documenting Blueprint-aligned
+overlap, confirming provider safety, and selecting a Sprint 75 migration target.
+
+No runtime code was changed. This is a planning-only sprint.
+
+Key findings:
+- `atlas/daily/` is a 43-line pure re-export shim. Only `atlas/cli/main.py`
+  imports it. Selected as the Sprint 75 removal target (lowest-risk migration).
+- `atlas/domains/daily_brief/__init__.py` imports from `atlas.daily_brief`
+  (legacy) — a boundary violation. No external code uses this path; resolution
+  is scheduled for Sprint 75 alongside shim removal.
+- Provider safety confirmed: `atlas/providers/` is never imported by domains,
+  capabilities, adapters, demo script, or release verification script.
+- 4 legacy module groups identified: thin shims (A), provider-dependent (B),
+  self-contained analytics (C), infrastructure/support (D).
+
+Documentation updated:
+- `docs/LegacyConsolidationPlan.md` created (new)
+- `docs/ArchitectureConsolidation.md` — Sprint 74 section added, boundary
+  violation documented
+- `README.md` Documentation table — LegacyConsolidationPlan.md link added
+
 ## 2026-07-01: README Sprint Notes Archive (Sprint 73)
 
 Decision: move historical sprint notes (Sprints 37–72) from `README.md` into

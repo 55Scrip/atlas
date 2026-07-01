@@ -144,3 +144,44 @@ def test_mock_provider_is_the_documented_default() -> None:
     providers_init = ATLAS_ROOT / "providers" / "__init__.py"
     text = providers_init.read_text(encoding="utf-8")
     assert "MockCompanyAnalysisProvider" in text
+
+
+# ── Sprint 74: legacy consolidation plan guardrails ───────────────────────────
+
+DOCS_DIR = REPO_ROOT / "docs"
+
+
+def test_legacy_consolidation_plan_exists() -> None:
+    plan = DOCS_DIR / "LegacyConsolidationPlan.md"
+    assert plan.exists(), "docs/LegacyConsolidationPlan.md not found"
+
+
+def test_legacy_consolidation_plan_documents_sprint_75_target() -> None:
+    plan = (DOCS_DIR / "LegacyConsolidationPlan.md").read_text()
+    assert "Sprint 75" in plan
+    assert "atlas/daily/" in plan
+
+
+def test_providers_not_imported_by_demo_script() -> None:
+    demo_script = REPO_ROOT / "scripts" / "run_daily_brief_demo.sh"
+    text = demo_script.read_text()
+    assert "yahoo" not in text.lower()
+    assert "provider" not in text.lower()
+
+
+def test_providers_not_imported_by_verify_script() -> None:
+    verify_script = REPO_ROOT / "scripts" / "verify_release_candidate.sh"
+    text = verify_script.read_text()
+    assert "yahoo" not in text.lower()
+    assert "provider" not in text.lower()
+
+
+def test_legacy_shim_atlas_daily_is_documented_as_migration_target() -> None:
+    plan = (DOCS_DIR / "LegacyConsolidationPlan.md").read_text()
+    assert "atlas/daily/" in plan
+    assert "re-export" in plan or "shim" in plan
+
+
+def test_readme_links_to_consolidation_plan() -> None:
+    readme = (REPO_ROOT / "README.md").read_text()
+    assert "LegacyConsolidationPlan.md" in readme
