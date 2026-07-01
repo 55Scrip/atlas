@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-01 (Sprint 81)  
-**Status:** Active — Sprint 81 target complete; Sprint 82 target to be selected
+**Updated:** 2026-07-01 (Sprint 82)  
+**Status:** Active — Sprint 82 target complete; Sprint 83 target to be selected
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,29 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 82 Migration Target — COMPLETED
+
+### Completed: `atlas reason analyze` command deprecated
+
+**Sprint 82 result:**
+- `atlas reason analyze` CLI command now prints a deprecation message and exits cleanly (exit 0)
+- No replacement command invented — message directs toward Blueprint-aligned decision and research capabilities (future)
+- `ReasoningEngine`, `ReasoningInput`, `ReasoningReport`, `render_reasoning_report` removed from `atlas/cli/main.py` imports
+- `_build_reasoning_report` private helper (dead code after deprecation) also removed from CLI
+- `atlas/reasoning/` engine remains on disk; used by `atlas/principles/engine.py` and `atlas/domains/decision/`
+- 14 new Sprint 82 deprecation tests (including regression checks for all 5 prior deprecated commands); 1054 tests passing
+
+**`ReasoningEngine` isolation note:** `atlas.reasoning.ReasoningEngine` (legacy, provider-coupled) is no longer
+called by any CLI command. However, `atlas/domains/decision/engine.py` defines its own `ReasoningEngine` class
+(a separate Blueprint-aligned type) — these are distinct. The legacy `atlas.reasoning.ReasoningEngine` is also
+still referenced by `atlas/principles/engine.py` (lazy import).
+
+**Future removal criteria:**
+1. Remove command body in Sprint 83 or later (or leave deprecated stub)
+2. `atlas.reasoning.ReasoningEngine` deletion requires retiring `atlas/principles/engine.py` lazy import
 
 ---
 

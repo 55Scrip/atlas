@@ -65,11 +65,10 @@ def test_reasoning_renderer_includes_required_sections_and_no_trade_advice():
 
 
 def test_reasoning_cli_outputs_report():
+    # Sprint 82: atlas reason analyze is deprecated — expect deprecation message
     runner = CliRunner()
 
     result = runner.invoke(app, ["reason", "analyze"])
 
     assert result.exit_code == 0
-    assert "Atlas Reasoning Report" in result.output
-    assert "Executive Summary" in result.output
-    assert "What Atlas Will Monitor Next" in result.output
+    assert "deprecated" in result.output.lower()

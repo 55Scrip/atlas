@@ -898,3 +898,20 @@ provider or network calls, making the CLI deprecation safe and immediate.
 The engine itself cannot be deleted yet — it is used by `decision_journal`,
 `comparison`, and `watchlist_review` legacy engines. CLI surface area is
 reduced; full engine retirement requires broader consolidation.
+
+## 2026-07-01: Deprecate `atlas reason analyze` Command (Sprint 82)
+
+Decision: deprecate `atlas reason analyze`. No Blueprint-aligned reasoning
+command exists yet, so the deprecation message directs users toward future
+Blueprint-aligned decision and research capabilities rather than inventing
+a specific replacement command.
+
+Rationale: Group C self-contained module. `atlas.reasoning.ReasoningEngine`
+makes no provider or network calls, making the CLI deprecation safe.
+The `_build_reasoning_report` helper was removed as dead code after the
+command body was replaced. The engine itself cannot be deleted yet — it is
+still lazily imported by `atlas/principles/engine.py`.
+
+Note: `atlas/domains/decision/engine.py` defines a separate `ReasoningEngine`
+class (Blueprint-aligned protocol) — this is distinct from the legacy
+`atlas.reasoning.ReasoningEngine` and is unaffected by this sprint.

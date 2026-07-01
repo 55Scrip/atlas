@@ -428,3 +428,19 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 12 new Sprint 81 deprecation tests. 1040 tests passing.
 - Recommended Sprint 82 target: continue Group C deprecations — e.g.,
   `atlas reason analyze` (ReasoningEngine, self-contained, no providers).
+
+**Sprint 82 — completed:**
+
+- `atlas reason analyze` CLI command deprecated. Prints deprecation notice
+  and exits cleanly (exit 0) without calling `ReasoningEngine` or any provider.
+- `ReasoningEngine`, `ReasoningInput`, `ReasoningReport`, `render_reasoning_report`
+  removed from `atlas/cli/main.py` module-level imports.
+- `_build_reasoning_report` private helper (dead code) removed from CLI.
+- No replacement command invented — message references Blueprint-aligned
+  decision and research capabilities (future consolidation direction).
+- `atlas/reasoning/` engine remains on disk; still referenced by
+  `atlas/principles/engine.py` (lazy import).
+- All 5 prior deprecated commands confirmed still deprecated via regression tests.
+- 14 new Sprint 82 deprecation tests. 1054 tests passing.
+- Recommended Sprint 83 target: continue Group C deprecations — e.g.,
+  `atlas risk size` (RiskEngine, self-contained, no providers).

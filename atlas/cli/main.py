@@ -95,12 +95,6 @@ from atlas.profile import (
 )
 from atlas.principles import PrinciplesEngine, render_principles_check
 from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
-from atlas.reasoning import (
-    ReasoningEngine,
-    ReasoningInput,
-    ReasoningReport,
-    render_reasoning_report,
-)
 from atlas.risk_drift import (
     RiskDriftAssessment,
     RiskDriftEngine,
@@ -917,19 +911,21 @@ def principles_check_command(text: str):
 
 @reason_app.command("analyze")
 def reason_analyze_command(
-    ticker: str = typer.Option("NVDA", "--ticker", help="Ticker context"),
-    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
-    theme: str = typer.Option("AI infrastructure", "--theme", help="Theme template context"),
+    ticker: str = typer.Option("NVDA", "--ticker", help="[DEPRECATED] Ticker context."),
+    provider_name: str = typer.Option("mock", "--provider", help="[DEPRECATED] Data provider."),
+    theme: str = typer.Option("AI infrastructure", "--theme", help="[DEPRECATED] Theme context."),
 ):
-    """Synthesize existing Atlas outputs into one deterministic investment thesis."""
-    try:
-        provider = _provider_from_name(provider_name)
-        report = _build_reasoning_report(ticker=ticker, provider=provider, theme=theme)
-    except (LookupError, ValueError) as exc:
-        console.print(f"[red]Reasoning failed:[/red] {exc}")
-        raise typer.Exit(code=1) from exc
+    """[DEPRECATED] Legacy Reason Analyze — reasoning analysis is being consolidated.
 
-    console.print(render_reasoning_report(report))
+    This command is deprecated and will be removed in a future sprint.
+    Reasoning analysis is being consolidated into Blueprint-aligned decision
+    and research capabilities.
+    """
+    console.print(
+        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas reason analyze[/bold] is deprecated.\n"
+        "Reasoning analysis is being consolidated into Blueprint-aligned decision and research capabilities."
+    )
+    raise typer.Exit(code=0)
 
 
 @risk_drift_app.command("analyze")
@@ -1664,36 +1660,3 @@ def _monitor_from_inputs(
     raise ValueError("Use 'atlas monitor TICKER', 'portfolio.json', or 'theme NAME'.")
 
 
-def _build_reasoning_report(
-    ticker: str,
-    provider: CompanyDataProvider,
-    theme: str,
-) -> ReasoningReport:
-    company_analysis = provider.get_company_analysis(ticker)
-    investment_report = build_investment_report(company_analysis)
-    theme_analysis = ThemeEngine().analyze(ThemeInput(theme=theme))
-    monitoring_report = MonitoringEngine().monitor_company(ticker, provider)
-    economic_signals = EconomicSignalsEngine().analyze()
-    market_health = MarketHealthEngine().analyze()
-    market_regime = MarketRegimeEngine().analyze(
-        MarketSnapshot(
-            indicators=MarketIndicators(
-                sp500_drawdown=-0.04,
-                nasdaq_drawdown=-0.07,
-                vix=19,
-                interest_rate_trend="stable",
-                inflation_trend="stable",
-            ),
-            source="deterministic-placeholder",
-        )
-    )
-    return ReasoningEngine().analyze(
-        ReasoningInput(
-            company_analysis=investment_report,
-            theme_analysis=theme_analysis,
-            monitoring_report=monitoring_report,
-            economic_signals=economic_signals,
-            market_health=market_health,
-            market_regime=market_regime,
-        )
-    )
