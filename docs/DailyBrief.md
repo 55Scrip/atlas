@@ -422,10 +422,27 @@ See [CompanyAnalysis.md](CompanyAnalysis.md) for all input formats.
 - `knowledge_node_count` is accepted by `build_daily_brief_input` but not
   yet wired to a CLI flag.
 
-## Recommendation for Sprint 60
+## Company Analysis Merge (Sprint 60)
 
-Add a `atlas company-analysis merge` command (or extend `atlas daily summary`
-to accept `--company-analysis` multiple times) so the Python one-liner merge
-step in the demo script becomes a first-class CLI operation. This eliminates the
-shell script dependency on an inline `python3 -c` call and makes multi-company
-Daily Brief generation fully expressible in Atlas CLI commands.
+`atlas company-analysis merge` combines multiple company analysis JSON exports
+into one Daily Brief–compatible file, eliminating the `python3 -c` step from
+the demo workflow:
+
+```bash
+atlas company-analysis merge \
+  --inputs tmp/atlas_demo/company_analysis_amd.json \
+  --inputs tmp/atlas_demo/company_analysis_nvda.json \
+  --output tmp/atlas_demo/company_analysis.json
+```
+
+The demo script (`scripts/run_daily_brief_demo.sh`) now uses this command
+at step 6. The full two-company demo is expressible in Atlas CLI commands only.
+
+## Recommendation for Sprint 61
+
+Improve the Evidence Gaps section of the Daily Brief. Currently, all knowledge
+facts supplied to `company-analysis export` appear as Evidence Gaps for both
+AMD and NVDA because the daily brief's evidence gap resolver does not yet match
+engine evidence links back to company-specific facts. Sprint 61 should align
+the resolver with the evidence links produced by `CompanyAnalysisEngine` so
+Evidence Gaps show only the facts that are genuinely unlinked for each company.

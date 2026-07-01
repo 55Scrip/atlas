@@ -219,7 +219,7 @@ The demo runs seven steps:
 3. `atlas discovery export` — discovery candidates from local inputs
 4. `atlas company-analysis export --ticker AMD` — engine-backed AMD analysis
 5. `atlas company-analysis export --ticker NVDA` — engine-backed NVDA analysis
-6. Python merge — combines both reports into a single JSON array
+6. `atlas company-analysis merge` — combines both exports into one JSON array
 7. `atlas daily summary` — produces a two-company Daily Brief
 
 Output: 2 company analysis reports, 7 unresolved questions, 2 discovery
@@ -227,6 +227,7 @@ candidates, Research/Watchlist/Company Analysis context for both companies.
 
 All outputs go to `tmp/atlas_demo/`. Clean up with `rm -rf tmp/atlas_demo`.
 
+The full pipeline uses Atlas CLI commands only — no external tools or scripts.
 This is not live market analysis. AMD and NVDA are demo examples only — no
 comparison between them as investment opportunities is made or implied.
 See `examples/daily_brief_demo/README.md` for full details.

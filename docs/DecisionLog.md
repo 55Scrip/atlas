@@ -361,6 +361,28 @@ longer appends the "Missing Business Description" unknown because
 string. Both flags are entirely optional — omitting them preserves Sprint 55
 behavior exactly.
 
+## 2026-07-01: Add Company Analysis Merge Command (Sprint 60)
+
+Decision: add `atlas company-analysis merge --inputs a.json --inputs b.json
+--output combined.json` as a new subcommand under the existing
+`company-analysis` subapp.
+
+Rationale: Sprint 59's demo workflow used an inline `python3 -c` call to
+concatenate two JSON lists. This was the only non-Atlas step in the pipeline.
+The merge command removes that dependency, making the full multi-company demo
+expressible in Atlas CLI commands only. The command operates at the raw JSON
+dict level (load → validate via `parse_company_analysis_json` → concatenate
+→ write) rather than deserialising into typed `CompanyAnalysisReport` objects,
+because the inputs are already in the export format. `--inputs` accepts
+repeated flags, so an arbitrary number of files can be merged. Input order is
+preserved. The command validates each file before merging and fails cleanly on
+missing files, invalid JSON, or non-object/non-list top-level values. No CLI
+redesign to `atlas daily summary` was needed — `parse_company_analysis_json`
+already accepts a JSON array of any length. 754 tests pass; 15 new tests in
+`test_company_analysis_merge.py` cover command existence, two-file merge, order
+preservation, single-file merge, Daily Brief compatibility, error handling,
+no-network, and demo script correctness.
+
 ## 2026-07-01: Extend Demo to Two-Company Daily Brief (Sprint 59)
 
 Decision: extend the Sprint 58 demo dataset from AMD-only to AMD + NVDA.

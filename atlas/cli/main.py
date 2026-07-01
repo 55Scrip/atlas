@@ -1365,6 +1365,57 @@ def company_analysis_export_command(
     console.print("\n".join(lines))
 
 
+@company_analysis_app.command("merge")
+def company_analysis_merge_command(
+    input_paths: list[Path] = typer.Option(
+        ..., "--inputs", help="Two or more company analysis JSON files to merge.",
+    ),
+    output_path: Path = typer.Option(
+        ..., "--output", help="Write merged company analysis JSON to this file path.",
+    ),
+):
+    """Merge multiple company analysis JSON exports into one Daily Brief-compatible file.
+
+    Each input must be a valid company analysis JSON (single object or list).
+    The merged output is a JSON array compatible with
+    ``atlas daily summary --company-analysis``.
+
+    Example::
+
+        atlas company-analysis merge \\
+          --inputs company_amd.json \\
+          --inputs company_nvda.json \\
+          --output company_combined.json
+
+    No network calls are made. No analysis is generated or modified.
+    Input order is preserved in the output.
+    """
+    try:
+        if not input_paths:
+            raise ValueError("At least one --inputs file must be provided.")
+
+        combined: list = []
+        for path in input_paths:
+            raw = load_json_file(path)
+            # Validate the file is parseable as company analysis JSON.
+            parse_company_analysis_json(raw, path)
+            # Normalise to a list of dicts (the export format) and concatenate.
+            if isinstance(raw, list):
+                combined.extend(raw)
+            else:
+                combined.append(raw)
+
+        _write_json_export(output_path, combined)
+
+    except (OSError, ValueError) as exc:
+        console.print(f"[red]Company analysis merge failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(
+        f"Company analysis files merged: {len(combined)} report(s) written to {output_path}"
+    )
+
+
 @watchlist_app.command("analyze")
 def watchlist_analyze_command(
     watchlist_path: Path,

@@ -59,15 +59,11 @@ atlas company-analysis export \
   --output "$TMP_DIR/company_analysis_nvda.json"
 echo "  → $TMP_DIR/company_analysis_nvda.json"
 
-echo "Step 6: Merge company analysis exports into a single file..."
-python3 -c "
-import json, sys
-amd = json.loads(open('$TMP_DIR/company_analysis_amd.json').read())
-nvda = json.loads(open('$TMP_DIR/company_analysis_nvda.json').read())
-combined = amd + nvda
-open('$TMP_DIR/company_analysis.json', 'w').write(json.dumps(combined, indent=2))
-print('  Combined:', len(combined), 'company report(s)')
-"
+echo "Step 6: Merge company analysis exports..."
+atlas company-analysis merge \
+  --inputs "$TMP_DIR/company_analysis_amd.json" \
+  --inputs "$TMP_DIR/company_analysis_nvda.json" \
+  --output "$TMP_DIR/company_analysis.json"
 echo "  → $TMP_DIR/company_analysis.json"
 
 echo ""

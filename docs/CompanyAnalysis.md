@@ -240,3 +240,38 @@ Company Analysis Context section).
 
 No network calls are made. No recommendations are produced.
 
+## Company Analysis Merge (Sprint 60)
+
+`atlas company-analysis merge` combines multiple company analysis JSON exports
+into a single Daily Brief–compatible JSON file.
+
+```bash
+# Merge two engine-backed exports into one file
+atlas company-analysis merge \
+  --inputs company_analysis_amd.json \
+  --inputs company_analysis_nvda.json \
+  --output company_analysis_combined.json
+
+# Consume the merged file in Daily Brief
+atlas daily summary --company-analysis company_analysis_combined.json
+```
+
+### Behavior
+
+- Each `--inputs` file must be a valid company analysis JSON (single object or list).
+- Input order is preserved in the output.
+- The merged output is a JSON array compatible with `atlas daily summary --company-analysis`.
+- The command validates each input file before merging — a top-level value that is neither an object nor a list fails with a clear error.
+- No analysis is generated or modified. Reports are concatenated as-is.
+- No network calls are made.
+- Repeated runs with the same inputs produce identical output (deterministic).
+
+### Error Handling
+
+| Condition | Behavior |
+|---|---|
+| Missing input file | Exit 1 with clear message |
+| Invalid JSON | Exit 1 with clear message |
+| Non-object / non-list top-level value | Exit 1 with clear message |
+| Missing `--output` | Typer reports required option missing |
+

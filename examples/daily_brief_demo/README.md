@@ -79,12 +79,10 @@ atlas company-analysis export \
   --output tmp/atlas_demo/company_analysis_nvda.json
 
 # Step 6 — Merge company analysis exports into a single list
-python3 -c "
-import json
-amd = json.loads(open('tmp/atlas_demo/company_analysis_amd.json').read())
-nvda = json.loads(open('tmp/atlas_demo/company_analysis_nvda.json').read())
-open('tmp/atlas_demo/company_analysis.json', 'w').write(json.dumps(amd + nvda, indent=2))
-"
+atlas company-analysis merge \
+  --inputs tmp/atlas_demo/company_analysis_amd.json \
+  --inputs tmp/atlas_demo/company_analysis_nvda.json \
+  --output tmp/atlas_demo/company_analysis.json
 
 # Step 7 — Generate Daily Brief
 atlas daily summary \
@@ -105,9 +103,9 @@ analysis reports. Both AMD and NVDA appear in:
 - **Company Analysis Context** — 2 company analysis reports
 - **Unresolved Questions** — 7 questions, 4 AMD + 3 NVDA
 
-The step 6 merge (Python one-liner) combines the two list outputs from
-`company-analysis export` into a single list. This is the supported approach —
-`parse_company_analysis_json` accepts a JSON array of any length.
+Step 6 uses `atlas company-analysis merge` to combine the two individual
+exports into a single JSON array. The full demo is now expressible entirely
+in Atlas CLI commands — no `python3 -c` step required.
 
 ## Expected Output Structure
 
@@ -137,8 +135,8 @@ rm -rf tmp/atlas_demo
 ## Known Limitations
 
 - The CLI `--company-analysis` flag accepts one file. Multiple company analysis
-  reports are supported by merging them into a single JSON array first (step 6
-  above). The demo script handles this with a Python one-liner.
+  reports are supported by merging them with `atlas company-analysis merge` first
+  (step 6 above).
 - Evidence Gaps in the Daily Brief currently lists all knowledge facts for each
   company analysis because the engine evidence links are not yet matched against
   the daily brief's evidence gap resolver. This is a pre-existing display
@@ -154,9 +152,9 @@ rm -rf tmp/atlas_demo
 - Not a recommendation to buy, hold, or take any action.
 - Not a price target or forecast.
 
-## Recommendation for Sprint 60
+## Recommendation for Sprint 61
 
-Add a `atlas company-analysis merge` command (or extend `atlas daily summary`
-to accept `--company-analysis` multiple times) so the Python one-liner merge
-step in the demo becomes a first-class CLI operation, eliminating the shell
-script dependency on `python3 -c`.
+Improve the Evidence Gaps section of the Daily Brief so it shows only
+genuinely unlinked facts per company, rather than all knowledge facts supplied
+to each company analysis export. This requires aligning the daily brief's
+evidence gap resolver with the evidence links produced by `CompanyAnalysisEngine`.
