@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-01 (Sprint 84)  
-**Status:** Active — Sprint 84 target complete; Sprint 85 target to be selected
+**Updated:** 2026-07-01 (Sprint 85)  
+**Status:** Active — Sprint 85 target complete; Sprint 86 target to be selected
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,26 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 85 Migration Target — COMPLETED
+
+### Completed: `atlas daily brief` command body retired
+
+**Sprint 85 result:**
+- `atlas daily brief` command body removed from `atlas/cli/main.py` — command is no longer registered in the CLI
+- `atlas daily brief` moved from active `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`; `all_retired_commands()` accessor added
+- `atlas daily summary` remains unchanged — the supported Daily Brief workflow
+- All tests updated: regression tests that checked the command was deprecated now verify it is retired (exit non-zero)
+- `test_daily_brief_deprecation.py` rewritten as a retirement confirmation test suite
+- 1111 tests passing
+- CLI surface area reduced by one command
+
+**Retirement prerequisites that were met:**
+1. `atlas.daily_brief` engine deleted in Sprint 77 — no engine dependency
+2. Command body was a pure stub with no callers — removal was zero-risk
+3. `atlas daily summary` provides complete replacement functionality
 
 ---
 

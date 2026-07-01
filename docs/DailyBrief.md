@@ -40,21 +40,14 @@ It merges `open_research_questions` from both explicit arguments and from the
 
 ## Two Daily Brief Paths
 
-### Legacy: `atlas daily brief` — DEPRECATED (Sprint 76)
+### Legacy: `atlas daily brief` — RETIRED (Sprint 85)
 
-The original command (`atlas daily brief`) is deprecated as of Sprint 76.
-Running it prints a deprecation message and exits without calling any legacy
-engine or provider:
-
-```text
-DEPRECATED: The command atlas daily brief is deprecated.
-Use atlas daily summary for the Blueprint-aligned Daily Brief workflow.
-
-    atlas daily summary --help
-```
+The original command (`atlas daily brief`) was deprecated in Sprint 76 and fully
+retired in Sprint 85. The command body has been removed — `atlas daily brief` is
+no longer a valid CLI command.
 
 The underlying `atlas.daily_brief.DailyBriefEngine` (provider-coupled, 353 lines)
-was deleted in Sprint 77. The module no longer exists.
+was deleted in Sprint 77. Use `atlas daily summary` instead.
 
 ### Blueprint-aligned: `atlas daily summary` (Sprint 48, current)
 

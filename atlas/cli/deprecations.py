@@ -8,8 +8,11 @@ helper. It is CLI-local and must stay that way.
 Usage in a CLI command body:
 
     from atlas.cli.deprecations import deprecated_command_message
-    console.print(deprecated_command_message("atlas daily brief"))
+    console.print(deprecated_command_message("atlas <command>"))
     raise typer.Exit(code=0)
+
+Retired commands are recorded in _RETIRED_REGISTRY for audit purposes but
+are no longer registered in the CLI and are not callable.
 """
 
 from __future__ import annotations
@@ -41,9 +44,10 @@ class DeprecatedCommand:
     removal_criteria: tuple[str, ...]
 
 
-# ── Registry ──────────────────────────────────────────────────────────────────
+# ── Retired commands (no longer registered in CLI) ────────────────────────────
+# Kept for historical record; these commands are not callable.
 
-_REGISTRY: tuple[DeprecatedCommand, ...] = (
+_RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
     DeprecatedCommand(
         command="atlas daily brief",
         message=(
@@ -56,10 +60,15 @@ _REGISTRY: tuple[DeprecatedCommand, ...] = (
         consolidation_direction=None,
         legacy_module="atlas.daily_brief",
         removal_criteria=(
-            "atlas.daily_brief engine was deleted in Sprint 77 — command body may be removed any time.",
-            "No other modules import atlas.daily_brief (already verified Sprint 77).",
+            "atlas.daily_brief engine was deleted in Sprint 77.",
+            "Command body retired in Sprint 85 — no remaining dependency.",
         ),
     ),
+)
+
+# ── Active deprecated commands (still registered in CLI) ──────────────────────
+
+_REGISTRY: tuple[DeprecatedCommand, ...] = (
     DeprecatedCommand(
         command="atlas watchlist analyze",
         message=(
@@ -178,3 +187,8 @@ def get_deprecated_command(command: str) -> DeprecatedCommand:
     Raises KeyError if the command is not in the registry.
     """
     return _BY_COMMAND[command]
+
+
+def all_retired_commands() -> tuple[str, ...]:
+    """Return the command strings for every retired (removed from CLI) command."""
+    return tuple(entry.command for entry in _RETIRED_REGISTRY)

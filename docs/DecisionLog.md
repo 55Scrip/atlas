@@ -962,3 +962,26 @@ The registry consolidates this without changing user-facing behavior.
 
 **Outcome:** 46 new registry tests; 1114 tests passing. Architecture boundaries clean.
 Recommended Sprint 85: retire `atlas daily brief` command body (engine already deleted).
+
+---
+
+## Sprint 85 — 2026-07-01: Retire `atlas daily brief` Command Body
+
+**Decision:** Remove the `atlas daily brief` command body and registration from
+`atlas/cli/main.py`. Move its registry entry to `_RETIRED_REGISTRY`.
+
+**Rationale:** The underlying `atlas.daily_brief` engine was deleted in Sprint 77.
+Sprint 76 deprecated the CLI stub, and Sprint 84 centralized its message into the
+registry. By Sprint 85 the stub was a pure no-op with no engine dependency, no
+provider calls, and no active callers. Removing it is zero-risk and reduces CLI
+surface area by one command.
+
+**Alternatives considered:**
+- Leave as deprecated stub indefinitely: rejected — the engine is gone, the stub
+  serves no purpose, and it clutters the CLI help output.
+- Add a compatibility alias: rejected — `atlas daily summary` provides complete
+  replacement; a shim would only perpetuate legacy surface area.
+
+**Outcome:** `atlas daily brief` is no longer callable. `atlas daily summary` is
+the sole Daily Brief entry point. 1111 tests passing. `_RETIRED_REGISTRY` pattern
+established for future retirements.

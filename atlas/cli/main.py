@@ -405,36 +405,6 @@ def dashboard_show_command(
     console.print(render_dashboard(summary))
 
 
-@daily_app.command("brief")
-def daily_brief_command(
-    profile_path: Path = typer.Option(
-        Path("atlas_profile.json"),
-        "--profile",
-        help="[DEPRECATED] Investor profile JSON path. Use 'atlas daily summary' instead.",
-    ),
-    portfolio_path: Path | None = typer.Option(
-        None,
-        "--portfolio",
-        help="[DEPRECATED] Portfolio JSON path. Use 'atlas daily summary' instead.",
-    ),
-    provider_name: str = typer.Option("mock", "--provider", help="[DEPRECATED] Data provider."),
-    ticker: str | None = typer.Option(
-        None,
-        "--ticker",
-        help="[DEPRECATED] Optional ticker for dashboard context.",
-    ),
-):
-    """[DEPRECATED] Legacy Daily Brief — use 'atlas daily summary' instead.
-
-    This command is deprecated and will be removed in a future sprint.
-    Use the Blueprint-aligned command instead:
-
-        atlas daily summary
-    """
-    console.print(deprecated_command_message("atlas daily brief"))
-    raise typer.Exit(code=0)
-
-
 @daily_app.command("summary")
 def daily_summary_command(
     portfolio_path: Path | None = typer.Option(

@@ -467,3 +467,16 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 46 new Sprint 84 registry tests. 1114 tests passing.
 - Recommended Sprint 85 target: retire `atlas daily brief` command body (engine already
   deleted Sprint 77 — safest removal, no engine dependency).
+
+**Sprint 85 (2026-07-01):** `atlas daily brief` command body retired.
+- `daily_brief_command` function and `@daily_app.command("brief")` registration
+  removed from `atlas/cli/main.py`. The command is no longer callable.
+- Entry moved from `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`;
+  `all_retired_commands()` public accessor added.
+- `atlas daily summary` remains unchanged — the supported Daily Brief workflow.
+- `atlas.daily_brief` engine remains absent (deleted Sprint 77 — invariant preserved).
+- All regression tests updated to assert retirement (exit non-zero) rather than
+  deprecation (exit 0 + message).
+- 1111 tests passing. CLI surface area reduced by one command.
+- Recommended Sprint 86 target: retire `atlas evidence assess` command body
+  (EvidenceQualityEngine — self-contained Group C module, no known dependents).

@@ -97,10 +97,10 @@ def test_no_risk_engine_call_in_size_command_body() -> None:
 
 # ── Confirm existing deprecated commands remain deprecated ────────────────────
 
-def test_daily_brief_remains_deprecated() -> None:
+def test_daily_brief_is_retired() -> None:
+    # Sprint 85: atlas daily brief command body retired — no longer a valid command
     result = runner.invoke(app, ["daily", "brief"])
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
+    assert result.exit_code != 0
 
 
 def test_watchlist_analyze_remains_deprecated(tmp_path) -> None:

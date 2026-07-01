@@ -21,6 +21,7 @@ from typer.testing import CliRunner
 from atlas.cli.deprecations import (
     DeprecatedCommand,
     all_deprecated_commands,
+    all_retired_commands,
     deprecated_command_message,
     get_deprecated_command,
 )
@@ -31,13 +32,16 @@ REGISTRY_PATH = Path(__file__).resolve().parent.parent / "atlas" / "cli" / "depr
 runner = CliRunner()
 
 EXPECTED_COMMANDS = (
-    "atlas daily brief",
     "atlas watchlist analyze",
     "atlas portfolio analyze",
     "atlas portfolio review",
     "atlas evidence assess",
     "atlas reason analyze",
     "atlas risk size",
+)
+
+RETIRED_COMMANDS = (
+    "atlas daily brief",
 )
 
 # ── Registry completeness ─────────────────────────────────────────────────────
@@ -135,14 +139,19 @@ def test_registry_module_does_not_import_legacy_engines() -> None:
 
 # ── CLI behavior via registry ─────────────────────────────────────────────────
 
-def test_daily_brief_exits_cleanly() -> None:
-    result = runner.invoke(app, ["daily", "brief"])
-    assert result.exit_code == 0
+def test_daily_brief_is_retired_not_active() -> None:
+    """Sprint 85: atlas daily brief was retired — must not be in active registry."""
+    assert "atlas daily brief" not in all_deprecated_commands()
 
 
-def test_daily_brief_message_matches_registry() -> None:
+def test_daily_brief_is_in_retired_registry() -> None:
+    assert "atlas daily brief" in all_retired_commands()
+
+
+def test_daily_brief_command_is_no_longer_callable() -> None:
+    """Sprint 85: atlas daily brief is retired — CLI should not recognize it."""
     result = runner.invoke(app, ["daily", "brief"])
-    assert "atlas daily summary" in result.output
+    assert result.exit_code != 0
 
 
 def test_watchlist_analyze_exits_cleanly(tmp_path) -> None:
@@ -232,7 +241,6 @@ def test_risk_size_message_matches_registry(tmp_path) -> None:
 # ── No providers / no network ─────────────────────────────────────────────────
 
 @pytest.mark.parametrize("command,args", [
-    (["daily", "brief"], []),
     (["evidence", "assess"], []),
     (["reason", "analyze"], []),
 ])

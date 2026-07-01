@@ -1,6 +1,7 @@
 # Atlas Deprecated Commands
 
 **Created:** 2026-07-01 (Sprint 84)  
+**Updated:** 2026-07-01 (Sprint 85)  
 **Status:** Active registry — all entries reflected in `atlas/cli/deprecations.py`
 
 This document is the human-readable counterpart to the code registry at
@@ -8,18 +9,20 @@ This document is the human-readable counterpart to the code registry at
 
 ---
 
-## Deprecated Command Registry
+## Retired Commands (no longer callable)
 
-### `atlas daily brief`
+### ~~`atlas daily brief`~~ — RETIRED Sprint 85
 
 | Field | Value |
 |---|---|
-| **Status** | Deprecated (Sprint 76) |
+| **Status** | **Retired** (command body removed Sprint 85) |
 | **Replacement** | `atlas daily summary` |
-| **Legacy module** | `atlas.daily_brief` (engine **deleted** Sprint 77) |
-| **Removal criteria** | Command body only — engine is already gone. Safe to remove any sprint. |
+| **Legacy module** | `atlas.daily_brief` (engine deleted Sprint 77; command body retired Sprint 85) |
+| **Notes** | Entry preserved in `_RETIRED_REGISTRY` for audit. Not callable. |
 
 ---
+
+## Active Deprecated Commands (still callable, emit deprecation message)
 
 ### `atlas watchlist analyze`
 
@@ -89,10 +92,10 @@ This document is the human-readable counterpart to the code registry at
 
 ## Recommended Retirement Order
 
-Based on isolation analysis:
+Based on isolation analysis (as of Sprint 85):
 
-1. **`atlas daily brief`** command body — safest first (engine already deleted Sprint 77)
-2. **`atlas evidence assess`** command body + `atlas.evidence` engine — self-contained, no known dependents
+1. ~~**`atlas daily brief`**~~ — **DONE Sprint 85** (engine deleted Sprint 77; command body retired Sprint 85)
+2. **`atlas evidence assess`** command body + `atlas.evidence` engine — self-contained, no known dependents (recommended Sprint 86)
 3. **`atlas risk size`** command body — engine has no direct callers, but `RiskAnalysis` type dependency must be confirmed
 4. **`atlas reason analyze`** command body — requires retiring `atlas/principles/engine.py` lazy import first
 5. **`atlas portfolio analyze`** + **`atlas portfolio review`** command bodies — share `atlas.analysis.portfolio` consumers, retire together
