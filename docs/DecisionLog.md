@@ -416,6 +416,28 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: RC2 Release Verification (Sprint 71)
+
+Decision: declare Atlas Internal Release Candidate 2 (v0.1.0-rc2), extending
+the RC1 documentation in `docs/ReleaseCandidate.md` with a new RC2 section.
+No new product capability was added.
+
+Verification results:
+- 947 tests pass (0 failures)
+- `scripts/verify_release_candidate.sh` — all 7 steps green
+- `scripts/run_daily_brief_demo.sh` — all 7 steps complete
+- All five Daily Brief input surfaces exercised in demo
+- No false "No knowledge facts are linked" in output
+- No forbidden language in output
+- No network calls
+
+Documentation updated:
+- `docs/ReleaseCandidate.md` — RC2 section prepended; RC1 preserved below
+- `README.md` — version updated to RC2; test count updated to 947; capabilities table updated
+- `scripts/verify_release_candidate.sh` — final echo updated from "RC1" to "RC2"
+- `docs/ArchitectureConsolidation.md` — noted RC2 review; no structural changes
+- `docs/DecisionLog.md` — Sprint 71 entry added
+
 ## 2026-07-01: Evidence Link Resolution — Knowledge Facts via Company Node ID (Sprint 70)
 
 Decision: add `--knowledge` flag to `atlas watchlist intelligence` and a

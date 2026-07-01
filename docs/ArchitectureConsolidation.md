@@ -1,8 +1,13 @@
-# Architecture Consolidation (Sprint 44, updated Sprint 67)
+# Architecture Consolidation (Sprint 44, updated Sprint 67, reviewed Sprint 71)
 
-This document records the current state of Atlas architecture as of RC1 (Sprint 67),
+This document records the current state of Atlas architecture as of RC2 (Sprint 71),
 clarifies which layers are current vs. legacy, and defines guardrails for
 future sprints. It does not change runtime behavior.
+
+Architecture is unchanged from RC1. RC2 verification (Sprint 71) confirmed no
+new legacy patterns were introduced in Sprints 69–70. The Blueprint-aligned
+adapter layer (`atlas/adapters/watchlist.py`) was extended to support knowledge
+fact distribution — consistent with existing adapter patterns.
 
 ## Current Layers
 

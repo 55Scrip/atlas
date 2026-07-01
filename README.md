@@ -2,7 +2,7 @@
 
 Private investment research platform. Local-only. Deterministic. Non-advisory.
 
-**Version:** v0.1.0 — Internal Release Candidate 1 (Sprint 67)
+**Version:** v0.1.0 — Internal Release Candidate 2 (Sprint 71)
 
 ---
 
@@ -25,7 +25,7 @@ APIs. It does not use AI or LLMs. It does not fetch live market data or news.
 - Does not fetch live market data or news
 - Does not compare companies as investment opportunities
 
-## Current Capabilities (RC1)
+## Current Capabilities (RC2)
 
 | Capability | Module | Status |
 |---|---|---|
@@ -34,11 +34,11 @@ APIs. It does not use AI or LLMs. It does not fetch live market data or news.
 | Knowledge Domain | `atlas.domains.knowledge` | Current |
 | Decision Engine | `atlas.domains.decision` | Current |
 | Company Analysis | `atlas.capabilities.company_analysis` | Current |
-| Watchlist Intelligence | `atlas.capabilities.watchlist_intelligence` | Current |
+| Watchlist Intelligence | `atlas.capabilities.watchlist_intelligence` | Current — `--knowledge` flag added (RC2) |
 | Discovery | `atlas.capabilities.discovery` | Current |
-| Daily Brief | `atlas.capabilities.daily_brief` | Current |
+| Daily Brief | `atlas.capabilities.daily_brief` | Current — all five input surfaces (RC2) |
 | JSON export pipeline | `atlas.cli` + `atlas.adapters` | Current |
-| Local demo | `examples/daily_brief_demo/` | Current |
+| Local demo | `examples/daily_brief_demo/` | Current — portfolio + evidence link resolution (RC2) |
 
 Legacy engines (`atlas/analysis/`, `atlas/daily/`, `atlas/intelligence/`, etc.)
 remain functional. New product work belongs in `atlas/domains/` and
@@ -59,7 +59,7 @@ pip install -e .
 .venv/bin/python -m pytest
 ```
 
-883 tests pass as of RC1.
+947 tests pass as of RC2.
 
 ## Quickstart: Daily Brief Demo
 

@@ -112,4 +112,4 @@ rm -rf "$TMP_DIR"
 echo "  ✓ $TMP_DIR removed"
 echo ""
 
-echo "=== Verification complete. Atlas RC1 is green. ==="
+echo "=== Verification complete. Atlas RC2 is green. ==="

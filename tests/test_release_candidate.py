@@ -232,3 +232,72 @@ def test_verify_script_cleans_up_after_itself() -> None:
 def test_release_candidate_doc_references_verify_script() -> None:
     content = RC_DOC.read_text()
     assert "verify_release_candidate.sh" in content
+
+
+# ── Sprint 71: RC2 verification tests ─────────────────────────────────────────
+
+DEMO_README = REPO_ROOT / "examples" / "daily_brief_demo" / "README.md"
+DAILY_BRIEF_DOC = DOCS / "DailyBrief.md"
+VERIFY_SCRIPT = REPO_ROOT / "scripts" / "verify_release_candidate.sh"
+
+
+def test_rc_doc_contains_rc2_section() -> None:
+    content = RC_DOC.read_text()
+    assert "Release Candidate 2" in content or "rc2" in content.lower()
+
+
+def test_rc_doc_mentions_all_five_input_surfaces() -> None:
+    content = RC_DOC.read_text()
+    for surface in ("portfolio", "research", "watchlist", "discovery", "company analysis"):
+        assert surface.lower() in content.lower(), f"RC doc missing input surface: {surface}"
+
+
+def test_rc_doc_mentions_evidence_link_resolution() -> None:
+    content = RC_DOC.read_text()
+    assert "evidence link" in content.lower() or "company-amd" in content
+
+
+def test_rc_doc_mentions_947_tests() -> None:
+    content = RC_DOC.read_text()
+    assert "947" in content
+
+
+def test_rc_doc_no_stale_false_negative_limitation() -> None:
+    content = RC_DOC.read_text()
+    assert "No knowledge facts are linked" not in content or "Resolved since RC1" in content
+
+
+def test_demo_readme_mentions_knowledge_flag_for_watchlist() -> None:
+    content = DEMO_README.read_text()
+    assert "--knowledge" in content
+
+
+def test_demo_readme_no_stale_false_negative_output() -> None:
+    content = DEMO_README.read_text()
+    assert "No knowledge facts are linked" not in content
+
+
+def test_readme_mentions_rc2() -> None:
+    content = README.read_text()
+    assert "RC2" in content or "Release Candidate 2" in content
+
+
+def test_readme_mentions_947_tests() -> None:
+    content = README.read_text()
+    assert "947" in content
+
+
+def test_verify_script_says_rc2() -> None:
+    content = VERIFY_SCRIPT.read_text()
+    assert "RC2" in content
+
+
+def test_rc_doc_no_recommendation_language() -> None:
+    content = RC_DOC.read_text().lower()
+    for term in ("strong buy", "price target", "outperform", "must act", "guaranteed", "risk-free"):
+        assert term not in content, f"Forbidden term {term!r} found in RC doc"
+
+
+def test_daily_brief_doc_mentions_evidence_link_resolution() -> None:
+    content = DAILY_BRIEF_DOC.read_text()
+    assert "Evidence Link Resolution" in content or "company-amd" in content

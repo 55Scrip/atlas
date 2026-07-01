@@ -1,3 +1,229 @@
+# Atlas Internal Release Candidate 2
+
+**Version:** v0.1.0-rc2  
+**Date:** 2026-07-01  
+**Sprint:** 71
+
+---
+
+## What This Is
+
+Atlas Internal Release Candidate 2 (RC2) marks the completion of the Atlas
+post-RC1 integration sprints (68–71). It extends RC1 with a complete five-surface
+Daily Brief demo, portfolio concentration signalling, and evidence link resolution
+for company knowledge facts.
+
+This is an internal milestone — not a public release.
+
+---
+
+## What Changed Since RC1 (Sprints 69–70)
+
+### Sprint 69 — Portfolio Demo Integration
+
+- Added `examples/daily_brief_demo/portfolio.json` (NVDA 55%, AMD 30%, Cash 15%)
+- Passed `--portfolio` to `atlas daily summary` in demo script
+- Portfolio concentration at 55% exercises the HIGH priority path in "What Deserves Attention"
+- Demo now exercises **all five** Daily Brief input surfaces: portfolio, research, watchlist, discovery, company analysis
+- Overall brief priority in demo: `high` (was `moderate`)
+- Added Portfolio Context section to demo output
+
+### Sprint 70 — Evidence Link Resolution
+
+- Added `--knowledge` flag to `atlas watchlist intelligence`
+- Added `assign_knowledge_facts` in `atlas/adapters/watchlist.py`
+- Knowledge facts are now distributed to watchlist items by two deterministic rules:
+  1. Exact ticker match (`"AMD"`)
+  2. Company node ID pattern (`"company-amd"` → `"AMD"`)
+- Demo script Step 2 now passes `--knowledge examples/daily_brief_demo/knowledge.json`
+- "Suggested Next Research Steps" no longer contains false `"AMD: No knowledge facts are linked."` / `"NVDA: No knowledge facts are linked."` lines
+
+### Sprint 71 — RC2 Verification
+
+- All 7 verification steps green
+- 947 tests passing
+- Documentation updated to reflect RC2 state
+
+---
+
+## What Works (RC2)
+
+### Capabilities
+
+| Capability | Module | What it provides |
+|---|---|---|
+| Portfolio | `atlas.domains.portfolio` | Deterministic portfolio understanding: weights, concentration, sector/country allocation |
+| Research | `atlas.domains.research` | Research projects, open questions, notes, thesis fragments |
+| Knowledge | `atlas.domains.knowledge` | Attributed facts, knowledge nodes, evidence references |
+| Decision | `atlas.domains.decision` | Structured reasoning: evidence → observations → reasoning → unknowns |
+| Company Analysis | `atlas.capabilities.company_analysis` | Deterministic company analysis from research + knowledge |
+| Watchlist Intelligence | `atlas.capabilities.watchlist_intelligence` | Watchlist overview, open questions, suggested steps, knowledge fact linking |
+| Discovery | `atlas.capabilities.discovery` | Discovery candidates from knowledge + research + watchlist |
+| Daily Brief | `atlas.capabilities.daily_brief` | Deterministic daily overview with priority routing across five input surfaces |
+
+### Full CLI Pipeline (RC2)
+
+```
+atlas research export         → research.json
+atlas watchlist intelligence  → watchlist.json   (--knowledge now supported)
+atlas discovery export        → discovery.json
+atlas company-analysis export → company_analysis_<ticker>.json
+atlas company-analysis merge  → company_analysis.json (combined)
+atlas daily summary           → Daily Brief output
+```
+
+All commands are composable. All outputs are deterministic JSON. No network calls.
+
+### Daily Brief Output (RC2)
+
+Five input surfaces now exercised in the demo:
+
+| Input | Surface | Key signal |
+|---|---|---|
+| `portfolio.json` | Portfolio Context | Concentration HIGH → `[!]` in What Deserves Attention |
+| `research.json` | Research Context | 7 unresolved questions → MODERATE |
+| `watchlist.json` | Watchlist Context | 4 open questions, 2 suggested steps |
+| `discovery.json` | Discovery Context | 2 candidates → MODERATE |
+| `company_analysis.json` | Company Analysis Context | AMD + NVDA available for review → LOW |
+
+Priority routing (unchanged from RC1):
+
+| Signal | Priority | Section |
+|---|---|---|
+| Portfolio concentration HIGH/ELEVATED | high | What Deserves Attention |
+| Open research questions | moderate | What Deserves Attention |
+| Discovery candidates | moderate | What Deserves Attention |
+| Company reports without unknowns | low | What Can Safely Wait |
+
+### Evidence Link Resolution (RC2)
+
+`atlas watchlist intelligence --knowledge <file>` distributes knowledge facts
+to watchlist items. Matching rules (deterministic, explicit, no fuzzy logic):
+
+1. Exact ticker match: `fact.subject_node_id == "AMD"`
+2. Company node ID: `fact.subject_node_id == "company-amd"` → ticker `AMD`
+
+Implemented in `_node_id_matches_ticker` and `assign_knowledge_facts` in
+`atlas/adapters/watchlist.py`. Covered by tests.
+
+---
+
+## How to Run Tests
+
+```bash
+.venv/bin/python -m compileall atlas tests
+.venv/bin/python -m pytest
+```
+
+**Result:** 947 tests pass, 0 failures.
+
+## Full Release Verification
+
+```bash
+bash scripts/verify_release_candidate.sh
+```
+
+Steps performed:
+1. Compile check (`python -m compileall atlas tests`)
+2. Full test suite (`pytest`)
+3. Daily Brief demo (`scripts/run_daily_brief_demo.sh`)
+4. Verify all 7 generated files exist in `tmp/atlas_demo/`
+5. Verify expected sections in `daily_brief.txt` (including Portfolio Context)
+6. Forbidden language check on `daily_brief.txt`
+7. Cleanup (`rm -rf tmp/atlas_demo`)
+
+**Result:** All 7 steps green on RC2 verification run.
+
+---
+
+## How to Run the Demo
+
+```bash
+bash scripts/run_daily_brief_demo.sh
+```
+
+**Result:** All 7 steps complete. `daily_brief.txt` saved. No network calls.
+
+Cleanup:
+
+```bash
+rm -rf tmp/atlas_demo
+```
+
+---
+
+## Release Checklist (RC2)
+
+- [x] Compile check passes (`python -m compileall atlas tests`)
+- [x] Full test suite passes (947 tests)
+- [x] Demo script runs without virtualenv activation
+- [x] All five Daily Brief input surfaces exercised in demo
+- [x] Portfolio concentration signals HIGH in demo output
+- [x] Evidence link resolution: `company-amd` → `AMD` matching works
+- [x] No false "No knowledge facts are linked" in demo output
+- [x] No external calls in demo pipeline
+- [x] No recommendation language in CLI output
+- [x] No recommendation language in demo documentation
+- [x] Architecture boundary tests pass
+- [x] No Atlas Edge naming in active code or docs
+- [x] `docs/ReleaseCandidate.md` updated for RC2
+- [x] `scripts/verify_release_candidate.sh` updated for RC2 wording
+- [x] Working tree clean after commit
+
+---
+
+## Known Limitations (RC2)
+
+1. **Legacy CLI commands** — `atlas daily brief`, `atlas home`, `atlas analyze`
+   and others call legacy engines directly. They are functional but not part of
+   the Blueprint-aligned pipeline. They will not receive new capabilities.
+
+2. **No persistence** — Atlas has no database in the current demo pipeline.
+   All state is passed via JSON files. A persistence layer is future scope.
+
+3. **Provider layer is opt-in and untested in demo** — `atlas.providers` exists
+   and works but is not called by the demo or Daily Brief pipeline. Tests verify
+   that no provider calls are made.
+
+4. **The `--company-analysis` flag accepts one file** — multiple company analysis
+   reports require the merge step (`atlas company-analysis merge`) first. This is
+   by design but adds a pipeline step.
+
+*Resolved since RC1:*
+- ~~Evidence link notes (`"AMD: No knowledge facts are linked."`) false negatives~~ — fixed in Sprint 70
+- ~~Portfolio demo not exercised in demo script~~ — fixed in Sprint 69
+
+---
+
+## Technical Debt (RC2)
+
+| Area | Description | Priority |
+|---|---|---|
+| README historical sections | Lines ~320+ are sprint notes, not developer docs. Future sprint could archive them. | Low |
+| Legacy engine consolidation | 20+ legacy modules remain. Future sprints could migrate high-value engines to Blueprint-aligned layer. | Medium |
+| `tmp/atlas_demo/` stale files | Demo script does not clean old files before writing. Files from earlier runs accumulate if cleanup is not run. | Low |
+| ArchitectureConsolidation doc | References RC1 (Sprint 67) only. Could note RC2 review. | Low |
+
+---
+
+## Next Recommended Phase
+
+**Sprint 72 recommendation: Knowledge Node Linking in Discovery Context**
+
+The Discovery Context section currently shows knowledge facts by `subject_node_id`
+(`company-amd`, `company-nvda`). A future sprint could resolve these node IDs to
+human-readable company names in the Daily Brief output, making the section
+more immediately readable without requiring knowledge of the node naming convention.
+
+Alternative directions:
+- Legacy engine migration (large, multi-sprint)
+- Archive/clean README historical sprint notes (small, cosmetic)
+- Persistence layer foundation (new capability, multi-sprint)
+
+---
+
+---
+
 # Atlas Internal Release Candidate 1
 
 **Version:** v0.1.0-rc1  
