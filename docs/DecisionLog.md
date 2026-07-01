@@ -1126,3 +1126,26 @@ history and audit purposes.
 **Outcome:** Command retired. Engine stays. 1116 tests passing (3 skipped — parametrized
 tests with empty EXPECTED_COMMANDS, by design). `_RETIRED_REGISTRY` now has 7 entries.
 Active `_REGISTRY` is empty.
+
+## Sprint 92 — 2026-07-02: WatchlistEngine Caller Audit; Redundant Double-Run Eliminated
+
+**Decision:** Audit `atlas/monitoring/` and `atlas/watchlist_review/` as WatchlistEngine caller
+targets. Both are active CLI-backed modules — neither can be retired this sprint. Eliminate the
+redundant double WatchlistEngine invocation found in `WatchlistReviewEngine.review()`. Add an
+exclusivity guardrail test on the WatchlistEngine caller set.
+
+**Rationale:** Both `atlas/monitoring/` and `atlas/watchlist_review/` power active CLI commands
+(`atlas monitor watchlist` and `atlas watchlist review` respectively). Retirement is blocked.
+However, the audit revealed `WatchlistReviewEngine.review()` was calling `WatchlistEngine.analyze()`
+twice on the same inputs per review — once directly, once again inside
+`MonitoringEngine.snapshot_watchlist()`. Extracting `snapshot_watchlist_from_analysis()` from
+`MonitoringEngine` and updating `review()` to use it eliminates the redundant run without changing
+behavior. Sharing the `WatchlistEngine` instance between `WatchlistReviewEngine` and its internal
+`MonitoringEngine` reduces object count from 2 to 1.
+
+Adding the caller exclusivity guardrail (`test_watchlist_engine_callers_are_exactly_the_known_set`)
+prevents new WatchlistEngine callers from being added unnoticed during future sprints.
+
+**Outcome:** WatchlistEngine caller count unchanged at 5. Redundant double-run eliminated.
+One shared WatchlistEngine instance in WatchlistReviewEngine. Exclusivity guardrail added.
+1118 tests passing (3 skipped). Demo passed. Release verification green.

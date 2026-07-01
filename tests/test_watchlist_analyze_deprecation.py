@@ -14,6 +14,8 @@ Engine deletion deferred until all five callers are retired.
 
 Sprint 91 completes the CLI deprecated command retirement plan.
 Active _REGISTRY is now empty — all deprecated commands have been retired.
+
+Sprint 92: WatchlistEngine caller set is frozen at 5. No new callers should be added.
 """
 
 from __future__ import annotations
@@ -99,6 +101,45 @@ def test_watchlist_engine_active_callers_remain() -> None:
         assert "WatchlistEngine" in source, (
             f"{path} should still import WatchlistEngine"
         )
+
+
+def test_watchlist_engine_callers_are_exactly_the_known_set() -> None:
+    """Sprint 92 guardrail: no new WatchlistEngine callers may be added outside the known set.
+
+    The known set is frozen at 5 callers (intelligence, decision, monitoring,
+    watchlist_review, conversation). Any new direct import must be explicitly
+    reviewed and added to WATCHLIST_ENGINE_CALLERS above.
+    """
+    known_paths = {path.resolve() for path in WATCHLIST_ENGINE_CALLERS}
+    # Scan only atlas/ source, excluding cli/ (deprecations registry contains string references)
+    search_dirs = [
+        d for d in (REPO_ROOT / "atlas").iterdir()
+        if d.is_dir() and d.name not in {"cli", "__pycache__"}
+    ]
+    unknown_callers = []
+    for directory in search_dirs:
+        for path in directory.rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            if path.resolve() in known_paths:
+                continue
+            text = path.read_text(encoding="utf-8")
+            # Match actual import statements, not string mentions
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("#"):
+                    continue
+                if "WatchlistEngine" in stripped and (
+                    stripped.startswith("from ") or stripped.startswith("import ")
+                    or "WatchlistEngine(" in stripped
+                ):
+                    unknown_callers.append(str(path.relative_to(REPO_ROOT)))
+                    break
+    assert not unknown_callers, (
+        "New WatchlistEngine callers found outside the frozen set — "
+        "update WATCHLIST_ENGINE_CALLERS or remove the new import:\n"
+        + "\n".join(unknown_callers)
+    )
 
 
 def test_watchlist_engine_module_remains_on_disk() -> None:

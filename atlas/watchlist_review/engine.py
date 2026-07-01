@@ -124,7 +124,9 @@ class WatchlistReviewEngine:
         self.market_health_engine = market_health_engine or MarketHealthEngine()
         self.market_regime_engine = market_regime_engine or MarketRegimeEngine()
         self.economic_signals_engine = economic_signals_engine or EconomicSignalsEngine()
-        self.monitoring_engine = monitoring_engine or MonitoringEngine()
+        self.monitoring_engine = monitoring_engine or MonitoringEngine(
+            watchlist_engine=self.watchlist_engine
+        )
         self.suitability_engine = suitability_engine or SuitabilityEngine()
         self.profile_engine = profile_engine or InvestorProfileEngine()
         self.principles_engine = principles_engine or PrinciplesEngine()
@@ -142,8 +144,8 @@ class WatchlistReviewEngine:
             else None
         )
         monitoring_snapshot = (
-            self.monitoring_engine.snapshot_watchlist(supported_watchlist, provider)
-            if supported_watchlist.items
+            self.monitoring_engine.snapshot_watchlist_from_analysis(watchlist_analysis)
+            if watchlist_analysis is not None
             else None
         )
         themes = _theme_analyses(self.theme_engine, review_input.theme_names)

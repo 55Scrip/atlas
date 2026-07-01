@@ -576,3 +576,22 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
   are now retired. Legacy engine cleanup remains as future technical debt (Sprints 92+).
 - Recommended Sprint 92 target: begin legacy engine cleanup — retire `atlas/monitoring/` or
   `atlas/watchlist_review/` as the most isolated WatchlistEngine callers.
+
+**Sprint 92 (2026-07-02):** WatchlistEngine caller audit complete; redundant double-run eliminated in watchlist_review; caller exclusivity guardrail added.
+- Full import audit performed. WatchlistEngine callers: atlas/intelligence, atlas/decision,
+  atlas/monitoring, atlas/watchlist_review, atlas/conversation — all 5 active (CLI commands).
+  Neither `atlas/monitoring/` nor `atlas/watchlist_review/` can be retired this sprint.
+- Key finding: `WatchlistReviewEngine.review()` was invoking `WatchlistEngine.analyze()` twice
+  on the same inputs — once directly, once inside `MonitoringEngine.snapshot_watchlist()`.
+- Cleanup performed:
+  1. Added `MonitoringEngine.snapshot_watchlist_from_analysis(analysis)` — builds MonitoringSnapshot
+     from pre-computed WatchlistAnalysis without re-running WatchlistEngine.
+  2. Refactored `MonitoringEngine.snapshot_watchlist()` to delegate to the new method.
+  3. `WatchlistReviewEngine.__init__` now shares one WatchlistEngine instance with its MonitoringEngine.
+  4. `WatchlistReviewEngine.review()` uses `snapshot_watchlist_from_analysis` — redundant run eliminated.
+  5. Added `test_watchlist_engine_callers_are_exactly_the_known_set` exclusivity guardrail.
+- WatchlistEngine caller count: 5 before → 5 after (unchanged; both modules still require it for CLI).
+- 1118 tests passing (3 skipped). Demo passed. Release verification green.
+- Recommended Sprint 93 target: replace `atlas/monitoring/` watchlist snapshot methods with
+  Blueprint-aligned data source, or migrate `atlas/watchlist_review/` direct WatchlistEngine usage
+  to use the watchlist_intelligence capability layer.

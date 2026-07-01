@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from atlas.analysis.engine import AtlasInvestmentEngine
 from atlas.analysis.portfolio import Portfolio
 from atlas.analysis.scores import clamp_score
-from atlas.analysis.watchlist import Watchlist, WatchlistEngine
+from atlas.analysis.watchlist import Watchlist, WatchlistAnalysis, WatchlistEngine
 from atlas.market import (
     MarketHealthEngine,
     MarketIndicators,
@@ -287,12 +287,7 @@ class MonitoringEngine:
             ),
         )
 
-    def snapshot_watchlist(
-        self,
-        watchlist: Watchlist,
-        provider: CompanyDataProvider,
-    ) -> MonitoringSnapshot:
-        analysis = self.watchlist_engine.analyze(watchlist, provider)
+    def snapshot_watchlist_from_analysis(self, analysis: WatchlistAnalysis) -> MonitoringSnapshot:
         strongest_report = analysis.reports[analysis.strongest_opportunity.ticker]
         return MonitoringSnapshot(
             object_type="Watchlist",
@@ -329,6 +324,14 @@ class MonitoringEngine:
             confidence=80,
             importance_score=strongest_report.atlas_score,
         )
+
+    def snapshot_watchlist(
+        self,
+        watchlist: Watchlist,
+        provider: CompanyDataProvider,
+    ) -> MonitoringSnapshot:
+        analysis = self.watchlist_engine.analyze(watchlist, provider)
+        return self.snapshot_watchlist_from_analysis(analysis)
 
     def compare(
         self,

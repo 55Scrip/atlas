@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 91)  
-**Status:** Active — Sprint 91 target complete; CLI deprecated command retirement plan complete. Sprint 92 target: begin legacy engine cleanup
+**Updated:** 2026-07-02 (Sprint 92)  
+**Status:** Active — Sprint 92 target complete; WatchlistEngine double-run eliminated in watchlist_review; caller count unchanged at 5. Sprint 93 target: migrate or retire atlas/monitoring/ and atlas/watchlist_review/ WatchlistEngine direct dependency
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,41 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 92 Migration Target — COMPLETED
+
+### Completed: WatchlistEngine double-run eliminated; caller exclusivity guardrail added
+
+**Sprint 92 result:**
+
+**Audit findings:**
+- `atlas/monitoring/engine.py`: `WatchlistEngine` is imported and used in `snapshot_watchlist()` and `monitor_watchlist()`. These methods power the active `atlas monitor watchlist` CLI command. Cannot retire.
+- `atlas/watchlist_review/engine.py`: `WatchlistEngine` is imported and instantiated. Powers the active `atlas watchlist review` CLI command. Cannot retire.
+- **Key finding:** `WatchlistReviewEngine.review()` was running `WatchlistEngine.analyze()` twice on the same input — once directly, and once again inside `MonitoringEngine.snapshot_watchlist()`. Redundant.
+
+**Changes made:**
+1. Added `snapshot_watchlist_from_analysis(analysis: WatchlistAnalysis) -> MonitoringSnapshot` to `MonitoringEngine` — builds a `MonitoringSnapshot` from a pre-computed `WatchlistAnalysis` without calling `WatchlistEngine` again
+2. Refactored `MonitoringEngine.snapshot_watchlist()` to delegate to `snapshot_watchlist_from_analysis()` — eliminating code duplication
+3. Updated `WatchlistReviewEngine.__init__` to share the same `WatchlistEngine` instance with its internal `MonitoringEngine(watchlist_engine=self.watchlist_engine)` — one object instead of two
+4. Updated `WatchlistReviewEngine.review()` to call `monitoring_engine.snapshot_watchlist_from_analysis(watchlist_analysis)` — eliminates the redundant second WatchlistEngine run per review
+5. Added `test_watchlist_engine_callers_are_exactly_the_known_set` guardrail — prevents new WatchlistEngine callers from being added without review
+6. Added `test_monitoring_engine_snapshot_watchlist_from_analysis_matches_snapshot_watchlist`
+
+**WatchlistEngine caller count:**
+- Before Sprint 92: 5 (intelligence, decision, monitoring, watchlist_review, conversation)
+- After Sprint 92: 5 (unchanged — both monitoring and watchlist_review still require WatchlistEngine for active CLI commands)
+
+**Result:** Redundant double WatchlistEngine invocation in `review()` eliminated. Caller count frozen and guarded by exclusivity test.
+
+**Engine deletion criteria (deferred to Sprint 93+):**
+1. Retire or migrate `atlas/intelligence/` to use Blueprint-aligned watchlist capability
+2. Retire or migrate `atlas/decision/` WatchlistEngine usage
+3. Replace `atlas/monitoring/` watchlist snapshot methods with Blueprint-aligned data source
+4. Replace `atlas/watchlist_review/` direct WatchlistEngine with Blueprint-aligned capability
+5. Retire or migrate `atlas/conversation/` WatchlistEngine usage
+6. Once all five callers are retired, `atlas/analysis/watchlist.py` can be deleted
 
 ---
 

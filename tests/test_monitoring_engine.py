@@ -109,6 +109,26 @@ def test_monitoring_cli_monitors_theme():
     assert "Electricity supply bottleneck" in result.output
 
 
+def test_monitoring_engine_snapshot_watchlist_from_analysis_matches_snapshot_watchlist():
+    # Sprint 92: snapshot_watchlist_from_analysis must produce the same result
+    # as snapshot_watchlist when given the same WatchlistAnalysis.
+    from atlas.analysis.watchlist import Watchlist, WatchlistEngine
+
+    provider = MockCompanyAnalysisProvider()
+    watchlist = Watchlist.from_mapping({"name": "Sprint92", "tickers": ["NVDA", "MSFT"]})
+    engine = MonitoringEngine()
+    analysis = WatchlistEngine().analyze(watchlist=watchlist, provider=provider)
+
+    via_analysis = engine.snapshot_watchlist_from_analysis(analysis)
+    via_watchlist = engine.snapshot_watchlist(watchlist, provider)
+
+    assert via_analysis.object_type == via_watchlist.object_type == "Watchlist"
+    assert via_analysis.identifier == via_watchlist.identifier == "Sprint92"
+    assert via_analysis.confidence == via_watchlist.confidence == 80
+    assert len(via_analysis.signals) == len(via_watchlist.signals) == 3
+    assert via_analysis.signals[0].name == via_watchlist.signals[0].name
+
+
 def test_monitoring_cli_monitors_portfolio(tmp_path):
     portfolio_path = tmp_path / "portfolio.json"
     portfolio_path.write_text(
