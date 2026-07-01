@@ -411,3 +411,20 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - Recommended Sprint 81 target: continue Group B legacy engine consolidation
   or retire the deprecated CLI command bodies (`portfolio analyze`,
   `portfolio review`) entirely.
+
+**Sprint 81 — completed:**
+
+- `atlas evidence assess` CLI command deprecated. Prints deprecation notice
+  and exits cleanly (exit 0) without calling `EvidenceQualityEngine` or
+  any provider.
+- `EvidenceQualityEngine` and `render_evidence_assessment` removed from
+  `atlas/cli/main.py` module-level imports.
+- No replacement command invented — message directs toward Blueprint-aligned
+  decision and research capabilities (future work).
+- `atlas/evidence/` engine remains on disk; still used by `decision_journal`,
+  `comparison`, and `watchlist_review` legacy engines.
+- All 4 prior deprecated commands (daily brief, watchlist analyze, portfolio
+  analyze, portfolio review) confirmed still deprecated via regression tests.
+- 12 new Sprint 81 deprecation tests. 1040 tests passing.
+- Recommended Sprint 82 target: continue Group C deprecations — e.g.,
+  `atlas reason analyze` (ReasoningEngine, self-contained, no providers).

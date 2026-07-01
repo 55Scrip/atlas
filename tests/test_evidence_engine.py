@@ -145,9 +145,8 @@ def test_language_layer_integration_works_lightly():
 
 
 def test_evidence_cli_outputs_example_assessment():
+    # Sprint 81: atlas evidence assess is deprecated — expect deprecation message
     result = CliRunner().invoke(app, ["evidence", "assess"])
 
     assert result.exit_code == 0
-    assert "Atlas Evidence Quality Assessment" in result.output
-    assert "Evidence Action" in result.output
-    assert "Additional Data Needed" in result.output
+    assert "deprecated" in result.output.lower()

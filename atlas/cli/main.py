@@ -65,7 +65,6 @@ from atlas.decision_journal import (
     render_decision_journal_review,
 )
 from atlas.economics import EconomicSignalsEngine, render_economic_signal_analysis
-from atlas.evidence import EvidenceQualityEngine, render_evidence_assessment
 from atlas.home import AtlasHomeEngine, AtlasHomeInput, render_atlas_home
 from atlas.intelligence import (
     IntelligenceContext,
@@ -523,9 +522,17 @@ def economics_analyze_command():
 
 @evidence_app.command("assess")
 def evidence_assess_command():
-    """Show an example deterministic evidence quality assessment."""
-    assessment = EvidenceQualityEngine().example_assessment()
-    console.print(render_evidence_assessment(assessment))
+    """[DEPRECATED] Legacy Evidence Assess — evidence assessment is being consolidated.
+
+    This command is deprecated and will be removed in a future sprint.
+    Evidence assessment is being consolidated into Blueprint-aligned decision
+    and research capabilities.
+    """
+    console.print(
+        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas evidence assess[/bold] is deprecated.\n"
+        "Evidence assessment is being consolidated into Blueprint-aligned decision and research capabilities."
+    )
+    raise typer.Exit(code=0)
 
 
 @intelligence_app.command("analyze")

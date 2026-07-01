@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-01 (Sprint 80)  
-**Status:** Active — Sprint 80 target complete; Sprint 81 target to be selected
+**Updated:** 2026-07-01 (Sprint 81)  
+**Status:** Active — Sprint 81 target complete; Sprint 82 target to be selected
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,30 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 81 Migration Target — COMPLETED
+
+### Completed: `atlas evidence assess` command deprecated
+
+**Sprint 81 result:**
+- `atlas evidence assess` CLI command now prints a deprecation message and exits cleanly (exit 0)
+- No replacement command invented — message directs users toward Blueprint-aligned decision and research capabilities (future)
+- `EvidenceQualityEngine` and `render_evidence_assessment` removed from `atlas/cli/main.py` imports
+- `atlas/evidence/` engine remains on disk; still used by `decision_journal`, `comparison`, `watchlist_review` legacy engines
+- 12 new Sprint 81 deprecation tests (including regression checks for all 4 prior deprecated commands); 1040 tests passing
+
+**`EvidenceQualityEngine` isolation:** no longer called by any CLI command.
+Still used by: `atlas/decision_journal/engine.py`, `atlas/comparison/engine.py`, `atlas/watchlist_review/engine.py`.
+Full deletion requires retiring those engines.
+
+**No Blueprint-aligned evidence capability exists yet.** The deprecation message correctly
+avoids inventing a replacement command and instead points to future consolidation direction.
+
+**Future removal criteria:**
+1. Remove command body in Sprint 82 or later (or leave deprecated stub)
+2. `EvidenceQualityEngine` deletion requires retiring 3 dependent legacy engines
 
 ---
 

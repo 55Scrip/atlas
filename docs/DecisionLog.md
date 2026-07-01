@@ -885,3 +885,16 @@ both `atlas portfolio analyze` (Sprint 79) and `atlas portfolio review` (Sprint
 80) are deprecated. `atlas portfolio summary` is the sole active portfolio
 command. `PortfolioReviewEngine` remains on disk — it is still referenced by
 `AtlasHomeEngine` (Group B) and cannot be deleted without broader consolidation.
+
+## 2026-07-01: Deprecate `atlas evidence assess` Command (Sprint 81)
+
+Decision: deprecate `atlas evidence assess`. No Blueprint-aligned evidence
+capability exists yet, so the deprecation message directs users toward future
+Blueprint-aligned decision and research capabilities rather than inventing a
+specific replacement command.
+
+Rationale: Group C self-contained module. `EvidenceQualityEngine` makes no
+provider or network calls, making the CLI deprecation safe and immediate.
+The engine itself cannot be deleted yet — it is used by `decision_journal`,
+`comparison`, and `watchlist_review` legacy engines. CLI surface area is
+reduced; full engine retirement requires broader consolidation.
