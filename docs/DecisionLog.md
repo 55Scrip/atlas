@@ -416,6 +416,29 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: Daily Brief Opening Summary Alignment (Sprint 63)
+
+Decision: add `_company_analysis_opening_item` helper and call it from
+`_opening_section` so company analysis reports always generate an item in
+the "What Deserves Attention" section.
+
+Rationale: before Sprint 63, "What Deserves Attention" displayed the
+"Status: No meaningful developments" fallback even when company analysis
+reports were present — contradicting the Opening Summary which correctly
+stated those reports were available. The fix is targeted: a new private
+helper inspects `data.company_reports`, counts companies with unknowns,
+and returns a `DailyBriefItem` with `moderate` priority if any company has
+unknowns, or `low` if all are clean. No model changes. No new CLI flags.
+No external calls. The fallback "no developments" item is now suppressed
+whenever company reports exist.
+
+Priority mapping:
+- Any company with unknowns → `moderate` ("includes observations that deserve review")
+- All companies clean → `low` ("context is available for review")
+
+27 new tests added in `tests/test_daily_brief_opening_summary.py`. All
+796 pre-existing tests continue to pass (823 total).
+
 ## 2026-07-01: Daily Brief Output Readability Improvements (Sprint 62)
 
 Decision: rewrite `render_daily_brief_report` in

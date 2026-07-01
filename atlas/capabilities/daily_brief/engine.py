@@ -223,6 +223,8 @@ def _opening_section(data: DailyBriefInput) -> DailyBriefSection:
                         priority=DailyBriefPriority.HIGH,
                     )
                 )
+    if data.company_reports:
+        items.append(_company_analysis_opening_item(data.company_reports))
     if data.discovery_report is not None:
         candidates = getattr(data.discovery_report, "candidates", ())
         if candidates:
@@ -245,6 +247,35 @@ def _opening_section(data: DailyBriefInput) -> DailyBriefSection:
         title="What Deserves Attention",
         items=tuple(items),
         narrative="Atlas organises available inputs into a calm daily overview.",
+    )
+
+
+def _company_analysis_opening_item(company_reports: tuple) -> DailyBriefItem:
+    n = len(company_reports)
+    companies_with_unknowns = sum(
+        1 for r in company_reports if getattr(r, "unknowns", ())
+    )
+    if companies_with_unknowns > 0:
+        if n == 1:
+            detail = "Company analysis includes observations that deserve review."
+        else:
+            detail = (
+                f"{companies_with_unknowns} of {n} company analysis report(s) "
+                "include observations that deserve review."
+            )
+        return DailyBriefItem(
+            title="Company analysis",
+            detail=detail,
+            priority=DailyBriefPriority.MODERATE,
+        )
+    if n == 1:
+        detail = "Company analysis context is available for review."
+    else:
+        detail = f"{n} company analysis report(s) are available for review."
+    return DailyBriefItem(
+        title="Company analysis",
+        detail=detail,
+        priority=DailyBriefPriority.LOW,
     )
 
 

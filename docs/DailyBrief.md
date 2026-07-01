@@ -78,6 +78,21 @@ no AI. This is the future direction.
 5. **Watchlist Context** — present only when watchlist report provided
 6. **Discovery Context** — present only when discovery report with candidates provided
 
+### What Deserves Attention — Company Analysis Signals (Sprint 63)
+
+`_opening_section` surfaces company analysis context so "What Deserves Attention"
+is consistent with the Opening Summary when company reports are the primary input.
+
+| Condition | Priority | Detail |
+|---|---|---|
+| Any company has unknowns | `moderate` | "Company analysis includes observations that deserve review." (1 company) or "N of M report(s) include observations..." (multiple) |
+| Companies present, no unknowns | `low` | "Company analysis context is available for review." (1) or "N report(s) are available for review." (multiple) |
+
+Before Sprint 63, "What Deserves Attention" would display the "No meaningful
+developments" fallback even when company analysis reports were present, creating
+a contradiction with the Opening Summary. This is now resolved: company reports
+always generate an item in "What Deserves Attention".
+
 ## Priority Model
 
 `DailyBriefPriority` has three levels: `low`, `moderate`, `high`.
