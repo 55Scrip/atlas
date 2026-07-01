@@ -95,11 +95,6 @@ from atlas.profile import (
     render_investor_profile,
 )
 from atlas.principles import PrinciplesEngine, render_principles_check
-from atlas.portfolio_review import (
-    PortfolioReviewEngine,
-    PortfolioReviewInput,
-    render_portfolio_review,
-)
 from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
 from atlas.reasoning import (
     ReasoningEngine,
@@ -730,38 +725,35 @@ def portfolio_summary_command(portfolio_path: Path):
 
 @portfolio_app.command("review")
 def portfolio_review_command(
-    portfolio_path: Path,
+    portfolio_path: Path = typer.Argument(
+        ...,
+        help="[DEPRECATED] Portfolio JSON path. Use 'atlas portfolio summary' instead.",
+    ),
     profile_path: Path = typer.Option(
         Path("atlas_profile.json"),
         "--profile",
-        help="Investor profile JSON path",
+        help="[DEPRECATED] Investor profile JSON path.",
     ),
     market_path: Path | None = typer.Option(
         None,
         "--market",
-        help="Optional market snapshot JSON path",
+        help="[DEPRECATED] Optional market snapshot JSON path.",
     ),
 ):
-    """Generate a CIO-style portfolio review."""
-    try:
-        portfolio = Portfolio.from_json_file(portfolio_path)
-        profile = _profile_from_path_or_default(profile_path)
-        market_snapshot = MarketSnapshot.from_json_file(market_path) if market_path else None
-        report = PortfolioReviewEngine().review(
-            PortfolioReviewInput(
-                portfolio=portfolio,
-                investor_profile=profile,
-                market_snapshot=market_snapshot,
-            )
-        )
-        domain_summary = domain_portfolio_summary(legacy_portfolio_to_domain_portfolio(portfolio))
-    except (FileNotFoundError, ValueError) as exc:
-        console.print(f"[red]Portfolio review failed:[/red] {exc}")
-        raise typer.Exit(code=1) from exc
+    """[DEPRECATED] Legacy Portfolio Review — use 'atlas portfolio summary' instead.
 
-    console.print(render_portfolio_review(report))
-    console.print("")
-    console.print(_render_portfolio_domain_summary(domain_summary))
+    This command is deprecated and will be removed in a future sprint.
+    Use the Blueprint-aligned command instead:
+
+        atlas portfolio summary
+    """
+    console.print(
+        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas portfolio review[/bold] is deprecated.\n"
+        "Use [bold]atlas portfolio summary[/bold] for the Blueprint-aligned Portfolio Domain workflow.\n"
+        "\n"
+        "    atlas portfolio summary --help"
+    )
+    raise typer.Exit(code=0)
 
 
 @profile_app.command("create")

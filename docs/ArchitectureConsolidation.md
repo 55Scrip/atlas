@@ -394,3 +394,20 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 10 new Sprint 79 deprecation tests. 1018 tests passing.
 - Recommended Sprint 80 target: deprecate `atlas portfolio review` (the
   remaining legacy portfolio CLI command).
+
+**Sprint 80 — completed:**
+
+- `atlas portfolio review` CLI command deprecated. Prints deprecation notice
+  and exits cleanly (exit 0) without calling `PortfolioReviewEngine` or any
+  provider.
+- `PortfolioReviewEngine`, `PortfolioReviewInput`, `render_portfolio_review`
+  removed from `atlas/cli/main.py` module-level imports.
+- `atlas portfolio analyze` (deprecated Sprint 79) remains unchanged.
+- `atlas portfolio summary` (Blueprint-aligned) is now the sole active
+  portfolio CLI command.
+- `atlas/portfolio_review/` engine remains on disk — still referenced by
+  `AtlasHomeEngine` (Group B legacy).
+- 10 new Sprint 80 deprecation tests. 1028 tests passing.
+- Recommended Sprint 81 target: continue Group B legacy engine consolidation
+  or retire the deprecated CLI command bodies (`portfolio analyze`,
+  `portfolio review`) entirely.

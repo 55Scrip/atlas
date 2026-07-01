@@ -79,11 +79,10 @@ def test_portfolio_summary_command_is_unaffected(tmp_path) -> None:
     assert "deprecated" not in result.output.lower()
 
 
-def test_portfolio_review_command_is_unaffected(tmp_path) -> None:
-    """atlas portfolio review must remain unchanged by Sprint 79."""
+def test_portfolio_review_command_exists(tmp_path) -> None:
+    """atlas portfolio review still exists (deprecated in Sprint 80, not removed)."""
     result = runner.invoke(app, ["portfolio", "review", "--help"])
     assert result.exit_code == 0
-    assert "deprecated" not in result.output.lower()
 
 
 def test_cli_does_not_import_portfolio_intelligence_engine_at_module_level() -> None:

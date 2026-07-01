@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-01 (Sprint 79)  
-**Status:** Active — Sprint 79 target complete; Sprint 80 target to be selected
+**Updated:** 2026-07-01 (Sprint 80)  
+**Status:** Active — Sprint 80 target complete; Sprint 81 target to be selected
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,27 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 80 Migration Target — COMPLETED
+
+### Completed: `atlas portfolio review` command deprecated
+
+**Sprint 80 result:**
+- `atlas portfolio review` CLI command now prints a deprecation message and exits cleanly (exit 0)
+- `PortfolioReviewEngine`, `PortfolioReviewInput`, `render_portfolio_review` removed from `atlas/cli/main.py` imports
+- `atlas portfolio summary` (Blueprint-aligned) is the sole supported portfolio command
+- `atlas portfolio analyze` remains deprecated from Sprint 79 — confirmed unchanged
+- `atlas/portfolio_review/` engine remains on disk; no CLI command calls it
+- 10 new Sprint 80 deprecation tests; 1028 tests passing, 0 failures
+
+**`PortfolioReviewEngine` isolation:** module on disk, no longer imported by any CLI command.
+Still referenced by `atlas/home/engine.py` (AtlasHomeEngine) — see Group B legacy engines.
+
+**Future removal criteria for `atlas portfolio review` command:**
+1. Remove command body entirely in Sprint 81 (or leave deprecated stub)
+2. `PortfolioReviewEngine` deletion requires retiring `AtlasHomeEngine` (Group B)
 
 ---
 

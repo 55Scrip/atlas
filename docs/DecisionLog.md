@@ -871,3 +871,17 @@ Rationale: Follows the two-step pattern from Sprints 76–78. `atlas portfolio
 summary` already exists as the Blueprint-aligned replacement. `atlas portfolio
 review` is left unchanged in this sprint — it is a separate legacy path with
 its own review engine and will be addressed in Sprint 80 or later.
+
+## 2026-07-01: Deprecate `atlas portfolio review` Command (Sprint 80)
+
+Decision: deprecate `atlas portfolio review` in favor of `atlas portfolio
+summary` (Blueprint-aligned, no providers). The command now prints a
+deprecation message and exits without calling `PortfolioReviewEngine` or
+any provider.
+
+Rationale: Follows the two-step pattern from Sprints 76–79. `atlas portfolio
+summary` already exists as the Blueprint-aligned replacement. After Sprint 80,
+both `atlas portfolio analyze` (Sprint 79) and `atlas portfolio review` (Sprint
+80) are deprecated. `atlas portfolio summary` is the sole active portfolio
+command. `PortfolioReviewEngine` remains on disk — it is still referenced by
+`AtlasHomeEngine` (Group B) and cannot be deleted without broader consolidation.

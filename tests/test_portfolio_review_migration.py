@@ -83,103 +83,77 @@ def _multi_positions() -> list[dict]:
 
 
 def test_review_rejects_empty_portfolio(tmp_path: Path) -> None:
+    # Sprint 80: deprecated command exits 0 regardless of portfolio content
     path = _write_portfolio(tmp_path, [])
     result = runner.invoke(app, ["portfolio", "review", str(path)])
-    assert result.exit_code == 1
-    assert "Portfolio review failed" in result.stdout
+    assert result.exit_code == 0
+    assert "deprecated" in result.stdout.lower()
 
 
 def test_review_rejects_missing_portfolio_file(tmp_path: Path) -> None:
+    # Sprint 80: deprecated command exits 0 regardless of file existence
     missing = tmp_path / "no_such_portfolio.json"
     result = runner.invoke(app, ["portfolio", "review", str(missing)])
-    assert result.exit_code == 1
+    assert result.exit_code == 0
+    assert "deprecated" in result.stdout.lower()
 
 
 def test_review_output_preserves_all_legacy_sections(tmp_path: Path) -> None:
+    # Sprint 80: deprecated — shows deprecation message, not legacy review sections
     path = _write_portfolio(tmp_path, _multi_positions())
     result = runner.invoke(app, ["portfolio", "review", str(path)])
-
     assert result.exit_code == 0
-    # All original PortfolioReviewReport sections must still appear.
-    expected_sections = [
-        "Atlas Portfolio Review",
-        "Bottom Line",
-        "Atlas Rating",
-        "Portfolio Strengths",
-        "Main Risks",
-        "Investor Alignment",
-        "Theme Exposure",
-        "Market Context",
-        "What Atlas Is Monitoring",
-        "What Could Change Atlas' View",
-        "Missing Information",
-        "Optional Follow-up Questions",
-        "Research Framing",
-    ]
-    for section in expected_sections:
-        assert section in result.stdout, f"Missing legacy section: {section!r}"
+    assert "deprecated" in result.stdout.lower()
+    assert "portfolio summary" in result.stdout.lower()
 
 
 def test_review_appends_portfolio_domain_summary(tmp_path: Path) -> None:
+    # Sprint 80: deprecated — directs to atlas portfolio summary
     path = _write_portfolio(tmp_path, _multi_positions())
     result = runner.invoke(app, ["portfolio", "review", str(path)])
-
     assert result.exit_code == 0
-    assert "Portfolio Summary (Portfolio Domain)" in result.stdout
-    assert "Sector Allocation" in result.stdout
-    assert "Country Allocation" in result.stdout
-    assert "Top Holdings" in result.stdout
+    assert "deprecated" in result.stdout.lower()
+    assert "portfolio summary" in result.stdout.lower()
 
 
 def test_review_domain_section_appears_after_legacy_section(tmp_path: Path) -> None:
+    # Sprint 80: deprecated — no legacy or domain sections, just deprecation notice
     path = _write_portfolio(tmp_path, _multi_positions())
     result = runner.invoke(app, ["portfolio", "review", str(path)])
-
     assert result.exit_code == 0
-    research_framing_index = result.stdout.index("Research Framing")
-    domain_index = result.stdout.index("Portfolio Summary (Portfolio Domain)")
-    assert domain_index > research_framing_index
+    assert "deprecated" in result.stdout.lower()
 
 
 def test_review_domain_values_match_independent_calculation(tmp_path: Path) -> None:
-    positions = _multi_positions()
-    path = _write_portfolio(tmp_path, positions)
-
-    legacy_portfolio = LegacyPortfolio.from_mapping({"positions": positions})
-    expected = portfolio_summary(legacy_portfolio_to_domain_portfolio(legacy_portfolio))
-
+    # Sprint 80: deprecated — use atlas portfolio summary for domain values
+    path = _write_portfolio(tmp_path, _multi_positions())
     result = runner.invoke(app, ["portfolio", "review", str(path)])
-
     assert result.exit_code == 0
-    assert f"Largest weight: {expected.largest_weight:.1%}" in result.stdout
-    assert f"Concentration: {expected.concentration.level.value}" in result.stdout
-    assert expected.concentration.level == ConcentrationLevel.HIGH
+    assert "deprecated" in result.stdout.lower()
 
 
 def test_review_single_holding(tmp_path: Path) -> None:
+    # Sprint 80: deprecated — no legacy output
     path = _write_portfolio(tmp_path, _single_position())
     result = runner.invoke(app, ["portfolio", "review", str(path)])
-
     assert result.exit_code == 0
-    assert "Number of holdings: 1" in result.stdout
-    assert "Largest weight: 100.0%" in result.stdout
+    assert "deprecated" in result.stdout.lower()
 
 
 def test_review_concentration_context_in_domain_section(tmp_path: Path) -> None:
+    # Sprint 80: deprecated — no domain section output
     path = _write_portfolio(tmp_path, _multi_positions())
     result = runner.invoke(app, ["portfolio", "review", str(path)])
-
     assert result.exit_code == 0
-    assert "Concentration:" in result.stdout
+    assert "deprecated" in result.stdout.lower()
 
 
 def test_review_allocation_context_in_domain_section(tmp_path: Path) -> None:
+    # Sprint 80: deprecated — no allocation output
     path = _write_portfolio(tmp_path, _multi_positions())
     result = runner.invoke(app, ["portfolio", "review", str(path)])
-
     assert result.exit_code == 0
-    assert "Semiconductors" in result.stdout
-    assert "75.0%" in result.stdout
+    assert "deprecated" in result.stdout.lower()
 
 
 def test_review_is_deterministic(tmp_path: Path) -> None:

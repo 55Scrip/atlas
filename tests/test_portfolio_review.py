@@ -139,8 +139,7 @@ def test_portfolio_review_cli_outputs_clean_text(tmp_path):
 
     result = runner.invoke(app, ["portfolio", "review", str(portfolio_path)])
 
+    # Sprint 80: atlas portfolio review is deprecated — expect deprecation message
     assert result.exit_code == 0
-    assert "Atlas Portfolio Review" in result.output
-    assert "Bottom Line" in result.output
-    assert "Atlas Rating:" in result.output
-    assert "Optional Follow-up Questions" in result.output
+    assert "deprecated" in result.output.lower()
+    assert "portfolio summary" in result.output.lower()
