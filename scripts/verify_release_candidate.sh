@@ -85,6 +85,7 @@ check_section() {
 check_section "Opening Summary"
 check_section "Included Context"
 check_section "What Deserves Attention"
+check_section "Portfolio Context"
 check_section "Company Analysis Context"
 check_section "What Can Safely Wait"
 check_section "Research Framing"

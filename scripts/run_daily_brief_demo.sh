@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Atlas Daily Brief Demo — AMD + NVDA
+# Atlas Daily Brief Demo — AMD + NVDA (with portfolio context)
 # Runs the full local pipeline from structured example data to a Daily Brief summary.
+# Exercises all five Daily Brief input surfaces: portfolio, research, watchlist,
+# discovery, and company analysis.
 # No network calls. No AI. No external APIs. Deterministic.
 #
 # Usage:
@@ -92,9 +94,10 @@ echo "Step 6: Merge company analysis exports..."
 echo "  → $TMP_DIR/company_analysis.json"
 
 echo ""
-echo "Step 7: Generate Daily Brief..."
+echo "Step 7: Generate Daily Brief (all five input surfaces)..."
 echo "────────────────────────────────────────────────────────────"
 "$ATLAS" daily summary \
+  --portfolio "$DEMO_DIR/portfolio.json" \
   --research "$TMP_DIR/research.json" \
   --watchlist "$TMP_DIR/watchlist.json" \
   --discovery "$TMP_DIR/discovery.json" \
@@ -104,6 +107,12 @@ echo "────────────────────────�
 echo "────────────────────────────────────────────────────────────"
 echo ""
 echo "Demo complete."
+echo ""
+echo "Input files:"
+echo "  $DEMO_DIR/portfolio.json  (static demo data — no live prices)"
+echo "  $DEMO_DIR/research_input.json"
+echo "  $DEMO_DIR/watchlist_input.json"
+echo "  $DEMO_DIR/knowledge.json"
 echo ""
 echo "Generated files:"
 echo "  $TMP_DIR/research.json"

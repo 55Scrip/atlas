@@ -458,3 +458,120 @@ def test_root_readme_quickstart_mentions_demo_script() -> None:
 def test_root_readme_quickstart_has_cleanup_instructions() -> None:
     content = ROOT_README.read_text()
     assert "rm -rf tmp/atlas_demo" in content
+
+
+# ── Sprint 69: portfolio demo integration ──────────────────────────────────────
+
+PORTFOLIO_JSON = DEMO_DIR / "portfolio.json"
+
+
+def test_demo_portfolio_json_exists() -> None:
+    assert PORTFOLIO_JSON.exists(), "examples/daily_brief_demo/portfolio.json not found"
+
+
+def test_demo_portfolio_json_is_valid() -> None:
+    data = json.loads(PORTFOLIO_JSON.read_text())
+    assert "positions" in data
+    assert len(data["positions"]) > 0
+
+
+def test_demo_portfolio_has_required_fields() -> None:
+    data = json.loads(PORTFOLIO_JSON.read_text())
+    required = {"ticker", "company", "sector", "country", "market_cap", "weight",
+                "quality_score", "risk_score"}
+    for pos in data["positions"]:
+        missing = required - pos.keys()
+        assert not missing, f"Position missing fields {missing}: {pos}"
+
+
+def test_demo_portfolio_weights_sum_to_one() -> None:
+    data = json.loads(PORTFOLIO_JSON.read_text())
+    total = sum(p["weight"] for p in data["positions"])
+    assert abs(total - 1.0) < 0.01, f"Portfolio weights sum to {total}, expected ~1.0"
+
+
+def test_demo_portfolio_triggers_high_concentration() -> None:
+    from pathlib import Path as _Path
+    from atlas.analysis.portfolio import Portfolio
+    from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
+    from atlas.domains.portfolio import portfolio_summary
+    p = Portfolio.from_json_file(PORTFOLIO_JSON)
+    dp = legacy_portfolio_to_domain_portfolio(p)
+    s = portfolio_summary(dp)
+    assert s.concentration.level.value in {"High", "Elevated"}, (
+        f"Expected High/Elevated concentration, got {s.concentration.level.value}"
+    )
+
+
+def test_demo_portfolio_is_accepted_by_daily_summary(tmp_path: Path) -> None:
+    result = runner.invoke(app, [
+        "daily", "summary",
+        "--portfolio", str(PORTFOLIO_JSON),
+    ])
+    assert result.exit_code == 0
+    assert "Portfolio Context" in result.stdout
+
+
+def test_demo_portfolio_raises_priority_to_high(tmp_path: Path) -> None:
+    result = runner.invoke(app, [
+        "daily", "summary",
+        "--portfolio", str(PORTFOLIO_JSON),
+    ])
+    assert result.exit_code == 0
+    assert "high" in result.stdout.lower()
+
+
+def test_demo_script_passes_portfolio_flag() -> None:
+    content = (REPO_ROOT / "scripts" / "run_daily_brief_demo.sh").read_text()
+    assert "--portfolio" in content
+    assert "portfolio.json" in content
+
+
+def test_demo_readme_lists_portfolio_json() -> None:
+    content = DEMO_README.read_text()
+    assert "portfolio.json" in content
+
+
+def test_demo_readme_notes_portfolio_is_static_data() -> None:
+    content = DEMO_README.read_text().lower()
+    assert "static" in content and "portfolio" in content
+
+
+def test_full_pipeline_with_portfolio_includes_portfolio_context(tmp_path: Path) -> None:
+    research_out = tmp_path / "research.json"
+    watchlist_out = tmp_path / "watchlist.json"
+    disc_out = tmp_path / "discovery.json"
+    ca_amd = tmp_path / "ca_amd.json"
+    ca_nvda = tmp_path / "ca_nvda.json"
+    ca_combined = tmp_path / "ca.json"
+
+    runner.invoke(app, ["research", "export", "--input", str(RESEARCH_INPUT), "--output", str(research_out)])
+    runner.invoke(app, ["watchlist", "intelligence", "--input", str(WATCHLIST_INPUT), "--output", str(watchlist_out)])
+    runner.invoke(app, ["discovery", "export", "--knowledge", str(KNOWLEDGE), "--research", str(research_out), "--watchlist", str(watchlist_out), "--output", str(disc_out)])
+    runner.invoke(app, ["company-analysis", "export", "--ticker", "AMD", "--company-name", "AMD Corporation", "--sector", "Semiconductors", "--country", "USA", "--business-description", "AMD designs high-performance CPUs and GPUs.", "--knowledge", str(KNOWLEDGE), "--research", str(research_out), "--output", str(ca_amd)])
+    runner.invoke(app, ["company-analysis", "export", "--ticker", "NVDA", "--company-name", "NVIDIA Corporation", "--sector", "Semiconductors", "--country", "USA", "--business-description", "NVIDIA designs GPUs and accelerated computing platforms.", "--knowledge", str(KNOWLEDGE), "--research", str(research_out), "--output", str(ca_nvda)])
+    combined = json.loads(ca_amd.read_text()) + json.loads(ca_nvda.read_text())
+    ca_combined.write_text(json.dumps(combined))
+
+    result = runner.invoke(app, [
+        "daily", "summary",
+        "--portfolio", str(PORTFOLIO_JSON),
+        "--research", str(research_out),
+        "--watchlist", str(watchlist_out),
+        "--discovery", str(disc_out),
+        "--company-analysis", str(ca_combined),
+    ])
+    assert result.exit_code == 0
+    assert "Portfolio Context" in result.stdout
+    assert "What Deserves Attention" in result.stdout
+    assert "overall priority: high" in result.stdout.lower()
+
+
+def test_full_pipeline_with_portfolio_no_forbidden_language(tmp_path: Path) -> None:
+    result = runner.invoke(app, [
+        "daily", "summary",
+        "--portfolio", str(PORTFOLIO_JSON),
+    ])
+    output_lower = result.stdout.lower()
+    for term in FORBIDDEN:
+        assert term not in output_lower, f"Forbidden term {term!r} in portfolio output"

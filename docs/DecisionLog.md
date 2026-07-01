@@ -416,6 +416,31 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: Portfolio Demo Integration (Sprint 69)
+
+Decision: add `examples/daily_brief_demo/portfolio.json` and pass `--portfolio`
+to `atlas daily summary` in the demo script, completing all five Daily Brief
+input surfaces in the demo.
+
+Portfolio file: NVDA 55%, AMD 30%, Cash 15% — static example data, no live
+prices, no investment advice. Concentration at 55% triggers `ConcentrationLevel.HIGH`
+(threshold ≥ 35%), exercising the HIGH priority path in "What Deserves Attention".
+
+Demo output changes from Sprint 68:
+- Opening Summary: overall priority is now `high` (was `moderate`)
+- Included Context: now includes `Portfolio: available`
+- What Deserves Attention: `[!] Portfolio concentration: Concentration appears
+  high. This deserves review.` added
+- Portfolio Context section: now present (Holdings: 3, Concentration: High,
+  55.0% largest, Cash: 15.0%)
+- What Can Safely Wait: portfolio LOW items (holdings count, cash weight) added
+
+`scripts/verify_release_candidate.sh` updated to also check "Portfolio Context"
+section presence. All 7 verification steps still green.
+
+12 new tests added to `tests/test_daily_brief_demo.py` (Sprint 69 section).
+932 tests pass total (920 prior + 12 new).
+
 ## 2026-07-01: Post-RC Smoke Test and Release Verification (Sprint 68)
 
 Decision: verify Atlas Internal RC1 (`atlas-v0.8-internal-rc1`) from a

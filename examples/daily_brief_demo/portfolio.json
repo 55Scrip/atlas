@@ -1,0 +1,35 @@
+{
+  "_comment": "Static demo data for Atlas portfolio context. Not real holdings. No live prices. No investment advice.",
+  "positions": [
+    {
+      "ticker": "NVDA",
+      "company": "NVIDIA Corporation",
+      "sector": "Semiconductors",
+      "country": "USA",
+      "market_cap": 2000000,
+      "weight": 0.55,
+      "quality_score": 88,
+      "risk_score": 55
+    },
+    {
+      "ticker": "AMD",
+      "company": "AMD Corporation",
+      "sector": "Semiconductors",
+      "country": "USA",
+      "market_cap": 500000,
+      "weight": 0.30,
+      "quality_score": 78,
+      "risk_score": 60
+    },
+    {
+      "ticker": "CASH",
+      "company": "Cash",
+      "sector": "Cash",
+      "country": "USA",
+      "market_cap": 0,
+      "weight": 0.15,
+      "quality_score": 100,
+      "risk_score": 0
+    }
+  ]
+}

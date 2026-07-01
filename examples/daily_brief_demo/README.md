@@ -2,13 +2,14 @@
 
 ## Purpose
 
-This demo shows a complete local Atlas workflow:
+This demo shows a complete local Atlas workflow across all five Daily Brief
+input surfaces:
 
 ```
-local structured data
+local structured data (portfolio, research, watchlist, knowledge)
 → Atlas capability exports (research, watchlist, discovery, company analysis)
 → company analysis merge
-→ Daily Brief
+→ Daily Brief (portfolio + research + watchlist + discovery + company analysis)
 ```
 
 All steps are local-only, deterministic, and make no network calls.
@@ -62,11 +63,18 @@ instructions and exit cleanly.
 
 | File | Purpose |
 |---|---|
+| `portfolio.json` | Static demo portfolio — NVDA 55%, AMD 30%, Cash 15%. No live prices. |
 | `knowledge.json` | 9 structured knowledge facts — 5 for AMD, 4 for NVDA |
 | `research_input.json` | 2 research projects — AMD (4 questions), NVDA (3 questions) |
 | `watchlist_input.json` | Watchlist items for AMD and NVDA |
 
-These files contain static demo data. They do not fetch live data.
+All files contain static local demo data. They do not fetch live data.
+
+**Portfolio data note:** `portfolio.json` contains static example weights and
+scores for demo purposes only. It does not represent real holdings, real-time
+prices, current market values, or any investment advice. The concentrated
+semiconductor weighting is intentional to exercise the HIGH concentration
+signal path in the Daily Brief.
 
 ---
 
@@ -136,8 +144,9 @@ atlas company-analysis merge \
   --inputs tmp/atlas_demo/company_analysis_nvda.json \
   --output tmp/atlas_demo/company_analysis.json
 
-# Step 7 — Generate Daily Brief
+# Step 7 — Generate Daily Brief (all five input surfaces)
 atlas daily summary \
+  --portfolio examples/daily_brief_demo/portfolio.json \
   --research tmp/atlas_demo/research.json \
   --watchlist tmp/atlas_demo/watchlist.json \
   --discovery tmp/atlas_demo/discovery.json \
@@ -148,17 +157,18 @@ atlas daily summary \
 
 ## Expected Output
 
-The Daily Brief follows this structure. The excerpt below reflects actual demo output.
+The Daily Brief follows this structure. The excerpt below reflects actual demo output
+with all five input surfaces active (portfolio added in Sprint 69).
 
 ```
 Atlas Daily Brief
 ─────────────────────────────────────────────
 
 Opening Summary
-7 research question(s) remain unresolved. 2 company analysis report(s) available
-for review. Watchlist context is available for review. 2 discovery candidate(s)
-identified.
-Overall priority: moderate
+7 research question(s) remain unresolved. Portfolio concentration deserves
+review. 2 company analysis report(s) available for review. Watchlist context
+is available for review. 2 discovery candidate(s) identified.
+Overall priority: high
 
 ─────────────────────────────────────────────
 Included Context
@@ -167,12 +177,21 @@ Included Context
   Research:   2 project(s)
   Watchlist:  available
   Discovery:  2 candidate(s)
+  Portfolio:  available
 
 ─────────────────────────────────────────────
 What Deserves Attention
 
   [·] Open research questions: 7 question(s) remain unresolved.
+  [!] Portfolio concentration: Concentration appears high. This deserves review.
   [·] Discovery candidates: 2 candidate(s) identified for further research.
+
+─────────────────────────────────────────────
+Portfolio Context
+
+  Holdings: 3 holding(s) in portfolio.
+  [!] Concentration: Concentration appears high. Largest position is 55.0% of portfolio.
+  Cash weight: Cash represents 15.0% of portfolio.
 
 ─────────────────────────────────────────────
 Company Analysis Context
@@ -204,13 +223,7 @@ Discovery Context
 Unresolved Questions
 
   - What is AMD's durable competitive advantage in the data centre GPU market?
-  - How does AMD's EPYC CPU market share trajectory compare to established
-    competitors over the last four quarters?
-  - What evidence supports long-term margin expansion as the Instinct GPU line scales?
-  - How dependent is AMD's data centre revenue on a small number of hyperscaler customers?
-  - How durable is NVIDIA's data centre GPU market position as competing accelerators mature?
-  - What evidence supports the long-term durability of NVIDIA's CUDA software moat?
-  - How concentrated is NVIDIA's data centre revenue across its largest customers?
+  - ... (7 questions total)
 
 ─────────────────────────────────────────────
 Suggested Next Research Steps
@@ -223,6 +236,8 @@ Suggested Next Research Steps
 ─────────────────────────────────────────────
 What Can Safely Wait
 
+  - Holdings: 3 holding(s) in portfolio.
+  - Cash weight: Cash represents 15.0% of portfolio.
   - AMD: Company analysis context is available for review.
   - NVDA: Company analysis context is available for review.
   - Suggested research steps: 2 suggested next step(s) from watchlist review.
@@ -233,14 +248,19 @@ This is a deterministic daily brief for context and education. It is not a news
 feed, market prediction, investment recommendation, or personal financial advice.
 ```
 
-### Priority Routing (Sprint 65)
+### Priority Routing (Sprints 65 + 69)
 
 "What Deserves Attention" contains only HIGH and MODERATE items:
+- Portfolio concentration HIGH → `[!]` HIGH (NVDA at 55% triggers High level)
 - Open research questions → MODERATE (7 unresolved)
 - Discovery candidates → MODERATE (2 identified)
 
 Company analysis with no unknowns (AMD, NVDA) is LOW priority and appears
 only in "What Can Safely Wait" — not in "What Deserves Attention".
+
+The demo portfolio (NVDA 55%, AMD 30%, Cash 15%) is static example data
+constructed to exercise the HIGH concentration signal. The overall brief
+priority is `high` when portfolio input is included.
 
 No Evidence Gaps section appears because full metadata and knowledge facts
 are supplied. Evidence Gaps only appear when a company analysis report
