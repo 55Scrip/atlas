@@ -105,6 +105,49 @@ Sprint 42 should add deterministic adapters that make it easier to build
 
 Adapters should remain deterministic, provider-free, and non-advisory.
 
+## Engine-Backed Export (Sprint 55)
+
+`atlas company-analysis export` can now run `CompanyAnalysisEngine` on local
+knowledge facts and research projects, producing engine-derived observations,
+risks, confidence, and evidence links.
+
+```bash
+# Engine-backed export with knowledge and research
+atlas company-analysis export \
+  --ticker AMD \
+  --knowledge knowledge.json \
+  --research research.json \
+  --output ca_export.json
+
+# Ticker only (minimal Company object, engine derives unknowns from missing context)
+atlas company-analysis export --ticker AMD --output ca_export.json
+
+# Knowledge only (no research project)
+atlas company-analysis export --ticker AMD --knowledge knowledge.json --output ca_export.json
+
+# Consume in Daily Brief
+atlas daily summary --company-analysis ca_export.json
+```
+
+### Input Flags (Sprint 55)
+
+| Flag | Description |
+|---|---|
+| `--ticker TICKER` | Company ticker symbol (required for engine-backed path). Uppercased automatically. |
+| `--knowledge FILE` | Local knowledge JSON (`{"facts": [...]}` — same format as `atlas discovery export --knowledge`) |
+| `--research FILE` | Local research JSON (`{"projects": [...]}` — same format as `atlas discovery export --research`) |
+
+**Ticker selection**: when `--research` is provided, the first project whose
+`topic` matches the ticker (case-insensitive) is used as the `research_project`
+for `CompanyAnalysisInput`. If no project matches, the first project is used.
+
+**Knowledge facts**: all facts in the file are passed to `CompanyAnalysisInput.knowledge_facts`.
+The engine uses them to produce evidence links and observations, and detects risk
+language in fact statements.
+
+**Engine behavior**: `CompanyAnalysisEngine.analyze()` is deterministic — repeated
+calls with the same inputs produce identical outputs. No network calls are made.
+
 ## JSON Export (Sprint 54)
 
 `atlas company-analysis export` generates a Daily Brief–compatible company

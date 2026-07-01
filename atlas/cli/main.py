@@ -60,7 +60,9 @@ from atlas.adapters.knowledge import knowledge_facts_from_dict
 from atlas.adapters.research_input import research_projects_from_dict
 from atlas.capabilities.daily_brief.research_exporter import research_projects_to_dict
 from atlas.capabilities.company_analysis.exporter import company_reports_to_list
+from atlas.capabilities.company_analysis import CompanyAnalysisEngine, CompanyAnalysisInput
 from atlas.adapters.company_analysis import company_reports_from_dict
+from atlas.shared import Company
 from atlas.decision_journal import (
     DecisionJournalEngine,
     render_decision_journal_entries,
@@ -1229,7 +1231,16 @@ def research_export_command(
 @company_analysis_app.command("export")
 def company_analysis_export_command(
     input_path: Path | None = typer.Option(
-        None, "--input", help="Local company analysis JSON file path (optional).",
+        None, "--input", help="Local company analysis JSON file path (Sprint 54 path, optional).",
+    ),
+    ticker: str | None = typer.Option(
+        None, "--ticker", help="Company ticker for engine-backed export (e.g. AMD).",
+    ),
+    knowledge_path: Path | None = typer.Option(
+        None, "--knowledge", help="Local knowledge JSON file path (optional).",
+    ),
+    research_path: Path | None = typer.Option(
+        None, "--research", help="Local research JSON file path (optional).",
     ),
     output_path: Path | None = typer.Option(
         None, "--output", help="Write company analysis JSON to this file path.",
@@ -1237,29 +1248,79 @@ def company_analysis_export_command(
 ):
     """Export company analysis context as a Daily Brief–compatible JSON file.
 
-    Reads a local company analysis JSON file via --input, validates the
-    structure, and writes the result to --output in the format accepted by
-    ``atlas daily summary --company-analysis``.
+    Two export paths are available:
 
-    When --input is omitted the command exports an empty list, which is valid
-    for ``atlas daily summary --company-analysis`` (produces no Company
-    Analysis Context section). When --output is omitted the result is printed
-    to stdout as a human-readable summary.
+    **Engine-backed export** (Sprint 55): provide --ticker and optionally
+    --knowledge and/or --research. CompanyAnalysisEngine runs deterministically
+    on the supplied local inputs and produces engine-derived observations, risks,
+    confidence, and evidence links.
 
-    Accepts a single company analysis object or a list of objects.
+    .. code-block:: bash
+
+        atlas company-analysis export \\
+          --ticker AMD \\
+          --knowledge knowledge.json \\
+          --research research.json \\
+          --output company.json
+
+    **Manual input export** (Sprint 54): provide --input with a pre-authored
+    company analysis JSON file. The file is validated and re-exported.
+
+    When neither --ticker nor --input is provided the command exports an empty
+    list, valid for ``atlas daily summary --company-analysis``.
+
     No network calls are made. No recommendations are produced.
     """
     try:
-        if input_path is not None:
+        if ticker is not None:
+            # Engine-backed path (Sprint 55)
+            ticker_upper = ticker.strip().upper()
+            if not ticker_upper:
+                raise ValueError("--ticker must not be empty")
+
+            knowledge_facts = ()
+            if knowledge_path is not None:
+                raw = load_json_file(knowledge_path)
+                knowledge_facts = knowledge_facts_from_dict(raw, str(knowledge_path))
+
+            research_project = None
+            if research_path is not None:
+                raw = load_json_file(research_path)
+                projects = research_projects_from_dict(raw, str(research_path))
+                # Use the first project whose topic matches the ticker, or the first overall.
+                research_project = next(
+                    (p for p in projects if p.topic.upper() == ticker_upper),
+                    projects[0] if projects else None,
+                )
+
+            company = Company(
+                id=ticker_upper.lower(),
+                name=ticker_upper,
+                ticker=ticker_upper,
+            )
+            analysis_input = CompanyAnalysisInput(
+                company=company,
+                knowledge_facts=knowledge_facts,
+                research_project=research_project,
+            )
+            report = CompanyAnalysisEngine().analyze(analysis_input)
+            data = [company_reports_to_list((report,))[0]]
+
+        elif input_path is not None:
+            # Manual input path (Sprint 54)
             raw = load_json_file(input_path)
             reports = company_reports_from_dict(raw, str(input_path))
+            data = company_reports_to_list(reports)
+
         else:
-            reports = ()
-        data = company_reports_to_list(reports)
+            # No-input path
+            data = []
+
         if output_path is not None:
             _write_json_export(output_path, data)
             console.print(f"Company analysis export written to {output_path}")
             return
+
     except (OSError, ValueError) as exc:
         console.print(f"[red]Company analysis export failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
@@ -1268,12 +1329,12 @@ def company_analysis_export_command(
     if data:
         lines.append(f"Reports: {len(data)}")
         for report_dict in data:
-            company = report_dict.get("company", {})
-            name = company.get("name", "Unknown")
-            ticker = company.get("ticker", "")
+            company_d = report_dict.get("company", {})
+            name = company_d.get("name", "Unknown")
+            tick = company_d.get("ticker", "")
             confidence = report_dict.get("confidence", {})
             level = confidence.get("level", "") if isinstance(confidence, dict) else str(confidence)
-            lines.append(f"  - {name} ({ticker}): confidence {level}")
+            lines.append(f"  - {name} ({tick}): confidence {level}")
             unknowns = report_dict.get("unknowns", [])
             if unknowns:
                 lines.append(f"    Unknowns: {len(unknowns)}")

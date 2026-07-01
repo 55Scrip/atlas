@@ -318,3 +318,26 @@ and detailed structured input. The adapter reuses the existing `CompanyAnalysisR
 model without invoking `CompanyAnalysisEngine` — the report is built directly from
 user-supplied JSON fields without running deterministic risk / confidence scoring on
 knowledge facts, since users may not have knowledge facts available at export time.
+
+## 2026-07-01: Wire CompanyAnalysisEngine to Export Command (Sprint 55)
+
+Decision: extend `atlas company-analysis export` with `--ticker`, `--knowledge`,
+and `--research` flags that wire `CompanyAnalysisEngine.analyze()` to the
+existing Sprint 54 export path, using the Sprint 52 adapters
+(`knowledge_facts_from_dict`, `research_projects_from_dict`) for local input
+parsing.
+
+Rationale: Sprint 54's export command required users to author the full
+company analysis JSON structure by hand. Sprint 55 closes this gap by letting
+the engine derive observations, risks, evidence links, confidence, and
+what-could-change content from local knowledge facts and research projects.
+The `--ticker` flag is the minimum required input for the engine-backed path
+because `CompanyAnalysisInput` requires a `Company` object with a ticker. When
+`--research` is supplied, the first project matching the ticker topic is selected
+as `research_project`; if none matches, the first project is used — this avoids
+a hard failure for single-project research files where the topic may not exactly
+match the ticker. The Sprint 54 `--input` path is preserved unchanged as a
+separate branch in the same command, giving users two authoring options:
+engine-backed (from structured local files) and manual (from a pre-authored
+report JSON). No new adapter or exporter files were needed — only main.py was
+modified, adding 40 lines to the existing command function.

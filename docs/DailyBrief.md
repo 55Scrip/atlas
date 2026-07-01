@@ -355,19 +355,27 @@ like tickers (all-uppercase, ≤5 chars) appear in `related_tickers`.
 
 No network calls are made. No recommendations are produced.
 
-## Company Analysis Export (Sprint 54)
+## Company Analysis Export (Sprints 54–55)
 
-`atlas company-analysis export` completes the Daily Brief export pipeline.
+`atlas company-analysis export` exports engine-derived company analysis context
+to a Daily Brief–compatible JSON file.
 
 ```bash
-# Export company analysis from local input
+# Engine-backed export (Sprint 55) — runs CompanyAnalysisEngine on local inputs
+atlas company-analysis export \
+  --ticker AMD \
+  --knowledge knowledge.json \
+  --research research.json \
+  --output ca_export.json
+
+# Manual input export (Sprint 54) — validates and re-exports a pre-authored file
 atlas company-analysis export --input company.json --output ca_export.json
 
 # Consume in Daily Brief
 atlas daily summary --company-analysis ca_export.json
 ```
 
-See [CompanyAnalysis.md](CompanyAnalysis.md) for the input JSON format.
+See [CompanyAnalysis.md](CompanyAnalysis.md) for all input formats.
 
 ## Known Limitations
 
@@ -376,9 +384,9 @@ See [CompanyAnalysis.md](CompanyAnalysis.md) for the input JSON format.
 - `knowledge_node_count` is accepted by `build_daily_brief_input` but not
   yet wired to a CLI flag.
 
-## Recommendation for Sprint 55
+## Recommendation for Sprint 56
 
-Wire `CompanyAnalysisEngine` to the export command via `--knowledge` and
-`--research` flags (mirroring the Discovery export pattern), so company
-analysis reports can be generated from knowledge facts and research projects
-rather than requiring manual JSON authoring of the report fields.
+Add `--company-name` and `--business-description` flags to
+`atlas company-analysis export` so `CompanyAnalysisInput` can be more fully
+populated from local CLI flags, reducing "Missing Business Description" unknowns
+and improving report readability without requiring external data.

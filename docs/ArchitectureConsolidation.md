@@ -215,6 +215,20 @@ CLI extensions:
 535 tests pass; 61 new tests cover adapters, extended CLI, error handling, round-trip
 pipeline, language safety, determinism, and no-network constraints.
 
+**Sprint 55** extended `atlas company-analysis export` with three new flags:
+`--ticker`, `--knowledge`, and `--research`. When `--ticker` is provided, the
+command builds a `Company` object and a `CompanyAnalysisInput` from the supplied
+local files (using the existing `knowledge_facts_from_dict` and
+`research_projects_from_dict` adapters from Sprint 52), runs
+`CompanyAnalysisEngine().analyze()` deterministically, and exports the resulting
+`CompanyAnalysisReport` via the Sprint 54 exporter. The first `ResearchProject`
+whose `topic` matches the ticker is used as `research_project`; if none matches,
+the first project is used. The Sprint 54 `--input` path and no-input path are
+both fully preserved. No new files were created — only `atlas/cli/main.py` was
+modified. 673 tests pass; 36 new tests cover ticker-only, knowledge, research,
+combined, round-trip to Daily Brief, Sprint 54 path preservation, language
+safety, determinism, and no-network constraints.
+
 **Sprint 54** added `atlas/capabilities/company_analysis/exporter.py`
 (`company_report_to_dict`, `company_reports_to_list`), `atlas/adapters/company_analysis.py`
 (`company_reports_from_dict`), and an `atlas company-analysis export [--input FILE]
