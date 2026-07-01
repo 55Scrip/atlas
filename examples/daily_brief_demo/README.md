@@ -160,7 +160,8 @@ atlas daily summary \
 
 The Daily Brief follows this structure. The excerpt below reflects actual demo output
 with all five input surfaces active (portfolio added in Sprint 69,
-evidence link resolution added in Sprint 70).
+evidence link resolution added in Sprint 70,
+Discovery Context display names added in Sprint 72).
 
 ```
 Atlas Daily Brief
@@ -218,8 +219,8 @@ Watchlist Context
 ─────────────────────────────────────────────
 Discovery Context
 
-  [·] company-amd: 5 attributed knowledge fact(s) are available.
-  [·] company-nvda: 4 attributed knowledge fact(s) are available.
+  [·] AMD: 5 attributed knowledge fact(s) are available.
+  [·] NVDA: 4 attributed knowledge fact(s) are available.
 
 ─────────────────────────────────────────────
 Unresolved Questions

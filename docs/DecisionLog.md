@@ -416,6 +416,31 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: Discovery Context Display Name Resolution (Sprint 72)
+
+Decision: add `_resolve_node_display_name` in `atlas/capabilities/daily_brief/engine.py`
+and use it in `_discovery_section` instead of `candidate.identifier`.
+
+Rationale: the Discovery Context previously displayed raw knowledge node IDs
+(`company-amd`, `company-nvda`) which are internal technical identifiers. The
+discovery engine already computed human-readable `title` fields via
+`_title_from_identifier` (`company-amd` → `AMD`), but the Daily Brief renderer
+ignored them. This sprint wires the two together without changing any model or
+export format.
+
+Resolution order (deterministic, explicit, no fuzzy/AI):
+1. `candidate.title` if non-empty
+2. `candidate.ticker` if non-empty
+3. `company-{x}` → `X.upper()` (single-segment suffix only)
+4. original identifier as safe fallback
+
+One pre-existing test (`test_discovery_candidate_identifier_used_as_item_title`)
+asserted the old buggy behavior and was renamed and corrected. 17 new tests
+added in `tests/test_discovery_display_names.py`.
+
+Demo output change: Discovery Context now shows `AMD` and `NVDA` instead of
+`company-amd` and `company-nvda`.
+
 ## 2026-07-01: RC2 Release Verification (Sprint 71)
 
 Decision: declare Atlas Internal Release Candidate 2 (v0.1.0-rc2), extending

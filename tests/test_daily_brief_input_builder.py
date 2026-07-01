@@ -337,11 +337,12 @@ def test_discovery_report_produces_discovery_context_section() -> None:
     assert any(s.title == "Discovery Context" for s in report.sections)
 
 
-def test_discovery_candidate_identifier_used_as_item_title() -> None:
+def test_discovery_candidate_title_used_as_item_title() -> None:
+    # explicit title field is preferred over identifier (Sprint 72: display name resolver)
     brief_input = build_daily_brief_input(discovery_report=_make_discovery_report(candidate_count=1))
     report = DailyBriefCapability().generate(brief_input)
     section = next(s for s in report.sections if s.title == "Discovery Context")
-    assert "TICK0" in [i.title for i in section.items]
+    assert "Company 0" in [i.title for i in section.items]
 
 
 def test_discovery_candidate_reason_detail_used_as_item_detail() -> None:

@@ -420,6 +420,33 @@ def _discovery_candidate_detail(candidate: object) -> str:
     return getattr(candidate, "reason", "Discovery candidate deserves research.")
 
 
+def _resolve_node_display_name(candidate: object) -> str:
+    """Return a human-readable display name for a discovery candidate.
+
+    Resolution order (deterministic, no fuzzy/AI matching):
+    1. Explicit title/display_name field if non-empty.
+    2. Ticker field if non-empty.
+    3. Normalised company node pattern: company-{x} → X (uppercase).
+    4. Original identifier as safe fallback.
+    """
+    identifier = str(getattr(candidate, "identifier", "") or "Unknown")
+
+    title = str(getattr(candidate, "title", "") or "").strip()
+    if title:
+        return title
+
+    ticker = str(getattr(candidate, "ticker", "") or "").strip()
+    if ticker:
+        return ticker
+
+    if identifier.startswith("company-"):
+        suffix = identifier[len("company-"):]
+        if suffix and "-" not in suffix:
+            return suffix.upper()
+
+    return identifier
+
+
 def _discovery_section(data: DailyBriefInput) -> DailyBriefSection:
     report = data.discovery_report
     if report is None:
@@ -431,7 +458,7 @@ def _discovery_section(data: DailyBriefInput) -> DailyBriefSection:
 
     items = tuple(
         DailyBriefItem(
-            title=getattr(c, "identifier", getattr(c, "ticker", "Unknown")),
+            title=_resolve_node_display_name(c),
             detail=_discovery_candidate_detail(c),
             priority=DailyBriefPriority.MODERATE,
         )

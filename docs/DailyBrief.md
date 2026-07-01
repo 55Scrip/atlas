@@ -627,6 +627,23 @@ appear in the daily brief. This is correct — no evidence is missing. The secti
 appears only when a company analysis report contains "Missing Evidence" unknowns,
 which happens when `--knowledge` is omitted from the export step.
 
+## Discovery Context Display Names (Sprint 72)
+
+The Discovery Context section uses `_resolve_node_display_name` in
+`atlas/capabilities/daily_brief/engine.py` to convert raw knowledge node IDs
+into human-readable labels. Resolution order (deterministic, no fuzzy/AI):
+
+1. **Explicit `title` field** — if non-empty, use it directly (e.g. `"AMD"`)
+2. **Explicit `ticker` field** — if non-empty and title is absent
+3. **Company node pattern** — `company-{x}` → `X.upper()`, only when suffix
+   contains no further hyphens (prevents ambiguous multi-word IDs)
+4. **Original identifier** — safe fallback for unrecognised patterns
+
+Examples: `company-amd` → `AMD`, `company-nvda` → `NVDA`.
+`theme:semiconductors` → `theme:semiconductors` (no safe mapping).
+
+No fuzzy matching, no semantic matching, no external lookup.
+
 ## Evidence Link Resolution — Watchlist Knowledge Facts (Sprint 70)
 
 `atlas watchlist intelligence` accepts an optional `--knowledge` flag. When
