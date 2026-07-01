@@ -36,7 +36,7 @@ from atlas.conversation import (
     render_conversation_response,
 )
 from atlas.dashboard import DashboardEngine, DashboardInput, render_dashboard
-from atlas.daily import DailyBriefEngine, DailyBriefInput, render_daily_brief
+from atlas.daily_brief import DailyBriefEngine, DailyBriefInput, render_daily_brief
 from atlas.capabilities.daily_brief import DailyBriefCapability
 from atlas.capabilities.daily_brief import DailyBriefInput as CapDailyBriefInput
 from atlas.capabilities.daily_brief import build_daily_brief_input

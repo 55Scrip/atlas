@@ -65,7 +65,8 @@ def test_domain_boundaries_export_canonical_models() -> None:
     assert watchlist.Watchlist is Watchlist
     assert research.ResearchNote is ResearchNote
     assert decision_journal.JournalEntry is JournalEntry
-    assert daily_brief.DailyBriefOutput.__name__ == "DailyBriefOutput"
+    # daily_brief domain is a namespace stub — no re-exported models (Sprint 75)
+    assert hasattr(daily_brief, "__all__")
     assert knowledge.KnowledgeNode is KnowledgeNode
     assert ai.ReasoningService is ReasoningService
     assert authentication.User is User

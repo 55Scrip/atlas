@@ -1,7 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Status:** Active — Sprint 75 target selected
+**Updated:** 2026-07-01 (Sprint 75)  
+**Status:** Active — Sprint 75 target complete; Sprint 76 target to be selected
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -33,12 +34,12 @@ deterministic, and leave the CLI interface unchanged or clearly improved.
 
 ## Legacy Module Inventory
 
-### Group A — Thin Shims / Re-exports (lowest risk to migrate)
+### Group A — Thin Shims / Re-exports
 
-| Module | Files | Lines | Description | Runtime CLI usage |
-|---|---|---|---|---|
-| `atlas/daily/` | 2 | 43 | Re-exports `atlas.daily_brief` under a stable path | `atlas daily brief` |
-| `atlas/daily_brief/` | 2 | 353 | Legacy DailyBriefEngine (provider-dependent, 11 sub-engines) | `atlas daily brief` |
+| Module | Files | Lines | Description | Runtime CLI usage | Status |
+|---|---|---|---|---|---|
+| ~~`atlas/daily/`~~ | ~~2~~ | ~~43~~ | ~~Re-exports `atlas.daily_brief` under a stable path~~ | ~~`atlas daily brief`~~ | **Removed Sprint 75** |
+| `atlas/daily_brief/` | 2 | 353 | Legacy DailyBriefEngine (provider-dependent, 11 sub-engines) | `atlas daily brief` | Legacy |
 
 `atlas/daily/` is a pure re-export shim. It imports from `atlas/daily_brief/`
 and re-exports under the `atlas.daily` name. The only CLI consumer is
@@ -231,9 +232,23 @@ Provider safety: **confirmed**.
 
 ---
 
-## Sprint 75 Migration Target
+## Sprint 75 Migration Target — COMPLETED
 
-### Selected Target: `atlas/daily/` shim removal + `atlas/domains/daily_brief/` boundary fix
+### Completed: `atlas/daily/` shim removal + `atlas/domains/daily_brief/` boundary fix
+
+**Sprint 75 result:**
+- `atlas/daily/` deleted (2 files, 43 lines)
+- `atlas/cli/main.py` updated to import from `atlas.daily_brief` directly
+- `tests/test_daily_brief.py` updated to import from `atlas.daily_brief` directly
+- `atlas/domains/daily_brief/__init__.py` rewritten as a minimal namespace stub
+  (no imports from legacy OR capabilities — pure domain namespace placeholder)
+- `test_domains_do_not_import_capabilities_or_providers_or_legacy` extended with
+  explicit legacy prefix list (`atlas.daily`, `atlas.daily_brief`, `atlas.analysis`, etc.)
+- 2 new Sprint 75 boundary tests added: `test_atlas_daily_shim_is_removed`,
+  `test_domains_daily_brief_does_not_import_legacy`
+- 991 tests passing, 0 failures. Demo + RC verification both green.
+
+### Selected Target (original):
 
 **Rationale:**
 

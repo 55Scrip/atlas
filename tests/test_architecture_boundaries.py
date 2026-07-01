@@ -47,6 +47,15 @@ def test_domains_do_not_import_capabilities_or_providers_or_legacy() -> None:
         "atlas.database",
         "atlas.services",
         "atlas.adapters",
+        # Legacy engine modules — domains must not import these (Sprint 75)
+        "atlas.daily",
+        "atlas.daily_brief",
+        "atlas.analysis",
+        "atlas.portfolio_review",
+        "atlas.watchlist_review",
+        "atlas.home",
+        "atlas.dashboard",
+        "atlas.intelligence",
     )
 
     violations = []
@@ -174,6 +183,20 @@ def test_providers_not_imported_by_verify_script() -> None:
     text = verify_script.read_text()
     assert "yahoo" not in text.lower()
     assert "provider" not in text.lower()
+
+
+def test_atlas_daily_shim_is_removed() -> None:
+    """Sprint 75: atlas/daily/ shim was deleted — the directory must not exist."""
+    assert not (ATLAS_ROOT / "daily").exists(), "atlas/daily/ shim should have been removed in Sprint 75"
+
+
+def test_domains_daily_brief_does_not_import_legacy() -> None:
+    """Sprint 75: atlas/domains/daily_brief/ must not import from legacy modules."""
+    domain_daily_brief = ATLAS_ROOT / "domains" / "daily_brief" / "__init__.py"
+    text = domain_daily_brief.read_text()
+    forbidden = ("atlas.daily_brief", "atlas.daily", "atlas.analysis")
+    for mod in forbidden:
+        assert mod not in text, f"atlas/domains/daily_brief/__init__.py still imports {mod}"
 
 
 def test_legacy_shim_atlas_daily_is_documented_as_migration_target() -> None:

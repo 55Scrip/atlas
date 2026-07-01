@@ -325,8 +325,14 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - Blueprint-aligned Daily Brief pipeline (`atlas daily summary`) makes zero provider
   calls. Legacy pipeline (`atlas daily brief`) remains untouched.
 
-**Known boundary violation (as of Sprint 74):**
+**Sprint 75 — completed:**
 
-`atlas/domains/daily_brief/__init__.py` imports from `atlas.daily_brief` (legacy).
-This violates the rule that domains must not import legacy modules. Resolution is
-scheduled for Sprint 75 alongside `atlas/daily/` shim removal.
+- `atlas/daily/` (43-line re-export shim) deleted. `atlas/cli/main.py` and
+  `tests/test_daily_brief.py` now import directly from `atlas.daily_brief`.
+- `atlas/domains/daily_brief/__init__.py` boundary violation fixed: rewritten as
+  a minimal namespace stub with no imports from legacy or capability modules.
+- `test_domains_do_not_import_capabilities_or_providers_or_legacy` extended with
+  explicit legacy forbidden-prefix list (`atlas.daily`, `atlas.daily_brief`,
+  `atlas.analysis`, `atlas.portfolio_review`, etc.).
+- Domain layer is now clean of legacy imports. The boundary test will catch any
+  future re-introduction.

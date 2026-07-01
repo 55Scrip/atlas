@@ -5,8 +5,9 @@ from typer.testing import CliRunner
 from atlas.analysis.portfolio import Portfolio
 from atlas.analysis.watchlist import Watchlist
 from atlas.cli.main import app
-from atlas.daily import DailyBriefEngine as LegacyDailyBriefEngine
 from atlas.daily_brief import DailyBriefEngine, DailyBriefInput, render_daily_brief
+
+LegacyDailyBriefEngine = DailyBriefEngine  # alias retained for test readability
 from atlas.providers import MockCompanyAnalysisProvider
 
 

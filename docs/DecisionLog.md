@@ -416,6 +416,32 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: Remove Daily Shim and Enforce Domain Boundaries (Sprint 75)
+
+Decision: remove `atlas/daily/` (43-line re-export shim), fix the
+`atlas/domains/daily_brief/` boundary violation, and extend the domain
+boundary test with an explicit legacy-prefix prohibition list.
+
+Changes:
+- `atlas/daily/` deleted (2 files, 43 lines — pure re-export, zero logic)
+- `atlas/cli/main.py` line 39: `from atlas.daily` → `from atlas.daily_brief`
+- `tests/test_daily_brief.py`: import updated from `atlas.daily_brief` directly;
+  `LegacyDailyBriefEngine` retained as a local alias for test readability
+- `atlas/domains/daily_brief/__init__.py`: rewritten as a namespace stub with
+  no imports from legacy modules or capability modules. `DailyBriefOutput`
+  re-export (legacy artifact) removed.
+- `tests/test_atlas_foundation.py`: stale `DailyBriefOutput` assertion replaced
+  with `hasattr(daily_brief, "__all__")` check
+- `tests/test_architecture_boundaries.py`: boundary test extended with legacy
+  module prefixes; 2 new Sprint 75 tests added (`test_atlas_daily_shim_is_removed`,
+  `test_domains_daily_brief_does_not_import_legacy`)
+- `docs/LegacyConsolidationPlan.md` and `docs/ArchitectureConsolidation.md`
+  updated to mark Sprint 75 as complete
+
+Runtime behavior: unchanged. `atlas daily brief` still works (calls
+`atlas.daily_brief` directly). `atlas daily summary` unchanged.
+991 tests pass. Demo green. RC verification green.
+
 ## 2026-07-01: Legacy Engine Consolidation Plan (Sprint 74)
 
 Decision: create `docs/LegacyConsolidationPlan.md` inventorying all legacy
