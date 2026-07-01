@@ -1,6 +1,6 @@
-# Architecture Consolidation (Sprint 44)
+# Architecture Consolidation (Sprint 44, updated Sprint 67)
 
-This document records the current state of Atlas architecture as of Sprint 44,
+This document records the current state of Atlas architecture as of RC1 (Sprint 67),
 clarifies which layers are current vs. legacy, and defines guardrails for
 future sprints. It does not change runtime behavior.
 

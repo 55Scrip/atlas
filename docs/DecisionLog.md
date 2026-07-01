@@ -416,6 +416,33 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: First Internal Release Candidate (Sprint 67)
+
+Decision: declare Atlas v0.1.0-rc1 as the first internal release candidate
+(RC1), completing the foundation sprint series (Sprints 36–67).
+
+Deliverables:
+- `docs/ReleaseCandidate.md` — RC1 release notes covering: what works, how to
+  run tests and the demo, architecture state, release checklist, known
+  limitations, technical debt, and next phase recommendation.
+- `README.md` — replaced sprint-by-sprint top section with a clean developer
+  guide (What Atlas Is, What Atlas Is Not, Current Capabilities table,
+  Install, Run Tests, Quickstart, Architecture State, Documentation table,
+  Constraints). Sprint notes preserved below a clear "Historical Sprint Notes"
+  separator. Duplicate "Install locally" / "Quickstart" sections at the
+  bottom cleaned up.
+- `docs/ArchitectureConsolidation.md` — updated sprint reference to RC1.
+- `tests/test_release_candidate.py` — 27 lightweight static tests verifying
+  RC1 document existence, content, no-recommendation-language, and README
+  developer-guide sections.
+
+Rationale: after 67 sprints the repository had a clear working pipeline but
+no single place that described the current state for a new developer. The
+README top section read as a sprint log rather than a project guide. RC1 fixes
+this by creating a stable documentation baseline before the next phase begins.
+
+910 tests pass total (883 prior + 27 new).
+
 ## 2026-07-01: Local Demo UX Polish and First User Guide (Sprint 66)
 
 Decision: improve the local Daily Brief demo experience and create a clear

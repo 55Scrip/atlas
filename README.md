@@ -1,43 +1,128 @@
 # Atlas
 
-Private investment research platform for AI infrastructure.
+Private investment research platform. Local-only. Deterministic. Non-advisory.
 
-## Version
-v0.1.0 — Foundation
+**Version:** v0.1.0 — Internal Release Candidate 1 (Sprint 67)
 
-## Project Philosophy
+---
 
-Atlas is guided by a small set of permanent product documents:
+## What Atlas Is
 
-- [Atlas Constitution](docs/ATLAS_CONSTITUTION.md)
-- [Atlas Product](docs/ATLAS_PRODUCT.md)
-- [Atlas Architecture](docs/ATLAS_ARCHITECTURE.md)
-- [Atlas Roadmap](docs/ATLAS_ROADMAP.md)
+Atlas is a local deterministic investment research platform. It organises
+structured data — research notes, company analysis, watchlist intelligence,
+discovery candidates, and knowledge facts — into a calm, readable Daily Brief.
 
-Sprint 36 adds the Atlas foundation documents:
+Atlas does not provide investment recommendations. It does not call external
+APIs. It does not use AI or LLMs. It does not fetch live market data or news.
 
-- [Architecture](docs/Architecture.md)
-- [Project Structure](docs/ProjectStructure.md)
-- [Decision Log](docs/DecisionLog.md)
-- [Development Guide](docs/DevelopmentGuide.md)
+## What Atlas Is Not
 
-## Atlas Foundation
+- Not an AI trading assistant
+- Not a recommendation engine
+- Does not produce forecasts or targets
+- Does not call external APIs
+- Does not use LLMs or AI
+- Does not fetch live market data or news
+- Does not compare companies as investment opportunities
 
-The repository is organized around clear long-term boundaries:
+## Current Capabilities (RC1)
 
-- `atlas/shared/` contains canonical entities such as `Portfolio`, `Holding`,
-  `Company`, `Watchlist`, `ResearchNote`, `JournalEntry`, `User`,
-  `MarketEvent`, `Decision`, and `KnowledgeNode`.
-- `atlas/domains/` defines ownership boundaries for portfolio, watchlist,
-  research, decision journal, daily brief, knowledge, AI, and authentication.
-- `atlas/ai/` defines replaceable AI service interfaces for future reasoning,
-  knowledge, summary, discovery, and decision support services.
-- `frontend/`, `backend/`, `shared/`, `ai_services/`, and `infrastructure/`
-  reserve clear repository areas for future Atlas platform development.
+| Capability | Module | Status |
+|---|---|---|
+| Portfolio Domain | `atlas.domains.portfolio` | Current |
+| Research Domain | `atlas.domains.research` | Current |
+| Knowledge Domain | `atlas.domains.knowledge` | Current |
+| Decision Engine | `atlas.domains.decision` | Current |
+| Company Analysis | `atlas.capabilities.company_analysis` | Current |
+| Watchlist Intelligence | `atlas.capabilities.watchlist_intelligence` | Current |
+| Discovery | `atlas.capabilities.discovery` | Current |
+| Daily Brief | `atlas.capabilities.daily_brief` | Current |
+| JSON export pipeline | `atlas.cli` + `atlas.adapters` | Current |
+| Local demo | `examples/daily_brief_demo/` | Current |
 
-The existing Python backend and CLI remain the working product. Sprint 36 adds
-architecture, documentation, strict TypeScript configuration for future frontend
-work, CI, and local hook configuration without changing user-facing behavior.
+Legacy engines (`atlas/analysis/`, `atlas/daily/`, `atlas/intelligence/`, etc.)
+remain functional. New product work belongs in `atlas/domains/` and
+`atlas/capabilities/` only. See [Architecture State](#architecture-state).
+
+## Install
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+## Run Tests
+
+```bash
+.venv/bin/python -m compileall atlas tests
+.venv/bin/python -m pytest
+```
+
+883 tests pass as of RC1.
+
+## Quickstart: Daily Brief Demo
+
+```bash
+bash scripts/run_daily_brief_demo.sh
+```
+
+Runs a 7-step local pipeline (AMD + NVDA demo data) with no network calls.
+Outputs to `tmp/atlas_demo/` including `daily_brief.txt`.
+
+```bash
+rm -rf tmp/atlas_demo   # clean up
+```
+
+Full details: [examples/daily_brief_demo/README.md](examples/daily_brief_demo/README.md)
+
+## Architecture State
+
+Atlas has two layers:
+
+**Current (Blueprint-aligned):**
+- `atlas/domains/` — canonical concepts: portfolio, research, knowledge, decision, daily_brief, watchlist, ai, authentication
+- `atlas/capabilities/` — product capabilities: company_analysis, discovery, watchlist_intelligence, daily_brief
+- `atlas/shared/` — immutable canonical entities
+- `atlas/adapters/` — bridges between domain types and legacy types
+- `atlas/providers/` — opt-in market data providers (not called by demo or Daily Brief)
+- `atlas/cli/` — CLI commands
+
+**Legacy (preserved, not for expansion):**
+- `atlas/analysis/`, `atlas/daily/`, `atlas/dashboard/`, `atlas/home/`,
+  `atlas/intelligence/`, `atlas/portfolio_review/`, `atlas/watchlist_review/`,
+  and others — original working engines. Remain functional and fully tested.
+  New capabilities belong in `atlas/domains/` and `atlas/capabilities/`.
+
+See [docs/ArchitectureConsolidation.md](docs/ArchitectureConsolidation.md) for guardrails.
+
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [docs/ATLAS_CONSTITUTION.md](docs/ATLAS_CONSTITUTION.md) | Mission and values |
+| [docs/ATLAS_PRODUCT.md](docs/ATLAS_PRODUCT.md) | Product scope |
+| [docs/ATLAS_ARCHITECTURE.md](docs/ATLAS_ARCHITECTURE.md) | Architecture intent |
+| [docs/ArchitectureConsolidation.md](docs/ArchitectureConsolidation.md) | Current layer map and guardrails |
+| [docs/DailyBrief.md](docs/DailyBrief.md) | Daily Brief capability reference |
+| [docs/CompanyAnalysis.md](docs/CompanyAnalysis.md) | Company Analysis reference |
+| [docs/DecisionLog.md](docs/DecisionLog.md) | Sprint decision history |
+| [docs/ReleaseCandidate.md](docs/ReleaseCandidate.md) | RC1 release notes |
+| [docs/DevelopmentGuide.md](docs/DevelopmentGuide.md) | Developer guide |
+| [examples/daily_brief_demo/README.md](examples/daily_brief_demo/README.md) | Demo walkthrough |
+
+## Constraints
+
+Providers are opt-in. The demo pipeline and Daily Brief make no network calls.
+No UI. No AI. No external APIs. No recommendation language.
+
+---
+
+## Historical Sprint Notes
+
+The sections below are sprint-by-sprint notes recorded during development.
+They document what was added when. The current authoritative state is described
+above and in the `docs/` directory.
 
 ## Portfolio Domain
 
@@ -1602,27 +1687,5 @@ pip install -e .
 atlas init
 ```
 
-## Quickstart: Run the Daily Brief Demo
-
-The Daily Brief demo shows a complete local Atlas pipeline — no network, no AI,
-no external APIs, no live data.
-
-```bash
-# Install (once)
-python -m venv .venv && source .venv/bin/activate && pip install -e .
-
-# Run the demo
-bash scripts/run_daily_brief_demo.sh
-```
-
-The script reads structured JSON inputs from `examples/daily_brief_demo/` and
-writes generated files to `tmp/atlas_demo/`, including a saved Daily Brief at
-`tmp/atlas_demo/daily_brief.txt`.
-
-To clean up generated files:
-
-```bash
-rm -rf tmp/atlas_demo
-```
-
-For full details see [examples/daily_brief_demo/README.md](examples/daily_brief_demo/README.md).
+See the [Quickstart section](#quickstart-daily-brief-demo) at the top for the
+Daily Brief demo.
