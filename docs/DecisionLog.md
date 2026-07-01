@@ -416,6 +416,36 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: Daily Brief What Can Safely Wait Section (Sprint 64)
+
+Decision: add a "What Can Safely Wait" section to `render_daily_brief_report`
+in `atlas/capabilities/daily_brief/engine.py`, populated by a new private
+helper `_collect_safely_wait_items`.
+
+The helper scans all sections except "What Deserves Attention" (the opening
+summary) for LOW priority items and returns them in section order. The
+renderer appends the section after "Suggested Next Research Steps" and before
+"Research Framing" when the collected list is non-empty. No model changes
+were required — LOW priority items already existed in the report structure.
+
+Rationale: LOW priority items appeared throughout detail sections with no
+visual distinction from MODERATE items (both rendered without a priority
+marker). Readers had no consolidated view of what could be deferred. The new
+section collects these items in one place so readers can quickly identify
+what does not require immediate research attention. "LOW priority" means
+"can be reviewed later," not "unimportant."
+
+Sources collected: Portfolio Context (holdings, low concentration, cash weight),
+Company Analysis Context (companies with no unknowns), Watchlist Context
+(suggested research steps). "What Deserves Attention" is excluded to avoid
+duplicating the aggregate summary items it contains.
+
+The section is omitted when no inputs are supplied, when all company reports
+have unknowns (MODERATE), or when no LOW items exist in any detail section.
+
+22 new tests added in `tests/test_daily_brief_safely_wait.py`. All 823
+pre-existing tests continue to pass (845 total).
+
 ## 2026-07-01: Daily Brief Opening Summary Alignment (Sprint 63)
 
 Decision: add `_company_analysis_opening_item` helper and call it from

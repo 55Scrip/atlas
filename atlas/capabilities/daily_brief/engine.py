@@ -125,6 +125,13 @@ def render_daily_brief_report(report: DailyBriefReport) -> str:
         for step in report.next_research_steps:
             lines.append(f"  - {step}")
 
+    # What Can Safely Wait — LOW priority items from detail sections
+    safely_wait = _collect_safely_wait_items(report)
+    if safely_wait:
+        lines += ["", _SEP, "What Can Safely Wait", ""]
+        for item in safely_wait:
+            lines.append(f"  - {item.title}: {item.detail}")
+
     # Research Framing
     lines += [
         "",
@@ -169,6 +176,24 @@ def _render_included_context(report: DailyBriefReport) -> list[str]:
         items.append(f"  Discovery:  {len(discovery_section.items)} candidate(s)")
     if any(s.title == "Portfolio Context" for s in report.sections):
         items.append("  Portfolio:  available")
+    return items
+
+
+def _collect_safely_wait_items(report: DailyBriefReport) -> list[DailyBriefItem]:
+    """Collect LOW priority items from detail sections for 'What Can Safely Wait'.
+
+    Skips 'What Deserves Attention' (the opening summary section) to avoid
+    duplicating the aggregate items it contains. Only detail sections — Company
+    Analysis Context, Research Context, Watchlist Context, Discovery Context,
+    Portfolio Context — are scanned. Items are returned in section order.
+    """
+    items: list[DailyBriefItem] = []
+    for section in report.sections:
+        if section.title == "What Deserves Attention":
+            continue
+        for item in section.items:
+            if item.priority == DailyBriefPriority.LOW:
+                items.append(item)
     return items
 
 

@@ -512,6 +512,11 @@ Suggested Next Research Steps
   - <step>
 
 ─────────────────────────────────────────────
+What Can Safely Wait         ← only if LOW priority detail-section items exist
+
+  - <title>: <detail>
+
+─────────────────────────────────────────────
 Research Framing
 This is a deterministic daily brief for context and education. ...
 ```
@@ -543,6 +548,30 @@ contains "Missing Evidence" unknowns (i.e. `--knowledge` was not supplied during
 export). When full metadata and knowledge are provided, the section is omitted —
 this is correct, not an error.
 
+### What Can Safely Wait Section (Sprint 64)
+
+Appears after "Suggested Next Research Steps" when any detail section contains
+LOW priority items. Collects those items in one place so readers can quickly
+identify what does not require immediate attention.
+
+Sources scanned (in section order):
+- **Portfolio Context** — holdings count, low concentration, cash weight
+- **Company Analysis Context** — companies with no unknowns
+- **Research Context** — research notes (all moderate; not typically surfaced here)
+- **Watchlist Context** — suggested research steps (LOW)
+- **Discovery Context** — currently all moderate; not typically surfaced here
+
+"What Deserves Attention" is explicitly excluded to avoid duplicating the
+opening summary items.
+
+LOW priority means "can be reviewed later" — not "bad" or "unimportant." It
+signals that no current structured input indicates urgent attention is needed.
+
+The section is **omitted** when:
+- No inputs are supplied (no-input mode)
+- All company reports contain unknowns (MODERATE priority — nothing is LOW)
+- No LOW priority items exist in any detail section
+
 ### Section Order
 
 1. Opening Summary
@@ -555,7 +584,8 @@ this is correct, not an error.
 8. Evidence Gaps
 9. Unresolved Questions
 10. Suggested Next Research Steps
-11. Research Framing
+11. **What Can Safely Wait** ← Sprint 64
+12. Research Framing
 
 ## Evidence Gap Resolver (Sprint 61)
 
