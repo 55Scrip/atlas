@@ -253,6 +253,33 @@ objects were passed without the builder:
 - `CompanyAnalysisReport`: now reads `company.ticker` (was `ticker`) and `evidence_links` (was `evidence_gaps`)
 - `CompanyAnalysisUnknown`: now reads `title` as the question text (was `question`)
 
+## Local Demo Dataset (Sprint 58)
+
+A working demo dataset is available under `examples/daily_brief_demo/`:
+
+| File | Purpose |
+|---|---|
+| `knowledge.json` | Structured knowledge facts for AMD |
+| `research_input.json` | Research project input (`{"projects": [...]}`) |
+| `watchlist_input.json` | Watchlist input (`{"name": ..., "items": [...]}`) |
+
+Run the full pipeline with the included script:
+
+```bash
+bash scripts/run_daily_brief_demo.sh
+```
+
+Or step by step — see `examples/daily_brief_demo/README.md`.
+
+Clean up generated outputs:
+
+```bash
+rm -rf tmp/atlas_demo
+```
+
+The demo is local-only, deterministic, and makes no network calls.
+It is not live market analysis. Data represents demo research context only.
+
 ## End-to-End Local Workflow (Sprints 51–53)
 
 Sprints 51–53 complete the export pipeline. Every Daily Brief input type
@@ -388,9 +415,10 @@ See [CompanyAnalysis.md](CompanyAnalysis.md) for all input formats.
 - `knowledge_node_count` is accepted by `build_daily_brief_input` but not
   yet wired to a CLI flag.
 
-## Recommendation for Sprint 58
+## Recommendation for Sprint 59
 
-Wire `--knowledge`, `--research`, `--watchlist`, and `--discovery` inputs into a
-single `atlas daily summary --generate` command that runs all export steps
-automatically, producing a unified Daily Brief from local JSON files with no
-manual pipeline orchestration.
+Extend the demo dataset to include a second company (e.g. NVDA) to demonstrate
+multi-company Daily Brief composition. Add a second research project, watchlist
+item, and knowledge facts file, and update `run_daily_brief_demo.sh` to produce
+a two-company summary showing Research, Watchlist, and Company Analysis Context
+for both companies in a single Daily Brief.

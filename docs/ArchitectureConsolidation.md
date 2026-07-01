@@ -215,6 +215,35 @@ CLI extensions:
 535 tests pass; 61 new tests cover adapters, extended CLI, error handling, round-trip
 pipeline, language safety, determinism, and no-network constraints.
 
+**Sprint 58** adds a local demo dataset and end-to-end Daily Brief demo workflow.
+Three input fixture files were created under `examples/daily_brief_demo/`:
+`knowledge.json` (5 AMD knowledge facts), `research_input.json` (1 AMD research
+project with 4 open questions), and `watchlist_input.json` (1 AMD watchlist item).
+A demo script `scripts/run_daily_brief_demo.sh` runs all five pipeline steps
+(`research export`, `watchlist intelligence`, `discovery export`,
+`company-analysis export`, `daily summary`) sequentially from local inputs with
+no network calls. `examples/daily_brief_demo/README.md` documents purpose,
+prerequisites, step-by-step commands, expected output, clean-up, and known
+limitations. 728 tests pass; 23 new tests cover data validity, accepted input
+shapes, individual export steps, the full end-to-end pipeline, section presence,
+language safety, determinism, and no-network constraints. No architecture
+boundaries were changed. The legacy `atlas daily brief` command is untouched.
+
+**Sprint 57** added `--sector` and `--country` flags to `atlas company-analysis export`.
+Both populate `Company.sector` and `Company.country` in the engine-backed path,
+eliminating "Missing Sector" and "Missing Country" unknowns when supplied.
+With all four metadata flags (`--company-name`, `--sector`, `--country`,
+`--business-description`) provided alongside `--ticker`, all core "Missing X"
+unknowns are eliminated and confidence improves to `moderate`. No new files were
+created — only `atlas/cli/main.py` was modified. 705 tests pass; 16 new tests
+cover the new flags.
+
+**Sprint 56** added `--company-name` and `--business-description` flags to
+`atlas company-analysis export`. `--company-name` populates `Company.name`;
+`--business-description` populates `CompanyAnalysisInput.business_description`
+and eliminates "Missing Business Description" unknown when supplied. 689 tests
+pass; 16 new tests.
+
 **Sprint 55** extended `atlas company-analysis export` with three new flags:
 `--ticker`, `--knowledge`, and `--research`. When `--ticker` is provided, the
 command builds a `Company` object and a `CompanyAnalysisInput` from the supplied

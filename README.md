@@ -201,6 +201,30 @@ Discovery helps investors decide what to study next. It does not create trade
 recommendations, forecasts, price targets, external API calls, or AI-generated
 analysis.
 
+## Daily Brief Demo (Sprint 58)
+
+A local demo dataset under `examples/daily_brief_demo/` proves the full Atlas
+Daily Brief pipeline end-to-end with no network calls, no AI, and no external
+APIs.
+
+```bash
+# Run the full demo (requires: pip install -e . in a virtualenv)
+bash scripts/run_daily_brief_demo.sh
+```
+
+The demo runs five pipeline steps in sequence:
+
+1. `atlas research export` — converts research projects to Daily Brief JSON
+2. `atlas watchlist intelligence` — runs watchlist intelligence engine
+3. `atlas discovery export` — generates discovery candidates from local inputs
+4. `atlas company-analysis export` — runs company analysis engine on AMD
+5. `atlas daily summary` — produces the Daily Brief from all four inputs
+
+All outputs go to `tmp/atlas_demo/`. Clean up with `rm -rf tmp/atlas_demo`.
+
+This is not live market analysis. Demo data represents structured research
+context only. See `examples/daily_brief_demo/README.md` for details.
+
 ## MVP commands
 
 ```bash

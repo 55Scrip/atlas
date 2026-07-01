@@ -1,0 +1,19 @@
+{
+  "name": "Demo Watchlist",
+  "items": [
+    {
+      "id": "amd",
+      "ticker": "AMD",
+      "company": "AMD Corporation",
+      "status": "researching",
+      "open_questions": [
+        "What evidence supports AMD's durable competitive position in data centre GPUs?",
+        "Is AMD's EPYC CPU market share gain durable or cyclical?"
+      ],
+      "manual_observations": [
+        "AMD has expanded its data centre product portfolio significantly.",
+        "Evidence on long-term GPU market share remains incomplete — further research needed."
+      ]
+    }
+  ]
+}

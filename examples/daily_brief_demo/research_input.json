@@ -1,0 +1,16 @@
+{
+  "projects": [
+    {
+      "id": "proj-amd",
+      "title": "AMD Research",
+      "topic": "AMD",
+      "status": "researching",
+      "questions": [
+        "What is AMD's durable competitive advantage in the data centre GPU market relative to NVIDIA?",
+        "How does AMD's EPYC CPU market share trajectory compare to Intel Xeon over the last four quarters?",
+        "What evidence supports long-term margin expansion as the Instinct GPU line scales?",
+        "How dependent is AMD's data centre revenue on a small number of hyperscaler customers?"
+      ]
+    }
+  ]
+}

@@ -361,6 +361,22 @@ longer appends the "Missing Business Description" unknown because
 string. Both flags are entirely optional — omitting them preserves Sprint 55
 behavior exactly.
 
+## 2026-07-01: Add Local Demo Dataset and End-to-End Daily Brief Demo (Sprint 58)
+
+Decision: add a local example dataset under `examples/daily_brief_demo/` and a
+demo script `scripts/run_daily_brief_demo.sh` that runs the complete Atlas Daily
+Brief pipeline from structured local inputs.
+
+Rationale: the pipeline (research export → watchlist intelligence → discovery
+export → company analysis export → daily summary) was functional but had no
+runnable example showing that all five stages connect end-to-end. A minimal demo
+dataset (5 knowledge facts, 1 research project, 1 watchlist item — all AMD)
+proves the pipeline works locally and gives developers and users a concrete
+starting point. No new CLI commands, no new adapters, and no new domains were
+needed — only fixture JSON files, a shell script, documentation, and tests. The
+demo is explicitly marked as research context, not live market analysis. No
+network calls are made at any step.
+
 ## 2026-07-01: Add --sector and --country to Company Analysis Export (Sprint 57)
 
 Decision: add two optional string flags — `--sector` and `--country` — to
