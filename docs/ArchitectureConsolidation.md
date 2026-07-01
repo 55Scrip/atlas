@@ -68,7 +68,9 @@ still call the legacy engine layer exclusively.
 **Sprint 46 update:** `atlas portfolio analyze <portfolio.json> TICKER` now
 also calls `atlas.domains.portfolio` via the same adapter, appending a
 "Portfolio Summary (Portfolio Domain)" section after its existing,
-unchanged `PortfolioAnalysis` output. The command's proprietary fit-scoring
+unchanged `PortfolioAnalysis` output. **Sprint 47 update:** the same
+pattern was applied identically to `atlas portfolio review`, completing
+domain coverage for all three `portfolio` subcommands. The command's proprietary fit-scoring
 logic (diversification impact, sector/country/market-cap concentration
 impact, overlap, expected quality/risk impact, the `Strong Add`/`Add`/
 `Neutral`/`Reduce`/`Avoid` recommendation) was **not** migrated and remains
@@ -146,6 +148,16 @@ portfolio command and is the next candidate; it depends on investor profile
 and optional market snapshot data that have no Portfolio Domain equivalent
 yet, so migrating it will likely require either a profile/market domain or
 a narrower additive approach similar to this sprint's.
+
+**Sprint 47 status:** `atlas portfolio review` now appends the same
+"Portfolio Summary (Portfolio Domain)" section introduced in Sprints 45 and
+46. All three `portfolio` CLI commands (`summary`, `analyze`, `review`) now
+surface Portfolio Domain calculations for allocation, concentration, cash
+weight, and top holdings. The legacy review engine (investor profile,
+suitability, risk drift, themes, market context, economics, monitoring,
+principles) was not touched and remains fully intact. All portfolio CLI
+commands now exercise `atlas.domains.portfolio` via the Sprint 45 adapter,
+which required no changes in Sprints 46 or 47.
 
 ## Rules for Future Sprints
 

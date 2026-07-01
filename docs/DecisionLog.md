@@ -137,6 +137,34 @@ market-cap concentration impact, overlap, expected quality/risk impact, and
 the `Strong Add`/`Add`/`Neutral`/`Reduce`/`Avoid` recommendation) completely
 unchanged.
 
+## 2026-06-30: Augment, Don't Replace, `atlas portfolio review`
+
+Decision: apply the same additive pattern from Sprint 46 to
+`atlas portfolio review`: append a Portfolio Domain summary section to the
+existing CIO-style review output rather than rewriting or replacing any
+part of `PortfolioReviewEngine`.
+
+Rationale: the legacy review engine combines investor profile, suitability,
+risk drift, themes, market context, economics, monitoring, and principles
+checks — none of which have a Portfolio Domain equivalent today. Replacing
+any part of this logic would require new domain models (investor profile,
+market regime, economics signals) that are out of scope. The
+`PortfolioReviewEngine` depends on `atlas.analysis.portfolio.Portfolio`
+(the legacy type), not `atlas.shared.Portfolio`, so it cannot be swapped
+for domain-native calls without a larger migration. The additive pattern is
+safe, reversible, and brings all three `portfolio` CLI commands
+(`summary`, `analyze`, `review`) to a state where they exercise
+`atlas.domains.portfolio` for the calculations it genuinely owns:
+allocation, concentration, cash weight, and top holdings. The Sprint 45
+adapter needed no changes for Sprints 46 or 47.
+
+## 2026-06-30: Augment, Don't Replace, `atlas portfolio analyze`
+
+Decision: extend `atlas portfolio analyze` to additionally print a Portfolio
+Domain summary (allocation, concentration, cash weight, top holdings) using
+the Sprint 45 adapter, while leaving `PortfolioIntelligenceEngine`'s
+proprietary ticker-fit scoring completely unchanged.
+
 Rationale: `atlas portfolio analyze` answers "how well would this new
 ticker fit the existing portfolio" — a hypothetical-addition scoring
 question with no Portfolio Domain equivalent. The Portfolio Domain

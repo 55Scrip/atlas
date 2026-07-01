@@ -660,11 +660,14 @@ def portfolio_review_command(
                 market_snapshot=market_snapshot,
             )
         )
+        domain_summary = domain_portfolio_summary(legacy_portfolio_to_domain_portfolio(portfolio))
     except (FileNotFoundError, ValueError) as exc:
         console.print(f"[red]Portfolio review failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
     console.print(render_portfolio_review(report))
+    console.print("")
+    console.print(_render_portfolio_domain_summary(domain_summary))
 
 
 @profile_app.command("create")
