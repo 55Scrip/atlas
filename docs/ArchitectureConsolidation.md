@@ -457,3 +457,13 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 16 new Sprint 83 deprecation tests. 1068 tests passing.
 - Recommended Sprint 84 target: continue Group C deprecations — e.g.,
   `atlas risk-drift analyze` (RiskDriftEngine, self-contained, no providers).
+
+**Sprint 84 (2026-07-01):** Deprecated command registry created.
+- `atlas/cli/deprecations.py` added — CLI-local registry for all 7 deprecated commands.
+- Each deprecated CLI command body now calls `deprecated_command_message(command)` rather
+  than inlining the message string. User-facing output is unchanged.
+- Registry has no imports from legacy engines, providers, or domains.
+- `docs/DeprecatedCommands.md` created with recommended retirement order.
+- 46 new Sprint 84 registry tests. 1114 tests passing.
+- Recommended Sprint 85 target: retire `atlas daily brief` command body (engine already
+  deleted Sprint 77 — safest removal, no engine dependency).

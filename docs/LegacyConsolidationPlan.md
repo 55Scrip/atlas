@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-01 (Sprint 83)  
-**Status:** Active — Sprint 83 target complete; Sprint 84 target to be selected
+**Updated:** 2026-07-01 (Sprint 84)  
+**Status:** Active — Sprint 84 target complete; Sprint 85 target to be selected
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,30 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 84 Migration Target — COMPLETED
+
+### Completed: Deprecated command registry and cleanup plan
+
+**Sprint 84 result:**
+- Created `atlas/cli/deprecations.py` — a CLI-local registry of all 7 deprecated commands
+- Each entry records: command name, Rich-formatted message, replacement command or consolidation direction, legacy module, and removal criteria
+- All 7 deprecated CLI command bodies now route through `deprecated_command_message()` instead of inlining the message string
+- No engine imports, no provider imports, no domain imports in the registry
+- User-facing output is bit-for-bit identical to Sprint 83 output
+- Created `docs/DeprecatedCommands.md` — human-readable registry with recommended retirement order
+- 46 new Sprint 84 registry tests; 1114 tests passing
+- Architecture boundary: registry is CLI-local only
+
+**Future retirement checklist (see `docs/DeprecatedCommands.md`):**
+1. `atlas daily brief` command body — engine already deleted, safest to remove
+2. `atlas evidence assess` command body + engine — self-contained, no known dependents
+3. `atlas risk size` command body — engine has no callers, but `RiskAnalysis` type dependency must be confirmed
+4. `atlas reason analyze` command body — requires retiring `atlas/principles/` lazy import first
+5. `atlas portfolio analyze` / `atlas portfolio review` — retire together (shared consumers)
+6. `atlas watchlist analyze` — most coupled, retire last
 
 ---
 

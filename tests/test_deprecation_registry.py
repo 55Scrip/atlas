@@ -1,0 +1,272 @@
+"""Sprint 84: Tests for the centralized deprecation registry.
+
+Covers:
+- registry completeness (all 7 deprecated commands are present)
+- message content rules (deprecated keyword, no invented commands)
+- replacement_command vs consolidation_direction exclusivity
+- no engine/provider imports in the registry module itself
+- all deprecated CLI commands still route through registry and exit cleanly
+- Blueprint-aligned commands are unaffected
+"""
+
+from __future__ import annotations
+
+import ast
+import json
+from pathlib import Path
+
+import pytest
+from typer.testing import CliRunner
+
+from atlas.cli.deprecations import (
+    DeprecatedCommand,
+    all_deprecated_commands,
+    deprecated_command_message,
+    get_deprecated_command,
+)
+from atlas.cli.main import app
+
+REGISTRY_PATH = Path(__file__).resolve().parent.parent / "atlas" / "cli" / "deprecations.py"
+
+runner = CliRunner()
+
+EXPECTED_COMMANDS = (
+    "atlas daily brief",
+    "atlas watchlist analyze",
+    "atlas portfolio analyze",
+    "atlas portfolio review",
+    "atlas evidence assess",
+    "atlas reason analyze",
+    "atlas risk size",
+)
+
+# ── Registry completeness ─────────────────────────────────────────────────────
+
+def test_all_expected_commands_are_registered() -> None:
+    registered = all_deprecated_commands()
+    for cmd in EXPECTED_COMMANDS:
+        assert cmd in registered, f"'{cmd}' missing from deprecation registry"
+
+
+def test_registry_has_exactly_the_expected_commands() -> None:
+    registered = set(all_deprecated_commands())
+    expected = set(EXPECTED_COMMANDS)
+    assert registered == expected, (
+        f"Registry mismatch. Extra: {registered - expected}. Missing: {expected - registered}."
+    )
+
+
+# ── Message content rules ─────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("command", EXPECTED_COMMANDS)
+def test_each_message_contains_deprecated(command: str) -> None:
+    msg = deprecated_command_message(command)
+    assert "deprecated" in msg.lower(), f"'{command}' message missing 'deprecated'"
+
+
+@pytest.mark.parametrize("command", EXPECTED_COMMANDS)
+def test_each_message_contains_command_name(command: str) -> None:
+    # The CLI command slug (e.g. "risk size") must appear in the message
+    slug = command.replace("atlas ", "")
+    msg = deprecated_command_message(command)
+    assert slug in msg, f"'{command}' message does not mention the command name"
+
+
+def test_replacement_commands_are_only_set_where_they_exist() -> None:
+    """Commands with replacement_command must reference a real Blueprint-aligned command."""
+    real_replacements = {
+        "atlas daily summary",
+        "atlas watchlist intelligence",
+        "atlas portfolio summary",
+    }
+    for cmd in EXPECTED_COMMANDS:
+        entry = get_deprecated_command(cmd)
+        if entry.replacement_command is not None:
+            assert entry.replacement_command in real_replacements, (
+                f"'{cmd}' points to invented replacement '{entry.replacement_command}'"
+            )
+
+
+def test_consolidation_direction_set_when_no_replacement() -> None:
+    for cmd in EXPECTED_COMMANDS:
+        entry = get_deprecated_command(cmd)
+        if entry.replacement_command is None:
+            assert entry.consolidation_direction, (
+                f"'{cmd}' has no replacement_command and no consolidation_direction"
+            )
+
+
+def test_replacement_and_consolidation_not_both_set() -> None:
+    for cmd in EXPECTED_COMMANDS:
+        entry = get_deprecated_command(cmd)
+        assert not (entry.replacement_command and entry.consolidation_direction), (
+            f"'{cmd}' has both replacement_command and consolidation_direction — pick one"
+        )
+
+
+# ── No engine/provider imports in registry ────────────────────────────────────
+
+def test_registry_module_does_not_import_legacy_engines() -> None:
+    source = REGISTRY_PATH.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    forbidden_prefixes = (
+        "atlas.daily_brief",
+        "atlas.evidence",
+        "atlas.reasoning",
+        "atlas.risk",
+        "atlas.watchlist",
+        "atlas.portfolio_review",
+        "atlas.analysis.portfolio",
+        "atlas.analysis.watchlist",
+        "atlas.providers",
+        "atlas.domains",
+    )
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            mod = getattr(node, "module", None) or ""
+            for names in (getattr(node, "names", []),):
+                for alias in names:
+                    full = alias.name if isinstance(node, ast.Import) else mod
+                    for prefix in forbidden_prefixes:
+                        assert not full.startswith(prefix), (
+                            f"deprecations.py must not import '{full}' (legacy engine / provider / domain)"
+                        )
+
+
+# ── CLI behavior via registry ─────────────────────────────────────────────────
+
+def test_daily_brief_exits_cleanly() -> None:
+    result = runner.invoke(app, ["daily", "brief"])
+    assert result.exit_code == 0
+
+
+def test_daily_brief_message_matches_registry() -> None:
+    result = runner.invoke(app, ["daily", "brief"])
+    assert "atlas daily summary" in result.output
+
+
+def test_watchlist_analyze_exits_cleanly(tmp_path) -> None:
+    p = tmp_path / "w.json"
+    p.write_text(json.dumps({"name": "T", "tickers": ["NVDA"]}), encoding="utf-8")
+    result = runner.invoke(app, ["watchlist", "analyze", str(p)])
+    assert result.exit_code == 0
+
+
+def test_watchlist_analyze_message_matches_registry(tmp_path) -> None:
+    p = tmp_path / "w.json"
+    p.write_text(json.dumps({"name": "T", "tickers": ["NVDA"]}), encoding="utf-8")
+    result = runner.invoke(app, ["watchlist", "analyze", str(p)])
+    assert "atlas watchlist intelligence" in result.output
+
+
+def test_portfolio_analyze_exits_cleanly(tmp_path) -> None:
+    p = tmp_path / "portfolio.json"
+    p.write_text(json.dumps({"positions": [{"ticker": "NVDA", "company": "NVIDIA",
+        "sector": "Semiconductors", "country": "US", "market_cap": 1000000,
+        "weight": 1.0, "quality_score": 90, "risk_score": 50}]}), encoding="utf-8")
+    result = runner.invoke(app, ["portfolio", "analyze", str(p), "NVDA"])
+    assert result.exit_code == 0
+
+
+def test_portfolio_analyze_message_matches_registry(tmp_path) -> None:
+    p = tmp_path / "portfolio.json"
+    p.write_text(json.dumps({"positions": [{"ticker": "NVDA", "company": "NVIDIA",
+        "sector": "Semiconductors", "country": "US", "market_cap": 1000000,
+        "weight": 1.0, "quality_score": 90, "risk_score": 50}]}), encoding="utf-8")
+    result = runner.invoke(app, ["portfolio", "analyze", str(p), "NVDA"])
+    assert "atlas portfolio summary" in result.output
+
+
+def test_portfolio_review_exits_cleanly(tmp_path) -> None:
+    p = tmp_path / "portfolio.json"
+    p.write_text(json.dumps({"positions": [{"ticker": "NVDA", "company": "NVIDIA",
+        "sector": "Semiconductors", "country": "US", "market_cap": 1000000,
+        "weight": 1.0, "quality_score": 90, "risk_score": 50}]}), encoding="utf-8")
+    result = runner.invoke(app, ["portfolio", "review", str(p)])
+    assert result.exit_code == 0
+
+
+def test_portfolio_review_message_matches_registry(tmp_path) -> None:
+    p = tmp_path / "portfolio.json"
+    p.write_text(json.dumps({"positions": [{"ticker": "NVDA", "company": "NVIDIA",
+        "sector": "Semiconductors", "country": "US", "market_cap": 1000000,
+        "weight": 1.0, "quality_score": 90, "risk_score": 50}]}), encoding="utf-8")
+    result = runner.invoke(app, ["portfolio", "review", str(p)])
+    assert "atlas portfolio summary" in result.output
+
+
+def test_evidence_assess_exits_cleanly() -> None:
+    result = runner.invoke(app, ["evidence", "assess"])
+    assert result.exit_code == 0
+
+
+def test_evidence_assess_message_matches_registry() -> None:
+    result = runner.invoke(app, ["evidence", "assess"])
+    assert "consolidat" in result.output.lower()
+
+
+def test_reason_analyze_exits_cleanly() -> None:
+    result = runner.invoke(app, ["reason", "analyze"])
+    assert result.exit_code == 0
+
+
+def test_reason_analyze_message_matches_registry() -> None:
+    result = runner.invoke(app, ["reason", "analyze"])
+    assert "consolidat" in result.output.lower()
+
+
+def test_risk_size_exits_cleanly(tmp_path) -> None:
+    p = tmp_path / "r.json"
+    p.write_text(json.dumps({"ticker": "NVDA"}), encoding="utf-8")
+    result = runner.invoke(app, ["risk", "size", str(p)])
+    assert result.exit_code == 0
+
+
+def test_risk_size_message_matches_registry(tmp_path) -> None:
+    p = tmp_path / "r.json"
+    p.write_text(json.dumps({"ticker": "NVDA"}), encoding="utf-8")
+    result = runner.invoke(app, ["risk", "size", str(p)])
+    assert "consolidat" in result.output.lower()
+
+
+# ── No providers / no network ─────────────────────────────────────────────────
+
+@pytest.mark.parametrize("command,args", [
+    (["daily", "brief"], []),
+    (["evidence", "assess"], []),
+    (["reason", "analyze"], []),
+])
+def test_no_provider_output_from_no_arg_commands(command, args) -> None:
+    result = runner.invoke(app, command + args)
+    assert result.exit_code == 0
+    assert "yahoo" not in result.output.lower()
+
+
+# ── Blueprint-aligned commands unaffected ─────────────────────────────────────
+
+def test_daily_summary_command_is_unaffected() -> None:
+    """atlas daily summary must not mention 'deprecated'."""
+    result = runner.invoke(app, ["daily", "summary"])
+    assert "deprecated" not in result.output.lower()
+
+
+def test_registry_key_error_for_unknown_command() -> None:
+    with pytest.raises(KeyError):
+        deprecated_command_message("atlas does not exist")
+
+
+# ── No recommendation language ────────────────────────────────────────────────
+
+FORBIDDEN_PHRASES = (
+    "strong buy", "strong sell", "buy now", "sell now",
+    "price target", "outperform", "market-beating",
+    "guaranteed", "risk-free", "urgent",
+)
+
+@pytest.mark.parametrize("command", EXPECTED_COMMANDS)
+def test_no_recommendation_language_in_messages(command: str) -> None:
+    msg = deprecated_command_message(command).lower()
+    for phrase in FORBIDDEN_PHRASES:
+        assert phrase not in msg, (
+            f"'{command}' deprecation message contains forbidden phrase '{phrase}'"
+        )

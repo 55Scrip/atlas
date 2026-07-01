@@ -936,3 +936,29 @@ belongs to a future sprint after those consumers are confirmed removable.
   inventing a replacement command would be premature.
 
 **Outcome:** 16 new Sprint 83 deprecation tests; 1068 tests passing.
+
+---
+
+## Sprint 84 — 2026-07-01: Centralized Deprecation Registry
+
+**Decision:** Create `atlas/cli/deprecations.py` as a CLI-local deprecated command
+registry. Route all 7 deprecated command bodies through `deprecated_command_message()`.
+
+**Rationale:** Sprints 76–83 each inlined a deprecation message string directly in
+the CLI command body. This created 7 copies of near-identical boilerplate with no
+single source of truth for message wording, replacement commands, or removal criteria.
+The registry consolidates this without changing user-facing behavior.
+
+**Design constraints applied:**
+- Registry is CLI-local (no engine, provider, or domain imports)
+- No framework dependency — pure Python dataclass + dict
+- `DeprecatedCommand` is frozen and deterministic
+- User-facing messages are preserved exactly
+
+**Alternatives considered:**
+- Leave inline (rejected: no single source of truth, hard to audit retirement readiness)
+- Move to domains layer (rejected: deprecation is a CLI concern, not a domain concern)
+- Add dynamic lookup at runtime (rejected: over-engineered for a static list of 7 items)
+
+**Outcome:** 46 new registry tests; 1114 tests passing. Architecture boundaries clean.
+Recommended Sprint 85: retire `atlas daily brief` command body (engine already deleted).

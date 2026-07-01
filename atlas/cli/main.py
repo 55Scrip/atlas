@@ -3,6 +3,8 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
+from atlas.cli.deprecations import deprecated_command_message
+
 from atlas.comparison import (
     InvestmentComparisonEngine,
     InvestmentComparisonInput,
@@ -429,12 +431,7 @@ def daily_brief_command(
 
         atlas daily summary
     """
-    console.print(
-        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas daily brief[/bold] is deprecated.\n"
-        "Use [bold]atlas daily summary[/bold] for the Blueprint-aligned Daily Brief workflow.\n"
-        "\n"
-        "    atlas daily summary --help"
-    )
+    console.print(deprecated_command_message("atlas daily brief"))
     raise typer.Exit(code=0)
 
 
@@ -521,10 +518,7 @@ def evidence_assess_command():
     Evidence assessment is being consolidated into Blueprint-aligned decision
     and research capabilities.
     """
-    console.print(
-        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas evidence assess[/bold] is deprecated.\n"
-        "Evidence assessment is being consolidated into Blueprint-aligned decision and research capabilities."
-    )
+    console.print(deprecated_command_message("atlas evidence assess"))
     raise typer.Exit(code=0)
 
 
@@ -700,12 +694,7 @@ def portfolio_analyze_command(
 
         atlas portfolio summary
     """
-    console.print(
-        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas portfolio analyze[/bold] is deprecated.\n"
-        "Use [bold]atlas portfolio summary[/bold] for the Blueprint-aligned Portfolio Domain workflow.\n"
-        "\n"
-        "    atlas portfolio summary --help"
-    )
+    console.print(deprecated_command_message("atlas portfolio analyze"))
     raise typer.Exit(code=0)
 
 
@@ -747,12 +736,7 @@ def portfolio_review_command(
 
         atlas portfolio summary
     """
-    console.print(
-        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas portfolio review[/bold] is deprecated.\n"
-        "Use [bold]atlas portfolio summary[/bold] for the Blueprint-aligned Portfolio Domain workflow.\n"
-        "\n"
-        "    atlas portfolio summary --help"
-    )
+    console.print(deprecated_command_message("atlas portfolio review"))
     raise typer.Exit(code=0)
 
 
@@ -920,10 +904,7 @@ def reason_analyze_command(
     Reasoning analysis is being consolidated into Blueprint-aligned decision
     and research capabilities.
     """
-    console.print(
-        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas reason analyze[/bold] is deprecated.\n"
-        "Reasoning analysis is being consolidated into Blueprint-aligned decision and research capabilities."
-    )
+    console.print(deprecated_command_message("atlas reason analyze"))
     raise typer.Exit(code=0)
 
 
@@ -1002,10 +983,7 @@ def risk_size_command(
     Risk sizing is being consolidated into Blueprint-aligned portfolio,
     decision and research capabilities.
     """
-    console.print(
-        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas risk size[/bold] is deprecated.\n"
-        "Risk sizing is being consolidated into Blueprint-aligned portfolio, decision and research capabilities."
-    )
+    console.print(deprecated_command_message("atlas risk size"))
     raise typer.Exit(code=0)
 
 
@@ -1438,12 +1416,7 @@ def watchlist_analyze_command(
 
         atlas watchlist intelligence
     """
-    console.print(
-        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas watchlist analyze[/bold] is deprecated.\n"
-        "Use [bold]atlas watchlist intelligence[/bold] for the Blueprint-aligned Watchlist Intelligence workflow.\n"
-        "\n"
-        "    atlas watchlist intelligence --help"
-    )
+    console.print(deprecated_command_message("atlas watchlist analyze"))
     raise typer.Exit(code=0)
 
 
