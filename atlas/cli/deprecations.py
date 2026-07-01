@@ -154,11 +154,6 @@ _RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
             "atlas.domains.portfolio.review.PortfolioReviewEngine.",
         ),
     ),
-)
-
-# ── Active deprecated commands (still registered in CLI) ──────────────────────
-
-_REGISTRY: tuple[DeprecatedCommand, ...] = (
     DeprecatedCommand(
         command="atlas watchlist analyze",
         message=(
@@ -171,12 +166,19 @@ _REGISTRY: tuple[DeprecatedCommand, ...] = (
         consolidation_direction=None,
         legacy_module="atlas.analysis.watchlist",
         removal_criteria=(
-            "WatchlistEngine is still imported by atlas/home, atlas/monitoring, atlas/decision, "
-            "atlas/watchlist_review, atlas/conversation, atlas/intelligence — those must be retired first.",
-            "Once WatchlistEngine has no non-deprecated callers, engine and command body can be deleted together.",
+            "Command body retired in Sprint 91.",
+            "atlas.analysis.watchlist engine remains on disk — WatchlistEngine is still imported "
+            "and instantiated by atlas/intelligence, atlas/decision, atlas/monitoring, "
+            "atlas/watchlist_review, and atlas/conversation. Engine deletion deferred until "
+            "all five callers are retired.",
         ),
     ),
 )
+
+# ── Active deprecated commands (still registered in CLI) ──────────────────────
+# Sprint 91: all deprecated commands have been retired. _REGISTRY is now empty.
+
+_REGISTRY: tuple[DeprecatedCommand, ...] = ()
 
 # ── Public API ────────────────────────────────────────────────────────────────
 

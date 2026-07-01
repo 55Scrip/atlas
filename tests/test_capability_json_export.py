@@ -418,14 +418,15 @@ def test_round_trip_no_network_calls(tmp_path: Path, monkeypatch) -> None:
 # ── existing CLI behavior preserved ───────────────────────────────────────────
 
 
-def test_existing_watchlist_analyze_still_works(tmp_path: Path) -> None:
+def test_watchlist_analyze_is_retired(tmp_path: Path) -> None:
+    # Sprint 91: atlas watchlist analyze command body retired — no longer a valid command
     watchlist_path = tmp_path / "watchlist_legacy.json"
     watchlist_path.write_text(
         '{"tickers": ["NVDA"], "name": "Test Watchlist", "id": "w1", "owner_id": "user1"}',
         encoding="utf-8",
     )
     result = runner.invoke(app, ["watchlist", "analyze", str(watchlist_path)])
-    assert result.exit_code == 0
+    assert result.exit_code != 0
 
 
 def test_existing_daily_summary_no_flags_still_works() -> None:

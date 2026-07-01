@@ -557,5 +557,22 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
   legacy engine and domain adapter tests retained.
 - 1111 tests passing. CLI surface area reduced by one more command.
 - Active `_REGISTRY` holds 1 remaining deprecated command: watchlist analyze.
-- Recommended Sprint 91 target: retire `atlas watchlist analyze` command body. Requires
-  auditing all six `WatchlistEngine` callers first — this is the most coupled deprecated command.
+- Recommended Sprint 91 target: retire `atlas watchlist analyze` command body.
+
+**Sprint 91 (2026-07-02):** `atlas watchlist analyze` command body retired; `atlas.analysis.watchlist` engine retained.
+- `watchlist_analyze_command` function and `@watchlist_app.command("analyze")` registration removed
+  from `atlas/cli/main.py`. Command is no longer callable.
+- Entry moved from `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`.
+- Active `_REGISTRY` is now empty — all deprecated commands have been retired.
+- `atlas.analysis.watchlist` engine **intentionally retained** — `WatchlistEngine` is still
+  imported and instantiated by `atlas/intelligence`, `atlas/decision`, `atlas/monitoring`,
+  `atlas/watchlist_review`, and `atlas/conversation`. Five active callers remain.
+- `atlas watchlist intelligence` (Blueprint-aligned) is unaffected.
+- `test_watchlist_analyze_deprecation.py` rewritten as retirement test; includes engine
+  caller-presence assertions for all five callers; `test_active_deprecated_registry_is_now_empty`
+  confirms the registry is empty.
+- 1116 tests passing (3 skipped — parametrized tests with empty EXPECTED_COMMANDS).
+- **Deprecated command retirement plan complete.** All seven originally deprecated CLI commands
+  are now retired. Legacy engine cleanup remains as future technical debt (Sprints 92+).
+- Recommended Sprint 92 target: begin legacy engine cleanup — retire `atlas/monitoring/` or
+  `atlas/watchlist_review/` as the most isolated WatchlistEngine callers.

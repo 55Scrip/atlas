@@ -66,8 +66,8 @@ def test_portfolio_cli_analyze_is_retired(monkeypatch, tmp_path):
     assert result.exit_code != 0
 
 
-def test_watchlist_cli_accepts_yahoo_provider(monkeypatch, tmp_path):
-    """Sprint 78: atlas watchlist analyze is deprecated — shows deprecation message regardless of provider."""
+def test_watchlist_cli_analyze_is_retired(monkeypatch, tmp_path):
+    # Sprint 91: atlas watchlist analyze command body retired — no longer a valid command
     monkeypatch.setattr("atlas.cli.main.YahooFinanceProvider", MockCompanyAnalysisProvider)
     path = tmp_path / "watchlist.json"
     path.write_text(
@@ -75,12 +75,8 @@ def test_watchlist_cli_accepts_yahoo_provider(monkeypatch, tmp_path):
         encoding="utf-8",
     )
     runner = CliRunner()
-
     result = runner.invoke(app, ["watchlist", "analyze", str(path), "--provider", "yahoo"])
-
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
-    assert "watchlist intelligence" in result.output.lower()
+    assert result.exit_code != 0
 
 
 def test_yahoo_provider_errors_are_reported_without_crashing(monkeypatch):

@@ -1275,25 +1275,6 @@ def company_analysis_merge_command(
     )
 
 
-@watchlist_app.command("analyze")
-def watchlist_analyze_command(
-    watchlist_path: Path = typer.Argument(
-        ...,
-        help="[DEPRECATED] Watchlist JSON path. Use 'atlas watchlist intelligence' instead.",
-    ),
-    provider_name: str = typer.Option("mock", "--provider", help="[DEPRECATED] Data provider."),
-):
-    """[DEPRECATED] Legacy Watchlist Analyze — use 'atlas watchlist intelligence' instead.
-
-    This command is deprecated and will be removed in a future sprint.
-    Use the Blueprint-aligned command instead:
-
-        atlas watchlist intelligence
-    """
-    console.print(deprecated_command_message("atlas watchlist analyze"))
-    raise typer.Exit(code=0)
-
-
 @watchlist_app.command("review")
 def watchlist_review_command(
     watchlist_path: Path | None = typer.Argument(

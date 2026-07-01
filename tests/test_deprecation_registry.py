@@ -31,9 +31,8 @@ REGISTRY_PATH = Path(__file__).resolve().parent.parent / "atlas" / "cli" / "depr
 
 runner = CliRunner()
 
-EXPECTED_COMMANDS = (
-    "atlas watchlist analyze",
-)
+# Sprint 91: all deprecated commands retired — active registry is empty
+EXPECTED_COMMANDS: tuple[str, ...] = ()
 
 RETIRED_COMMANDS = (
     "atlas daily brief",
@@ -42,6 +41,7 @@ RETIRED_COMMANDS = (
     "atlas risk size",
     "atlas portfolio analyze",
     "atlas portfolio review",
+    "atlas watchlist analyze",
 )
 
 # ── Registry completeness ─────────────────────────────────────────────────────
@@ -154,20 +154,6 @@ def test_daily_brief_command_is_no_longer_callable() -> None:
     assert result.exit_code != 0
 
 
-def test_watchlist_analyze_exits_cleanly(tmp_path) -> None:
-    p = tmp_path / "w.json"
-    p.write_text(json.dumps({"name": "T", "tickers": ["NVDA"]}), encoding="utf-8")
-    result = runner.invoke(app, ["watchlist", "analyze", str(p)])
-    assert result.exit_code == 0
-
-
-def test_watchlist_analyze_message_matches_registry(tmp_path) -> None:
-    p = tmp_path / "w.json"
-    p.write_text(json.dumps({"name": "T", "tickers": ["NVDA"]}), encoding="utf-8")
-    result = runner.invoke(app, ["watchlist", "analyze", str(p)])
-    assert "atlas watchlist intelligence" in result.output
-
-
 def test_evidence_assess_is_retired_not_active() -> None:
     """Sprint 86: atlas evidence assess was retired — must not be in active registry."""
     assert "atlas evidence assess" not in all_deprecated_commands()
@@ -251,6 +237,28 @@ def test_portfolio_analyze_command_is_no_longer_callable(tmp_path) -> None:
         "weight": 1.0, "quality_score": 90, "risk_score": 50}]}), encoding="utf-8")
     result = runner.invoke(app, ["portfolio", "analyze", str(p), "NVDA"])
     assert result.exit_code != 0
+
+
+def test_watchlist_analyze_is_retired_not_active() -> None:
+    """Sprint 91: atlas watchlist analyze was retired — must not be in active registry."""
+    assert "atlas watchlist analyze" not in all_deprecated_commands()
+
+
+def test_watchlist_analyze_is_in_retired_registry() -> None:
+    assert "atlas watchlist analyze" in all_retired_commands()
+
+
+def test_watchlist_analyze_command_is_no_longer_callable(tmp_path) -> None:
+    """Sprint 91: atlas watchlist analyze is retired — CLI should not recognize it."""
+    p = tmp_path / "w.json"
+    p.write_text(json.dumps({"name": "Test", "tickers": ["NVDA"]}), encoding="utf-8")
+    result = runner.invoke(app, ["watchlist", "analyze", str(p)])
+    assert result.exit_code != 0
+
+
+def test_active_registry_is_empty() -> None:
+    """Sprint 91: all deprecated commands retired — active registry must be empty."""
+    assert all_deprecated_commands() == ()
 
 
 # ── Blueprint-aligned commands unaffected ─────────────────────────────────────

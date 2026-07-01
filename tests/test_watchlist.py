@@ -74,17 +74,13 @@ def test_render_watchlist_analysis_includes_required_sections():
     assert "Final Atlas View" in rendered
 
 
-def test_watchlist_cli_outputs_analysis(tmp_path):
+def test_watchlist_cli_analyze_is_retired(tmp_path):
+    # Sprint 91: atlas watchlist analyze command body retired — no longer a valid command
     path = tmp_path / "watchlist.json"
     path.write_text(
         json.dumps({"name": "AI Watchlist", "tickers": ["NVDA", "AMD", "MSFT", "AAPL"]}),
         encoding="utf-8",
     )
     runner = CliRunner()
-
     result = runner.invoke(app, ["watchlist", "analyze", str(path)])
-
-    # Sprint 78: atlas watchlist analyze is deprecated — expect deprecation message
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
-    assert "watchlist intelligence" in result.output.lower()
+    assert result.exit_code != 0

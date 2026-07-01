@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 90)  
-**Status:** Active — Sprint 90 target complete; Sprint 91 target: retire `atlas watchlist analyze`
+**Updated:** 2026-07-02 (Sprint 91)  
+**Status:** Active — Sprint 91 target complete; CLI deprecated command retirement plan complete. Sprint 92 target: begin legacy engine cleanup
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -231,6 +231,33 @@ Provider safety: **confirmed**.
 
 ---
 
+## Sprint 91 Migration Target — COMPLETED
+
+### Completed: `atlas watchlist analyze` command body retired; engine retained
+
+**Sprint 91 result:**
+- `atlas watchlist analyze` command body removed from `atlas/cli/main.py` — command no longer callable
+- `atlas watchlist analyze` moved from active `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`
+- Active `_REGISTRY` is now empty — CLI deprecated command retirement plan complete
+- `atlas.analysis.watchlist` engine **intentionally retained** — confirmed active callers:
+  - `atlas/intelligence/engine.py` — imports and instantiates `WatchlistEngine`
+  - `atlas/decision/decision_engine.py` — imports and instantiates `WatchlistEngine`
+  - `atlas/monitoring/engine.py` — imports and instantiates `WatchlistEngine`
+  - `atlas/watchlist_review/engine.py` — imports and instantiates `WatchlistEngine`
+  - `atlas/conversation/engine.py` — imports and instantiates `WatchlistEngine`
+- Tests updated: `test_watchlist_analyze_deprecation.py` rewritten as retirement test; includes engine caller-presence assertions for all five callers; `test_active_deprecated_registry_is_now_empty` confirms the registry is empty
+- 1116 tests passing (3 skipped — parametrized tests with empty EXPECTED_COMMANDS, by design)
+
+**Engine deletion criteria (deferred to Sprint 92+):**
+1. Retire or migrate `atlas/intelligence/` to use Blueprint-aligned watchlist capability
+2. Retire or migrate `atlas/decision/` WatchlistEngine usage
+3. Retire or migrate `atlas/monitoring/` WatchlistEngine usage
+4. Retire or migrate `atlas/watchlist_review/` WatchlistEngine usage
+5. Retire or migrate `atlas/conversation/` WatchlistEngine usage
+6. Once all five callers are retired, `atlas/analysis/watchlist.py` can be deleted
+
+---
+
 ## Sprint 90 Migration Target — COMPLETED
 
 ### Completed: `atlas portfolio review` command body retired; engine retained
@@ -388,7 +415,7 @@ Provider safety: **confirmed**.
 4. `atlas reason analyze` command body — requires retiring `atlas/principles/` lazy import first
 5. ~~`atlas portfolio analyze`~~ — **DONE Sprint 89** (command retired; 10+ engine callers remain)
 6. ~~`atlas portfolio review`~~ — **DONE Sprint 90** (command retired; legacy engine retained — `atlas/home/engine.py` still instantiates it)
-7. `atlas watchlist analyze` — last remaining; most coupled — six other engines import `WatchlistEngine`
+7. ~~`atlas watchlist analyze`~~ — **DONE Sprint 91** (command retired; engine retained — 5 active callers; CLI retirement plan complete)
 
 ---
 

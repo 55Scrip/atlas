@@ -149,12 +149,11 @@ def test_risk_size_is_retired(tmp_path) -> None:
     assert result.exit_code != 0
 
 
-def test_watchlist_analyze_remains_deprecated(tmp_path) -> None:
+def test_watchlist_analyze_is_retired(tmp_path) -> None:
     p = tmp_path / "w.json"
     p.write_text(json.dumps({"name": "Test", "tickers": ["NVDA"]}), encoding="utf-8")
     result = runner.invoke(app, ["watchlist", "analyze", str(p)])
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
+    assert result.exit_code != 0
 
 
 def test_portfolio_review_is_retired(tmp_path) -> None:

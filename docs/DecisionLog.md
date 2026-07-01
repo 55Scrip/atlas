@@ -1106,3 +1106,23 @@ Once that migration is complete, `atlas.portfolio_review` can be deleted.
 **Outcome:** Command retired. Engine stays. 1111 tests passing. `_RETIRED_REGISTRY`
 now has 6 entries (daily brief, evidence assess, reason analyze, risk size, portfolio analyze,
 portfolio review). Active deprecated `_REGISTRY` now has 1 entry (watchlist analyze).
+
+## Sprint 91 — 2026-07-02: Retire `atlas watchlist analyze` Command Body; Retain Engine
+
+**Decision:** Remove `atlas watchlist analyze` command body. Retain `atlas.analysis.watchlist` module.
+
+**Rationale:** The CLI stub was a pure no-op — safe to remove independently of engine deletion.
+The import audit confirmed five active non-deprecated production callers of `WatchlistEngine`:
+`atlas/intelligence`, `atlas/decision`, `atlas/monitoring`, `atlas/watchlist_review`, and
+`atlas/conversation`. Engine deletion requires retiring all five callers — a multi-sprint
+effort deferred to Sprint 92+.
+
+**Sprint 91 completes the CLI deprecated command retirement plan.** All seven originally
+deprecated CLI commands (daily brief, evidence assess, reason analyze, risk size, portfolio
+analyze, portfolio review, watchlist analyze) have now had their command bodies retired.
+The active `_REGISTRY` is empty. `atlas/cli/deprecations.py` is retained for retired-command
+history and audit purposes.
+
+**Outcome:** Command retired. Engine stays. 1116 tests passing (3 skipped — parametrized
+tests with empty EXPECTED_COMMANDS, by design). `_RETIRED_REGISTRY` now has 7 entries.
+Active `_REGISTRY` is empty.
