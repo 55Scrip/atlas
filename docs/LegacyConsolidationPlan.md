@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 89)  
-**Status:** Active — Sprint 89 target complete; Sprint 90 target: retire `atlas portfolio review`
+**Updated:** 2026-07-02 (Sprint 90)  
+**Status:** Active — Sprint 90 target complete; Sprint 91 target: retire `atlas watchlist analyze`
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -231,6 +231,26 @@ Provider safety: **confirmed**.
 
 ---
 
+## Sprint 90 Migration Target — COMPLETED
+
+### Completed: `atlas portfolio review` command body retired; engine retained
+
+**Sprint 90 result:**
+- `atlas portfolio review` command body removed from `atlas/cli/main.py` — command no longer callable
+- `atlas portfolio review` moved from active `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`
+- `atlas.portfolio_review` engine **intentionally retained** — confirmed active caller:
+  - `atlas/home/engine.py` (`AtlasHomeEngine`) — imports `PortfolioReviewEngine` and `PortfolioReviewInput`; instantiates `PortfolioReviewEngine()` at runtime
+- `atlas.domains.portfolio.review.PortfolioReviewEngine` is a separate Blueprint-aligned class; not affected
+- Tests updated: `test_portfolio_review_deprecation.py` rewritten as retirement test; includes `atlas/home/engine.py` caller-presence assertion; `test_portfolio_review_migration.py` updated with all CLI tests asserting `exit_code != 0`; legacy engine and adapter tests retained
+- 1111 tests passing
+
+**Engine deletion criteria (deferred):**
+1. Retire or migrate `atlas/home/engine.py` (`AtlasHomeEngine`) to use `atlas.domains.portfolio.review.PortfolioReviewEngine` instead of the legacy `atlas.portfolio_review.PortfolioReviewEngine`
+2. Confirm no other callers of `atlas.portfolio_review` remain
+3. Once confirmed, `atlas.portfolio_review/` module can be deleted
+
+---
+
 ## Sprint 89 Migration Target — COMPLETED
 
 ### Completed: `atlas portfolio analyze` command body retired; engine retained
@@ -367,8 +387,8 @@ Provider safety: **confirmed**.
 3. `atlas risk size` command body — engine has no callers, but `RiskAnalysis` type dependency must be confirmed
 4. `atlas reason analyze` command body — requires retiring `atlas/principles/` lazy import first
 5. ~~`atlas portfolio analyze`~~ — **DONE Sprint 89** (command retired; 10+ engine callers remain)
-6. `atlas portfolio review` command body — Sprint 90 target; `PortfolioReviewEngine` audit needed
-7. `atlas watchlist analyze` — most coupled, retire last
+6. ~~`atlas portfolio review`~~ — **DONE Sprint 90** (command retired; legacy engine retained — `atlas/home/engine.py` still instantiates it)
+7. `atlas watchlist analyze` — last remaining; most coupled — six other engines import `WatchlistEngine`
 
 ---
 

@@ -647,34 +647,6 @@ def portfolio_summary_command(portfolio_path: Path):
     console.print(_render_portfolio_domain_summary(summary))
 
 
-@portfolio_app.command("review")
-def portfolio_review_command(
-    portfolio_path: Path = typer.Argument(
-        ...,
-        help="[DEPRECATED] Portfolio JSON path. Use 'atlas portfolio summary' instead.",
-    ),
-    profile_path: Path = typer.Option(
-        Path("atlas_profile.json"),
-        "--profile",
-        help="[DEPRECATED] Investor profile JSON path.",
-    ),
-    market_path: Path | None = typer.Option(
-        None,
-        "--market",
-        help="[DEPRECATED] Optional market snapshot JSON path.",
-    ),
-):
-    """[DEPRECATED] Legacy Portfolio Review — use 'atlas portfolio summary' instead.
-
-    This command is deprecated and will be removed in a future sprint.
-    Use the Blueprint-aligned command instead:
-
-        atlas portfolio summary
-    """
-    console.print(deprecated_command_message("atlas portfolio review"))
-    raise typer.Exit(code=0)
-
-
 @profile_app.command("create")
 def profile_create_command(
     profile_path: Path = typer.Option(

@@ -540,5 +540,22 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
   domain adapter tests retained to confirm `atlas portfolio summary` path still works.
 - 1106 tests passing. CLI surface area reduced by one more command.
 - Active `_REGISTRY` holds 2 remaining deprecated commands: watchlist analyze, portfolio review.
-- Recommended Sprint 90 target: retire `atlas portfolio review` command body (`PortfolioReviewEngine`
-  should have no callers outside the deprecated command itself).
+- Recommended Sprint 90 target: retire `atlas portfolio review` command body.
+
+**Sprint 90 (2026-07-02):** `atlas portfolio review` command body retired; `atlas.portfolio_review` engine retained.
+- `portfolio_review_command` function and `@portfolio_app.command("review")` registration removed
+  from `atlas/cli/main.py`. Command is no longer callable.
+- Entry moved from `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`.
+- `atlas.portfolio_review` engine **intentionally retained** — `atlas/home/engine.py`
+  (`AtlasHomeEngine`) still imports and instantiates `PortfolioReviewEngine` at runtime.
+  Engine deletion deferred until `AtlasHomeEngine` is retired or migrated.
+- Important distinction: `atlas.domains.portfolio.review.PortfolioReviewEngine` is a
+  separate Blueprint-aligned class, unaffected by this change.
+- `test_portfolio_review_deprecation.py` rewritten as retirement test; includes engine
+  caller-presence assertion (`atlas/home/engine.py`) and Blueprint engine independence test.
+- `test_portfolio_review_migration.py` updated — all CLI tests assert `exit_code != 0`;
+  legacy engine and domain adapter tests retained.
+- 1111 tests passing. CLI surface area reduced by one more command.
+- Active `_REGISTRY` holds 1 remaining deprecated command: watchlist analyze.
+- Recommended Sprint 91 target: retire `atlas watchlist analyze` command body. Requires
+  auditing all six `WatchlistEngine` callers first — this is the most coupled deprecated command.

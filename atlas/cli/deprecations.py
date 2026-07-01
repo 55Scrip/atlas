@@ -135,6 +135,25 @@ _RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
             "until all those callers are retired.",
         ),
     ),
+    DeprecatedCommand(
+        command="atlas portfolio review",
+        message=(
+            "[yellow]DEPRECATED:[/yellow] The command [bold]atlas portfolio review[/bold] is deprecated.\n"
+            "Use [bold]atlas portfolio summary[/bold] for the Blueprint-aligned Portfolio Domain workflow.\n"
+            "\n"
+            "    atlas portfolio summary --help"
+        ),
+        replacement_command="atlas portfolio summary",
+        consolidation_direction=None,
+        legacy_module="atlas.portfolio_review",
+        removal_criteria=(
+            "Command body retired in Sprint 90.",
+            "atlas.portfolio_review engine remains on disk — PortfolioReviewEngine is still imported "
+            "and instantiated by atlas/home/engine.py (AtlasHomeEngine). Engine deletion deferred "
+            "until AtlasHomeEngine is retired or migrated to the Blueprint-aligned "
+            "atlas.domains.portfolio.review.PortfolioReviewEngine.",
+        ),
+    ),
 )
 
 # ── Active deprecated commands (still registered in CLI) ──────────────────────
@@ -155,22 +174,6 @@ _REGISTRY: tuple[DeprecatedCommand, ...] = (
             "WatchlistEngine is still imported by atlas/home, atlas/monitoring, atlas/decision, "
             "atlas/watchlist_review, atlas/conversation, atlas/intelligence — those must be retired first.",
             "Once WatchlistEngine has no non-deprecated callers, engine and command body can be deleted together.",
-        ),
-    ),
-    DeprecatedCommand(
-        command="atlas portfolio review",
-        message=(
-            "[yellow]DEPRECATED:[/yellow] The command [bold]atlas portfolio review[/bold] is deprecated.\n"
-            "Use [bold]atlas portfolio summary[/bold] for the Blueprint-aligned Portfolio Domain workflow.\n"
-            "\n"
-            "    atlas portfolio summary --help"
-        ),
-        replacement_command="atlas portfolio summary",
-        consolidation_direction=None,
-        legacy_module="atlas.portfolio_review",
-        removal_criteria=(
-            "PortfolioReviewEngine must have no remaining non-deprecated callers.",
-            "Confirm atlas.portfolio_review is unused before deleting.",
         ),
     ),
 )

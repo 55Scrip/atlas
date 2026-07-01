@@ -1,7 +1,18 @@
-"""Sprint 80: Tests for atlas portfolio review deprecation.
+"""Sprint 90: Tests confirming atlas portfolio review has been retired.
 
-Confirms that `atlas portfolio review` is deprecated, directs users to
-`atlas portfolio summary`, and never calls PortfolioReviewEngine or providers.
+Sprint 80 deprecated the command; Sprint 90 removed the command body.
+`atlas portfolio review` is no longer a registered CLI command.
+
+The underlying `atlas.portfolio_review` engine remains on disk:
+- PortfolioReviewEngine (legacy) is still imported and instantiated by
+  atlas/home/engine.py (AtlasHomeEngine). Engine deletion deferred until
+  AtlasHomeEngine is retired or migrated to use the Blueprint-aligned
+  atlas.domains.portfolio.review.PortfolioReviewEngine.
+
+Note: atlas/domains/portfolio/review.py defines its own PortfolioReviewEngine
+(Blueprint-aligned). This is a completely separate class from the legacy one
+at atlas.portfolio_review. The naming collision is intentional — the domain
+class is the forward-looking replacement.
 """
 
 from __future__ import annotations
@@ -12,10 +23,12 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+from atlas.cli.deprecations import all_deprecated_commands, all_retired_commands
 from atlas.cli.main import app
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CLI_PATH = REPO_ROOT / "atlas" / "cli" / "main.py"
+HOME_ENGINE_PATH = REPO_ROOT / "atlas" / "home" / "engine.py"
 
 runner = CliRunner()
 
@@ -40,35 +53,30 @@ def _fake_portfolio_path(tmp_path: Path) -> Path:
     return p
 
 
-def test_portfolio_review_command_exits_cleanly(tmp_path) -> None:
+def test_portfolio_review_command_is_no_longer_registered(tmp_path) -> None:
+    """atlas portfolio review must not be a recognized subcommand of atlas portfolio."""
     result = runner.invoke(app, ["portfolio", "review", str(_fake_portfolio_path(tmp_path))])
-    assert result.exit_code == 0, f"Expected exit 0, got {result.exit_code}: {result.output}"
+    assert result.exit_code != 0
 
 
-def test_portfolio_review_command_prints_deprecation_message(tmp_path) -> None:
-    result = runner.invoke(app, ["portfolio", "review", str(_fake_portfolio_path(tmp_path))])
-    assert "deprecated" in result.output.lower()
+def test_portfolio_review_command_is_not_in_active_registry() -> None:
+    assert "atlas portfolio review" not in all_deprecated_commands()
 
 
-def test_portfolio_review_deprecation_references_portfolio_summary(tmp_path) -> None:
-    result = runner.invoke(app, ["portfolio", "review", str(_fake_portfolio_path(tmp_path))])
-    assert "portfolio summary" in result.output.lower()
+def test_portfolio_review_command_is_in_retired_registry() -> None:
+    assert "atlas portfolio review" in all_retired_commands()
 
 
-def test_portfolio_review_does_not_call_providers(tmp_path) -> None:
-    result = runner.invoke(app, ["portfolio", "review", str(_fake_portfolio_path(tmp_path))])
-    assert result.exit_code == 0
-    assert "yahoo" not in result.output.lower()
-
-
-def test_portfolio_review_help_text_marks_deprecated() -> None:
-    result = runner.invoke(app, ["portfolio", "review", "--help"])
-    assert "deprecated" in result.output.lower()
-
-
-def test_portfolio_review_help_references_portfolio_summary() -> None:
-    result = runner.invoke(app, ["portfolio", "review", "--help"])
-    assert "portfolio summary" in result.output.lower()
+def test_portfolio_review_command_function_removed_from_cli() -> None:
+    """The portfolio_review_command function must not exist in the CLI source."""
+    source = CLI_PATH.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    func_names = {
+        node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+    }
+    assert "portfolio_review_command" not in func_names, (
+        "portfolio_review_command function should have been removed in Sprint 90"
+    )
 
 
 def test_portfolio_summary_command_is_unaffected(tmp_path) -> None:
@@ -78,34 +86,75 @@ def test_portfolio_summary_command_is_unaffected(tmp_path) -> None:
     assert "deprecated" not in result.output.lower()
 
 
-def test_portfolio_analyze_is_retired(tmp_path) -> None:
-    """Sprint 89: atlas portfolio analyze command body retired — no longer a valid command."""
+def test_portfolio_analyze_remains_retired(tmp_path) -> None:
+    """Sprint 89: atlas portfolio analyze must remain retired."""
     result = runner.invoke(app, ["portfolio", "analyze", str(_fake_portfolio_path(tmp_path)), "NVDA"])
     assert result.exit_code != 0
 
 
-def test_cli_does_not_import_portfolio_review_engine_at_module_level() -> None:
-    """CLI must not import PortfolioReviewEngine, PortfolioReviewInput, or render_portfolio_review."""
-    source = CLI_PATH.read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    forbidden = {"PortfolioReviewEngine", "PortfolioReviewInput", "render_portfolio_review"}
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom):
-            if node.module and node.module.startswith("atlas.portfolio_review"):
-                imported_names = {alias.name for alias in node.names}
-                violations = forbidden & imported_names
-                assert not violations, (
-                    f"CLI imports {violations} from atlas.portfolio_review at line {node.lineno}"
-                )
+def test_legacy_portfolio_review_engine_remains_importable() -> None:
+    """atlas.portfolio_review must still be importable — AtlasHomeEngine still uses it."""
+    from atlas.portfolio_review import PortfolioReviewEngine, PortfolioReviewInput
+    assert PortfolioReviewEngine is not None
+    assert PortfolioReviewInput is not None
 
 
-def test_no_portfolio_review_engine_call_in_review_command_body() -> None:
-    """The portfolio_review_command function must not call PortfolioReviewEngine."""
-    source = CLI_PATH.read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name == "portfolio_review_command":
-            func_source = ast.get_source_segment(source, node) or ""
-            assert "PortfolioReviewEngine" not in func_source, (
-                "portfolio_review_command must not call PortfolioReviewEngine (deprecated)"
-            )
+def test_home_engine_caller_remains() -> None:
+    """atlas/home/engine.py must still import PortfolioReviewEngine — engine deletion blocker."""
+    assert HOME_ENGINE_PATH.exists(), "Expected atlas/home/engine.py to exist"
+    source = HOME_ENGINE_PATH.read_text(encoding="utf-8")
+    assert "PortfolioReviewEngine" in source, (
+        "atlas/home/engine.py should still import PortfolioReviewEngine "
+        "(documents engine deletion blocker)"
+    )
+    assert "from atlas.portfolio_review" in source, (
+        "atlas/home/engine.py should still import from atlas.portfolio_review"
+    )
+
+
+def test_portfolio_review_engine_module_remains_on_disk() -> None:
+    """atlas.portfolio_review engine must still exist — AtlasHomeEngine depends on it."""
+    import importlib
+    mod = importlib.import_module("atlas.portfolio_review")
+    assert hasattr(mod, "PortfolioReviewEngine"), (
+        "atlas.portfolio_review.PortfolioReviewEngine must still be importable"
+    )
+
+
+def test_blueprint_portfolio_review_engine_is_unaffected() -> None:
+    """The Blueprint-aligned PortfolioReviewEngine in atlas.domains.portfolio is unaffected."""
+    from atlas.domains.portfolio import PortfolioReviewEngine
+    assert PortfolioReviewEngine is not None
+
+
+# ── Confirm remaining deprecated commands still work ─────────────────────────
+
+def test_daily_brief_is_retired() -> None:
+    result = runner.invoke(app, ["daily", "brief"])
+    assert result.exit_code != 0
+
+
+def test_evidence_assess_is_retired() -> None:
+    result = runner.invoke(app, ["evidence", "assess"])
+    assert result.exit_code != 0
+
+
+def test_reason_analyze_is_retired() -> None:
+    result = runner.invoke(app, ["reason", "analyze"])
+    assert result.exit_code != 0
+
+
+def test_risk_size_is_retired(tmp_path) -> None:
+    p = tmp_path / "r.json"
+    p.write_text(json.dumps({"ticker": "NVDA"}), encoding="utf-8")
+    result = runner.invoke(app, ["risk", "size", str(p)])
+    assert result.exit_code != 0
+
+
+def test_watchlist_analyze_remains_deprecated(tmp_path) -> None:
+    """atlas watchlist analyze is the only remaining active deprecated command."""
+    p = tmp_path / "w.json"
+    p.write_text(json.dumps({"name": "Test", "tickers": ["NVDA"]}), encoding="utf-8")
+    result = runner.invoke(app, ["watchlist", "analyze", str(p)])
+    assert result.exit_code == 0
+    assert "deprecated" in result.output.lower()

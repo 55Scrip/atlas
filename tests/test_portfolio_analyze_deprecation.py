@@ -89,11 +89,10 @@ def test_portfolio_summary_command_is_unaffected(tmp_path) -> None:
     assert "deprecated" not in result.output.lower()
 
 
-def test_portfolio_review_command_remains_deprecated(tmp_path) -> None:
-    """atlas portfolio review remains deprecated (Sprint 80) and must not be retired yet."""
-    result = runner.invoke(app, ["portfolio", "review", "--help"])
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
+def test_portfolio_review_command_is_retired(tmp_path) -> None:
+    """Sprint 90: atlas portfolio review command body retired — no longer a valid command."""
+    result = runner.invoke(app, ["portfolio", "review", str(tmp_path / "p.json")])
+    assert result.exit_code != 0
 
 
 def test_portfolio_analysis_engine_remains_importable() -> None:
@@ -158,8 +157,8 @@ def test_watchlist_analyze_remains_deprecated(tmp_path) -> None:
     assert "deprecated" in result.output.lower()
 
 
-def test_portfolio_review_remains_deprecated(tmp_path) -> None:
+def test_portfolio_review_is_retired(tmp_path) -> None:
+    # Sprint 90: atlas portfolio review command body retired — no longer a valid command
     p = _fake_portfolio_path(tmp_path)
     result = runner.invoke(app, ["portfolio", "review", str(p)])
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
+    assert result.exit_code != 0

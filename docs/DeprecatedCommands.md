@@ -1,7 +1,7 @@
 # Atlas Deprecated Commands
 
 **Created:** 2026-07-01 (Sprint 84)  
-**Updated:** 2026-07-02 (Sprint 89)  
+**Updated:** 2026-07-02 (Sprint 90)  
 **Status:** Active registry — all entries reflected in `atlas/cli/deprecations.py`
 
 This document is the human-readable counterpart to the code registry at
@@ -46,6 +46,18 @@ This document is the human-readable counterpart to the code registry at
 
 ---
 
+### ~~`atlas portfolio review`~~ — RETIRED Sprint 90
+
+| Field | Value |
+|---|---|
+| **Status** | **Retired** (command body removed Sprint 90) |
+| **Replacement** | `atlas portfolio summary` |
+| **Legacy module** | `atlas.portfolio_review` (`PortfolioReviewEngine`, `PortfolioReviewInput`) — **engine remains on disk** |
+| **Engine blocker** | `atlas/home/engine.py` (`AtlasHomeEngine`) still imports and instantiates `PortfolioReviewEngine` from `atlas.portfolio_review`. Engine deletion deferred until `AtlasHomeEngine` is retired or migrated to use `atlas.domains.portfolio.review.PortfolioReviewEngine`. |
+| **Notes** | Entry preserved in `_RETIRED_REGISTRY` for audit. Not callable. A Blueprint-aligned `PortfolioReviewEngine` exists separately at `atlas.domains.portfolio.review` — unaffected. |
+
+---
+
 ### ~~`atlas portfolio analyze`~~ — RETIRED Sprint 89
 
 | Field | Value |
@@ -83,28 +95,17 @@ This document is the human-readable counterpart to the code registry at
 
 ---
 
-### `atlas portfolio review`
-
-| Field | Value |
-|---|---|
-| **Status** | Deprecated (Sprint 80) |
-| **Replacement** | `atlas portfolio summary` |
-| **Legacy module** | `atlas.portfolio_review` (`PortfolioReviewEngine`) |
-| **Removal criteria** | Confirm `PortfolioReviewEngine` has no non-deprecated callers, then delete. |
-
----
-
 ## Recommended Retirement Order
 
-Based on isolation analysis (as of Sprint 89):
+Based on isolation analysis (as of Sprint 90):
 
 1. ~~**`atlas daily brief`**~~ — **DONE Sprint 85** (engine deleted Sprint 77; command body retired Sprint 85)
 2. ~~**`atlas evidence assess`**~~ — **DONE Sprint 86** (command body retired; engine retained pending 3 caller retirements)
 3. ~~**`atlas reason analyze`**~~ — **DONE Sprint 87** (command body retired; engine retained pending `atlas/principles/engine.py` cleanup)
 4. ~~**`atlas risk size`**~~ — **DONE Sprint 88** (command body retired; engine retained pending RiskAnalysis type migration)
 5. ~~**`atlas portfolio analyze`**~~ — **DONE Sprint 89** (command body retired; engine retained — 10+ active callers)
-6. **`atlas portfolio review`** command body — still active deprecated; engine used by `atlas/portfolio_review` alone
-7. **`atlas watchlist analyze`** command body — most coupled; six other engines import `WatchlistEngine`
+6. ~~**`atlas portfolio review`**~~ — **DONE Sprint 90** (command body retired; legacy engine retained — `atlas/home/engine.py` still instantiates it)
+7. **`atlas watchlist analyze`** command body — last remaining; most coupled — six other engines import `WatchlistEngine`
 
 ---
 

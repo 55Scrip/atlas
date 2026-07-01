@@ -1083,3 +1083,26 @@ a focused import audit of `PortfolioReviewEngine`.
 **Outcome:** Command retired. Engine stays. 1106 tests passing. `_RETIRED_REGISTRY`
 now has 5 entries (daily brief, evidence assess, reason analyze, risk size, portfolio analyze).
 Active deprecated `_REGISTRY` now has 2 entries (watchlist analyze, portfolio review).
+
+## Sprint 90 — 2026-07-02: Retire `atlas portfolio review` Command Body; Retain Engine
+
+**Decision:** Remove `atlas portfolio review` command body. Retain `atlas.portfolio_review` module.
+
+**Rationale:** The CLI stub was a pure no-op — safe to remove. The import audit revealed
+one active non-deprecated production caller: `atlas/home/engine.py` (`AtlasHomeEngine`)
+imports `PortfolioReviewEngine` and `PortfolioReviewInput` from `atlas.portfolio_review`
+and instantiates `PortfolioReviewEngine()` at runtime. Engine deletion was therefore
+blocked — this is the same pattern used in Sprints 86–89.
+
+**Important naming note:** `atlas.domains.portfolio.review` defines its own
+`PortfolioReviewEngine` (Blueprint-aligned). This is a completely separate class from
+the legacy `atlas.portfolio_review.PortfolioReviewEngine`. The Blueprint version is
+unaffected by this sprint. The legacy version remains on disk for `AtlasHomeEngine`.
+
+**Engine deletion path:** Retire or migrate `AtlasHomeEngine` to use the Blueprint-aligned
+`atlas.domains.portfolio.review.PortfolioReviewEngine` instead of the legacy one.
+Once that migration is complete, `atlas.portfolio_review` can be deleted.
+
+**Outcome:** Command retired. Engine stays. 1111 tests passing. `_RETIRED_REGISTRY`
+now has 6 entries (daily brief, evidence assess, reason analyze, risk size, portfolio analyze,
+portfolio review). Active deprecated `_REGISTRY` now has 1 entry (watchlist analyze).
