@@ -341,3 +341,22 @@ separate branch in the same command, giving users two authoring options:
 engine-backed (from structured local files) and manual (from a pre-authored
 report JSON). No new adapter or exporter files were needed — only main.py was
 modified, adding 40 lines to the existing command function.
+
+## 2026-07-01: Add --company-name and --business-description to Company Analysis Export (Sprint 56)
+
+Decision: add two optional string flags — `--company-name` and
+`--business-description` — to `atlas company-analysis export`. Both populate
+`CompanyAnalysisInput` fields used by `CompanyAnalysisEngine` without requiring
+any network calls or new adapters.
+
+Rationale: Sprint 55 always defaulted `Company.name` to the ticker string (e.g.
+"AMD" instead of "AMD Corporation") and always left `business_description` empty,
+causing a "Missing Business Description" unknown to appear in every engine report.
+Both fields accept user-supplied local strings, require no external lookup, and
+follow the existing pattern of optional CLI flags for local metadata. When
+`--business-description` is supplied, `CompanyAnalysisEngine._unknowns()` no
+longer appends the "Missing Business Description" unknown because
+`business_description.strip()` is truthy. When `--company-name` is supplied,
+`Company.name` is set to the user value; when omitted it falls back to the ticker
+string. Both flags are entirely optional — omitting them preserves Sprint 55
+behavior exactly.

@@ -361,9 +361,11 @@ No network calls are made. No recommendations are produced.
 to a Daily Brief–compatible JSON file.
 
 ```bash
-# Engine-backed export (Sprint 55) — runs CompanyAnalysisEngine on local inputs
+# Engine-backed export (Sprints 55–56) — runs CompanyAnalysisEngine on local inputs
 atlas company-analysis export \
   --ticker AMD \
+  --company-name "AMD Corporation" \
+  --business-description "AMD designs high-performance CPUs and GPUs." \
   --knowledge knowledge.json \
   --research research.json \
   --output ca_export.json
@@ -384,9 +386,9 @@ See [CompanyAnalysis.md](CompanyAnalysis.md) for all input formats.
 - `knowledge_node_count` is accepted by `build_daily_brief_input` but not
   yet wired to a CLI flag.
 
-## Recommendation for Sprint 56
+## Recommendation for Sprint 57
 
-Add `--company-name` and `--business-description` flags to
-`atlas company-analysis export` so `CompanyAnalysisInput` can be more fully
-populated from local CLI flags, reducing "Missing Business Description" unknowns
-and improving report readability without requiring external data.
+Add `--sector` and `--country` flags to `atlas company-analysis export` so
+the remaining core company fields (`Company.sector`, `Company.country`) can
+be populated from CLI flags, eliminating the "Missing Sector" and "Missing
+Country" unknowns from engine reports without requiring any external data.

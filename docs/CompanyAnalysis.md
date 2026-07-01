@@ -112,28 +112,32 @@ knowledge facts and research projects, producing engine-derived observations,
 risks, confidence, and evidence links.
 
 ```bash
-# Engine-backed export with knowledge and research
+# Full engine-backed export with all optional metadata (Sprint 56)
 atlas company-analysis export \
   --ticker AMD \
+  --company-name "AMD Corporation" \
+  --business-description "AMD designs high-performance CPUs and GPUs." \
   --knowledge knowledge.json \
   --research research.json \
   --output ca_export.json
 
-# Ticker only (minimal Company object, engine derives unknowns from missing context)
+# Ticker only (minimal Company object — engine derives unknowns from missing context)
 atlas company-analysis export --ticker AMD --output ca_export.json
 
-# Knowledge only (no research project)
-atlas company-analysis export --ticker AMD --knowledge knowledge.json --output ca_export.json
+# Ticker + company name only
+atlas company-analysis export --ticker AMD --company-name "AMD Corporation" --output ca_export.json
 
 # Consume in Daily Brief
 atlas daily summary --company-analysis ca_export.json
 ```
 
-### Input Flags (Sprint 55)
+### Input Flags (Sprints 55–56)
 
 | Flag | Description |
 |---|---|
 | `--ticker TICKER` | Company ticker symbol (required for engine-backed path). Uppercased automatically. |
+| `--company-name NAME` | Human-readable company name (e.g. `"AMD Corporation"`). Optional. Defaults to ticker. |
+| `--business-description TEXT` | Plain-text business description. Optional. Eliminates "Missing Business Description" unknown when supplied. |
 | `--knowledge FILE` | Local knowledge JSON (`{"facts": [...]}` — same format as `atlas discovery export --knowledge`) |
 | `--research FILE` | Local research JSON (`{"projects": [...]}` — same format as `atlas discovery export --research`) |
 

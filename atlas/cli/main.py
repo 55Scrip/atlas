@@ -1236,6 +1236,12 @@ def company_analysis_export_command(
     ticker: str | None = typer.Option(
         None, "--ticker", help="Company ticker for engine-backed export (e.g. AMD).",
     ),
+    company_name: str | None = typer.Option(
+        None, "--company-name", help="Human-readable company name (e.g. 'AMD Corporation').",
+    ),
+    business_description: str | None = typer.Option(
+        None, "--business-description", help="Plain-text business description (local only).",
+    ),
     knowledge_path: Path | None = typer.Option(
         None, "--knowledge", help="Local knowledge JSON file path (optional).",
     ),
@@ -1250,15 +1256,16 @@ def company_analysis_export_command(
 
     Two export paths are available:
 
-    **Engine-backed export** (Sprint 55): provide --ticker and optionally
-    --knowledge and/or --research. CompanyAnalysisEngine runs deterministically
-    on the supplied local inputs and produces engine-derived observations, risks,
-    confidence, and evidence links.
+    **Engine-backed export** (Sprint 55–56): provide --ticker and optionally
+    --company-name, --business-description, --knowledge, and/or --research.
+    CompanyAnalysisEngine runs deterministically on the supplied local inputs.
 
     .. code-block:: bash
 
         atlas company-analysis export \\
           --ticker AMD \\
+          --company-name "AMD Corporation" \\
+          --business-description "AMD designs high-performance CPUs and GPUs." \\
           --knowledge knowledge.json \\
           --research research.json \\
           --output company.json
@@ -1273,10 +1280,13 @@ def company_analysis_export_command(
     """
     try:
         if ticker is not None:
-            # Engine-backed path (Sprint 55)
+            # Engine-backed path (Sprint 55–56)
             ticker_upper = ticker.strip().upper()
             if not ticker_upper:
                 raise ValueError("--ticker must not be empty")
+
+            resolved_name = (company_name or "").strip() or ticker_upper
+            resolved_description = (business_description or "").strip()
 
             knowledge_facts = ()
             if knowledge_path is not None:
@@ -1295,11 +1305,12 @@ def company_analysis_export_command(
 
             company = Company(
                 id=ticker_upper.lower(),
-                name=ticker_upper,
+                name=resolved_name,
                 ticker=ticker_upper,
             )
             analysis_input = CompanyAnalysisInput(
                 company=company,
+                business_description=resolved_description,
                 knowledge_facts=knowledge_facts,
                 research_project=research_project,
             )
