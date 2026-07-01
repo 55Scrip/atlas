@@ -912,23 +912,6 @@ def risk_drift_analyze_command(
     console.print(render_risk_drift_assessment(assessment))
 
 
-@risk_app.command("size")
-def risk_size_command(
-    risk_input_path: Path = typer.Argument(
-        ...,
-        help="[DEPRECATED] Risk sizing input JSON path.",
-    ),
-):
-    """[DEPRECATED] Legacy Risk Size — risk sizing is being consolidated.
-
-    This command is deprecated and will be removed in a future sprint.
-    Risk sizing is being consolidated into Blueprint-aligned portfolio,
-    decision and research capabilities.
-    """
-    console.print(deprecated_command_message("atlas risk size"))
-    raise typer.Exit(code=0)
-
-
 @suitability_app.command("analyze")
 def suitability_analyze_command(
     subject: str,

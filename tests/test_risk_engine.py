@@ -218,34 +218,10 @@ def test_risk_renderer_includes_required_sections():
     assert "Reasoning" in rendered
 
 
-def test_risk_cli_outputs_position_sizing_report(tmp_path):
+def test_risk_cli_command_is_retired(tmp_path):
+    # Sprint 88: atlas risk size command body retired — no longer a valid command
     path = tmp_path / "risk_input.json"
-    path.write_text(
-        json.dumps(
-            {
-                "total_capital": 500000,
-                "investable_capital": 200000,
-                "existing_cash_reserve": 100000,
-                "required_cash_reserve": 75000,
-                "investment_horizon_years": 10,
-                "risk_profile": "balanced",
-                "market_regime": "correction",
-                "current_positions": [
-                    {"ticker": "MSFT", "market_value": 80000},
-                    {"ticker": "NVDA", "market_value": 60000},
-                ],
-                "target_ticker": "TSMC",
-                "target_company_score": 86,
-                "target_confidence": 82,
-                "target_risk_score": 35,
-            }
-        ),
-        encoding="utf-8",
-    )
+    path.write_text('{"ticker": "NVDA"}', encoding="utf-8")
     runner = CliRunner()
-
     result = runner.invoke(app, ["risk", "size", str(path)])
-
-    # Sprint 83: atlas risk size is deprecated — expect deprecation message
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
+    assert result.exit_code != 0

@@ -1040,3 +1040,26 @@ its own `ReasoningEngine` protocol class — completely separate from the legacy
 
 **Outcome:** Command retired. Engine stays. 1104 tests passing. `_RETIRED_REGISTRY`
 now has 3 entries (daily brief, evidence assess, reason analyze).
+
+---
+
+## Sprint 88 — 2026-07-01: Retire `atlas risk size` Command Body; Retain Engine
+
+**Decision:** Remove `atlas risk size` command body. Retain `atlas/risk/` module.
+
+**Rationale:** The CLI stub was a pure no-op — safe to remove. The underlying
+`RiskEngine` has no production instantiation points outside the deprecated command.
+However, `RiskAnalysis` (a data type in the same file) is still actively imported
+by `atlas/conversation/`, `atlas/intelligence/`, and `atlas/reasoning/`. Deleting
+`atlas/risk/engine.py` would break those three imports. Separating `RiskEngine` from
+`RiskAnalysis` in the same file is possible but constitutes surgical refactoring that
+belongs in its own sprint rather than alongside a command retirement.
+
+**Sprint spec rule applied:** "If RiskEngine and RiskAnalysis live in the same file
+and separating them would create migration risk, do not delete the engine in this
+sprint." — applied exactly as specified.
+
+**Outcome:** Command retired. Engine stays. 1101 tests passing. `_RETIRED_REGISTRY`
+now has 4 entries (daily brief, evidence assess, reason analyze, risk size).
+Active deprecated `_REGISTRY` now has 3 entries (watchlist analyze, portfolio analyze,
+portfolio review).

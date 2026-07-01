@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-01 (Sprint 87)  
-**Status:** Active — Sprint 87 target complete; Sprint 88 target to be selected
+**Updated:** 2026-07-01 (Sprint 88)  
+**Status:** Active — Sprint 88 target complete; Sprint 89 target to be selected
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,27 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 88 Migration Target — COMPLETED
+
+### Completed: `atlas risk size` command body retired; engine retained
+
+**Sprint 88 result:**
+- `atlas risk size` command body removed from `atlas/cli/main.py` — command no longer callable
+- `atlas risk size` moved from active `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`
+- `atlas/risk/` engine **intentionally retained** — `RiskAnalysis` (data type) is still actively imported by:
+  - `atlas/conversation/engine.py`
+  - `atlas/intelligence/engine.py`
+  - `atlas/reasoning/engine.py`
+- `RiskEngine` has no production instantiation points, but lives in the same file as `RiskAnalysis` (`atlas/risk/engine.py`). Separating them would require surgery to the engine file and `atlas/risk/__init__.py`; deferred.
+- Tests updated: `test_risk_size_deprecation.py` rewritten as retirement test; includes `RiskAnalysis` caller-presence assertions
+- 1101 tests passing
+
+**Engine deletion criteria (deferred):**
+1. Three `RiskAnalysis` callers (`atlas/conversation/`, `atlas/intelligence/`, `atlas/reasoning/`) must stop importing it, OR `RiskAnalysis` must be moved to a shared types module before `atlas/risk/` can be deleted
+2. Once `RiskAnalysis` is no longer needed from `atlas/risk/`, confirm `RiskEngine` and `PositionSizingInput` also have no callers, then delete the module
 
 ---
 

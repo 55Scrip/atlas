@@ -97,6 +97,24 @@ _RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
             "replacing check_reasoning_report() first.",
         ),
     ),
+    DeprecatedCommand(
+        command="atlas risk size",
+        message=(
+            "[yellow]DEPRECATED:[/yellow] The command [bold]atlas risk size[/bold] is deprecated.\n"
+            "Risk sizing is being consolidated into Blueprint-aligned portfolio, decision and research capabilities."
+        ),
+        replacement_command=None,
+        consolidation_direction="Blueprint-aligned portfolio, decision and research capabilities",
+        legacy_module="atlas.risk",
+        removal_criteria=(
+            "Command body retired in Sprint 88.",
+            "atlas.risk engine remains on disk — RiskAnalysis type is still imported by "
+            "atlas/conversation, atlas/intelligence, and atlas/reasoning engines. "
+            "RiskEngine has no production instantiation points outside deprecated CLI. "
+            "Engine deletion deferred: RiskEngine and RiskAnalysis live in the same file; "
+            "separating them requires surgery to atlas/risk/engine.py and atlas/risk/__init__.py.",
+        ),
+    ),
 )
 
 # ── Active deprecated commands (still registered in CLI) ──────────────────────
@@ -149,21 +167,6 @@ _REGISTRY: tuple[DeprecatedCommand, ...] = (
         removal_criteria=(
             "PortfolioReviewEngine must have no remaining non-deprecated callers.",
             "Confirm atlas.portfolio_review is unused before deleting.",
-        ),
-    ),
-    DeprecatedCommand(
-        command="atlas risk size",
-        message=(
-            "[yellow]DEPRECATED:[/yellow] The command [bold]atlas risk size[/bold] is deprecated.\n"
-            "Risk sizing is being consolidated into Blueprint-aligned portfolio, decision and research capabilities."
-        ),
-        replacement_command=None,
-        consolidation_direction="Blueprint-aligned portfolio, decision and research capabilities",
-        legacy_module="atlas.risk",
-        removal_criteria=(
-            "RiskAnalysis type is still imported by atlas/intelligence, atlas/reasoning, atlas/conversation — "
-            "confirm RiskEngine class itself has no callers.",
-            "Delete RiskEngine and PositionSizingInput once confirmed unused; RiskAnalysis type may need to stay.",
         ),
     ),
 )

@@ -509,3 +509,20 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 1104 tests passing. CLI surface area reduced by one more command.
 - Recommended Sprint 88 target: retire `atlas risk size` command body (stub is a pure no-op;
   RiskEngine has no callers outside the deprecated command).
+
+**Sprint 88 (2026-07-01):** `atlas risk size` command body retired; `atlas.risk` engine retained.
+- `risk_size_command` function and `@risk_app.command("size")` registration removed from
+  `atlas/cli/main.py`. Command is no longer callable.
+- Entry moved from `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`.
+- `atlas/risk/` kept on disk — `RiskAnalysis` (data type) still imported by
+  `atlas/conversation/engine.py`, `atlas/intelligence/engine.py`, `atlas/reasoning/engine.py`.
+- `RiskEngine` has no production instantiation points, but cohabitates with `RiskAnalysis`
+  in `atlas/risk/engine.py`. Engine deletion deferred to avoid surgical file split.
+- `test_risk_size_deprecation.py` rewritten as retirement test; includes assertions that
+  `RiskAnalysis` callers still exist and `RiskAnalysis` remains importable.
+- 1101 tests passing. CLI surface area reduced by one more command.
+- All 7 originally deprecated commands are now retired from CLI. Active `_REGISTRY` holds
+  only the 3 remaining deprecated commands: watchlist analyze, portfolio analyze, portfolio review.
+- Recommended Sprint 89 target: retire `atlas portfolio analyze` and `atlas portfolio review`
+  command bodies together (both point to `atlas portfolio summary`; retiring simultaneously
+  simplifies the registry and test updates).

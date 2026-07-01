@@ -1,7 +1,7 @@
 # Atlas Deprecated Commands
 
 **Created:** 2026-07-01 (Sprint 84)  
-**Updated:** 2026-07-01 (Sprint 87)  
+**Updated:** 2026-07-01 (Sprint 88)  
 **Status:** Active registry — all entries reflected in `atlas/cli/deprecations.py`
 
 This document is the human-readable counterpart to the code registry at
@@ -46,6 +46,18 @@ This document is the human-readable counterpart to the code registry at
 
 ---
 
+### ~~`atlas risk size`~~ — RETIRED Sprint 88
+
+| Field | Value |
+|---|---|
+| **Status** | **Retired** (command body removed Sprint 88) |
+| **Replacement** | None — being consolidated into Blueprint-aligned portfolio, decision and research capabilities |
+| **Legacy module** | `atlas.risk` (`RiskEngine`, `RiskAnalysis`, `PositionSizingInput`) — **engine remains on disk** |
+| **Engine blocker** | `RiskAnalysis` type still imported by `atlas/conversation/`, `atlas/intelligence/`, `atlas/reasoning/`. `RiskEngine` cohabitates with `RiskAnalysis` in the same file; engine deletion deferred pending type migration or file split. |
+| **Notes** | Entry preserved in `_RETIRED_REGISTRY` for audit. Not callable. |
+
+---
+
 ## Active Deprecated Commands (still callable, emit deprecation message)
 
 ### `atlas watchlist analyze`
@@ -81,25 +93,14 @@ This document is the human-readable counterpart to the code registry at
 
 ---
 
-### `atlas risk size`
-
-| Field | Value |
-|---|---|
-| **Status** | Deprecated (Sprint 83) |
-| **Replacement** | None — being consolidated into Blueprint-aligned portfolio, decision and research capabilities |
-| **Legacy module** | `atlas.risk` (`RiskEngine`, `PositionSizingInput`) |
-| **Removal criteria** | `RiskAnalysis` type is still imported by `atlas/intelligence`, `atlas/reasoning`, `atlas/conversation`. Confirm `RiskEngine` itself has no callers. `RiskAnalysis` type may need to remain. |
-
----
-
 ## Recommended Retirement Order
 
-Based on isolation analysis (as of Sprint 85):
+Based on isolation analysis (as of Sprint 88):
 
 1. ~~**`atlas daily brief`**~~ — **DONE Sprint 85** (engine deleted Sprint 77; command body retired Sprint 85)
 2. ~~**`atlas evidence assess`**~~ — **DONE Sprint 86** (command body retired; engine retained pending 3 caller retirements)
 3. ~~**`atlas reason analyze`**~~ — **DONE Sprint 87** (command body retired; engine retained pending `atlas/principles/engine.py` cleanup)
-4. **`atlas risk size`** command body — stub is a pure no-op; RiskEngine has no callers; safe to retire any sprint (recommended Sprint 88)
+4. ~~**`atlas risk size`**~~ — **DONE Sprint 88** (command body retired; engine retained pending RiskAnalysis type migration)
 5. **`atlas portfolio analyze`** + **`atlas portfolio review`** command bodies — share `atlas.analysis.portfolio` consumers, retire together
 6. **`atlas watchlist analyze`** command body — most coupled; six other engines import `WatchlistEngine`
 

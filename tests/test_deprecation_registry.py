@@ -35,13 +35,13 @@ EXPECTED_COMMANDS = (
     "atlas watchlist analyze",
     "atlas portfolio analyze",
     "atlas portfolio review",
-    "atlas risk size",
 )
 
 RETIRED_COMMANDS = (
     "atlas daily brief",
     "atlas evidence assess",
     "atlas reason analyze",
+    "atlas risk size",
 )
 
 # ── Registry completeness ─────────────────────────────────────────────────────
@@ -234,28 +234,21 @@ def test_reason_analyze_command_is_no_longer_callable() -> None:
     assert result.exit_code != 0
 
 
-def test_risk_size_exits_cleanly(tmp_path) -> None:
+def test_risk_size_is_retired_not_active() -> None:
+    """Sprint 88: atlas risk size was retired — must not be in active registry."""
+    assert "atlas risk size" not in all_deprecated_commands()
+
+
+def test_risk_size_is_in_retired_registry() -> None:
+    assert "atlas risk size" in all_retired_commands()
+
+
+def test_risk_size_command_is_no_longer_callable(tmp_path) -> None:
+    """Sprint 88: atlas risk size is retired — CLI should not recognize it."""
     p = tmp_path / "r.json"
     p.write_text(json.dumps({"ticker": "NVDA"}), encoding="utf-8")
     result = runner.invoke(app, ["risk", "size", str(p)])
-    assert result.exit_code == 0
-
-
-def test_risk_size_message_matches_registry(tmp_path) -> None:
-    p = tmp_path / "r.json"
-    p.write_text(json.dumps({"ticker": "NVDA"}), encoding="utf-8")
-    result = runner.invoke(app, ["risk", "size", str(p)])
-    assert "consolidat" in result.output.lower()
-
-
-# ── No providers / no network ─────────────────────────────────────────────────
-
-def test_risk_size_does_not_call_providers(tmp_path) -> None:
-    p = tmp_path / "r.json"
-    p.write_text(json.dumps({"ticker": "NVDA"}), encoding="utf-8")
-    result = runner.invoke(app, ["risk", "size", str(p)])
-    assert result.exit_code == 0
-    assert "yahoo" not in result.output.lower()
+    assert result.exit_code != 0
 
 
 # ── Blueprint-aligned commands unaffected ─────────────────────────────────────
