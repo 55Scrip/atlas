@@ -1,8 +1,11 @@
-"""Sprint 81: Tests for atlas evidence assess deprecation.
+"""Sprint 86: Tests confirming atlas evidence assess has been retired.
 
-Confirms that `atlas evidence assess` is deprecated, does not call
-EvidenceQualityEngine or providers, and that existing deprecated commands
-remain deprecated.
+Sprint 81 deprecated the command; Sprint 86 removed the command body.
+`atlas evidence assess` is no longer a registered CLI command.
+
+The underlying `atlas.evidence` engine (EvidenceQualityEngine) remains on disk —
+it is still used by atlas/comparison, atlas/decision_journal, and
+atlas/watchlist_review. Engine deletion is deferred.
 """
 
 from __future__ import annotations
@@ -12,6 +15,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+from atlas.cli.deprecations import all_deprecated_commands, all_retired_commands
 from atlas.cli.main import app
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -20,42 +24,30 @@ CLI_PATH = REPO_ROOT / "atlas" / "cli" / "main.py"
 runner = CliRunner()
 
 
-def test_evidence_assess_command_exits_cleanly() -> None:
+def test_evidence_assess_command_is_no_longer_registered() -> None:
+    """atlas evidence assess must not be a recognized subcommand of atlas evidence."""
     result = runner.invoke(app, ["evidence", "assess"])
-    assert result.exit_code == 0, f"Expected exit 0, got {result.exit_code}: {result.output}"
+    assert result.exit_code != 0
 
 
-def test_evidence_assess_command_prints_deprecation_message() -> None:
-    result = runner.invoke(app, ["evidence", "assess"])
-    assert "deprecated" in result.output.lower()
+def test_evidence_assess_command_is_not_in_active_registry() -> None:
+    assert "atlas evidence assess" not in all_deprecated_commands()
 
 
-def test_evidence_assess_deprecation_does_not_invent_replacement_command() -> None:
-    """Deprecation message must not reference a non-existent replacement command."""
-    result = runner.invoke(app, ["evidence", "assess"])
-    # No specific 'atlas X' replacement command is invented — only general consolidation direction
-    assert "deprecated" in result.output.lower()
-    # Must not falsely promise an 'atlas evidence' replacement that doesn't exist
-    assert "atlas evidence quality" not in result.output.lower()
-    assert "atlas evidence review" not in result.output.lower()
+def test_evidence_assess_command_is_in_retired_registry() -> None:
+    assert "atlas evidence assess" in all_retired_commands()
 
 
-def test_evidence_assess_deprecation_mentions_consolidation() -> None:
-    result = runner.invoke(app, ["evidence", "assess"])
-    output_lower = result.output.lower()
-    # Should mention consolidation direction
-    assert "consolidat" in output_lower or "blueprint" in output_lower or "research" in output_lower
-
-
-def test_evidence_assess_does_not_call_providers() -> None:
-    result = runner.invoke(app, ["evidence", "assess"])
-    assert result.exit_code == 0
-    assert "yahoo" not in result.output.lower()
-
-
-def test_evidence_assess_help_text_marks_deprecated() -> None:
-    result = runner.invoke(app, ["evidence", "assess", "--help"])
-    assert "deprecated" in result.output.lower()
+def test_evidence_assess_command_function_removed_from_cli() -> None:
+    """The evidence_assess_command function must not exist in the CLI source."""
+    source = CLI_PATH.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    func_names = {
+        node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+    }
+    assert "evidence_assess_command" not in func_names, (
+        "evidence_assess_command function should have been removed in Sprint 86"
+    )
 
 
 def test_cli_does_not_import_evidence_quality_engine_at_module_level() -> None:
@@ -73,22 +65,34 @@ def test_cli_does_not_import_evidence_quality_engine_at_module_level() -> None:
                 )
 
 
-def test_no_evidence_engine_call_in_assess_command_body() -> None:
-    """The evidence_assess_command function must not call EvidenceQualityEngine."""
-    source = CLI_PATH.read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name == "evidence_assess_command":
-            func_source = ast.get_source_segment(source, node) or ""
-            assert "EvidenceQualityEngine" not in func_source, (
-                "evidence_assess_command must not call EvidenceQualityEngine (deprecated)"
-            )
+def test_evidence_engine_module_remains_on_disk() -> None:
+    """atlas.evidence engine must still exist — it has active callers in other engines."""
+    import importlib
+    mod = importlib.import_module("atlas.evidence")
+    assert hasattr(mod, "EvidenceQualityEngine"), (
+        "atlas.evidence.EvidenceQualityEngine must still be importable "
+        "(used by comparison, decision_journal, watchlist_review engines)"
+    )
 
 
-# ── Confirm existing deprecated commands remain deprecated ────────────────────
+def test_evidence_engine_active_callers_remain() -> None:
+    """Confirm the three known active callers of EvidenceQualityEngine still exist."""
+    caller_paths = (
+        REPO_ROOT / "atlas" / "comparison" / "engine.py",
+        REPO_ROOT / "atlas" / "decision_journal" / "engine.py",
+        REPO_ROOT / "atlas" / "watchlist_review" / "engine.py",
+    )
+    for path in caller_paths:
+        assert path.exists(), f"Expected active EvidenceQualityEngine caller at {path}"
+        source = path.read_text(encoding="utf-8")
+        assert "EvidenceQualityEngine" in source, (
+            f"{path} should still reference EvidenceQualityEngine"
+        )
+
+
+# ── Confirm remaining deprecated commands still work ─────────────────────────
 
 def test_daily_brief_is_retired() -> None:
-    # Sprint 85: atlas daily brief command body retired — no longer a valid command
     result = runner.invoke(app, ["daily", "brief"])
     assert result.exit_code != 0
 

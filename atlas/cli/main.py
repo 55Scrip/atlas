@@ -480,18 +480,6 @@ def economics_analyze_command():
     console.print(render_economic_signal_analysis(analysis))
 
 
-@evidence_app.command("assess")
-def evidence_assess_command():
-    """[DEPRECATED] Legacy Evidence Assess — evidence assessment is being consolidated.
-
-    This command is deprecated and will be removed in a future sprint.
-    Evidence assessment is being consolidated into Blueprint-aligned decision
-    and research capabilities.
-    """
-    console.print(deprecated_command_message("atlas evidence assess"))
-    raise typer.Exit(code=0)
-
-
 @intelligence_app.command("analyze")
 def intelligence_analyze_command(
     inputs: list[str] = typer.Argument(...),

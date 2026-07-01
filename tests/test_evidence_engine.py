@@ -144,9 +144,7 @@ def test_language_layer_integration_works_lightly():
     assert assessment.language_report.confidence.missing_information
 
 
-def test_evidence_cli_outputs_example_assessment():
-    # Sprint 81: atlas evidence assess is deprecated — expect deprecation message
+def test_evidence_cli_command_is_retired():
+    # Sprint 86: atlas evidence assess command body retired — no longer a valid command
     result = CliRunner().invoke(app, ["evidence", "assess"])
-
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
+    assert result.exit_code != 0

@@ -129,7 +129,7 @@ def test_portfolio_review_remains_deprecated(tmp_path) -> None:
     assert "deprecated" in result.output.lower()
 
 
-def test_evidence_assess_remains_deprecated() -> None:
+def test_evidence_assess_is_retired() -> None:
+    # Sprint 86: atlas evidence assess command body retired — no longer a valid command
     result = runner.invoke(app, ["evidence", "assess"])
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
+    assert result.exit_code != 0

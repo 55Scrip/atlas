@@ -480,3 +480,17 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 1111 tests passing. CLI surface area reduced by one command.
 - Recommended Sprint 86 target: retire `atlas evidence assess` command body
   (EvidenceQualityEngine — self-contained Group C module, no known dependents).
+
+**Sprint 86 (2026-07-01):** `atlas evidence assess` command body retired; `atlas.evidence` engine retained.
+- `evidence_assess_command` function and `@evidence_app.command("assess")` registration
+  removed from `atlas/cli/main.py`. Command is no longer callable.
+- Entry moved from `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`.
+- `atlas/evidence/` (EvidenceQualityEngine) intentionally kept on disk — confirmed active
+  callers: `atlas/comparison/engine.py`, `atlas/decision_journal/engine.py`,
+  `atlas/watchlist_review/engine.py`. Engine deletion requires retiring all three first.
+- `test_evidence_assess_deprecation.py` rewritten as retirement test; includes assertions
+  that the three caller files still exist and still reference EvidenceQualityEngine.
+- 1107 tests passing. CLI surface area reduced by one more command.
+- Recommended Sprint 87 target: retire `atlas reason analyze` command body
+  (ReasoningEngine — requires removing lazy import in atlas/principles/engine.py first,
+  then confirming no other callers).

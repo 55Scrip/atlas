@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-01 (Sprint 85)  
-**Status:** Active — Sprint 85 target complete; Sprint 86 target to be selected
+**Updated:** 2026-07-01 (Sprint 86)  
+**Status:** Active — Sprint 86 target complete; Sprint 87 target to be selected
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,29 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 86 Migration Target — COMPLETED
+
+### Completed: `atlas evidence assess` command body retired; engine retained
+
+**Sprint 86 result:**
+- `atlas evidence assess` command body removed from `atlas/cli/main.py` — command no longer callable
+- `atlas evidence assess` moved from active `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`
+- `atlas/evidence/` engine **intentionally retained** — confirmed active callers:
+  - `atlas/comparison/engine.py` — instantiates `EvidenceQualityEngine`
+  - `atlas/decision_journal/engine.py` — instantiates `EvidenceQualityEngine`
+  - `atlas/watchlist_review/engine.py` — instantiates `EvidenceQualityEngine`
+- Engine deletion deferred until those three callers are retired
+- Tests updated: `test_evidence_assess_deprecation.py` rewritten as retirement test; includes caller-presence assertions
+- 1107 tests passing
+
+**Engine deletion criteria (deferred):**
+1. `atlas/comparison/` must be retired or migrated
+2. `atlas/decision_journal/` must be retired or migrated
+3. `atlas/watchlist_review/` must be retired or migrated
+4. Re-confirm no remaining `EvidenceQualityEngine` instantiation
 
 ---
 

@@ -985,3 +985,30 @@ surface area by one command.
 **Outcome:** `atlas daily brief` is no longer callable. `atlas daily summary` is
 the sole Daily Brief entry point. 1111 tests passing. `_RETIRED_REGISTRY` pattern
 established for future retirements.
+
+---
+
+## Sprint 86 — 2026-07-01: Retire `atlas evidence assess` Command Body; Retain Engine
+
+**Decision:** Remove `atlas evidence assess` command body. Retain `atlas/evidence/`
+engine (`EvidenceQualityEngine`) on disk.
+
+**Rationale:** The CLI stub was a pure no-op with no engine calls. Removing it is
+zero-risk and reduces CLI surface area. However, the engine itself cannot be deleted:
+three active non-deprecated legacy engines instantiate `EvidenceQualityEngine` —
+`atlas/comparison/`, `atlas/decision_journal/`, and `atlas/watchlist_review/`. Deleting
+the engine would break all three.
+
+**Finding from sprint:** The Sprint 81 doc comment ("self-contained Group C module,
+no known dependents") was incorrect — the engine has three callers that were not
+identified at deprecation time. Tests now explicitly assert caller presence as an
+invariant, so future sprints cannot accidentally delete the engine without updating them.
+
+**Alternatives considered:**
+- Delete engine despite active callers: rejected — would break comparison, decision
+  journal, and watchlist review functionality.
+- Defer command retirement until engine can be deleted: rejected — command and engine
+  deletion are independent; retiring the stub costs nothing and reduces surface area.
+
+**Outcome:** Command retired. Engine stays. 1107 tests passing. `_RETIRED_REGISTRY`
+now has 2 entries (daily brief, evidence assess).

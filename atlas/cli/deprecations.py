@@ -64,6 +64,22 @@ _RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
             "Command body retired in Sprint 85 — no remaining dependency.",
         ),
     ),
+    DeprecatedCommand(
+        command="atlas evidence assess",
+        message=(
+            "[yellow]DEPRECATED:[/yellow] The command [bold]atlas evidence assess[/bold] is deprecated.\n"
+            "Evidence assessment is being consolidated into Blueprint-aligned decision and research capabilities."
+        ),
+        replacement_command=None,
+        consolidation_direction="Blueprint-aligned decision and research capabilities",
+        legacy_module="atlas.evidence",
+        removal_criteria=(
+            "Command body retired in Sprint 86.",
+            "atlas.evidence engine remains on disk — still used by atlas/comparison, "
+            "atlas/decision_journal, and atlas/watchlist_review. Engine deletion deferred "
+            "until those callers are retired.",
+        ),
+    ),
 )
 
 # ── Active deprecated commands (still registered in CLI) ──────────────────────
@@ -116,20 +132,6 @@ _REGISTRY: tuple[DeprecatedCommand, ...] = (
         removal_criteria=(
             "PortfolioReviewEngine must have no remaining non-deprecated callers.",
             "Confirm atlas.portfolio_review is unused before deleting.",
-        ),
-    ),
-    DeprecatedCommand(
-        command="atlas evidence assess",
-        message=(
-            "[yellow]DEPRECATED:[/yellow] The command [bold]atlas evidence assess[/bold] is deprecated.\n"
-            "Evidence assessment is being consolidated into Blueprint-aligned decision and research capabilities."
-        ),
-        replacement_command=None,
-        consolidation_direction="Blueprint-aligned decision and research capabilities",
-        legacy_module="atlas.evidence",
-        removal_criteria=(
-            "EvidenceQualityEngine must have no remaining non-deprecated callers.",
-            "Confirm atlas.evidence is unused before deleting.",
         ),
     ),
     DeprecatedCommand(

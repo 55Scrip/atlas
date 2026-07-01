@@ -1,7 +1,7 @@
 # Atlas Deprecated Commands
 
 **Created:** 2026-07-01 (Sprint 84)  
-**Updated:** 2026-07-01 (Sprint 85)  
+**Updated:** 2026-07-01 (Sprint 86)  
 **Status:** Active registry — all entries reflected in `atlas/cli/deprecations.py`
 
 This document is the human-readable counterpart to the code registry at
@@ -18,6 +18,18 @@ This document is the human-readable counterpart to the code registry at
 | **Status** | **Retired** (command body removed Sprint 85) |
 | **Replacement** | `atlas daily summary` |
 | **Legacy module** | `atlas.daily_brief` (engine deleted Sprint 77; command body retired Sprint 85) |
+| **Notes** | Entry preserved in `_RETIRED_REGISTRY` for audit. Not callable. |
+
+---
+
+### ~~`atlas evidence assess`~~ — RETIRED Sprint 86
+
+| Field | Value |
+|---|---|
+| **Status** | **Retired** (command body removed Sprint 86) |
+| **Replacement** | None — being consolidated into Blueprint-aligned decision and research capabilities |
+| **Legacy module** | `atlas.evidence` (`EvidenceQualityEngine`) — **engine remains on disk** |
+| **Engine callers** | `atlas/comparison/`, `atlas/decision_journal/`, `atlas/watchlist_review/` — all three must be retired before engine deletion |
 | **Notes** | Entry preserved in `_RETIRED_REGISTRY` for audit. Not callable. |
 
 ---
@@ -57,17 +69,6 @@ This document is the human-readable counterpart to the code registry at
 
 ---
 
-### `atlas evidence assess`
-
-| Field | Value |
-|---|---|
-| **Status** | Deprecated (Sprint 81) |
-| **Replacement** | None — being consolidated into Blueprint-aligned decision and research capabilities |
-| **Legacy module** | `atlas.evidence` (`EvidenceQualityEngine`) |
-| **Removal criteria** | Confirm `EvidenceQualityEngine` has no non-deprecated callers, then delete engine and command body. |
-
----
-
 ### `atlas reason analyze`
 
 | Field | Value |
@@ -95,7 +96,7 @@ This document is the human-readable counterpart to the code registry at
 Based on isolation analysis (as of Sprint 85):
 
 1. ~~**`atlas daily brief`**~~ — **DONE Sprint 85** (engine deleted Sprint 77; command body retired Sprint 85)
-2. **`atlas evidence assess`** command body + `atlas.evidence` engine — self-contained, no known dependents (recommended Sprint 86)
+2. ~~**`atlas evidence assess`**~~ — **DONE Sprint 86** (command body retired; engine retained pending 3 caller retirements)
 3. **`atlas risk size`** command body — engine has no direct callers, but `RiskAnalysis` type dependency must be confirmed
 4. **`atlas reason analyze`** command body — requires retiring `atlas/principles/engine.py` lazy import first
 5. **`atlas portfolio analyze`** + **`atlas portfolio review`** command bodies — share `atlas.analysis.portfolio` consumers, retire together

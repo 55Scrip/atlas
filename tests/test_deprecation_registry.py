@@ -35,13 +35,13 @@ EXPECTED_COMMANDS = (
     "atlas watchlist analyze",
     "atlas portfolio analyze",
     "atlas portfolio review",
-    "atlas evidence assess",
     "atlas reason analyze",
     "atlas risk size",
 )
 
 RETIRED_COMMANDS = (
     "atlas daily brief",
+    "atlas evidence assess",
 )
 
 # ── Registry completeness ─────────────────────────────────────────────────────
@@ -204,14 +204,19 @@ def test_portfolio_review_message_matches_registry(tmp_path) -> None:
     assert "atlas portfolio summary" in result.output
 
 
-def test_evidence_assess_exits_cleanly() -> None:
-    result = runner.invoke(app, ["evidence", "assess"])
-    assert result.exit_code == 0
+def test_evidence_assess_is_retired_not_active() -> None:
+    """Sprint 86: atlas evidence assess was retired — must not be in active registry."""
+    assert "atlas evidence assess" not in all_deprecated_commands()
 
 
-def test_evidence_assess_message_matches_registry() -> None:
+def test_evidence_assess_is_in_retired_registry() -> None:
+    assert "atlas evidence assess" in all_retired_commands()
+
+
+def test_evidence_assess_command_is_no_longer_callable() -> None:
+    """Sprint 86: atlas evidence assess is retired — CLI should not recognize it."""
     result = runner.invoke(app, ["evidence", "assess"])
-    assert "consolidat" in result.output.lower()
+    assert result.exit_code != 0
 
 
 def test_reason_analyze_exits_cleanly() -> None:
@@ -241,7 +246,6 @@ def test_risk_size_message_matches_registry(tmp_path) -> None:
 # ── No providers / no network ─────────────────────────────────────────────────
 
 @pytest.mark.parametrize("command,args", [
-    (["evidence", "assess"], []),
     (["reason", "analyze"], []),
 ])
 def test_no_provider_output_from_no_arg_commands(command, args) -> None:
