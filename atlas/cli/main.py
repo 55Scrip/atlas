@@ -850,22 +850,6 @@ def principles_check_command(text: str):
     console.print(render_principles_check(check))
 
 
-@reason_app.command("analyze")
-def reason_analyze_command(
-    ticker: str = typer.Option("NVDA", "--ticker", help="[DEPRECATED] Ticker context."),
-    provider_name: str = typer.Option("mock", "--provider", help="[DEPRECATED] Data provider."),
-    theme: str = typer.Option("AI infrastructure", "--theme", help="[DEPRECATED] Theme context."),
-):
-    """[DEPRECATED] Legacy Reason Analyze — reasoning analysis is being consolidated.
-
-    This command is deprecated and will be removed in a future sprint.
-    Reasoning analysis is being consolidated into Blueprint-aligned decision
-    and research capabilities.
-    """
-    console.print(deprecated_command_message("atlas reason analyze"))
-    raise typer.Exit(code=0)
-
-
 @risk_drift_app.command("analyze")
 def risk_drift_analyze_command(
     original_profile_path: Path = typer.Option(

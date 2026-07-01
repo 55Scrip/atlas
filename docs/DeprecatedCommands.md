@@ -1,7 +1,7 @@
 # Atlas Deprecated Commands
 
 **Created:** 2026-07-01 (Sprint 84)  
-**Updated:** 2026-07-01 (Sprint 86)  
+**Updated:** 2026-07-01 (Sprint 87)  
 **Status:** Active registry — all entries reflected in `atlas/cli/deprecations.py`
 
 This document is the human-readable counterpart to the code registry at
@@ -30,6 +30,18 @@ This document is the human-readable counterpart to the code registry at
 | **Replacement** | None — being consolidated into Blueprint-aligned decision and research capabilities |
 | **Legacy module** | `atlas.evidence` (`EvidenceQualityEngine`) — **engine remains on disk** |
 | **Engine callers** | `atlas/comparison/`, `atlas/decision_journal/`, `atlas/watchlist_review/` — all three must be retired before engine deletion |
+| **Notes** | Entry preserved in `_RETIRED_REGISTRY` for audit. Not callable. |
+
+---
+
+### ~~`atlas reason analyze`~~ — RETIRED Sprint 87
+
+| Field | Value |
+|---|---|
+| **Status** | **Retired** (command body removed Sprint 87) |
+| **Replacement** | None — being consolidated into Blueprint-aligned decision and research capabilities |
+| **Legacy module** | `atlas.reasoning` (`ReasoningEngine`) — **engine remains on disk** |
+| **Engine blocker** | `atlas/principles/engine.py` has a lazy import of `render_reasoning_report` inside `check_reasoning_report()`. That function has no external callers, but the import statement must be removed before engine deletion. |
 | **Notes** | Entry preserved in `_RETIRED_REGISTRY` for audit. Not callable. |
 
 ---
@@ -69,17 +81,6 @@ This document is the human-readable counterpart to the code registry at
 
 ---
 
-### `atlas reason analyze`
-
-| Field | Value |
-|---|---|
-| **Status** | Deprecated (Sprint 82) |
-| **Replacement** | None — being consolidated into Blueprint-aligned decision and research capabilities |
-| **Legacy module** | `atlas.reasoning` (`ReasoningEngine`) |
-| **Removal criteria** | `ReasoningEngine` lazy import in `atlas/principles/engine.py` must be removed first. Then confirm no remaining non-deprecated callers before deletion. |
-
----
-
 ### `atlas risk size`
 
 | Field | Value |
@@ -97,8 +98,8 @@ Based on isolation analysis (as of Sprint 85):
 
 1. ~~**`atlas daily brief`**~~ — **DONE Sprint 85** (engine deleted Sprint 77; command body retired Sprint 85)
 2. ~~**`atlas evidence assess`**~~ — **DONE Sprint 86** (command body retired; engine retained pending 3 caller retirements)
-3. **`atlas risk size`** command body — engine has no direct callers, but `RiskAnalysis` type dependency must be confirmed
-4. **`atlas reason analyze`** command body — requires retiring `atlas/principles/engine.py` lazy import first
+3. ~~**`atlas reason analyze`**~~ — **DONE Sprint 87** (command body retired; engine retained pending `atlas/principles/engine.py` cleanup)
+4. **`atlas risk size`** command body — stub is a pure no-op; RiskEngine has no callers; safe to retire any sprint (recommended Sprint 88)
 5. **`atlas portfolio analyze`** + **`atlas portfolio review`** command bodies — share `atlas.analysis.portfolio` consumers, retire together
 6. **`atlas watchlist analyze`** command body — most coupled; six other engines import `WatchlistEngine`
 

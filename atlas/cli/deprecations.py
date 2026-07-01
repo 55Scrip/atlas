@@ -80,6 +80,23 @@ _RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
             "until those callers are retired.",
         ),
     ),
+    DeprecatedCommand(
+        command="atlas reason analyze",
+        message=(
+            "[yellow]DEPRECATED:[/yellow] The command [bold]atlas reason analyze[/bold] is deprecated.\n"
+            "Reasoning analysis is being consolidated into Blueprint-aligned decision and research capabilities."
+        ),
+        replacement_command=None,
+        consolidation_direction="Blueprint-aligned decision and research capabilities",
+        legacy_module="atlas.reasoning",
+        removal_criteria=(
+            "Command body retired in Sprint 87.",
+            "atlas.reasoning engine remains on disk — atlas/principles/engine.py has a lazy import "
+            "of render_reasoning_report inside check_reasoning_report() (TYPE_CHECKING import of "
+            "ReasoningReport is not a runtime dependency). Engine deletion requires removing or "
+            "replacing check_reasoning_report() first.",
+        ),
+    ),
 )
 
 # ── Active deprecated commands (still registered in CLI) ──────────────────────
@@ -132,20 +149,6 @@ _REGISTRY: tuple[DeprecatedCommand, ...] = (
         removal_criteria=(
             "PortfolioReviewEngine must have no remaining non-deprecated callers.",
             "Confirm atlas.portfolio_review is unused before deleting.",
-        ),
-    ),
-    DeprecatedCommand(
-        command="atlas reason analyze",
-        message=(
-            "[yellow]DEPRECATED:[/yellow] The command [bold]atlas reason analyze[/bold] is deprecated.\n"
-            "Reasoning analysis is being consolidated into Blueprint-aligned decision and research capabilities."
-        ),
-        replacement_command=None,
-        consolidation_direction="Blueprint-aligned decision and research capabilities",
-        legacy_module="atlas.reasoning",
-        removal_criteria=(
-            "ReasoningEngine lazy import in atlas/principles/engine.py must be removed first.",
-            "Confirm atlas.reasoning.ReasoningEngine has no non-deprecated callers before deleting.",
         ),
     ),
     DeprecatedCommand(

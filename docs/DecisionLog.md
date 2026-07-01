@@ -1012,3 +1012,31 @@ invariant, so future sprints cannot accidentally delete the engine without updat
 
 **Outcome:** Command retired. Engine stays. 1107 tests passing. `_RETIRED_REGISTRY`
 now has 2 entries (daily brief, evidence assess).
+
+---
+
+## Sprint 87 — 2026-07-01: Retire `atlas reason analyze` Command Body; Retain Engine
+
+**Decision:** Remove `atlas reason analyze` command body. Retain `atlas/reasoning/`
+engine on disk.
+
+**Rationale:** The CLI stub was a pure no-op — safe to remove regardless of engine
+state. The underlying `atlas.reasoning.ReasoningEngine` cannot be deleted yet because
+`atlas/principles/engine.py` contains a lazy import of `render_reasoning_report`
+inside `check_reasoning_report()`.
+
+**Key finding from sprint:** `check_reasoning_report()` has no external callers —
+it is exported by `atlas/principles/__init__.py` but nothing calls it. The lazy
+import therefore never fires at runtime. This means the `atlas.reasoning` runtime
+dependency is weaker than previously documented, but the import statement still
+exists and engine deletion still requires removing it explicitly.
+
+**TYPE_CHECKING import note:** `atlas/principles/engine.py` also imports `ReasoningReport`
+under `if TYPE_CHECKING:` — this is not a runtime dependency and does not block deletion.
+
+**Blueprint-aligned ReasoningEngine note:** `atlas/domains/decision/engine.py` defines
+its own `ReasoningEngine` protocol class — completely separate from the legacy
+`atlas.reasoning.ReasoningEngine`. Not affected by this sprint.
+
+**Outcome:** Command retired. Engine stays. 1104 tests passing. `_RETIRED_REGISTRY`
+now has 3 entries (daily brief, evidence assess, reason analyze).

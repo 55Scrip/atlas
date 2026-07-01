@@ -1,8 +1,15 @@
-"""Sprint 82: Tests for atlas reason analyze deprecation.
+"""Sprint 87: Tests confirming atlas reason analyze has been retired.
 
-Confirms that `atlas reason analyze` is deprecated, does not call
-ReasoningEngine or providers, and that existing deprecated commands
-remain deprecated.
+Sprint 82 deprecated the command; Sprint 87 removed the command body.
+`atlas reason analyze` is no longer a registered CLI command.
+
+The underlying `atlas.reasoning` engine (ReasoningEngine) remains on disk.
+`atlas/principles/engine.py` contains:
+- A TYPE_CHECKING-only import of ReasoningReport (not a runtime dependency)
+- A lazy import of render_reasoning_report inside check_reasoning_report()
+  — which has no external callers and is not exercised at runtime
+
+Engine deletion is deferred to a future sprint.
 """
 
 from __future__ import annotations
@@ -12,47 +19,40 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+from atlas.cli.deprecations import all_deprecated_commands, all_retired_commands
 from atlas.cli.main import app
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CLI_PATH = REPO_ROOT / "atlas" / "cli" / "main.py"
+PRINCIPLES_ENGINE_PATH = REPO_ROOT / "atlas" / "principles" / "engine.py"
 
 runner = CliRunner()
 
 
-def test_reason_analyze_command_exits_cleanly() -> None:
+def test_reason_analyze_command_is_no_longer_registered() -> None:
+    """atlas reason analyze must not be a recognized subcommand of atlas reason."""
     result = runner.invoke(app, ["reason", "analyze"])
-    assert result.exit_code == 0, f"Expected exit 0, got {result.exit_code}: {result.output}"
+    assert result.exit_code != 0
 
 
-def test_reason_analyze_command_prints_deprecation_message() -> None:
-    result = runner.invoke(app, ["reason", "analyze"])
-    assert "deprecated" in result.output.lower()
+def test_reason_analyze_command_is_not_in_active_registry() -> None:
+    assert "atlas reason analyze" not in all_deprecated_commands()
 
 
-def test_reason_analyze_deprecation_does_not_invent_replacement_command() -> None:
-    """Deprecation message must not reference a non-existent replacement command."""
-    result = runner.invoke(app, ["reason", "analyze"])
-    output_lower = result.output.lower()
-    assert "atlas reason" not in output_lower or "deprecated" in output_lower
-    assert "atlas reasoning" not in output_lower
+def test_reason_analyze_command_is_in_retired_registry() -> None:
+    assert "atlas reason analyze" in all_retired_commands()
 
 
-def test_reason_analyze_deprecation_mentions_consolidation() -> None:
-    result = runner.invoke(app, ["reason", "analyze"])
-    output_lower = result.output.lower()
-    assert "consolidat" in output_lower or "blueprint" in output_lower or "research" in output_lower
-
-
-def test_reason_analyze_does_not_call_providers() -> None:
-    result = runner.invoke(app, ["reason", "analyze"])
-    assert result.exit_code == 0
-    assert "yahoo" not in result.output.lower()
-
-
-def test_reason_analyze_help_text_marks_deprecated() -> None:
-    result = runner.invoke(app, ["reason", "analyze", "--help"])
-    assert "deprecated" in result.output.lower()
+def test_reason_analyze_command_function_removed_from_cli() -> None:
+    """The reason_analyze_command function must not exist in the CLI source."""
+    source = CLI_PATH.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    func_names = {
+        node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+    }
+    assert "reason_analyze_command" not in func_names, (
+        "reason_analyze_command function should have been removed in Sprint 87"
+    )
 
 
 def test_cli_does_not_import_reasoning_engine_at_module_level() -> None:
@@ -70,31 +70,45 @@ def test_cli_does_not_import_reasoning_engine_at_module_level() -> None:
                 )
 
 
-def test_no_reasoning_engine_call_in_analyze_command_body() -> None:
-    """The reason_analyze_command function must not call ReasoningEngine."""
-    source = CLI_PATH.read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name == "reason_analyze_command":
-            func_source = ast.get_source_segment(source, node) or ""
-            assert "ReasoningEngine" not in func_source, (
-                "reason_analyze_command must not call ReasoningEngine (deprecated)"
-            )
-
-
-def test_build_reasoning_report_helper_is_removed() -> None:
-    """The _build_reasoning_report private helper was dead code after Sprint 82 — must be gone."""
-    source = CLI_PATH.read_text(encoding="utf-8")
-    assert "_build_reasoning_report" not in source, (
-        "_build_reasoning_report dead-code helper should have been removed in Sprint 82"
+def test_reasoning_engine_module_remains_on_disk() -> None:
+    """atlas.reasoning engine must still exist — engine deletion deferred."""
+    import importlib
+    mod = importlib.import_module("atlas.reasoning")
+    assert hasattr(mod, "ReasoningEngine"), (
+        "atlas.reasoning.ReasoningEngine must still be importable "
+        "(atlas/principles/engine.py lazy import not yet removed)"
     )
 
 
-# ── Confirm existing deprecated commands remain deprecated ────────────────────
+def test_principles_engine_lazy_import_is_still_present() -> None:
+    """Document: atlas/principles/engine.py still has a lazy import of render_reasoning_report.
+
+    This is the remaining blocker for atlas.reasoning engine deletion.
+    The import is inside check_reasoning_report() — only fires if that function is called.
+    check_reasoning_report() has no external callers as of Sprint 87.
+    """
+    source = PRINCIPLES_ENGINE_PATH.read_text(encoding="utf-8")
+    assert "atlas.reasoning" in source, (
+        "Expected atlas/principles/engine.py to still reference atlas.reasoning — "
+        "if this passes without it, the lazy import may have been removed and engine deletion is now safe"
+    )
+
+
+def test_reasoning_engine_not_instantiated_by_cli() -> None:
+    """Confirm CLI source does not instantiate ReasoningEngine."""
+    source = CLI_PATH.read_text(encoding="utf-8")
+    assert "ReasoningEngine()" not in source
+
+
+# ── Remaining deprecated commands still work ─────────────────────────────────
 
 def test_daily_brief_is_retired() -> None:
-    # Sprint 85: atlas daily brief command body retired — no longer a valid command
     result = runner.invoke(app, ["daily", "brief"])
+    assert result.exit_code != 0
+
+
+def test_evidence_assess_is_retired() -> None:
+    result = runner.invoke(app, ["evidence", "assess"])
     assert result.exit_code != 0
 
 
@@ -127,9 +141,3 @@ def test_portfolio_review_remains_deprecated(tmp_path) -> None:
     result = runner.invoke(app, ["portfolio", "review", str(p)])
     assert result.exit_code == 0
     assert "deprecated" in result.output.lower()
-
-
-def test_evidence_assess_is_retired() -> None:
-    # Sprint 86: atlas evidence assess command body retired — no longer a valid command
-    result = runner.invoke(app, ["evidence", "assess"])
-    assert result.exit_code != 0

@@ -494,3 +494,18 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - Recommended Sprint 87 target: retire `atlas reason analyze` command body
   (ReasoningEngine — requires removing lazy import in atlas/principles/engine.py first,
   then confirming no other callers).
+
+**Sprint 87 (2026-07-01):** `atlas reason analyze` command body retired; `atlas.reasoning` engine retained.
+- `reason_analyze_command` function and `@reason_app.command("analyze")` registration
+  removed from `atlas/cli/main.py`. Command is no longer callable.
+- Entry moved from `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`.
+- `atlas/reasoning/` (ReasoningEngine) kept on disk — `atlas/principles/engine.py` contains:
+  - TYPE_CHECKING import of `ReasoningReport` (not a runtime dependency)
+  - Lazy import of `render_reasoning_report` inside `check_reasoning_report()` (no external callers)
+- `atlas/domains/decision/engine.py` defines its own Blueprint-aligned `ReasoningEngine` class —
+  completely separate from `atlas.reasoning.ReasoningEngine`; unaffected.
+- `test_reason_analyze_deprecation.py` rewritten as retirement test; includes assertion that
+  `atlas/principles/engine.py` still references `atlas.reasoning` (documents engine deletion blocker).
+- 1104 tests passing. CLI surface area reduced by one more command.
+- Recommended Sprint 88 target: retire `atlas risk size` command body (stub is a pure no-op;
+  RiskEngine has no callers outside the deprecated command).

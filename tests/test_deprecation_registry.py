@@ -35,13 +35,13 @@ EXPECTED_COMMANDS = (
     "atlas watchlist analyze",
     "atlas portfolio analyze",
     "atlas portfolio review",
-    "atlas reason analyze",
     "atlas risk size",
 )
 
 RETIRED_COMMANDS = (
     "atlas daily brief",
     "atlas evidence assess",
+    "atlas reason analyze",
 )
 
 # ── Registry completeness ─────────────────────────────────────────────────────
@@ -219,14 +219,19 @@ def test_evidence_assess_command_is_no_longer_callable() -> None:
     assert result.exit_code != 0
 
 
-def test_reason_analyze_exits_cleanly() -> None:
-    result = runner.invoke(app, ["reason", "analyze"])
-    assert result.exit_code == 0
+def test_reason_analyze_is_retired_not_active() -> None:
+    """Sprint 87: atlas reason analyze was retired — must not be in active registry."""
+    assert "atlas reason analyze" not in all_deprecated_commands()
 
 
-def test_reason_analyze_message_matches_registry() -> None:
+def test_reason_analyze_is_in_retired_registry() -> None:
+    assert "atlas reason analyze" in all_retired_commands()
+
+
+def test_reason_analyze_command_is_no_longer_callable() -> None:
+    """Sprint 87: atlas reason analyze is retired — CLI should not recognize it."""
     result = runner.invoke(app, ["reason", "analyze"])
-    assert "consolidat" in result.output.lower()
+    assert result.exit_code != 0
 
 
 def test_risk_size_exits_cleanly(tmp_path) -> None:
@@ -245,11 +250,10 @@ def test_risk_size_message_matches_registry(tmp_path) -> None:
 
 # ── No providers / no network ─────────────────────────────────────────────────
 
-@pytest.mark.parametrize("command,args", [
-    (["reason", "analyze"], []),
-])
-def test_no_provider_output_from_no_arg_commands(command, args) -> None:
-    result = runner.invoke(app, command + args)
+def test_risk_size_does_not_call_providers(tmp_path) -> None:
+    p = tmp_path / "r.json"
+    p.write_text(json.dumps({"ticker": "NVDA"}), encoding="utf-8")
+    result = runner.invoke(app, ["risk", "size", str(p)])
     assert result.exit_code == 0
     assert "yahoo" not in result.output.lower()
 

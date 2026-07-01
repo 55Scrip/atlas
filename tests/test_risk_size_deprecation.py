@@ -137,7 +137,7 @@ def test_evidence_assess_is_retired() -> None:
     assert result.exit_code != 0
 
 
-def test_reason_analyze_remains_deprecated() -> None:
+def test_reason_analyze_is_retired() -> None:
+    # Sprint 87: atlas reason analyze command body retired — no longer a valid command
     result = runner.invoke(app, ["reason", "analyze"])
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
+    assert result.exit_code != 0

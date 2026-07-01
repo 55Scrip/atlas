@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-01 (Sprint 86)  
-**Status:** Active — Sprint 86 target complete; Sprint 87 target to be selected
+**Updated:** 2026-07-01 (Sprint 87)  
+**Status:** Active — Sprint 87 target complete; Sprint 88 target to be selected
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,28 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 87 Migration Target — COMPLETED
+
+### Completed: `atlas reason analyze` command body retired; engine retained
+
+**Sprint 87 result:**
+- `atlas reason analyze` command body removed from `atlas/cli/main.py` — command no longer callable
+- `atlas reason analyze` moved from active `_REGISTRY` to `_RETIRED_REGISTRY` in `atlas/cli/deprecations.py`
+- `atlas/reasoning/` engine **intentionally retained** — `atlas/principles/engine.py` has:
+  - A `TYPE_CHECKING`-only import of `ReasoningReport` (not a runtime dependency)
+  - A lazy import of `render_reasoning_report` inside `check_reasoning_report()` — only fires if called
+  - `check_reasoning_report()` has no external callers as of Sprint 87
+- `atlas/domains/decision/engine.py` defines its own `ReasoningEngine` (Blueprint-aligned) — entirely separate from `atlas.reasoning.ReasoningEngine`; unaffected
+- Tests updated: `test_reason_analyze_deprecation.py` rewritten as retirement test; includes lazy-import documentation assertion
+- 1104 tests passing
+
+**Engine deletion criteria (deferred to Sprint 88 or later):**
+1. Remove `check_reasoning_report()` from `atlas/principles/engine.py` OR replace its lazy `atlas.reasoning` import with a non-legacy approach
+2. Re-confirm `atlas.reasoning.ReasoningEngine` has no remaining instantiation points
+3. The `TYPE_CHECKING`-only `ReasoningReport` import is not a runtime blocker but should also be removed when deleting the engine
 
 ---
 

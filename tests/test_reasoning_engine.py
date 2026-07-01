@@ -64,11 +64,8 @@ def test_reasoning_renderer_includes_required_sections_and_no_trade_advice():
     assert "Strong Sell" not in rendered
 
 
-def test_reasoning_cli_outputs_report():
-    # Sprint 82: atlas reason analyze is deprecated — expect deprecation message
+def test_reasoning_cli_command_is_retired():
+    # Sprint 87: atlas reason analyze command body retired — no longer a valid command
     runner = CliRunner()
-
     result = runner.invoke(app, ["reason", "analyze"])
-
-    assert result.exit_code == 0
-    assert "deprecated" in result.output.lower()
+    assert result.exit_code != 0
