@@ -1601,3 +1601,28 @@ source .venv/bin/activate
 pip install -e .
 atlas init
 ```
+
+## Quickstart: Run the Daily Brief Demo
+
+The Daily Brief demo shows a complete local Atlas pipeline — no network, no AI,
+no external APIs, no live data.
+
+```bash
+# Install (once)
+python -m venv .venv && source .venv/bin/activate && pip install -e .
+
+# Run the demo
+bash scripts/run_daily_brief_demo.sh
+```
+
+The script reads structured JSON inputs from `examples/daily_brief_demo/` and
+writes generated files to `tmp/atlas_demo/`, including a saved Daily Brief at
+`tmp/atlas_demo/daily_brief.txt`.
+
+To clean up generated files:
+
+```bash
+rm -rf tmp/atlas_demo
+```
+
+For full details see [examples/daily_brief_demo/README.md](examples/daily_brief_demo/README.md).

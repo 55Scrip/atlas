@@ -416,6 +416,39 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: Local Demo UX Polish and First User Guide (Sprint 66)
+
+Decision: improve the local Daily Brief demo experience and create a clear
+user/developer guide for running Atlas locally.
+
+Changes:
+- `scripts/run_daily_brief_demo.sh` — added venv auto-detection (`ATLAS=`
+  variable resolves `.venv/bin/atlas` or PATH-available `atlas`), added a
+  clear error message when neither is found, added blank lines between steps
+  for readability, saved Daily Brief output to `tmp/atlas_demo/daily_brief.txt`
+  via `tee`, and added a generated-files summary at the end.
+- `examples/daily_brief_demo/README.md` — rewritten to include: Purpose,
+  What This Is Not, Prerequisites, Quickstart, Input Files table, Generated
+  Files table with step mapping, Pipeline Steps (manual commands), Expected
+  Output excerpt (accurate to actual demo output including "What Can Safely
+  Wait" and "Discovery Context"), Clean Up, Known Limitations, and
+  Architecture Notes sections.
+- `README.md` — added "Quickstart: Run the Daily Brief Demo" section with
+  one-line install, one-line run, cleanup command, and link to full guide.
+- `tests/test_daily_brief_demo.py` — added 20 Sprint 66 asset verification
+  tests covering: script existence, no network tools, no python one-liners,
+  `set -euo pipefail`, output file, cleanup instructions, error handling,
+  README content (disclaimers, sections, forbidden language), and root README
+  Quickstart.
+
+Rationale: the demo script failed with `atlas: command not found` for
+developers who had not activated the virtualenv. The demo documentation
+described an outdated expected output (missing "What Can Safely Wait" and
+"Discovery Context" sections added in Sprints 64–65). The root README had
+no clear path for a developer to run Atlas locally.
+
+881 tests pass total (861 prior + 20 new).
+
 ## 2026-07-01: Daily Brief Priority Routing — HIGH/MODERATE Only in What Deserves Attention (Sprint 65)
 
 Decision: remove LOW priority items from `_opening_section` ("What Deserves Attention")

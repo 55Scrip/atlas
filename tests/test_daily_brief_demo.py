@@ -1,4 +1,4 @@
-"""Sprint 58/59: Daily Brief demo dataset validation and end-to-end pipeline tests."""
+"""Sprint 58/59/66: Daily Brief demo dataset validation, pipeline, and asset tests."""
 
 from __future__ import annotations
 
@@ -332,3 +332,129 @@ def test_end_to_end_no_network_calls(tmp_path: Path, monkeypatch) -> None:
                         lambda *a, **k: (_ for _ in ()).throw(AssertionError("network call")))
     _, all_ok = _run_full_pipeline(tmp_path)
     assert all_ok
+
+
+# ── Sprint 66: demo script and documentation asset verification ────────────────
+
+REPO_ROOT = Path(__file__).parent.parent
+SCRIPT = REPO_ROOT / "scripts" / "run_daily_brief_demo.sh"
+DEMO_README = DEMO_DIR / "README.md"
+ROOT_README = REPO_ROOT / "README.md"
+
+
+def test_demo_script_exists() -> None:
+    assert SCRIPT.exists(), f"Demo script not found: {SCRIPT}"
+
+
+def test_demo_script_uses_atlas_cli() -> None:
+    content = SCRIPT.read_text()
+    assert "atlas" in content
+
+
+def test_demo_script_does_not_call_network_tools() -> None:
+    content = SCRIPT.read_text()
+    assert "curl" not in content
+    assert "wget" not in content
+
+
+def test_demo_script_does_not_use_python_one_liners() -> None:
+    content = SCRIPT.read_text()
+    assert "python3 -c" not in content
+    assert "python -c" not in content
+
+
+def test_demo_script_has_set_euo_pipefail() -> None:
+    content = SCRIPT.read_text()
+    assert "set -euo pipefail" in content
+
+
+def test_demo_script_writes_to_tmp_atlas_demo() -> None:
+    content = SCRIPT.read_text()
+    assert "tmp/atlas_demo" in content
+
+
+def test_demo_script_saves_daily_brief_to_file() -> None:
+    content = SCRIPT.read_text()
+    assert "daily_brief.txt" in content
+
+
+def test_demo_script_prints_cleanup_instructions() -> None:
+    content = SCRIPT.read_text()
+    assert "rm -rf" in content
+
+
+def test_demo_script_handles_missing_atlas_command() -> None:
+    content = SCRIPT.read_text()
+    assert "command not found" in content or "ERROR" in content
+
+
+def test_demo_readme_exists() -> None:
+    assert DEMO_README.exists()
+
+
+def test_demo_readme_has_no_api_disclaimer() -> None:
+    content = DEMO_README.read_text()
+    assert "No external APIs" in content or "external API" in content
+
+
+def test_demo_readme_has_no_ai_disclaimer() -> None:
+    content = DEMO_README.read_text()
+    assert "No AI" in content or "no AI" in content
+
+
+def test_demo_readme_has_cleanup_instructions() -> None:
+    content = DEMO_README.read_text()
+    assert "rm -rf" in content
+    assert "tmp/atlas_demo" in content
+
+
+def test_demo_readme_has_expected_output_section() -> None:
+    content = DEMO_README.read_text()
+    assert "Expected Output" in content
+
+
+def test_demo_readme_expected_output_shows_what_deserves_attention() -> None:
+    content = DEMO_README.read_text()
+    assert "What Deserves Attention" in content
+
+
+def test_demo_readme_expected_output_shows_what_can_safely_wait() -> None:
+    content = DEMO_README.read_text()
+    assert "What Can Safely Wait" in content
+
+
+def test_demo_readme_expected_output_shows_included_context() -> None:
+    content = DEMO_README.read_text()
+    assert "Included Context" in content
+
+
+def test_demo_readme_generated_files_section_lists_daily_brief_txt() -> None:
+    content = DEMO_README.read_text()
+    assert "daily_brief.txt" in content
+
+
+def test_demo_readme_no_recommendation_language() -> None:
+    # Use a tighter set: bare "buy"/"sell" legitimately appear in disclaimers
+    # ("Not a recommendation to buy…"), so only check terms that never belong.
+    readme_forbidden = (
+        "strong buy", "strong sell", "price target", "outperform",
+        "market-beating", "must act", "guaranteed", "risk-free",
+    )
+    content = DEMO_README.read_text().lower()
+    for term in readme_forbidden:
+        assert term not in content, f"Forbidden term {term!r} found in demo README"
+
+
+def test_root_readme_has_quickstart_section() -> None:
+    content = ROOT_README.read_text()
+    assert "Quickstart" in content
+
+
+def test_root_readme_quickstart_mentions_demo_script() -> None:
+    content = ROOT_README.read_text()
+    assert "run_daily_brief_demo.sh" in content
+
+
+def test_root_readme_quickstart_has_cleanup_instructions() -> None:
+    content = ROOT_README.read_text()
+    assert "rm -rf tmp/atlas_demo" in content

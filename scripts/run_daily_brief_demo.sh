@@ -2,13 +2,33 @@
 # Atlas Daily Brief Demo — AMD + NVDA
 # Runs the full local pipeline from structured example data to a Daily Brief summary.
 # No network calls. No AI. No external APIs. Deterministic.
+#
+# Usage:
+#   bash scripts/run_daily_brief_demo.sh
+#
+# Prerequisites: install Atlas in a local virtualenv first.
+#   python -m venv .venv && source .venv/bin/activate && pip install -e .
 
 set -euo pipefail
 
+# Resolve the atlas CLI — prefer the local virtualenv if present.
+if [ -f ".venv/bin/atlas" ]; then
+  ATLAS=".venv/bin/atlas"
+elif command -v atlas &>/dev/null; then
+  ATLAS="atlas"
+else
+  echo "ERROR: 'atlas' command not found."
+  echo "Install Atlas first:"
+  echo "  python -m venv .venv && source .venv/bin/activate && pip install -e ."
+  exit 1
+fi
+
 DEMO_DIR="examples/daily_brief_demo"
 TMP_DIR="tmp/atlas_demo"
+BRIEF_OUT="$TMP_DIR/daily_brief.txt"
 
 echo "=== Atlas Daily Brief Demo (AMD + NVDA) ==="
+echo "Atlas:  $ATLAS"
 echo "Input:  $DEMO_DIR"
 echo "Output: $TMP_DIR"
 echo ""
@@ -16,27 +36,30 @@ echo ""
 mkdir -p "$TMP_DIR"
 
 echo "Step 1: Export research projects (AMD + NVDA)..."
-atlas research export \
+"$ATLAS" research export \
   --input "$DEMO_DIR/research_input.json" \
   --output "$TMP_DIR/research.json"
 echo "  → $TMP_DIR/research.json"
 
+echo ""
 echo "Step 2: Export watchlist intelligence (AMD + NVDA)..."
-atlas watchlist intelligence \
+"$ATLAS" watchlist intelligence \
   --input "$DEMO_DIR/watchlist_input.json" \
   --output "$TMP_DIR/watchlist.json"
 echo "  → $TMP_DIR/watchlist.json"
 
+echo ""
 echo "Step 3: Export discovery candidates..."
-atlas discovery export \
+"$ATLAS" discovery export \
   --knowledge "$DEMO_DIR/knowledge.json" \
   --research "$TMP_DIR/research.json" \
   --watchlist "$TMP_DIR/watchlist.json" \
   --output "$TMP_DIR/discovery.json"
 echo "  → $TMP_DIR/discovery.json"
 
-echo "Step 4: Export AMD company analysis (engine-backed)..."
-atlas company-analysis export \
+echo ""
+echo "Step 4: Export AMD company analysis..."
+"$ATLAS" company-analysis export \
   --ticker AMD \
   --company-name "AMD Corporation" \
   --sector "Semiconductors" \
@@ -47,8 +70,9 @@ atlas company-analysis export \
   --output "$TMP_DIR/company_analysis_amd.json"
 echo "  → $TMP_DIR/company_analysis_amd.json"
 
-echo "Step 5: Export NVDA company analysis (engine-backed)..."
-atlas company-analysis export \
+echo ""
+echo "Step 5: Export NVDA company analysis..."
+"$ATLAS" company-analysis export \
   --ticker NVDA \
   --company-name "NVIDIA Corporation" \
   --sector "Semiconductors" \
@@ -59,22 +83,36 @@ atlas company-analysis export \
   --output "$TMP_DIR/company_analysis_nvda.json"
 echo "  → $TMP_DIR/company_analysis_nvda.json"
 
+echo ""
 echo "Step 6: Merge company analysis exports..."
-atlas company-analysis merge \
+"$ATLAS" company-analysis merge \
   --inputs "$TMP_DIR/company_analysis_amd.json" \
   --inputs "$TMP_DIR/company_analysis_nvda.json" \
   --output "$TMP_DIR/company_analysis.json"
 echo "  → $TMP_DIR/company_analysis.json"
 
 echo ""
-echo "Step 7: Generate Daily Brief (AMD + NVDA)..."
-echo "=========================================="
-atlas daily summary \
+echo "Step 7: Generate Daily Brief..."
+echo "────────────────────────────────────────────────────────────"
+"$ATLAS" daily summary \
   --research "$TMP_DIR/research.json" \
   --watchlist "$TMP_DIR/watchlist.json" \
   --discovery "$TMP_DIR/discovery.json" \
-  --company-analysis "$TMP_DIR/company_analysis.json"
+  --company-analysis "$TMP_DIR/company_analysis.json" \
+  | tee "$BRIEF_OUT"
 
+echo "────────────────────────────────────────────────────────────"
 echo ""
-echo "Demo complete. Outputs are in $TMP_DIR/"
+echo "Demo complete."
+echo ""
+echo "Generated files:"
+echo "  $TMP_DIR/research.json"
+echo "  $TMP_DIR/watchlist.json"
+echo "  $TMP_DIR/discovery.json"
+echo "  $TMP_DIR/company_analysis_amd.json"
+echo "  $TMP_DIR/company_analysis_nvda.json"
+echo "  $TMP_DIR/company_analysis.json"
+echo "  $BRIEF_OUT"
+echo ""
+echo "Daily Brief saved to: $BRIEF_OUT"
 echo "To clean up: rm -rf $TMP_DIR"
