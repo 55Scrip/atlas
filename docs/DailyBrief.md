@@ -54,8 +54,7 @@ Use atlas daily summary for the Blueprint-aligned Daily Brief workflow.
 ```
 
 The underlying `atlas.daily_brief.DailyBriefEngine` (provider-coupled, 353 lines)
-remains on disk but is no longer called by any CLI command. It is a candidate
-for deletion in Sprint 77 or later after confirming no other consumers exist.
+was deleted in Sprint 77. The module no longer exists.
 
 ### Blueprint-aligned: `atlas daily summary` (Sprint 48, current)
 

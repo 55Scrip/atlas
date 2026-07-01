@@ -208,3 +208,46 @@ def test_legacy_shim_atlas_daily_is_documented_as_migration_target() -> None:
 def test_readme_links_to_consolidation_plan() -> None:
     readme = (REPO_ROOT / "README.md").read_text()
     assert "LegacyConsolidationPlan.md" in readme
+
+
+# ── Sprint 77: legacy daily_brief engine removal guardrails ──────────────────
+
+
+def test_atlas_daily_brief_engine_is_removed() -> None:
+    """Sprint 77: atlas/daily_brief/ was deleted — the directory must not exist."""
+    assert not (ATLAS_ROOT / "daily_brief").exists(), (
+        "atlas/daily_brief/ legacy engine should have been removed in Sprint 77"
+    )
+
+
+def test_atlas_daily_brief_is_not_importable() -> None:
+    """Sprint 77: atlas.daily_brief must not be importable."""
+    import importlib
+    import sys
+
+    # Ensure no cached module from a prior import
+    sys.modules.pop("atlas.daily_brief", None)
+
+    try:
+        importlib.import_module("atlas.daily_brief")
+        raise AssertionError("atlas.daily_brief should not be importable after Sprint 77 deletion")
+    except ModuleNotFoundError:
+        pass  # expected
+
+
+def test_no_active_code_imports_atlas_daily_brief() -> None:
+    """Sprint 77: no source file outside atlas/daily_brief/ should import atlas.daily_brief."""
+    violations = []
+    search_dirs = [ATLAS_ROOT, REPO_ROOT / "tests", REPO_ROOT / "scripts"]
+    for directory in search_dirs:
+        if not directory.exists():
+            continue
+        for path in directory.rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            for module in IMPORT_RE.findall(text):
+                if module.startswith("atlas.daily_brief"):
+                    violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "Active imports of atlas.daily_brief found:\n" + "\n".join(violations)

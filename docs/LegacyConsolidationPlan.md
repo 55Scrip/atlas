@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-01 (Sprint 76)  
-**Status:** Active — Sprint 76 target complete; Sprint 77 target to be selected
+**Updated:** 2026-07-01 (Sprint 77)  
+**Status:** Active — Sprint 77 target complete; Sprint 78 target to be selected
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -39,7 +39,7 @@ deterministic, and leave the CLI interface unchanged or clearly improved.
 | Module | Files | Lines | Description | Runtime CLI usage | Status |
 |---|---|---|---|---|---|
 | ~~`atlas/daily/`~~ | ~~2~~ | ~~43~~ | ~~Re-exports `atlas.daily_brief` under a stable path~~ | ~~`atlas daily brief`~~ | **Removed Sprint 75** |
-| `atlas/daily_brief/` | 2 | 353 | Legacy DailyBriefEngine (provider-dependent, 11 sub-engines) | `atlas daily brief` (deprecated Sprint 76) | Deprecated |
+| ~~`atlas/daily_brief/`~~ | ~~2~~ | ~~353~~ | ~~Legacy DailyBriefEngine (provider-dependent, 11 sub-engines)~~ | ~~`atlas daily brief` (deprecated Sprint 76)~~ | **Removed Sprint 77** |
 
 `atlas/daily/` is a pure re-export shim. It imports from `atlas/daily_brief/`
 and re-exports under the `atlas.daily` name. The only CLI consumer is
@@ -232,6 +232,24 @@ Provider safety: **confirmed**.
 
 ---
 
+## Sprint 77 Migration Target — COMPLETED
+
+### Completed: `atlas/daily_brief/` legacy engine deleted
+
+**Sprint 77 result:**
+- `atlas/daily_brief/` (2 files, 353 lines) deleted
+- `tests/test_daily_brief.py` rewritten: 6 legacy engine tests removed; 1 CLI deprecation test retained
+- 3 new architecture guardrail tests added to `test_architecture_boundaries.py`:
+  - `test_atlas_daily_brief_engine_is_removed` — directory must not exist
+  - `test_atlas_daily_brief_is_not_importable` — import must raise `ModuleNotFoundError`
+  - `test_no_active_code_imports_atlas_daily_brief` — static scan of all source files
+- 998 tests passing, 0 failures. Demo + RC verification both green.
+- `atlas.daily_brief` is now fully removed from the codebase.
+
+**Net reduction:** 353 lines of provider-coupled legacy code eliminated.
+
+---
+
 ## Sprint 76 Migration Target — COMPLETED
 
 ### Completed: `atlas daily brief` command deprecated
@@ -341,7 +359,7 @@ to not import from a legacy module) is an even smaller, safer change.
 | ~~`atlas/daily/` shim~~ | ~~43-line re-export; removed~~ | ~~High~~ | **Done 75** |
 | ~~`atlas/domains/daily_brief/` boundary violation~~ | ~~Fixed: namespace stub~~ | ~~High~~ | **Done 75** |
 | ~~`atlas daily brief` command~~ | ~~Deprecated; no longer calls engine~~ | ~~High~~ | **Done 76** |
-| `atlas/daily_brief/` legacy engine | Provider-coupled; no command calls it; safe to delete | Medium | 77 |
+| ~~`atlas/daily_brief/` legacy engine~~ | ~~Provider-coupled; deleted~~ | ~~Medium~~ | **Done 77** |
 | `atlas/analysis/watchlist.py` duplication | Parallel to `capabilities/watchlist_intelligence` | Medium | Future |
 | `atlas/analysis/portfolio.py` legacy type | Bridged via adapter; could be retired after full portfolio migration | Medium | Future |
 | Group C self-contained modules | `evidence`, `reasoning`, `risk`, etc. — good candidates for Blueprint wrappers | Low | Multi-sprint |

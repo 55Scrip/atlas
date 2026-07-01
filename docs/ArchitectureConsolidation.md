@@ -350,3 +350,16 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
   Daily Brief command.
 - 10 new Sprint 76 deprecation tests. 1001 tests passing.
 - Recommended Sprint 77 target: delete `atlas/daily_brief/` entirely.
+
+**Sprint 77 — completed:**
+
+- `atlas/daily_brief/` legacy engine (2 files, 353 lines) deleted.
+- `tests/test_daily_brief.py` rewritten: 6 legacy engine tests removed, CLI
+  deprecation test retained.
+- 3 guardrail tests added to `test_architecture_boundaries.py` asserting the
+  module directory is absent, the module is not importable, and no source file
+  imports from it.
+- `atlas.daily_brief` is now fully absent from the codebase. The legacy Daily
+  Brief surface area (Group A shim + engine) is completely gone.
+- `atlas daily summary` (Blueprint-aligned) remains the sole supported Daily
+  Brief command. 998 tests passing.

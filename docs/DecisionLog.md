@@ -836,3 +836,14 @@ lower-risk than Option B (wire the command through the new capability). It
 reduces provider coupling without changing the Blueprint-aligned path.
 `atlas/daily_brief/` remains on disk to allow comparison and confirm no
 external consumers exist before deletion in Sprint 77 or later.
+
+## 2026-07-01: Remove Legacy `atlas/daily_brief/` Engine (Sprint 77)
+
+Decision: delete `atlas/daily_brief/` (2 files, 353 lines) after confirming
+no active imports remain. Six legacy engine unit tests were removed; one CLI
+deprecation test was retained. Three architecture guardrail tests were added.
+
+Rationale: Sprint 76 deprecated `atlas daily brief` and removed the CLI import.
+The engine itself had no remaining consumers. Deletion reduces the legacy surface
+area and eliminates the last provider-coupled code called by any Daily Brief path.
+The guardrail tests ensure the module cannot be silently reintroduced.
