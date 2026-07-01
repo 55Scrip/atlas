@@ -361,10 +361,12 @@ No network calls are made. No recommendations are produced.
 to a Daily Brief–compatible JSON file.
 
 ```bash
-# Engine-backed export (Sprints 55–56) — runs CompanyAnalysisEngine on local inputs
+# Engine-backed export (Sprints 55–57) — runs CompanyAnalysisEngine on local inputs
 atlas company-analysis export \
   --ticker AMD \
   --company-name "AMD Corporation" \
+  --sector "Semiconductors" \
+  --country "USA" \
   --business-description "AMD designs high-performance CPUs and GPUs." \
   --knowledge knowledge.json \
   --research research.json \
@@ -386,9 +388,9 @@ See [CompanyAnalysis.md](CompanyAnalysis.md) for all input formats.
 - `knowledge_node_count` is accepted by `build_daily_brief_input` but not
   yet wired to a CLI flag.
 
-## Recommendation for Sprint 57
+## Recommendation for Sprint 58
 
-Add `--sector` and `--country` flags to `atlas company-analysis export` so
-the remaining core company fields (`Company.sector`, `Company.country`) can
-be populated from CLI flags, eliminating the "Missing Sector" and "Missing
-Country" unknowns from engine reports without requiring any external data.
+Wire `--knowledge`, `--research`, `--watchlist`, and `--discovery` inputs into a
+single `atlas daily summary --generate` command that runs all export steps
+automatically, producing a unified Daily Brief from local JSON files with no
+manual pipeline orchestration.

@@ -360,3 +360,20 @@ longer appends the "Missing Business Description" unknown because
 `Company.name` is set to the user value; when omitted it falls back to the ticker
 string. Both flags are entirely optional — omitting them preserves Sprint 55
 behavior exactly.
+
+## 2026-07-01: Add --sector and --country to Company Analysis Export (Sprint 57)
+
+Decision: add two optional string flags — `--sector` and `--country` — to
+`atlas company-analysis export`. Both populate `Company` fields used by
+`CompanyAnalysisEngine` without requiring any network calls or new adapters.
+
+Rationale: Sprint 56 left `Company.sector` and `Company.country` always empty,
+causing "Missing Sector" and "Missing Country" unknowns to appear in every
+engine-backed export. Both fields accept user-supplied local strings, require no
+external lookup, and follow the pattern established in Sprint 56 for optional
+metadata flags. When all four metadata flags (`--company-name`, `--sector`,
+`--country`, `--business-description`) are supplied alongside `--ticker`, all
+core "Missing X" unknowns are eliminated and engine confidence improves to
+`moderate`. Only "Missing Evidence" remains when no knowledge facts are
+provided. Both flags are entirely optional — omitting them preserves Sprint 56
+behavior exactly. No new files were added; only `atlas/cli/main.py` was modified.

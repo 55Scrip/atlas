@@ -1239,6 +1239,12 @@ def company_analysis_export_command(
     company_name: str | None = typer.Option(
         None, "--company-name", help="Human-readable company name (e.g. 'AMD Corporation').",
     ),
+    sector: str | None = typer.Option(
+        None, "--sector", help="Company sector (e.g. 'Semiconductors'). Local string only.",
+    ),
+    country: str | None = typer.Option(
+        None, "--country", help="Company country (e.g. 'USA'). Local string only.",
+    ),
     business_description: str | None = typer.Option(
         None, "--business-description", help="Plain-text business description (local only).",
     ),
@@ -1286,6 +1292,8 @@ def company_analysis_export_command(
                 raise ValueError("--ticker must not be empty")
 
             resolved_name = (company_name or "").strip() or ticker_upper
+            resolved_sector = (sector or "").strip()
+            resolved_country = (country or "").strip()
             resolved_description = (business_description or "").strip()
 
             knowledge_facts = ()
@@ -1307,6 +1315,8 @@ def company_analysis_export_command(
                 id=ticker_upper.lower(),
                 name=resolved_name,
                 ticker=ticker_upper,
+                sector=resolved_sector,
+                country=resolved_country,
             )
             analysis_input = CompanyAnalysisInput(
                 company=company,
