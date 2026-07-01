@@ -68,6 +68,7 @@ no AI. This is the future direction.
 | `unknowns` | tuple[DailyBriefUnknown, ...] | Unresolved questions |
 | `evidence_gaps` | tuple[DailyBriefEvidenceLink, ...] | Missing evidence links |
 | `next_research_steps` | tuple[str, ...] | Suggested next steps |
+| `knowledge_node_count` | int | Count of knowledge facts; rendered in Included Context (Sprint 65) |
 
 ### Sections (in order)
 
@@ -78,20 +79,36 @@ no AI. This is the future direction.
 5. **Watchlist Context** — present only when watchlist report provided
 6. **Discovery Context** — present only when discovery report with candidates provided
 
-### What Deserves Attention — Company Analysis Signals (Sprint 63)
+### What Deserves Attention — Priority Routing (Sprint 65)
 
-`_opening_section` surfaces company analysis context so "What Deserves Attention"
-is consistent with the Opening Summary when company reports are the primary input.
+"What Deserves Attention" contains only HIGH and MODERATE priority items.
+LOW priority items are never promoted into this section.
 
-| Condition | Priority | Detail |
+| Item | Priority | Routing |
 |---|---|---|
-| Any company has unknowns | `moderate` | "Company analysis includes observations that deserve review." (1 company) or "N of M report(s) include observations..." (multiple) |
-| Companies present, no unknowns | `low` | "Company analysis context is available for review." (1) or "N report(s) are available for review." (multiple) |
+| Portfolio concentration HIGH/ELEVATED | `high` | What Deserves Attention |
+| Open research questions | `moderate` | What Deserves Attention |
+| Company reports with unknowns | `moderate` | What Deserves Attention |
+| Company reports without unknowns | `low` | What Can Safely Wait |
+| Knowledge context | `low` | Included Context only |
 
-Before Sprint 63, "What Deserves Attention" would display the "No meaningful
-developments" fallback even when company analysis reports were present, creating
-a contradiction with the Opening Summary. This is now resolved: company reports
-always generate an item in "What Deserves Attention".
+When all inputs are LOW priority, "What Deserves Attention" shows a calm
+fallback: "Context has been organised. No items require immediate attention."
+This is distinct from the empty-input fallback ("No meaningful developments were
+identified"), which fires only when no inputs were supplied at all.
+
+#### Company Analysis Routing (Sprint 63 + Sprint 65)
+
+`_company_analysis_opening_item` evaluates all company reports to determine
+a single priority item:
+
+| Condition | Priority |
+|---|---|
+| Any company has unknowns | `moderate` — included in What Deserves Attention |
+| All companies have no unknowns | `low` — excluded from What Deserves Attention |
+
+Low-priority company analysis items remain visible in "Company Analysis Context"
+and are collected into "What Can Safely Wait" by `_collect_safely_wait_items`.
 
 ## Priority Model
 

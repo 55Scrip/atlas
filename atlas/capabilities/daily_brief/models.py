@@ -100,3 +100,4 @@ class DailyBriefReport:
     unknowns: tuple[DailyBriefUnknown, ...]
     evidence_gaps: tuple[DailyBriefEvidenceLink, ...]
     next_research_steps: tuple[str, ...]
+    knowledge_node_count: int = 0

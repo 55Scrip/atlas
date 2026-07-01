@@ -55,6 +55,7 @@ class DailyBriefCapability:
             unknowns=tuple(unknowns),
             evidence_gaps=tuple(evidence_gaps),
             next_research_steps=tuple(next_steps),
+            knowledge_node_count=data.knowledge_node_count,
         )
 
 
@@ -176,6 +177,8 @@ def _render_included_context(report: DailyBriefReport) -> list[str]:
         items.append(f"  Discovery:  {len(discovery_section.items)} candidate(s)")
     if any(s.title == "Portfolio Context" for s in report.sections):
         items.append("  Portfolio:  available")
+    if report.knowledge_node_count > 0:
+        items.append(f"  Knowledge:  {report.knowledge_node_count} fact(s)")
     return items
 
 
@@ -228,14 +231,6 @@ def _opening_section(data: DailyBriefInput) -> DailyBriefSection:
                 priority=DailyBriefPriority.MODERATE,
             )
         )
-    if data.knowledge_node_count > 0:
-        items.append(
-            DailyBriefItem(
-                title="Knowledge context",
-                detail=f"{data.knowledge_node_count} knowledge node(s) available for review.",
-                priority=DailyBriefPriority.LOW,
-            )
-        )
     if data.portfolio_summary is not None:
         concentration = getattr(data.portfolio_summary, "concentration", None)
         if concentration is not None:
@@ -249,7 +244,9 @@ def _opening_section(data: DailyBriefInput) -> DailyBriefSection:
                     )
                 )
     if data.company_reports:
-        items.append(_company_analysis_opening_item(data.company_reports))
+        ca_item = _company_analysis_opening_item(data.company_reports)
+        if ca_item.priority != DailyBriefPriority.LOW:
+            items.append(ca_item)
     if data.discovery_report is not None:
         candidates = getattr(data.discovery_report, "candidates", ())
         if candidates:
@@ -261,10 +258,14 @@ def _opening_section(data: DailyBriefInput) -> DailyBriefSection:
                 )
             )
     if not items:
+        if _has_meaningful_input(data):
+            detail = "Context has been organised. No items require immediate attention."
+        else:
+            detail = _NO_DEVELOPMENTS_MESSAGE
         items.append(
             DailyBriefItem(
                 title="Status",
-                detail=_NO_DEVELOPMENTS_MESSAGE,
+                detail=detail,
                 priority=DailyBriefPriority.LOW,
             )
         )

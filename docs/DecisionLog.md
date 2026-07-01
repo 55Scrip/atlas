@@ -416,6 +416,34 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: Daily Brief Priority Routing — HIGH/MODERATE Only in What Deserves Attention (Sprint 65)
+
+Decision: remove LOW priority items from `_opening_section` ("What Deserves Attention")
+and route them to the appropriate lower-signal destinations.
+
+Two LOW items were removed from "What Deserves Attention":
+1. **Knowledge context** — moved to "Included Context" via `_render_included_context`,
+   which now reads `report.knowledge_node_count` (new field on `DailyBriefReport`).
+2. **Company analysis with no unknowns** — excluded from `_opening_section` entirely;
+   remains visible in "Company Analysis Context" and collected into "What Can Safely Wait"
+   by the existing `_collect_safely_wait_items` mechanism from Sprint 64.
+
+The fallback item in "What Deserves Attention" was updated to distinguish two states:
+- **No inputs at all** → original "No meaningful developments were identified" message.
+- **Inputs exist but all are LOW priority** → new calm message: "Context has been organised.
+  No items require immediate attention." Determined by `_has_meaningful_input(data)`.
+
+`DailyBriefReport` gained `knowledge_node_count: int = 0` (optional field with default,
+no breaking change). The renderer reads it to populate "Included Context".
+
+Rationale: "What Deserves Attention" was losing signal by promoting LOW items into the
+same section as HIGH/MODERATE items. Readers had to scan all items to find what truly
+needed attention. After this sprint, every item in "What Deserves Attention" is
+actionable-research-worthy. LOW items remain visible in context-appropriate sections.
+
+4 pre-existing tests updated to reflect the new routing. 16 new tests added in
+`tests/test_daily_brief_priority_routing.py`. 861 tests pass total.
+
 ## 2026-07-01: Daily Brief What Can Safely Wait Section (Sprint 64)
 
 Decision: add a "What Can Safely Wait" section to `render_daily_brief_report`

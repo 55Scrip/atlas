@@ -201,11 +201,17 @@ def test_portfolio_context_section_omitted_when_no_summary() -> None:
     assert not any(s.title == "Portfolio Context" for s in report.sections)
 
 
-def test_knowledge_node_count_surfaces_in_opening_section() -> None:
+def test_knowledge_node_count_surfaces_in_included_context() -> None:
+    # Sprint 65: knowledge context moved out of What Deserves Attention (LOW priority)
+    # and into Included Context so it remains visible without claiming attention.
     report = DailyBriefCapability().generate(DailyBriefInput(knowledge_node_count=7))
+    rendered = render_daily_brief_report(report)
+    assert "7" in rendered
+    assert "Knowledge" in rendered
+    # Knowledge should NOT appear in the What Deserves Attention section
     opening = next(s for s in report.sections if s.title == "What Deserves Attention")
     detail_text = " ".join(item.detail for item in opening.items)
-    assert "7" in detail_text
+    assert "knowledge" not in detail_text.lower()
 
 
 def test_next_research_steps_populated_from_questions() -> None:

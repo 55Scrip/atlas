@@ -129,14 +129,16 @@ def test_company_reports_with_unknowns_appear_in_what_deserves_attention() -> No
     assert "Company analysis" in titles
 
 
-def test_company_reports_without_unknowns_appear_in_what_deserves_attention() -> None:
+def test_company_reports_without_unknowns_do_not_appear_in_what_deserves_attention() -> None:
+    # Sprint 65: LOW priority company analysis (no unknowns) should not be promoted
+    # into What Deserves Attention — it belongs in What Can Safely Wait instead.
     brief_input = DailyBriefInput(
         company_reports=(_make_report("AMD", unknown_count=0),)
     )
     report = DailyBriefCapability().generate(brief_input)
     attention = next(s for s in report.sections if s.title == "What Deserves Attention")
     titles = [item.title for item in attention.items]
-    assert "Company analysis" in titles
+    assert "Company analysis" not in titles
 
 
 def test_company_with_unknowns_raises_attention_priority_to_moderate() -> None:
@@ -149,16 +151,19 @@ def test_company_with_unknowns_raises_attention_priority_to_moderate() -> None:
     assert ca_item.priority == DailyBriefPriority.MODERATE
 
 
-def test_no_fallback_status_item_when_company_reports_present() -> None:
+def test_fallback_status_item_when_only_low_priority_reports_present() -> None:
+    # Sprint 65: when company reports exist but all are LOW priority (no unknowns),
+    # the opening section shows a calm fallback — not "No meaningful developments"
+    # (which implies no inputs at all) but "no immediate attention" phrasing.
     brief_input = DailyBriefInput(
         company_reports=(_make_report("AMD", unknown_count=0),)
     )
     report = DailyBriefCapability().generate(brief_input)
     attention = next(s for s in report.sections if s.title == "What Deserves Attention")
-    # The fallback "Status: No meaningful developments" should not appear
-    # when company reports are present
     status_items = [i for i in attention.items if i.title == "Status"]
-    assert not status_items
+    assert status_items  # fallback fires when no HIGH/MODERATE items
+    assert "No meaningful developments" not in status_items[0].detail
+    assert "immediate attention" in status_items[0].detail.lower()
 
 
 def test_what_deserves_attention_not_no_developments_when_company_reports_present() -> None:
@@ -249,7 +254,9 @@ def test_multi_company_with_unknowns_opening_item_is_moderate() -> None:
     assert ca_item.priority == DailyBriefPriority.MODERATE
 
 
-def test_multi_company_no_unknowns_opening_item_is_low() -> None:
+def test_multi_company_no_unknowns_not_in_what_deserves_attention() -> None:
+    # Sprint 65: LOW priority company analysis (no unknowns) must not appear
+    # in What Deserves Attention — it belongs in What Can Safely Wait instead.
     reports = (
         _make_report("AMD", unknown_count=0),
         _make_report("NVDA", unknown_count=0),
@@ -257,8 +264,10 @@ def test_multi_company_no_unknowns_opening_item_is_low() -> None:
     brief_input = DailyBriefInput(company_reports=reports)
     report = DailyBriefCapability().generate(brief_input)
     attention = next(s for s in report.sections if s.title == "What Deserves Attention")
-    ca_item = next(i for i in attention.items if i.title == "Company analysis")
-    assert ca_item.priority == DailyBriefPriority.LOW
+    ca_items = [i for i in attention.items if i.title == "Company analysis"]
+    assert not ca_items  # LOW company analysis not in What Deserves Attention
+    # _company_analysis_opening_item still produces LOW for this case (unit-testable separately)
+    assert _company_analysis_opening_item(reports).priority == DailyBriefPriority.LOW
 
 
 def test_multi_company_opening_is_deterministic() -> None:
