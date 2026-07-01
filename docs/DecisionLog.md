@@ -137,6 +137,26 @@ market-cap concentration impact, overlap, expected quality/risk impact, and
 the `Strong Add`/`Add`/`Neutral`/`Reduce`/`Avoid` recommendation) completely
 unchanged.
 
+## 2026-07-01: Add Daily Brief as a Blueprint-Aligned Capability
+
+Decision: create `atlas.capabilities.daily_brief` as a new capability
+alongside `company_analysis`, `watchlist_intelligence`, and `discovery`,
+and wire it to a new `atlas daily summary` CLI command, while leaving the
+legacy `atlas.daily_brief` engine and `atlas daily brief` command
+completely unchanged.
+
+Rationale: a legacy Daily Brief engine (`atlas.daily_brief`) already
+exists and is fully tested (8 tests, 6 sections, CIO-style multi-engine
+output). Rather than rewriting it, Sprint 48 adds a parallel
+Blueprint-aligned capability that accepts domain-native inputs
+(`PortfolioSummary` from the Sprint 45 adapter, `ResearchNote`,
+`KnowledgeCollection`, `CompanyAnalysisReport`, `WatchlistIntelligenceReport`,
+`DiscoveryReport`) and produces a deterministic, calm, provider-free
+`DailyBriefReport`. This preserves the existing CLI command's behavior
+exactly, gives the Blueprint architecture its first Daily Brief path, and
+sets up future sprints to extend `atlas daily summary` with additional
+input flags as more domain-native JSON inputs become CLI-accessible.
+
 ## 2026-06-30: Augment, Don't Replace, `atlas portfolio review`
 
 Decision: apply the same additive pattern from Sprint 46 to

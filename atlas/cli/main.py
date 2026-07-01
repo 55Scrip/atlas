@@ -37,6 +37,9 @@ from atlas.conversation import (
 )
 from atlas.dashboard import DashboardEngine, DashboardInput, render_dashboard
 from atlas.daily import DailyBriefEngine, DailyBriefInput, render_daily_brief
+from atlas.capabilities.daily_brief import DailyBriefCapability
+from atlas.capabilities.daily_brief import DailyBriefInput as CapDailyBriefInput
+from atlas.capabilities.daily_brief.engine import render_daily_brief_report
 from atlas.decision_journal import (
     DecisionJournalEngine,
     render_decision_journal_entries,
@@ -426,6 +429,31 @@ def daily_brief_command(
         raise typer.Exit(code=1) from exc
 
     console.print(render_daily_brief(brief))
+
+
+@daily_app.command("summary")
+def daily_summary_command(
+    portfolio_path: Path | None = typer.Option(
+        None,
+        "--portfolio",
+        help="Portfolio JSON path (optional)",
+    ),
+):
+    """Show a deterministic Daily Brief from Blueprint-aligned Portfolio Domain inputs."""
+    try:
+        portfolio_summary_data = None
+        if portfolio_path is not None:
+            legacy_portfolio = Portfolio.from_json_file(portfolio_path)
+            domain_portfolio = legacy_portfolio_to_domain_portfolio(legacy_portfolio)
+            portfolio_summary_data = domain_portfolio_summary(domain_portfolio)
+        brief = DailyBriefCapability().generate(
+            CapDailyBriefInput(portfolio_summary=portfolio_summary_data)
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]Daily summary failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_daily_brief_report(brief))
 
 
 @economics_app.command("analyze")

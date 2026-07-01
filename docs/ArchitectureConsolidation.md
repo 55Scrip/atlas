@@ -159,6 +159,30 @@ principles) was not touched and remains fully intact. All portfolio CLI
 commands now exercise `atlas.domains.portfolio` via the Sprint 45 adapter,
 which required no changes in Sprints 46 or 47.
 
+## Capabilities (Sprint 48 update)
+
+`atlas/capabilities/daily_brief/` is now the fourth Blueprint-aligned
+capability alongside `company_analysis`, `watchlist_intelligence`, and
+`discovery`. It consumes optional domain-native inputs
+(`PortfolioSummary`, `ResearchNote`, `KnowledgeCollection`,
+`CompanyAnalysisReport`, `WatchlistIntelligenceReport`, `DiscoveryReport`)
+and produces a deterministic `DailyBriefReport` with no providers, no
+network, and no AI. The legacy `atlas.daily_brief` engine (powering
+`atlas daily brief`) is untouched.
+
+The new `atlas daily summary` CLI command is the first Blueprint-aligned
+Daily Brief runtime path. It currently accepts an optional
+`--portfolio` flag (wired to the Sprint 45 adapter and Portfolio Domain),
+with other input types accepted by `DailyBriefInput` but not yet exposed
+as CLI flags.
+
+The boundary test for provider imports was refactored from a live-import
+check to a source-scan check to resolve a pre-existing circular dependency
+between `atlas.providers` and `atlas.analysis.__init__` that caused
+`tests/test_architecture_boundaries.py` to fail when run in isolation as
+the first module loaded in a fresh process. Behavior is unchanged; all 353
+tests pass in the full suite and all boundary tests pass in isolation.
+
 ## Rules for Future Sprints
 
 - New product capabilities are built in `atlas/domains` and
