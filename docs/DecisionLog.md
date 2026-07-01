@@ -416,6 +416,26 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: README Sprint Notes Archive (Sprint 73)
+
+Decision: move historical sprint notes (Sprints 37–72) from `README.md` into
+`docs/SprintHistory.md`. README.md is now a concise 125-line developer guide.
+
+Rationale: `README.md` had grown to 1691 lines — over 93% of which were sprint
+notes accumulated during development. The notes are valuable historical context
+but not useful to a developer reading the README for the first time. Moving them
+to a dedicated document preserves history while making the developer guide
+immediately readable.
+
+Changes:
+- `README.md` trimmed from 1691 lines to 125 lines
+- `docs/SprintHistory.md` created with header + all moved sprint notes
+- README Documentation table updated: added `SprintHistory.md` row; fixed
+  stale "RC1 release notes" label to "RC1 and RC2 release notes"
+- `docs/DecisionLog.md` Sprint 73 entry added
+
+No runtime behavior changed. No code changes. No new capabilities.
+
 ## 2026-07-01: Discovery Context Display Name Resolution (Sprint 72)
 
 Decision: add `_resolve_node_display_name` in `atlas/capabilities/daily_brief/engine.py`

@@ -301,3 +301,44 @@ def test_rc_doc_no_recommendation_language() -> None:
 def test_daily_brief_doc_mentions_evidence_link_resolution() -> None:
     content = DAILY_BRIEF_DOC.read_text()
     assert "Evidence Link Resolution" in content or "company-amd" in content
+
+
+# ── Sprint 73: README cleanup and SprintHistory tests ─────────────────────────
+
+SPRINT_HISTORY = DOCS / "SprintHistory.md"
+
+
+def test_sprint_history_file_exists() -> None:
+    assert SPRINT_HISTORY.exists(), "docs/SprintHistory.md not found"
+
+
+def test_readme_links_to_sprint_history() -> None:
+    content = README.read_text()
+    assert "SprintHistory.md" in content
+
+
+def test_readme_is_concise() -> None:
+    lines = README.read_text().splitlines()
+    assert len(lines) < 200, f"README.md is {len(lines)} lines — should be under 200 after archive"
+
+
+def test_sprint_history_contains_key_sprints() -> None:
+    content = SPRINT_HISTORY.read_text()
+    assert "Portfolio Domain" in content
+    assert "Daily Brief" in content
+
+
+def test_sprint_history_links_back_to_readme() -> None:
+    content = SPRINT_HISTORY.read_text()
+    assert "README.md" in content
+
+
+def test_readme_no_recommendation_language() -> None:
+    content = README.read_text().lower()
+    for term in ("strong buy", "price target", "outperform", "must act", "guaranteed", "risk-free"):
+        assert term not in content, f"Forbidden term {term!r} found in README"
+
+
+def test_readme_documentation_table_includes_sprint_history() -> None:
+    content = README.read_text()
+    assert "SprintHistory.md" in content and "Historical sprint notes" in content
