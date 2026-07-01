@@ -55,6 +55,10 @@ from atlas.capabilities.watchlist_intelligence import (
 from atlas.capabilities.watchlist_intelligence.exporter import watchlist_report_to_dict
 from atlas.capabilities.discovery import DiscoveryEngine, DiscoveryInput
 from atlas.capabilities.discovery.exporter import discovery_report_to_dict
+from atlas.adapters.watchlist import watchlist_input_from_dict
+from atlas.adapters.knowledge import knowledge_facts_from_dict
+from atlas.adapters.research_input import research_projects_from_dict
+from atlas.capabilities.daily_brief.research_exporter import research_projects_to_dict
 from atlas.decision_journal import (
     DecisionJournalEngine,
     render_decision_journal_entries,
@@ -137,6 +141,7 @@ portfolio_app = typer.Typer(help="Portfolio intelligence commands")
 profile_app = typer.Typer(help="Investor profile context commands")
 principles_app = typer.Typer(help="Atlas principles validation commands")
 reason_app = typer.Typer(help="Atlas reasoning thesis commands")
+research_app = typer.Typer(help="Research export commands")
 risk_drift_app = typer.Typer(help="Risk drift review commands")
 risk_app = typer.Typer(help="Risk and position sizing commands")
 suitability_app = typer.Typer(help="Investor suitability context commands")
@@ -156,6 +161,7 @@ app.add_typer(portfolio_app, name="portfolio")
 app.add_typer(profile_app, name="profile")
 app.add_typer(principles_app, name="principles")
 app.add_typer(reason_app, name="reason")
+app.add_typer(research_app, name="research")
 app.add_typer(risk_drift_app, name="risk-drift")
 app.add_typer(risk_app, name="risk")
 app.add_typer(suitability_app, name="suitability")
@@ -1044,20 +1050,27 @@ def theme_analyze_command(theme: str):
 
 @watchlist_app.command("intelligence")
 def watchlist_intelligence_command(
+    input_path: Path | None = typer.Option(
+        None, "--input", help="Local watchlist JSON file path (optional).",
+    ),
     output_path: Path | None = typer.Option(
         None, "--output", help="Write JSON export to this file path.",
     ),
 ):
     """Generate a Blueprint-aligned Watchlist Intelligence report.
 
-    Runs WatchlistIntelligenceEngine on an empty input and either prints a
-    human-readable summary or writes a JSON export to --output. The JSON
-    export is compatible with `atlas daily summary --watchlist`.
+    Runs WatchlistIntelligenceEngine on the supplied input (or an empty input
+    when --input is omitted) and either prints a human-readable summary or
+    writes a JSON export to --output. The JSON export is compatible with
+    `atlas daily summary --watchlist` and `atlas discovery export --watchlist`.
     """
     try:
-        report = WatchlistIntelligenceEngine().analyze(
-            WatchlistIntelligenceInput(name="My Watchlist")
-        )
+        if input_path is not None:
+            raw = load_json_file(input_path)
+            wi_input = watchlist_input_from_dict(raw, str(input_path))
+        else:
+            wi_input = WatchlistIntelligenceInput(name="My Watchlist")
+        report = WatchlistIntelligenceEngine().analyze(wi_input)
         if output_path is not None:
             _write_json_export(output_path, watchlist_report_to_dict(report))
             console.print(f"Watchlist Intelligence report written to {output_path}")
@@ -1086,18 +1099,55 @@ def watchlist_intelligence_command(
 
 @discovery_app.command("export")
 def discovery_export_command(
+    knowledge_path: Path | None = typer.Option(
+        None, "--knowledge", help="Local knowledge JSON file path (optional).",
+    ),
+    research_path: Path | None = typer.Option(
+        None, "--research", help="Local research JSON file path (optional).",
+    ),
+    watchlist_path: Path | None = typer.Option(
+        None, "--watchlist", help="Local watchlist JSON file path (optional).",
+    ),
     output_path: Path | None = typer.Option(
         None, "--output", help="Write JSON export to this file path.",
     ),
 ):
     """Generate a Blueprint-aligned Discovery report.
 
-    Runs DiscoveryEngine on an empty input and either prints a human-readable
-    summary or writes a JSON export to --output. The JSON export is compatible
-    with `atlas daily summary --discovery`.
+    Runs DiscoveryEngine on the supplied structured inputs (or an empty input
+    when no flags are provided) and either prints a human-readable summary or
+    writes a JSON export to --output. The JSON export is compatible with
+    `atlas daily summary --discovery`.
+
+    --knowledge  Local knowledge JSON (facts array)
+    --research   Local research JSON (projects array with open questions)
+    --watchlist  Local watchlist JSON (items array) — runs Watchlist
+                 Intelligence first, then feeds the report into Discovery
     """
     try:
-        report = DiscoveryEngine().discover(DiscoveryInput())
+        knowledge_facts = ()
+        if knowledge_path is not None:
+            raw = load_json_file(knowledge_path)
+            knowledge_facts = knowledge_facts_from_dict(raw, str(knowledge_path))
+
+        research_projects = ()
+        if research_path is not None:
+            raw = load_json_file(research_path)
+            research_projects = research_projects_from_dict(raw, str(research_path))
+
+        watchlist_reports = ()
+        if watchlist_path is not None:
+            raw = load_json_file(watchlist_path)
+            wi_input = watchlist_input_from_dict(raw, str(watchlist_path))
+            watchlist_reports = (WatchlistIntelligenceEngine().analyze(wi_input),)
+
+        report = DiscoveryEngine().discover(
+            DiscoveryInput(
+                knowledge_facts=knowledge_facts,
+                research_projects=research_projects,
+                watchlist_intelligence_reports=watchlist_reports,
+            )
+        )
         if output_path is not None:
             _write_json_export(output_path, discovery_report_to_dict(report))
             console.print(f"Discovery report written to {output_path}")
@@ -1117,6 +1167,58 @@ def discovery_export_command(
             lines.append(f"  {c.identifier}: {c.title} ({c.priority.value})")
     else:
         lines += ["", "No discovery candidates identified from available inputs."]
+    console.print("\n".join(lines))
+
+
+@research_app.command("export")
+def research_export_command(
+    input_path: Path | None = typer.Option(
+        None, "--input", help="Local research JSON file (projects format, optional).",
+    ),
+    output_path: Path | None = typer.Option(
+        None, "--output", help="Write research JSON to this file path.",
+    ),
+):
+    """Export research projects as a Daily Brief–compatible research JSON file.
+
+    Reads a local research JSON file (``{"projects": [...]}``) via --input,
+    converts open questions and project summaries to the format accepted by
+    ``atlas daily summary --research``, and writes the result to --output.
+
+    When --input is omitted the command runs with no projects (useful to verify
+    the empty-export format). When --output is omitted the result is printed
+    to stdout as a human-readable summary.
+
+    No network calls are made. No recommendations are produced.
+    """
+    try:
+        if input_path is not None:
+            raw = load_json_file(input_path)
+            projects = research_projects_from_dict(raw, str(input_path))
+        else:
+            projects = ()
+        data = research_projects_to_dict(projects)
+        if output_path is not None:
+            _write_json_export(output_path, data)
+            console.print(f"Research export written to {output_path}")
+            return
+    except (OSError, ValueError) as exc:
+        console.print(f"[red]Research export failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    lines = ["Research Export", ""]
+    if data["notes"]:
+        lines.append(f"Projects: {len(data['notes'])}")
+        for note in data["notes"]:
+            lines.append(f"  - {note['title']} ({note['body']})")
+    else:
+        lines.append("No research projects.")
+    if data["open_questions"]:
+        lines += ["", "Open Questions"]
+        for q in data["open_questions"]:
+            lines.append(f"  - {q}")
+    else:
+        lines += ["", "No open questions."]
     console.print("\n".join(lines))
 
 

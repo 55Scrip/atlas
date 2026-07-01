@@ -146,3 +146,70 @@ Each candidate includes:
 The export is local-only. No network calls are made. No recommendations
 are produced. Priority means "deserves research attention", not "investment
 attractiveness". The format is stable across Sprint 51.
+
+## Local JSON Inputs (Sprint 52)
+
+`atlas discovery export` now accepts local JSON input files via `--knowledge`,
+`--research`, and `--watchlist` flags.
+
+```bash
+# Export with knowledge facts
+atlas discovery export --knowledge knowledge.json --output discovery.json
+
+# Export with research projects
+atlas discovery export --research research.json --output discovery.json
+
+# Export with watchlist (runs WatchlistIntelligenceEngine on the input)
+atlas discovery export --watchlist watchlist.json --output discovery.json
+
+# Full pipeline: all inputs together
+atlas discovery export \
+  --knowledge knowledge.json \
+  --research research.json \
+  --watchlist watchlist.json \
+  --output discovery.json
+```
+
+### Knowledge JSON Format
+
+```json
+{
+  "facts": [
+    {
+      "id": "fact-1",
+      "subject_node_id": "company-nvda",
+      "statement": "NVDA is a leading GPU supplier for data centres.",
+      "source": {"id": "src-1", "name": "10-K 2025", "source_type": "Filing"},
+      "timestamp": "2026-07-01T00:00:00Z",
+      "confidence": 85
+    }
+  ]
+}
+```
+
+### Research JSON Format
+
+```json
+{
+  "projects": [
+    {
+      "id": "proj-nvda",
+      "title": "NVDA Research",
+      "topic": "NVDA",
+      "status": "researching",
+      "questions": [
+        "What is the long-term GPU TAM?",
+        "Who are the key competitors?"
+      ]
+    }
+  ]
+}
+```
+
+The `--watchlist` input uses the same format as
+`atlas watchlist intelligence --input`. The command runs
+`WatchlistIntelligenceEngine` on the parsed items and passes the resulting
+report to `DiscoveryInput`.
+
+All inputs are optional. When no flags are provided, the command runs with
+empty inputs (same behavior as prior sprints).

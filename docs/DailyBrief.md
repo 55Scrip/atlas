@@ -253,46 +253,119 @@ objects were passed without the builder:
 - `CompanyAnalysisReport`: now reads `company.ticker` (was `ticker`) and `evidence_links` (was `evidence_gaps`)
 - `CompanyAnalysisUnknown`: now reads `title` as the question text (was `question`)
 
-## End-to-End Local Workflow (Sprint 51)
+## End-to-End Local Workflow (Sprints 51–53)
 
-Sprint 51 added JSON export commands so Daily Brief can consume real Atlas
-capability outputs without requiring manual JSON authoring:
+Sprints 51–53 complete the export pipeline. Every Daily Brief input type
+except Company Analysis can now be generated from local JSON files with no
+network calls, no AI, and no manual authoring of the output format:
 
 ```bash
-# Step 1 — generate and export capability outputs
-atlas watchlist intelligence --output watchlist.json
-atlas discovery export --output discovery.json
+# Step 1 — generate watchlist intelligence from real items
+atlas watchlist intelligence \
+  --input watchlist.json \
+  --output watchlist_export.json
 
-# Step 2 — consume exports in Daily Brief
-atlas daily summary \
-  --portfolio portfolio.json \
+# Step 2 — export research projects as Daily Brief–compatible research JSON
+atlas research export \
+  --input research_projects.json \
+  --output research_export.json
+
+# Step 3 — generate discovery from knowledge, research, and watchlist context
+atlas discovery export \
+  --knowledge knowledge.json \
+  --research research_projects.json \
   --watchlist watchlist.json \
-  --discovery discovery.json \
-  --research research.json \
+  --output discovery_export.json
+
+# Step 4 — consume all exports in Daily Brief
+atlas daily summary \
+  --watchlist watchlist_export.json \
+  --research research_export.json \
+  --discovery discovery_export.json \
   --company-analysis company.json
 ```
 
-Both export commands are local-only, deterministic, and make no network calls.
+All steps are local-only, deterministic, and make no network calls.
+
+## Research Export (Sprint 53)
+
+`atlas research export` converts a research projects JSON file into the
+format accepted by `atlas daily summary --research`.
+
+```bash
+# Export research projects as Daily Brief–compatible JSON
+atlas research export --input research_projects.json --output research_export.json
+
+# Use the export as Daily Brief input
+atlas daily summary --research research_export.json
+
+# Print summary to stdout (no --output)
+atlas research export --input research_projects.json
+
+# Run with no input (produces empty export structure)
+atlas research export --output research_export.json
+```
+
+### Input JSON Format (`--input`)
+
+```json
+{
+  "projects": [
+    {
+      "id": "proj-nvda",
+      "title": "NVDA Research",
+      "topic": "NVDA",
+      "status": "researching",
+      "questions": [
+        "What is the long-term GPU TAM?",
+        "Who are the key competitors?"
+      ]
+    }
+  ]
+}
+```
+
+This is the same format accepted by `atlas discovery export --research`.
+
+### Output JSON Format (`--output`)
+
+The exported JSON is compatible with `atlas daily summary --research`:
+
+```json
+{
+  "notes": [
+    {
+      "id": "proj-nvda",
+      "title": "NVDA Research",
+      "body": "NVDA — researching",
+      "created_at": "",
+      "related_tickers": ["NVDA"]
+    }
+  ],
+  "open_questions": [
+    "What is the long-term GPU TAM?",
+    "Who are the key competitors?"
+  ]
+}
+```
+
+Each project becomes one note. Open (`OPEN` / `RESEARCHING`) questions are
+collected across all projects into `open_questions`. Topic strings that look
+like tickers (all-uppercase, ≤5 chars) appear in `related_tickers`.
+
+No network calls are made. No recommendations are produced.
 
 ## Known Limitations
 
-- `atlas watchlist intelligence` and `atlas discovery export` run on empty
-  inputs today — they produce valid structural reports but no actual watchlist
-  items or discovery candidates unless the Blueprint-aligned capability inputs
-  (knowledge facts, research projects, company analysis) are wired to their own
-  CLI input flags in a future sprint.
 - The legacy `atlas daily brief` command still calls legacy engines (Market
   Health, Risk Drift, Economics, etc.) with no domain-native equivalents.
 - `knowledge_node_count` is accepted by `build_daily_brief_input` but not
-  yet wired to a CLI flag — there is no structured knowledge JSON export yet.
-- Research and Company Analysis export commands do not yet exist; users must
-  author those JSON files manually following the formats in this document.
+  yet wired to a CLI flag.
+- Company Analysis export command does not yet exist; users must author
+  company analysis JSON files manually following the format in this document.
 
-## Recommendation for Sprint 52
+## Recommendation for Sprint 54
 
-Wire real inputs to `atlas watchlist intelligence` and `atlas discovery export`
-so they can consume existing Atlas watchlist files, knowledge facts, and research
-projects, producing exports with actual structured content rather than empty reports.
-Alternatively, add `atlas research export --output research.json` and
-`atlas company-analysis export --output company.json` to complete the export
-pipeline for all Daily Brief input types.
+Add `atlas company-analysis export --output company.json` to complete the
+export pipeline for all five Daily Brief input types. Company analysis is
+the only type still requiring manual JSON authoring.

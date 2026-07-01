@@ -138,3 +138,53 @@ The `--output` flag writes a JSON file compatible with
 
 The export is local-only. No network calls are made. No recommendations
 are produced. The format is stable across Sprint 51.
+
+## Local JSON Input (Sprint 52)
+
+`atlas watchlist intelligence` now accepts a local JSON input file via `--input`.
+
+```bash
+# Load items from a local JSON file
+atlas watchlist intelligence --input watchlist.json
+
+# Load items and export the result
+atlas watchlist intelligence --input watchlist.json --output watchlist_export.json
+```
+
+### Input JSON Format
+
+```json
+{
+  "name": "My Watchlist",
+  "items": [
+    {
+      "id": "amd",
+      "ticker": "AMD",
+      "company": "AMD Corporation",
+      "status": "researching",
+      "open_questions": [
+        "What evidence supports long-term margin expansion?",
+        "How durable is the data centre GPU demand cycle?"
+      ],
+      "manual_observations": [
+        "Entered data centre market aggressively."
+      ]
+    }
+  ]
+}
+```
+
+| Field | Required | Description |
+|---|---|---|
+| `ticker` | Yes | Company ticker symbol |
+| `id` | No | Item identifier (defaults to lowercased ticker) |
+| `company` | No | Company name (defaults to ticker) |
+| `status` | No | One of: `observing`, `researching`, `needs_more_evidence`, `thesis_forming`, `ready_for_review`, `paused`, `archived` |
+| `open_questions` | No | List of plain-text open research questions |
+| `manual_observations` | No | List of plain-text observations |
+
+Open questions are converted into `ResearchProject` entries so the engine
+surfaces them as unresolved questions in the generated report.
+
+When `--input` is omitted, the command runs with an empty watchlist (same
+behavior as prior sprints).

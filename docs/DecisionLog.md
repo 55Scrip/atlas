@@ -255,3 +255,45 @@ preserves every existing output byte exactly, and still proves the CLI
 analyze path can pull from `atlas.domains.portfolio` for the parts that
 genuinely overlap (allocation, concentration). The Sprint 45 adapter needed
 no changes.
+
+## 2026-07-01: Wire Real JSON Inputs to Capability Export Commands (Sprint 52)
+
+Decision: add three adapter modules (`atlas/adapters/watchlist.py`,
+`atlas/adapters/knowledge.py`, `atlas/adapters/research_input.py`) and extend
+`atlas watchlist intelligence` with `--input` and `atlas discovery export` with
+`--knowledge`, `--research`, `--watchlist` so both commands produce meaningful
+structured output from local JSON files.
+
+Rationale: Sprint 51's export commands ran on empty inputs, producing valid but
+empty reports — no candidates, no open questions, no suggestions. This made the
+end-to-end pipeline (`watchlist intelligence → discovery export → daily summary`)
+structurally correct but semantically inert. Sprint 52 closes the gap by parsing
+real watchlist items, knowledge facts, and research projects from local files and
+routing them through the same deterministic engines. The adapter modules are placed
+in `atlas/adapters/` (the only layer permitted to bridge legacy shapes and domain
+types), remain side-effect-free, and raise ValueError with clear messages on
+invalid input. `open_questions` in watchlist items are converted to
+`ResearchProject` entries with `OPEN` `ResearchQuestion` objects so the
+`WatchlistIntelligenceEngine` surfaces them as unresolved questions in its report —
+consistent with how other Atlas inputs represent open questions. No existing CLI
+command behavior was changed; all new flags are additive and optional.
+
+## 2026-07-01: Add Research Export Command to Complete Daily Brief Pipeline (Sprint 53)
+
+Decision: add `atlas/capabilities/daily_brief/research_exporter.py` with
+`research_projects_to_dict()` and an `atlas research export [--input FILE]
+[--output FILE]` CLI command that converts the adapter-format research projects
+JSON (`{"projects": [...]}`) to the Daily Brief–compatible research JSON
+(`{"notes": [...], "open_questions": [...]}`).
+
+Rationale: Research notes and open questions were the only Daily Brief input
+type that still required users to author JSON manually. Every other input type
+(portfolio, watchlist, discovery, knowledge) already had a CLI export command
+producing a file consumable by `atlas daily summary`. This sprint closes that
+gap with a pure conversion step: `research_projects_from_dict` parses the input,
+`research_projects_to_dict` serialises it to the daily brief format.
+The exporter is placed in `atlas/capabilities/daily_brief/` (alongside the
+other daily brief modules) because its output format is defined entirely by what
+`parse_research_json` / the Daily Brief engine expect — it is a daily brief
+concern, not a general research concern. No new domain models or capability
+engines were introduced; this is a serialisation adapter only.

@@ -192,6 +192,40 @@ JSON export → `atlas daily summary`. 474 tests pass; 41 new tests cover export
 unit tests, CLI commands, round-trip export → Daily Brief, and existing behavior
 preservation.
 
+**Sprint 52** added three new adapter modules and wired real local JSON inputs
+to both export commands, so they now produce meaningful structured output:
+
+- `atlas/adapters/watchlist.py` — `watchlist_input_from_dict()` parses
+  `{"name": ..., "items": [...]}` into `WatchlistIntelligenceInput`. Ticker is
+  required; `open_questions` become `ResearchProject` entries with `OPEN`
+  `ResearchQuestion` objects so the engine surfaces them as unresolved questions.
+- `atlas/adapters/knowledge.py` — `knowledge_facts_from_dict()` parses
+  `{"facts": [...]}` into `tuple[KnowledgeFact, ...]` with `KnowledgeSource`
+  and `KnowledgeReference`.
+- `atlas/adapters/research_input.py` — `research_projects_from_dict()` parses
+  `{"projects": [...]}` into `tuple[ResearchProject, ...]` with `OPEN`
+  `ResearchQuestion` entries.
+
+CLI extensions:
+- `atlas watchlist intelligence --input FILE` now loads real watchlist items
+  from a local JSON file and passes them through `WatchlistIntelligenceEngine`.
+- `atlas discovery export --knowledge FILE --research FILE --watchlist FILE`
+  now loads all three input types and feeds them to `DiscoveryEngine`.
+
+535 tests pass; 61 new tests cover adapters, extended CLI, error handling, round-trip
+pipeline, language safety, determinism, and no-network constraints.
+
+**Sprint 53** added `atlas/capabilities/daily_brief/research_exporter.py`
+(`research_projects_to_dict`) and a new `atlas research export [--input FILE]
+[--output FILE]` command under a new `research` subapp. The exporter converts
+`tuple[ResearchProject, ...]` to the `{"notes": [...], "open_questions": [...]}`
+dict accepted by `atlas daily summary --research`, closing the last remaining
+export gap in the Daily Brief pipeline. Topics matching all-uppercase ≤5-char
+ticker patterns are included in `related_tickers`. Open and Researching
+questions are collected across all projects. 576 tests pass; 41 new tests cover
+the exporter, CLI (no-input, `--input`, `--output`), error handling, round-trip
+to daily summary, language safety, determinism, and no-network constraints.
+
 The legacy `atlas.daily_brief` engine (powering `atlas daily brief`) is
 untouched across all sprints.
 
