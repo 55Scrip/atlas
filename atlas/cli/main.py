@@ -55,7 +55,7 @@ from atlas.capabilities.watchlist_intelligence import (
 from atlas.capabilities.watchlist_intelligence.exporter import watchlist_report_to_dict
 from atlas.capabilities.discovery import DiscoveryEngine, DiscoveryInput
 from atlas.capabilities.discovery.exporter import discovery_report_to_dict
-from atlas.adapters.watchlist import watchlist_input_from_dict
+from atlas.adapters.watchlist import assign_knowledge_facts, watchlist_input_from_dict
 from atlas.adapters.knowledge import knowledge_facts_from_dict
 from atlas.adapters.research_input import research_projects_from_dict
 from atlas.capabilities.daily_brief.research_exporter import research_projects_to_dict
@@ -1059,6 +1059,9 @@ def watchlist_intelligence_command(
     input_path: Path | None = typer.Option(
         None, "--input", help="Local watchlist JSON file path (optional).",
     ),
+    knowledge_path: Path | None = typer.Option(
+        None, "--knowledge", help="Local knowledge JSON file path (optional).",
+    ),
     output_path: Path | None = typer.Option(
         None, "--output", help="Write JSON export to this file path.",
     ),
@@ -1069,6 +1072,9 @@ def watchlist_intelligence_command(
     when --input is omitted) and either prints a human-readable summary or
     writes a JSON export to --output. The JSON export is compatible with
     `atlas daily summary --watchlist` and `atlas discovery export --watchlist`.
+
+    --knowledge  Local knowledge JSON — assigns facts to matching watchlist
+                 items by ticker or company node ID (e.g. company-amd → AMD).
     """
     try:
         if input_path is not None:
@@ -1076,6 +1082,12 @@ def watchlist_intelligence_command(
             wi_input = watchlist_input_from_dict(raw, str(input_path))
         else:
             wi_input = WatchlistIntelligenceInput(name="My Watchlist")
+
+        if knowledge_path is not None:
+            raw_k = load_json_file(knowledge_path)
+            kfacts = knowledge_facts_from_dict(raw_k, str(knowledge_path))
+            wi_input = assign_knowledge_facts(wi_input, kfacts)
+
         report = WatchlistIntelligenceEngine().analyze(wi_input)
         if output_path is not None:
             _write_json_export(output_path, watchlist_report_to_dict(report))

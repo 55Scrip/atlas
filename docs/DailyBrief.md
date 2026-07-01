@@ -626,3 +626,25 @@ knowledge facts (`--knowledge`) are supplied, the Evidence Gaps section does not
 appear in the daily brief. This is correct — no evidence is missing. The section
 appears only when a company analysis report contains "Missing Evidence" unknowns,
 which happens when `--knowledge` is omitted from the export step.
+
+## Evidence Link Resolution — Watchlist Knowledge Facts (Sprint 70)
+
+`atlas watchlist intelligence` accepts an optional `--knowledge` flag. When
+supplied, `assign_knowledge_facts` in `atlas/adapters/watchlist.py` distributes
+knowledge facts to watchlist items using two deterministic matching rules:
+
+1. **Exact ticker match** — `fact.subject_node_id == ticker` (e.g. `"AMD"`)
+2. **Company node ID pattern** — `fact.subject_node_id == f"company-{ticker.lower()}"` (e.g. `"company-amd"` → `"AMD"`)
+
+No fuzzy matching. The `_node_id_matches_ticker` helper is the single
+implementation of this rule and is covered by unit tests.
+
+When a watchlist item has no matching knowledge facts, `WatchlistIntelligenceEngine`
+generates a `WatchlistUnknown("No Supporting Knowledge Facts", ...)` which
+propagates into `suggested_next_research_steps` as
+`"{ticker}: No knowledge facts are linked."`. Passing `--knowledge` with facts
+that match by the rules above suppresses this false-negative signal.
+
+The demo pipeline passes `--knowledge examples/daily_brief_demo/knowledge.json`
+in Step 2 so that AMD and NVDA knowledge facts (which use `company-amd` /
+`company-nvda` node IDs) are correctly assigned to their watchlist items.

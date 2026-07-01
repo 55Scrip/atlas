@@ -416,6 +416,35 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: Evidence Link Resolution — Knowledge Facts via Company Node ID (Sprint 70)
+
+Decision: add `--knowledge` flag to `atlas watchlist intelligence` and a
+`assign_knowledge_facts` function in `atlas/adapters/watchlist.py` that
+distributes knowledge facts to watchlist items by ticker or by the explicit
+`company-{ticker.lower()}` node ID pattern (e.g. `company-amd` → `AMD`).
+Update demo script Step 2 to pass `--knowledge examples/daily_brief_demo/knowledge.json`.
+
+Rationale: knowledge facts in `knowledge.json` use `subject_node_id` values
+like `"company-amd"` and `"company-nvda"`, while watchlist items identify
+companies by ticker (`"AMD"`, `"NVDA"`). Without a mapping, `WatchlistItem.knowledge_facts`
+was always empty, triggering `WatchlistUnknown("No Supporting Knowledge Facts",
+"No knowledge facts are linked.", ticker)` which propagated as
+`"AMD: No knowledge facts are linked."` into `suggested_next_research_steps` and
+ultimately into the Daily Brief's "Suggested Next Research Steps" section.
+
+Matching strategy: deterministic explicit mapping only. A fact matches a
+watchlist item when `fact.subject_node_id == ticker` (exact) OR
+`fact.subject_node_id == f"company-{ticker.lower()}"`. No fuzzy matching.
+The `_node_id_matches_ticker` helper in `atlas/adapters/watchlist.py` is the
+single, documented, tested implementation of this rule.
+
+Demo output change: "Suggested Next Research Steps" no longer contains
+`"AMD: No knowledge facts are linked."` / `"NVDA: No knowledge facts are linked."`.
+Steps now reflect actual watchlist research priorities.
+
+`examples/daily_brief_demo/README.md` Pipeline Steps updated to include
+`--knowledge` in Step 2. Expected output updated to match new steps.
+
 ## 2026-07-01: Portfolio Demo Integration (Sprint 69)
 
 Decision: add `examples/daily_brief_demo/portfolio.json` and pass `--portfolio`

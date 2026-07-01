@@ -104,9 +104,10 @@ atlas research export \
   --input examples/daily_brief_demo/research_input.json \
   --output tmp/atlas_demo/research.json
 
-# Step 2 — Run watchlist intelligence
+# Step 2 — Run watchlist intelligence (with knowledge facts for link resolution)
 atlas watchlist intelligence \
   --input examples/daily_brief_demo/watchlist_input.json \
+  --knowledge examples/daily_brief_demo/knowledge.json \
   --output tmp/atlas_demo/watchlist.json
 
 # Step 3 — Generate discovery candidates
@@ -158,7 +159,8 @@ atlas daily summary \
 ## Expected Output
 
 The Daily Brief follows this structure. The excerpt below reflects actual demo output
-with all five input surfaces active (portfolio added in Sprint 69).
+with all five input surfaces active (portfolio added in Sprint 69,
+evidence link resolution added in Sprint 70).
 
 ```
 Atlas Daily Brief
@@ -230,8 +232,8 @@ Suggested Next Research Steps
 
   - Continue research on 7 open question(s).
   - Review discovery candidates for further research eligibility.
-  - AMD: No knowledge facts are linked.
-  - NVDA: No knowledge facts are linked.
+  - AMD: resolve open research questions.
+  - NVDA: resolve open research questions.
 
 ─────────────────────────────────────────────
 What Can Safely Wait
@@ -282,10 +284,6 @@ rm -rf tmp/atlas_demo
   reports require the merge step (`atlas company-analysis merge`) first.
 - Knowledge facts from both companies are passed to each individual company
   analysis export. The engine filters by `subject_node_id` match internally.
-- "Suggested Next Research Steps" includes evidence-link notes per company
-  ("AMD: No knowledge facts are linked."). This reflects the evidence gap
-  resolver behavior when knowledge is present at the project level but not
-  directly linked at the company level.
 
 ---
 

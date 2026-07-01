@@ -33,11 +33,14 @@ This adapter is deterministic, side-effect free, and makes no network calls.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from atlas.capabilities.watchlist_intelligence.models import (
     WatchlistIntelligenceInput,
     WatchlistItem,
     WatchlistStatus,
 )
+from atlas.domains.knowledge.models import KnowledgeFact
 from atlas.domains.research.models import (
     ResearchProject,
     ResearchQuestion,
@@ -128,6 +131,60 @@ def _parse_item(data: object, idx: int, source: str) -> WatchlistItem:
         research_project=research_project,
         manual_observations=observations,
     )
+
+
+def _node_id_matches_ticker(node_id: str, ticker: str) -> bool:
+    """Return True if a knowledge fact node_id corresponds to the given ticker.
+
+    Accepts exact ticker match (e.g. "AMD") and the explicit company node
+    pattern "company-{ticker.lower()}" (e.g. "company-amd" → "AMD").
+    This is a deterministic, explicit mapping — no fuzzy matching.
+    """
+    t = ticker.upper()
+    return node_id == t or node_id == f"company-{t.lower()}"
+
+
+def assign_knowledge_facts(
+    wi_input: WatchlistIntelligenceInput,
+    knowledge_facts: Sequence[KnowledgeFact],
+) -> WatchlistIntelligenceInput:
+    """Return a new WatchlistIntelligenceInput with knowledge facts distributed.
+
+    Each WatchlistItem receives the facts whose subject_node_id matches its
+    ticker (exact) or the "company-{ticker.lower()}" pattern.
+    Items that already have knowledge_facts are left unchanged.
+    Deterministic, side-effect free, no network calls.
+    """
+    if not knowledge_facts:
+        return wi_input
+
+    updated: list[WatchlistItem] = []
+    for item in wi_input.items:
+        if item.knowledge_facts:
+            updated.append(item)
+            continue
+        matched = tuple(
+            f for f in knowledge_facts
+            if _node_id_matches_ticker(f.subject_node_id, item.ticker)
+        )
+        if matched:
+            updated.append(
+                WatchlistItem(
+                    id=item.id,
+                    ticker=item.ticker,
+                    name=item.name,
+                    status=item.status,
+                    company=item.company,
+                    research_project=item.research_project,
+                    knowledge_facts=matched,
+                    company_analysis=item.company_analysis,
+                    manual_observations=item.manual_observations,
+                )
+            )
+        else:
+            updated.append(item)
+
+    return WatchlistIntelligenceInput(name=wi_input.name, items=tuple(updated))
 
 
 def _parse_status(raw: object, idx: int, source: str) -> WatchlistStatus:

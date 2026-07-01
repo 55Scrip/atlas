@@ -47,6 +47,7 @@ echo ""
 echo "Step 2: Export watchlist intelligence (AMD + NVDA)..."
 "$ATLAS" watchlist intelligence \
   --input "$DEMO_DIR/watchlist_input.json" \
+  --knowledge "$DEMO_DIR/knowledge.json" \
   --output "$TMP_DIR/watchlist.json"
 echo "  → $TMP_DIR/watchlist.json"
 

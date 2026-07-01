@@ -575,3 +575,162 @@ def test_full_pipeline_with_portfolio_no_forbidden_language(tmp_path: Path) -> N
     output_lower = result.stdout.lower()
     for term in FORBIDDEN:
         assert term not in output_lower, f"Forbidden term {term!r} in portfolio output"
+
+
+# ── Sprint 70: evidence link resolution ────────────────────────────────────────
+
+from atlas.adapters.watchlist import assign_knowledge_facts, _node_id_matches_ticker, watchlist_input_from_dict  # noqa: E402
+from atlas.adapters.knowledge import knowledge_facts_from_dict  # noqa: E402
+from atlas.capabilities.watchlist_intelligence.engine import WatchlistIntelligenceEngine  # noqa: E402
+
+
+def test_node_id_matches_ticker_exact() -> None:
+    assert _node_id_matches_ticker("AMD", "AMD")
+
+
+def test_node_id_matches_ticker_company_pattern_amd() -> None:
+    assert _node_id_matches_ticker("company-amd", "AMD")
+
+
+def test_node_id_matches_ticker_company_pattern_nvda() -> None:
+    assert _node_id_matches_ticker("company-nvda", "NVDA")
+
+
+def test_node_id_does_not_match_wrong_ticker() -> None:
+    assert not _node_id_matches_ticker("company-amd", "NVDA")
+
+
+def test_node_id_does_not_match_unrelated() -> None:
+    assert not _node_id_matches_ticker("sector-semiconductors", "AMD")
+
+
+def test_assign_knowledge_facts_populates_amd() -> None:
+    raw = {"name": "W", "items": [{"ticker": "AMD"}]}
+    wi_input = watchlist_input_from_dict(raw)
+    knowledge = knowledge_facts_from_dict(json.loads(KNOWLEDGE.read_text()), str(KNOWLEDGE))
+    result = assign_knowledge_facts(wi_input, knowledge)
+    amd_item = result.items[0]
+    assert len(amd_item.knowledge_facts) > 0
+    assert all(f.subject_node_id == "company-amd" for f in amd_item.knowledge_facts)
+
+
+def test_assign_knowledge_facts_populates_nvda() -> None:
+    raw = {"name": "W", "items": [{"ticker": "NVDA"}]}
+    wi_input = watchlist_input_from_dict(raw)
+    knowledge = knowledge_facts_from_dict(json.loads(KNOWLEDGE.read_text()), str(KNOWLEDGE))
+    result = assign_knowledge_facts(wi_input, knowledge)
+    nvda_item = result.items[0]
+    assert len(nvda_item.knowledge_facts) > 0
+    assert all(f.subject_node_id == "company-nvda" for f in nvda_item.knowledge_facts)
+
+
+def test_amd_facts_do_not_attach_to_nvda() -> None:
+    raw = {"name": "W", "items": [{"ticker": "NVDA"}]}
+    wi_input = watchlist_input_from_dict(raw)
+    knowledge = knowledge_facts_from_dict(json.loads(KNOWLEDGE.read_text()), str(KNOWLEDGE))
+    result = assign_knowledge_facts(wi_input, knowledge)
+    nvda_item = result.items[0]
+    assert not any(f.subject_node_id == "company-amd" for f in nvda_item.knowledge_facts)
+
+
+def test_nvda_facts_do_not_attach_to_amd() -> None:
+    raw = {"name": "W", "items": [{"ticker": "AMD"}]}
+    wi_input = watchlist_input_from_dict(raw)
+    knowledge = knowledge_facts_from_dict(json.loads(KNOWLEDGE.read_text()), str(KNOWLEDGE))
+    result = assign_knowledge_facts(wi_input, knowledge)
+    amd_item = result.items[0]
+    assert not any(f.subject_node_id == "company-nvda" for f in amd_item.knowledge_facts)
+
+
+def test_assign_knowledge_empty_facts_no_change() -> None:
+    raw = {"name": "W", "items": [{"ticker": "AMD"}]}
+    wi_input = watchlist_input_from_dict(raw)
+    result = assign_knowledge_facts(wi_input, [])
+    assert result.items[0].knowledge_facts == ()
+
+
+def test_watchlist_intelligence_with_knowledge_no_false_negative() -> None:
+    raw = json.loads(WATCHLIST_INPUT.read_text())
+    wi_input = watchlist_input_from_dict(raw)
+    knowledge = knowledge_facts_from_dict(json.loads(KNOWLEDGE.read_text()), str(KNOWLEDGE))
+    wi_input = assign_knowledge_facts(wi_input, knowledge)
+    report = WatchlistIntelligenceEngine().analyze(wi_input)
+    for step in report.suggested_next_research_steps:
+        assert "No knowledge facts are linked" not in step, (
+            f"False-negative step still present: {step!r}"
+        )
+
+
+def test_watchlist_cli_knowledge_flag(tmp_path: Path) -> None:
+    out = tmp_path / "watchlist.json"
+    result = runner.invoke(app, [
+        "watchlist", "intelligence",
+        "--input", str(WATCHLIST_INPUT),
+        "--knowledge", str(KNOWLEDGE),
+        "--output", str(out),
+    ])
+    assert result.exit_code == 0, result.stdout
+    assert out.exists()
+    data = json.loads(out.read_text())
+    steps = data.get("suggested_next_research_steps", [])
+    for step in steps:
+        assert "No knowledge facts are linked" not in step, (
+            f"False-negative still in CLI output: {step!r}"
+        )
+
+
+def test_full_pipeline_with_knowledge_no_false_negative(tmp_path: Path) -> None:
+    research_out = tmp_path / "research.json"
+    watchlist_out = tmp_path / "watchlist.json"
+    disc_out = tmp_path / "discovery.json"
+    ca_amd = tmp_path / "ca_amd.json"
+    ca_nvda = tmp_path / "ca_nvda.json"
+    ca_combined = tmp_path / "ca_combined.json"
+
+    runner.invoke(app, ["research", "export", "--input", str(RESEARCH_INPUT), "--output", str(research_out)])
+    runner.invoke(app, ["watchlist", "intelligence", "--input", str(WATCHLIST_INPUT), "--knowledge", str(KNOWLEDGE), "--output", str(watchlist_out)])
+    runner.invoke(app, ["discovery", "export", "--knowledge", str(KNOWLEDGE), "--research", str(research_out), "--watchlist", str(watchlist_out), "--output", str(disc_out)])
+    runner.invoke(app, ["company-analysis", "export", "--ticker", "AMD", "--company-name", "AMD Corporation", "--sector", "Semiconductors", "--country", "USA", "--business-description", "AMD designs high-performance CPUs and GPUs.", "--knowledge", str(KNOWLEDGE), "--research", str(research_out), "--output", str(ca_amd)])
+    runner.invoke(app, ["company-analysis", "export", "--ticker", "NVDA", "--company-name", "NVIDIA Corporation", "--sector", "Semiconductors", "--country", "USA", "--business-description", "NVIDIA designs GPUs and accelerated computing platforms.", "--knowledge", str(KNOWLEDGE), "--research", str(research_out), "--output", str(ca_nvda)])
+    combined = json.loads(ca_amd.read_text()) + json.loads(ca_nvda.read_text())
+    ca_combined.write_text(json.dumps(combined))
+
+    result = runner.invoke(app, [
+        "daily", "summary",
+        "--portfolio", str(PORTFOLIO_JSON),
+        "--research", str(research_out),
+        "--watchlist", str(watchlist_out),
+        "--discovery", str(disc_out),
+        "--company-analysis", str(ca_combined),
+    ])
+    assert result.exit_code == 0
+    assert "No knowledge facts are linked" not in result.stdout
+
+
+def test_full_pipeline_deterministic_with_knowledge(tmp_path: Path) -> None:
+    research_out = tmp_path / "research.json"
+    watchlist_out = tmp_path / "watchlist.json"
+
+    runner.invoke(app, ["research", "export", "--input", str(RESEARCH_INPUT), "--output", str(research_out)])
+    runner.invoke(app, ["watchlist", "intelligence", "--input", str(WATCHLIST_INPUT), "--knowledge", str(KNOWLEDGE), "--output", str(watchlist_out)])
+
+    result1 = runner.invoke(app, ["daily", "summary", "--research", str(research_out), "--watchlist", str(watchlist_out)])
+    result2 = runner.invoke(app, ["daily", "summary", "--research", str(research_out), "--watchlist", str(watchlist_out)])
+    assert result1.stdout == result2.stdout
+
+
+def test_demo_script_passes_knowledge_to_watchlist() -> None:
+    script = Path("scripts/run_daily_brief_demo.sh").read_text()
+    assert "--knowledge" in script
+    lines = [l for l in script.splitlines() if "watchlist intelligence" in l or "--knowledge" in l]
+    found = False
+    in_watchlist_block = False
+    for line in script.splitlines():
+        if "watchlist intelligence" in line:
+            in_watchlist_block = True
+        if in_watchlist_block and "--knowledge" in line:
+            found = True
+            break
+        if in_watchlist_block and line.strip() and not line.strip().startswith("#") and "--knowledge" not in line and "watchlist" not in line and "--input" not in line and "--output" not in line and "echo" not in line:
+            in_watchlist_block = False
+    assert found, "Demo script Step 2 does not pass --knowledge to watchlist intelligence"
