@@ -58,9 +58,14 @@ class DailyBriefCapability:
         )
 
 
+_SEP = "─" * 45
+
+
 def render_daily_brief_report(report: DailyBriefReport) -> str:
-    lines = [
-        report.title,
+    lines: list[str] = [report.title, _SEP]
+
+    # Opening Summary
+    lines += [
         "",
         "Opening Summary",
         report.summary.bottom_line,
@@ -70,44 +75,101 @@ def render_daily_brief_report(report: DailyBriefReport) -> str:
     if date_label:
         lines.append(f"Date: {date_label}")
 
+    # Included Context — summarise what inputs are present
+    ctx_lines = _render_included_context(report)
+    if ctx_lines:
+        lines += ["", _SEP, "Included Context", ""] + ctx_lines
+
+    # Detail sections
     for section in report.sections:
-        lines.extend(["", section.title])
-        if section.narrative:
-            lines.append(section.narrative)
-        if section.items:
-            for item in section.items:
-                lines.append(f"  [{item.priority.value}] {item.title}: {item.detail}")
-        else:
+        lines += ["", _SEP, section.title]
+        if not section.items:
             lines.append("  No items.")
+        elif section.title == "Company Analysis Context":
+            lines.append("")
+            for item in section.items:
+                lines.append(f"  {item.title}")
+                lines.append(f"    {item.detail}")
+        else:
+            lines.append("")
+            for item in section.items:
+                marker = _priority_marker(item.priority)
+                lines.append(f"  {marker}{item.title}: {item.detail}")
 
-    if report.unknowns:
-        lines.extend(["", "Unresolved Questions"])
-        for unknown in report.unknowns:
-            ctx = f" ({unknown.context})" if unknown.context else ""
-            lines.append(f"  - {unknown.question}{ctx}")
-
+    # Evidence Gaps (before Unknowns)
     if report.evidence_gaps:
-        lines.extend(["", "Evidence Gaps"])
+        lines += ["", _SEP, "Evidence Gaps", ""]
         for gap in report.evidence_gaps:
-            lines.append(f"  - {gap.ticker}: {gap.description}")
+            lines.append(f"  {gap.ticker}: {gap.description}")
 
+    # Unresolved Questions grouped by company
+    if report.unknowns:
+        lines += ["", _SEP, "Unresolved Questions"]
+        standalone = [u for u in report.unknowns if not u.context]
+        by_company: dict[str, list[str]] = {}
+        for u in report.unknowns:
+            if u.context:
+                by_company.setdefault(u.context, []).append(u.question)
+        if standalone:
+            lines.append("")
+            for u in standalone:
+                lines.append(f"  - {u.question}")
+        for company, questions in by_company.items():
+            lines += ["", f"  {company}"]
+            for q in questions:
+                lines.append(f"    - {q}")
+
+    # Suggested Next Research Steps
     if report.next_research_steps:
-        lines.extend(["", "Suggested Next Research Steps"])
+        lines += ["", _SEP, "Suggested Next Research Steps", ""]
         for step in report.next_research_steps:
             lines.append(f"  - {step}")
 
-    lines.extend(
-        [
-            "",
-            "Research Framing",
-            (
-                "This is a deterministic daily brief for context and education. "
-                "It is not a news feed, market prediction, investment recommendation, "
-                "or personal financial advice."
-            ),
-        ]
-    )
+    # Research Framing
+    lines += [
+        "",
+        _SEP,
+        "Research Framing",
+        (
+            "This is a deterministic daily brief for context and education. "
+            "It is not a news feed, market prediction, investment recommendation, "
+            "or personal financial advice."
+        ),
+    ]
     return "\n".join(lines)
+
+
+def _priority_marker(priority: DailyBriefPriority) -> str:
+    if priority == DailyBriefPriority.HIGH:
+        return "[!] "
+    if priority == DailyBriefPriority.MODERATE:
+        return "[·] "
+    return ""
+
+
+def _render_included_context(report: DailyBriefReport) -> list[str]:
+    items: list[str] = []
+    company_section = next(
+        (s for s in report.sections if s.title == "Company Analysis Context"), None
+    )
+    if company_section and company_section.items:
+        tickers = ", ".join(item.title for item in company_section.items)
+        items.append(f"  Companies:  {tickers}")
+    research_section = next(
+        (s for s in report.sections if s.title == "Research Context"), None
+    )
+    if research_section and research_section.items:
+        items.append(f"  Research:   {len(research_section.items)} project(s)")
+    if any(s.title == "Watchlist Context" for s in report.sections):
+        items.append("  Watchlist:  available")
+    discovery_section = next(
+        (s for s in report.sections if s.title == "Discovery Context"), None
+    )
+    if discovery_section and discovery_section.items:
+        items.append(f"  Discovery:  {len(discovery_section.items)} candidate(s)")
+    if any(s.title == "Portfolio Context" for s in report.sections):
+        items.append("  Portfolio:  available")
+    return items
 
 
 def _build_sections(data: DailyBriefInput) -> list[DailyBriefSection]:
@@ -116,6 +178,9 @@ def _build_sections(data: DailyBriefInput) -> list[DailyBriefSection]:
     portfolio_section = _portfolio_section(data)
     if portfolio_section.items:
         sections.append(portfolio_section)
+    company_section = _company_section(data)
+    if company_section.items:
+        sections.append(company_section)
     research_section = _research_section(data)
     if research_section.items:
         sections.append(research_section)
@@ -125,9 +190,6 @@ def _build_sections(data: DailyBriefInput) -> list[DailyBriefSection]:
     discovery_section = _discovery_section(data)
     if discovery_section.items:
         sections.append(discovery_section)
-    company_section = _company_section(data)
-    if company_section.items:
-        sections.append(company_section)
     return sections
 
 

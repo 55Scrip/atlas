@@ -73,10 +73,10 @@ no AI. This is the future direction.
 
 1. **What Deserves Attention** — always present; shows "no developments" when nothing supplied
 2. **Portfolio Context** — present only when portfolio summary provided
-3. **Research Context** — present only when research notes provided
-4. **Watchlist Context** — present only when watchlist report provided
-5. **Discovery Context** — present only when discovery report with candidates provided
-6. **Company Analysis Context** — present only when company reports provided
+3. **Company Analysis Context** — present only when company reports provided
+4. **Research Context** — present only when research notes provided
+5. **Watchlist Context** — present only when watchlist report provided
+6. **Discovery Context** — present only when discovery report with candidates provided
 
 ## Priority Model
 
@@ -437,6 +437,110 @@ atlas company-analysis merge \
 
 The demo script (`scripts/run_daily_brief_demo.sh`) now uses this command
 at step 6. The full two-company demo is expressible in Atlas CLI commands only.
+
+## Output Format (Sprint 62)
+
+`render_daily_brief_report` produces a structured, human-readable terminal
+output. The format is stable and deterministic.
+
+### Output Structure
+
+```
+Atlas Daily Brief
+─────────────────────────────────────────────
+
+Opening Summary
+<bottom_line>
+Overall priority: <low|moderate|high>
+
+─────────────────────────────────────────────
+Included Context
+
+  Companies:  AMD, NVDA        ← tickers present in company analysis
+  Research:   2 project(s)    ← research notes count
+  Watchlist:  available        ← if watchlist present
+  Discovery:  N candidate(s)  ← if discovery present
+  Portfolio:  available        ← if portfolio present
+
+─────────────────────────────────────────────
+What Deserves Attention
+
+  [!] <title>: <detail>       ← high priority items
+  [·] <title>: <detail>       ← moderate priority items
+  <title>: <detail>           ← low priority items (no marker)
+
+─────────────────────────────────────────────
+Company Analysis Context
+
+  AMD
+    <detail>
+  NVDA
+    <detail>
+
+─────────────────────────────────────────────
+Research Context
+...
+
+─────────────────────────────────────────────
+Evidence Gaps              ← only if evidence unknowns exist
+
+  AMD: <description>
+
+─────────────────────────────────────────────
+Unresolved Questions       ← only if unknowns exist
+
+  AMD
+    - <question>
+
+─────────────────────────────────────────────
+Suggested Next Research Steps
+  - <step>
+
+─────────────────────────────────────────────
+Research Framing
+This is a deterministic daily brief for context and education. ...
+```
+
+### Priority Markers
+
+| Priority | Marker | Meaning |
+|---|---|---|
+| `high` | `[!]` | Deserves immediate attention |
+| `moderate` | `[·]` | Deserves review |
+| `low` | *(none)* | Available for context; can safely wait |
+
+### Multi-Company Formatting
+
+Company Analysis Context renders each company as a named group (not a flat list).
+Unresolved Questions from company analysis unknowns are grouped by company ticker.
+Companies are never compared as investment opportunities; no ranking is implied.
+
+### Included Context
+
+When any inputs are present, an "Included Context" block appears immediately after
+Opening Summary, listing which companies, research projects, watchlist, discovery,
+and portfolio data are available. This block is omitted when no inputs are supplied.
+
+### Evidence Gaps Section
+
+The Evidence Gaps section appears only when at least one company analysis report
+contains "Missing Evidence" unknowns (i.e. `--knowledge` was not supplied during
+export). When full metadata and knowledge are provided, the section is omitted —
+this is correct, not an error.
+
+### Section Order
+
+1. Opening Summary
+2. Included Context
+3. What Deserves Attention
+4. Company Analysis Context
+5. Research Context
+6. Watchlist Context
+7. Discovery Context
+8. Evidence Gaps
+9. Unresolved Questions
+10. Suggested Next Research Steps
+11. Research Framing
 
 ## Evidence Gap Resolver (Sprint 61)
 

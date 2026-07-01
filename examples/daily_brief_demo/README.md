@@ -97,11 +97,10 @@ atlas daily summary \
 `atlas daily summary --company-analysis` accepts a JSON array of company
 analysis reports. Both AMD and NVDA appear in:
 
+- **Company Analysis Context** — 2 company analysis reports (AMD then NVDA)
 - **Research Context** — two research projects, 7 open questions total
 - **Watchlist Context** — 4 open watchlist questions across both companies
-- **Discovery Context** — 2 discovery candidates (one per company)
-- **Company Analysis Context** — 2 company analysis reports
-- **Unresolved Questions** — 7 questions, 4 AMD + 3 NVDA
+- **Unresolved Questions** — 7 questions from both research projects
 
 Step 6 uses `atlas company-analysis merge` to combine the two individual
 exports into a single JSON array. The full demo is now expressible entirely
@@ -111,20 +110,62 @@ in Atlas CLI commands — no `python3 -c` step required.
 
 ```
 Atlas Daily Brief
+─────────────────────────────────────────────
 
 Opening Summary
-7 research question(s) remain unresolved. 2 company analysis report(s) available
-for review. Watchlist context is available for review. 2 discovery candidate(s)
-identified.
+7 research question(s) remain unresolved. 2 company analysis report(s)
+available for review. Watchlist context is available for review.
 Overall priority: moderate
 
+─────────────────────────────────────────────
+Included Context
+
+  Companies:  AMD, NVDA
+  Research:   2 project(s)
+  Watchlist:  available
+
+─────────────────────────────────────────────
 What Deserves Attention
-Research Context      ← AMD Research, NVDA Research
-Watchlist Context     ← 4 open questions across AMD + NVDA
-Discovery Context     ← 2 candidates
-Company Analysis Context  ← AMD + NVDA
-Unresolved Questions  ← 7 questions from both projects
+
+  [·] Open research questions: 7 question(s) remain unresolved.
+
+─────────────────────────────────────────────
+Company Analysis Context
+
+  AMD
+    Company analysis context is available for review.
+  NVDA
+    Company analysis context is available for review.
+
+─────────────────────────────────────────────
+Research Context
+
+  [·] AMD Research: AMD — researching
+  [·] NVDA Research: NVDA — researching
+
+─────────────────────────────────────────────
+Watchlist Context
+
+  [·] Open watchlist questions: 4 open question(s) across watchlist.
+  Suggested research steps: 2 suggested next step(s) from watchlist review.
+
+─────────────────────────────────────────────
+Unresolved Questions
+
+  - What is AMD's durable competitive advantage in the data centre GPU market?
+  ... (7 questions total)
+
+─────────────────────────────────────────────
+Suggested Next Research Steps
+
+  - Continue research on 7 open question(s).
+
+─────────────────────────────────────────────
+Research Framing
+This is a deterministic daily brief for context and education. ...
 ```
+
+No Evidence Gaps section appears when full metadata and knowledge are supplied — this is correct.
 
 ## Clean Up
 

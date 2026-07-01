@@ -416,6 +416,37 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: Daily Brief Output Readability Improvements (Sprint 62)
+
+Decision: rewrite `render_daily_brief_report` in
+`atlas/capabilities/daily_brief/engine.py` for improved terminal readability,
+and reorder `_build_sections` to surface Company Analysis before Research and
+Watchlist.
+
+Changes:
+- Separator lines (`─ × 45`) between all major sections.
+- "Included Context" block after Opening Summary: lists which companies,
+  research projects, watchlist, discovery, and portfolio data are present.
+  Omitted when no inputs are supplied.
+- Company Analysis Context renders each company as a named group (ticker as
+  sub-header, detail indented) rather than a flat list of items.
+- Priority markers: `[!]` for high, `[·]` for moderate, no marker for low.
+  Removes the noisy `[low]` / `[moderate]` / `[high]` bracket labels.
+- Evidence Gaps section now appears before Unresolved Questions (was after).
+- Unresolved Questions grouped by company ticker when context is set.
+- Section order: Company Analysis Context now appears before Research Context
+  and Watchlist Context (was last among detail sections).
+
+Rationale: the previous output was structurally flat, printed debug-style
+priority labels, and buried company analysis at the bottom. The new format
+makes it immediately clear which companies are included, what deserves
+attention, and how unknowns map to each company — without adding features,
+AI, or network calls. All changes are in the renderer and section ordering;
+the report model and CLI interface are unchanged.
+
+25 new tests added in `tests/test_daily_brief_output_readability.py`. All
+771 pre-existing tests continue to pass (796 total).
+
 ## 2026-07-01: Fix Evidence Gap Resolver — Gaps from Unknowns, Not Evidence Links (Sprint 61)
 
 Decision: rewrite `_build_evidence_gaps` in `atlas/capabilities/daily_brief/engine.py`
