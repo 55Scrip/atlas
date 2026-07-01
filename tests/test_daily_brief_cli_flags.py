@@ -362,12 +362,13 @@ def test_company_analysis_unknowns_in_output(tmp_path: Path) -> None:
     assert "2" in result.stdout
 
 
-def test_company_analysis_evidence_gaps_in_output(tmp_path: Path) -> None:
+def test_company_analysis_evidence_links_are_not_shown_as_gaps(tmp_path: Path) -> None:
+    # evidence_links represent confirmed-linked facts — they must not appear as Evidence Gaps.
+    # The fixture has evidence_links but no "Missing Evidence" unknowns, so no gaps expected.
     path = _write(tmp_path, "company.json", _company_analysis_json())
     result = runner.invoke(app, ["daily", "summary", "--company-analysis", str(path)])
     assert result.exit_code == 0
-    assert "Evidence Gaps" in result.stdout
-    assert "Revenue" in result.stdout
+    assert "Revenue breakdown by segment" not in result.stdout
 
 
 def test_company_analysis_list_format_succeeds(tmp_path: Path) -> None:

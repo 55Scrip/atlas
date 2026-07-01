@@ -438,11 +438,25 @@ atlas company-analysis merge \
 The demo script (`scripts/run_daily_brief_demo.sh`) now uses this command
 at step 6. The full two-company demo is expressible in Atlas CLI commands only.
 
-## Recommendation for Sprint 61
+## Evidence Gap Resolver (Sprint 61)
 
-Improve the Evidence Gaps section of the Daily Brief. Currently, all knowledge
-facts supplied to `company-analysis export` appear as Evidence Gaps for both
-AMD and NVDA because the daily brief's evidence gap resolver does not yet match
-engine evidence links back to company-specific facts. Sprint 61 should align
-the resolver with the evidence links produced by `CompanyAnalysisEngine` so
-Evidence Gaps show only the facts that are genuinely unlinked for each company.
+`_build_evidence_gaps` in `atlas/capabilities/daily_brief/engine.py` surfaces
+only evidence gaps that are genuine — where supporting evidence is absent. The
+resolver follows two rules:
+
+1. **`evidence_links` are NOT gaps.** A confirmed evidence link means the engine
+   found a knowledge fact that supports a section. Displaying confirmed links as
+   gaps was a bug (fixed in Sprint 61).
+
+2. **Only `unknowns` with "evidence" in the title are gaps.** This matches
+   "Missing Evidence" (emitted by `CompanyAnalysisEngine` when no knowledge
+   facts are supplied) while excluding metadata unknowns such as "Missing Sector"
+   or "Missing Country" which are not evidence-support issues.
+
+Gaps are scoped per company: AMD gaps cannot appear under NVDA and vice versa.
+
+When full metadata (`--sector`, `--country`, `--business-description`) and
+knowledge facts (`--knowledge`) are supplied, the Evidence Gaps section does not
+appear in the daily brief. This is correct — no evidence is missing. The section
+appears only when a company analysis report contains "Missing Evidence" unknowns,
+which happens when `--knowledge` is omitted from the export step.

@@ -137,12 +137,16 @@ rm -rf tmp/atlas_demo
 - The CLI `--company-analysis` flag accepts one file. Multiple company analysis
   reports are supported by merging them with `atlas company-analysis merge` first
   (step 6 above).
-- Evidence Gaps in the Daily Brief currently lists all knowledge facts for each
-  company analysis because the engine evidence links are not yet matched against
-  the daily brief's evidence gap resolver. This is a pre-existing display
-  behaviour, not a pipeline error.
 - Knowledge facts from both companies are passed to each individual company
   analysis export. The engine filters by subject_node_id match internally.
+
+## Evidence Gaps Behavior
+
+When full metadata (`--sector`, `--country`, `--business-description`) and
+knowledge facts (`--knowledge`) are supplied, the daily brief will **not** show
+an Evidence Gaps section — this is correct. Evidence gaps only appear when a
+company analysis report contains "Missing Evidence" unknowns, which happens when
+no knowledge facts are available for that company.
 
 ## What This Is Not
 
@@ -151,10 +155,3 @@ rm -rf tmp/atlas_demo
 - Not a comparison of AMD and NVDA as investment opportunities.
 - Not a recommendation to buy, hold, or take any action.
 - Not a price target or forecast.
-
-## Recommendation for Sprint 61
-
-Improve the Evidence Gaps section of the Daily Brief so it shows only
-genuinely unlinked facts per company, rather than all knowledge facts supplied
-to each company analysis export. This requires aligning the daily brief's
-evidence gap resolver with the evidence links produced by `CompanyAnalysisEngine`.

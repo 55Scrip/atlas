@@ -398,7 +398,7 @@ def test_company_unknowns_surface_in_report_unknowns() -> None:
     assert any(u.context == "NVDA" for u in report.unknowns)
 
 
-def test_company_evidence_links_surface_in_evidence_gaps() -> None:
+def test_company_evidence_links_are_not_evidence_gaps() -> None:
     from atlas.capabilities.company_analysis.models import (
         CompanyAnalysisEvidenceLink,
         CompanyAnalysisReport,
@@ -421,9 +421,7 @@ def test_company_evidence_links_surface_in_evidence_gaps() -> None:
     )
     brief_input = build_daily_brief_input(company_reports=(report_obj,))
     report = DailyBriefCapability().generate(brief_input)
-    assert report.evidence_gaps
-    assert any(g.ticker == "NVDA" for g in report.evidence_gaps)
-    assert any("Revenue" in g.description for g in report.evidence_gaps)
+    assert report.evidence_gaps == ()
 
 
 def test_company_empty_when_no_reports() -> None:

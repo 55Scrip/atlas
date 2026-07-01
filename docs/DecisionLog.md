@@ -416,6 +416,25 @@ needed — only fixture JSON files, a shell script, documentation, and tests. Th
 demo is explicitly marked as research context, not live market analysis. No
 network calls are made at any step.
 
+## 2026-07-01: Fix Evidence Gap Resolver — Gaps from Unknowns, Not Evidence Links (Sprint 61)
+
+Decision: rewrite `_build_evidence_gaps` in `atlas/capabilities/daily_brief/engine.py`
+to surface only company analysis `unknowns` whose title contains "evidence" (e.g.
+"Missing Evidence"), not `evidence_links`.
+
+Rationale: `evidence_links` on a `CompanyAnalysisReport` represent knowledge
+facts the engine *confirmed* as supporting evidence — they are linked, not gaps.
+The old implementation iterated `evidence_links` and displayed each as a gap,
+which was semantically backwards: confirmed evidence was reported as missing
+evidence. The fix scopes gaps per company (AMD gaps cannot appear as NVDA gaps)
+and filters by unknown title so metadata unknowns ("Missing Sector", "Missing
+Country") are excluded. When all metadata and knowledge facts are supplied, the
+Evidence Gaps section no longer appears in the daily brief — which is the correct
+outcome. A new `_is_evidence_gap_unknown(title)` helper makes the classification
+rule explicit and testable. 17 new unit tests added in
+`tests/test_evidence_gap_resolver.py`. Two pre-existing tests that asserted the
+buggy behavior were renamed and rewritten to assert correct behavior.
+
 ## 2026-07-01: Add --sector and --country to Company Analysis Export (Sprint 57)
 
 Decision: add two optional string flags — `--sector` and `--country` — to

@@ -376,20 +376,34 @@ def _build_unknowns(data: DailyBriefInput) -> list[DailyBriefUnknown]:
 
 
 def _build_evidence_gaps(data: DailyBriefInput) -> list[DailyBriefEvidenceLink]:
+    """Build Evidence Gaps from company analysis unknowns that signal missing evidence.
+
+    evidence_links on a company report represent facts the engine *confirmed* as
+    supporting evidence — they are linked, not gaps. Only unknowns that indicate
+    unresolved or absent evidence support are surfaced here, scoped per company
+    so that AMD gaps never appear under NVDA and vice versa.
+    """
     gaps: list[DailyBriefEvidenceLink] = []
     for report in data.company_reports:
         company = getattr(report, "company", None)
         ticker = getattr(company, "ticker", None) or getattr(report, "ticker", "Unknown")
-        # CompanyAnalysisReport uses evidence_links; fall back to evidence_gaps for
-        # duck-typed objects
-        evidence_links = getattr(
-            report, "evidence_links",
-            getattr(report, "evidence_gaps", ()),
-        )
-        for link in evidence_links:
-            desc = getattr(link, "description", str(link))
-            gaps.append(DailyBriefEvidenceLink(ticker=ticker, description=desc))
+        for unknown in getattr(report, "unknowns", ()):
+            title = getattr(unknown, "title", None) or str(unknown)
+            detail = getattr(unknown, "detail", "") or ""
+            if _is_evidence_gap_unknown(title):
+                desc = detail.strip() or title
+                gaps.append(DailyBriefEvidenceLink(ticker=ticker, description=desc))
     return gaps[:10]
+
+
+def _is_evidence_gap_unknown(title: str) -> bool:
+    """True when an unknown title signals missing or unresolved evidence support.
+
+    Matches "Missing Evidence" and similar but excludes metadata gaps such as
+    "Missing Sector" or "Missing Country" which are not evidence-support issues.
+    """
+    t = title.lower()
+    return "evidence" in t
 
 
 def _build_next_steps(data: DailyBriefInput) -> list[str]:
