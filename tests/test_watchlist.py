@@ -84,8 +84,7 @@ def test_watchlist_cli_outputs_analysis(tmp_path):
 
     result = runner.invoke(app, ["watchlist", "analyze", str(path)])
 
+    # Sprint 78: atlas watchlist analyze is deprecated — expect deprecation message
     assert result.exit_code == 0
-    assert "Watchlist Analysis" in result.output
-    assert "Watchlist name: AI Watchlist" in result.output
-    assert "Ranked Opportunities" in result.output
-    assert "Final Atlas View" in result.output
+    assert "deprecated" in result.output.lower()
+    assert "watchlist intelligence" in result.output.lower()

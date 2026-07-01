@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-01 (Sprint 77)  
-**Status:** Active — Sprint 77 target complete; Sprint 78 target to be selected
+**Updated:** 2026-07-01 (Sprint 78)  
+**Status:** Active — Sprint 78 target complete; Sprint 79 target to be selected
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -165,9 +165,8 @@ atlas watchlist intelligence
 status: current (Blueprint-aligned)
 
 atlas watchlist analyze
-→ atlas.analysis.watchlist.WatchlistEngine (legacy)
-→ providers (mock/yahoo — opt-in)
-status: legacy
+→ DEPRECATED (Sprint 78) — prints deprecation message, exits 0, no engine called
+status: deprecated — no WatchlistEngine call, no provider call
 
 atlas watchlist review
 → atlas.watchlist_review.WatchlistReviewEngine (legacy)
@@ -195,7 +194,7 @@ status: current (Blueprint-aligned)
 |---|---|---|
 | `atlas/daily/` + `atlas/daily_brief/` | `atlas/capabilities/daily_brief/` | Full overlap — two parallel implementations. CLI command `atlas daily brief` uses legacy; `atlas daily summary` uses Blueprint. |
 | `atlas/analysis/portfolio.py` | `atlas/domains/portfolio/` + `atlas/adapters/portfolio.py` | Partial — Portfolio type bridged via adapter. Domain summary is the current path. |
-| `atlas/analysis/watchlist.py` | `atlas/capabilities/watchlist_intelligence/` | Partial — legacy used by `atlas watchlist analyze`; new capability used by `atlas watchlist intelligence`. |
+| `atlas/analysis/watchlist.py` | `atlas/capabilities/watchlist_intelligence/` | Deprecated — `atlas watchlist analyze` deprecated Sprint 78; `WatchlistEngine` still used by monitoring, decision, intelligence, conversation, watchlist_review legacy engines. |
 | `atlas/analysis/company_analysis.py` | `atlas/capabilities/company_analysis/` | Partial — new capability path exists for export pipeline. |
 | `atlas/domains/daily_brief/` | `atlas/capabilities/daily_brief/` | **Boundary violation:** `atlas/domains/daily_brief/__init__.py` imports from `atlas.daily_brief` (legacy). The domain layer should not depend on legacy modules. |
 
@@ -229,6 +228,28 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 78 Migration Target — COMPLETED
+
+### Completed: `atlas watchlist analyze` command deprecated
+
+**Sprint 78 result:**
+- `atlas watchlist analyze` CLI command now prints a deprecation message and exits cleanly (exit 0)
+- `WatchlistEngine` and `render_watchlist_analysis` removed from `atlas/cli/main.py` module-level imports
+- `atlas watchlist intelligence` (Blueprint-aligned) is the current supported command
+- `atlas/analysis/watchlist.py` engine remains on disk — still used by 5 other legacy engines
+  (`monitoring`, `decision`, `intelligence`, `conversation`, `watchlist_review`)
+- 10 new Sprint 78 deprecation tests added; 1008 tests passing, 0 failures
+
+**Note:** `WatchlistEngine` cannot be deleted yet — it has 5 active legacy engine consumers.
+The CLI command deprecation reduces CLI surface area; full engine removal requires a broader
+legacy consolidation plan for those dependent engines.
+
+**Future removal criteria for `atlas watchlist analyze` command:**
+1. Remove the command body entirely in Sprint 79 (or leave deprecated stub — low risk)
+2. `WatchlistEngine` deletion requires retiring all 5 dependent legacy engines first
 
 ---
 
@@ -360,7 +381,7 @@ to not import from a legacy module) is an even smaller, safer change.
 | ~~`atlas/domains/daily_brief/` boundary violation~~ | ~~Fixed: namespace stub~~ | ~~High~~ | **Done 75** |
 | ~~`atlas daily brief` command~~ | ~~Deprecated; no longer calls engine~~ | ~~High~~ | **Done 76** |
 | ~~`atlas/daily_brief/` legacy engine~~ | ~~Provider-coupled; deleted~~ | ~~Medium~~ | **Done 77** |
-| `atlas/analysis/watchlist.py` duplication | Parallel to `capabilities/watchlist_intelligence` | Medium | Future |
+| `atlas/analysis/watchlist.py` — CLI command deprecated | `atlas watchlist analyze` deprecated; WatchlistEngine still used by 5 legacy engines | Medium | 79 (CLI removal); broader engine migration later |
 | `atlas/analysis/portfolio.py` legacy type | Bridged via adapter; could be retired after full portfolio migration | Medium | Future |
 | Group C self-contained modules | `evidence`, `reasoning`, `risk`, etc. — good candidates for Blueprint wrappers | Low | Multi-sprint |
 | Provider-coupled Group B | `home`, `dashboard`, `comparison`, etc. — require provider architecture decision | Low | Long-term |

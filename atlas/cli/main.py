@@ -23,7 +23,7 @@ from atlas.analysis.portfolio import (
 from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
 from atlas.domains.portfolio import portfolio_summary as domain_portfolio_summary
 from atlas.analysis.report import build_investment_report, render_investment_report
-from atlas.analysis.watchlist import Watchlist, WatchlistEngine, render_watchlist_analysis
+from atlas.analysis.watchlist import Watchlist
 from atlas.watchlist_review import (
     WatchlistReviewEngine,
     demo_watchlist_review_input,
@@ -1425,19 +1425,26 @@ def company_analysis_merge_command(
 
 @watchlist_app.command("analyze")
 def watchlist_analyze_command(
-    watchlist_path: Path,
-    provider_name: str = typer.Option("mock", "--provider", help="Data provider: mock or yahoo"),
+    watchlist_path: Path = typer.Argument(
+        ...,
+        help="[DEPRECATED] Watchlist JSON path. Use 'atlas watchlist intelligence' instead.",
+    ),
+    provider_name: str = typer.Option("mock", "--provider", help="[DEPRECATED] Data provider."),
 ):
-    """Analyze opportunities across a watchlist."""
-    try:
-        provider = _provider_from_name(provider_name)
-        watchlist = Watchlist.from_json_file(watchlist_path)
-        analysis = WatchlistEngine().analyze(watchlist=watchlist, provider=provider)
-    except (FileNotFoundError, LookupError, ValueError) as exc:
-        console.print(f"[red]Watchlist analysis failed:[/red] {exc}")
-        raise typer.Exit(code=1) from exc
+    """[DEPRECATED] Legacy Watchlist Analyze — use 'atlas watchlist intelligence' instead.
 
-    console.print(render_watchlist_analysis(analysis))
+    This command is deprecated and will be removed in a future sprint.
+    Use the Blueprint-aligned command instead:
+
+        atlas watchlist intelligence
+    """
+    console.print(
+        "[yellow]DEPRECATED:[/yellow] The command [bold]atlas watchlist analyze[/bold] is deprecated.\n"
+        "Use [bold]atlas watchlist intelligence[/bold] for the Blueprint-aligned Watchlist Intelligence workflow.\n"
+        "\n"
+        "    atlas watchlist intelligence --help"
+    )
+    raise typer.Exit(code=0)
 
 
 @watchlist_app.command("review")

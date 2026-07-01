@@ -363,3 +363,18 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
   Brief surface area (Group A shim + engine) is completely gone.
 - `atlas daily summary` (Blueprint-aligned) remains the sole supported Daily
   Brief command. 998 tests passing.
+
+**Sprint 78 — completed:**
+
+- `atlas watchlist analyze` CLI command deprecated. Prints deprecation notice
+  and exits cleanly (exit 0) without calling `WatchlistEngine` or any provider.
+- `WatchlistEngine` and `render_watchlist_analysis` removed from `atlas/cli/main.py`
+  module-level imports.
+- `atlas watchlist intelligence` (Blueprint-aligned) remains the sole supported
+  watchlist command.
+- `atlas/analysis/watchlist.py` engine remains on disk — it is still used by
+  5 legacy engines (monitoring, decision, intelligence, conversation,
+  watchlist_review). Its removal requires a broader consolidation effort.
+- 10 new Sprint 78 deprecation tests. 1008 tests passing.
+- Recommended Sprint 79 target: remove `atlas watchlist analyze` command body
+  entirely (or begin consolidating the 5 dependent legacy engines).

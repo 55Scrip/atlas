@@ -847,3 +847,15 @@ Rationale: Sprint 76 deprecated `atlas daily brief` and removed the CLI import.
 The engine itself had no remaining consumers. Deletion reduces the legacy surface
 area and eliminates the last provider-coupled code called by any Daily Brief path.
 The guardrail tests ensure the module cannot be silently reintroduced.
+
+## 2026-07-01: Deprecate `atlas watchlist analyze` Command (Sprint 78)
+
+Decision: deprecate `atlas watchlist analyze` in favor of `atlas watchlist
+intelligence` (Blueprint-aligned). The command now prints a deprecation message
+and exits without calling `WatchlistEngine` or any provider.
+
+Rationale: Follows the two-step pattern from Sprints 76–77. Unlike the daily
+brief path (where DailyBriefEngine had only one CLI consumer), WatchlistEngine
+is used by 5 other legacy engines. The CLI deprecation is safe and immediate;
+full WatchlistEngine deletion requires retiring those 5 dependent engines first,
+which is a larger multi-sprint effort outside Sprint 78's scope.
