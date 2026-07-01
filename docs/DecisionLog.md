@@ -1149,3 +1149,32 @@ prevents new WatchlistEngine callers from being added unnoticed during future sp
 **Outcome:** WatchlistEngine caller count unchanged at 5. Redundant double-run eliminated.
 One shared WatchlistEngine instance in WatchlistReviewEngine. Exclusivity guardrail added.
 1118 tests passing (3 skipped). Demo passed. Release verification green.
+
+## Sprint 93 — 2026-07-02: Remove WatchlistEngine from Monitoring Runtime Path
+
+**Decision:** Replace `atlas monitor watchlist` CLI path with Blueprint-aligned `WatchlistIntelligenceEngine`,
+removing `WatchlistEngine` from `atlas/monitoring/engine.py`. Retain `snapshot_watchlist_from_analysis()`
+in `MonitoringEngine` for `watchlist_review`'s use.
+
+**Rationale:** Sprint 92 isolated the watchlist monitoring path behind `snapshot_watchlist_from_analysis`.
+Sprint 93's goal was to remove `WatchlistEngine` from monitoring entirely. The Blueprint-aligned
+`WatchlistIntelligenceEngine` accepts `WatchlistIntelligenceInput` (name + minimal ticker items)
+and produces research-coverage signals (items needing attention, evidence gaps, open questions)
+rather than company scores. This is a valid replacement because:
+- `atlas monitor watchlist` is about tracking research coverage gaps, not scoring companies
+- The new signals are deterministic, local-only, provider-free
+- No recommendation language; no buy/sell language
+- The architecture boundary permits legacy modules to import capabilities (only domains are forbidden)
+
+`snapshot_watchlist_from_analysis(analysis: WatchlistAnalysis)` is retained in `MonitoringEngine`
+because `atlas/watchlist_review/engine.py` still calls it after computing its own `WatchlistAnalysis`
+via its direct `WatchlistEngine`. That dependency is the Sprint 94 target.
+
+**Output change:** `atlas monitor watchlist` signals changed from company-score-based (atlas_score,
+valuation.score, quality.score) to research-coverage-based (items needing attention, evidence gaps,
+open questions). Behavior intent preserved (monitoring research coverage health). Documented.
+
+**Outcome:** WatchlistEngine caller count reduced 5 → **4** (intelligence, decision, watchlist_review,
+conversation). `atlas/monitoring/engine.py` no longer imports `WatchlistEngine`. Provider parameter
+made optional in `monitor_watchlist`/`snapshot_watchlist` — CLI call unchanged. 1121 tests passing
+(3 skipped). Demo passed. Release verification green.

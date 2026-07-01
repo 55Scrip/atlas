@@ -3,7 +3,12 @@ from dataclasses import dataclass
 from atlas.analysis.engine import AtlasInvestmentEngine
 from atlas.analysis.portfolio import Portfolio
 from atlas.analysis.scores import clamp_score
-from atlas.analysis.watchlist import Watchlist, WatchlistAnalysis, WatchlistEngine
+from atlas.analysis.watchlist import Watchlist, WatchlistAnalysis
+from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
+from atlas.capabilities.watchlist_intelligence.models import (
+    WatchlistIntelligenceInput,
+    WatchlistItem as IntelligenceWatchlistItem,
+)
 from atlas.market import (
     MarketHealthEngine,
     MarketIndicators,
@@ -65,13 +70,11 @@ class MonitoringEngine:
     def __init__(
         self,
         investment_engine: AtlasInvestmentEngine | None = None,
-        watchlist_engine: WatchlistEngine | None = None,
         theme_engine: ThemeEngine | None = None,
         market_health_engine: MarketHealthEngine | None = None,
         market_regime_engine: MarketRegimeEngine | None = None,
     ) -> None:
         self.investment_engine = investment_engine or AtlasInvestmentEngine()
-        self.watchlist_engine = watchlist_engine or WatchlistEngine(self.investment_engine)
         self.theme_engine = theme_engine or ThemeEngine()
         self.market_health_engine = market_health_engine or MarketHealthEngine()
         self.market_regime_engine = market_regime_engine or MarketRegimeEngine()
@@ -328,10 +331,62 @@ class MonitoringEngine:
     def snapshot_watchlist(
         self,
         watchlist: Watchlist,
-        provider: CompanyDataProvider,
+        provider: CompanyDataProvider | None = None,
     ) -> MonitoringSnapshot:
-        analysis = self.watchlist_engine.analyze(watchlist, provider)
-        return self.snapshot_watchlist_from_analysis(analysis)
+        intelligence_input = WatchlistIntelligenceInput(
+            name=watchlist.name,
+            items=tuple(
+                IntelligenceWatchlistItem(
+                    id=item.ticker.lower(),
+                    ticker=item.ticker,
+                )
+                for item in watchlist.items
+            ),
+        )
+        report = WatchlistIntelligenceEngine().analyze(intelligence_input)
+        attention_count = len(report.companies_needing_attention)
+        gap_count = len(report.evidence_gaps)
+        question_count = len(report.open_questions)
+        return MonitoringSnapshot(
+            object_type="Watchlist",
+            identifier=report.name,
+            summary=report.overview,
+            signals=(
+                MonitoringSignal(
+                    "Items needing attention",
+                    clamp_score(attention_count * 20),
+                    "Current",
+                    f"{attention_count} item(s) need review or more evidence.",
+                    higher_is_better=False,
+                ),
+                MonitoringSignal(
+                    "Evidence gaps",
+                    clamp_score(gap_count * 15),
+                    "Current",
+                    f"{gap_count} evidence gap(s) identified.",
+                    higher_is_better=False,
+                ),
+                MonitoringSignal(
+                    "Open questions",
+                    clamp_score(question_count * 10),
+                    "Current",
+                    f"{question_count} open research question(s).",
+                    higher_is_better=False,
+                ),
+            ),
+            new_risks=tuple(
+                f"{u.ticker}: {u.detail}" for u in report.evidence_gaps[:2]
+            ),
+            new_opportunities=report.suggested_next_research_steps[:2],
+            monitoring_items=(
+                "items needing attention",
+                "evidence gaps",
+                "open research questions",
+                "suggested next steps",
+            ),
+            confidence=70,
+            importance_score=clamp_score(attention_count * 15 + gap_count * 10),
+        )
 
     def compare(
         self,
@@ -402,9 +457,9 @@ class MonitoringEngine:
     def monitor_watchlist(
         self,
         watchlist: Watchlist,
-        provider: CompanyDataProvider,
+        provider: CompanyDataProvider | None = None,
     ) -> MonitoringAlert:
-        current = self.snapshot_watchlist(watchlist, provider)
+        current = self.snapshot_watchlist(watchlist)
         previous = _previous_baseline(current)
         return self.compare(previous, current)
 

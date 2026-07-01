@@ -595,3 +595,18 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - Recommended Sprint 93 target: replace `atlas/monitoring/` watchlist snapshot methods with
   Blueprint-aligned data source, or migrate `atlas/watchlist_review/` direct WatchlistEngine usage
   to use the watchlist_intelligence capability layer.
+
+**Sprint 93 (2026-07-02):** WatchlistEngine removed from `atlas/monitoring/engine.py`; caller count 5 → 4.
+- `atlas monitor watchlist` CLI path now uses Blueprint-aligned `WatchlistIntelligenceEngine` instead of
+  legacy `WatchlistEngine`. Legacy `Watchlist` (tickers) converted to minimal `WatchlistIntelligenceInput`
+  items; `MonitoringSnapshot` built from research-driven signals (items needing attention, evidence gaps,
+  open questions). Provider parameter is now optional — watchlist monitoring is provider-free.
+- `snapshot_watchlist_from_analysis(analysis)` retained in `MonitoringEngine` — still called by
+  `atlas/watchlist_review/engine.py` for its own direct WatchlistEngine analysis path.
+- `atlas/watchlist_review/engine.py` updated: `MonitoringEngine()` no longer passed `watchlist_engine=`.
+- Architecture boundary confirmed: legacy module (`atlas/monitoring/`) may import from
+  `atlas.capabilities.watchlist_intelligence` — only domains are forbidden from importing capabilities.
+- WatchlistEngine caller count: 5 before → **4** after (intelligence, decision, watchlist_review, conversation).
+- 1121 tests passing (3 skipped). Demo passed. Release verification green.
+- Recommended Sprint 94 target: migrate `atlas/watchlist_review/` direct WatchlistEngine dependency
+  to Blueprint-aligned capability; also cleanup `snapshot_watchlist_from_analysis` in monitoring.

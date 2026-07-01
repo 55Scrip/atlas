@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 92)  
-**Status:** Active — Sprint 92 target complete; WatchlistEngine double-run eliminated in watchlist_review; caller count unchanged at 5. Sprint 93 target: migrate or retire atlas/monitoring/ and atlas/watchlist_review/ WatchlistEngine direct dependency
+**Updated:** 2026-07-02 (Sprint 93)  
+**Status:** Active — Sprint 93 target complete; WatchlistEngine removed from atlas/monitoring/; caller count 5 → 4. Sprint 94 target: migrate atlas/watchlist_review/ direct WatchlistEngine dependency to Blueprint-aligned capability
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,44 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 93 Migration Target — COMPLETED
+
+### Completed: WatchlistEngine removed from `atlas/monitoring/engine.py`; caller count 5 → 4
+
+**Sprint 93 result:**
+
+**Goal:** Replace the `atlas monitor watchlist` CLI path with Blueprint-aligned Watchlist Intelligence data, removing `WatchlistEngine` from `monitoring/engine.py`.
+
+**Changes made:**
+1. Removed `WatchlistEngine` import from `atlas/monitoring/engine.py`
+2. Added imports: `WatchlistIntelligenceEngine`, `WatchlistIntelligenceInput`, `WatchlistItem as IntelligenceWatchlistItem` from `atlas.capabilities.watchlist_intelligence`
+3. Removed `watchlist_engine: WatchlistEngine | None` parameter from `MonitoringEngine.__init__`
+4. Rewrote `snapshot_watchlist(watchlist, provider=None)` to use `WatchlistIntelligenceEngine.analyze()` — converts legacy `Watchlist` tickers to minimal `WatchlistIntelligenceInput` items, builds `MonitoringSnapshot` from research-driven signals (items needing attention, evidence gaps, open questions)
+5. Made `provider` parameter optional in `snapshot_watchlist` and `monitor_watchlist` — no longer needed (Blueprint path is provider-free)
+6. `snapshot_watchlist_from_analysis(analysis)` retained — still called by `atlas/watchlist_review/engine.py` for its own direct WatchlistEngine analysis result
+7. Updated `atlas/watchlist_review/engine.py` to call `MonitoringEngine()` without `watchlist_engine=` arg (no longer accepted)
+8. Updated `WATCHLIST_ENGINE_CALLERS` to 4 entries (removed monitoring)
+9. Added `test_monitoring_engine_does_not_import_watchlist_engine` guardrail
+10. Added `test_monitoring_engine_snapshot_watchlist_uses_blueprint_intelligence`
+11. Added `test_monitoring_cli_monitors_watchlist` CLI behavior test
+
+**Output change (documented):**
+`atlas monitor watchlist` signals changed from company-score-based (atlas_score, valuation, quality from WatchlistEngine) to research-coverage-based (items needing attention, evidence gaps, open questions from WatchlistIntelligenceEngine). Output remains deterministic, local-only, provider-free. No recommendation language.
+
+**WatchlistEngine caller count:**
+- Before Sprint 93: 5 (intelligence, decision, monitoring, watchlist_review, conversation)
+- After Sprint 93: **4** (intelligence, decision, watchlist_review, conversation)
+- `atlas/monitoring/engine.py` no longer imports or instantiates WatchlistEngine
+
+**Engine deletion criteria (deferred to Sprint 94+):**
+1. Retire or migrate `atlas/intelligence/` WatchlistEngine usage
+2. Retire or migrate `atlas/decision/` WatchlistEngine usage
+3. Migrate `atlas/watchlist_review/` direct WatchlistEngine to Blueprint-aligned data → unblocks monitoring's `snapshot_watchlist_from_analysis` cleanup too
+4. Retire or migrate `atlas/conversation/` WatchlistEngine usage
+5. Once all four callers are retired, `atlas/analysis/watchlist.py` can be deleted
 
 ---
 

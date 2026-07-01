@@ -109,9 +109,10 @@ def test_monitoring_cli_monitors_theme():
     assert "Electricity supply bottleneck" in result.output
 
 
-def test_monitoring_engine_snapshot_watchlist_from_analysis_matches_snapshot_watchlist():
-    # Sprint 92: snapshot_watchlist_from_analysis must produce the same result
-    # as snapshot_watchlist when given the same WatchlistAnalysis.
+def test_monitoring_engine_snapshot_watchlist_from_analysis_uses_legacy_analysis():
+    # Sprint 92: snapshot_watchlist_from_analysis accepts a WatchlistAnalysis
+    # (legacy path used by watchlist_review). snapshot_watchlist now uses Blueprint-aligned
+    # Watchlist Intelligence data (Sprint 93) — the two methods have different output shapes.
     from atlas.analysis.watchlist import Watchlist, WatchlistEngine
 
     provider = MockCompanyAnalysisProvider()
@@ -120,13 +121,50 @@ def test_monitoring_engine_snapshot_watchlist_from_analysis_matches_snapshot_wat
     analysis = WatchlistEngine().analyze(watchlist=watchlist, provider=provider)
 
     via_analysis = engine.snapshot_watchlist_from_analysis(analysis)
-    via_watchlist = engine.snapshot_watchlist(watchlist, provider)
 
-    assert via_analysis.object_type == via_watchlist.object_type == "Watchlist"
-    assert via_analysis.identifier == via_watchlist.identifier == "Sprint92"
-    assert via_analysis.confidence == via_watchlist.confidence == 80
-    assert len(via_analysis.signals) == len(via_watchlist.signals) == 3
-    assert via_analysis.signals[0].name == via_watchlist.signals[0].name
+    assert via_analysis.object_type == "Watchlist"
+    assert via_analysis.identifier == "Sprint92"
+    assert via_analysis.confidence == 80
+    assert len(via_analysis.signals) == 3
+    assert via_analysis.signals[0].name == "Strongest opportunity score"
+
+
+def test_monitoring_engine_snapshot_watchlist_uses_blueprint_intelligence():
+    # Sprint 93: snapshot_watchlist now uses Blueprint-aligned Watchlist Intelligence.
+    # No provider needed; output is research-driven, not score-driven.
+    from atlas.analysis.watchlist import Watchlist
+
+    watchlist = Watchlist.from_mapping({"name": "Sprint93", "tickers": ["NVDA", "MSFT"]})
+    engine = MonitoringEngine()
+
+    snapshot = engine.snapshot_watchlist(watchlist)
+
+    assert snapshot.object_type == "Watchlist"
+    assert snapshot.identifier == "Sprint93"
+    assert snapshot.confidence == 70
+    assert len(snapshot.signals) == 3
+    assert snapshot.signals[0].name == "Items needing attention"
+    assert snapshot.signals[1].name == "Evidence gaps"
+    assert snapshot.signals[2].name == "Open questions"
+    assert "item(s)" in snapshot.summary
+
+
+def test_monitoring_cli_monitors_watchlist(tmp_path):
+    import json as _json
+
+    watchlist_path = tmp_path / "watchlist.json"
+    watchlist_path.write_text(
+        _json.dumps({"name": "Sprint93 Watchlist", "tickers": ["NVDA", "MSFT"]}),
+        encoding="utf-8",
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["monitor", "watchlist", str(watchlist_path)])
+
+    assert result.exit_code == 0
+    assert "Monitoring Alert" in result.output
+    assert "Object: Watchlist" in result.output
+    assert "Items needing attention" in result.output
 
 
 def test_monitoring_cli_monitors_portfolio(tmp_path):
