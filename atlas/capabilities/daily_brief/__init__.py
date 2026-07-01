@@ -15,6 +15,7 @@ no-developments result.
 """
 
 from atlas.capabilities.daily_brief.engine import DailyBriefCapability
+from atlas.capabilities.daily_brief.input_builder import build_daily_brief_input
 from atlas.capabilities.daily_brief.models import (
     DailyBriefEvidenceLink,
     DailyBriefInput,
@@ -29,6 +30,7 @@ from atlas.capabilities.daily_brief.models import (
 
 __all__ = [
     "DailyBriefCapability",
+    "build_daily_brief_input",
     "DailyBriefEvidenceLink",
     "DailyBriefInput",
     "DailyBriefItem",

@@ -246,8 +246,8 @@ def _research_section(data: DailyBriefInput) -> DailyBriefSection:
 
     items = tuple(
         DailyBriefItem(
-            title=getattr(note, "ticker", getattr(note, "id", "Unknown")),
-            detail=getattr(note, "content", str(note))[:200],
+            title=getattr(note, "title", getattr(note, "id", "Unknown")),
+            detail=getattr(note, "body", getattr(note, "content", str(note)))[:200],
             priority=DailyBriefPriority.MODERATE,
         )
         for note in notes[:5]
@@ -274,7 +274,10 @@ def _watchlist_section(data: DailyBriefInput) -> DailyBriefSection:
                 priority=DailyBriefPriority.MODERATE,
             )
         )
-    next_steps = getattr(report, "suggested_next_steps", ())
+    next_steps = getattr(
+        report, "suggested_next_research_steps",
+        getattr(report, "suggested_next_steps", ()),
+    )
     if next_steps:
         items.append(
             DailyBriefItem(
@@ -290,6 +293,14 @@ def _watchlist_section(data: DailyBriefInput) -> DailyBriefSection:
     )
 
 
+def _discovery_candidate_detail(candidate: object) -> str:
+    reasons = getattr(candidate, "reasons", ())
+    if reasons:
+        first = reasons[0]
+        return getattr(first, "detail", getattr(first, "title", "Discovery candidate deserves research."))
+    return getattr(candidate, "reason", "Discovery candidate deserves research.")
+
+
 def _discovery_section(data: DailyBriefInput) -> DailyBriefSection:
     report = data.discovery_report
     if report is None:
@@ -301,8 +312,8 @@ def _discovery_section(data: DailyBriefInput) -> DailyBriefSection:
 
     items = tuple(
         DailyBriefItem(
-            title=getattr(c, "ticker", "Unknown"),
-            detail=getattr(c, "reason", "Discovery candidate deserves research."),
+            title=getattr(c, "identifier", getattr(c, "ticker", "Unknown")),
+            detail=_discovery_candidate_detail(c),
             priority=DailyBriefPriority.MODERATE,
         )
         for c in candidates[:3]
@@ -322,7 +333,8 @@ def _company_section(data: DailyBriefInput) -> DailyBriefSection:
     items: list[DailyBriefItem] = []
     for report in reports[:3]:
         unknowns = getattr(report, "unknowns", ())
-        ticker = getattr(report, "ticker", "Unknown")
+        company = getattr(report, "company", None)
+        ticker = getattr(company, "ticker", None) or getattr(report, "ticker", "Unknown")
         if unknowns:
             items.append(
                 DailyBriefItem(
@@ -351,9 +363,14 @@ def _build_unknowns(data: DailyBriefInput) -> list[DailyBriefUnknown]:
     for question in data.open_research_questions:
         unknowns.append(DailyBriefUnknown(question=question))
     for report in data.company_reports:
-        ticker = getattr(report, "ticker", "Unknown")
+        company = getattr(report, "company", None)
+        ticker = getattr(company, "ticker", None) or getattr(report, "ticker", "Unknown")
         for unknown in getattr(report, "unknowns", ()):
-            question = getattr(unknown, "question", str(unknown))
+            question = (
+                getattr(unknown, "question", None)
+                or getattr(unknown, "title", None)
+                or str(unknown)
+            )
             unknowns.append(DailyBriefUnknown(question=question, context=ticker))
     return unknowns[:10]
 
@@ -361,8 +378,14 @@ def _build_unknowns(data: DailyBriefInput) -> list[DailyBriefUnknown]:
 def _build_evidence_gaps(data: DailyBriefInput) -> list[DailyBriefEvidenceLink]:
     gaps: list[DailyBriefEvidenceLink] = []
     for report in data.company_reports:
-        ticker = getattr(report, "ticker", "Unknown")
-        evidence_links = getattr(report, "evidence_gaps", ())
+        company = getattr(report, "company", None)
+        ticker = getattr(company, "ticker", None) or getattr(report, "ticker", "Unknown")
+        # CompanyAnalysisReport uses evidence_links; fall back to evidence_gaps for
+        # duck-typed objects
+        evidence_links = getattr(
+            report, "evidence_links",
+            getattr(report, "evidence_gaps", ()),
+        )
         for link in evidence_links:
             desc = getattr(link, "description", str(link))
             gaps.append(DailyBriefEvidenceLink(ticker=ticker, description=desc))
@@ -380,7 +403,10 @@ def _build_next_steps(data: DailyBriefInput) -> list[str]:
         if candidates:
             steps.append("Review discovery candidates for further research eligibility.")
     if data.watchlist_report is not None:
-        next_watchlist = getattr(data.watchlist_report, "suggested_next_steps", ())
+        next_watchlist = getattr(
+            data.watchlist_report, "suggested_next_research_steps",
+            getattr(data.watchlist_report, "suggested_next_steps", ()),
+        )
         steps.extend(str(s) for s in next_watchlist[:2])
     if not steps:
         steps.append("No research actions identified from available inputs.")

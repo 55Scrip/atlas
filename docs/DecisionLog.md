@@ -137,6 +137,25 @@ market-cap concentration impact, overlap, expected quality/risk impact, and
 the `Strong Add`/`Add`/`Neutral`/`Reduce`/`Avoid` recommendation) completely
 unchanged.
 
+## 2026-07-01: Connect Daily Brief to Typed Atlas Structures (Sprint 49)
+
+Decision: create `atlas.capabilities.daily_brief.input_builder.build_daily_brief_input`
+as the canonical adapter from typed Atlas structures to `DailyBriefInput`, and fix
+five attribute-name mismatches in the engine that prevented correct output when real
+typed objects were supplied.
+
+Rationale: Sprint 48's engine used duck typing (`getattr` with fallback) to consume
+inputs, but several attribute names were wrong for the real Atlas types — `ticker`
+instead of `title` for `ResearchNote`, `suggested_next_steps` instead of
+`suggested_next_research_steps` for `WatchlistIntelligenceReport`, `reason` instead
+of `reasons[0].detail` for `DiscoveryCandidate`, `ticker` instead of `company.ticker`
+and `evidence_gaps` instead of `evidence_links` for `CompanyAnalysisReport`. The
+mismatches were silent (the fallback values suppressed them) but would have produced
+wrong output in production. The input builder adds a typed, keyword-only interface
+that documents what Atlas structures are accepted, extracts `ResearchProject` open
+questions automatically, and is easy to test. No new data sources were introduced;
+all inputs come from existing Atlas domains and capabilities.
+
 ## 2026-07-01: Add Daily Brief as a Blueprint-Aligned Capability
 
 Decision: create `atlas.capabilities.daily_brief` as a new capability

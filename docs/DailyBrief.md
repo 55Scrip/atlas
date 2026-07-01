@@ -13,6 +13,31 @@ into a calm, deterministic daily overview. It answers:
 It does not generate recommendations, fetch news, call market data, or
 invent events.
 
+## Input Builder (Sprint 49)
+
+`atlas.capabilities.daily_brief.input_builder.build_daily_brief_input` is the
+canonical way to construct a `DailyBriefInput` from typed Atlas structures:
+
+```python
+from atlas.capabilities.daily_brief import DailyBriefCapability, build_daily_brief_input
+
+brief_input = build_daily_brief_input(
+    portfolio_summary=my_portfolio_summary,      # PortfolioSummary from atlas.domains.portfolio
+    research_notes=my_notes,                    # tuple[ResearchNote, ...]
+    research_projects=my_projects,              # tuple[ResearchProject, ...] — open questions extracted
+    company_reports=my_company_reports,         # tuple[CompanyAnalysisReport, ...]
+    watchlist_report=my_watchlist_report,       # WatchlistIntelligenceReport | None
+    discovery_report=my_discovery_report,       # DiscoveryReport | None
+    knowledge_node_count=len(my_facts),
+    date_label="2026-07-01",
+)
+report = DailyBriefCapability().generate(brief_input)
+```
+
+The builder is deterministic, side-effect free, and makes no network calls.
+It merges `open_research_questions` from both explicit arguments and from the
+`OPEN`/`RESEARCHING` questions inside any supplied `ResearchProject` instances.
+
 ## Two Daily Brief Paths
 
 ### Legacy: `atlas daily brief`
@@ -107,19 +132,45 @@ atlas daily brief                                # original multi-engine brief
 atlas daily brief --portfolio portfolio.json     # with legacy portfolio context
 ```
 
+## Integrated Input Sources (Sprint 49)
+
+Daily Brief now correctly consumes all five input types using real typed
+Atlas structures:
+
+| Input source | Atlas type | What Daily Brief reads |
+|---|---|---|
+| Portfolio | `PortfolioSummary` | holdings count, concentration, cash weight, largest position |
+| Research | `ResearchNote` | title, body (up to 200 chars) |
+| Research Projects | `ResearchProject` | open and researching questions extracted automatically |
+| Watchlist | `WatchlistIntelligenceReport` | open_questions, suggested_next_research_steps |
+| Discovery | `DiscoveryReport` | candidates (identifier, reasons[0].detail) |
+| Company Analysis | `CompanyAnalysisReport` | company.ticker, unknowns (title), evidence_links |
+
+Sprint 49 also fixed attribute-name mismatches in the engine that would have
+caused incorrect output (empty detail, wrong field names) when real typed
+objects were passed without the builder:
+
+- `ResearchNote`: now reads `title` / `body` (was `ticker` / `content`)
+- `WatchlistIntelligenceReport`: now reads `suggested_next_research_steps` (was `suggested_next_steps`)
+- `DiscoveryCandidate`: now reads `identifier` and `reasons[0].detail` (was `ticker` and `reason`)
+- `CompanyAnalysisReport`: now reads `company.ticker` (was `ticker`) and `evidence_links` (was `evidence_gaps`)
+- `CompanyAnalysisUnknown`: now reads `title` as the question text (was `question`)
+
 ## Known Limitations
 
-- `atlas daily summary` currently only consumes portfolio domain context via
-  `--portfolio`. Research notes, watchlist reports, discovery reports, and
-  company analysis reports are accepted by `DailyBriefInput` but not yet
-  wired to CLI flags — they require structured JSON inputs that are not yet
-  part of the CLI in Sprint 48.
+- `atlas daily summary` CLI currently only accepts `--portfolio`. Research notes,
+  watchlist reports, discovery reports, and company analysis reports are
+  supported at the capability level (via `build_daily_brief_input`) but are not
+  yet wired to CLI flags — they require structured JSON inputs that are not yet
+  part of the CLI.
 - The legacy `atlas daily brief` command still calls legacy engines (Market
   Health, Risk Drift, Economics, etc.) with no domain-native equivalents.
 
-## Recommendation for Sprint 49
+## Recommendation for Sprint 50
 
-Extend `atlas daily summary` CLI flags to accept research, watchlist, or
-discovery JSON inputs so the capability can surface richer context. Alternatively,
-begin migrating `atlas journal` commands to the Blueprint-aligned decision
-domain, following the same additive pattern established in Sprints 45–48.
+Extend `atlas daily summary` CLI flags to accept structured JSON inputs for
+watchlist and discovery (e.g. `--watchlist watchlist.json`, `--discovery
+discovery.json`) so the capability can surface richer context at runtime.
+Alternatively, begin migrating `atlas journal` commands to the
+Blueprint-aligned decision domain, following the same additive pattern
+established in Sprints 45–49.

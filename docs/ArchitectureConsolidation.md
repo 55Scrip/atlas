@@ -159,29 +159,25 @@ principles) was not touched and remains fully intact. All portfolio CLI
 commands now exercise `atlas.domains.portfolio` via the Sprint 45 adapter,
 which required no changes in Sprints 46 or 47.
 
-## Capabilities (Sprint 48 update)
+## Capabilities (Sprint 48–49 update)
 
-`atlas/capabilities/daily_brief/` is now the fourth Blueprint-aligned
-capability alongside `company_analysis`, `watchlist_intelligence`, and
-`discovery`. It consumes optional domain-native inputs
-(`PortfolioSummary`, `ResearchNote`, `KnowledgeCollection`,
-`CompanyAnalysisReport`, `WatchlistIntelligenceReport`, `DiscoveryReport`)
-and produces a deterministic `DailyBriefReport` with no providers, no
-network, and no AI. The legacy `atlas.daily_brief` engine (powering
-`atlas daily brief`) is untouched.
+`atlas/capabilities/daily_brief/` is the fourth Blueprint-aligned capability
+alongside `company_analysis`, `watchlist_intelligence`, and `discovery`.
 
-The new `atlas daily summary` CLI command is the first Blueprint-aligned
-Daily Brief runtime path. It currently accepts an optional
-`--portfolio` flag (wired to the Sprint 45 adapter and Portfolio Domain),
-with other input types accepted by `DailyBriefInput` but not yet exposed
-as CLI flags.
+**Sprint 48** introduced the capability with a `DailyBriefCapability.generate()`
+method and a new `atlas daily summary` CLI command. The `--portfolio` flag was
+the only CLI-wired input.
 
-The boundary test for provider imports was refactored from a live-import
-check to a source-scan check to resolve a pre-existing circular dependency
-between `atlas.providers` and `atlas.analysis.__init__` that caused
-`tests/test_architecture_boundaries.py` to fail when run in isolation as
-the first module loaded in a fresh process. Behavior is unchanged; all 353
-tests pass in the full suite and all boundary tests pass in isolation.
+**Sprint 49** added `atlas/capabilities/daily_brief/input_builder.py`, a typed
+builder (`build_daily_brief_input`) that correctly transforms all five supported
+input types into `DailyBriefInput`. The engine's attribute-name mismatches
+against real Atlas types (ResearchNote, WatchlistIntelligenceReport,
+DiscoveryCandidate, CompanyAnalysisReport) were also fixed so duck-typed access
+now resolves to the correct fields. 392 tests pass; 39 new tests cover the
+builder and each integration target end-to-end.
+
+The legacy `atlas.daily_brief` engine (powering `atlas daily brief`) is
+untouched in both sprints.
 
 ## Rules for Future Sprints
 
