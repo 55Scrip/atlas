@@ -1,8 +1,8 @@
 # WatchlistEngine Migration Plan
 
 **Created:** 2026-07-02 (Sprint 96)  
-**Updated:** 2026-07-02 (Sprint 100)  
-**Status:** DELETION COMPLETE — `WatchlistEngine` deleted Sprint 99. `atlas/analysis/watchlist.py` slimmed to types only (`Watchlist`, `WatchlistItem`). All five callers retired Sprints 93–98. Type migration plan documented in `docs/WatchlistTypeMigrationPlan.md`. Sprint 101 target: move types to `atlas/capabilities/watchlist_intelligence/`; delete file.
+**Updated:** 2026-07-02 (Sprint 101)  
+**Status:** FULLY COMPLETE — `WatchlistEngine` deleted Sprint 99. `atlas/analysis/watchlist.py` fully deleted Sprint 101. `WatchlistInput`/`WatchlistInputItem` now live in `atlas/capabilities/watchlist_intelligence/`. No legacy watchlist analysis code remains.
 
 ---
 

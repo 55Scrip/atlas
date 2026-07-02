@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from atlas.analysis.portfolio import Portfolio
-from atlas.analysis.watchlist import Watchlist
+from atlas.capabilities.watchlist_intelligence import WatchlistInput
 from atlas.decision_journal import DecisionJournalEngine, DecisionJournalEntry
 from atlas.economics import EconomicSignalsEngine
 from atlas.language import (
@@ -60,7 +60,7 @@ class AtlasHomeSummary:
 class AtlasHomeInput:
     investor_profile: InvestorProfile | None = None
     portfolio: Portfolio | None = None
-    watchlist: Watchlist | None = None
+    watchlist: WatchlistInput | None = None
     provider: CompanyDataProvider | None = None
     journal_path: Path = Path(".atlas/decision_journal.json")
     previous_review_notes: tuple[str, ...] = ()

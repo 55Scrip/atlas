@@ -1,7 +1,8 @@
 # Watchlist Type Migration Plan
 
 **Created:** 2026-07-02 (Sprint 100)  
-**Status:** PLANNING — `Watchlist` and `WatchlistItem` type-only migration deferred to Sprint 101+
+**Updated:** 2026-07-02 (Sprint 101)  
+**Status:** MIGRATION COMPLETE — `WatchlistInput`/`WatchlistInputItem` live in `atlas/capabilities/watchlist_intelligence/`. `atlas/analysis/watchlist.py` fully deleted Sprint 101.
 
 ---
 

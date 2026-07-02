@@ -3,7 +3,7 @@ import json
 from typer.testing import CliRunner
 
 from atlas.analysis.portfolio import Portfolio, PortfolioPosition
-from atlas.analysis.watchlist import Watchlist, WatchlistItem
+from atlas.capabilities.watchlist_intelligence import WatchlistInput, WatchlistInputItem
 from atlas.cli.main import app
 from atlas.conversation import (
     ConversationEngine,
@@ -112,12 +112,12 @@ def test_conversation_engine_reports_missing_portfolio_context():
 
 
 def test_conversation_engine_answers_watchlist_review():
-    watchlist = Watchlist(
+    watchlist = WatchlistInput(
         name="AI Watchlist",
         items=(
-            WatchlistItem("NVDA"),
-            WatchlistItem("AMD"),
-            WatchlistItem("MSFT"),
+            WatchlistInputItem("NVDA"),
+            WatchlistInputItem("AMD"),
+            WatchlistInputItem("MSFT"),
         ),
     )
 

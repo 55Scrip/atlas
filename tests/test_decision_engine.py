@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from atlas.analysis.memory import MemoryEngine, MemoryStore
 from atlas.analysis.portfolio import Portfolio, PortfolioPosition
-from atlas.analysis.watchlist import Watchlist, WatchlistItem
+from atlas.capabilities.watchlist_intelligence import WatchlistInput, WatchlistInputItem
 from atlas.decision import (
     AtlasDecisionEngine,
     DecisionAction,
@@ -43,9 +43,9 @@ def test_decision_engine_produces_buy_when_context_is_complete_and_capital_is_sa
     provider = MockCompanyAnalysisProvider()
     context = DecisionContext(
         portfolio=_sample_portfolio(),
-        watchlist=Watchlist(
+        watchlist=WatchlistInput(
             name="AI Watchlist",
-            items=(WatchlistItem("NVDA"), WatchlistItem("AMD"), WatchlistItem("MSFT")),
+            items=(WatchlistInputItem("NVDA"), WatchlistInputItem("AMD"), WatchlistInputItem("MSFT")),
         ),
         investment_horizon="long term",
         risk_profile="balanced",

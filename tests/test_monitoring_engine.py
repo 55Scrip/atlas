@@ -112,9 +112,9 @@ def test_monitoring_cli_monitors_theme():
 def test_monitoring_engine_snapshot_watchlist_uses_blueprint_intelligence():
     # Sprint 93: snapshot_watchlist now uses Blueprint-aligned Watchlist Intelligence.
     # No provider needed; output is research-driven, not score-driven.
-    from atlas.analysis.watchlist import Watchlist
+    from atlas.capabilities.watchlist_intelligence import WatchlistInput
 
-    watchlist = Watchlist.from_mapping({"name": "Sprint93", "tickers": ["NVDA", "MSFT"]})
+    watchlist = WatchlistInput.from_mapping({"name": "Sprint93", "tickers": ["NVDA", "MSFT"]})
     engine = MonitoringEngine()
 
     snapshot = engine.snapshot_watchlist(watchlist)

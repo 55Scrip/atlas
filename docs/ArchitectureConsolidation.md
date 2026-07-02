@@ -722,3 +722,18 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
   confirmed non-importable; `atlas/analysis/watchlist.py` confirmed type-only; `Watchlist`/`WatchlistItem`
   confirmed still present.
 - 1125 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 101 (2026-07-02):** `WatchlistInput`/`WatchlistInputItem` moved to `atlas/capabilities/watchlist_intelligence/`; `atlas/analysis/watchlist.py` fully deleted.
+- Added `WatchlistInput` (name, items, `from_json_file`, `from_mapping`) and `WatchlistInputItem` (ticker) to
+  `atlas/capabilities/watchlist_intelligence/models.py`. Both exported from capability `__init__.py`.
+- Updated 7 production files: `atlas/cli/main.py`, `atlas/conversation/engine.py`,
+  `atlas/decision/decision_context.py`, `atlas/home/engine.py`, `atlas/intelligence/engine.py`,
+  `atlas/monitoring/engine.py`, `atlas/watchlist_review/engine.py` — all import from capability now.
+- Updated 5 test files with new import paths and type names.
+- `atlas/analysis/__init__.py` cleaned: `Watchlist`/`WatchlistItem` re-exports removed.
+- `atlas/analysis/watchlist.py` deleted. `atlas.analysis.watchlist` is not importable.
+- Guardrails updated: Sprint 99/100 attribute-check tests replaced by Sprint 101 module-not-found
+  and file-not-exist assertions. New tests: `WatchlistInput`/`WatchlistInputItem` importable from
+  capability; `from_mapping` round-trip passes; no production import of deleted module.
+- No runtime behavior changed. Watchlist Intelligence output unchanged.
+- 1124 tests passing (3 skipped). Demo passed. Release verification green.

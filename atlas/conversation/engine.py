@@ -3,7 +3,7 @@ from enum import Enum
 
 from atlas.analysis.engine import AtlasInvestmentEngine
 from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine
-from atlas.analysis.watchlist import Watchlist
+from atlas.capabilities.watchlist_intelligence import WatchlistInput
 from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
 from atlas.capabilities.watchlist_intelligence.models import (
     WatchlistIntelligenceInput,
@@ -39,7 +39,7 @@ class ConversationInput:
     provider: CompanyDataProvider | None = None
     ticker: str | None = None
     portfolio: Portfolio | None = None
-    watchlist: Watchlist | None = None
+    watchlist: WatchlistInput | None = None
     theme: str = "AI infrastructure"
     market_snapshot: MarketSnapshot | None = None
     market_health_report: MarketHealthReport | None = None

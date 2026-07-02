@@ -231,6 +231,45 @@ Provider safety: **confirmed**.
 
 ---
 
+## Sprint 101 — Watchlist Input Type Migration COMPLETED
+
+### Completed: `WatchlistInput`/`WatchlistInputItem` moved to capability; `atlas/analysis/watchlist.py` deleted
+
+**Sprint 101 result:**
+
+**Goal:** Move `Watchlist`/`WatchlistItem` from `atlas/analysis/watchlist.py` to
+`atlas/capabilities/watchlist_intelligence/` as `WatchlistInput`/`WatchlistInputItem`. Delete the file.
+
+**Changes made:**
+1. Added `WatchlistInputItem(ticker: str)` and `WatchlistInput(name, items, from_json_file, from_mapping)`
+   to `atlas/capabilities/watchlist_intelligence/models.py`.
+2. Exported both from `atlas/capabilities/watchlist_intelligence/__init__.py`.
+3. Updated 7 production files (import path change + type rename):
+   - `atlas/cli/main.py` — `Watchlist` → `WatchlistInput`
+   - `atlas/conversation/engine.py` — `Watchlist` → `WatchlistInput`
+   - `atlas/decision/decision_context.py` — `Watchlist` → `WatchlistInput`
+   - `atlas/home/engine.py` — `Watchlist` → `WatchlistInput`
+   - `atlas/intelligence/engine.py` — `Watchlist` → `WatchlistInput`
+   - `atlas/monitoring/engine.py` — `Watchlist` → `WatchlistInput`
+   - `atlas/watchlist_review/engine.py` — `Watchlist` → `WatchlistInput`, `WatchlistItem` → `WatchlistInputItem`
+4. Updated 5 test files with new import paths and constructor names.
+5. Deleted `atlas/analysis/watchlist.py`.
+6. Cleaned `atlas/analysis/__init__.py` — `Watchlist`/`WatchlistItem` re-exports removed.
+7. Updated `atlas/cli/deprecations.py` historical string.
+8. Flipped Sprint 99/100 guardrail tests to Sprint 101 module-not-found and file-not-exist assertions.
+   Added: `test_atlas_analysis_watchlist_module_deleted`, `test_atlas_analysis_watchlist_file_does_not_exist`,
+   `test_watchlist_input_is_importable_from_capability`, `test_watchlist_input_item_is_importable_from_capability`,
+   `test_watchlist_input_from_mapping_works`, `test_no_production_code_imports_atlas_analysis_watchlist`.
+
+**No behavior changes.** All changes are import path updates and type renames.
+
+**Tests: 1124 passing (3 skipped). Demo passed. Release verification green.**
+
+**Sprint 102 recommendation:** Audit remaining legacy `atlas/analysis/` modules for similar cleanup
+opportunities (`atlas/analysis/portfolio.py`, `atlas/analysis/comparison.py`, etc.).
+
+---
+
 ## Sprint 100 — Post-WatchlistEngine Architecture Checkpoint COMPLETED
 
 ### Completed: Deleted symbol audit; type-only import inventory; type migration plan created

@@ -34,7 +34,6 @@ from atlas.analysis.portfolio import (
 )
 from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.analysis.scoring import RecommendationEngine, ScoringEngine, score_company
-from atlas.analysis.watchlist import Watchlist, WatchlistItem
 from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
 
 __all__ = [
@@ -61,8 +60,6 @@ __all__ = [
     "RecommendationEngine",
     "ScoreCategory",
     "ScoringEngine",
-    "Watchlist",
-    "WatchlistItem",
     "YahooFinanceProvider",
     "build_investment_report",
     "create_placeholder_company_analysis",

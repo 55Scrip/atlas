@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport
 from atlas.analysis.portfolio import Portfolio, PortfolioAnalysis, PortfolioIntelligenceEngine
-from atlas.analysis.watchlist import Watchlist
+from atlas.capabilities.watchlist_intelligence import WatchlistInput
 from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
 from atlas.capabilities.watchlist_intelligence.models import (
     WatchlistIntelligenceInput,
@@ -26,7 +26,7 @@ from atlas.themes import ThemeAnalysis, ThemeEngine, ThemeInput
 @dataclass(frozen=True)
 class IntelligenceContext:
     portfolio: Portfolio | None = None
-    watchlist: Watchlist | None = None
+    watchlist: WatchlistInput | None = None
     theme: str = "AI infrastructure"
     market_snapshot: MarketSnapshot | None = None
     market_health_report: MarketHealthReport | None = None
@@ -237,7 +237,7 @@ def _optional_portfolio_analysis(
 
 
 def _optional_watchlist_intelligence(
-    watchlist: Watchlist | None,
+    watchlist: WatchlistInput | None,
 ) -> WatchlistIntelligenceReport | None:
     if watchlist is None:
         return None

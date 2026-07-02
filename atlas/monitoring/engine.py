@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from atlas.analysis.engine import AtlasInvestmentEngine
 from atlas.analysis.portfolio import Portfolio
 from atlas.analysis.scores import clamp_score
-from atlas.analysis.watchlist import Watchlist
+from atlas.capabilities.watchlist_intelligence import WatchlistInput
 from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
 from atlas.capabilities.watchlist_intelligence.models import (
     WatchlistIntelligenceInput,
@@ -292,7 +292,7 @@ class MonitoringEngine:
 
     def snapshot_watchlist(
         self,
-        watchlist: Watchlist,
+        watchlist: WatchlistInput,
         provider: CompanyDataProvider | None = None,
     ) -> MonitoringSnapshot:
         intelligence_input = WatchlistIntelligenceInput(
@@ -418,7 +418,7 @@ class MonitoringEngine:
 
     def monitor_watchlist(
         self,
-        watchlist: Watchlist,
+        watchlist: WatchlistInput,
         provider: CompanyDataProvider | None = None,
     ) -> MonitoringAlert:
         current = self.snapshot_watchlist(watchlist)

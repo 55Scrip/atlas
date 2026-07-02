@@ -3,7 +3,7 @@ import json
 from typer.testing import CliRunner
 
 from atlas.analysis.portfolio import Portfolio
-from atlas.analysis.watchlist import Watchlist
+from atlas.capabilities.watchlist_intelligence import WatchlistInput
 from atlas.cli.main import app
 from atlas.home import AtlasHomeEngine, AtlasHomeInput, render_atlas_home
 from atlas.providers import MockCompanyAnalysisProvider
@@ -77,8 +77,8 @@ def _quiet_portfolio() -> Portfolio:
     )
 
 
-def _watchlist() -> Watchlist:
-    return Watchlist.from_mapping(
+def _watchlist() -> WatchlistInput:
+    return WatchlistInput.from_mapping(
         {
             "name": "AI Watchlist",
             "tickers": ["NVDA", "AMD", "MSFT"],

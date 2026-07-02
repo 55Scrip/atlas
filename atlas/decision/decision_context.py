@@ -2,14 +2,14 @@ from dataclasses import dataclass
 
 from atlas.analysis.memory import MemoryStore
 from atlas.analysis.portfolio import Portfolio
-from atlas.analysis.watchlist import Watchlist
+from atlas.capabilities.watchlist_intelligence import WatchlistInput
 
 
 @dataclass(frozen=True)
 class DecisionContext:
     market_regime: str = "Unknown"
     portfolio: Portfolio | None = None
-    watchlist: Watchlist | None = None
+    watchlist: WatchlistInput | None = None
     historical_memory: MemoryStore | None = None
     investment_horizon: str = "long term"
     risk_profile: str = "balanced"

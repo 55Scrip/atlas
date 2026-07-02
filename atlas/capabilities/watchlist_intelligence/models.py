@@ -1,10 +1,45 @@
+import json
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
 from atlas.capabilities.company_analysis import CompanyAnalysisReport
 from atlas.domains.knowledge import KnowledgeFact
 from atlas.domains.research import ResearchProject
 from atlas.shared import Company
+
+
+@dataclass(frozen=True)
+class WatchlistInputItem:
+    """Simple ticker container used as CLI input to watchlist engines."""
+
+    ticker: str
+
+
+@dataclass(frozen=True)
+class WatchlistInput:
+    """Parsed CLI input for watchlist engines — contains name and ticker items."""
+
+    name: str
+    items: tuple[WatchlistInputItem, ...]
+
+    @classmethod
+    def from_json_file(cls, path: Path) -> "WatchlistInput":
+        with path.open("r", encoding="utf-8") as file:
+            payload = json.load(file)
+        return cls.from_mapping(payload)
+
+    @classmethod
+    def from_mapping(cls, payload: dict[str, Any]) -> "WatchlistInput":
+        name = str(payload.get("name", "Watchlist")).strip() or "Watchlist"
+        tickers = payload.get("tickers")
+        if not isinstance(tickers, list) or not tickers:
+            raise ValueError("Watchlist JSON must contain a non-empty tickers list.")
+        return cls(
+            name=name,
+            items=tuple(WatchlistInputItem(ticker=str(t).upper()) for t in tickers),
+        )
 
 
 class WatchlistStatus(str, Enum):

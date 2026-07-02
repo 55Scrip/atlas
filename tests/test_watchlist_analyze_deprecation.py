@@ -4,9 +4,8 @@ Sprint 78 deprecated the command; Sprint 91 removed the command body.
 `atlas watchlist analyze` is no longer a registered CLI command.
 
 Sprint 99: WatchlistEngine deleted — atlas/analysis/watchlist.py slimmed to types only.
-- WatchlistEngine active caller count reached 0 in Sprint 98.
-- WatchlistEngine class deleted in Sprint 99; atlas/analysis/watchlist.py retained for
-  Watchlist / WatchlistItem type-only imports used by 7 production modules.
+Sprint 101: Watchlist/WatchlistItem moved to atlas.capabilities.watchlist_intelligence as
+  WatchlistInput/WatchlistInputItem. atlas/analysis/watchlist.py fully deleted.
 
 Sprint 91 completes the CLI deprecated command retirement plan.
 Active _REGISTRY is now empty — all deprecated commands have been retired.
@@ -19,6 +18,7 @@ Sprint 96: Audit sprint — caller count unchanged at 2 (intelligence, conversat
 Sprint 97: atlas/intelligence/engine.py WatchlistEngine removed — caller count reduced 2 → 1.
 Sprint 98: atlas/conversation/engine.py WatchlistEngine removed — caller count reduced 1 → 0.
 Sprint 99: WatchlistEngine deleted — all callers retired.
+Sprint 101: atlas/analysis/watchlist.py fully deleted — types moved to capability layer.
 """
 
 from __future__ import annotations
@@ -83,60 +83,71 @@ def test_watchlist_intelligence_command_is_unaffected() -> None:
     assert "deprecated" not in result.output.lower()
 
 
-def test_watchlist_engine_is_not_importable() -> None:
-    """Sprint 99: WatchlistEngine must no longer exist in atlas.analysis.watchlist."""
+def test_atlas_analysis_watchlist_module_deleted() -> None:
+    """Sprint 101: atlas.analysis.watchlist must not be importable — module fully deleted."""
     import importlib
-    mod = importlib.import_module("atlas.analysis.watchlist")
-    assert not hasattr(mod, "WatchlistEngine"), (
-        "WatchlistEngine was deleted in Sprint 99 and must not be importable"
-    )
+    try:
+        importlib.import_module("atlas.analysis.watchlist")
+        raise AssertionError("atlas.analysis.watchlist should not be importable after Sprint 101")
+    except ModuleNotFoundError:
+        pass
 
 
-def test_watchlist_analysis_is_not_importable() -> None:
-    """Sprint 100: WatchlistAnalysis must no longer exist in atlas.analysis.watchlist."""
-    import importlib
-    mod = importlib.import_module("atlas.analysis.watchlist")
-    assert not hasattr(mod, "WatchlistAnalysis"), (
-        "WatchlistAnalysis was deleted in Sprint 99 and must not be importable"
-    )
-
-
-def test_watchlist_recommendation_is_not_importable() -> None:
-    """Sprint 100: WatchlistRecommendation must no longer exist in atlas.analysis.watchlist."""
-    import importlib
-    mod = importlib.import_module("atlas.analysis.watchlist")
-    assert not hasattr(mod, "WatchlistRecommendation"), (
-        "WatchlistRecommendation was deleted in Sprint 99 and must not be importable"
-    )
-
-
-def test_render_watchlist_analysis_is_not_importable() -> None:
-    """Sprint 100: render_watchlist_analysis must no longer exist in atlas.analysis.watchlist."""
-    import importlib
-    mod = importlib.import_module("atlas.analysis.watchlist")
-    assert not hasattr(mod, "render_watchlist_analysis"), (
-        "render_watchlist_analysis was deleted in Sprint 99 and must not be importable"
-    )
-
-
-def test_watchlist_module_contains_only_type_models() -> None:
-    """Sprint 100: atlas/analysis/watchlist.py must contain only Watchlist and WatchlistItem."""
+def test_atlas_analysis_watchlist_file_does_not_exist() -> None:
+    """Sprint 101: atlas/analysis/watchlist.py must not exist on disk."""
     watchlist_path = REPO_ROOT / "atlas" / "analysis" / "watchlist.py"
-    source = watchlist_path.read_text(encoding="utf-8")
-    forbidden = ["WatchlistEngine", "WatchlistAnalysis", "WatchlistSignal",
-                 "WatchlistRecommendation", "render_watchlist_analysis"]
-    found = [name for name in forbidden if name in source]
-    assert not found, (
-        f"Deleted legacy symbols found in watchlist.py: {found}"
+    assert not watchlist_path.exists(), (
+        "atlas/analysis/watchlist.py was deleted in Sprint 101 and must not exist"
     )
 
 
-def test_watchlist_module_exports_watchlist_and_item() -> None:
-    """Sprint 100: atlas/analysis/watchlist.py must still export Watchlist and WatchlistItem."""
-    import importlib
-    mod = importlib.import_module("atlas.analysis.watchlist")
-    assert hasattr(mod, "Watchlist"), "Watchlist must remain in atlas.analysis.watchlist"
-    assert hasattr(mod, "WatchlistItem"), "WatchlistItem must remain in atlas.analysis.watchlist"
+def test_watchlist_input_is_importable_from_capability() -> None:
+    """Sprint 101: WatchlistInput must be importable from atlas.capabilities.watchlist_intelligence."""
+    from atlas.capabilities.watchlist_intelligence import WatchlistInput
+    assert WatchlistInput is not None
+
+
+def test_watchlist_input_item_is_importable_from_capability() -> None:
+    """Sprint 101: WatchlistInputItem must be importable from atlas.capabilities.watchlist_intelligence."""
+    from atlas.capabilities.watchlist_intelligence import WatchlistInputItem
+    assert WatchlistInputItem is not None
+
+
+def test_watchlist_input_from_mapping_works() -> None:
+    """Sprint 101: WatchlistInput.from_mapping must parse tickers correctly."""
+    from atlas.capabilities.watchlist_intelligence import WatchlistInput
+    result = WatchlistInput.from_mapping({"name": "Test", "tickers": ["NVDA", "AMD"]})
+    assert result.name == "Test"
+    assert len(result.items) == 2
+    assert result.items[0].ticker == "NVDA"
+
+
+def test_no_production_code_imports_atlas_analysis_watchlist() -> None:
+    """Sprint 101: no production module may import from atlas.analysis.watchlist."""
+    search_dirs = [
+        d for d in (REPO_ROOT / "atlas").iterdir()
+        if d.is_dir() and d.name != "__pycache__"
+    ]
+    offenders = []
+    for directory in search_dirs:
+        for path in directory.rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            text = path.read_text(encoding="utf-8")
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("#"):
+                    continue
+                # Only flag actual import statements, not string references in metadata
+                if "atlas.analysis.watchlist" in stripped and (
+                    stripped.startswith("from ") or stripped.startswith("import ")
+                ):
+                    offenders.append(str(path.relative_to(REPO_ROOT)))
+                    break
+    assert not offenders, (
+        "Production code still imports from deleted atlas.analysis.watchlist:\n"
+        + "\n".join(offenders)
+    )
 
 
 def test_watchlist_engine_active_callers_are_zero() -> None:
@@ -230,11 +241,10 @@ def test_watchlist_engine_callers_are_exactly_the_known_set() -> None:
 
 
 def test_watchlist_engine_is_deleted() -> None:
-    """Sprint 99: WatchlistEngine class must be gone from atlas/analysis/watchlist.py."""
+    """Sprint 99/101: WatchlistEngine is gone — confirmed by module non-existence."""
     watchlist_path = REPO_ROOT / "atlas" / "analysis" / "watchlist.py"
-    source = watchlist_path.read_text(encoding="utf-8")
-    assert "WatchlistEngine" not in source, (
-        "WatchlistEngine was deleted in Sprint 99 and must not appear in watchlist.py"
+    assert not watchlist_path.exists(), (
+        "atlas/analysis/watchlist.py was fully deleted in Sprint 101"
     )
 
 

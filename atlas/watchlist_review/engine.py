@@ -4,7 +4,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from atlas.analysis.watchlist import Watchlist, WatchlistItem
+from atlas.capabilities.watchlist_intelligence import WatchlistInput, WatchlistInputItem
 from atlas.economics import EconomicSignalsEngine
 from atlas.evidence import (
     EvidenceAction,
@@ -76,7 +76,7 @@ class WatchlistReviewSection:
 
 @dataclass(frozen=True)
 class WatchlistReviewInput:
-    watchlist: Watchlist
+    watchlist: WatchlistInput
     provider: CompanyDataProvider | None = None
     investor_profile: InvestorProfile | None = None
     idea_labels: tuple[str, ...] = ()
@@ -212,7 +212,7 @@ def demo_watchlist_review_input(
     provider: CompanyDataProvider | None = None,
     investor_profile: InvestorProfile | None = None,
 ) -> WatchlistReviewInput:
-    watchlist = Watchlist.from_mapping(
+    watchlist = WatchlistInput.from_mapping(
         {
             "name": "Atlas Demo Watchlist",
             "tickers": ["NVDA", "AMD", "MSFT"],
@@ -254,7 +254,7 @@ def watchlist_review_input_from_mapping(
     provider: CompanyDataProvider | None = None,
     investor_profile: InvestorProfile | None = None,
 ) -> WatchlistReviewInput:
-    watchlist = Watchlist.from_mapping(payload)
+    watchlist = WatchlistInput.from_mapping(payload)
     idea_labels = tuple(
         str(item).strip()
         for key in ("ideas", "themes", "etfs")
@@ -311,9 +311,9 @@ def _render_watchlist_review_without_principles(
 
 
 def _split_supported_items(
-    watchlist: Watchlist,
+    watchlist: WatchlistInput,
     provider: CompanyDataProvider,
-) -> tuple[Watchlist, tuple[WatchlistItem, ...]]:
+) -> tuple[WatchlistInput, tuple[WatchlistInputItem, ...]]:
     supported = []
     unsupported = []
     for item in watchlist.items:
@@ -323,7 +323,7 @@ def _split_supported_items(
         except LookupError:
             unsupported.append(item)
     return (
-        Watchlist(name=watchlist.name, items=tuple(supported)),
+        WatchlistInput(name=watchlist.name, items=tuple(supported)),
         tuple(unsupported),
     )
 
@@ -342,9 +342,9 @@ def _theme_analyses(
 
 
 def _review_items(
-    watchlist: Watchlist,
+    watchlist: WatchlistInput,
     idea_labels: tuple[str, ...],
-    unsupported_items: tuple[WatchlistItem, ...],
+    unsupported_items: tuple[WatchlistInputItem, ...],
     watchlist_analysis,
     evidence_inputs: dict[str, EvidenceInput],
     evidence_engine: EvidenceQualityEngine,

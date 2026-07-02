@@ -21,7 +21,7 @@ from atlas.analysis.portfolio import Portfolio
 from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
 from atlas.domains.portfolio import portfolio_summary as domain_portfolio_summary
 from atlas.analysis.report import build_investment_report, render_investment_report
-from atlas.analysis.watchlist import Watchlist
+from atlas.capabilities.watchlist_intelligence import WatchlistInput
 from atlas.watchlist_review import (
     WatchlistReviewEngine,
     demo_watchlist_review_input,
@@ -278,7 +278,7 @@ def ask_command(
     try:
         provider = _provider_from_name(provider_name)
         portfolio = Portfolio.from_json_file(portfolio_path) if portfolio_path else None
-        watchlist = Watchlist.from_json_file(watchlist_path) if watchlist_path else None
+        watchlist = WatchlistInput.from_json_file(watchlist_path) if watchlist_path else None
         response = ConversationEngine().answer(
             ConversationInput(
                 question=question,
@@ -325,7 +325,7 @@ def home_command(
         provider = _provider_from_name(provider_name)
         profile = _profile_from_path_or_default(profile_path)
         portfolio = Portfolio.from_json_file(portfolio_path) if portfolio_path else None
-        watchlist = Watchlist.from_json_file(watchlist_path) if watchlist_path else None
+        watchlist = WatchlistInput.from_json_file(watchlist_path) if watchlist_path else None
         output = AtlasHomeEngine().build(
             AtlasHomeInput(
                 investor_profile=profile,
@@ -1482,7 +1482,7 @@ def _monitor_from_inputs(
     if command == "watchlist":
         if len(inputs) != 2:
             raise ValueError("Use 'atlas monitor watchlist watchlist.json'.")
-        return engine.monitor_watchlist(Watchlist.from_json_file(Path(inputs[1])), provider)
+        return engine.monitor_watchlist(WatchlistInput.from_json_file(Path(inputs[1])), provider)
     if command in {"market-health", "health"} or inputs == ["market", "health"]:
         return engine.monitor_market_health()
     if command in {"market-regime", "regime"}:

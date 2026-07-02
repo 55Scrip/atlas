@@ -1313,3 +1313,20 @@ Demo passed. Release verification green.
 - Keep in `atlas/analysis/watchlist.py` permanently: rejected — perpetuates legacy analysis package as a type source.
 
 **Outcome:** No runtime changes. 6 guardrails added. `docs/WatchlistTypeMigrationPlan.md` created. 1125 tests passing (3 skipped). Demo passed. Release verification green. Sprint 101 target: migrate `Watchlist`/`WatchlistItem` to `atlas/capabilities/watchlist_intelligence/` as `WatchlistInput`/`WatchlistInputItem`; delete `atlas/analysis/watchlist.py`.
+
+---
+
+**Sprint 101 (2026-07-02): Move `Watchlist`/`WatchlistItem` to capability layer; delete `atlas/analysis/watchlist.py`**
+
+**Decision:** Add `WatchlistInput`/`WatchlistInputItem` to `atlas/capabilities/watchlist_intelligence/models.py`. Update all 7 production callers and 5 test files. Delete `atlas/analysis/watchlist.py`. No logic changes.
+
+**Rationale:**
+- As planned in Sprint 100, the legacy `Watchlist`/`WatchlistItem` were CLI input types that existed in the wrong layer. Moving them to the capability module that owns the watchlist analysis pipeline is Blueprint-aligned.
+- Renaming to `WatchlistInput`/`WatchlistInputItem` distinguishes them from the canonical `atlas/shared/entities.py` `Watchlist` (domain entity) and the rich `atlas/capabilities/watchlist_intelligence/models.py` `WatchlistItem` (capability input).
+- All 7 production callers used `Watchlist` only as a type annotation or via `from_json_file`/`from_mapping`. All changes were mechanical import path updates and type renames with no logic changes.
+- `atlas/cli/deprecations.py` string reference (`legacy_module="atlas.analysis.watchlist"`) is historical metadata — correctly retained as a registry record; not an import.
+
+**Alternatives considered:**
+- Compatibility shim in `atlas/analysis/watchlist.py` re-exporting from capability: rejected — Sprint spec explicitly prohibits shims; full deletion achieves cleaner architecture.
+
+**Outcome:** `atlas/analysis/watchlist.py` fully deleted. `atlas.analysis.watchlist` raises `ModuleNotFoundError`. `WatchlistInput`/`WatchlistInputItem` accessible from `atlas.capabilities.watchlist_intelligence`. 1124 tests passing (3 skipped). Demo passed. Release verification green. No behavior changes.
