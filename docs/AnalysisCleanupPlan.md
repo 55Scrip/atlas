@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 117 complete: adapter audit; `portfolio_fit_input_from_profile` centralized in `atlas/adapters/portfolio.py`; conversation and dashboard callers updated; 31 new tests. Next: Sprint 118 — migrate `atlas/reasoning/engine.py` (lowest coupling).
+**Status:** ACTIVE — Sprint 118 complete: `atlas/reasoning/engine.py` direct `PortfolioAnalysis` runtime import removed via `TYPE_CHECKING` guard + `from __future__ import annotations`. 7 new tests. Next: Sprint 119 — migrate `atlas/risk_drift/engine.py`.
 
 ---
 

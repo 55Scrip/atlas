@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from atlas.analysis.engine import InvestmentReport
-from atlas.analysis.portfolio import PortfolioAnalysis
+if TYPE_CHECKING:
+    from atlas.analysis.portfolio import PortfolioAnalysis
+
 from atlas.economics import EconomicSignalAnalysis
 from atlas.market import MarketHealthReport, MarketRegimeAnalysis
 from atlas.monitoring import MonitoringAlert

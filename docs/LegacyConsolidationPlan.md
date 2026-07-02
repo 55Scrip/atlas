@@ -320,6 +320,30 @@ Extracted `portfolio_fit_input_from_profile(profile: CompanyPortfolioProfile) ->
 
 ---
 
+## Sprint 118 — Reasoning Direct Portfolio Import Removed COMPLETED
+
+**Goal:** Remove the direct runtime import of `PortfolioAnalysis` from `atlas/reasoning/engine.py`.
+
+**Pre-change audit finding:** `PortfolioAnalysis` is NOT annotation-only — it has runtime field accesses (`analysis.final_reasoning`, `analysis.portfolio_score`, `analysis.sector_concentration.score`, `analysis.sector_concentration.reasoning`) in `_collect_evidence` and `_bearish_factors`. However, these are all duck-typed attribute accesses — Python does not need the import for them at runtime. The import was only needed for the type annotation in `ReasoningInput.portfolio_analysis: PortfolioAnalysis | None`.
+
+**Chosen strategy: Option D — TYPE_CHECKING-only import**
+- Added `from __future__ import annotations` (PEP 563: all annotations are strings, lazily evaluated)
+- Added `from typing import TYPE_CHECKING`
+- Moved `from atlas.analysis.portfolio import PortfolioAnalysis` inside `if TYPE_CHECKING:` block
+- No change to runtime field accesses — duck-typed, work without the import
+- AST scan confirms: no `atlas.analysis.portfolio` import exists outside TYPE_CHECKING guard in reasoning/engine.py
+- Note: `atlas.analysis.portfolio` is still loaded transitively via `atlas.analysis.__init__` (which re-exports portfolio types) when `atlas.analysis.engine.InvestmentReport` is imported — this is a pre-existing package-level coupling, not introduced by reasoning/engine.py.
+
+**Changes made:**
+1. `atlas/reasoning/engine.py` — added `from __future__ import annotations`; added `TYPE_CHECKING` import; moved `PortfolioAnalysis` import behind `if TYPE_CHECKING:`.
+2. `tests/test_reasoning_engine.py` — 7 new tests: AST runtime import check, `from __future__` present, TYPE_CHECKING guard present, behavior with None, duck-typed field access still works, capability engine still clean, legacy portfolio still active.
+
+**Tests: 1245 passing (3 skipped). Demo passed. Release verification green.**
+
+**Recommended Sprint 119 target:** `atlas/risk_drift/engine.py` — uses `Portfolio` and `PortfolioAnalysis`; moderate coupling.
+
+---
+
 ## Sprint 114 — Schema Gap Resolved + Conversation Caller Migrated COMPLETED
 
 **Goal:** Resolve the `atlas.shared.Holding` schema gap and migrate `atlas/conversation/engine.py` portfolio-fit path from legacy `PortfolioIntelligenceEngine` to `PortfolioIntelligenceCapability`.

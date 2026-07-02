@@ -882,3 +882,9 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - `tests/test_portfolio_adapter.py` created with 31 tests (adapter fields, determinism, architecture boundary, deleted module guardrails, legacy active, caller path verification).
 - No new caller migrated. No behavior changes. 1238 tests passing (3 skipped). Demo passed. Release verification green.
 - Recommended Sprint 118 target: `atlas/reasoning/engine.py` (type annotation only, lowest coupling).
+
+**Sprint 118 (2026-07-02):** Reasoning direct portfolio import removed via TYPE_CHECKING.
+- `atlas/reasoning/engine.py` — `from atlas.analysis.portfolio import PortfolioAnalysis` moved behind `if TYPE_CHECKING:` guard; `from __future__ import annotations` added. Runtime field accesses (`analysis.final_reasoning`, `analysis.portfolio_score`, `analysis.sector_concentration.*`) are duck-typed — no import needed at runtime.
+- AST-verified: no direct runtime import of `atlas.analysis.portfolio` remains in reasoning/engine.py. Transitive load via `atlas.analysis.__init__` is a pre-existing package-level coupling unrelated to this file.
+- 7 new tests in `tests/test_reasoning_engine.py`. 1245 tests passing (3 skipped). Demo passed. Release verification green.
+- Recommended Sprint 119 target: `atlas/risk_drift/engine.py`.

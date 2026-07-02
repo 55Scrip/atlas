@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 117) — adapter audit complete; `portfolio_fit_input_from_profile` centralized  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (3 of ~10 callers migrated: conversation, dashboard, portfolio_review)  
+**Updated:** 2026-07-02 (Sprint 118) — reasoning direct import removed via TYPE_CHECKING guard  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (4 of ~10 callers migrated: conversation, dashboard, portfolio_review, reasoning)  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -322,9 +322,11 @@ Migrate one production caller per sprint, in order of impact risk:
 
 **Sprint 117 adapter checkpoint:** `portfolio_fit_input_from_profile` centralized in `atlas/adapters/portfolio.py` (Sprint 117). `legacy_portfolio_to_domain_portfolio` was already centralized. Conversation and dashboard both updated to use the shared builder. No new caller migrated.
 
-**Recommended Sprint 118 target:** `atlas/reasoning/engine.py` — type annotation only; lowest coupling.
+4. ✓ `atlas/reasoning/engine.py` — **MIGRATED Sprint 118**; `from atlas.analysis.portfolio import PortfolioAnalysis` moved behind `TYPE_CHECKING` guard; `from __future__ import annotations` added; runtime field accesses (`analysis.final_reasoning`, `analysis.portfolio_score`, `analysis.sector_concentration.*`) remain as duck-typed attribute access — no import needed. No behavior change.
 
-4. `atlas/reasoning/engine.py` — type annotation only for `PortfolioAnalysis`
+**Recommended Sprint 119 target:** `atlas/risk_drift/engine.py` — uses `Portfolio` and `PortfolioAnalysis`; moderate coupling.
+
+5. `atlas/risk_drift/engine.py` — uses `Portfolio` and `PortfolioAnalysis`
 5. `atlas/risk_drift/engine.py` — uses `Portfolio` and `PortfolioAnalysis`
 6. `atlas/suitability/engine.py` — uses `Portfolio` and `PortfolioAnalysis`
 7. `atlas/monitoring/engine.py` — uses `Portfolio` as type annotation only

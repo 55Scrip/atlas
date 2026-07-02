@@ -1603,3 +1603,15 @@ Demo passed. Release verification green.
 - Keeping legacy `PortfolioFitInput` import in conversation/dashboard would have been dead weight after centralization.
 
 **Outcome:** 4 files changed (adapter + 2 callers + new test file). 31 new tests. 1238 tests passing (3 skipped). Demo passed. RC2 green. Recommended Sprint 118: `atlas/reasoning/engine.py`.
+
+**Sprint 118 (2026-07-02): Remove reasoning PortfolioAnalysis direct runtime import**
+
+**Decision:** Option D — TYPE_CHECKING-only import. `PortfolioAnalysis` had runtime field accesses in `_collect_evidence` and `_bearish_factors`, but these are duck-typed attribute accesses that do not require the import at runtime. Added `from __future__ import annotations` (PEP 563) so the type annotation in `ReasoningInput.portfolio_analysis: PortfolioAnalysis | None` becomes a string at class-definition time, eliminating the need for the name to be defined at runtime.
+
+**Rationale:**
+- `from __future__ import annotations` is the correct tool: it defers annotation evaluation without changing any runtime behavior.
+- `TYPE_CHECKING` guard keeps type checkers (mypy/pyright) fully aware of the type.
+- No runtime field access requires an import — Python's duck typing handles attribute access on whatever object is passed.
+- Transitive loading of `atlas.analysis.portfolio` via `atlas.analysis.__init__` is a pre-existing package coupling not introduced by reasoning/engine.py — fixing it is out of scope.
+
+**Outcome:** 2 files changed (engine + test). 7 new tests. 1245 tests passing (3 skipped). Demo passed. RC2 green. Recommended Sprint 119: `atlas/risk_drift/engine.py`.
