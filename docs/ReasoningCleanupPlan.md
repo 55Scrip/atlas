@@ -1,7 +1,8 @@
 # Atlas Reasoning Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 151)  
-**Status:** ACTIVE — Sprint 151 audit complete. Sprint 152 target recommended: remove `check_reasoning_report()` from `atlas/principles/engine.py` (zero-caller function that is the sole remaining production dependency on `atlas.reasoning`).
+**Updated:** 2026-07-02 (Sprint 153)  
+**Status:** CLOSED — Sprint 153 deleted `atlas/reasoning/` package. No legacy module remains. Reasoning cleanup track is complete.
 
 ---
 
@@ -235,25 +236,39 @@ package should be deleted (Sprint 153) after the blocking lazy import is removed
 
 ## Cleanup Candidate Classification
 
-| Candidate | Evidence | Callers | Risk | Sprint 152? |
+| Candidate | Evidence | Callers | Risk | Status |
 |---|---|---|---|---|
-| `check_reasoning_report()` in `atlas/principles/engine.py` | Zero external callers — confirmed Sprint 87 and Sprint 151 | 0 production | **LOW** | **YES — Sprint 152 primary target** |
-| TYPE_CHECKING import of `ReasoningReport` in principles line 9 | Unused after `check_reasoning_report` removal | 0 | LOW | Yes — follow-on to `check_reasoning_report` removal |
-| `check_reasoning_report` in `atlas/principles/__init__.py` | Exported but unreachable after removal | 0 | LOW | Yes — follow-on |
-| All `atlas.reasoning` exports | Zero production runtime callers | 0 production | LOW | Sprint 153 (deletion sprint) after Sprint 152 unblocks it |
+| ~~`check_reasoning_report()` in `atlas/principles/engine.py`~~ | ~~Zero external callers~~ | ~~0~~ | ~~LOW~~ | **DONE Sprint 152** |
+| ~~TYPE_CHECKING import of `ReasoningReport` in principles~~  | ~~Unused after removal~~ | ~~0~~ | ~~LOW~~ | **DONE Sprint 152** |
+| ~~`check_reasoning_report` in `atlas/principles/__init__.py`~~ | ~~Exported, zero callers~~ | ~~0~~ | ~~LOW~~ | **DONE Sprint 152** |
+| All `atlas.reasoning` exports | Zero production runtime callers | 0 production | LOW | **Sprint 153** |
 
 ---
 
-## Recommended Sprint 152 Target
+## Sprint 152 — Completed
 
-**Remove `check_reasoning_report()` from `atlas/principles/engine.py`.**
+**Removed `check_reasoning_report()` from `atlas/principles/engine.py`.** (Sprint 152)
 
-This is the single smallest safe step with the best architectural value:
-- Removes the only remaining production-code dependency on `atlas.reasoning`
-- Requires deleting 4 lines from `engine.py`, 2 lines from `__init__.py`
-- Updates the deprecation registry entry for `atlas reason analyze`
-- Updates guardrail tests in `test_reason_analyze_deprecation.py`
-- Does not change any production behavior (zero callers)
+Changes made:
+- `atlas/principles/engine.py` — deleted `check_reasoning_report()`, TYPE_CHECKING import of `ReasoningReport`, lazy import of `render_reasoning_report`.
+- `atlas/principles/__init__.py` — removed `check_reasoning_report` import and `__all__` entry.
+- `atlas/cli/deprecations.py` — updated `atlas reason analyze` removal_criteria.
+- `tests/test_reason_analyze_deprecation.py` — replaced lazy-import presence test with removal confirmation tests.
+- `tests/test_reasoning_package_sprint151.py` — updated Sprint 151 guardrails to Sprint 152 state.
+
+**Result:** No production-code dependency on `atlas.reasoning` remains.
+
+---
+
+## Sprint 153 — Track Closure (COMPLETED)
+
+**`atlas/reasoning/` package deleted Sprint 153.**
+
+- `atlas/reasoning/engine.py` — deleted (575 lines)
+- `atlas/reasoning/__init__.py` — deleted (19 lines)
+- Zero production callers. Zero runtime behavior changes.
+- `atlas reason analyze` remains retired.
+- Reasoning cleanup track **CLOSED**.
 - Unblocks Sprint 153: full deletion of `atlas/reasoning/` package
 
 After Sprint 152, Sprint 153 can delete `atlas/reasoning/` entirely (engine.py + __init__.py),

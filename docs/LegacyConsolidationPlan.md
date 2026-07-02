@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 151)  
-**Status:** `atlas/analysis/` CLOSED Sprint 141. `atlas/decision/` CLOSED Sprint 144. Provider boundary CLOSED Sprint 146. Portfolio boundary CLOSED Sprint 148. Evidence package CLOSED Sprint 150. Reasoning package audit ACTIVE Sprint 151 — `check_reasoning_report()` zero-caller removal recommended for Sprint 152. See `docs/ReasoningCleanupPlan.md`.
+**Updated:** 2026-07-02 (Sprint 153)  
+**Status:** `atlas/analysis/` CLOSED Sprint 141. `atlas/decision/` CLOSED Sprint 144. Provider boundary CLOSED Sprint 146. Portfolio boundary CLOSED Sprint 148. Evidence package CLOSED Sprint 150. Reasoning package CLOSED Sprint 153 — `atlas/reasoning/` deleted (594 lines). See `docs/ReasoningCleanupPlan.md`.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

@@ -91,10 +91,8 @@ _RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
         legacy_module="atlas.reasoning",
         removal_criteria=(
             "Command body retired in Sprint 87.",
-            "atlas.reasoning engine remains on disk — atlas/principles/engine.py has a lazy import "
-            "of render_reasoning_report inside check_reasoning_report() (TYPE_CHECKING import of "
-            "ReasoningReport is not a runtime dependency). Engine deletion requires removing or "
-            "replacing check_reasoning_report() first.",
+            "check_reasoning_report() removed from atlas/principles/engine.py in Sprint 152.",
+            "atlas/reasoning/ package deleted in Sprint 153. No legacy module remains.",
         ),
     ),
     DeprecatedCommand(

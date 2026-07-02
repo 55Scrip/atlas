@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from atlas.conversation import ConversationResponse
     from atlas.intelligence import IntelligenceReport
-    from atlas.reasoning import ReasoningReport
     from atlas.suitability import SuitabilityAssessment
 
 
@@ -141,12 +140,6 @@ def check_suitability_assessment(assessment: "SuitabilityAssessment") -> Princip
     from atlas.suitability import render_suitability_assessment
 
     return check_text_against_principles(render_suitability_assessment(assessment))
-
-
-def check_reasoning_report(report: "ReasoningReport") -> PrinciplesCheck:
-    from atlas.reasoning import render_reasoning_report
-
-    return check_text_against_principles(render_reasoning_report(report))
 
 
 def _evaluate_principle(

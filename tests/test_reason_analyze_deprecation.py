@@ -1,15 +1,9 @@
 """Sprint 87: Tests confirming atlas reason analyze has been retired.
 
 Sprint 82 deprecated the command; Sprint 87 removed the command body.
-`atlas reason analyze` is no longer a registered CLI command.
-
-The underlying `atlas.reasoning` engine (ReasoningEngine) remains on disk.
-`atlas/principles/engine.py` contains:
-- A TYPE_CHECKING-only import of ReasoningReport (not a runtime dependency)
-- A lazy import of render_reasoning_report inside check_reasoning_report()
-  — which has no external callers and is not exercised at runtime
-
-Engine deletion is deferred to a future sprint.
+Sprint 152 removed check_reasoning_report() from atlas/principles/engine.py.
+Sprint 153 deleted the atlas/reasoning/ package.
+`atlas reason analyze` is no longer a registered CLI command. No legacy module remains.
 """
 
 from __future__ import annotations
@@ -70,27 +64,37 @@ def test_cli_does_not_import_reasoning_engine_at_module_level() -> None:
                 )
 
 
-def test_reasoning_engine_module_remains_on_disk() -> None:
-    """atlas.reasoning engine must still exist — engine deletion deferred."""
+def test_reasoning_package_deleted() -> None:
+    """Sprint 153: atlas.reasoning must not be importable — package deleted."""
     import importlib
-    mod = importlib.import_module("atlas.reasoning")
-    assert hasattr(mod, "ReasoningEngine"), (
-        "atlas.reasoning.ReasoningEngine must still be importable "
-        "(atlas/principles/engine.py lazy import not yet removed)"
+    try:
+        importlib.import_module("atlas.reasoning")
+        assert False, "atlas.reasoning must not be importable after Sprint 153 deletion"
+    except ModuleNotFoundError:
+        pass
+
+
+def test_principles_engine_no_longer_references_atlas_reasoning() -> None:
+    """Sprint 152: atlas/principles/engine.py must not reference atlas.reasoning.
+
+    check_reasoning_report() and its lazy import were removed in Sprint 152.
+    No production-code dependency on atlas.reasoning remains.
+    """
+    source = PRINCIPLES_ENGINE_PATH.read_text(encoding="utf-8")
+    assert "atlas.reasoning" not in source, (
+        "atlas/principles/engine.py must not reference atlas.reasoning after Sprint 152 — "
+        "check_reasoning_report() and its lazy import were removed"
     )
 
 
-def test_principles_engine_lazy_import_is_still_present() -> None:
-    """Document: atlas/principles/engine.py still has a lazy import of render_reasoning_report.
-
-    This is the remaining blocker for atlas.reasoning engine deletion.
-    The import is inside check_reasoning_report() — only fires if that function is called.
-    check_reasoning_report() has no external callers as of Sprint 87.
-    """
-    source = PRINCIPLES_ENGINE_PATH.read_text(encoding="utf-8")
-    assert "atlas.reasoning" in source, (
-        "Expected atlas/principles/engine.py to still reference atlas.reasoning — "
-        "if this passes without it, the lazy import may have been removed and engine deletion is now safe"
+def test_principles_engine_does_not_export_check_reasoning_report() -> None:
+    """Sprint 152: check_reasoning_report must not be importable from atlas.principles."""
+    import atlas.principles as pkg
+    assert not hasattr(pkg, "check_reasoning_report"), (
+        "check_reasoning_report must not be exported from atlas.principles after Sprint 152"
+    )
+    assert "check_reasoning_report" not in pkg.__all__, (
+        "check_reasoning_report must not be in atlas.principles.__all__ after Sprint 152"
     )
 
 

@@ -28,7 +28,7 @@ runner = CliRunner()
 RISK_ANALYSIS_CALLERS = (
     REPO_ROOT / "atlas" / "conversation" / "engine.py",
     REPO_ROOT / "atlas" / "intelligence" / "engine.py",
-    REPO_ROOT / "atlas" / "reasoning" / "engine.py",
+    # atlas/reasoning/engine.py deleted Sprint 153
 )
 
 
