@@ -2,6 +2,26 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 144 — Close Decision Cleanup Track
+
+Decision: Formally close the `atlas/decision/` cleanup track after Sprints 142–144. No further cleanup sprints planned until a new dead-code finding or clear successor architecture emerges.
+
+**Rationale:** After package inventory (Sprint 142), dead renderer deletion (Sprint 143), export verification, and release guardrails, the decision package contains only active, intentional modules. All 5 `__init__.py` exports are healthy. All 7 modules have clear responsibilities. No stale imports. No dead code. Further cleanup would create churn without architectural benefit.
+
+**Final stable package:** `__init__.py`, `decision_engine.py`, `decision_context.py`, `decision_result.py`, `decision_renderer.py`, `comparison.py`, `memory.py`.
+
+**Why `decision_engine.py` remains:** Foundational composition engine. Single external production caller (`atlas/intelligence/engine.py`). Composes portfolio fit, comparison, watchlist intelligence, and memory. No Blueprint-aligned successor yet.
+
+**Why `comparison.py` remains:** Canonical comparison location since Sprint 103. Active symbols: `ComparisonCandidate`, `ComparisonRanking`, `ComparisonResult`, `compare_tickers`. Dead renderer path deleted Sprint 143. Clean.
+
+**Why `memory.py` remains:** Canonical memory/history location since Sprint 104. CLI `atlas memory save/show/compare` commands depend on it. All 7 public symbols active.
+
+**Reopening condition:** Reopen when a new zero-caller dead function is found, when `decision_engine.py` has a clear Blueprint-aligned successor, or when the package accumulates new stale migration residue.
+
+**Sprint 145 recommended target:** Provider boundary audit — inspect `atlas/providers/` for stale symbols, dead provider implementations, or boundary violations following the same audit-first pattern.
+
+---
+
 ## 2026-07-02: Sprint 143 — Delete Dead Decision Comparison Renderer
 
 Decision: Delete `render_comparison_result`, `_render_ranking`, and `_ranking_score` from `atlas/decision/comparison.py`. Zero external callers confirmed by repo-wide grep.

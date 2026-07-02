@@ -1,8 +1,34 @@
 # Atlas Decision Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 142)  
-**Updated:** 2026-07-02 (Sprint 143)  
-**Status:** ACTIVE — Sprint 143 dead renderer deleted. `comparison.py` reduced from 186 to ~141 lines. `render_comparison_result`, `_render_ranking`, `_ranking_score` removed (zero callers confirmed). No further decision package cleanup warranted at this time. Sprint 144 target: decision package release checkpoint.
+**Updated:** 2026-07-02 (Sprint 144)  
+**Status:** CLOSED — Sprint 144. Decision cleanup track formally closed after Sprints 142–144.
+
+## Final Stable State (Sprint 144)
+
+`atlas/decision/` contains exactly 7 modules. No further cleanup planned until a new dead-code finding or a clear successor architecture emerges.
+
+| Module | Status | Why it remains |
+|---|---|---|
+| `__init__.py` | Active re-export hub | 5 intentional exports, all healthy |
+| `decision_engine.py` | Foundational — do not migrate | Composes portfolio fit, comparison, watchlist intelligence, memory; single external caller (`atlas/intelligence/engine.py`) |
+| `decision_context.py` | Active DTO | Carries portfolio/watchlist/capital context; `Portfolio` TYPE_CHECKING-guarded |
+| `decision_result.py` | Active DTO | Carries action, scores, optional rich context; `PortfolioFitResult` TYPE_CHECKING-guarded |
+| `decision_renderer.py` | Active utility | `render_decision_result`; exported via `__init__` |
+| `comparison.py` | Active — clean post-Sprint 143 | Canonical comparison location; `ComparisonCandidate`, `ComparisonRanking`, `ComparisonResult`, `compare_tickers`; dead renderer deleted |
+| `memory.py` | Active — clean | Canonical memory location; 7 public symbols; `render_memory_entries` / `render_memory_comparison` used by CLI `atlas memory` commands |
+
+## Active exports (`__init__.py` — 5 symbols)
+
+`AtlasDecisionEngine` · `DecisionAction` · `DecisionContext` · `DecisionResult` · `render_decision_result`
+
+## Deleted rendering path (Sprint 143)
+
+`render_comparison_result` · `_render_ranking` · `_ranking_score` — all deleted Sprint 143, zero callers confirmed.
+
+## Reopening condition
+
+This track may be reopened when a new zero-caller dead function is found, when `decision_engine.py` has a clear Blueprint-aligned successor, or when the package accumulates new stale migration residue.
 
 ---
 
