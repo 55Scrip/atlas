@@ -264,6 +264,23 @@ without output changes.
 
 ---
 
+## Sprint 111 — Remove Dead Portfolio Render Helper COMPLETED
+
+**Goal:** Delete `render_portfolio_analysis` from `atlas/analysis/portfolio.py` — confirmed zero production callers in Sprint 110.
+
+**Key finding:** `render_portfolio_analysis` had zero production callers. Only `atlas/analysis/__init__.py` re-exported it and `tests/test_portfolio.py` tested it. `_score_line` and `_signal_line` were private helpers used only by `render_portfolio_analysis` — also removed.
+
+**Changes made:**
+1. `atlas/analysis/portfolio.py`: `render_portfolio_analysis` deleted (34 lines); `_score_line` and `_signal_line` private helpers deleted (5 lines).
+2. `atlas/analysis/__init__.py`: `render_portfolio_analysis` removed from import and `__all__`.
+3. `tests/test_portfolio.py`: `render_portfolio_analysis` import and test removed.
+4. `tests/test_watchlist_analyze_deprecation.py`: `test_render_portfolio_analysis_has_no_active_production_caller` replaced with `test_render_portfolio_analysis_is_deleted` and `test_render_portfolio_analysis_not_in_atlas_analysis`.
+5. `docs/PortfolioAnalysisMigrationPlan.md`: Phase 1 marked complete; symbol table updated.
+
+**Tests: 1139 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 110 — Portfolio Analysis Migration Plan COMPLETED
 
 **Goal:** Audit `atlas/analysis/portfolio.py`, map all callers, document Blueprint overlap, and define a safe multi-sprint migration plan.

@@ -150,41 +150,6 @@ def get_mock_company_portfolio_profile(ticker: str) -> CompanyPortfolioProfile:
     return MockCompanyAnalysisProvider().get_portfolio_profile(ticker)
 
 
-def render_portfolio_analysis(analysis: PortfolioAnalysis) -> str:
-    return "\n".join(
-        [
-            "Portfolio Analysis",
-            "",
-            f"Company: {analysis.company} ({analysis.ticker})",
-            f"Portfolio Recommendation: {analysis.recommendation.value}",
-            _score_line("Portfolio Score", analysis.portfolio_score),
-            "",
-            "Diversification Impact",
-            _signal_line(analysis.diversification_impact),
-            "",
-            "Sector Concentration",
-            _signal_line(analysis.sector_concentration),
-            "",
-            "Country Concentration",
-            _signal_line(analysis.country_concentration),
-            "",
-            "Market Cap Concentration",
-            _signal_line(analysis.market_cap_concentration),
-            "",
-            "Portfolio Risk Impact",
-            _signal_line(analysis.expected_portfolio_risk_impact),
-            "",
-            "Portfolio Quality Impact",
-            _signal_line(analysis.expected_portfolio_quality_impact),
-            "",
-            "Overlap Analysis",
-            _signal_line(analysis.overlap_with_existing_holdings),
-            "",
-            "Final Reasoning",
-            analysis.final_reasoning,
-        ]
-    )
-
 
 def _position_from_mapping(payload: dict[str, Any]) -> PortfolioPosition:
     required_fields = (
@@ -449,9 +414,3 @@ def _is_mega_cap(market_cap: float) -> bool:
     return market_cap >= 500_000_000_000
 
 
-def _score_line(label: str, score: int) -> str:
-    return f"{label}: {score}/100"
-
-
-def _signal_line(signal: PortfolioSignal) -> str:
-    return f"{_score_line('Score', signal.score)}\nReasoning: {signal.reasoning}"

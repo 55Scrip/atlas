@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 110 complete: `atlas/analysis/portfolio.py` migration plan written. 14 modules remain. Full caller map, Blueprint overlap, and 6-phase migration plan documented in `docs/PortfolioAnalysisMigrationPlan.md`. Sprint 111 is a pre-migration guardrail sprint.
+**Status:** ACTIVE — Sprint 111 complete: `render_portfolio_analysis` deleted from `portfolio.py` (zero production callers). 14 modules remain. Next: Phase 2 — `PortfolioSignal` extraction / `atlas/capabilities/portfolio_intelligence/` stub.
 
 ---
 
@@ -236,8 +236,8 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 | 108 ✓ | Checkpoint | Full inventory audit; verified deleted modules remain gone; Blueprint `domains/` confirmed import-free from `atlas.analysis`; `scoring.py` identified as Sprint 109 target | DONE |
 | 109 ✓ | `atlas/analysis/scoring.py` | Deleted — `ScoringEngine` and `score_company` had zero production callers; test-only module; `tests/test_scoring.py` stripped of dead tests | DONE |
 | 110 ✓ | Planning sprint | `portfolio.py` migration plan written; 6-phase plan in `docs/PortfolioAnalysisMigrationPlan.md`; 3 pre-migration guardrail tests added | DONE |
-| **111** | Pre-migration guardrails | **Already done in Sprint 110 — guardrails added; Sprint 111 may begin Phase 2 (type extraction) or defer to portfolio capability creation** | LOW |
-| 112+ | `atlas/analysis/portfolio.py` Phase 2 | Extract `PortfolioSignal` type; create `atlas/capabilities/portfolio_intelligence/` stub | MEDIUM |
+| 111 ✓ | `render_portfolio_analysis` removed | Deleted dead render helper + 2 private helpers; zero production callers confirmed | DONE |
+| **112** | `atlas/analysis/portfolio.py` Phase 2 | **Extract `PortfolioSignal` type; begin `atlas/capabilities/portfolio_intelligence/` stub** | MEDIUM |
 | 113–119 | Caller migration | One caller per sprint, lowest-coupling first | HIGH |
 | ~120 | Provider migration | Remove `CompanyPortfolioProfile` from provider interface | HIGH |
 | ~121 | Delete `portfolio.py` | After zero active callers remain | — |

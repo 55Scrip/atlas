@@ -829,3 +829,12 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - `docs/PortfolioAnalysisMigrationPlan.md` created with 6-phase migration plan.
 - 3 pre-migration guardrail tests added: `test_portfolio_domain_remains_importable`, `test_portfolio_summary_command_uses_adapter_path`, `test_render_portfolio_analysis_has_no_active_production_caller`.
 - 1139 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 111 (2026-07-02):** `render_portfolio_analysis` deleted from `atlas/analysis/portfolio.py`.
+- Zero production callers confirmed (Sprint 110 guardrail verified this).
+- `_score_line` and `_signal_line` private helpers also removed (only used by `render_portfolio_analysis`).
+- `render_portfolio_analysis` removed from `atlas/analysis/__init__.py`.
+- `tests/test_portfolio.py`: render test and import removed.
+- Guardrails updated: `test_render_portfolio_analysis_is_deleted` + `test_render_portfolio_analysis_not_in_atlas_analysis`.
+- `portfolio.py` still active at 420 lines — `PortfolioIntelligenceEngine` has no Blueprint equivalent; Phase 2 (capability creation) is next.
+- 1139 tests passing (3 skipped). Demo passed. Release verification green.

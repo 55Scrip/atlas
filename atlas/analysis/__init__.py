@@ -14,7 +14,6 @@ from atlas.analysis.portfolio import (
     PortfolioPosition,
     PortfolioRecommendation,
     get_mock_company_portfolio_profile,
-    render_portfolio_analysis,
 )
 from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
@@ -37,6 +36,5 @@ __all__ = [
     "create_placeholder_company_analysis",
     "explain_investment_report",
     "get_mock_company_portfolio_profile",
-    "render_portfolio_analysis",
     "render_investment_report",
 ]

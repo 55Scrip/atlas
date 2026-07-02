@@ -1,7 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Status:** PLANNING — no migration has occurred; this document defines the safe sequence  
+**Updated:** 2026-07-02 (Sprint 111) — `render_portfolio_analysis` deleted (zero production callers)  
+**Status:** IN PROGRESS — Phase 1 guardrails done; `render_portfolio_analysis` removed; Phase 2 (type extraction / capability stub) is next  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -47,7 +48,7 @@ because 5+ active runtime paths still depend on it.
 | Symbol | Responsibility | Callers | Pure? | User-facing output? |
 |---|---|---|---|---|
 | `get_mock_company_portfolio_profile(ticker)` | Returns mock `CompanyPortfolioProfile` via `MockCompanyAnalysisProvider` | `tests/test_portfolio.py`, `tests/test_providers.py` | Yes (deferred import) | No |
-| `render_portfolio_analysis(analysis)` | Renders `PortfolioAnalysis` to multiline string | `atlas/analysis/__init__.py` re-export; formerly `atlas portfolio analyze` CLI | Yes | Yes |
+| `render_portfolio_analysis(analysis)` | **Sprint 111 ✓ DELETED** — zero production callers; `_score_line` and `_signal_line` helpers also removed | — | — | — |
 
 ### Private functions (all internal, pure calculations)
 
@@ -69,7 +70,7 @@ extraction into a future `atlas/capabilities/portfolio_intelligence/` module.
 
 | File | What it imports | How it uses it | CLI path? |
 |---|---|---|---|
-| `atlas/analysis/__init__.py` | `Portfolio`, `PortfolioAnalysis`, `PortfolioIntelligenceEngine`, `PortfolioPosition`, `PortfolioRecommendation`, `get_mock_company_portfolio_profile`, `render_portfolio_analysis` | Re-export hub | — |
+| `atlas/analysis/__init__.py` | `Portfolio`, `PortfolioAnalysis`, `PortfolioIntelligenceEngine`, `PortfolioPosition`, `PortfolioRecommendation`, `get_mock_company_portfolio_profile` | Re-export hub | — |
 | `atlas/adapters/portfolio.py` | `Portfolio as LegacyPortfolio` | Adapter: converts legacy `Portfolio` → domain `Portfolio` | `atlas portfolio summary` |
 | `atlas/cli/main.py` | `Portfolio` | `Portfolio.from_json_file(path)` in 5+ commands | All portfolio-adjacent CLI commands |
 | `atlas/conversation/engine.py` | `Portfolio`, `PortfolioIntelligenceEngine` | `atlas ask --portfolio` | `atlas ask` |
@@ -191,7 +192,7 @@ Migrating `CompanyPortfolioProfile` requires updating all 3 provider files.
 - `PortfolioIntelligenceEngine` and all 7-dimension analysis calculations
 - `PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation`
 - `CompanyPortfolioProfile` — provider-level contract type
-- `render_portfolio_analysis()` — output renderer
+- `render_portfolio_analysis()` — **deleted Sprint 111** (zero callers)
 
 These represent the core behavioral functionality. They cannot be deleted until a
 Blueprint-aligned `atlas/capabilities/portfolio_intelligence/` capability is created.
@@ -239,20 +240,19 @@ a HIGH-RISK coordinated change and should be done as a dedicated sprint, not inc
 
 ## Migration Phases
 
-### Phase 1 — Guardrail sprint (Sprint 111)
-**Scope:** Pre-migration guardrails only. No behavior changes.
+### Phase 1 — Guardrail sprint ✓ COMPLETE (Sprints 110–111)
 
-1. Add `test_portfolio_legacy_caller_count` guardrail — assert named production callers still import
-   from `atlas.analysis.portfolio` (so accidental deletion or partial migration is immediately
-   caught).
-2. Add `test_portfolio_domain_remains_importable` guardrail — assert `atlas.domains.portfolio`
-   is importable and `PortfolioReviewEngine` is accessible.
-3. Add `test_portfolio_summary_command_uses_domain` guardrail — assert `atlas/cli/main.py`
-   imports `legacy_portfolio_to_domain_portfolio` (ensuring the one already-migrated path stays
-   migrated).
-4. Document that `render_portfolio_analysis` has no active production caller outside of
-   `atlas/analysis/__init__.py` re-export and `tests/test_portfolio.py` — potential first deletion
-   candidate.
+**Sprint 110:** Pre-migration guardrails added:
+- `test_portfolio_domain_remains_importable` — Blueprint domain intact
+- `test_portfolio_summary_command_uses_adapter_path` — already-migrated CLI path confirmed
+- `test_render_portfolio_analysis_has_no_active_production_caller` → flipped to `test_render_portfolio_analysis_is_deleted`
+
+**Sprint 111:** `render_portfolio_analysis` deleted. Zero production callers confirmed.
+- `render_portfolio_analysis` removed from `atlas/analysis/portfolio.py`
+- `_score_line` and `_signal_line` private helpers also removed (only used by `render_portfolio_analysis`)
+- `render_portfolio_analysis` removed from `atlas/analysis/__init__.py` import and `__all__`
+- `tests/test_portfolio.py` stripped of `render_portfolio_analysis` test and import
+- Guardrail tests added: `test_render_portfolio_analysis_is_deleted`, `test_render_portfolio_analysis_not_in_atlas_analysis`
 
 ### Phase 2 — Type extraction (Sprint 112)
 **Scope:** Extract `PortfolioSignal` into a shared or capability-layer type.

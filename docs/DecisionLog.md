@@ -1495,3 +1495,17 @@ Demo passed. Release verification green.
 **Guardrails added:** 3 pre-migration tests confirming domain is intact, adapter path is in use, and `render_portfolio_analysis` has no active production callers.
 
 **Outcome:** 3 guardrail tests added. 1139 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 111 (2026-07-02): Delete `render_portfolio_analysis` from `atlas/analysis/portfolio.py`**
+
+**Decision:** Delete `render_portfolio_analysis`. Also delete `_score_line` and `_signal_line` private helpers (only used by the deleted function). Remove re-export from `atlas/analysis/__init__.py`.
+
+**Rationale:**
+- Sprint 110 guardrail test confirmed zero active production callers. Only `atlas/analysis/__init__.py` re-exported it and `tests/test_portfolio.py` tested it.
+- `render_portfolio_analysis` was the output renderer for the retired `atlas portfolio analyze` CLI command (retired Sprint 89). No active CLI command or engine calls it.
+- The `_score_line` and `_signal_line` helpers were internal to `render_portfolio_analysis` and have no other callers.
+- No provider or network dependency. Pure rendering logic.
+
+**Outcome:** 3 symbols deleted from `portfolio.py`. 1 re-export removed from `__init__.py`. 1 test removed from `tests/test_portfolio.py`. 2 guardrail tests added. 1139 tests passing (3 skipped). Demo passed. Release verification green.

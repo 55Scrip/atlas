@@ -8,7 +8,6 @@ from atlas.analysis.portfolio import (
     PortfolioPosition,
     PortfolioRecommendation,
     get_mock_company_portfolio_profile,
-    render_portfolio_analysis,
 )
 from atlas.cli.main import app
 
@@ -104,22 +103,6 @@ def test_portfolio_json_loader_accepts_decimal_and_percent_weights(tmp_path):
     portfolio = Portfolio.from_json_file(path)
 
     assert portfolio.positions[0].weight == 0.25
-
-
-def test_render_portfolio_analysis_includes_required_sections():
-    analysis = PortfolioIntelligenceEngine().analyze(
-        _sample_portfolio(),
-        get_mock_company_portfolio_profile("NVDA"),
-    )
-
-    rendered = render_portfolio_analysis(analysis)
-
-    assert "Portfolio Recommendation" in rendered
-    assert "Diversification Impact" in rendered
-    assert "Portfolio Risk Impact" in rendered
-    assert "Portfolio Quality Impact" in rendered
-    assert "Overlap Analysis" in rendered
-    assert "Final Reasoning" in rendered
 
 
 def test_portfolio_cli_analyze_is_retired(tmp_path):

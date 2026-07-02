@@ -517,31 +517,20 @@ def test_portfolio_summary_command_uses_adapter_path() -> None:
     )
 
 
-def test_render_portfolio_analysis_has_no_active_production_caller() -> None:
-    """Sprint 110: render_portfolio_analysis has no active non-test production caller.
+def test_render_portfolio_analysis_is_deleted() -> None:
+    """Sprint 111: render_portfolio_analysis was removed — zero production callers confirmed."""
+    import atlas.analysis.portfolio as portfolio_mod
+    assert not hasattr(portfolio_mod, "render_portfolio_analysis"), (
+        "render_portfolio_analysis was deleted in Sprint 111 — "
+        "it had zero production callers and was dead code"
+    )
 
-    Pre-migration guardrail: documents that render_portfolio_analysis is safe to remove
-    in a future sprint once atlas/analysis/__init__.py re-export is cleaned up.
-    The only non-test reference is the __init__.py re-export.
-    """
-    import ast
-    production_callers: list[str] = []
-    atlas_root = REPO_ROOT / "atlas"
-    skip = {
-        REPO_ROOT / "atlas" / "analysis" / "portfolio.py",   # definition file
-        REPO_ROOT / "atlas" / "analysis" / "__init__.py",     # re-export only
-    }
-    for py_file in atlas_root.rglob("*.py"):
-        if "__pycache__" in str(py_file):
-            continue
-        if py_file in skip:
-            continue
-        source = py_file.read_text()
-        if "render_portfolio_analysis" in source:
-            production_callers.append(str(py_file.relative_to(REPO_ROOT)))
-    assert not production_callers, (
-        "render_portfolio_analysis found in production code — expected zero active "
-        f"non-test callers before removal: {production_callers}"
+
+def test_render_portfolio_analysis_not_in_atlas_analysis() -> None:
+    """Sprint 111: render_portfolio_analysis must not be re-exported from atlas.analysis."""
+    import atlas.analysis as analysis_pkg
+    assert not hasattr(analysis_pkg, "render_portfolio_analysis"), (
+        "render_portfolio_analysis was removed from atlas.analysis.__init__ in Sprint 111"
     )
 
 
