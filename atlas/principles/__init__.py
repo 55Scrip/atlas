@@ -6,8 +6,6 @@ from atlas.principles.engine import (
     PrinciplesEngine,
     PrinciplesResult,
     check_conversation_response,
-    check_intelligence_report,
-    check_suitability_assessment,
     check_text_against_principles,
     render_principles_check,
 )
@@ -20,8 +18,6 @@ __all__ = [
     "PrinciplesEngine",
     "PrinciplesResult",
     "check_conversation_response",
-    "check_intelligence_report",
-    "check_suitability_assessment",
     "check_text_against_principles",
     "render_principles_check",
 ]

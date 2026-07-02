@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from atlas.conversation import ConversationResponse
-    from atlas.intelligence import IntelligenceReport
-    from atlas.suitability import SuitabilityAssessment
 
 
 class PrincipleCategory(str, Enum):
@@ -129,17 +127,6 @@ def check_conversation_response(response: "ConversationResponse") -> PrinciplesC
     )
     return check_text_against_principles(text)
 
-
-def check_intelligence_report(report: "IntelligenceReport") -> PrinciplesCheck:
-    from atlas.intelligence import render_intelligence_report
-
-    return check_text_against_principles(render_intelligence_report(report))
-
-
-def check_suitability_assessment(assessment: "SuitabilityAssessment") -> PrinciplesCheck:
-    from atlas.suitability import render_suitability_assessment
-
-    return check_text_against_principles(render_suitability_assessment(assessment))
 
 
 def _evaluate_principle(

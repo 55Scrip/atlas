@@ -1,4 +1,4 @@
-# Architecture Consolidation (Sprint 44, updated Sprint 67, reviewed Sprint 71, reviewed Sprint 138, reviewed Sprint 139, reviewed Sprint 140, reviewed Sprint 142, reviewed Sprint 143, reviewed Sprint 144, reviewed Sprint 145, reviewed Sprint 146, reviewed Sprint 147, reviewed Sprint 148, reviewed Sprint 149, reviewed Sprint 150, reviewed Sprint 151, reviewed Sprint 152, reviewed Sprint 153, reviewed Sprint 154, reviewed Sprint 155, reviewed Sprint 156)
+# Architecture Consolidation (Sprint 44, updated Sprint 67, reviewed Sprint 71, reviewed Sprint 138, reviewed Sprint 139, reviewed Sprint 140, reviewed Sprint 142, reviewed Sprint 143, reviewed Sprint 144, reviewed Sprint 145, reviewed Sprint 146, reviewed Sprint 147, reviewed Sprint 148, reviewed Sprint 149, reviewed Sprint 150, reviewed Sprint 151, reviewed Sprint 152, reviewed Sprint 153, reviewed Sprint 154, reviewed Sprint 155, reviewed Sprint 156, reviewed Sprint 157)
 
 This document records the current state of Atlas architecture as of RC2 (Sprint 71),
 clarifies which layers are current vs. legacy, and defines guardrails for

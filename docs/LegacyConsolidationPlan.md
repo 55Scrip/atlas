@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 156)  
-**Status:** `atlas/analysis/` CLOSED Sprint 141. `atlas/decision/` CLOSED Sprint 144. Provider boundary CLOSED Sprint 146. Portfolio boundary CLOSED Sprint 148. Evidence package CLOSED Sprint 150. Reasoning package CLOSED Sprint 153. Risk package CLOSED Sprint 155. Principles package ACTIVE (Sprint 156 audit complete — 2 zero-caller helpers identified for Sprint 157 removal). See `docs/PrinciplesCleanupPlan.md`.
+**Updated:** 2026-07-03 (Sprint 157)  
+**Status:** `atlas/analysis/` CLOSED Sprint 141. `atlas/decision/` CLOSED Sprint 144. Provider boundary CLOSED Sprint 146. Portfolio boundary CLOSED Sprint 148. Evidence package CLOSED Sprint 150. Reasoning package CLOSED Sprint 153. Risk package CLOSED Sprint 155. Principles package CLOSED Sprint 157 (`check_intelligence_report` and `check_suitability_assessment` removed; API reduced from 11 to 9 exports). Sprint 158 recommended: close principles track formally. See `docs/PrinciplesCleanupPlan.md`.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

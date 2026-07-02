@@ -1,7 +1,8 @@
 # Atlas Principles Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 156)  
-**Status:** ACTIVE — Sprint 156 audit complete. Two zero-caller convenience functions identified as Sprint 157 cleanup candidates.
+**Updated:** 2026-07-02 (Sprint 157)  
+**Status:** CLOSED — Sprint 157 removed `check_intelligence_report` and `check_suitability_assessment`. No remaining cleanup candidates. Package is stable. Public API reduced from 11 to 9 exports. No further `atlas/principles/` cleanup work is planned.
 
 ---
 
@@ -156,7 +157,7 @@ These remain valid non-runtime type annotations for the three `check_*` convenie
 - `atlas/risk/` ✓
 - `atlas/domains/` ✓
 
-**Boundary is clean.** The lazy imports in the two zero-caller functions never execute in production. If those functions are removed (Sprint 157), the TYPE_CHECKING imports for `IntelligenceReport` and `SuitabilityAssessment` would also be removable.
+**Boundary is clean.** The lazy imports in the two zero-caller functions never executed in production. Sprint 157 removed those functions and their associated TYPE_CHECKING imports (`IntelligenceReport`, `SuitabilityAssessment`). Post-Sprint-157, the only TYPE_CHECKING import remaining is `ConversationResponse` (annotation for `check_conversation_response`).
 
 ---
 
@@ -186,54 +187,44 @@ Checked for:
 
 ---
 
-## Cleanup Candidate Classification
+## Cleanup Candidate Classification (Sprint 156 state)
 
 | Candidate | Evidence | Caller count | Risk | Sprint 157? |
 |---|---|---|---|---|
-| `check_intelligence_report` | Zero callers — production or test | 0 | **LOW** — identical pattern to `check_reasoning_report` removed Sprint 152; lazy import also removable | **YES** |
-| `check_suitability_assessment` | Zero callers — production or test | 0 | **LOW** — same pattern; lazy import also removable | **YES** |
-| `check_conversation_response` | Test-only (1 test); zero production callers | 1 test | LOW | Possible, but not Sprint 157 — has test coverage; defer unless both zero-callers are confirmed clean |
-| `check_text_against_principles` | Called only by the 3 check_* helpers; 1 test direct | 1 test (direct) | LOW — if all 3 helpers removed, this becomes zero-caller too; but it's a clean public utility | Leave — useful standalone API if Sprint 158 removes helpers |
+| `check_intelligence_report` | Zero callers — production or test | 0 | LOW — identical pattern to `check_reasoning_report` removed Sprint 152 | **DONE — Sprint 157** |
+| `check_suitability_assessment` | Zero callers — production or test | 0 | LOW — same pattern | **DONE — Sprint 157** |
+| `check_conversation_response` | Test-only (1 test); zero production callers | 1 test | LOW | Leave — has test coverage |
+| `check_text_against_principles` | 1 test (direct); useful public utility | 1 test (direct) | LOW | Leave unchanged |
 | `PrinciplesEngine`, `PrinciplesCheck`, `render_principles_check` | 5–6 active callers | Active | N/A | Leave unchanged |
 | All 4 enums/dataclasses | Type system — essential to `PrinciplesCheck` | N/A | N/A | Leave unchanged |
 
-**Overall assessment:** The principles package is healthy. Two zero-caller convenience functions are the only actionable cleanup candidates. All core engine behavior is active and well-tested.
+**Post-Sprint-157 assessment:** No remaining cleanup candidates. Package is stable. No further cleanup work is planned.
 
 ---
 
-## Recommended Sprint 157 Target
+## Sprint 157 — Cleanup (COMPLETED)
 
-**Remove `check_intelligence_report` and `check_suitability_assessment` — two zero-caller convenience functions.**
+**Removed `check_intelligence_report` and `check_suitability_assessment`** — two zero-caller convenience functions. Pattern identical to Sprint 152's removal of `check_reasoning_report`.
 
-This is the direct analogue to Sprint 152's removal of `check_reasoning_report`. The pattern is identical:
+Sprint 157 changes:
+1. Removed `check_intelligence_report` from `atlas/principles/engine.py`
+2. Removed `check_suitability_assessment` from `atlas/principles/engine.py`
+3. Removed lazy imports: `render_intelligence_report`, `render_suitability_assessment`
+4. Removed TYPE_CHECKING imports: `IntelligenceReport`, `SuitabilityAssessment`
+5. Removed both from `atlas/principles/__init__.py` imports and `__all__`
+6. Updated guardrail tests — added Sprint 157 deletion guards
+7. Updated docs
 
-| Sprint 152 | Sprint 157 |
-|---|---|
-| `check_reasoning_report` | `check_intelligence_report`, `check_suitability_assessment` |
-| Zero production callers | Zero callers (production or test) |
-| Lazy import inside function body | Lazy import inside function body |
-| TYPE_CHECKING import for parameter type | TYPE_CHECKING import for parameter type |
-| Removed from `engine.py` + `__init__.py` | Same surgery |
-
-Sprint 157 should:
-1. Remove `check_intelligence_report` from `atlas/principles/engine.py`
-2. Remove `check_suitability_assessment` from `atlas/principles/engine.py`
-3. Remove the lazy imports inside those functions (`render_intelligence_report`, `render_suitability_assessment`)
-4. Remove the TYPE_CHECKING imports for `IntelligenceReport` and `SuitabilityAssessment` (no longer needed)
-5. Remove both from `atlas/principles/__init__.py` imports and `__all__`
-6. Update tests — flip any presence tests to deletion guardrails
-7. Update docs
-
-After Sprint 157, the principles API drops from 11 to 9 exports, leaving only active or well-tested symbols.
+**Result:** Principles public API reduced from 11 to 9 exports. No production behavior changed. All 5 active production callers unaffected. CLI unchanged.
 
 ---
 
-## Final Stable Package State (Sprint 156)
+## Final Stable Package State (Sprint 157)
 
 | Module | Lines | Status |
 |---|---|---|
-| `__init__.py` | 27 | 11 exports — 2 zero-caller candidates identified |
-| `engine.py` | 324 | Active — `PrinciplesEngine` core; 2 zero-caller helpers pending Sprint 157 |
+| `__init__.py` | 23 | 9 exports — all active or well-tested |
+| `engine.py` | ~311 | Active — `PrinciplesEngine` core; no dormant helpers |
 
 **Provider safety:** Zero provider imports. Zero network access. Deterministic, local-only. ✓
 
@@ -250,4 +241,23 @@ After Sprint 157, the principles API drops from 11 to 9 exports, leaving only ac
 | Evidence package | CLOSED Sprint 150 |
 | Reasoning package | CLOSED Sprint 153 |
 | Risk package | CLOSED Sprint 155 |
-| **Principles package** | **ACTIVE — Sprint 157 cleanup planned** |
+| **Principles package** | **CLOSED Sprint 157** |
+
+---
+
+## Recommended Sprint 158 Target
+
+**Close the principles cleanup track.**
+
+After inventory (Sprint 156) and cleanup (Sprint 157), the principles package contains no remaining actionable cleanup candidates:
+- All 9 remaining exports are active or well-tested
+- No dormant helpers remain
+- No stale imports remain
+- No Blueprint successor exists
+- Boundary is clean
+
+Sprint 158 should be a documentation-only sprint confirming the audit findings and formally closing the principles cleanup track. No code changes are needed.
+
+**Alternative Sprint 158 targets if principles track closure is deferred:**
+- Audit `atlas/comparison/` — provider-coupled, has Blueprint overlap with `InvestmentComparisonEngine`
+- Audit Group B provider-coupled module: `atlas/home/`

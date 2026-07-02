@@ -1,13 +1,15 @@
-"""Sprint 156: Principles package audit checkpoint guardrails.
+"""Sprint 156/157: Principles package audit and cleanup guardrails.
 
 Verifies:
 - atlas/principles/ contains exactly 2 modules
-- atlas.principles.__all__ exports exactly 11 expected symbols
-- All 11 exports are importable
+- atlas.principles.__all__ exports exactly 9 expected symbols (Sprint 157: reduced from 11)
+- All 9 exports are importable
 - PrinciplesEngine and PrinciplesCheck are importable and correct types
 - atlas/principles/ has no provider imports
 - atlas/principles/ has no imports from deleted atlas.reasoning
 - check_reasoning_report is not in atlas.principles (removed Sprint 152)
+- check_intelligence_report is not in atlas.principles (removed Sprint 157)
+- check_suitability_assessment is not in atlas.principles (removed Sprint 157)
 - Known production callers still import PrinciplesEngine
 - atlas principles check CLI command path imports expected symbols
 - Closed cleanup tracks remain closed
@@ -39,8 +41,8 @@ def test_sprint156_principles_package_two_modules_only() -> None:
 
 # ── Export health ─────────────────────────────────────────────────────────────
 
-def test_sprint156_principles_all_has_eleven_exports() -> None:
-    """Sprint 156: atlas.principles.__all__ must contain exactly 11 exports."""
+def test_sprint157_principles_all_has_nine_exports() -> None:
+    """Sprint 157: atlas.principles.__all__ must contain exactly 9 exports (reduced from 11)."""
     import atlas.principles as pkg
 
     expected = {
@@ -51,8 +53,6 @@ def test_sprint156_principles_all_has_eleven_exports() -> None:
         "PrinciplesEngine",
         "PrinciplesResult",
         "check_conversation_response",
-        "check_intelligence_report",
-        "check_suitability_assessment",
         "check_text_against_principles",
         "render_principles_check",
     }
@@ -63,7 +63,7 @@ def test_sprint156_principles_all_has_eleven_exports() -> None:
 
 
 def test_sprint156_all_exports_importable() -> None:
-    """Sprint 156: every symbol in atlas.principles.__all__ must be importable."""
+    """Sprint 156/157: every symbol in atlas.principles.__all__ must be importable."""
     import atlas.principles as pkg
 
     for name in pkg.__all__:
@@ -81,6 +81,47 @@ def test_sprint156_check_reasoning_report_not_in_principles() -> None:
     )
     assert "check_reasoning_report" not in pkg.__all__, (
         "check_reasoning_report must not be in atlas.principles.__all__ after Sprint 152"
+    )
+
+
+def test_sprint157_check_intelligence_report_not_in_principles() -> None:
+    """Sprint 157: check_intelligence_report must not exist in atlas.principles (removed Sprint 157)."""
+    import atlas.principles as pkg
+
+    assert not hasattr(pkg, "check_intelligence_report"), (
+        "check_intelligence_report must not be exported from atlas.principles after Sprint 157"
+    )
+    assert "check_intelligence_report" not in pkg.__all__, (
+        "check_intelligence_report must not be in atlas.principles.__all__ after Sprint 157"
+    )
+
+
+def test_sprint157_check_suitability_assessment_not_in_principles() -> None:
+    """Sprint 157: check_suitability_assessment must not exist in atlas.principles (removed Sprint 157)."""
+    import atlas.principles as pkg
+
+    assert not hasattr(pkg, "check_suitability_assessment"), (
+        "check_suitability_assessment must not be exported from atlas.principles after Sprint 157"
+    )
+    assert "check_suitability_assessment" not in pkg.__all__, (
+        "check_suitability_assessment must not be in atlas.principles.__all__ after Sprint 157"
+    )
+
+
+def test_sprint157_principles_engine_has_no_intelligence_suitability_imports() -> None:
+    """Sprint 157: atlas/principles/engine.py must not import IntelligenceReport or SuitabilityAssessment."""
+    source = Path("atlas/principles/engine.py").read_text(encoding="utf-8")
+    assert "IntelligenceReport" not in source, (
+        "IntelligenceReport must not appear in atlas/principles/engine.py after Sprint 157"
+    )
+    assert "SuitabilityAssessment" not in source, (
+        "SuitabilityAssessment must not appear in atlas/principles/engine.py after Sprint 157"
+    )
+    assert "check_intelligence_report" not in source, (
+        "check_intelligence_report must not exist in atlas/principles/engine.py after Sprint 157"
+    )
+    assert "check_suitability_assessment" not in source, (
+        "check_suitability_assessment must not exist in atlas/principles/engine.py after Sprint 157"
     )
 
 

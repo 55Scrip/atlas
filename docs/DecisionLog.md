@@ -2,6 +2,30 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 157 — Remove Dormant Principles Report Checks
+
+Decision: Remove `check_intelligence_report` and `check_suitability_assessment` from `atlas/principles/engine.py` and `atlas/principles/__init__.py`.
+
+**Rationale:** Sprint 156 audit identified both functions as zero-caller (no production or test callers). Each carried a lazy runtime import and TYPE_CHECKING parameter annotation — identical pattern to `check_reasoning_report` removed in Sprint 152. Removal reduces principles public API from 11 to 9 exports with no production behavior changes.
+
+**Changes:** Deleted 2 functions, 2 lazy imports (`render_intelligence_report`, `render_suitability_assessment`), 2 TYPE_CHECKING import names (`IntelligenceReport`, `SuitabilityAssessment`). Updated `__init__.py` imports and `__all__`. Updated guardrail tests. Updated docs.
+
+**Active API preserved:** `PrinciplesEngine`, `PrinciplesCheck`, `render_principles_check`, `check_conversation_response`, `check_text_against_principles`, and all 4 type-system symbols remain unchanged. All 5 production callers unaffected.
+
+**Closed-track summary:**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — CLOSED Sprint 148
+- Evidence package — CLOSED Sprint 150
+- Reasoning package — CLOSED Sprint 153
+- Risk package — CLOSED Sprint 155
+- **Principles package — CLOSED Sprint 157**
+
+**Sprint 158 recommended target:** Close principles cleanup track formally (documentation-only sprint confirming stable post-Sprint-157 state). No code changes expected.
+
+---
+
 ## 2026-07-02: Sprint 156 — Principles Package Audit Checkpoint
 
 Decision: Audit `atlas/principles/` as a Group C self-contained module. Audit-only sprint. No runtime changes.
