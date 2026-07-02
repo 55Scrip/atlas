@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 132 complete: `PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation` deleted from `portfolio.py`. `portfolio.py` is now 69 lines (3 active types + 2 private helpers). `CompanyPortfolioProfile` provider coupling (HIGH risk) deferred. `Portfolio` CLI boundary deferred.
+**Status:** ACTIVE — Sprint 135 complete: `atlas/analysis/portfolio.py` deleted entirely. Sprint 136 checkpoint: zero stale production imports confirmed. Remaining `atlas/analysis/` modules: `engine.py` (foundational), `company_analysis.py` + 7 placeholder submodules (active), `explanation.py`, `report.py`, `scores.py`. Next target: `portfolio_fit_input_from_profile` identity adapter cleanup (Sprint 137 candidate).
 
 ---
 

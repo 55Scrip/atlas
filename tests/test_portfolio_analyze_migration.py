@@ -152,7 +152,7 @@ def test_analyze_unknown_provider_still_fails_cleanly(tmp_path: Path) -> None:
 # ── Underlying engine and adapter still work independently ───────────────────
 
 def test_legacy_portfolio_loads_from_json(tmp_path: Path) -> None:
-    """atlas.analysis.portfolio.Portfolio must still load from JSON (used by portfolio review)."""
+    """Sprint 135: Portfolio (now in atlas.adapters.portfolio) must still load from JSON."""
     path = _write_portfolio(tmp_path, _single_holding_positions())
     portfolio = LegacyPortfolio.from_json_file(path)
     assert len(portfolio.positions) == 1

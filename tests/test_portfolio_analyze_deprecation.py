@@ -100,13 +100,11 @@ def test_sprint135_portfolio_boundary_types_importable_from_adapter() -> None:
 
 
 def test_portfolio_engine_active_callers_remain() -> None:
-    """Confirm known active callers of atlas.analysis.portfolio still exist (list is empty post-Sprint 135)."""
-    for path in PORTFOLIO_ENGINE_CALLERS:
-        assert path.exists(), f"Expected active portfolio engine caller at {path}"
-        source = path.read_text(encoding="utf-8")
-        assert "atlas.analysis.portfolio" in source, (
-            f"{path} should still import from atlas.analysis.portfolio"
-        )
+    """Sprint 136: PORTFOLIO_ENGINE_CALLERS is empty — all callers migrated by Sprint 135."""
+    assert len(PORTFOLIO_ENGINE_CALLERS) == 0, (
+        "All atlas.analysis.portfolio callers were migrated by Sprint 135; "
+        "this list must remain empty"
+    )
 
 
 def test_sprint135_analysis_portfolio_module_deleted() -> None:
@@ -514,3 +512,54 @@ def test_sprint135_no_production_code_imports_analysis_portfolio() -> None:
                     f"{py_file}: import from atlas.analysis.portfolio found — "
                     "module was deleted in Sprint 135"
                 )
+
+
+# ---------------------------------------------------------------------------
+# Sprint 136: Post-portfolio migration architecture checkpoint
+# ---------------------------------------------------------------------------
+
+def test_sprint136_portfolio_not_in_atlas_analysis_namespace() -> None:
+    """Sprint 136: atlas.analysis must not export Portfolio or PortfolioPosition."""
+    import importlib
+    mod = importlib.import_module("atlas.analysis")
+    assert not hasattr(mod, "Portfolio"), (
+        "Portfolio must not be exported from atlas.analysis after Sprint 135"
+    )
+    assert not hasattr(mod, "PortfolioPosition"), (
+        "PortfolioPosition must not be exported from atlas.analysis after Sprint 135"
+    )
+
+
+def test_sprint136_adapter_boundary_is_self_contained() -> None:
+    """Sprint 136: atlas.adapters.portfolio must not import from atlas.analysis.portfolio."""
+    import pathlib
+    source = pathlib.Path("atlas/adapters/portfolio.py").read_text(encoding="utf-8")
+    import ast
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "atlas.analysis.portfolio":
+            assert False, "atlas/adapters/portfolio.py must not import atlas.analysis.portfolio"
+
+
+def test_sprint136_all_deleted_portfolio_symbols_unreachable() -> None:
+    """Sprint 136: symbols deleted across portfolio migration sprints must not exist in adapter."""
+    import atlas.adapters.portfolio as adapter_mod
+    deleted = [
+        "PortfolioIntelligenceEngine",
+        "PortfolioAnalysis",
+        "PortfolioSignal",
+        "PortfolioRecommendation",
+        "CompanyPortfolioProfile",
+    ]
+    for symbol in deleted:
+        assert not hasattr(adapter_mod, symbol), (
+            f"{symbol} must not exist in atlas.adapters.portfolio — deleted in prior sprints"
+        )
+
+
+def test_sprint136_analysis_package_has_no_portfolio_module() -> None:
+    """Sprint 136: atlas/analysis/portfolio.py must not exist on disk."""
+    import pathlib
+    assert not pathlib.Path("atlas/analysis/portfolio.py").exists(), (
+        "atlas/analysis/portfolio.py must remain deleted after Sprint 135"
+    )

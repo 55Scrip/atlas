@@ -1848,6 +1848,24 @@ Demo passed. Release verification green.
 
 ---
 
+**Sprint 136 (2026-07-02): Post-portfolio migration checkpoint**
+
+**Decision:** No code changes to runtime behavior. Verified architecture post-Sprint 135 deletion.
+
+**Findings:**
+- Zero active production imports of `atlas.analysis.portfolio` (AST-confirmed).
+- `atlas.analysis.__init__` exports no Portfolio/PortfolioPosition symbols.
+- `atlas/adapters/portfolio.py` is self-contained: no CLI, provider, or deleted-module imports.
+- All 5 deleted portfolio symbols (PortfolioIntelligenceEngine, PortfolioAnalysis, PortfolioSignal, PortfolioRecommendation, CompanyPortfolioProfile) absent from adapter.
+- `atlas/analysis/` inventory: 13 modules. No migration candidates identified for immediate deletion.
+- `portfolio_fit_input_from_profile` is a no-op identity function still called by 4 engines (conversation, dashboard, intelligence, decision) — deferred from Sprint 133.
+
+**Sprint 137 target:** Remove `portfolio_fit_input_from_profile` identity adapter from 4 engine callers and delete the function. It is a no-op added in Sprint 133 to avoid touching callers; those callers can now call provider methods directly.
+
+**Outcome:** 4 guardrail tests added. Stale tracking text updated. 1365 tests passing (3 skipped). Demo passed. RC2 green.
+
+---
+
 **Sprint 135 (2026-07-02): Delete `atlas/analysis/portfolio.py`; move types to `atlas/adapters/portfolio.py`**
 
 **Decision:** "Lift and shift" — `Portfolio`, `PortfolioPosition`, `_position_from_mapping`, `_normalize_weight` moved from `atlas/analysis/portfolio.py` into `atlas/adapters/portfolio.py`. `atlas/analysis/portfolio.py` deleted. All 12 production import sites updated atomically in the same sprint.
