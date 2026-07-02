@@ -4,8 +4,7 @@ Sprint 78 deprecated the command; Sprint 91 removed the command body.
 `atlas watchlist analyze` is no longer a registered CLI command.
 
 The underlying `atlas.analysis.watchlist` engine remains on disk:
-- WatchlistEngine is still imported and instantiated by (Sprint 96 state):
-  - atlas/intelligence/engine.py  (Sprint 97 migration target)
+- WatchlistEngine is still imported and instantiated by (Sprint 97 state):
   - atlas/conversation/engine.py  (Sprint 98 migration target)
 Engine deletion deferred until all callers are retired.
 
@@ -17,6 +16,7 @@ Sprint 93: atlas/monitoring/engine.py WatchlistEngine removed — caller count r
 Sprint 94: atlas/watchlist_review/engine.py WatchlistEngine removed — caller count reduced 4 → 3.
 Sprint 95: atlas/decision/decision_engine.py WatchlistEngine removed — caller count reduced 3 → 2.
 Sprint 96: Audit sprint — caller count unchanged at 2 (intelligence, conversation).
+Sprint 97: atlas/intelligence/engine.py WatchlistEngine removed — caller count reduced 2 → 1.
 """
 
 from __future__ import annotations
@@ -35,7 +35,6 @@ CLI_PATH = REPO_ROOT / "atlas" / "cli" / "main.py"
 runner = CliRunner()
 
 WATCHLIST_ENGINE_CALLERS = (
-    REPO_ROOT / "atlas" / "intelligence" / "engine.py",
     REPO_ROOT / "atlas" / "conversation" / "engine.py",
 )
 
@@ -85,14 +84,14 @@ def test_watchlist_intelligence_command_is_unaffected() -> None:
 
 
 def test_watchlist_engine_remains_importable() -> None:
-    """atlas.analysis.watchlist must still be importable — two engines depend on it."""
+    """atlas.analysis.watchlist must still be importable — one engine depends on it."""
     from atlas.analysis.watchlist import Watchlist, WatchlistEngine
     assert WatchlistEngine is not None
     assert Watchlist is not None
 
 
 def test_watchlist_engine_active_callers_remain() -> None:
-    """Confirm all two known active callers of WatchlistEngine still exist."""
+    """Confirm the one known active caller of WatchlistEngine still exists."""
     for path in WATCHLIST_ENGINE_CALLERS:
         assert path.exists(), f"Expected active WatchlistEngine caller at {path}"
         source = path.read_text(encoding="utf-8")
@@ -119,17 +118,17 @@ def test_watchlist_review_engine_does_not_import_watchlist_engine() -> None:
     )
 
 
-def test_intelligence_engine_remains_a_watchlist_engine_caller() -> None:
-    """Sprint 96: atlas/intelligence/engine.py is the Sprint 97 migration target — must still import WatchlistEngine."""
+def test_intelligence_engine_does_not_import_watchlist_engine() -> None:
+    """Sprint 97: atlas/intelligence/engine.py must not import WatchlistEngine."""
     path = REPO_ROOT / "atlas" / "intelligence" / "engine.py"
     source = path.read_text(encoding="utf-8")
-    assert "WatchlistEngine" in source, (
-        "atlas/intelligence/engine.py should still import WatchlistEngine until Sprint 97"
+    assert "WatchlistEngine" not in source, (
+        "atlas/intelligence/engine.py should no longer import WatchlistEngine after Sprint 97"
     )
 
 
 def test_conversation_engine_remains_a_watchlist_engine_caller() -> None:
-    """Sprint 96: atlas/conversation/engine.py is the Sprint 98 migration target — must still import WatchlistEngine."""
+    """Sprint 97: atlas/conversation/engine.py is the Sprint 98 migration target — must still import WatchlistEngine."""
     path = REPO_ROOT / "atlas" / "conversation" / "engine.py"
     source = path.read_text(encoding="utf-8")
     assert "WatchlistEngine" in source, (
@@ -147,11 +146,12 @@ def test_decision_engine_does_not_import_watchlist_engine() -> None:
 
 
 def test_watchlist_engine_callers_are_exactly_the_known_set() -> None:
-    """Sprint 95 guardrail: no new WatchlistEngine callers may be added outside the known set.
+    """Sprint 97 guardrail: no new WatchlistEngine callers may be added outside the known set.
 
-    The known set is frozen at 2 callers (intelligence, conversation)
-    after monitoring removed in Sprint 93, watchlist_review in Sprint 94, decision in Sprint 95.
-    Any new direct import must be explicitly reviewed and added to WATCHLIST_ENGINE_CALLERS above.
+    The known set is frozen at 1 caller (conversation)
+    after monitoring removed in Sprint 93, watchlist_review in Sprint 94, decision in Sprint 95,
+    and intelligence in Sprint 97. Any new direct import must be explicitly reviewed and added to
+    WATCHLIST_ENGINE_CALLERS above.
     """
     known_paths = {path.resolve() for path in WATCHLIST_ENGINE_CALLERS}
     # Scan only atlas/ source, excluding cli/ (deprecations registry contains string references)
@@ -186,7 +186,7 @@ def test_watchlist_engine_callers_are_exactly_the_known_set() -> None:
 
 
 def test_watchlist_engine_module_remains_on_disk() -> None:
-    """atlas.analysis.watchlist engine must still exist — two engines depend on it."""
+    """atlas.analysis.watchlist engine must still exist — one engine depends on it."""
     import importlib
     mod = importlib.import_module("atlas.analysis.watchlist")
     assert hasattr(mod, "WatchlistEngine"), (

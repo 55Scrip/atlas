@@ -655,3 +655,20 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 1122 tests passing (3 skipped). Demo passed. Release verification green.
 - Sprint 97 target: migrate `atlas/intelligence/` — zero user-visible output change expected.
 - Sprint 98 target: migrate `atlas/conversation/` — `_answer_watchlist_review()` output text changes from score-ranking to research-attention framing.
+
+**Sprint 97 (2026-07-02):** WatchlistEngine removed from `atlas/intelligence/engine.py`; `IntelligenceReport.watchlist_intelligence` now carries `WatchlistIntelligenceReport | None`; caller count 2 → 1.
+- `IntelligenceEngine.__init__` no longer accepts or instantiates `WatchlistEngine`.
+  `_optional_watchlist_analysis()` renamed to `_optional_watchlist_intelligence()`, rewritten to use
+  `WatchlistIntelligenceEngine().analyze()` (same conversion pattern as Sprint 95). No provider needed.
+- `IntelligenceReport.watchlist_analysis: WatchlistAnalysis | None` → `watchlist_intelligence: WatchlistIntelligenceReport | None`.
+  No rendering function ever read WatchlistAnalysis content — zero user-visible output change.
+  Confidence bonus (+3 for non-None watchlist) preserved unchanged.
+- `atlas/conversation/engine.py`: removed `watchlist_engine=self.watchlist_engine` kwarg from
+  `IntelligenceEngine(...)` construction — parameter no longer accepted after Sprint 97.
+  Conversation's own `self.watchlist_engine` and `_answer_watchlist_review()` remain unchanged (Sprint 98).
+- Guardrail: `test_intelligence_engine_does_not_import_watchlist_engine` added.
+- Exclusivity guardrail updated: caller set now 1 (conversation only).
+- WatchlistEngine caller count: 2 before → **1** after.
+- 1124 tests passing (3 skipped). Demo passed. Release verification green.
+- Sprint 98 target: migrate `atlas/conversation/` — `_answer_watchlist_review()` output text changes
+  from score-ranking to research-attention framing; field mapping documented in WatchlistEngineMigrationPlan.md.

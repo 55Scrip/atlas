@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 96)  
-**Status:** Active — Sprint 96 audit complete; final 2 callers documented; migration plan written. Sprint 97 target: migrate `atlas/intelligence/` (low-risk, no output change). Sprint 98 target: migrate `atlas/conversation/` (medium-risk, WATCHLIST_REVIEW output changes).
+**Updated:** 2026-07-02 (Sprint 97)  
+**Status:** Active — Sprint 97 complete; WatchlistEngine removed from `atlas/intelligence/`; `IntelligenceReport.watchlist_intelligence` now carries `WatchlistIntelligenceReport | None`; caller count 2 → 1. Sprint 98 target: migrate `atlas/conversation/` — `_answer_watchlist_review()` output text changes.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,42 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 97 Migration Target — COMPLETED
+
+### Completed: WatchlistEngine removed from `atlas/intelligence/engine.py`; caller count 2 → 1
+
+**Sprint 97 result:**
+
+**Goal:** Replace `atlas/intelligence/engine.py` direct `WatchlistEngine` dependency with Blueprint-aligned Watchlist Intelligence data; update `IntelligenceReport` to carry `WatchlistIntelligenceReport` instead of `WatchlistAnalysis`.
+
+**Changes made:**
+1. Removed `WatchlistEngine`, `WatchlistAnalysis` imports from `atlas/intelligence/engine.py`
+2. Added `WatchlistIntelligenceEngine`, `WatchlistIntelligenceInput`, `WatchlistItem as IntelligenceWatchlistItem` from `atlas.capabilities.watchlist_intelligence`
+3. Removed `watchlist_engine: WatchlistEngine | None = None` from `IntelligenceEngine.__init__`
+4. Renamed `_optional_watchlist_analysis()` → `_optional_watchlist_intelligence()`; rewrote to use `WatchlistIntelligenceEngine().analyze()` (same conversion pattern as Sprint 95) — no provider argument needed
+5. Updated `_confidence()` signature: `watchlist_analysis: WatchlistAnalysis | None` → `watchlist_intelligence: WatchlistIntelligenceReport | None`
+6. Renamed `IntelligenceReport.watchlist_analysis` → `watchlist_intelligence` with type `WatchlistIntelligenceReport | None`
+7. Removed `watchlist_engine=self.watchlist_engine` from `IntelligenceEngine(...)` construction in `atlas/conversation/engine.py` (parameter no longer accepted)
+8. Updated `WATCHLIST_ENGINE_CALLERS` to 1 entry (removed intelligence)
+9. Updated Sprint 96 "remains a caller" test → Sprint 97 `test_intelligence_engine_does_not_import_watchlist_engine` guardrail
+10. Updated exclusivity guardrail comment (caller set now 1)
+
+**Output change (documented):**
+`IntelligenceReport.watchlist_intelligence` now carries `WatchlistIntelligenceReport | None` instead of `WatchlistAnalysis | None`. No user-visible rendering change: `render_intelligence_report()` never read any `WatchlistAnalysis` field content. Confidence bonus (+3 for non-None watchlist) is preserved unchanged. Provider no longer passed to watchlist analysis path — no provider boundary broadening.
+
+**WatchlistEngine caller count:**
+- Before Sprint 97: 2 (intelligence, conversation)
+- After Sprint 97: **1** (conversation only)
+- `atlas/intelligence/engine.py` no longer imports or instantiates WatchlistEngine
+- `IntelligenceReport.watchlist_intelligence` holds `WatchlistIntelligenceReport | None`
+
+**Engine deletion criteria (deferred to Sprint 98/99):**
+1. Retire or migrate `atlas/conversation/` WatchlistEngine usage
+2. Once conversation is retired, evaluate `Watchlist`/`WatchlistItem` type-only imports
+3. Once all active imports are retired, `atlas/analysis/watchlist.py` can be deleted
 
 ---
 

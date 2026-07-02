@@ -1,7 +1,8 @@
 # WatchlistEngine Migration Plan
 
 **Created:** 2026-07-02 (Sprint 96)  
-**Status:** Active — 2 callers remaining; Sprint 97 target: `atlas/intelligence/`; Sprint 98 target: `atlas/conversation/`
+**Updated:** 2026-07-02 (Sprint 97)  
+**Status:** Active — 1 caller remaining; Sprint 97 COMPLETE (`atlas/intelligence/` migrated); Sprint 98 target: `atlas/conversation/`
 
 ---
 
@@ -11,7 +12,7 @@ WatchlistEngine caller count: **2**
 
 | Caller | File | Status |
 |---|---|---|
-| Intelligence Engine | `atlas/intelligence/engine.py` | Active — Sprint 97 target |
+| Intelligence Engine | `atlas/intelligence/engine.py` | **Migrated — Sprint 97** |
 | Conversation Engine | `atlas/conversation/engine.py` | Active — Sprint 98 target |
 
 Retired callers (Sprints 93–95):

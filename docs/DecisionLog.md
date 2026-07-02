@@ -1238,3 +1238,22 @@ Demo passed. Release verification green.
 - Leave both for deletion with WatchlistEngine: rejected — doing the migration first decouples type cleanup from engine deletion.
 
 **Outcome:** Migration plan document created at `docs/WatchlistEngineMigrationPlan.md`. Caller count remains 2. No runtime changes. 1122 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 97 (2026-07-02): Remove WatchlistEngine from `atlas/intelligence/engine.py`**
+
+**Decision:** Replace `IntelligenceEngine` direct `WatchlistEngine` usage with `WatchlistIntelligenceEngine` (Blueprint capability), following the Sprint 95 pattern. Remove `watchlist_engine` from `IntelligenceEngine.__init__`.
+
+**Rationale:**
+- Sprint 96 identified this as the lower-risk migration: `WatchlistAnalysis` content was never rendered in any intelligence output string; the only effect was a confidence bonus (+3) and a stored passthrough field.
+- `IntelligenceReport.watchlist_intelligence` now carries `WatchlistIntelligenceReport | None` — richer research signals replace legacy scoring output, consistent with Blueprint architecture.
+- Removing `watchlist_engine` from `IntelligenceEngine.__init__` simplifies Sprint 98: `ConversationEngine.__init__` no longer needs to pass it through.
+- Provider is no longer passed to the watchlist analysis path — `WatchlistIntelligenceEngine` needs no provider, reducing provider coupling.
+
+**Alternatives considered:**
+- Keep `WatchlistAnalysis` field in `IntelligenceReport` and only remove the engine param: rejected — would leave stale type annotation; field is a passthrough nobody reads.
+- Migrate conversation first: deferred — conversation has deeper semantic coupling (`_answer_watchlist_review()` renders 6 specific WatchlistAnalysis fields with no 1:1 Blueprint equivalents).
+
+**Outcome:** WatchlistEngine caller count reduced 2 → **1** (conversation only).
+`atlas/intelligence/engine.py` no longer imports `WatchlistEngine`. `IntelligenceReport.watchlist_intelligence` holds `WatchlistIntelligenceReport | None`. 1124 tests passing (3 skipped). Demo passed. Release verification green.

@@ -2,7 +2,13 @@ from dataclasses import dataclass
 
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport
 from atlas.analysis.portfolio import Portfolio, PortfolioAnalysis, PortfolioIntelligenceEngine
-from atlas.analysis.watchlist import Watchlist, WatchlistAnalysis, WatchlistEngine
+from atlas.analysis.watchlist import Watchlist
+from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
+from atlas.capabilities.watchlist_intelligence.models import (
+    WatchlistIntelligenceInput,
+    WatchlistIntelligenceReport,
+    WatchlistItem as IntelligenceWatchlistItem,
+)
 from atlas.decision import AtlasDecisionEngine, DecisionContext, DecisionResult
 from atlas.market import (
     MarketHealthEngine,
@@ -54,7 +60,7 @@ class IntelligenceReport:
     what_could_change_view: tuple[str, ...]
     investment_report: InvestmentReport
     portfolio_analysis: PortfolioAnalysis | None
-    watchlist_analysis: WatchlistAnalysis | None
+    watchlist_intelligence: WatchlistIntelligenceReport | None
     risk_analysis: RiskAnalysis | None
     decision_result: DecisionResult
     theme_analysis: ThemeAnalysis
@@ -67,7 +73,6 @@ class IntelligenceEngine:
         self,
         investment_engine: AtlasInvestmentEngine | None = None,
         portfolio_engine: PortfolioIntelligenceEngine | None = None,
-        watchlist_engine: WatchlistEngine | None = None,
         decision_engine: AtlasDecisionEngine | None = None,
         theme_engine: ThemeEngine | None = None,
         market_regime_engine: MarketRegimeEngine | None = None,
@@ -75,7 +80,6 @@ class IntelligenceEngine:
     ) -> None:
         self.investment_engine = investment_engine or AtlasInvestmentEngine()
         self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()
-        self.watchlist_engine = watchlist_engine or WatchlistEngine(self.investment_engine)
         self.decision_engine = decision_engine or AtlasDecisionEngine(
             investment_engine=self.investment_engine,
             portfolio_engine=self.portfolio_engine,
@@ -96,11 +100,7 @@ class IntelligenceEngine:
             ticker=ticker,
             provider=provider,
         )
-        watchlist_analysis = _optional_watchlist_analysis(
-            engine=self.watchlist_engine,
-            watchlist=context.watchlist,
-            provider=provider,
-        )
+        watchlist_analysis = _optional_watchlist_intelligence(context.watchlist)
         market_regime = self.market_regime_engine.analyze(
             context.market_snapshot or _default_market_snapshot()
         )
@@ -126,7 +126,7 @@ class IntelligenceEngine:
             market_regime=market_regime,
             market_health=market_health,
             portfolio_analysis=portfolio_analysis,
-            watchlist_analysis=watchlist_analysis,
+            watchlist_intelligence=watchlist_analysis,
             risk_analysis=context.risk_analysis,
         )
 
@@ -175,7 +175,7 @@ class IntelligenceEngine:
             ),
             investment_report=investment_report,
             portfolio_analysis=portfolio_analysis,
-            watchlist_analysis=watchlist_analysis,
+            watchlist_intelligence=watchlist_analysis,
             risk_analysis=context.risk_analysis,
             decision_result=decision_result,
             theme_analysis=theme_analysis,
@@ -236,14 +236,19 @@ def _optional_portfolio_analysis(
     return engine.analyze_ticker(portfolio=portfolio, ticker=ticker, provider=provider)
 
 
-def _optional_watchlist_analysis(
-    engine: WatchlistEngine,
+def _optional_watchlist_intelligence(
     watchlist: Watchlist | None,
-    provider: CompanyDataProvider,
-) -> WatchlistAnalysis | None:
+) -> WatchlistIntelligenceReport | None:
     if watchlist is None:
         return None
-    return engine.analyze(watchlist=watchlist, provider=provider)
+    intelligence_input = WatchlistIntelligenceInput(
+        name=watchlist.name,
+        items=tuple(
+            IntelligenceWatchlistItem(id=item.ticker.lower(), ticker=item.ticker)
+            for item in watchlist.items
+        ),
+    )
+    return WatchlistIntelligenceEngine().analyze(intelligence_input)
 
 
 def _default_market_snapshot() -> MarketSnapshot:
@@ -266,7 +271,7 @@ def _confidence(
     market_regime: MarketRegimeAnalysis,
     market_health: MarketHealthReport,
     portfolio_analysis: PortfolioAnalysis | None,
-    watchlist_analysis: WatchlistAnalysis | None,
+    watchlist_intelligence: WatchlistIntelligenceReport | None,
     risk_analysis: RiskAnalysis | None,
 ) -> int:
     base = round(
@@ -278,7 +283,7 @@ def _confidence(
     )
     context_bonus = sum(
         3
-        for item in (portfolio_analysis, watchlist_analysis, risk_analysis)
+        for item in (portfolio_analysis, watchlist_intelligence, risk_analysis)
         if item is not None
     )
     return min(100, max(0, base + context_bonus))

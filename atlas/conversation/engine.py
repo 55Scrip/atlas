@@ -93,7 +93,6 @@ class ConversationEngine:
         self.intelligence_engine = intelligence_engine or IntelligenceEngine(
             investment_engine=self.investment_engine,
             portfolio_engine=self.portfolio_engine,
-            watchlist_engine=self.watchlist_engine,
             theme_engine=self.theme_engine,
             market_health_engine=self.market_health_engine,
             market_regime_engine=self.market_regime_engine,
