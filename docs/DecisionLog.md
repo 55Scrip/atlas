@@ -2,6 +2,32 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 125 — Intelligence Engine: PortfolioIntelligenceEngine → PortfolioIntelligenceCapability
+
+Decision: Migrate `atlas/intelligence/engine.py` from legacy `PortfolioIntelligenceEngine`
+to Blueprint-aligned `PortfolioIntelligenceCapability`. Option D (tiny runtime migration)
+chosen — same pattern as Sprint 124, all field mappings are 1:1.
+
+**Adapter chain:** same pattern as decision engine — `provider.get_portfolio_profile(ticker)`
+→ `portfolio_fit_input_from_profile(profile)` → `legacy_portfolio_to_domain_portfolio(portfolio)`
+→ `capability.analyze(domain_portfolio, fit_input)`.
+
+**Field mappings:** `portfolio_score` → `fit_score`; `.reasoning` → `.note` on all 7 dimensions;
+`overlap_with_existing_holdings` → `overlap`; `diversification_impact` → `diversification`;
+`expected_portfolio_quality_impact` → `quality_impact`; `expected_portfolio_risk_impact` → `risk_impact`.
+
+**`IntelligenceReport.portfolio_analysis`:** field name kept for caller compatibility; type
+annotation updated to `PortfolioFitResult`.
+
+**`conversation/engine.py` side-effect fix:** the `IntelligenceEngine(portfolio_engine=...)` kwarg
+was stale after `IntelligenceEngine` dropped that parameter. Updated to pass
+`portfolio_fit_capability=self.portfolio_fit_capability` instead. `conversation/engine.py`
+retains its own `self.portfolio_engine` (legacy) for its own `_answer_portfolio_review` path.
+
+**No behavior change** for the no-portfolio path. Portfolio impact text wording changes slightly
+(`.note` framing vs `.reasoning` framing) — this is the intended Blueprint-layer framing,
+consistent with all prior migrations.
+
 ## 2026-07-02: Sprint 124 — Decision Engine: PortfolioIntelligenceEngine → PortfolioIntelligenceCapability
 
 Decision: Migrate `atlas/decision/decision_engine.py` from legacy `PortfolioIntelligenceEngine`

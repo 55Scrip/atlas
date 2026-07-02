@@ -1,7 +1,16 @@
-from dataclasses import dataclass
+from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+from atlas.adapters.portfolio import (
+    legacy_portfolio_to_domain_portfolio,
+    portfolio_fit_input_from_profile,
+)
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport
-from atlas.analysis.portfolio import Portfolio, PortfolioAnalysis, PortfolioIntelligenceEngine
+from atlas.capabilities.portfolio_intelligence import (
+    PortfolioIntelligenceCapability,
+)
 from atlas.capabilities.watchlist_intelligence import WatchlistInput
 from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
 from atlas.capabilities.watchlist_intelligence.models import (
@@ -21,6 +30,10 @@ from atlas.market import (
 from atlas.providers import CompanyDataProvider
 from atlas.risk import RiskAnalysis
 from atlas.themes import ThemeAnalysis, ThemeEngine, ThemeInput
+
+if TYPE_CHECKING:
+    from atlas.analysis.portfolio import Portfolio
+    from atlas.capabilities.portfolio_intelligence import PortfolioFitResult
 
 
 @dataclass(frozen=True)
@@ -59,7 +72,7 @@ class IntelligenceReport:
     monitoring_items: tuple[str, ...]
     what_could_change_view: tuple[str, ...]
     investment_report: InvestmentReport
-    portfolio_analysis: PortfolioAnalysis | None
+    portfolio_analysis: PortfolioFitResult | None
     watchlist_intelligence: WatchlistIntelligenceReport | None
     risk_analysis: RiskAnalysis | None
     decision_result: DecisionResult
@@ -72,14 +85,16 @@ class IntelligenceEngine:
     def __init__(
         self,
         investment_engine: AtlasInvestmentEngine | None = None,
-        portfolio_engine: PortfolioIntelligenceEngine | None = None,
+        portfolio_fit_capability: PortfolioIntelligenceCapability | None = None,
         decision_engine: AtlasDecisionEngine | None = None,
         theme_engine: ThemeEngine | None = None,
         market_regime_engine: MarketRegimeEngine | None = None,
         market_health_engine: MarketHealthEngine | None = None,
     ) -> None:
         self.investment_engine = investment_engine or AtlasInvestmentEngine()
-        self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()
+        self.portfolio_fit_capability = (
+            portfolio_fit_capability or PortfolioIntelligenceCapability()
+        )
         self.decision_engine = decision_engine or AtlasDecisionEngine(
             investment_engine=self.investment_engine,
         )
@@ -93,8 +108,8 @@ class IntelligenceEngine:
         context = intelligence_input.context
 
         investment_report = self.investment_engine.analyze_ticker(ticker, provider)
-        portfolio_analysis = _optional_portfolio_analysis(
-            engine=self.portfolio_engine,
+        portfolio_fit_result = _optional_portfolio_analysis(
+            capability=self.portfolio_fit_capability,
             portfolio=context.portfolio,
             ticker=ticker,
             provider=provider,
@@ -124,7 +139,7 @@ class IntelligenceEngine:
             theme_analysis=theme_analysis,
             market_regime=market_regime,
             market_health=market_health,
-            portfolio_analysis=portfolio_analysis,
+            portfolio_fit_result=portfolio_fit_result,
             watchlist_intelligence=watchlist_analysis,
             risk_analysis=context.risk_analysis,
         )
@@ -146,7 +161,7 @@ class IntelligenceEngine:
                 market_health,
             ),
             company_positioning=_company_positioning(investment_report),
-            portfolio_impact=_portfolio_impact(portfolio_analysis),
+            portfolio_impact=_portfolio_impact(portfolio_fit_result),
             risk_assessment=_risk_assessment(
                 report=investment_report,
                 theme_analysis=theme_analysis,
@@ -158,13 +173,13 @@ class IntelligenceEngine:
                 report=investment_report,
                 decision_result=decision_result,
                 market_health=market_health,
-                portfolio_analysis=portfolio_analysis,
+                portfolio_fit_result=portfolio_fit_result,
             ),
             monitoring_items=_monitoring_items(
                 theme_analysis=theme_analysis,
                 market_regime=market_regime,
                 market_health=market_health,
-                portfolio_analysis=portfolio_analysis,
+                portfolio_fit_result=portfolio_fit_result,
                 risk_analysis=context.risk_analysis,
             ),
             what_could_change_view=_what_could_change_view(
@@ -173,7 +188,7 @@ class IntelligenceEngine:
                 decision_result=decision_result,
             ),
             investment_report=investment_report,
-            portfolio_analysis=portfolio_analysis,
+            portfolio_analysis=portfolio_fit_result,
             watchlist_intelligence=watchlist_analysis,
             risk_analysis=context.risk_analysis,
             decision_result=decision_result,
@@ -225,14 +240,17 @@ def render_intelligence_report(report: IntelligenceReport) -> str:
 
 
 def _optional_portfolio_analysis(
-    engine: PortfolioIntelligenceEngine,
+    capability: PortfolioIntelligenceCapability,
     portfolio: Portfolio | None,
     ticker: str,
     provider: CompanyDataProvider,
-) -> PortfolioAnalysis | None:
+) -> PortfolioFitResult | None:
     if portfolio is None:
         return None
-    return engine.analyze_ticker(portfolio=portfolio, ticker=ticker, provider=provider)
+    profile = provider.get_portfolio_profile(ticker)
+    fit_input = portfolio_fit_input_from_profile(profile)
+    domain_portfolio = legacy_portfolio_to_domain_portfolio(portfolio)
+    return capability.analyze(domain_portfolio, fit_input)
 
 
 def _optional_watchlist_intelligence(
@@ -269,7 +287,7 @@ def _confidence(
     theme_analysis: ThemeAnalysis,
     market_regime: MarketRegimeAnalysis,
     market_health: MarketHealthReport,
-    portfolio_analysis: PortfolioAnalysis | None,
+    portfolio_fit_result: PortfolioFitResult | None,
     watchlist_intelligence: WatchlistIntelligenceReport | None,
     risk_analysis: RiskAnalysis | None,
 ) -> int:
@@ -282,7 +300,7 @@ def _confidence(
     )
     context_bonus = sum(
         3
-        for item in (portfolio_analysis, watchlist_intelligence, risk_analysis)
+        for item in (portfolio_fit_result, watchlist_intelligence, risk_analysis)
         if item is not None
     )
     return min(100, max(0, base + context_bonus))
@@ -346,24 +364,21 @@ def _company_positioning(report: InvestmentReport) -> tuple[str, ...]:
     )
 
 
-def _portfolio_impact(portfolio_analysis: PortfolioAnalysis | None) -> tuple[str, ...]:
-    if portfolio_analysis is None:
+def _portfolio_impact(portfolio_fit_result: PortfolioFitResult | None) -> tuple[str, ...]:
+    if portfolio_fit_result is None:
         return (
             "Diversification: no portfolio was supplied, so fit is not fully measured.",
             "Concentration: sector, country, and market-cap concentration are unknown.",
             "Overlap: existing holding overlap is unknown without portfolio context.",
         )
     return (
-        f"Diversification: {portfolio_analysis.diversification_impact.reasoning}",
-        f"Concentration: {portfolio_analysis.sector_concentration.reasoning}",
-        f"Country exposure: {portfolio_analysis.country_concentration.reasoning}",
-        f"Market-cap exposure: {portfolio_analysis.market_cap_concentration.reasoning}",
-        f"Overlap: {portfolio_analysis.overlap_with_existing_holdings.reasoning}",
-        (
-            "Portfolio quality impact: "
-            f"{portfolio_analysis.expected_portfolio_quality_impact.reasoning}"
-        ),
-        f"Portfolio risk impact: {portfolio_analysis.expected_portfolio_risk_impact.reasoning}",
+        f"Diversification: {portfolio_fit_result.diversification.note}",
+        f"Concentration: {portfolio_fit_result.sector_concentration.note}",
+        f"Country exposure: {portfolio_fit_result.country_concentration.note}",
+        f"Market-cap exposure: {portfolio_fit_result.market_cap_concentration.note}",
+        f"Overlap: {portfolio_fit_result.overlap.note}",
+        f"Portfolio quality impact: {portfolio_fit_result.quality_impact.note}",
+        f"Portfolio risk impact: {portfolio_fit_result.risk_impact.note}",
     )
 
 
@@ -405,11 +420,11 @@ def _atlas_conclusion(
     report: InvestmentReport,
     decision_result: DecisionResult,
     market_health: MarketHealthReport,
-    portfolio_analysis: PortfolioAnalysis | None,
+    portfolio_fit_result: PortfolioFitResult | None,
 ) -> str:
     portfolio_sentence = (
-        f"Portfolio fit is measured at {portfolio_analysis.portfolio_score}/100."
-        if portfolio_analysis is not None
+        f"Portfolio fit is measured at {portfolio_fit_result.fit_score}/100."
+        if portfolio_fit_result is not None
         else "Portfolio fit remains uncertain because no portfolio was supplied."
     )
     return (
@@ -425,7 +440,7 @@ def _monitoring_items(
     theme_analysis: ThemeAnalysis,
     market_regime: MarketRegimeAnalysis,
     market_health: MarketHealthReport,
-    portfolio_analysis: PortfolioAnalysis | None,
+    portfolio_fit_result: PortfolioFitResult | None,
     risk_analysis: RiskAnalysis | None,
 ) -> tuple[str, ...]:
     items = [
@@ -433,8 +448,8 @@ def _monitoring_items(
         *market_regime.key_indicators,
         *market_health.signal_groups[0].monitoring_items[:2],
     ]
-    if portfolio_analysis is not None:
-        items.append(portfolio_analysis.overlap_with_existing_holdings.reasoning)
+    if portfolio_fit_result is not None:
+        items.append(portfolio_fit_result.overlap.note)
     if risk_analysis is not None:
         items.append(risk_analysis.position_sizing.cash_reserve_status)
     return tuple(items)

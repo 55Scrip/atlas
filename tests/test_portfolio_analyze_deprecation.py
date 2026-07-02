@@ -27,7 +27,7 @@ CLI_PATH = REPO_ROOT / "atlas" / "cli" / "main.py"
 runner = CliRunner()
 
 PORTFOLIO_ENGINE_CALLERS = (
-    REPO_ROOT / "atlas" / "intelligence" / "engine.py",
+    # atlas/intelligence/engine.py migrated in Sprint 125 — removed from this list
     REPO_ROOT / "atlas" / "conversation" / "engine.py",
     # atlas/decision/decision_engine.py migrated in Sprint 124 — removed from this list
     REPO_ROOT / "atlas" / "dashboard" / "engine.py",

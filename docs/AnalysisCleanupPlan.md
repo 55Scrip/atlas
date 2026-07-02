@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 124 complete: `atlas/decision/decision_engine.py` fully migrated from `PortfolioIntelligenceEngine` to `PortfolioIntelligenceCapability`. Next: Sprint 125+ — migrate `atlas/intelligence/engine.py`.
+**Status:** ACTIVE — Sprint 125 complete: `atlas/intelligence/engine.py` fully migrated from `PortfolioIntelligenceEngine` to `PortfolioIntelligenceCapability`. Remaining runtime callers: `atlas/conversation/engine.py` and `atlas/dashboard/engine.py`. Next: Sprint 126 — audit `atlas/conversation/engine.py` stale `portfolio_engine` attribute.
 
 ---
 

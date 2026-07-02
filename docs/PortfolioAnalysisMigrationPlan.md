@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 124) — decision_engine.py fully migrated to PortfolioIntelligenceCapability  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (9 files migrated; intelligence/engine.py is next)  
+**Updated:** 2026-07-02 (Sprint 125) — intelligence/engine.py fully migrated to PortfolioIntelligenceCapability  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (10 files migrated; conversation/engine.py and dashboard/engine.py retain PortfolioIntelligenceEngine for own portfolio-fit paths)  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -339,7 +339,13 @@ Migrate one production caller per sprint, in order of impact risk:
 
 9. ✓ `atlas/decision/decision_engine.py` — **MIGRATED Sprint 124**; `PortfolioIntelligenceEngine` and `PortfolioAnalysis` removed; `PortfolioIntelligenceCapability` used via constructor injection; `_analyze_portfolio` calls `legacy_portfolio_to_domain_portfolio` + `portfolio_fit_input_from_profile` + `capability.analyze()`; `_decide_action` unified poor-fit guard: `fit_score < 55` replaces legacy `recommendation.value in {"Avoid","Reduce"}` + `portfolio_score < 55` double guard. Documented behavior change: scores in [50,54] now give WATCH or AVOID based on `atlas_score` (previously always WATCH). `decision_result.py` annotation updated from `PortfolioAnalysis` to `PortfolioFitResult`. `atlas/intelligence/engine.py` constructor call updated to drop stale `portfolio_engine=` kwarg. `tests/test_portfolio_analyze_deprecation.py` caller list updated to remove `decision_engine.py`. 11 new Sprint 124 guardrail tests.
 
-10. `atlas/intelligence/engine.py` — highest integration surface; migrate after decision
+10. ✓ `atlas/intelligence/engine.py` — **MIGRATED Sprint 125**; `PortfolioIntelligenceEngine` and `PortfolioAnalysis` removed; `PortfolioIntelligenceCapability` injected via constructor; `_optional_portfolio_analysis` uses adapter chain; `_portfolio_impact` updated to use `.note` (PortfolioFitDimension) instead of `.reasoning` (PortfolioSignal); `_atlas_conclusion` updated `.portfolio_score` → `.fit_score`; `_monitoring_items` updated `.overlap_with_existing_holdings.reasoning` → `.overlap.note`; `Portfolio` moved to TYPE_CHECKING; `IntelligenceReport.portfolio_analysis` annotation updated to `PortfolioFitResult`; `conversation/engine.py` IntelligenceEngine call updated to use `portfolio_fit_capability=` kwarg. 13 new Sprint 125 guardrail tests.
+
+**Remaining `PortfolioIntelligenceEngine` runtime callers (2):**
+- `atlas/conversation/engine.py` — retains `self.portfolio_engine` for its own `_answer_portfolio_review` path (not yet migrated)
+- `atlas/dashboard/engine.py` — retains `self.portfolio_engine` for its portfolio-fit section
+
+**Recommended Sprint 126 target:** `atlas/conversation/engine.py` — remove stale `portfolio_engine` attribute (its usage to IntelligenceEngine is already gone; only `_answer_portfolio_review` internal path may still use the legacy engine directly)
 
 ### Phase 5 — Provider migration (Sprint ~120)
 After all callers are migrated off `CompanyPortfolioProfile`:

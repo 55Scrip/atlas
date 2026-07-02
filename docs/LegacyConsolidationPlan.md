@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 124)  
-**Status:** Active — Sprint 124 complete; `decision_engine.py` fully migrated from `PortfolioIntelligenceEngine` to `PortfolioIntelligenceCapability`. Unified `fit_score < 55` poor-fit guard. WatchlistEngine deleted Sprint 99. Next: `atlas/intelligence/engine.py` migration.
+**Updated:** 2026-07-02 (Sprint 125)  
+**Status:** Active — Sprint 125 complete; `intelligence/engine.py` fully migrated from `PortfolioIntelligenceEngine` to `PortfolioIntelligenceCapability`. Remaining runtime `PortfolioIntelligenceEngine` callers: `conversation/engine.py`, `dashboard/engine.py`. WatchlistEngine deleted Sprint 99. Next: Sprint 126 — `atlas/conversation/engine.py` stale portfolio_engine audit.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

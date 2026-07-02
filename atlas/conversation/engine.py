@@ -102,7 +102,7 @@ class ConversationEngine:
         self.market_regime_engine = market_regime_engine or MarketRegimeEngine()
         self.intelligence_engine = intelligence_engine or IntelligenceEngine(
             investment_engine=self.investment_engine,
-            portfolio_engine=self.portfolio_engine,
+            portfolio_fit_capability=self.portfolio_fit_capability,
             theme_engine=self.theme_engine,
             market_health_engine=self.market_health_engine,
             market_regime_engine=self.market_regime_engine,
