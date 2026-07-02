@@ -1402,3 +1402,21 @@ Demo passed. Release verification green.
 - Retain as-is (Option C): rejected — the class provided no value; inline is safe and zero-risk.
 
 **Outcome:** `ExplanationEngine` class deleted from `atlas/analysis/explanation.py`. `explain_investment_report()` is now a direct free function. `atlas/analysis/__init__.py` no longer re-exports `ExplanationEngine`. 3 guardrail tests added. 1133 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 106 (2026-07-02): Eliminate `RecommendationEngine` class from `atlas/analysis/scoring.py`**
+
+**Decision:** Remove `RecommendationEngine` (thin one-method wrapper). Retain `ScoringEngine` (has real validation logic). Update tests to use `ThresholdRecommendationPolicy` directly.
+
+**Rationale:**
+- `RecommendationEngine` had one public method (`recommend()`) that delegated entirely to `ThresholdRecommendationPolicy.recommend()`. Constructor just forwarded threshold params. No production caller ever instantiated it — only `tests/test_scoring.py`.
+- `ScoringEngine` is not a thin wrapper: it has a 4-check `_validate_weights()` static method, two public methods (`score()`, `confidence()`), and a `weights` constructor param. Elimination would lose the weight validation contract. Retained with documentation noting no production callers exist.
+- `score_company()` free function retained — wraps `ScoringEngine` and provides the entry point for weight-injected scoring.
+
+**Alternatives considered:**
+- Eliminate `ScoringEngine` too: rejected — has real validation logic tested directly; elimination would lose the `_validate_weights()` contract.
+- Move `scoring.py` to `atlas/capabilities/`: rejected — no production caller; not worth the migration overhead for a test-utility module.
+- Retain `RecommendationEngine` (Option D): rejected — thin wrapper, zero production callers, identical pattern to `ExplanationEngine` eliminated in Sprint 105.
+
+**Outcome:** `RecommendationEngine` class deleted from `atlas/analysis/scoring.py` and removed from `atlas/analysis/__init__.py`. `tests/test_scoring.py` updated to use `ThresholdRecommendationPolicy` directly. `ThresholdRecommendationPolicy` import removed from `scoring.py`. 3 guardrail tests added. 1136 tests passing (3 skipped). Demo passed. Release verification green.

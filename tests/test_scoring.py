@@ -1,8 +1,9 @@
 import pytest
 
 from atlas.analysis.company_analysis import MockCompanyAnalysisProvider, create_placeholder_company_analysis
+from atlas.analysis.engine import ThresholdRecommendationPolicy
 from atlas.analysis.report import build_investment_report
-from atlas.analysis.scoring import RecommendationEngine, ScoringEngine, score_company
+from atlas.analysis.scoring import ScoringEngine, score_company
 
 
 def test_scoring_engine_calculates_weighted_score_for_nvda():
@@ -33,14 +34,14 @@ def test_scoring_engine_rejects_unknown_weights():
         ScoringEngine(weights={"valuation": 1.0, "unknown": 1.0})
 
 
-def test_recommendation_engine_default_thresholds():
-    engine = RecommendationEngine()
+def test_threshold_recommendation_policy_default_thresholds():
+    policy = ThresholdRecommendationPolicy()
 
-    assert engine.recommend(90) == "Strong Buy"
-    assert engine.recommend(75) == "Buy"
-    assert engine.recommend(60) == "Hold"
-    assert engine.recommend(40) == "Sell"
-    assert engine.recommend(39) == "Strong Sell"
+    assert policy.recommend(90) == "Strong Buy"
+    assert policy.recommend(75) == "Buy"
+    assert policy.recommend(60) == "Hold"
+    assert policy.recommend(40) == "Sell"
+    assert policy.recommend(39) == "Strong Sell"
 
 
 def test_build_investment_report_contains_required_fields():

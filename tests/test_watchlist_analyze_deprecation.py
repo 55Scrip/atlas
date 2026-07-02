@@ -403,6 +403,30 @@ def test_analysis_init_does_not_re_export_explanation_engine() -> None:
     )
 
 
+def test_recommendation_engine_class_is_deleted() -> None:
+    """Sprint 106: RecommendationEngine class must not exist in atlas.analysis.scoring."""
+    import atlas.analysis.scoring as scoring_mod
+    assert not hasattr(scoring_mod, "RecommendationEngine"), (
+        "RecommendationEngine class was eliminated in Sprint 106 — "
+        "use ThresholdRecommendationPolicy from atlas.analysis.engine directly"
+    )
+
+
+def test_analysis_init_does_not_re_export_recommendation_engine() -> None:
+    """Sprint 106: atlas.analysis must not re-export RecommendationEngine after class elimination."""
+    import atlas.analysis as analysis_pkg
+    assert not hasattr(analysis_pkg, "RecommendationEngine"), (
+        "atlas.analysis must not re-export RecommendationEngine after Sprint 106"
+    )
+
+
+def test_scoring_engine_and_score_company_still_importable() -> None:
+    """Sprint 106: ScoringEngine and score_company must remain importable from atlas.analysis.scoring."""
+    from atlas.analysis.scoring import ScoringEngine, score_company
+    assert ScoringEngine is not None
+    assert score_company is not None
+
+
 def test_demo_script_does_not_use_watchlist_analyze_command() -> None:
     demo_script = REPO_ROOT / "scripts" / "run_daily_brief_demo.sh"
     text = demo_script.read_text()

@@ -264,6 +264,24 @@ without output changes.
 
 ---
 
+## Sprint 106 — RecommendationEngine Class Elimination COMPLETED
+
+**Goal:** Audit `ScoringEngine` and `RecommendationEngine`; eliminate thin wrappers; preserve scoring behavior.
+
+**Key finding:** `RecommendationEngine` = thin one-method wrapper (`recommend()` → `ThresholdRecommendationPolicy.recommend()`). No production callers. `ScoringEngine` = has real validation logic; retained. Neither class had any production runtime caller — both were test-only utilities.
+
+**Changes made:**
+1. `atlas/analysis/scoring.py`: `RecommendationEngine` class deleted; `ThresholdRecommendationPolicy`
+   import removed.
+2. `atlas/analysis/__init__.py`: `RecommendationEngine` removed from import and `__all__`.
+3. `tests/test_scoring.py`: `RecommendationEngine` replaced with `ThresholdRecommendationPolicy`
+   from `atlas.analysis.engine`; test behavior preserved exactly.
+4. 3 guardrail tests added to `tests/test_watchlist_analyze_deprecation.py`.
+
+**Tests: 1136 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 105 — ExplanationEngine Class Elimination COMPLETED
 
 **Goal:** Audit `ExplanationEngine`; eliminate class if safe; preserve free-function API.

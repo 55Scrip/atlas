@@ -789,3 +789,14 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 3 guardrail tests added: class not present in module, free function still importable, `atlas.analysis`
   has no stale `ExplanationEngine` re-export.
 - 1133 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 106 (2026-07-02):** `RecommendationEngine` class eliminated from `atlas/analysis/scoring.py`.
+- `RecommendationEngine` was a thin one-method wrapper: `recommend()` delegated entirely to
+  `ThresholdRecommendationPolicy.recommend()`. No production runtime callers — only `tests/test_scoring.py`.
+- `ScoringEngine` retained: has real validation logic (`_validate_weights()`, 4 checks), two public
+  methods (`score()`, `confidence()`), and configurable weights. Not a thin wrapper.
+- `tests/test_scoring.py`: `RecommendationEngine` replaced with `ThresholdRecommendationPolicy`
+  imported directly from `atlas.analysis.engine`. Test behavior preserved exactly.
+- `atlas/analysis/__init__.py`: `RecommendationEngine` removed from import and `__all__`.
+- 3 guardrail tests added.
+- 1136 tests passing (3 skipped). Demo passed. Release verification green.

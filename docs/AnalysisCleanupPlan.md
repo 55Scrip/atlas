@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 105 complete: `ExplanationEngine` class eliminated. Next target: `scoring.py` or `report.py` (Sprint 106+)
+**Status:** ACTIVE — Sprint 106 complete: `RecommendationEngine` class eliminated from `scoring.py`. Next target: `report.py` or `scoring.py` further audit (Sprint 107+)
 
 ---
 
@@ -30,7 +30,7 @@ remaining modules. This document tracks the cleanup roadmap for those modules.
 | `quality.py` | 18 | `QualityAnalysis`, `placeholder_quality_analysis` | No | Sub-module; leave unchanged |
 | `report.py` | 43 | `build_investment_report`, `render_investment_report` | Yes | Still active legacy |
 | `scores.py` | 2 | `clamp_score` | No | Utility; used by 7+ modules; leave unchanged |
-| `scoring.py` | 59 | `ScoringEngine`, `RecommendationEngine`, `score_company` | Yes | Still active legacy |
+| `scoring.py` | 42 | `ScoringEngine`, `score_company` | Partial | **Sprint 106 ✓ — `RecommendationEngine` class eliminated; `ScoringEngine` retained (has validation logic; no production callers)** |
 | `sentiment.py` | 18 | `SentimentAnalysis`, `placeholder_sentiment_analysis` | No | Sub-module; leave unchanged |
 | `technicals.py` | 18 | `TechnicalAnalysis`, `placeholder_technical_analysis` | No | Sub-module; leave unchanged |
 | `valuation.py` | 18 | `ValuationAnalysis`, `placeholder_valuation_analysis` | No | Sub-module; leave unchanged |
@@ -223,7 +223,8 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 | 103 ✓ | `atlas/analysis/comparison.py` | Retired `ComparisonEngine`; types moved to `atlas/decision/comparison.py`; file deleted | DONE |
 | 104 ✓ | `atlas/analysis/memory.py` | Retired `MemoryEngine`; types/logic moved to `atlas/decision/memory.py`; file deleted | DONE |
 | 105 ✓ | `atlas/analysis/explanation.py` | `ExplanationEngine` class eliminated; file kept as free-function module | DONE |
-| 106+ | `atlas/analysis/scoring.py` / `report.py` | Audit; likely small free-function cleanup | LOW-MEDIUM |
+| 106 ✓ | `atlas/analysis/scoring.py` | `RecommendationEngine` class eliminated; `ScoringEngine` retained | DONE |
+| 107+ | `atlas/analysis/report.py` / `scoring.py` further | Audit; `ScoringEngine` has no production callers — potential future removal | LOW |
 | Future | `atlas/analysis/portfolio.py` | High-coupling migration; 10+ callers; long-term project | HIGH |
 | Future | `atlas/analysis/engine.py` | Core scoring engine; 10+ callers; foundational — leave for late cleanup | VERY HIGH |
 | Leave | `scores.py`, `growth.py`, `macro.py`, `moat.py`, `quality.py`, `sentiment.py`, `technicals.py`, `valuation.py` | Internal sub-modules; used only by `company_analysis.py`/`engine.py`; no direct cleanup needed | — |
