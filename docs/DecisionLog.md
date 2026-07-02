@@ -2,6 +2,25 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 150 — Close Evidence Cleanup Track
+
+Decision: Close the `atlas/evidence/` cleanup track. No cleanup work is warranted.
+
+**Rationale:** After inventory (Sprint 149), caller verification, stale import audit, Blueprint overlap review, and Sprint 150 final verification, the evidence package contains only active, intentional code. It is self-contained, imports only `atlas.language`, is actively used by 3 production engines (`comparison`, `decision_journal`, `watchlist_review`), and has no dead code, no stale migration residue, and no Blueprint-aligned successor. Further cleanup would create churn without architectural benefit.
+
+**Final verification (Sprint 150):** All 9 exports importable. 3 known callers confirmed. Zero upward dependencies. Zero stale imports. No successor introduced.
+
+**Closed-track summary:**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — CLOSED Sprint 148
+- Evidence package — **CLOSED Sprint 150**
+
+**Sprint 151 recommended target:** Audit Group C self-contained module `atlas/reasoning/` — known lazy import tech debt (`atlas/principles/` lazy import of `render_reasoning_report`, documented Sprint 87). Smallest safe Group C audit-first target.
+
+---
+
 ## 2026-07-02: Sprint 149 — Evidence Package Audit Checkpoint
 
 Decision: Audit `atlas/evidence/` as a Group C self-contained module. Audit-only sprint. No runtime changes.

@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 149)  
-**Status:** `atlas/analysis/` CLOSED Sprint 141. `atlas/decision/` CLOSED Sprint 144. Provider boundary CLOSED Sprint 146. Portfolio boundary CLOSED Sprint 148. Evidence package audit ACTIVE Sprint 149. Sprint 149 finding: evidence package is clean, self-contained, and actively used by 3 production engines. No stale imports, no dead code, no Blueprint successor. Sprint 150 recommendation: close evidence track. See `docs/EvidenceCleanupPlan.md`.
+**Updated:** 2026-07-02 (Sprint 150)  
+**Status:** `atlas/analysis/` CLOSED Sprint 141. `atlas/decision/` CLOSED Sprint 144. Provider boundary CLOSED Sprint 146. Portfolio boundary CLOSED Sprint 148. Evidence package CLOSED Sprint 150 (no cleanup warranted — package is self-contained, actively used, no dead code). Sprint 151 recommended: audit Group C module `atlas/reasoning/` (known lazy import tech debt from Sprint 87). See `docs/EvidenceCleanupPlan.md`.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

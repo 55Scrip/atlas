@@ -1,7 +1,8 @@
 # Atlas Evidence Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 149)  
-**Status:** ACTIVE — Sprint 149 inventory checkpoint. 2 modules audited. Package is self-contained. 3 active production engine callers confirmed. `render_evidence_assessment` is test-only and exported. No stale closed-track imports. No zero-caller symbols. Sprint 150 recommendation: close this track (no cleanup warranted).
+**Updated:** 2026-07-02 (Sprint 150)  
+**Status:** CLOSED — Sprint 150 confirmed Sprint 149 findings unchanged. No cleanup work is warranted. Package is self-contained, actively used, and stable. No further `atlas/evidence/` cleanup work is planned until new dead code, stale imports, or a Blueprint-aligned successor emerges.
 
 ---
 
@@ -188,7 +189,7 @@ The `evidence_app = typer.Typer(...)` sub-app still exists in `atlas/cli/main.py
 
 ---
 
-## Final Stable Package State (Sprint 149)
+## Final Stable Package State (Sprint 150)
 
 | Module | Lines | Status |
 |---|---|---|
@@ -199,13 +200,38 @@ The `evidence_app = typer.Typer(...)` sub-app still exists in `atlas/cli/main.py
 
 ---
 
-## Sprint 150 Recommendation
+## Sprint 150 — Track Closure (COMPLETED)
 
-**Close the evidence cleanup track** — no cleanup work is warranted.
+**Evidence cleanup track is CLOSED as of Sprint 150.**
 
-The evidence package is self-contained, clean, and actively used by 3 production engines. There are no zero-caller symbols, no dead helpers, no stale exports requiring removal, and no Blueprint-aligned successor that would warrant migration. The only candidate (`render_evidence_assessment`) is actively tested and harmless as an export.
+Sprint 150 verified:
+- All 9 `atlas.evidence` exports remain importable.
+- 3 known production callers confirmed (`comparison`, `decision_journal`, `watchlist_review`).
+- Zero upward dependencies (no imports from providers, CLI, dashboard, conversation, intelligence).
+- Zero stale closed-track imports.
+- No Blueprint-aligned successor introduced since Sprint 149.
+- No cleanup action is warranted.
 
-After Sprint 150 closes this track, Sprint 151+ candidates:
-- **Audit `atlas/reasoning/`** — Group C, referenced by `atlas/principles/` lazy import (known tech debt from Sprint 87), no Blueprint successor.
-- **Audit `atlas/risk/`** — Group C, `RiskAnalysis` still imported by 3 engines (`conversation`, `intelligence`, `reasoning`).
-- **Start Group B audit: `atlas/comparison/`** — provider-coupled, has Blueprint overlap via `InvestmentComparisonEngine`.
+**Closure rationale:** After inventory (Sprint 149) and final verification (Sprint 150), the evidence package contains only active, intentional code. Further cleanup would create churn without architectural benefit.
+
+**Reopening condition:** If new dead code, stale imports, a Blueprint-aligned `EvidenceQualityEngine` successor, or a zero-caller symbol emerges, this track should be reopened.
+
+---
+
+## Closed-Track Summary
+
+| Track | Status |
+|---|---|
+| `atlas/analysis/` cleanup | CLOSED Sprint 141 |
+| `atlas/decision/` cleanup | CLOSED Sprint 144 |
+| Provider boundary audit | CLOSED Sprint 146 |
+| Portfolio boundary | CLOSED Sprint 148 |
+| Evidence package | **CLOSED Sprint 150** |
+
+---
+
+## Recommended Sprint 151 Target
+
+**Audit Group C self-contained module: `atlas/reasoning/`.**
+
+`atlas/reasoning/` has known technical debt: `atlas/principles/engine.py` holds a lazy import of `render_reasoning_report` from `atlas.reasoning` (documented Sprint 87). `RiskAnalysis` type from `atlas/risk/` is also imported by `atlas/reasoning/`. An audit sprint maps these dependencies, classifies cleanup candidates, and recommends one focused follow-on sprint. Smallest safe Group C target after evidence.
