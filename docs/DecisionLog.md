@@ -1509,3 +1509,19 @@ Demo passed. Release verification green.
 - No provider or network dependency. Pure rendering logic.
 
 **Outcome:** 3 symbols deleted from `portfolio.py`. 1 re-export removed from `__init__.py`. 1 test removed from `tests/test_portfolio.py`. 2 guardrail tests added. 1139 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 112 (2026-07-02): Create `atlas/capabilities/portfolio_intelligence/` stub**
+
+**Decision:** Create new capability package with `PortfolioFitInput`, `PortfolioFitResult`, and `PortfolioFitDimension`. Omit `recommendation` enum from `PortfolioFitResult`. Rename `portfolio_score` → `fit_score`, `final_reasoning` → `summary`, `reasoning` → `note`.
+
+**Rationale:**
+- Blueprint layer must not carry advisory semantics (`PortfolioRecommendation.STRONG_ADD` / `ADD` / `REDUCE` etc.) — these belong to the legacy layer or to future user-facing rendering only.
+- `fit_score` is more neutral than `portfolio_score` — it describes analytical output, not a grade.
+- `summary` is more neutral than `final_reasoning` — the legacy field name implies a recommendation path.
+- `note` vs `reasoning` — `PortfolioFitDimension.note` avoids the implication that a score requires a justification/argument rather than a factual observation.
+- All legacy fields preserved where semantically equivalent — `ticker`, `company`, `sector`, `country`, `market_cap`, `quality_score`, `risk_score` are direct mappings.
+- No provider or network dependency introduced. No existing callers changed.
+
+**Outcome:** 3 new types. 12 tests. Boundary constraints verified by AST scan in tests. 1151 tests passing (3 skipped). Demo passed. Release verification green.

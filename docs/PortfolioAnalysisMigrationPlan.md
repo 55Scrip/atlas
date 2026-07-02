@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 111) — `render_portfolio_analysis` deleted (zero production callers)  
-**Status:** IN PROGRESS — Phase 1 guardrails done; `render_portfolio_analysis` removed; Phase 2 (type extraction / capability stub) is next  
+**Updated:** 2026-07-02 (Sprint 112) — `atlas/capabilities/portfolio_intelligence/` stub created  
+**Status:** IN PROGRESS — Phase 1 complete; Phase 2 stub created (`PortfolioFitInput`, `PortfolioFitResult`); Phase 3 (engine implementation) is next  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -254,16 +254,30 @@ a HIGH-RISK coordinated change and should be done as a dedicated sprint, not inc
 - `tests/test_portfolio.py` stripped of `render_portfolio_analysis` test and import
 - Guardrail tests added: `test_render_portfolio_analysis_is_deleted`, `test_render_portfolio_analysis_not_in_atlas_analysis`
 
-### Phase 2 — Type extraction (Sprint 112)
-**Scope:** Extract `PortfolioSignal` into a shared or capability-layer type.
+### Phase 2 — Capability stub ✓ COMPLETE (Sprint 112)
 
-`PortfolioSignal` (score + reasoning) is a narrow internal type used only within
-`portfolio.py`'s own engine logic. It is not imported by any external production caller
-(all external callers use `PortfolioAnalysis` fields, not `PortfolioSignal` directly).
-It could be moved to a future `atlas/capabilities/portfolio_intelligence/` module without
-touching any external caller.
+**Created `atlas/capabilities/portfolio_intelligence/` with:**
 
-### Phase 3 — Capability creation (Sprint 113–114)
+- `PortfolioFitDimension` — replaces `PortfolioSignal`; uses neutral `note` field instead of `reasoning`
+- `PortfolioFitInput` — Blueprint-aligned equivalent of `CompanyPortfolioProfile`
+- `PortfolioFitResult` — Blueprint-aligned equivalent of `PortfolioAnalysis`; omits `recommendation` enum (no advisory semantics in Blueprint layer); renames `portfolio_score` → `fit_score` and `final_reasoning` → `summary`
+
+**No existing callers migrated.** All legacy `atlas.analysis.portfolio` imports unchanged.
+
+**12 tests added** in `tests/test_portfolio_intelligence_capability.py` covering importability, instantiation, immutability, determinism, and boundary constraints (no provider imports, no legacy imports).
+
+**Legacy type mapping (documented in models.py docstrings):**
+
+| Legacy (`atlas.analysis.portfolio`) | Blueprint (`atlas.capabilities.portfolio_intelligence`) |
+|---|---|
+| `CompanyPortfolioProfile` | `PortfolioFitInput` |
+| `PortfolioAnalysis` | `PortfolioFitResult` |
+| `PortfolioSignal` | `PortfolioFitDimension` |
+| `portfolio_score` field | `fit_score` (renamed) |
+| `final_reasoning` field | `summary` (renamed) |
+| `recommendation` (enum) | **omitted** — no advisory semantics |
+
+### Phase 3 — Engine implementation (Sprint 113–114)
 **Scope:** Create `atlas/capabilities/portfolio_intelligence/` with `PortfolioIntelligenceCapability`.
 
 This is the largest phase and the blocking dependency for all subsequent phases:

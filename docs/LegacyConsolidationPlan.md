@@ -264,6 +264,27 @@ without output changes.
 
 ---
 
+## Sprint 112 — Portfolio Intelligence Capability Stub COMPLETED
+
+**Goal:** Create `atlas/capabilities/portfolio_intelligence/` with Blueprint-aligned types as the future destination for `atlas/analysis/portfolio.py` logic.
+
+**Key decisions:**
+- `PortfolioFitInput` replaces `CompanyPortfolioProfile` — same fields, Blueprint home.
+- `PortfolioFitResult` replaces `PortfolioAnalysis` — same dimensions; `portfolio_score` → `fit_score`, `final_reasoning` → `summary`; `recommendation` enum omitted (no advisory semantics in Blueprint layer).
+- `PortfolioFitDimension` replaces `PortfolioSignal` — `reasoning` renamed to `note` (neutral framing).
+- No existing callers migrated. All `atlas.analysis.portfolio` imports unchanged.
+- New capability has no provider imports and no legacy analysis imports — clean boundary.
+
+**Changes made:**
+1. `atlas/capabilities/portfolio_intelligence/__init__.py` created.
+2. `atlas/capabilities/portfolio_intelligence/models.py` created — `PortfolioFitDimension`, `PortfolioFitInput`, `PortfolioFitResult`.
+3. `tests/test_portfolio_intelligence_capability.py` created — 12 tests.
+4. 4 docs updated.
+
+**Tests: 1151 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 111 — Remove Dead Portfolio Render Helper COMPLETED
 
 **Goal:** Delete `render_portfolio_analysis` from `atlas/analysis/portfolio.py` — confirmed zero production callers in Sprint 110.

@@ -838,3 +838,10 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - Guardrails updated: `test_render_portfolio_analysis_is_deleted` + `test_render_portfolio_analysis_not_in_atlas_analysis`.
 - `portfolio.py` still active at 420 lines — `PortfolioIntelligenceEngine` has no Blueprint equivalent; Phase 2 (capability creation) is next.
 - 1139 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 112 (2026-07-02):** `atlas/capabilities/portfolio_intelligence/` stub created.
+- New package: `PortfolioFitDimension`, `PortfolioFitInput`, `PortfolioFitResult` — Blueprint-aligned equivalents of `PortfolioSignal`, `CompanyPortfolioProfile`, `PortfolioAnalysis`.
+- No existing callers migrated. All `atlas.analysis.portfolio` imports unchanged.
+- New capability imports nothing from `atlas.analysis.portfolio` or `atlas.providers` — clean boundary.
+- 12 tests added in `tests/test_portfolio_intelligence_capability.py`.
+- 1151 tests passing (3 skipped). Demo passed. Release verification green.
