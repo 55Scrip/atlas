@@ -806,3 +806,10 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - `render_company_analysis_report` had zero external callers — removed as dead code. Not exported from `atlas/analysis/__init__.py` (no `__init__.py` change needed).
 - 2 guardrail tests added.
 - 1138 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 108 (2026-07-02):** Post-cleanup checkpoint for `atlas/analysis/`. No runtime changes.
+- Full inventory: 15 modules remain (3 deleted). `scoring.py` = 0 production callers — Sprint 109 deletion target. `portfolio.py` = 17 production import sites, highest coupling. `engine.py` = 10 production import sites, foundational.
+- Blueprint `atlas/domains/` confirmed import-free from `atlas.analysis` by new AST guardrail test.
+- All 3 deleted modules confirmed still absent. No stale engine class re-exports.
+- 1 guardrail test added (`test_blueprint_domains_do_not_import_legacy_analysis`).
+- 1138 tests passing (3 skipped). Demo passed. Release verification green.

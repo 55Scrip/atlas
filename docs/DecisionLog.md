@@ -1439,3 +1439,22 @@ Demo passed. Release verification green.
 - Simplify in-place: no simplification available beyond removing the dead helper.
 
 **Outcome:** `render_company_analysis_report` removed from `atlas/analysis/report.py`. No `__init__.py` change needed (function was never exported). 2 guardrail tests added. 1138 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 108 (2026-07-02): Post-cleanup checkpoint for `atlas/analysis/`**
+
+**Decision:** Checkpoint sprint — no runtime changes. `atlas/analysis/scoring.py` selected as Sprint 109 deletion target.
+
+**Rationale:**
+- Full inventory audit of `atlas/analysis/` confirmed 15 remaining modules (3 deleted in Sprints 101–107).
+- `ScoringEngine` and `score_company` in `scoring.py` have zero production callers — confirmed by grep. Only `tests/test_scoring.py` uses them. This makes `scoring.py` the cleanest remaining deletion target.
+- `portfolio.py` has 17 production import sites and 16 test files — too high coupling for near-term migration.
+- `engine.py` has 10 production import sites and is the foundational scoring engine — leave for last.
+- Blueprint `domains/` confirmed import-free from `atlas.analysis` via new AST-based guardrail test.
+- All 3 previously deleted modules (`watchlist`, `comparison`, `memory`) confirmed still absent.
+
+**Guardrails added:**
+- `test_blueprint_domains_do_not_import_legacy_analysis` — AST scan confirms `atlas/domains/` never imports from `atlas.analysis`.
+
+**Outcome:** 1 guardrail test added. 1138 tests passing (3 skipped). Demo passed. Release verification green. Sprint 109 target: delete `atlas/analysis/scoring.py`.

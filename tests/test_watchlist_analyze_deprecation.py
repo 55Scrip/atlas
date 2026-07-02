@@ -443,6 +443,34 @@ def test_build_and_render_investment_report_still_importable() -> None:
     assert render_investment_report is not None
 
 
+def test_blueprint_domains_do_not_import_legacy_analysis() -> None:
+    """Sprint 108: atlas/domains/ must not import from atlas.analysis (legacy layer).
+
+    Blueprint domains own canonical concepts and must not depend on legacy engines.
+    """
+    import ast
+    domains_root = REPO_ROOT / "atlas" / "domains"
+    violations = []
+    for py_file in domains_root.rglob("*.py"):
+        try:
+            tree = ast.parse(py_file.read_text())
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                module = ""
+                if isinstance(node, ast.ImportFrom) and node.module:
+                    module = node.module
+                elif isinstance(node, ast.Import):
+                    module = ", ".join(alias.name for alias in node.names)
+                if "atlas.analysis" in module:
+                    violations.append(f"{py_file.relative_to(REPO_ROOT)}: {module}")
+    assert not violations, (
+        "atlas/domains/ must not import from atlas.analysis (legacy layer). "
+        f"Found: {violations}"
+    )
+
+
 def test_demo_script_does_not_use_watchlist_analyze_command() -> None:
     demo_script = REPO_ROOT / "scripts" / "run_daily_brief_demo.sh"
     text = demo_script.read_text()

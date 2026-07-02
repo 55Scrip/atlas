@@ -264,6 +264,28 @@ without output changes.
 
 ---
 
+## Sprint 108 — Post-Cleanup Checkpoint COMPLETED
+
+**Goal:** Full inventory audit of `atlas/analysis/` after Sprints 103–107. Verify deleted modules remain gone. Select Sprint 109 target.
+
+**Key findings:**
+- 15 modules remain (3 deleted: `watchlist.py` Sprint 101, `comparison.py` Sprint 103, `memory.py` Sprint 104)
+- `scoring.py` has zero production callers — only `tests/test_scoring.py` uses it. Selected as Sprint 109 deletion target.
+- `portfolio.py` confirmed with 17 production import sites across 13 packages — do not migrate yet.
+- `engine.py` confirmed with 10 production import sites — foundational, leave for last.
+- Blueprint `atlas/domains/` confirmed import-free from `atlas.analysis` by AST guardrail scan.
+- All deleted modules (`watchlist`, `comparison`, `memory`) confirmed still absent.
+- No stale engine class re-exports in `atlas/analysis/__init__.py`.
+- No active deprecated CLI commands.
+
+**Changes made:**
+1. 1 guardrail test added: `test_blueprint_domains_do_not_import_legacy_analysis` — AST scan across all `atlas/domains/` confirming no `atlas.analysis` imports.
+2. All 4 docs updated with current inventory, high-coupling module review, and Sprint 109 plan.
+
+**Tests: 1138 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 107 — report.py Audit COMPLETED
 
 **Goal:** Audit `atlas/analysis/report.py`; determine whether report helpers can be deleted, moved, simplified, or must be retained.

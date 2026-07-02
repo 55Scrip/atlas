@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 107 complete: `render_company_analysis_report` removed from `report.py` (no callers); `build_investment_report` and `render_investment_report` retained (active CLI + Blueprint callers). Next target: `scoring.py` further audit or `portfolio.py`
+**Status:** ACTIVE — Sprint 108 checkpoint complete. `atlas/analysis/` now has 15 modules (3 deleted in Sprints 101–107). `scoring.py` is the only remaining module with zero production callers — recommended Sprint 109 target. `portfolio.py` and `engine.py` remain long-term high-coupling work. Blueprint `domains/` confirmed import-free from `atlas.analysis`.
 
 ---
 
@@ -13,27 +13,35 @@ remaining modules. This document tracks the cleanup roadmap for those modules.
 
 ---
 
-## Remaining `atlas/analysis/` Inventory (Sprint 102 state)
+## `atlas/analysis/` Inventory (Sprint 108 state)
 
-| File | Lines | Public API | Re-exported from `__init__` | Cleanup Category |
-|---|---|---|---|---|
-| `__init__.py` | 74 | Re-export hub | — | Shrinks with each migration |
-| `company_analysis.py` | 45 | `CompanyAnalysis`, `MockCompanyAnalysisProvider`, `create_placeholder_company_analysis` | Yes | Still active legacy — heavily used by providers, tests |
-| `comparison.py` | 199 | `ComparisonEngine`, `ComparisonResult`, `ComparisonCandidate`, `ComparisonRanking`, `render_comparison_result` | Yes | **Sprint 103 candidate** |
-| `engine.py` | 229 | `AtlasInvestmentEngine`, `InvestmentReport`, `ScoreCategory`, `iter_score_categories` | Yes | Still active legacy — core scoring engine, many callers |
-| `explanation.py` | 190 | `InvestmentExplanation`, `explain_investment_report`, `render_investment_explanation` | Partial | **Sprint 105 ✓ — `ExplanationEngine` class eliminated; file kept as free-function module** |
-| `growth.py` | 18 | `GrowthAnalysis`, `placeholder_growth_analysis` | No | Sub-module of company_analysis; leave unchanged |
-| `macro.py` | 18 | `MacroAnalysis`, `placeholder_macro_analysis` | No | Sub-module of company_analysis; leave unchanged |
-| `memory.py` | 255 | `MemoryEngine`, `MemoryEntry`, `MemoryStore`, `MemoryComparison`, `render_memory_entries`, `render_memory_comparison` | No | **Sprint 104 ✓ — deleted; types moved to `atlas/decision/memory.py`** |
-| `moat.py` | 18 | `MoatAnalysis`, `placeholder_moat_analysis` | No | Sub-module of company_analysis; leave unchanged |
-| `portfolio.py` | 457 | `Portfolio`, `PortfolioPosition`, `PortfolioAnalysis`, `PortfolioIntelligenceEngine`, `PortfolioRecommendation`, `CompanyPortfolioProfile`, `get_mock_company_portfolio_profile`, `render_portfolio_analysis` | Yes | Highest-coupling module — largest migration; leave for later |
-| `quality.py` | 18 | `QualityAnalysis`, `placeholder_quality_analysis` | No | Sub-module; leave unchanged |
-| `report.py` | 39 | `build_investment_report`, `render_investment_report` | Yes | **Sprint 107 ✓ — `render_company_analysis_report` removed (no callers); two functions retained** |
-| `scores.py` | 2 | `clamp_score` | No | Utility; used by 7+ modules; leave unchanged |
-| `scoring.py` | 42 | `ScoringEngine`, `score_company` | Partial | **Sprint 106 ✓ — `RecommendationEngine` class eliminated; `ScoringEngine` retained (has validation logic; no production callers)** |
-| `sentiment.py` | 18 | `SentimentAnalysis`, `placeholder_sentiment_analysis` | No | Sub-module; leave unchanged |
-| `technicals.py` | 18 | `TechnicalAnalysis`, `placeholder_technical_analysis` | No | Sub-module; leave unchanged |
-| `valuation.py` | 18 | `ValuationAnalysis`, `placeholder_valuation_analysis` | No | Sub-module; leave unchanged |
+**15 modules remain (3 deleted: `watchlist.py` Sprint 101, `comparison.py` Sprint 103, `memory.py` Sprint 104).**
+
+| File | Lines | Public API | Re-exported from `__init__` | Production Callers | Category |
+|---|---|---|---|---|---|
+| `__init__.py` | 45 | Re-export hub | — | — | Shrinks with each migration |
+| `company_analysis.py` | 45 | `CompanyAnalysis`, `MockCompanyAnalysisProvider`, `create_placeholder_company_analysis` | Yes | providers (mock, yahoo, base), 5 test files | Active foundation — heavily used |
+| `engine.py` | 229 | `AtlasInvestmentEngine`, `InvestmentReport`, `ScoreCategory`, `ThresholdRecommendationPolicy`, `iter_score_categories`, `DEFAULT_CATEGORY_WEIGHTS` | Yes | 10 production files | **Foundational — leave for last** |
+| `explanation.py` | 198 | `InvestmentExplanation`, `explain_investment_report`, `render_investment_explanation` | Partial | `atlas/decision/memory.py`, `atlas/analysis/report.py` | **Sprint 105 ✓ cleaned** — active free-function module |
+| `growth.py` | 18 | `GrowthAnalysis`, `placeholder_growth_analysis` | No | Internal to `company_analysis.py` | Internal sub-module — leave unchanged |
+| `macro.py` | 18 | `MacroAnalysis`, `placeholder_macro_analysis` | No | Internal to `company_analysis.py` | Internal sub-module — leave unchanged |
+| `moat.py` | 18 | `MoatAnalysis`, `placeholder_moat_analysis` | No | Internal to `company_analysis.py` | Internal sub-module — leave unchanged |
+| `portfolio.py` | 457 | `Portfolio`, `PortfolioPosition`, `PortfolioAnalysis`, `PortfolioIntelligenceEngine`, `PortfolioRecommendation`, `CompanyPortfolioProfile`, `get_mock_company_portfolio_profile`, `render_portfolio_analysis` | Yes | 17 production import sites, 16 test files | **Long-term high-coupling — do not migrate yet** |
+| `quality.py` | 18 | `QualityAnalysis`, `placeholder_quality_analysis` | No | Internal to `company_analysis.py` | Internal sub-module — leave unchanged |
+| `report.py` | 38 | `build_investment_report`, `render_investment_report` | Yes | `atlas/cli/main.py` (3 sites), `atlas/comparison/engine.py` (1 site) | **Sprint 107 ✓ cleaned** — active utility |
+| `scores.py` | 2 | `clamp_score` | No | 9 production files across 6 packages | Shared utility — leave unchanged |
+| `scoring.py` | 40 | `ScoringEngine`, `score_company` | Yes | **0 production callers** — test-only | **Sprint 109 candidate — delete** |
+| `sentiment.py` | 18 | `SentimentAnalysis`, `placeholder_sentiment_analysis` | No | Internal to `company_analysis.py` | Internal sub-module — leave unchanged |
+| `technicals.py` | 18 | `TechnicalAnalysis`, `placeholder_technical_analysis` | No | Internal to `company_analysis.py` | Internal sub-module — leave unchanged |
+| `valuation.py` | 18 | `ValuationAnalysis`, `placeholder_valuation_analysis` | No | Internal to `company_analysis.py` | Internal sub-module — leave unchanged |
+
+### Deleted modules (confirmed absent)
+
+| Module | Deleted Sprint | Status |
+|---|---|---|
+| `atlas/analysis/watchlist.py` | Sprint 101 | ✓ Gone — `ModuleNotFoundError` confirmed |
+| `atlas/analysis/comparison.py` | Sprint 103 | ✓ Gone — `ModuleNotFoundError` confirmed |
+| `atlas/analysis/memory.py` | Sprint 104 | ✓ Gone — `ModuleNotFoundError` confirmed |
 
 ---
 
@@ -225,28 +233,87 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 | 105 ✓ | `atlas/analysis/explanation.py` | `ExplanationEngine` class eliminated; file kept as free-function module | DONE |
 | 106 ✓ | `atlas/analysis/scoring.py` | `RecommendationEngine` class eliminated; `ScoringEngine` retained | DONE |
 | 107 ✓ | `atlas/analysis/report.py` | Retained in place; `render_company_analysis_report` removed (no callers); `build_investment_report` + `render_investment_report` kept (active callers) | DONE |
-| 108+ | `atlas/analysis/scoring.py` | `ScoringEngine` has no production callers — potential future removal | LOW |
-| Future | `atlas/analysis/portfolio.py` | High-coupling migration; 10+ callers; long-term project | HIGH |
-| Future | `atlas/analysis/engine.py` | Core scoring engine; 10+ callers; foundational — leave for late cleanup | VERY HIGH |
-| Leave | `scores.py`, `growth.py`, `macro.py`, `moat.py`, `quality.py`, `sentiment.py`, `technicals.py`, `valuation.py` | Internal sub-modules; used only by `company_analysis.py`/`engine.py`; no direct cleanup needed | — |
+| 108 ✓ | Checkpoint | Full inventory audit; verified deleted modules remain gone; Blueprint `domains/` confirmed import-free from `atlas.analysis`; `scoring.py` identified as Sprint 109 target | DONE |
+| **109** | `atlas/analysis/scoring.py` | **Delete `ScoringEngine` and `score_company` — zero production callers; test-only; weight validation logic not needed in production** | LOW |
+| Future | `atlas/analysis/portfolio.py` | High-coupling migration; 17 production import sites, 16 test files; long-term project | HIGH |
+| Future | `atlas/analysis/engine.py` | Core scoring engine; 10 production callers; foundational — leave for late cleanup | VERY HIGH |
+| Leave | `scores.py`, `growth.py`, `macro.py`, `moat.py`, `quality.py`, `sentiment.py`, `technicals.py`, `valuation.py` | Internal sub-modules; no direct cleanup needed | — |
 
 ---
 
-## Provider Safety
+## High-Coupling Module Review (Sprint 108)
 
-- `ComparisonEngine.compare_tickers()` accepts a provider but does not make network calls — passes
-  it to `AtlasInvestmentEngine` which calls `provider.get_company_analysis(ticker)`
-- `MemoryEngine.save_ticker()` similarly passes provider to `AtlasInvestmentEngine`
-- Both engines are **provider-accepting, not provider-calling** — they delegate to the investment engine
-- Neither introduces new provider calls or broadens the provider boundary
+### `atlas/analysis/portfolio.py` — DO NOT MIGRATE YET
+
+**Lines:** 457  
+**Public classes/functions:** `Portfolio`, `PortfolioPosition`, `PortfolioAnalysis`, `PortfolioIntelligenceEngine`, `PortfolioRecommendation`, `CompanyPortfolioProfile`, `get_mock_company_portfolio_profile`, `render_portfolio_analysis`  
+**Re-exported from `__init__.py`:** Yes (6 names)  
+**Production import sites:** 17 (across `atlas/adapters/`, `atlas/cli/`, `atlas/conversation/`, `atlas/dashboard/`, `atlas/decision/`, `atlas/home/`, `atlas/intelligence/`, `atlas/monitoring/`, `atlas/portfolio_review/`, `atlas/providers/`, `atlas/reasoning/`, `atlas/risk_drift/`, `atlas/suitability/`)  
+**Test files:** 16  
+**CLI dependency:** Yes — `atlas/cli/main.py` imports `Portfolio` directly  
+**Blueprint replacement:** Partial — `atlas/domains/portfolio/` owns canonical `Portfolio` types; `atlas/capabilities/` does not yet have a full `PortfolioIntelligenceEngine` replacement  
+**Provider dependency:** Yes — `atlas/providers/base.py` and `atlas/providers/mock.py` import `CompanyPortfolioProfile`; changing this file would widen the provider surface  
+**Migration direction:** Long-term migration to `atlas/domains/portfolio/` types with `atlas/capabilities/` intelligence layer; requires adapter layer expansion  
+**Risk:** VERY HIGH — broadest legacy coupling in the codebase  
+**Decision:** Do not touch until a dedicated multi-sprint migration plan is written
+
+### `atlas/analysis/engine.py` — DO NOT MIGRATE YET
+
+**Lines:** 229  
+**Public classes/functions:** `AtlasInvestmentEngine`, `InvestmentReport`, `ScoreCategory`, `ThresholdRecommendationPolicy`, `iter_score_categories`, `DEFAULT_CATEGORY_WEIGHTS`, `clamp_score` (re-exports from `scores.py`)  
+**Re-exported from `__init__.py`:** Yes (3 names)  
+**Production import sites:** 10 (across `atlas/conversation/`, `atlas/decision/`, `atlas/intelligence/`, `atlas/models/`, `atlas/monitoring/`, `atlas/reasoning/`, `atlas/suitability/`)  
+**Test files:** 5  
+**CLI dependency:** Indirect (via `report.py` → `AtlasInvestmentEngine`)  
+**Blueprint replacement:** None yet — `AtlasInvestmentEngine` is the foundational scoring engine; no equivalent exists in `atlas/capabilities/`  
+**Provider dependency:** None — pure computation, no network calls  
+**Migration direction:** Very long-term; would require a canonical scoring domain in `atlas/domains/` and full capability-layer replacement of `AtlasInvestmentEngine`  
+**Risk:** EXTREME — changing this breaks scoring across the entire system  
+**Decision:** Leave for last; cleanup of all other modules first
+
+---
+
+## Sprint 109 Target: Delete `atlas/analysis/scoring.py`
+
+**Rationale:**
+- `ScoringEngine` and `score_company` have **zero production callers**. Confirmed by grep across entire `atlas/` tree.
+- Only `tests/test_scoring.py` and `tests/test_watchlist_analyze_deprecation.py` reference them.
+- `ScoringEngine` wraps `AtlasInvestmentEngine` with a 4-check weight validation. This validation is not needed anywhere in production — callers use `AtlasInvestmentEngine` directly.
+- Deleting the module removes dead public API from `atlas/analysis/__init__.py` (`ScoringEngine`, `score_company`).
+
+**Sprint 109 scope:**
+1. Delete `atlas/analysis/scoring.py`
+2. Remove `ScoringEngine`, `score_company` imports from `atlas/analysis/__init__.py` and `__all__`
+3. Update `tests/test_scoring.py` — remove `ScoringEngine`/`score_company` tests; weight validation test can test `AtlasInvestmentEngine` directly or be removed
+4. Update guardrail test: convert `test_scoring_engine_and_score_company_still_importable` → `test_scoring_engine_is_deleted`
+5. Add guardrail confirming `ScoringEngine` and `score_company` are not re-exported from `atlas.analysis`
+6. Risk: LOW — no production caller exists; only tests change
+
+**What Sprint 109 is NOT:**
+- Not `portfolio.py` migration (too large)
+- Not `engine.py` changes (foundational)
+- Not new features or commands
+
+---
+
+## Provider Safety (Sprint 108 state)
+
+- `atlas/analysis/scores.py` (`clamp_score`) — pure computation, no network calls — **9 production callers; leave unchanged**
+- `atlas/analysis/engine.py` (`AtlasInvestmentEngine`) — pure computation engine; accepts provider indirectly (callers pass it in); does not make network calls itself
+- `atlas/analysis/portfolio.py` — accepts `CompanyPortfolioProfile` from providers; does not call providers itself
+- `atlas/providers/base.py` and `atlas/providers/mock.py` import from `atlas/analysis/company_analysis.py` and `atlas/analysis/portfolio.py` — these are TYPE_CHECKING imports in `base.py`; runtime in `mock.py`
+- No remaining analysis module makes direct network calls
 - Demo and release verification remain provider-free (mock provider only)
 
 ---
 
-## Architecture Boundaries (Sprint 102 state)
+## Architecture Boundaries (Sprint 108 state)
 
-- `atlas/domains/` does not import from `atlas.analysis.comparison` or `atlas.analysis.memory` ✓ (both deleted)
-- `atlas/capabilities/` does not depend on either engine ✓
+- `atlas/domains/` does **not** import from `atlas.analysis` ✓ (confirmed by AST scan, Sprint 108 guardrail test)
+- `atlas/capabilities/` does **not** import from `atlas.analysis` ✓
 - `atlas.analysis.watchlist` is fully deleted ✓
-- No stale `Watchlist`/`WatchlistItem` re-exports in `atlas.analysis` ✓
+- `atlas.analysis.comparison` is fully deleted ✓
+- `atlas.analysis.memory` is fully deleted ✓
+- No stale `WatchlistEngine`, `ComparisonEngine`, `MemoryEngine`, `ExplanationEngine`, `RecommendationEngine` re-exports in `atlas.analysis` ✓
+- `render_company_analysis_report` is fully removed ✓
 - Active deprecated CLI command count: 0 ✓
