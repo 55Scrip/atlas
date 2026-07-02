@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 144)  
-**Status:** `atlas/analysis/` cleanup track CLOSED Sprint 141. `atlas/decision/` cleanup track CLOSED Sprint 144. Final stable decision package: 7 modules, 5 active exports, dead renderer deleted Sprint 143. No further cleanup planned for either track until new dead-code findings or clear successor architectures emerge.
+**Updated:** 2026-07-02 (Sprint 145)  
+**Status:** `atlas/analysis/` cleanup track CLOSED Sprint 141. `atlas/decision/` cleanup track CLOSED Sprint 144. `atlas/providers/` boundary audit ACTIVE as of Sprint 145. Provider package inventoried: 4 modules, 539 lines. Three stale `__init__.py` exports identified (`YahooCompany`, `YahooFinancials`, `YahooMarketData` — zero external callers). Sprint 146 target: remove them.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

@@ -2,6 +2,23 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 145 — Provider Boundary Audit
+
+Decision: Begin `atlas/providers/` boundary audit. Audit-only sprint. No runtime changes.
+
+**Findings:**
+- 4 modules, 539 lines total.
+- `CompanyDataProvider` protocol: 2 methods. `get_company_analysis` has 7 production call sites; `get_portfolio_profile` has 4. Both return correct types (`CompanyAnalysis`, `PortfolioFitInput`). `get_portfolio_profile` returning `PortfolioFitInput` confirmed (Sprint 133).
+- `MockCompanyAnalysisProvider`: clean, 5 supported tickers for analysis, 4 for portfolio profile (AMD intentionally excluded from portfolio profiles).
+- `YahooFinanceProvider`: correct contract implementation. Yahoo-specific sub-methods (`get_company`, `get_financials`, `get_market_data`) are internal-only; no production code outside `providers/` calls them.
+- Zero stale production imports. No boundary violations (providers do not import from decision/intelligence/CLI/dashboard).
+- Blueprint alignment: both contract methods return stable, correct types.
+- **Three stale `__init__.py` exports identified:** `YahooCompany`, `YahooFinancials`, `YahooMarketData` — zero external callers. These are implementation details of `YahooFinanceProvider` that leaked into the public API.
+
+**Sprint 146 recommended target:** Remove `YahooCompany`, `YahooFinancials`, `YahooMarketData` from `atlas/providers/__init__.py`. Types stay in `yahoo.py`; only their public-API surface is tightened. Zero external callers confirmed. Low risk.
+
+---
+
 ## 2026-07-02: Sprint 144 — Close Decision Cleanup Track
 
 Decision: Formally close the `atlas/decision/` cleanup track after Sprints 142–144. No further cleanup sprints planned until a new dead-code finding or clear successor architecture emerges.
