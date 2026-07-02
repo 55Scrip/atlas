@@ -1,3 +1,4 @@
+import ast
 import json
 
 from typer.testing import CliRunner
@@ -252,3 +253,119 @@ def test_home_cli_outputs_primary_briefing(tmp_path):
     assert "Atlas Home" in result.output
     assert "Today's Priorities" in result.output
     assert "What Atlas Is Monitoring" in result.output
+
+
+# --- Sprint 122: home portfolio type runtime dependency removal ---
+
+_HOME_SOURCE = (
+    __import__("pathlib").Path(__file__).parent.parent
+    / "atlas"
+    / "home"
+    / "engine.py"
+).read_text()
+
+_HOME_TREE = ast.parse(_HOME_SOURCE)
+
+
+def test_sprint122_no_runtime_legacy_portfolio_import():
+    """atlas.analysis.portfolio must not be imported at module runtime in home engine."""
+    for node in _HOME_TREE.body:
+        if isinstance(node, ast.If):
+            test = node.test
+            if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
+                continue  # guarded imports are intentional
+        if isinstance(node, ast.ImportFrom):
+            assert node.module != "atlas.analysis.portfolio", (
+                "atlas.analysis.portfolio must be behind TYPE_CHECKING, not a runtime import"
+            )
+
+
+def test_sprint122_future_annotations_present():
+    """from __future__ import annotations must be declared in home engine."""
+    assert "from __future__ import annotations" in _HOME_SOURCE
+
+
+def test_sprint122_type_checking_guard_present():
+    """Portfolio must be imported inside an if TYPE_CHECKING: block in home engine."""
+    for node in _HOME_TREE.body:
+        if isinstance(node, ast.If):
+            test = node.test
+            if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
+                for child in ast.walk(node):
+                    if isinstance(child, ast.ImportFrom):
+                        names = [alias.name for alias in child.names]
+                        if "Portfolio" in names:
+                            return
+    raise AssertionError("Portfolio is not imported inside TYPE_CHECKING block in home engine")
+
+
+def test_sprint122_home_behavior_unchanged_without_portfolio():
+    """AtlasHomeEngine.build() works with no portfolio input."""
+    output = AtlasHomeEngine().build()
+    assert output.title == "Atlas Home"
+    assert output.summary is not None
+    assert len(output.priorities) > 0
+    assert len(output.monitoring) > 0
+    assert "Portfolio context not loaded" in output.summary.portfolio_alignment
+
+
+def test_sprint122_home_behavior_unchanged_with_portfolio(tmp_path):
+    """AtlasHomeEngine.build() works with a legacy Portfolio object passed in."""
+    portfolio_path = tmp_path / "p.json"
+    portfolio_path.write_text(
+        json.dumps(
+            {
+                "positions": [
+                    {
+                        "ticker": "MSFT",
+                        "company": "Microsoft",
+                        "sector": "Software",
+                        "country": "United States",
+                        "market_cap": 3_400_000_000_000,
+                        "weight": 0.60,
+                        "quality_score": 90,
+                        "risk_score": 78,
+                    },
+                    {
+                        "ticker": "AAPL",
+                        "company": "Apple",
+                        "sector": "Consumer Electronics",
+                        "country": "United States",
+                        "market_cap": 3_000_000_000_000,
+                        "weight": 0.40,
+                        "quality_score": 86,
+                        "risk_score": 72,
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    portfolio = Portfolio.from_json_file(portfolio_path)
+    output = AtlasHomeEngine().build(AtlasHomeInput(portfolio=portfolio))
+    assert output.title == "Atlas Home"
+    assert "Portfolio context not loaded" not in output.summary.portfolio_alignment
+    rendered = render_atlas_home(output)
+    assert "Atlas Home" in rendered
+    assert "Portfolio Health" in rendered
+
+
+def test_sprint122_legacy_portfolio_module_still_active():
+    """atlas.analysis.portfolio must still be importable (not deleted)."""
+    import atlas.analysis.portfolio as legacy
+    assert hasattr(legacy, "Portfolio")
+    assert hasattr(legacy, "PortfolioAnalysis")
+    assert hasattr(legacy, "PortfolioIntelligenceEngine")
+
+
+def test_sprint122_capability_engine_still_clean():
+    """Portfolio Intelligence capability engine must not import from atlas.analysis.portfolio."""
+    cap_path = (
+        __import__("pathlib").Path(__file__).parent.parent
+        / "atlas"
+        / "capabilities"
+        / "portfolio_intelligence"
+        / "engine.py"
+    )
+    source = cap_path.read_text()
+    assert "atlas.analysis.portfolio" not in source

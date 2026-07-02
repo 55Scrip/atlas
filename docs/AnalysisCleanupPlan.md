@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 121 complete: `atlas/monitoring/engine.py` — `Portfolio` moved to TYPE_CHECKING (Option D, annotation-only). 8 new tests. Migrated callers so far: conversation, dashboard, portfolio_review, reasoning, risk_drift, suitability, monitoring. Next: Sprint 122 — `atlas/home/engine.py`.
+**Status:** ACTIVE — Sprint 122 complete: `atlas/home/engine.py` — `Portfolio` moved to TYPE_CHECKING (Option D, pure annotation-only). 7 new tests. Migrated callers so far: conversation, dashboard, portfolio_review, reasoning, risk_drift, suitability, monitoring, home. Next: Sprint 123 — audit `atlas/decision/` (highest coupling).
 
 ---
 

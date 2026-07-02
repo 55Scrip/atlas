@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 121) — monitoring Portfolio dependency moved to TYPE_CHECKING  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (7 of ~10 callers migrated: conversation, dashboard, portfolio_review, reasoning, risk_drift, suitability, monitoring)  
+**Updated:** 2026-07-02 (Sprint 122) — home Portfolio dependency moved to TYPE_CHECKING  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (8 of ~10 callers migrated: conversation, dashboard, portfolio_review, reasoning, risk_drift, suitability, monitoring, home)  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -330,8 +330,10 @@ Migrate one production caller per sprint, in order of impact risk:
 
 7. ✓ `atlas/monitoring/engine.py` — **MIGRATED Sprint 121**; `Portfolio` moved to TYPE_CHECKING (Option D — annotation-only). No `PortfolioAnalysis` or `PortfolioIntelligenceEngine` imports present. Duck-typed `.positions`, `.ticker`, `.weight`, `.sector`, `.country`, `.quality_score`, `.risk_score` access preserved. All callers (cli, dashboard, portfolio_review) pass legacy Portfolio objects unchanged. No behavior change.
 
-**Recommended Sprint 122 target:** `atlas/home/engine.py` — uses `Portfolio` as type annotation only (same TYPE_CHECKING pattern).
-8. `atlas/home/engine.py` — uses `Portfolio` as type annotation only (Sprint 122 target)
+8. ✓ `atlas/home/engine.py` — **MIGRATED Sprint 122**; `Portfolio` moved to TYPE_CHECKING (Option D — pure annotation-only). `AtlasHomeInput.portfolio: Portfolio | None` is never field-accessed inside the engine — only None-checked and passed through to `PortfolioReviewInput`. Zero behavior change. 7 new guardrail tests.
+
+**Recommended Sprint 123 target:** `atlas/decision/` — audit `decision_context.py` (Portfolio annotation), `decision_result.py` (PortfolioAnalysis annotation), `decision_engine.py` (PortfolioIntelligenceEngine runtime — highest coupling; audit before migrating).
+
 9. `atlas/decision/decision_engine.py` + `decision_context.py` + `decision_result.py` — highest coupling; migrate last
 10. `atlas/intelligence/engine.py` — highest integration surface; migrate after decision
 

@@ -2,6 +2,16 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 122 — Home Portfolio Dependency: TYPE_CHECKING Only (Option D)
+
+Decision: `atlas/home/engine.py` imports `Portfolio` only for the `AtlasHomeInput.portfolio`
+field annotation. No runtime field access occurs inside the engine — the value is only
+None-checked and passed through to `PortfolioReviewInput`. Migration is TYPE_CHECKING guard
+(Option D): `from __future__ import annotations` + `if TYPE_CHECKING: from atlas.analysis.portfolio import Portfolio`.
+
+Rationale: Purest possible annotation-only case. No duck-typed field access, no logic change,
+no caller impact. Zero risk. Same pattern as Sprints 118, 119 (partial), 121.
+
 ## 2026-07-02: Sprint 121 — Monitoring Portfolio Dependency: TYPE_CHECKING Only (Option D)
 
 Decision: `atlas/monitoring/engine.py` imports `Portfolio` for method type annotations only.

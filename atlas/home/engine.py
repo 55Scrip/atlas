@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from atlas.analysis.portfolio import Portfolio
 from atlas.capabilities.watchlist_intelligence import WatchlistInput
+
+if TYPE_CHECKING:
+    from atlas.analysis.portfolio import Portfolio
 from atlas.decision_journal import DecisionJournalEngine, DecisionJournalEntry
 from atlas.economics import EconomicSignalsEngine
 from atlas.language import (
