@@ -1,11 +1,16 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from atlas.decision.comparison import ComparisonResult
 from atlas.analysis.engine import InvestmentReport
 from atlas.decision.memory import MemoryComparison
-from atlas.analysis.portfolio import PortfolioAnalysis
 from atlas.capabilities.watchlist_intelligence.models import WatchlistIntelligenceReport
+
+if TYPE_CHECKING:
+    from atlas.analysis.portfolio import PortfolioAnalysis
 
 
 class DecisionAction(str, Enum):

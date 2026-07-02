@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from atlas.decision.memory import MemoryStore
-from atlas.analysis.portfolio import Portfolio
 from atlas.capabilities.watchlist_intelligence import WatchlistInput
+
+if TYPE_CHECKING:
+    from atlas.analysis.portfolio import Portfolio
 
 
 @dataclass(frozen=True)

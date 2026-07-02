@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 122) — home Portfolio dependency moved to TYPE_CHECKING  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (8 of ~10 callers migrated: conversation, dashboard, portfolio_review, reasoning, risk_drift, suitability, monitoring, home)  
+**Updated:** 2026-07-02 (Sprint 123) — decision_context.py and decision_result.py annotation imports cleaned  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (8 files cleaned; decision_engine.py runtime coupling documented)  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -332,9 +332,14 @@ Migrate one production caller per sprint, in order of impact risk:
 
 8. ✓ `atlas/home/engine.py` — **MIGRATED Sprint 122**; `Portfolio` moved to TYPE_CHECKING (Option D — pure annotation-only). `AtlasHomeInput.portfolio: Portfolio | None` is never field-accessed inside the engine — only None-checked and passed through to `PortfolioReviewInput`. Zero behavior change. 7 new guardrail tests.
 
-**Recommended Sprint 123 target:** `atlas/decision/` — audit `decision_context.py` (Portfolio annotation), `decision_result.py` (PortfolioAnalysis annotation), `decision_engine.py` (PortfolioIntelligenceEngine runtime — highest coupling; audit before migrating).
+**Sprint 123 — Decision layer audit (COMPLETE):**
+- ✓ `atlas/decision/decision_context.py` — `Portfolio` moved to TYPE_CHECKING (annotation-only on `DecisionContext.portfolio` field; zero runtime field access).
+- ✓ `atlas/decision/decision_result.py` — `PortfolioAnalysis` moved to TYPE_CHECKING (annotation-only on `DecisionResult.portfolio_analysis` field; zero runtime field access).
+- ✗ `atlas/decision/decision_engine.py` — **Runtime coupling retained**. `PortfolioIntelligenceEngine` is instantiated and called at runtime; `PortfolioAnalysis` fields accessed directly (`.portfolio_score`, `.final_reasoning`, `.recommendation.value`, `.sector_concentration.score`, `.country_concentration.score`, `.market_cap_concentration.score`, `.overlap_with_existing_holdings.score`). Sprint 124 blocker: `recommendation.value` has no `PortfolioFitResult` equivalent — Blueprint capability intentionally omits advisory recommendation enum.
 
-9. `atlas/decision/decision_engine.py` + `decision_context.py` + `decision_result.py` — highest coupling; migrate last
+**Recommended Sprint 124 target:** `atlas/decision/decision_engine.py` — full runtime migration of `PortfolioIntelligenceEngine` → `PortfolioIntelligenceCapability`. Requires: deciding how to handle `recommendation.value` absence (either drop the guard or introduce a compatibility shim); mapping all `PortfolioAnalysis` field accesses to `PortfolioFitResult` equivalents; updating `_concentration_discussion` (`.overlap_with_existing_holdings` → `.overlap`).
+
+9. `atlas/decision/decision_engine.py` — runtime coupling; Sprint 124 target
 10. `atlas/intelligence/engine.py` — highest integration surface; migrate after decision
 
 ### Phase 5 — Provider migration (Sprint ~120)

@@ -1,3 +1,4 @@
+import ast
 from datetime import UTC, datetime
 
 from atlas.decision.memory import MemoryEntry, MemoryStore
@@ -140,3 +141,123 @@ def test_decision_renderer_includes_required_sections():
     assert "Next Best Action" in rendered
     assert "What Could Change My Mind" in rendered
     assert "Uncertainty" in rendered
+
+
+# --- Sprint 123: decision portfolio dependency audit ---
+
+_DECISION_DIR = __import__("pathlib").Path(__file__).parent.parent / "atlas" / "decision"
+
+
+def _source(filename: str) -> str:
+    return (_DECISION_DIR / filename).read_text()
+
+
+def _tree(filename: str) -> ast.Module:
+    return ast.parse(_source(filename))
+
+
+def _top_level_legacy_imports(filename: str) -> list[str]:
+    """Return module names imported at top level (outside TYPE_CHECKING blocks)."""
+    tree = _tree(filename)
+    found = []
+    for node in tree.body:
+        if isinstance(node, ast.If):
+            test = node.test
+            if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
+                continue
+        if isinstance(node, ast.ImportFrom) and node.module == "atlas.analysis.portfolio":
+            found.append(node.module)
+    return found
+
+
+def test_sprint123_decision_context_no_runtime_portfolio_import():
+    """decision_context.py must not import atlas.analysis.portfolio at runtime."""
+    assert _top_level_legacy_imports("decision_context.py") == []
+
+
+def test_sprint123_decision_context_future_annotations():
+    """decision_context.py must declare from __future__ import annotations."""
+    assert "from __future__ import annotations" in _source("decision_context.py")
+
+
+def test_sprint123_decision_context_type_checking_guard():
+    """Portfolio must appear inside an if TYPE_CHECKING: block in decision_context.py."""
+    for node in _tree("decision_context.py").body:
+        if isinstance(node, ast.If):
+            test = node.test
+            if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
+                for child in ast.walk(node):
+                    if isinstance(child, ast.ImportFrom):
+                        if any(alias.name == "Portfolio" for alias in child.names):
+                            return
+    raise AssertionError("Portfolio not found inside TYPE_CHECKING block in decision_context.py")
+
+
+def test_sprint123_decision_result_no_runtime_portfolio_analysis_import():
+    """decision_result.py must not import atlas.analysis.portfolio at runtime."""
+    assert _top_level_legacy_imports("decision_result.py") == []
+
+
+def test_sprint123_decision_result_future_annotations():
+    """decision_result.py must declare from __future__ import annotations."""
+    assert "from __future__ import annotations" in _source("decision_result.py")
+
+
+def test_sprint123_decision_result_type_checking_guard():
+    """PortfolioAnalysis must appear inside an if TYPE_CHECKING: block in decision_result.py."""
+    for node in _tree("decision_result.py").body:
+        if isinstance(node, ast.If):
+            test = node.test
+            if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
+                for child in ast.walk(node):
+                    if isinstance(child, ast.ImportFrom):
+                        if any(alias.name == "PortfolioAnalysis" for alias in child.names):
+                            return
+    raise AssertionError(
+        "PortfolioAnalysis not found inside TYPE_CHECKING block in decision_result.py"
+    )
+
+
+def test_sprint123_decision_engine_still_has_runtime_portfolio_coupling():
+    """decision_engine.py intentionally retains runtime import — document the coupling."""
+    source = _source("decision_engine.py")
+    # PortfolioIntelligenceEngine must still be a runtime import (not yet migrated)
+    assert "PortfolioIntelligenceEngine" in source
+    assert "atlas.analysis.portfolio" in source
+
+
+def test_sprint123_decision_behavior_unchanged_no_portfolio():
+    """Decision engine still works without portfolio (core path unchanged)."""
+    from atlas.decision import AtlasDecisionEngine, DecisionContext
+    from atlas.providers import MockCompanyAnalysisProvider
+
+    result = AtlasDecisionEngine().decide(
+        "NVDA",
+        MockCompanyAnalysisProvider(),
+        DecisionContext(
+            investment_horizon="long term",
+            risk_profile="balanced",
+            available_capital=10_000.0,
+            cash_reserve_status="adequate",
+        ),
+    )
+    assert result.ticker == "NVDA"
+    assert result.portfolio_analysis is None
+    assert result.portfolio_fit == 50
+
+
+def test_sprint123_legacy_portfolio_module_still_active():
+    """atlas.analysis.portfolio must still be importable (not deleted)."""
+    import atlas.analysis.portfolio as legacy
+    assert hasattr(legacy, "Portfolio")
+    assert hasattr(legacy, "PortfolioAnalysis")
+    assert hasattr(legacy, "PortfolioIntelligenceEngine")
+
+
+def test_sprint123_capability_engine_still_clean():
+    """Portfolio Intelligence capability engine must not import from atlas.analysis.portfolio."""
+    cap_path = (
+        __import__("pathlib").Path(__file__).parent.parent
+        / "atlas" / "capabilities" / "portfolio_intelligence" / "engine.py"
+    )
+    assert "atlas.analysis.portfolio" not in cap_path.read_text()

@@ -2,6 +2,28 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 123 — Decision Layer Portfolio Audit: Partial TYPE_CHECKING Cleanup
+
+Decision: `decision_context.py` and `decision_result.py` annotation-only imports moved behind
+TYPE_CHECKING. `decision_engine.py` runtime coupling retained unchanged.
+
+`decision_context.py`: `Portfolio` is used only as a type annotation on `DecisionContext.portfolio`.
+No runtime field access anywhere in the file. Moved behind TYPE_CHECKING.
+
+`decision_result.py`: `PortfolioAnalysis` is used only as a type annotation on
+`DecisionResult.portfolio_analysis`. No runtime field access. Moved behind TYPE_CHECKING.
+
+`decision_engine.py`: `PortfolioIntelligenceEngine` is instantiated at line 24 and called via
+`analyze_ticker()` at line 116. `PortfolioAnalysis` is accessed for `.portfolio_score`,
+`.final_reasoning`, `.recommendation.value`, `.sector_concentration.score`,
+`.country_concentration.score`, `.market_cap_concentration.score`,
+`.overlap_with_existing_holdings.score`. Not safe to touch without full behavioral parity.
+
+Blocker for Sprint 124: `portfolio_analysis.recommendation.value` is used to gate action
+selection (`if portfolio_analysis.recommendation.value in {"Avoid", "Reduce"}`). `PortfolioFitResult`
+intentionally omits the recommendation enum (no advisory semantics in Blueprint layer). Sprint 124
+must decide: drop the guard, introduce a compatibility score threshold, or retain the enum.
+
 ## 2026-07-02: Sprint 122 — Home Portfolio Dependency: TYPE_CHECKING Only (Option D)
 
 Decision: `atlas/home/engine.py` imports `Portfolio` only for the `AtlasHomeInput.portfolio`
