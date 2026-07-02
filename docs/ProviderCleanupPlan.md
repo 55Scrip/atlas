@@ -1,7 +1,8 @@
 # Atlas Provider Boundary Audit Plan
 
 **Created:** 2026-07-02 (Sprint 145)  
-**Status:** ACTIVE — Sprint 145 inventory checkpoint. 4 modules audited. One stale `__init__.py` export group identified (`YahooCompany`, `YahooFinancials`, `YahooMarketData` — no external callers). Sprint 146 target: remove those 3 symbols from `__init__.py`.
+**Updated:** 2026-07-02 (Sprint 146)  
+**Status:** CLOSED — Sprint 146 removed stale exports `YahooCompany`, `YahooFinancials`, `YahooMarketData` from `atlas/providers/__init__.py`. Provider public surface reduced from 7 to 4 exports. Internal Yahoo types retained in `atlas/providers/yahoo.py`. No runtime behavior changed. Provider boundary audit track closed.
 
 ---
 
@@ -75,7 +76,7 @@ Both return types are correct and stable. `get_portfolio_profile` returning `Por
 
 ---
 
-## Export Review (`__init__.py` — 7 symbols)
+## Export Review (`__init__.py` — 4 symbols, Sprint 146 state)
 
 | Export | External callers | Status |
 |---|---|---|
@@ -83,11 +84,11 @@ Both return types are correct and stable. `get_portfolio_profile` returning `Por
 | `MockCompanyAnalysisProvider` | 5 production files, many tests | Active and intentional |
 | `YahooFinanceProvider` | `atlas/cli/main.py`, `atlas/analysis/__init__.py`, tests | Active and intentional |
 | `YahooFinanceProviderError` | `tests/test_providers.py`, `tests/test_provider_cli.py` | Active — test-only external callers; intentional for error handling |
-| `YahooCompany` | **Zero external callers** — only defined/used internally in `yahoo.py` | Stale export — implementation detail not needed in public API |
-| `YahooFinancials` | **Zero external callers** — only defined/used internally in `yahoo.py` | Stale export — implementation detail not needed in public API |
-| `YahooMarketData` | **Zero external callers** — only defined/used internally in `yahoo.py` | Stale export — implementation detail not needed in public API |
+| ~~`YahooCompany`~~ | Zero external callers — internal `yahoo.py` only | **Removed Sprint 146** — type retained in `yahoo.py` |
+| ~~`YahooFinancials`~~ | Zero external callers — internal `yahoo.py` only | **Removed Sprint 146** — type retained in `yahoo.py` |
+| ~~`YahooMarketData`~~ | Zero external callers — internal `yahoo.py` only | **Removed Sprint 146** — type retained in `yahoo.py` |
 
-**Three stale exports identified:** `YahooCompany`, `YahooFinancials`, `YahooMarketData`. These are intermediate data types used internally by `YahooFinanceProvider` to fetch and parse Yahoo data before assembling `CompanyAnalysis` and `PortfolioFitInput`. No external production code or test imports them from `atlas.providers`. They are implementation details that leaked into the public API.
+**Sprint 146 result:** Three stale implementation-detail re-exports removed. `YahooCompany`, `YahooFinancials`, `YahooMarketData` remain defined and used internally in `atlas/providers/yahoo.py`. They are not importable from `atlas.providers`. Provider public surface: 7 → 4 exports.
 
 ---
 
@@ -122,15 +123,53 @@ Both return types are stable. No migration warranted.
 
 ---
 
-## Sprint 146 Target
+## Sprint 146 — Stale Export Removal (COMPLETED)
 
-**Remove `YahooCompany`, `YahooFinancials`, `YahooMarketData` from `atlas/providers/__init__.py`.**
+**Removed `YahooCompany`, `YahooFinancials`, `YahooMarketData` from `atlas/providers/__init__.py`.**
 
-- Zero external callers confirmed for all three types.
-- Types remain in `yahoo.py` — deletion is from `__init__.py` only (public surface tightening).
-- `YahooFinanceProviderError` stays — used by tests for error handling assertions.
-- `YahooFinanceProvider` stays — used by CLI.
-- Risk: LOW — no production or test code imports these from `atlas.providers`.
-- Result: `__init__.py` reduced from 7 to 4 exports; provider public API reflects actual contract.
+- Zero external callers confirmed (repo-wide grep before deletion).
+- Types retained in `yahoo.py` — only the public re-export was removed.
+- `YahooFinanceProviderError` retained — used by tests for error handling assertions.
+- `YahooFinanceProvider` retained — used by CLI.
+- `__init__.py` reduced from 7 to 4 exports.
+- No runtime behavior changed.
+- No provider behavior changed.
+- No test behavior changed.
 
-After Sprint 146, the provider boundary audit track can be closed.
+Provider boundary audit track: **CLOSED**.
+
+---
+
+## Final Stable Provider Package State (Sprint 146)
+
+| Module | Lines | Public API | Status |
+|---|---|---|---|
+| `__init__.py` | 14 | 4 re-exports | Clean — no stale exports |
+| `base.py` | 17 | `CompanyDataProvider` (Protocol) | Foundational — stable |
+| `mock.py` | 155 | `MockCompanyAnalysisProvider` | Active — test/demo provider |
+| `yahoo.py` | 348 | `YahooFinanceProvider`, `YahooFinanceProviderError`, `YahooCompany`*, `YahooFinancials`*, `YahooMarketData`* | Active — opt-in live provider |
+
+*Internal types — not exported from `atlas.providers`.
+
+---
+
+## Remaining Provider Technical Debt
+
+None identified. Provider boundary is clean:
+- Contract methods are correct and stable.
+- No stale exports remain in `__init__.py`.
+- No upward dependencies (providers do not import from decision/intelligence/cli/dashboard/conversation).
+- Yahoo provider remains opt-in.
+- Mock provider remains provider-free.
+
+---
+
+## Recommended Sprint 147 Target
+
+No remaining provider cleanup work. Sprint 147 should audit the next area of technical debt. Candidates:
+
+- `atlas/analysis/portfolio.py` — 17+ production import sites; long-term migration track.
+- Group C self-contained modules (`atlas/evidence/`, `atlas/reasoning/`, `atlas/risk/`) — Blueprint wrapper candidates.
+- Provider-coupled Group B modules (`atlas/home/`, `atlas/comparison/`) — require provider architecture decision.
+
+Suggest Sprint 147 audit `atlas/analysis/portfolio.py` callers for migration readiness, or pivot to a new consolidation area as determined by project priorities.

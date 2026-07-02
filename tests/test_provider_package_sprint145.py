@@ -36,26 +36,19 @@ def test_sprint145_provider_package_four_modules_only() -> None:
 # ── Export health ─────────────────────────────────────────────────────────────
 
 def test_sprint145_atlas_providers_all_exports() -> None:
-    """Sprint 145: atlas.providers.__all__ must contain the expected symbols."""
+    """Sprint 146: atlas.providers.__all__ must contain exactly the 4 active exports."""
     import atlas.providers as pkg
 
-    # The 4 intentional active exports
-    active_exports = {
+    expected = {
         "CompanyDataProvider",
         "MockCompanyAnalysisProvider",
         "YahooFinanceProvider",
         "YahooFinanceProviderError",
     }
-    # The 3 stale implementation-detail exports (Sprint 146 removal targets)
-    stale_exports = {"YahooCompany", "YahooFinancials", "YahooMarketData"}
-
     actual = set(pkg.__all__)
-    assert active_exports <= actual, (
-        f"Active exports missing from atlas.providers.__all__: {active_exports - actual}"
+    assert actual == expected, (
+        f"atlas.providers.__all__ mismatch. Extra: {actual - expected}. Missing: {expected - actual}."
     )
-    # Document the stale ones are still present pre-Sprint-146
-    for sym in stale_exports:
-        assert sym in actual, f"{sym} expected in __all__ until Sprint 146 removes it"
 
 
 def test_sprint145_all_exports_importable() -> None:
@@ -151,3 +144,32 @@ def test_sprint145_deleted_decision_renderer_remains_gone() -> None:
         assert False, "render_comparison_result must not exist after Sprint 143"
     except ImportError:
         pass
+
+
+# ── Sprint 146 guardrails ────────────────────────────────────────────────────
+
+def test_sprint146_providers_all_has_exactly_four_exports() -> None:
+    """Sprint 146: atlas.providers.__all__ must have exactly 4 exports."""
+    import atlas.providers as pkg
+
+    assert len(pkg.__all__) == 4, (
+        f"Expected 4 exports, got {len(pkg.__all__)}: {sorted(pkg.__all__)}"
+    )
+
+
+def test_sprint146_stale_yahoo_types_not_importable_from_atlas_providers() -> None:
+    """Sprint 146: YahooCompany/YahooFinancials/YahooMarketData must not be importable from atlas.providers."""
+    import atlas.providers as pkg
+
+    for sym in ("YahooCompany", "YahooFinancials", "YahooMarketData"):
+        assert sym not in pkg.__all__, f"{sym} must not be in atlas.providers.__all__ after Sprint 146"
+        assert not hasattr(pkg, sym), f"{sym} must not be accessible from atlas.providers after Sprint 146"
+
+
+def test_sprint146_yahoo_internal_types_remain_in_yahoo_module() -> None:
+    """Sprint 146: YahooCompany/YahooFinancials/YahooMarketData must still be importable from atlas.providers.yahoo."""
+    from atlas.providers.yahoo import YahooCompany, YahooFinancials, YahooMarketData  # noqa: F401
+
+    assert YahooCompany is not None
+    assert YahooFinancials is not None
+    assert YahooMarketData is not None

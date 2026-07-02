@@ -2,6 +2,24 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 146 — Remove Stale Yahoo Provider Re-exports
+
+Decision: Remove `YahooCompany`, `YahooFinancials`, `YahooMarketData` from `atlas/providers/__init__.py`.
+
+**Rationale:** Zero external callers confirmed by repo-wide grep (Sprint 145 audit). These types are implementation details of `YahooFinanceProvider` — internal data transfer objects used within `yahoo.py` to fetch and parse raw Yahoo Finance API responses before assembling `CompanyAnalysis` and `PortfolioFitInput`. Exposing them in `__init__.py` incorrectly suggested they were part of the provider contract. Removing them from the public surface tightens the API to reflect actual usage without changing any runtime behavior.
+
+**Changes:**
+- `atlas/providers/__init__.py`: 3 imports and 3 `__all__` entries removed. File reduced from 19 to 14 lines. `__all__` reduced from 7 to 4 exports.
+- `atlas/providers/yahoo.py`: unchanged. Types retained for internal use.
+- `tests/test_provider_package_sprint145.py`: `test_sprint145_atlas_providers_all_exports` updated to expect only 4 active exports. 3 Sprint 146 guardrail tests added.
+- 4 docs updated.
+
+**Provider boundary audit track:** CLOSED. All identified cleanup complete.
+
+**Recommended Sprint 147 target:** No remaining provider cleanup. Pivot to next technical debt area — `atlas/analysis/portfolio.py` caller migration audit or Group C self-contained module Blueprint wrappers.
+
+---
+
 ## 2026-07-02: Sprint 145 — Provider Boundary Audit
 
 Decision: Begin `atlas/providers/` boundary audit. Audit-only sprint. No runtime changes.
