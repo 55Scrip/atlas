@@ -2,6 +2,24 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 147 — Portfolio Boundary Caller Audit
+
+Decision: Audit all remaining callers of `Portfolio`, `PortfolioPosition`, and `legacy_portfolio_to_domain_portfolio` from `atlas/adapters/portfolio.py`. No runtime changes.
+
+**Findings:**
+- Zero stale `atlas.analysis.portfolio` imports in production code — deletion from Sprint 135 is complete and stable.
+- 9 CLI `Portfolio.from_json_file` call sites across 9 commands: `ask`, `home`, `dashboard show`, `daily summary`, `portfolio summary`, `intelligence analyze`, `suitability analyze`, `risk-drift analyze`, `monitor`. All correct and permanent — these are the JSON-loading boundary.
+- 8 engine files use `Portfolio` as a TYPE_CHECKING-only type annotation: `conversation`, `decision_context`, `dashboard`, `home`, `intelligence`, `monitoring`, `risk_drift`, `suitability`. All correct.
+- 6 runtime callers of `legacy_portfolio_to_domain_portfolio`: CLI (×2), `conversation`, `dashboard`, `decision_engine`, `intelligence`, `portfolio_review`. All correct.
+- `atlas/portfolio_review/engine.py` is the only engine that imports `Portfolio as LegacyPortfolio` at module runtime (not behind TYPE_CHECKING) — intentional: it constructs the review input from a legacy Portfolio.
+- Adapter boundary is clean: no upward dependencies, no provider imports, no CLI imports.
+- **One stale import in adapter:** `from atlas.capabilities.portfolio_intelligence import PortfolioFitInput` at line 33 — imported but unused. Left over from Sprint 133.
+- No Blueprint-aligned JSON-loading type exists. `atlas.adapters.portfolio.Portfolio` is the correct permanent home.
+
+**Sprint 148 target:** Remove stale `PortfolioFitInput` import from adapter, add boundary guardrail, close portfolio boundary track.
+
+---
+
 ## 2026-07-02: Sprint 146 — Remove Stale Yahoo Provider Re-exports
 
 Decision: Remove `YahooCompany`, `YahooFinancials`, `YahooMarketData` from `atlas/providers/__init__.py`.

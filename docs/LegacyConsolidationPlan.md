@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 146)  
-**Status:** `atlas/analysis/` cleanup track CLOSED Sprint 141. `atlas/decision/` cleanup track CLOSED Sprint 144. `atlas/providers/` boundary audit CLOSED Sprint 146. Sprint 146 removed stale re-exports `YahooCompany`, `YahooFinancials`, `YahooMarketData` from `atlas/providers/__init__.py`. Provider public surface: 7 → 4 exports. Internal Yahoo types retained in `yahoo.py`. No runtime behavior changed. All three active cleanup tracks are now closed.
+**Updated:** 2026-07-02 (Sprint 147)  
+**Status:** `atlas/analysis/` cleanup track CLOSED Sprint 141. `atlas/decision/` cleanup track CLOSED Sprint 144. `atlas/providers/` boundary audit CLOSED Sprint 146. Portfolio boundary audit ACTIVE Sprint 147. Sprint 147 inventoried all `Portfolio`/`PortfolioPosition` callers: 9 CLI JSON-loading sites, 8 engine TYPE_CHECKING annotations, 6 runtime adapter conversion callers. All correct. One stale import in adapter (`PortfolioFitInput` unused — line 33). Sprint 148 target: remove stale import, close portfolio boundary track. See `docs/PortfolioBoundaryCleanupPlan.md`.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
