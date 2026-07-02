@@ -129,12 +129,12 @@ _RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
         removal_criteria=(
             "Command body retired in Sprint 89.",
             "atlas.analysis.portfolio engine remains on disk — Portfolio, PortfolioAnalysis, and "
-            "PortfolioIntelligenceEngine are still imported by atlas/conversation, "
-            "atlas/dashboard, atlas/reasoning (TYPE_CHECKING), atlas/home (TYPE_CHECKING), "
-            "atlas/suitability (TYPE_CHECKING), atlas/risk_drift (TYPE_CHECKING), "
-            "atlas/monitoring (TYPE_CHECKING), atlas/decision_context (TYPE_CHECKING), "
-            "and atlas/portfolio_review. Sprint 124 migrated decision_engine.py; "
-            "Sprint 125 migrated intelligence/engine.py. Engine deletion deferred "
+            "PortfolioIntelligenceEngine are still imported by atlas/dashboard "
+            "and atlas/portfolio_review (runtime); atlas/reasoning, atlas/home, "
+            "atlas/suitability, atlas/risk_drift, atlas/monitoring, atlas/decision_context, "
+            "atlas/conversation, and atlas/intelligence use TYPE_CHECKING only. "
+            "Sprint 124 migrated decision_engine.py; Sprint 125 migrated intelligence/engine.py; "
+            "Sprint 126 migrated conversation/engine.py. Engine deletion deferred "
             "until all runtime callers are retired.",
         ),
     ),

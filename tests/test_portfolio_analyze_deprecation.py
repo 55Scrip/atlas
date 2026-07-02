@@ -28,7 +28,7 @@ runner = CliRunner()
 
 PORTFOLIO_ENGINE_CALLERS = (
     # atlas/intelligence/engine.py migrated in Sprint 125 — removed from this list
-    REPO_ROOT / "atlas" / "conversation" / "engine.py",
+    # atlas/conversation/engine.py migrated in Sprint 126 — removed from this list
     # atlas/decision/decision_engine.py migrated in Sprint 124 — removed from this list
     REPO_ROOT / "atlas" / "dashboard" / "engine.py",
     REPO_ROOT / "atlas" / "reasoning" / "engine.py",

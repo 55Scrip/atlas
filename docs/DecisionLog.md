@@ -2,6 +2,26 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 126 — Conversation Engine: Remove Stale portfolio_engine Attribute
+
+Decision: Remove the dead `self.portfolio_engine` / `portfolio_engine` constructor parameter
+from `atlas/conversation/engine.py`. This is Option A (pure dead-code removal).
+
+**Audit finding:** `self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()`
+was assigned at construction but never read anywhere in the file. `_answer_portfolio_review`
+was fully migrated to `self.portfolio_fit_capability` in Sprint 114. After Sprint 125 updated
+the `IntelligenceEngine(...)` call to use `portfolio_fit_capability=`, no code in the engine
+accessed `self.portfolio_engine`. It was a zombie attribute.
+
+**Changes:** `PortfolioIntelligenceEngine` import removed; `portfolio_engine` constructor
+parameter removed; `self.portfolio_engine` assignment removed; `Portfolio` moved to
+TYPE_CHECKING (annotation-only on `ConversationInput.portfolio`); `from __future__ import
+annotations` added.
+
+**No behavior change** — the removed attribute had no active call sites.
+
+**Remaining `PortfolioIntelligenceEngine` runtime caller:** `atlas/dashboard/engine.py` only.
+
 ## 2026-07-02: Sprint 125 — Intelligence Engine: PortfolioIntelligenceEngine → PortfolioIntelligenceCapability
 
 Decision: Migrate `atlas/intelligence/engine.py` from legacy `PortfolioIntelligenceEngine`

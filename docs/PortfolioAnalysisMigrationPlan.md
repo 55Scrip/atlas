@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 125) — intelligence/engine.py fully migrated to PortfolioIntelligenceCapability  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (10 files migrated; conversation/engine.py and dashboard/engine.py retain PortfolioIntelligenceEngine for own portfolio-fit paths)  
+**Updated:** 2026-07-02 (Sprint 126) — conversation/engine.py stale portfolio_engine attribute removed  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (11 files migrated; dashboard/engine.py is the only remaining PortfolioIntelligenceEngine runtime caller)  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -341,11 +341,12 @@ Migrate one production caller per sprint, in order of impact risk:
 
 10. ✓ `atlas/intelligence/engine.py` — **MIGRATED Sprint 125**; `PortfolioIntelligenceEngine` and `PortfolioAnalysis` removed; `PortfolioIntelligenceCapability` injected via constructor; `_optional_portfolio_analysis` uses adapter chain; `_portfolio_impact` updated to use `.note` (PortfolioFitDimension) instead of `.reasoning` (PortfolioSignal); `_atlas_conclusion` updated `.portfolio_score` → `.fit_score`; `_monitoring_items` updated `.overlap_with_existing_holdings.reasoning` → `.overlap.note`; `Portfolio` moved to TYPE_CHECKING; `IntelligenceReport.portfolio_analysis` annotation updated to `PortfolioFitResult`; `conversation/engine.py` IntelligenceEngine call updated to use `portfolio_fit_capability=` kwarg. 13 new Sprint 125 guardrail tests.
 
-**Remaining `PortfolioIntelligenceEngine` runtime callers (2):**
-- `atlas/conversation/engine.py` — retains `self.portfolio_engine` for its own `_answer_portfolio_review` path (not yet migrated)
+11. ✓ `atlas/conversation/engine.py` — **MIGRATED Sprint 126** (Option A); `portfolio_engine` constructor parameter removed; `self.portfolio_engine` dead attribute removed; `PortfolioIntelligenceEngine` import removed; `Portfolio` moved to TYPE_CHECKING; `from __future__ import annotations` added. `_answer_portfolio_review` already used `self.portfolio_fit_capability` since Sprint 114 — the legacy attribute was never referenced after that migration. 9 new Sprint 126 guardrail tests.
+
+**Remaining `PortfolioIntelligenceEngine` runtime callers (1):**
 - `atlas/dashboard/engine.py` — retains `self.portfolio_engine` for its portfolio-fit section
 
-**Recommended Sprint 126 target:** `atlas/conversation/engine.py` — remove stale `portfolio_engine` attribute (its usage to IntelligenceEngine is already gone; only `_answer_portfolio_review` internal path may still use the legacy engine directly)
+**Recommended Sprint 127 target:** `atlas/dashboard/engine.py` — audit and migrate `self.portfolio_engine` (same pattern as Sprint 126)
 
 ### Phase 5 — Provider migration (Sprint ~120)
 After all callers are migrated off `CompanyPortfolioProfile`:

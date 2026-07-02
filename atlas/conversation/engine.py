@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from atlas.adapters.portfolio import (
     legacy_portfolio_to_domain_portfolio,
     portfolio_fit_input_from_profile,
 )
 from atlas.analysis.engine import AtlasInvestmentEngine
-from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine
 from atlas.capabilities.portfolio_intelligence import PortfolioIntelligenceCapability
 from atlas.capabilities.watchlist_intelligence import WatchlistInput
 from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
@@ -25,6 +27,9 @@ from atlas.market import (
 from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider
 from atlas.risk import RiskAnalysis
 from atlas.themes import ThemeEngine, ThemeInput
+
+if TYPE_CHECKING:
+    from atlas.analysis.portfolio import Portfolio
 
 
 class ConversationIntent(str, Enum):
@@ -86,7 +91,6 @@ class ConversationEngine:
         self,
         intent_classifier: IntentClassifier | None = None,
         investment_engine: AtlasInvestmentEngine | None = None,
-        portfolio_engine: PortfolioIntelligenceEngine | None = None,
         portfolio_fit_capability: PortfolioIntelligenceCapability | None = None,
         theme_engine: ThemeEngine | None = None,
         market_health_engine: MarketHealthEngine | None = None,
@@ -95,7 +99,6 @@ class ConversationEngine:
     ) -> None:
         self.intent_classifier = intent_classifier or IntentClassifier()
         self.investment_engine = investment_engine or AtlasInvestmentEngine()
-        self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()
         self.portfolio_fit_capability = portfolio_fit_capability or PortfolioIntelligenceCapability()
         self.theme_engine = theme_engine or ThemeEngine()
         self.market_health_engine = market_health_engine or MarketHealthEngine()
