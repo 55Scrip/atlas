@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
+from atlas.adapters.portfolio import (
+    legacy_portfolio_to_domain_portfolio,
+    portfolio_fit_input_from_profile,
+)
 from atlas.analysis.engine import AtlasInvestmentEngine
 from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine
-from atlas.capabilities.portfolio_intelligence import (
-    PortfolioFitInput,
-    PortfolioIntelligenceCapability,
-)
+from atlas.capabilities.portfolio_intelligence import PortfolioIntelligenceCapability
 from atlas.capabilities.watchlist_intelligence import WatchlistInput
 from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
 from atlas.capabilities.watchlist_intelligence.models import (
@@ -179,18 +179,7 @@ class ConversationEngine:
             )
         # Fetch target company profile via provider (capability stays provider-free).
         profile = provider.get_portfolio_profile(ticker)
-        fit_input = PortfolioFitInput(
-            ticker=profile.ticker,
-            company=profile.company,
-            sector=profile.sector,
-            country=profile.country,
-            market_cap=profile.market_cap,
-            quality_score=profile.quality_score,
-            risk_score=profile.risk_score,
-        )
-        # Convert legacy Portfolio to Blueprint-aligned Portfolio.
-        # The adapter carries quality_score, risk_score, and market_cap from PortfolioPosition,
-        # enabling full 7-dimension parity in the capability engine.
+        fit_input = portfolio_fit_input_from_profile(profile)
         shared_portfolio = legacy_portfolio_to_domain_portfolio(conversation_input.portfolio)
         result = self.portfolio_fit_capability.analyze(shared_portfolio, fit_input)
         return ConversationResponse(

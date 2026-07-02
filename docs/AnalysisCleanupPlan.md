@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 116 complete: `atlas/portfolio_review/engine.py` internal structural functions migrated to use `atlas.shared.Portfolio` via adapter. 7 new tests. Next: Sprint 117 — migrate next production caller.
+**Status:** ACTIVE — Sprint 117 complete: adapter audit; `portfolio_fit_input_from_profile` centralized in `atlas/adapters/portfolio.py`; conversation and dashboard callers updated; 31 new tests. Next: Sprint 118 — migrate `atlas/reasoning/engine.py` (lowest coupling).
 
 ---
 

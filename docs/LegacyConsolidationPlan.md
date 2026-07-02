@@ -296,6 +296,30 @@ without output changes.
 
 ---
 
+## Sprint 117 — Adapter Checkpoint COMPLETED
+
+**Goal:** Audit portfolio migration adapter logic created in Sprints 114–116. Decide whether to keep adapters local or centralize. No new caller migration.
+
+**Adapter audit findings:**
+- `legacy_portfolio_to_domain_portfolio` — **already centralized** in `atlas/adapters/portfolio.py`. All 3 callers (conversation, dashboard, portfolio_review) import from the same source. No duplication.
+- `PortfolioFitInput` construction from `CompanyPortfolioProfile` — **verbatim copy-paste** across conversation and dashboard (identical 7-field 1-to-1 mapping). Portfolio_review does NOT build `PortfolioFitInput` (structural-only path).
+- Architecture boundary confirmed: capability engine does NOT import `atlas.analysis.portfolio`. Adapter module correctly mediates the legacy/shared boundary.
+
+**Decision: Option C — Centralize `PortfolioFitInput` builder**
+Extracted `portfolio_fit_input_from_profile(profile: CompanyPortfolioProfile) -> PortfolioFitInput` into `atlas/adapters/portfolio.py`. Marked as migration support (remove when `CompanyPortfolioProfile` is retired). Conversation and dashboard callers updated mechanically — no behavior change.
+
+**Changes made:**
+1. `atlas/adapters/portfolio.py` — added `CompanyPortfolioProfile` + `PortfolioFitInput` imports; added `portfolio_fit_input_from_profile` function.
+2. `atlas/conversation/engine.py` — removed inline `PortfolioFitInput(...)` block; replaced with `portfolio_fit_input_from_profile(profile)`; removed now-unused `PortfolioFitInput` import.
+3. `atlas/dashboard/engine.py` — same as conversation: inline block → `portfolio_fit_input_from_profile(profile_data)`; removed `PortfolioFitInput` import.
+4. `tests/test_portfolio_adapter.py` — 31 new tests covering both adapter functions, all fields, determinism, architecture boundary, deleted module guardrails, legacy module still active, caller path verification.
+
+**Recommended Sprint 118 target:** `atlas/reasoning/engine.py` — lowest coupling (`PortfolioAnalysis` type annotation only).
+
+**Tests: 1238 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 114 — Schema Gap Resolved + Conversation Caller Migrated COMPLETED
 
 **Goal:** Resolve the `atlas.shared.Holding` schema gap and migrate `atlas/conversation/engine.py` portfolio-fit path from legacy `PortfolioIntelligenceEngine` to `PortfolioIntelligenceCapability`.

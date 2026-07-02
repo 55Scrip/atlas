@@ -873,3 +873,12 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - Legacy `LegacyPortfolio` retained at `PortfolioReviewInput.portfolio` boundary; suitability/risk_drift/monitoring downstream engines still receive legacy `Portfolio` unchanged.
 - `_average` updated to handle optional `quality_score` (None-safe via list comprehension).
 - 7 new tests in `tests/test_portfolio_review.py`. 1207 tests passing (3 skipped). Release verification green.
+
+**Sprint 117 (2026-07-02):** Adapter checkpoint — `PortfolioFitInput` builder centralized.
+- Adapter audit confirmed: `legacy_portfolio_to_domain_portfolio` was already centralized. `PortfolioFitInput` construction from `CompanyPortfolioProfile` was verbatim duplicate across conversation and dashboard.
+- `portfolio_fit_input_from_profile(profile: CompanyPortfolioProfile) -> PortfolioFitInput` extracted to `atlas/adapters/portfolio.py` (marked migration support).
+- `atlas/conversation/engine.py` and `atlas/dashboard/engine.py` updated to call the centralized builder; `PortfolioFitInput` direct import removed from both.
+- Architecture boundary confirmed: capability engine remains free of `atlas.analysis.portfolio` imports. No provider/CLI/network imports in adapter.
+- `tests/test_portfolio_adapter.py` created with 31 tests (adapter fields, determinism, architecture boundary, deleted module guardrails, legacy active, caller path verification).
+- No new caller migrated. No behavior changes. 1238 tests passing (3 skipped). Demo passed. Release verification green.
+- Recommended Sprint 118 target: `atlas/reasoning/engine.py` (type annotation only, lowest coupling).

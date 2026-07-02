@@ -1591,3 +1591,15 @@ Demo passed. Release verification green.
 - `_average` updated to handle `quality_score: int | None` (Sprint 114 made it optional on `Holding`) via None-safe list comprehension.
 
 **Outcome:** 2 files changed. 7 new tests. 1207 tests passing (3 skipped). Demo passed. RC2 green.
+
+**Sprint 117 (2026-07-02): Adapter audit checkpoint — centralize PortfolioFitInput builder**
+
+**Decision:** Option C — Centralize `PortfolioFitInput` builder. `legacy_portfolio_to_domain_portfolio` was already centralized. `PortfolioFitInput` construction (7-field 1-to-1 mapping from `CompanyPortfolioProfile`) was verbatim duplicate across conversation and dashboard. Extracted `portfolio_fit_input_from_profile` into `atlas/adapters/portfolio.py`. Portfolio review does not build `PortfolioFitInput` (structural-only path) and is unaffected.
+
+**Rationale:**
+- Duplication was genuine and mechanical: identical 7-line block in 2 callers.
+- `atlas/adapters/portfolio.py` is the correct home: it already mediates between legacy and Blueprint types; adding `CompanyPortfolioProfile → PortfolioFitInput` conversion is consistent with its purpose.
+- Capability engine remains clean: no legacy imports enter `atlas/capabilities/portfolio_intelligence/engine.py`.
+- Keeping legacy `PortfolioFitInput` import in conversation/dashboard would have been dead weight after centralization.
+
+**Outcome:** 4 files changed (adapter + 2 callers + new test file). 31 new tests. 1238 tests passing (3 skipped). Demo passed. RC2 green. Recommended Sprint 118: `atlas/reasoning/engine.py`.

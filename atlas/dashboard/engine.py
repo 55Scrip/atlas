@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 
-from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
-from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine
-from atlas.capabilities.portfolio_intelligence import (
-    PortfolioFitInput,
-    PortfolioIntelligenceCapability,
+from atlas.adapters.portfolio import (
+    legacy_portfolio_to_domain_portfolio,
+    portfolio_fit_input_from_profile,
 )
+from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine
+from atlas.capabilities.portfolio_intelligence import PortfolioIntelligenceCapability
 from atlas.economics import EconomicSignalAnalysis, EconomicSignalsEngine
 from atlas.market import (
     MarketHealthEngine,
@@ -257,15 +257,7 @@ class DashboardEngine:
         ]
         if target_ticker and provider:
             profile_data = provider.get_portfolio_profile(target_ticker)
-            fit_input = PortfolioFitInput(
-                ticker=profile_data.ticker,
-                company=profile_data.company,
-                sector=profile_data.sector,
-                country=profile_data.country,
-                market_cap=profile_data.market_cap,
-                quality_score=profile_data.quality_score,
-                risk_score=profile_data.risk_score,
-            )
+            fit_input = portfolio_fit_input_from_profile(profile_data)
             shared_portfolio = legacy_portfolio_to_domain_portfolio(portfolio)
             result = self.portfolio_fit_capability.analyze(shared_portfolio, fit_input)
             cards.append(
