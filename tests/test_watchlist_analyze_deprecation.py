@@ -4,10 +4,10 @@ Sprint 78 deprecated the command; Sprint 91 removed the command body.
 `atlas watchlist analyze` is no longer a registered CLI command.
 
 The underlying `atlas.analysis.watchlist` engine remains on disk:
-- WatchlistEngine is still imported and instantiated by (Sprint 95 state):
-  - atlas/intelligence/engine.py
-  - atlas/conversation/engine.py
-Engine deletion deferred until all two callers are retired.
+- WatchlistEngine is still imported and instantiated by (Sprint 96 state):
+  - atlas/intelligence/engine.py  (Sprint 97 migration target)
+  - atlas/conversation/engine.py  (Sprint 98 migration target)
+Engine deletion deferred until all callers are retired.
 
 Sprint 91 completes the CLI deprecated command retirement plan.
 Active _REGISTRY is now empty — all deprecated commands have been retired.
@@ -16,6 +16,7 @@ Sprint 92: WatchlistEngine caller set frozen; exclusivity guardrail added.
 Sprint 93: atlas/monitoring/engine.py WatchlistEngine removed — caller count reduced 5 → 4.
 Sprint 94: atlas/watchlist_review/engine.py WatchlistEngine removed — caller count reduced 4 → 3.
 Sprint 95: atlas/decision/decision_engine.py WatchlistEngine removed — caller count reduced 3 → 2.
+Sprint 96: Audit sprint — caller count unchanged at 2 (intelligence, conversation).
 """
 
 from __future__ import annotations
@@ -115,6 +116,24 @@ def test_watchlist_review_engine_does_not_import_watchlist_engine() -> None:
     source = path.read_text(encoding="utf-8")
     assert "WatchlistEngine" not in source, (
         "atlas/watchlist_review/engine.py should no longer import WatchlistEngine after Sprint 94"
+    )
+
+
+def test_intelligence_engine_remains_a_watchlist_engine_caller() -> None:
+    """Sprint 96: atlas/intelligence/engine.py is the Sprint 97 migration target — must still import WatchlistEngine."""
+    path = REPO_ROOT / "atlas" / "intelligence" / "engine.py"
+    source = path.read_text(encoding="utf-8")
+    assert "WatchlistEngine" in source, (
+        "atlas/intelligence/engine.py should still import WatchlistEngine until Sprint 97"
+    )
+
+
+def test_conversation_engine_remains_a_watchlist_engine_caller() -> None:
+    """Sprint 96: atlas/conversation/engine.py is the Sprint 98 migration target — must still import WatchlistEngine."""
+    path = REPO_ROOT / "atlas" / "conversation" / "engine.py"
+    source = path.read_text(encoding="utf-8")
+    assert "WatchlistEngine" in source, (
+        "atlas/conversation/engine.py should still import WatchlistEngine until Sprint 98"
     )
 
 

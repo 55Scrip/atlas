@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 95)  
-**Status:** Active — Sprint 95 target complete; WatchlistEngine removed from atlas/decision/; DecisionResult.watchlist_intelligence uses WatchlistIntelligenceReport; caller count 3 → 2. Sprint 96 target: migrate atlas/intelligence/ or atlas/conversation/ WatchlistEngine dependency
+**Updated:** 2026-07-02 (Sprint 96)  
+**Status:** Active — Sprint 96 audit complete; final 2 callers documented; migration plan written. Sprint 97 target: migrate `atlas/intelligence/` (low-risk, no output change). Sprint 98 target: migrate `atlas/conversation/` (medium-risk, WATCHLIST_REVIEW output changes).
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,42 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 96 Audit — COMPLETE (no runtime migration)
+
+### Audit: Final WatchlistEngine caller migration plan — caller count remains 2
+
+**Sprint 96 result:**
+
+**Goal:** Audit the final two WatchlistEngine callers (`atlas/intelligence/`, `atlas/conversation/`), document runtime flows, choose migration order, and write `docs/WatchlistEngineMigrationPlan.md`.
+
+**Findings:**
+
+`atlas/intelligence/engine.py` — LOW migration risk:
+- `WatchlistAnalysis` is used only as a confidence bonus check (`is not None` → +3) and a stored passthrough field in `IntelligenceReport.watchlist_analysis`
+- No rendering function in `render_intelligence_report()` or any downstream caller reads `WatchlistAnalysis` content
+- Conversion pattern from Sprint 95 applies directly
+- `ConversationEngine.__init__` currently passes `watchlist_engine=self.watchlist_engine` into `IntelligenceEngine(...)` — this kwarg must be removed in Sprint 98 once Sprint 97 drops the parameter
+
+`atlas/conversation/engine.py` — MEDIUM-HIGH migration risk:
+- `_answer_watchlist_review()` reads six specific `WatchlistAnalysis` fields (`strongest_opportunity.ticker`, `strongest_opportunity.reasoning`, `cheapest_valuation.reasoning`, `highest_quality_company.reasoning`, `final_atlas_view`, `name`)
+- Three fields (`strongest_opportunity`, `cheapest_valuation`, `highest_quality_company`) have no 1:1 Blueprint equivalents in `WatchlistIntelligenceReport`
+- Semantic shift documented: score-ranked → research-gap-driven
+- `WATCHLIST_REVIEW` response text will change materially — "Atlas ranks X first" → "Atlas highlights X for research attention"
+
+**Migration order chosen:** intelligence first (Sprint 97), conversation second (Sprint 98)
+**Rationale:** Intelligence has zero user-visible output from WatchlistAnalysis content; conversation has six. Intelligence also creates a dependency coupling — Sprint 97 must remove `watchlist_engine` from `IntelligenceEngine.__init__`, which Sprint 98 must then clean up in `ConversationEngine.__init__`.
+
+**Plan document:** `docs/WatchlistEngineMigrationPlan.md` created
+
+**WatchlistEngine caller count:**
+- Before Sprint 96: 2 (intelligence, conversation)
+- After Sprint 96: **2** (unchanged — audit sprint only)
+
+**Sprint 97 target:** Migrate `atlas/intelligence/engine.py`; rename `IntelligenceReport.watchlist_analysis` → `watchlist_intelligence`; remove `watchlist_engine` from `IntelligenceEngine.__init__`
+**Sprint 98 target:** Migrate `atlas/conversation/engine.py`; rewrite `_answer_watchlist_review()`; evaluate WatchlistEngine deletion readiness
 
 ---
 

@@ -1219,3 +1219,22 @@ Demo passed. Release verification green.
 
 **Outcome:** WatchlistEngine caller count reduced 3 → **2** (intelligence, conversation).
 `atlas/decision/decision_engine.py` no longer imports `WatchlistEngine`. `DecisionResult.watchlist_intelligence` holds `WatchlistIntelligenceReport | None`. 1122 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 96 (2026-07-02): Final WatchlistEngine caller audit and migration order decision**
+
+**Decision:** Migrate `atlas/intelligence/` first (Sprint 97), then `atlas/conversation/` (Sprint 98). Do not migrate either in Sprint 96.
+
+**Rationale:**
+- Sprint 96 is an audit sprint only. Both remaining callers are more central than prior targets (monitoring, watchlist_review, decision).
+- `atlas/intelligence/` is categorically lower risk: `WatchlistAnalysis` content is never rendered or surfaced in user-visible output. The only effect is a confidence bonus (+3 for non-None watchlist) and a passthrough field in `IntelligenceReport`.
+- `atlas/conversation/` has a direct WATCHLIST_REVIEW response path that renders six specific `WatchlistAnalysis` fields (`strongest_opportunity`, `cheapest_valuation`, `highest_quality_company`). These have no 1:1 Blueprint equivalents. The semantic shift requires deliberate output design.
+- `ConversationEngine.__init__` passes `watchlist_engine=self.watchlist_engine` into `IntelligenceEngine(...)`. Sprint 97 removing this parameter from `IntelligenceEngine.__init__` makes Sprint 97 a prerequisite for Sprint 98's cleanup.
+
+**Alternatives considered:**
+- Migrate conversation first: rejected — higher semantic risk, dependent on intelligence migration for clean kwarg removal.
+- Migrate both in Sprint 96: rejected — this is a planning sprint; runtime changes require independent test coverage and careful output change documentation.
+- Leave both for deletion with WatchlistEngine: rejected — doing the migration first decouples type cleanup from engine deletion.
+
+**Outcome:** Migration plan document created at `docs/WatchlistEngineMigrationPlan.md`. Caller count remains 2. No runtime changes. 1122 tests passing (3 skipped). Demo passed. Release verification green.

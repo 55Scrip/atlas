@@ -645,3 +645,13 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 1122 tests passing (3 skipped). Demo passed. Release verification green.
 - Recommended Sprint 96 target: migrate `atlas/intelligence/` or `atlas/conversation/` WatchlistEngine
   dependency; `atlas/conversation/` carries the most WatchlistEngine surface area.
+
+**Sprint 96 (2026-07-02):** Final two WatchlistEngine callers audited; migration plan written; no runtime changes. Caller count remains 2.
+- `atlas/intelligence/engine.py`: LOW risk. `WatchlistAnalysis` used only for confidence bonus and stored passthrough. No rendering. Sprint 97 target.
+- `atlas/conversation/engine.py`: MEDIUM-HIGH risk. `_answer_watchlist_review()` reads 6 specific WatchlistAnalysis fields with no 1:1 Blueprint equivalents. Sprint 98 target.
+- Migration order: intelligence first (prerequisite: removes `watchlist_engine` param from `IntelligenceEngine.__init__`, forcing Sprint 98 to also clean up `ConversationEngine.__init__` cascade).
+- `docs/WatchlistEngineMigrationPlan.md` created with full audit, field mapping, deletion criteria, provider safety notes, and Sprint 97/98 implementation plans.
+- WatchlistEngine caller count: **2** (unchanged).
+- 1122 tests passing (3 skipped). Demo passed. Release verification green.
+- Sprint 97 target: migrate `atlas/intelligence/` — zero user-visible output change expected.
+- Sprint 98 target: migrate `atlas/conversation/` — `_answer_watchlist_review()` output text changes from score-ranking to research-attention framing.
