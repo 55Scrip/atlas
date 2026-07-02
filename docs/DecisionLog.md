@@ -2,6 +2,29 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 163 — Release Candidate Checkpoint After Cleanup Closures
+
+Decision: Sprint 163 confirms Atlas release-candidate stability after 10 cleanup tracks were closed.
+
+**Rationale:** After closing analysis, decision, providers, portfolio boundary, evidence, reasoning, risk, principles, comparison, and home cleanup tracks, Atlas remains stable. Deleted modules remain absent, active modules remain importable, retired CLI paths remain retired, provider boundaries remain unchanged, and release verification remains green.
+
+**Verification summary:**
+- Deleted modules: `atlas/reasoning/`, `atlas/analysis/portfolio.py`, `atlas/analysis/growth.py`, `atlas/analysis/macro.py`, `atlas/analysis/moat.py`, `atlas/analysis/quality.py`, `atlas/analysis/sentiment.py`, `atlas/analysis/technicals.py`, `atlas/analysis/valuation.py` — all confirmed absent ✓
+- Retired symbols (`ReasoningEngine` from `atlas.reasoning`, `PortfolioIntelligenceEngine`, `check_reasoning_report`, `check_intelligence_report`, `check_suitability_assessment`, `PortfolioAnalysis`, `PortfolioSignal`, `render_comparison_result`, etc.) — all hits are expected guardrail tests, docs/comments, or distinct Blueprint-layer classes (e.g. `atlas/domains/decision/` defines its own `ReasoningEngine`, unrelated to deleted `atlas.reasoning`) ✓
+- Active packages (`atlas.evidence`, `atlas.risk`, `atlas.principles`, `atlas.comparison`, `atlas.home`) — all importable, all exports intact ✓
+- Retired CLI commands (`atlas reason analyze`, `atlas risk size`, `atlas evidence assess`, `atlas portfolio analyze`, `atlas portfolio review`, `atlas watchlist analyze`, `atlas daily brief`) — all in `_RETIRED_REGISTRY`, none registered in `_REGISTRY`, none callable ✓
+- Active CLI commands (`atlas home`, `atlas compare`, `atlas daily summary`, `atlas intelligence analyze`, etc.) — all registered and active ✓
+- Provider boundaries — `atlas/comparison/` and `atlas/home/` both use `MockCompanyAnalysisProvider` as default; `YahooFinanceProvider` remains CLI opt-in only via `--provider yahoo`; no new provider imports introduced ✓
+- Demo: provider-free, deterministic ✓
+- RC2: green ✓
+- Tests: 1460 passed, 3 skipped ✓
+
+**Stale reference noted (non-blocking):** `atlas/cli/deprecations.py` `removal_criteria` for `atlas risk size` still mentions `atlas/reasoning engines` as a `RiskAnalysis` caller. `atlas/reasoning/` was deleted Sprint 153. The actual current callers are `atlas/intelligence/engine.py` and `atlas/conversation/engine.py`. This is a retired command record (never executed), not a stale active import. No runtime impact. Can be corrected in Sprint 164 during `atlas/intelligence/` audit if desired.
+
+**Sprint 164 recommended target:** Audit `atlas/intelligence/` package. `atlas/intelligence/` is a larger runtime surface and should be audited now that the cleanup closure sequence has been release-verified.
+
+---
+
 ## 2026-07-03: Sprint 162 — Close Home Cleanup Track
 
 Decision: Close the `atlas/home/` cleanup track. No cleanup work is warranted.

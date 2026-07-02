@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-03 (Sprint 162)  
-**Status:** `atlas/analysis/` CLOSED Sprint 141. `atlas/decision/` CLOSED Sprint 144. Provider boundary CLOSED Sprint 146. Portfolio boundary CLOSED Sprint 148. Evidence package CLOSED Sprint 150. Reasoning package CLOSED Sprint 153. Risk package CLOSED Sprint 155. Principles package CLOSED Sprint 158. Comparison package CLOSED Sprint 160. Home package CLOSED Sprint 162 (Sprint 162 confirmed Sprint 161 findings unchanged — no cleanup warranted). Sprint 163 recommended: audit `atlas/cli/` deprecated command registry. See `docs/HomeCleanupPlan.md`.
+**Updated:** 2026-07-03 (Sprint 163)  
+**Status:** `atlas/analysis/` CLOSED Sprint 141. `atlas/decision/` CLOSED Sprint 144. Provider boundary CLOSED Sprint 146. Portfolio boundary CLOSED Sprint 148. Evidence package CLOSED Sprint 150. Reasoning package CLOSED Sprint 153. Risk package CLOSED Sprint 155. Principles package CLOSED Sprint 158. Comparison package CLOSED Sprint 160. Home package CLOSED Sprint 162 (Sprint 162 confirmed Sprint 161 findings unchanged — no cleanup warranted). Sprint 163 RC checkpoint: all 10 closed tracks verified stable — deleted modules absent, active modules importable, retired CLI commands retired, provider boundaries unchanged, RC2 green. Sprint 164 recommended: audit `atlas/intelligence/` package.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
