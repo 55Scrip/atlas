@@ -259,6 +259,59 @@ def test_watchlist_engine_is_deleted() -> None:
     )
 
 
+def test_atlas_analysis_comparison_module_deleted() -> None:
+    """Sprint 103: atlas.analysis.comparison must not be importable — module fully deleted."""
+    import importlib
+    try:
+        importlib.import_module("atlas.analysis.comparison")
+        raise AssertionError("atlas.analysis.comparison should not be importable after Sprint 103")
+    except ModuleNotFoundError:
+        pass
+
+
+def test_atlas_analysis_comparison_file_does_not_exist() -> None:
+    """Sprint 103: atlas/analysis/comparison.py must not exist on disk."""
+    comparison_path = REPO_ROOT / "atlas" / "analysis" / "comparison.py"
+    assert not comparison_path.exists(), (
+        "atlas/analysis/comparison.py was deleted in Sprint 103 and must not exist"
+    )
+
+
+def test_no_production_code_imports_atlas_analysis_comparison() -> None:
+    """Sprint 103: no production module may import from atlas.analysis.comparison."""
+    search_dirs = [
+        d for d in (REPO_ROOT / "atlas").iterdir()
+        if d.is_dir() and d.name != "__pycache__"
+    ]
+    offenders = []
+    for directory in search_dirs:
+        for path in directory.rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            text = path.read_text(encoding="utf-8")
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("#"):
+                    continue
+                if "atlas.analysis.comparison" in stripped and (
+                    stripped.startswith("from ") or stripped.startswith("import ")
+                ):
+                    offenders.append(str(path.relative_to(REPO_ROOT)))
+                    break
+    assert not offenders, (
+        "Production code still imports from deleted atlas.analysis.comparison:\n"
+        + "\n".join(offenders)
+    )
+
+
+def test_comparison_types_importable_from_decision() -> None:
+    """Sprint 103: ComparisonResult must be importable from atlas.decision.comparison."""
+    from atlas.decision.comparison import ComparisonCandidate, ComparisonRanking, ComparisonResult
+    assert ComparisonResult is not None
+    assert ComparisonRanking is not None
+    assert ComparisonCandidate is not None
+
+
 def test_demo_script_does_not_use_watchlist_analyze_command() -> None:
     demo_script = REPO_ROOT / "scripts" / "run_daily_brief_demo.sh"
     text = demo_script.read_text()

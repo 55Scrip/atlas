@@ -750,3 +750,17 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 1 guardrail test added: `test_analysis_init_does_not_re_export_watchlist_types`.
 - `docs/AnalysisCleanupPlan.md` created with full inventory, candidate evaluations, and roadmap.
 - 1125 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 103 (2026-07-02):** `ComparisonEngine` retired; `atlas/analysis/comparison.py` deleted.
+- `ComparisonEngine` class removed. Types (`ComparisonCandidate`, `ComparisonRanking`,
+  `ComparisonResult`) and ranking logic moved to `atlas/decision/comparison.py` as a free function
+  `compare_tickers(tickers, provider, investment_engine)`.
+- `atlas/decision/decision_engine.py`: removed `comparison_engine` constructor param; `_compare()`
+  now calls `compare_tickers()` directly.
+- `atlas/decision/decision_result.py`: import updated to `atlas.decision.comparison`.
+- `atlas/analysis/__init__.py`: 5 comparison re-exports removed.
+- `tests/test_comparison.py`: 3 legacy `ComparisonEngine` tests removed; CLI test retained.
+- `tests/test_providers.py`: `ComparisonEngine` import and test removed.
+- 4 guardrail tests added: module deleted, file gone, no production imports, types importable from
+  new location.
+- 1125 tests passing (3 skipped). Demo passed. Release verification green.

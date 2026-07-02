@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from atlas.analysis.comparison import ComparisonResult
+from atlas.decision.comparison import ComparisonResult
 from atlas.analysis.engine import InvestmentReport
 from atlas.analysis.memory import MemoryComparison
 from atlas.analysis.portfolio import PortfolioAnalysis

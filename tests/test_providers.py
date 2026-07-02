@@ -1,6 +1,5 @@
 from urllib.error import HTTPError, URLError
 
-from atlas.analysis.comparison import ComparisonEngine
 from atlas.analysis.engine import AtlasInvestmentEngine
 from atlas.analysis.memory import MemoryEngine, MemoryStore
 from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine, PortfolioPosition
@@ -155,14 +154,6 @@ def test_portfolio_engine_can_analyze_ticker_from_provider():
     assert analysis.ticker == "NVDA"
     assert analysis.company == "NVIDIA"
 
-
-def test_comparison_engine_can_compare_tickers_from_provider():
-    provider = MockCompanyAnalysisProvider()
-
-    result = ComparisonEngine().compare_tickers(["NVDA", "AMD"], provider)
-
-    assert tuple(candidate.ticker for candidate in result.candidates) == ("NVDA", "AMD")
-    assert result.best_overall.winner.ticker in {"NVDA", "AMD"}
 
 
 def test_memory_engine_can_save_ticker_from_provider(tmp_path):

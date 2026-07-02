@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 103 target selected: `ComparisonEngine`
+**Status:** ACTIVE — Sprint 103 complete: `ComparisonEngine` retired. Next target: `MemoryEngine` (Sprint 104+)
 
 ---
 
@@ -220,7 +220,7 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 
 | Sprint | Target | Action | Risk |
 |---|---|---|---|
-| 103 | `atlas/analysis/comparison.py` | Retire/inline `ComparisonEngine` from decision engine; delete file | LOW-MEDIUM |
+| 103 ✓ | `atlas/analysis/comparison.py` | Retired `ComparisonEngine`; types moved to `atlas/decision/comparison.py`; file deleted | DONE |
 | 104+ | `atlas/analysis/memory.py` | Audit `atlas memory` CLI commands; consider retire or migrate | MEDIUM-HIGH |
 | Future | `atlas/analysis/portfolio.py` | High-coupling migration; 10+ callers; long-term project | HIGH |
 | Future | `atlas/analysis/engine.py` | Core scoring engine; 10+ callers; foundational — leave for late cleanup | VERY HIGH |

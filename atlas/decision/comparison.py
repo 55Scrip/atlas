@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Callable
 
-from atlas.analysis.company_analysis import CompanyAnalysis
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport
 from atlas.providers.base import CompanyDataProvider
 
@@ -31,70 +30,58 @@ class ComparisonResult:
     final_conclusion: str
 
 
-class ComparisonEngine:
-    def __init__(self, investment_engine: AtlasInvestmentEngine | None = None) -> None:
-        self.investment_engine = investment_engine or AtlasInvestmentEngine()
-
-    def compare(self, analyses: dict[str, CompanyAnalysis]) -> ComparisonResult:
-        if len(analyses) < 2:
-            raise ValueError("Comparison requires at least two companies.")
-        candidates = tuple(
-            ComparisonCandidate(
-                ticker=ticker.upper(),
-                report=self.investment_engine.analyze(analysis),
-            )
-            for ticker, analysis in analyses.items()
+def compare_tickers(
+    tickers: list[str] | tuple[str, ...],
+    provider: CompanyDataProvider,
+    investment_engine: AtlasInvestmentEngine,
+) -> ComparisonResult:
+    if len(tickers) < 2:
+        raise ValueError("Comparison requires at least two companies.")
+    candidates = tuple(
+        ComparisonCandidate(
+            ticker=ticker.upper(),
+            report=investment_engine.analyze(provider.get_company_analysis(ticker)),
         )
-        best_overall = _ranking(
+        for ticker in tickers
+    )
+    return ComparisonResult(
+        candidates=candidates,
+        best_overall=_ranking(
             category="Best Overall",
             candidates=candidates,
-            score_getter=lambda candidate: candidate.report.atlas_score,
+            score_getter=lambda c: c.report.atlas_score,
             metric_label="Atlas Score",
-        )
-        best_quality = _ranking(
+        ),
+        best_quality=_ranking(
             category="Best Quality",
             candidates=candidates,
-            score_getter=lambda candidate: candidate.report.quality.score,
+            score_getter=lambda c: c.report.quality.score,
             metric_label="quality score",
-        )
-        best_valuation = _ranking(
+        ),
+        best_valuation=_ranking(
             category="Best Valuation",
             candidates=candidates,
-            score_getter=lambda candidate: candidate.report.valuation.score,
+            score_getter=lambda c: c.report.valuation.score,
             metric_label="valuation score",
-        )
-        best_growth = _ranking(
+        ),
+        best_growth=_ranking(
             category="Best Growth",
             candidates=candidates,
-            score_getter=lambda candidate: candidate.report.growth.score,
+            score_getter=lambda c: c.report.growth.score,
             metric_label="growth score",
-        )
-        lowest_risk = _ranking(
+        ),
+        lowest_risk=_ranking(
             category="Lowest Risk",
             candidates=candidates,
-            score_getter=lambda candidate: candidate.report.risk.score,
+            score_getter=lambda c: c.report.risk.score,
             metric_label="risk profile score",
-        )
-        return ComparisonResult(
-            candidates=candidates,
-            best_overall=best_overall,
-            best_quality=best_quality,
-            best_valuation=best_valuation,
-            best_growth=best_growth,
-            lowest_risk=lowest_risk,
-            final_conclusion=_final_conclusion(best_overall.winner),
-        )
-
-    def compare_tickers(
-        self,
-        tickers: list[str] | tuple[str, ...],
-        provider: CompanyDataProvider,
-    ) -> ComparisonResult:
-        analyses = {
-            ticker.upper(): provider.get_company_analysis(ticker)
-            for ticker in tickers
-        }
-        return self.compare(analyses)
+        ),
+        final_conclusion=_final_conclusion(
+            tuple(
+                sorted(candidates, key=lambda c: (-c.report.atlas_score, -c.report.confidence, c.ticker))
+            )[0]
+        ),
+    )
 
 
 def render_comparison_result(result: ComparisonResult) -> str:
@@ -140,10 +127,10 @@ def _ranking(
     ordered_candidates = tuple(
         sorted(
             candidates,
-            key=lambda candidate: (
-                -score_getter(candidate),
-                -candidate.report.confidence,
-                candidate.ticker,
+            key=lambda c: (
+                -score_getter(c),
+                -c.report.confidence,
+                c.ticker,
             ),
         )
     )
@@ -162,8 +149,8 @@ def _ranking(
 
 def _render_ranking(ranking: ComparisonRanking) -> str:
     ordered = ", ".join(
-        f"{candidate.ticker} ({_ranking_score(ranking.category, candidate)}/100)"
-        for candidate in ranking.ordered_candidates
+        f"{c.ticker} ({_ranking_score(ranking.category, c)}/100)"
+        for c in ranking.ordered_candidates
     )
     return f"- {ranking.category}: {ranking.winner.ticker}. {ranking.reasoning} Ranking: {ordered}."
 

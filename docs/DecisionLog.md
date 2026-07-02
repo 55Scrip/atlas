@@ -1347,3 +1347,20 @@ Demo passed. Release verification green.
 - Both in one sprint: rejected — two different migration patterns; keeping them separate maintains the sprint-per-engine cleanup discipline that has worked well.
 
 **Outcome:** No runtime changes. `docs/AnalysisCleanupPlan.md` created. 1 guardrail test added. 1125 tests passing (3 skipped). Demo passed. Release verification green. Sprint 103 target: `ComparisonEngine`.
+
+---
+
+**Sprint 103 (2026-07-02): Retire `ComparisonEngine`; delete `atlas/analysis/comparison.py`**
+
+**Decision:** Move `ComparisonResult`/`ComparisonRanking`/`ComparisonCandidate` types and ranking logic to `atlas/decision/comparison.py` as a free function; delete `atlas/analysis/comparison.py`.
+
+**Rationale:**
+- Option C (retire comparison path entirely) rejected: `_comparison_tickers()` in decision engine pulls from `context.watchlist.items` when a watchlist is set, making the comparison path active whenever watchlist context is provided.
+- Option A (inline ranking) chosen: ranking logic is a simple sort across 5 score dimensions. Moving it to `atlas/decision/comparison.py` as `compare_tickers(tickers, provider, investment_engine)` eliminates the `ComparisonEngine` class, removes the constructor param from `AtlasDecisionEngine`, and preserves identical output.
+- `ComparisonResult` retained as a type in `atlas/decision/comparison.py` because it is stored on `DecisionResult` and inspected by one test. Changing the output type would be a behavior change; the type move is location-only.
+
+**Alternatives considered:**
+- Option B (route through `InvestmentComparisonEngine`): rejected — heavier, different output format, would change `DecisionResult` shape.
+- Keep `ComparisonEngine` class: rejected — no benefit to the class wrapper once callers are 0; free function is cleaner.
+
+**Outcome:** `atlas/analysis/comparison.py` deleted. `atlas.analysis.comparison` raises `ModuleNotFoundError`. `ComparisonResult` et al. importable from `atlas.decision.comparison`. `AtlasDecisionEngine` constructor lost `comparison_engine` param. 4 guardrail tests added. 1125 tests passing (3 skipped). Demo passed. Release verification green.

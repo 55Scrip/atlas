@@ -264,6 +264,28 @@ without output changes.
 
 ---
 
+## Sprint 103 — ComparisonEngine Retirement COMPLETED
+
+**Goal:** Retire `ComparisonEngine`; delete `atlas/analysis/comparison.py`.
+
+**Key finding:** Option C (retire decision comparison path entirely) was not viable — `_comparison_tickers()` pulls from `context.watchlist.items` when a watchlist is set, so the path is active in common usage. Option A (inline ranking) was used instead.
+
+**Changes made:**
+1. Created `atlas/decision/comparison.py` with `ComparisonCandidate`, `ComparisonRanking`,
+   `ComparisonResult` types and `compare_tickers(tickers, provider, investment_engine)` free function.
+2. `atlas/decision/decision_engine.py`: removed `comparison_engine` constructor param; `_compare()`
+   calls `compare_tickers()` directly.
+3. `atlas/decision/decision_result.py`: import updated to `atlas.decision.comparison`.
+4. `atlas/analysis/comparison.py` deleted.
+5. `atlas/analysis/__init__.py`: 5 comparison re-exports removed.
+6. `tests/test_comparison.py`: 3 legacy `ComparisonEngine` tests removed; CLI test retained.
+7. `tests/test_providers.py`: `ComparisonEngine` import and test removed.
+8. 4 guardrail tests added to `tests/test_watchlist_analyze_deprecation.py`.
+
+**Tests: 1125 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 101 — Watchlist Input Type Migration COMPLETED
 
 ### Completed: `WatchlistInput`/`WatchlistInputItem` moved to capability; `atlas/analysis/watchlist.py` deleted

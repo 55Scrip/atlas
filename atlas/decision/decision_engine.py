@@ -1,5 +1,5 @@
-from atlas.analysis.comparison import ComparisonEngine, ComparisonResult
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport
+from atlas.decision.comparison import ComparisonResult, compare_tickers
 from atlas.analysis.memory import MemoryComparison, MemoryEngine
 from atlas.analysis.portfolio import PortfolioAnalysis, PortfolioIntelligenceEngine
 from atlas.analysis.scores import clamp_score
@@ -19,12 +19,10 @@ class AtlasDecisionEngine:
         self,
         investment_engine: AtlasInvestmentEngine | None = None,
         portfolio_engine: PortfolioIntelligenceEngine | None = None,
-        comparison_engine: ComparisonEngine | None = None,
         memory_engine: MemoryEngine | None = None,
     ) -> None:
         self.investment_engine = investment_engine or AtlasInvestmentEngine()
         self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()
-        self.comparison_engine = comparison_engine or ComparisonEngine(self.investment_engine)
         self.memory_engine = memory_engine or MemoryEngine()
 
     def decide(
@@ -132,7 +130,7 @@ class AtlasDecisionEngine:
         tickers = _comparison_tickers(ticker, context)
         if len(tickers) < 2:
             return None
-        return self.comparison_engine.compare_tickers(tickers, provider)
+        return compare_tickers(tickers, provider, self.investment_engine)
 
     def _watchlist_intelligence(
         self,
