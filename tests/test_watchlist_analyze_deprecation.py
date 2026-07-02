@@ -477,6 +477,74 @@ def test_blueprint_domains_do_not_import_legacy_analysis() -> None:
     )
 
 
+def test_portfolio_domain_remains_importable() -> None:
+    """Sprint 110: atlas.domains.portfolio must remain importable with its core symbols.
+
+    Pre-migration guardrail: confirms the Blueprint portfolio domain is intact before
+    any portfolio.py migration work begins.
+    """
+    from atlas.domains.portfolio import (
+        PortfolioReviewEngine,
+        PortfolioSummary,
+        portfolio_summary,
+        sector_allocation,
+        country_allocation,
+    )
+    assert PortfolioReviewEngine is not None
+    assert PortfolioSummary is not None
+    assert portfolio_summary is not None
+    assert sector_allocation is not None
+    assert country_allocation is not None
+
+
+def test_portfolio_summary_command_uses_adapter_path() -> None:
+    """Sprint 110: atlas portfolio summary must use the legacy-to-domain adapter.
+
+    Pre-migration guardrail: confirms the already-migrated CLI path (portfolio summary)
+    still routes through atlas/adapters/portfolio.py rather than using legacy engine directly.
+    """
+    import ast
+    cli_source = (REPO_ROOT / "atlas" / "cli" / "main.py").read_text()
+    tree = ast.parse(cli_source)
+    imported_names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            for alias in node.names:
+                imported_names.add(alias.asname or alias.name)
+    assert "legacy_portfolio_to_domain_portfolio" in imported_names, (
+        "atlas/cli/main.py must import legacy_portfolio_to_domain_portfolio from "
+        "atlas.adapters.portfolio — confirms portfolio summary uses the domain path"
+    )
+
+
+def test_render_portfolio_analysis_has_no_active_production_caller() -> None:
+    """Sprint 110: render_portfolio_analysis has no active non-test production caller.
+
+    Pre-migration guardrail: documents that render_portfolio_analysis is safe to remove
+    in a future sprint once atlas/analysis/__init__.py re-export is cleaned up.
+    The only non-test reference is the __init__.py re-export.
+    """
+    import ast
+    production_callers: list[str] = []
+    atlas_root = REPO_ROOT / "atlas"
+    skip = {
+        REPO_ROOT / "atlas" / "analysis" / "portfolio.py",   # definition file
+        REPO_ROOT / "atlas" / "analysis" / "__init__.py",     # re-export only
+    }
+    for py_file in atlas_root.rglob("*.py"):
+        if "__pycache__" in str(py_file):
+            continue
+        if py_file in skip:
+            continue
+        source = py_file.read_text()
+        if "render_portfolio_analysis" in source:
+            production_callers.append(str(py_file.relative_to(REPO_ROOT)))
+    assert not production_callers, (
+        "render_portfolio_analysis found in production code — expected zero active "
+        f"non-test callers before removal: {production_callers}"
+    )
+
+
 def test_demo_script_does_not_use_watchlist_analyze_command() -> None:
     demo_script = REPO_ROOT / "scripts" / "run_daily_brief_demo.sh"
     text = demo_script.read_text()

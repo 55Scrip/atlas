@@ -821,3 +821,11 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - Guardrail tests updated to assert `atlas.analysis.scoring` is not importable and neither symbol appears in `atlas.analysis`.
 - `scoring.py` had no provider or network dependency.
 - 1136 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 110 (2026-07-02):** `atlas/analysis/portfolio.py` migration plan written. No runtime changes.
+- 17 production import sites across 13 packages confirmed. `PortfolioIntelligenceEngine` has no Blueprint equivalent — multi-sprint migration required.
+- `atlas portfolio summary` already uses adapter path (`legacy_portfolio_to_domain_portfolio` + domain calculations) — confirmed as template for future callers.
+- `render_portfolio_analysis` confirmed to have zero active non-test production callers — future deletion candidate.
+- `docs/PortfolioAnalysisMigrationPlan.md` created with 6-phase migration plan.
+- 3 pre-migration guardrail tests added: `test_portfolio_domain_remains_importable`, `test_portfolio_summary_command_uses_adapter_path`, `test_render_portfolio_analysis_has_no_active_production_caller`.
+- 1139 tests passing (3 skipped). Demo passed. Release verification green.

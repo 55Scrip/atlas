@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 109 complete: `atlas/analysis/scoring.py` deleted (`ScoringEngine`, `score_company` — zero production callers). 14 modules remain. Next meaningful cleanup target is `portfolio.py` migration planning or a checkpoint before tackling high-coupling modules.
+**Status:** ACTIVE — Sprint 110 complete: `atlas/analysis/portfolio.py` migration plan written. 14 modules remain. Full caller map, Blueprint overlap, and 6-phase migration plan documented in `docs/PortfolioAnalysisMigrationPlan.md`. Sprint 111 is a pre-migration guardrail sprint.
 
 ---
 
@@ -235,7 +235,12 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 | 107 ✓ | `atlas/analysis/report.py` | Retained in place; `render_company_analysis_report` removed (no callers); `build_investment_report` + `render_investment_report` kept (active callers) | DONE |
 | 108 ✓ | Checkpoint | Full inventory audit; verified deleted modules remain gone; Blueprint `domains/` confirmed import-free from `atlas.analysis`; `scoring.py` identified as Sprint 109 target | DONE |
 | 109 ✓ | `atlas/analysis/scoring.py` | Deleted — `ScoringEngine` and `score_company` had zero production callers; test-only module; `tests/test_scoring.py` stripped of dead tests | DONE |
-| Future | `atlas/analysis/portfolio.py` | High-coupling migration; 17 production import sites, 16 test files; long-term project | HIGH |
+| 110 ✓ | Planning sprint | `portfolio.py` migration plan written; 6-phase plan in `docs/PortfolioAnalysisMigrationPlan.md`; 3 pre-migration guardrail tests added | DONE |
+| **111** | Pre-migration guardrails | **Already done in Sprint 110 — guardrails added; Sprint 111 may begin Phase 2 (type extraction) or defer to portfolio capability creation** | LOW |
+| 112+ | `atlas/analysis/portfolio.py` Phase 2 | Extract `PortfolioSignal` type; create `atlas/capabilities/portfolio_intelligence/` stub | MEDIUM |
+| 113–119 | Caller migration | One caller per sprint, lowest-coupling first | HIGH |
+| ~120 | Provider migration | Remove `CompanyPortfolioProfile` from provider interface | HIGH |
+| ~121 | Delete `portfolio.py` | After zero active callers remain | — |
 | Future | `atlas/analysis/engine.py` | Core scoring engine; 10 production callers; foundational — leave for late cleanup | VERY HIGH |
 | Leave | `scores.py`, `growth.py`, `macro.py`, `moat.py`, `quality.py`, `sentiment.py`, `technicals.py`, `valuation.py` | Internal sub-modules; no direct cleanup needed | — |
 

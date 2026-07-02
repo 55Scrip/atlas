@@ -264,6 +264,30 @@ without output changes.
 
 ---
 
+## Sprint 110 — Portfolio Analysis Migration Plan COMPLETED
+
+**Goal:** Audit `atlas/analysis/portfolio.py`, map all callers, document Blueprint overlap, and define a safe multi-sprint migration plan.
+
+**Key findings:**
+- 17 production import sites across 13 packages. 16 test files.
+- `PortfolioIntelligenceEngine` has no Blueprint-aligned equivalent — cannot retire until a new `atlas/capabilities/portfolio_intelligence/` is built.
+- `atlas portfolio summary` already migrated (uses `legacy_portfolio_to_domain_portfolio` adapter + domain calculations). This is the template for future caller migration.
+- `render_portfolio_analysis` has zero active non-test production callers (only `atlas/analysis/__init__.py` re-export). Safe to remove in a future sprint.
+- Schema gap: `quality_score`/`risk_score` on `PortfolioPosition` have no equivalent in `atlas.shared.Holding` — bridging this is a blocking dependency for full migration.
+- `CompanyPortfolioProfile` is embedded in the provider interface — coordinated change across 3 provider files required.
+
+**Changes made:**
+1. `docs/PortfolioAnalysisMigrationPlan.md` created — full plan with 6 phases.
+2. 3 pre-migration guardrail tests added to `tests/test_watchlist_analyze_deprecation.py`:
+   - `test_portfolio_domain_remains_importable`
+   - `test_portfolio_summary_command_uses_adapter_path`
+   - `test_render_portfolio_analysis_has_no_active_production_caller`
+3. All 4 docs updated.
+
+**Tests: 1139 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 109 — scoring.py Deletion COMPLETED
 
 **Goal:** Delete `atlas/analysis/scoring.py` — confirmed zero production callers in Sprint 108.

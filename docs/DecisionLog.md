@@ -1476,3 +1476,22 @@ Demo passed. Release verification green.
 - Move weight validation into `AtlasInvestmentEngine`: out of scope — no production caller needs it.
 
 **Outcome:** `atlas/analysis/scoring.py` deleted. 2 names removed from `atlas/analysis/__init__.py`. `tests/test_scoring.py` stripped of 3 dead tests (2 surviving tests kept). 2 guardrail tests updated. 1136 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 110 (2026-07-02): `atlas/analysis/portfolio.py` migration plan**
+
+**Decision:** Multi-sprint migration required. Sprint 111 is a pre-migration guardrail sprint (Phase 1 of 6 already completed in Sprint 110). Phase 2 (type extraction) and Phase 3 (capability creation) are the next implementation targets.
+
+**Rationale:**
+- `PortfolioIntelligenceEngine` has no Blueprint equivalent. Cannot retire the module until `atlas/capabilities/portfolio_intelligence/` exists with equivalent 7-dimension portfolio-fit scoring.
+- Schema gap: `PortfolioPosition.quality_score` and `risk_score` are not in `atlas.shared.Holding`. A `PortfolioFitProfile` type or `Holding` extension is needed before provider migration.
+- `CompanyPortfolioProfile` is embedded in `CompanyDataProvider.get_portfolio_profile()`. 3 providers must be updated atomically.
+- 17 production import sites make a bulk migration unsafe. One caller per sprint is the only safe approach.
+- `render_portfolio_analysis` has zero active non-test production callers — can be removed as a low-risk first step in a future sprint.
+
+**Documents created:** `docs/PortfolioAnalysisMigrationPlan.md`
+
+**Guardrails added:** 3 pre-migration tests confirming domain is intact, adapter path is in use, and `render_portfolio_analysis` has no active production callers.
+
+**Outcome:** 3 guardrail tests added. 1139 tests passing (3 skipped). Demo passed. Release verification green.
