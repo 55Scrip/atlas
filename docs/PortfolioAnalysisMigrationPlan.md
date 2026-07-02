@@ -1,10 +1,10 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 132) — `PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation` deleted; stale exports removed from `atlas/analysis/__init__.py`  
-**Status:** IN PROGRESS — Phases 1–4 complete; `portfolio.py` reduced to 69 lines (3 active types + 2 active private helpers). Remaining: `CompanyPortfolioProfile` provider migration (HIGH risk), `Portfolio` CLI boundary.  
+**Updated:** 2026-07-02 (Sprint 134) — Sprint 134 audit: `Portfolio`/`PortfolioPosition` caller map complete; Sprint 135 target selected.  
+**Status:** IN PROGRESS — `portfolio.py` now 67 lines (2 active types + 2 private helpers). Remaining: `Portfolio` (CLI boundary, adapter input, 8 annotation callers) and `PortfolioPosition` (internal to `Portfolio`). Sprint 135 will lift both into `atlas/adapters/portfolio.py` and delete the file.  
 **Target module:** `atlas/analysis/portfolio.py`  
-**Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
+**Risk:** MEDIUM — all remaining callers are known; changes are mechanical import-line updates  
 
 ---
 
@@ -27,8 +27,8 @@ because 5+ active runtime paths still depend on it.
 
 | Symbol | Type | `__init__` export | Production runtime callers | Annotation-only callers | Blueprint destination |
 |---|---|---|---|---|---|
-| `Portfolio` | dataclass (frozen) | Yes | `cli/main.py` (JSON loading, 5 commands), `adapters/portfolio.py` (adapter input) | `home`, `suitability`, `risk_drift`, `intelligence`, `dashboard`, `conversation`, `decision_context` (TYPE_CHECKING) | `atlas.shared.Portfolio` (different schema; adapter exists) |
-| `PortfolioPosition` | dataclass (frozen) | Yes | None (used implicitly by `Portfolio.positions`) | None | `atlas.shared.Holding` (adapter exists) |
+| `Portfolio` | dataclass (frozen) | Yes | `cli/main.py` (JSON loading, 9 call sites), `adapters/portfolio.py` (adapter input), `portfolio_review/engine.py` (struct field) | `home`, `suitability`, `risk_drift`, `intelligence`, `dashboard`, `conversation`, `decision_context`, `monitoring` (TYPE_CHECKING — 8 engines) | `atlas/adapters/portfolio.py` (move in Sprint 135) |
+| `PortfolioPosition` | dataclass (frozen) | Yes | None — constructed only by `_position_from_mapping` inside `portfolio.py` | None | `atlas/adapters/portfolio.py` (move with Portfolio in Sprint 135) |
 | ~~`PortfolioSignal`~~ | ~~dataclass (frozen)~~ | No | None → **DELETED Sprint 132** | — | `PortfolioFitDimension` ✓ |
 | ~~`PortfolioRecommendation`~~ | ~~str Enum~~ | ~~Yes~~ | None → **DELETED Sprint 132** | — | None — intentionally omitted from Blueprint layer |
 | ~~`PortfolioAnalysis`~~ | ~~dataclass (frozen)~~ | ~~Yes~~ | None → **DELETED Sprint 132** | — | `PortfolioFitResult` ✓ |
@@ -528,25 +528,112 @@ is that file's own local function. No active callers anywhere.
 
 ---
 
+## Sprint 134 ✓ COMPLETE (Planning Sprint)
+
+**Audited all remaining `Portfolio` and `PortfolioPosition` callers. Selected Sprint 135 target.**
+
+### Sprint 134: Final portfolio.py state
+
+`atlas/analysis/portfolio.py` — 67 lines, 2 public types, 2 private helpers:
+
+```
+Portfolio       — dataclass (frozen), positions: tuple[PortfolioPosition, ...],
+                  classmethods: from_json_file(Path), from_mapping(dict)
+PortfolioPosition — dataclass (frozen), 8 fields: ticker, company, sector, country,
+                    market_cap, weight, quality_score, risk_score
+_position_from_mapping(payload) -> PortfolioPosition   — supports Portfolio.from_mapping
+_normalize_weight(weight) -> float                      — supports _position_from_mapping
+```
+
+### Sprint 134: `Portfolio` caller map (complete)
+
+| File | Import style | Runtime/Annotation | Access pattern | CLI path |
+|---|---|---|---|---|
+| `atlas/cli/main.py` | `from atlas.analysis.portfolio import Portfolio` | **RUNTIME** — 9 call sites | `Portfolio.from_json_file(path)` | All portfolio CLI commands |
+| `atlas/portfolio_review/engine.py` | `import Portfolio as LegacyPortfolio` | **RUNTIME** — struct field | `PortfolioReviewInput.portfolio: LegacyPortfolio` | `atlas portfolio review` |
+| `atlas/adapters/portfolio.py` | `import Portfolio as LegacyPortfolio` | **RUNTIME** — conversion input | `legacy_portfolio_to_domain_portfolio(LegacyPortfolio) -> atlas.shared.Portfolio` | All adapter flows |
+| `atlas/analysis/__init__.py` | re-export | Re-export | — | Public API |
+| `atlas/conversation/engine.py` | `TYPE_CHECKING` | Annotation only | `portfolio: Portfolio \| None` — passed to adapter | `atlas ask` |
+| `atlas/dashboard/engine.py` | `TYPE_CHECKING` | Annotation + `.positions` | `portfolio: Portfolio \| None`; accesses `.positions` (line 224) | `atlas dashboard show` |
+| `atlas/decision/decision_context.py` | `TYPE_CHECKING` | Annotation only | `portfolio: Portfolio \| None` — passed through | `atlas decide` |
+| `atlas/home/engine.py` | `TYPE_CHECKING` | Annotation only | `portfolio: Portfolio \| None` — passed to `PortfolioReviewInput` | `atlas home` |
+| `atlas/intelligence/engine.py` | `TYPE_CHECKING` | Annotation only | `portfolio: Portfolio \| None` — passed to adapter | `atlas intelligence` |
+| `atlas/monitoring/engine.py` | `TYPE_CHECKING` | Annotation + `.positions` | `portfolio: Portfolio \| None`; accesses `.positions` (lines 229-239) | `atlas monitor` |
+| `atlas/risk_drift/engine.py` | `TYPE_CHECKING` | Annotation + `.positions` | `current_portfolio: Portfolio \| None`; accesses `.positions` (line 590) | `atlas risk-drift` |
+| `atlas/suitability/engine.py` | `TYPE_CHECKING` | Annotation + `.positions` | `portfolio: Portfolio \| None`; accesses `.positions` (lines 594-611) | `atlas decide` |
+
+**Total `atlas.analysis.portfolio` production import sites: 12** (3 runtime + 1 re-export + 8 annotation)
+
+### Sprint 134: `PortfolioPosition` caller map (complete)
+
+`PortfolioPosition` has **zero production runtime callers outside `atlas/analysis/portfolio.py`**.
+
+- Constructed only by `_position_from_mapping()` inside `portfolio.py`.
+- All `PortfolioPosition(...)` calls in codebase are test fixtures.
+- `PortfolioPosition` is effectively internal to `Portfolio` — it cannot be migrated independently.
+
+### Sprint 134: Private helper review
+
+| Helper | Purpose | Called by | Move with Portfolio? |
+|---|---|---|---|
+| `_position_from_mapping(payload: dict)` | Parses one position dict → `PortfolioPosition` | `Portfolio.from_mapping()` | Yes — tightly coupled |
+| `_normalize_weight(weight: float)` | Normalizes weight (÷100 if >1, clamp 0–1) | `_position_from_mapping` | Yes — tightly coupled |
+
+Both helpers are required by `Portfolio.from_mapping` / `from_json_file`. They must move alongside `Portfolio` and `PortfolioPosition`.
+
+### Sprint 134: Destination review
+
+| Candidate | Verdict | Reason |
+|---|---|---|
+| `atlas.shared.Portfolio` | **Not a destination** — field mismatch | `atlas.shared.Portfolio` uses `.holdings: tuple[Holding, ...]` not `.positions`; no JSON loading methods; different schema. Cannot replace `LegacyPortfolio` directly. |
+| `atlas.shared.Holding` | **Not a destination** for `PortfolioPosition` | Schema partially compatible (field names align) but `Holding` has extra required fields (`company_id`, etc.) and `quality_score`/`risk_score` are `int \| None` vs `int`. Not a drop-in. |
+| `atlas/domains/portfolio/` | **Not a destination** | Domain layer is for business logic types; JSON loading does not belong here. |
+| **`atlas/adapters/portfolio.py`** | **✓ RECOMMENDED destination** | Adapter is already the legacy compatibility boundary. Already imports `LegacyPortfolio`. Making it self-contained is the lowest-risk move. Adapters are designed to hold legacy types during migration. |
+
+### Sprint 134: Sprint 135 target — recommended
+
+**"Lift and shift" — Move `Portfolio`, `PortfolioPosition`, `_position_from_mapping`, and `_normalize_weight` from `atlas/analysis/portfolio.py` into `atlas/adapters/portfolio.py`. Update all callers in the same sprint. Delete `atlas/analysis/portfolio.py`.**
+
+**Rationale for single-sprint completion:**
+- All 12 production import sites are known (audited Sprint 134).
+- All changes are mechanical: one import-line update per file, no behavior change.
+- Splitting into two sprints (move + shim, then delete shim) adds a dead-code shim that needs its own guardrail tests and a second round of review.
+- The adapter becomes self-contained — no more dependency on `atlas.analysis.portfolio`.
+
+**Estimated Sprint 135 file changes:**
+
+| File | Change | Risk |
+|---|---|---|
+| `atlas/adapters/portfolio.py` | Inline `Portfolio`, `PortfolioPosition`, helpers; remove `from atlas.analysis.portfolio import` | Medium — careful to preserve adapter behavior |
+| `atlas/analysis/portfolio.py` | **Delete** | Zero risk after all callers updated |
+| `atlas/analysis/__init__.py` | Remove `Portfolio`, `PortfolioPosition` re-exports | Low |
+| `atlas/cli/main.py` | Import from `atlas.adapters.portfolio` | Low |
+| `atlas/portfolio_review/engine.py` | Import from `atlas.adapters.portfolio` | Low |
+| `atlas/conversation/engine.py` | Update TYPE_CHECKING import | Low |
+| `atlas/dashboard/engine.py` | Update TYPE_CHECKING import | Low |
+| `atlas/decision/decision_context.py` | Update TYPE_CHECKING import | Low |
+| `atlas/home/engine.py` | Update TYPE_CHECKING import | Low |
+| `atlas/intelligence/engine.py` | Update TYPE_CHECKING import | Low |
+| `atlas/monitoring/engine.py` | Update TYPE_CHECKING import | Low |
+| `atlas/risk_drift/engine.py` | Update TYPE_CHECKING import | Low |
+| `atlas/suitability/engine.py` | Update TYPE_CHECKING import | Low |
+| ~15 test files | Update imports | Low |
+
+**Deletion criteria for `atlas/analysis/portfolio.py`:** zero import sites anywhere in codebase (excluding `__pycache__`).
+
+---
+
 ## Why Not Migrate Now
 
-1. **No Blueprint replacement for `PortfolioIntelligenceEngine`.** The 7-dimension
-   portfolio-fit scoring has no equivalent in `atlas/domains/portfolio/` or
-   `atlas/capabilities/`. Building it is a multi-sprint effort.
+(Historical context from earlier sprints — resolved by Sprint 134 planning)
+
+1. **No Blueprint replacement for `PortfolioIntelligenceEngine`.** ✓ Resolved Sprint 128 — engine deleted.
 
 2. **Schema gap: `quality_score`/`risk_score` missing from `atlas.shared.Holding`.**
-   The intelligence analysis depends on per-holding quality and risk scores. The domain
-   `Holding` entity carries only market value and weight. Bridging this gap requires either
-   extending `Holding` (risky for the domain layer) or creating a new `PortfolioFitProfile`
-   type in the capability layer.
+   `atlas.shared.Holding` now carries `quality_score: int | None` and `risk_score: int | None`. The gap is bridged in the adapter.
 
-3. **Provider contract coupling.** `CompanyPortfolioProfile` is embedded in the provider
-   interface (`CompanyDataProvider.get_portfolio_profile()`). Changing it requires updating
-   all 3 provider implementations atomically.
+3. **Provider contract coupling.** ✓ Resolved Sprint 133 — providers now return `PortfolioFitInput` directly.
 
-4. **17 active import sites.** Migrating one or two callers at a time is the only safe
-   approach. Each migration sprint must leave all other callers working unchanged.
+4. **Active import sites.** Now 12 (down from 17). All remaining callers audited and mapped above.
 
-5. **Existing deprecation guardrail.** `test_portfolio_analyze_deprecation.py` asserts
-   that named callers still import from `atlas.analysis.portfolio` as a lock. Any migration
-   sprint must update that guardrail in sync with the migration.
+5. **Existing deprecation guardrail.** `test_portfolio_analyze_deprecation.py` asserts that known callers still import from `atlas.analysis.portfolio`. Sprint 135 must update these guardrails in sync with the migration.

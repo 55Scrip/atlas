@@ -1833,6 +1833,21 @@ Demo passed. Release verification green.
 
 **Outcome:** 2 files changed (engine + test). 7 new tests. 1245 tests passing (3 skipped). Demo passed. RC2 green. Recommended Sprint 119: `atlas/risk_drift/engine.py`.
 
+**Sprint 134 (2026-07-02): Planning sprint — audit `Portfolio`/`PortfolioPosition` remaining callers**
+
+**Decision:** Sprint 135 target is "lift and shift" — move `Portfolio`, `PortfolioPosition`, and 2 private helpers from `atlas/analysis/portfolio.py` into `atlas/adapters/portfolio.py` and delete the source file in the same sprint.
+
+**Rationale:**
+- All 12 production import sites are now mapped (3 runtime + 1 re-export + 8 annotation-only).
+- `atlas/adapters/portfolio.py` is the correct destination: already the legacy compatibility boundary, already imports `LegacyPortfolio`; making it self-contained eliminates the circular dependency direction.
+- `atlas.shared.Portfolio` and `atlas.shared.Holding` are NOT drop-in replacements — different container field names (`.holdings` vs `.positions`) and no JSON loading methods. Migrating to them would require changing all 4 engines that access `.positions` directly, plus moving JSON loading out of the types entirely.
+- Single-sprint completion avoids a "shim sprint" (move + keep stale re-export) that would need its own guardrail tests.
+- `PortfolioPosition` has zero production runtime callers outside `portfolio.py` itself — it can only move alongside `Portfolio`.
+
+**Outcome:** Caller map documented. Sprint 134 guardrail tests added. 1352 tests passing (3 skipped). Demo passed. RC2 green.
+
+---
+
 **Sprint 133 (2026-07-02): Delete `CompanyPortfolioProfile`; migrate providers to `PortfolioFitInput`**
 
 **Decision:** Option A (thin identity adapter). Updated `CompanyDataProvider.get_portfolio_profile()` return type across all 3 provider files to `PortfolioFitInput`. Changed `portfolio_fit_input_from_profile` to identity function rather than removing it — avoids touching 4 engine callers (conversation, dashboard, intelligence, decision) and their tests.

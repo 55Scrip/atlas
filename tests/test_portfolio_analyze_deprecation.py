@@ -391,3 +391,67 @@ def test_sprint133_portfolio_module_remaining_symbols() -> None:
     assert not hasattr(mod, "CompanyPortfolioProfile"), (
         "CompanyPortfolioProfile deleted in Sprint 133"
     )
+
+
+# ---------------------------------------------------------------------------
+# Sprint 134: Caller audit guardrails — lock remaining import sites
+# ---------------------------------------------------------------------------
+
+def test_sprint134_portfolio_boundary_types_still_importable() -> None:
+    """Sprint 134: Portfolio and PortfolioPosition must still be importable — active CLI boundary."""
+    from atlas.analysis.portfolio import Portfolio, PortfolioPosition  # noqa: F401
+    assert Portfolio is not None
+    assert PortfolioPosition is not None
+
+
+def test_sprint134_deleted_types_not_importable_individually() -> None:
+    """Sprint 134: individual ImportError checks for each deleted legacy type."""
+    import pytest
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import PortfolioIntelligenceEngine  # noqa: F401
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import PortfolioAnalysis  # noqa: F401
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import PortfolioSignal  # noqa: F401
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import PortfolioRecommendation  # noqa: F401
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import CompanyPortfolioProfile  # noqa: F401
+
+
+def test_sprint134_portfolio_module_private_helpers_present() -> None:
+    """Sprint 134: both active private helpers must still exist — required by Portfolio.from_mapping."""
+    import atlas.analysis.portfolio as mod
+    assert hasattr(mod, "_position_from_mapping"), (
+        "_position_from_mapping deleted prematurely — required by Portfolio.from_mapping"
+    )
+    assert hasattr(mod, "_normalize_weight"), (
+        "_normalize_weight deleted prematurely — required by _position_from_mapping"
+    )
+
+
+def test_sprint134_adapter_still_provides_legacy_conversion() -> None:
+    """Sprint 134: adapter must still provide legacy_portfolio_to_domain_portfolio."""
+    from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio  # noqa: F401
+    assert legacy_portfolio_to_domain_portfolio is not None
+
+
+def test_sprint134_cli_still_imports_portfolio_from_analysis() -> None:
+    """Sprint 134: CLI must still import Portfolio from atlas.analysis.portfolio (pre-Sprint 135)."""
+    import pathlib
+    source = pathlib.Path("atlas/cli/main.py").read_text(encoding="utf-8")
+    assert "atlas.analysis.portfolio" in source, (
+        "CLI must still import Portfolio from atlas.analysis.portfolio until Sprint 135"
+    )
+
+
+def test_sprint134_portfolio_fit_input_from_profile_is_identity() -> None:
+    """Sprint 134: portfolio_fit_input_from_profile is now identity — PortfolioFitInput in, PortfolioFitInput out."""
+    from atlas.adapters.portfolio import portfolio_fit_input_from_profile
+    from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
+    fit = PortfolioFitInput(
+        ticker="TSM", company="TSMC", sector="Semiconductors",
+        country="Taiwan", market_cap=600_000_000_000.0,
+        quality_score=88, risk_score=55,
+    )
+    assert portfolio_fit_input_from_profile(fit) is fit
