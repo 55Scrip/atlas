@@ -2,6 +2,26 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 142 — Decision Package Cleanup Checkpoint
+
+Decision: Begin `atlas/decision/` cleanup track with an audit-only sprint. No runtime changes.
+
+**Findings:**
+- 7 modules, 1010 lines total.
+- All 5 `__init__.py` exports are active and intentional.
+- `decision_engine.py` (474 lines): foundational — composes portfolio fit, comparison, watchlist intelligence, memory. No stale imports.
+- `decision_context.py` (23 lines): clean frozen DTO. `Portfolio` TYPE_CHECKING-guarded.
+- `decision_result.py` (42 lines): clean frozen DTO. `PortfolioFitResult` TYPE_CHECKING-guarded.
+- `decision_renderer.py` (32 lines): active utility.
+- `comparison.py` (186 lines): canonical comparison location (migrated from `atlas.analysis.comparison` Sprint 103). **`render_comparison_result` is dead — zero external callers.** `_render_ranking` and `_ranking_score` are also dead (only called by `render_comparison_result`).
+- `memory.py` (238 lines): canonical memory/history location (migrated from `atlas.analysis.memory` Sprint 104). All 7 public symbols active.
+- Stale import audit: zero stale production imports. All stale symbol hits are guardrail tests or docstring migration notes.
+- Blueprint overlap: `atlas/domains/decision/` has same-named types (`DecisionContext`, `DecisionResult`) but different purpose and shape. No migration warranted.
+
+**Sprint 143 recommended target:** Delete `render_comparison_result`, `_render_ranking`, `_ranking_score` from `atlas/decision/comparison.py` — zero external callers, ~45 dead lines, no CLI surface, no behavior change.
+
+---
+
 ## 2026-07-02: Sprint 141 — Close Analysis Cleanup Track
 
 Decision: Formally close the `atlas/analysis/` cleanup track after Sprints 100–141. No further cleanup sprints are planned until `engine.py` has a clear successor architecture.
