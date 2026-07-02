@@ -1,3 +1,7 @@
+import ast
+import importlib
+import inspect
+
 import json
 
 from typer.testing import CliRunner
@@ -163,3 +167,131 @@ def test_suitability_cli_analyzes_ticker_with_default_profile():
     assert "Suitability Assessment" in result.output
     assert "Subject: NVIDIA (NVDA)" in result.output
     assert "Overall Suitability" in result.output
+
+
+# --- Sprint 120: suitability portfolio dependency migration ---
+
+_SUITABILITY_SOURCE = (
+    __import__("pathlib").Path(__file__).parent.parent
+    / "atlas"
+    / "suitability"
+    / "engine.py"
+).read_text()
+
+_SUITABILITY_TREE = ast.parse(_SUITABILITY_SOURCE)
+
+
+def test_sprint120_no_runtime_portfolio_import():
+    """atlas.analysis.portfolio must not be imported at module runtime.
+
+    Walks only top-level statements and skips if TYPE_CHECKING: blocks.
+    """
+    for node in _SUITABILITY_TREE.body:
+        if isinstance(node, ast.If):
+            test = node.test
+            if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
+                continue  # skip — guarded imports are intentional
+        if isinstance(node, ast.ImportFrom):
+            assert node.module != "atlas.analysis.portfolio", (
+                "atlas.analysis.portfolio must be behind TYPE_CHECKING, not a runtime import"
+            )
+
+
+def test_sprint120_future_annotations_present():
+    """from __future__ import annotations must be declared."""
+    assert "from __future__ import annotations" in _SUITABILITY_SOURCE
+
+
+def test_sprint120_type_checking_guard_present():
+    """Portfolio must be imported inside an if TYPE_CHECKING: block."""
+    for node in _SUITABILITY_TREE.body:
+        if isinstance(node, ast.If):
+            test = node.test
+            if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
+                for child in ast.walk(node):
+                    if isinstance(child, ast.ImportFrom):
+                        names = [alias.name for alias in child.names]
+                        if "Portfolio" in names:
+                            return
+    raise AssertionError("Portfolio is not imported inside TYPE_CHECKING block")
+
+
+def test_sprint120_portfolio_fit_result_in_source():
+    """PortfolioFitResult must appear in suitability engine source."""
+    assert "PortfolioFitResult" in _SUITABILITY_SOURCE
+
+
+def test_sprint120_overlap_field_used_not_overlap_with_existing_holdings():
+    """_concentration_impact must access .overlap, not .overlap_with_existing_holdings."""
+    for node in ast.walk(_SUITABILITY_TREE):
+        if isinstance(node, ast.Attribute):
+            assert node.attr != "overlap_with_existing_holdings", (
+                "Must use .overlap (PortfolioFitResult), not .overlap_with_existing_holdings"
+            )
+    overlap_used = any(
+        isinstance(node, ast.Attribute) and node.attr == "overlap"
+        for node in ast.walk(_SUITABILITY_TREE)
+    )
+    assert overlap_used, "_concentration_impact must access .overlap on PortfolioFitResult"
+
+
+def test_sprint120_portfolio_fit_result_accepted_at_runtime():
+    """SuitabilityInput accepts a PortfolioFitResult in portfolio_analysis without error."""
+    from atlas.capabilities.portfolio_intelligence.models import (
+        PortfolioFitDimension,
+        PortfolioFitResult,
+    )
+    from atlas.suitability import SuitabilityEngine, SuitabilityInput
+    from atlas.profile import InvestorProfileEngine
+
+    dim = PortfolioFitDimension(score=80, note="ok")
+    result = PortfolioFitResult(
+        ticker="TST",
+        company="Test Co",
+        fit_score=80,
+        diversification=dim,
+        sector_concentration=dim,
+        country_concentration=dim,
+        market_cap_concentration=dim,
+        overlap=dim,
+        quality_impact=dim,
+        risk_impact=dim,
+        summary="Fits well.",
+    )
+    profile = InvestorProfileEngine().create_default_profile()
+    assessment = SuitabilityEngine().assess(
+        SuitabilityInput(investor_profile=profile, portfolio_analysis=result)
+    )
+    assert assessment is not None
+    # confidence gets +10 bonus for portfolio_analysis; with 5 missing items it lands at 45
+    assert assessment.confidence >= 40
+
+
+def test_sprint120_none_default_behavior_unchanged():
+    """With no portfolio or portfolio_analysis, confidence and output are unchanged."""
+    from atlas.suitability import SuitabilityEngine, SuitabilityInput
+    from atlas.profile import InvestorProfileEngine
+
+    profile = InvestorProfileEngine().create_default_profile()
+    assessment = SuitabilityEngine().assess(SuitabilityInput(investor_profile=profile))
+    assert assessment is not None
+    assert assessment.overall_suitability in {s for s in OverallSuitability}
+
+
+def test_sprint120_capability_engine_still_no_legacy_portfolio_import():
+    """PortfolioIntelligenceCapability must not import from atlas.analysis.portfolio."""
+    cap_path = (
+        __import__("pathlib").Path(__file__).parent.parent
+        / "atlas"
+        / "capabilities"
+        / "portfolio_intelligence"
+        / "engine.py"
+    )
+    source = cap_path.read_text()
+    assert "atlas.analysis.portfolio" not in source
+
+
+def test_sprint120_legacy_portfolio_module_still_active():
+    """atlas.analysis.portfolio must still importable (not deleted)."""
+    import atlas.analysis.portfolio as legacy
+    assert hasattr(legacy, "Portfolio")

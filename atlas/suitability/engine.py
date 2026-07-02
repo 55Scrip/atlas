@@ -1,9 +1,16 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from atlas.analysis.engine import InvestmentReport
-from atlas.analysis.portfolio import Portfolio, PortfolioAnalysis
 from atlas.analysis.scores import clamp_score
+from atlas.capabilities.portfolio_intelligence import PortfolioFitResult
+
+if TYPE_CHECKING:
+    from atlas.analysis.portfolio import Portfolio
+
 from atlas.intelligence import IntelligenceReport
 from atlas.profile import (
     InvestmentGoal,
@@ -44,7 +51,7 @@ class SuitabilityInput:
     ticker: str | None = None
     investment_report: InvestmentReport | None = None
     portfolio: Portfolio | None = None
-    portfolio_analysis: PortfolioAnalysis | None = None
+    portfolio_analysis: PortfolioFitResult | None = None
     theme_analysis: ThemeAnalysis | None = None
     intelligence_report: IntelligenceReport | None = None
     preferred_investment_style: str | None = None
@@ -480,14 +487,14 @@ def _valuation_sensitivity(valuation_score: int | None, volatility: str) -> str:
 
 def _concentration_impact(
     portfolio: Portfolio | None,
-    portfolio_analysis: PortfolioAnalysis | None,
+    portfolio_analysis: PortfolioFitResult | None,
 ) -> str:
     if portfolio_analysis is not None:
         signals = (
             portfolio_analysis.sector_concentration,
             portfolio_analysis.country_concentration,
             portfolio_analysis.market_cap_concentration,
-            portfolio_analysis.overlap_with_existing_holdings,
+            portfolio_analysis.overlap,
         )
         if any(signal.score < 45 for signal in signals):
             return "high"
