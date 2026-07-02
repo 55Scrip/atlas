@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from atlas.analysis.engine import InvestmentReport
-if TYPE_CHECKING:
-    from atlas.analysis.portfolio import PortfolioAnalysis
+from atlas.capabilities.portfolio_intelligence import PortfolioFitResult
 
 from atlas.economics import EconomicSignalAnalysis
 from atlas.market import MarketHealthReport, MarketRegimeAnalysis
@@ -39,7 +37,7 @@ class ContradictingFactor:
 @dataclass(frozen=True)
 class ReasoningInput:
     company_analysis: InvestmentReport | None = None
-    portfolio_analysis: PortfolioAnalysis | None = None
+    portfolio_analysis: PortfolioFitResult | None = None
     theme_analysis: ThemeAnalysis | None = None
     monitoring_report: MonitoringAlert | None = None
     economic_signals: EconomicSignalAnalysis | None = None
@@ -171,9 +169,9 @@ def _collect_evidence(reasoning_input: ReasoningInput) -> tuple[Evidence, ...]:
         items.append(
             Evidence(
                 "Portfolio Analysis",
-                analysis.final_reasoning,
+                analysis.summary,
                 78,
-                analysis.portfolio_score,
+                analysis.fit_score,
             )
         )
     if reasoning_input.theme_analysis is not None:
@@ -362,7 +360,7 @@ def _bearish_factors(reasoning_input: ReasoningInput) -> tuple[ContradictingFact
                     "Portfolio concentration",
                     Evidence(
                         "Portfolio Analysis",
-                        analysis.sector_concentration.reasoning,
+                        analysis.sector_concentration.note,
                         78,
                         analysis.sector_concentration.score,
                     ),

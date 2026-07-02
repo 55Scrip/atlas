@@ -132,7 +132,7 @@ _RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
             "Shared types (Portfolio, PortfolioAnalysis, PortfolioPosition, etc.) remain. "
             "Remaining runtime imports: atlas/cli/main.py (Portfolio for JSON loading), "
             "atlas/adapters/portfolio.py (LegacyPortfolio adapter), atlas/providers/ (CompanyPortfolioProfile), "
-            "atlas/portfolio_review/engine.py (LegacyPortfolio), atlas/reasoning/engine.py (PortfolioAnalysis).",
+            "atlas/portfolio_review/engine.py (LegacyPortfolio). Sprint 131: reasoning/engine.py migrated to PortfolioFitResult — PortfolioAnalysis/PortfolioSignal/PortfolioRecommendation are now test-only.",
         ),
     ),
     DeprecatedCommand(

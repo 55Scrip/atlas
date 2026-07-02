@@ -1,4 +1,4 @@
-# Architecture Consolidation (Sprint 44, updated Sprint 67, reviewed Sprint 71, reviewed Sprint 130)
+# Architecture Consolidation (Sprint 44, updated Sprint 67, reviewed Sprint 71, reviewed Sprint 131)
 
 This document records the current state of Atlas architecture as of RC2 (Sprint 71),
 clarifies which layers are current vs. legacy, and defines guardrails for
@@ -894,3 +894,9 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - Audit finding: `current_portfolio_analysis` was dead code — no caller ever passes non-None. Migration is behavior-preserving.
 - 9 new tests in `tests/test_risk_drift_engine.py`. 1254 tests passing (3 skipped). Demo passed. Release verification green.
 - Recommended Sprint 120 target: `atlas/suitability/engine.py`.
+
+**Sprint 131 (2026-07-02):** `atlas/reasoning/engine.py` — `ReasoningInput.portfolio_analysis` retyped from `PortfolioAnalysis | None` to `PortfolioFitResult | None`. TYPE_CHECKING guard fully removed. Field accesses updated: `.final_reasoning` → `.summary`, `.portfolio_score` → `.fit_score`, `.sector_concentration.reasoning` → `.sector_concentration.note`. `from atlas.capabilities.portfolio_intelligence import PortfolioFitResult` added as runtime import. `TYPE_CHECKING` and its import block removed entirely.
+- `tests/test_reasoning_engine.py`: TYPE_CHECKING guard test replaced with `test_sprint131_reasoning_engine_uses_portfolio_fit_result`; portfolio field acceptance test rewritten with `PortfolioFitResult`/`PortfolioFitDimension`; 6 new Sprint 131 guardrail tests added.
+- `tests/test_portfolio_analyze_deprecation.py`: `PORTFOLIO_ENGINE_CALLERS` empty — all 5 callers migrated.
+- `PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation` now test-only; zero production callers. Deletion candidates for Sprint 132.
+- 1341 tests passing (3 skipped). Demo passed. Release verification green.

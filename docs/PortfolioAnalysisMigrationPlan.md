@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 130) — 16 dead private helpers + `get_mock_company_portfolio_profile` deleted  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 complete for PortfolioIntelligenceEngine; `portfolio.py` reduced to 109 lines (6 types + 2 active private helpers). Remaining: `PortfolioAnalysis` annotation-only cleanup, `CompanyPortfolioProfile` provider migration, `Portfolio` CLI boundary.  
+**Updated:** 2026-07-02 (Sprint 131) — `ReasoningInput.portfolio_analysis` retyped from `PortfolioAnalysis | None` to `PortfolioFitResult | None`; field accesses updated; TYPE_CHECKING guard removed  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 complete for PortfolioIntelligenceEngine and reasoning layer; `portfolio.py` at 109 lines (6 types + 2 active private helpers). Remaining: `PortfolioAnalysis`/`PortfolioSignal`/`PortfolioRecommendation` deletion (test-only, zero production callers), `CompanyPortfolioProfile` provider migration, `Portfolio` CLI boundary.  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -31,7 +31,7 @@ because 5+ active runtime paths still depend on it.
 | `PortfolioPosition` | dataclass (frozen) | Yes | None (used implicitly by `Portfolio.positions`) | None | `atlas.shared.Holding` (adapter exists) |
 | `PortfolioSignal` | dataclass (frozen) | No | None | `PortfolioAnalysis` field types (no external callers) | `PortfolioFitDimension` — but only needed if `PortfolioAnalysis` retained |
 | `PortfolioRecommendation` | str Enum | Yes | None | `PortfolioAnalysis.recommendation` field type only | None — intentionally omitted from Blueprint layer |
-| `PortfolioAnalysis` | dataclass (frozen) | Yes | None | `reasoning/engine.py` TYPE_CHECKING only | `PortfolioFitResult` (Blueprint equivalent exists) |
+| `PortfolioAnalysis` | dataclass (frozen) | Yes | None | Test-only (Sprint 131: `reasoning/engine.py` fully migrated to `PortfolioFitResult`) | `PortfolioFitResult` ✓ Migration complete |
 | `CompanyPortfolioProfile` | dataclass (frozen) | No | `providers/mock.py`, `providers/yahoo.py`, `adapters/portfolio.py` | `providers/base.py` TYPE_CHECKING only | `PortfolioFitInput` (Blueprint equivalent exists) |
 
 ### Deleted symbols (prior sprints)
@@ -90,16 +90,16 @@ were fully superseded and have been removed.
 | `atlas/providers/base.py` | `CompanyPortfolioProfile` | TYPE_CHECKING only — provider protocol | All provider-using commands |
 | `atlas/providers/mock.py` | `CompanyPortfolioProfile` | **RUNTIME** — mock data | Mock provider commands |
 | `atlas/providers/yahoo.py` | `CompanyPortfolioProfile` | **RUNTIME** — returns profile from Yahoo | `--provider yahoo` |
-| `atlas/reasoning/engine.py` | `PortfolioAnalysis` | TYPE_CHECKING annotation only — `ReasoningInput.portfolio_analysis` never populated in production | Reasoning flows |
+| `atlas/reasoning/engine.py` | ~~`PortfolioAnalysis`~~ → `PortfolioFitResult` | **MIGRATED Sprint 131** — `ReasoningInput.portfolio_analysis` retyped; TYPE_CHECKING guard removed | Reasoning flows |
 | `atlas/risk_drift/engine.py` | `Portfolio` | TYPE_CHECKING annotation only | `atlas risk-drift` |
 | `atlas/suitability/engine.py` | `Portfolio` | TYPE_CHECKING annotation only + runtime `.positions` duck-typing | `atlas decide` |
 
 **Test callers:** ~14 test files use at least one legacy portfolio symbol.
 
-**Key finding (Sprint 129):** `PortfolioAnalysis` has zero production runtime callers.
-`reasoning/engine.py` holds it TYPE_CHECKING-only; the `ReasoningInput.portfolio_analysis`
-field is never populated in the live execution path (intelligence/decision pass `PortfolioFitResult`
-to their own result types, not to `ReasoningInput`). `PortfolioAnalysis` is test-fixture-only.
+**Key finding (Sprint 129, confirmed Sprint 131):** `PortfolioAnalysis` has zero production runtime callers.
+Sprint 131 completed the migration: `reasoning/engine.py` `ReasoningInput.portfolio_analysis` is now
+typed as `PortfolioFitResult | None`. The TYPE_CHECKING guard for `PortfolioAnalysis` has been removed.
+`PortfolioAnalysis`, `PortfolioSignal`, and `PortfolioRecommendation` are now test-only symbols.
 
 ---
 
@@ -340,7 +340,7 @@ Migrate one production caller per sprint, in order of impact risk:
 
 **Sprint 117 adapter checkpoint:** `portfolio_fit_input_from_profile` centralized in `atlas/adapters/portfolio.py` (Sprint 117). `legacy_portfolio_to_domain_portfolio` was already centralized. Conversation and dashboard both updated to use the shared builder. No new caller migrated.
 
-4. ✓ `atlas/reasoning/engine.py` — **MIGRATED Sprint 118**; `from atlas.analysis.portfolio import PortfolioAnalysis` moved behind `TYPE_CHECKING` guard; `from __future__ import annotations` added; runtime field accesses (`analysis.final_reasoning`, `analysis.portfolio_score`, `analysis.sector_concentration.*`) remain as duck-typed attribute access — no import needed. No behavior change.
+4. ✓ `atlas/reasoning/engine.py` — **MIGRATED Sprint 118 + Sprint 131**; Sprint 118: `PortfolioAnalysis` moved behind TYPE_CHECKING guard; Sprint 131: TYPE_CHECKING guard fully removed; `ReasoningInput.portfolio_analysis` retyped as `PortfolioFitResult | None`; field accesses updated: `.final_reasoning` → `.summary`, `.portfolio_score` → `.fit_score`, `.sector_concentration.reasoning` → `.sector_concentration.note`. `PortfolioAnalysis` import eliminated entirely.
 
 5. ✓ `atlas/risk_drift/engine.py` — **MIGRATED Sprint 119**; `Portfolio` moved to TYPE_CHECKING (duck-typed `.positions` access preserved for current callers); `PortfolioAnalysis` removed — `current_portfolio_analysis` field now typed as `PortfolioFitResult | None`; `_concentration_in_portfolio_analysis` updated to use `.overlap.score`. Dead code path — no behavior change.
 
@@ -448,27 +448,38 @@ is that file's own local function. No active callers anywhere.
 
 ---
 
-## Sprint 131 Target
+## Sprint 131 ✓ COMPLETE
 
-**Recommended Sprint 131 target: Migrate `PortfolioAnalysis` out of `reasoning/engine.py`.**
+**Migrated `ReasoningInput.portfolio_analysis` from `PortfolioAnalysis | None` to `PortfolioFitResult | None`.**
+
+**Approach used: Option C (retype as `PortfolioFitResult | None`).**
+
+**Changes made:**
+- Removed `from typing import TYPE_CHECKING` (now unused after guard removal)
+- Removed `if TYPE_CHECKING: from atlas.analysis.portfolio import PortfolioAnalysis` block
+- Added `from atlas.capabilities.portfolio_intelligence import PortfolioFitResult` (runtime import)
+- `ReasoningInput.portfolio_analysis: PortfolioAnalysis | None = None` → `PortfolioFitResult | None = None`
+- `analysis.final_reasoning` → `analysis.summary` (PortfolioFitResult field)
+- `analysis.portfolio_score` → `analysis.fit_score` (PortfolioFitResult field)
+- `analysis.sector_concentration.reasoning` → `analysis.sector_concentration.note` (PortfolioFitDimension field)
+- `tests/test_reasoning_engine.py`: replaced TYPE_CHECKING guard test with `test_sprint131_reasoning_engine_uses_portfolio_fit_result`; rewrote portfolio field acceptance test using `PortfolioFitResult` + `PortfolioFitDimension`; added 6 Sprint 131 guardrail tests
+- `tests/test_portfolio_analyze_deprecation.py`: removed `reasoning/engine.py` from `PORTFOLIO_ENGINE_CALLERS`
+
+**Result:** `PortfolioAnalysis`, `PortfolioSignal`, and `PortfolioRecommendation` are now test-only — zero production callers. Deletion candidates for Sprint 132.
+
+---
+
+## Sprint 132 Target
+
+**Recommended Sprint 132 target: Delete `PortfolioAnalysis`, `PortfolioSignal`, and `PortfolioRecommendation` from `atlas/analysis/portfolio.py`.**
 
 **Rationale:**
-- `PortfolioAnalysis` is the last legacy portfolio type with a production-facing annotation dependency.
-  `reasoning/engine.py` holds it TYPE_CHECKING-only; `ReasoningInput.portfolio_analysis` is typed
-  as `PortfolioAnalysis | None`.
-- In practice this field is **never populated** in the live execution path — intelligence and
-  decision engines pass `PortfolioFitResult` to their own result types, not to `ReasoningInput`.
-  The field exists for optional manual use (currently only tests exercise it).
-- Migration options: (A) change `portfolio_analysis` type to `Any | None`, removing the import
-  entirely; (B) retire the `portfolio_analysis` field from `ReasoningInput` if no active CLI
-  path needs it; (C) retype as `PortfolioFitResult | None` and update the duck-typed attribute
-  accesses (`analysis.final_reasoning` → `analysis.summary`, `analysis.sector_concentration.reasoning`
-  → `analysis.sector_concentration.note`).
-- Option C is the cleanest — it completes the `PortfolioAnalysis` → `PortfolioFitResult` migration
-  for the reasoning layer, removes the last production-facing `PortfolioAnalysis` dependency,
-  and makes `PortfolioAnalysis`, `PortfolioSignal`, and `PortfolioRecommendation` fully test-only.
-- After Sprint 131, three symbols (`PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation`)
-  become candidates for deletion in a subsequent sprint.
+- After Sprint 131, all three types are test-only. Zero production callers remain.
+- `PortfolioAnalysis` — only used in test fixture construction (`test_sprint128_shared_types_still_importable`, `test_sprint129_portfolio_module_remaining_public_symbols`, `test_sprint131_legacy_portfolio_analysis_signal_recommendation_still_importable`).
+- `PortfolioSignal` — only used as `PortfolioAnalysis` field types in tests.
+- `PortfolioRecommendation` — only used as `PortfolioAnalysis.recommendation` field type in tests.
+- Zero-caller audit required before deletion. Remove all three from `atlas/analysis/__init__.py` (import + `__all__`). Flip/delete test guardrails that assert these are importable.
+- `atlas/cli/deprecations.py` line 135 references `atlas/reasoning/engine.py (PortfolioAnalysis)` — that string is stale and should be updated.
 
 ---
 

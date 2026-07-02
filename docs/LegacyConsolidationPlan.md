@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 130)  
-**Status:** Active — Sprint 130 complete; 16 dead private helpers + `get_mock_company_portfolio_profile` deleted. `portfolio.py` is now 109 lines (6 public types + 2 active private helpers). WatchlistEngine deleted Sprint 99. `PortfolioIntelligenceEngine` deleted Sprint 128. Sprint 131 target: migrate `PortfolioAnalysis` out of `reasoning/engine.py`.
+**Updated:** 2026-07-02 (Sprint 131)  
+**Status:** Active — Sprint 131 complete: `ReasoningInput.portfolio_analysis` retyped to `PortfolioFitResult | None`; TYPE_CHECKING guard for `PortfolioAnalysis` removed from `reasoning/engine.py`. `PortfolioAnalysis`/`PortfolioSignal`/`PortfolioRecommendation` are now test-only — deletion candidates Sprint 132. WatchlistEngine deleted Sprint 99. `PortfolioIntelligenceEngine` deleted Sprint 128.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

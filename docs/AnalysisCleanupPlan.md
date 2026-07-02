@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 130 complete: 16 dead private helpers + `get_mock_company_portfolio_profile` deleted. `portfolio.py` reduced to 109 lines. `PortfolioAnalysis` annotation-only in `reasoning/engine.py` — Sprint 131 target. `CompanyPortfolioProfile` provider coupling (HIGH risk) deferred. `Portfolio` CLI boundary deferred.
+**Status:** ACTIVE — Sprint 131 complete: `ReasoningInput.portfolio_analysis` retyped to `PortfolioFitResult | None`; `PortfolioAnalysis`/`PortfolioSignal`/`PortfolioRecommendation` are now test-only (deletion candidates Sprint 132). `CompanyPortfolioProfile` provider coupling (HIGH risk) deferred. `Portfolio` CLI boundary deferred.
 
 ---
 

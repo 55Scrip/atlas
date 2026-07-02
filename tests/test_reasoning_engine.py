@@ -74,34 +74,12 @@ def test_reasoning_cli_command_is_retired():
 # ── Sprint 118: reasoning no longer directly imports atlas.analysis.portfolio ─
 
 def test_sprint118_reasoning_engine_no_direct_runtime_import_of_portfolio_analysis():
-    """PortfolioAnalysis must only appear under TYPE_CHECKING, not as a runtime import."""
-    import ast
+    """Sprint 131: atlas.analysis.portfolio must not appear anywhere in reasoning/engine.py."""
     import pathlib
-
     source = pathlib.Path("atlas/reasoning/engine.py").read_text()
-    tree = ast.parse(source)
-
-    # Collect line numbers inside TYPE_CHECKING guards
-    guarded_linenos: set[int] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.If):
-            test = node.test
-            is_type_checking = (
-                (isinstance(test, ast.Name) and test.id == "TYPE_CHECKING")
-                or (isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING")
-            )
-            if is_type_checking:
-                for child in ast.walk(node):
-                    if hasattr(child, "lineno"):
-                        guarded_linenos.add(child.lineno)
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom):
-            if node.module and "analysis.portfolio" in node.module:
-                assert node.lineno in guarded_linenos, (
-                    f"Line {node.lineno}: runtime import from {node.module!r} "
-                    "found in reasoning/engine.py — must be under TYPE_CHECKING"
-                )
+    assert "atlas.analysis.portfolio" not in source, (
+        "reasoning/engine.py must not import from atlas.analysis.portfolio after Sprint 131"
+    )
 
 
 def test_sprint118_reasoning_engine_has_future_annotations():
@@ -110,11 +88,12 @@ def test_sprint118_reasoning_engine_has_future_annotations():
     assert "from __future__ import annotations" in source
 
 
-def test_sprint118_type_checking_guard_present_in_reasoning_engine():
+def test_sprint131_reasoning_engine_uses_portfolio_fit_result():
+    """Sprint 131: reasoning/engine.py must import PortfolioFitResult, not PortfolioAnalysis."""
     import pathlib
     source = pathlib.Path("atlas/reasoning/engine.py").read_text()
-    assert "TYPE_CHECKING" in source
-    assert "if TYPE_CHECKING:" in source
+    assert "PortfolioFitResult" in source
+    assert "PortfolioAnalysis" not in source
 
 
 def test_sprint118_reasoning_behavior_unchanged_with_portfolio_analysis_none():
@@ -124,27 +103,25 @@ def test_sprint118_reasoning_behavior_unchanged_with_portfolio_analysis_none():
 
 
 def test_sprint118_reasoning_portfolio_analysis_field_still_accepted():
-    """ReasoningInput still accepts a portfolio_analysis value (duck-typed at runtime)."""
-    from atlas.analysis.portfolio import (
-        PortfolioAnalysis,
-        PortfolioRecommendation,
-        PortfolioSignal,
+    """Sprint 131: ReasoningInput.portfolio_analysis accepts PortfolioFitResult."""
+    from atlas.capabilities.portfolio_intelligence import (
+        PortfolioFitDimension,
+        PortfolioFitResult,
     )
 
-    signal = PortfolioSignal(score=75, reasoning="test reasoning")
-    analysis = PortfolioAnalysis(
-        company="NVIDIA",
+    dim = PortfolioFitDimension(score=75, note="test note")
+    analysis = PortfolioFitResult(
         ticker="NVDA",
-        portfolio_score=75,
-        recommendation=PortfolioRecommendation.NEUTRAL,
-        diversification_impact=signal,
-        sector_concentration=signal,
-        country_concentration=signal,
-        market_cap_concentration=signal,
-        overlap_with_existing_holdings=signal,
-        expected_portfolio_quality_impact=signal,
-        expected_portfolio_risk_impact=signal,
-        final_reasoning="Good diversification across sectors.",
+        company="NVIDIA",
+        fit_score=75,
+        diversification=dim,
+        sector_concentration=dim,
+        country_concentration=dim,
+        market_cap_concentration=dim,
+        overlap=dim,
+        quality_impact=dim,
+        risk_impact=dim,
+        summary="Good diversification across sectors.",
     )
     ri = ReasoningInput(portfolio_analysis=analysis)
     report = ReasoningEngine().analyze(ri)
@@ -164,5 +141,105 @@ def test_sprint118_legacy_portfolio_module_remains_active():
         Portfolio,
         PortfolioAnalysis,
         PortfolioPosition,
+    )
+    assert True
+
+
+# ---------------------------------------------------------------------------
+# Sprint 131: Reasoning PortfolioAnalysis → PortfolioFitResult migration
+# ---------------------------------------------------------------------------
+
+def test_sprint131_reasoning_summary_used_not_final_reasoning() -> None:
+    """Sprint 131: reasoning/engine.py must use .summary not .final_reasoning."""
+    import pathlib
+    source = pathlib.Path("atlas/reasoning/engine.py").read_text()
+    non_comment = [l for l in source.splitlines() if not l.strip().startswith("#")]
+    assert not any("final_reasoning" in l for l in non_comment), (
+        "reasoning/engine.py must not reference .final_reasoning after Sprint 131"
+    )
+    assert any("analysis.summary" in l for l in non_comment), (
+        "reasoning/engine.py must use analysis.summary (PortfolioFitResult field)"
+    )
+
+
+def test_sprint131_reasoning_note_used_not_reasoning_field() -> None:
+    """Sprint 131: reasoning/engine.py must use .note not .reasoning on dimension fields."""
+    import pathlib
+    source = pathlib.Path("atlas/reasoning/engine.py").read_text()
+    non_comment = [l for l in source.splitlines() if not l.strip().startswith("#")]
+    assert not any("sector_concentration.reasoning" in l for l in non_comment), (
+        "reasoning/engine.py must not access .reasoning on PortfolioFitDimension after Sprint 131"
+    )
+    assert any("sector_concentration.note" in l for l in non_comment), (
+        "reasoning/engine.py must use sector_concentration.note (PortfolioFitDimension field)"
+    )
+
+
+def test_sprint131_reasoning_fit_score_used_not_portfolio_score() -> None:
+    """Sprint 131: reasoning/engine.py must use .fit_score not .portfolio_score."""
+    import pathlib
+    source = pathlib.Path("atlas/reasoning/engine.py").read_text()
+    non_comment = [l for l in source.splitlines() if not l.strip().startswith("#")]
+    assert not any("portfolio_score" in l for l in non_comment), (
+        "reasoning/engine.py must not reference .portfolio_score after Sprint 131"
+    )
+    assert any("fit_score" in l for l in non_comment), (
+        "reasoning/engine.py must use .fit_score (PortfolioFitResult field)"
+    )
+
+
+def test_sprint131_reasoning_with_portfolio_fit_result_produces_evidence() -> None:
+    """Sprint 131: Portfolio Analysis evidence source appears when PortfolioFitResult is supplied."""
+    from atlas.capabilities.portfolio_intelligence import PortfolioFitDimension, PortfolioFitResult
+
+    dim = PortfolioFitDimension(score=80, note="no sector concentration concern")
+    result = PortfolioFitResult(
+        ticker="NVDA",
+        company="NVIDIA",
+        fit_score=80,
+        diversification=dim,
+        sector_concentration=dim,
+        country_concentration=dim,
+        market_cap_concentration=dim,
+        overlap=dim,
+        quality_impact=dim,
+        risk_impact=dim,
+        summary="Strong fit across all dimensions.",
+    )
+    report = ReasoningEngine().analyze(ReasoningInput(portfolio_analysis=result))
+    all_evidence = report.signals_trusted_most + report.signals_trusted_least
+    assert any(e.source == "Portfolio Analysis" for e in all_evidence)
+
+
+def test_sprint131_reasoning_portfolio_concentration_bearish_factor() -> None:
+    """Sprint 131: sector_concentration.score < 70 triggers Portfolio concentration bearish factor."""
+    from atlas.capabilities.portfolio_intelligence import PortfolioFitDimension, PortfolioFitResult
+
+    low_sector = PortfolioFitDimension(score=55, note="high sector concentration")
+    high_dim = PortfolioFitDimension(score=85, note="healthy")
+    result = PortfolioFitResult(
+        ticker="NVDA",
+        company="NVIDIA",
+        fit_score=60,
+        diversification=high_dim,
+        sector_concentration=low_sector,
+        country_concentration=high_dim,
+        market_cap_concentration=high_dim,
+        overlap=high_dim,
+        quality_impact=high_dim,
+        risk_impact=high_dim,
+        summary="High sector concentration is a concern.",
+    )
+    report = ReasoningEngine().analyze(ReasoningInput(portfolio_analysis=result))
+    bearish_titles = [f.title for f in report.bearish_factors]
+    assert "Portfolio concentration" in bearish_titles
+
+
+def test_sprint131_legacy_portfolio_analysis_signal_recommendation_still_importable() -> None:
+    """Sprint 131: PortfolioAnalysis, PortfolioSignal, PortfolioRecommendation still exist in portfolio.py."""
+    from atlas.analysis.portfolio import (  # noqa: F401
+        PortfolioAnalysis,
+        PortfolioRecommendation,
+        PortfolioSignal,
     )
     assert True

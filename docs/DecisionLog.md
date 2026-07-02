@@ -2,6 +2,23 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 131 — Migrate ReasoningInput.portfolio_analysis to PortfolioFitResult
+
+Decision: Retype `ReasoningInput.portfolio_analysis` in `atlas/reasoning/engine.py` from `PortfolioAnalysis | None` to `PortfolioFitResult | None`. Remove TYPE_CHECKING guard entirely. Update all field accesses.
+
+**Rationale:** `PortfolioAnalysis` had zero production runtime callers after Sprint 118 moved it behind `TYPE_CHECKING`. The field `ReasoningInput.portfolio_analysis` was typed as `PortfolioAnalysis | None` but is never populated in production — intelligence and decision engines pass `PortfolioFitResult` to their own result types. Retyping to `PortfolioFitResult` removes the last production-facing `PortfolioAnalysis` dependency.
+
+**Field mapping applied:**
+- `.final_reasoning` → `.summary` (PortfolioFitResult field)
+- `.portfolio_score` → `.fit_score` (PortfolioFitResult field)
+- `.sector_concentration.reasoning` → `.sector_concentration.note` (PortfolioFitDimension field)
+
+**Changes:** TYPE_CHECKING import block removed; `PortfolioFitResult` added as runtime import; `ReasoningInput.portfolio_analysis` retyped; 6 guardrail tests added; `PORTFOLIO_ENGINE_CALLERS` is now empty (all 5 callers migrated across Sprints 124–131).
+
+**Result:** `PortfolioAnalysis`, `PortfolioSignal`, and `PortfolioRecommendation` are now test-only with zero production callers. Deletion candidates for Sprint 132.
+
+**Sprint 132 recommended target:** Delete `PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation` from `atlas/analysis/portfolio.py` and `atlas/analysis/__init__.py`. Also update stale `atlas/cli/deprecations.py` string that references `atlas/reasoning/engine.py (PortfolioAnalysis)`.
+
 ## 2026-07-02: Sprint 130 — Delete Dead Portfolio Private Helpers
 
 Decision: Delete 16 dead private helper functions and `get_mock_company_portfolio_profile` from `atlas/analysis/portfolio.py`. Confirmed zero active callers repo-wide before deletion.
