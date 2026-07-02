@@ -1330,3 +1330,20 @@ Demo passed. Release verification green.
 - Compatibility shim in `atlas/analysis/watchlist.py` re-exporting from capability: rejected — Sprint spec explicitly prohibits shims; full deletion achieves cleaner architecture.
 
 **Outcome:** `atlas/analysis/watchlist.py` fully deleted. `atlas.analysis.watchlist` raises `ModuleNotFoundError`. `WatchlistInput`/`WatchlistInputItem` accessible from `atlas.capabilities.watchlist_intelligence`. 1124 tests passing (3 skipped). Demo passed. Release verification green. No behavior changes.
+
+---
+
+**Sprint 102 (2026-07-02): Analysis cleanup audit; `ComparisonEngine` selected as Sprint 103 target**
+
+**Decision:** No runtime changes. Audit `atlas/analysis/` modules; recommend `ComparisonEngine` for Sprint 103 over `MemoryEngine`.
+
+**Rationale:**
+- `ComparisonEngine` has 2 production caller sites (both `atlas/decision/`), 0 active CLI commands, no Blueprint gap (legacy ranking; Blueprint `InvestmentComparisonEngine` exists), and a self-contained module with no cross-domain dependencies. Inline ranking option (Option A) can eliminate the engine without output changes.
+- `MemoryEngine` has 4 caller sites, 3 active CLI commands (`atlas memory save/show/compare`), no Blueprint equivalent, and user-data coupling (local JSON files). Higher risk and complexity.
+- Ordering: `ComparisonEngine` first because it is contained entirely within the decision engine's optional comparison path, with no CLI surface area. `MemoryEngine` deferred to Sprint 104+ pending further audit of `atlas memory` CLI command usage.
+
+**Alternatives considered:**
+- `MemoryEngine` first: rejected — 3 active CLI commands and user-data coupling make it higher risk than `ComparisonEngine`.
+- Both in one sprint: rejected — two different migration patterns; keeping them separate maintains the sprint-per-engine cleanup discipline that has worked well.
+
+**Outcome:** No runtime changes. `docs/AnalysisCleanupPlan.md` created. 1 guardrail test added. 1125 tests passing (3 skipped). Demo passed. Release verification green. Sprint 103 target: `ComparisonEngine`.

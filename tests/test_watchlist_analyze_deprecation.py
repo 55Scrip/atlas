@@ -157,6 +157,17 @@ def test_watchlist_engine_active_callers_are_zero() -> None:
     )
 
 
+def test_analysis_init_does_not_re_export_watchlist_types() -> None:
+    """Sprint 102: atlas/analysis/__init__.py must not re-export Watchlist or WatchlistItem."""
+    import atlas.analysis as analysis_pkg
+    assert not hasattr(analysis_pkg, "Watchlist"), (
+        "atlas.analysis must not re-export Watchlist after Sprint 101"
+    )
+    assert not hasattr(analysis_pkg, "WatchlistItem"), (
+        "atlas.analysis must not re-export WatchlistItem after Sprint 101"
+    )
+
+
 def test_monitoring_engine_does_not_import_watchlist_engine() -> None:
     """Sprint 93: atlas/monitoring/engine.py must not import WatchlistEngine."""
     monitoring_path = REPO_ROOT / "atlas" / "monitoring" / "engine.py"

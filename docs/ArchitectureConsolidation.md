@@ -737,3 +737,16 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
   capability; `from_mapping` round-trip passes; no production import of deleted module.
 - No runtime behavior changed. Watchlist Intelligence output unchanged.
 - 1124 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 102 (2026-07-02):** Analysis package audit; `ComparisonEngine` selected as Sprint 103 target.
+- Full inventory of 16 remaining `atlas/analysis/` modules completed.
+- `ComparisonEngine` audit: 2 production runtime callers (both in `atlas/decision/`), 0 active CLI
+  commands (CLI `atlas compare` uses Blueprint-aligned `InvestmentComparisonEngine`), provider-
+  accepting (not provider-calling), self-contained module with no cross-domain dependencies.
+- `MemoryEngine` audit: 4 production caller sites across 3 files, 3 active CLI commands
+  (`atlas memory save/show/compare`), provider-accepting, no Blueprint equivalent.
+- Recommended Sprint 103 target: `ComparisonEngine` — fewer callers, no active CLI dependency,
+  clear Blueprint overlap, lower risk than `MemoryEngine`.
+- 1 guardrail test added: `test_analysis_init_does_not_re_export_watchlist_types`.
+- `docs/AnalysisCleanupPlan.md` created with full inventory, candidate evaluations, and roadmap.
+- 1125 tests passing (3 skipped). Demo passed. Release verification green.

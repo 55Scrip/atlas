@@ -231,6 +231,39 @@ Provider safety: **confirmed**.
 
 ---
 
+## Sprint 102 — Analysis Package Audit COMPLETED
+
+### Completed: `atlas/analysis/` inventory; Sprint 103 target selected
+
+**Sprint 102 result:**
+
+**Goal:** Audit remaining `atlas/analysis/` modules; evaluate `ComparisonEngine` and `MemoryEngine`
+as cleanup candidates; select Sprint 103 target.
+
+**Key findings:**
+
+| Engine | Production callers | CLI commands | Provider coupling | Blueprint overlap | Complexity |
+|---|---|---|---|---|---|
+| `ComparisonEngine` | 2 (both `atlas/decision/`) | 0 (CLI uses Blueprint `InvestmentComparisonEngine`) | Provider-accepting | Yes — `InvestmentComparisonEngine` exists | LOW-MEDIUM |
+| `MemoryEngine` | 4 across 3 files | 3 active (`memory save/show/compare`) | Provider-accepting | None — no Blueprint equivalent | MEDIUM-HIGH |
+
+**Sprint 103 target: `ComparisonEngine`**
+
+Rationale: fewer callers, no active CLI dependency, clear Blueprint overlap, no user-data coupling.
+The inline-ranking option (Option A in `docs/AnalysisCleanupPlan.md`) can eliminate the engine
+without output changes.
+
+**Changes made:**
+1. Full 16-module `atlas/analysis/` inventory documented.
+2. `docs/AnalysisCleanupPlan.md` created with per-module table, `ComparisonEngine` and `MemoryEngine`
+   full audits, Sprint 103 approach options, and multi-sprint cleanup roadmap.
+3. 1 guardrail test added to `tests/test_watchlist_analyze_deprecation.py`:
+   `test_analysis_init_does_not_re_export_watchlist_types`
+
+**Tests: 1125 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 101 — Watchlist Input Type Migration COMPLETED
 
 ### Completed: `WatchlistInput`/`WatchlistInputItem` moved to capability; `atlas/analysis/watchlist.py` deleted
