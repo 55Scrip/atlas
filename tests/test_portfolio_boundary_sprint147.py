@@ -154,3 +154,14 @@ def test_sprint147_provider_cleanup_track_closed() -> None:
         assert sym not in pkg.__all__, (
             f"{sym} must not be in atlas.providers.__all__ after Sprint 146"
         )
+
+
+# ── Sprint 148 guardrail ─────────────────────────────────────────────────────
+
+def test_sprint148_adapter_does_not_import_portfolio_fit_input() -> None:
+    """Sprint 148: stale PortfolioFitInput import removed — must not appear in adapter source."""
+    source = Path("atlas/adapters/portfolio.py").read_text(encoding="utf-8")
+    assert "PortfolioFitInput" not in source, (
+        "atlas/adapters/portfolio.py must not import PortfolioFitInput — "
+        "it was unused and removed in Sprint 148"
+    )

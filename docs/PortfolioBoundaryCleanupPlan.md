@@ -1,7 +1,8 @@
 # Atlas Portfolio Boundary Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 147)  
-**Status:** ACTIVE — Sprint 147 inventory checkpoint. Adapter boundary stable. One stale import identified in adapter. Sprint 148 target: remove stale import, close track.
+**Updated:** 2026-07-02 (Sprint 148)  
+**Status:** CLOSED — Sprint 148 removed the stale `PortfolioFitInput` import from `atlas/adapters/portfolio.py`. Adapter boundary is stable. `Portfolio` and `PortfolioPosition` remain intentionally in `atlas/adapters/portfolio.py`. `atlas.analysis.portfolio` remains deleted. No further portfolio boundary cleanup work is planned.
 
 ---
 
@@ -148,28 +149,52 @@ All 9 CLI `Portfolio.from_json_file` call sites:
 
 ---
 
-## Final Stable Adapter State (Sprint 147)
+## Final Stable Adapter State (Sprint 148)
 
-The adapter has one issue: stale `PortfolioFitInput` import (line 33) — unused. Sprint 148 target: remove it.
+`atlas/adapters/portfolio.py` is stable and clean:
 
-Otherwise the adapter is stable, correct, and in its permanent home.
+| Symbol | Type | Status |
+|---|---|---|
+| `Portfolio` | frozen dataclass | Active — permanent JSON-loading boundary type |
+| `PortfolioPosition` | frozen dataclass | Active — permanent JSON-loading boundary type |
+| `legacy_portfolio_to_domain_portfolio` | function | Active — centralized conversion to `atlas.shared.Portfolio` |
+| `_position_from_mapping` | private helper | Active |
+| `_normalize_weight` | private helper | Active |
+
+Imports (post Sprint 148):
+- `atlas.analysis.scores.clamp_score` — OK
+- `atlas.shared.Holding`, `Portfolio as SharedPortfolio` — OK
+- ~~`atlas.capabilities.portfolio_intelligence.PortfolioFitInput`~~ — **Removed Sprint 148** (was unused)
 
 ---
 
-## Sprint 148 Target
+## Sprint 148 — Stale Import Removal (COMPLETED)
 
-**Remove the stale `PortfolioFitInput` import from `atlas/adapters/portfolio.py` and close the portfolio boundary track.**
+**Removed `PortfolioFitInput` import from `atlas/adapters/portfolio.py`.**
 
-- One-line deletion from `atlas/adapters/portfolio.py` line 33.
-- Zero behavior change — the import is unused.
-- Add a guardrail confirming the adapter does not import stale or deleted symbols.
-- Update docs to CLOSED.
-- Risk: **MINIMAL**.
+- Zero behavior change — import was unused.
+- Guardrail added: `test_sprint148_adapter_does_not_import_portfolio_fit_input`.
+- Docs updated to CLOSED.
 
-After Sprint 148:
-- `atlas/analysis/` cleanup track — CLOSED Sprint 141 ✓
-- `atlas/decision/` cleanup track — CLOSED Sprint 144 ✓
-- Provider boundary audit track — CLOSED Sprint 146 ✓
-- Portfolio boundary track — **CLOSED Sprint 148**
+---
 
-Sprint 149+ candidates: Group C self-contained modules (`atlas/evidence/`, `atlas/reasoning/`, `atlas/risk/`); Group B provider-coupled modules (`atlas/home/`, `atlas/comparison/`).
+## Closed-Track Summary
+
+| Track | Closed |
+|---|---|
+| `atlas/analysis/` cleanup | Sprint 141 |
+| `atlas/decision/` cleanup | Sprint 144 |
+| Provider boundary audit | Sprint 146 |
+| Portfolio boundary | **Sprint 148** |
+
+No further portfolio boundary cleanup work is planned.
+
+**Reopening condition:** If a new caller of `atlas.analysis.portfolio` is discovered, or if `Portfolio`/`PortfolioPosition` are moved or deleted incorrectly, this track should be reopened.
+
+---
+
+## Recommended Sprint 149 Target
+
+**Audit Group C self-contained module: `atlas/evidence/`.**
+
+`atlas/evidence/` is self-contained (no provider dependency, no Blueprint-aligned successor yet). Audit its callers, classify cleanup candidates, and recommend a focused follow-on sprint. This matches the established audit-first pattern from Sprints 142, 145, 147.

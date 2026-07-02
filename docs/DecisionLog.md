@@ -2,6 +2,24 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 148 — Close Portfolio Boundary Cleanup Track
+
+Decision: Remove the stale `PortfolioFitInput` import from `atlas/adapters/portfolio.py` and close the portfolio boundary cleanup track.
+
+**Rationale:** After deleting `atlas.analysis.portfolio` (Sprint 135), removing the identity adapter `portfolio_fit_input_from_profile` (Sprint 137), auditing all remaining callers (Sprint 147), and now removing the final stale `PortfolioFitInput` import, the adapter boundary is intentional and stable. `Portfolio` and `PortfolioPosition` are the correct permanent home for legacy CLI JSON-loading boundary types. No Blueprint-aligned JSON-loading type exists as a replacement, and the adapter has no upward dependencies. No further cleanup is warranted.
+
+**Change:** One import line removed from `atlas/adapters/portfolio.py`. Zero behavior change.
+
+**Closed-track summary:**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — **CLOSED Sprint 148**
+
+**Sprint 149 recommended target:** Audit Group C self-contained module `atlas/evidence/` — self-contained, no provider dependency, 3 active engine callers, no Blueprint successor yet. Smallest safe audit-first step.
+
+---
+
 ## 2026-07-02: Sprint 147 — Portfolio Boundary Caller Audit
 
 Decision: Audit all remaining callers of `Portfolio`, `PortfolioPosition`, and `legacy_portfolio_to_domain_portfolio` from `atlas/adapters/portfolio.py`. No runtime changes.

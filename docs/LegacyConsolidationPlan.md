@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 147)  
-**Status:** `atlas/analysis/` cleanup track CLOSED Sprint 141. `atlas/decision/` cleanup track CLOSED Sprint 144. `atlas/providers/` boundary audit CLOSED Sprint 146. Portfolio boundary audit ACTIVE Sprint 147. Sprint 147 inventoried all `Portfolio`/`PortfolioPosition` callers: 9 CLI JSON-loading sites, 8 engine TYPE_CHECKING annotations, 6 runtime adapter conversion callers. All correct. One stale import in adapter (`PortfolioFitInput` unused — line 33). Sprint 148 target: remove stale import, close portfolio boundary track. See `docs/PortfolioBoundaryCleanupPlan.md`.
+**Updated:** 2026-07-02 (Sprint 148)  
+**Status:** All four active cleanup tracks are now CLOSED. `atlas/analysis/` CLOSED Sprint 141. `atlas/decision/` CLOSED Sprint 144. Provider boundary CLOSED Sprint 146. Portfolio boundary CLOSED Sprint 148 (removed stale `PortfolioFitInput` import from adapter). `Portfolio` and `PortfolioPosition` remain intentionally in `atlas/adapters/portfolio.py`. No further cleanup work planned on any of these tracks. Sprint 149 recommended: audit Group C self-contained module `atlas/evidence/`.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

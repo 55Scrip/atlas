@@ -30,7 +30,6 @@ from pathlib import Path
 from typing import Any
 
 from atlas.analysis.scores import clamp_score
-from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
 from atlas.shared import Holding, Portfolio as SharedPortfolio
 
 DEFAULT_PORTFOLIO_ID = "legacy-portfolio"
