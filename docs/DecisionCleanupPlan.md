@@ -1,7 +1,8 @@
 # Atlas Decision Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 142)  
-**Status:** ACTIVE — Sprint 142 inventory checkpoint. 7 modules audited. One dead function identified (`render_comparison_result`). All other modules active, clean, and intentional. Sprint 143 target: delete `render_comparison_result`.
+**Updated:** 2026-07-02 (Sprint 143)  
+**Status:** ACTIVE — Sprint 143 dead renderer deleted. `comparison.py` reduced from 186 to ~141 lines. `render_comparison_result`, `_render_ranking`, `_ranking_score` removed (zero callers confirmed). No further decision package cleanup warranted at this time. Sprint 144 target: decision package release checkpoint.
 
 ---
 
@@ -108,25 +109,19 @@ No immediate migration warranted for any module. The legacy and domain layers se
 
 ---
 
-## Dead Code: `render_comparison_result`
+## Dead Code Removed (Sprint 143)
 
-**File:** `atlas/decision/comparison.py:87`  
-**Status:** Zero external callers. Defined, never called outside the module.  
-**Risk of deletion:** LOW — function is 32 lines, no callers, no CLI surface, no test relies on it.  
-**Sprint 143 target:** Delete `render_comparison_result` and its private helper `_render_ranking` if `_render_ranking` has no other caller.
+**Deleted:**
+- `render_comparison_result` (`comparison.py`) — zero external callers confirmed
+- `_render_ranking` (`comparison.py`) — only called by deleted `render_comparison_result`
+- `_ranking_score` (`comparison.py`) — only called by deleted `_render_ranking`
+
+**Zero-caller audit:** all hits were definitions and internal-only calls within `comparison.py`. No external production callers. No CLI surface. No active test assertions.
+
+`comparison.py` reduced from 186 to ~141 lines. Active API (`ComparisonCandidate`, `ComparisonRanking`, `ComparisonResult`, `compare_tickers`) preserved unchanged.
 
 ---
 
-## Sprint 143 Target
+## Sprint 144 Target
 
-**Delete `render_comparison_result` from `atlas/decision/comparison.py`.**
-
-- Zero external callers confirmed
-- `_render_ranking` is only called by `render_comparison_result` — also dead
-- `_ranking_score` is only called by `_render_ranking` — also dead
-- 3 private helpers (`_render_ranking`, `_ranking_score`, and the `render_comparison_result` function itself) can all be deleted
-- No CLI surface
-- No test assertion depends on calling the function (Sprint 103 guardrail only checks it is importable, not called)
-- Risk: LOW
-
-Sprint 143 is a single-file, zero-behavior-change deletion of ~45 lines of dead code.
+**Decision package release checkpoint** — verify the decision package is stable after Sprint 143, confirm no further cleanup is warranted, and close the decision cleanup track if the package is clean.

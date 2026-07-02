@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 142)  
-**Status:** `atlas/analysis/` cleanup track CLOSED Sprint 141. `atlas/decision/` cleanup track ACTIVE as of Sprint 142. Decision package inventoried: 7 modules, 1010 lines. One dead function found (`render_comparison_result` in `comparison.py`, zero callers). Sprint 143 target: delete it.
+**Updated:** 2026-07-02 (Sprint 143)  
+**Status:** `atlas/analysis/` cleanup track CLOSED Sprint 141. `atlas/decision/` cleanup track ACTIVE. Sprint 143: `render_comparison_result`, `_render_ranking`, `_ranking_score` deleted from `comparison.py` (zero callers). Sprint 144 target: decision package release checkpoint.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

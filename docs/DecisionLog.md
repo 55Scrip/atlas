@@ -2,6 +2,23 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 143 — Delete Dead Decision Comparison Renderer
+
+Decision: Delete `render_comparison_result`, `_render_ranking`, and `_ranking_score` from `atlas/decision/comparison.py`. Zero external callers confirmed by repo-wide grep.
+
+**Zero-caller audit findings:**
+- `render_comparison_result`: only hit was its own definition and internal calls to `_render_ranking`. Zero external production callers. Zero CLI surface.
+- `_render_ranking`: only called by `render_comparison_result` (now deleted).
+- `_ranking_score`: only called by `_render_ranking` (now deleted).
+
+**Changes:** 3 functions deleted (~45 lines). `comparison.py` reduced from 186 to ~141 lines. Active API (`ComparisonCandidate`, `ComparisonRanking`, `ComparisonResult`, `compare_tickers`) unchanged. Sprint 142 guardrail updated: `test_sprint142_render_comparison_result_is_importable` → `test_sprint143_render_comparison_result_deleted`. Docs updated.
+
+**Behavior changes:** None. Comparison ranking, decision engine, CLI, memory, and all other behavior unchanged.
+
+**Sprint 144 recommended target:** Decision package release checkpoint — verify the decision package is stable, confirm no further cleanup warranted, and close the decision cleanup track.
+
+---
+
 ## 2026-07-02: Sprint 142 — Decision Package Cleanup Checkpoint
 
 Decision: Begin `atlas/decision/` cleanup track with an audit-only sprint. No runtime changes.

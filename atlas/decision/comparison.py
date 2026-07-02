@@ -84,40 +84,6 @@ def compare_tickers(
     )
 
 
-def render_comparison_result(result: ComparisonResult) -> str:
-    lines = [
-        "Company Comparison",
-        "",
-        "Candidates",
-    ]
-    for candidate in result.candidates:
-        report = candidate.report
-        lines.append(
-            (
-                f"- {candidate.ticker}: Atlas Score {report.atlas_score}/100, "
-                f"{report.overall_recommendation}, confidence {report.confidence}/100, "
-                f"valuation {report.valuation.score}/100, quality {report.quality.score}/100, "
-                f"growth {report.growth.score}/100, financial strength "
-                f"{report.financial_strength.score}/100, risk {report.risk.score}/100"
-            )
-        )
-    lines.extend(
-        [
-            "",
-            "Rankings",
-            _render_ranking(result.best_overall),
-            _render_ranking(result.best_quality),
-            _render_ranking(result.best_valuation),
-            _render_ranking(result.best_growth),
-            _render_ranking(result.lowest_risk),
-            "",
-            "Final Conclusion",
-            result.final_conclusion,
-        ]
-    )
-    return "\n".join(lines)
-
-
 def _ranking(
     category: str,
     candidates: tuple[ComparisonCandidate, ...],
@@ -145,28 +111,6 @@ def _ranking(
             f"{_article_for(metric_label)} {metric_label} of {winning_score}/100."
         ),
     )
-
-
-def _render_ranking(ranking: ComparisonRanking) -> str:
-    ordered = ", ".join(
-        f"{c.ticker} ({_ranking_score(ranking.category, c)}/100)"
-        for c in ranking.ordered_candidates
-    )
-    return f"- {ranking.category}: {ranking.winner.ticker}. {ranking.reasoning} Ranking: {ordered}."
-
-
-def _ranking_score(category: str, candidate: ComparisonCandidate) -> int:
-    if category == "Best Overall":
-        return candidate.report.atlas_score
-    if category == "Best Quality":
-        return candidate.report.quality.score
-    if category == "Best Valuation":
-        return candidate.report.valuation.score
-    if category == "Best Growth":
-        return candidate.report.growth.score
-    if category == "Lowest Risk":
-        return candidate.report.risk.score
-    raise ValueError(f"Unknown ranking category: {category}")
 
 
 def _final_conclusion(winner: ComparisonCandidate) -> str:

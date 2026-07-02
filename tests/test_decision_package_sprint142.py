@@ -79,9 +79,13 @@ def test_sprint142_comparison_active_symbols_importable() -> None:
     )
 
 
-def test_sprint142_render_comparison_result_is_importable() -> None:
-    """Sprint 142: render_comparison_result exists but has zero external callers — dead function."""
-    from atlas.decision.comparison import render_comparison_result  # noqa: F401
+def test_sprint143_render_comparison_result_deleted() -> None:
+    """Sprint 143: render_comparison_result deleted — must not be importable."""
+    try:
+        from atlas.decision.comparison import render_comparison_result  # noqa: F401
+        assert False, "render_comparison_result must not exist after Sprint 143"
+    except ImportError:
+        pass
 
 
 # ── Active memory symbols ─────────────────────────────────────────────────────
