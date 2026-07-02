@@ -1,8 +1,8 @@
 # Atlas Principles Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 156)  
-**Updated:** 2026-07-02 (Sprint 157)  
-**Status:** CLOSED — Sprint 157 removed `check_intelligence_report` and `check_suitability_assessment`. No remaining cleanup candidates. Package is stable. Public API reduced from 11 to 9 exports. No further `atlas/principles/` cleanup work is planned.
+**Updated:** 2026-07-03 (Sprint 158)  
+**Status:** CLOSED — Sprint 158 confirmed Sprint 157 findings unchanged. No cleanup action is warranted. Package is self-contained, actively used via `PrinciplesEngine` and `PrinciplesCheck`, and stable. No further `atlas/principles/` cleanup work is planned until new dead code, stale exports, or a Blueprint-aligned successor emerges.
 
 ---
 
@@ -241,23 +241,40 @@ Sprint 157 changes:
 | Evidence package | CLOSED Sprint 150 |
 | Reasoning package | CLOSED Sprint 153 |
 | Risk package | CLOSED Sprint 155 |
-| **Principles package** | **CLOSED Sprint 157** |
+| **Principles package** | **CLOSED Sprint 158** |
 
 ---
 
-## Recommended Sprint 158 Target
+## Sprint 158 — Track Closure (COMPLETED)
 
-**Close the principles cleanup track.**
+**Principles cleanup track is CLOSED as of Sprint 158.**
 
-After inventory (Sprint 156) and cleanup (Sprint 157), the principles package contains no remaining actionable cleanup candidates:
-- All 9 remaining exports are active or well-tested
-- No dormant helpers remain
-- No stale imports remain
-- No Blueprint successor exists
-- Boundary is clean
+Sprint 158 verified:
+- All 9 `atlas.principles` exports remain importable.
+- 5 known production callers confirmed (`comparison`, `dashboard`, `decision_journal`, `portfolio_review`, `watchlist_review`).
+- `atlas principles check` CLI command active and unchanged.
+- `check_reasoning_report` not importable from `atlas.principles` ✓
+- `check_intelligence_report` not importable from `atlas.principles` ✓
+- `check_suitability_assessment` not importable from `atlas.principles` ✓
+- Zero references to `atlas.reasoning`, `IntelligenceReport`, `SuitabilityAssessment`, `ReasoningReport` in principles code ✓
+- Zero provider imports ✓
+- Zero stale closed-track imports ✓
+- No Blueprint-aligned successor introduced since Sprint 156 ✓
+- No cleanup action is warranted.
 
-Sprint 158 should be a documentation-only sprint confirming the audit findings and formally closing the principles cleanup track. No code changes are needed.
+**Closure rationale:** After audit (Sprint 156), two zero-caller convenience functions were removed (Sprint 157), and Sprint 158 confirmed no remaining cleanup candidates. `PrinciplesEngine` and `PrinciplesCheck` are live shared types used by 5 production engines. `render_principles_check` serves the active CLI. All remaining exports are intentional. Further cleanup would create churn without architectural benefit.
 
-**Alternative Sprint 158 targets if principles track closure is deferred:**
-- Audit `atlas/comparison/` — provider-coupled, has Blueprint overlap with `InvestmentComparisonEngine`
-- Audit Group B provider-coupled module: `atlas/home/`
+**Reopening condition:** If new dead code or stale exports emerge, if a Blueprint-aligned principles capability is introduced, or if the 5 active callers migrate to a successor type, this track should be reopened.
+
+---
+
+## Recommended Sprint 159 Target
+
+**Audit `atlas/comparison/` — provider-coupled module with Blueprint overlap.**
+
+`atlas/comparison/` is a natural next audit target:
+- Contains `InvestmentComparisonEngine` — a comparison engine that evaluates multiple companies
+- Has known Blueprint overlap with `atlas/capabilities/` (comparison capability may belong there)
+- Provider-coupled: may import from `atlas/providers/` — boundary should be verified
+- CLI command `atlas comparison compare` may be active or deprecated — status should be confirmed
+- Audit-first: inventory modules, map callers, verify provider boundary, check Blueprint overlap, classify cleanup candidates, recommend one focused follow-on sprint

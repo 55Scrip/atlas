@@ -2,6 +2,28 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 158 — Close Principles Cleanup Track
+
+Decision: Close the `atlas/principles/` cleanup track. No further cleanup work is warranted.
+
+**Rationale:** After audit (Sprint 156) and removal of two zero-caller convenience functions (Sprint 157), Sprint 158 confirmed the principles package contains only active, intentional code. `check_reasoning_report` was removed Sprint 152. `check_intelligence_report` and `check_suitability_assessment` were removed Sprint 157 after `atlas/reasoning/` was deleted. The remaining 9 exports are all active or well-tested. Further cleanup would create churn without architectural benefit.
+
+**Final verification (Sprint 158):** All 9 exports importable. 5 known callers confirmed. CLI active. Zero removed-check references in active code. Zero provider imports. Zero stale closed-track imports. No Blueprint successor introduced.
+
+**Closed-track summary:**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — CLOSED Sprint 148
+- Evidence package — CLOSED Sprint 150
+- Reasoning package — CLOSED Sprint 153
+- Risk package — CLOSED Sprint 155
+- **Principles package — CLOSED Sprint 158**
+
+**Sprint 159 recommended target:** Audit `atlas/comparison/` — provider-coupled module with known Blueprint overlap (`InvestmentComparisonEngine`). Audit-first: inventory modules, map callers, verify provider boundary, check Blueprint overlap, classify cleanup candidates.
+
+---
+
 ## 2026-07-03: Sprint 157 — Remove Dormant Principles Report Checks
 
 Decision: Remove `check_intelligence_report` and `check_suitability_assessment` from `atlas/principles/engine.py` and `atlas/principles/__init__.py`.
