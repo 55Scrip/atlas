@@ -800,3 +800,9 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - `atlas/analysis/__init__.py`: `RecommendationEngine` removed from import and `__all__`.
 - 3 guardrail tests added.
 - 1136 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 107 (2026-07-02):** `render_company_analysis_report` removed from `atlas/analysis/report.py`; module retained.
+- `build_investment_report` has 4 active production call sites (3 in `atlas/cli/main.py`, 1 in `atlas/comparison/engine.py`). `render_investment_report` has 2 active CLI call sites. Both retained.
+- `render_company_analysis_report` had zero external callers — removed as dead code. Not exported from `atlas/analysis/__init__.py` (no `__init__.py` change needed).
+- 2 guardrail tests added.
+- 1138 tests passing (3 skipped). Demo passed. Release verification green.

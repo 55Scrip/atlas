@@ -34,10 +34,5 @@ def render_investment_report(report: InvestmentReport) -> str:
     return "\n".join(sections).strip()
 
 
-def render_company_analysis_report(analysis: CompanyAnalysis) -> str:
-    report = build_investment_report(analysis)
-    return render_investment_report(report)
-
-
 def _score_line(label: str, score: int) -> str:
     return f"{label}: {score}/100"

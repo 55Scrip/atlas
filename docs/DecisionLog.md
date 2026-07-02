@@ -1420,3 +1420,22 @@ Demo passed. Release verification green.
 - Retain `RecommendationEngine` (Option D): rejected — thin wrapper, zero production callers, identical pattern to `ExplanationEngine` eliminated in Sprint 105.
 
 **Outcome:** `RecommendationEngine` class deleted from `atlas/analysis/scoring.py` and removed from `atlas/analysis/__init__.py`. `tests/test_scoring.py` updated to use `ThresholdRecommendationPolicy` directly. `ThresholdRecommendationPolicy` import removed from `scoring.py`. 3 guardrail tests added. 1136 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 107 (2026-07-02): Audit `atlas/analysis/report.py`; remove unused helper**
+
+**Decision:** Retain `report.py` in place (Option C). Remove `render_company_analysis_report` (no callers). Keep `build_investment_report` and `render_investment_report`.
+
+**Rationale:**
+- `build_investment_report` has 3 active CLI call sites (lines 219, 265, 1408 of `atlas/cli/main.py`) and 1 Blueprint engine call site (`atlas/comparison/engine.py:214`). Cannot be deleted or moved without updating 4 call sites.
+- `render_investment_report` has 2 active CLI call sites. Same retention reasoning.
+- `render_company_analysis_report` was a thin one-liner combining the two functions above. Grep confirmed zero external callers — only its own definition. Removed as dead code.
+- Moving the file to a Blueprint-aligned layer would create unnecessary churn — 4 callers would need import updates for no architectural gain. The file belongs where it is.
+
+**Alternatives considered:**
+- Delete file: rejected — `build_investment_report` and `render_investment_report` are actively used by CLI and Blueprint comparison engine.
+- Move to `atlas/capabilities/`: rejected — would require updating 4 call sites and would create backwards-dependency pressure on `atlas/analysis/explanation.py` (which `report.py` imports).
+- Simplify in-place: no simplification available beyond removing the dead helper.
+
+**Outcome:** `render_company_analysis_report` removed from `atlas/analysis/report.py`. No `__init__.py` change needed (function was never exported). 2 guardrail tests added. 1138 tests passing (3 skipped). Demo passed. Release verification green.

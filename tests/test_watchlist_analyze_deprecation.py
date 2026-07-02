@@ -427,6 +427,22 @@ def test_scoring_engine_and_score_company_still_importable() -> None:
     assert score_company is not None
 
 
+def test_render_company_analysis_report_is_deleted() -> None:
+    """Sprint 107: render_company_analysis_report had no callers and was removed from atlas.analysis.report."""
+    import atlas.analysis.report as report_mod
+    assert not hasattr(report_mod, "render_company_analysis_report"), (
+        "render_company_analysis_report was removed in Sprint 107 — "
+        "use build_investment_report() + render_investment_report() directly"
+    )
+
+
+def test_build_and_render_investment_report_still_importable() -> None:
+    """Sprint 107: build_investment_report and render_investment_report must remain importable."""
+    from atlas.analysis.report import build_investment_report, render_investment_report
+    assert build_investment_report is not None
+    assert render_investment_report is not None
+
+
 def test_demo_script_does_not_use_watchlist_analyze_command() -> None:
     demo_script = REPO_ROOT / "scripts" / "run_daily_brief_demo.sh"
     text = demo_script.read_text()
