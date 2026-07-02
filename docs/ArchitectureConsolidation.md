@@ -813,3 +813,11 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - All 3 deleted modules confirmed still absent. No stale engine class re-exports.
 - 1 guardrail test added (`test_blueprint_domains_do_not_import_legacy_analysis`).
 - 1138 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 109 (2026-07-02):** `atlas/analysis/scoring.py` deleted — zero production callers.
+- `ScoringEngine` and `score_company` confirmed to have zero production callers before deletion (Sprint 108 grep).
+- `atlas/analysis/__init__.py`: `ScoringEngine` and `score_company` removed from import and `__all__`.
+- `tests/test_scoring.py`: 3 dead tests removed; 2 surviving tests kept.
+- Guardrail tests updated to assert `atlas.analysis.scoring` is not importable and neither symbol appears in `atlas.analysis`.
+- `scoring.py` had no provider or network dependency.
+- 1136 tests passing (3 skipped). Demo passed. Release verification green.

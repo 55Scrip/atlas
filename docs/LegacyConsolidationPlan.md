@@ -264,6 +264,22 @@ without output changes.
 
 ---
 
+## Sprint 109 — scoring.py Deletion COMPLETED
+
+**Goal:** Delete `atlas/analysis/scoring.py` — confirmed zero production callers in Sprint 108.
+
+**Key finding:** `ScoringEngine` and `score_company` had zero production callers. Only `tests/test_scoring.py` used them. `ScoringEngine` wrapped `AtlasInvestmentEngine` with a 4-check weight validation that was never exercised by production paths. `scoring.py` had no provider or network dependency.
+
+**Changes made:**
+1. `atlas/analysis/scoring.py` deleted.
+2. `atlas/analysis/__init__.py`: `from atlas.analysis.scoring import ScoringEngine, score_company` removed; `"ScoringEngine"` and `"score_company"` removed from `__all__`.
+3. `tests/test_scoring.py`: 3 dead tests removed; 2 surviving tests (covering `ThresholdRecommendationPolicy` and `build_investment_report`) retained.
+4. `tests/test_watchlist_analyze_deprecation.py`: `test_recommendation_engine_class_is_deleted` replaced with `test_scoring_module_is_deleted`; `test_scoring_engine_and_score_company_still_importable` replaced with `test_scoring_engine_and_score_company_are_deleted`.
+
+**Tests: 1136 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 108 — Post-Cleanup Checkpoint COMPLETED
 
 **Goal:** Full inventory audit of `atlas/analysis/` after Sprints 103–107. Verify deleted modules remain gone. Select Sprint 109 target.

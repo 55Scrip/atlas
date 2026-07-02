@@ -1458,3 +1458,21 @@ Demo passed. Release verification green.
 - `test_blueprint_domains_do_not_import_legacy_analysis` — AST scan confirms `atlas/domains/` never imports from `atlas.analysis`.
 
 **Outcome:** 1 guardrail test added. 1138 tests passing (3 skipped). Demo passed. Release verification green. Sprint 109 target: delete `atlas/analysis/scoring.py`.
+
+---
+
+**Sprint 109 (2026-07-02): Delete `atlas/analysis/scoring.py`**
+
+**Decision:** Delete `atlas/analysis/scoring.py`. Remove `ScoringEngine` and `score_company` from `atlas/analysis/__init__.py`.
+
+**Rationale:**
+- Sprint 108 grep confirmed zero production callers for `ScoringEngine` and `score_company` across the entire `atlas/` tree.
+- `ScoringEngine` wrapped `AtlasInvestmentEngine` with a 4-check weight validation that was never exercised outside tests.
+- No provider or network dependency. No runtime behavior changes.
+- Removing the module tightens the public `atlas.analysis` surface and eliminates dead API.
+
+**Alternatives considered:**
+- Keep as documented test utility: rejected — public re-exports from `atlas.analysis.__init__` imply production availability; keeping dead API is misleading.
+- Move weight validation into `AtlasInvestmentEngine`: out of scope — no production caller needs it.
+
+**Outcome:** `atlas/analysis/scoring.py` deleted. 2 names removed from `atlas/analysis/__init__.py`. `tests/test_scoring.py` stripped of 3 dead tests (2 surviving tests kept). 2 guardrail tests updated. 1136 tests passing (3 skipped). Demo passed. Release verification green.

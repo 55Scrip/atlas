@@ -1,37 +1,6 @@
-import pytest
-
-from atlas.analysis.company_analysis import MockCompanyAnalysisProvider, create_placeholder_company_analysis
+from atlas.analysis.company_analysis import MockCompanyAnalysisProvider
 from atlas.analysis.engine import ThresholdRecommendationPolicy
 from atlas.analysis.report import build_investment_report
-from atlas.analysis.scoring import ScoringEngine, score_company
-
-
-def test_scoring_engine_calculates_weighted_score_for_nvda():
-    analysis = MockCompanyAnalysisProvider().get_company_analysis("NVDA")
-
-    score = score_company(analysis)
-
-    assert score == 86
-
-
-def test_scoring_engine_uses_configurable_weights():
-    analysis = create_placeholder_company_analysis("Test Co")
-    engine = ScoringEngine(
-        weights={
-            "quality": 0.0,
-            "growth": 0.0,
-            "valuation": 1.0,
-            "financial_strength": 0.0,
-            "risk": 0.0,
-        }
-    )
-
-    assert engine.score(analysis) == analysis.valuation.score
-
-
-def test_scoring_engine_rejects_unknown_weights():
-    with pytest.raises(ValueError, match="Unknown scoring module"):
-        ScoringEngine(weights={"valuation": 1.0, "unknown": 1.0})
 
 
 def test_threshold_recommendation_policy_default_thresholds():

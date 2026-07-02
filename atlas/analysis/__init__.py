@@ -17,7 +17,6 @@ from atlas.analysis.portfolio import (
     render_portfolio_analysis,
 )
 from atlas.analysis.report import build_investment_report, render_investment_report
-from atlas.analysis.scoring import ScoringEngine, score_company
 from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
 
 __all__ = [
@@ -33,7 +32,6 @@ __all__ = [
     "PortfolioPosition",
     "PortfolioRecommendation",
     "ScoreCategory",
-    "ScoringEngine",
     "YahooFinanceProvider",
     "build_investment_report",
     "create_placeholder_company_analysis",
@@ -41,5 +39,4 @@ __all__ = [
     "get_mock_company_portfolio_profile",
     "render_portfolio_analysis",
     "render_investment_report",
-    "score_company",
 ]

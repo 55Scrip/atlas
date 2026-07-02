@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 108 checkpoint complete. `atlas/analysis/` now has 15 modules (3 deleted in Sprints 101–107). `scoring.py` is the only remaining module with zero production callers — recommended Sprint 109 target. `portfolio.py` and `engine.py` remain long-term high-coupling work. Blueprint `domains/` confirmed import-free from `atlas.analysis`.
+**Status:** ACTIVE — Sprint 109 complete: `atlas/analysis/scoring.py` deleted (`ScoringEngine`, `score_company` — zero production callers). 14 modules remain. Next meaningful cleanup target is `portfolio.py` migration planning or a checkpoint before tackling high-coupling modules.
 
 ---
 
@@ -30,7 +30,7 @@ remaining modules. This document tracks the cleanup roadmap for those modules.
 | `quality.py` | 18 | `QualityAnalysis`, `placeholder_quality_analysis` | No | Internal to `company_analysis.py` | Internal sub-module — leave unchanged |
 | `report.py` | 38 | `build_investment_report`, `render_investment_report` | Yes | `atlas/cli/main.py` (3 sites), `atlas/comparison/engine.py` (1 site) | **Sprint 107 ✓ cleaned** — active utility |
 | `scores.py` | 2 | `clamp_score` | No | 9 production files across 6 packages | Shared utility — leave unchanged |
-| `scoring.py` | 40 | `ScoringEngine`, `score_company` | Yes | **0 production callers** — test-only | **Sprint 109 candidate — delete** |
+| `scoring.py` | — | — | — | — | **Sprint 109 ✓ DELETED** — zero production callers; test-only module removed |
 | `sentiment.py` | 18 | `SentimentAnalysis`, `placeholder_sentiment_analysis` | No | Internal to `company_analysis.py` | Internal sub-module — leave unchanged |
 | `technicals.py` | 18 | `TechnicalAnalysis`, `placeholder_technical_analysis` | No | Internal to `company_analysis.py` | Internal sub-module — leave unchanged |
 | `valuation.py` | 18 | `ValuationAnalysis`, `placeholder_valuation_analysis` | No | Internal to `company_analysis.py` | Internal sub-module — leave unchanged |
@@ -234,7 +234,7 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 | 106 ✓ | `atlas/analysis/scoring.py` | `RecommendationEngine` class eliminated; `ScoringEngine` retained | DONE |
 | 107 ✓ | `atlas/analysis/report.py` | Retained in place; `render_company_analysis_report` removed (no callers); `build_investment_report` + `render_investment_report` kept (active callers) | DONE |
 | 108 ✓ | Checkpoint | Full inventory audit; verified deleted modules remain gone; Blueprint `domains/` confirmed import-free from `atlas.analysis`; `scoring.py` identified as Sprint 109 target | DONE |
-| **109** | `atlas/analysis/scoring.py` | **Delete `ScoringEngine` and `score_company` — zero production callers; test-only; weight validation logic not needed in production** | LOW |
+| 109 ✓ | `atlas/analysis/scoring.py` | Deleted — `ScoringEngine` and `score_company` had zero production callers; test-only module; `tests/test_scoring.py` stripped of dead tests | DONE |
 | Future | `atlas/analysis/portfolio.py` | High-coupling migration; 17 production import sites, 16 test files; long-term project | HIGH |
 | Future | `atlas/analysis/engine.py` | Core scoring engine; 10 production callers; foundational — leave for late cleanup | VERY HIGH |
 | Leave | `scores.py`, `growth.py`, `macro.py`, `moat.py`, `quality.py`, `sentiment.py`, `technicals.py`, `valuation.py` | Internal sub-modules; no direct cleanup needed | — |
@@ -273,26 +273,16 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 
 ---
 
-## Sprint 109 Target: Delete `atlas/analysis/scoring.py`
+## Sprint 109 — COMPLETED: Delete `atlas/analysis/scoring.py`
 
-**Rationale:**
-- `ScoringEngine` and `score_company` have **zero production callers**. Confirmed by grep across entire `atlas/` tree.
-- Only `tests/test_scoring.py` and `tests/test_watchlist_analyze_deprecation.py` reference them.
-- `ScoringEngine` wraps `AtlasInvestmentEngine` with a 4-check weight validation. This validation is not needed anywhere in production — callers use `AtlasInvestmentEngine` directly.
-- Deleting the module removes dead public API from `atlas/analysis/__init__.py` (`ScoringEngine`, `score_company`).
+**Outcome:**
+- `atlas/analysis/scoring.py` deleted. `ScoringEngine` and `score_company` confirmed to have zero production callers before deletion.
+- `atlas/analysis/__init__.py`: `ScoringEngine` and `score_company` removed from import and `__all__`.
+- `tests/test_scoring.py`: 3 dead tests removed (`test_scoring_engine_calculates_weighted_score_for_nvda`, `test_scoring_engine_uses_configurable_weights`, `test_scoring_engine_rejects_unknown_weights`). 2 surviving tests kept (`ThresholdRecommendationPolicy`, `build_investment_report`).
+- Guardrail tests updated: `test_recommendation_engine_class_is_deleted` → `test_scoring_module_is_deleted`; `test_scoring_engine_and_score_company_still_importable` → `test_scoring_engine_and_score_company_are_deleted`.
+- 1136 tests passing (3 skipped). Demo passed. Release verification green.
 
-**Sprint 109 scope:**
-1. Delete `atlas/analysis/scoring.py`
-2. Remove `ScoringEngine`, `score_company` imports from `atlas/analysis/__init__.py` and `__all__`
-3. Update `tests/test_scoring.py` — remove `ScoringEngine`/`score_company` tests; weight validation test can test `AtlasInvestmentEngine` directly or be removed
-4. Update guardrail test: convert `test_scoring_engine_and_score_company_still_importable` → `test_scoring_engine_is_deleted`
-5. Add guardrail confirming `ScoringEngine` and `score_company` are not re-exported from `atlas.analysis`
-6. Risk: LOW — no production caller exists; only tests change
-
-**What Sprint 109 is NOT:**
-- Not `portfolio.py` migration (too large)
-- Not `engine.py` changes (foundational)
-- Not new features or commands
+**Sprint 110 recommendation:** `portfolio.py` migration planning sprint (read-only audit; no migration yet) — or architecture release checkpoint if no further cleanup is scheduled near-term.
 
 ---
 

@@ -403,28 +403,34 @@ def test_analysis_init_does_not_re_export_explanation_engine() -> None:
     )
 
 
-def test_recommendation_engine_class_is_deleted() -> None:
-    """Sprint 106: RecommendationEngine class must not exist in atlas.analysis.scoring."""
-    import atlas.analysis.scoring as scoring_mod
-    assert not hasattr(scoring_mod, "RecommendationEngine"), (
-        "RecommendationEngine class was eliminated in Sprint 106 — "
-        "use ThresholdRecommendationPolicy from atlas.analysis.engine directly"
-    )
+def test_scoring_module_is_deleted() -> None:
+    """Sprint 109: atlas.analysis.scoring must not be importable — deleted as test-only dead module."""
+    try:
+        import atlas.analysis.scoring  # noqa: F401
+        raise AssertionError(
+            "atlas.analysis.scoring was deleted in Sprint 109 — it had zero production callers"
+        )
+    except ModuleNotFoundError:
+        pass
 
 
 def test_analysis_init_does_not_re_export_recommendation_engine() -> None:
-    """Sprint 106: atlas.analysis must not re-export RecommendationEngine after class elimination."""
+    """Sprint 106: atlas.analysis must not re-export RecommendationEngine."""
     import atlas.analysis as analysis_pkg
     assert not hasattr(analysis_pkg, "RecommendationEngine"), (
         "atlas.analysis must not re-export RecommendationEngine after Sprint 106"
     )
 
 
-def test_scoring_engine_and_score_company_still_importable() -> None:
-    """Sprint 106: ScoringEngine and score_company must remain importable from atlas.analysis.scoring."""
-    from atlas.analysis.scoring import ScoringEngine, score_company
-    assert ScoringEngine is not None
-    assert score_company is not None
+def test_scoring_engine_and_score_company_are_deleted() -> None:
+    """Sprint 109: ScoringEngine and score_company must not be importable from atlas.analysis."""
+    import atlas.analysis as analysis_pkg
+    assert not hasattr(analysis_pkg, "ScoringEngine"), (
+        "ScoringEngine was removed in Sprint 109 — atlas/analysis/scoring.py had zero production callers"
+    )
+    assert not hasattr(analysis_pkg, "score_company"), (
+        "score_company was removed in Sprint 109 — atlas/analysis/scoring.py had zero production callers"
+    )
 
 
 def test_render_company_analysis_report_is_deleted() -> None:
