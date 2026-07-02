@@ -59,7 +59,7 @@ def test_decision_engine_produces_buy_when_context_is_complete_and_capital_is_sa
     assert result.has_enough_information is True
     assert result.portfolio_analysis is not None
     assert result.comparison_result is not None
-    assert result.watchlist_analysis is not None
+    assert result.watchlist_intelligence is not None
     assert "Concentration risk is explicit" in result.reasoning
     assert "uncertain" in result.uncertainty.lower()
 

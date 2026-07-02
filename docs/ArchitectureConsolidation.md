@@ -627,3 +627,21 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 1121 tests passing (3 skipped). Demo passed. Release verification green.
 - Recommended Sprint 95 target: migrate `atlas/decision/` or `atlas/conversation/` WatchlistEngine
   usage. `atlas/decision/` is smaller and may be lower-risk than `atlas/conversation/`.
+
+**Sprint 95 (2026-07-02):** WatchlistEngine removed from `atlas/decision/decision_engine.py`; `DecisionResult.watchlist_intelligence` now carries `WatchlistIntelligenceReport | None`; caller count 3 → 2.
+- `AtlasDecisionEngine.__init__` no longer accepts or instantiates `WatchlistEngine`.
+  `_analyze_watchlist()` renamed to `_watchlist_intelligence()`, rewritten to use
+  `WatchlistIntelligenceEngine().analyze()` (same conversion pattern as Sprint 93/94).
+- `_confidence()` and `_reasoning()` updated to accept `WatchlistIntelligenceReport | None`.
+  Reasoning now uses `report.overview` and `companies_needing_attention[0].ticker` (or
+  `observations[0].ticker`) instead of legacy `final_atlas_view` / `strongest_opportunity.ticker`.
+- `atlas/decision/decision_result.py`: `watchlist_analysis: WatchlistAnalysis | None` replaced
+  with `watchlist_intelligence: WatchlistIntelligenceReport | None`. Import now points to capability.
+- `atlas/intelligence/engine.py`: removed `watchlist_engine=self.watchlist_engine` from
+  `AtlasDecisionEngine(...)` construction — parameter no longer accepted.
+- Guardrail: `test_decision_engine_does_not_import_watchlist_engine` added.
+- Exclusivity guardrail updated: caller set now 2 (intelligence, conversation).
+- WatchlistEngine caller count: 3 before → **2** after.
+- 1122 tests passing (3 skipped). Demo passed. Release verification green.
+- Recommended Sprint 96 target: migrate `atlas/intelligence/` or `atlas/conversation/` WatchlistEngine
+  dependency; `atlas/conversation/` carries the most WatchlistEngine surface area.

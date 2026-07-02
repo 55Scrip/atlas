@@ -89,7 +89,7 @@ This document is the human-readable counterpart to the code registry at
 | **Status** | **Retired** (command body removed Sprint 91) |
 | **Replacement** | `atlas watchlist intelligence` |
 | **Legacy module** | `atlas.analysis.watchlist` (`WatchlistEngine`) — **engine remains on disk** |
-| **Engine blockers** | `WatchlistEngine` is still imported and instantiated by `atlas/intelligence`, `atlas/decision`, `atlas/monitoring`, `atlas/watchlist_review`, and `atlas/conversation`. Engine deletion deferred until all five callers are retired. |
+| **Engine blockers** | `WatchlistEngine` is still imported and instantiated by `atlas/intelligence` and `atlas/conversation` (Sprint 95 state). Engine deletion deferred until both callers are retired. |
 | **Notes** | Entry preserved in `_RETIRED_REGISTRY` for audit. Not callable. Sprint 91 completes the CLI deprecated command retirement plan — active `_REGISTRY` is now empty. |
 
 ---

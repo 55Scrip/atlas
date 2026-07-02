@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 94)  
-**Status:** Active — Sprint 94 target complete; WatchlistEngine removed from atlas/watchlist_review/; snapshot_watchlist_from_analysis removed from MonitoringEngine; caller count 4 → 3. Sprint 95 target: migrate atlas/decision/ or atlas/conversation/ WatchlistEngine dependency
+**Updated:** 2026-07-02 (Sprint 95)  
+**Status:** Active — Sprint 95 target complete; WatchlistEngine removed from atlas/decision/; DecisionResult.watchlist_intelligence uses WatchlistIntelligenceReport; caller count 3 → 2. Sprint 96 target: migrate atlas/intelligence/ or atlas/conversation/ WatchlistEngine dependency
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,44 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 95 Migration Target — COMPLETED
+
+### Completed: WatchlistEngine removed from `atlas/decision/decision_engine.py`; caller count 3 → 2
+
+**Sprint 95 result:**
+
+**Goal:** Replace `atlas/decision/decision_engine.py` direct `WatchlistEngine` dependency with Blueprint-aligned Watchlist Intelligence data; update `DecisionResult` to carry `WatchlistIntelligenceReport` instead of `WatchlistAnalysis`.
+
+**Changes made:**
+1. Removed `WatchlistEngine` and `WatchlistAnalysis` imports from `atlas/decision/decision_engine.py`
+2. Added `WatchlistIntelligenceEngine`, `WatchlistIntelligenceInput`, `WatchlistItem as IntelligenceWatchlistItem` imports from `atlas.capabilities.watchlist_intelligence`
+3. Removed `watchlist_engine: WatchlistEngine | None` parameter from `AtlasDecisionEngine.__init__`
+4. Renamed `_analyze_watchlist()` to `_watchlist_intelligence()`; rewrote to use `WatchlistIntelligenceEngine().analyze()` (same conversion pattern as Sprint 93)
+5. Updated `_confidence()` and `_reasoning()` signatures: `watchlist_analysis: WatchlistAnalysis | None` → `watchlist_intelligence: WatchlistIntelligenceReport | None`
+6. Updated `_reasoning()`: replaced `watchlist_analysis.strongest_opportunity.ticker` / `watchlist_analysis.final_atlas_view` with `report.companies_needing_attention[0].ticker` / `report.overview`
+7. Updated `atlas/decision/decision_result.py`: replaced `WatchlistAnalysis` with `WatchlistIntelligenceReport`; renamed field `watchlist_analysis` → `watchlist_intelligence`
+8. Removed `watchlist_engine=self.watchlist_engine` from `AtlasDecisionEngine(...)` construction in `atlas/intelligence/engine.py`
+9. Updated `WATCHLIST_ENGINE_CALLERS` to 2 entries (removed decision)
+10. Added `test_decision_engine_does_not_import_watchlist_engine` guardrail
+11. Updated exclusivity guardrail comment (caller set now 2)
+12. Updated `tests/test_decision_engine.py`: `result.watchlist_analysis` → `result.watchlist_intelligence`
+
+**Output change (documented):**
+`atlas decide` reasoning now uses `WatchlistIntelligenceReport.overview` and `companies_needing_attention[0].ticker` (or `observations[0].ticker`) instead of legacy `WatchlistAnalysis.final_atlas_view` and `strongest_opportunity.ticker`. Decision confidence score unchanged (+4 bonus when watchlist present). Output remains deterministic, local-only, provider-free.
+
+**WatchlistEngine caller count:**
+- Before Sprint 95: 3 (intelligence, decision, conversation)
+- After Sprint 95: **2** (intelligence, conversation)
+- `atlas/decision/decision_engine.py` no longer imports or instantiates WatchlistEngine
+- `DecisionResult.watchlist_intelligence` now carries `WatchlistIntelligenceReport | None`
+
+**Engine deletion criteria (deferred to Sprint 96+):**
+1. Retire or migrate `atlas/intelligence/` WatchlistEngine usage
+2. Retire or migrate `atlas/conversation/` WatchlistEngine usage
+3. Once both callers are retired, `atlas/analysis/watchlist.py` can be deleted
 
 ---
 

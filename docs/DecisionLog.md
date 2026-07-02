@@ -1200,3 +1200,22 @@ is deleted from `MonitoringEngine`, and `WatchlistAnalysis` is dropped from its 
 `atlas/watchlist_review/engine.py` and `atlas/monitoring/engine.py` both no longer import
 `WatchlistEngine`. `snapshot_watchlist_from_analysis` removed. 1121 tests passing (3 skipped).
 Demo passed. Release verification green.
+
+---
+
+**Sprint 95 (2026-07-02): Remove WatchlistEngine from `atlas/decision/decision_engine.py`**
+
+**Decision:** Replace `AtlasDecisionEngine` direct `WatchlistEngine` usage with `WatchlistIntelligenceEngine` (Blueprint capability), following the Sprint 93/94 pattern.
+
+**Rationale:**
+- `atlas/decision/` was the smallest remaining WatchlistEngine caller — clear migration path.
+- `DecisionResult.watchlist_intelligence` now carries richer research signals (`WatchlistIntelligenceReport`) rather than legacy scoring output (`WatchlistAnalysis`).
+- Consistent with Blueprint principle: decision layer should consume capability-level intelligence, not raw legacy engine scores.
+- Confidence bonus (+4 for watchlist context) preserved unchanged — only the underlying source changes.
+
+**Alternatives considered:**
+- Keep `WatchlistAnalysis` in `DecisionResult` and only remove `WatchlistEngine` from the engine: rejected — would leave a dead import of `WatchlistAnalysis` in the result model.
+- Migrate `atlas/conversation/` first: deferred — conversation has more surface area; decision was lower risk.
+
+**Outcome:** WatchlistEngine caller count reduced 3 → **2** (intelligence, conversation).
+`atlas/decision/decision_engine.py` no longer imports `WatchlistEngine`. `DecisionResult.watchlist_intelligence` holds `WatchlistIntelligenceReport | None`. 1122 tests passing (3 skipped). Demo passed. Release verification green.

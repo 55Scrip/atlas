@@ -5,7 +5,7 @@ from atlas.analysis.comparison import ComparisonResult
 from atlas.analysis.engine import InvestmentReport
 from atlas.analysis.memory import MemoryComparison
 from atlas.analysis.portfolio import PortfolioAnalysis
-from atlas.analysis.watchlist import WatchlistAnalysis
+from atlas.capabilities.watchlist_intelligence.models import WatchlistIntelligenceReport
 
 
 class DecisionAction(str, Enum):
@@ -33,5 +33,5 @@ class DecisionResult:
     investment_report: InvestmentReport
     portfolio_analysis: PortfolioAnalysis | None = None
     comparison_result: ComparisonResult | None = None
-    watchlist_analysis: WatchlistAnalysis | None = None
+    watchlist_intelligence: WatchlistIntelligenceReport | None = None
     memory_comparison: MemoryComparison | None = None

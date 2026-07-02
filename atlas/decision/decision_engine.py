@@ -3,7 +3,12 @@ from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport
 from atlas.analysis.memory import MemoryComparison, MemoryEngine
 from atlas.analysis.portfolio import PortfolioAnalysis, PortfolioIntelligenceEngine
 from atlas.analysis.scores import clamp_score
-from atlas.analysis.watchlist import WatchlistAnalysis, WatchlistEngine
+from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
+from atlas.capabilities.watchlist_intelligence.models import (
+    WatchlistIntelligenceInput,
+    WatchlistIntelligenceReport,
+    WatchlistItem as IntelligenceWatchlistItem,
+)
 from atlas.decision.decision_context import DecisionContext
 from atlas.decision.decision_result import DecisionAction, DecisionResult
 from atlas.providers.base import CompanyDataProvider
@@ -15,13 +20,11 @@ class AtlasDecisionEngine:
         investment_engine: AtlasInvestmentEngine | None = None,
         portfolio_engine: PortfolioIntelligenceEngine | None = None,
         comparison_engine: ComparisonEngine | None = None,
-        watchlist_engine: WatchlistEngine | None = None,
         memory_engine: MemoryEngine | None = None,
     ) -> None:
         self.investment_engine = investment_engine or AtlasInvestmentEngine()
         self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()
         self.comparison_engine = comparison_engine or ComparisonEngine(self.investment_engine)
-        self.watchlist_engine = watchlist_engine or WatchlistEngine(self.investment_engine)
         self.memory_engine = memory_engine or MemoryEngine()
 
     def decide(
@@ -34,7 +37,7 @@ class AtlasDecisionEngine:
         investment_report = self.investment_engine.analyze_ticker(normalized_ticker, provider)
         portfolio_analysis = self._analyze_portfolio(normalized_ticker, provider, context)
         comparison_result = self._compare(normalized_ticker, provider, context)
-        watchlist_analysis = self._analyze_watchlist(provider, context)
+        watchlist_analysis = self._watchlist_intelligence(context)
         memory_comparison = self._compare_memory(normalized_ticker, context)
 
         capital_safe = _capital_is_safe(context)
@@ -85,7 +88,7 @@ class AtlasDecisionEngine:
                 context=context,
                 portfolio_analysis=portfolio_analysis,
                 comparison_result=comparison_result,
-                watchlist_analysis=watchlist_analysis,
+                watchlist_intelligence=watchlist_analysis,
                 memory_comparison=memory_comparison,
                 capital_safe=capital_safe,
                 has_enough_information=has_enough_information,
@@ -102,7 +105,7 @@ class AtlasDecisionEngine:
             investment_report=investment_report,
             portfolio_analysis=portfolio_analysis,
             comparison_result=comparison_result,
-            watchlist_analysis=watchlist_analysis,
+            watchlist_intelligence=watchlist_analysis,
             memory_comparison=memory_comparison,
         )
 
@@ -131,14 +134,20 @@ class AtlasDecisionEngine:
             return None
         return self.comparison_engine.compare_tickers(tickers, provider)
 
-    def _analyze_watchlist(
+    def _watchlist_intelligence(
         self,
-        provider: CompanyDataProvider,
         context: DecisionContext,
-    ) -> WatchlistAnalysis | None:
+    ) -> WatchlistIntelligenceReport | None:
         if context.watchlist is None:
             return None
-        return self.watchlist_engine.analyze(context.watchlist, provider)
+        intelligence_input = WatchlistIntelligenceInput(
+            name=context.watchlist.name,
+            items=tuple(
+                IntelligenceWatchlistItem(id=item.ticker.lower(), ticker=item.ticker)
+                for item in context.watchlist.items
+            ),
+        )
+        return WatchlistIntelligenceEngine().analyze(intelligence_input)
 
     def _compare_memory(
         self,
@@ -256,7 +265,7 @@ def _confidence(
     has_enough_information: bool,
     portfolio_analysis: PortfolioAnalysis | None,
     comparison_result: ComparisonResult | None,
-    watchlist_analysis: WatchlistAnalysis | None,
+    watchlist_analysis: WatchlistIntelligenceReport | None,
     memory_comparison: MemoryComparison | None,
 ) -> int:
     context_bonus = sum(
@@ -309,7 +318,7 @@ def _reasoning(
     context: DecisionContext,
     portfolio_analysis: PortfolioAnalysis | None,
     comparison_result: ComparisonResult | None,
-    watchlist_analysis: WatchlistAnalysis | None,
+    watchlist_intelligence: WatchlistIntelligenceReport | None,
     memory_comparison: MemoryComparison | None,
     capital_safe: bool,
     has_enough_information: bool,
@@ -347,10 +356,17 @@ def _reasoning(
             f"Comparison context says {comparison_result.best_overall.winner.ticker} is best "
             f"overall. {comparison_result.best_overall.reasoning}"
         )
-    if watchlist_analysis is not None:
+    if watchlist_intelligence is not None:
+        first_ticker = (
+            watchlist_intelligence.companies_needing_attention[0].ticker
+            if watchlist_intelligence.companies_needing_attention
+            else watchlist_intelligence.observations[0].ticker
+            if watchlist_intelligence.observations
+            else "the watchlist"
+        )
         reasons.append(
-            f"Watchlist context points first to {watchlist_analysis.strongest_opportunity.ticker}. "
-            f"{watchlist_analysis.final_atlas_view}"
+            f"Watchlist context highlights {first_ticker}. "
+            f"{watchlist_intelligence.overview}"
         )
     if memory_comparison is not None:
         reasons.append(memory_comparison.explanation)
