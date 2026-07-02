@@ -2,6 +2,21 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 121 — Monitoring Portfolio Dependency: TYPE_CHECKING Only (Option D)
+
+Decision: `atlas/monitoring/engine.py` imports `Portfolio` for method type annotations only.
+No `PortfolioAnalysis` or `PortfolioIntelligenceEngine` imports present. Migration strategy
+is TYPE_CHECKING guard (Option D): `from __future__ import annotations` + `if TYPE_CHECKING:
+from atlas.analysis.portfolio import Portfolio`. All runtime attribute access (`.positions`,
+`.ticker`, `.weight`, `.sector`, `.country`, `.quality_score`, `.risk_score`) is duck-typed
+and requires no import. All callers (cli, dashboard, portfolio_review) continue passing
+legacy Portfolio objects unchanged.
+
+Rationale: Option A (shared Portfolio migration) would require migrating all three callers
+simultaneously — `cli/main.py`, `dashboard/engine.py`, and `portfolio_review/engine.py` — which
+is out of scope for Sprint 121. Option D achieves the boundary goal (no runtime import from
+legacy module) with zero behavior change and zero caller breakage.
+
 ## 2026-06-29: Keep Sprint 36 as a Foundation Sprint
 
 Decision: establish boundaries, canonical entities, docs, CI, hooks, and AI

@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 98)  
-**Status:** Active — Sprint 98 complete; WatchlistEngine active caller count is now **0**. `_answer_watchlist_review()` migrated to Blueprint-aligned Watchlist Intelligence. `WatchlistEngine` and `atlas/analysis/watchlist.py` retained for Sprint 99 deletion. Type-only `Watchlist`/`WatchlistItem` imports in 5 modules documented for later cleanup.
+**Updated:** 2026-07-02 (Sprint 121)  
+**Status:** Active — Sprint 121 complete; `atlas/monitoring/engine.py` Portfolio import moved to TYPE_CHECKING. 7 of ~10 portfolio.py callers now migrated (conversation, dashboard, portfolio_review, reasoning, risk_drift, suitability, monitoring). Sprint 122 targets `atlas/home/engine.py`. WatchlistEngine active caller count is **0** (Sprint 98). `_answer_watchlist_review()` migrated to Blueprint-aligned Watchlist Intelligence. `WatchlistEngine` and `atlas/analysis/watchlist.py` retained for Sprint 99 deletion. Type-only `Watchlist`/`WatchlistItem` imports in 5 modules documented for later cleanup.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

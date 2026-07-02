@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 119) — risk drift portfolio dependency migrated  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (5 of ~10 callers migrated: conversation, dashboard, portfolio_review, reasoning, risk_drift)  
+**Updated:** 2026-07-02 (Sprint 121) — monitoring Portfolio dependency moved to TYPE_CHECKING  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (7 of ~10 callers migrated: conversation, dashboard, portfolio_review, reasoning, risk_drift, suitability, monitoring)  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -326,11 +326,12 @@ Migrate one production caller per sprint, in order of impact risk:
 
 5. ✓ `atlas/risk_drift/engine.py` — **MIGRATED Sprint 119**; `Portfolio` moved to TYPE_CHECKING (duck-typed `.positions` access preserved for current callers); `PortfolioAnalysis` removed — `current_portfolio_analysis` field now typed as `PortfolioFitResult | None`; `_concentration_in_portfolio_analysis` updated to use `.overlap.score`. Dead code path — no behavior change.
 
-**Recommended Sprint 120 target:** `atlas/suitability/engine.py` — uses both `Portfolio` and `PortfolioAnalysis`.
+6. ✓ `atlas/suitability/engine.py` — **MIGRATED Sprint 120**; `Portfolio` moved to TYPE_CHECKING (duck-typed access preserved); `PortfolioAnalysis` removed — `portfolio_analysis` field now typed as `PortfolioFitResult | None`; `_concentration_impact` updated to use `.overlap` instead of `.overlap_with_existing_holdings`. No caller passes `portfolio_analysis` — dead field, no behavior change.
 
-6. `atlas/suitability/engine.py` — uses `Portfolio` and `PortfolioAnalysis`
-7. `atlas/monitoring/engine.py` — uses `Portfolio` as type annotation only
-8. `atlas/home/engine.py` — uses `Portfolio` as type annotation only
+7. ✓ `atlas/monitoring/engine.py` — **MIGRATED Sprint 121**; `Portfolio` moved to TYPE_CHECKING (Option D — annotation-only). No `PortfolioAnalysis` or `PortfolioIntelligenceEngine` imports present. Duck-typed `.positions`, `.ticker`, `.weight`, `.sector`, `.country`, `.quality_score`, `.risk_score` access preserved. All callers (cli, dashboard, portfolio_review) pass legacy Portfolio objects unchanged. No behavior change.
+
+**Recommended Sprint 122 target:** `atlas/home/engine.py` — uses `Portfolio` as type annotation only (same TYPE_CHECKING pattern).
+8. `atlas/home/engine.py` — uses `Portfolio` as type annotation only (Sprint 122 target)
 9. `atlas/decision/decision_engine.py` + `decision_context.py` + `decision_result.py` — highest coupling; migrate last
 10. `atlas/intelligence/engine.py` — highest integration surface; migrate after decision
 

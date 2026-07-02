@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 119 complete: `atlas/risk_drift/engine.py` — `Portfolio` moved to TYPE_CHECKING; `PortfolioAnalysis` removed and replaced by `PortfolioFitResult` for `current_portfolio_analysis`. 9 new tests. Next: Sprint 120 — migrate `atlas/suitability/engine.py`.
+**Status:** ACTIVE — Sprint 121 complete: `atlas/monitoring/engine.py` — `Portfolio` moved to TYPE_CHECKING (Option D, annotation-only). 8 new tests. Migrated callers so far: conversation, dashboard, portfolio_review, reasoning, risk_drift, suitability, monitoring. Next: Sprint 122 — `atlas/home/engine.py`.
 
 ---
 
