@@ -2,6 +2,27 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 155 — Close Risk Cleanup Track
+
+Decision: Close the `atlas/risk/` cleanup track. No cleanup work is warranted.
+
+**Rationale:** After inventory (Sprint 154), caller verification, stale import audit, and Blueprint overlap review, the risk package contains only active, intentional code. `RiskAnalysis` is still used by 2 production engines (`conversation`, `intelligence`). `RiskEngine` has zero production callers but shares a file with the active type — deletion requires file surgery with no Blueprint migration target. Further cleanup would create churn without architectural benefit.
+
+**Final verification (Sprint 155):** All 8 exports importable. 2 known callers confirmed. Zero provider imports. Zero stale closed-track imports. No Blueprint successor introduced.
+
+**Closed-track summary:**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — CLOSED Sprint 148
+- Evidence package — CLOSED Sprint 150
+- Reasoning package — CLOSED Sprint 153
+- Risk package — **CLOSED Sprint 155**
+
+**Sprint 156 recommended target:** Audit Group C self-contained module `atlas/principles/` — `check_reasoning_report()` was removed Sprint 152, reducing the principles API; remaining exports and callers should be inventoried and confirmed stable.
+
+---
+
 ## 2026-07-02: Sprint 154 — Risk Package Audit Checkpoint
 
 Decision: Audit `atlas/risk/` as a Group C self-contained module. Audit-only sprint. No runtime changes.

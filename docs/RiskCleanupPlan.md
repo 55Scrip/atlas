@@ -1,7 +1,8 @@
 # Atlas Risk Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 154)  
-**Status:** ACTIVE — Sprint 154 audit complete. Sprint 155 recommended: close risk cleanup track — no cleanup work is warranted. `RiskAnalysis` is an active shared type; `RiskEngine` cannot be deleted without it; no Blueprint successor exists.
+**Updated:** 2026-07-02 (Sprint 155)  
+**Status:** CLOSED — Sprint 155 confirmed Sprint 154 findings unchanged. No cleanup work is warranted. Package is self-contained, actively used via `RiskAnalysis`, and stable. No further `atlas/risk/` cleanup work is planned until a Blueprint-aligned successor exists or new dead code / stale imports are discovered.
 
 ---
 
@@ -199,3 +200,58 @@ After inventory (Sprint 154), the risk package contains no actionable cleanup ca
 Sprint 155 should be a documentation-only sprint confirming the audit findings and closing the track. No code changes are needed.
 
 **Reopening condition:** If a Blueprint-aligned risk capability emerges, or if `RiskAnalysis` callers are migrated away and the type becomes zero-caller, this track should be reopened for `RiskEngine` deletion.
+
+---
+
+## Final Stable Package State (Sprint 155)
+
+| Module | Lines | Status |
+|---|---|---|
+| `__init__.py` | 21 | Clean — 8 exports, all intentional |
+| `engine.py` | 448 | Active — `RiskAnalysis` shared type; `RiskEngine` dormant but inseparable |
+
+**Provider safety:** Zero provider imports. Zero network access. Deterministic, local-only. ✓
+
+---
+
+## Sprint 155 — Track Closure (COMPLETED)
+
+**Risk cleanup track is CLOSED as of Sprint 155.**
+
+Sprint 155 verified:
+- All 8 `atlas.risk` exports remain importable.
+- 2 known production callers confirmed (`conversation`, `intelligence`).
+- Zero provider imports. Zero upward dependencies.
+- Zero stale closed-track imports.
+- No Blueprint-aligned successor introduced since Sprint 154.
+- No cleanup action is warranted.
+
+**Closure rationale:** After inventory (Sprint 154) and final verification (Sprint 155), the risk package contains only active, intentional code. `RiskAnalysis` is a live shared type; `RiskEngine` cannot be safely removed without it. Further cleanup would create churn without architectural benefit.
+
+**Reopening condition:** If a Blueprint-aligned risk capability emerges, or if the 2 `RiskAnalysis` callers are migrated to a successor type, this track should be reopened.
+
+---
+
+## Closed-Track Summary
+
+| Track | Status |
+|---|---|
+| `atlas/analysis/` cleanup | CLOSED Sprint 141 |
+| `atlas/decision/` cleanup | CLOSED Sprint 144 |
+| Provider boundary audit | CLOSED Sprint 146 |
+| Portfolio boundary | CLOSED Sprint 148 |
+| Evidence package | CLOSED Sprint 150 |
+| Reasoning package | CLOSED Sprint 153 |
+| Risk package | **CLOSED Sprint 155** |
+
+---
+
+## Recommended Sprint 156 Target
+
+**Audit `atlas/principles/` — Group C self-contained module.**
+
+`atlas/principles/` is a natural next audit target after the reasoning package deletion:
+- `check_reasoning_report()` was removed in Sprint 152, reducing the principles API
+- The remaining exports (`check_conversation_response`, `check_intelligence_report`, `check_suitability_assessment`, `check_text_against_principles`, `PrinciplesEngine`, etc.) should be inventoried and caller-mapped
+- The `atlas principles check` CLI command is active — confirming this boundary is well-understood before any future work
+- Smallest safe Group C audit-first target after risk.
