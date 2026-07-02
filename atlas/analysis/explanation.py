@@ -14,29 +14,23 @@ class InvestmentExplanation:
     confidence_explanation: str
 
 
-class ExplanationEngine:
-    def explain(self, report: InvestmentReport) -> InvestmentExplanation:
-        strongest_categories = _rank_categories(report, reverse=True)
-        weakest_categories = _rank_categories(report, reverse=False)
-        key_strengths = tuple(
-            _category_strength(label, category)
-            for label, category in strongest_categories[:3]
-        )
-        key_risks = _key_risks(report, weakest_categories)
-
-        return InvestmentExplanation(
-            bull_case=_bull_case(report, strongest_categories),
-            bear_case=_bear_case(report, weakest_categories),
-            key_strengths=key_strengths,
-            key_risks=key_risks,
-            valuation_concern=_valuation_concern(report.valuation),
-            mind_changers=_mind_changers(report),
-            confidence_explanation=_confidence_explanation(report),
-        )
-
-
 def explain_investment_report(report: InvestmentReport) -> InvestmentExplanation:
-    return ExplanationEngine().explain(report)
+    strongest_categories = _rank_categories(report, reverse=True)
+    weakest_categories = _rank_categories(report, reverse=False)
+    key_strengths = tuple(
+        _category_strength(label, category)
+        for label, category in strongest_categories[:3]
+    )
+    key_risks = _key_risks(report, weakest_categories)
+    return InvestmentExplanation(
+        bull_case=_bull_case(report, strongest_categories),
+        bear_case=_bear_case(report, weakest_categories),
+        key_strengths=key_strengths,
+        key_risks=key_risks,
+        valuation_concern=_valuation_concern(report.valuation),
+        mind_changers=_mind_changers(report),
+        confidence_explanation=_confidence_explanation(report),
+    )
 
 
 def render_investment_explanation(explanation: InvestmentExplanation) -> str:

@@ -4,7 +4,6 @@ from atlas.analysis.company_analysis import (
 )
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport, ScoreCategory
 from atlas.analysis.explanation import (
-    ExplanationEngine,
     InvestmentExplanation,
     explain_investment_report,
 )
@@ -25,7 +24,6 @@ __all__ = [
     "AtlasInvestmentEngine",
     "CompanyAnalysis",
     "CompanyDataProvider",
-    "ExplanationEngine",
     "InvestmentReport",
     "InvestmentExplanation",
     "MockCompanyAnalysisProvider",

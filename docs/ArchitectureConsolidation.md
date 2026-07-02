@@ -778,3 +778,14 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 5 guardrail tests added: module deleted, file gone, no production imports, types importable from
   new location, `atlas.analysis` has no stale memory re-exports.
 - 1130 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 105 (2026-07-02):** `ExplanationEngine` class eliminated from `atlas/analysis/explanation.py`.
+- `ExplanationEngine` class removed; logic inlined directly into `explain_investment_report()` free
+  function. File stays at `atlas/analysis/explanation.py` — moving it would create a backwards
+  dependency since `atlas/analysis/report.py` imports from it.
+- No external caller ever instantiated `ExplanationEngine` directly; `explain_investment_report()`
+  was already the public API. Elimination is behavior-preserving and zero-risk.
+- `atlas/analysis/__init__.py`: `ExplanationEngine` removed from import and `__all__`.
+- 3 guardrail tests added: class not present in module, free function still importable, `atlas.analysis`
+  has no stale `ExplanationEngine` re-export.
+- 1133 tests passing (3 skipped). Demo passed. Release verification green.

@@ -1383,3 +1383,22 @@ Demo passed. Release verification green.
 - Invent new capability (`atlas/tracking/`): rejected — unnecessary scope; `atlas/decision/memory.py` co-locates the logic with its primary runtime consumer.
 
 **Outcome:** `atlas/analysis/memory.py` deleted. `atlas.analysis.memory` raises `ModuleNotFoundError`. `MemoryEntry`/`MemoryStore`/`MemoryComparison` importable from `atlas.decision.memory`. `AtlasDecisionEngine` constructor lost `memory_engine` param. CLI updated to use free functions. 5 guardrail tests added. 1130 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 105 (2026-07-02): Eliminate `ExplanationEngine` class from `atlas/analysis/explanation.py`**
+
+**Decision:** Inline `ExplanationEngine.explain()` logic directly into `explain_investment_report()` free function. File remains at `atlas/analysis/explanation.py`. `ExplanationEngine` class removed.
+
+**Rationale:**
+- `ExplanationEngine` was a one-method class (`explain()`) whose only caller was `explain_investment_report()` itself — no external code ever instantiated it directly.
+- `explain_investment_report()` was already the public API; the class added no value beyond an unnecessary level of indirection.
+- Moving the file out of `atlas/analysis/` is not viable: `atlas/analysis/report.py` imports `explain_investment_report` and `render_investment_explanation`. Moving to `atlas/decision/` or `atlas/capabilities/` would create a backwards dependency (`atlas/analysis/` → `atlas/decision/`), which is architecturally worse than the current state.
+- Option B (in-place class elimination) is the correct action: the class is removed, the module becomes a pure free-function module, no behavior changes.
+
+**Alternatives considered:**
+- Move to `atlas/capabilities/explanation/`: rejected — `atlas/analysis/report.py` imports from this module; moving it out creates backwards dependency.
+- Move to `atlas/decision/explanation.py`: rejected — same reason; `atlas/analysis/` should not depend on `atlas/decision/`.
+- Retain as-is (Option C): rejected — the class provided no value; inline is safe and zero-risk.
+
+**Outcome:** `ExplanationEngine` class deleted from `atlas/analysis/explanation.py`. `explain_investment_report()` is now a direct free function. `atlas/analysis/__init__.py` no longer re-exports `ExplanationEngine`. 3 guardrail tests added. 1133 tests passing (3 skipped). Demo passed. Release verification green.

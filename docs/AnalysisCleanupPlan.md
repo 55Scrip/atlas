@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 104 complete: `MemoryEngine` retired. Next target: `portfolio.py` or `engine.py` (Sprint 105+)
+**Status:** ACTIVE — Sprint 105 complete: `ExplanationEngine` class eliminated. Next target: `scoring.py` or `report.py` (Sprint 106+)
 
 ---
 
@@ -21,7 +21,7 @@ remaining modules. This document tracks the cleanup roadmap for those modules.
 | `company_analysis.py` | 45 | `CompanyAnalysis`, `MockCompanyAnalysisProvider`, `create_placeholder_company_analysis` | Yes | Still active legacy — heavily used by providers, tests |
 | `comparison.py` | 199 | `ComparisonEngine`, `ComparisonResult`, `ComparisonCandidate`, `ComparisonRanking`, `render_comparison_result` | Yes | **Sprint 103 candidate** |
 | `engine.py` | 229 | `AtlasInvestmentEngine`, `InvestmentReport`, `ScoreCategory`, `iter_score_categories` | Yes | Still active legacy — core scoring engine, many callers |
-| `explanation.py` | 204 | `ExplanationEngine`, `InvestmentExplanation`, `explain_investment_report`, `render_investment_explanation` | Yes | Still active legacy |
+| `explanation.py` | 190 | `InvestmentExplanation`, `explain_investment_report`, `render_investment_explanation` | Partial | **Sprint 105 ✓ — `ExplanationEngine` class eliminated; file kept as free-function module** |
 | `growth.py` | 18 | `GrowthAnalysis`, `placeholder_growth_analysis` | No | Sub-module of company_analysis; leave unchanged |
 | `macro.py` | 18 | `MacroAnalysis`, `placeholder_macro_analysis` | No | Sub-module of company_analysis; leave unchanged |
 | `memory.py` | 255 | `MemoryEngine`, `MemoryEntry`, `MemoryStore`, `MemoryComparison`, `render_memory_entries`, `render_memory_comparison` | No | **Sprint 104 ✓ — deleted; types moved to `atlas/decision/memory.py`** |
@@ -222,7 +222,8 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 |---|---|---|---|
 | 103 ✓ | `atlas/analysis/comparison.py` | Retired `ComparisonEngine`; types moved to `atlas/decision/comparison.py`; file deleted | DONE |
 | 104 ✓ | `atlas/analysis/memory.py` | Retired `MemoryEngine`; types/logic moved to `atlas/decision/memory.py`; file deleted | DONE |
-| 105+ | `atlas/analysis/portfolio.py` | High-coupling migration; 10+ callers; long-term project | HIGH |
+| 105 ✓ | `atlas/analysis/explanation.py` | `ExplanationEngine` class eliminated; file kept as free-function module | DONE |
+| 106+ | `atlas/analysis/scoring.py` / `report.py` | Audit; likely small free-function cleanup | LOW-MEDIUM |
 | Future | `atlas/analysis/portfolio.py` | High-coupling migration; 10+ callers; long-term project | HIGH |
 | Future | `atlas/analysis/engine.py` | Core scoring engine; 10+ callers; foundational — leave for late cleanup | VERY HIGH |
 | Leave | `scores.py`, `growth.py`, `macro.py`, `moat.py`, `quality.py`, `sentiment.py`, `technicals.py`, `valuation.py` | Internal sub-modules; used only by `company_analysis.py`/`engine.py`; no direct cleanup needed | — |

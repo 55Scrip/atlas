@@ -264,6 +264,23 @@ without output changes.
 
 ---
 
+## Sprint 105 — ExplanationEngine Class Elimination COMPLETED
+
+**Goal:** Audit `ExplanationEngine`; eliminate class if safe; preserve free-function API.
+
+**Key finding:** `ExplanationEngine` was a one-method class whose only instantiation was inside `explain_investment_report()`. No external caller used the class directly. Moving the file out of `atlas/analysis/` was not viable because `atlas/analysis/report.py` imports from it; doing so would create a backwards dependency from `atlas/analysis/` → another layer.
+
+**Changes made:**
+1. `atlas/analysis/explanation.py`: `ExplanationEngine` class deleted; `explain_investment_report()`
+   logic inlined directly as a free function. `InvestmentExplanation`, `render_investment_explanation`,
+   and all private helpers remain unchanged.
+2. `atlas/analysis/__init__.py`: `ExplanationEngine` removed from import and `__all__`.
+3. 3 guardrail tests added to `tests/test_watchlist_analyze_deprecation.py`.
+
+**Tests: 1133 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 103 — ComparisonEngine Retirement COMPLETED
 
 **Goal:** Retire `ComparisonEngine`; delete `atlas/analysis/comparison.py`.

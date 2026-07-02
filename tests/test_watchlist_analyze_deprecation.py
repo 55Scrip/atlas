@@ -379,6 +379,30 @@ def test_analysis_init_does_not_re_export_memory_types() -> None:
     )
 
 
+def test_explanation_engine_class_is_deleted() -> None:
+    """Sprint 105: ExplanationEngine class must not exist in atlas.analysis.explanation."""
+    import atlas.analysis.explanation as explanation_mod
+    assert not hasattr(explanation_mod, "ExplanationEngine"), (
+        "ExplanationEngine class was eliminated in Sprint 105 — "
+        "use explain_investment_report() directly"
+    )
+
+
+def test_explain_investment_report_still_importable() -> None:
+    """Sprint 105: explain_investment_report must remain importable from atlas.analysis.explanation."""
+    from atlas.analysis.explanation import explain_investment_report, InvestmentExplanation
+    assert explain_investment_report is not None
+    assert InvestmentExplanation is not None
+
+
+def test_analysis_init_does_not_re_export_explanation_engine() -> None:
+    """Sprint 105: atlas.analysis must not re-export ExplanationEngine after class elimination."""
+    import atlas.analysis as analysis_pkg
+    assert not hasattr(analysis_pkg, "ExplanationEngine"), (
+        "atlas.analysis must not re-export ExplanationEngine after Sprint 105"
+    )
+
+
 def test_demo_script_does_not_use_watchlist_analyze_command() -> None:
     demo_script = REPO_ROOT / "scripts" / "run_daily_brief_demo.sh"
     text = demo_script.read_text()
