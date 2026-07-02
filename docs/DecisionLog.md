@@ -1567,3 +1567,16 @@ Demo passed. Release verification green.
 - The adapter conversion (`legacy_portfolio_to_domain_portfolio`) happens inside `_answer_portfolio_review` — the legacy Portfolio is converted to `atlas.shared.Portfolio` on the fly. No API surface change.
 
 **Outcome:** 5 files changed. 13 new tests. 1194 tests passing (3 skipped). Demo passed. RC2 green.
+
+---
+
+**Sprint 115 (2026-07-02): Migrate dashboard portfolio-fit to capability**
+
+**Decision:** Same pattern as Sprint 114. `portfolio_engine` retained in constructor for backward compatibility but is no longer called internally. `portfolio_fit_capability` added alongside it.
+
+**Rationale:**
+- The `if target_ticker and provider:` block is the only place `portfolio_engine` is used in the dashboard. Migrating just that block leaves the rest of the dashboard (suitability, risk drift, monitoring) untouched.
+- Keeping `portfolio_engine` in the constructor is deliberate: it avoids breaking any caller that injects a mock for the old engine in tests, and preserves the public API surface until deletion is safe.
+- Field mapping is direct: `portfolio_score` → `fit_score`, `final_reasoning` → `summary`.
+
+**Outcome:** 2 files changed. 6 new tests. 1200 tests passing (3 skipped). Demo passed. RC2 green.

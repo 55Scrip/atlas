@@ -861,3 +861,9 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - `atlas/capabilities/portfolio_intelligence/engine.py` — all 7 dimensions now have full parity when enriched fields are present; conservative fallbacks retained for unenriched `Holding`.
 - `atlas/conversation/engine.py` — `_answer_portfolio_review` migrated to `PortfolioIntelligenceCapability`; `portfolio_fit_capability` injected; legacy `portfolio_engine` retained for `IntelligenceEngine` (not migrated).
 - 13 new tests; 1194 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 115 (2026-07-02):** Dashboard caller migrated.
+- `atlas/dashboard/engine.py` target-fit block migrated to `PortfolioIntelligenceCapability`; `portfolio_fit_capability` injected; adapter used for conversion.
+- Legacy `portfolio_engine` retained in constructor but unused internally.
+- 6 new tests in `tests/test_dashboard_engine.py`.
+- 1200 tests passing (3 skipped). Demo passed. Release verification green.

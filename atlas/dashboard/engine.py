@@ -1,6 +1,11 @@
 from dataclasses import dataclass
 
+from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
 from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine
+from atlas.capabilities.portfolio_intelligence import (
+    PortfolioFitInput,
+    PortfolioIntelligenceCapability,
+)
 from atlas.economics import EconomicSignalAnalysis, EconomicSignalsEngine
 from atlas.market import (
     MarketHealthEngine,
@@ -64,6 +69,7 @@ class DashboardEngine:
         self,
         profile_engine: InvestorProfileEngine | None = None,
         portfolio_engine: PortfolioIntelligenceEngine | None = None,
+        portfolio_fit_capability: PortfolioIntelligenceCapability | None = None,
         suitability_engine: SuitabilityEngine | None = None,
         risk_drift_engine: RiskDriftEngine | None = None,
         theme_engine: ThemeEngine | None = None,
@@ -75,6 +81,7 @@ class DashboardEngine:
     ) -> None:
         self.profile_engine = profile_engine or InvestorProfileEngine()
         self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()
+        self.portfolio_fit_capability = portfolio_fit_capability or PortfolioIntelligenceCapability()
         self.suitability_engine = suitability_engine or SuitabilityEngine()
         self.risk_drift_engine = risk_drift_engine or RiskDriftEngine()
         self.theme_engine = theme_engine or ThemeEngine()
@@ -249,17 +256,24 @@ class DashboardEngine:
             ),
         ]
         if target_ticker and provider:
-            portfolio_analysis = self.portfolio_engine.analyze_ticker(
-                portfolio=portfolio,
-                ticker=target_ticker,
-                provider=provider,
+            profile_data = provider.get_portfolio_profile(target_ticker)
+            fit_input = PortfolioFitInput(
+                ticker=profile_data.ticker,
+                company=profile_data.company,
+                sector=profile_data.sector,
+                country=profile_data.country,
+                market_cap=profile_data.market_cap,
+                quality_score=profile_data.quality_score,
+                risk_score=profile_data.risk_score,
             )
+            shared_portfolio = legacy_portfolio_to_domain_portfolio(portfolio)
+            result = self.portfolio_fit_capability.analyze(shared_portfolio, fit_input)
             cards.append(
                 DashboardCard(
                     "Target Portfolio Fit",
-                    f"{portfolio_analysis.portfolio_score}/100",
-                    portfolio_analysis.final_reasoning,
-                    _score_status(portfolio_analysis.portfolio_score),
+                    f"{result.fit_score}/100",
+                    result.summary,
+                    _score_status(result.fit_score),
                 )
             )
         return DashboardSection(

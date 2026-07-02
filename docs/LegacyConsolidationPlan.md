@@ -264,6 +264,22 @@ without output changes.
 
 ---
 
+## Sprint 115 — Dashboard Caller Migrated COMPLETED
+
+**Goal:** Migrate `atlas/dashboard/engine.py` portfolio-fit path from legacy `PortfolioIntelligenceEngine` to `PortfolioIntelligenceCapability`. Same Sprint 114 pattern.
+
+**Pre-migration audit:** Migration scope is exactly the `if target_ticker and provider:` block (lines 251–264). Only `portfolio_analysis.portfolio_score` and `portfolio_analysis.final_reasoning` are consumed — direct equivalents are `result.fit_score` and `result.summary`. All other dashboard paths (suitability, risk drift, monitoring, concentration) use legacy `Portfolio` type and are untouched.
+
+**Changes made:**
+1. `atlas/dashboard/engine.py` — added imports; added `portfolio_fit_capability` injection; replaced target-fit block with capability call via adapter.
+2. `tests/test_dashboard_engine.py` — 6 new tests (capability import AST check, score range, no advisory language, injection, absent-without-ticker, enriched fields).
+
+**Legacy `portfolio_engine` retained** in constructor for backward compatibility; unused internally after migration.
+
+**Tests: 1200 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 114 — Schema Gap Resolved + Conversation Caller Migrated COMPLETED
 
 **Goal:** Resolve the `atlas.shared.Holding` schema gap and migrate `atlas/conversation/engine.py` portfolio-fit path from legacy `PortfolioIntelligenceEngine` to `PortfolioIntelligenceCapability`.
