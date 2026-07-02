@@ -2,6 +2,26 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 149 — Evidence Package Audit Checkpoint
+
+Decision: Audit `atlas/evidence/` as a Group C self-contained module. Audit-only sprint. No runtime changes.
+
+**Findings:**
+- 2 modules: `__init__.py` (23 lines), `engine.py` (540 lines).
+- 9 exports in `__all__`: all intentional. No stale exports.
+- 3 production engine callers confirmed (exactly as expected): `atlas/comparison/engine.py`, `atlas/decision_journal/engine.py`, `atlas/watchlist_review/engine.py`. No additional callers found.
+- All 3 callers inject `EvidenceQualityEngine` and consume `EvidenceAssessment` fields for scoring and routing.
+- Self-contained boundary: imports only from `atlas.language` (Group D infrastructure). No provider, CLI, dashboard, conversation, intelligence, or decision imports.
+- Zero stale closed-track imports.
+- `render_evidence_assessment` is exported but has zero production callers — test-only usage in `test_evidence_engine.py`. Not a critical cleanup target.
+- `atlas/domains/decision/` has its own `Evidence`/`EvidenceStrength`/`EvidenceCategory` types — naming overlap only. Different purpose (structured evidence items with category taxonomy) vs. `atlas/evidence/` (source quality assessment engine). No migration warranted.
+- No Blueprint-aligned successor exists.
+- No dead helpers, no stale migration residue, no duplicated logic.
+
+**Sprint 150 recommendation:** Close the evidence cleanup track — no cleanup work is warranted. Package is stable and active.
+
+---
+
 ## 2026-07-02: Sprint 148 — Close Portfolio Boundary Cleanup Track
 
 Decision: Remove the stale `PortfolioFitInput` import from `atlas/adapters/portfolio.py` and close the portfolio boundary cleanup track.
