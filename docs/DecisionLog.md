@@ -2,6 +2,24 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 161 — Home Package Audit Checkpoint
+
+Decision: Audit `atlas/home/` as a Group B provider-coupled module. Audit-only sprint. No runtime changes.
+
+**Findings:**
+- 2 modules: `__init__.py` (19 lines), `engine.py` (611 lines). 7 exports.
+- `AtlasHomeEngine` is active: 1 production caller (CLI `atlas home`), 15 tests. Single `.build()` public method. No zero-caller methods.
+- Provider coupling is intentional and clean: `CompanyDataProvider` as type annotation; `MockCompanyAnalysisProvider` as default (deterministic, local). `YahooFinanceProvider` only reachable via `--provider yahoo` CLI flag — never imported by `atlas/home/` itself. Pattern identical to `atlas/comparison/`.
+- All 7 exports are active or intentional sub-types. `AtlasHomePriority`, `AtlasHomeMonitoring`, `AtlasHomeSummary` have zero direct external production callers but are correct sub-types of `AtlasHomeOutput`.
+- Zero stale closed-track imports. Zero dead code. Zero Blueprint pressure.
+- `atlas/home/` **consumes** `WatchlistInput` from `atlas/capabilities/watchlist_intelligence/` — correct direction.
+- No `atlas/domains/home/` or `atlas/capabilities/home/` exists. No Blueprint successor.
+- `atlas/capabilities/daily_brief/` is conceptually adjacent but not a successor — different scope (daily briefing vs. personalized investor dashboard).
+
+**Sprint 162 recommended target:** Close the home cleanup track — documentation-only sprint confirming no cleanup is warranted. See `docs/HomeCleanupPlan.md`.
+
+---
+
 ## 2026-07-03: Sprint 160 — Close Comparison Cleanup Track
 
 Decision: Close the `atlas/comparison/` cleanup track. No cleanup work is warranted.
