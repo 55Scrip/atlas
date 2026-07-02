@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 128) — PortfolioIntelligenceEngine deleted from atlas/analysis/portfolio.py and atlas/analysis/__init__.py  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 complete for PortfolioIntelligenceEngine (deleted Sprint 128); remaining Phase 4 work: Portfolio/CompanyPortfolioProfile runtime coupling in CLI, adapters, and providers  
+**Updated:** 2026-07-02 (Sprint 129) — full remaining symbol audit complete  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 complete for PortfolioIntelligenceEngine (deleted Sprint 128); remaining symbols audited Sprint 129; Sprint 130 target: delete dead private helpers + `get_mock_company_portfolio_profile`  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -21,75 +21,85 @@ because 5+ active runtime paths still depend on it.
 
 ---
 
-## Public Symbol Inventory
+## Public Symbol Inventory (Sprint 129 Audit)
 
-### Types / Dataclasses
+### Types / Dataclasses — Remaining
 
-| Symbol | Type | Responsibility | Exported from `__init__` | Blueprint overlap |
-|---|---|---|---|---|
-| `Portfolio` | dataclass (frozen) | Holds a tuple of `PortfolioPosition` objects; loads from JSON | Yes | `atlas.shared.Portfolio` is the domain equivalent — different schema |
-| `PortfolioPosition` | dataclass (frozen) | Single portfolio holding with ticker, sector, country, market_cap, weight, quality_score, risk_score | Yes | `atlas.shared.Holding` is the domain equivalent — no `quality_score`/`risk_score` |
-| `PortfolioSignal` | dataclass (frozen) | Score + reasoning for a single portfolio dimension | No | None |
-| `PortfolioRecommendation` | str Enum | STRONG_ADD / ADD / NEUTRAL / REDUCE / AVOID | Yes | None |
-| `PortfolioAnalysis` | dataclass (frozen) | Full portfolio-fit result: 7 signals + portfolio_score + recommendation + final_reasoning | Yes | None |
-| `CompanyPortfolioProfile` | dataclass (frozen) | Provider contract: ticker, company, sector, country, market_cap, quality_score, risk_score | No (TYPE_CHECKING only in `providers/base.py`) | None |
-| `DEFAULT_TARGET_WEIGHT` | float constant | Default 5% position target weight | No | None |
+| Symbol | Type | `__init__` export | Production runtime callers | Annotation-only callers | Blueprint destination |
+|---|---|---|---|---|---|
+| `Portfolio` | dataclass (frozen) | Yes | `cli/main.py` (JSON loading, 5 commands), `adapters/portfolio.py` (adapter input) | `home`, `suitability`, `risk_drift`, `intelligence`, `dashboard`, `conversation`, `decision_context` (TYPE_CHECKING) | `atlas.shared.Portfolio` (different schema; adapter exists) |
+| `PortfolioPosition` | dataclass (frozen) | Yes | None (used implicitly by `Portfolio.positions`) | None | `atlas.shared.Holding` (adapter exists) |
+| `PortfolioSignal` | dataclass (frozen) | No | None | `PortfolioAnalysis` field types (no external callers) | `PortfolioFitDimension` — but only needed if `PortfolioAnalysis` retained |
+| `PortfolioRecommendation` | str Enum | Yes | None | `PortfolioAnalysis.recommendation` field type only | None — intentionally omitted from Blueprint layer |
+| `PortfolioAnalysis` | dataclass (frozen) | Yes | None | `reasoning/engine.py` TYPE_CHECKING only | `PortfolioFitResult` (Blueprint equivalent exists) |
+| `CompanyPortfolioProfile` | dataclass (frozen) | No | `providers/mock.py`, `providers/yahoo.py`, `adapters/portfolio.py` | `providers/base.py` TYPE_CHECKING only | `PortfolioFitInput` (Blueprint equivalent exists) |
 
-### Classes / Engines
+### Deleted symbols (prior sprints)
 
-| Symbol | Type | Responsibility | Callers | Blueprint overlap |
-|---|---|---|---|---|
-| `PortfolioIntelligenceEngine` | class | Runs 7-dimension portfolio-fit analysis for a target ticker against a portfolio | 5 production engines | None — no equivalent in Blueprint |
-| `PortfolioIntelligenceEngine.analyze()` | method | Accepts `Portfolio` + `CompanyPortfolioProfile` → `PortfolioAnalysis` | Called by `decision_engine`, `intelligence/engine`, `conversation/engine`, `dashboard/engine` | None |
-| `PortfolioIntelligenceEngine.analyze_ticker()` | method | Accepts `Portfolio` + ticker + provider → calls `provider.get_portfolio_profile()` | Called by `intelligence/engine` | None |
+| Symbol | Deleted | Sprint |
+|---|---|---|
+| `PortfolioIntelligenceEngine` | ✓ | Sprint 128 |
+| `DEFAULT_TARGET_WEIGHT` | ✓ | Sprint 128 (deleted with class) |
+| `render_portfolio_analysis` | ✓ | Sprint 111 |
+| `_score_line`, `_signal_line` | ✓ | Sprint 111 |
 
-### Functions
+### Functions — Remaining
 
-| Symbol | Responsibility | Callers | Pure? | User-facing output? |
-|---|---|---|---|---|
-| `get_mock_company_portfolio_profile(ticker)` | Returns mock `CompanyPortfolioProfile` via `MockCompanyAnalysisProvider` | `tests/test_portfolio.py`, `tests/test_providers.py` | Yes (deferred import) | No |
-| `render_portfolio_analysis(analysis)` | **Sprint 111 ✓ DELETED** — zero production callers; `_score_line` and `_signal_line` helpers also removed | — | — | — |
+| Symbol | Active callers | Notes |
+|---|---|---|
+| `get_mock_company_portfolio_profile(ticker)` | **Zero** — stale import in `tests/test_portfolio.py` only; both tests that called it deleted Sprint 128 | Sprint 130 deletion target |
 
-### Private functions (all internal, pure calculations)
+### Private functions — Active
 
-`_position_from_mapping`, `_diversification_impact`, `_sector_concentration`,
-`_country_concentration`, `_market_cap_concentration`, `_overlap_with_existing_holdings`,
-`_expected_quality_impact`, `_expected_risk_impact`, `_aggregate_portfolio_score`,
-`_recommend`, `_final_reasoning`, `_weight_by_attribute`, `_mega_cap_weight`,
-`_weighted_average`, `_pro_forma_average`, `_concentration_score`, `_normalize_weight`,
-`_is_mega_cap`, `_score_line`, `_signal_line`
+| Symbol | Callers |
+|---|---|
+| `_position_from_mapping` | `Portfolio.from_mapping` (active) |
+| `_normalize_weight` | `_position_from_mapping` (active) |
 
-All private functions are pure calculations. None produce I/O. All are candidates for
-extraction into a future `atlas/capabilities/portfolio_intelligence/` module.
+### Private functions — Dead code (Sprint 130 deletion target)
+
+These 16 functions were exclusively used by `PortfolioIntelligenceEngine` (deleted Sprint 128).
+They have zero callers and are dead code.
+
+`_diversification_impact`, `_sector_concentration`, `_country_concentration`,
+`_market_cap_concentration`, `_overlap_with_existing_holdings`, `_expected_quality_impact`,
+`_expected_risk_impact`, `_aggregate_portfolio_score`, `_recommend`, `_final_reasoning`,
+`_weight_by_attribute`, `_mega_cap_weight`, `_weighted_average`, `_pro_forma_average`,
+`_concentration_score`, `_is_mega_cap`
+
+Note: Blueprint equivalents of all 16 were ported independently to
+`atlas/capabilities/portfolio_intelligence/engine.py` in Sprint 113. The legacy copies
+are fully superseded and serve no function.
 
 ---
 
-## Production Caller Map
+## Production Caller Map (Sprint 129 — post-Sprint 128 state)
 
-**17 production import sites across 13 packages:**
-
-| File | What it imports | How it uses it | CLI path? |
+| File | What it imports | Runtime or annotation | CLI path |
 |---|---|---|---|
-| `atlas/analysis/__init__.py` | `Portfolio`, `PortfolioAnalysis`, `PortfolioIntelligenceEngine`, `PortfolioPosition`, `PortfolioRecommendation`, `get_mock_company_portfolio_profile` | Re-export hub | — |
-| `atlas/adapters/portfolio.py` | `Portfolio as LegacyPortfolio` | Adapter: converts legacy `Portfolio` → domain `Portfolio` | `atlas portfolio summary` |
-| `atlas/cli/main.py` | `Portfolio` | `Portfolio.from_json_file(path)` in 5+ commands | All portfolio-adjacent CLI commands |
-| `atlas/conversation/engine.py` | `Portfolio`, `PortfolioIntelligenceEngine` | `atlas ask --portfolio` | `atlas ask` |
-| `atlas/dashboard/engine.py` | `Portfolio`, `PortfolioIntelligenceEngine` | `atlas dashboard show` | `atlas dashboard show` |
-| `atlas/decision/decision_context.py` | `Portfolio` | Type annotation in `DecisionContext.portfolio` field | `atlas decide`, `atlas intelligence` |
-| `atlas/decision/decision_engine.py` | `PortfolioAnalysis`, `PortfolioIntelligenceEngine` | Runs portfolio-fit as part of decision scoring | `atlas decide` |
-| `atlas/decision/decision_result.py` | `PortfolioAnalysis` | Type annotation in `DecisionResult` | `atlas decide` |
-| `atlas/home/engine.py` | `Portfolio` | `atlas home` | `atlas home` |
-| `atlas/intelligence/engine.py` | `Portfolio`, `PortfolioAnalysis`, `PortfolioIntelligenceEngine` | Full intelligence briefing with portfolio context | `atlas intelligence`, `atlas daily-brief` |
-| `atlas/monitoring/engine.py` | `Portfolio` | Type annotation for monitoring input | `atlas monitor` |
-| `atlas/portfolio_review/engine.py` | `Portfolio` | `atlas portfolio review` | `atlas portfolio review` |
-| `atlas/providers/base.py` | `CompanyPortfolioProfile` | TYPE_CHECKING only — provider interface contract | All provider-using commands |
-| `atlas/providers/mock.py` | `CompanyPortfolioProfile` | Mock data dict | All mock-provider commands |
-| `atlas/providers/yahoo.py` | `CompanyPortfolioProfile` | Returns `CompanyPortfolioProfile` from Yahoo data | `--provider yahoo` paths |
-| `atlas/reasoning/engine.py` | `PortfolioAnalysis` | Type annotation in `ReasoningContext` | Reasoning flows |
-| `atlas/risk_drift/engine.py` | `Portfolio`, `PortfolioAnalysis` | Risk drift calculations with portfolio context | `atlas risk-drift` |
-| `atlas/suitability/engine.py` | `Portfolio`, `PortfolioAnalysis` | Suitability analysis with portfolio context | `atlas decide`, suitability flows |
+| `atlas/analysis/__init__.py` | `Portfolio`, `PortfolioAnalysis`, `PortfolioPosition`, `PortfolioRecommendation`, `get_mock_company_portfolio_profile` | Re-export hub | — |
+| `atlas/adapters/portfolio.py` | `Portfolio as LegacyPortfolio`, `CompanyPortfolioProfile` | **RUNTIME** — adapter boundary | `atlas portfolio summary`, `atlas portfolio review`, capability analyze flows |
+| `atlas/cli/main.py` | `Portfolio` | **RUNTIME** — JSON loading | All portfolio CLI commands |
+| `atlas/conversation/engine.py` | `Portfolio` | TYPE_CHECKING annotation only | `atlas ask` |
+| `atlas/dashboard/engine.py` | `Portfolio` | TYPE_CHECKING annotation only | `atlas dashboard show` |
+| `atlas/decision/decision_context.py` | `Portfolio` | TYPE_CHECKING annotation only | `atlas decide` |
+| `atlas/home/engine.py` | `Portfolio` | TYPE_CHECKING annotation only | `atlas home` |
+| `atlas/intelligence/engine.py` | `Portfolio` | TYPE_CHECKING annotation only | `atlas intelligence` |
+| `atlas/monitoring/engine.py` | `Portfolio` | TYPE_CHECKING annotation only | `atlas monitor` |
+| `atlas/portfolio_review/engine.py` | `Portfolio` (via LegacyPortfolio) | **RUNTIME** — structural analysis input | `atlas portfolio review` |
+| `atlas/providers/base.py` | `CompanyPortfolioProfile` | TYPE_CHECKING only — provider protocol | All provider-using commands |
+| `atlas/providers/mock.py` | `CompanyPortfolioProfile` | **RUNTIME** — mock data | Mock provider commands |
+| `atlas/providers/yahoo.py` | `CompanyPortfolioProfile` | **RUNTIME** — returns profile from Yahoo | `--provider yahoo` |
+| `atlas/reasoning/engine.py` | `PortfolioAnalysis` | TYPE_CHECKING annotation only — `ReasoningInput.portfolio_analysis` never populated in production | Reasoning flows |
+| `atlas/risk_drift/engine.py` | `Portfolio` | TYPE_CHECKING annotation only | `atlas risk-drift` |
+| `atlas/suitability/engine.py` | `Portfolio` | TYPE_CHECKING annotation only + runtime `.positions` duck-typing | `atlas decide` |
 
-**Test callers:** 16 test files.
+**Test callers:** ~14 test files use at least one legacy portfolio symbol.
+
+**Key finding (Sprint 129):** `PortfolioAnalysis` has zero production runtime callers.
+`reasoning/engine.py` holds it TYPE_CHECKING-only; the `ReasoningInput.portfolio_analysis`
+field is never populated in the live execution path (intelligence/decision pass `PortfolioFitResult`
+to their own result types, not to `ReasoningInput`). `PortfolioAnalysis` is test-fixture-only.
 
 ---
 
@@ -109,51 +119,57 @@ atlas/cli/main.py: portfolio_summary_command()
 `Portfolio` (legacy) is used only as the JSON-loading bridge; the adapter converts
 it immediately to `atlas.shared.Portfolio`. This flow is the template for future migration.
 
-### Flow 2: `atlas portfolio review` (active, uses legacy engine indirectly)
+### Flow 2: `atlas portfolio review` (active)
 
 ```
 atlas/cli/main.py: portfolio_review_command()
   → Portfolio.from_json_file(path)                      [atlas.analysis.portfolio.Portfolio]
   → AtlasPortfolioReview().review(portfolio, provider)   [atlas/portfolio_review/engine.py]
-     → PortfolioIntelligenceEngine().analyze_ticker()    [atlas.analysis.portfolio]
+     → legacy_portfolio_to_domain_portfolio(portfolio)  [atlas/adapters/portfolio.py]
+     → domain structural analysis via atlas.domains.portfolio
 ```
 
-**Status:** Still uses legacy `PortfolioIntelligenceEngine`.
+**Status (Sprint 129):** `PortfolioIntelligenceEngine` no longer called here (was migrated Sprint 116). Only legacy `Portfolio` for JSON loading and adapter conversion.
 
-### Flow 3: `atlas decide` (active, uses `PortfolioIntelligenceEngine`)
+### Flow 3: `atlas decide` (active — `PortfolioIntelligenceCapability` path)
 
 ```
 atlas/cli/main.py: decide_command()
   → Portfolio.from_json_file(path)                      [atlas.analysis.portfolio.Portfolio]
   → AtlasDecisionEngine().decide(context)
-     → PortfolioIntelligenceEngine().analyze(...)        [atlas.analysis.portfolio]
-     → PortfolioAnalysis                                 [atlas.analysis.portfolio]
+     → portfolio_fit_input_from_profile(profile)        [atlas/adapters/portfolio.py]
+     → legacy_portfolio_to_domain_portfolio(portfolio)  [atlas/adapters/portfolio.py]
+     → PortfolioIntelligenceCapability.analyze(...)     [atlas.capabilities.portfolio_intelligence]
+     → PortfolioFitResult                               [Blueprint-aligned]
 ```
 
-**Status:** Core decision path depends on `PortfolioIntelligenceEngine`.
+**Status (Sprint 129):** Fully migrated to Blueprint capability (Sprint 124). Legacy `Portfolio` used only for JSON loading.
 
-### Flow 4: `atlas intelligence` / daily brief (active, uses `PortfolioIntelligenceEngine`)
+### Flow 4: `atlas intelligence` / daily brief (active — `PortfolioIntelligenceCapability` path)
 
 ```
 atlas/cli/main.py: intelligence_command()
   → Portfolio.from_json_file(path)
   → IntelligenceEngine().analyze(...)
-     → PortfolioIntelligenceEngine().analyze_ticker()    [atlas.analysis.portfolio]
-     → PortfolioAnalysis                                 [atlas.analysis.portfolio]
+     → portfolio_fit_input_from_profile(profile)        [atlas/adapters/portfolio.py]
+     → legacy_portfolio_to_domain_portfolio(portfolio)  [atlas/adapters/portfolio.py]
+     → PortfolioIntelligenceCapability.analyze(...)     [atlas.capabilities.portfolio_intelligence]
+     → PortfolioFitResult
 ```
 
-**Status:** Core intelligence path depends on `PortfolioIntelligenceEngine`.
+**Status (Sprint 129):** Fully migrated (Sprint 125). Legacy `Portfolio` used only for JSON loading.
 
-### Flow 5: `atlas ask --portfolio` (active)
+### Flow 5: `atlas ask --portfolio` (active — `PortfolioIntelligenceCapability` path)
 
 ```
 atlas/cli/main.py: ask_command()
   → Portfolio.from_json_file(path)
   → ConversationEngine().answer(...)
-     → PortfolioIntelligenceEngine().analyze(...)        [atlas.analysis.portfolio]
+     → PortfolioIntelligenceCapability.analyze(...)     [via adapter chain]
+     → PortfolioFitResult
 ```
 
-**Status:** Conversation depends on `PortfolioIntelligenceEngine`.
+**Status (Sprint 129):** Fully migrated (Sprints 114/126). Legacy `Portfolio` used only for JSON loading.
 
 ### Flow 6: Provider interface (active)
 
@@ -163,11 +179,13 @@ CompanyDataProvider.get_portfolio_profile(ticker)
 
 MockCompanyAnalysisProvider / YahooFinanceProvider
   → returns CompanyPortfolioProfile
-  → consumed by PortfolioIntelligenceEngine.analyze_ticker()
+  → consumed by portfolio_fit_input_from_profile()      [atlas/adapters/portfolio.py]
+  → PortfolioFitInput                                   [atlas.capabilities.portfolio_intelligence]
 ```
 
-**Status:** Provider interface is coupled to `CompanyPortfolioProfile`.
-Migrating `CompanyPortfolioProfile` requires updating all 3 provider files.
+**Status (Sprint 129):** Provider interface remains coupled to `CompanyPortfolioProfile`.
+The adapter (`portfolio_fit_input_from_profile`) converts to `PortfolioFitInput` immediately.
+Migrating `CompanyPortfolioProfile` requires updating 3 provider files simultaneously — HIGH risk.
 
 ---
 
@@ -347,15 +365,21 @@ Migrate one production caller per sprint, in order of impact risk:
 
 **`PortfolioIntelligenceEngine` runtime caller status: ZERO**
 No production engine imports or instantiates `PortfolioIntelligenceEngine` after Sprint 127.
-Remaining `atlas.analysis.portfolio` imports:
-- `atlas/cli/main.py` — `Portfolio` for JSON loading (active runtime, out of scope)
-- `atlas/adapters/portfolio.py` — `LegacyPortfolio` adapter boundary (intentional)
-- `atlas/providers/mock.py`, `atlas/providers/yahoo.py` — `CompanyPortfolioProfile` (active)
-- `atlas/providers/base.py` — `CompanyPortfolioProfile` TYPE_CHECKING only
-- `atlas/portfolio_review/engine.py` — `LegacyPortfolio` structural analysis (active)
-- Several engines — `Portfolio` TYPE_CHECKING only (home, suitability, monitoring, risk_drift, decision_context, conversation, intelligence, dashboard, reasoning/PortfolioAnalysis)
 
-**Recommended Sprint 128 target:** Dedicated `PortfolioIntelligenceEngine` deletion sprint — confirm zero callers repo-wide, remove from `atlas/analysis/portfolio.py` and `atlas/analysis/__init__.py`
+13. ✓ `PortfolioIntelligenceEngine` — **DELETED Sprint 128**. Confirmed zero repo-wide callers. Class removed from `atlas/analysis/portfolio.py`. Re-export removed from `atlas/analysis/__init__.py`. `DEFAULT_TARGET_WEIGHT` constant removed (only used by deleted class). 3 new Sprint 128 guardrail tests confirm not importable from module or `atlas.analysis` namespace.
+
+**Sprint 129 — Remaining symbol audit (COMPLETE):**
+- Full public symbol inventory documented (see table above).
+- Dead private helpers identified: 16 functions exclusively used by deleted `PortfolioIntelligenceEngine`.
+- `get_mock_company_portfolio_profile` confirmed zero active callers (stale import in one test).
+- `PortfolioAnalysis` confirmed annotation-only in production (zero runtime callers).
+- CLI boundary documented: `Portfolio.from_json_file` is the sole runtime coupling in `cli/main.py`.
+- Adapter boundary documented: `adapters/portfolio.py` imports `LegacyPortfolio` and `CompanyPortfolioProfile` intentionally.
+- Provider coupling documented: `CompanyPortfolioProfile` used by 3 provider files — HIGH risk to change.
+- Sprint 130 target recommended: delete 16 dead private helpers + `get_mock_company_portfolio_profile`.
+
+**Recommended Sprint 130 target:** Delete dead private helpers and `get_mock_company_portfolio_profile`.
+See "Sprint 130 Target" section below.
 
 ### Phase 5 — Provider migration (Sprint ~120)
 After all callers are migrated off `CompanyPortfolioProfile`:
@@ -394,9 +418,42 @@ Add 3–4 lightweight guardrail tests:
   direction, but in the "confirm all callers still present" direction during Phase 1.
 - No behavior change. No migration risk. Only test additions.
 
-**Tentative Sprint 112:** `PortfolioSignal` type extraction.  
-**Tentative Sprint 113–114:** `atlas/capabilities/portfolio_intelligence/` creation.  
-**Tentative Sprint 115+:** Caller-by-caller migration.
+**Tentative Sprint 112:** `PortfolioSignal` type extraction. ✓ SUPERSEDED by capability stub approach.  
+**Tentative Sprint 113–114:** `atlas/capabilities/portfolio_intelligence/` creation. ✓ COMPLETE.  
+**Tentative Sprint 115+:** Caller-by-caller migration. ✓ COMPLETE (Sprints 114–127).
+
+---
+
+## Sprint 130 Target
+
+**Recommended Sprint 130 target: Delete dead private helpers + `get_mock_company_portfolio_profile`.**
+
+**Rationale:**
+- 16 private helper functions (`_diversification_impact`, `_sector_concentration`, etc.) are dead
+  code with zero callers — their only caller (`PortfolioIntelligenceEngine`) was deleted Sprint 128.
+  Blueprint equivalents already exist in `atlas/capabilities/portfolio_intelligence/engine.py`.
+- `get_mock_company_portfolio_profile` has zero active callers — both tests that used it were
+  deleted Sprint 128; remaining import in `tests/test_portfolio.py` is stale.
+- No behavior change (dead code removal).
+- No test changes needed beyond removing the stale import from `tests/test_portfolio.py` and
+  from `atlas/analysis/__init__.py`.
+- Reduces `atlas/analysis/portfolio.py` from ~350 lines to ~90 lines.
+
+**Sprint 130 scope:**
+1. Remove 16 dead private helper functions from `atlas/analysis/portfolio.py`
+2. Remove `get_mock_company_portfolio_profile` from `atlas/analysis/portfolio.py`
+3. Remove `get_mock_company_portfolio_profile` from `atlas/analysis/__init__.py` (import + `__all__`)
+4. Remove stale `get_mock_company_portfolio_profile` and `PortfolioRecommendation` imports from `tests/test_portfolio.py`
+5. Add guardrail tests confirming dead helpers are gone
+6. Update docs
+
+**NOT in Sprint 130:** `PortfolioSignal`, `PortfolioRecommendation`, `PortfolioAnalysis`,
+`Portfolio`, `PortfolioPosition`, `CompanyPortfolioProfile` — all still have active callers
+or are coupled to `PortfolioAnalysis`.
+
+**`PortfolioRecommendation` import note:** `tests/test_portfolio.py` currently imports
+`PortfolioRecommendation` but has no remaining test that uses it (both engine tests deleted Sprint 128).
+This stale import can be removed in Sprint 130 along with `get_mock_company_portfolio_profile`.
 
 ---
 

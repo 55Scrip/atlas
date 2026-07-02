@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 128 complete: `PortfolioIntelligenceEngine` deleted from `atlas/analysis/portfolio.py` and `atlas/analysis/__init__.py`. Shared types (`Portfolio`, `PortfolioAnalysis`, `PortfolioPosition`, etc.) remain. Remaining cleanup: Portfolio/CompanyPortfolioProfile runtime coupling in CLI, adapters, and providers.
+**Status:** ACTIVE — Sprint 129 complete: full remaining symbol audit done. 16 dead private helpers + `get_mock_company_portfolio_profile` are Sprint 130 targets (zero callers). `PortfolioAnalysis` is annotation/test-only. `CompanyPortfolioProfile` remains coupled to 3 providers (HIGH risk). `Portfolio` remains as CLI JSON-loading boundary.
 
 ---
 

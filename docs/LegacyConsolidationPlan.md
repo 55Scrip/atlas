@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 128)  
-**Status:** Active — Sprint 128 complete; `PortfolioIntelligenceEngine` deleted from `atlas/analysis/portfolio.py` and `atlas/analysis/__init__.py`. WatchlistEngine deleted Sprint 99. Remaining `atlas.analysis.portfolio` callers: shared types only (`Portfolio`, `PortfolioAnalysis`, `PortfolioPosition`, etc.) used by CLI, adapters, providers, and reasoning.
+**Updated:** 2026-07-02 (Sprint 129)  
+**Status:** Active — Sprint 129 complete; remaining `portfolio.py` symbol audit done. Dead private helpers (16 functions) and `get_mock_company_portfolio_profile` identified as Sprint 130 targets. WatchlistEngine deleted Sprint 99. `PortfolioIntelligenceEngine` deleted Sprint 128. Sprint 130: delete dead helpers.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

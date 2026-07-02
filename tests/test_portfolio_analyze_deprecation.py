@@ -190,3 +190,81 @@ def test_sprint128_shared_types_still_importable() -> None:
         PortfolioSignal,
     )
     assert True
+
+
+# ---------------------------------------------------------------------------
+# Sprint 129: Remaining symbol audit guardrails
+# ---------------------------------------------------------------------------
+
+def test_sprint129_deleted_modules_remain_gone() -> None:
+    """Sprint 129: modules deleted in prior sprints must remain deleted."""
+    import importlib
+    import pytest
+    for mod_name in (
+        "atlas.analysis.watchlist",
+        "atlas.analysis.comparison",
+        "atlas.analysis.memory",
+        "atlas.analysis.scoring",
+    ):
+        with pytest.raises((ImportError, ModuleNotFoundError)):
+            importlib.import_module(mod_name)
+
+
+def test_sprint129_portfolio_intelligence_capability_importable() -> None:
+    """Sprint 129: PortfolioIntelligenceCapability must remain importable from atlas.capabilities."""
+    from atlas.capabilities.portfolio_intelligence import (  # noqa: F401
+        PortfolioIntelligenceCapability,
+        PortfolioFitResult,
+        PortfolioFitInput,
+    )
+    assert True
+
+
+def test_sprint129_capability_engine_free_of_legacy_portfolio_import() -> None:
+    """Sprint 129: capability engine must not import from atlas.analysis.portfolio at any level."""
+    import pathlib
+    source = pathlib.Path("atlas/capabilities/portfolio_intelligence/engine.py").read_text()
+    assert "atlas.analysis.portfolio" not in source
+
+
+def test_sprint129_portfolio_module_remaining_public_symbols() -> None:
+    """Sprint 129: public symbol inventory — exactly these symbols must be importable."""
+    from atlas.analysis.portfolio import (  # noqa: F401
+        Portfolio,
+        PortfolioPosition,
+        PortfolioSignal,
+        PortfolioRecommendation,
+        PortfolioAnalysis,
+        CompanyPortfolioProfile,
+        get_mock_company_portfolio_profile,
+    )
+    assert True
+
+
+def test_sprint129_portfolio_module_has_no_private_deleted_symbols() -> None:
+    """Sprint 129: dead private helpers from deleted PortfolioIntelligenceEngine are still present
+    but unreachable from public API — this test documents the dead-code state for Sprint 130.
+    """
+    import atlas.analysis.portfolio as mod
+    dead_helpers = [
+        "_diversification_impact",
+        "_sector_concentration",
+        "_country_concentration",
+        "_market_cap_concentration",
+        "_overlap_with_existing_holdings",
+        "_expected_quality_impact",
+        "_expected_risk_impact",
+        "_aggregate_portfolio_score",
+        "_recommend",
+        "_final_reasoning",
+        "_weight_by_attribute",
+        "_mega_cap_weight",
+        "_weighted_average",
+        "_pro_forma_average",
+        "_concentration_score",
+        "_is_mega_cap",
+    ]
+    for name in dead_helpers:
+        assert hasattr(mod, name), (
+            f"{name} should still be present in Sprint 129 — Sprint 130 will delete it"
+        )

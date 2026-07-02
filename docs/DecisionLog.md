@@ -2,6 +2,22 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 129 — Remaining Portfolio Legacy Symbol Audit
+
+Decision: Audit all remaining public symbols in `atlas/analysis/portfolio.py`. No deletions this sprint. Sprint 130 target selected.
+
+**Findings:**
+- 7 public symbols remain: `Portfolio`, `PortfolioPosition`, `PortfolioSignal`, `PortfolioRecommendation`, `PortfolioAnalysis`, `CompanyPortfolioProfile`, `get_mock_company_portfolio_profile`
+- 16 private helpers are dead code (zero callers since `PortfolioIntelligenceEngine` deleted)
+- `get_mock_company_portfolio_profile` has zero active callers (stale import only)
+- `PortfolioAnalysis` annotation-only in `reasoning/engine.py`; `ReasoningInput.portfolio_analysis` field never populated in production — test-fixture-only usage
+- `PortfolioRecommendation` zero production callers; only used as `PortfolioAnalysis.recommendation` field type
+- `PortfolioSignal` zero external callers; only used as `PortfolioAnalysis` field types
+- `CompanyPortfolioProfile` deeply coupled to 3 provider files — HIGH risk to migrate
+- `Portfolio` (legacy) CLI boundary: `Portfolio.from_json_file` in `cli/main.py` (5 commands)
+
+**Sprint 130 target:** Delete 16 dead private helpers + `get_mock_company_portfolio_profile`. Zero behavior change. Reduces `portfolio.py` from ~350 to ~90 lines.
+
 ## 2026-07-02: Sprint 128 — Delete PortfolioIntelligenceEngine
 
 Decision: Delete `PortfolioIntelligenceEngine` class from `atlas/analysis/portfolio.py` and remove its re-export from `atlas/analysis/__init__.py`. Zero active production callers confirmed as of Sprint 127.
