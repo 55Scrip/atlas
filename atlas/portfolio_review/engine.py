@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from atlas.analysis.portfolio import Portfolio
+from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
+from atlas.analysis.portfolio import Portfolio as LegacyPortfolio
 from atlas.economics import EconomicSignalAnalysis, EconomicSignalsEngine
 from atlas.language import AtlasLanguageEngine, AtlasLanguageReport
 from atlas.market import (
@@ -14,6 +15,8 @@ from atlas.market import (
 )
 from atlas.monitoring import MonitoringEngine
 from atlas.principles import PrinciplesCheck, PrinciplesEngine
+from atlas.shared import Holding
+from atlas.shared import Portfolio as SharedPortfolio
 from atlas.profile import InvestorProfile, InvestorProfileEngine
 from atlas.risk_drift import RiskDriftEngine, RiskDriftInput
 from atlas.suitability import SuitabilityEngine, SuitabilityInput
@@ -44,7 +47,7 @@ class PortfolioReviewSection:
 
 @dataclass(frozen=True)
 class PortfolioReviewInput:
-    portfolio: Portfolio
+    portfolio: LegacyPortfolio
     investor_profile: InvestorProfile | None = None
     theme_names: tuple[str, ...] = (
         "AI infrastructure",
@@ -93,6 +96,7 @@ class PortfolioReviewEngine:
     def review(self, review_input: PortfolioReviewInput) -> PortfolioReviewReport:
         profile = review_input.investor_profile or self.profile_engine.create_default_profile()
         context = self.profile_engine.investor_context(profile)
+        shared_portfolio = legacy_portfolio_to_domain_portfolio(review_input.portfolio)
         portfolio_snapshot = self.monitoring_engine.snapshot_portfolio(review_input.portfolio)
         suitability = self.suitability_engine.assess(
             SuitabilityInput(investor_profile=profile, portfolio=review_input.portfolio)
@@ -126,22 +130,22 @@ class PortfolioReviewEngine:
         bottom_line = _bottom_line(
             rating=rating,
             profile=profile,
-            portfolio=review_input.portfolio,
+            portfolio=shared_portfolio,
             suitability=suitability,
             risk_drift=risk_drift,
         )
         sections = (
             _bottom_line_section(bottom_line),
             _rating_section(rating, portfolio_snapshot.importance_score),
-            _strengths_section(review_input.portfolio, portfolio_snapshot, suitability, themes),
-            _main_risks_section(review_input.portfolio, market_health, economic_signals),
+            _strengths_section(shared_portfolio, portfolio_snapshot, suitability, themes),
+            _main_risks_section(shared_portfolio, market_health, economic_signals),
             _investor_alignment_section(profile, context, suitability, risk_drift),
-            _theme_exposure_section(review_input.portfolio, themes),
+            _theme_exposure_section(shared_portfolio, themes),
             _market_context_section(market_regime, market_health, economic_signals),
             _monitoring_section(portfolio_snapshot, market_health, themes),
             _change_view_section(risk_drift, market_health, economic_signals),
             _missing_information_section(suitability.missing_information),
-            _follow_up_questions_section(review_input.portfolio, risk_drift),
+            _follow_up_questions_section(shared_portfolio, risk_drift),
         )
         draft = _render_portfolio_review_without_principles(
             title="Atlas Portfolio Review",
@@ -240,7 +244,7 @@ def _atlas_rating(
 def _bottom_line(
     rating: PortfolioAlignmentRating,
     profile: InvestorProfile,
-    portfolio: Portfolio,
+    portfolio: SharedPortfolio,
     suitability,
     risk_drift,
 ) -> str:
@@ -288,12 +292,12 @@ def _rating_section(
 
 
 def _strengths_section(
-    portfolio: Portfolio,
+    portfolio: SharedPortfolio,
     portfolio_snapshot,
     suitability,
     themes: tuple[ThemeAnalysis, ...],
 ) -> PortfolioReviewSection:
-    sector_count = len({position.sector for position in portfolio.positions})
+    sector_count = len({h.sector for h in portfolio.holdings})
     average_quality = _average(portfolio, "quality_score")
     observations = [
         PortfolioReviewObservation(
@@ -330,7 +334,7 @@ def _strengths_section(
 
 
 def _main_risks_section(
-    portfolio: Portfolio,
+    portfolio: SharedPortfolio,
     market_health: MarketHealthReport,
     economic_signals: EconomicSignalAnalysis,
 ) -> PortfolioReviewSection:
@@ -416,10 +420,10 @@ def _investor_alignment_section(
 
 
 def _theme_exposure_section(
-    portfolio: Portfolio,
+    portfolio: SharedPortfolio,
     themes: tuple[ThemeAnalysis, ...],
 ) -> PortfolioReviewSection:
-    sectors = {position.sector.lower() for position in portfolio.positions}
+    sectors = {h.sector.lower() for h in portfolio.holdings}
     observations = []
     for theme in themes:
         represented = _theme_represented(theme, sectors)
@@ -542,7 +546,7 @@ def _missing_information_section(
 
 
 def _follow_up_questions_section(
-    portfolio: Portfolio,
+    portfolio: SharedPortfolio,
     risk_drift,
 ) -> PortfolioReviewSection:
     largest = _largest_position(portfolio)
@@ -581,21 +585,20 @@ def _confidence(portfolio_confidence: int, suitability_confidence: int) -> int:
     return round((portfolio_confidence * 0.55) + (suitability_confidence * 0.45))
 
 
-def _average(portfolio: Portfolio, field: str) -> float:
-    return sum(getattr(position, field) for position in portfolio.positions) / len(
-        portfolio.positions
-    )
+def _average(portfolio: SharedPortfolio, field: str) -> float:
+    values = [v for h in portfolio.holdings if (v := getattr(h, field, None)) is not None]
+    return sum(values) / len(values) if values else 0.0
 
 
-def _largest_position(portfolio: Portfolio):
-    return max(portfolio.positions, key=lambda position: position.weight)
+def _largest_position(portfolio: SharedPortfolio) -> Holding:
+    return max(portfolio.holdings, key=lambda h: h.weight)
 
 
-def _top_exposure(portfolio: Portfolio, field: str) -> tuple[str, float]:
+def _top_exposure(portfolio: SharedPortfolio, field: str) -> tuple[str, float]:
     weights: dict[str, float] = {}
-    for position in portfolio.positions:
-        value = str(getattr(position, field))
-        weights[value] = weights.get(value, 0.0) + position.weight
+    for h in portfolio.holdings:
+        value = str(getattr(h, field))
+        weights[value] = weights.get(value, 0.0) + h.weight
     return max(weights.items(), key=lambda item: item[1])
 
 

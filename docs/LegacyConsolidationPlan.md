@@ -280,6 +280,22 @@ without output changes.
 
 ---
 
+## Sprint 116 — Portfolio Review Internal Structural Functions Migrated COMPLETED
+
+**Goal:** Migrate `atlas/portfolio_review/engine.py` from legacy `Portfolio.positions` to `atlas.shared.Portfolio.holdings` for internal structural analysis.
+
+**Pre-migration audit finding:** `portfolio_review/engine.py` does NOT import `PortfolioIntelligenceEngine` — unlike conversation/dashboard, it only imports `Portfolio` from `atlas.analysis.portfolio`. The "migration" here is removing the internal coupling to `portfolio.positions` throughout 8 private helper functions.
+
+**Scope difference from Sprints 114–115:** Conversation and dashboard had one isolated `if target_ticker and provider:` block. Portfolio review uses legacy `Portfolio` throughout ALL private helpers (`_average`, `_largest_position`, `_top_exposure`, `_strengths_section`, `_main_risks_section`, `_theme_exposure_section`, `_bottom_line`, `_follow_up_questions_section`). Suitability, risk_drift, and monitoring downstream engines still require legacy `Portfolio` (not migrated).
+
+**Changes made:**
+1. `atlas/portfolio_review/engine.py` — added `legacy_portfolio_to_domain_portfolio` import; renamed `Portfolio` import to `LegacyPortfolio`; added `SharedPortfolio` + `Holding` from `atlas.shared`; converted to `shared_portfolio` at top of `review()`; updated all 8 private functions from `portfolio.positions` → `portfolio.holdings`; `_average` now handles optional `quality_score` via None-safe comprehension.
+2. `tests/test_portfolio_review.py` — 7 new tests (adapter import AST, shared import AST, no `PortfolioIntelligenceEngine` import, `holdings` used not `positions`, None-safe `_average`, largest holding in report, no advisory language).
+
+**Tests: 1207 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 114 — Schema Gap Resolved + Conversation Caller Migrated COMPLETED
 
 **Goal:** Resolve the `atlas.shared.Holding` schema gap and migrate `atlas/conversation/engine.py` portfolio-fit path from legacy `PortfolioIntelligenceEngine` to `PortfolioIntelligenceCapability`.

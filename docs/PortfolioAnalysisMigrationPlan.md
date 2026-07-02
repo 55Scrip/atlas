@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 115) — dashboard caller migrated  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (2 of ~10 callers migrated: conversation, dashboard)  
+**Updated:** 2026-07-02 (Sprint 116) — portfolio_review internal structural functions migrated  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (3 of ~10 callers migrated: conversation, dashboard, portfolio_review)  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -318,8 +318,7 @@ Migrate one production caller per sprint, in order of impact risk:
 
 1. ✓ `atlas/conversation/engine.py` — **MIGRATED Sprint 114**; `portfolio_fit_capability` added; `_answer_portfolio_review` uses new capability via adapter
 2. ✓ `atlas/dashboard/engine.py` — **MIGRATED Sprint 115**; `portfolio_fit_capability` added; `_portfolio_section` target-fit block uses new capability via adapter
-3. `atlas/portfolio_review/engine.py` — direct engine usage, limited output surface
-3. `atlas/portfolio_review/engine.py` — direct engine usage, limited output surface
+3. ✓ `atlas/portfolio_review/engine.py` — **MIGRATED Sprint 116**; internal structural functions (`_average`, `_largest_position`, `_top_exposure`, `_strengths_section`, `_main_risks_section`, `_theme_exposure_section`, `_follow_up_questions_section`) now use `atlas.shared.Portfolio` via adapter; legacy `Portfolio` retained at input boundary for suitability/risk_drift/monitoring downstream
 4. `atlas/reasoning/engine.py` — type annotation only for `PortfolioAnalysis`
 5. `atlas/risk_drift/engine.py` — uses `Portfolio` and `PortfolioAnalysis`
 6. `atlas/suitability/engine.py` — uses `Portfolio` and `PortfolioAnalysis`

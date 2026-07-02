@@ -1580,3 +1580,14 @@ Demo passed. Release verification green.
 - Field mapping is direct: `portfolio_score` → `fit_score`, `final_reasoning` → `summary`.
 
 **Outcome:** 2 files changed. 6 new tests. 1200 tests passing (3 skipped). Demo passed. RC2 green.
+
+**Sprint 116 (2026-07-02): Migrate portfolio_review internal structural functions to shared Portfolio**
+
+**Decision:** Unlike conversation/dashboard (one isolated block), `portfolio_review/engine.py` uses legacy `Portfolio.positions` throughout 8 private helpers. Migration approach: convert to `shared_portfolio = legacy_portfolio_to_domain_portfolio(review_input.portfolio)` at the top of `review()`, pass `shared_portfolio` to all structural functions, keep `review_input.portfolio` (legacy) for suitability/risk_drift/monitoring downstream. Input boundary type stays `LegacyPortfolio` — the CLI and downstream engines are unchanged.
+
+**Rationale:**
+- The entire engine is structural analysis (sectors, weights, quality averages, concentrations) — not portfolio-fit via `PortfolioIntelligenceCapability`. The "migration" here is removing `portfolio.positions` coupling from internal helpers by routing through the shared type.
+- Keeping `LegacyPortfolio` at `PortfolioReviewInput.portfolio` avoids cascading changes to suitability, risk_drift, and monitoring engines (all still expect legacy `Portfolio`).
+- `_average` updated to handle `quality_score: int | None` (Sprint 114 made it optional on `Holding`) via None-safe list comprehension.
+
+**Outcome:** 2 files changed. 7 new tests. 1207 tests passing (3 skipped). Demo passed. RC2 green.

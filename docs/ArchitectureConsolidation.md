@@ -867,3 +867,9 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - Legacy `portfolio_engine` retained in constructor but unused internally.
 - 6 new tests in `tests/test_dashboard_engine.py`.
 - 1200 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 116 (2026-07-02):** Portfolio review internal structural functions migrated.
+- `atlas/portfolio_review/engine.py` — private helpers (`_average`, `_largest_position`, `_top_exposure`, `_strengths_section`, `_main_risks_section`, `_theme_exposure_section`, `_follow_up_questions_section`, `_bottom_line`) migrated to `atlas.shared.Portfolio` / `Holding` via `legacy_portfolio_to_domain_portfolio` at top of `review()`.
+- Legacy `LegacyPortfolio` retained at `PortfolioReviewInput.portfolio` boundary; suitability/risk_drift/monitoring downstream engines still receive legacy `Portfolio` unchanged.
+- `_average` updated to handle optional `quality_score` (None-safe via list comprehension).
+- 7 new tests in `tests/test_portfolio_review.py`. 1207 tests passing (3 skipped). Release verification green.

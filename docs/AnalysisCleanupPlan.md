@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 115 complete: `atlas/dashboard/engine.py` portfolio-fit path migrated to `PortfolioIntelligenceCapability`. 6 new tests. Next: Sprint 116 — migrate `atlas/portfolio_review/engine.py`.
+**Status:** ACTIVE — Sprint 116 complete: `atlas/portfolio_review/engine.py` internal structural functions migrated to use `atlas.shared.Portfolio` via adapter. 7 new tests. Next: Sprint 117 — migrate next production caller.
 
 ---
 
