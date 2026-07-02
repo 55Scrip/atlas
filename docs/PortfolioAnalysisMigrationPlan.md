@@ -492,7 +492,29 @@ is that file's own local function. No active callers anywhere.
 
 ---
 
-## Sprint 133 Target
+## Sprint 133 ✓ COMPLETE
+
+**Migrated `CompanyDataProvider.get_portfolio_profile()` return type from `CompanyPortfolioProfile` to `PortfolioFitInput`. Deleted `CompanyPortfolioProfile` from `atlas/analysis/portfolio.py`.**
+
+**Zero-caller audit result:**
+- `CompanyPortfolioProfile`: zero active production callers after providers were updated. All remaining hits were tests, docstring comments, and stale strings.
+
+**Changes:**
+- `atlas/providers/base.py`: TYPE_CHECKING import changed from `CompanyPortfolioProfile` to `PortfolioFitInput`; return type annotation updated.
+- `atlas/providers/mock.py`: import changed; `MOCK_COMPANY_PORTFOLIO_PROFILES` dict type and all 4 entries changed to `PortfolioFitInput`; `get_portfolio_profile` return type updated.
+- `atlas/providers/yahoo.py`: import changed; `get_portfolio_profile` return type and constructor call changed to `PortfolioFitInput`.
+- `atlas/adapters/portfolio.py`: `CompanyPortfolioProfile` import removed; `portfolio_fit_input_from_profile` changed to identity function (`PortfolioFitInput → PortfolioFitInput`) — retained to avoid touching 4 engine callers (Option A).
+- `atlas/analysis/portfolio.py`: `CompanyPortfolioProfile` dataclass deleted. `portfolio.py` reduced from 69 to **59 lines** (2 active types: `Portfolio`, `PortfolioPosition` + 2 private helpers).
+- `atlas/cli/deprecations.py`: stale string updated.
+- 5 test files updated: stale "is importable" assertions flipped; `_profile()` fixture changed to return `PortfolioFitInput`; `isinstance(profile, PortfolioFitInput)` added to `test_providers.py`.
+- Sprint 133 guardrail block added to `test_portfolio_analyze_deprecation.py` (4 new tests).
+- 1352 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Result:** `atlas/analysis/portfolio.py` now contains only `Portfolio` and `PortfolioPosition` — the CLI JSON loading boundary. All portfolio intelligence types live in `atlas/capabilities/portfolio_intelligence/`.
+
+---
+
+## Sprint 133 (Original Target — now complete)
 
 **Recommended Sprint 133 target: Migrate `CompanyPortfolioProfile` from providers to `PortfolioFitInput`.**
 

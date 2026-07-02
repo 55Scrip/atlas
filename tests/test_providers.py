@@ -1,6 +1,7 @@
 from urllib.error import HTTPError, URLError
 
 from atlas.analysis.engine import AtlasInvestmentEngine
+from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
 from atlas.decision.memory import MemoryStore, save_ticker as save_ticker_to_memory
 from atlas.analysis.portfolio import Portfolio, PortfolioPosition
 from atlas.providers import (
@@ -35,6 +36,7 @@ def test_mock_provider_returns_company_analysis_and_portfolio_profile():
     profile = provider.get_portfolio_profile("NVDA")
 
     assert analysis.company == "NVIDIA (NVDA)"
+    assert isinstance(profile, PortfolioFitInput)
     assert profile.ticker == "NVDA"
     assert profile.sector == "Semiconductors"
 

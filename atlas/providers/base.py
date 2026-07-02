@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from atlas.analysis.company_analysis import CompanyAnalysis
-    from atlas.analysis.portfolio import CompanyPortfolioProfile
+    from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
 
 
 class CompanyDataProvider(Protocol):
@@ -12,6 +12,6 @@ class CompanyDataProvider(Protocol):
         """Return module-level company analysis for a ticker."""
         ...
 
-    def get_portfolio_profile(self, ticker: str) -> "CompanyPortfolioProfile":
+    def get_portfolio_profile(self, ticker: str) -> "PortfolioFitInput":
         """Return portfolio-level company profile for a ticker."""
         ...

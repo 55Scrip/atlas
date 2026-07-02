@@ -181,7 +181,6 @@ def test_sprint128_portfolio_intelligence_engine_not_in_atlas_analysis() -> None
 def test_sprint128_shared_types_still_importable() -> None:
     """Sprint 128/132: active boundary types remain importable after PortfolioIntelligenceEngine deletion."""
     from atlas.analysis.portfolio import (  # noqa: F401
-        CompanyPortfolioProfile,
         Portfolio,
         PortfolioPosition,
     )
@@ -224,11 +223,10 @@ def test_sprint129_capability_engine_free_of_legacy_portfolio_import() -> None:
 
 
 def test_sprint129_portfolio_module_remaining_public_symbols() -> None:
-    """Sprint 132: active public symbols — Portfolio, PortfolioPosition, CompanyPortfolioProfile."""
+    """Sprint 133: active public symbols — Portfolio, PortfolioPosition (CompanyPortfolioProfile deleted)."""
     from atlas.analysis.portfolio import (  # noqa: F401
         Portfolio,
         PortfolioPosition,
-        CompanyPortfolioProfile,
     )
     assert True
 
@@ -309,11 +307,10 @@ def test_sprint132_deleted_types_not_in_atlas_analysis_namespace() -> None:
 
 
 def test_sprint132_active_boundary_types_remain() -> None:
-    """Sprint 132: Portfolio, PortfolioPosition, CompanyPortfolioProfile must still be importable."""
+    """Sprint 133: Portfolio, PortfolioPosition remain importable; CompanyPortfolioProfile deleted."""
     from atlas.analysis.portfolio import (  # noqa: F401
         Portfolio,
         PortfolioPosition,
-        CompanyPortfolioProfile,
     )
     assert True
 
@@ -347,3 +344,50 @@ def test_sprint132_portfolio_intelligence_capability_still_importable() -> None:
         PortfolioFitInput,
     )
     assert True
+
+
+# ---------------------------------------------------------------------------
+# Sprint 133: CompanyPortfolioProfile deleted; providers return PortfolioFitInput
+# ---------------------------------------------------------------------------
+
+def test_sprint133_company_portfolio_profile_not_importable() -> None:
+    """Sprint 133: CompanyPortfolioProfile deleted — must NOT be importable."""
+    import pytest
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import CompanyPortfolioProfile  # noqa: F401
+
+
+def test_sprint133_portfolio_fit_input_from_profile_is_identity() -> None:
+    """Sprint 133: portfolio_fit_input_from_profile must accept and return PortfolioFitInput unchanged."""
+    from atlas.adapters.portfolio import portfolio_fit_input_from_profile
+    from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
+    fit_input = PortfolioFitInput(
+        ticker="TSM",
+        company="TSMC",
+        sector="Semiconductors",
+        country="Taiwan",
+        market_cap=600_000_000_000.0,
+        quality_score=88,
+        risk_score=55,
+    )
+    result = portfolio_fit_input_from_profile(fit_input)
+    assert result is fit_input
+
+
+def test_sprint133_providers_return_portfolio_fit_input() -> None:
+    """Sprint 133: MockCompanyAnalysisProvider.get_portfolio_profile must return PortfolioFitInput."""
+    from atlas.providers.mock import MockCompanyAnalysisProvider
+    from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
+    provider = MockCompanyAnalysisProvider()
+    profile = provider.get_portfolio_profile("NVDA")
+    assert isinstance(profile, PortfolioFitInput)
+
+
+def test_sprint133_portfolio_module_remaining_symbols() -> None:
+    """Sprint 133: only Portfolio and PortfolioPosition remain in atlas.analysis.portfolio public API."""
+    import atlas.analysis.portfolio as mod
+    assert hasattr(mod, "Portfolio")
+    assert hasattr(mod, "PortfolioPosition")
+    assert not hasattr(mod, "CompanyPortfolioProfile"), (
+        "CompanyPortfolioProfile deleted in Sprint 133"
+    )

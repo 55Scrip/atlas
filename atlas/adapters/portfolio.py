@@ -23,7 +23,6 @@ that need real currency totals should not rely on this adapter.
 from __future__ import annotations
 
 from atlas.analysis.portfolio import (
-    CompanyPortfolioProfile,
     Portfolio as LegacyPortfolio,
 )
 from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
@@ -68,19 +67,10 @@ def legacy_portfolio_to_domain_portfolio(
     )
 
 
-def portfolio_fit_input_from_profile(profile: CompanyPortfolioProfile) -> PortfolioFitInput:
-    """Translate a legacy CompanyPortfolioProfile into a PortfolioFitInput.
+def portfolio_fit_input_from_profile(profile: PortfolioFitInput) -> PortfolioFitInput:
+    """Identity adapter — providers now return PortfolioFitInput directly.
 
-    Deterministic 1-to-1 field mapping. Shared by all callers that build a
-    PortfolioFitInput from a provider profile (conversation, dashboard, etc.).
-    Marked as migration support — remove when CompanyPortfolioProfile is retired.
+    Retained to avoid touching the four engine callers (conversation, dashboard,
+    intelligence, decision). Callers can be cleaned up in a future sprint.
     """
-    return PortfolioFitInput(
-        ticker=profile.ticker,
-        company=profile.company,
-        sector=profile.sector,
-        country=profile.country,
-        market_cap=profile.market_cap,
-        quality_score=profile.quality_score,
-        risk_score=profile.risk_score,
-    )
+    return profile

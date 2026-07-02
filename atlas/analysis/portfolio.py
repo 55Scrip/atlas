@@ -36,17 +36,6 @@ class Portfolio:
         return cls(positions=tuple(_position_from_mapping(item) for item in raw_positions))
 
 
-@dataclass(frozen=True)
-class CompanyPortfolioProfile:
-    ticker: str
-    company: str
-    sector: str
-    country: str
-    market_cap: float
-    quality_score: int
-    risk_score: int
-
-
 def _position_from_mapping(payload: dict[str, Any]) -> PortfolioPosition:
     required_fields = (
         "ticker",

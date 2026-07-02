@@ -315,3 +315,4 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 - No stale `WatchlistEngine`, `ComparisonEngine`, `MemoryEngine`, `ExplanationEngine`, `RecommendationEngine` re-exports in `atlas.analysis` ✓
 - `render_company_analysis_report` is fully removed ✓
 - Active deprecated CLI command count: 0 ✓
+- `CompanyPortfolioProfile` deleted from `atlas/analysis/portfolio.py` (Sprint 133) ✓ — providers now return `PortfolioFitInput` directly

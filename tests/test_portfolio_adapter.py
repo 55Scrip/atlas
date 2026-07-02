@@ -10,7 +10,7 @@ from atlas.adapters.portfolio import (
     legacy_portfolio_to_domain_portfolio,
     portfolio_fit_input_from_profile,
 )
-from atlas.analysis.portfolio import CompanyPortfolioProfile, Portfolio as LegacyPortfolio
+from atlas.analysis.portfolio import Portfolio as LegacyPortfolio
 from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
 from atlas.shared import Holding, Portfolio as SharedPortfolio
 
@@ -44,8 +44,8 @@ def _legacy_portfolio() -> LegacyPortfolio:
     )
 
 
-def _profile() -> CompanyPortfolioProfile:
-    return CompanyPortfolioProfile(
+def _profile() -> PortfolioFitInput:
+    return PortfolioFitInput(
         ticker="TSM",
         company="TSMC",
         sector="Semiconductors",
@@ -225,9 +225,10 @@ def test_legacy_portfolio_module_still_importable():
     assert Portfolio is not None
 
 
-def test_legacy_company_portfolio_profile_still_importable():
-    from atlas.analysis.portfolio import CompanyPortfolioProfile  # noqa: F401
-    assert CompanyPortfolioProfile is not None
+def test_sprint133_company_portfolio_profile_not_importable():
+    import pytest
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import CompanyPortfolioProfile  # noqa: F401
 
 
 # ── no new caller migrated: conversation and dashboard pass ───────────────────

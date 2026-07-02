@@ -1,7 +1,7 @@
 from dataclasses import replace
 
 from atlas.analysis.company_analysis import CompanyAnalysis, create_placeholder_company_analysis
-from atlas.analysis.portfolio import CompanyPortfolioProfile
+from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
 
 
 MOCK_COMPANY_NAMES: dict[str, str] = {
@@ -13,8 +13,8 @@ MOCK_COMPANY_NAMES: dict[str, str] = {
 }
 
 
-MOCK_COMPANY_PORTFOLIO_PROFILES: dict[str, CompanyPortfolioProfile] = {
-    "NVDA": CompanyPortfolioProfile(
+MOCK_COMPANY_PORTFOLIO_PROFILES: dict[str, PortfolioFitInput] = {
+    "NVDA": PortfolioFitInput(
         ticker="NVDA",
         company="NVIDIA",
         sector="Semiconductors",
@@ -23,7 +23,7 @@ MOCK_COMPANY_PORTFOLIO_PROFILES: dict[str, CompanyPortfolioProfile] = {
         quality_score=92,
         risk_score=77,
     ),
-    "AAPL": CompanyPortfolioProfile(
+    "AAPL": PortfolioFitInput(
         ticker="AAPL",
         company="Apple",
         sector="Consumer Electronics",
@@ -32,7 +32,7 @@ MOCK_COMPANY_PORTFOLIO_PROFILES: dict[str, CompanyPortfolioProfile] = {
         quality_score=86,
         risk_score=72,
     ),
-    "MSFT": CompanyPortfolioProfile(
+    "MSFT": PortfolioFitInput(
         ticker="MSFT",
         company="Microsoft",
         sector="Software",
@@ -41,7 +41,7 @@ MOCK_COMPANY_PORTFOLIO_PROFILES: dict[str, CompanyPortfolioProfile] = {
         quality_score=90,
         risk_score=78,
     ),
-    "EVO": CompanyPortfolioProfile(
+    "EVO": PortfolioFitInput(
         ticker="EVO",
         company="Evolution",
         sector="Gaming Technology",
@@ -71,7 +71,7 @@ class MockCompanyAnalysisProvider:
                 f"Available tickers: {available}"
             ) from exc
 
-    def get_portfolio_profile(self, ticker: str) -> CompanyPortfolioProfile:
+    def get_portfolio_profile(self, ticker: str) -> PortfolioFitInput:
         normalized_ticker = ticker.upper()
         try:
             return MOCK_COMPANY_PORTFOLIO_PROFILES[normalized_ticker]

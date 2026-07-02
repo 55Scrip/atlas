@@ -8,7 +8,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 from atlas.analysis.company_analysis import CompanyAnalysis, create_placeholder_company_analysis
-from atlas.analysis.portfolio import CompanyPortfolioProfile
+from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
 
 
 YAHOO_QUOTE_SUMMARY_URL = "https://query1.finance.yahoo.com/v10/finance/quoteSummary"
@@ -137,11 +137,11 @@ class YahooFinanceProvider:
             ),
         )
 
-    def get_portfolio_profile(self, ticker: str) -> CompanyPortfolioProfile:
+    def get_portfolio_profile(self, ticker: str) -> PortfolioFitInput:
         company = self.get_company(ticker)
         financials = self.get_financials(ticker)
         market_data = self.get_market_data(ticker)
-        return CompanyPortfolioProfile(
+        return PortfolioFitInput(
             ticker=company.ticker,
             company=company.name,
             sector=company.sector or "Unknown",

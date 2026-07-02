@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 132)  
-**Status:** Active — Sprint 132 complete: `PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation` deleted from `atlas/analysis/portfolio.py`. `portfolio.py` is now 69 lines (3 active types: `Portfolio`, `PortfolioPosition`, `CompanyPortfolioProfile`). WatchlistEngine deleted Sprint 99. `PortfolioIntelligenceEngine` deleted Sprint 128.
+**Updated:** 2026-07-02 (Sprint 133)  
+**Status:** Active — Sprint 133 complete: `CompanyPortfolioProfile` deleted from `atlas/analysis/portfolio.py`. `portfolio.py` is now 59 lines (2 active types: `Portfolio`, `PortfolioPosition`). WatchlistEngine deleted Sprint 99. `PortfolioIntelligenceEngine` deleted Sprint 128.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

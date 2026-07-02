@@ -137,7 +137,6 @@ def test_sprint118_capability_engine_still_no_legacy_portfolio_import():
 
 def test_sprint118_legacy_portfolio_module_remains_active():
     from atlas.analysis.portfolio import (  # noqa: F401
-        CompanyPortfolioProfile,
         Portfolio,
         PortfolioPosition,
     )

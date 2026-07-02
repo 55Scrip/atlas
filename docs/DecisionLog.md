@@ -1833,6 +1833,19 @@ Demo passed. Release verification green.
 
 **Outcome:** 2 files changed (engine + test). 7 new tests. 1245 tests passing (3 skipped). Demo passed. RC2 green. Recommended Sprint 119: `atlas/risk_drift/engine.py`.
 
+**Sprint 133 (2026-07-02): Delete `CompanyPortfolioProfile`; migrate providers to `PortfolioFitInput`**
+
+**Decision:** Option A (thin identity adapter). Updated `CompanyDataProvider.get_portfolio_profile()` return type across all 3 provider files to `PortfolioFitInput`. Changed `portfolio_fit_input_from_profile` to identity function rather than removing it — avoids touching 4 engine callers (conversation, dashboard, intelligence, decision) and their tests.
+
+**Rationale:**
+- `CompanyPortfolioProfile` and `PortfolioFitInput` have identical fields (1-to-1 mapping), making the provider switch mechanical with no data loss.
+- Option A (identity adapter) minimizes blast radius vs Option B (remove adapter and update engine callers): 4 engine files + their tests left untouched. Adapter cleanup deferred to a future sprint.
+- Zero active production callers remained after providers were updated — deletion confirmed safe.
+
+**Outcome:** `portfolio.py` reduced to 59 lines — only `Portfolio` and `PortfolioPosition` remain. All portfolio intelligence types now live in `atlas/capabilities/portfolio_intelligence/`. 1352 tests passing (3 skipped). Demo passed. RC2 green.
+
+---
+
 **Sprint 119 (2026-07-02): Migrate risk drift portfolio dependency**
 
 **Decision:** Two-part migration. (1) `Portfolio`: TYPE_CHECKING guard only — duck-typed `.positions` access preserved because CLI and portfolio_review both pass legacy Portfolio; changing callers is out of scope. (2) `PortfolioAnalysis`: fully replaced by `PortfolioFitResult` from capabilities — this was dead code (no caller passes non-None), making it a safe forward migration.
