@@ -5,8 +5,6 @@ from typer.testing import CliRunner
 from atlas.analysis.portfolio import (
     Portfolio,
     PortfolioPosition,
-    PortfolioRecommendation,
-    get_mock_company_portfolio_profile,
 )
 from atlas.cli.main import app
 

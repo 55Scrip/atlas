@@ -228,7 +228,7 @@ def test_sprint129_capability_engine_free_of_legacy_portfolio_import() -> None:
 
 
 def test_sprint129_portfolio_module_remaining_public_symbols() -> None:
-    """Sprint 129: public symbol inventory — exactly these symbols must be importable."""
+    """Sprint 130: public symbol inventory — exactly these symbols must be importable."""
     from atlas.analysis.portfolio import (  # noqa: F401
         Portfolio,
         PortfolioPosition,
@@ -236,17 +236,14 @@ def test_sprint129_portfolio_module_remaining_public_symbols() -> None:
         PortfolioRecommendation,
         PortfolioAnalysis,
         CompanyPortfolioProfile,
-        get_mock_company_portfolio_profile,
     )
     assert True
 
 
-def test_sprint129_portfolio_module_has_no_private_deleted_symbols() -> None:
-    """Sprint 129: dead private helpers from deleted PortfolioIntelligenceEngine are still present
-    but unreachable from public API — this test documents the dead-code state for Sprint 130.
-    """
+def test_sprint130_dead_private_helpers_deleted() -> None:
+    """Sprint 130: 16 dead private helpers deleted — must not exist in atlas.analysis.portfolio."""
     import atlas.analysis.portfolio as mod
-    dead_helpers = [
+    deleted_helpers = [
         "_diversification_impact",
         "_sector_concentration",
         "_country_concentration",
@@ -264,7 +261,21 @@ def test_sprint129_portfolio_module_has_no_private_deleted_symbols() -> None:
         "_concentration_score",
         "_is_mega_cap",
     ]
-    for name in dead_helpers:
-        assert hasattr(mod, name), (
-            f"{name} should still be present in Sprint 129 — Sprint 130 will delete it"
+    for name in deleted_helpers:
+        assert not hasattr(mod, name), (
+            f"{name} was deleted in Sprint 130 — must not be present in atlas.analysis.portfolio"
         )
+
+
+def test_sprint130_get_mock_company_portfolio_profile_deleted() -> None:
+    """Sprint 130: get_mock_company_portfolio_profile deleted — must NOT be importable."""
+    import pytest
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import get_mock_company_portfolio_profile  # noqa: F401
+
+
+def test_sprint130_active_portfolio_helpers_still_present() -> None:
+    """Sprint 130: active private helpers remain — _position_from_mapping and _normalize_weight."""
+    import atlas.analysis.portfolio as mod
+    assert hasattr(mod, "_position_from_mapping")
+    assert hasattr(mod, "_normalize_weight")

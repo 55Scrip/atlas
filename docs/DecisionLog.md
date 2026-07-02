@@ -2,6 +2,19 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 130 — Delete Dead Portfolio Private Helpers
+
+Decision: Delete 16 dead private helper functions and `get_mock_company_portfolio_profile` from `atlas/analysis/portfolio.py`. Confirmed zero active callers repo-wide before deletion.
+
+**Zero-caller audit findings:**
+- All 16 helper name hits in `atlas/capabilities/portfolio_intelligence/engine.py` are independently-defined functions in that module — not imports from or calls to the legacy helpers.
+- `_weighted_average` hit in `suitability/engine.py` is that file's own local function.
+- `get_mock_company_portfolio_profile` had stale imports only (both tests that called it deleted Sprint 128).
+
+**Changes:** 16 private helpers deleted; `get_mock_company_portfolio_profile` deleted; unused `CompanyDataProvider` import removed; stale test imports removed; `__init__.py` export removed. `portfolio.py` reduced from ~350 to 109 lines.
+
+**Sprint 131 recommended target:** Migrate `PortfolioAnalysis` out of `reasoning/engine.py` — retype `ReasoningInput.portfolio_analysis` as `PortfolioFitResult | None`, update duck-typed field accesses. After Sprint 131, `PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation` become deletion candidates.
+
 ## 2026-07-02: Sprint 129 — Remaining Portfolio Legacy Symbol Audit
 
 Decision: Audit all remaining public symbols in `atlas/analysis/portfolio.py`. No deletions this sprint. Sprint 130 target selected.

@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 129 complete: full remaining symbol audit done. 16 dead private helpers + `get_mock_company_portfolio_profile` are Sprint 130 targets (zero callers). `PortfolioAnalysis` is annotation/test-only. `CompanyPortfolioProfile` remains coupled to 3 providers (HIGH risk). `Portfolio` remains as CLI JSON-loading boundary.
+**Status:** ACTIVE — Sprint 130 complete: 16 dead private helpers + `get_mock_company_portfolio_profile` deleted. `portfolio.py` reduced to 109 lines. `PortfolioAnalysis` annotation-only in `reasoning/engine.py` — Sprint 131 target. `CompanyPortfolioProfile` provider coupling (HIGH risk) deferred. `Portfolio` CLI boundary deferred.
 
 ---
 

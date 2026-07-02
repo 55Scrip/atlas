@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 129) — full remaining symbol audit complete  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 complete for PortfolioIntelligenceEngine (deleted Sprint 128); remaining symbols audited Sprint 129; Sprint 130 target: delete dead private helpers + `get_mock_company_portfolio_profile`  
+**Updated:** 2026-07-02 (Sprint 130) — 16 dead private helpers + `get_mock_company_portfolio_profile` deleted  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 complete for PortfolioIntelligenceEngine; `portfolio.py` reduced to 109 lines (6 types + 2 active private helpers). Remaining: `PortfolioAnalysis` annotation-only cleanup, `CompanyPortfolioProfile` provider migration, `Portfolio` CLI boundary.  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -43,11 +43,11 @@ because 5+ active runtime paths still depend on it.
 | `render_portfolio_analysis` | ✓ | Sprint 111 |
 | `_score_line`, `_signal_line` | ✓ | Sprint 111 |
 
-### Functions — Remaining
+### Functions — Deleted Sprint 130
 
-| Symbol | Active callers | Notes |
+| Symbol | Deleted | Sprint |
 |---|---|---|
-| `get_mock_company_portfolio_profile(ticker)` | **Zero** — stale import in `tests/test_portfolio.py` only; both tests that called it deleted Sprint 128 | Sprint 130 deletion target |
+| `get_mock_company_portfolio_profile(ticker)` | ✓ | Sprint 130 — zero active callers confirmed |
 
 ### Private functions — Active
 
@@ -56,10 +56,10 @@ because 5+ active runtime paths still depend on it.
 | `_position_from_mapping` | `Portfolio.from_mapping` (active) |
 | `_normalize_weight` | `_position_from_mapping` (active) |
 
-### Private functions — Dead code (Sprint 130 deletion target)
+### Private functions — Deleted Sprint 130
 
 These 16 functions were exclusively used by `PortfolioIntelligenceEngine` (deleted Sprint 128).
-They have zero callers and are dead code.
+Zero callers confirmed repo-wide before deletion.
 
 `_diversification_impact`, `_sector_concentration`, `_country_concentration`,
 `_market_cap_concentration`, `_overlap_with_existing_holdings`, `_expected_quality_impact`,
@@ -67,9 +67,9 @@ They have zero callers and are dead code.
 `_weight_by_attribute`, `_mega_cap_weight`, `_weighted_average`, `_pro_forma_average`,
 `_concentration_score`, `_is_mega_cap`
 
-Note: Blueprint equivalents of all 16 were ported independently to
+Blueprint equivalents of all 16 were ported independently to
 `atlas/capabilities/portfolio_intelligence/engine.py` in Sprint 113. The legacy copies
-are fully superseded and serve no function.
+were fully superseded and have been removed.
 
 ---
 
@@ -424,36 +424,51 @@ Add 3–4 lightweight guardrail tests:
 
 ---
 
-## Sprint 130 Target
+## Sprint 130 ✓ COMPLETE
 
-**Recommended Sprint 130 target: Delete dead private helpers + `get_mock_company_portfolio_profile`.**
+**Deleted: 16 dead private helpers + `get_mock_company_portfolio_profile`.**
+
+Zero-caller audit confirmed before deletion. All 16 helpers had definition-only hits in
+`atlas/capabilities/portfolio_intelligence/engine.py` (independently-named functions in a separate
+module — not callers of the legacy symbols). `_weighted_average` hit in `suitability/engine.py`
+is that file's own local function. No active callers anywhere.
+
+**Changes:**
+- Deleted 16 private helper functions from `atlas/analysis/portfolio.py`
+- Deleted `get_mock_company_portfolio_profile` from `atlas/analysis/portfolio.py`
+- Removed unused `from atlas.providers.base import CompanyDataProvider` import (only needed by deleted helpers)
+- Removed `get_mock_company_portfolio_profile` from `atlas/analysis/__init__.py` (import + `__all__`)
+- Removed stale `get_mock_company_portfolio_profile` and `PortfolioRecommendation` imports from `tests/test_portfolio.py`
+- Flipped Sprint 129 guardrail `test_sprint129_portfolio_module_has_no_private_deleted_symbols` → `test_sprint130_dead_private_helpers_deleted` (now asserts gone)
+- Added `test_sprint130_get_mock_company_portfolio_profile_deleted` and `test_sprint130_active_portfolio_helpers_still_present`
+- `atlas/analysis/portfolio.py` reduced from ~350 lines to **109 lines**
+
+**Result:** `portfolio.py` now contains only 6 public types + 2 active private helpers
+(`_position_from_mapping`, `_normalize_weight`). Clean, minimal, easy to audit.
+
+---
+
+## Sprint 131 Target
+
+**Recommended Sprint 131 target: Migrate `PortfolioAnalysis` out of `reasoning/engine.py`.**
 
 **Rationale:**
-- 16 private helper functions (`_diversification_impact`, `_sector_concentration`, etc.) are dead
-  code with zero callers — their only caller (`PortfolioIntelligenceEngine`) was deleted Sprint 128.
-  Blueprint equivalents already exist in `atlas/capabilities/portfolio_intelligence/engine.py`.
-- `get_mock_company_portfolio_profile` has zero active callers — both tests that used it were
-  deleted Sprint 128; remaining import in `tests/test_portfolio.py` is stale.
-- No behavior change (dead code removal).
-- No test changes needed beyond removing the stale import from `tests/test_portfolio.py` and
-  from `atlas/analysis/__init__.py`.
-- Reduces `atlas/analysis/portfolio.py` from ~350 lines to ~90 lines.
-
-**Sprint 130 scope:**
-1. Remove 16 dead private helper functions from `atlas/analysis/portfolio.py`
-2. Remove `get_mock_company_portfolio_profile` from `atlas/analysis/portfolio.py`
-3. Remove `get_mock_company_portfolio_profile` from `atlas/analysis/__init__.py` (import + `__all__`)
-4. Remove stale `get_mock_company_portfolio_profile` and `PortfolioRecommendation` imports from `tests/test_portfolio.py`
-5. Add guardrail tests confirming dead helpers are gone
-6. Update docs
-
-**NOT in Sprint 130:** `PortfolioSignal`, `PortfolioRecommendation`, `PortfolioAnalysis`,
-`Portfolio`, `PortfolioPosition`, `CompanyPortfolioProfile` — all still have active callers
-or are coupled to `PortfolioAnalysis`.
-
-**`PortfolioRecommendation` import note:** `tests/test_portfolio.py` currently imports
-`PortfolioRecommendation` but has no remaining test that uses it (both engine tests deleted Sprint 128).
-This stale import can be removed in Sprint 130 along with `get_mock_company_portfolio_profile`.
+- `PortfolioAnalysis` is the last legacy portfolio type with a production-facing annotation dependency.
+  `reasoning/engine.py` holds it TYPE_CHECKING-only; `ReasoningInput.portfolio_analysis` is typed
+  as `PortfolioAnalysis | None`.
+- In practice this field is **never populated** in the live execution path — intelligence and
+  decision engines pass `PortfolioFitResult` to their own result types, not to `ReasoningInput`.
+  The field exists for optional manual use (currently only tests exercise it).
+- Migration options: (A) change `portfolio_analysis` type to `Any | None`, removing the import
+  entirely; (B) retire the `portfolio_analysis` field from `ReasoningInput` if no active CLI
+  path needs it; (C) retype as `PortfolioFitResult | None` and update the duck-typed attribute
+  accesses (`analysis.final_reasoning` → `analysis.summary`, `analysis.sector_concentration.reasoning`
+  → `analysis.sector_concentration.note`).
+- Option C is the cleanest — it completes the `PortfolioAnalysis` → `PortfolioFitResult` migration
+  for the reasoning layer, removes the last production-facing `PortfolioAnalysis` dependency,
+  and makes `PortfolioAnalysis`, `PortfolioSignal`, and `PortfolioRecommendation` fully test-only.
+- After Sprint 131, three symbols (`PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation`)
+  become candidates for deletion in a subsequent sprint.
 
 ---
 
