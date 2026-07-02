@@ -2,6 +2,26 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 140 — Analysis Package Release Candidate Checkpoint
+
+Decision: Audit-only sprint. No runtime behavior changed. `atlas/analysis/` confirmed at 6 modules. Sprint 138 module inventory corrected: `comparison.py` was deleted Sprint 103; `investment.py` never existed; the true remaining modules are `company_analysis.py`, `engine.py`, `explanation.py`, `report.py`, `scores.py`, `__init__.py`.
+
+**Findings:**
+- `atlas/analysis/__init__.py`: 12 exports, all active and intentional. No stale exports.
+- `company_analysis.py`: clean post-Sprint 139. All 7 placeholder types and factories present. No imports from deleted submodules.
+- `engine.py`: 230 lines. 10 external production callers. Foundational — do not migrate.
+- `explanation.py`: 199 lines. `InvestmentExplanation`, `explain_investment_report`, `render_investment_explanation`. 1 external production caller (`atlas/decision/memory.py`). Active utility.
+- `report.py`: 39 lines. `build_investment_report`, `render_investment_report`. 2 external production callers (`atlas/cli/main.py`, `atlas/comparison/engine.py`). Active utility.
+- `scores.py`: 2 lines. `clamp_score`. 10 external production callers across 6 packages. Shared utility — do not move.
+- All historically deleted modules confirmed not importable (watchlist, comparison, memory, scoring, portfolio, 7 placeholder submodules).
+- All deleted legacy portfolio symbols confirmed absent (PortfolioIntelligenceEngine, PortfolioAnalysis, PortfolioSignal, PortfolioRecommendation, CompanyPortfolioProfile).
+
+**Changes:** 1 new guardrail test file (`tests/test_analysis_package_sprint140.py`, 7 tests). 4 docs updated. No production code changed.
+
+**Sprint 141 recommended target:** Close the analysis cleanup track. The `atlas/analysis/` package is clean and stable. No further consolidation is warranted. Sprint 141 should document the track closure in DecisionLog and update the status line to reflect that the analysis cleanup is complete.
+
+---
+
 ## 2026-07-02: Sprint 139 — Consolidate 7 placeholder analysis submodules into company_analysis.py
 
 Decision: Inline `GrowthAnalysis`, `MacroAnalysis`, `MoatAnalysis`, `QualityAnalysis`, `SentimentAnalysis`, `TechnicalAnalysis`, `ValuationAnalysis` (and their `placeholder_*` factories) from 7 separate 18-line files into `atlas/analysis/company_analysis.py`. Delete the 7 source files.
