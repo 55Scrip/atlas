@@ -2,6 +2,34 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 156 — Principles Package Audit Checkpoint
+
+Decision: Audit `atlas/principles/` as a Group C self-contained module. Audit-only sprint. No runtime changes.
+
+**Findings:**
+- 2 modules: `__init__.py` (27 lines), `engine.py` (324 lines).
+- 11 exports. Core engine active: `PrinciplesEngine` and `PrinciplesCheck` used by 5 production engines (comparison, dashboard, decision_journal, portfolio_review, watchlist_review) + CLI.
+- `render_principles_check` used by active `atlas principles check` CLI command.
+- Sprint 152 removal of `check_reasoning_report` verified clean — no `atlas.reasoning` references remain.
+- **Two zero-caller convenience functions identified:** `check_intelligence_report` and `check_suitability_assessment` — zero production callers, zero test callers. Each contains a lazy import and a TYPE_CHECKING annotation parameter type; identical pattern to `check_reasoning_report` removed in Sprint 152.
+- Boundary clean: zero provider imports, zero upward dependencies at module load time.
+- No Blueprint-aligned successor; no overlap with `atlas/domains/` or `atlas/capabilities/`.
+- No stale closed-track imports.
+
+**Sprint 157 recommended target:** Remove `check_intelligence_report` and `check_suitability_assessment` — two zero-caller convenience functions — following the Sprint 152 pattern. Reduces principles API from 11 to 9 exports. See `docs/PrinciplesCleanupPlan.md`.
+
+**Closed-track summary:**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — CLOSED Sprint 148
+- Evidence package — CLOSED Sprint 150
+- Reasoning package — CLOSED Sprint 153
+- Risk package — CLOSED Sprint 155
+- **Principles package — ACTIVE (Sprint 157 cleanup planned)**
+
+---
+
 ## 2026-07-02: Sprint 155 — Close Risk Cleanup Track
 
 Decision: Close the `atlas/risk/` cleanup track. No cleanup work is warranted.
