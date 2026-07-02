@@ -283,10 +283,11 @@ def test_sprint127_dashboard_engine_type_checking_guard_for_portfolio():
 
 
 def test_sprint127_dashboard_engine_uses_portfolio_fit_capability():
-    """dashboard/engine.py must use portfolio_fit_capability for portfolio-fit scoring."""
+    """Sprint 137: dashboard/engine.py uses portfolio_fit_capability; calls provider directly."""
     assert "self.portfolio_fit_capability" in _DASH_SOURCE
-    assert "portfolio_fit_input_from_profile" in _DASH_SOURCE
+    assert "portfolio_fit_input_from_profile" not in _DASH_SOURCE
     assert "legacy_portfolio_to_domain_portfolio" in _DASH_SOURCE
+    assert "get_portfolio_profile" in _DASH_SOURCE
 
 
 def test_sprint127_dashboard_capability_injection_works():

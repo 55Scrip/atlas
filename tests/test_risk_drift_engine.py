@@ -239,16 +239,12 @@ def test_sprint119_concentration_check_uses_overlap_field():
 
 def test_sprint119_risk_drift_accepts_portfolio_fit_result_for_concentration():
     """_concentration_in_portfolio_analysis works with a real PortfolioFitResult."""
-    from atlas.adapters.portfolio import (
-        legacy_portfolio_to_domain_portfolio,
-        portfolio_fit_input_from_profile,
-    )
+    from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
     from atlas.adapters.portfolio import Portfolio as LegacyPortfolio
     from atlas.capabilities.portfolio_intelligence import PortfolioIntelligenceCapability
     from atlas.providers import MockCompanyAnalysisProvider
 
     provider = MockCompanyAnalysisProvider()
-    profile = provider.get_portfolio_profile("NVDA")
     legacy = LegacyPortfolio.from_mapping(
         {
             "positions": [
@@ -266,7 +262,7 @@ def test_sprint119_risk_drift_accepts_portfolio_fit_result_for_concentration():
         }
     )
     shared = legacy_portfolio_to_domain_portfolio(legacy)
-    fit_input = portfolio_fit_input_from_profile(profile)
+    fit_input = provider.get_portfolio_profile("NVDA")
     result = PortfolioIntelligenceCapability().analyze(shared, fit_input)
 
     # RiskDriftInput now accepts PortfolioFitResult for current_portfolio_analysis

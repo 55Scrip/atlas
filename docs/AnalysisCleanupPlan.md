@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 135 complete: `atlas/analysis/portfolio.py` deleted entirely. Sprint 136 checkpoint: zero stale production imports confirmed. Remaining `atlas/analysis/` modules: `engine.py` (foundational), `company_analysis.py` + 7 placeholder submodules (active), `explanation.py`, `report.py`, `scores.py`. Next target: `portfolio_fit_input_from_profile` identity adapter cleanup (Sprint 137 candidate).
+**Status:** ACTIVE — Sprint 137 complete: `portfolio_fit_input_from_profile` identity adapter deleted from `atlas/adapters/portfolio.py`. Four engine callers (conversation, dashboard, intelligence, decision) now call `provider.get_portfolio_profile()` directly. Adapter boundary contains only meaningful portfolio boundary utilities.
 
 ---
 

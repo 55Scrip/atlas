@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 136) — Sprint 136 post-migration checkpoint: zero active production imports of `atlas.analysis.portfolio` confirmed. Adapter boundary verified. Analysis package inventory updated.  
-**Status:** COMPLETE — `atlas/analysis/portfolio.py` deleted Sprint 135. All boundary types live in `atlas/adapters/portfolio.py`. `atlas/analysis/` now contains: `engine.py`, `explanation.py`, `report.py`, `scores.py`, `company_analysis.py`, and 7 placeholder submodule files (`growth.py`, `macro.py`, `moat.py`, `quality.py`, `sentiment.py`, `technicals.py`, `valuation.py`).  
+**Updated:** 2026-07-02 (Sprint 137) — Sprint 137 complete: `portfolio_fit_input_from_profile` identity adapter deleted. Portfolio migration fully resolved.  
+**Status:** COMPLETE — `atlas/analysis/portfolio.py` deleted Sprint 135. `portfolio_fit_input_from_profile` deleted Sprint 137. `atlas/adapters/portfolio.py` now contains only: `Portfolio`, `PortfolioPosition`, `legacy_portfolio_to_domain_portfolio`, `_position_from_mapping`, `_normalize_weight`. No further portfolio migration work is pending.  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** MEDIUM — all remaining callers are known; changes are mechanical import-line updates  
 

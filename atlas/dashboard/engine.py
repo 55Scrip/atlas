@@ -3,10 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from atlas.adapters.portfolio import (
-    legacy_portfolio_to_domain_portfolio,
-    portfolio_fit_input_from_profile,
-)
+from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
 from atlas.capabilities.portfolio_intelligence import PortfolioIntelligenceCapability
 
 if TYPE_CHECKING:
@@ -259,8 +256,7 @@ class DashboardEngine:
             ),
         ]
         if target_ticker and provider:
-            profile_data = provider.get_portfolio_profile(target_ticker)
-            fit_input = portfolio_fit_input_from_profile(profile_data)
+            fit_input = provider.get_portfolio_profile(target_ticker)
             shared_portfolio = legacy_portfolio_to_domain_portfolio(portfolio)
             result = self.portfolio_fit_capability.analyze(shared_portfolio, fit_input)
             cards.append(

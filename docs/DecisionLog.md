@@ -1848,6 +1848,19 @@ Demo passed. Release verification green.
 
 ---
 
+**Sprint 137 (2026-07-02): Delete `portfolio_fit_input_from_profile` identity adapter**
+
+**Decision:** Remove the no-op identity function and update the 4 engine callers to call `provider.get_portfolio_profile()` directly.
+
+**Rationale:**
+- `portfolio_fit_input_from_profile(profile: PortfolioFitInput) -> PortfolioFitInput` was a pure identity (`return profile`) — adding it to the call chain had zero effect on runtime behavior.
+- Sprint 133 retained it to avoid touching 4 engine callers; Sprint 135 and 136 confirmed the adapter boundary is stable enough to make the cleanup safe.
+- Removing it makes the provider contract explicit in each engine: `fit_input = provider.get_portfolio_profile(ticker)`.
+
+**Outcome:** `portfolio_fit_input_from_profile` deleted. 4 production files updated. 9 test functions updated. `atlas/adapters/portfolio.py` now contains only meaningful portfolio boundary utilities. 1359 tests passing (3 skipped). Demo passed. RC2 green. Portfolio migration fully resolved.
+
+---
+
 **Sprint 136 (2026-07-02): Post-portfolio migration checkpoint**
 
 **Decision:** No code changes to runtime behavior. Verified architecture post-Sprint 135 deletion.

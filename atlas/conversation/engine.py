@@ -4,10 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from atlas.adapters.portfolio import (
-    legacy_portfolio_to_domain_portfolio,
-    portfolio_fit_input_from_profile,
-)
+from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
 from atlas.analysis.engine import AtlasInvestmentEngine
 from atlas.capabilities.portfolio_intelligence import PortfolioIntelligenceCapability
 from atlas.capabilities.watchlist_intelligence import WatchlistInput
@@ -181,8 +178,7 @@ class ConversationEngine:
                 engines_used=("Portfolio Engine",),
             )
         # Fetch target company profile via provider (capability stays provider-free).
-        profile = provider.get_portfolio_profile(ticker)
-        fit_input = portfolio_fit_input_from_profile(profile)
+        fit_input = provider.get_portfolio_profile(ticker)
         shared_portfolio = legacy_portfolio_to_domain_portfolio(conversation_input.portfolio)
         result = self.portfolio_fit_capability.analyze(shared_portfolio, fit_input)
         return ConversationResponse(

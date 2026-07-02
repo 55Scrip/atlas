@@ -1,15 +1,13 @@
 """Sprint 117: Tests for atlas/adapters/portfolio.py — centralized portfolio adapters.
 
-Covers both legacy_portfolio_to_domain_portfolio (centralized Sprint 114) and
-portfolio_fit_input_from_profile (centralized Sprint 117).
+Covers legacy_portfolio_to_domain_portfolio (centralized Sprint 114).
+portfolio_fit_input_from_profile was deleted in Sprint 137 — engines now call
+provider.get_portfolio_profile() directly.
 """
 
 from __future__ import annotations
 
-from atlas.adapters.portfolio import (
-    legacy_portfolio_to_domain_portfolio,
-    portfolio_fit_input_from_profile,
-)
+from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
 from atlas.adapters.portfolio import Portfolio as LegacyPortfolio
 from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
 from atlas.shared import Holding, Portfolio as SharedPortfolio
@@ -118,55 +116,6 @@ def test_adapter_is_deterministic():
     assert first == second
 
 
-# ── portfolio_fit_input_from_profile ─────────────────────────────────────────
-
-def test_fit_input_from_profile_returns_portfolio_fit_input():
-    result = portfolio_fit_input_from_profile(_profile())
-    assert isinstance(result, PortfolioFitInput)
-
-
-def test_fit_input_from_profile_preserves_ticker():
-    result = portfolio_fit_input_from_profile(_profile())
-    assert result.ticker == "TSM"
-
-
-def test_fit_input_from_profile_preserves_company():
-    result = portfolio_fit_input_from_profile(_profile())
-    assert result.company == "TSMC"
-
-
-def test_fit_input_from_profile_preserves_sector():
-    result = portfolio_fit_input_from_profile(_profile())
-    assert result.sector == "Semiconductors"
-
-
-def test_fit_input_from_profile_preserves_country():
-    result = portfolio_fit_input_from_profile(_profile())
-    assert result.country == "Taiwan"
-
-
-def test_fit_input_from_profile_preserves_market_cap():
-    result = portfolio_fit_input_from_profile(_profile())
-    assert result.market_cap == 600_000_000_000.0
-
-
-def test_fit_input_from_profile_preserves_quality_score():
-    result = portfolio_fit_input_from_profile(_profile())
-    assert result.quality_score == 88
-
-
-def test_fit_input_from_profile_preserves_risk_score():
-    result = portfolio_fit_input_from_profile(_profile())
-    assert result.risk_score == 55
-
-
-def test_fit_input_from_profile_is_deterministic():
-    profile = _profile()
-    first = portfolio_fit_input_from_profile(profile)
-    second = portfolio_fit_input_from_profile(profile)
-    assert first == second
-
-
 # ── architecture boundary: adapter does not import providers/CLI/network ──────
 
 def test_adapter_module_has_no_provider_imports():
@@ -231,25 +180,47 @@ def test_sprint133_company_portfolio_profile_not_importable():
         from atlas.adapters.portfolio import CompanyPortfolioProfile  # noqa: F401
 
 
-# ── no new caller migrated: conversation and dashboard pass ───────────────────
+# ── Sprint 137: portfolio_fit_input_from_profile deleted ─────────────────────
 
-def test_conversation_engine_still_uses_adapter():
+def test_sprint137_fit_input_from_profile_not_importable() -> None:
+    """Sprint 137: portfolio_fit_input_from_profile deleted from atlas.adapters.portfolio."""
+    import pytest
+    with pytest.raises(ImportError):
+        from atlas.adapters.portfolio import portfolio_fit_input_from_profile  # noqa: F401
+
+
+def test_sprint137_conversation_engine_no_longer_uses_identity_adapter() -> None:
     import pathlib
     source = pathlib.Path("atlas/conversation/engine.py").read_text()
-    assert "portfolio_fit_input_from_profile" in source
+    assert "portfolio_fit_input_from_profile" not in source
     assert "legacy_portfolio_to_domain_portfolio" in source
+    assert "get_portfolio_profile" in source
 
 
-def test_dashboard_engine_still_uses_adapter():
+def test_sprint137_dashboard_engine_no_longer_uses_identity_adapter() -> None:
     import pathlib
     source = pathlib.Path("atlas/dashboard/engine.py").read_text()
-    assert "portfolio_fit_input_from_profile" in source
+    assert "portfolio_fit_input_from_profile" not in source
     assert "legacy_portfolio_to_domain_portfolio" in source
+    assert "get_portfolio_profile" in source
+
+
+def test_sprint137_intelligence_engine_no_longer_uses_identity_adapter() -> None:
+    import pathlib
+    source = pathlib.Path("atlas/intelligence/engine.py").read_text()
+    assert "portfolio_fit_input_from_profile" not in source
+    assert "get_portfolio_profile" in source
+
+
+def test_sprint137_decision_engine_no_longer_uses_identity_adapter() -> None:
+    import pathlib
+    source = pathlib.Path("atlas/decision/decision_engine.py").read_text()
+    assert "portfolio_fit_input_from_profile" not in source
+    assert "get_portfolio_profile" in source
 
 
 def test_portfolio_review_engine_still_uses_adapter():
     import pathlib
     source = pathlib.Path("atlas/portfolio_review/engine.py").read_text()
     assert "legacy_portfolio_to_domain_portfolio" in source
-    # portfolio_review does not build PortfolioFitInput (structural-only path)
     assert "portfolio_fit_input_from_profile" not in source

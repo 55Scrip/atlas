@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 136)  
-**Status:** Active — Sprint 136 post-migration checkpoint: zero active production imports of `atlas.analysis.portfolio` confirmed. Adapter boundary self-contained. `portfolio_fit_input_from_profile` identity adapter cleanup is the next recommended target (Sprint 137).
+**Updated:** 2026-07-02 (Sprint 137)  
+**Status:** Active — Sprint 137 complete: `portfolio_fit_input_from_profile` identity adapter deleted. Four engine callers updated to use `provider.get_portfolio_profile()` directly. `atlas/adapters/portfolio.py` now contains only: `Portfolio`, `PortfolioPosition`, `legacy_portfolio_to_domain_portfolio`, and 2 private helpers.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

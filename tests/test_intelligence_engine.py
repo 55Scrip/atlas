@@ -180,9 +180,10 @@ def test_sprint125_intelligence_engine_uses_capability():
 
 
 def test_sprint125_intelligence_engine_uses_adapters():
-    """intelligence/engine.py must use the established portfolio adapter chain."""
+    """Sprint 137: intelligence/engine.py uses adapter; calls provider directly."""
     assert "legacy_portfolio_to_domain_portfolio" in _INTEL_SOURCE
-    assert "portfolio_fit_input_from_profile" in _INTEL_SOURCE
+    assert "portfolio_fit_input_from_profile" not in _INTEL_SOURCE
+    assert "get_portfolio_profile" in _INTEL_SOURCE
 
 
 def test_sprint125_intelligence_engine_type_checking_guard():

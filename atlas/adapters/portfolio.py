@@ -109,14 +109,6 @@ def legacy_portfolio_to_domain_portfolio(
     )
 
 
-def portfolio_fit_input_from_profile(profile: PortfolioFitInput) -> PortfolioFitInput:
-    """Identity adapter — providers now return PortfolioFitInput directly.
-
-    Retained to avoid touching the four engine callers (conversation, dashboard,
-    intelligence, decision). Callers can be cleaned up in a future sprint.
-    """
-    return profile
-
 
 def _position_from_mapping(payload: dict[str, Any]) -> PortfolioPosition:
     required_fields = (

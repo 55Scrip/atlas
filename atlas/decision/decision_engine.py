@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from atlas.adapters.portfolio import (
-    legacy_portfolio_to_domain_portfolio,
-    portfolio_fit_input_from_profile,
-)
+from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport
 from atlas.analysis.scores import clamp_score
 from atlas.capabilities.portfolio_intelligence import (
@@ -124,8 +121,7 @@ class AtlasDecisionEngine:
     ) -> PortfolioFitResult | None:
         if context.portfolio is None:
             return None
-        profile = provider.get_portfolio_profile(ticker)
-        fit_input = portfolio_fit_input_from_profile(profile)
+        fit_input = provider.get_portfolio_profile(ticker)
         domain_portfolio = legacy_portfolio_to_domain_portfolio(context.portfolio)
         return self.portfolio_fit_capability.analyze(domain_portfolio, fit_input)
 

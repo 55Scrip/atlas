@@ -353,20 +353,10 @@ def test_sprint133_company_portfolio_profile_not_importable() -> None:
 
 
 def test_sprint133_portfolio_fit_input_from_profile_is_identity() -> None:
-    """Sprint 133: portfolio_fit_input_from_profile must accept and return PortfolioFitInput unchanged."""
-    from atlas.adapters.portfolio import portfolio_fit_input_from_profile
-    from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
-    fit_input = PortfolioFitInput(
-        ticker="TSM",
-        company="TSMC",
-        sector="Semiconductors",
-        country="Taiwan",
-        market_cap=600_000_000_000.0,
-        quality_score=88,
-        risk_score=55,
-    )
-    result = portfolio_fit_input_from_profile(fit_input)
-    assert result is fit_input
+    """Sprint 137: portfolio_fit_input_from_profile deleted — must NOT be importable."""
+    import pytest
+    with pytest.raises(ImportError):
+        from atlas.adapters.portfolio import portfolio_fit_input_from_profile  # noqa: F401
 
 
 def test_sprint133_providers_return_portfolio_fit_input() -> None:
@@ -444,15 +434,10 @@ def test_sprint134_cli_still_imports_portfolio_from_analysis() -> None:
 
 
 def test_sprint134_portfolio_fit_input_from_profile_is_identity() -> None:
-    """Sprint 134: portfolio_fit_input_from_profile is now identity — PortfolioFitInput in, PortfolioFitInput out."""
-    from atlas.adapters.portfolio import portfolio_fit_input_from_profile
-    from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
-    fit = PortfolioFitInput(
-        ticker="TSM", company="TSMC", sector="Semiconductors",
-        country="Taiwan", market_cap=600_000_000_000.0,
-        quality_score=88, risk_score=55,
-    )
-    assert portfolio_fit_input_from_profile(fit) is fit
+    """Sprint 137: portfolio_fit_input_from_profile deleted — engines use provider directly."""
+    import pytest
+    with pytest.raises(ImportError):
+        from atlas.adapters.portfolio import portfolio_fit_input_from_profile  # noqa: F401
 
 
 # ---------------------------------------------------------------------------

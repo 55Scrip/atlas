@@ -3,10 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from atlas.adapters.portfolio import (
-    legacy_portfolio_to_domain_portfolio,
-    portfolio_fit_input_from_profile,
-)
+from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport
 from atlas.capabilities.portfolio_intelligence import (
     PortfolioIntelligenceCapability,
@@ -247,8 +244,7 @@ def _optional_portfolio_analysis(
 ) -> PortfolioFitResult | None:
     if portfolio is None:
         return None
-    profile = provider.get_portfolio_profile(ticker)
-    fit_input = portfolio_fit_input_from_profile(profile)
+    fit_input = provider.get_portfolio_profile(ticker)
     domain_portfolio = legacy_portfolio_to_domain_portfolio(portfolio)
     return capability.analyze(domain_portfolio, fit_input)
 

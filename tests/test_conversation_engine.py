@@ -247,10 +247,11 @@ def test_sprint126_conversation_engine_no_portfolio_engine_constructor_param():
 
 
 def test_sprint126_conversation_engine_portfolio_review_uses_capability():
-    """conversation/engine.py _answer_portfolio_review must use portfolio_fit_capability."""
+    """Sprint 137: conversation/engine.py uses portfolio_fit_capability; calls provider directly."""
     assert "self.portfolio_fit_capability" in _CONV_SOURCE
-    assert "portfolio_fit_input_from_profile" in _CONV_SOURCE
+    assert "portfolio_fit_input_from_profile" not in _CONV_SOURCE
     assert "legacy_portfolio_to_domain_portfolio" in _CONV_SOURCE
+    assert "get_portfolio_profile" in _CONV_SOURCE
 
 
 def test_sprint126_conversation_engine_type_checking_guard_for_portfolio():

@@ -307,10 +307,11 @@ def test_sprint124_decision_engine_uses_capability():
 
 
 def test_sprint124_decision_engine_uses_adapters():
-    """decision_engine.py must import the portfolio adapters for domain conversion."""
+    """Sprint 137: decision_engine.py uses adapter; calls provider directly."""
     source = _decision_source("decision_engine.py")
     assert "legacy_portfolio_to_domain_portfolio" in source
-    assert "portfolio_fit_input_from_profile" in source
+    assert "portfolio_fit_input_from_profile" not in source
+    assert "get_portfolio_profile" in source
 
 
 def test_sprint124_decision_engine_fit_score_guard():
