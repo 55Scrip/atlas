@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 131 complete: `ReasoningInput.portfolio_analysis` retyped to `PortfolioFitResult | None`; `PortfolioAnalysis`/`PortfolioSignal`/`PortfolioRecommendation` are now test-only (deletion candidates Sprint 132). `CompanyPortfolioProfile` provider coupling (HIGH risk) deferred. `Portfolio` CLI boundary deferred.
+**Status:** ACTIVE — Sprint 132 complete: `PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation` deleted from `portfolio.py`. `portfolio.py` is now 69 lines (3 active types + 2 private helpers). `CompanyPortfolioProfile` provider coupling (HIGH risk) deferred. `Portfolio` CLI boundary deferred.
 
 ---
 

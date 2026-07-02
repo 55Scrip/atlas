@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 131) — `ReasoningInput.portfolio_analysis` retyped from `PortfolioAnalysis | None` to `PortfolioFitResult | None`; field accesses updated; TYPE_CHECKING guard removed  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 complete for PortfolioIntelligenceEngine and reasoning layer; `portfolio.py` at 109 lines (6 types + 2 active private helpers). Remaining: `PortfolioAnalysis`/`PortfolioSignal`/`PortfolioRecommendation` deletion (test-only, zero production callers), `CompanyPortfolioProfile` provider migration, `Portfolio` CLI boundary.  
+**Updated:** 2026-07-02 (Sprint 132) — `PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation` deleted; stale exports removed from `atlas/analysis/__init__.py`  
+**Status:** IN PROGRESS — Phases 1–4 complete; `portfolio.py` reduced to 69 lines (3 active types + 2 active private helpers). Remaining: `CompanyPortfolioProfile` provider migration (HIGH risk), `Portfolio` CLI boundary.  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -29,9 +29,9 @@ because 5+ active runtime paths still depend on it.
 |---|---|---|---|---|---|
 | `Portfolio` | dataclass (frozen) | Yes | `cli/main.py` (JSON loading, 5 commands), `adapters/portfolio.py` (adapter input) | `home`, `suitability`, `risk_drift`, `intelligence`, `dashboard`, `conversation`, `decision_context` (TYPE_CHECKING) | `atlas.shared.Portfolio` (different schema; adapter exists) |
 | `PortfolioPosition` | dataclass (frozen) | Yes | None (used implicitly by `Portfolio.positions`) | None | `atlas.shared.Holding` (adapter exists) |
-| `PortfolioSignal` | dataclass (frozen) | No | None | `PortfolioAnalysis` field types (no external callers) | `PortfolioFitDimension` — but only needed if `PortfolioAnalysis` retained |
-| `PortfolioRecommendation` | str Enum | Yes | None | `PortfolioAnalysis.recommendation` field type only | None — intentionally omitted from Blueprint layer |
-| `PortfolioAnalysis` | dataclass (frozen) | Yes | None | Test-only (Sprint 131: `reasoning/engine.py` fully migrated to `PortfolioFitResult`) | `PortfolioFitResult` ✓ Migration complete |
+| ~~`PortfolioSignal`~~ | ~~dataclass (frozen)~~ | No | None → **DELETED Sprint 132** | — | `PortfolioFitDimension` ✓ |
+| ~~`PortfolioRecommendation`~~ | ~~str Enum~~ | ~~Yes~~ | None → **DELETED Sprint 132** | — | None — intentionally omitted from Blueprint layer |
+| ~~`PortfolioAnalysis`~~ | ~~dataclass (frozen)~~ | ~~Yes~~ | None → **DELETED Sprint 132** | — | `PortfolioFitResult` ✓ |
 | `CompanyPortfolioProfile` | dataclass (frozen) | No | `providers/mock.py`, `providers/yahoo.py`, `adapters/portfolio.py` | `providers/base.py` TYPE_CHECKING only | `PortfolioFitInput` (Blueprint equivalent exists) |
 
 ### Deleted symbols (prior sprints)
@@ -469,17 +469,40 @@ is that file's own local function. No active callers anywhere.
 
 ---
 
-## Sprint 132 Target
+## Sprint 132 ✓ COMPLETE
 
-**Recommended Sprint 132 target: Delete `PortfolioAnalysis`, `PortfolioSignal`, and `PortfolioRecommendation` from `atlas/analysis/portfolio.py`.**
+**Deleted `PortfolioAnalysis`, `PortfolioSignal`, and `PortfolioRecommendation` from `atlas/analysis/portfolio.py`.**
+
+**Zero-caller audit result:**
+- `PortfolioAnalysis`: zero active production callers. Hits in `atlas/capabilities/portfolio_intelligence/models.py` are docstring comments only (no import). All other hits were test fixtures and stale assertions.
+- `PortfolioSignal`: zero active production callers. Only appeared as field types within `PortfolioAnalysis` (also deleted).
+- `PortfolioRecommendation`: zero active production callers. Only appeared as a field type within `PortfolioAnalysis` (also deleted). Re-export in `atlas/analysis/__init__.py` was stale.
+
+**Changes:**
+- Removed `PortfolioSignal`, `PortfolioRecommendation`, `PortfolioAnalysis` from `atlas/analysis/portfolio.py`
+- Removed unused `from enum import Enum` import (only needed by `PortfolioRecommendation`)
+- Removed `PortfolioAnalysis` and `PortfolioRecommendation` from `atlas/analysis/__init__.py` (import + `__all__`)
+- `portfolio.py` reduced from 109 to **69 lines** (3 active types: `Portfolio`, `PortfolioPosition`, `CompanyPortfolioProfile` + 2 private helpers)
+- Flipped 7 stale test assertions from "is importable" to "is NOT importable" / removed stale imports
+- Added Sprint 132 guardrail block in `test_portfolio_analyze_deprecation.py` (8 new tests)
+- Added `test_sprint132_portfolio_analysis_deleted` in `test_portfolio_intelligence_engine.py`
+- Added `test_sprint132_portfolio_analysis_signal_recommendation_deleted` in `test_reasoning_engine.py`
+
+**Result:** `atlas/analysis/portfolio.py` is now a minimal boundary module — 3 active types only.
+
+---
+
+## Sprint 133 Target
+
+**Recommended Sprint 133 target: Migrate `CompanyPortfolioProfile` from providers to `PortfolioFitInput`.**
 
 **Rationale:**
-- After Sprint 131, all three types are test-only. Zero production callers remain.
-- `PortfolioAnalysis` — only used in test fixture construction (`test_sprint128_shared_types_still_importable`, `test_sprint129_portfolio_module_remaining_public_symbols`, `test_sprint131_legacy_portfolio_analysis_signal_recommendation_still_importable`).
-- `PortfolioSignal` — only used as `PortfolioAnalysis` field types in tests.
-- `PortfolioRecommendation` — only used as `PortfolioAnalysis.recommendation` field type in tests.
-- Zero-caller audit required before deletion. Remove all three from `atlas/analysis/__init__.py` (import + `__all__`). Flip/delete test guardrails that assert these are importable.
-- `atlas/cli/deprecations.py` line 135 references `atlas/reasoning/engine.py (PortfolioAnalysis)` — that string is stale and should be updated.
+- `CompanyPortfolioProfile` is the last legacy result type in `portfolio.py` with active production callers.
+- It is coupled to 3 provider files (`providers/base.py`, `providers/mock.py`, `providers/yahoo.py`) — coordinated change required.
+- The Blueprint equivalent `PortfolioFitInput` already exists in `atlas/capabilities/portfolio_intelligence/`.
+- The adapter `atlas/adapters/portfolio.py` already has `portfolio_fit_input_from_profile()` that converts `CompanyPortfolioProfile` → `PortfolioFitInput`.
+- Migration requires: (1) update `CompanyDataProvider.get_portfolio_profile()` return type to `PortfolioFitInput`; (2) update `MockCompanyAnalysisProvider` and `YahooFinanceProvider` accordingly; (3) update `portfolio_fit_input_from_profile` in adapter (becomes identity or thinner); (4) remove `CompanyPortfolioProfile` from `portfolio.py` and `__init__.py`.
+- After Sprint 133, only `Portfolio` and `PortfolioPosition` would remain in `portfolio.py` (CLI JSON loading boundary).
 
 ---
 

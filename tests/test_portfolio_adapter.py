@@ -226,9 +226,8 @@ def test_legacy_portfolio_module_still_importable():
 
 
 def test_legacy_company_portfolio_profile_still_importable():
-    from atlas.analysis.portfolio import CompanyPortfolioProfile, PortfolioAnalysis  # noqa: F401
+    from atlas.analysis.portfolio import CompanyPortfolioProfile  # noqa: F401
     assert CompanyPortfolioProfile is not None
-    assert PortfolioAnalysis is not None
 
 
 # ── no new caller migrated: conversation and dashboard pass ───────────────────

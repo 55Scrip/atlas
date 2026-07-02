@@ -139,7 +139,6 @@ def test_sprint118_legacy_portfolio_module_remains_active():
     from atlas.analysis.portfolio import (  # noqa: F401
         CompanyPortfolioProfile,
         Portfolio,
-        PortfolioAnalysis,
         PortfolioPosition,
     )
     assert True
@@ -235,11 +234,12 @@ def test_sprint131_reasoning_portfolio_concentration_bearish_factor() -> None:
     assert "Portfolio concentration" in bearish_titles
 
 
-def test_sprint131_legacy_portfolio_analysis_signal_recommendation_still_importable() -> None:
-    """Sprint 131: PortfolioAnalysis, PortfolioSignal, PortfolioRecommendation still exist in portfolio.py."""
-    from atlas.analysis.portfolio import (  # noqa: F401
-        PortfolioAnalysis,
-        PortfolioRecommendation,
-        PortfolioSignal,
-    )
-    assert True
+def test_sprint132_portfolio_analysis_signal_recommendation_deleted() -> None:
+    """Sprint 132: PortfolioAnalysis, PortfolioSignal, PortfolioRecommendation deleted from portfolio.py."""
+    import pytest
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import PortfolioAnalysis  # noqa: F401
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import PortfolioSignal  # noqa: F401
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import PortfolioRecommendation  # noqa: F401

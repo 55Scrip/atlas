@@ -353,7 +353,9 @@ def test_sprint121_legacy_portfolio_module_still_active():
     """atlas.analysis.portfolio must still be importable (not deleted)."""
     import atlas.analysis.portfolio as legacy
     assert hasattr(legacy, "Portfolio")
-    assert hasattr(legacy, "PortfolioAnalysis")
+    assert not hasattr(legacy, "PortfolioAnalysis"), (
+        "PortfolioAnalysis was deleted in Sprint 132"
+    )
 
 
 def test_sprint121_capability_engine_still_clean():

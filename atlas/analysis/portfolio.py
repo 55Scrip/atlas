@@ -1,6 +1,5 @@
 import json
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -35,36 +34,6 @@ class Portfolio:
         if not isinstance(raw_positions, list) or not raw_positions:
             raise ValueError("Portfolio JSON must contain a non-empty positions list.")
         return cls(positions=tuple(_position_from_mapping(item) for item in raw_positions))
-
-
-@dataclass(frozen=True)
-class PortfolioSignal:
-    score: int
-    reasoning: str
-
-
-class PortfolioRecommendation(str, Enum):
-    STRONG_ADD = "Strong Add"
-    ADD = "Add"
-    NEUTRAL = "Neutral"
-    REDUCE = "Reduce"
-    AVOID = "Avoid"
-
-
-@dataclass(frozen=True)
-class PortfolioAnalysis:
-    company: str
-    ticker: str
-    portfolio_score: int
-    recommendation: PortfolioRecommendation
-    diversification_impact: PortfolioSignal
-    sector_concentration: PortfolioSignal
-    country_concentration: PortfolioSignal
-    market_cap_concentration: PortfolioSignal
-    overlap_with_existing_holdings: PortfolioSignal
-    expected_portfolio_quality_impact: PortfolioSignal
-    expected_portfolio_risk_impact: PortfolioSignal
-    final_reasoning: str
 
 
 @dataclass(frozen=True)

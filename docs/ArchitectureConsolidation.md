@@ -1,4 +1,4 @@
-# Architecture Consolidation (Sprint 44, updated Sprint 67, reviewed Sprint 71, reviewed Sprint 131)
+# Architecture Consolidation (Sprint 44, updated Sprint 67, reviewed Sprint 71, reviewed Sprint 132)
 
 This document records the current state of Atlas architecture as of RC2 (Sprint 71),
 clarifies which layers are current vs. legacy, and defines guardrails for
@@ -900,3 +900,5 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - `tests/test_portfolio_analyze_deprecation.py`: `PORTFOLIO_ENGINE_CALLERS` empty — all 5 callers migrated.
 - `PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation` now test-only; zero production callers. Deletion candidates for Sprint 132.
 - 1341 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 132 (2026-07-02):** `PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation` deleted from `atlas/analysis/portfolio.py`. Zero-caller audit confirmed: all three were test-only after Sprint 131. `PortfolioAnalysis` and `PortfolioRecommendation` removed from `atlas/analysis/__init__.py` (import + `__all__`). Unused `from enum import Enum` removed from `portfolio.py`. `portfolio.py` reduced from 109 to 69 lines. 8 new Sprint 132 guardrail tests in `test_portfolio_analyze_deprecation.py`. Stale "is importable" assertions flipped across 7 test files. 1348 tests passing (3 skipped). Demo passed. Release verification green.

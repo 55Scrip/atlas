@@ -2,6 +2,21 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 132 — Delete PortfolioAnalysis, PortfolioSignal, PortfolioRecommendation
+
+Decision: Delete `PortfolioAnalysis`, `PortfolioSignal`, and `PortfolioRecommendation` from `atlas/analysis/portfolio.py`. Confirmed zero active production callers after Sprint 131 migrated the last dependency (`reasoning/engine.py`).
+
+**Zero-caller audit findings:**
+- `PortfolioAnalysis`: all hits outside `portfolio.py` were test fixture imports, docstring comments (in `atlas/capabilities/portfolio_intelligence/models.py`), stale string literals (`atlas/cli/deprecations.py`), and re-exports (`atlas/analysis/__init__.py`). Zero production import sites.
+- `PortfolioSignal`: all hits were field type annotations within `PortfolioAnalysis` (also deleted) and stale test assertions. Zero production import sites.
+- `PortfolioRecommendation`: all hits were `PortfolioAnalysis.recommendation` field type (deleted), docstring comment in models.py, stale string in deprecations.py, and stale re-export in `__init__.py`. Zero production import sites.
+
+**Changes:** `PortfolioSignal`, `PortfolioRecommendation`, `PortfolioAnalysis` classes deleted; unused `from enum import Enum` removed; `PortfolioAnalysis`/`PortfolioRecommendation` removed from `atlas/analysis/__init__.py`; 8 new Sprint 132 guardrail tests added; stale "importable" assertions flipped across 7 test files. `portfolio.py` reduced from 109 to 69 lines.
+
+**Why `Portfolio`, `PortfolioPosition`, `CompanyPortfolioProfile` remain:** `Portfolio` and `PortfolioPosition` are the CLI JSON-loading boundary (5 commands in `cli/main.py`); `CompanyPortfolioProfile` is the provider contract type (`providers/base.py`, `providers/mock.py`, `providers/yahoo.py`) — HIGH risk to migrate atomically.
+
+**Sprint 133 recommended target:** Migrate `CompanyPortfolioProfile` from providers to `PortfolioFitInput`. Requires updating 3 provider files simultaneously.
+
 ## 2026-07-02: Sprint 131 — Migrate ReasoningInput.portfolio_analysis to PortfolioFitResult
 
 Decision: Retype `ReasoningInput.portfolio_analysis` in `atlas/reasoning/engine.py` from `PortfolioAnalysis | None` to `PortfolioFitResult | None`. Remove TYPE_CHECKING guard entirely. Update all field accesses.

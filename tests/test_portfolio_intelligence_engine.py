@@ -369,9 +369,11 @@ def test_sprint128_portfolio_intelligence_engine_not_importable() -> None:
         from atlas.analysis.portfolio import PortfolioIntelligenceEngine  # noqa: F401
 
 
-def test_legacy_portfolio_analysis_still_importable() -> None:
-    from atlas.analysis.portfolio import PortfolioAnalysis
-    assert PortfolioAnalysis is not None
+def test_sprint132_portfolio_analysis_deleted() -> None:
+    """Sprint 132: PortfolioAnalysis deleted — must NOT be importable from atlas.analysis.portfolio."""
+    import pytest
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import PortfolioAnalysis  # noqa: F401
 
 
 def test_legacy_company_portfolio_profile_still_importable() -> None:

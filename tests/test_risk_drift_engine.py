@@ -336,11 +336,8 @@ def test_sprint119_no_advisory_language_in_risk_drift_output():
 
 
 def test_sprint119_legacy_portfolio_module_still_active():
-    from atlas.analysis.portfolio import (  # noqa: F401
-        Portfolio,
-        PortfolioAnalysis,
-    )
-    assert True
+    from atlas.analysis.portfolio import Portfolio  # noqa: F401
+    assert Portfolio is not None
 
 
 def test_sprint119_capability_engine_still_no_legacy_portfolio_import():
