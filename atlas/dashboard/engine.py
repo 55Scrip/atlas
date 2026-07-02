@@ -1,11 +1,16 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from atlas.adapters.portfolio import (
     legacy_portfolio_to_domain_portfolio,
     portfolio_fit_input_from_profile,
 )
-from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine
 from atlas.capabilities.portfolio_intelligence import PortfolioIntelligenceCapability
+
+if TYPE_CHECKING:
+    from atlas.analysis.portfolio import Portfolio
 from atlas.economics import EconomicSignalAnalysis, EconomicSignalsEngine
 from atlas.market import (
     MarketHealthEngine,
@@ -68,7 +73,6 @@ class DashboardEngine:
     def __init__(
         self,
         profile_engine: InvestorProfileEngine | None = None,
-        portfolio_engine: PortfolioIntelligenceEngine | None = None,
         portfolio_fit_capability: PortfolioIntelligenceCapability | None = None,
         suitability_engine: SuitabilityEngine | None = None,
         risk_drift_engine: RiskDriftEngine | None = None,
@@ -80,7 +84,6 @@ class DashboardEngine:
         principles_engine: PrinciplesEngine | None = None,
     ) -> None:
         self.profile_engine = profile_engine or InvestorProfileEngine()
-        self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()
         self.portfolio_fit_capability = portfolio_fit_capability or PortfolioIntelligenceCapability()
         self.suitability_engine = suitability_engine or SuitabilityEngine()
         self.risk_drift_engine = risk_drift_engine or RiskDriftEngine()

@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 126) — conversation/engine.py stale portfolio_engine attribute removed  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (11 files migrated; dashboard/engine.py is the only remaining PortfolioIntelligenceEngine runtime caller)  
+**Updated:** 2026-07-02 (Sprint 127) — dashboard/engine.py stale portfolio_engine attribute removed; PortfolioIntelligenceEngine now has zero production runtime callers  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 complete for PortfolioIntelligenceEngine (zero runtime callers); remaining Phase 4 work: Portfolio/CompanyPortfolioProfile in CLI, adapters, and providers  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -343,10 +343,19 @@ Migrate one production caller per sprint, in order of impact risk:
 
 11. ✓ `atlas/conversation/engine.py` — **MIGRATED Sprint 126** (Option A); `portfolio_engine` constructor parameter removed; `self.portfolio_engine` dead attribute removed; `PortfolioIntelligenceEngine` import removed; `Portfolio` moved to TYPE_CHECKING; `from __future__ import annotations` added. `_answer_portfolio_review` already used `self.portfolio_fit_capability` since Sprint 114 — the legacy attribute was never referenced after that migration. 9 new Sprint 126 guardrail tests.
 
-**Remaining `PortfolioIntelligenceEngine` runtime callers (1):**
-- `atlas/dashboard/engine.py` — retains `self.portfolio_engine` for its portfolio-fit section
+12. ✓ `atlas/dashboard/engine.py` — **MIGRATED Sprint 127** (Option A + B); `portfolio_engine` constructor parameter removed; `self.portfolio_engine` dead attribute removed; `PortfolioIntelligenceEngine` import removed; `Portfolio` moved to TYPE_CHECKING; `from __future__ import annotations` added. `_portfolio_section` target-fit block was already using `self.portfolio_fit_capability` since Sprint 115 — the legacy attribute was never referenced after that migration. 8 new Sprint 127 guardrail tests.
 
-**Recommended Sprint 127 target:** `atlas/dashboard/engine.py` — audit and migrate `self.portfolio_engine` (same pattern as Sprint 126)
+**`PortfolioIntelligenceEngine` runtime caller status: ZERO**
+No production engine imports or instantiates `PortfolioIntelligenceEngine` after Sprint 127.
+Remaining `atlas.analysis.portfolio` imports:
+- `atlas/cli/main.py` — `Portfolio` for JSON loading (active runtime, out of scope)
+- `atlas/adapters/portfolio.py` — `LegacyPortfolio` adapter boundary (intentional)
+- `atlas/providers/mock.py`, `atlas/providers/yahoo.py` — `CompanyPortfolioProfile` (active)
+- `atlas/providers/base.py` — `CompanyPortfolioProfile` TYPE_CHECKING only
+- `atlas/portfolio_review/engine.py` — `LegacyPortfolio` structural analysis (active)
+- Several engines — `Portfolio` TYPE_CHECKING only (home, suitability, monitoring, risk_drift, decision_context, conversation, intelligence, dashboard, reasoning/PortfolioAnalysis)
+
+**Recommended Sprint 128 target:** Dedicated `PortfolioIntelligenceEngine` deletion sprint — confirm zero callers repo-wide, remove from `atlas/analysis/portfolio.py` and `atlas/analysis/__init__.py`
 
 ### Phase 5 — Provider migration (Sprint ~120)
 After all callers are migrated off `CompanyPortfolioProfile`:

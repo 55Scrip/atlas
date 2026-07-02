@@ -129,13 +129,12 @@ _RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
         removal_criteria=(
             "Command body retired in Sprint 89.",
             "atlas.analysis.portfolio engine remains on disk — Portfolio, PortfolioAnalysis, and "
-            "PortfolioIntelligenceEngine are still imported by atlas/dashboard "
-            "and atlas/portfolio_review (runtime); atlas/reasoning, atlas/home, "
-            "atlas/suitability, atlas/risk_drift, atlas/monitoring, atlas/decision_context, "
-            "atlas/conversation, and atlas/intelligence use TYPE_CHECKING only. "
-            "Sprint 124 migrated decision_engine.py; Sprint 125 migrated intelligence/engine.py; "
-            "Sprint 126 migrated conversation/engine.py. Engine deletion deferred "
-            "until all runtime callers are retired.",
+            "PortfolioIntelligenceEngine have zero production runtime callers as of Sprint 127. "
+            "Remaining runtime imports: atlas/cli/main.py (Portfolio for JSON loading), "
+            "atlas/adapters/portfolio.py (LegacyPortfolio adapter), atlas/providers/ (CompanyPortfolioProfile), "
+            "atlas/portfolio_review/engine.py (LegacyPortfolio). "
+            "PortfolioIntelligenceEngine itself: zero runtime callers (Sprints 124-127). "
+            "Engine deletion requires a dedicated zero-caller deletion sprint.",
         ),
     ),
     DeprecatedCommand(

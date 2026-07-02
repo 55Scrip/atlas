@@ -2,6 +2,25 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 127 — Dashboard Engine: Remove Stale portfolio_engine Attribute; PortfolioIntelligenceEngine Zero-Caller Milestone
+
+Decision: Remove the dead `self.portfolio_engine` / `portfolio_engine` constructor parameter
+from `atlas/dashboard/engine.py`. Option A + B (dead-code removal + Portfolio to TYPE_CHECKING).
+
+**Audit finding:** `self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()`
+was assigned at construction but never read anywhere in the file. `_portfolio_section`
+target-fit block was fully migrated to `self.portfolio_fit_capability` in Sprint 115.
+After that migration, the legacy attribute had zero active call sites.
+
+**`PortfolioIntelligenceEngine` zero-caller milestone reached:** After Sprint 127, no production
+engine in the Atlas codebase imports or instantiates `PortfolioIntelligenceEngine`. It remains
+in `atlas/analysis/portfolio.py` and is re-exported by `atlas/analysis/__init__.py`, but has
+no active callers. Sprint 128 is the designated deletion sprint.
+
+**Remaining `atlas.analysis.portfolio` active imports:** `cli/main.py` (Portfolio loading),
+`adapters/portfolio.py` (LegacyPortfolio adapter), `providers/` (CompanyPortfolioProfile),
+`portfolio_review/engine.py` (structural analysis). These are out of scope for Sprint 127.
+
 ## 2026-07-02: Sprint 126 — Conversation Engine: Remove Stale portfolio_engine Attribute
 
 Decision: Remove the dead `self.portfolio_engine` / `portfolio_engine` constructor parameter

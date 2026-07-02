@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 126 complete: `atlas/conversation/engine.py` stale `portfolio_engine` attribute removed (Option A). Only remaining `PortfolioIntelligenceEngine` runtime caller: `atlas/dashboard/engine.py`. Next: Sprint 127 — migrate `atlas/dashboard/engine.py`.
+**Status:** ACTIVE — Sprint 127 complete: `atlas/dashboard/engine.py` stale `portfolio_engine` attribute removed (Option A + B). **`PortfolioIntelligenceEngine` now has zero production runtime callers.** Next: Sprint 128 — dedicated `PortfolioIntelligenceEngine` deletion sprint.
 
 ---
 

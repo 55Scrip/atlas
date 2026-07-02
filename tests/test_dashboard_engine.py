@@ -1,4 +1,6 @@
+import ast
 import json
+import pathlib
 
 from typer.testing import CliRunner
 
@@ -7,6 +9,11 @@ from atlas.cli.main import app
 from atlas.dashboard import DashboardEngine, DashboardInput, render_dashboard
 from atlas.profile import InvestorProfileEngine
 from atlas.providers import MockCompanyAnalysisProvider
+
+_DASH_SOURCE = (
+    pathlib.Path(__file__).parent.parent / "atlas" / "dashboard" / "engine.py"
+).read_text()
+_DASH_TREE = ast.parse(_DASH_SOURCE)
 
 
 def _portfolio() -> Portfolio:
@@ -212,3 +219,95 @@ def test_dashboard_cli_show_outputs_text_dashboard(tmp_path):
     assert "Market Overview" in result.output
     assert "Themes To Watch" in result.output
     assert "Suggested Questions" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Sprint 127: Remove stale legacy portfolio engine attribute from dashboard
+# ---------------------------------------------------------------------------
+
+def _dash_top_level_legacy_imports() -> list[str]:
+    """Return atlas.analysis.portfolio runtime imports (not inside TYPE_CHECKING)."""
+    results = []
+    for node in _DASH_TREE.body:
+        if isinstance(node, ast.If):
+            test = node.test
+            if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
+                continue
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if "atlas.analysis.portfolio" in module:
+                results.append(module)
+    return results
+
+
+def test_sprint127_dashboard_engine_no_runtime_legacy_portfolio_import():
+    """dashboard/engine.py must not runtime-import from atlas.analysis.portfolio."""
+    assert _dash_top_level_legacy_imports() == []
+
+
+def test_sprint127_dashboard_engine_no_portfolio_intelligence_engine():
+    """PortfolioIntelligenceEngine must not appear in dashboard/engine.py."""
+    assert "PortfolioIntelligenceEngine" not in _DASH_SOURCE
+
+
+def test_sprint127_dashboard_engine_no_self_portfolio_engine():
+    """self.portfolio_engine must not appear in dashboard/engine.py."""
+    assert "self.portfolio_engine" not in _DASH_SOURCE
+
+
+def test_sprint127_dashboard_engine_no_portfolio_engine_constructor_param():
+    """portfolio_engine constructor parameter must not appear in live code."""
+    non_comment_lines = [
+        line for line in _DASH_SOURCE.splitlines()
+        if not line.strip().startswith("#")
+    ]
+    assert not any(
+        "portfolio_engine:" in line and "portfolio_fit" not in line
+        for line in non_comment_lines
+    )
+
+
+def test_sprint127_dashboard_engine_type_checking_guard_for_portfolio():
+    """Portfolio must appear inside a TYPE_CHECKING block in dashboard/engine.py."""
+    assert "TYPE_CHECKING" in _DASH_SOURCE
+    assert "from __future__ import annotations" in _DASH_SOURCE
+    for node in _DASH_TREE.body:
+        if isinstance(node, ast.If):
+            test = node.test
+            if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
+                for child in ast.walk(node):
+                    if isinstance(child, ast.ImportFrom):
+                        if any(alias.name == "Portfolio" for alias in child.names):
+                            return
+    raise AssertionError("Portfolio not found inside TYPE_CHECKING block in dashboard/engine.py")
+
+
+def test_sprint127_dashboard_engine_uses_portfolio_fit_capability():
+    """dashboard/engine.py must use portfolio_fit_capability for portfolio-fit scoring."""
+    assert "self.portfolio_fit_capability" in _DASH_SOURCE
+    assert "portfolio_fit_input_from_profile" in _DASH_SOURCE
+    assert "legacy_portfolio_to_domain_portfolio" in _DASH_SOURCE
+
+
+def test_sprint127_dashboard_capability_injection_works():
+    """DashboardEngine accepts a PortfolioIntelligenceCapability via constructor."""
+    from atlas.capabilities.portfolio_intelligence import PortfolioIntelligenceCapability
+
+    cap = PortfolioIntelligenceCapability()
+    engine = DashboardEngine(portfolio_fit_capability=cap)
+    assert engine.portfolio_fit_capability is cap
+
+
+def test_sprint127_dashboard_portfolio_fit_card_still_works():
+    """Portfolio fit card still appears when target_ticker and provider are supplied."""
+    summary = DashboardEngine().build(
+        DashboardInput(
+            portfolio=_portfolio(),
+            provider=MockCompanyAnalysisProvider(),
+            target_ticker="NVDA",
+        )
+    )
+    portfolio_section = next(s for s in summary.sections if s.title == "Portfolio Overview")
+    fit_card = next((c for c in portfolio_section.cards if c.title == "Target Portfolio Fit"), None)
+    assert fit_card is not None
+    assert "/100" in fit_card.value

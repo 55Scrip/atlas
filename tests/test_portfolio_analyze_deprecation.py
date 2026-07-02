@@ -30,7 +30,7 @@ PORTFOLIO_ENGINE_CALLERS = (
     # atlas/intelligence/engine.py migrated in Sprint 125 — removed from this list
     # atlas/conversation/engine.py migrated in Sprint 126 — removed from this list
     # atlas/decision/decision_engine.py migrated in Sprint 124 — removed from this list
-    REPO_ROOT / "atlas" / "dashboard" / "engine.py",
+    # atlas/dashboard/engine.py migrated in Sprint 127 — removed from this list
     REPO_ROOT / "atlas" / "reasoning" / "engine.py",
 )
 
