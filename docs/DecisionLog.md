@@ -2,6 +2,23 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 159 — Comparison Package Audit Checkpoint
+
+Decision: Audit `atlas/comparison/` as a provider-coupled module. Audit-only sprint. No runtime changes.
+
+**Findings:**
+- 2 modules: `__init__.py` (23 lines), `engine.py` (1009 lines). 9 exports.
+- `InvestmentComparisonEngine` is active: 1 production caller (CLI `atlas compare`), 1 test file. Clean `.compare()` public API; no zero-caller methods.
+- Provider coupling is intentional and clean: `CompanyDataProvider` as type annotation; `MockCompanyAnalysisProvider` as default (deterministic, local). `YahooFinanceProvider` only reachable via `--provider yahoo` CLI flag — never imported by `atlas/comparison/` itself.
+- All 9 exports are active or intentional sub-types (`InvestmentComparisonObservation`, `InvestmentComparisonSection` have zero direct external callers but are correct sub-types of the active report).
+- Zero stale closed-track imports. Zero dead code. Zero Blueprint pressure.
+- `atlas/decision/comparison.py` (130 lines) is a completely separate module — score-ranked ticker comparison for the decision flow. No overlap with `InvestmentComparisonEngine`.
+- No `atlas/domains/comparison/` or `atlas/capabilities/comparison/` exists. No Blueprint successor.
+
+**Sprint 160 recommended target:** Close the comparison cleanup track — documentation-only sprint confirming no cleanup is warranted. See `docs/ComparisonCleanupPlan.md`.
+
+---
+
 ## 2026-07-03: Sprint 158 — Close Principles Cleanup Track
 
 Decision: Close the `atlas/principles/` cleanup track. No further cleanup work is warranted.
