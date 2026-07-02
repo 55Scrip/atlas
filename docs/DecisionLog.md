@@ -1294,3 +1294,22 @@ Demo passed. Release verification green.
 - Full file deletion: rejected — would break 7 production module imports without a substitute type.
 
 **Outcome:** `WatchlistEngine` deleted. `atlas/analysis/watchlist.py` slimmed to 33 lines. `tests/test_watchlist.py` deleted. Guardrails flipped to confirm non-importability. 1119 tests passing (3 skipped).
+
+---
+
+**Sprint 100 (2026-07-02): Post-WatchlistEngine architecture checkpoint; type migration plan created**
+
+**Decision:** No runtime changes. Audit legacy watchlist state; add non-importability guardrails; create `docs/WatchlistTypeMigrationPlan.md`; recommend `WatchlistInput`/`WatchlistInputItem` in `atlas/capabilities/watchlist_intelligence/` as migration destination.
+
+**Rationale:**
+- WatchlistEngine deletion is confirmed complete. All deleted symbols (`WatchlistEngine`, `WatchlistAnalysis`, `WatchlistRecommendation`, `render_watchlist_analysis`) pass non-importability guardrails.
+- `atlas/analysis/watchlist.py` contains only `Watchlist` and `WatchlistItem` — confirmed by source scan and new guardrail test.
+- 7 production modules import `Watchlist`/`WatchlistItem` for CLI input parsing only. None use engine logic. All can be updated with mechanical import path changes in one sprint.
+- Recommended destination is `atlas/capabilities/watchlist_intelligence/` (renamed to `WatchlistInput`/`WatchlistInputItem`) because: (a) the type is a capability input, not a domain entity; (b) `atlas/shared` already owns a structurally different `Watchlist`; (c) `atlas/domains/watchlist/` re-exports `atlas.shared.Watchlist` — adding a different `Watchlist` there creates a namespace conflict.
+
+**Alternatives considered:**
+- `atlas/shared/entities.py`: rejected — different structure; `from_json_file`/`from_mapping` are CLI input concerns, not canonical entity concerns.
+- `atlas/domains/watchlist/`: rejected — namespace conflict with re-exported `atlas.shared.Watchlist`.
+- Keep in `atlas/analysis/watchlist.py` permanently: rejected — perpetuates legacy analysis package as a type source.
+
+**Outcome:** No runtime changes. 6 guardrails added. `docs/WatchlistTypeMigrationPlan.md` created. 1125 tests passing (3 skipped). Demo passed. Release verification green. Sprint 101 target: migrate `Watchlist`/`WatchlistItem` to `atlas/capabilities/watchlist_intelligence/` as `WatchlistInput`/`WatchlistInputItem`; delete `atlas/analysis/watchlist.py`.

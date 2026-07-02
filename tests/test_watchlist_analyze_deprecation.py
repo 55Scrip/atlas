@@ -92,6 +92,53 @@ def test_watchlist_engine_is_not_importable() -> None:
     )
 
 
+def test_watchlist_analysis_is_not_importable() -> None:
+    """Sprint 100: WatchlistAnalysis must no longer exist in atlas.analysis.watchlist."""
+    import importlib
+    mod = importlib.import_module("atlas.analysis.watchlist")
+    assert not hasattr(mod, "WatchlistAnalysis"), (
+        "WatchlistAnalysis was deleted in Sprint 99 and must not be importable"
+    )
+
+
+def test_watchlist_recommendation_is_not_importable() -> None:
+    """Sprint 100: WatchlistRecommendation must no longer exist in atlas.analysis.watchlist."""
+    import importlib
+    mod = importlib.import_module("atlas.analysis.watchlist")
+    assert not hasattr(mod, "WatchlistRecommendation"), (
+        "WatchlistRecommendation was deleted in Sprint 99 and must not be importable"
+    )
+
+
+def test_render_watchlist_analysis_is_not_importable() -> None:
+    """Sprint 100: render_watchlist_analysis must no longer exist in atlas.analysis.watchlist."""
+    import importlib
+    mod = importlib.import_module("atlas.analysis.watchlist")
+    assert not hasattr(mod, "render_watchlist_analysis"), (
+        "render_watchlist_analysis was deleted in Sprint 99 and must not be importable"
+    )
+
+
+def test_watchlist_module_contains_only_type_models() -> None:
+    """Sprint 100: atlas/analysis/watchlist.py must contain only Watchlist and WatchlistItem."""
+    watchlist_path = REPO_ROOT / "atlas" / "analysis" / "watchlist.py"
+    source = watchlist_path.read_text(encoding="utf-8")
+    forbidden = ["WatchlistEngine", "WatchlistAnalysis", "WatchlistSignal",
+                 "WatchlistRecommendation", "render_watchlist_analysis"]
+    found = [name for name in forbidden if name in source]
+    assert not found, (
+        f"Deleted legacy symbols found in watchlist.py: {found}"
+    )
+
+
+def test_watchlist_module_exports_watchlist_and_item() -> None:
+    """Sprint 100: atlas/analysis/watchlist.py must still export Watchlist and WatchlistItem."""
+    import importlib
+    mod = importlib.import_module("atlas.analysis.watchlist")
+    assert hasattr(mod, "Watchlist"), "Watchlist must remain in atlas.analysis.watchlist"
+    assert hasattr(mod, "WatchlistItem"), "WatchlistItem must remain in atlas.analysis.watchlist"
+
+
 def test_watchlist_engine_active_callers_are_zero() -> None:
     """Sprint 98: all active WatchlistEngine callers have been retired — set is empty."""
     assert WATCHLIST_ENGINE_CALLERS == (), (

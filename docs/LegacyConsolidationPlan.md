@@ -231,6 +231,55 @@ Provider safety: **confirmed**.
 
 ---
 
+## Sprint 100 — Post-WatchlistEngine Architecture Checkpoint COMPLETED
+
+### Completed: Deleted symbol audit; type-only import inventory; type migration plan created
+
+**Sprint 100 result:**
+
+**Goal:** Verify WatchlistEngine deletion state; audit remaining `Watchlist`/`WatchlistItem` type-only
+imports; document recommended migration destination; create `docs/WatchlistTypeMigrationPlan.md`;
+add guardrail tests for deleted symbols.
+
+**Changes made:**
+1. Added 6 guardrail tests to `tests/test_watchlist_analyze_deprecation.py`:
+   - `test_watchlist_analysis_is_not_importable`
+   - `test_watchlist_recommendation_is_not_importable`
+   - `test_render_watchlist_analysis_is_not_importable`
+   - `test_watchlist_module_contains_only_type_models` (source scan for all forbidden symbols)
+   - `test_watchlist_module_exports_watchlist_and_item` (confirms Watchlist/WatchlistItem still present)
+2. Created `docs/WatchlistTypeMigrationPlan.md` with:
+   - Full type-only import inventory (7 production modules, 5 test files)
+   - Documentation of the two distinct `Watchlist` families (legacy CLI input vs canonical entity)
+   - Recommended destination: `WatchlistInput`/`WatchlistInputItem` in `atlas/capabilities/watchlist_intelligence/`
+   - Step-by-step Sprint 101 migration sequence
+   - Risk assessment
+3. Updated `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`,
+   `docs/DecisionLog.md`, `docs/WatchlistEngineMigrationPlan.md`.
+
+**WatchlistEngine deletion audit — all confirmed:**
+
+| Symbol | Status |
+|---|---|
+| `WatchlistEngine` | Deleted Sprint 99 — not importable ✓ |
+| `WatchlistAnalysis` | Deleted Sprint 99 — not importable ✓ |
+| `WatchlistSignal` (legacy analysis module) | Deleted Sprint 99 — not importable from `atlas.analysis.watchlist` ✓ |
+| `WatchlistRecommendation` | Deleted Sprint 99 — not importable ✓ |
+| `render_watchlist_analysis` | Deleted Sprint 99 — not importable ✓ |
+| `Watchlist` | Retained — type-only, still importable from `atlas.analysis.watchlist` ✓ |
+| `WatchlistItem` | Retained — type-only, still importable from `atlas.analysis.watchlist` ✓ |
+
+**Note:** `WatchlistSignal` in `atlas/capabilities/watchlist_intelligence/` is a **different class** —
+a Blueprint capability type used for explainable prioritisation signals. It was never part of the
+legacy `atlas.analysis.watchlist` module and is unaffected by the Sprint 99 deletion.
+
+**Tests: 1125 passing (3 skipped). Demo passed. Release verification green.**
+
+**Sprint 101 target:** Move `Watchlist`/`WatchlistItem` to `atlas/capabilities/watchlist_intelligence/`
+as `WatchlistInput`/`WatchlistInputItem`; delete `atlas/analysis/watchlist.py`.
+
+---
+
 ## Sprint 99 — WatchlistEngine Deletion COMPLETED
 
 ### Completed: `WatchlistEngine` deleted; `atlas/analysis/watchlist.py` slimmed to types only

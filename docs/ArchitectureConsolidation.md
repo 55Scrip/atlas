@@ -704,3 +704,21 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - `docs/DeprecatedCommands.md` WatchlistEngine status updated.
 - `WatchlistEngineMigrationPlan.md` marked DELETION COMPLETE.
 - 1119 tests passing (3 skipped). All guardrails green.
+
+**Sprint 100 (2026-07-02):** Post-WatchlistEngine architecture checkpoint. No runtime changes.
+- WatchlistEngine deletion state verified: `WatchlistEngine`, `WatchlistAnalysis`, `WatchlistRecommendation`,
+  `render_watchlist_analysis` confirmed non-importable. `atlas/analysis/watchlist.py` confirmed type-only.
+- Remaining type-only import inventory completed: 7 production modules import `Watchlist`/`WatchlistItem`
+  from `atlas.analysis.watchlist` for CLI input parsing. All usage is input modeling only — no engine logic.
+- Two distinct `Watchlist` families documented: (1) legacy CLI input type in `atlas/analysis/watchlist.py`
+  (`items: tuple[WatchlistItem, ...]`); (2) canonical entity in `atlas/shared/entities.py`
+  (`tickers: tuple[str, ...]`). Structures incompatible — cannot substitute without caller changes.
+- Recommended long-term destination for `Watchlist`/`WatchlistItem`: rename to `WatchlistInput`/
+  `WatchlistInputItem` and move to `atlas/capabilities/watchlist_intelligence/`. Blueprint-aligned;
+  avoids naming conflicts; eliminates last legacy `analysis/` import.
+- `docs/WatchlistTypeMigrationPlan.md` created with full inventory, destination rationale, migration
+  sequence, and Sprint 101 recommendation.
+- 6 new guardrail tests added: `WatchlistAnalysis`, `WatchlistRecommendation`, `render_watchlist_analysis`
+  confirmed non-importable; `atlas/analysis/watchlist.py` confirmed type-only; `Watchlist`/`WatchlistItem`
+  confirmed still present.
+- 1125 tests passing (3 skipped). Demo passed. Release verification green.
