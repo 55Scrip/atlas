@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 112) — `atlas/capabilities/portfolio_intelligence/` stub created  
-**Status:** IN PROGRESS — Phase 1 complete; Phase 2 stub created (`PortfolioFitInput`, `PortfolioFitResult`); Phase 3 (engine implementation) is next  
+**Updated:** 2026-07-02 (Sprint 113) — `PortfolioIntelligenceCapability` engine implemented  
+**Status:** IN PROGRESS — Phase 1 complete; Phase 2 stub complete; Phase 3 engine complete; Phase 4 (caller migration) is next  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -277,17 +277,38 @@ a HIGH-RISK coordinated change and should be done as a dedicated sprint, not inc
 | `final_reasoning` field | `summary` (renamed) |
 | `recommendation` (enum) | **omitted** — no advisory semantics |
 
-### Phase 3 — Engine implementation (Sprint 113–114)
-**Scope:** Create `atlas/capabilities/portfolio_intelligence/` with `PortfolioIntelligenceCapability`.
+### Phase 3 — Engine implementation ✓ COMPLETE (Sprint 113)
 
-This is the largest phase and the blocking dependency for all subsequent phases:
-- Define `PortfolioFitInput` (wraps `atlas.shared.Portfolio` + target ticker + provider)
-- Define `PortfolioFitResult` (equivalent to `PortfolioAnalysis`)
-- Re-implement the 7-dimension scoring logic in the capability layer
-- Extend `atlas.shared.Holding` or create a new `PortfolioFitProfile` to carry
-  `quality_score` and `risk_score` (the two fields missing from the domain `Holding`)
+**Created `atlas/capabilities/portfolio_intelligence/engine.py` with:**
+- `PortfolioIntelligenceCapability.analyze(portfolio, fit_input, target_weight)` → `PortfolioFitResult`
+- 7-dimension scoring ported from legacy `_diversification_impact`, `_sector_concentration`,
+  `_country_concentration`, `_market_cap_concentration`, `_overlap_with_existing_holdings`,
+  `_expected_quality_impact`, `_expected_risk_impact`, `_aggregate_portfolio_score`
+- Package exports updated: `PortfolioIntelligenceCapability` added to `__init__.py`
+- 30 new tests in `tests/test_portfolio_intelligence_engine.py`
+- All 1181 tests passing (3 skipped). Demo passed. RC2 green.
 
-### Phase 4 — Caller migration (Sprints 115–119, one caller per sprint)
+**Schema gap — documented (not silently resolved):**
+
+`atlas.shared.Holding` lacks `quality_score`, `risk_score`, and `market_cap`. These fields exist on
+legacy `PortfolioPosition`. This creates partial parity for 3 of 7 dimensions:
+
+| Dimension | Parity | Notes |
+|---|---|---|
+| `sector_concentration` | ✓ Full | `Holding.sector` + `Holding.weight` available |
+| `country_concentration` | ✓ Full | `Holding.country` + `Holding.weight` available |
+| `overlap_with_existing_holdings` | ✓ Full | `Holding.ticker` + `Holding.sector` available |
+| `diversification_impact` | Partial | Sector + country components ✓; mega-cap component = 0 (no `market_cap` on `Holding`) |
+| `market_cap_concentration` | Gap | Target cap bucket classified; existing portfolio mega-cap weight unknown (no `market_cap` on `Holding`); returns neutral score=50 |
+| `quality_impact` | Partial | Target quality score reflects direction only; no portfolio delta (no `quality_score` on `Holding`); score = 50 + (target_quality - 50) * 0.5 |
+| `risk_impact` | Partial | Target risk score reflects direction only; no portfolio delta (no `risk_score` on `Holding`); score = 50 + (target_risk - 50) * 0.5 |
+
+Resolving the gap requires extending `atlas.shared.Holding` with `quality_score`, `risk_score`,
+and `market_cap` — a Phase 4 prerequisite tracked in the Phase 4 caller migration block below.
+
+**No existing callers migrated.** All legacy `atlas.analysis.portfolio` imports unchanged.
+
+### Phase 4 — Caller migration (Sprints 114+, one caller per sprint)
 Migrate one production caller per sprint, in order of impact risk:
 
 1. `atlas/conversation/engine.py` — lowest coupling; `portfolio_engine` is injected

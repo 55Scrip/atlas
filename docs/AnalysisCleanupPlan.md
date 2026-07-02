@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 112 complete: `atlas/capabilities/portfolio_intelligence/` stub created with `PortfolioFitInput`, `PortfolioFitResult`, `PortfolioFitDimension`. 14 modules remain. Next: Phase 3 — implement `PortfolioIntelligenceCapability` engine.
+**Status:** ACTIVE — Sprint 113 complete: `PortfolioIntelligenceCapability` engine implemented in `atlas/capabilities/portfolio_intelligence/engine.py`. 7-dimension scoring ported. 30 new tests. Next: Phase 4 — caller migration (Sprint 114+).
 
 ---
 
@@ -238,8 +238,8 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 | 110 ✓ | Planning sprint | `portfolio.py` migration plan written; 6-phase plan in `docs/PortfolioAnalysisMigrationPlan.md`; 3 pre-migration guardrail tests added | DONE |
 | 111 ✓ | `render_portfolio_analysis` removed | Deleted dead render helper + 2 private helpers; zero production callers confirmed | DONE |
 | 112 ✓ | Capability stub created | `atlas/capabilities/portfolio_intelligence/` created with `PortfolioFitInput`, `PortfolioFitResult`, `PortfolioFitDimension`; 12 tests added | DONE |
-| **113** | Phase 3 — Engine implementation | **Implement `PortfolioIntelligenceCapability` engine in new package; port 7-dimension scoring logic from legacy** | MEDIUM |
-| 113–119 | Caller migration | One caller per sprint, lowest-coupling first | HIGH |
+| 113 ✓ | Phase 3 — Engine implementation | `PortfolioIntelligenceCapability` engine created; 7-dimension scoring ported; schema gap documented; 30 tests added | DONE |
+| **114+** | Phase 4 — Caller migration | **One caller per sprint, lowest-coupling first** | HIGH |
 | ~120 | Provider migration | Remove `CompanyPortfolioProfile` from provider interface | HIGH |
 | ~121 | Delete `portfolio.py` | After zero active callers remain | — |
 | Future | `atlas/analysis/engine.py` | Core scoring engine; 10 production callers; foundational — leave for late cleanup | VERY HIGH |

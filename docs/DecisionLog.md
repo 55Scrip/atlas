@@ -1525,3 +1525,18 @@ Demo passed. Release verification green.
 - No provider or network dependency introduced. No existing callers changed.
 
 **Outcome:** 3 new types. 12 tests. Boundary constraints verified by AST scan in tests. 1151 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 113 (2026-07-02): Implement `PortfolioIntelligenceCapability` engine**
+
+**Decision:** Port 7-dimension scoring logic from `atlas/analysis/portfolio.py` into `atlas/capabilities/portfolio_intelligence/engine.py` as a new `PortfolioIntelligenceCapability` class. Accept `atlas.shared.Portfolio` (not legacy `Portfolio`). Document schema gap rather than working around it.
+
+**Rationale:**
+- Logic is ported, not wrapped — the new engine does not import `PortfolioIntelligenceEngine` or any legacy analysis symbol. This preserves the clean architecture boundary.
+- `atlas.shared.Portfolio` is the correct input type for the Blueprint layer. Using the legacy `atlas.analysis.portfolio.Portfolio` would violate the architectural boundary.
+- Schema gap (`atlas.shared.Holding` lacks `quality_score`, `risk_score`, `market_cap`) is real and affects 3 of 7 dimensions. Returning neutral scores with documented notes is correct: callers will know what's partial, and future `atlas.shared.Holding` extension will resolve these gaps without breaking callers.
+- Weights in `_aggregate_fit_score` mirror the legacy exactly — this is intentional so aggregate behavior is comparable even while individual dimensions differ.
+- No callers migrated — the legacy engine remains the active production path. This sprint adds capability alongside, not in replacement.
+
+**Outcome:** `PortfolioIntelligenceCapability` engine created. 30 tests. 1181 tests passing (3 skipped). Demo passed. Release verification green.

@@ -845,3 +845,12 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - New capability imports nothing from `atlas.analysis.portfolio` or `atlas.providers` — clean boundary.
 - 12 tests added in `tests/test_portfolio_intelligence_capability.py`.
 - 1151 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 113 (2026-07-02):** `PortfolioIntelligenceCapability` engine implemented.
+- `atlas/capabilities/portfolio_intelligence/engine.py` created with 7-dimension scoring ported from legacy.
+- Accepts `atlas.shared.Portfolio` + `PortfolioFitInput`; returns `PortfolioFitResult`.
+- Schema gap documented: 3 of 7 dimensions partial due to `atlas.shared.Holding` missing `quality_score`/`risk_score`/`market_cap`. Neutral fallbacks with gap notes used.
+- No existing callers migrated. Legacy `PortfolioIntelligenceEngine` remains active.
+- `PortfolioIntelligenceCapability` exported from `atlas/capabilities/portfolio_intelligence/__init__.py`.
+- 30 tests added in `tests/test_portfolio_intelligence_engine.py`.
+- 1181 tests passing (3 skipped). Demo passed. Release verification green.

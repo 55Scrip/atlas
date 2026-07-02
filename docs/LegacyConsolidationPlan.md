@@ -264,6 +264,32 @@ without output changes.
 
 ---
 
+## Sprint 113 — Portfolio Intelligence Capability Engine COMPLETED
+
+**Goal:** Implement `PortfolioIntelligenceCapability` engine in `atlas/capabilities/portfolio_intelligence/engine.py`. Port 7-dimension scoring logic from `atlas/analysis/portfolio.py`. No callers migrated.
+
+**Key decisions:**
+- `PortfolioIntelligenceCapability.analyze(portfolio, fit_input, target_weight)` → `PortfolioFitResult`
+- Accepts `atlas.shared.Portfolio` (Blueprint-aligned), not legacy `atlas.analysis.portfolio.Portfolio`
+- Does NOT import or wrap `PortfolioIntelligenceEngine` — logic ported independently
+- Schema gap documented: `atlas.shared.Holding` lacks `quality_score`, `risk_score`, `market_cap`; 3 of 7 dimensions have partial parity; neutral fallbacks with schema gap notes used
+- Weights in `_aggregate_fit_score` mirror legacy exactly (div 15%, sector 15%, country 10%, mktcap 10%, overlap 15%, quality 20%, risk 15%)
+
+**Schema gap summary:**
+- `sector_concentration`, `country_concentration`, `overlap` — full parity
+- `diversification_impact` — partial (mega-cap component treated as 0)
+- `market_cap_concentration`, `quality_impact`, `risk_impact` — partial/neutral (schema gap noted in dimension notes)
+
+**Changes made:**
+1. `atlas/capabilities/portfolio_intelligence/engine.py` created — `PortfolioIntelligenceCapability` + 7 dimension calculators + helpers.
+2. `atlas/capabilities/portfolio_intelligence/__init__.py` updated — `PortfolioIntelligenceCapability` added to exports.
+3. `tests/test_portfolio_intelligence_engine.py` created — 30 tests.
+4. 3 docs updated.
+
+**Tests: 1181 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 112 — Portfolio Intelligence Capability Stub COMPLETED
 
 **Goal:** Create `atlas/capabilities/portfolio_intelligence/` with Blueprint-aligned types as the future destination for `atlas/analysis/portfolio.py` logic.
