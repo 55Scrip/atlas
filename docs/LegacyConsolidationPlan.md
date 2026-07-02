@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 140)  
-**Status:** Active — Sprint 140 RC checkpoint confirmed. `atlas/analysis/` has exactly 6 modules: `company_analysis.py`, `engine.py`, `explanation.py`, `report.py`, `scores.py`, `__init__.py`. Sprint 138 inventory corrected: `comparison.py` was deleted Sprint 103; `investment.py` never existed. All 12 `__init__.py` exports are active and healthy. No further `atlas/analysis/` consolidation is warranted. Analysis cleanup track recommended to close after Sprint 141 documentation close-out.
+**Updated:** 2026-07-02 (Sprint 141)  
+**Status:** `atlas/analysis/` cleanup track CLOSED as of Sprint 141. Final stable state: 6 modules (`company_analysis.py`, `engine.py`, `explanation.py`, `report.py`, `scores.py`, `__init__.py`). 12 deleted modules confirmed gone. No further analysis cleanup planned until `engine.py` has a clear successor architecture.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

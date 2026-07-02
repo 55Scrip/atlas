@@ -2,6 +2,24 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 141 — Close Analysis Cleanup Track
+
+Decision: Formally close the `atlas/analysis/` cleanup track after Sprints 100–141. No further cleanup sprints are planned until `engine.py` has a clear successor architecture.
+
+**Rationale:** After portfolio deletion (Sprints 128–135), placeholder consolidation (Sprint 139), export verification (Sprint 140), and deleted-module guardrails, the remaining analysis package contains only active, intentional modules. All 12 `__init__.py` exports are healthy. All deleted modules are verified gone. Further cleanup would create churn without architectural benefit.
+
+**Final stable package:** `__init__.py`, `company_analysis.py`, `engine.py`, `explanation.py`, `report.py`, `scores.py`. No stale exports. No dead modules.
+
+**Why `engine.py` remains:** 10 external production callers. It is the primary scoring engine for the entire analysis layer. No safe migration path until a Blueprint-aligned successor is designed with a clear caller migration plan.
+
+**Why `scores.py` remains:** 10 external production callers across 6 packages. A 2-line utility; moving it creates churn for zero benefit. It is a permanent shared utility.
+
+**Reopening condition:** Reopen this track when `engine.py` has a clear Blueprint-aligned successor and fewer than 10 active callers remain on the legacy path, or when a new batch of zero-caller modules is identified.
+
+**Sprint 142 recommended target:** Decision package cleanup checkpoint — audit `atlas/decision/` for dead code, stale symbols, or consolidation candidates following the same audit-first pattern used for `atlas/analysis/`.
+
+---
+
 ## 2026-07-02: Sprint 140 — Analysis Package Release Candidate Checkpoint
 
 Decision: Audit-only sprint. No runtime behavior changed. `atlas/analysis/` confirmed at 6 modules. Sprint 138 module inventory corrected: `comparison.py` was deleted Sprint 103; `investment.py` never existed; the true remaining modules are `company_analysis.py`, `engine.py`, `explanation.py`, `report.py`, `scores.py`, `__init__.py`.

@@ -1,7 +1,41 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 140 RC checkpoint complete. `atlas/analysis/` confirmed at 6 modules: `company_analysis.py`, `engine.py`, `explanation.py`, `report.py`, `scores.py`, `__init__.py`. All exports healthy. Sprint 138 inventory corrected (comparison.py deleted Sprint 103; investment.py never existed). No stale exports. All deleted modules verified gone. Sprint 141 target: close analysis cleanup track — no further consolidation warranted.
+**Status:** CLOSED — Sprint 141. Analysis cleanup track formally closed after Sprints 100–141.
+
+## Final Stable State (Sprint 141)
+
+`atlas/analysis/` contains exactly 6 modules. No further cleanup planned until `engine.py` has a clear successor architecture.
+
+| Module | Status | Why it remains |
+|---|---|---|
+| `__init__.py` | Active re-export hub | 12 intentional exports, all healthy |
+| `company_analysis.py` | Active foundation | All placeholder types consolidated here Sprint 139; consumed by engine callers |
+| `engine.py` | Foundational — do not migrate | 10 external production callers; primary scoring engine for the entire analysis layer |
+| `explanation.py` | Active utility | `InvestmentExplanation`, `explain_investment_report`; 1 external production caller |
+| `report.py` | Active utility | `build_investment_report`, `render_investment_report`; 2 external production callers |
+| `scores.py` | Permanent shared utility | `clamp_score`; 10 external production callers across 6 packages; moving creates churn |
+
+## Deleted modules (final confirmed list)
+
+| Module | Deleted Sprint |
+|---|---|
+| `atlas/analysis/watchlist.py` | Sprint 101 |
+| `atlas/analysis/comparison.py` | Sprint 103 |
+| `atlas/analysis/memory.py` | Sprint 104 |
+| `atlas/analysis/scoring.py` | Sprint 109 |
+| `atlas/analysis/portfolio.py` | Sprint 135 |
+| `atlas/analysis/growth.py` | Sprint 139 |
+| `atlas/analysis/macro.py` | Sprint 139 |
+| `atlas/analysis/moat.py` | Sprint 139 |
+| `atlas/analysis/quality.py` | Sprint 139 |
+| `atlas/analysis/sentiment.py` | Sprint 139 |
+| `atlas/analysis/technicals.py` | Sprint 139 |
+| `atlas/analysis/valuation.py` | Sprint 139 |
+
+## Reopening condition
+
+This track may be reopened when `engine.py` has a clear Blueprint-aligned successor architecture and a safe migration path with fewer than 10 active production callers, or when a new batch of deletable modules is identified.
 
 ---
 
