@@ -854,3 +854,10 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - `PortfolioIntelligenceCapability` exported from `atlas/capabilities/portfolio_intelligence/__init__.py`.
 - 30 tests added in `tests/test_portfolio_intelligence_engine.py`.
 - 1181 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 114 (2026-07-02):** Schema gap resolved; conversation caller migrated.
+- `atlas.shared.Holding` extended with optional `quality_score`, `risk_score`, `market_cap` (all default None; zero blast radius — 6 instantiation sites all use keyword args).
+- `atlas/adapters/portfolio.py` updated to carry enriched fields and `weight=position.weight` from legacy `PortfolioPosition`.
+- `atlas/capabilities/portfolio_intelligence/engine.py` — all 7 dimensions now have full parity when enriched fields are present; conservative fallbacks retained for unenriched `Holding`.
+- `atlas/conversation/engine.py` — `_answer_portfolio_review` migrated to `PortfolioIntelligenceCapability`; `portfolio_fit_capability` injected; legacy `portfolio_engine` retained for `IntelligenceEngine` (not migrated).
+- 13 new tests; 1194 tests passing (3 skipped). Demo passed. Release verification green.

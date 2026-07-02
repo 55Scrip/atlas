@@ -1,12 +1,21 @@
-"""Tests for PortfolioIntelligenceCapability engine (Sprint 113).
+"""Tests for PortfolioIntelligenceCapability engine (Sprint 113 + Sprint 114).
 
-Covers:
+Sprint 113 coverage:
 - engine importability and architecture boundary
 - all 7 dimensions: diversification, sector, country, market_cap, overlap, quality, risk
 - aggregate fit score determinism
-- schema gap dimensions return neutral/partial scores with notes
+- schema gap fallback dimensions return neutral/partial scores with notes
 - no provider imports, no legacy portfolio imports
 - existing legacy callers unchanged
+
+Sprint 114 coverage:
+- Holding enriched fields (quality_score, risk_score, market_cap) enable full parity
+- quality_impact full parity (delta from weighted portfolio average)
+- risk_impact full parity (delta from weighted portfolio average)
+- market_cap_concentration full parity (pro forma mega-cap weight)
+- diversification_impact full parity (mega-cap component included)
+- adapter carries enriched fields from legacy PortfolioPosition
+- conversation engine uses capability for portfolio review path
 """
 
 from __future__ import annotations
@@ -254,30 +263,33 @@ def test_overlap_score_decreases_with_more_sector_matches() -> None:
 # Schema gap dimensions — neutral/partial scores
 # ---------------------------------------------------------------------------
 
-def test_market_cap_concentration_returns_neutral_with_note() -> None:
+def test_market_cap_concentration_returns_neutral_with_note_when_no_market_cap_data() -> None:
+    # Holding without market_cap (default None) — fallback neutral score
     portfolio = _make_portfolio(_make_holding("AAPL"))
     fit_input = _make_fit_input()
     result = _ENGINE.analyze(portfolio, fit_input)
     assert result.market_cap_concentration.score == 50
-    assert "schema gap" in result.market_cap_concentration.note.lower()
+    assert "unavailable" in result.market_cap_concentration.note.lower()
 
 
-def test_quality_impact_returns_partial_score_based_on_target() -> None:
+def test_quality_impact_returns_partial_score_based_on_target_when_no_holding_data() -> None:
+    # Holding without quality_score (default None) — fallback formula
     portfolio = _make_portfolio(_make_holding("AAPL"))
     # quality_score=90 → 50 + (90-50)*0.5 = 70
     fit_input = _make_fit_input(quality_score=90)
     result = _ENGINE.analyze(portfolio, fit_input)
     assert result.quality_impact.score == 70
-    assert "schema gap" in result.quality_impact.note.lower()
+    assert "unavailable" in result.quality_impact.note.lower()
 
 
-def test_risk_impact_returns_partial_score_based_on_target() -> None:
+def test_risk_impact_returns_partial_score_based_on_target_when_no_holding_data() -> None:
+    # Holding without risk_score (default None) — fallback formula
     portfolio = _make_portfolio(_make_holding("AAPL"))
     # risk_score=80 → 50 + (80-50)*0.5 = 65
     fit_input = _make_fit_input(risk_score=80)
     result = _ENGINE.analyze(portfolio, fit_input)
     assert result.risk_impact.score == 65
-    assert "schema gap" in result.risk_impact.note.lower()
+    assert "unavailable" in result.risk_impact.note.lower()
 
 
 def test_mega_cap_target_noted_in_market_cap_dimension() -> None:
@@ -308,10 +320,11 @@ def test_diversification_penalized_by_sector_exposure() -> None:
     assert result.diversification.score < 100
 
 
-def test_diversification_note_mentions_schema_gap() -> None:
+def test_diversification_note_mentions_missing_market_cap_when_no_holding_data() -> None:
+    # Holding without market_cap (default None) — mega-cap component note
     portfolio = _make_portfolio(_make_holding("AAPL"))
     result = _ENGINE.analyze(portfolio, _make_fit_input())
-    assert "schema gap" in result.diversification.note.lower()
+    assert "unavailable" in result.diversification.note.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -362,3 +375,267 @@ def test_legacy_portfolio_analysis_still_importable() -> None:
 def test_legacy_company_portfolio_profile_still_importable() -> None:
     from atlas.analysis.portfolio import CompanyPortfolioProfile
     assert CompanyPortfolioProfile is not None
+
+
+# ---------------------------------------------------------------------------
+# Sprint 114: Enriched Holding fields enable full parity
+# ---------------------------------------------------------------------------
+
+def _make_enriched_holding(
+    ticker: str,
+    sector: str = "Technology",
+    country: str = "United States",
+    weight: float = 0.10,
+    quality_score: int = 80,
+    risk_score: int = 60,
+    market_cap: float = 2_000_000_000_000.0,
+) -> Holding:
+    return Holding(
+        company_id=ticker.lower(),
+        ticker=ticker,
+        weight=weight,
+        sector=sector,
+        country=country,
+        quality_score=quality_score,
+        risk_score=risk_score,
+        market_cap=market_cap,
+    )
+
+
+def test_holding_accepts_enriched_fields() -> None:
+    h = _make_enriched_holding("AAPL")
+    assert h.quality_score == 80
+    assert h.risk_score == 60
+    assert h.market_cap == 2_000_000_000_000.0
+
+
+def test_holding_enriched_fields_default_to_none() -> None:
+    h = _make_holding("AAPL")
+    assert h.quality_score is None
+    assert h.risk_score is None
+    assert h.market_cap is None
+
+
+def test_quality_impact_full_parity_when_enriched_holdings_present() -> None:
+    # Existing holding: quality_score=80, weight=1.0
+    # Target: quality_score=90, target_weight=0.05
+    # current_quality = 80.0
+    # pro_forma = 80.0 * 0.95 + 90 * 0.05 = 76.0 + 4.5 = 80.5
+    # score = 50 + (80.5 - 80.0) * 4 = 50 + 2 = 52
+    portfolio = _make_portfolio(
+        _make_enriched_holding("AAPL", quality_score=80, weight=1.0)
+    )
+    fit_input = _make_fit_input(quality_score=90)
+    result = _ENGINE.analyze(portfolio, fit_input)
+    assert result.quality_impact.score == 52
+    assert "improve" in result.quality_impact.note.lower()
+    assert "80.0/100" in result.quality_impact.note
+
+
+def test_quality_impact_diluting_when_target_lower_than_portfolio() -> None:
+    portfolio = _make_portfolio(
+        _make_enriched_holding("AAPL", quality_score=90, weight=1.0)
+    )
+    fit_input = _make_fit_input(quality_score=60)
+    result = _ENGINE.analyze(portfolio, fit_input)
+    assert result.quality_impact.score < 50
+    assert "dilute" in result.quality_impact.note.lower()
+
+
+def test_risk_impact_full_parity_when_enriched_holdings_present() -> None:
+    # Existing holding: risk_score=60, weight=1.0
+    # Target: risk_score=80, target_weight=0.05
+    # current_risk = 60.0
+    # pro_forma = 60.0 * 0.95 + 80 * 0.05 = 57.0 + 4.0 = 61.0
+    # score = 50 + (61.0 - 60.0) * 4 = 50 + 4 = 54
+    portfolio = _make_portfolio(
+        _make_enriched_holding("AAPL", risk_score=60, weight=1.0)
+    )
+    fit_input = _make_fit_input(risk_score=80)
+    result = _ENGINE.analyze(portfolio, fit_input)
+    assert result.risk_impact.score == 54
+    assert "improve" in result.risk_impact.note.lower()
+
+
+def test_market_cap_concentration_full_parity_with_enriched_holdings() -> None:
+    # Existing holding is mega-cap (market_cap >= 500B), weight=0.30
+    # Target is also mega-cap, target_weight=0.05
+    # pro_forma = 0.30 + 0.05 = 0.35 == preferred_limit → score = 90
+    portfolio = _make_portfolio(
+        _make_enriched_holding("AAPL", market_cap=3_000_000_000_000.0, weight=0.30)
+    )
+    fit_input = _make_fit_input(market_cap=3_000_000_000_000.0)
+    result = _ENGINE.analyze(portfolio, fit_input)
+    assert result.market_cap_concentration.score == 90
+    assert "pro forma" in result.market_cap_concentration.note.lower()
+
+
+def test_market_cap_concentration_penalized_when_above_preferred_limit() -> None:
+    # 40% existing mega-cap + 5% = 45% > 35% preferred
+    portfolio = _make_portfolio(
+        _make_enriched_holding("A", market_cap=3_000_000_000_000.0, weight=0.40)
+    )
+    fit_input = _make_fit_input(market_cap=2_000_000_000_000.0)
+    result = _ENGINE.analyze(portfolio, fit_input)
+    assert result.market_cap_concentration.score < 90
+
+
+def test_diversification_includes_mega_cap_component_when_enriched() -> None:
+    # 50% mega-cap exposure → mega-cap penalty of 0.50 * 20 = 10
+    # sector exposure = 0 (different sector), country exposure = 0 (different country)
+    # raw = 100 - round(0 + 0 + 0.50 * 20) = 100 - 10 = 90
+    portfolio = _make_portfolio(
+        _make_enriched_holding(
+            "AAPL", sector="Consumer Electronics", country="Germany",
+            market_cap=3_000_000_000_000.0, weight=0.50,
+        )
+    )
+    fit_input = _make_fit_input(sector="Semiconductors", country="France")
+    result = _ENGINE.analyze(portfolio, fit_input)
+    assert result.diversification.score == 90
+    assert "unavailable" not in result.diversification.note.lower()
+
+
+# ---------------------------------------------------------------------------
+# Sprint 114: Adapter carries enriched fields
+# ---------------------------------------------------------------------------
+
+def test_adapter_carries_quality_score_risk_score_market_cap() -> None:
+    from atlas.analysis.portfolio import Portfolio as LegacyPortfolio, PortfolioPosition
+    from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
+
+    legacy = LegacyPortfolio(
+        positions=(
+            PortfolioPosition(
+                ticker="MSFT",
+                company="Microsoft",
+                sector="Software",
+                country="United States",
+                market_cap=3_400_000_000_000,
+                weight=0.20,
+                quality_score=90,
+                risk_score=78,
+            ),
+        )
+    )
+    domain = legacy_portfolio_to_domain_portfolio(legacy)
+    assert len(domain.holdings) == 1
+    h = domain.holdings[0]
+    assert h.quality_score == 90
+    assert h.risk_score == 78
+    assert h.market_cap == 3_400_000_000_000.0
+    assert h.weight == 0.20
+
+
+def test_adapter_output_enables_full_parity_engine() -> None:
+    from atlas.analysis.portfolio import Portfolio as LegacyPortfolio, PortfolioPosition
+    from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
+
+    legacy = LegacyPortfolio(
+        positions=(
+            PortfolioPosition(
+                ticker="MSFT",
+                company="Microsoft",
+                sector="Software",
+                country="United States",
+                market_cap=3_400_000_000_000,
+                weight=0.20,
+                quality_score=90,
+                risk_score=78,
+            ),
+        )
+    )
+    domain = legacy_portfolio_to_domain_portfolio(legacy)
+    fit_input = _make_fit_input(ticker="NVDA", sector="Semiconductors")
+    result = _ENGINE.analyze(domain, fit_input)
+    # With enriched holdings, quality/risk notes should NOT say "unavailable"
+    assert "unavailable" not in result.quality_impact.note.lower()
+    assert "unavailable" not in result.risk_impact.note.lower()
+    assert isinstance(result.fit_score, int)
+    assert 0 <= result.fit_score <= 100
+
+
+# ---------------------------------------------------------------------------
+# Sprint 114: Conversation engine uses capability
+# ---------------------------------------------------------------------------
+
+def test_conversation_engine_portfolio_review_uses_portfolio_fit_capability() -> None:
+    import ast
+    from pathlib import Path
+    conv_file = Path(__file__).resolve().parent.parent / "atlas" / "conversation" / "engine.py"
+    source = conv_file.read_text()
+    tree = ast.parse(source)
+    capability_imported = False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            if "portfolio_intelligence" in node.module:
+                for alias in (node.names or []):
+                    if alias.name == "PortfolioIntelligenceCapability":
+                        capability_imported = True
+    assert capability_imported, "conversation/engine.py must import PortfolioIntelligenceCapability"
+
+
+def test_conversation_engine_portfolio_review_returns_fit_score() -> None:
+    from atlas.analysis.portfolio import Portfolio as LegacyPortfolio, PortfolioPosition
+    from atlas.conversation import ConversationEngine, ConversationInput, ConversationIntent
+    from atlas.providers import MockCompanyAnalysisProvider
+
+    portfolio = LegacyPortfolio(
+        positions=(
+            PortfolioPosition(
+                ticker="MSFT",
+                company="Microsoft",
+                sector="Software",
+                country="United States",
+                market_cap=3_400_000_000_000,
+                weight=0.20,
+                quality_score=90,
+                risk_score=78,
+            ),
+        )
+    )
+    response = ConversationEngine().answer(
+        ConversationInput(
+            question="Review my portfolio",
+            provider=MockCompanyAnalysisProvider(),
+            portfolio=portfolio,
+            ticker="NVDA",
+        )
+    )
+    assert response.intent == ConversationIntent.PORTFOLIO_REVIEW
+    assert "/100" in response.short_answer
+    assert "portfolio fit" in response.short_answer.lower()
+    # Supporting reasoning should have 4 dimension notes + summary
+    assert len(response.supporting_reasoning) == 4
+    # No buy/sell/recommendation language
+    for text in (response.short_answer, *response.supporting_reasoning):
+        assert "strong add" not in text.lower()
+        assert "buy" not in text.lower()
+        assert "sell" not in text.lower()
+
+
+def test_conversation_portfolio_review_no_recommendation_language() -> None:
+    from atlas.analysis.portfolio import Portfolio as LegacyPortfolio, PortfolioPosition
+    from atlas.conversation import ConversationEngine, ConversationInput
+    from atlas.providers import MockCompanyAnalysisProvider
+
+    portfolio = LegacyPortfolio(
+        positions=(
+            PortfolioPosition(
+                ticker="MSFT", company="Microsoft", sector="Software",
+                country="United States", market_cap=3_400_000_000_000,
+                weight=0.20, quality_score=90, risk_score=78,
+            ),
+        )
+    )
+    response = ConversationEngine().answer(
+        ConversationInput(
+            question="Review my portfolio",
+            provider=MockCompanyAnalysisProvider(),
+            portfolio=portfolio,
+            ticker="NVDA",
+        )
+    )
+    forbidden = ["strong add", "add", "neutral", "reduce", "avoid", "buy", "sell"]
+    for term in forbidden:
+        assert term not in response.short_answer.lower(), f"Forbidden term '{term}' in short_answer"

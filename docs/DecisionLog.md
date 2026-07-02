@@ -1540,3 +1540,30 @@ Demo passed. Release verification green.
 - No callers migrated — the legacy engine remains the active production path. This sprint adds capability alongside, not in replacement.
 
 **Outcome:** `PortfolioIntelligenceCapability` engine created. 30 tests. 1181 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 114 (2026-07-02): Resolve schema gap; migrate conversation portfolio-fit to capability**
+
+**Decision 1: Extend `atlas.shared.Holding` (Option A) rather than create `PortfolioFitHolding` (Option B)**
+
+**Rationale:**
+- `quality_score`, `risk_score`, `market_cap` make semantic sense on a holding entity — they are attributes of the underlying position, not capability-specific enrichment.
+- Only 6 `Holding(...)` instantiation sites; all use keyword args; optional fields (default None) cause zero blast radius.
+- Adapter already converts `PortfolioPosition` → `Holding`; natural place to carry enriched fields.
+- Option B would have required an extra conversion layer and a capability-specific type with no shared value.
+
+**Decision 2: Retain `portfolio_engine: PortfolioIntelligenceEngine` for `IntelligenceEngine` injection**
+
+**Rationale:**
+- Sprint spec: "do not migrate other callers." `IntelligenceEngine` is a separate caller.
+- Adding `portfolio_fit_capability` as a second injectable allows conversation's own portfolio review path to use the new capability without touching `IntelligenceEngine`.
+- This is the minimal-impact approach — exactly one path changes; all other paths unchanged.
+
+**Decision 3: Keep `ConversationInput.portfolio: Portfolio | None` typed as legacy `Portfolio`**
+
+**Rationale:**
+- Changing the type would require updating `atlas/cli/main.py` (which builds `ConversationInput`), which is explicitly out of scope.
+- The adapter conversion (`legacy_portfolio_to_domain_portfolio`) happens inside `_answer_portfolio_review` — the legacy Portfolio is converted to `atlas.shared.Portfolio` on the fly. No API surface change.
+
+**Outcome:** 5 files changed. 13 new tests. 1194 tests passing (3 skipped). Demo passed. RC2 green.

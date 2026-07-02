@@ -46,11 +46,14 @@ def legacy_portfolio_to_domain_portfolio(
             quantity=0.0,
             current_price=None,
             market_value=position.weight,
-            weight=0.0,
+            weight=position.weight,
             sector=position.sector,
             country=position.country,
             currency="USD",
             asset_type="equity",
+            quality_score=position.quality_score,
+            risk_score=position.risk_score,
+            market_cap=float(position.market_cap),
         )
         for position in legacy_portfolio.positions
     )

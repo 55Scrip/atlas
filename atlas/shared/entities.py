@@ -41,6 +41,9 @@ class Holding:
     country: str = ""
     currency: str = "USD"
     asset_type: str = "equity"
+    quality_score: int | None = None
+    risk_score: int | None = None
+    market_cap: float | None = None
 
 
 @dataclass(frozen=True)

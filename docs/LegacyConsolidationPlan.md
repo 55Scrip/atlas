@@ -264,6 +264,41 @@ without output changes.
 
 ---
 
+## Sprint 114 — Schema Gap Resolved + Conversation Caller Migrated COMPLETED
+
+**Goal:** Resolve the `atlas.shared.Holding` schema gap and migrate `atlas/conversation/engine.py` portfolio-fit path from legacy `PortfolioIntelligenceEngine` to `PortfolioIntelligenceCapability`.
+
+**Schema gap decision: Option A** — Extend `atlas.shared.Holding` with optional fields.
+- `quality_score: int | None = None`
+- `risk_score: int | None = None`
+- `market_cap: float | None = None`
+- 6 existing `Holding(...)` instantiation sites all use keyword args — zero blast radius.
+- `atlas/adapters/portfolio.py` updated to carry these fields + `weight=position.weight` from legacy `PortfolioPosition`.
+
+**Engine updated (engine.py):**
+- `_market_cap_concentration` now computes pro forma mega-cap weight when `Holding.market_cap` is available.
+- `_quality_impact` now computes full weighted-average delta when `Holding.quality_score` is available.
+- `_risk_impact` now computes full weighted-average delta when `Holding.risk_score` is available.
+- `_diversification_impact` now includes mega-cap component when `Holding.market_cap` is available.
+- Fallback behavior retained for `Holding` objects without enriched fields (backwards compatible).
+
+**Conversation migration:**
+- `atlas/conversation/engine.py`: `portfolio_fit_capability: PortfolioIntelligenceCapability` added to `__init__`.
+- `_answer_portfolio_review` now fetches provider data, builds `PortfolioFitInput`, converts legacy Portfolio via adapter, calls capability, renders `PortfolioFitResult`.
+- Legacy `portfolio_engine: PortfolioIntelligenceEngine` retained and still passed to `IntelligenceEngine` (not migrated).
+- `ConversationInput.portfolio` type unchanged (still legacy `Portfolio`) — CLI not altered.
+
+**Changes made:**
+1. `atlas/shared/entities.py` — `Holding` extended with 3 optional fields.
+2. `atlas/adapters/portfolio.py` — carries `quality_score`, `risk_score`, `market_cap`, `weight` from legacy.
+3. `atlas/capabilities/portfolio_intelligence/engine.py` — full parity for 4 previously blocked dimensions.
+4. `atlas/conversation/engine.py` — `_answer_portfolio_review` uses new capability.
+5. `tests/test_portfolio_intelligence_engine.py` — 13 new tests (enriched parity, adapter, conversation).
+
+**Tests: 1194 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 113 — Portfolio Intelligence Capability Engine COMPLETED
 
 **Goal:** Implement `PortfolioIntelligenceCapability` engine in `atlas/capabilities/portfolio_intelligence/engine.py`. Port 7-dimension scoring logic from `atlas/analysis/portfolio.py`. No callers migrated.

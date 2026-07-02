@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 113) — `PortfolioIntelligenceCapability` engine implemented  
-**Status:** IN PROGRESS — Phase 1 complete; Phase 2 stub complete; Phase 3 engine complete; Phase 4 (caller migration) is next  
+**Updated:** 2026-07-02 (Sprint 114) — conversation caller migrated; schema gap resolved  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 begun (1 of ~10 callers migrated: `atlas/conversation/engine.py`)  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -288,30 +288,35 @@ a HIGH-RISK coordinated change and should be done as a dedicated sprint, not inc
 - 30 new tests in `tests/test_portfolio_intelligence_engine.py`
 - All 1181 tests passing (3 skipped). Demo passed. RC2 green.
 
-**Schema gap — documented (not silently resolved):**
+**Schema gap — resolved in Sprint 114:**
 
-`atlas.shared.Holding` lacks `quality_score`, `risk_score`, and `market_cap`. These fields exist on
-legacy `PortfolioPosition`. This creates partial parity for 3 of 7 dimensions:
+`atlas.shared.Holding` was extended with optional `quality_score: int | None`, `risk_score: int | None`,
+and `market_cap: float | None` fields (all default `None`). All existing `Holding` instantiation sites
+use keyword args — zero blast radius. The adapter (`atlas/adapters/portfolio.py`) now carries these
+fields from legacy `PortfolioPosition` when converting.
 
-| Dimension | Parity | Notes |
+| Dimension | Parity (Sprint 113) | Parity (Sprint 114+) |
 |---|---|---|
-| `sector_concentration` | ✓ Full | `Holding.sector` + `Holding.weight` available |
-| `country_concentration` | ✓ Full | `Holding.country` + `Holding.weight` available |
-| `overlap_with_existing_holdings` | ✓ Full | `Holding.ticker` + `Holding.sector` available |
-| `diversification_impact` | Partial | Sector + country components ✓; mega-cap component = 0 (no `market_cap` on `Holding`) |
-| `market_cap_concentration` | Gap | Target cap bucket classified; existing portfolio mega-cap weight unknown (no `market_cap` on `Holding`); returns neutral score=50 |
-| `quality_impact` | Partial | Target quality score reflects direction only; no portfolio delta (no `quality_score` on `Holding`); score = 50 + (target_quality - 50) * 0.5 |
-| `risk_impact` | Partial | Target risk score reflects direction only; no portfolio delta (no `risk_score` on `Holding`); score = 50 + (target_risk - 50) * 0.5 |
+| `sector_concentration` | ✓ Full | ✓ Full |
+| `country_concentration` | ✓ Full | ✓ Full |
+| `overlap_with_existing_holdings` | ✓ Full | ✓ Full |
+| `diversification_impact` | Partial (mega-cap = 0) | ✓ Full (when `Holding.market_cap` present) |
+| `market_cap_concentration` | Gap (score=50) | ✓ Full (when `Holding.market_cap` present) |
+| `quality_impact` | Partial (target only) | ✓ Full (when `Holding.quality_score` present) |
+| `risk_impact` | Partial (target only) | ✓ Full (when `Holding.risk_score` present) |
 
-Resolving the gap requires extending `atlas.shared.Holding` with `quality_score`, `risk_score`,
-and `market_cap` — a Phase 4 prerequisite tracked in the Phase 4 caller migration block below.
+Fallback behavior retained for `Holding` instances without enriched fields (backwards compatible).
 
-**No existing callers migrated.** All legacy `atlas.analysis.portfolio` imports unchanged.
+**Sprint 114 caller migrated:** `atlas/conversation/engine.py` portfolio-fit path now uses
+`PortfolioIntelligenceCapability` via the adapter. Legacy `portfolio_engine` (PortfolioIntelligenceEngine)
+retained for `IntelligenceEngine` injection (not migrated).
+
+**Remaining legacy callers:** 16 production import sites still on `atlas.analysis.portfolio`.
 
 ### Phase 4 — Caller migration (Sprints 114+, one caller per sprint)
 Migrate one production caller per sprint, in order of impact risk:
 
-1. `atlas/conversation/engine.py` — lowest coupling; `portfolio_engine` is injected
+1. ✓ `atlas/conversation/engine.py` — **MIGRATED Sprint 114**; `portfolio_fit_capability` added; `_answer_portfolio_review` uses new capability via adapter
 2. `atlas/dashboard/engine.py` — similar injection pattern
 3. `atlas/portfolio_review/engine.py` — direct engine usage, limited output surface
 4. `atlas/reasoning/engine.py` — type annotation only for `PortfolioAnalysis`

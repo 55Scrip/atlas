@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 113 complete: `PortfolioIntelligenceCapability` engine implemented in `atlas/capabilities/portfolio_intelligence/engine.py`. 7-dimension scoring ported. 30 new tests. Next: Phase 4 — caller migration (Sprint 114+).
+**Status:** ACTIVE — Sprint 114 complete: schema gap resolved; `atlas/conversation/engine.py` portfolio-fit path migrated to `PortfolioIntelligenceCapability`. 13 new tests. Next: Sprint 115 — migrate `atlas/dashboard/engine.py`.
 
 ---
 
@@ -239,7 +239,8 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 | 111 ✓ | `render_portfolio_analysis` removed | Deleted dead render helper + 2 private helpers; zero production callers confirmed | DONE |
 | 112 ✓ | Capability stub created | `atlas/capabilities/portfolio_intelligence/` created with `PortfolioFitInput`, `PortfolioFitResult`, `PortfolioFitDimension`; 12 tests added | DONE |
 | 113 ✓ | Phase 3 — Engine implementation | `PortfolioIntelligenceCapability` engine created; 7-dimension scoring ported; schema gap documented; 30 tests added | DONE |
-| **114+** | Phase 4 — Caller migration | **One caller per sprint, lowest-coupling first** | HIGH |
+| 114 ✓ | Phase 4 begins — schema gap + conversation | `atlas.shared.Holding` extended with optional enriched fields; adapter updated; `atlas/conversation/engine.py` portfolio-fit path migrated; 13 new tests | DONE |
+| **115** | Phase 4 continues — dashboard migration | **Migrate `atlas/dashboard/engine.py` portfolio-fit path to `PortfolioIntelligenceCapability`** | HIGH |
 | ~120 | Provider migration | Remove `CompanyPortfolioProfile` from provider interface | HIGH |
 | ~121 | Delete `portfolio.py` | After zero active callers remain | — |
 | Future | `atlas/analysis/engine.py` | Core scoring engine; 10 production callers; foundational — leave for late cleanup | VERY HIGH |

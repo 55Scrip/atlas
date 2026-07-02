@@ -1,4 +1,4 @@
-"""Portfolio Intelligence capability engine (Sprint 113).
+"""Portfolio Intelligence capability engine (Sprint 113, extended Sprint 114).
 
 Implements 7-dimension portfolio fit analysis using Blueprint-aligned types.
 Ported from the private helper functions in `atlas/analysis/portfolio.py`.
@@ -6,24 +6,23 @@ Ported from the private helper functions in `atlas/analysis/portfolio.py`.
 This engine operates exclusively on `atlas.shared.Portfolio` and `PortfolioFitInput`.
 It does NOT import or wrap the legacy `PortfolioIntelligenceEngine`.
 
-Schema gap (documented — not silently changed):
-  `atlas.shared.Holding` lacks `quality_score`, `risk_score`, and `market_cap`.
-  The legacy `PortfolioPosition` carries all three, enabling 3 full dimensions:
-    - quality_impact   → requires per-holding quality_score (not available)
-    - risk_impact      → requires per-holding risk_score (not available)
-    - market_cap_concentration → requires per-holding market_cap (not available)
-    - diversification_impact   → mega-cap weight component requires market_cap (not available;
-                                  sector and country components are computed normally)
+Sprint 114 schema resolution:
+  `atlas.shared.Holding` was extended with optional `quality_score`, `risk_score`,
+  and `market_cap` fields (all default None). When populated (e.g. via the
+  `legacy_portfolio_to_domain_portfolio` adapter), all 7 dimensions have full parity
+  with the legacy `PortfolioIntelligenceEngine`.
 
-  For these blocked components, a neutral score of 50 is returned with a note documenting
-  the gap. Parity with the legacy engine on those dimensions requires extending
-  `atlas.shared.Holding` — tracked as a Phase 4 prerequisite in PortfolioAnalysisMigrationPlan.
+Fallback behavior when enriched fields are absent (Holding.quality_score / risk_score /
+market_cap are None):
+  - quality_impact: score derived from target quality_score alone
+    (50 + (target_quality - 50) * 0.5)
+  - risk_impact: score derived from target risk_score alone
+    (50 + (target_risk - 50) * 0.5)
+  - market_cap_concentration: target cap bucket classified; portfolio mega-cap weight = 0
+  - diversification_impact: mega-cap component treated as 0
 
-  Dimensions with full parity (atlas.shared.Holding has all required fields):
-    - sector_concentration       ✓
-    - country_concentration      ✓
-    - overlap_with_existing_holdings ✓
-    - diversification_impact     (partial: sector + country components ✓; mega-cap component = 0)
+These fallbacks are conservative — they produce lower-confidence scores than full parity
+but are deterministic and never error.
 """
 
 from __future__ import annotations
@@ -37,7 +36,6 @@ from atlas.shared.entities import Holding, Portfolio
 
 
 _DEFAULT_TARGET_WEIGHT = 0.05
-_SCORE_GAP_NEUTRAL = 50
 _SCORE_NO_OVERLAP = 92
 
 
@@ -61,10 +59,10 @@ class PortfolioIntelligenceCapability:
         diversification = _diversification_impact(portfolio, fit_input, normalized_weight)
         sector = _sector_concentration(portfolio, fit_input, normalized_weight)
         country = _country_concentration(portfolio, fit_input, normalized_weight)
-        market_cap = _market_cap_concentration(fit_input, normalized_weight)
+        market_cap = _market_cap_concentration(portfolio, fit_input, normalized_weight)
         overlap = _overlap_with_existing_holdings(portfolio, fit_input)
-        quality = _quality_impact(fit_input)
-        risk = _risk_impact(fit_input)
+        quality = _quality_impact(portfolio, fit_input, normalized_weight)
+        risk = _risk_impact(portfolio, fit_input, normalized_weight)
         fit_score = _aggregate_fit_score(
             diversification=diversification,
             sector=sector,
@@ -100,16 +98,19 @@ def _diversification_impact(
 ) -> PortfolioFitDimension:
     sector_weight = _weight_by_attribute(portfolio.holdings, "sector", fit_input.sector)
     country_weight = _weight_by_attribute(portfolio.holdings, "country", fit_input.country)
-    # mega_cap_weight requires market_cap on Holding — not available in atlas.shared.Holding.
-    # Component is treated as 0 (conservative underestimate); full parity blocked by schema gap.
-    raw_score = 100 - round((sector_weight * 55) + (country_weight * 25))
+    mega_cap_weight = _mega_cap_weight(portfolio)
+    has_market_cap_data = any(h.market_cap is not None for h in portfolio.holdings)
+    raw_score = 100 - round(
+        (sector_weight * 55) + (country_weight * 25) + (mega_cap_weight * 20)
+    )
     score = _clamp(raw_score)
+    gap_note = "" if has_market_cap_data else " Mega-cap component unavailable (no market_cap on holdings)."
     return PortfolioFitDimension(
         score=score,
         note=(
             f"Adding {fit_input.ticker} would encounter existing {fit_input.sector} "
             f"exposure of {sector_weight:.1%} and {fit_input.country} exposure of "
-            f"{country_weight:.1%}. Mega-cap concentration not computed (schema gap)."
+            f"{country_weight:.1%}.{gap_note}"
         ),
     )
 
@@ -149,19 +150,30 @@ def _country_concentration(
 
 
 def _market_cap_concentration(
+    portfolio: Portfolio,
     fit_input: PortfolioFitInput,
     target_weight: float,
 ) -> PortfolioFitDimension:
-    # Per-holding market_cap is not available on atlas.shared.Holding.
-    # Only the target company's market_cap (from PortfolioFitInput) is known.
-    # Partial result: classify target company, note existing mega-cap weight is unknown.
+    existing_mega_cap_weight = _mega_cap_weight(portfolio)
     is_mega = _is_mega_cap(fit_input.market_cap)
+    pro_forma_weight = existing_mega_cap_weight + (target_weight if is_mega else 0)
+    has_market_cap_data = any(h.market_cap is not None for h in portfolio.holdings)
     cap_bucket = "mega-cap" if is_mega else "non-mega-cap"
+    if has_market_cap_data:
+        score = _concentration_score(pro_forma_weight, preferred_limit=0.35, hard_limit=0.55)
+        return PortfolioFitDimension(
+            score=score,
+            note=(
+                f"{fit_input.ticker} is a {cap_bucket} company. Pro forma mega-cap "
+                f"exposure would be {pro_forma_weight:.1%}."
+            ),
+        )
+    # Fallback: no market_cap data on holdings — classify target only
     return PortfolioFitDimension(
-        score=_SCORE_GAP_NEUTRAL,
+        score=50,
         note=(
             f"{fit_input.ticker} is a {cap_bucket} company. Existing portfolio mega-cap "
-            f"weight is unavailable (schema gap: atlas.shared.Holding lacks market_cap)."
+            f"weight unavailable (no market_cap on holdings)."
         ),
     )
 
@@ -190,30 +202,62 @@ def _overlap_with_existing_holdings(
     )
 
 
-def _quality_impact(fit_input: PortfolioFitInput) -> PortfolioFitDimension:
-    # Weighted average of existing holding quality scores requires quality_score on Holding
-    # (not available in atlas.shared.Holding). Only the target's quality_score is known.
-    # Partial result: score reflects the target's standalone quality; no delta computed.
+def _quality_impact(
+    portfolio: Portfolio,
+    fit_input: PortfolioFitInput,
+    target_weight: float,
+) -> PortfolioFitDimension:
+    enriched = [h for h in portfolio.holdings if h.quality_score is not None]
+    if enriched:
+        # Full parity: weighted average from enriched holdings
+        current_quality = _weighted_average_optional(enriched, "quality_score")
+        pro_forma_quality = _pro_forma_average(current_quality, fit_input.quality_score, target_weight)
+        score = _clamp(round(50 + (pro_forma_quality - current_quality) * 4))
+        direction = "improve" if pro_forma_quality >= current_quality else "dilute"
+        return PortfolioFitDimension(
+            score=score,
+            note=(
+                f"The target quality score of {fit_input.quality_score}/100 would {direction} "
+                f"portfolio quality from {current_quality:.1f}/100 to {pro_forma_quality:.1f}/100."
+            ),
+        )
+    # Fallback: no quality_score on holdings
     score = _clamp(round(50 + (fit_input.quality_score - 50) * 0.5))
     return PortfolioFitDimension(
         score=score,
         note=(
             f"Target quality score is {fit_input.quality_score}/100. Portfolio quality "
-            f"delta unavailable (schema gap: atlas.shared.Holding lacks quality_score)."
+            f"delta unavailable (no quality_score on holdings)."
         ),
     )
 
 
-def _risk_impact(fit_input: PortfolioFitInput) -> PortfolioFitDimension:
-    # Weighted average of existing holding risk scores requires risk_score on Holding
-    # (not available in atlas.shared.Holding). Only the target's risk_score is known.
-    # Partial result: score reflects the target's standalone risk profile; no delta computed.
+def _risk_impact(
+    portfolio: Portfolio,
+    fit_input: PortfolioFitInput,
+    target_weight: float,
+) -> PortfolioFitDimension:
+    enriched = [h for h in portfolio.holdings if h.risk_score is not None]
+    if enriched:
+        # Full parity: weighted average from enriched holdings
+        current_risk = _weighted_average_optional(enriched, "risk_score")
+        pro_forma_risk = _pro_forma_average(current_risk, fit_input.risk_score, target_weight)
+        score = _clamp(round(50 + (pro_forma_risk - current_risk) * 4))
+        direction = "improve" if pro_forma_risk >= current_risk else "weaken"
+        return PortfolioFitDimension(
+            score=score,
+            note=(
+                f"The target risk profile score of {fit_input.risk_score}/100 would {direction} "
+                f"portfolio risk quality from {current_risk:.1f}/100 to {pro_forma_risk:.1f}/100."
+            ),
+        )
+    # Fallback: no risk_score on holdings
     score = _clamp(round(50 + (fit_input.risk_score - 50) * 0.5))
     return PortfolioFitDimension(
         score=score,
         note=(
             f"Target risk profile score is {fit_input.risk_score}/100. Portfolio risk "
-            f"delta unavailable (schema gap: atlas.shared.Holding lacks risk_score)."
+            f"delta unavailable (no risk_score on holdings)."
         ),
     )
 
@@ -253,8 +297,7 @@ def _build_summary(
     return (
         f"{fit_input.ticker} has a portfolio fit score of {fit_score}/100. "
         f"Key context: sector concentration ({sector.score}/100), "
-        f"overlap ({overlap.score}/100). "
-        f"Quality and risk impact scores are partial pending schema alignment."
+        f"overlap ({overlap.score}/100)."
     )
 
 
@@ -268,6 +311,26 @@ def _weight_by_attribute(holdings: tuple[Holding, ...], attribute: str, value: s
         for h in holdings
         if getattr(h, attribute, "").lower() == value.lower()
     )
+
+
+def _mega_cap_weight(portfolio: Portfolio) -> float:
+    return sum(
+        h.weight
+        for h in portfolio.holdings
+        if h.market_cap is not None and _is_mega_cap(h.market_cap)
+    )
+
+
+def _weighted_average_optional(holdings: list[Holding], attribute: str) -> float:
+    total_weight = sum(h.weight for h in holdings)
+    if total_weight <= 0:
+        return 0.0
+    return sum(getattr(h, attribute) * h.weight for h in holdings) / total_weight
+
+
+def _pro_forma_average(current_value: float, target_value: int, target_weight: float) -> float:
+    current_weight = max(0.0, 1.0 - target_weight)
+    return current_value * current_weight + target_value * target_weight
 
 
 def _concentration_score(weight: float, preferred_limit: float, hard_limit: float) -> int:

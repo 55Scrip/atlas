@@ -1,8 +1,13 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
 from atlas.analysis.engine import AtlasInvestmentEngine
 from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine
+from atlas.capabilities.portfolio_intelligence import (
+    PortfolioFitInput,
+    PortfolioIntelligenceCapability,
+)
 from atlas.capabilities.watchlist_intelligence import WatchlistInput
 from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
 from atlas.capabilities.watchlist_intelligence.models import (
@@ -82,6 +87,7 @@ class ConversationEngine:
         intent_classifier: IntentClassifier | None = None,
         investment_engine: AtlasInvestmentEngine | None = None,
         portfolio_engine: PortfolioIntelligenceEngine | None = None,
+        portfolio_fit_capability: PortfolioIntelligenceCapability | None = None,
         theme_engine: ThemeEngine | None = None,
         market_health_engine: MarketHealthEngine | None = None,
         market_regime_engine: MarketRegimeEngine | None = None,
@@ -90,6 +96,7 @@ class ConversationEngine:
         self.intent_classifier = intent_classifier or IntentClassifier()
         self.investment_engine = investment_engine or AtlasInvestmentEngine()
         self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()
+        self.portfolio_fit_capability = portfolio_fit_capability or PortfolioIntelligenceCapability()
         self.theme_engine = theme_engine or ThemeEngine()
         self.market_health_engine = market_health_engine or MarketHealthEngine()
         self.market_regime_engine = market_regime_engine or MarketRegimeEngine()
@@ -170,22 +177,33 @@ class ConversationEngine:
                 missing_context="portfolio",
                 engines_used=("Portfolio Engine",),
             )
-        analysis = self.portfolio_engine.analyze_ticker(
-            portfolio=conversation_input.portfolio,
-            ticker=ticker,
-            provider=provider,
+        # Fetch target company profile via provider (capability stays provider-free).
+        profile = provider.get_portfolio_profile(ticker)
+        fit_input = PortfolioFitInput(
+            ticker=profile.ticker,
+            company=profile.company,
+            sector=profile.sector,
+            country=profile.country,
+            market_cap=profile.market_cap,
+            quality_score=profile.quality_score,
+            risk_score=profile.risk_score,
         )
+        # Convert legacy Portfolio to Blueprint-aligned Portfolio.
+        # The adapter carries quality_score, risk_score, and market_cap from PortfolioPosition,
+        # enabling full 7-dimension parity in the capability engine.
+        shared_portfolio = legacy_portfolio_to_domain_portfolio(conversation_input.portfolio)
+        result = self.portfolio_fit_capability.analyze(shared_portfolio, fit_input)
         return ConversationResponse(
             intent=ConversationIntent.PORTFOLIO_REVIEW,
             short_answer=(
                 f"Atlas measured portfolio fit for {ticker} at "
-                f"{analysis.portfolio_score}/100."
+                f"{result.fit_score}/100."
             ),
             supporting_reasoning=(
-                analysis.diversification_impact.reasoning,
-                analysis.sector_concentration.reasoning,
-                analysis.overlap_with_existing_holdings.reasoning,
-                analysis.final_reasoning,
+                result.diversification.note,
+                result.sector_concentration.note,
+                result.overlap.note,
+                result.summary,
             ),
             engines_used=("Portfolio Engine",),
             confidence=78,
