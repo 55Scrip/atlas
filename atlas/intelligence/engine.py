@@ -82,7 +82,6 @@ class IntelligenceEngine:
         self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()
         self.decision_engine = decision_engine or AtlasDecisionEngine(
             investment_engine=self.investment_engine,
-            portfolio_engine=self.portfolio_engine,
         )
         self.theme_engine = theme_engine or ThemeEngine()
         self.market_regime_engine = market_regime_engine or MarketRegimeEngine()

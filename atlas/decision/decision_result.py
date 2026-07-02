@@ -10,7 +10,7 @@ from atlas.decision.memory import MemoryComparison
 from atlas.capabilities.watchlist_intelligence.models import WatchlistIntelligenceReport
 
 if TYPE_CHECKING:
-    from atlas.analysis.portfolio import PortfolioAnalysis
+    from atlas.capabilities.portfolio_intelligence import PortfolioFitResult
 
 
 class DecisionAction(str, Enum):
@@ -36,7 +36,7 @@ class DecisionResult:
     what_could_change_my_mind: str
     uncertainty: str
     investment_report: InvestmentReport
-    portfolio_analysis: PortfolioAnalysis | None = None
+    portfolio_analysis: PortfolioFitResult | None = None
     comparison_result: ComparisonResult | None = None
     watchlist_intelligence: WatchlistIntelligenceReport | None = None
     memory_comparison: MemoryComparison | None = None

@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 121)  
-**Status:** Active — Sprint 123 complete; `decision_context.py` and `decision_result.py` annotation imports cleaned. `decision_engine.py` runtime coupling documented for Sprint 124. `recommendation.value` field is the key migration blocker. WatchlistEngine active caller count is **0** (Sprint 98). `_answer_watchlist_review()` migrated to Blueprint-aligned Watchlist Intelligence. `WatchlistEngine` and `atlas/analysis/watchlist.py` retained for Sprint 99 deletion. Type-only `Watchlist`/`WatchlistItem` imports in 5 modules documented for later cleanup.
+**Updated:** 2026-07-02 (Sprint 124)  
+**Status:** Active — Sprint 124 complete; `decision_engine.py` fully migrated from `PortfolioIntelligenceEngine` to `PortfolioIntelligenceCapability`. Unified `fit_score < 55` poor-fit guard. WatchlistEngine deleted Sprint 99. Next: `atlas/intelligence/engine.py` migration.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 123) — decision_context.py and decision_result.py annotation imports cleaned  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (8 files cleaned; decision_engine.py runtime coupling documented)  
+**Updated:** 2026-07-02 (Sprint 124) — decision_engine.py fully migrated to PortfolioIntelligenceCapability  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (9 files migrated; intelligence/engine.py is next)  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -333,13 +333,12 @@ Migrate one production caller per sprint, in order of impact risk:
 8. ✓ `atlas/home/engine.py` — **MIGRATED Sprint 122**; `Portfolio` moved to TYPE_CHECKING (Option D — pure annotation-only). `AtlasHomeInput.portfolio: Portfolio | None` is never field-accessed inside the engine — only None-checked and passed through to `PortfolioReviewInput`. Zero behavior change. 7 new guardrail tests.
 
 **Sprint 123 — Decision layer audit (COMPLETE):**
-- ✓ `atlas/decision/decision_context.py` — `Portfolio` moved to TYPE_CHECKING (annotation-only on `DecisionContext.portfolio` field; zero runtime field access).
-- ✓ `atlas/decision/decision_result.py` — `PortfolioAnalysis` moved to TYPE_CHECKING (annotation-only on `DecisionResult.portfolio_analysis` field; zero runtime field access).
-- ✗ `atlas/decision/decision_engine.py` — **Runtime coupling retained**. `PortfolioIntelligenceEngine` is instantiated and called at runtime; `PortfolioAnalysis` fields accessed directly (`.portfolio_score`, `.final_reasoning`, `.recommendation.value`, `.sector_concentration.score`, `.country_concentration.score`, `.market_cap_concentration.score`, `.overlap_with_existing_holdings.score`). Sprint 124 blocker: `recommendation.value` has no `PortfolioFitResult` equivalent — Blueprint capability intentionally omits advisory recommendation enum.
+- ✓ `atlas/decision/decision_context.py` — `Portfolio` moved to TYPE_CHECKING (annotation-only).
+- ✓ `atlas/decision/decision_result.py` — `PortfolioAnalysis` moved to TYPE_CHECKING (annotation-only).
+- ✗ `atlas/decision/decision_engine.py` — runtime coupling documented; deferred to Sprint 124.
 
-**Recommended Sprint 124 target:** `atlas/decision/decision_engine.py` — full runtime migration of `PortfolioIntelligenceEngine` → `PortfolioIntelligenceCapability`. Requires: deciding how to handle `recommendation.value` absence (either drop the guard or introduce a compatibility shim); mapping all `PortfolioAnalysis` field accesses to `PortfolioFitResult` equivalents; updating `_concentration_discussion` (`.overlap_with_existing_holdings` → `.overlap`).
+9. ✓ `atlas/decision/decision_engine.py` — **MIGRATED Sprint 124**; `PortfolioIntelligenceEngine` and `PortfolioAnalysis` removed; `PortfolioIntelligenceCapability` used via constructor injection; `_analyze_portfolio` calls `legacy_portfolio_to_domain_portfolio` + `portfolio_fit_input_from_profile` + `capability.analyze()`; `_decide_action` unified poor-fit guard: `fit_score < 55` replaces legacy `recommendation.value in {"Avoid","Reduce"}` + `portfolio_score < 55` double guard. Documented behavior change: scores in [50,54] now give WATCH or AVOID based on `atlas_score` (previously always WATCH). `decision_result.py` annotation updated from `PortfolioAnalysis` to `PortfolioFitResult`. `atlas/intelligence/engine.py` constructor call updated to drop stale `portfolio_engine=` kwarg. `tests/test_portfolio_analyze_deprecation.py` caller list updated to remove `decision_engine.py`. 11 new Sprint 124 guardrail tests.
 
-9. `atlas/decision/decision_engine.py` — runtime coupling; Sprint 124 target
 10. `atlas/intelligence/engine.py` — highest integration surface; migrate after decision
 
 ### Phase 5 — Provider migration (Sprint ~120)

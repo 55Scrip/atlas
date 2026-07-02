@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 123 complete: `atlas/decision/decision_context.py` and `atlas/decision/decision_result.py` annotation imports cleaned (TYPE_CHECKING). `atlas/decision/decision_engine.py` runtime coupling documented — `PortfolioIntelligenceEngine` still active; `recommendation.value` is Sprint 124 blocker. Next: Sprint 124 — migrate `atlas/decision/decision_engine.py` runtime path.
+**Status:** ACTIVE — Sprint 124 complete: `atlas/decision/decision_engine.py` fully migrated from `PortfolioIntelligenceEngine` to `PortfolioIntelligenceCapability`. Next: Sprint 125+ — migrate `atlas/intelligence/engine.py`.
 
 ---
 

@@ -204,26 +204,19 @@ def test_sprint123_decision_result_future_annotations():
 
 
 def test_sprint123_decision_result_type_checking_guard():
-    """PortfolioAnalysis must appear inside an if TYPE_CHECKING: block in decision_result.py."""
-    for node in _tree("decision_result.py").body:
-        if isinstance(node, ast.If):
-            test = node.test
-            if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
-                for child in ast.walk(node):
-                    if isinstance(child, ast.ImportFrom):
-                        if any(alias.name == "PortfolioAnalysis" for alias in child.names):
-                            return
-    raise AssertionError(
-        "PortfolioAnalysis not found inside TYPE_CHECKING block in decision_result.py"
-    )
+    """A TYPE_CHECKING guard must be present in decision_result.py (updated by Sprint 124 to PortfolioFitResult)."""
+    source = _source("decision_result.py")
+    assert "TYPE_CHECKING" in source
+    # Sprint 124 updated the guarded import from PortfolioAnalysis to PortfolioFitResult
+    assert "PortfolioFitResult" in source
 
 
 def test_sprint123_decision_engine_still_has_runtime_portfolio_coupling():
-    """decision_engine.py intentionally retains runtime import — document the coupling."""
+    """Sprint 124 migrated decision_engine.py — PortfolioIntelligenceEngine is gone, capability is in use."""
     source = _source("decision_engine.py")
-    # PortfolioIntelligenceEngine must still be a runtime import (not yet migrated)
-    assert "PortfolioIntelligenceEngine" in source
-    assert "atlas.analysis.portfolio" in source
+    # Sprint 124 replaced PortfolioIntelligenceEngine with PortfolioIntelligenceCapability
+    assert "PortfolioIntelligenceCapability" in source
+    assert "atlas.analysis.portfolio" not in source
 
 
 def test_sprint123_decision_behavior_unchanged_no_portfolio():
@@ -261,3 +254,131 @@ def test_sprint123_capability_engine_still_clean():
         / "atlas" / "capabilities" / "portfolio_intelligence" / "engine.py"
     )
     assert "atlas.analysis.portfolio" not in cap_path.read_text()
+
+
+# ---------------------------------------------------------------------------
+# Sprint 124: Migrate decision_engine.py from PortfolioIntelligenceEngine
+#             to PortfolioIntelligenceCapability
+# ---------------------------------------------------------------------------
+
+import pathlib as _pathlib
+
+_DECISION_DIR = _pathlib.Path(__file__).parent.parent / "atlas" / "decision"
+
+
+def _decision_source(name: str) -> str:
+    return (_DECISION_DIR / name).read_text()
+
+
+def _decision_tree(name: str) -> ast.Module:
+    return ast.parse(_decision_source(name))
+
+
+def _top_level_legacy_imports_decision(name: str) -> list[str]:
+    """Return atlas.analysis.portfolio imports NOT inside a TYPE_CHECKING block."""
+    results = []
+    for node in _decision_tree(name).body:
+        if isinstance(node, ast.If):
+            test = node.test
+            if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
+                continue
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if "atlas.analysis.portfolio" in module:
+                results.append(module)
+    return results
+
+
+def test_sprint124_decision_engine_no_runtime_legacy_portfolio_import():
+    """decision_engine.py must not runtime-import from atlas.analysis.portfolio."""
+    assert _top_level_legacy_imports_decision("decision_engine.py") == []
+
+
+def test_sprint124_decision_engine_no_portfolio_intelligence_engine():
+    """PortfolioIntelligenceEngine (legacy) must not appear in decision_engine.py."""
+    assert "PortfolioIntelligenceEngine" not in _decision_source("decision_engine.py")
+
+
+def test_sprint124_decision_engine_uses_capability():
+    """decision_engine.py must import PortfolioIntelligenceCapability."""
+    assert "PortfolioIntelligenceCapability" in _decision_source("decision_engine.py")
+
+
+def test_sprint124_decision_engine_uses_adapters():
+    """decision_engine.py must import the portfolio adapters for domain conversion."""
+    source = _decision_source("decision_engine.py")
+    assert "legacy_portfolio_to_domain_portfolio" in source
+    assert "portfolio_fit_input_from_profile" in source
+
+
+def test_sprint124_decision_engine_fit_score_guard():
+    """decision_engine.py must use fit_score < 55 as the poor-fit boundary."""
+    source = _decision_source("decision_engine.py")
+    assert "fit_score < 55" in source
+    # portfolio_score must not appear in live code (comments are acceptable documentation)
+    import re
+    non_comment_lines = [
+        line for line in source.splitlines()
+        if not line.strip().startswith("#")
+    ]
+    assert not any("portfolio_score" in line for line in non_comment_lines)
+
+
+def test_sprint124_decision_engine_no_recommendation_enum():
+    """decision_engine.py must not use recommendation.value guard in live code."""
+    import re
+    source = _decision_source("decision_engine.py")
+    non_comment_lines = [
+        line for line in source.splitlines()
+        if not line.strip().startswith("#")
+    ]
+    assert not any('recommendation.value' in line for line in non_comment_lines)
+
+
+def test_sprint124_decision_result_portfolio_analysis_is_portfolio_fit_result():
+    """decision_result.py portfolio_analysis annotation must be PortfolioFitResult."""
+    source = _decision_source("decision_result.py")
+    assert "PortfolioFitResult" in source
+    assert "PortfolioAnalysis" not in source
+
+
+def test_sprint124_capability_injection_works():
+    """AtlasDecisionEngine accepts a PortfolioIntelligenceCapability via constructor."""
+    from atlas.capabilities.portfolio_intelligence import PortfolioIntelligenceCapability
+
+    cap = PortfolioIntelligenceCapability()
+    engine = AtlasDecisionEngine(portfolio_fit_capability=cap)
+    assert engine.portfolio_fit_capability is cap
+
+
+def test_sprint124_portfolio_fit_result_stored_on_decision_result():
+    """When portfolio is supplied, result.portfolio_analysis is a PortfolioFitResult."""
+    from atlas.capabilities.portfolio_intelligence import PortfolioFitResult
+
+    result = AtlasDecisionEngine().decide(
+        "NVDA",
+        MockCompanyAnalysisProvider(),
+        DecisionContext(
+            investment_horizon="long term",
+            risk_profile="balanced",
+            available_capital=10_000.0,
+            cash_reserve_status="adequate",
+            portfolio=_sample_portfolio(),
+        ),
+    )
+    assert result.portfolio_analysis is not None
+    assert isinstance(result.portfolio_analysis, PortfolioFitResult)
+
+
+def test_sprint124_overlap_field_used_not_overlap_with_existing_holdings():
+    """PortfolioFitResult.overlap is used; overlap_with_existing_holdings must not appear."""
+    source = _decision_source("decision_engine.py")
+    assert "overlap_with_existing_holdings" not in source
+    assert ".overlap" in source
+
+
+def test_sprint124_fit_score_not_final_reasoning():
+    """decision_engine.py must use .summary (not .final_reasoning) from PortfolioFitResult."""
+    source = _decision_source("decision_engine.py")
+    assert "final_reasoning" not in source
+    assert ".summary" in source

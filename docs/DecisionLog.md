@@ -2,6 +2,36 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 124 — Decision Engine: PortfolioIntelligenceEngine → PortfolioIntelligenceCapability
+
+Decision: Migrate `atlas/decision/decision_engine.py` from legacy `PortfolioIntelligenceEngine`
+to Blueprint-aligned `PortfolioIntelligenceCapability`. Use `fit_score < 55` as the unified
+poor-fit boundary, replacing both legacy guards.
+
+**Recommendation guard replacement:** The legacy code used two sequential guards:
+1. `if portfolio_analysis.recommendation.value in {"Avoid", "Reduce"}` (fires when `portfolio_score < 50`)
+2. `if portfolio_analysis.portfolio_score < 55: return WATCH`
+
+`PortfolioFitResult` intentionally omits the recommendation enum. Both guards are consolidated
+into a single `if portfolio_fit_result.fit_score < 55` check, returning WATCH (atlas_score ≥ 75)
+or AVOID (atlas_score < 75).
+
+**Documented behavior change:** Scores in [50, 54] previously returned WATCH only (old guard 1
+did not fire for NEUTRAL recommendation; old guard 2 fired unconditionally returning WATCH).
+New code returns WATCH or AVOID based on `atlas_score`. This is a slightly stronger response
+for well-scored tickers with poor portfolio fit. Scores ≥ 55 are unaffected.
+
+**Field mappings:** `portfolio_score` → `fit_score`, `final_reasoning` → `summary`,
+`overlap_with_existing_holdings` → `overlap`. Dimension `.score` and `.note` unchanged.
+
+**Constructor:** `portfolio_engine: PortfolioIntelligenceEngine` → `portfolio_fit_capability:
+PortfolioIntelligenceCapability`. `atlas/intelligence/engine.py` updated to drop stale
+`portfolio_engine=` kwarg from its `AtlasDecisionEngine(...)` call (retains its own
+`self.portfolio_engine` for `_optional_portfolio_analysis`).
+
+**`decision_result.py`:** `portfolio_analysis` field annotation updated from `PortfolioAnalysis`
+to `PortfolioFitResult`; field name kept for external caller compatibility.
+
 ## 2026-07-02: Sprint 123 — Decision Layer Portfolio Audit: Partial TYPE_CHECKING Cleanup
 
 Decision: `decision_context.py` and `decision_result.py` annotation-only imports moved behind

@@ -1,8 +1,17 @@
+from __future__ import annotations
+
+from atlas.adapters.portfolio import (
+    legacy_portfolio_to_domain_portfolio,
+    portfolio_fit_input_from_profile,
+)
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport
+from atlas.analysis.scores import clamp_score
+from atlas.capabilities.portfolio_intelligence import (
+    PortfolioFitResult,
+    PortfolioIntelligenceCapability,
+)
 from atlas.decision.comparison import ComparisonResult, compare_tickers
 from atlas.decision.memory import MemoryComparison, compare_memory
-from atlas.analysis.portfolio import PortfolioAnalysis, PortfolioIntelligenceEngine
-from atlas.analysis.scores import clamp_score
 from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
 from atlas.capabilities.watchlist_intelligence.models import (
     WatchlistIntelligenceInput,
@@ -18,10 +27,12 @@ class AtlasDecisionEngine:
     def __init__(
         self,
         investment_engine: AtlasInvestmentEngine | None = None,
-        portfolio_engine: PortfolioIntelligenceEngine | None = None,
+        portfolio_fit_capability: PortfolioIntelligenceCapability | None = None,
     ) -> None:
         self.investment_engine = investment_engine or AtlasInvestmentEngine()
-        self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()
+        self.portfolio_fit_capability = (
+            portfolio_fit_capability or PortfolioIntelligenceCapability()
+        )
 
     def decide(
         self,
@@ -31,18 +42,18 @@ class AtlasDecisionEngine:
     ) -> DecisionResult:
         normalized_ticker = ticker.upper()
         investment_report = self.investment_engine.analyze_ticker(normalized_ticker, provider)
-        portfolio_analysis = self._analyze_portfolio(normalized_ticker, provider, context)
+        portfolio_fit_result = self._analyze_portfolio(normalized_ticker, provider, context)
         comparison_result = self._compare(normalized_ticker, provider, context)
         watchlist_analysis = self._watchlist_intelligence(context)
         memory_comparison = self._compare_memory(normalized_ticker, context)
 
         capital_safe = _capital_is_safe(context)
         has_enough_information = _has_enough_information(context)
-        portfolio_fit = _portfolio_fit(portfolio_analysis)
+        portfolio_fit = _portfolio_fit(portfolio_fit_result)
         capital_allocation_quality = _capital_allocation_quality(
             context=context,
             report=investment_report,
-            portfolio_analysis=portfolio_analysis,
+            portfolio_fit_result=portfolio_fit_result,
             capital_safe=capital_safe,
             has_enough_information=has_enough_information,
         )
@@ -56,7 +67,7 @@ class AtlasDecisionEngine:
             report=investment_report,
             decision_quality=decision_quality,
             has_enough_information=has_enough_information,
-            portfolio_analysis=portfolio_analysis,
+            portfolio_fit_result=portfolio_fit_result,
             comparison_result=comparison_result,
             watchlist_analysis=watchlist_analysis,
             memory_comparison=memory_comparison,
@@ -64,7 +75,7 @@ class AtlasDecisionEngine:
         action = _decide_action(
             report=investment_report,
             context=context,
-            portfolio_analysis=portfolio_analysis,
+            portfolio_fit_result=portfolio_fit_result,
             capital_safe=capital_safe,
             has_enough_information=has_enough_information,
         )
@@ -82,7 +93,7 @@ class AtlasDecisionEngine:
                 action=action,
                 report=investment_report,
                 context=context,
-                portfolio_analysis=portfolio_analysis,
+                portfolio_fit_result=portfolio_fit_result,
                 comparison_result=comparison_result,
                 watchlist_intelligence=watchlist_analysis,
                 memory_comparison=memory_comparison,
@@ -93,13 +104,13 @@ class AtlasDecisionEngine:
             what_could_change_my_mind=_what_could_change_my_mind(action, investment_report),
             uncertainty=_uncertainty(
                 context=context,
-                portfolio_analysis=portfolio_analysis,
+                portfolio_fit_result=portfolio_fit_result,
                 comparison_result=comparison_result,
                 memory_comparison=memory_comparison,
                 has_enough_information=has_enough_information,
             ),
             investment_report=investment_report,
-            portfolio_analysis=portfolio_analysis,
+            portfolio_analysis=portfolio_fit_result,
             comparison_result=comparison_result,
             watchlist_intelligence=watchlist_analysis,
             memory_comparison=memory_comparison,
@@ -110,14 +121,13 @@ class AtlasDecisionEngine:
         ticker: str,
         provider: CompanyDataProvider,
         context: DecisionContext,
-    ) -> PortfolioAnalysis | None:
+    ) -> PortfolioFitResult | None:
         if context.portfolio is None:
             return None
-        return self.portfolio_engine.analyze_ticker(
-            portfolio=context.portfolio,
-            ticker=ticker,
-            provider=provider,
-        )
+        profile = provider.get_portfolio_profile(ticker)
+        fit_input = portfolio_fit_input_from_profile(profile)
+        domain_portfolio = legacy_portfolio_to_domain_portfolio(context.portfolio)
+        return self.portfolio_fit_capability.analyze(domain_portfolio, fit_input)
 
     def _compare(
         self,
@@ -209,16 +219,16 @@ def _capital_is_explicitly_unsafe(context: DecisionContext) -> bool:
     )
 
 
-def _portfolio_fit(portfolio_analysis: PortfolioAnalysis | None) -> int:
-    if portfolio_analysis is None:
+def _portfolio_fit(portfolio_fit_result: PortfolioFitResult | None) -> int:
+    if portfolio_fit_result is None:
         return 50
-    return clamp_score(portfolio_analysis.portfolio_score)
+    return clamp_score(portfolio_fit_result.fit_score)
 
 
 def _capital_allocation_quality(
     context: DecisionContext,
     report: InvestmentReport,
-    portfolio_analysis: PortfolioAnalysis | None,
+    portfolio_fit_result: PortfolioFitResult | None,
     capital_safe: bool,
     has_enough_information: bool,
 ) -> int:
@@ -229,8 +239,8 @@ def _capital_allocation_quality(
         + (report.confidence * 0.30)
         + (report.atlas_score * 0.35)
     )
-    if portfolio_analysis is not None:
-        base = round((base * 0.65) + (portfolio_analysis.portfolio_score * 0.35))
+    if portfolio_fit_result is not None:
+        base = round((base * 0.65) + (portfolio_fit_result.fit_score * 0.35))
     if "conservative" in _normalized(context.risk_profile) and report.risk.score < 70:
         base -= 12
     if not has_enough_information:
@@ -259,7 +269,7 @@ def _confidence(
     report: InvestmentReport,
     decision_quality: int,
     has_enough_information: bool,
-    portfolio_analysis: PortfolioAnalysis | None,
+    portfolio_fit_result: PortfolioFitResult | None,
     comparison_result: ComparisonResult | None,
     watchlist_analysis: WatchlistIntelligenceReport | None,
     memory_comparison: MemoryComparison | None,
@@ -267,7 +277,7 @@ def _confidence(
     context_bonus = sum(
         4
         for item in (
-            portfolio_analysis,
+            portfolio_fit_result,
             comparison_result,
             watchlist_analysis,
             memory_comparison,
@@ -283,7 +293,7 @@ def _confidence(
 def _decide_action(
     report: InvestmentReport,
     context: DecisionContext,
-    portfolio_analysis: PortfolioAnalysis | None,
+    portfolio_fit_result: PortfolioFitResult | None,
     capital_safe: bool,
     has_enough_information: bool,
 ) -> DecisionAction:
@@ -293,11 +303,13 @@ def _decide_action(
         return DecisionAction.LEARN_MORE
     if _owns_ticker(context, report.company) and report.atlas_score < 60:
         return DecisionAction.REDUCE
-    if portfolio_analysis is not None:
-        if portfolio_analysis.recommendation.value in {"Avoid", "Reduce"}:
+    if portfolio_fit_result is not None:
+        # Replaces legacy recommendation.value in {"Avoid", "Reduce"} guard.
+        # fit_score < 55 is the established poor-fit boundary (was portfolio_score < 55).
+        # Documented change: scores in [50, 54] now return WATCH or AVOID based on
+        # atlas_score, whereas previously they returned WATCH only (NEUTRAL recommendation).
+        if portfolio_fit_result.fit_score < 55:
             return DecisionAction.WATCH if report.atlas_score >= 75 else DecisionAction.AVOID
-        if portfolio_analysis.portfolio_score < 55:
-            return DecisionAction.WATCH
     if report.atlas_score >= 80 and report.risk.score >= 65:
         return DecisionAction.BUY
     if report.atlas_score >= 65:
@@ -312,7 +324,7 @@ def _reasoning(
     action: DecisionAction,
     report: InvestmentReport,
     context: DecisionContext,
-    portfolio_analysis: PortfolioAnalysis | None,
+    portfolio_fit_result: PortfolioFitResult | None,
     comparison_result: ComparisonResult | None,
     watchlist_intelligence: WatchlistIntelligenceReport | None,
     memory_comparison: MemoryComparison | None,
@@ -336,12 +348,12 @@ def _reasoning(
             "Information quality is incomplete because investment horizon, risk profile, "
             "available capital, or cash reserve status is missing or unclear."
         )
-    if portfolio_analysis is not None:
+    if portfolio_fit_result is not None:
         reasons.append(
-            f"Portfolio fit is {portfolio_analysis.portfolio_score}/100. "
-            f"{portfolio_analysis.final_reasoning}"
+            f"Portfolio fit is {portfolio_fit_result.fit_score}/100. "
+            f"{portfolio_fit_result.summary}"
         )
-        reasons.append(_concentration_discussion(portfolio_analysis))
+        reasons.append(_concentration_discussion(portfolio_fit_result))
     else:
         reasons.append(
             "No portfolio was supplied, so Atlas cannot fully measure concentration, overlap, "
@@ -412,7 +424,7 @@ def _what_could_change_my_mind(action: DecisionAction, report: InvestmentReport)
 
 def _uncertainty(
     context: DecisionContext,
-    portfolio_analysis: PortfolioAnalysis | None,
+    portfolio_fit_result: PortfolioFitResult | None,
     comparison_result: ComparisonResult | None,
     memory_comparison: MemoryComparison | None,
     has_enough_information: bool,
@@ -420,7 +432,7 @@ def _uncertainty(
     uncertainties: list[str] = []
     if not has_enough_information:
         uncertainties.append("capital and investor-context inputs are incomplete")
-    if portfolio_analysis is None:
+    if portfolio_fit_result is None:
         uncertainties.append("portfolio concentration and overlap are not fully measured")
     if comparison_result is None:
         uncertainties.append("opportunity cost versus alternatives is limited")
@@ -446,13 +458,13 @@ def _comparison_tickers(ticker: str, context: DecisionContext) -> tuple[str, ...
     return tuple(deduped)
 
 
-def _concentration_discussion(portfolio_analysis: PortfolioAnalysis) -> str:
+def _concentration_discussion(portfolio_fit_result: PortfolioFitResult) -> str:
     return (
         "Concentration risk is explicit: "
-        f"sector concentration {portfolio_analysis.sector_concentration.score}/100, "
-        f"country concentration {portfolio_analysis.country_concentration.score}/100, "
-        f"market cap concentration {portfolio_analysis.market_cap_concentration.score}/100, "
-        f"and overlap {portfolio_analysis.overlap_with_existing_holdings.score}/100."
+        f"sector concentration {portfolio_fit_result.sector_concentration.score}/100, "
+        f"country concentration {portfolio_fit_result.country_concentration.score}/100, "
+        f"market cap concentration {portfolio_fit_result.market_cap_concentration.score}/100, "
+        f"and overlap {portfolio_fit_result.overlap.score}/100."
     )
 
 
