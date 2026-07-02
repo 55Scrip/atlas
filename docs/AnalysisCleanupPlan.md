@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 137 complete: `portfolio_fit_input_from_profile` identity adapter deleted from `atlas/adapters/portfolio.py`. Four engine callers (conversation, dashboard, intelligence, decision) now call `provider.get_portfolio_profile()` directly. Adapter boundary contains only meaningful portfolio boundary utilities.
+**Status:** ACTIVE — Sprint 138 audit complete. 13 modules remain in `atlas/analysis/`. Portfolio migration fully resolved. 7 identical-pattern placeholder submodules identified as Sprint 139 consolidation candidates. Foundational `engine.py` stable and not to be touched. No deletions performed this sprint.
 
 ---
 
@@ -317,3 +317,75 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 - Active deprecated CLI command count: 0 ✓
 - `CompanyPortfolioProfile` deleted from `atlas/analysis/portfolio.py` (Sprint 133) ✓ — providers now return `PortfolioFitInput` directly
 - Sprint 135 complete: `atlas/analysis/portfolio.py` deleted ✓ — `Portfolio`, `PortfolioPosition`, `_position_from_mapping`, `_normalize_weight` moved to `atlas/adapters/portfolio.py`. All 12 import sites updated. `atlas/analysis/` now clean.
+- Sprint 137 complete: `portfolio_fit_input_from_profile` identity adapter deleted ✓ — portfolio migration fully resolved.
+- Sprint 138 audit: 13 modules remain (see updated inventory below). 7 identical-pattern placeholder submodules are Sprint 139 consolidation candidates. No runtime changes this sprint.
+
+---
+
+## `atlas/analysis/` Inventory (Sprint 138 state)
+
+**13 modules remain. `portfolio.py` deleted Sprint 135. `scoring.py` deleted Sprint 109. `watchlist.py` Sprint 101. `comparison.py` Sprint 103. `memory.py` Sprint 104.**
+
+| File | Lines | Public API | Re-exported | Production Callers | Category |
+|---|---|---|---|---|---|
+| `__init__.py` | 26 | Re-export hub | — | — | Active — clean, no stale exports |
+| `engine.py` | 229 | `AtlasInvestmentEngine`, `InvestmentReport`, `ScoreCategory`, `ThresholdRecommendationPolicy`, `iter_score_categories`, `DEFAULT_CATEGORY_WEIGHTS` | Yes | 11 production files | **Foundational — leave for last** |
+| `company_analysis.py` | 45 | `CompanyAnalysis`, `create_placeholder_company_analysis` | Yes | `providers/mock.py`, `providers/yahoo.py`, `providers/base.py` (TYPE_CHECKING) | Active aggregator — imports the 7 placeholder submodules |
+| `explanation.py` | 198 | `InvestmentExplanation`, `explain_investment_report`, `render_investment_explanation` | Partial | `atlas/decision/memory.py`, `atlas/analysis/report.py` | Active — free-function module |
+| `report.py` | 38 | `build_investment_report`, `render_investment_report` | Yes | `atlas/cli/main.py`, `atlas/comparison/engine.py` | Active utility |
+| `scores.py` | 2 | `clamp_score` | No | 10 production files across 7 packages | Shared utility — highest external coupling, do not move |
+| `growth.py` | 18 | `GrowthAnalysis`, `placeholder_growth_analysis` | No | `company_analysis.py` only | **Placeholder** — Sprint 139 candidate |
+| `macro.py` | 18 | `MacroAnalysis`, `placeholder_macro_analysis` | No | `company_analysis.py` only | **Placeholder** — Sprint 139 candidate |
+| `moat.py` | 18 | `MoatAnalysis`, `placeholder_moat_analysis` | No | `company_analysis.py` only | **Placeholder** — Sprint 139 candidate |
+| `quality.py` | 18 | `QualityAnalysis`, `placeholder_quality_analysis` | No | `company_analysis.py` only | **Placeholder** — Sprint 139 candidate |
+| `sentiment.py` | 18 | `SentimentAnalysis`, `placeholder_sentiment_analysis` | No | `company_analysis.py` only | **Placeholder** — Sprint 139 candidate |
+| `technicals.py` | 18 | `TechnicalAnalysis`, `placeholder_technical_analysis` | No | `company_analysis.py` only | **Placeholder** — Sprint 139 candidate |
+| `valuation.py` | 18 | `ValuationAnalysis`, `placeholder_valuation_analysis` | No | `company_analysis.py` only | **Placeholder** — Sprint 139 candidate |
+
+### Deleted modules (confirmed absent — Sprint 138 verified)
+
+| Module | Deleted Sprint | Status |
+|---|---|---|
+| `atlas/analysis/portfolio.py` | Sprint 135 | ✓ Gone — `ModuleNotFoundError` confirmed |
+| `atlas/analysis/scoring.py` | Sprint 109 | ✓ Gone — `ModuleNotFoundError` confirmed |
+| `atlas/analysis/watchlist.py` | Sprint 101 | ✓ Gone — `ModuleNotFoundError` confirmed |
+| `atlas/analysis/comparison.py` | Sprint 103 | ✓ Gone — `ModuleNotFoundError` confirmed |
+| `atlas/analysis/memory.py` | Sprint 104 | ✓ Gone — `ModuleNotFoundError` confirmed |
+
+### Placeholder Submodule Pattern
+
+All 7 placeholder modules share an identical structure:
+```python
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class XxxAnalysis:
+    score: int
+    summary: str
+    strengths: tuple[str, ...]
+    weaknesses: tuple[str, ...]
+
+def placeholder_xxx_analysis(company: str) -> XxxAnalysis:
+    return XxxAnalysis(score=N, summary=f"...", strengths=(...), weaknesses=(...))
+```
+
+**External production callers: zero.** All 7 are imported exclusively by `company_analysis.py`.  
+**External test callers:** `tests/test_company_analysis.py` imports each type directly by module path.  
+**Sprint 139 plan:** Inline all 7 into `company_analysis.py`. Update `tests/test_company_analysis.py` imports. Delete 7 files. Risk: LOW.
+
+### Blueprint Overlap Assessment
+
+| `atlas/analysis/` module | Blueprint-aligned equivalent | Status |
+|---|---|---|
+| `engine.py` | None — `AtlasInvestmentEngine` has no Blueprint replacement | Leave for last; highest risk |
+| `company_analysis.py` | `atlas/capabilities/company_analysis/` uses different model (`CompanyAnalysisReport`) | Different model, not a replacement; leave |
+| `explanation.py` | None | Leave |
+| `report.py` | None | Leave |
+| `scores.py` | Could move to `atlas/shared/` | High external coupling — defer |
+| 7 placeholder modules | None | Consolidate into `company_analysis.py` Sprint 139 |
+
+### `atlas/analysis/__init__.py` Export Review (Sprint 138)
+
+Current exports: `AtlasInvestmentEngine`, `CompanyAnalysis`, `CompanyDataProvider`, `InvestmentReport`, `InvestmentExplanation`, `MockCompanyAnalysisProvider`, `ScoreCategory`, `YahooFinanceProvider`, `build_investment_report`, `create_placeholder_company_analysis`, `explain_investment_report`, `render_investment_report`.
+
+**No stale exports.** `Portfolio` and `PortfolioPosition` confirmed absent. All 12 exports are active. The `CompanyDataProvider`, `MockCompanyAnalysisProvider`, `YahooFinanceProvider` re-exports create a coupling from `atlas.analysis` → `atlas.providers` — this is a pre-existing design decision, not new debt.

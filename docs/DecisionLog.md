@@ -1848,6 +1848,26 @@ Demo passed. Release verification green.
 
 ---
 
+**Sprint 138 (2026-07-02): Analysis package checkpoint**
+
+**Decision:** Audit-only sprint. No deletions, no migrations. Document the current `atlas/analysis/` state now that the portfolio migration is fully resolved.
+
+**Findings:**
+- 13 modules remain. Portfolio migration has reduced the package from 17 modules (Sprint 108) to 13.
+- `engine.py` (foundational) — 11 production callers (`conversation`, `decision/*`, `intelligence`, `monitoring`, `reasoning`, `suitability`, `models`, `adapters`). Do not touch until a Blueprint replacement exists.
+- `scores.py` (shared utility, 2 lines) — 10 production callers across 7 packages. Do not move without a broad refactor.
+- `company_analysis.py`, `explanation.py`, `report.py` — active modules, no cleanup needed.
+- 7 placeholder submodules (`growth`, `macro`, `moat`, `quality`, `sentiment`, `technicals`, `valuation`): each 18 lines, structurally identical, zero external production callers. Only imported by `company_analysis.py`. Sprint 139 consolidation target.
+- `atlas/analysis/__init__.py`: 12 active exports, no stale symbols. `Portfolio` and `PortfolioPosition` confirmed absent.
+- `atlas/capabilities/company_analysis/` exists but uses an entirely different model (`CompanyAnalysisReport`) — not a replacement for the legacy analysis layer.
+- No Atlas Edge naming encountered.
+
+**Sprint 139 target:** Consolidate the 7 identical-pattern placeholder submodules into `company_analysis.py` and delete the 7 files.
+
+**Outcome:** Docs updated. No runtime changes. 1359 tests passing (3 skipped). Demo passed. RC2 green.
+
+---
+
 **Sprint 137 (2026-07-02): Delete `portfolio_fit_input_from_profile` identity adapter**
 
 **Decision:** Remove the no-op identity function and update the 4 engine callers to call `provider.get_portfolio_profile()` directly.
