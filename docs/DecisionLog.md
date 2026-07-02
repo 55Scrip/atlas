@@ -2,6 +2,28 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 151 — Reasoning Package Audit Checkpoint
+
+Decision: Audit `atlas/reasoning/` as a Group C self-contained module. Audit-only sprint. No runtime changes.
+
+**Findings:**
+- 2 modules: `__init__.py` (19 lines), `engine.py` (575 lines).
+- 7 exports in `__all__`: all reachable from `__init__.py`, but zero have active runtime production callers.
+- CLI command `atlas reason analyze` was retired Sprint 87. Zero production code instantiates `ReasoningEngine`.
+- Sole production-code reference: `atlas/principles/engine.py` holds (a) a TYPE_CHECKING-only import of `ReasoningReport` (line 9) and (b) a lazy runtime import of `render_reasoning_report` inside `check_reasoning_report()` (line 147).
+- `check_reasoning_report()` has zero external callers — confirmed Sprint 87, confirmed Sprint 151.
+- `check_reasoning_report()` is exported in `atlas/principles/__init__.py` but unreachable in any production path.
+- The lazy import was introduced to avoid a transitive circular import chain (`atlas.reasoning` imports `atlas.analysis.engine`, `atlas.capabilities.portfolio_intelligence`, `atlas.risk`, `atlas.economics`, `atlas.market`, `atlas.monitoring`, `atlas.themes`).
+- Self-contained boundary: zero imports from `atlas/providers/`, `atlas/cli/`, `atlas/dashboard/`, `atlas/conversation/`, `atlas/intelligence/`, `atlas/domains/`, or deleted analysis modules.
+- Blueprint overlap: `atlas/domains/decision/engine.py` has its own `ReasoningEngine` and `Evidence` (completely different purpose — Blueprint decision reasoning). No migration warranted. No conflict.
+- Zero stale closed-track imports.
+- No dead private helpers; all are internal to the dormant engine.
+- Full findings in `docs/ReasoningCleanupPlan.md`.
+
+**Sprint 152 recommendation:** Remove `check_reasoning_report()` from `atlas/principles/engine.py` (zero callers, only production dependency on `atlas.reasoning`). This unblocks Sprint 153: full deletion of `atlas/reasoning/` package (594 lines of dormant code).
+
+---
+
 ## 2026-07-02: Sprint 150 — Close Evidence Cleanup Track
 
 Decision: Close the `atlas/evidence/` cleanup track. No cleanup work is warranted.
