@@ -2,6 +2,29 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 160 — Close Comparison Cleanup Track
+
+Decision: Close the `atlas/comparison/` cleanup track. No cleanup work is warranted.
+
+**Rationale:** After inventory (Sprint 159) and final verification (Sprint 160), the comparison package contains only active, intentional code. `InvestmentComparisonEngine` is used by the active `atlas compare` CLI command. Provider coupling is clean: `MockCompanyAnalysisProvider` is the default (deterministic, local); `YahooFinanceProvider` is CLI opt-in only and never imported by `atlas/comparison/` directly. No Blueprint successor exists. Further cleanup would create churn without architectural benefit.
+
+**Final verification (Sprint 160):** All 9 exports importable. CLI caller confirmed active. Zero stale closed-track imports. No new Blueprint successor. No provider boundary violation.
+
+**Closed-track summary:**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — CLOSED Sprint 148
+- Evidence package — CLOSED Sprint 150
+- Reasoning package — CLOSED Sprint 153
+- Risk package — CLOSED Sprint 155
+- Principles package — CLOSED Sprint 158
+- **Comparison package — CLOSED Sprint 160**
+
+**Sprint 161 recommended target:** Audit `atlas/home/` — Group B provider-coupled module. Inventory modules, map callers, verify provider boundary, check Blueprint overlap, classify cleanup candidates.
+
+---
+
 ## 2026-07-03: Sprint 159 — Comparison Package Audit Checkpoint
 
 Decision: Audit `atlas/comparison/` as a provider-coupled module. Audit-only sprint. No runtime changes.

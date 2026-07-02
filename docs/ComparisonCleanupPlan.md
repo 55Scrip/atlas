@@ -1,7 +1,8 @@
 # Atlas Comparison Package Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 159)  
-**Status:** ACTIVE — Sprint 159 audit complete. Package is clean. No actionable cleanup candidates found. Sprint 160 recommended: close comparison cleanup track.
+**Updated:** 2026-07-03 (Sprint 160)  
+**Status:** CLOSED — Sprint 160 confirmed Sprint 159 findings unchanged. No cleanup action is warranted. Package is provider-coupled, actively used via `InvestmentComparisonEngine`, and stable. No further `atlas/comparison/` cleanup work is planned until new dead code, stale exports, provider-boundary issues, or a Blueprint-aligned successor emerges.
 
 ---
 
@@ -289,4 +290,36 @@ Sprint 160 should be a documentation-only sprint confirming the audit findings a
 | Reasoning package | CLOSED Sprint 153 |
 | Risk package | CLOSED Sprint 155 |
 | Principles package | CLOSED Sprint 158 |
-| **Comparison package** | **ACTIVE — Sprint 160 closure planned** |
+| **Comparison package** | **CLOSED Sprint 160** |
+
+---
+
+## Sprint 160 — Track Closure (COMPLETED)
+
+**Comparison cleanup track is CLOSED as of Sprint 160.**
+
+Sprint 160 verified:
+- All 9 `atlas.comparison` exports remain importable ✓
+- `InvestmentComparisonEngine` active — `atlas compare` CLI caller confirmed ✓
+- Provider coupling intentional — `MockCompanyAnalysisProvider` default (no network); `YahooFinanceProvider` CLI opt-in only ✓
+- `YahooFinanceProvider` not imported by `atlas/comparison/` directly ✓
+- Zero stale closed-track imports in `atlas/comparison/` ✓
+- No Blueprint-aligned successor introduced since Sprint 159 ✓
+- `atlas/decision/comparison.py` remains separate and distinct ✓
+- No cleanup action is warranted ✓
+
+**Closure rationale:** After inventory (Sprint 159) and final verification (Sprint 160), the comparison package contains only active, intentional code. `InvestmentComparisonEngine` is the sole engine, used by the active `atlas compare` CLI command. Provider coupling is clean and opt-in. No Blueprint successor exists. Further cleanup would create churn without architectural benefit.
+
+**Reopening condition:** If a Blueprint-aligned comparison capability emerges in `atlas/capabilities/`, if the CLI command is deprecated, or if new dead code or stale provider imports appear, this track should be reopened.
+
+---
+
+## Recommended Sprint 161 Target
+
+**Audit `atlas/home/` — Group B provider-coupled module.**
+
+`atlas/home/` is the next natural audit target:
+- Provider-coupled: known to import from `atlas/providers/`
+- CLI command `atlas home` may be active or deprecated — status should be confirmed
+- Audit-first: inventory modules, map callers, verify provider boundary, check Blueprint overlap, classify cleanup candidates, recommend one focused follow-on sprint
+- No deletions in the audit sprint
