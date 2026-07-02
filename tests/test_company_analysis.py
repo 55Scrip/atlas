@@ -1,13 +1,16 @@
 import pytest
 
-from atlas.analysis.company_analysis import CompanyAnalysis, MockCompanyAnalysisProvider
-from atlas.analysis.growth import GrowthAnalysis
-from atlas.analysis.macro import MacroAnalysis
-from atlas.analysis.moat import MoatAnalysis
-from atlas.analysis.quality import QualityAnalysis
-from atlas.analysis.sentiment import SentimentAnalysis
-from atlas.analysis.technicals import TechnicalAnalysis
-from atlas.analysis.valuation import ValuationAnalysis
+from atlas.analysis.company_analysis import (
+    CompanyAnalysis,
+    GrowthAnalysis,
+    MacroAnalysis,
+    MoatAnalysis,
+    MockCompanyAnalysisProvider,
+    QualityAnalysis,
+    SentimentAnalysis,
+    TechnicalAnalysis,
+    ValuationAnalysis,
+)
 
 
 def test_company_analysis_aggregates_module_dataclasses():
@@ -42,3 +45,73 @@ def test_mock_provider_rejects_unknown_ticker():
 
     with pytest.raises(LookupError, match="No mock company analysis available"):
         provider.get_company_analysis("TSM")
+
+
+# ── Sprint 139: placeholder submodules consolidated into company_analysis.py ──
+
+def test_sprint139_placeholder_types_importable_from_company_analysis() -> None:
+    """Sprint 139: all 7 placeholder types now live in atlas.analysis.company_analysis."""
+    from atlas.analysis.company_analysis import (  # noqa: F401
+        GrowthAnalysis,
+        MacroAnalysis,
+        MoatAnalysis,
+        QualityAnalysis,
+        SentimentAnalysis,
+        TechnicalAnalysis,
+        ValuationAnalysis,
+    )
+    assert True
+
+
+def test_sprint139_placeholder_factories_importable_from_company_analysis() -> None:
+    """Sprint 139: all 7 placeholder factories live in atlas.analysis.company_analysis."""
+    from atlas.analysis.company_analysis import (  # noqa: F401
+        placeholder_growth_analysis,
+        placeholder_macro_analysis,
+        placeholder_moat_analysis,
+        placeholder_quality_analysis,
+        placeholder_sentiment_analysis,
+        placeholder_technical_analysis,
+        placeholder_valuation_analysis,
+    )
+    assert True
+
+
+def test_sprint139_deleted_placeholder_modules_not_importable() -> None:
+    """Sprint 139: the 7 source files must be deleted and not importable."""
+    import importlib
+    deleted = [
+        "atlas.analysis.growth",
+        "atlas.analysis.macro",
+        "atlas.analysis.moat",
+        "atlas.analysis.quality",
+        "atlas.analysis.sentiment",
+        "atlas.analysis.technicals",
+        "atlas.analysis.valuation",
+    ]
+    for mod in deleted:
+        try:
+            importlib.import_module(mod)
+            assert False, f"{mod} must not be importable after Sprint 139"
+        except ModuleNotFoundError:
+            pass
+
+
+def test_sprint139_placeholder_values_unchanged() -> None:
+    """Sprint 139: consolidation must not alter placeholder values."""
+    from atlas.analysis.company_analysis import (
+        placeholder_growth_analysis,
+        placeholder_macro_analysis,
+        placeholder_moat_analysis,
+        placeholder_quality_analysis,
+        placeholder_sentiment_analysis,
+        placeholder_technical_analysis,
+        placeholder_valuation_analysis,
+    )
+    assert placeholder_growth_analysis("X").score == 95
+    assert placeholder_macro_analysis("X").score == 78
+    assert placeholder_moat_analysis("X").score == 90
+    assert placeholder_quality_analysis("X").score == 92
+    assert placeholder_sentiment_analysis("X").score == 80
+    assert placeholder_technical_analysis("X").score == 82
+    assert placeholder_valuation_analysis("X").score == 72

@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 138)  
-**Status:** Active — Sprint 138 analysis package checkpoint. 13 modules remain in `atlas/analysis/`. Portfolio migration fully resolved. 7 identical-pattern placeholder submodules are Sprint 139 consolidation target. Foundational `engine.py` (11 production callers) left for last.
+**Updated:** 2026-07-02 (Sprint 139)  
+**Status:** Active — Sprint 139 consolidation complete. 7 identical-pattern placeholder submodules (`growth.py`, `macro.py`, `moat.py`, `quality.py`, `sentiment.py`, `technicals.py`, `valuation.py`) inlined into `company_analysis.py` and deleted. 6 modules remain in `atlas/analysis/`. Foundational `engine.py` (11 production callers) left for last.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

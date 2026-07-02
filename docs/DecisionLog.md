@@ -2,6 +2,21 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 139 — Consolidate 7 placeholder analysis submodules into company_analysis.py
+
+Decision: Inline `GrowthAnalysis`, `MacroAnalysis`, `MoatAnalysis`, `QualityAnalysis`, `SentimentAnalysis`, `TechnicalAnalysis`, `ValuationAnalysis` (and their `placeholder_*` factories) from 7 separate 18-line files into `atlas/analysis/company_analysis.py`. Delete the 7 source files.
+
+**Zero-caller audit findings:**
+- All 7 modules (`growth.py`, `macro.py`, `moat.py`, `quality.py`, `sentiment.py`, `technicals.py`, `valuation.py`) had zero external callers outside `company_analysis.py` itself. All 7 types were already re-exported through `company_analysis.py`; no production file imported from the submodules directly.
+
+**Changes:** 7 placeholder type/factory pairs inlined into `company_analysis.py`; 7 source files deleted; `tests/test_company_analysis.py` imports consolidated + 4 Sprint 139 guardrail tests added; 4 docs updated. `atlas/analysis/` reduced from 13 modules to 6.
+
+**Why this was safe:** Identical structure across all 7 modules (same 4-field frozen dataclass, one factory). Zero external import surface. Consolidation removes indirection without changing any behavior or value.
+
+**Sprint 140 recommended target:** Analysis package release candidate checkpoint — audit remaining 6 modules (`company_analysis.py`, `comparison.py`, `engine.py`, `investment.py`, `scores.py`, `__init__.py`), confirm no stale exports, and assess whether any additional consolidation is warranted before closing out the `atlas/analysis/` cleanup track.
+
+---
+
 ## 2026-07-02: Sprint 132 — Delete PortfolioAnalysis, PortfolioSignal, PortfolioRecommendation
 
 Decision: Delete `PortfolioAnalysis`, `PortfolioSignal`, and `PortfolioRecommendation` from `atlas/analysis/portfolio.py`. Confirmed zero active production callers after Sprint 131 migrated the last dependency (`reasoning/engine.py`).
