@@ -492,7 +492,7 @@ def test_demo_portfolio_weights_sum_to_one() -> None:
 
 def test_demo_portfolio_triggers_high_concentration() -> None:
     from pathlib import Path as _Path
-    from atlas.analysis.portfolio import Portfolio
+    from atlas.adapters.portfolio import Portfolio
     from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
     from atlas.domains.portfolio import portfolio_summary
     p = Portfolio.from_json_file(PORTFOLIO_JSON)

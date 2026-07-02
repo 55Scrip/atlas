@@ -436,7 +436,7 @@ def test_company_empty_when_no_reports() -> None:
 
 def test_all_inputs_together_produce_all_sections() -> None:
     from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
-    from atlas.analysis.portfolio import Portfolio as LegacyPortfolio
+    from atlas.adapters.portfolio import Portfolio as LegacyPortfolio
     from atlas.domains.portfolio import portfolio_summary
 
     legacy = LegacyPortfolio.from_mapping(

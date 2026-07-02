@@ -10,7 +10,7 @@ from atlas.adapters.portfolio import (
     legacy_portfolio_to_domain_portfolio,
     portfolio_fit_input_from_profile,
 )
-from atlas.analysis.portfolio import Portfolio as LegacyPortfolio
+from atlas.adapters.portfolio import Portfolio as LegacyPortfolio
 from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
 from atlas.shared import Holding, Portfolio as SharedPortfolio
 
@@ -221,14 +221,14 @@ def test_scoring_module_deleted():
 # ── legacy portfolio.py remains active ────────────────────────────────────────
 
 def test_legacy_portfolio_module_still_importable():
-    from atlas.analysis.portfolio import Portfolio  # noqa: F401
+    from atlas.adapters.portfolio import Portfolio  # noqa: F401
     assert Portfolio is not None
 
 
 def test_sprint133_company_portfolio_profile_not_importable():
     import pytest
     with pytest.raises(ImportError):
-        from atlas.analysis.portfolio import CompanyPortfolioProfile  # noqa: F401
+        from atlas.adapters.portfolio import CompanyPortfolioProfile  # noqa: F401
 
 
 # ── no new caller migrated: conversation and dashboard pass ───────────────────

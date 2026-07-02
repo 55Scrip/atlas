@@ -2,7 +2,7 @@ import ast
 from datetime import UTC, datetime
 
 from atlas.decision.memory import MemoryEntry, MemoryStore
-from atlas.analysis.portfolio import Portfolio, PortfolioPosition
+from atlas.adapters.portfolio import Portfolio, PortfolioPosition
 from atlas.capabilities.watchlist_intelligence import WatchlistInput, WatchlistInputItem
 from atlas.decision import (
     AtlasDecisionEngine,
@@ -240,12 +240,13 @@ def test_sprint123_decision_behavior_unchanged_no_portfolio():
 
 
 def test_sprint123_legacy_portfolio_module_still_active():
-    """atlas.analysis.portfolio must still be importable (not deleted)."""
-    import atlas.analysis.portfolio as legacy
-    assert hasattr(legacy, "Portfolio")
-    assert not hasattr(legacy, "PortfolioAnalysis"), (
-        "PortfolioAnalysis was deleted in Sprint 132"
-    )
+    """Sprint 135: atlas.analysis.portfolio deleted; types live in atlas.adapters.portfolio."""
+    import importlib
+    import pytest
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("atlas.analysis.portfolio")
+    from atlas.adapters.portfolio import Portfolio  # noqa: F401
+    assert Portfolio is not None
 
 
 def test_sprint123_capability_engine_still_clean():

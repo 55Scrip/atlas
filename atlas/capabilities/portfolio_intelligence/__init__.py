@@ -3,8 +3,8 @@
 Phase 3 of the portfolio.py migration (Sprint 113).
 Engine implemented; types and engine are both exported.
 
-Existing callers of `atlas.analysis.portfolio` are NOT migrated yet.
-Migration will proceed incrementally in Sprints 114+.
+All callers of `atlas.analysis.portfolio` migrated as of Sprint 135.
+`atlas.analysis.portfolio` deleted Sprint 135; types live in `atlas/adapters/portfolio.py`.
 """
 
 from atlas.capabilities.portfolio_intelligence.engine import PortfolioIntelligenceCapability

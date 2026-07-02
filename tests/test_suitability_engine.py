@@ -292,6 +292,10 @@ def test_sprint120_capability_engine_still_no_legacy_portfolio_import():
 
 
 def test_sprint120_legacy_portfolio_module_still_active():
-    """atlas.analysis.portfolio must still importable (not deleted)."""
-    import atlas.analysis.portfolio as legacy
-    assert hasattr(legacy, "Portfolio")
+    """Sprint 135: atlas.analysis.portfolio deleted; types live in atlas.adapters.portfolio."""
+    import importlib
+    import pytest
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("atlas.analysis.portfolio")
+    from atlas.adapters.portfolio import Portfolio  # noqa: F401
+    assert Portfolio is not None

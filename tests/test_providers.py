@@ -3,7 +3,7 @@ from urllib.error import HTTPError, URLError
 from atlas.analysis.engine import AtlasInvestmentEngine
 from atlas.capabilities.portfolio_intelligence import PortfolioFitInput
 from atlas.decision.memory import MemoryStore, save_ticker as save_ticker_to_memory
-from atlas.analysis.portfolio import Portfolio, PortfolioPosition
+from atlas.adapters.portfolio import Portfolio, PortfolioPosition
 from atlas.providers import (
     CompanyDataProvider,
     MockCompanyAnalysisProvider,

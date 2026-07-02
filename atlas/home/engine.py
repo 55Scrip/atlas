@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from atlas.capabilities.watchlist_intelligence import WatchlistInput
 
 if TYPE_CHECKING:
-    from atlas.analysis.portfolio import Portfolio
+    from atlas.adapters.portfolio import Portfolio
 from atlas.decision_journal import DecisionJournalEngine, DecisionJournalEntry
 from atlas.economics import EconomicSignalsEngine
 from atlas.language import (

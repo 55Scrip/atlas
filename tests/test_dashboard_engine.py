@@ -4,7 +4,7 @@ import pathlib
 
 from typer.testing import CliRunner
 
-from atlas.analysis.portfolio import Portfolio
+from atlas.adapters.portfolio import Portfolio
 from atlas.cli.main import app
 from atlas.dashboard import DashboardEngine, DashboardInput, render_dashboard
 from atlas.profile import InvestorProfileEngine

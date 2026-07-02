@@ -234,7 +234,7 @@ def test_sprint121_type_checking_guard_present():
 
 def test_sprint121_snapshot_portfolio_behavior_preserved(tmp_path):
     """snapshot_portfolio produces expected signals with legacy Portfolio objects."""
-    from atlas.analysis.portfolio import Portfolio
+    from atlas.adapters.portfolio import Portfolio
 
     portfolio_path = tmp_path / "p.json"
     portfolio_path.write_text(
@@ -283,7 +283,7 @@ def test_sprint121_snapshot_portfolio_behavior_preserved(tmp_path):
 
 def test_sprint121_monitor_portfolio_alert_shape(tmp_path):
     """monitor_portfolio returns a MonitoringAlert with expected shape."""
-    from atlas.analysis.portfolio import Portfolio
+    from atlas.adapters.portfolio import Portfolio
 
     portfolio_path = tmp_path / "p.json"
     portfolio_path.write_text(
@@ -318,7 +318,7 @@ def test_sprint121_monitor_portfolio_alert_shape(tmp_path):
 
 def test_sprint121_no_advisory_language_in_monitoring_output(tmp_path):
     """Monitoring output must not contain recommendation or advisory language."""
-    from atlas.analysis.portfolio import Portfolio
+    from atlas.adapters.portfolio import Portfolio
 
     portfolio_path = tmp_path / "p.json"
     portfolio_path.write_text(
@@ -350,12 +350,13 @@ def test_sprint121_no_advisory_language_in_monitoring_output(tmp_path):
 
 
 def test_sprint121_legacy_portfolio_module_still_active():
-    """atlas.analysis.portfolio must still be importable (not deleted)."""
-    import atlas.analysis.portfolio as legacy
-    assert hasattr(legacy, "Portfolio")
-    assert not hasattr(legacy, "PortfolioAnalysis"), (
-        "PortfolioAnalysis was deleted in Sprint 132"
-    )
+    """Sprint 135: atlas.analysis.portfolio deleted; types live in atlas.adapters.portfolio."""
+    import importlib
+    import pytest
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("atlas.analysis.portfolio")
+    from atlas.adapters.portfolio import Portfolio  # noqa: F401
+    assert Portfolio is not None
 
 
 def test_sprint121_capability_engine_still_clean():

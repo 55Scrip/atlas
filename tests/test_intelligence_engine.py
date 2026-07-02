@@ -4,7 +4,7 @@ import pathlib
 
 from typer.testing import CliRunner
 
-from atlas.analysis.portfolio import Portfolio, PortfolioPosition
+from atlas.adapters.portfolio import Portfolio, PortfolioPosition
 from atlas.cli.main import app
 from atlas.intelligence import (
     IntelligenceContext,

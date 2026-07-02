@@ -7,10 +7,6 @@ from atlas.analysis.explanation import (
     InvestmentExplanation,
     explain_investment_report,
 )
-from atlas.analysis.portfolio import (
-    Portfolio,
-    PortfolioPosition,
-)
 from atlas.analysis.report import build_investment_report, render_investment_report
 from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
 
@@ -21,8 +17,6 @@ __all__ = [
     "InvestmentReport",
     "InvestmentExplanation",
     "MockCompanyAnalysisProvider",
-    "Portfolio",
-    "PortfolioPosition",
     "ScoreCategory",
     "YahooFinanceProvider",
     "build_investment_report",

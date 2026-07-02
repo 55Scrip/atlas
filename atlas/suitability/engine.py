@@ -9,7 +9,7 @@ from atlas.analysis.scores import clamp_score
 from atlas.capabilities.portfolio_intelligence import PortfolioFitResult
 
 if TYPE_CHECKING:
-    from atlas.analysis.portfolio import Portfolio
+    from atlas.adapters.portfolio import Portfolio
 
 from atlas.intelligence import IntelligenceReport
 from atlas.profile import (

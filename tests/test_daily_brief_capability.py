@@ -14,7 +14,7 @@ import pytest
 from typer.testing import CliRunner
 
 from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
-from atlas.analysis.portfolio import Portfolio as LegacyPortfolio
+from atlas.adapters.portfolio import Portfolio as LegacyPortfolio
 from atlas.capabilities.daily_brief import (
     DailyBriefCapability,
     DailyBriefInput,

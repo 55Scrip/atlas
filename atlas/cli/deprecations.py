@@ -125,10 +125,10 @@ _RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
         ),
         replacement_command="atlas portfolio summary",
         consolidation_direction=None,
-        legacy_module="atlas.analysis.portfolio",
+        legacy_module="atlas.adapters.portfolio",
         removal_criteria=(
             "Command body retired in Sprint 89.",
-            "atlas.analysis.portfolio engine remains on disk — PortfolioIntelligenceEngine deleted Sprint 128. "
+            "atlas.analysis.portfolio deleted Sprint 135. Portfolio and PortfolioPosition moved to atlas/adapters/portfolio.py. "
             "Shared types (Portfolio, PortfolioAnalysis, PortfolioPosition, etc.) remain. "
             "Remaining runtime imports: atlas/cli/main.py (Portfolio for JSON loading), "
             "atlas/adapters/portfolio.py (LegacyPortfolio adapter), atlas/providers/ (PortfolioFitInput), "

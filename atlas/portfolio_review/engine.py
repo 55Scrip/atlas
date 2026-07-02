@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
-from atlas.analysis.portfolio import Portfolio as LegacyPortfolio
+from atlas.adapters.portfolio import Portfolio as LegacyPortfolio
 from atlas.economics import EconomicSignalAnalysis, EconomicSignalsEngine
 from atlas.language import AtlasLanguageEngine, AtlasLanguageReport
 from atlas.market import (

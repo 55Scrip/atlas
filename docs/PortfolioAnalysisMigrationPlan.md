@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 134) — Sprint 134 audit: `Portfolio`/`PortfolioPosition` caller map complete; Sprint 135 target selected.  
-**Status:** IN PROGRESS — `portfolio.py` now 67 lines (2 active types + 2 private helpers). Remaining: `Portfolio` (CLI boundary, adapter input, 8 annotation callers) and `PortfolioPosition` (internal to `Portfolio`). Sprint 135 will lift both into `atlas/adapters/portfolio.py` and delete the file.  
+**Updated:** 2026-07-02 (Sprint 135) — Sprint 135 complete: `Portfolio`, `PortfolioPosition`, `_position_from_mapping`, `_normalize_weight` moved to `atlas/adapters/portfolio.py`. `atlas/analysis/portfolio.py` deleted. All 12 import sites updated. 1361 tests passing.  
+**Status:** COMPLETE — `atlas/analysis/portfolio.py` deleted. All boundary types live in `atlas/adapters/portfolio.py`. `atlas/analysis/` now contains only active modules: `engine.py`, `explanation.py`, `report.py`, `scores.py`, `providers.py`.  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** MEDIUM — all remaining callers are known; changes are mechanical import-line updates  
 

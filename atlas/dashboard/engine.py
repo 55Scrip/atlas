@@ -10,7 +10,7 @@ from atlas.adapters.portfolio import (
 from atlas.capabilities.portfolio_intelligence import PortfolioIntelligenceCapability
 
 if TYPE_CHECKING:
-    from atlas.analysis.portfolio import Portfolio
+    from atlas.adapters.portfolio import Portfolio
 from atlas.economics import EconomicSignalAnalysis, EconomicSignalsEngine
 from atlas.market import (
     MarketHealthEngine,

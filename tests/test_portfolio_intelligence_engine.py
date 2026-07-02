@@ -507,7 +507,7 @@ def test_diversification_includes_mega_cap_component_when_enriched() -> None:
 # ---------------------------------------------------------------------------
 
 def test_adapter_carries_quality_score_risk_score_market_cap() -> None:
-    from atlas.analysis.portfolio import Portfolio as LegacyPortfolio, PortfolioPosition
+    from atlas.adapters.portfolio import Portfolio as LegacyPortfolio, PortfolioPosition
     from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
 
     legacy = LegacyPortfolio(
@@ -534,7 +534,7 @@ def test_adapter_carries_quality_score_risk_score_market_cap() -> None:
 
 
 def test_adapter_output_enables_full_parity_engine() -> None:
-    from atlas.analysis.portfolio import Portfolio as LegacyPortfolio, PortfolioPosition
+    from atlas.adapters.portfolio import Portfolio as LegacyPortfolio, PortfolioPosition
     from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
 
     legacy = LegacyPortfolio(
@@ -582,7 +582,7 @@ def test_conversation_engine_portfolio_review_uses_portfolio_fit_capability() ->
 
 
 def test_conversation_engine_portfolio_review_returns_fit_score() -> None:
-    from atlas.analysis.portfolio import Portfolio as LegacyPortfolio, PortfolioPosition
+    from atlas.adapters.portfolio import Portfolio as LegacyPortfolio, PortfolioPosition
     from atlas.conversation import ConversationEngine, ConversationInput, ConversationIntent
     from atlas.providers import MockCompanyAnalysisProvider
 
@@ -621,7 +621,7 @@ def test_conversation_engine_portfolio_review_returns_fit_score() -> None:
 
 
 def test_conversation_portfolio_review_no_recommendation_language() -> None:
-    from atlas.analysis.portfolio import Portfolio as LegacyPortfolio, PortfolioPosition
+    from atlas.adapters.portfolio import Portfolio as LegacyPortfolio, PortfolioPosition
     from atlas.conversation import ConversationEngine, ConversationInput
     from atlas.providers import MockCompanyAnalysisProvider
 

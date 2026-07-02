@@ -518,12 +518,11 @@ def test_portfolio_summary_command_uses_adapter_path() -> None:
 
 
 def test_render_portfolio_analysis_is_deleted() -> None:
-    """Sprint 111: render_portfolio_analysis was removed — zero production callers confirmed."""
-    import atlas.analysis.portfolio as portfolio_mod
-    assert not hasattr(portfolio_mod, "render_portfolio_analysis"), (
-        "render_portfolio_analysis was deleted in Sprint 111 — "
-        "it had zero production callers and was dead code"
-    )
+    """Sprint 135: atlas.analysis.portfolio deleted entirely; render_portfolio_analysis gone with it."""
+    import importlib
+    import pytest
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("atlas.analysis.portfolio")
 
 
 def test_render_portfolio_analysis_not_in_atlas_analysis() -> None:

@@ -316,4 +316,4 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 - `render_company_analysis_report` is fully removed ✓
 - Active deprecated CLI command count: 0 ✓
 - `CompanyPortfolioProfile` deleted from `atlas/analysis/portfolio.py` (Sprint 133) ✓ — providers now return `PortfolioFitInput` directly
-- Sprint 134 audit complete: `Portfolio`/`PortfolioPosition` caller map finalized; Sprint 135 target selected — move to `atlas/adapters/portfolio.py` + delete `atlas/analysis/portfolio.py`
+- Sprint 135 complete: `atlas/analysis/portfolio.py` deleted ✓ — `Portfolio`, `PortfolioPosition`, `_position_from_mapping`, `_normalize_weight` moved to `atlas/adapters/portfolio.py`. All 12 import sites updated. `atlas/analysis/` now clean.

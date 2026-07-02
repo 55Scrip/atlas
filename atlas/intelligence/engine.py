@@ -32,7 +32,7 @@ from atlas.risk import RiskAnalysis
 from atlas.themes import ThemeAnalysis, ThemeEngine, ThemeInput
 
 if TYPE_CHECKING:
-    from atlas.analysis.portfolio import Portfolio
+    from atlas.adapters.portfolio import Portfolio
     from atlas.capabilities.portfolio_intelligence import PortfolioFitResult
 
 

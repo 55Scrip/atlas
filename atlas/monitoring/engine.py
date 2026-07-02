@@ -7,7 +7,7 @@ from atlas.analysis.engine import AtlasInvestmentEngine
 from atlas.analysis.scores import clamp_score
 
 if TYPE_CHECKING:
-    from atlas.analysis.portfolio import Portfolio
+    from atlas.adapters.portfolio import Portfolio
 from atlas.capabilities.watchlist_intelligence import WatchlistInput
 from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
 from atlas.capabilities.watchlist_intelligence.models import (

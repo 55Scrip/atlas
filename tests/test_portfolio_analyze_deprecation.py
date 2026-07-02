@@ -92,14 +92,15 @@ def test_portfolio_review_command_is_retired(tmp_path) -> None:
     assert result.exit_code != 0
 
 
-def test_portfolio_analysis_engine_remains_importable() -> None:
-    """atlas.analysis.portfolio must still be importable — active boundary types still in use."""
-    from atlas.analysis.portfolio import Portfolio
+def test_sprint135_portfolio_boundary_types_importable_from_adapter() -> None:
+    """Sprint 135: Portfolio and PortfolioPosition now live in atlas.adapters.portfolio."""
+    from atlas.adapters.portfolio import Portfolio, PortfolioPosition  # noqa: F401
     assert Portfolio is not None
+    assert PortfolioPosition is not None
 
 
 def test_portfolio_engine_active_callers_remain() -> None:
-    """Confirm known active callers of atlas.analysis.portfolio still exist."""
+    """Confirm known active callers of atlas.analysis.portfolio still exist (list is empty post-Sprint 135)."""
     for path in PORTFOLIO_ENGINE_CALLERS:
         assert path.exists(), f"Expected active portfolio engine caller at {path}"
         source = path.read_text(encoding="utf-8")
@@ -108,16 +109,12 @@ def test_portfolio_engine_active_callers_remain() -> None:
         )
 
 
-def test_portfolio_engine_module_remains_on_disk() -> None:
-    """atlas.analysis.portfolio must still exist — shared types are still in use."""
+def test_sprint135_analysis_portfolio_module_deleted() -> None:
+    """Sprint 135: atlas.analysis.portfolio deleted — must NOT be importable."""
     import importlib
-    mod = importlib.import_module("atlas.analysis.portfolio")
-    assert hasattr(mod, "Portfolio"), (
-        "atlas.analysis.portfolio.Portfolio must still be importable (shared type used by many engines)"
-    )
-    assert not hasattr(mod, "PortfolioIntelligenceEngine"), (
-        "atlas.analysis.portfolio.PortfolioIntelligenceEngine was deleted in Sprint 128"
-    )
+    import pytest
+    with pytest.raises((ImportError, ModuleNotFoundError)):
+        importlib.import_module("atlas.analysis.portfolio")
 
 
 # ── Confirm remaining deprecated commands still work ─────────────────────────
@@ -179,8 +176,8 @@ def test_sprint128_portfolio_intelligence_engine_not_in_atlas_analysis() -> None
 
 
 def test_sprint128_shared_types_still_importable() -> None:
-    """Sprint 128/132: active boundary types remain importable after PortfolioIntelligenceEngine deletion."""
-    from atlas.analysis.portfolio import (  # noqa: F401
+    """Sprint 128/132/135: active boundary types remain importable — now from atlas.adapters.portfolio."""
+    from atlas.adapters.portfolio import (  # noqa: F401
         Portfolio,
         PortfolioPosition,
     )
@@ -223,8 +220,8 @@ def test_sprint129_capability_engine_free_of_legacy_portfolio_import() -> None:
 
 
 def test_sprint129_portfolio_module_remaining_public_symbols() -> None:
-    """Sprint 133: active public symbols — Portfolio, PortfolioPosition (CompanyPortfolioProfile deleted)."""
-    from atlas.analysis.portfolio import (  # noqa: F401
+    """Sprint 135: Portfolio, PortfolioPosition moved to atlas.adapters.portfolio."""
+    from atlas.adapters.portfolio import (  # noqa: F401
         Portfolio,
         PortfolioPosition,
     )
@@ -232,8 +229,8 @@ def test_sprint129_portfolio_module_remaining_public_symbols() -> None:
 
 
 def test_sprint130_dead_private_helpers_deleted() -> None:
-    """Sprint 130: 16 dead private helpers deleted — must not exist in atlas.analysis.portfolio."""
-    import atlas.analysis.portfolio as mod
+    """Sprint 130/135: 16 dead private helpers deleted — must not exist in atlas.adapters.portfolio."""
+    import atlas.adapters.portfolio as mod
     deleted_helpers = [
         "_diversification_impact",
         "_sector_concentration",
@@ -254,7 +251,7 @@ def test_sprint130_dead_private_helpers_deleted() -> None:
     ]
     for name in deleted_helpers:
         assert not hasattr(mod, name), (
-            f"{name} was deleted in Sprint 130 — must not be present in atlas.analysis.portfolio"
+            f"{name} was deleted in Sprint 130 — must not be present in atlas.adapters.portfolio"
         )
 
 
@@ -266,8 +263,8 @@ def test_sprint130_get_mock_company_portfolio_profile_deleted() -> None:
 
 
 def test_sprint130_active_portfolio_helpers_still_present() -> None:
-    """Sprint 130: active private helpers remain — _position_from_mapping and _normalize_weight."""
-    import atlas.analysis.portfolio as mod
+    """Sprint 130/135: active private helpers remain in atlas.adapters.portfolio."""
+    import atlas.adapters.portfolio as mod
     assert hasattr(mod, "_position_from_mapping")
     assert hasattr(mod, "_normalize_weight")
 
@@ -307,8 +304,8 @@ def test_sprint132_deleted_types_not_in_atlas_analysis_namespace() -> None:
 
 
 def test_sprint132_active_boundary_types_remain() -> None:
-    """Sprint 133: Portfolio, PortfolioPosition remain importable; CompanyPortfolioProfile deleted."""
-    from atlas.analysis.portfolio import (  # noqa: F401
+    """Sprint 135: Portfolio, PortfolioPosition importable from atlas.adapters.portfolio."""
+    from atlas.adapters.portfolio import (  # noqa: F401
         Portfolio,
         PortfolioPosition,
     )
@@ -384,8 +381,8 @@ def test_sprint133_providers_return_portfolio_fit_input() -> None:
 
 
 def test_sprint133_portfolio_module_remaining_symbols() -> None:
-    """Sprint 133: only Portfolio and PortfolioPosition remain in atlas.analysis.portfolio public API."""
-    import atlas.analysis.portfolio as mod
+    """Sprint 135: Portfolio and PortfolioPosition live in atlas.adapters.portfolio."""
+    import atlas.adapters.portfolio as mod
     assert hasattr(mod, "Portfolio")
     assert hasattr(mod, "PortfolioPosition")
     assert not hasattr(mod, "CompanyPortfolioProfile"), (
@@ -398,8 +395,8 @@ def test_sprint133_portfolio_module_remaining_symbols() -> None:
 # ---------------------------------------------------------------------------
 
 def test_sprint134_portfolio_boundary_types_still_importable() -> None:
-    """Sprint 134: Portfolio and PortfolioPosition must still be importable — active CLI boundary."""
-    from atlas.analysis.portfolio import Portfolio, PortfolioPosition  # noqa: F401
+    """Sprint 135: Portfolio and PortfolioPosition importable from atlas.adapters.portfolio."""
+    from atlas.adapters.portfolio import Portfolio, PortfolioPosition  # noqa: F401
     assert Portfolio is not None
     assert PortfolioPosition is not None
 
@@ -420,13 +417,13 @@ def test_sprint134_deleted_types_not_importable_individually() -> None:
 
 
 def test_sprint134_portfolio_module_private_helpers_present() -> None:
-    """Sprint 134: both active private helpers must still exist — required by Portfolio.from_mapping."""
-    import atlas.analysis.portfolio as mod
+    """Sprint 135: active private helpers live in atlas.adapters.portfolio."""
+    import atlas.adapters.portfolio as mod
     assert hasattr(mod, "_position_from_mapping"), (
-        "_position_from_mapping deleted prematurely — required by Portfolio.from_mapping"
+        "_position_from_mapping must be present in atlas.adapters.portfolio"
     )
     assert hasattr(mod, "_normalize_weight"), (
-        "_normalize_weight deleted prematurely — required by _position_from_mapping"
+        "_normalize_weight must be present in atlas.adapters.portfolio"
     )
 
 
@@ -437,11 +434,14 @@ def test_sprint134_adapter_still_provides_legacy_conversion() -> None:
 
 
 def test_sprint134_cli_still_imports_portfolio_from_analysis() -> None:
-    """Sprint 134: CLI must still import Portfolio from atlas.analysis.portfolio (pre-Sprint 135)."""
+    """Sprint 135: CLI now imports Portfolio from atlas.adapters.portfolio."""
     import pathlib
     source = pathlib.Path("atlas/cli/main.py").read_text(encoding="utf-8")
-    assert "atlas.analysis.portfolio" in source, (
-        "CLI must still import Portfolio from atlas.analysis.portfolio until Sprint 135"
+    assert "atlas.adapters.portfolio" in source, (
+        "CLI must import Portfolio from atlas.adapters.portfolio after Sprint 135"
+    )
+    assert "atlas.analysis.portfolio" not in source, (
+        "CLI must not import from atlas.analysis.portfolio after Sprint 135"
     )
 
 
@@ -455,3 +455,62 @@ def test_sprint134_portfolio_fit_input_from_profile_is_identity() -> None:
         quality_score=88, risk_score=55,
     )
     assert portfolio_fit_input_from_profile(fit) is fit
+
+
+# ---------------------------------------------------------------------------
+# Sprint 135: atlas.analysis.portfolio deleted; boundary types in atlas.adapters.portfolio
+# ---------------------------------------------------------------------------
+
+def test_sprint135_analysis_portfolio_module_deleted() -> None:
+    """Sprint 135: atlas.analysis.portfolio must not exist — module was deleted."""
+    import importlib
+    import pytest
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("atlas.analysis.portfolio")
+
+
+def test_sprint135_portfolio_importable_from_adapter() -> None:
+    """Sprint 135: Portfolio and PortfolioPosition must be importable from atlas.adapters.portfolio."""
+    from atlas.adapters.portfolio import Portfolio, PortfolioPosition  # noqa: F401
+    assert Portfolio is not None
+    assert PortfolioPosition is not None
+
+
+def test_sprint135_portfolio_json_behavior_preserved() -> None:
+    """Sprint 135: Portfolio.from_mapping still works identically after the move."""
+    from atlas.adapters.portfolio import Portfolio
+    portfolio = Portfolio.from_mapping({
+        "positions": [{
+            "ticker": "nvda",
+            "company": "NVIDIA",
+            "sector": "Semiconductors",
+            "country": "United States",
+            "market_cap": 3_300_000_000_000,
+            "weight": 60,
+            "quality_score": 92,
+            "risk_score": 77,
+        }]
+    })
+    assert len(portfolio.positions) == 1
+    pos = portfolio.positions[0]
+    assert pos.ticker == "NVDA"
+    assert pos.weight == 0.60
+    assert pos.quality_score == 92
+
+
+def test_sprint135_no_production_code_imports_analysis_portfolio() -> None:
+    """Sprint 135: zero production files may import from atlas.analysis.portfolio."""
+    import ast
+    import pathlib
+    repo_root = pathlib.Path(__file__).resolve().parent.parent
+    for py_file in (repo_root / "atlas").rglob("*.py"):
+        source = py_file.read_text(encoding="utf-8")
+        if "atlas.analysis.portfolio" not in source:
+            continue
+        tree = ast.parse(source)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module == "atlas.analysis.portfolio":
+                assert False, (
+                    f"{py_file}: import from atlas.analysis.portfolio found — "
+                    "module was deleted in Sprint 135"
+                )

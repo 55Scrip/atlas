@@ -1848,6 +1848,19 @@ Demo passed. Release verification green.
 
 ---
 
+**Sprint 135 (2026-07-02): Delete `atlas/analysis/portfolio.py`; move types to `atlas/adapters/portfolio.py`**
+
+**Decision:** "Lift and shift" — `Portfolio`, `PortfolioPosition`, `_position_from_mapping`, `_normalize_weight` moved from `atlas/analysis/portfolio.py` into `atlas/adapters/portfolio.py`. `atlas/analysis/portfolio.py` deleted. All 12 production import sites updated atomically in the same sprint.
+
+**Rationale:**
+- `atlas/adapters/portfolio.py` is the correct destination: already the legacy compatibility boundary; making it self-contained removes the only remaining coupling back into `atlas/analysis/`.
+- Doing the file deletion and all caller updates in one sprint avoids a partial-migration window where two modules each claim ownership.
+- No runtime behavior changed: `Portfolio.from_mapping`, `from_json_file`, field access all identical.
+
+**Outcome:** `atlas/analysis/portfolio.py` deleted. `atlas/analysis/` now contains only active modules: `engine.py`, `explanation.py`, `report.py`, `scores.py`, `providers.py`. Sprint 135 guardrail block added to `test_portfolio_analyze_deprecation.py`. Stale "is importable" assertions flipped in 5 test files. 1361 tests passing (3 skipped). Demo passed. RC2 green.
+
+---
+
 **Sprint 133 (2026-07-02): Delete `CompanyPortfolioProfile`; migrate providers to `PortfolioFitInput`**
 
 **Decision:** Option A (thin identity adapter). Updated `CompanyDataProvider.get_portfolio_profile()` return type across all 3 provider files to `PortfolioFitInput`. Changed `portfolio_fit_input_from_profile` to identity function rather than removing it — avoids touching 4 engine callers (conversation, dashboard, intelligence, decision) and their tests.

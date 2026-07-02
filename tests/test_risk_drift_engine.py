@@ -243,7 +243,7 @@ def test_sprint119_risk_drift_accepts_portfolio_fit_result_for_concentration():
         legacy_portfolio_to_domain_portfolio,
         portfolio_fit_input_from_profile,
     )
-    from atlas.analysis.portfolio import Portfolio as LegacyPortfolio
+    from atlas.adapters.portfolio import Portfolio as LegacyPortfolio
     from atlas.capabilities.portfolio_intelligence import PortfolioIntelligenceCapability
     from atlas.providers import MockCompanyAnalysisProvider
 
@@ -336,7 +336,7 @@ def test_sprint119_no_advisory_language_in_risk_drift_output():
 
 
 def test_sprint119_legacy_portfolio_module_still_active():
-    from atlas.analysis.portfolio import Portfolio  # noqa: F401
+    from atlas.adapters.portfolio import Portfolio  # noqa: F401
     assert Portfolio is not None
 
 

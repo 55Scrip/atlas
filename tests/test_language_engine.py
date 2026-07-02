@@ -1,6 +1,6 @@
 from typer.testing import CliRunner
 
-from atlas.analysis.portfolio import Portfolio
+from atlas.adapters.portfolio import Portfolio
 from atlas.cli.main import app
 from atlas.language import (
     AtlasConfidence,

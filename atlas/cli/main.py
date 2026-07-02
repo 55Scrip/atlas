@@ -18,7 +18,7 @@ from atlas.decision.memory import (
     render_memory_entries,
     save_ticker as save_ticker_to_memory,
 )
-from atlas.analysis.portfolio import Portfolio
+from atlas.adapters.portfolio import Portfolio
 from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
 from atlas.domains.portfolio import portfolio_summary as domain_portfolio_summary
 from atlas.analysis.report import build_investment_report, render_investment_report

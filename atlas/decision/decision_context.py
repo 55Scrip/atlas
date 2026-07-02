@@ -7,7 +7,7 @@ from atlas.decision.memory import MemoryStore
 from atlas.capabilities.watchlist_intelligence import WatchlistInput
 
 if TYPE_CHECKING:
-    from atlas.analysis.portfolio import Portfolio
+    from atlas.adapters.portfolio import Portfolio
 
 
 @dataclass(frozen=True)

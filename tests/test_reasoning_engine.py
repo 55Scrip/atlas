@@ -136,7 +136,7 @@ def test_sprint118_capability_engine_still_no_legacy_portfolio_import():
 
 
 def test_sprint118_legacy_portfolio_module_remains_active():
-    from atlas.analysis.portfolio import (  # noqa: F401
+    from atlas.adapters.portfolio import (  # noqa: F401
         Portfolio,
         PortfolioPosition,
     )
@@ -237,8 +237,8 @@ def test_sprint132_portfolio_analysis_signal_recommendation_deleted() -> None:
     """Sprint 132: PortfolioAnalysis, PortfolioSignal, PortfolioRecommendation deleted from portfolio.py."""
     import pytest
     with pytest.raises(ImportError):
-        from atlas.analysis.portfolio import PortfolioAnalysis  # noqa: F401
+        from atlas.adapters.portfolio import PortfolioAnalysis  # noqa: F401
     with pytest.raises(ImportError):
-        from atlas.analysis.portfolio import PortfolioSignal  # noqa: F401
+        from atlas.adapters.portfolio import PortfolioSignal  # noqa: F401
     with pytest.raises(ImportError):
-        from atlas.analysis.portfolio import PortfolioRecommendation  # noqa: F401
+        from atlas.adapters.portfolio import PortfolioRecommendation  # noqa: F401

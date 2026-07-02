@@ -157,6 +157,6 @@ def test_capability_does_not_import_providers() -> None:
 
 
 def test_existing_portfolio_legacy_imports_unchanged() -> None:
-    """Sprint 112/133: active boundary types remain importable; CompanyPortfolioProfile deleted Sprint 133."""
-    from atlas.analysis.portfolio import Portfolio
+    """Sprint 135: Portfolio importable from atlas.adapters.portfolio (atlas.analysis.portfolio deleted)."""
+    from atlas.adapters.portfolio import Portfolio
     assert Portfolio is not None

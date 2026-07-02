@@ -2,7 +2,7 @@ import json
 
 from typer.testing import CliRunner
 
-from atlas.analysis.portfolio import (
+from atlas.adapters.portfolio import (
     Portfolio,
     PortfolioPosition,
 )

@@ -29,7 +29,7 @@ from atlas.risk import RiskAnalysis
 from atlas.themes import ThemeEngine, ThemeInput
 
 if TYPE_CHECKING:
-    from atlas.analysis.portfolio import Portfolio
+    from atlas.adapters.portfolio import Portfolio
 
 
 class ConversationIntent(str, Enum):
