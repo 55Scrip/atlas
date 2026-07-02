@@ -1615,3 +1615,14 @@ Demo passed. Release verification green.
 - Transitive loading of `atlas.analysis.portfolio` via `atlas.analysis.__init__` is a pre-existing package coupling not introduced by reasoning/engine.py — fixing it is out of scope.
 
 **Outcome:** 2 files changed (engine + test). 7 new tests. 1245 tests passing (3 skipped). Demo passed. RC2 green. Recommended Sprint 119: `atlas/risk_drift/engine.py`.
+
+**Sprint 119 (2026-07-02): Migrate risk drift portfolio dependency**
+
+**Decision:** Two-part migration. (1) `Portfolio`: TYPE_CHECKING guard only — duck-typed `.positions` access preserved because CLI and portfolio_review both pass legacy Portfolio; changing callers is out of scope. (2) `PortfolioAnalysis`: fully replaced by `PortfolioFitResult` from capabilities — this was dead code (no caller passes non-None), making it a safe forward migration.
+
+**Rationale:**
+- `_current_largest_weight` accesses `portfolio.positions` — this is duck-typed and continues to work for legacy Portfolio passed by callers. Moving `Portfolio` behind TYPE_CHECKING removes the runtime import without breaking anything.
+- `current_portfolio_analysis: PortfolioAnalysis | None` was always None at runtime. Replacing with `PortfolioFitResult | None` is forward-aligned: future callers can pass `PortfolioFitResult` directly from the capability engine, enabling richer concentration context.
+- `.overlap_with_existing_holdings.score` → `.overlap.score` because `PortfolioFitResult` uses `overlap` as the field name (per models.py mapping).
+
+**Outcome:** 2 files changed (engine + test). 9 new tests. 1254 tests passing (3 skipped). Demo passed. RC2 green. Recommended Sprint 120: `atlas/suitability/engine.py`.

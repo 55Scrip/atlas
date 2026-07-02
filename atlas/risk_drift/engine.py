@@ -1,8 +1,14 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
-from atlas.analysis.portfolio import Portfolio, PortfolioAnalysis
 from atlas.analysis.scores import clamp_score
+from atlas.capabilities.portfolio_intelligence import PortfolioFitResult
+if TYPE_CHECKING:
+    from atlas.analysis.portfolio import Portfolio
+
 from atlas.economics import EconomicSignalAnalysis
 from atlas.market import MarketHealthReport, MarketRegime, MarketRegimeAnalysis
 from atlas.profile import (
@@ -43,7 +49,7 @@ class RiskDriftInput:
     original_profile: InvestorProfile
     current_profile: InvestorProfile
     current_portfolio: Portfolio | None = None
-    current_portfolio_analysis: PortfolioAnalysis | None = None
+    current_portfolio_analysis: PortfolioFitResult | None = None
     original_market_regime: MarketRegime | None = None
     current_market_regime: MarketRegimeAnalysis | None = None
     current_market_health: MarketHealthReport | None = None
@@ -594,7 +600,7 @@ def _concentration_in_portfolio_analysis(risk_drift_input: RiskDriftInput) -> bo
             analysis.sector_concentration,
             analysis.country_concentration,
             analysis.market_cap_concentration,
-            analysis.overlap_with_existing_holdings,
+            analysis.overlap,  # PortfolioFitResult uses .overlap (was .overlap_with_existing_holdings)
         )
     )
 

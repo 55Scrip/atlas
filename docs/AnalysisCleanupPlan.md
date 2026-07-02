@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 118 complete: `atlas/reasoning/engine.py` direct `PortfolioAnalysis` runtime import removed via `TYPE_CHECKING` guard + `from __future__ import annotations`. 7 new tests. Next: Sprint 119 — migrate `atlas/risk_drift/engine.py`.
+**Status:** ACTIVE — Sprint 119 complete: `atlas/risk_drift/engine.py` — `Portfolio` moved to TYPE_CHECKING; `PortfolioAnalysis` removed and replaced by `PortfolioFitResult` for `current_portfolio_analysis`. 9 new tests. Next: Sprint 120 — migrate `atlas/suitability/engine.py`.
 
 ---
 

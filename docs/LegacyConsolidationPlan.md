@@ -344,6 +344,31 @@ Extracted `portfolio_fit_input_from_profile(profile: CompanyPortfolioProfile) ->
 
 ---
 
+## Sprint 119 — Risk Drift Portfolio Dependency Migrated COMPLETED
+
+**Goal:** Remove legacy `Portfolio` and `PortfolioAnalysis` runtime imports from `atlas/risk_drift/engine.py`.
+
+**Pre-migration audit findings:**
+- `Portfolio`: live runtime path — `_current_largest_weight` accesses `portfolio.positions`. Callers (CLI, portfolio_review) pass legacy Portfolio. TYPE_CHECKING guard used; duck-typed `.positions` access preserved.
+- `PortfolioAnalysis`: dead code — `current_portfolio_analysis` field is NEVER passed as non-None by any caller. `_concentration_in_portfolio_analysis` always returns False at runtime.
+- Field mapping for `PortfolioAnalysis → PortfolioFitResult`: `.sector_concentration.score`, `.country_concentration.score`, `.market_cap_concentration.score` — all same. `.overlap_with_existing_holdings.score` → `.overlap.score` (different field name in PortfolioFitResult).
+
+**Chosen strategy: TYPE_CHECKING guard (Portfolio) + PortfolioFitResult replacement (PortfolioAnalysis)**
+- `Portfolio`: moved behind `if TYPE_CHECKING:`. Duck-typed `portfolio.positions` access preserved.
+- `PortfolioAnalysis`: removed entirely. `current_portfolio_analysis: PortfolioAnalysis | None` → `current_portfolio_analysis: PortfolioFitResult | None`. Enables forward-compatible callers to pass `PortfolioFitResult`.
+- `_concentration_in_portfolio_analysis` updated: `analysis.overlap_with_existing_holdings` → `analysis.overlap` (PortfolioFitResult field name).
+- Added `from __future__ import annotations` for PEP 563 deferred annotation evaluation.
+
+**Changes made:**
+1. `atlas/risk_drift/engine.py` — `from __future__ import annotations`; `TYPE_CHECKING` import; `Portfolio` behind TYPE_CHECKING; `PortfolioAnalysis` removed; `PortfolioFitResult` added as runtime import; `current_portfolio_analysis` retyped; `_concentration_in_portfolio_analysis` field name updated.
+2. `tests/test_risk_drift_engine.py` — 9 new Sprint 119 tests: AST runtime import check, future annotations, PortfolioFitResult in source, `.overlap` field used (AST-verified), PortfolioFitResult accepted at runtime, None-default behavior, no advisory language, legacy still active, capability engine still clean.
+
+**Tests: 1254 passing (3 skipped). Demo passed. Release verification green.**
+
+**Recommended Sprint 120 target:** `atlas/suitability/engine.py` — uses both `Portfolio` and `PortfolioAnalysis`.
+
+---
+
 ## Sprint 114 — Schema Gap Resolved + Conversation Caller Migrated COMPLETED
 
 **Goal:** Resolve the `atlas.shared.Holding` schema gap and migrate `atlas/conversation/engine.py` portfolio-fit path from legacy `PortfolioIntelligenceEngine` to `PortfolioIntelligenceCapability`.

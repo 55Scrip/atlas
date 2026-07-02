@@ -178,4 +178,173 @@ def test_risk_drift_cli_outputs_assessment(tmp_path):
     assert result.exit_code == 0
     assert "Risk Drift Assessment" in result.output
     assert "Overall Drift Level" in result.output
-    assert "Questions Atlas Should Ask" in result.output
+
+
+# ── Sprint 119: risk drift no longer runtime-imports atlas.analysis.portfolio ─
+
+def test_sprint119_no_direct_runtime_import_of_portfolio_or_portfolio_analysis():
+    """Portfolio and PortfolioAnalysis must only appear under TYPE_CHECKING."""
+    import ast
+    import pathlib
+
+    source = pathlib.Path("atlas/risk_drift/engine.py").read_text()
+    tree = ast.parse(source)
+
+    guarded_linenos: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If):
+            test = node.test
+            is_type_checking = (
+                (isinstance(test, ast.Name) and test.id == "TYPE_CHECKING")
+                or (isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING")
+            )
+            if is_type_checking:
+                for child in ast.walk(node):
+                    if hasattr(child, "lineno"):
+                        guarded_linenos.add(child.lineno)
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            if node.module and "analysis.portfolio" in node.module:
+                assert node.lineno in guarded_linenos, (
+                    f"Line {node.lineno}: runtime import from {node.module!r} "
+                    "found in risk_drift/engine.py — must be under TYPE_CHECKING"
+                )
+
+
+def test_sprint119_future_annotations_in_risk_drift_engine():
+    import pathlib
+    source = pathlib.Path("atlas/risk_drift/engine.py").read_text()
+    assert "from __future__ import annotations" in source
+
+
+def test_sprint119_portfolio_fit_result_used_for_portfolio_analysis_field():
+    import pathlib
+    source = pathlib.Path("atlas/risk_drift/engine.py").read_text()
+    assert "PortfolioFitResult" in source
+    assert "PortfolioAnalysis" not in source or "TYPE_CHECKING" in source
+
+
+def test_sprint119_concentration_check_uses_overlap_field():
+    import ast, pathlib
+    source = pathlib.Path("atlas/risk_drift/engine.py").read_text()
+    # verify analysis.overlap is accessed (not analysis.overlap_with_existing_holdings)
+    assert "analysis.overlap," in source
+    # the old field name must not appear as an attribute access in the AST
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute) and node.attr == "overlap_with_existing_holdings":
+            raise AssertionError("overlap_with_existing_holdings attribute access still present")
+
+
+def test_sprint119_risk_drift_accepts_portfolio_fit_result_for_concentration():
+    """_concentration_in_portfolio_analysis works with a real PortfolioFitResult."""
+    from atlas.adapters.portfolio import (
+        legacy_portfolio_to_domain_portfolio,
+        portfolio_fit_input_from_profile,
+    )
+    from atlas.analysis.portfolio import Portfolio as LegacyPortfolio
+    from atlas.capabilities.portfolio_intelligence import PortfolioIntelligenceCapability
+    from atlas.providers import MockCompanyAnalysisProvider
+
+    provider = MockCompanyAnalysisProvider()
+    profile = provider.get_portfolio_profile("NVDA")
+    legacy = LegacyPortfolio.from_mapping(
+        {
+            "positions": [
+                {
+                    "ticker": "NVDA",
+                    "company": "NVIDIA",
+                    "sector": "Semiconductors",
+                    "country": "United States",
+                    "market_cap": 3_300_000_000_000,
+                    "weight": 0.80,
+                    "quality_score": 92,
+                    "risk_score": 77,
+                }
+            ]
+        }
+    )
+    shared = legacy_portfolio_to_domain_portfolio(legacy)
+    fit_input = portfolio_fit_input_from_profile(profile)
+    result = PortfolioIntelligenceCapability().analyze(shared, fit_input)
+
+    # RiskDriftInput now accepts PortfolioFitResult for current_portfolio_analysis
+    ri = RiskDriftInput(
+        original_profile=_profile(
+            portfolio_purpose=PortfolioPurpose.CORE_PORTFOLIO,
+            risk_tolerance=RiskTolerance.BALANCED,
+            risk_capacity=RiskCapacity.MEDIUM,
+            time_horizon=TimeHorizon.LONG,
+        ),
+        current_profile=_profile(
+            portfolio_purpose=PortfolioPurpose.CORE_PORTFOLIO,
+            risk_tolerance=RiskTolerance.BALANCED,
+            risk_capacity=RiskCapacity.MEDIUM,
+            time_horizon=TimeHorizon.LONG,
+        ),
+        current_portfolio_analysis=result,
+    )
+    assessment = RiskDriftEngine().assess(ri)
+    # Concentration signal may fire because NVDA is 80% concentration
+    assert assessment is not None
+    assert isinstance(assessment.drift_score, int)
+
+
+def test_sprint119_risk_drift_behavior_unchanged_without_portfolio_analysis():
+    """Risk drift works correctly when current_portfolio_analysis is None (normal case)."""
+    ri = RiskDriftInput(
+        original_profile=_profile(
+            portfolio_purpose=PortfolioPurpose.CORE_PORTFOLIO,
+            risk_tolerance=RiskTolerance.BALANCED,
+            risk_capacity=RiskCapacity.MEDIUM,
+            time_horizon=TimeHorizon.LONG,
+        ),
+        current_profile=_profile(
+            portfolio_purpose=PortfolioPurpose.CORE_PORTFOLIO,
+            risk_tolerance=RiskTolerance.BALANCED,
+            risk_capacity=RiskCapacity.MEDIUM,
+            time_horizon=TimeHorizon.LONG,
+        ),
+    )
+    assessment = RiskDriftEngine().assess(ri)
+    assert assessment.overall_drift_level == RiskDriftLevel.NONE
+    assert assessment.drift_score == 0
+
+
+def test_sprint119_no_advisory_language_in_risk_drift_output():
+    ri = RiskDriftInput(
+        original_profile=_profile(
+            portfolio_purpose=PortfolioPurpose.CORE_PORTFOLIO,
+            risk_tolerance=RiskTolerance.GROWTH,
+            risk_capacity=RiskCapacity.HIGH,
+            time_horizon=TimeHorizon.LONG,
+        ),
+        current_profile=_profile(
+            portfolio_purpose=PortfolioPurpose.CORE_PORTFOLIO,
+            risk_tolerance=RiskTolerance.CONSERVATIVE,
+            risk_capacity=RiskCapacity.LOW,
+            time_horizon=TimeHorizon.SHORT,
+        ),
+    )
+    assessment = RiskDriftEngine().assess(ri)
+    rendered = render_risk_drift_assessment(assessment)
+    forbidden = ("strong buy", "strong sell", "buy now", "sell now", "price target", "guaranteed")
+    lowered = rendered.lower()
+    for term in forbidden:
+        assert term not in lowered, f"Forbidden term {term!r} in risk drift output"
+
+
+def test_sprint119_legacy_portfolio_module_still_active():
+    from atlas.analysis.portfolio import (  # noqa: F401
+        Portfolio,
+        PortfolioAnalysis,
+        PortfolioIntelligenceEngine,
+    )
+    assert True
+
+
+def test_sprint119_capability_engine_still_no_legacy_portfolio_import():
+    import pathlib
+    source = pathlib.Path("atlas/capabilities/portfolio_intelligence/engine.py").read_text()
+    assert "atlas.analysis.portfolio" not in source

@@ -888,3 +888,9 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - AST-verified: no direct runtime import of `atlas.analysis.portfolio` remains in reasoning/engine.py. Transitive load via `atlas.analysis.__init__` is a pre-existing package-level coupling unrelated to this file.
 - 7 new tests in `tests/test_reasoning_engine.py`. 1245 tests passing (3 skipped). Demo passed. Release verification green.
 - Recommended Sprint 119 target: `atlas/risk_drift/engine.py`.
+
+**Sprint 119 (2026-07-02):** Risk drift portfolio dependency migrated.
+- `atlas/risk_drift/engine.py` — `Portfolio` import moved to TYPE_CHECKING; duck-typed `.positions` access preserved for CLI and portfolio_review callers; `PortfolioAnalysis` removed entirely, replaced by `PortfolioFitResult` from capabilities for `current_portfolio_analysis` field; `_concentration_in_portfolio_analysis` updated: `.overlap_with_existing_holdings.score` → `.overlap.score`; `from __future__ import annotations` added.
+- Audit finding: `current_portfolio_analysis` was dead code — no caller ever passes non-None. Migration is behavior-preserving.
+- 9 new tests in `tests/test_risk_drift_engine.py`. 1254 tests passing (3 skipped). Demo passed. Release verification green.
+- Recommended Sprint 120 target: `atlas/suitability/engine.py`.

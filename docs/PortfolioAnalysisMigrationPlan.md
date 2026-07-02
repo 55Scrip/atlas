@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 118) — reasoning direct import removed via TYPE_CHECKING guard  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (4 of ~10 callers migrated: conversation, dashboard, portfolio_review, reasoning)  
+**Updated:** 2026-07-02 (Sprint 119) — risk drift portfolio dependency migrated  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 in progress (5 of ~10 callers migrated: conversation, dashboard, portfolio_review, reasoning, risk_drift)  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 
@@ -324,10 +324,10 @@ Migrate one production caller per sprint, in order of impact risk:
 
 4. ✓ `atlas/reasoning/engine.py` — **MIGRATED Sprint 118**; `from atlas.analysis.portfolio import PortfolioAnalysis` moved behind `TYPE_CHECKING` guard; `from __future__ import annotations` added; runtime field accesses (`analysis.final_reasoning`, `analysis.portfolio_score`, `analysis.sector_concentration.*`) remain as duck-typed attribute access — no import needed. No behavior change.
 
-**Recommended Sprint 119 target:** `atlas/risk_drift/engine.py` — uses `Portfolio` and `PortfolioAnalysis`; moderate coupling.
+5. ✓ `atlas/risk_drift/engine.py` — **MIGRATED Sprint 119**; `Portfolio` moved to TYPE_CHECKING (duck-typed `.positions` access preserved for current callers); `PortfolioAnalysis` removed — `current_portfolio_analysis` field now typed as `PortfolioFitResult | None`; `_concentration_in_portfolio_analysis` updated to use `.overlap.score`. Dead code path — no behavior change.
 
-5. `atlas/risk_drift/engine.py` — uses `Portfolio` and `PortfolioAnalysis`
-5. `atlas/risk_drift/engine.py` — uses `Portfolio` and `PortfolioAnalysis`
+**Recommended Sprint 120 target:** `atlas/suitability/engine.py` — uses both `Portfolio` and `PortfolioAnalysis`.
+
 6. `atlas/suitability/engine.py` — uses `Portfolio` and `PortfolioAnalysis`
 7. `atlas/monitoring/engine.py` — uses `Portfolio` as type annotation only
 8. `atlas/home/engine.py` — uses `Portfolio` as type annotation only
