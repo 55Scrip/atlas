@@ -157,14 +157,12 @@ def test_capability_does_not_import_providers() -> None:
 
 
 def test_existing_portfolio_legacy_imports_unchanged() -> None:
-    """Sprint 112: no migration — existing atlas.analysis.portfolio callers untouched."""
+    """Sprint 112: shared types remain importable — PortfolioIntelligenceEngine deleted Sprint 128."""
     from atlas.analysis.portfolio import (
         Portfolio,
-        PortfolioIntelligenceEngine,
         PortfolioAnalysis,
         CompanyPortfolioProfile,
     )
     assert Portfolio is not None
-    assert PortfolioIntelligenceEngine is not None
     assert PortfolioAnalysis is not None
     assert CompanyPortfolioProfile is not None

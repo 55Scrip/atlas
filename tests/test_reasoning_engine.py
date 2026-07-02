@@ -125,28 +125,27 @@ def test_sprint118_reasoning_behavior_unchanged_with_portfolio_analysis_none():
 
 def test_sprint118_reasoning_portfolio_analysis_field_still_accepted():
     """ReasoningInput still accepts a portfolio_analysis value (duck-typed at runtime)."""
-    from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine
-    from atlas.providers import MockCompanyAnalysisProvider
-
-    provider = MockCompanyAnalysisProvider()
-    profile = provider.get_portfolio_profile("NVDA")
-    portfolio = Portfolio.from_mapping(
-        {
-            "positions": [
-                {
-                    "ticker": "AAPL",
-                    "company": "Apple",
-                    "sector": "Consumer Electronics",
-                    "country": "United States",
-                    "market_cap": 3_000_000_000_000,
-                    "weight": 1.0,
-                    "quality_score": 88,
-                    "risk_score": 65,
-                }
-            ]
-        }
+    from atlas.analysis.portfolio import (
+        PortfolioAnalysis,
+        PortfolioRecommendation,
+        PortfolioSignal,
     )
-    analysis = PortfolioIntelligenceEngine().analyze(portfolio, profile)
+
+    signal = PortfolioSignal(score=75, reasoning="test reasoning")
+    analysis = PortfolioAnalysis(
+        company="NVIDIA",
+        ticker="NVDA",
+        portfolio_score=75,
+        recommendation=PortfolioRecommendation.NEUTRAL,
+        diversification_impact=signal,
+        sector_concentration=signal,
+        country_concentration=signal,
+        market_cap_concentration=signal,
+        overlap_with_existing_holdings=signal,
+        expected_portfolio_quality_impact=signal,
+        expected_portfolio_risk_impact=signal,
+        final_reasoning="Good diversification across sectors.",
+    )
     ri = ReasoningInput(portfolio_analysis=analysis)
     report = ReasoningEngine().analyze(ri)
     # portfolio_analysis evidence should appear in collected signals
@@ -164,7 +163,6 @@ def test_sprint118_legacy_portfolio_module_remains_active():
         CompanyPortfolioProfile,
         Portfolio,
         PortfolioAnalysis,
-        PortfolioIntelligenceEngine,
         PortfolioPosition,
     )
     assert True

@@ -10,7 +10,6 @@ from atlas.analysis.explanation import (
 from atlas.analysis.portfolio import (
     Portfolio,
     PortfolioAnalysis,
-    PortfolioIntelligenceEngine,
     PortfolioPosition,
     PortfolioRecommendation,
     get_mock_company_portfolio_profile,
@@ -27,7 +26,6 @@ __all__ = [
     "MockCompanyAnalysisProvider",
     "Portfolio",
     "PortfolioAnalysis",
-    "PortfolioIntelligenceEngine",
     "PortfolioPosition",
     "PortfolioRecommendation",
     "ScoreCategory",

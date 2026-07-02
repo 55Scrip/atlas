@@ -339,7 +339,6 @@ def test_sprint119_legacy_portfolio_module_still_active():
     from atlas.analysis.portfolio import (  # noqa: F401
         Portfolio,
         PortfolioAnalysis,
-        PortfolioIntelligenceEngine,
     )
     assert True
 

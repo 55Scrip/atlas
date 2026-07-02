@@ -221,9 +221,8 @@ def test_scoring_module_deleted():
 # ── legacy portfolio.py remains active ────────────────────────────────────────
 
 def test_legacy_portfolio_module_still_importable():
-    from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine  # noqa: F401
+    from atlas.analysis.portfolio import Portfolio  # noqa: F401
     assert Portfolio is not None
-    assert PortfolioIntelligenceEngine is not None
 
 
 def test_legacy_company_portfolio_profile_still_importable():

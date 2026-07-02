@@ -244,7 +244,6 @@ def test_sprint123_legacy_portfolio_module_still_active():
     import atlas.analysis.portfolio as legacy
     assert hasattr(legacy, "Portfolio")
     assert hasattr(legacy, "PortfolioAnalysis")
-    assert hasattr(legacy, "PortfolioIntelligenceEngine")
 
 
 def test_sprint123_capability_engine_still_clean():

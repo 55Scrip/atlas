@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 127 complete: `atlas/dashboard/engine.py` stale `portfolio_engine` attribute removed (Option A + B). **`PortfolioIntelligenceEngine` now has zero production runtime callers.** Next: Sprint 128 — dedicated `PortfolioIntelligenceEngine` deletion sprint.
+**Status:** ACTIVE — Sprint 128 complete: `PortfolioIntelligenceEngine` deleted from `atlas/analysis/portfolio.py` and `atlas/analysis/__init__.py`. Shared types (`Portfolio`, `PortfolioAnalysis`, `PortfolioPosition`, etc.) remain. Remaining cleanup: Portfolio/CompanyPortfolioProfile runtime coupling in CLI, adapters, and providers.
 
 ---
 

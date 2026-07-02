@@ -2,6 +2,20 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 128 — Delete PortfolioIntelligenceEngine
+
+Decision: Delete `PortfolioIntelligenceEngine` class from `atlas/analysis/portfolio.py` and remove its re-export from `atlas/analysis/__init__.py`. Zero active production callers confirmed as of Sprint 127.
+
+**Audit finding:** `grep -rn "PortfolioIntelligenceEngine"` across the repo found zero active production callers after Sprints 124–127 migrated all 4 engine call sites (decision, intelligence, conversation, dashboard) to `PortfolioIntelligenceCapability`. Remaining hits were test files and documentation strings only.
+
+**Deletion scope:** Only the `PortfolioIntelligenceEngine` class (lines 85–145 in the pre-deletion file). All shared types — `Portfolio`, `PortfolioPosition`, `PortfolioAnalysis`, `PortfolioSignal`, `PortfolioRecommendation`, `CompanyPortfolioProfile`, `get_mock_company_portfolio_profile` — remain intact. Private helper functions (`_diversification_impact`, `_sector_concentration`, etc.) become dead code but are left in place for this sprint.
+
+**Test cleanup:** Deleted `test_portfolio_engine_analyzes_target_in_portfolio_context` and `test_portfolio_engine_penalizes_existing_holding_overlap` (test_portfolio.py), deleted `test_portfolio_engine_can_analyze_ticker_from_provider` (test_providers.py). Rewrote `test_sprint118_reasoning_portfolio_analysis_field_still_accepted` to construct `PortfolioAnalysis` directly. Updated 8 stale "engine importable" assertions across sprint-guardrail tests to either remove the check or flip to assert NOT importable.
+
+**Guardrails added:** 3 new tests in `test_portfolio_analyze_deprecation.py` (Sprint 128 block) confirm: `PortfolioIntelligenceEngine` raises `ImportError` from `atlas.analysis.portfolio`, is absent from `atlas.analysis` namespace, and shared types remain importable.
+
+**Remaining `atlas.analysis.portfolio` runtime coupling:** `cli/main.py` (Portfolio loading), `adapters/portfolio.py` (LegacyPortfolio adapter), `providers/` (CompanyPortfolioProfile), `portfolio_review/engine.py` (structural analysis), `reasoning/engine.py` (PortfolioAnalysis duck-typing). These are out of scope for Sprint 128.
+
 ## 2026-07-02: Sprint 127 — Dashboard Engine: Remove Stale portfolio_engine Attribute; PortfolioIntelligenceEngine Zero-Caller Milestone
 
 Decision: Remove the dead `self.portfolio_engine` / `portfolio_engine` constructor parameter

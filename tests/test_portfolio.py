@@ -4,7 +4,6 @@ from typer.testing import CliRunner
 
 from atlas.analysis.portfolio import (
     Portfolio,
-    PortfolioIntelligenceEngine,
     PortfolioPosition,
     PortfolioRecommendation,
     get_mock_company_portfolio_profile,
@@ -48,34 +47,6 @@ def _sample_portfolio() -> Portfolio:
         )
     )
 
-
-def test_portfolio_engine_analyzes_target_in_portfolio_context():
-    portfolio = _sample_portfolio()
-    target = get_mock_company_portfolio_profile("NVDA")
-
-    analysis = PortfolioIntelligenceEngine().analyze(portfolio, target)
-
-    assert analysis.ticker == "NVDA"
-    assert analysis.recommendation == PortfolioRecommendation.NEUTRAL
-    assert analysis.portfolio_score == 69
-    assert analysis.diversification_impact.score == 80
-    assert analysis.sector_concentration.score == 90
-    assert analysis.country_concentration.score == 74
-    assert analysis.market_cap_concentration.score == 41
-    assert analysis.overlap_with_existing_holdings.score == 92
-    assert analysis.expected_portfolio_quality_impact.score == 51
-    assert analysis.expected_portfolio_risk_impact.score == 51
-    assert "sector concentration" in analysis.final_reasoning.lower()
-
-
-def test_portfolio_engine_penalizes_existing_holding_overlap():
-    portfolio = _sample_portfolio()
-    target = get_mock_company_portfolio_profile("AAPL")
-
-    analysis = PortfolioIntelligenceEngine().analyze(portfolio, target)
-
-    assert analysis.overlap_with_existing_holdings.score == 20
-    assert analysis.recommendation == PortfolioRecommendation.NEUTRAL
 
 
 def test_portfolio_json_loader_accepts_decimal_and_percent_weights(tmp_path):

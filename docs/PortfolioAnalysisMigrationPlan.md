@@ -1,8 +1,8 @@
 # Portfolio Analysis Migration Plan
 
 **Created:** 2026-07-02 (Sprint 110)  
-**Updated:** 2026-07-02 (Sprint 127) — dashboard/engine.py stale portfolio_engine attribute removed; PortfolioIntelligenceEngine now has zero production runtime callers  
-**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 complete for PortfolioIntelligenceEngine (zero runtime callers); remaining Phase 4 work: Portfolio/CompanyPortfolioProfile in CLI, adapters, and providers  
+**Updated:** 2026-07-02 (Sprint 128) — PortfolioIntelligenceEngine deleted from atlas/analysis/portfolio.py and atlas/analysis/__init__.py  
+**Status:** IN PROGRESS — Phases 1–3 complete; Phase 4 complete for PortfolioIntelligenceEngine (deleted Sprint 128); remaining Phase 4 work: Portfolio/CompanyPortfolioProfile runtime coupling in CLI, adapters, and providers  
 **Target module:** `atlas/analysis/portfolio.py`  
 **Risk:** VERY HIGH — highest remaining coupling in `atlas/analysis/`  
 

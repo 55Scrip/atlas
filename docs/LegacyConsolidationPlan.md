@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 127)  
-**Status:** Active — Sprint 127 complete; `dashboard/engine.py` stale `portfolio_engine` attribute removed (Option A + B). **`PortfolioIntelligenceEngine` has zero production runtime callers as of Sprint 127.** WatchlistEngine deleted Sprint 99. Next: Sprint 128 — dedicated `PortfolioIntelligenceEngine` deletion from `atlas/analysis/portfolio.py`.
+**Updated:** 2026-07-02 (Sprint 128)  
+**Status:** Active — Sprint 128 complete; `PortfolioIntelligenceEngine` deleted from `atlas/analysis/portfolio.py` and `atlas/analysis/__init__.py`. WatchlistEngine deleted Sprint 99. Remaining `atlas.analysis.portfolio` callers: shared types only (`Portfolio`, `PortfolioAnalysis`, `PortfolioPosition`, etc.) used by CLI, adapters, providers, and reasoning.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and

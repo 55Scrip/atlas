@@ -2,7 +2,7 @@ from urllib.error import HTTPError, URLError
 
 from atlas.analysis.engine import AtlasInvestmentEngine
 from atlas.decision.memory import MemoryStore, save_ticker as save_ticker_to_memory
-from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine, PortfolioPosition
+from atlas.analysis.portfolio import Portfolio, PortfolioPosition
 from atlas.providers import (
     CompanyDataProvider,
     MockCompanyAnalysisProvider,
@@ -140,19 +140,6 @@ def test_investment_engine_can_analyze_ticker_from_provider():
 
     assert report.company == "NVIDIA (NVDA)"
     assert report.atlas_score > 0
-
-
-def test_portfolio_engine_can_analyze_ticker_from_provider():
-    provider = MockCompanyAnalysisProvider()
-
-    analysis = PortfolioIntelligenceEngine().analyze_ticker(
-        portfolio=_sample_portfolio(),
-        ticker="NVDA",
-        provider=provider,
-    )
-
-    assert analysis.ticker == "NVDA"
-    assert analysis.company == "NVIDIA"
 
 
 

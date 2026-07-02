@@ -362,9 +362,11 @@ def test_target_weight_normalization_handles_percent_format() -> None:
 # Existing legacy callers unchanged
 # ---------------------------------------------------------------------------
 
-def test_legacy_portfolio_intelligence_engine_still_importable() -> None:
-    from atlas.analysis.portfolio import PortfolioIntelligenceEngine
-    assert PortfolioIntelligenceEngine is not None
+def test_sprint128_portfolio_intelligence_engine_not_importable() -> None:
+    """Sprint 128: PortfolioIntelligenceEngine deleted — import must raise ImportError."""
+    import pytest
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import PortfolioIntelligenceEngine  # noqa: F401
 
 
 def test_legacy_portfolio_analysis_still_importable() -> None:

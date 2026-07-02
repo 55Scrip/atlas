@@ -3,11 +3,8 @@
 Sprint 79 deprecated the command; Sprint 89 removed the command body.
 `atlas portfolio analyze` is no longer a registered CLI command.
 
-The underlying `atlas.analysis.portfolio` engine remains on disk:
-- Portfolio, PortfolioAnalysis, PortfolioIntelligenceEngine are still imported by
-  atlas/intelligence, atlas/conversation, atlas/decision, atlas/dashboard,
-  atlas/reasoning, atlas/home, atlas/suitability, atlas/risk_drift,
-  atlas/monitoring, and atlas/portfolio_review — must be preserved.
+Sprint 128: PortfolioIntelligenceEngine deleted — zero production callers as of Sprint 127.
+Shared types (Portfolio, PortfolioAnalysis, PortfolioPosition, etc.) remain on disk.
 """
 
 from __future__ import annotations
@@ -97,10 +94,9 @@ def test_portfolio_review_command_is_retired(tmp_path) -> None:
 
 def test_portfolio_analysis_engine_remains_importable() -> None:
     """atlas.analysis.portfolio must still be importable — shared types still in use."""
-    from atlas.analysis.portfolio import Portfolio, PortfolioAnalysis, PortfolioIntelligenceEngine
+    from atlas.analysis.portfolio import Portfolio, PortfolioAnalysis
     assert Portfolio is not None
     assert PortfolioAnalysis is not None
-    assert PortfolioIntelligenceEngine is not None
 
 
 def test_portfolio_engine_active_callers_remain() -> None:
@@ -114,14 +110,14 @@ def test_portfolio_engine_active_callers_remain() -> None:
 
 
 def test_portfolio_engine_module_remains_on_disk() -> None:
-    """atlas.analysis.portfolio engine must still exist — shared types are still in use."""
+    """atlas.analysis.portfolio must still exist — shared types are still in use."""
     import importlib
     mod = importlib.import_module("atlas.analysis.portfolio")
     assert hasattr(mod, "Portfolio"), (
         "atlas.analysis.portfolio.Portfolio must still be importable (shared type used by many engines)"
     )
-    assert hasattr(mod, "PortfolioIntelligenceEngine"), (
-        "atlas.analysis.portfolio.PortfolioIntelligenceEngine must still be importable"
+    assert not hasattr(mod, "PortfolioIntelligenceEngine"), (
+        "atlas.analysis.portfolio.PortfolioIntelligenceEngine was deleted in Sprint 128"
     )
 
 
@@ -161,3 +157,36 @@ def test_portfolio_review_is_retired(tmp_path) -> None:
     p = _fake_portfolio_path(tmp_path)
     result = runner.invoke(app, ["portfolio", "review", str(p)])
     assert result.exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# Sprint 128: PortfolioIntelligenceEngine deletion guardrails
+# ---------------------------------------------------------------------------
+
+def test_sprint128_portfolio_intelligence_engine_not_importable_from_module() -> None:
+    """Sprint 128: PortfolioIntelligenceEngine deleted — must NOT be importable from atlas.analysis.portfolio."""
+    import pytest
+    with pytest.raises(ImportError):
+        from atlas.analysis.portfolio import PortfolioIntelligenceEngine  # noqa: F401
+
+
+def test_sprint128_portfolio_intelligence_engine_not_in_atlas_analysis() -> None:
+    """Sprint 128: PortfolioIntelligenceEngine removed from atlas.analysis __all__ and namespace."""
+    import importlib
+    mod = importlib.import_module("atlas.analysis")
+    assert not hasattr(mod, "PortfolioIntelligenceEngine"), (
+        "PortfolioIntelligenceEngine was deleted in Sprint 128 — must not appear in atlas.analysis"
+    )
+
+
+def test_sprint128_shared_types_still_importable() -> None:
+    """Sprint 128: shared portfolio types must remain importable after PortfolioIntelligenceEngine deletion."""
+    from atlas.analysis.portfolio import (  # noqa: F401
+        CompanyPortfolioProfile,
+        Portfolio,
+        PortfolioAnalysis,
+        PortfolioPosition,
+        PortfolioRecommendation,
+        PortfolioSignal,
+    )
+    assert True
