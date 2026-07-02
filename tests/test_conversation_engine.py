@@ -131,7 +131,8 @@ def test_conversation_engine_answers_watchlist_review():
 
     assert response.intent == ConversationIntent.WATCHLIST_REVIEW
     assert "AI Watchlist" in response.short_answer
-    assert "Watchlist Engine" in response.engines_used
+    assert "highlights" in response.short_answer
+    assert "Watchlist Intelligence Engine" in response.engines_used
 
 
 def test_conversation_renderer_includes_required_sections():

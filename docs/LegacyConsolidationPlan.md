@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 97)  
-**Status:** Active — Sprint 97 complete; WatchlistEngine removed from `atlas/intelligence/`; `IntelligenceReport.watchlist_intelligence` now carries `WatchlistIntelligenceReport | None`; caller count 2 → 1. Sprint 98 target: migrate `atlas/conversation/` — `_answer_watchlist_review()` output text changes.
+**Updated:** 2026-07-02 (Sprint 98)  
+**Status:** Active — Sprint 98 complete; WatchlistEngine active caller count is now **0**. `_answer_watchlist_review()` migrated to Blueprint-aligned Watchlist Intelligence. `WatchlistEngine` and `atlas/analysis/watchlist.py` retained for Sprint 99 deletion. Type-only `Watchlist`/`WatchlistItem` imports in 5 modules documented for later cleanup.
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,50 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 98 Migration Target — COMPLETED
+
+### Completed: WatchlistEngine removed from `atlas/conversation/engine.py`; active caller count 1 → 0
+
+**Sprint 98 result:**
+
+**Goal:** Migrate `_answer_watchlist_review()` from `WatchlistEngine / WatchlistAnalysis` to `WatchlistIntelligenceEngine / WatchlistIntelligenceReport`; reduce active WatchlistEngine caller count to zero.
+
+**Changes made:**
+1. Removed `WatchlistEngine` import from `atlas/conversation/engine.py`; added `WatchlistIntelligenceEngine`, `WatchlistIntelligenceInput`, `WatchlistItem as IntelligenceWatchlistItem`
+2. Removed `watchlist_engine: WatchlistEngine | None = None` from `ConversationEngine.__init__`
+3. Removed `self.watchlist_engine = watchlist_engine or WatchlistEngine(self.investment_engine)`
+4. Rewrote `_answer_watchlist_review()`: now takes no `provider` argument; calls `WatchlistIntelligenceEngine().analyze(WatchlistIntelligenceInput(...))` using established conversion pattern
+5. Updated `_answer_watchlist_review()` dispatch in `answer()` to remove `provider` argument
+6. Output framing changed from score-ranking to research-attention (documented intentional change):
+   - `short_answer`: "Atlas ranks X first in Y." → "Atlas highlights X for research attention in Y."
+   - `supporting_reasoning`: `strongest_opportunity/cheapest_valuation/highest_quality_company` fields → `companies_needing_attention[0].detail / evidence_gaps[0].detail / observations[0].detail / overview`
+   - `engines_used`: `("Watchlist Engine", "Investment Engine")` → `("Watchlist Intelligence Engine",)`
+   - `confidence`: 80 → 70 (matching Blueprint monitoring pattern)
+7. `WATCHLIST_ENGINE_CALLERS` frozen set reduced to empty tuple
+8. Replaced Sprint 97 "remains a caller" test with Sprint 98 `test_conversation_engine_does_not_import_watchlist_engine` guardrail
+9. `test_watchlist_engine_active_callers_remain` replaced with `test_watchlist_engine_active_callers_are_zero`
+10. Updated `test_conversation_engine.py` WATCHLIST_REVIEW assertions: "Watchlist Engine" → "Watchlist Intelligence Engine"; added "highlights" phrase check
+11. Updated all 5 docs + `WatchlistEngineMigrationPlan.md`
+
+**Output change (documented — intentional):**
+`atlas conversation` WATCHLIST_REVIEW response no longer uses score-ranking language. Output now uses research-attention framing, consistent with Blueprint principle that watchlist intelligence surfaces research gaps and coverage priorities rather than ranked scores. Behavior remains deterministic, local-only, provider-free.
+
+**WatchlistEngine active caller count:**
+- Before Sprint 98: 1 (conversation only)
+- After Sprint 98: **0** — no active runtime callers remain
+- `WatchlistEngine` and `atlas/analysis/watchlist.py` retained for Sprint 99 deletion verification
+- `Watchlist`/`WatchlistItem` type-only imports remain in 5 modules — cleanup deferred
+
+**Engine deletion criteria (Sprint 99):**
+1. Run full deletion eligibility audit
+2. Verify `test_watchlist_engine_callers_are_exactly_the_known_set` passes with empty set
+3. Resolve `Watchlist`/`WatchlistItem` type-only imports (5 modules)
+4. Migrate or remove `tests/test_watchlist.py` direct engine tests
+5. Delete `atlas/analysis/watchlist.py` and `atlas/analysis/__init__.py` re-exports
+6. Verify demo, release verification, and full test suite green
 
 ---
 

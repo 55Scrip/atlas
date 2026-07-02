@@ -1257,3 +1257,22 @@ Demo passed. Release verification green.
 
 **Outcome:** WatchlistEngine caller count reduced 2 → **1** (conversation only).
 `atlas/intelligence/engine.py` no longer imports `WatchlistEngine`. `IntelligenceReport.watchlist_intelligence` holds `WatchlistIntelligenceReport | None`. 1124 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 98 (2026-07-02): Remove WatchlistEngine from `atlas/conversation/engine.py`; active caller count → 0**
+
+**Decision:** Rewrite `_answer_watchlist_review()` to use `WatchlistIntelligenceEngine`; adopt research-attention output framing; set confidence to 70 (matching Blueprint monitoring pattern).
+
+**Rationale:**
+- This is the final active WatchlistEngine caller. After Sprint 98, the active caller count is zero.
+- `_answer_watchlist_review()` previously rendered 6 legacy `WatchlistAnalysis` fields (`strongest_opportunity`, `cheapest_valuation`, `highest_quality_company`, `final_atlas_view`, `name`). None have 1:1 equivalents in `WatchlistIntelligenceReport`, requiring deliberate field mapping.
+- Output framing shift from score-ranking to research-attention is intentional: Blueprint watchlist intelligence surfaces research gaps and coverage priorities, not ranked investment scores. Keeping score-ranking language ("Atlas ranks X first") would misrepresent the underlying data source.
+- `confidence` changed from 80 to 70 for consistency with the Blueprint monitoring watchlist path (Sprint 93 established 70 as the Blueprint watchlist confidence baseline).
+- Provider no longer passed to `_answer_watchlist_review()` — `WatchlistIntelligenceEngine` needs none. This is a provider boundary reduction, not expansion.
+
+**Alternatives considered:**
+- Keep `confidence=80`: rejected — 80 was a legacy hardcode unrelated to the Blueprint output; 70 matches the established Blueprint watchlist pattern.
+- Map `cheapest_valuation`/`highest_quality_company` to dedicated Blueprint fields: no 1:1 equivalent exists; `evidence_gaps[0].detail` and `observations[0].detail` provide the closest research-coverage substitutes.
+
+**Outcome:** WatchlistEngine active caller count: 1 → **0**. All active callers retired across Sprints 93–98. `WatchlistEngine` and `atlas/analysis/watchlist.py` retained for Sprint 99 deletion. 1124 tests passing (3 skipped). Demo passed. Release verification green.

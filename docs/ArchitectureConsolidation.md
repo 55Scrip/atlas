@@ -672,3 +672,22 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 1124 tests passing (3 skipped). Demo passed. Release verification green.
 - Sprint 98 target: migrate `atlas/conversation/` — `_answer_watchlist_review()` output text changes
   from score-ranking to research-attention framing; field mapping documented in WatchlistEngineMigrationPlan.md.
+
+**Sprint 98 (2026-07-02):** WatchlistEngine removed from `atlas/conversation/engine.py`; active caller count 1 → **0**. WatchlistEngine retained for Sprint 99 deletion.
+- `ConversationEngine.__init__` no longer accepts or instantiates `WatchlistEngine`.
+  `_answer_watchlist_review()` no longer takes `provider` argument; calls
+  `WatchlistIntelligenceEngine().analyze(WatchlistIntelligenceInput(...))` directly.
+- Output framing change (intentional): "Atlas ranks X first" → "Atlas highlights X for research attention".
+  `supporting_reasoning` fields shift from legacy score fields (`strongest_opportunity`,
+  `cheapest_valuation`, `highest_quality_company`) to Blueprint research fields
+  (`companies_needing_attention[0].detail`, `evidence_gaps[0].detail`, `observations[0].detail`, `overview`).
+  `engines_used`: `("Watchlist Engine", "Investment Engine")` → `("Watchlist Intelligence Engine",)`.
+  `confidence`: 80 → 70 (matching Blueprint monitoring pattern).
+- Guardrail: `test_conversation_engine_does_not_import_watchlist_engine` added.
+  `test_watchlist_engine_active_callers_are_zero` confirms empty caller set.
+  `WATCHLIST_ENGINE_CALLERS` is now an empty tuple.
+- WatchlistEngine active caller count: 1 before → **0** after. All active callers retired.
+- `WatchlistEngine` / `atlas/analysis/watchlist.py` retained for Sprint 99 deletion verification.
+- Type-only `Watchlist`/`WatchlistItem` imports remain in 5 modules — cleanup deferred post-deletion.
+- 1124 tests passing (3 skipped). Demo passed. Release verification green.
+- Sprint 99 target: delete `atlas/analysis/watchlist.py` and engine; resolve type-only imports.

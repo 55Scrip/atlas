@@ -3,7 +3,12 @@ from enum import Enum
 
 from atlas.analysis.engine import AtlasInvestmentEngine
 from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine
-from atlas.analysis.watchlist import Watchlist, WatchlistEngine
+from atlas.analysis.watchlist import Watchlist
+from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
+from atlas.capabilities.watchlist_intelligence.models import (
+    WatchlistIntelligenceInput,
+    WatchlistItem as IntelligenceWatchlistItem,
+)
 from atlas.intelligence import IntelligenceContext, IntelligenceEngine, IntelligenceInput
 from atlas.market import (
     MarketHealthEngine,
@@ -77,7 +82,6 @@ class ConversationEngine:
         intent_classifier: IntentClassifier | None = None,
         investment_engine: AtlasInvestmentEngine | None = None,
         portfolio_engine: PortfolioIntelligenceEngine | None = None,
-        watchlist_engine: WatchlistEngine | None = None,
         theme_engine: ThemeEngine | None = None,
         market_health_engine: MarketHealthEngine | None = None,
         market_regime_engine: MarketRegimeEngine | None = None,
@@ -86,7 +90,6 @@ class ConversationEngine:
         self.intent_classifier = intent_classifier or IntentClassifier()
         self.investment_engine = investment_engine or AtlasInvestmentEngine()
         self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()
-        self.watchlist_engine = watchlist_engine or WatchlistEngine(self.investment_engine)
         self.theme_engine = theme_engine or ThemeEngine()
         self.market_health_engine = market_health_engine or MarketHealthEngine()
         self.market_regime_engine = market_regime_engine or MarketRegimeEngine()
@@ -107,7 +110,7 @@ class ConversationEngine:
         if intent == ConversationIntent.PORTFOLIO_REVIEW:
             return self._answer_portfolio_review(conversation_input, provider, ticker)
         if intent == ConversationIntent.WATCHLIST_REVIEW:
-            return self._answer_watchlist_review(conversation_input, provider)
+            return self._answer_watchlist_review(conversation_input)
         if intent == ConversationIntent.THEME_RESEARCH:
             return self._answer_theme_research(conversation_input)
         if intent == ConversationIntent.MARKET_HEALTH:
@@ -196,29 +199,60 @@ class ConversationEngine:
     def _answer_watchlist_review(
         self,
         conversation_input: ConversationInput,
-        provider: CompanyDataProvider,
     ) -> ConversationResponse:
         if conversation_input.watchlist is None:
             return _needs_context_response(
                 intent=ConversationIntent.WATCHLIST_REVIEW,
                 missing_context="watchlist",
-                engines_used=("Watchlist Engine",),
+                engines_used=("Watchlist Intelligence Engine",),
             )
-        analysis = self.watchlist_engine.analyze(conversation_input.watchlist, provider)
+        watchlist = conversation_input.watchlist
+        intelligence_input = WatchlistIntelligenceInput(
+            name=watchlist.name,
+            items=tuple(
+                IntelligenceWatchlistItem(id=item.ticker.lower(), ticker=item.ticker)
+                for item in watchlist.items
+            ),
+        )
+        report = WatchlistIntelligenceEngine().analyze(intelligence_input)
+        first_ticker = (
+            report.companies_needing_attention[0].ticker
+            if report.companies_needing_attention
+            else report.observations[0].ticker
+            if report.observations
+            else "the watchlist"
+        )
+        first_detail = (
+            report.companies_needing_attention[0].detail
+            if report.companies_needing_attention
+            else report.overview
+        )
+        evidence_context = (
+            report.evidence_gaps[0].detail
+            if report.evidence_gaps
+            else report.observations[0].detail
+            if report.observations
+            else report.overview
+        )
+        research_context = (
+            report.observations[0].detail
+            if report.observations
+            else report.overview
+        )
         return ConversationResponse(
             intent=ConversationIntent.WATCHLIST_REVIEW,
             short_answer=(
-                f"Atlas ranks {analysis.strongest_opportunity.ticker} first in "
-                f"{analysis.name}."
+                f"Atlas highlights {first_ticker} for research attention in "
+                f"{report.name}."
             ),
             supporting_reasoning=(
-                analysis.strongest_opportunity.reasoning,
-                analysis.cheapest_valuation.reasoning,
-                analysis.highest_quality_company.reasoning,
-                analysis.final_atlas_view,
+                first_detail,
+                evidence_context,
+                research_context,
+                report.overview,
             ),
-            engines_used=("Watchlist Engine", "Investment Engine"),
-            confidence=80,
+            engines_used=("Watchlist Intelligence Engine",),
+            confidence=70,
             suggested_follow_up_questions=(
                 "Compare with AMD",
                 "Show theme analysis",
