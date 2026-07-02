@@ -764,3 +764,17 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 4 guardrail tests added: module deleted, file gone, no production imports, types importable from
   new location.
 - 1125 tests passing (3 skipped). Demo passed. Release verification green.
+
+**Sprint 104 (2026-07-02):** `MemoryEngine` retired; `atlas/analysis/memory.py` deleted.
+- `MemoryEngine` class removed. Types (`MemoryEntry`, `MemoryComparison`, `MemoryStore`) and logic
+  moved to `atlas/decision/memory.py` as free functions `save_ticker()` and `compare_memory()`.
+- Callers: `atlas/cli/main.py` (3 memory CLI commands), `atlas/decision/decision_engine.py`,
+  `atlas/decision/decision_context.py`, `atlas/decision/decision_result.py` — all updated.
+- `atlas/decision/decision_engine.py`: removed `memory_engine` constructor param; `_compare_memory()`
+  calls `compare_memory()` directly.
+- `atlas/analysis/__init__.py`: 6 memory re-exports removed.
+- `tests/test_memory.py`: all `MemoryEngine` references replaced with direct types and free functions.
+- `tests/test_decision_engine.py`, `tests/test_providers.py`: imports and calls updated.
+- 5 guardrail tests added: module deleted, file gone, no production imports, types importable from
+  new location, `atlas.analysis` has no stale memory re-exports.
+- 1130 tests passing (3 skipped). Demo passed. Release verification green.

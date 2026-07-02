@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from atlas.analysis.memory import MemoryEngine, MemoryStore
+from atlas.decision.memory import MemoryEntry, MemoryStore
 from atlas.analysis.portfolio import Portfolio, PortfolioPosition
 from atlas.capabilities.watchlist_intelligence import WatchlistInput, WatchlistInputItem
 from atlas.decision import (
@@ -102,21 +102,10 @@ def test_decision_engine_learns_more_when_required_context_is_missing():
 def test_decision_engine_uses_memory_engine_when_history_exists(tmp_path):
     provider = MockCompanyAnalysisProvider()
     store = MemoryStore(tmp_path / "memory.json")
-    memory_engine = MemoryEngine()
     investment_engine = AtlasDecisionEngine().investment_engine
     report = investment_engine.analyze_ticker("NVDA", provider)
-    memory_engine.save(
-        store=store,
-        ticker="NVDA",
-        report=report,
-        timestamp=datetime(2026, 1, 1, tzinfo=UTC),
-    )
-    memory_engine.save(
-        store=store,
-        ticker="NVDA",
-        report=report,
-        timestamp=datetime(2026, 2, 1, tzinfo=UTC),
-    )
+    store.save(MemoryEntry.from_report(ticker="NVDA", report=report, timestamp=datetime(2026, 1, 1, tzinfo=UTC)))
+    store.save(MemoryEntry.from_report(ticker="NVDA", report=report, timestamp=datetime(2026, 2, 1, tzinfo=UTC)))
     context = DecisionContext(
         portfolio=_sample_portfolio(),
         historical_memory=store,

@@ -1,7 +1,7 @@
 # Analysis Package Cleanup Plan
 
 **Created:** 2026-07-02 (Sprint 102)  
-**Status:** ACTIVE — Sprint 103 complete: `ComparisonEngine` retired. Next target: `MemoryEngine` (Sprint 104+)
+**Status:** ACTIVE — Sprint 104 complete: `MemoryEngine` retired. Next target: `portfolio.py` or `engine.py` (Sprint 105+)
 
 ---
 
@@ -24,7 +24,7 @@ remaining modules. This document tracks the cleanup roadmap for those modules.
 | `explanation.py` | 204 | `ExplanationEngine`, `InvestmentExplanation`, `explain_investment_report`, `render_investment_explanation` | Yes | Still active legacy |
 | `growth.py` | 18 | `GrowthAnalysis`, `placeholder_growth_analysis` | No | Sub-module of company_analysis; leave unchanged |
 | `macro.py` | 18 | `MacroAnalysis`, `placeholder_macro_analysis` | No | Sub-module of company_analysis; leave unchanged |
-| `memory.py` | 255 | `MemoryEngine`, `MemoryEntry`, `MemoryStore`, `MemoryComparison`, `render_memory_entries`, `render_memory_comparison` | Yes | Active CLI path — defer after ComparisonEngine |
+| `memory.py` | 255 | `MemoryEngine`, `MemoryEntry`, `MemoryStore`, `MemoryComparison`, `render_memory_entries`, `render_memory_comparison` | No | **Sprint 104 ✓ — deleted; types moved to `atlas/decision/memory.py`** |
 | `moat.py` | 18 | `MoatAnalysis`, `placeholder_moat_analysis` | No | Sub-module of company_analysis; leave unchanged |
 | `portfolio.py` | 457 | `Portfolio`, `PortfolioPosition`, `PortfolioAnalysis`, `PortfolioIntelligenceEngine`, `PortfolioRecommendation`, `CompanyPortfolioProfile`, `get_mock_company_portfolio_profile`, `render_portfolio_analysis` | Yes | Highest-coupling module — largest migration; leave for later |
 | `quality.py` | 18 | `QualityAnalysis`, `placeholder_quality_analysis` | No | Sub-module; leave unchanged |
@@ -159,7 +159,7 @@ No Blueprint-aligned engine provides the same score-delta tracking capability.
 Three active CLI commands. Historical memory files written to user's local filesystem. If
 `MemoryEngine` behavior changes, existing saved memory files must still be readable.
 
-### Recommended action: DEFER — after ComparisonEngine
+### Outcome: COMPLETED Sprint 104 — moved to `atlas/decision/memory.py`; `atlas/analysis/memory.py` deleted
 
 ---
 
@@ -221,7 +221,8 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 | Sprint | Target | Action | Risk |
 |---|---|---|---|
 | 103 ✓ | `atlas/analysis/comparison.py` | Retired `ComparisonEngine`; types moved to `atlas/decision/comparison.py`; file deleted | DONE |
-| 104+ | `atlas/analysis/memory.py` | Audit `atlas memory` CLI commands; consider retire or migrate | MEDIUM-HIGH |
+| 104 ✓ | `atlas/analysis/memory.py` | Retired `MemoryEngine`; types/logic moved to `atlas/decision/memory.py`; file deleted | DONE |
+| 105+ | `atlas/analysis/portfolio.py` | High-coupling migration; 10+ callers; long-term project | HIGH |
 | Future | `atlas/analysis/portfolio.py` | High-coupling migration; 10+ callers; long-term project | HIGH |
 | Future | `atlas/analysis/engine.py` | Core scoring engine; 10+ callers; foundational — leave for late cleanup | VERY HIGH |
 | Leave | `scores.py`, `growth.py`, `macro.py`, `moat.py`, `quality.py`, `sentiment.py`, `technicals.py`, `valuation.py` | Internal sub-modules; used only by `company_analysis.py`/`engine.py`; no direct cleanup needed | — |
@@ -241,7 +242,7 @@ retire the path entirely. If it is needed, use Option A (inline simple ranking).
 
 ## Architecture Boundaries (Sprint 102 state)
 
-- `atlas/domains/` does not import from `atlas.analysis.comparison` or `atlas.analysis.memory` ✓
+- `atlas/domains/` does not import from `atlas.analysis.comparison` or `atlas.analysis.memory` ✓ (both deleted)
 - `atlas/capabilities/` does not depend on either engine ✓
 - `atlas.analysis.watchlist` is fully deleted ✓
 - No stale `Watchlist`/`WatchlistItem` re-exports in `atlas.analysis` ✓

@@ -1364,3 +1364,22 @@ Demo passed. Release verification green.
 - Keep `ComparisonEngine` class: rejected — no benefit to the class wrapper once callers are 0; free function is cleaner.
 
 **Outcome:** `atlas/analysis/comparison.py` deleted. `atlas.analysis.comparison` raises `ModuleNotFoundError`. `ComparisonResult` et al. importable from `atlas.decision.comparison`. `AtlasDecisionEngine` constructor lost `comparison_engine` param. 4 guardrail tests added. 1125 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 104 (2026-07-02): Retire `MemoryEngine`; delete `atlas/analysis/memory.py`**
+
+**Decision:** Move `MemoryEntry`, `MemoryComparison`, `MemoryStore` types and all logic to `atlas/decision/memory.py` as free functions; delete `atlas/analysis/memory.py`. Pattern identical to Sprint 103.
+
+**Rationale:**
+- Option A (delete outright) not viable: 3 active CLI commands (`atlas memory save/show/compare`) and `AtlasDecisionEngine._compare_memory()` are active callers.
+- Option B (move to `atlas/decision/memory.py`) chosen: decision engine is primary runtime consumer; CLI importing from `atlas.decision.memory` is architecturally acceptable (CLI sits above all layers).
+- `MemoryEngine` class eliminated: `load()` was pure delegation (`store.load()`); `save()` inlined; `save_ticker()` and `compare()` become `save_ticker()` and `compare_memory()` free functions.
+- No Blueprint-aligned `MemoryStore[MemoryEntry]` was created — the existing concrete `MemoryStore` class moved as-is to avoid scope creep.
+
+**Alternatives considered:**
+- Retain with blockers (Option C): rejected — the logic was small and the migration pattern was proven by Sprint 103.
+- Move to `atlas/history/`: rejected — `atlas/history/` uses Blueprint `atlas.memory.MemoryStore[Snapshot]`, a different generic abstraction. Merging would require adapting the type system beyond sprint scope.
+- Invent new capability (`atlas/tracking/`): rejected — unnecessary scope; `atlas/decision/memory.py` co-locates the logic with its primary runtime consumer.
+
+**Outcome:** `atlas/analysis/memory.py` deleted. `atlas.analysis.memory` raises `ModuleNotFoundError`. `MemoryEntry`/`MemoryStore`/`MemoryComparison` importable from `atlas.decision.memory`. `AtlasDecisionEngine` constructor lost `memory_engine` param. CLI updated to use free functions. 5 guardrail tests added. 1130 tests passing (3 skipped). Demo passed. Release verification green.

@@ -312,6 +312,73 @@ def test_comparison_types_importable_from_decision() -> None:
     assert ComparisonCandidate is not None
 
 
+def test_atlas_analysis_memory_module_deleted() -> None:
+    """Sprint 104: atlas.analysis.memory must not be importable — module fully deleted."""
+    import importlib
+    try:
+        importlib.import_module("atlas.analysis.memory")
+        raise AssertionError("atlas.analysis.memory should not be importable after Sprint 104")
+    except ModuleNotFoundError:
+        pass
+
+
+def test_atlas_analysis_memory_file_does_not_exist() -> None:
+    """Sprint 104: atlas/analysis/memory.py must not exist on disk."""
+    memory_path = REPO_ROOT / "atlas" / "analysis" / "memory.py"
+    assert not memory_path.exists(), (
+        "atlas/analysis/memory.py was deleted in Sprint 104 and must not exist"
+    )
+
+
+def test_no_production_code_imports_atlas_analysis_memory() -> None:
+    """Sprint 104: no production module may import from atlas.analysis.memory."""
+    search_dirs = [
+        d for d in (REPO_ROOT / "atlas").iterdir()
+        if d.is_dir() and d.name != "__pycache__"
+    ]
+    offenders = []
+    for directory in search_dirs:
+        for path in directory.rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            text = path.read_text(encoding="utf-8")
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("#"):
+                    continue
+                if "atlas.analysis.memory" in stripped and (
+                    stripped.startswith("from ") or stripped.startswith("import ")
+                ):
+                    offenders.append(str(path.relative_to(REPO_ROOT)))
+                    break
+    assert not offenders, (
+        "Production code still imports from deleted atlas.analysis.memory:\n"
+        + "\n".join(offenders)
+    )
+
+
+def test_memory_types_importable_from_decision() -> None:
+    """Sprint 104: MemoryEntry/MemoryStore/MemoryComparison importable from atlas.decision.memory."""
+    from atlas.decision.memory import MemoryComparison, MemoryEntry, MemoryStore
+    assert MemoryEntry is not None
+    assert MemoryStore is not None
+    assert MemoryComparison is not None
+
+
+def test_analysis_init_does_not_re_export_memory_types() -> None:
+    """Sprint 104: atlas.analysis must not re-export MemoryEngine, MemoryEntry, MemoryStore."""
+    import atlas.analysis as analysis_pkg
+    assert not hasattr(analysis_pkg, "MemoryEngine"), (
+        "atlas.analysis must not re-export MemoryEngine after Sprint 104"
+    )
+    assert not hasattr(analysis_pkg, "MemoryEntry"), (
+        "atlas.analysis must not re-export MemoryEntry after Sprint 104"
+    )
+    assert not hasattr(analysis_pkg, "MemoryStore"), (
+        "atlas.analysis must not re-export MemoryStore after Sprint 104"
+    )
+
+
 def test_demo_script_does_not_use_watchlist_analyze_command() -> None:
     demo_script = REPO_ROOT / "scripts" / "run_daily_brief_demo.sh"
     text = demo_script.read_text()

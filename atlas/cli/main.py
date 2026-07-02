@@ -11,11 +11,12 @@ from atlas.comparison import (
     demo_investment_comparison_input,
     render_investment_comparison,
 )
-from atlas.analysis.memory import (
-    MemoryEngine,
+from atlas.decision.memory import (
     MemoryStore,
+    compare_memory,
     render_memory_comparison,
     render_memory_entries,
+    save_ticker as save_ticker_to_memory,
 )
 from atlas.analysis.portfolio import Portfolio
 from atlas.adapters.portfolio import legacy_portfolio_to_domain_portfolio
@@ -574,7 +575,7 @@ def memory_save_command(ticker: str, memory_path: Path):
     """Save the current Atlas analysis for a ticker to JSON memory."""
     provider = MockCompanyAnalysisProvider()
     try:
-        entry = MemoryEngine().save_ticker(
+        entry = save_ticker_to_memory(
             store=MemoryStore(memory_path),
             ticker=ticker,
             provider=provider,
@@ -593,7 +594,7 @@ def memory_save_command(ticker: str, memory_path: Path):
 def memory_show_command(memory_path: Path):
     """Show saved Atlas memory entries."""
     try:
-        entries = MemoryEngine().load(MemoryStore(memory_path))
+        entries = MemoryStore(memory_path).load()
     except ValueError as exc:
         console.print(f"[red]Memory show failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
@@ -605,7 +606,7 @@ def memory_show_command(memory_path: Path):
 def memory_compare_command(memory_path: Path, ticker: str):
     """Compare the two latest memory entries for a ticker."""
     try:
-        comparison = MemoryEngine().compare(MemoryStore(memory_path), ticker)
+        comparison = compare_memory(MemoryStore(memory_path), ticker)
     except ValueError as exc:
         console.print(f"[red]Memory compare failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc

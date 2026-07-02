@@ -4,15 +4,15 @@ from typer.testing import CliRunner
 
 from atlas.analysis.company_analysis import MockCompanyAnalysisProvider
 from atlas.analysis.engine import AtlasInvestmentEngine
-from atlas.analysis.memory import (
-    MemoryEngine,
+from atlas.analysis.report import build_investment_report
+from atlas.cli.main import app
+from atlas.decision.memory import (
     MemoryEntry,
     MemoryStore,
+    compare_memory,
     render_memory_comparison,
     render_memory_entries,
 )
-from atlas.analysis.report import build_investment_report
-from atlas.cli.main import app
 
 
 def test_memory_store_saves_and_loads_entries(tmp_path):
@@ -32,7 +32,7 @@ def test_memory_store_saves_and_loads_entries(tmp_path):
     assert path.exists()
 
 
-def test_memory_engine_compares_two_latest_entries(tmp_path):
+def test_compare_memory_compares_two_latest_entries(tmp_path):
     path = tmp_path / "memory.json"
     store = MemoryStore(path)
     previous = MemoryEntry(
@@ -68,7 +68,7 @@ def test_memory_engine_compares_two_latest_entries(tmp_path):
     store.save(previous)
     store.save(current)
 
-    comparison = MemoryEngine().compare(store, "NVDA")
+    comparison = compare_memory(store, "NVDA")
 
     assert comparison.score_change == 6
     assert comparison.recommendation_change == "unchanged (Buy)"
@@ -78,45 +78,40 @@ def test_memory_engine_compares_two_latest_entries(tmp_path):
     assert "+6" in comparison.explanation
 
 
-def test_memory_engine_requires_two_entries_for_comparison(tmp_path):
+def test_compare_memory_requires_two_entries(tmp_path):
     path = tmp_path / "memory.json"
     store = MemoryStore(path)
     report = build_investment_report(MockCompanyAnalysisProvider().get_company_analysis("NVDA"))
-    MemoryEngine().save(
-        store=store,
+    entry = MemoryEntry.from_report(
         ticker="NVDA",
         report=report,
         timestamp=datetime(2026, 1, 1, tzinfo=UTC),
     )
+    store.save(entry)
 
     try:
-        MemoryEngine().compare(store, "NVDA")
+        compare_memory(store, "NVDA")
     except ValueError as exc:
         assert "At least two memory entries" in str(exc)
     else:
-        raise AssertionError("MemoryEngine should require two entries to compare")
+        raise AssertionError("compare_memory should require two entries")
 
 
 def test_memory_renderers_include_required_fields(tmp_path):
     path = tmp_path / "memory.json"
     store = MemoryStore(path)
     report = build_investment_report(MockCompanyAnalysisProvider().get_company_analysis("NVDA"))
-    engine = MemoryEngine()
-    engine.save(
-        store=store,
-        ticker="NVDA",
-        report=report,
-        timestamp=datetime(2026, 1, 1, tzinfo=UTC),
+    entry1 = MemoryEntry.from_report(
+        ticker="NVDA", report=report, timestamp=datetime(2026, 1, 1, tzinfo=UTC)
     )
-    engine.save(
-        store=store,
-        ticker="NVDA",
-        report=report,
-        timestamp=datetime(2026, 2, 1, tzinfo=UTC),
+    entry2 = MemoryEntry.from_report(
+        ticker="NVDA", report=report, timestamp=datetime(2026, 2, 1, tzinfo=UTC)
     )
+    store.save(entry1)
+    store.save(entry2)
 
     entries_rendered = render_memory_entries(store.load())
-    comparison_rendered = render_memory_comparison(engine.compare(store, "NVDA"))
+    comparison_rendered = render_memory_comparison(compare_memory(store, "NVDA"))
 
     assert "Memory Entries" in entries_rendered
     assert "NVDA" in entries_rendered
@@ -127,19 +122,19 @@ def test_memory_renderers_include_required_fields(tmp_path):
     assert "Weakest Category" in comparison_rendered
 
 
-def test_memory_save_uses_current_report_fields(tmp_path):
+def test_memory_entry_from_report_captures_correct_fields(tmp_path):
     path = tmp_path / "memory.json"
     store = MemoryStore(path)
     report = AtlasInvestmentEngine().analyze(
         MockCompanyAnalysisProvider().get_company_analysis("NVDA")
     )
 
-    entry = MemoryEngine().save(
-        store=store,
+    entry = MemoryEntry.from_report(
         ticker="NVDA",
         report=report,
         timestamp=datetime(2026, 1, 1, tzinfo=UTC),
     )
+    store.save(entry)
 
     assert entry.atlas_score == report.atlas_score
     assert entry.recommendation == report.overall_recommendation

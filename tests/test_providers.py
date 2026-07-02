@@ -1,7 +1,7 @@
 from urllib.error import HTTPError, URLError
 
 from atlas.analysis.engine import AtlasInvestmentEngine
-from atlas.analysis.memory import MemoryEngine, MemoryStore
+from atlas.decision.memory import MemoryStore, save_ticker as save_ticker_to_memory
 from atlas.analysis.portfolio import Portfolio, PortfolioIntelligenceEngine, PortfolioPosition
 from atlas.providers import (
     CompanyDataProvider,
@@ -160,7 +160,7 @@ def test_memory_engine_can_save_ticker_from_provider(tmp_path):
     provider = MockCompanyAnalysisProvider()
     store = MemoryStore(tmp_path / "memory.json")
 
-    entry = MemoryEngine().save_ticker(store=store, ticker="NVDA", provider=provider)
+    entry = save_ticker_to_memory(store=store, ticker="NVDA", provider=provider)
 
     assert entry.ticker == "NVDA"
     assert store.load() == (entry,)

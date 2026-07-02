@@ -286,6 +286,32 @@ without output changes.
 
 ---
 
+## Sprint 104 — MemoryEngine Retirement COMPLETED
+
+**Goal:** Retire `MemoryEngine`; delete `atlas/analysis/memory.py`.
+
+**Key finding:** Option A (delete outright) not viable — 3 active CLI commands and runtime usage in `_compare_memory()`. Option B (move to `atlas/decision/memory.py`) used — same pattern as Sprint 103.
+
+**Changes made:**
+1. Created `atlas/decision/memory.py` with `MemoryEntry`, `MemoryComparison`, `MemoryStore` types
+   and `save_ticker()`, `compare_memory()` free functions.
+2. `atlas/decision/decision_engine.py`: removed `memory_engine` constructor param; `_compare_memory()`
+   calls `compare_memory()` directly.
+3. `atlas/decision/decision_context.py`: import updated to `atlas.decision.memory`.
+4. `atlas/decision/decision_result.py`: import updated to `atlas.decision.memory`.
+5. `atlas/cli/main.py`: import updated to `atlas.decision.memory`; `MemoryEngine().load()` replaced
+   with `store.load()`; `.save_ticker()` and `.compare()` replaced with free functions.
+6. `atlas/analysis/memory.py` deleted.
+7. `atlas/analysis/__init__.py`: 6 memory re-exports removed.
+8. `tests/test_memory.py`: fully rewritten — `MemoryEngine` replaced with free functions and direct
+   `MemoryEntry`/`MemoryStore` calls.
+9. `tests/test_decision_engine.py`, `tests/test_providers.py`: imports and calls updated.
+10. 5 guardrail tests added to `tests/test_watchlist_analyze_deprecation.py`.
+
+**Tests: 1130 passing (3 skipped). Demo passed. Release verification green.**
+
+---
+
 ## Sprint 101 — Watchlist Input Type Migration COMPLETED
 
 ### Completed: `WatchlistInput`/`WatchlistInputItem` moved to capability; `atlas/analysis/watchlist.py` deleted

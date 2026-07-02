@@ -114,78 +114,61 @@ class MemoryStore:
         return tuple(entry for entry in self.load() if entry.ticker == normalized_ticker)
 
 
-class MemoryEngine:
-    def save(
-        self,
-        store: MemoryStore,
-        ticker: str,
-        report: InvestmentReport,
-        timestamp: datetime | None = None,
-    ) -> MemoryEntry:
-        entry = MemoryEntry.from_report(ticker=ticker, report=report, timestamp=timestamp)
-        store.save(entry)
-        return entry
+def save_ticker(
+    store: MemoryStore,
+    ticker: str,
+    provider: CompanyDataProvider,
+    investment_engine: AtlasInvestmentEngine | None = None,
+    timestamp: datetime | None = None,
+) -> MemoryEntry:
+    engine = investment_engine or AtlasInvestmentEngine()
+    report = engine.analyze_ticker(ticker, provider)
+    entry = MemoryEntry.from_report(ticker=ticker, report=report, timestamp=timestamp)
+    store.save(entry)
+    return entry
 
-    def save_ticker(
-        self,
-        store: MemoryStore,
-        ticker: str,
-        provider: CompanyDataProvider,
-        investment_engine: AtlasInvestmentEngine | None = None,
-        timestamp: datetime | None = None,
-    ) -> MemoryEntry:
-        engine = investment_engine or AtlasInvestmentEngine()
-        return self.save(
-            store=store,
-            ticker=ticker,
-            report=engine.analyze_ticker(ticker, provider),
-            timestamp=timestamp,
-        )
 
-    def load(self, store: MemoryStore) -> tuple[MemoryEntry, ...]:
-        return store.load()
-
-    def compare(self, store: MemoryStore, ticker: str) -> MemoryComparison:
-        entries = store.load_ticker(ticker)
-        if len(entries) < 2:
-            raise ValueError(
-                f"At least two memory entries are required to compare {ticker.upper()}."
-            )
-        previous, current = entries[-2], entries[-1]
-        category_changes = {
-            category: current.category_scores.get(category, 0)
-            - previous.category_scores.get(category, 0)
-            for category in sorted(set(previous.category_scores) | set(current.category_scores))
-        }
-        strongest_category = max(
-            category_changes,
-            key=lambda category: (category_changes[category], category),
+def compare_memory(store: MemoryStore, ticker: str) -> MemoryComparison:
+    entries = store.load_ticker(ticker)
+    if len(entries) < 2:
+        raise ValueError(
+            f"At least two memory entries are required to compare {ticker.upper()}."
         )
-        weakest_category = min(
-            current.category_scores,
-            key=lambda category: (current.category_scores[category], category),
-        )
-        score_change = current.atlas_score - previous.atlas_score
-        confidence_change = current.confidence - previous.confidence
-        recommendation_change = _change_label(previous.recommendation, current.recommendation)
-        return MemoryComparison(
+    previous, current = entries[-2], entries[-1]
+    category_changes = {
+        category: current.category_scores.get(category, 0)
+        - previous.category_scores.get(category, 0)
+        for category in sorted(set(previous.category_scores) | set(current.category_scores))
+    }
+    strongest_category = max(
+        category_changes,
+        key=lambda category: (category_changes[category], category),
+    )
+    weakest_category = min(
+        current.category_scores,
+        key=lambda category: (current.category_scores[category], category),
+    )
+    score_change = current.atlas_score - previous.atlas_score
+    confidence_change = current.confidence - previous.confidence
+    recommendation_change = _change_label(previous.recommendation, current.recommendation)
+    return MemoryComparison(
+        ticker=current.ticker,
+        previous=previous,
+        current=current,
+        score_change=score_change,
+        recommendation_change=recommendation_change,
+        confidence_change=confidence_change,
+        strongest_improving_category=strongest_category,
+        weakest_category=weakest_category,
+        explanation=_comparison_explanation(
             ticker=current.ticker,
-            previous=previous,
-            current=current,
             score_change=score_change,
             recommendation_change=recommendation_change,
             confidence_change=confidence_change,
-            strongest_improving_category=strongest_category,
+            strongest_category=strongest_category,
             weakest_category=weakest_category,
-            explanation=_comparison_explanation(
-                ticker=current.ticker,
-                score_change=score_change,
-                recommendation_change=recommendation_change,
-                confidence_change=confidence_change,
-                strongest_category=strongest_category,
-                weakest_category=weakest_category,
-            ),
-        )
+        ),
+    )
 
 
 def render_memory_entries(entries: tuple[MemoryEntry, ...]) -> str:

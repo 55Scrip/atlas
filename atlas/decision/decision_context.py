@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from atlas.analysis.memory import MemoryStore
+from atlas.decision.memory import MemoryStore
 from atlas.analysis.portfolio import Portfolio
 from atlas.capabilities.watchlist_intelligence import WatchlistInput
 

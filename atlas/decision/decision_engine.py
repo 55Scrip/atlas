@@ -1,6 +1,6 @@
 from atlas.analysis.engine import AtlasInvestmentEngine, InvestmentReport
 from atlas.decision.comparison import ComparisonResult, compare_tickers
-from atlas.analysis.memory import MemoryComparison, MemoryEngine
+from atlas.decision.memory import MemoryComparison, compare_memory
 from atlas.analysis.portfolio import PortfolioAnalysis, PortfolioIntelligenceEngine
 from atlas.analysis.scores import clamp_score
 from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
@@ -19,11 +19,9 @@ class AtlasDecisionEngine:
         self,
         investment_engine: AtlasInvestmentEngine | None = None,
         portfolio_engine: PortfolioIntelligenceEngine | None = None,
-        memory_engine: MemoryEngine | None = None,
     ) -> None:
         self.investment_engine = investment_engine or AtlasInvestmentEngine()
         self.portfolio_engine = portfolio_engine or PortfolioIntelligenceEngine()
-        self.memory_engine = memory_engine or MemoryEngine()
 
     def decide(
         self,
@@ -155,7 +153,7 @@ class AtlasDecisionEngine:
         if context.historical_memory is None:
             return None
         try:
-            return self.memory_engine.compare(context.historical_memory, ticker)
+            return compare_memory(context.historical_memory, ticker)
         except ValueError:
             return None
 
