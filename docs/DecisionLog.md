@@ -2,6 +2,29 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-02: Sprint 154 — Risk Package Audit Checkpoint
+
+Decision: Audit `atlas/risk/` as a Group C self-contained module. Audit-only sprint. No runtime changes.
+
+**Findings:**
+- 2 modules: `__init__.py` (21 lines), `engine.py` (448 lines).
+- 8 exports in `__all__`: all reachable, but only `RiskAnalysis` has active production callers.
+- **`RiskAnalysis` is actively used by 2 production engines:**
+  - `atlas/conversation/engine.py` — optional context field in `ConversationInput`
+  - `atlas/intelligence/engine.py` — optional context in `IntelligenceInput`/`IntelligenceReport`; accesses `.position_sizing.*` and `.deployment_plan.*` fields
+- `RiskEngine` has zero production instantiation points — `atlas risk size` was retired Sprint 88.
+- `RiskEngine` and `RiskAnalysis` share the same file. Deleting `RiskEngine` requires separating `RiskAnalysis` to a new file (surgery). No Blueprint migration target exists. Surgery risk outweighs value.
+- `render_risk_analysis` is test-only (zero production callers).
+- Self-contained boundary: imports only `atlas.analysis.scores.clamp_score` (utility, still active) and `atlas.market.MarketRegime` (expected Group B dependency). No provider, CLI, conversation, or intelligence imports.
+- Zero stale closed-track imports (no reasoning, no deleted analysis modules).
+- No Blueprint-aligned successor: no `atlas/domains/risk/` or `atlas/capabilities/risk/` exists.
+- No dead code, no stale migration residue, no consolidation candidates.
+- Full findings in `docs/RiskCleanupPlan.md`.
+
+**Sprint 155 recommendation:** Close risk cleanup track (documentation-only). No cleanup work warranted. `RiskAnalysis` must remain; `RiskEngine` cannot be removed without risky surgery; no Blueprint successor.
+
+---
+
 ## 2026-07-02: Sprint 153 — Delete atlas/reasoning/ Package
 
 Decision: Delete `atlas/reasoning/` package entirely (engine.py + __init__.py, 594 lines).
