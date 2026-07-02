@@ -1,7 +1,8 @@
 # Atlas Home Package Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 161)  
-**Status:** ACTIVE — Sprint 161 audit complete. Package is clean. No actionable cleanup candidates found. Sprint 162 recommended: close home cleanup track.
+**Updated:** 2026-07-03 (Sprint 162)  
+**Status:** CLOSED — Sprint 162 confirmed Sprint 161 findings unchanged. No cleanup action is warranted. Package is provider-coupled, actively used via `AtlasHomeEngine`, and stable. No further `atlas/home/` cleanup work is planned until new dead code, stale exports, provider-boundary issues, or a Blueprint-aligned successor emerges.
 
 ---
 
@@ -258,4 +259,39 @@ Sprint 162 should be a documentation-only sprint confirming the audit findings a
 | Risk package | CLOSED Sprint 155 |
 | Principles package | CLOSED Sprint 158 |
 | Comparison package | CLOSED Sprint 160 |
-| **Home package** | **ACTIVE — Sprint 162 closure planned** |
+| **Home package** | **CLOSED Sprint 162** |
+
+---
+
+## Sprint 162 — Track Closure (COMPLETED)
+
+**Home cleanup track is CLOSED as of Sprint 162.**
+
+Sprint 162 verified:
+- All 7 `atlas.home` exports remain importable ✓
+- `AtlasHomeEngine` active — `atlas home` CLI caller confirmed ✓
+- Provider coupling intentional — `MockCompanyAnalysisProvider` default (no network); `YahooFinanceProvider` CLI opt-in only ✓
+- `YahooFinanceProvider` not imported by `atlas/home/` directly ✓
+- Zero stale closed-track imports in `atlas/home/` ✓
+- No Blueprint-aligned successor introduced since Sprint 161 ✓
+- `atlas/capabilities/daily_brief/` remains adjacent but distinct ✓
+- No cleanup action is warranted ✓
+
+**Closure rationale:** After inventory (Sprint 161) and final verification (Sprint 162), the home package contains only active, intentional code. `AtlasHomeEngine` is the sole engine, used by the active `atlas home` CLI command. Provider coupling is clean and opt-in. No Blueprint successor exists. Further cleanup would create churn without architectural benefit.
+
+**Reopening condition:** If a Blueprint-aligned home capability emerges in `atlas/capabilities/`, if the CLI command is deprecated, or if new dead code or stale provider imports appear, this track should be reopened.
+
+---
+
+## Recommended Sprint 163 Target
+
+**Audit `atlas/cli/` deprecated command registry.**
+
+`atlas/cli/deprecations.py` maintains a registry of deprecated commands and their removal criteria. Several entries reference historical sprints and conditions from prior cleanup tracks. An audit should:
+- inventory all registered deprecated commands,
+- verify each removal criterion is still accurate (some may reference now-deleted modules),
+- confirm no deprecated commands have been reintroduced,
+- check whether any entry can be removed or updated,
+- recommend one focused follow-on sprint.
+
+This is a small, well-scoped audit-first target that directly supports CLI hygiene without touching any runtime behavior.

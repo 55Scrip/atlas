@@ -1,0 +1,34 @@
+{
+  "summary": "Discovery found 2 candidate(s) for further research.",
+  "candidates": [
+    {
+      "identifier": "company-amd",
+      "title": "AMD",
+      "reasons": [
+        {
+          "title": "Knowledge Fact",
+          "detail": "5 attributed knowledge fact(s) are available."
+        }
+      ],
+      "priority": "moderate",
+      "confidence": "high",
+      "unknowns": [],
+      "suggested_next_research_questions": []
+    },
+    {
+      "identifier": "company-nvda",
+      "title": "NVDA",
+      "reasons": [
+        {
+          "title": "Knowledge Fact",
+          "detail": "4 attributed knowledge fact(s) are available."
+        }
+      ],
+      "priority": "moderate",
+      "confidence": "high",
+      "unknowns": [],
+      "suggested_next_research_questions": []
+    }
+  ],
+  "unknowns": []
+}

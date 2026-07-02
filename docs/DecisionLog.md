@@ -2,6 +2,30 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 162 — Close Home Cleanup Track
+
+Decision: Close the `atlas/home/` cleanup track. No cleanup work is warranted.
+
+**Rationale:** After inventory (Sprint 161) and final verification (Sprint 162), the home package contains only active, intentional code. `AtlasHomeEngine` is used by the active `atlas home` CLI command. Provider coupling is clean: `MockCompanyAnalysisProvider` is the default (deterministic, local); `YahooFinanceProvider` is CLI opt-in only and never imported by `atlas/home/` directly. No Blueprint successor exists. Further cleanup would create churn without architectural benefit.
+
+**Final verification (Sprint 162):** All 7 exports importable. CLI caller confirmed active. Zero stale closed-track imports. No new Blueprint successor. No provider boundary violation.
+
+**Closed-track summary:**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — CLOSED Sprint 148
+- Evidence package — CLOSED Sprint 150
+- Reasoning package — CLOSED Sprint 153
+- Risk package — CLOSED Sprint 155
+- Principles package — CLOSED Sprint 158
+- Comparison package — CLOSED Sprint 160
+- **Home package — CLOSED Sprint 162**
+
+**Sprint 163 recommended target:** Audit `atlas/cli/` deprecated command registry — verify each removal criterion is still accurate, check for stale references to now-deleted modules, confirm no deprecated commands have been reintroduced.
+
+---
+
 ## 2026-07-03: Sprint 161 — Home Package Audit Checkpoint
 
 Decision: Audit `atlas/home/` as a Group B provider-coupled module. Audit-only sprint. No runtime changes.
