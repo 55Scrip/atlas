@@ -610,3 +610,20 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
 - 1121 tests passing (3 skipped). Demo passed. Release verification green.
 - Recommended Sprint 94 target: migrate `atlas/watchlist_review/` direct WatchlistEngine dependency
   to Blueprint-aligned capability; also cleanup `snapshot_watchlist_from_analysis` in monitoring.
+
+**Sprint 94 (2026-07-02):** WatchlistEngine removed from `atlas/watchlist_review/engine.py`; `snapshot_watchlist_from_analysis` removed from `MonitoringEngine`; caller count 4 → 3.
+- `WatchlistReviewEngine.__init__` no longer accepts or instantiates `WatchlistEngine`.
+  `review()` no longer computes `watchlist_analysis` via WatchlistEngine. Company items default
+  to `base_score=45` instead of `atlas_score` — item rankings less differentiated, documented.
+- `monitoring_engine.snapshot_watchlist_from_analysis(watchlist_analysis)` replaced with
+  `monitoring_engine.snapshot_watchlist(supported_watchlist)` — Blueprint-aligned (Sprint 93).
+  Both `Watchlist` and `WatchlistItem` from `atlas.analysis.watchlist` retained in import
+  (still needed as legacy data types for the watchlist input contract).
+- `snapshot_watchlist_from_analysis()` removed from `MonitoringEngine` — no runtime callers remain.
+  `WatchlistAnalysis` import removed from `atlas/monitoring/engine.py`.
+- Guardrail: `test_watchlist_review_engine_does_not_import_watchlist_engine` added.
+- Exclusivity guardrail updated: caller set now 3 (intelligence, decision, conversation).
+- WatchlistEngine caller count: 4 before → **3** after.
+- 1121 tests passing (3 skipped). Demo passed. Release verification green.
+- Recommended Sprint 95 target: migrate `atlas/decision/` or `atlas/conversation/` WatchlistEngine
+  usage. `atlas/decision/` is smaller and may be lower-risk than `atlas/conversation/`.

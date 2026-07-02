@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from atlas.analysis.engine import AtlasInvestmentEngine
 from atlas.analysis.portfolio import Portfolio
 from atlas.analysis.scores import clamp_score
-from atlas.analysis.watchlist import Watchlist, WatchlistAnalysis
+from atlas.analysis.watchlist import Watchlist
 from atlas.capabilities.watchlist_intelligence import WatchlistIntelligenceEngine
 from atlas.capabilities.watchlist_intelligence.models import (
     WatchlistIntelligenceInput,
@@ -288,44 +288,6 @@ class MonitoringEngine:
                 + (average_risk * 0.30)
                 + (concentration_score * 0.35)
             ),
-        )
-
-    def snapshot_watchlist_from_analysis(self, analysis: WatchlistAnalysis) -> MonitoringSnapshot:
-        strongest_report = analysis.reports[analysis.strongest_opportunity.ticker]
-        return MonitoringSnapshot(
-            object_type="Watchlist",
-            identifier=analysis.name,
-            summary=analysis.final_atlas_view,
-            signals=(
-                MonitoringSignal(
-                    "Strongest opportunity score",
-                    strongest_report.atlas_score,
-                    analysis.strongest_opportunity.ticker,
-                    analysis.strongest_opportunity.reasoning,
-                ),
-                MonitoringSignal(
-                    "Best valuation",
-                    analysis.reports[analysis.cheapest_valuation.ticker].valuation.score,
-                    analysis.cheapest_valuation.ticker,
-                    analysis.cheapest_valuation.reasoning,
-                ),
-                MonitoringSignal(
-                    "Highest quality",
-                    analysis.reports[analysis.highest_quality_company.ticker].quality.score,
-                    analysis.highest_quality_company.ticker,
-                    analysis.highest_quality_company.reasoning,
-                ),
-            ),
-            new_risks=tuple(signal.reasoning for signal in analysis.companies_to_avoid[:2]),
-            new_opportunities=(analysis.strongest_opportunity.reasoning,),
-            monitoring_items=(
-                "ranked opportunities",
-                "best valuation",
-                "highest quality",
-                "highest risk company",
-            ),
-            confidence=80,
-            importance_score=strongest_report.atlas_score,
         )
 
     def snapshot_watchlist(

@@ -1,8 +1,8 @@
 # Atlas Legacy Engine Consolidation Plan
 
 **Created:** 2026-07-01 (Sprint 74)  
-**Updated:** 2026-07-02 (Sprint 93)  
-**Status:** Active — Sprint 93 target complete; WatchlistEngine removed from atlas/monitoring/; caller count 5 → 4. Sprint 94 target: migrate atlas/watchlist_review/ direct WatchlistEngine dependency to Blueprint-aligned capability
+**Updated:** 2026-07-02 (Sprint 94)  
+**Status:** Active — Sprint 94 target complete; WatchlistEngine removed from atlas/watchlist_review/; snapshot_watchlist_from_analysis removed from MonitoringEngine; caller count 4 → 3. Sprint 95 target: migrate atlas/decision/ or atlas/conversation/ WatchlistEngine dependency
 
 This document inventories all legacy Atlas modules, maps their current runtime
 usage, documents overlap with Blueprint-aligned domains and capabilities, and
@@ -228,6 +228,43 @@ eventually retired.
 - `atlas daily summary` (current path) makes zero provider calls
 
 Provider safety: **confirmed**.
+
+---
+
+## Sprint 94 Migration Target — COMPLETED
+
+### Completed: WatchlistEngine removed from `atlas/watchlist_review/engine.py`; caller count 4 → 3
+
+**Sprint 94 result:**
+
+**Goal:** Replace `atlas/watchlist_review/engine.py` direct `WatchlistEngine` dependency with Blueprint-aligned Watchlist Intelligence data; remove `snapshot_watchlist_from_analysis` from `MonitoringEngine` if no longer needed.
+
+**Changes made:**
+1. Removed `WatchlistEngine` from import in `atlas/watchlist_review/engine.py` (`Watchlist`, `WatchlistItem` retained — still needed)
+2. Removed `watchlist_engine: WatchlistEngine | None` parameter from `WatchlistReviewEngine.__init__`
+3. In `WatchlistReviewEngine.review()`: removed `watchlist_analysis` computation entirely; replaced `monitoring_engine.snapshot_watchlist_from_analysis(watchlist_analysis)` with `monitoring_engine.snapshot_watchlist(supported_watchlist)` (Blueprint-aligned, Sprint 93)
+4. `_review_items(watchlist_analysis=None, ...)` — company items default to `base_score=45` instead of `atlas_score`
+5. Removed `snapshot_watchlist_from_analysis()` from `MonitoringEngine` — no runtime callers remain after step 3
+6. Removed `WatchlistAnalysis` import from `atlas/monitoring/engine.py` — no longer needed
+7. Updated `WATCHLIST_ENGINE_CALLERS` to 3 entries (removed watchlist_review)
+8. Added `test_watchlist_review_engine_does_not_import_watchlist_engine` guardrail
+9. Removed `test_monitoring_engine_snapshot_watchlist_from_analysis_uses_legacy_analysis` (method deleted)
+10. Updated exclusivity guardrail comment (caller set now 3)
+
+**Output change (documented):**
+`atlas watchlist review` item `relevance_score` now uses `base_score=45` instead of `atlas_score` from WatchlistEngine. Items without WatchlistEngine scores have less differentiated rankings. Monitoring snapshot in review now uses Blueprint intelligence signals (confidence=70) rather than legacy analysis signals (confidence=80). Output remains deterministic, local-only, provider-free.
+
+**WatchlistEngine caller count:**
+- Before Sprint 94: 4 (intelligence, decision, watchlist_review, conversation)
+- After Sprint 94: **3** (intelligence, decision, conversation)
+- `atlas/watchlist_review/engine.py` no longer imports or instantiates WatchlistEngine
+- `MonitoringEngine.snapshot_watchlist_from_analysis()` removed — bridge method no longer needed
+
+**Engine deletion criteria (deferred to Sprint 95+):**
+1. Retire or migrate `atlas/decision/` WatchlistEngine usage
+2. Retire or migrate `atlas/intelligence/` WatchlistEngine usage
+3. Retire or migrate `atlas/conversation/` WatchlistEngine usage
+4. Once all three callers are retired, `atlas/analysis/watchlist.py` can be deleted
 
 ---
 

@@ -4,7 +4,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from atlas.analysis.watchlist import Watchlist, WatchlistEngine, WatchlistItem
+from atlas.analysis.watchlist import Watchlist, WatchlistItem
 from atlas.economics import EconomicSignalsEngine
 from atlas.evidence import (
     EvidenceAction,
@@ -105,7 +105,6 @@ class WatchlistReviewReport:
 class WatchlistReviewEngine:
     def __init__(
         self,
-        watchlist_engine: WatchlistEngine | None = None,
         language_engine: AtlasLanguageEngine | None = None,
         evidence_engine: EvidenceQualityEngine | None = None,
         theme_engine: ThemeEngine | None = None,
@@ -117,7 +116,6 @@ class WatchlistReviewEngine:
         profile_engine: InvestorProfileEngine | None = None,
         principles_engine: PrinciplesEngine | None = None,
     ) -> None:
-        self.watchlist_engine = watchlist_engine or WatchlistEngine()
         self.language_engine = language_engine or AtlasLanguageEngine()
         self.evidence_engine = evidence_engine or EvidenceQualityEngine(self.language_engine)
         self.theme_engine = theme_engine or ThemeEngine()
@@ -136,14 +134,9 @@ class WatchlistReviewEngine:
             review_input.watchlist,
             provider,
         )
-        watchlist_analysis = (
-            self.watchlist_engine.analyze(supported_watchlist, provider)
-            if supported_watchlist.items
-            else None
-        )
         monitoring_snapshot = (
-            self.monitoring_engine.snapshot_watchlist_from_analysis(watchlist_analysis)
-            if watchlist_analysis is not None
+            self.monitoring_engine.snapshot_watchlist(supported_watchlist)
+            if supported_watchlist.items
             else None
         )
         themes = _theme_analyses(self.theme_engine, review_input.theme_names)
@@ -157,7 +150,7 @@ class WatchlistReviewEngine:
             watchlist=review_input.watchlist,
             idea_labels=review_input.idea_labels,
             unsupported_items=unsupported_items,
-            watchlist_analysis=watchlist_analysis,
+            watchlist_analysis=None,
             evidence_inputs=review_input.evidence_inputs or {},
             evidence_engine=self.evidence_engine,
         )

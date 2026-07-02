@@ -109,26 +109,6 @@ def test_monitoring_cli_monitors_theme():
     assert "Electricity supply bottleneck" in result.output
 
 
-def test_monitoring_engine_snapshot_watchlist_from_analysis_uses_legacy_analysis():
-    # Sprint 92: snapshot_watchlist_from_analysis accepts a WatchlistAnalysis
-    # (legacy path used by watchlist_review). snapshot_watchlist now uses Blueprint-aligned
-    # Watchlist Intelligence data (Sprint 93) — the two methods have different output shapes.
-    from atlas.analysis.watchlist import Watchlist, WatchlistEngine
-
-    provider = MockCompanyAnalysisProvider()
-    watchlist = Watchlist.from_mapping({"name": "Sprint92", "tickers": ["NVDA", "MSFT"]})
-    engine = MonitoringEngine()
-    analysis = WatchlistEngine().analyze(watchlist=watchlist, provider=provider)
-
-    via_analysis = engine.snapshot_watchlist_from_analysis(analysis)
-
-    assert via_analysis.object_type == "Watchlist"
-    assert via_analysis.identifier == "Sprint92"
-    assert via_analysis.confidence == 80
-    assert len(via_analysis.signals) == 3
-    assert via_analysis.signals[0].name == "Strongest opportunity score"
-
-
 def test_monitoring_engine_snapshot_watchlist_uses_blueprint_intelligence():
     # Sprint 93: snapshot_watchlist now uses Blueprint-aligned Watchlist Intelligence.
     # No provider needed; output is research-driven, not score-driven.

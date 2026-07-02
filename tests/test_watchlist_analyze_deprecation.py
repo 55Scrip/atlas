@@ -4,18 +4,18 @@ Sprint 78 deprecated the command; Sprint 91 removed the command body.
 `atlas watchlist analyze` is no longer a registered CLI command.
 
 The underlying `atlas.analysis.watchlist` engine remains on disk:
-- WatchlistEngine is still imported and instantiated by (Sprint 93 state):
+- WatchlistEngine is still imported and instantiated by (Sprint 94 state):
   - atlas/intelligence/engine.py
   - atlas/decision/decision_engine.py
-  - atlas/watchlist_review/engine.py
   - atlas/conversation/engine.py
-Engine deletion deferred until all four callers are retired.
+Engine deletion deferred until all three callers are retired.
 
 Sprint 91 completes the CLI deprecated command retirement plan.
 Active _REGISTRY is now empty — all deprecated commands have been retired.
 
 Sprint 92: WatchlistEngine caller set frozen; exclusivity guardrail added.
 Sprint 93: atlas/monitoring/engine.py WatchlistEngine removed — caller count reduced 5 → 4.
+Sprint 94: atlas/watchlist_review/engine.py WatchlistEngine removed — caller count reduced 4 → 3.
 """
 
 from __future__ import annotations
@@ -36,7 +36,6 @@ runner = CliRunner()
 WATCHLIST_ENGINE_CALLERS = (
     REPO_ROOT / "atlas" / "intelligence" / "engine.py",
     REPO_ROOT / "atlas" / "decision" / "decision_engine.py",
-    REPO_ROOT / "atlas" / "watchlist_review" / "engine.py",
     REPO_ROOT / "atlas" / "conversation" / "engine.py",
 )
 
@@ -111,11 +110,20 @@ def test_monitoring_engine_does_not_import_watchlist_engine() -> None:
     )
 
 
-def test_watchlist_engine_callers_are_exactly_the_known_set() -> None:
-    """Sprint 93 guardrail: no new WatchlistEngine callers may be added outside the known set.
+def test_watchlist_review_engine_does_not_import_watchlist_engine() -> None:
+    """Sprint 94: atlas/watchlist_review/engine.py must not import WatchlistEngine."""
+    path = REPO_ROOT / "atlas" / "watchlist_review" / "engine.py"
+    source = path.read_text(encoding="utf-8")
+    assert "WatchlistEngine" not in source, (
+        "atlas/watchlist_review/engine.py should no longer import WatchlistEngine after Sprint 94"
+    )
 
-    The known set is frozen at 4 callers (intelligence, decision,
-    watchlist_review, conversation) after monitoring was removed in Sprint 93.
+
+def test_watchlist_engine_callers_are_exactly_the_known_set() -> None:
+    """Sprint 94 guardrail: no new WatchlistEngine callers may be added outside the known set.
+
+    The known set is frozen at 3 callers (intelligence, decision, conversation)
+    after monitoring was removed in Sprint 93 and watchlist_review in Sprint 94.
     Any new direct import must be explicitly reviewed and added to WATCHLIST_ENGINE_CALLERS above.
     """
     known_paths = {path.resolve() for path in WATCHLIST_ENGINE_CALLERS}

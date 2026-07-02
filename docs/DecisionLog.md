@@ -1178,3 +1178,25 @@ open questions). Behavior intent preserved (monitoring research coverage health)
 conversation). `atlas/monitoring/engine.py` no longer imports `WatchlistEngine`. Provider parameter
 made optional in `monitor_watchlist`/`snapshot_watchlist` — CLI call unchanged. 1121 tests passing
 (3 skipped). Demo passed. Release verification green.
+
+## Sprint 94 — 2026-07-02: Remove WatchlistEngine from Watchlist Review
+
+**Decision:** Replace `atlas/watchlist_review/engine.py` direct `WatchlistEngine` usage with the
+Blueprint-aligned `MonitoringEngine.snapshot_watchlist()` (introduced Sprint 93). Remove
+`snapshot_watchlist_from_analysis()` from `MonitoringEngine` once it has no runtime callers.
+
+**Rationale:** `WatchlistReviewEngine.review()` used `WatchlistEngine.analyze()` to produce a
+`WatchlistAnalysis` for two purposes: (1) as input to `snapshot_watchlist_from_analysis()` for the
+monitoring snapshot, and (2) to supply `atlas_score` and `confidence` per ticker to `_review_items`.
+Sprint 93 made `MonitoringEngine.snapshot_watchlist(watchlist)` Blueprint-aligned — so purpose (1)
+can be replaced with a direct call to that method (no legacy analysis needed as intermediate).
+Purpose (2) (per-ticker `atlas_score`) cannot be replaced without WatchlistEngine or a provider call,
+so `_review_items` now defaults to `base_score=45` for all companies. This is a documented, acceptable
+behavior change: `relevance_score` values become less differentiated but remain deterministic and
+local-only. With `snapshot_watchlist_from_analysis` now having no runtime callers, the bridge method
+is deleted from `MonitoringEngine`, and `WatchlistAnalysis` is dropped from its imports.
+
+**Outcome:** WatchlistEngine caller count reduced 4 → **3** (intelligence, decision, conversation).
+`atlas/watchlist_review/engine.py` and `atlas/monitoring/engine.py` both no longer import
+`WatchlistEngine`. `snapshot_watchlist_from_analysis` removed. 1121 tests passing (3 skipped).
+Demo passed. Release verification green.
