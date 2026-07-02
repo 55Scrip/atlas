@@ -1276,3 +1276,21 @@ Demo passed. Release verification green.
 - Map `cheapest_valuation`/`highest_quality_company` to dedicated Blueprint fields: no 1:1 equivalent exists; `evidence_gaps[0].detail` and `observations[0].detail` provide the closest research-coverage substitutes.
 
 **Outcome:** WatchlistEngine active caller count: 1 → **0**. All active callers retired across Sprints 93–98. `WatchlistEngine` and `atlas/analysis/watchlist.py` retained for Sprint 99 deletion. 1124 tests passing (3 skipped). Demo passed. Release verification green.
+
+---
+
+**Sprint 99 (2026-07-02): Delete `WatchlistEngine`; slim `atlas/analysis/watchlist.py` to types only**
+
+**Decision:** Delete `WatchlistEngine`, `WatchlistAnalysis`, `WatchlistSignal`, `WatchlistRecommendation`, and `render_watchlist_analysis` from `atlas/analysis/watchlist.py`. Retain file with `Watchlist` and `WatchlistItem` only. Delete `tests/test_watchlist.py`. Flip guardrail tests.
+
+**Rationale:**
+- Active WatchlistEngine caller count reached zero in Sprint 98. Deletion criteria met.
+- `atlas/analysis/watchlist.py` cannot be fully deleted: 7 production modules import `Watchlist`/`WatchlistItem` as input types, and `atlas/shared/entities.py`'s `Watchlist` has a different structure (`tickers: tuple[str, ...]` vs `items: tuple[WatchlistItem, ...]`) — not a drop-in substitute.
+- Slimming the file to types only achieves the deletion mission for `WatchlistEngine` while preserving the input contract that 7 callers depend on.
+- `tests/test_watchlist.py` tested only `WatchlistEngine.analyze()` and `render_watchlist_analysis()` — both removed. No surviving test content; deletion is correct.
+
+**Alternatives considered:**
+- Migrate all type-only callers to `atlas/shared/entities.py` `Watchlist` in the same sprint: rejected — different field structure (`tickers` vs `items`) makes this a multi-file semantic migration; deferred to Sprint 100+.
+- Full file deletion: rejected — would break 7 production module imports without a substitute type.
+
+**Outcome:** `WatchlistEngine` deleted. `atlas/analysis/watchlist.py` slimmed to 33 lines. `tests/test_watchlist.py` deleted. Guardrails flipped to confirm non-importability. 1119 tests passing (3 skipped).

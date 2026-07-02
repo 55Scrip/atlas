@@ -231,6 +231,35 @@ Provider safety: **confirmed**.
 
 ---
 
+## Sprint 99 — WatchlistEngine Deletion COMPLETED
+
+### Completed: `WatchlistEngine` deleted; `atlas/analysis/watchlist.py` slimmed to types only
+
+**Sprint 99 result:**
+
+**Goal:** Delete `WatchlistEngine` now that all five callers were retired in Sprints 93–98. Resolve type-only import dependencies. Delete `tests/test_watchlist.py`. Flip guardrails.
+
+**Changes made:**
+1. Slimmed `atlas/analysis/watchlist.py` from ~277 lines to 33 lines — removed `WatchlistEngine`, `WatchlistAnalysis`, `WatchlistSignal`, `WatchlistRecommendation`, `render_watchlist_analysis`, and all private helpers. Removed engine-only imports (`AtlasInvestmentEngine`, `CompanyDataProvider`, `Enum`). Retained `Watchlist` and `WatchlistItem` (used by 7 production modules as input types).
+2. Cleaned `atlas/analysis/__init__.py` — removed re-exports of `WatchlistEngine`, `WatchlistAnalysis`, `WatchlistRecommendation`, `WatchlistSignal`, `render_watchlist_analysis`. Retained `Watchlist`, `WatchlistItem`.
+3. Deleted `tests/test_watchlist.py` — only tested `WatchlistEngine.analyze()` and `render_watchlist_analysis()`, both removed.
+4. Flipped guardrails in `tests/test_watchlist_analyze_deprecation.py`:
+   - `test_watchlist_engine_remains_importable` → `test_watchlist_engine_is_not_importable` (asserts `WatchlistEngine` not in module)
+   - `test_watchlist_engine_module_remains_on_disk` → `test_watchlist_engine_is_deleted` (asserts `WatchlistEngine` not in source)
+5. Updated `atlas/cli/deprecations.py` stale `removal_criteria` string to reflect Sprint 99 deletion.
+6. Updated all 5 docs + `WatchlistEngineMigrationPlan.md` (marked DELETION COMPLETE).
+
+**Why file not fully deleted:**
+`atlas/analysis/watchlist.py` cannot be fully deleted because 7 production modules import `Watchlist`/`WatchlistItem` as input types (`atlas/cli/main.py`, `atlas/decision/decision_context.py`, `atlas/monitoring/engine.py`, `atlas/watchlist_review/engine.py`, `atlas/home/engine.py`, `atlas/intelligence/engine.py`, `atlas/conversation/engine.py`). `atlas/shared/entities.py` has a `Watchlist` class but with a different structure (`tickers: tuple[str, ...]` vs `items: tuple[WatchlistItem, ...]`). Full file deletion deferred to Sprint 100+ once type migration is complete.
+
+**WatchlistEngine status after Sprint 99:**
+- `WatchlistEngine` class: **DELETED**
+- `atlas/analysis/watchlist.py`: retained as type-only module (33 lines)
+- Active caller count: 0 (unchanged from Sprint 98)
+- 1119 tests passing (3 skipped). All guardrails green.
+
+---
+
 ## Sprint 98 Migration Target — COMPLETED
 
 ### Completed: WatchlistEngine removed from `atlas/conversation/engine.py`; active caller count 1 → 0
@@ -941,7 +970,7 @@ to not import from a legacy module) is an even smaller, safer change.
 | ~~`atlas/domains/daily_brief/` boundary violation~~ | ~~Fixed: namespace stub~~ | ~~High~~ | **Done 75** |
 | ~~`atlas daily brief` command~~ | ~~Deprecated; no longer calls engine~~ | ~~High~~ | **Done 76** |
 | ~~`atlas/daily_brief/` legacy engine~~ | ~~Provider-coupled; deleted~~ | ~~Medium~~ | **Done 77** |
-| `atlas/analysis/watchlist.py` — CLI command deprecated | `atlas watchlist analyze` deprecated; WatchlistEngine still used by 5 legacy engines | Medium | 79 (CLI removal); broader engine migration later |
+| ~~`atlas/analysis/watchlist.py` — WatchlistEngine~~ | ~~`atlas watchlist analyze` deprecated; WatchlistEngine used by 5 legacy engines~~ | ~~Medium~~ | **Done 91/99** (CLI retired Sprint 91; engine deleted Sprint 99; file retained as types-only) |
 | `atlas/analysis/portfolio.py` legacy type | Bridged via adapter; could be retired after full portfolio migration | Medium | Future |
 | Group C self-contained modules | `evidence`, `reasoning`, `risk`, etc. — good candidates for Blueprint wrappers | Low | Multi-sprint |
 | Provider-coupled Group B | `home`, `dashboard`, `comparison`, etc. — require provider architecture decision | Low | Long-term |

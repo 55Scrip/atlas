@@ -88,8 +88,8 @@ This document is the human-readable counterpart to the code registry at
 |---|---|
 | **Status** | **Retired** (command body removed Sprint 91) |
 | **Replacement** | `atlas watchlist intelligence` |
-| **Legacy module** | `atlas.analysis.watchlist` (`WatchlistEngine`) — **engine remains on disk** |
-| **Engine blockers** | Active WatchlistEngine caller count is **0** (Sprint 98 state). `WatchlistEngine` / `atlas/analysis/watchlist.py` retained for Sprint 99 deletion verification. Type-only `Watchlist`/`WatchlistItem` imports in 5 modules deferred to post-deletion cleanup. |
+| **Legacy module** | `atlas.analysis.watchlist` — **`WatchlistEngine` deleted Sprint 99**; file retained as types-only module |
+| **Engine status** | `WatchlistEngine` deleted Sprint 99. `atlas/analysis/watchlist.py` slimmed to `Watchlist`/`WatchlistItem` only. Type-only imports in 7 production modules retained; full file deletion deferred to Sprint 100+. |
 | **Notes** | Entry preserved in `_RETIRED_REGISTRY` for audit. Not callable. Sprint 91 completes the CLI deprecated command retirement plan — active `_REGISTRY` is now empty. |
 
 ---

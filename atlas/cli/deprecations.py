@@ -167,10 +167,8 @@ _RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
         legacy_module="atlas.analysis.watchlist",
         removal_criteria=(
             "Command body retired in Sprint 91.",
-            "atlas.analysis.watchlist engine remains on disk — WatchlistEngine is still imported "
-            "and instantiated by atlas/intelligence, atlas/decision, atlas/monitoring, "
-            "atlas/watchlist_review, and atlas/conversation. Engine deletion deferred until "
-            "all five callers are retired.",
+            "WatchlistEngine deleted in Sprint 99 — all five callers retired across Sprints 93–98. "
+            "atlas/analysis/watchlist.py retained as type-only module (Watchlist, WatchlistItem).",
         ),
     ),
 )

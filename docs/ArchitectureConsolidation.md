@@ -687,7 +687,20 @@ See [docs/LegacyConsolidationPlan.md](LegacyConsolidationPlan.md).
   `test_watchlist_engine_active_callers_are_zero` confirms empty caller set.
   `WATCHLIST_ENGINE_CALLERS` is now an empty tuple.
 - WatchlistEngine active caller count: 1 before → **0** after. All active callers retired.
-- `WatchlistEngine` / `atlas/analysis/watchlist.py` retained for Sprint 99 deletion verification.
-- Type-only `Watchlist`/`WatchlistItem` imports remain in 5 modules — cleanup deferred post-deletion.
 - 1124 tests passing (3 skipped). Demo passed. Release verification green.
-- Sprint 99 target: delete `atlas/analysis/watchlist.py` and engine; resolve type-only imports.
+
+**Sprint 99 (2026-07-02):** `WatchlistEngine` deleted; `atlas/analysis/watchlist.py` slimmed to types only.
+- `WatchlistEngine`, `WatchlistAnalysis`, `WatchlistSignal`, `WatchlistRecommendation`, and
+  `render_watchlist_analysis` removed from `atlas/analysis/watchlist.py`. File slimmed to 33 lines
+  (`Watchlist`, `WatchlistItem` dataclasses only) — cannot fully delete because 7 production modules
+  still import `Watchlist`/`WatchlistItem` as input types.
+- `atlas/analysis/__init__.py` re-exports cleaned: `WatchlistEngine`, `WatchlistAnalysis`,
+  `WatchlistRecommendation`, `WatchlistSignal`, `render_watchlist_analysis` removed.
+- `tests/test_watchlist.py` deleted (only tested `WatchlistEngine.analyze()` and
+  `render_watchlist_analysis()` — both removed).
+- Guardrails flipped: `test_watchlist_engine_remains_importable` → `test_watchlist_engine_is_not_importable`;
+  `test_watchlist_engine_module_remains_on_disk` → `test_watchlist_engine_is_deleted`.
+- `atlas/cli/deprecations.py` stale string updated to reflect Sprint 99 deletion.
+- `docs/DeprecatedCommands.md` WatchlistEngine status updated.
+- `WatchlistEngineMigrationPlan.md` marked DELETION COMPLETE.
+- 1119 tests passing (3 skipped). All guardrails green.

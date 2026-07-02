@@ -1,8 +1,8 @@
 # WatchlistEngine Migration Plan
 
 **Created:** 2026-07-02 (Sprint 96)  
-**Updated:** 2026-07-02 (Sprint 98)  
-**Status:** MIGRATION COMPLETE — Active caller count is 0. All callers retired Sprints 93–98. Sprint 99: delete `WatchlistEngine` / `atlas/analysis/watchlist.py`; resolve type-only imports.
+**Updated:** 2026-07-02 (Sprint 99)  
+**Status:** DELETION COMPLETE — `WatchlistEngine` deleted Sprint 99. `atlas/analysis/watchlist.py` slimmed to types only (`Watchlist`, `WatchlistItem`). All five callers retired Sprints 93–98.
 
 ---
 

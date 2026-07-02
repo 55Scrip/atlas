@@ -3,10 +3,10 @@
 Sprint 78 deprecated the command; Sprint 91 removed the command body.
 `atlas watchlist analyze` is no longer a registered CLI command.
 
-The underlying `atlas.analysis.watchlist` engine remains on disk:
-- WatchlistEngine active caller count is now 0 (Sprint 98 state).
-- WatchlistEngine / atlas/analysis/watchlist.py retained for Sprint 99 deletion sprint.
-- Watchlist / WatchlistItem type-only imports remain in 5 modules — cleaned up separately.
+Sprint 99: WatchlistEngine deleted — atlas/analysis/watchlist.py slimmed to types only.
+- WatchlistEngine active caller count reached 0 in Sprint 98.
+- WatchlistEngine class deleted in Sprint 99; atlas/analysis/watchlist.py retained for
+  Watchlist / WatchlistItem type-only imports used by 7 production modules.
 
 Sprint 91 completes the CLI deprecated command retirement plan.
 Active _REGISTRY is now empty — all deprecated commands have been retired.
@@ -18,6 +18,7 @@ Sprint 95: atlas/decision/decision_engine.py WatchlistEngine removed — caller 
 Sprint 96: Audit sprint — caller count unchanged at 2 (intelligence, conversation).
 Sprint 97: atlas/intelligence/engine.py WatchlistEngine removed — caller count reduced 2 → 1.
 Sprint 98: atlas/conversation/engine.py WatchlistEngine removed — caller count reduced 1 → 0.
+Sprint 99: WatchlistEngine deleted — all callers retired.
 """
 
 from __future__ import annotations
@@ -82,11 +83,13 @@ def test_watchlist_intelligence_command_is_unaffected() -> None:
     assert "deprecated" not in result.output.lower()
 
 
-def test_watchlist_engine_remains_importable() -> None:
-    """atlas.analysis.watchlist must still be importable — retained for Sprint 99 deletion."""
-    from atlas.analysis.watchlist import Watchlist, WatchlistEngine
-    assert WatchlistEngine is not None
-    assert Watchlist is not None
+def test_watchlist_engine_is_not_importable() -> None:
+    """Sprint 99: WatchlistEngine must no longer exist in atlas.analysis.watchlist."""
+    import importlib
+    mod = importlib.import_module("atlas.analysis.watchlist")
+    assert not hasattr(mod, "WatchlistEngine"), (
+        "WatchlistEngine was deleted in Sprint 99 and must not be importable"
+    )
 
 
 def test_watchlist_engine_active_callers_are_zero() -> None:
@@ -179,12 +182,12 @@ def test_watchlist_engine_callers_are_exactly_the_known_set() -> None:
     )
 
 
-def test_watchlist_engine_module_remains_on_disk() -> None:
-    """atlas.analysis.watchlist engine must still exist — retained for Sprint 99 deletion."""
-    import importlib
-    mod = importlib.import_module("atlas.analysis.watchlist")
-    assert hasattr(mod, "WatchlistEngine"), (
-        "atlas.analysis.watchlist.WatchlistEngine must still be importable"
+def test_watchlist_engine_is_deleted() -> None:
+    """Sprint 99: WatchlistEngine class must be gone from atlas/analysis/watchlist.py."""
+    watchlist_path = REPO_ROOT / "atlas" / "analysis" / "watchlist.py"
+    source = watchlist_path.read_text(encoding="utf-8")
+    assert "WatchlistEngine" not in source, (
+        "WatchlistEngine was deleted in Sprint 99 and must not appear in watchlist.py"
     )
 
 
