@@ -566,3 +566,11 @@ Sprint 215 created `docs/AtlasWeeklyReviewUsageGuide.md` — a practical guide c
 Sprint 216 hardened the Weekly Review v1 track. Fix: CLI docstring and import updated from stale `render_weekly_review_skeleton` alias to `render_weekly_review` (no behavioral change). All three command variants verified (minimal, full, realistic). NESTE aging alert confirmed (473 days). All 13 guide-referenced paths verified present. Provider boundary clean. Language guardrails clean. 7 closed deletion targets remain absent. 1954 tests passing. RC2 green. Hardening doc: `docs/WeeklyReviewReleaseHardening.md`.
 
 **Sprint 217 recommendation:** Release candidate freeze for internal v1.
+
+---
+
+## Sprint 217 Status — COMPLETE
+
+Sprint 217 froze the internal v1 release candidate. Created `docs/InternalV1ReleaseCandidate.md` with 24-item acceptance checklist (all met), included/excluded capabilities table, command surface, guardrail acceptance, verification results, known limitations, and productization track summary (Sprints 208–217). Added `__release_stage__ = "Internal v1 RC — Weekly Review (Sprint 217)"` to `atlas/__init__.py`. 16 new tests; 1970 total passing.
+
+**Sprint 218 recommendation:** Load investor profile principles and constraints more deeply into Weekly Review — render them as explicit guardrail checks in Section 6 and as relevant constraints in Section 10, without invoking the full suitability engine.

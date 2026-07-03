@@ -2,6 +2,23 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 217 — Internal v1 Release Candidate Freeze
+
+Decision: Formally mark current state as the Atlas internal v1 release candidate and freeze the Weekly Review feature set.
+
+**Rationale:** After 10 consecutive productization sprints (208–217), the Weekly Review workflow is stable, tested, documented, and verified against all guardrails. Freezing an RC baseline makes the boundary explicit before deeper engine wiring.
+
+**Changes:**
+- `atlas/__init__.py`: Added `__release_stage__ = "Internal v1 RC — Weekly Review (Sprint 217)"`
+- `docs/InternalV1ReleaseCandidate.md`: Full RC definition with 24-item acceptance checklist (all ✓), included/excluded capabilities, command surface, guardrail acceptance, verification results, known limitations, productization track summary
+- 16 new tests; 1970 total passing
+
+**Acceptance result:** All 24 criteria met. Internal v1 RC status confirmed.
+
+**Next sprint recommendation:** Sprint 218 — Load investor profile principles and constraints more deeply into Weekly Review (explicit guardrail checks in Section 6, relevant constraints in Section 10, without invoking the full suitability engine).
+
+---
+
 ## 2026-07-03: Sprint 216 — Release Hardening Checkpoint for Weekly Review v1
 
 Decision: Pause feature expansion for a release hardening checkpoint across Weekly Review sprints 209–215.

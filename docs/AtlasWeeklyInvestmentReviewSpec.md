@@ -1,7 +1,7 @@
 # Atlas Weekly Investment Review — Workflow Specification
 
 **Created:** 2026-07-03 (Sprint 209)  
-**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210) + CLI SKELETON IMPLEMENTED (Sprint 211) + DETERMINISTIC RENDERER IMPLEMENTED (Sprint 212) + REAL PORTFOLIO TRIAL RUN (Sprint 213) + JOURNAL AGING ALERTS (Sprint 214) + V1 USAGE GUIDE (Sprint 215) + RELEASE HARDENED (Sprint 216). Sprint 217 recommendation: Release candidate freeze for internal v1.
+**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210) + CLI SKELETON IMPLEMENTED (Sprint 211) + DETERMINISTIC RENDERER IMPLEMENTED (Sprint 212) + REAL PORTFOLIO TRIAL RUN (Sprint 213) + JOURNAL AGING ALERTS (Sprint 214) + V1 USAGE GUIDE (Sprint 215) + RELEASE HARDENED (Sprint 216) + INTERNAL V1 RC FROZEN (Sprint 217). Sprint 218 recommendation: Load investor profile principles and constraints more deeply into Weekly Review.
 
 ---
 
