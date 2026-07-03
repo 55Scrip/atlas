@@ -2,6 +2,32 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 172 — Release Candidate Checkpoint After 14 Cleanup Closures
+
+Decision: Atlas is release-candidate stable after 14 cleanup track closures.
+
+**Rationale:** After closing analysis, decision, providers, portfolio boundary, evidence, reasoning, risk, principles, comparison, home, intelligence, conversation, dashboard, and portfolio intelligence capability cleanup tracks (Sprints 141–171), Atlas remains stable. Deleted modules remain absent, active modules remain importable, retired CLI paths remain retired, provider boundaries remain unchanged, and release verification remains green.
+
+**Verification results:**
+- All 13 deleted modules absent ✓
+- All 9 active packages importable ✓
+- All 7 retired CLI commands remain retired; `_REGISTRY` empty ✓
+- All active CLI commands remain active ✓
+- Provider boundaries unchanged across all 6 audited packages ✓
+- 1524 tests passed, 3 skipped ✓
+- `scripts/verify_release_candidate.sh` — RC2 green ✓
+- `scripts/run_daily_brief_demo.sh` — provider-free, passes ✓
+- No stale active runtime references found ✓
+
+**Notable stale symbol classifications (all expected):**
+- `atlas/domains/decision/engine.py` `ReasoningEngine` — distinct Blueprint-layer class, not the deleted `atlas.reasoning.ReasoningEngine`
+- `atlas/providers/yahoo.py` `YahooCompany`, `YahooFinancials`, `YahooMarketData` — active internal types in opt-in Yahoo provider, not stale references
+- `atlas/capabilities/portfolio_intelligence/models.py` legacy type doc-comments — migration notes only, not imports
+
+**Sprint 173 recommended target:** Audit `atlas/cli/` deprecated command registry — after 14 cleanup closures and two RC checkpoints, the CLI command surface is the next smallest high-leverage audit target.
+
+---
+
 ## 2026-07-03: Sprint 171 — Close Portfolio Intelligence Capability Cleanup Track
 
 Decision: Close the `atlas/capabilities/portfolio_intelligence/` cleanup track. No further cleanup work is warranted.
