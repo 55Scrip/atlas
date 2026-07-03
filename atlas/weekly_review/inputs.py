@@ -595,9 +595,29 @@ def load_weekly_review_inputs(paths: WeeklyReviewInputPaths) -> WeeklyReviewLoad
                     raw_p = profile_data.get("principles", [])
                     if isinstance(raw_p, list):
                         profile_principles = tuple(str(p) for p in raw_p if p)
+                    elif raw_p:
+                        warnings.append(
+                            WeeklyReviewInputWarning(
+                                code="invalid_profile_principles",
+                                message=(
+                                    "Investor profile 'principles' field is not a list; "
+                                    "principles will not be loaded."
+                                ),
+                            )
+                        )
                     raw_c = profile_data.get("constraints", [])
                     if isinstance(raw_c, list):
                         profile_constraints = tuple(str(c) for c in raw_c if c)
+                    elif raw_c:
+                        warnings.append(
+                            WeeklyReviewInputWarning(
+                                code="invalid_profile_constraints",
+                                message=(
+                                    "Investor profile 'constraints' field is not a list; "
+                                    "constraints will not be loaded."
+                                ),
+                            )
+                        )
                     rt = (
                         profile_data.get("risk_tolerance")
                         or profile_data.get("risk_preference")

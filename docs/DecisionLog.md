@@ -2,6 +2,29 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 218 — Load Investor Profile Principles and Constraints into Weekly Review
+
+Decision: Surface the user's stated principles and constraints directly in the Weekly Review output (Sections 5, 6, and 10) without invoking the suitability engine.
+
+**Rationale:** After freezing the internal v1 release candidate, Atlas improves the local-only Weekly Review by surfacing the user's stated principles and constraints directly in the output. This strengthens process discipline without adding suitability scoring, provider dependencies, or recommendation behavior.
+
+**Changes:**
+- `atlas/weekly_review/inputs.py`: Added `invalid_profile_principles` and `invalid_profile_constraints` warnings when those fields exist but are not lists. Malformed fields produce empty tuples — no failure.
+- `atlas/weekly_review/render.py`: Section 10 now surfaces each principle as a "Reason to Wait" and each constraint as "No Action Warranted". Sections 5 and 6 already rendered these fields; no change needed there.
+- `tests/test_weekly_review_profile_context_sprint218.py`: 46 new focused tests.
+- Docs updated.
+
+**Profile parsing behavior:**
+- `principles` field is a list → parsed into `profile_principles` tuple (stable order)
+- `constraints` field is a list → parsed into `profile_constraints` tuple (stable order)
+- Either field not a list → `invalid_profile_principles` / `invalid_profile_constraints` warning; empty tuple
+- Profile file missing → `missing_optional_profile` warning; all profile fields empty
+- Unknown profile fields ignored safely
+
+**Next sprint recommendation:** Sprint 219 — Wire per-ticker company facts and financials presence checks more deeply into Missing Evidence and Follow-Up Questions.
+
+---
+
 ## 2026-07-03: Sprint 217 — Internal v1 Release Candidate Freeze
 
 Decision: Formally mark current state as the Atlas internal v1 release candidate and freeze the Weekly Review feature set.

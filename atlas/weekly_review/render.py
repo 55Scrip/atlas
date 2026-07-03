@@ -665,6 +665,20 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
                 f"({age} days). Assumptions should be refreshed before changing decision status."
             )
 
+    # Profile-derived reasons to wait
+    if result.profile_principles:
+        for principle in result.profile_principles:
+            lines.append(
+                f'Reason to Wait: stated principle — "{principle}" — '
+                "supports gathering evidence before changing any decision status."
+            )
+    if result.profile_constraints:
+        for constraint in result.profile_constraints:
+            lines.append(
+                f'No Action Warranted: stated constraint — "{constraint}" — '
+                "applies when reviewing current portfolio and watchlist decisions."
+            )
+
     # Universal reminders — always ensure section is non-empty
     lines.append(
         "No Action Warranted: This review is informational only. "

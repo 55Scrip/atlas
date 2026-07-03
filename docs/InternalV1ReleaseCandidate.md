@@ -229,8 +229,13 @@ The internal v1 RC baseline is now established. Further product expansion should
 build on this foundation without changing the local-only, deterministic, provider-free
 character of the Weekly Review workflow.
 
-Recommended next work (Sprint 218):
-**Load investor profile principles and constraints more deeply into Weekly Review** —
-render them as explicit guardrail checks in Section 6 and as relevant constraints
-in Section 10, without invoking the full suitability engine. This keeps the
-local-only, engine-free character of v1 while making the profile more useful.
+**Sprint 218 (post-v1 improvement — complete):**
+Investor profile principles and constraints are now rendered in Sections 5, 6,
+and 10. Each principle appears as a "Reason to Wait" in Section 10; each
+constraint appears as a "No Action Warranted" note. Malformed fields warn and
+fail safely. No suitability scoring, no engine wiring, no provider dependency.
+
+Recommended next work (Sprint 219):
+**Wire per-ticker company facts and financials presence checks more deeply into
+Missing Evidence and Follow-Up Questions** — per-ticker improvements without
+adding provider or engine dependencies.

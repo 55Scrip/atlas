@@ -574,3 +574,11 @@ Sprint 216 hardened the Weekly Review v1 track. Fix: CLI docstring and import up
 Sprint 217 froze the internal v1 release candidate. Created `docs/InternalV1ReleaseCandidate.md` with 24-item acceptance checklist (all met), included/excluded capabilities table, command surface, guardrail acceptance, verification results, known limitations, and productization track summary (Sprints 208–217). Added `__release_stage__ = "Internal v1 RC — Weekly Review (Sprint 217)"` to `atlas/__init__.py`. 16 new tests; 1970 total passing.
 
 **Sprint 218 recommendation:** Load investor profile principles and constraints more deeply into Weekly Review — render them as explicit guardrail checks in Section 6 and as relevant constraints in Section 10, without invoking the full suitability engine.
+
+---
+
+## Sprint 218 Status — COMPLETE
+
+Sprint 218 surfaced investor profile principles and constraints in Weekly Review Sections 5, 6, and 10. Changes: added `invalid_profile_principles` and `invalid_profile_constraints` warnings in `inputs.py` for malformed fields; added profile-derived reasons to wait in Section 10 of `render.py` (each principle as "Reason to Wait", each constraint as "No Action Warranted"). No engine wiring. No suitability scoring. 46 new tests; 2016 total passing.
+
+**Sprint 219 recommendation:** Wire existing company facts and financial presence checks more deeply into Missing Evidence and Follow-Up Questions (per-ticker improvements without adding provider or engine dependencies).

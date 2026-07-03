@@ -246,8 +246,13 @@ Notes:
 }
 ```
 
-When provided, Atlas renders your principles in Section 6 (Risk and Principle Guardrails)
-and your constraints in Section 5 (Portfolio Fit and Suitability Notes).
+When provided, Atlas renders your principles and constraints in three sections:
+
+- **Section 5** (Portfolio Fit and Suitability Notes): risk tolerance, time horizon, and constraints
+- **Section 6** (Risk and Principle Guardrails): principles listed as guardrail references
+- **Section 10** (Non-Actions / Reasons to Wait): each principle as "Reason to Wait", each constraint as "No Action Warranted"
+
+This makes your own stated investment discipline visible as part of the weekly process.
 
 **Current limitation:** Atlas reads and displays profile fields but does not apply
 them as rules or produce compliance assessments. Full profile-driven suitability
@@ -450,6 +455,9 @@ a weekly review. Section 10 makes the reasons visible:
 - **Per-ticker missing financials:** specific tickers without financials files.
 - **Aged journal notes:** journal notes older than 90 days, flagged as needing
   assumption refresh (see Journal Aging Notes below).
+- **Profile-derived reasons:** each stated principle appears as a "Reason to
+  Wait" and each stated constraint appears as a "No Action Warranted" note —
+  making your own investment discipline visible as part of the weekly review.
 
 The section always ends with a reminder: this review is informational only.
 Atlas supports better judgment. It does not replace it.
@@ -484,6 +492,8 @@ They do not block the review from running.
 | `missing_watchlist_status` | A watchlist item has no status | Add a `"status"` field to the item in `watchlist.json` |
 | `unknown_watchlist_status` | A watchlist item has an unrecognised status | Replace with one of the allowed status values |
 | `invalid_profile` | The investor profile file could not be parsed | Check `investor_profile.json` for JSON formatting errors |
+| `invalid_profile_principles` | The `principles` field is not a list | Change `"principles"` to a JSON array of strings |
+| `invalid_profile_constraints` | The `constraints` field is not a list | Change `"constraints"` to a JSON array of strings |
 | `invalid_journal` | The journal file could not be parsed | Check `decision_journal.json` for JSON formatting errors |
 
 Missing optional files (profile, journal, company facts, financials) are noted
