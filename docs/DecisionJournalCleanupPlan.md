@@ -1,7 +1,8 @@
 # Atlas Decision Journal Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 184)
-**Status:** OPEN — Sprint 184 audit complete. No cleanup warranted. Awaiting Sprint 185 closure confirmation.
+**Updated:** 2026-07-03 (Sprint 185)
+**Status:** CLOSED — Sprint 185 confirmed Sprint 184 findings unchanged. No cleanup warranted. No further work planned until new dead code, stale exports, provider-boundary issues, evidence/decision boundary issues, persistence boundary issues, or a clear replacement/migration target emerges.
 
 ---
 
@@ -300,6 +301,45 @@ This track should only be reopened if:
 - A Blueprint successor changes the input/output type contract
 - A behavioral sprint to simplify the 4-dependency footprint is proposed
 
-## Recommended Sprint 185 Target
+## Sprint 185 — Closure Verification
 
-**Close the decision journal cleanup track** — audit-first inventory (Sprint 184) is complete. Sprint 184 found no cleanup warranted. Sprint 185 should confirm Sprint 184 findings unchanged and declare the track closed. After closure, audit `atlas/watchlist_review/` package (Sprint 186).
+Sprint 185 confirmed all Sprint 184 findings unchanged:
+
+| Check | Result |
+|---|---|
+| All 11 exports importable, `__all__` exact match | ✓ |
+| Capability does not import `atlas.providers` | ✓ |
+| Capability does not import `atlas.cli` | ✓ |
+| Capability does not import `atlas.capabilities` | ✓ |
+| Capability does not import `atlas.adapters` | ✓ |
+| Capability does not import deleted `atlas.reasoning` | ✓ |
+| Capability does not import deleted `atlas.analysis.*` submodules | ✓ |
+| No stale imports from any closed cleanup track | ✓ |
+| `CompanyAnalysisProvider` absent from all active code | ✓ |
+| CLI callers (`atlas journal create/list/review`) remain active | ✓ |
+| `atlas/home/engine.py` caller remains active | ✓ |
+| Evidence/decision boundary stable | ✓ |
+| Provider boundary clean — no network access | ✓ |
+| Persistence: injected-path, deterministic, `language_report` not-serialized (intentional) | ✓ |
+| Sprint 184 guardrails (9 tests) | 9/9 passing ✓ |
+| Full test suite | 1614 passed, 3 skipped ✓ |
+| RC2 verification | Green ✓ |
+| Demo | Passes, provider-free ✓ |
+
+**Track status: CLOSED as of Sprint 185.**
+
+No further `atlas/decision_journal/` cleanup work is planned until new dead code, stale exports, provider-boundary issues, evidence/decision boundary issues, persistence boundary issues, or a clear replacement/migration target emerges.
+
+## Reopening Conditions
+
+This track should only be reopened if:
+- A new zero-caller or stale export is introduced
+- A provider import is added to the package
+- A stale import from a closed cleanup track is introduced
+- The `atlas.cli` upward coupling prohibition is violated
+- A Blueprint successor changes the input/output type contract
+- A behavioral sprint to simplify the 4-dependency footprint is proposed
+
+## Recommended Sprint 186 Target
+
+**Audit `atlas/watchlist_review/` package** — a focused active package referenced in `atlas/cli/deprecations.py` as one where engine deletion was deferred, making it the highest-probability next target for actual cleanup candidates. Pattern: audit-first inventory (Sprint 186), then targeted action or closure (Sprint 187).

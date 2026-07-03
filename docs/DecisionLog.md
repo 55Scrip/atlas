@@ -2,6 +2,30 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 185 — Close Decision Journal Cleanup Track
+
+Decision: Declare `atlas/decision_journal/` cleanup track CLOSED.
+
+**Rationale:** After inventory, export review, CLI and application caller review, evidence/decision boundary review, provider boundary review, persistence/data shape review, and stale import audit (Sprint 184), the decision journal package contains only active, intentional code. Sprint 185 confirmed all Sprint 184 findings unchanged. Further cleanup would create churn without architectural benefit.
+
+**Final verified state:**
+- 2 modules, 605 lines, 11 active exports — all importable ✓
+- Active CLI callers: `atlas journal create`, `atlas journal list`, `atlas journal review` ✓
+- Active application caller: `atlas/home/engine.py` (journal reminder logic) ✓
+- 4 lateral dependencies (`atlas.evidence`, `atlas.language`, `atlas.principles`, `atlas.profile`) — all intentional, all runtime-active ✓
+- No provider coupling — clean provider boundary ✓
+- No CLI coupling — CLI imports the package; package does not import CLI ✓
+- No stale imports from any closed cleanup track ✓
+- Persistence: injected-path JSON, deterministic, `language_report` not-serialized (intentional design) ✓
+- Sprint 184 guardrails (9 tests) 9/9 passing ✓
+- 1614 passed, 3 skipped | RC2 green | Demo passes ✓
+
+**Changes made:** Documentation closure only. Updated `docs/DecisionJournalCleanupPlan.md` (status CLOSED, Sprint 185 verification table, reopening conditions, Sprint 186 recommendation).
+
+**Next sprint recommendation:** Audit `atlas/watchlist_review/` package.
+
+---
+
 ## 2026-07-03: Sprint 184 — Decision Journal Package Audit
 
 Decision: Audit `atlas/decision_journal/` and confirm no cleanup is warranted.
