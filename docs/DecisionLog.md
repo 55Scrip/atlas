@@ -2,6 +2,28 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 184 — Decision Journal Package Audit
+
+Decision: Audit `atlas/decision_journal/` and confirm no cleanup is warranted.
+
+**Rationale:** Sprint 184 performed a full inventory of `atlas/decision_journal/`. The package contains 2 modules (605 lines), 11 active exports, and active CLI callers (`atlas journal create/list/review`) and application callers (`atlas/home/engine.py`). All 11 `__all__` exports are active. No stale imports, no provider coupling, no CLI coupling, no circular dependencies, no dead helpers, no zero-caller exports. JSON persistence is injected-path (not hard-coded in the engine) and fully tested. The `language_report` not-serialized pattern is intentional design (re-derived on load to avoid JSON schema drift).
+
+**Key findings:**
+- 2 modules (`__init__.py`, `engine.py`), 605 lines, 11 active exports — all importable ✓
+- Active CLI surface: `atlas journal create`, `atlas journal list`, `atlas journal review` ✓
+- Active application caller: `atlas/home/engine.py` (journal reminder logic) ✓
+- Lateral dependency footprint: `atlas.evidence`, `atlas.language`, `atlas.principles`, `atlas.profile` — all intentional, all runtime-active ✓
+- No provider coupling — clean provider boundary ✓
+- No stale imports from any closed cleanup track ✓
+- `atlas.domains.decision_journal` is a separate thin shim re-exporting `JournalEntry` from `atlas.shared` — distinct from and intentionally separate from `atlas.decision_journal.DecisionJournalEntry` ✓
+- 1605 passed, 3 skipped | RC2 green | Demo passes ✓
+
+**Changes made:** Created `docs/DecisionJournalCleanupPlan.md`. Added 9 Sprint 184 guardrail tests in `tests/test_decision_journal_package_sprint184.py`. Updated `docs/LegacyConsolidationPlan.md` and `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 185 — close decision journal cleanup track (confirm Sprint 184 findings unchanged). After closure, audit `atlas/watchlist_review/`.
+
+---
+
 ## 2026-07-03: Sprint 183 — Close Company Analysis Capability Cleanup Track
 
 Decision: Declare `atlas/capabilities/company_analysis/` cleanup track CLOSED.
