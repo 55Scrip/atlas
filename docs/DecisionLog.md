@@ -2,6 +2,27 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 179 — Company Analysis Package Audit
+
+Decision: Audit the legacy company analysis runtime surface (`atlas/analysis/`) and confirm the boundary with `atlas/capabilities/company_analysis/`.
+
+**Rationale:** Sprint 179 was specified as auditing `atlas/company_analysis/`, which does not exist as a standalone package. The company analysis runtime surface is `atlas/analysis/` — the legacy scoring and investment-report layer partially cleaned up in Sprint 141. This audit establishes whether the remaining 5 modules are clean and whether the Sprint 141 closure is verified stable.
+
+**Key findings:**
+- `atlas/company_analysis/` does not exist; the legacy surface is `atlas/analysis/` (5 modules, ~655 lines)
+- Sprint 141 closure verified: 12 deleted modules remain unimportable
+- All 12 `__all__` exports are active with production callers
+- `atlas/capabilities/company_analysis/` is fully decoupled from `atlas/analysis/` — capability does not import the legacy layer; boundary is clean
+- One stale alias found: `CompanyAnalysisProvider` in `atlas/analysis/company_analysis.py:154` — module-level import of `CompanyDataProvider` aliased to `CompanyAnalysisProvider`, with zero external callers and not in `__all__`
+- `ThresholdRecommendationPolicy` generates legacy recommendation language ("Strong Buy"/"Buy"/etc.) — pre-existing, confined to the legacy layer, not emitted by the Blueprint capability
+- Provider boundary correct — no direct network access in `atlas/analysis/`; Yahoo remains opt-in only
+
+**Changes made:** Audit-only. Created `docs/CompanyAnalysisCleanupPlan.md`, added 11 guardrail tests in `tests/test_company_analysis_package_sprint179.py`.
+
+**Next sprint recommendation:** Close `atlas/analysis/` cleanup track — remove stale `CompanyAnalysisProvider` alias from `atlas/analysis/company_analysis.py:154`.
+
+---
+
 ## 2026-07-03: Sprint 178 — Adapters Package Audit
 
 Decision: Audit `atlas/adapters/` and confirm no cleanup is warranted.
