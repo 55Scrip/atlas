@@ -2,6 +2,28 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 178 — Adapters Package Audit
+
+Decision: Audit `atlas/adapters/` and confirm no cleanup is warranted.
+
+**Rationale:** After auditing capabilities (Sprint 176) and domains (Sprint 177), `atlas/adapters/` was the next audit target — the translation layer bridging external/legacy JSON to Blueprint-aligned types. Full inventory confirmed 5 adapter modules, 756 lines, 7 public symbols.
+
+**Key findings:**
+- All 5 adapters are pure JSON-to-type translators: deterministic, no network, no provider imports, no business logic
+- All 7 public symbols have active production callers; no zero-caller symbols
+- `atlas.analysis.scores.clamp_score` import in `portfolio.py` is correct and active (not stale) — confirmed retained Sprint 140
+- Portfolio boundary CLOSED Sprint 148 verified stable: 3 active symbols importable, 6 deleted symbols absent
+- No adapter imports `atlas.providers`, `atlas.cli`, or any network library
+- No circular dependencies; dependency direction: adapter → domain/capability/shared/active-utilities
+- No `__all__` in `__init__.py` is correct — adapters consumed by direct module path
+- No cleanup warranted
+
+**Changes made:** Audit-only. Created `docs/AdaptersCleanupPlan.md`, added 14 guardrail tests in `tests/test_adapters_package_sprint178.py`.
+
+**Next sprint recommendation:** Audit `atlas/company_analysis/` package.
+
+---
+
 ## 2026-07-03: Sprint 177 — Domains Package Audit
 
 Decision: Audit `atlas/domains/` and confirm no cleanup is warranted.
