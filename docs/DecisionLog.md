@@ -2,6 +2,31 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 165 — Close Intelligence Cleanup Track
+
+Decision: Close the `atlas/intelligence/` cleanup track. No cleanup work is warranted.
+
+**Rationale:** After inventory (Sprint 164) and final verification (Sprint 165), the intelligence package contains only active, intentional code. `IntelligenceEngine.analyze()` is the sole public method, active at 3 production call paths (CLI×2, conversation). All 5 exports are active. All 13 private helpers are active. `RiskAnalysis` dependency is intentional, optional, and shallow. No stale imports. No Blueprint successor. Further cleanup would create churn without architectural benefit.
+
+**Final verification (Sprint 165):** All 5 exports importable. `atlas intelligence analyze` and `atlas daily summary` CLI paths confirmed active. Conversation and suitability integrations confirmed intentional. Zero stale closed-track imports. No new Blueprint successor. No provider boundary violation. No cleanup action warranted.
+
+**Closed-track summary:**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — CLOSED Sprint 148
+- Evidence package — CLOSED Sprint 150
+- Reasoning package — CLOSED Sprint 153
+- Risk package — CLOSED Sprint 155
+- Principles package — CLOSED Sprint 158
+- Comparison package — CLOSED Sprint 160
+- Home package — CLOSED Sprint 162
+- **Intelligence package — CLOSED Sprint 165**
+
+**Sprint 166 recommended target:** Audit `atlas/conversation/` package — an active runtime orchestration surface that depends on intelligence (now closed) and is a natural next step in the cleanup sequence.
+
+---
+
 ## 2026-07-03: Sprint 164 — Intelligence Package Audit Checkpoint
 
 Decision: `atlas/intelligence/` package is clean. No cleanup work is warranted.
