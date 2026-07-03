@@ -1,7 +1,7 @@
 # Atlas Weekly Investment Review — Workflow Specification
 
 **Created:** 2026-07-03 (Sprint 209)  
-**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210) + CLI SKELETON IMPLEMENTED (Sprint 211). Sprint 212 target: implement Weekly Investment Review renderer.
+**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210) + CLI SKELETON IMPLEMENTED (Sprint 211) + DETERMINISTIC RENDERER IMPLEMENTED (Sprint 212). Sprint 213 recommendation: Run real portfolio trial.
 
 ---
 
@@ -1182,6 +1182,47 @@ Sprint 211 implemented the `atlas weekly-review` CLI skeleton.
 - Companies-needing-attention logic not yet implemented
 - Non-actions generator not yet connected to real decision data
 - Financial CSV parsing not yet implemented
+
+---
+
+## Sprint 212 Implementation Status — COMPLETE
+
+Sprint 212 replaced all placeholder renderer content with deterministic output derived from the loaded `WeeklyReviewLoadResult`.
+
+**Renderer upgraded:** `atlas/weekly_review/render.py` — `render_weekly_review(result)` replaces skeleton placeholders. `render_weekly_review_skeleton` kept as backward-compatible alias.
+
+**`WeeklyReviewLoadResult` extended:** Added `journal_entries: tuple[dict[str, Any], ...] = ()` field — raw journal dicts loaded alongside `journal_entry_count`. Zero-cost when journal absent.
+
+**Section-by-section implementation:**
+
+| Section | Sprint 211 | Sprint 212 |
+|---|---|---|
+| 1. Review Scope | as_of + counts | + optional input status + warnings count |
+| 2. Portfolio Context | ticker list + sectors | + weights sorted desc + sector % breakdown + concentration note |
+| 3. Watchlist Review | status + gap count | + per-item reason, evidence gaps, open questions, observations, notes |
+| 4. Needs Attention | placeholder | + evidence-gap items + visible holdings + local-input-derived flags |
+| 5. Suitability | placeholder | + profile availability + concentration note + cash position + deferred engine note |
+| 6. Guardrails | placeholder | + elevated risk scores + missing cost basis + sector concentration + deferred engine note |
+| 7. Open Decisions | count only | + per-entry title + status + follow-up triggers + atlas_view snippet |
+| 8. Missing Evidence | watchlist gaps | + missing optional input flags |
+| 9. Follow-Up Questions | placeholder | + watchlist open_questions + journal follow-up triggers + derived evidence questions |
+| 10. Non-Actions | deferred items | + evidence gap count + missing optional reasons + universal reminders |
+
+**Determinism:** stable sort by weight (desc) then ticker; stable warning order; no live timestamps.
+
+**Forbidden language:** confirmed clean — 0 forbidden terms in output, help, or tests.
+
+**Provider/network boundary:** no new imports added; `atlas.weekly_review.render` still free of provider/network imports.
+
+**Tests:** `tests/test_weekly_review_renderer_sprint212.py` — 63 new tests. Sprint 211 tests unchanged. **1818 passed, 3 skipped | RC2 green | Demo passes.**
+
+**Remaining gaps (for Sprint 213+):**
+- Full investor profile object loading (principles/constraints) not yet parsed into LoadResult
+- Company analysis engine not yet wired into Section 4
+- Suitability engine not yet wired into Section 5
+- Risk/principles engine not yet wired into Section 6
+- Financial CSV not yet parsed
+- Per-ticker company facts not yet checked against company_facts_dir
 
 ## Sprint 210 Implementation Status — COMPLETE
 

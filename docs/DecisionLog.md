@@ -2,6 +2,34 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 212 — Implement Weekly Investment Review Renderer
+
+Decision: Replace placeholder renderer content with deterministic output derived from the local `WeeklyReviewLoadResult`.
+
+**Rationale:** After exposing the `atlas weekly-review` command (Sprint 211), Atlas needs useful output from the local input bundle before deeper engine orchestration. Rendering portfolio context, watchlist evidence gaps, open decisions, missing evidence, follow-up questions, and non-actions makes the workflow usable while preserving deterministic local-only behavior.
+
+**Findings:**
+- `render_weekly_review(result)` introduced in `atlas/weekly_review/render.py`; `render_weekly_review_skeleton` kept as backward-compatible alias — all Sprint 211 tests remain green
+- `WeeklyReviewLoadResult.journal_entries: tuple[dict[str, Any], ...] = ()` added — lightweight raw dict read from journal JSON, zero-cost when journal absent; `journal_entry_count` preserved for backward compatibility
+- Section 2: holdings sorted by weight descending (stable: secondary sort by ticker), sector % breakdown, concentration note, cash note
+- Section 3: per-item watchlist detail — reason, evidence gaps, open questions, observations, notes
+- Section 4: evidence-gap items (≥2 gaps), visible holdings (>20% weight), portfolio/watchlist overlap
+- Section 5: profile availability, concentration observation, cash position, deferred engine note
+- Section 6: elevated risk scores, missing cost basis, sector concentration, deferred engine note
+- Section 7: per-entry decision title, status, first two follow-up triggers, atlas_view snippet
+- Section 8: consolidated evidence gaps by ticker + missing optional input flags
+- Section 9: watchlist open_questions + additional journal follow-up triggers + derived questions
+- Section 10: deferred/needs-more-evidence items + evidence gap count + missing optional reasons + universal reminders (always non-empty)
+- Forbidden language scan: 0 forbidden terms in full output with sample files
+- Zero provider/network imports added
+- 63 new tests | **1818 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Rewrote `atlas/weekly_review/render.py`. Extended `atlas/weekly_review/inputs.py` (`WeeklyReviewLoadResult.journal_entries`). Updated `atlas/weekly_review/__init__.py` (added `render_weekly_review`). Created `tests/test_weekly_review_renderer_sprint212.py`. Updated `docs/AtlasWeeklyInvestmentReviewSpec.md`, `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 213 — Run real portfolio trial. Once the renderer produces useful local-input-derived output, the fastest improvement path is to run `atlas weekly-review` on a realistic portfolio/watchlist/profile bundle and identify friction before wiring deeper engines.
+
+---
+
 ## 2026-07-03: Sprint 211 — Implement Weekly Review CLI Skeleton
 
 Decision: Add the `atlas weekly-review` command skeleton — the first end-to-end CLI surface for the Atlas Weekly Investment Review workflow.

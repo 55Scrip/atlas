@@ -504,3 +504,17 @@ The Weekly Investment Review is the best flagship v1 workflow because it ties to
 - Acceptance criteria for each section
 
 Sprint 210+ should implement the workflow based on the Sprint 209 specification.
+
+## Sprint 212 Status — COMPLETE
+
+Sprint 212 implemented the deterministic Weekly Investment Review renderer.
+
+**Status:** `atlas weekly-review` now produces useful, input-derived output from local files only.
+
+**What changed:**
+- `atlas/weekly_review/render.py` rewritten — `render_weekly_review(result)` introduced; `render_weekly_review_skeleton` kept as backward-compatible alias
+- `WeeklyReviewLoadResult` extended with `journal_entries: tuple[dict[str, Any], ...] = ()` — raw journal dicts alongside entry count
+- All 10 sections produce deterministic content from loaded inputs
+- No engine calls, no provider imports, no live data
+
+**Sprint 213 recommendation:** Run real portfolio trial — run `atlas weekly-review` on a realistic local portfolio/watchlist/profile bundle and identify friction before wiring deeper engines.

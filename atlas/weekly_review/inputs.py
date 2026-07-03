@@ -531,6 +531,7 @@ class WeeklyReviewLoadResult:
     as_of: str
     scope_notes: str
     warnings: tuple[WeeklyReviewInputWarning, ...]
+    journal_entries: tuple[dict[str, Any], ...] = ()  # raw dicts, lightweight read
 
 
 # ---------------------------------------------------------------------------
@@ -601,6 +602,7 @@ def load_weekly_review_inputs(paths: WeeklyReviewInputPaths) -> WeeklyReviewLoad
 
     # --- Optional: decision journal ---
     journal_entry_count = 0
+    journal_entries: tuple[dict[str, Any], ...] = ()
     effective_journal_path = paths.journal_path
     if effective_journal_path is None:
         default_journal = Path(".atlas") / "decision_journal.json"
@@ -613,6 +615,7 @@ def load_weekly_review_inputs(paths: WeeklyReviewInputPaths) -> WeeklyReviewLoad
                 raw = json.load(fh)
             if isinstance(raw, list):
                 journal_entry_count = len(raw)
+                journal_entries = tuple(e for e in raw if isinstance(e, dict))
         except (json.JSONDecodeError, OSError):
             warnings.append(
                 WeeklyReviewInputWarning(
@@ -675,6 +678,7 @@ def load_weekly_review_inputs(paths: WeeklyReviewInputPaths) -> WeeklyReviewLoad
         as_of=as_of,
         scope_notes=paths.scope_notes.strip() if paths.scope_notes else "",
         warnings=tuple(warnings),
+        journal_entries=journal_entries,
     )
 
 
