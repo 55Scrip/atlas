@@ -619,6 +619,12 @@ Sprint 222 added local research notes input to Weekly Review. New `--research-no
 
 Sprint 223 defined the formal Snapshot Draft schema. New package `atlas/snapshot_input/` with `schema.py`. `SnapshotType` (8 values), `SnapshotConfirmationStatus` (5 states), `SnapshotConfidence` (4 levels), `SnapshotDraft` dataclass with 9 required and 4 optional fields, `validate_snapshot_draft`, `to_dict`/`from_dict`/`to_json`/`from_json` serialization, and `load_snapshot_draft`/`save_snapshot_draft` file helpers. Three example draft files created. No OCR, AI, image parsing, or provider dependency introduced. No Weekly Review behavior changed. 72 new tests; 2231 total passing.
 
-**Sprint 224 recommendation:** Add snapshot draft CLI validation — a local `atlas snapshot validate` command that validates draft JSON files and reports uncertainties/missing fields without writing to Atlas input files.
+---
+
+## Sprint 224 Status — COMPLETE
+
+Sprint 224 added `atlas snapshot validate <path>` — a read-only CLI command that validates a Snapshot Draft JSON file and renders a human-readable summary. Output includes: type, confidence, confirmation status, target local file, related tickers, uncertainties, missing required fields, and safety boundary. Exit 0 on valid draft, exit 1 on invalid JSON, invalid schema, or missing file. No file writing. No mutation. New `atlas/snapshot_input/render.py` created. CLI extended with `snapshot_app` Typer sub-group. No provider imports. No network calls. 44 new tests; 2275 total passing.
+
+**Sprint 225 recommendation:** TBD.
 
 **Sprint 221 recommendation:** Group or simplify Section 10 output — add visual grouping (reason-type headers) so the section is scannable rather than requiring sequential reading.

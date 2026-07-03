@@ -131,6 +131,7 @@ profile_app = typer.Typer(help="Investor profile context commands")
 principles_app = typer.Typer(help="Atlas principles validation commands")
 research_app = typer.Typer(help="Research export commands")
 risk_drift_app = typer.Typer(help="Risk drift review commands")
+snapshot_app = typer.Typer(help="Snapshot Draft commands (validation only — no file writing).")
 suitability_app = typer.Typer(help="Investor suitability context commands")
 theme_app = typer.Typer(help="Theme intelligence commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
@@ -149,6 +150,7 @@ app.add_typer(profile_app, name="profile")
 app.add_typer(principles_app, name="principles")
 app.add_typer(research_app, name="research")
 app.add_typer(risk_drift_app, name="risk-drift")
+app.add_typer(snapshot_app, name="snapshot")
 app.add_typer(suitability_app, name="suitability")
 app.add_typer(theme_app, name="theme")
 app.add_typer(watchlist_app, name="watchlist")
@@ -430,6 +432,49 @@ def weekly_review_command(
         raise typer.Exit(code=1) from exc
 
     console.print(render_weekly_review(result))
+
+
+@snapshot_app.command("validate")
+def snapshot_validate_command(
+    draft_path: Path = typer.Argument(
+        ...,
+        help="Path to a Snapshot Draft JSON file to validate.",
+    ),
+):
+    """Validate a Snapshot Draft JSON file and display a summary.
+
+    Loads the draft, validates its schema, and prints a human-readable
+    summary including snapshot type, confidence, confirmation status,
+    uncertainties, and missing required fields.
+
+    This command is read-only. It does not write to any Atlas local input file
+    and does not modify the draft file.
+
+    No live data. No recommendations. No provider dependency.
+    """
+    from atlas.snapshot_input.schema import SnapshotDraft
+    from atlas.snapshot_input.render import (
+        render_snapshot_draft_validation,
+        render_snapshot_draft_validation_error,
+    )
+
+    if not draft_path.exists():
+        console.print(render_snapshot_draft_validation_error(f"file not found: {draft_path}"))
+        raise typer.Exit(code=1)
+
+    try:
+        text = draft_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        console.print(render_snapshot_draft_validation_error(f"could not read file: {exc}"))
+        raise typer.Exit(code=1)
+
+    try:
+        draft = SnapshotDraft.from_json(text)
+    except ValueError as exc:
+        console.print(render_snapshot_draft_validation_error(str(exc)))
+        raise typer.Exit(code=1)
+
+    console.print(render_snapshot_draft_validation(draft))
 
 
 @app.command("compare")

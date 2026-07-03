@@ -1,8 +1,8 @@
 # Atlas Snapshot / Screenshot Input Workflow
 
-**Sprint:** 221
+**Sprint:** 224
 **Date:** 2026-07-04
-**Status:** Specified — not yet implemented
+**Status:** Specified and partially implemented — CLI validation complete
 
 ---
 
@@ -544,6 +544,34 @@ open questions and risks in Section 9; reasons to wait in Section 10.
 This was implemented without OCR, image parsing, AI, broker integration, or live
 data. It is the first concrete step from Snapshot Input specification toward a
 working low-friction input layer.
+
+---
+
+## Snapshot Draft CLI Validation — COMPLETE (Sprint 224)
+
+Sprint 224 added `atlas snapshot validate <path>` — a read-only CLI command that
+validates a Snapshot Draft JSON file and renders a human-readable summary.
+
+**Command:**
+```bash
+atlas snapshot validate examples/snapshot_drafts/portfolio_snapshot.json
+```
+
+**Output includes:**
+- Status (valid / invalid)
+- Snapshot type, confidence, confirmation status
+- Target local file
+- Related tickers (if present)
+- Uncertainties and missing required fields
+- Safety boundary: draft validation does not write to Atlas local input files
+
+**Exit codes:** 0 on valid draft, 1 on invalid JSON, invalid schema, or missing file.
+
+**Constraints:**
+- No file writing. No mutation. Read-only validation only.
+- No provider imports. No network calls. No AI.
+- Renderer lives in `atlas/snapshot_input/render.py`.
+- CLI command registered in `atlas/cli/main.py` under `snapshot_app`.
 
 ---
 

@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 1954 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2275 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -274,6 +274,11 @@ Snapshot Draft schema defined. New `atlas/snapshot_input/` package. `SnapshotTyp
 Three example draft files. No OCR, AI, or provider dependency. No Weekly Review
 behavior changed. Internal v1 foundation unchanged.
 
-Recommended next work (Sprint 224): **Add snapshot draft CLI validation** — a local
-`atlas snapshot validate` command that validates draft JSON files and reports
-uncertainties/missing fields without writing to Atlas input files.
+**Sprint 224 (post-v1 improvement — complete):**
+`atlas snapshot validate <path>` CLI command added. Validates a Snapshot Draft JSON
+file and renders a human-readable summary: type, confidence, confirmation status,
+target local file, related tickers, uncertainties, missing required fields, and
+safety boundary. Exit 0 on valid, exit 1 on invalid JSON, invalid schema, or missing
+file. No file writing. No mutation. New `atlas/snapshot_input/render.py`. CLI extended
+with `snapshot_app` Typer sub-group. No provider imports. No network calls. No
+Weekly Review behavior changed. Internal v1 foundation unchanged.

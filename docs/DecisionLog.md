@@ -3810,6 +3810,16 @@ Demo passed. Release verification green.
 
 ---
 
+**Sprint 224 (2026-07-04): Add Snapshot Draft CLI validation**
+
+**Decision:** Add `atlas snapshot validate <path>` — a read-only CLI command that loads a Snapshot Draft JSON file, validates the schema, and renders a human-readable summary (type, confidence, confirmation status, uncertainties, missing fields, safety boundary). Exit 0 on valid, exit 1 on invalid. No file writing, no mutation.
+
+**Rationale:** The draft schema (Sprint 223) needed a way for users to verify drafts before the confirmation workflow is built. A validation command provides immediate value without introducing any write path, provider dependency, or AI.
+
+**Outcome:** `atlas/snapshot_input/render.py` created. `atlas/snapshot_input/__init__.py` updated. `atlas/cli/main.py` extended with `snapshot_app` Typer sub-group and `validate` command. 44 new tests. 2275 tests passing. Sprint 225 target: TBD.
+
+---
+
 **Sprint 222 (2026-07-04): Add research notes input to Weekly Review**
 
 **Decision:** Add an optional `--research-notes DIR` CLI argument that loads per-ticker Markdown notes files (`research_notes/<TICKER>/notes.md`) into Weekly Review. New `WeeklyReviewResearchNote` dataclass. New `_parse_research_notes` function extracts evidence gaps, open questions, risks to monitor, and reasons to wait from known `##` headings. Bounded file reading (8,000 chars max). Section 8 shows evidence gaps from notes; Section 9 shows open questions and risks; Section 10 shows reasons to wait.

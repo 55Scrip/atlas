@@ -18,6 +18,10 @@ from atlas.snapshot_input.schema import (
     save_snapshot_draft,
     validate_snapshot_draft,
 )
+from atlas.snapshot_input.render import (
+    render_snapshot_draft_validation,
+    render_snapshot_draft_validation_error,
+)
 
 __all__ = [
     "SnapshotConfidence",
@@ -25,6 +29,8 @@ __all__ = [
     "SnapshotDraft",
     "SnapshotType",
     "load_snapshot_draft",
+    "render_snapshot_draft_validation",
+    "render_snapshot_draft_validation_error",
     "save_snapshot_draft",
     "validate_snapshot_draft",
 ]
