@@ -2,6 +2,49 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 170 — Portfolio Intelligence Capability Audit Checkpoint
+
+Decision: `atlas/capabilities/portfolio_intelligence/` is clean and architecturally exemplary. No cleanup work is warranted.
+
+**Finding — package identity:** `atlas/portfolio_intelligence/` does NOT exist as a top-level package. The legacy `PortfolioIntelligenceEngine` was deleted Sprint 128; `atlas.analysis.portfolio` was deleted Sprint 135. The active Blueprint-aligned surface is `atlas/capabilities/portfolio_intelligence/` (3 modules, 4 exports, 471 lines total).
+
+**Rationale:** After audit-first inventory (Sprint 170), the capability package contains only active, intentional code. `PortfolioIntelligenceCapability.analyze()` is the sole public method, consumed by 5 production packages (decision, intelligence, conversation, dashboard, providers). All 4 exports are active. All 17 private helpers are active. Dependency surface is minimal — the capability depends only on `atlas.shared.entities` (Holding, Portfolio) and its own sibling models module. No provider imports. No network calls. No deleted-module imports. No circular dependencies.
+
+**Notable:** This is the most architecturally sound capability audited so far. The dependency direction is exemplary: providers supply `PortfolioFitInput` → CLI passes to engines → engines pass to capability. The capability knows nothing about providers.
+
+**Stale comment candidate:** `models.py:42–44` contains a "Future expansion" note for `themes` and `knowledge_context` fields that were never added to `PortfolioFitInput`. Docstring-only — no runtime impact. Cleanup candidate for Sprint 171.
+
+**Sprint 171 recommended target:** Close `atlas/capabilities/portfolio_intelligence/` cleanup track — optional docstring cleanup (stale future-expansion note) + documentation track closure.
+
+---
+
+## 2026-07-03: Sprint 169 — Close Dashboard Cleanup Track
+
+Decision: Close the `atlas/dashboard/` cleanup track. No cleanup work is warranted.
+
+**Rationale:** After inventory (Sprint 168) and final verification (Sprint 169), the dashboard package contains only active, intentional code. `DashboardEngine.build()` is the sole public method, active at 1 production call site (CLI `atlas dashboard show`). All 6 exports are active. All 17 private helpers are active. Dashboard has the cleanest provider boundary of any audited package — it imports no concrete provider class at all. `CompanyDataProvider` is used only as a type annotation in `DashboardInput.provider`. Provider selection lives entirely at the CLI layer. No stale imports. No Blueprint-aligned successor. Further cleanup would create churn without architectural benefit.
+
+**Final verification (Sprint 169):** All 6 exports importable. `atlas dashboard show` CLI entrypoint confirmed active. Provider boundary confirmed cleanest of any audited package. Zero stale closed-track imports. No new Blueprint successor. No cleanup action warranted.
+
+**Closed-track summary (13 tracks):**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — CLOSED Sprint 148
+- Evidence package — CLOSED Sprint 150
+- Reasoning package — CLOSED Sprint 153
+- Risk package — CLOSED Sprint 155
+- Principles package — CLOSED Sprint 158
+- Comparison package — CLOSED Sprint 160
+- Home package — CLOSED Sprint 162
+- Intelligence package — CLOSED Sprint 165
+- Conversation package — CLOSED Sprint 167
+- **Dashboard package — CLOSED Sprint 169**
+
+**Sprint 170 recommended target:** Audit `atlas/portfolio_intelligence/` package — a major active domain-adjacent runtime surface, natural next step after dashboard is closed.
+
+---
+
 ## 2026-07-03: Sprint 168 — Dashboard Package Audit Checkpoint
 
 Decision: `atlas/dashboard/` package is clean. No cleanup work is warranted.
