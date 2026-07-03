@@ -493,13 +493,20 @@ def _section8_evidence(result: WeeklyReviewLoadResult) -> list[str]:
             lines.append(f"Evidence Gap [{item.ticker}]: {gap}")
 
     # Per-ticker evidence presence (when directories are available)
+    # Combine into one line per ticker when both are missing, to avoid repeating the same ticker twice.
     if result.ticker_evidence:
         for ev in result.ticker_evidence:
-            if not ev.company_facts_available and result.company_facts_available:
+            missing_facts = not ev.company_facts_available and result.company_facts_available
+            missing_fins = not ev.financials_available and result.financials_available
+            if missing_facts and missing_fins:
+                lines.append(
+                    f"Evidence Gap [{ev.ticker}]: no local company facts file or financial history file."
+                )
+            elif missing_facts:
                 lines.append(
                     f"Evidence Gap [{ev.ticker}]: local company facts file is missing."
                 )
-            if not ev.financials_available and result.financials_available:
+            elif missing_fins:
                 lines.append(
                     f"Evidence Gap [{ev.ticker}]: local financial history file is missing."
                 )
@@ -555,18 +562,26 @@ def _section9_questions(result: WeeklyReviewLoadResult) -> list[str]:
                     lines.append(f"  - {trigger}")
                 lines.append("")
 
-    # Per-ticker follow-up questions from missing local evidence
+    # Per-ticker missing evidence — grouped summary rather than one line per ticker
     if result.ticker_evidence:
-        for ev in result.ticker_evidence:
-            if not ev.company_facts_available and result.company_facts_available:
-                lines.append(
-                    f"[{ev.ticker}] What local facts would help clarify the current thesis?"
-                )
-            if not ev.financials_available and result.financials_available:
-                lines.append(
-                    f"[{ev.ticker}] Which financial history should be reviewed "
-                    "before changing the decision status?"
-                )
+        missing_facts_tickers = [
+            ev.ticker for ev in result.ticker_evidence
+            if not ev.company_facts_available and result.company_facts_available
+        ]
+        if missing_facts_tickers:
+            lines.append(
+                f"Tickers without local company facts ({len(missing_facts_tickers)}): "
+                f"{', '.join(missing_facts_tickers)}"
+            )
+        missing_fins_tickers = [
+            ev.ticker for ev in result.ticker_evidence
+            if not ev.financials_available and result.financials_available
+        ]
+        if missing_fins_tickers:
+            lines.append(
+                f"Tickers without local financial history ({len(missing_fins_tickers)}): "
+                f"{', '.join(missing_fins_tickers)}"
+            )
 
     # General questions when evidence directories are absent
     if not result.company_facts_available:
@@ -637,19 +652,26 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
             "Reason to Wait: Decision journal not provided. "
             "Open decisions and prior context are not available for this review."
         )
-    # Per-ticker reasons to wait from missing local evidence
+    # Per-ticker missing evidence — two summary lines instead of one per ticker
     if result.ticker_evidence:
-        for ev in result.ticker_evidence:
-            if not ev.company_facts_available and result.company_facts_available:
-                lines.append(
-                    f"Reason to Wait: {ev.ticker} is missing local company facts, "
-                    "so the thesis context remains incomplete."
-                )
-            if not ev.financials_available and result.financials_available:
-                lines.append(
-                    f"Reason to Wait: {ev.ticker} is missing local financial history, "
-                    "so financial context remains incomplete."
-                )
+        missing_facts = [
+            ev.ticker for ev in result.ticker_evidence
+            if not ev.company_facts_available and result.company_facts_available
+        ]
+        if missing_facts:
+            lines.append(
+                f"Reason to Wait: Local company facts missing for {len(missing_facts)} ticker(s) "
+                f"({', '.join(missing_facts)}): thesis context is incomplete for these positions."
+            )
+        missing_fins = [
+            ev.ticker for ev in result.ticker_evidence
+            if not ev.financials_available and result.financials_available
+        ]
+        if missing_fins:
+            lines.append(
+                f"Reason to Wait: Local financial history missing for {len(missing_fins)} ticker(s) "
+                f"({', '.join(missing_fins)}): financial context is incomplete for these positions."
+            )
 
     # General reasons to wait when evidence directories are absent
     if not result.company_facts_available:
@@ -681,19 +703,19 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
                 f"({age} days). Assumptions should be refreshed before changing decision status."
             )
 
-    # Profile-derived reasons to wait
+    # Profile-derived reasons — grouped blocks to avoid N identical boilerplate lines
     if result.profile_principles:
+        lines.append(
+            "Reason to Wait: Stated principles support a measured approach to evidence and decision discipline:"
+        )
         for principle in result.profile_principles:
-            lines.append(
-                f'Reason to Wait: stated principle — "{principle}" — '
-                "supports gathering evidence before changing any decision status."
-            )
+            lines.append(f'  — "{principle}"')
     if result.profile_constraints:
+        lines.append(
+            "No Action Warranted: Stated constraints apply to current portfolio and watchlist decisions:"
+        )
         for constraint in result.profile_constraints:
-            lines.append(
-                f'No Action Warranted: stated constraint — "{constraint}" — '
-                "applies when reviewing current portfolio and watchlist decisions."
-            )
+            lines.append(f'  — "{constraint}"')
 
     # Universal reminders — always ensure section is non-empty
     lines.append(

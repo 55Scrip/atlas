@@ -2,6 +2,31 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 220 — Second Realistic Weekly Review Trial
+
+Decision: Run a second realistic Weekly Review trial after Sprints 218 and 219 to validate usability before adding deeper engines.
+
+**Rationale:** After adding profile context and per-ticker evidence presence checks, Atlas validates the complete local-only Weekly Review output against realistic inputs before adding deeper engines or new product surfaces. This keeps product development grounded in actual usability rather than feature accumulation.
+
+**Trial findings:** Output was specific and safe, but Sections 8, 9, and 10 were verbose when many tickers lacked local files. Four verbosity problems identified and fixed:
+1. Section 8 (24 lines → 12 lines): combined "both missing" into one line per ticker
+2. Section 9 (24 lines → 2 lines): replaced per-ticker identical questions with two grouped ticker lists
+3. Section 10 missing evidence (24 lines → 2 lines): consolidated into summary lines
+4. Section 10 principles/constraints (12 boilerplate lines → 2 block headers + listed items): eliminated repetitive boilerplate
+
+**Section 10 total:** reduced from ~40 lines to ~18 lines.
+
+**Changes:**
+- `atlas/weekly_review/render.py`: four renderer condensing changes
+- `tests/test_weekly_review_second_trial_sprint220.py`: 20 new tests
+- `tests/test_weekly_review_evidence_presence_sprint219.py`: 6 tests updated
+- `tests/test_weekly_review_trial_sprint213.py`: 2 tests updated
+- `docs/WeeklyReviewSecondTrialFindings.md`: full trial record created
+
+**Next sprint recommendation:** Sprint 221 — Group or simplify Section 10 output (add reason-type headers).
+
+---
+
 ## 2026-07-03: Sprint 219 — Per-Ticker Local Evidence Presence Checks in Weekly Review
 
 Decision: Add per-ticker local evidence presence checks to Weekly Review Sections 8, 9, and 10.

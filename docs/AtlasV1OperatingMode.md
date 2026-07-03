@@ -590,3 +590,11 @@ Sprint 218 surfaced investor profile principles and constraints in Weekly Review
 Sprint 219 added per-ticker local evidence presence checks. New `WeeklyReviewTickerEvidence` dataclass tracks `company_facts_available`, `financials_available`, and `source` (portfolio/watchlist/portfolio_and_watchlist) for each investable ticker. Section 8 now emits per-ticker `Evidence Gap [TICKER]` lines instead of a bulk comma-separated list. Section 9 adds per-ticker follow-up questions when facts or financials are missing. Section 10 adds per-ticker reasons to wait. Missing directories remain non-blocking. 42 new tests; 2058 total passing.
 
 **Sprint 220 recommendation:** Run second real portfolio trial — test the full Weekly Review output with the profile, per-ticker evidence checks, and all improvements from Sprints 213–219 against a realistic bundle before adding deeper engines.
+
+---
+
+## Sprint 220 Status — COMPLETE
+
+Sprint 220 ran the second realistic Weekly Review trial. Trial confirmed output is specific and safe but identified four verbosity problems. Four trial-driven renderer improvements applied: (1) Section 8 combines "both missing" into one line per ticker; (2) Section 9 replaces 24 identical per-ticker questions with two grouped ticker lists; (3) Section 10 consolidates per-ticker missing evidence into two summary lines; (4) Section 10 uses block format for principles and constraints instead of N identical boilerplate lines. Section 10 reduced from ~40 lines to ~18 lines. 20 new tests; 2078 total passing.
+
+**Sprint 221 recommendation:** Group or simplify Section 10 output — add visual grouping (reason-type headers) so the section is scannable rather than requiring sequential reading.

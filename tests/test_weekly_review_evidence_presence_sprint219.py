@@ -270,17 +270,18 @@ def test_section8_present(output_s8_partial):
 
 
 def test_section8_evidence_gap_missing_facts(output_s8_partial):
-    assert "Evidence Gap [XYL]: local company facts file is missing." in output_s8_partial
-    assert "Evidence Gap [NOVO]: local company facts file is missing." in output_s8_partial
+    # Sprint 220: when both facts and financials are missing, one combined line per ticker
+    assert "Evidence Gap [XYL]: no local company facts file or financial history file." in output_s8_partial
+    assert "Evidence Gap [NOVO]: no local company facts file or financial history file." in output_s8_partial
 
 
 def test_section8_no_gap_for_ticker_with_facts(output_s8_partial):
-    assert "Evidence Gap [ASML]: local company facts file is missing." not in output_s8_partial
+    assert "Evidence Gap [ASML]" not in output_s8_partial
 
 
 def test_section8_evidence_gap_missing_financials(output_s8_partial):
-    assert "Evidence Gap [XYL]: local financial history file is missing." in output_s8_partial
-    assert "Evidence Gap [NOVO]: local financial history file is missing." in output_s8_partial
+    # Combined message covers both; assert the combined line is present
+    assert "no local company facts file or financial history file" in output_s8_partial
 
 
 def test_section8_no_gap_for_ticker_with_financials(output_s8_partial):
@@ -305,19 +306,32 @@ def test_section9_present(output_s9_partial):
 
 
 def test_section9_follow_up_for_missing_facts(output_s9_partial):
-    assert "[XYL] What local facts would help clarify the current thesis?" in output_s9_partial
+    # Sprint 220: grouped list instead of per-ticker identical questions
+    assert "Tickers without local company facts" in output_s9_partial
+    assert "XYL" in output_s9_partial
 
 
 def test_section9_no_follow_up_for_available_facts(output_s9_partial):
-    assert "[ASML] What local facts would help clarify the current thesis?" not in output_s9_partial
+    # ASML has facts, so it should NOT appear in the missing-facts group
+    missing_line = next(
+        (l for l in output_s9_partial.splitlines() if "Tickers without local company facts" in l),
+        ""
+    )
+    assert "ASML" not in missing_line
 
 
 def test_section9_follow_up_for_missing_financials(output_s9_partial):
-    assert "[XYL] Which financial history should be reviewed" in output_s9_partial
+    # Sprint 220: grouped list
+    assert "Tickers without local financial history" in output_s9_partial
+    assert "XYL" in output_s9_partial
 
 
 def test_section9_no_follow_up_for_available_financials(output_s9_partial):
-    assert "[ASML] Which financial history should be reviewed" not in output_s9_partial
+    missing_line = next(
+        (l for l in output_s9_partial.splitlines() if "Tickers without local financial history" in l),
+        ""
+    )
+    assert "ASML" not in missing_line
 
 
 # ---------------------------------------------------------------------------
@@ -338,19 +352,26 @@ def test_section10_present(output_s10_partial):
 
 
 def test_section10_reason_to_wait_missing_facts(output_s10_partial):
+    # Sprint 220: consolidated summary line listing tickers
     section = output_s10_partial.split("10. Non-Actions")[1]
-    assert "XYL is missing local company facts" in section
-    assert "NOVO is missing local company facts" in section
+    assert "Local company facts missing for" in section
+    assert "XYL" in section
+    assert "NOVO" in section
 
 
 def test_section10_no_reason_for_available_facts(output_s10_partial):
     section = output_s10_partial.split("10. Non-Actions")[1]
-    assert "ASML is missing local company facts" not in section
+    # ASML has facts, should not appear in the missing-facts summary
+    missing_line = next(
+        (l for l in section.splitlines() if "Local company facts missing for" in l), ""
+    )
+    assert "ASML" not in missing_line
 
 
 def test_section10_reason_to_wait_missing_financials(output_s10_partial):
     section = output_s10_partial.split("10. Non-Actions")[1]
-    assert "XYL is missing local financial history" in section
+    assert "Local financial history missing for" in section
+    assert "XYL" in section
 
 
 def test_section10_non_empty_without_evidence_dirs(tmp_path):

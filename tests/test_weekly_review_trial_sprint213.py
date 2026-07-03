@@ -345,14 +345,14 @@ def test_section8_watchlist_gaps(realistic_output):
 
 
 def test_section8_missing_company_facts_compact(realistic_output):
-    # Sprint 219: per-ticker Evidence Gap lines replace the old compact list format
-    assert "Evidence Gap [LVMH]: local company facts file is missing." in realistic_output
+    # Sprint 220: combined line when both facts and financials are missing for a ticker
+    assert "Evidence Gap [LVMH]: no local company facts file or financial history file." in realistic_output
 
 
 def test_section8_missing_financials_compact(realistic_output):
-    # Sprint 219: per-ticker Evidence Gap lines replace the old compact list format
+    # Sprint 220: combined line covers both missing types
     assert "Evidence Gap" in realistic_output
-    assert "local financial history file is missing." in realistic_output
+    assert "no local company facts file or financial history file" in realistic_output
 
 
 # ---------------------------------------------------------------------------
