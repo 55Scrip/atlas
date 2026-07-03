@@ -2,6 +2,29 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 181 — Release Candidate Checkpoint After Company Analysis Residual Cleanup
+
+Decision: Confirm Atlas release-candidate stability after the Sprint 180 company analysis residual cleanup.
+
+**Rationale:** After removing the zero-caller `CompanyAnalysisProvider` alias from the legacy company analysis runtime surface, Atlas remains stable. Active `atlas.analysis` exports remain importable, the Blueprint company analysis capability boundary remains clean, retired CLI paths remain retired, provider boundaries remain unchanged, and release verification remains green.
+
+**Verification results:**
+- `CompanyAnalysisProvider` absent from all active runtime code ✓
+- All 12 active `atlas.analysis.__all__` exports importable ✓
+- `atlas/capabilities/company_analysis/` boundary clean — does not import `atlas/analysis/` ✓
+- All 13 deleted modules remain unimportable ✓
+- `evidence`, `reason`, `risk` empty groups absent from `atlas --help` ✓
+- All 7 retired commands remain non-callable ✓
+- All 15 active packages importable ✓
+- Provider boundaries unchanged; Yahoo remains opt-in only ✓
+- 1598 passed, 3 skipped | RC2 green | Demo passes | Forbidden language check green ✓
+
+**Changes made:** Documentation only. Updated `docs/ReleaseCandidateCheckpoint.md` (Sprint 181 section), `docs/ArchitectureConsolidation.md`, `docs/LegacyConsolidationPlan.md`.
+
+**Next sprint recommendation:** Audit `atlas/capabilities/company_analysis/` cleanup track.
+
+---
+
 ## 2026-07-03: Sprint 180 — Remove Stale CompanyAnalysisProvider Alias
 
 Decision: Remove the stale `CompanyAnalysisProvider` alias from `atlas/analysis/company_analysis.py`.
