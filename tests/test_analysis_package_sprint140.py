@@ -59,19 +59,21 @@ def test_sprint140_scores_module_importable() -> None:
 
 # ── Export health ─────────────────────────────────────────────────────────────
 
-def test_sprint140_atlas_analysis_all_has_exactly_12_exports() -> None:
-    """Sprint 140: atlas.analysis.__all__ must have exactly the 12 expected exports."""
+def test_sprint140_atlas_analysis_all_has_exactly_9_exports() -> None:
+    """Sprint 193: atlas.analysis.__all__ must have exactly the 9 active exports.
+
+    Sprint 140 established 12 exports. Sprint 193 removed 3 zero-caller provider
+    re-exports (CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider)
+    — no callers imported them from atlas.analysis root. Use atlas.providers directly.
+    """
     import atlas.analysis as pkg
 
     expected = {
         "AtlasInvestmentEngine",
         "CompanyAnalysis",
-        "CompanyDataProvider",
         "InvestmentReport",
         "InvestmentExplanation",
-        "MockCompanyAnalysisProvider",
         "ScoreCategory",
-        "YahooFinanceProvider",
         "build_investment_report",
         "create_placeholder_company_analysis",
         "explain_investment_report",

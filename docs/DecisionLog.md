@@ -2,6 +2,35 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 193 — Close Residual Analysis Cleanup Track
+
+Decision: Close the active residual `atlas/analysis/` cleanup track preserved by Sprint 141, and remove 3 zero-caller provider re-exports from `atlas/analysis/__init__.py`.
+
+**Rationale:** Sprint 192 audited the surviving analysis residual surface and found it clean, well-bounded, and stable. Sprint 193 confirmed findings unchanged and completed the one eligible cleanup: removing `CompanyDataProvider`, `MockCompanyAnalysisProvider`, and `YahooFinanceProvider` from `atlas/analysis/__init__.py` and `__all__`. All 3 had zero callers from the package root — all actual callers import from `atlas.providers` or submodules directly. Removal changes the public re-export surface only; provider selection behavior remains unchanged at `atlas/cli/main.py` via `_provider_from_name()`. This is not a reopening of Sprint 141.
+
+**Final verified state:**
+- 5 surviving modules unchanged ✓
+- `__all__` reduced from 12 to 9 (3 zero-caller provider re-exports removed) ✓
+- All 9 remaining exports active and importable ✓
+- `CompanyDataProvider`, `MockCompanyAnalysisProvider`, `YahooFinanceProvider` not in `atlas.analysis.__all__` ✓
+- `MockCompanyAnalysisProvider` shim in `company_analysis.py` active — 4 test callers ✓
+- `clamp_score` shared utility — 11 active callers across 11 packages ✓
+- `atlas.analysis` → `atlas.capabilities.company_analysis`: absent ✓
+- `atlas.capabilities.company_analysis` → `atlas.analysis`: absent ✓
+- `atlas.domains` → `atlas.analysis`: absent ✓
+- Sprint 141 deleted modules: all absent ✓
+- No stale imports from deleted modules ✓
+- No network access ✓
+- No runtime behavior changed ✓
+- **1648 passed, 3 skipped | RC2 green | Demo passes ✓**
+- Suite growth since Sprint 192: 1647 → 1648 (+1 test)
+
+**Changes made:** Edited `atlas/analysis/__init__.py` (removed 3 provider re-exports, `__all__` 12→9). Updated `tests/test_analysis_residual_sprint192.py` (export count updated, 3 absence assertions added). Updated `tests/test_analysis_package_sprint140.py` (export count and expected set updated). Marked `docs/AnalysisResidualCleanupPlan.md` CLOSED with Sprint 193 section. Updated standard docs.
+
+**Next sprint recommendation:** Release candidate checkpoint (Sprint 194) — after closing the residual analysis track and changing the public re-export surface, Atlas should run a full RC checkpoint before the next broad audit.
+
+---
+
 ## 2026-07-03: Sprint 192 — Audit Analysis Residual Surface
 
 Decision: Confirm that the `atlas/analysis/` active residual runtime surface preserved by Sprint 141 is clean, well-bounded, and requires no urgent cleanup. Sprint 192 is not a reopening of the Sprint 141 main analysis cleanup track.

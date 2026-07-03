@@ -1,7 +1,8 @@
 # Analysis Residual Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 192)  
-**Status:** OPEN — Audit complete. No cleanup warranted. Sprint 193 recommended: Close residual analysis cleanup track.
+**Updated:** 2026-07-03 (Sprint 193)  
+**Status:** CLOSED — Sprint 193 closed the active residual analysis runtime audit track preserved by Sprint 141. Three zero-caller provider re-exports removed from `atlas/analysis/__init__.py`. No runtime behavior changed.
 
 ---
 
@@ -10,6 +11,7 @@
 This document audits the **active residual analysis runtime surface preserved by Sprint 141**.  
 Sprint 141 closed the main `atlas/analysis/` cleanup track by removing legacy analysis modules.  
 Sprint 192 does NOT reopen the Sprint 141 cleanup track.  
+Sprint 193 closes the active residual analysis runtime audit track. This is not a reopening of any prior track.
 
 The surviving surface is intentional legacy runtime — clean, active, and well-bounded.
 
@@ -272,9 +274,9 @@ Searched all surviving `atlas/analysis/` modules for stale references from all c
 
 ## Cleanup Candidate Classification
 
-| Candidate | Evidence | Caller count | Risk | Sprint 193 |
+| Candidate | Evidence | Caller count | Risk | Outcome |
 |---|---|---|---|---|
-| `CompanyDataProvider`, `MockCompanyAnalysisProvider`, `YahooFinanceProvider` re-exports in `atlas/analysis/__init__.py` | These 3 of 12 `__all__` exports are provider convenience re-exports. Zero production callers and zero test callers import them from `atlas.analysis` (the package root). All actual callers import from `atlas.providers` or submodules directly. | 0 callers from root | Low — removal requires verifying no caller was missed, then editing `__init__.py` and `__all__` | Optional — could be Sprint 193 if track is still open, or deferred |
+| `CompanyDataProvider`, `MockCompanyAnalysisProvider`, `YahooFinanceProvider` re-exports in `atlas/analysis/__init__.py` | These 3 of 12 `__all__` exports were provider convenience re-exports. Zero production callers and zero test callers imported them from `atlas.analysis` root. All actual callers import from `atlas.providers` or submodules directly. | 0 callers from root | Low | **Removed Sprint 193** |
 | All other exports (`AtlasInvestmentEngine`, `CompanyAnalysis`, `InvestmentReport`, etc.) | Active production callers | Multiple | — | Leave unchanged |
 | `clamp_score` in `scores.py` (not in `__all__`) | 11 active callers across 11 packages | 11 | — | Leave unchanged |
 | `iter_score_categories` (not in `__all__`) | Active callers in `report.py`, `explanation.py`, `decision/memory.py`, tests | 4+ | — | Leave unchanged |
@@ -282,19 +284,26 @@ Searched all surviving `atlas/analysis/` modules for stale references from all c
 | `render_investment_explanation` (not in `__all__`) | Active callers in `report.py` and tests | 2+ | — | Leave unchanged |
 | `__getattr__` shim for `MockCompanyAnalysisProvider` | 4 active test callers import from `atlas.analysis.company_analysis` | 4 | — | Leave unchanged |
 
-**Summary:** One low-priority cleanup candidate — the 3 zero-caller provider re-exports in `__init__.py`. Everything else is active and intentional.
+**Summary:** Sprint 193 removed the 3 zero-caller provider re-exports. `__all__` reduced from 12 to 9. Everything else is active and intentional.
 
 ---
 
-## Sprint 193 Target Recommendation
+## Sprint 193 Closure
 
-**Recommended:** Close residual analysis cleanup track.
+**Decision:** Close the active residual analysis runtime audit track preserved by Sprint 141.
 
-**Rationale:** The audit found no actionable cleanup warranted. All exports have production callers (except the 3 provider convenience re-exports, which are low-priority). The layer is clean, well-bounded, and stable. The 3 zero-caller provider re-exports could optionally be removed, but they cause no harm and removing them in a focused sprint would create a commit without material architectural benefit.
+**Provider re-export removal:** `CompanyDataProvider`, `MockCompanyAnalysisProvider`, and `YahooFinanceProvider` removed from `atlas/analysis/__init__.py` and `__all__`. All 3 removal conditions were satisfied:
+- Zero production callers imported them from `atlas.analysis` root
+- Zero test callers (guardrail tests updated to assert absence)
+- Removal does not change runtime behavior — provider selection occurs at `atlas/cli/main.py` via `_provider_from_name()`
+- Callers import from `atlas.providers`, `atlas.providers.base`, or `atlas.analysis.company_analysis` (shim) directly
 
-Sprint 193 should confirm findings unchanged, mark this plan CLOSED, and update standard documentation.
+**Exports after Sprint 193:** 9 active symbols (all have production callers):
+`AtlasInvestmentEngine`, `CompanyAnalysis`, `InvestmentExplanation`, `InvestmentReport`, `ScoreCategory`, `build_investment_report`, `create_placeholder_company_analysis`, `explain_investment_report`, `render_investment_report`
 
-**Alternative:** If the 3 zero-caller provider re-exports are deemed worth removing, Sprint 193 could remove them from `__init__.py` and `__all__` before closing the track. This would reduce `__all__` from 12 to 9 exports and clean up the package root.
+**Tests updated:** `tests/test_analysis_residual_sprint192.py` (export count 12→9, added 3 absence assertions), `tests/test_analysis_package_sprint140.py` (export count 12→9, expected set updated).
+
+**Final verification:** 1648 passed, 3 skipped | RC2 green | Demo passes ✓
 
 ---
 
@@ -306,6 +315,36 @@ This plan may be reopened if:
 - `atlas/capabilities/company_analysis/` begins importing from `atlas/analysis/`
 - `clamp_score` is proposed for removal (would affect 11 callers)
 - The `__getattr__` shim for `MockCompanyAnalysisProvider` is broken
+
+---
+
+## Sprint 193 Verification Table
+
+| Check | Result |
+|---|---|
+| Surviving modules | 5 (.py files) + `__init__.py` ✓ |
+| `__all__` export count | 9 (reduced from 12; 3 zero-caller provider re-exports removed) ✓ |
+| All 9 remaining exports importable | ✓ |
+| `CompanyDataProvider` absent from `atlas.analysis.__all__` | ✓ |
+| `MockCompanyAnalysisProvider` absent from `atlas.analysis.__all__` | ✓ |
+| `YahooFinanceProvider` absent from `atlas.analysis.__all__` | ✓ |
+| `clamp_score` importable from `scores.py` | ✓ |
+| Sprint 141 deleted modules absent | 8/8 ✓ |
+| Stale imports from deleted modules | None ✓ |
+| `atlas.analysis` → `atlas.capabilities.company_analysis` | Absent ✓ |
+| `atlas.capabilities.company_analysis` → `atlas.analysis` | Absent ✓ |
+| `atlas.domains` → `atlas.analysis` | Absent ✓ |
+| `CompanyAnalysisProvider` absent from active namespace | ✓ |
+| `MockCompanyAnalysisProvider` shim active | ✓ (4 test callers) |
+| Network access in surviving modules | None ✓ |
+| Provider boundary | Correct — `analyze_ticker` receives provider as argument ✓ |
+| Capability boundary | Clean bidirectional separation ✓ |
+| No runtime behavior changed | ✓ |
+| Compile check | Green ✓ |
+| Full test suite | **1648 passed, 3 skipped** ✓ |
+| RC2 verification | Green ✓ |
+| Demo | Passes, provider-free ✓ |
+| Track status | **CLOSED Sprint 193** ✓ |
 
 ---
 

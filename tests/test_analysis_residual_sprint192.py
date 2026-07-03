@@ -1,26 +1,31 @@
 """Sprint 192: Residual analysis surface audit guardrails.
+Updated Sprint 193: removed 3 zero-caller provider re-exports from __all__.
 
 atlas/analysis/ is a legacy residual runtime layer preserved by Sprint 141.
 It is NOT the same as the Sprint 141 main analysis cleanup track, which is closed.
+This track is CLOSED as of Sprint 193.
 
-Surviving modules (5 .py files, 652 lines total):
-  atlas/analysis/__init__.py         (26 lines) — re-exports 12 public symbols
-  atlas/analysis/company_analysis.py (159 lines) — CompanyAnalysis, placeholder analyses
-  atlas/analysis/engine.py           (229 lines) — AtlasInvestmentEngine, InvestmentReport, scorers
-  atlas/analysis/explanation.py      (198 lines) — InvestmentExplanation, explain/render
-  atlas/analysis/report.py            (38 lines) — build_investment_report, render_investment_report
-  atlas/analysis/scores.py             (2 lines) — clamp_score (shared utility, not in __all__)
+Surviving modules (5 .py files):
+  atlas/analysis/__init__.py         — re-exports 9 public symbols (Sprint 193: removed 3 zero-caller provider re-exports)
+  atlas/analysis/company_analysis.py — CompanyAnalysis, placeholder analyses
+  atlas/analysis/engine.py           — AtlasInvestmentEngine, InvestmentReport, scorers
+  atlas/analysis/explanation.py      — InvestmentExplanation, explain/render
+  atlas/analysis/report.py           — build_investment_report, render_investment_report
+  atlas/analysis/scores.py           — clamp_score (shared utility, not in __all__)
 
-All 12 __all__ exports are active. No stale exports. No dead modules.
+Sprint 193: __all__ reduced from 12 to 9 by removing CompanyDataProvider,
+MockCompanyAnalysisProvider, and YahooFinanceProvider — all had zero callers
+from the atlas.analysis package root. Callers import from atlas.providers
+or atlas.analysis.company_analysis (shim) directly.
 
 These tests confirm:
-  - all 12 __all__ exports are importable
+  - all 9 __all__ exports are importable
+  - 3 removed provider re-exports are NOT importable from atlas.analysis root
   - deleted Sprint 141 analysis modules remain absent
   - residual analysis does not import from deleted analysis modules
   - residual analysis does not import from atlas.capabilities.company_analysis
   - atlas.capabilities.company_analysis does not import from atlas.analysis
   - clamp_score remains importable (active shared utility)
-  - provider re-exports in __init__.py remain importable
   - MockCompanyAnalysisProvider __getattr__ shim is live (4 test callers)
   - CompanyAnalysisProvider remains absent from active namespace
   - atlas.domains does not import from atlas.analysis
@@ -40,16 +45,16 @@ DOMAINS_DIR = REPO_ROOT / "atlas" / "domains"
 # ── Export completeness ───────────────────────────────────────────────────────
 
 def test_analysis_residual_all_exports_importable() -> None:
-    """All 12 atlas.analysis __all__ exports are importable."""
+    """All 9 atlas.analysis __all__ exports are importable.
+
+    Sprint 193: reduced from 12 to 9 — removed 3 zero-caller provider re-exports.
+    """
     from atlas.analysis import (  # noqa: F401
         AtlasInvestmentEngine,
         CompanyAnalysis,
-        CompanyDataProvider,
         InvestmentExplanation,
         InvestmentReport,
-        MockCompanyAnalysisProvider,
         ScoreCategory,
-        YahooFinanceProvider,
         build_investment_report,
         create_placeholder_company_analysis,
         explain_investment_report,
@@ -57,11 +62,34 @@ def test_analysis_residual_all_exports_importable() -> None:
     )
 
 
-def test_analysis_residual_all_has_exactly_12_exports() -> None:
-    """__all__ has exactly 12 exports — no silent additions or removals."""
+def test_analysis_residual_all_has_exactly_9_exports() -> None:
+    """__all__ has exactly 9 exports — no silent additions or removals.
+
+    Sprint 193: 3 zero-caller provider re-exports removed (CompanyDataProvider,
+    MockCompanyAnalysisProvider, YahooFinanceProvider). Use atlas.providers directly.
+    """
     import atlas.analysis as pkg
 
-    assert len(pkg.__all__) == 12, pkg.__all__
+    assert len(pkg.__all__) == 9, pkg.__all__
+
+
+def test_removed_provider_reexports_not_in_analysis_root() -> None:
+    """CompanyDataProvider, MockCompanyAnalysisProvider, YahooFinanceProvider
+    are no longer re-exported from atlas.analysis (removed Sprint 193).
+
+    Callers should import directly from atlas.providers or atlas.providers.base.
+    """
+    import atlas.analysis as pkg
+
+    assert "CompanyDataProvider" not in pkg.__all__, (
+        "CompanyDataProvider must not be re-exported from atlas.analysis — removed Sprint 193"
+    )
+    assert "MockCompanyAnalysisProvider" not in pkg.__all__, (
+        "MockCompanyAnalysisProvider must not be re-exported from atlas.analysis — removed Sprint 193"
+    )
+    assert "YahooFinanceProvider" not in pkg.__all__, (
+        "YahooFinanceProvider must not be re-exported from atlas.analysis — removed Sprint 193"
+    )
 
 
 def test_clamp_score_importable_from_scores() -> None:
