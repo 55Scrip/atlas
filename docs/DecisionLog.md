@@ -2,6 +2,34 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 197 — Audit Database and Services Packages
+
+Decision: Confirm that `atlas/database/` and `atlas/services/` are clean, well-bounded, and contain three zero-caller dead code items to remove in Sprint 198. No cleanup made this sprint — audit-only.
+
+**Rationale:** `atlas/database/` (1 module, 20 lines) and `atlas/services/` (4 modules, 164 lines) are the persistence infrastructure and orchestration layer for Atlas. All database and service symbols have correct production callers, correct boundary directions (config ← database ← models ← services ← CLI), no provider coupling, no network access, and no stale imports from any closed cleanup track. Three adjacent dead-code items were discovered during caller-map analysis: `atlas/services/kpi_service.py` (zero production callers — test-only pure math utility), `atlas/models/investment_report.py` (dead re-export shim, zero callers), `atlas/reports/investment_card.py` (dead function, zero callers). The schema/ORM gap (6 of 8 schema.sql tables have no ORM model) is intentional and not a bug.
+
+**Final verified state:**
+- `atlas/database/connection.py` (20 lines): `Base`, `get_engine`, `get_session` — all active, all callers confirmed ✓
+- `atlas/database/schema.sql`: 8 tables; 2 have ORM models, 6 do not (intentional) ✓
+- `atlas/services/database_service.py` (19 lines): `init_database` — active, called by CLI `atlas init` ✓
+- `atlas/services/company_service.py` (43 lines): `add_company`, `list_companies`, `get_company_by_ticker` — all active ✓
+- `atlas/services/financial_import_service.py` (86 lines): `import_financials` — active, called by CLI ✓
+- `atlas/services/kpi_service.py` (16 lines): zero production callers — **cleanup candidate Sprint 198** ✓
+- `atlas/models/investment_report.py` (3 lines): zero callers — **cleanup candidate Sprint 198** ✓
+- `atlas/reports/investment_card.py` (23 lines): zero callers — **cleanup candidate Sprint 198** ✓
+- No provider coupling in database or services ✓
+- No network access ✓
+- No stale imports from closed cleanup tracks ✓
+- Boundary direction: config ← database ← services ← CLI — correct ✓
+- `atlas/storage/` does not exist ✓
+- **1654 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Created `docs/DatabaseServicesCleanupPlan.md`. Created `tests/test_database_services_sprint197.py` (guardrail tests). Updated `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 198 — Remove zero-caller dead code discovered during database/services audit: delete `atlas/services/kpi_service.py` + `tests/test_kpi_service.py`, `atlas/models/investment_report.py`, and `atlas/reports/investment_card.py` (and `atlas/reports/` directory if empty after removal). Then close the database/services cleanup track.
+
+---
+
 ## 2026-07-03: Sprint 196 — Close Config Cleanup Track
 
 Decision: Close the `atlas/config/` cleanup track. Sprint 196 confirmed all Sprint 195 findings unchanged — no cleanup warranted.
