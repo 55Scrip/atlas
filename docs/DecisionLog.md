@@ -2,6 +2,33 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 175 — RC Checkpoint After 15 Closed Cleanup Tracks
+
+Decision: Treat Atlas as RC2-stable after 15 closed cleanup tracks and three RC checkpoints (Sprint 163, Sprint 172, Sprint 175).
+
+**Rationale:** All 15 cleanup tracks verified closed. All 13 deleted modules confirmed absent. All 10 active packages importable. CLI help surface reflects Sprint 174 change (empty groups absent). Provider boundary unchanged. 1541 tests passed, 3 skipped. RC2 green. Daily brief demo passes.
+
+**Closed-track summary (15 tracks):**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — CLOSED Sprint 148
+- `atlas/evidence/` cleanup — CLOSED Sprint 150
+- `atlas/reasoning/` cleanup — CLOSED Sprint 153
+- `atlas/risk/` cleanup — CLOSED Sprint 155
+- `atlas/principles/` cleanup — CLOSED Sprint 158
+- `atlas/comparison/` cleanup — CLOSED Sprint 160
+- `atlas/home/` cleanup — CLOSED Sprint 162
+- `atlas/intelligence/` cleanup — CLOSED Sprint 165
+- `atlas/conversation/` cleanup — CLOSED Sprint 167
+- `atlas/dashboard/` cleanup — CLOSED Sprint 169
+- `atlas/capabilities/portfolio_intelligence/` cleanup — CLOSED Sprint 171
+- `atlas/cli/` cleanup — CLOSED Sprint 174
+
+**Next sprint recommendation:** Audit `atlas/capabilities/` package (excluding `portfolio_intelligence/`, already closed Sprint 171).
+
+---
+
 ## 2026-07-03: Sprint 174 — Remove Empty CLI Groups and Close CLI Cleanup Track
 
 Decision: Remove empty shell CLI app groups and close the CLI cleanup track.

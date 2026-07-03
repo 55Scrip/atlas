@@ -1,8 +1,8 @@
 # Atlas Release Candidate Checkpoint
 
 **Created:** 2026-07-03 (Sprint 163)  
-**Updated:** 2026-07-03 (Sprint 172)  
-**Status:** GREEN — Atlas RC2 is stable after 14 cleanup tracks closed.
+**Updated:** 2026-07-03 (Sprint 175)  
+**Status:** GREEN — Atlas RC2 is stable after 15 cleanup tracks closed.
 
 ---
 
@@ -274,3 +274,110 @@ No new provider behavior introduced. No new network calls added. Demo remains pr
 **Audit `atlas/cli/` deprecated command registry.**
 
 After 14 closed cleanup tracks and two RC checkpoints (Sprint 163, Sprint 172), the next smallest high-leverage target is the CLI deprecated command registry and command surface. Auditing the CLI will confirm the retirement state is complete and identify any stale metadata or residual CLI coupling.
+
+---
+
+## Sprint 175 Checkpoint Summary
+
+Sprint 175 is a verification, documentation, and stabilization sprint confirming Atlas remains release-candidate stable after 15 cleanup track closures (Sprints 141–174), including the Sprint 174 CLI help-surface change.
+
+No runtime behavior changed. No modules deleted. No CLI behavior changed (the empty group removal from Sprint 174 is confirmed stable).
+
+---
+
+## Closed Cleanup Tracks (15 total)
+
+| Track | Closure Sprint | Outcome |
+|---|---|---|
+| `atlas/analysis/` cleanup | Sprint 141 | Multiple analysis submodules deleted over Sprints 100–141 |
+| `atlas/decision/` cleanup | Sprint 144 | `render_comparison_result` deleted Sprint 143; track closed Sprint 144 |
+| Provider boundary audit | Sprint 146 | Stale Yahoo re-exports removed; 4 clean public exports remain |
+| Portfolio boundary | Sprint 148 | Stale `PortfolioFitInput` import removed from adapter |
+| `atlas/evidence/` cleanup | Sprint 150 | No cleanup warranted; package clean and stable |
+| `atlas/reasoning/` cleanup | Sprint 153 | `atlas/reasoning/` package deleted; `check_reasoning_report` removed Sprint 152 |
+| `atlas/risk/` cleanup | Sprint 155 | No cleanup warranted; package clean and stable |
+| `atlas/principles/` cleanup | Sprint 158 | `check_intelligence_report` + `check_suitability_assessment` removed Sprint 157 |
+| `atlas/comparison/` cleanup | Sprint 160 | No cleanup warranted; package clean and stable |
+| `atlas/home/` cleanup | Sprint 162 | No cleanup warranted; package clean and stable |
+| `atlas/intelligence/` cleanup | Sprint 165 | No cleanup warranted; package clean and stable |
+| `atlas/conversation/` cleanup | Sprint 167 | No cleanup warranted; package clean and stable |
+| `atlas/dashboard/` cleanup | Sprint 169 | No cleanup warranted; cleanest provider boundary audited |
+| `atlas/capabilities/portfolio_intelligence/` cleanup | Sprint 171 | Stale docstring removed; no runtime cleanup warranted |
+| `atlas/cli/` cleanup | Sprint 174 | 3 empty shell app groups removed (`evidence`, `reason`, `risk`); `atlas --help` cleaned |
+
+---
+
+## Deleted Module Guard (Sprint 175)
+
+All 13 deleted modules confirmed absent — unchanged since Sprint 172. All stale symbol hits classified:
+- `atlas/domains/decision/engine.py` `ReasoningEngine` — distinct Blueprint-layer class ✓
+- `atlas/providers/yahoo.py` `YahooCompany/YahooFinancials/YahooMarketData` — active internal types in opt-in Yahoo provider ✓
+- `atlas/capabilities/portfolio_intelligence/models.py` — docstring migration notes only ✓
+- `atlas/cli/deprecations.py` — retired command metadata, never executed ✓
+
+No stale active runtime references found.
+
+---
+
+## CLI Verification (Sprint 175)
+
+### Sprint 174 help-surface change confirmed
+
+| Group | Status in `atlas --help` |
+|---|---|
+| `evidence` | **Absent** ✓ (removed Sprint 174) |
+| `reason` | **Absent** ✓ (removed Sprint 174) |
+| `risk` (bare) | **Absent** ✓ (removed Sprint 174) |
+| `risk-drift` | Present ✓ (active, unchanged) |
+
+### Active groups confirmed present
+`intelligence`, `dashboard`, `principles`, `risk-drift`, `watchlist`, `daily`, `home`, `compare` — all present ✓
+
+### Retired commands remain not callable
+`atlas reason analyze` (exit=2), `atlas risk size` (exit=2), `atlas evidence assess` (exit=2) — all non-zero exit ✓
+
+### Registry state
+`_REGISTRY` empty ✓ — `_RETIRED_REGISTRY` 7 entries ✓
+
+---
+
+## Active Package Smoke Verification (Sprint 175)
+
+| Package | Status |
+|---|---|
+| `atlas.evidence` | Importable ✓ |
+| `atlas.risk` | Importable ✓ |
+| `atlas.principles` | Importable ✓ |
+| `atlas.comparison` | Importable ✓ |
+| `atlas.home` | Importable ✓ |
+| `atlas.intelligence` | Importable ✓ |
+| `atlas.conversation` | Importable ✓ |
+| `atlas.dashboard` | Importable ✓ |
+| `atlas.capabilities.portfolio_intelligence` | Importable ✓ |
+| `atlas.cli.deprecations` | Importable ✓ |
+
+---
+
+## Provider Boundary (Sprint 175)
+
+Unchanged since Sprint 172. No new provider behavior introduced across all 15 closed tracks. `_provider_from_name()` in CLI only; default mock; Yahoo opt-in only. Demo remains provider-free.
+
+---
+
+## Release Candidate Verification (Sprint 175)
+
+| Check | Result |
+|---|---|
+| `python -m compileall atlas tests` | Green ✓ |
+| `python -m pytest` | 1541 passed, 3 skipped ✓ |
+| `scripts/verify_release_candidate.sh` | RC2 green ✓ |
+| `scripts/run_daily_brief_demo.sh` | Passes, provider-free ✓ |
+| Forbidden language check | No violations ✓ |
+
+---
+
+## Recommended Sprint 176 Target
+
+**Audit `atlas/capabilities/` package.**
+
+After 15 closed cleanup tracks and three RC checkpoints (Sprint 163, Sprint 172, Sprint 175), the next high-leverage target is the broader `atlas/capabilities/` package. `atlas/capabilities/portfolio_intelligence/` is already closed as a subtrack — the audit should cover the remaining capabilities: `company_analysis`, `daily_brief`, `discovery`, and `watchlist_intelligence`.
