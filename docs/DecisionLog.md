@@ -2,6 +2,24 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 215 — v1 Weekly Review Usage Guide
+
+Decision: Create a practical v1 usage guide for `atlas weekly-review`.
+
+**Rationale:** After implementing local inputs (Sprint 210), CLI (Sprint 211), renderer (Sprint 212), realistic trial (Sprint 213), and journal aging alerts (Sprint 214), the next highest-value step is to make the workflow usable by a real user without source-code knowledge. A practical guide reduces onboarding friction without expanding product scope.
+
+**Guide created:** `docs/AtlasWeeklyReviewUsageGuide.md`
+
+**Contents:** required/optional files, folder structure, portfolio/watchlist/profile/journal formats, command examples, all 10 output sections in user terms, Section 10 philosophy, journal aging behavior, common warnings, weekly update routine, current limitations.
+
+**README updated:** Weekly Review added to capabilities table; pointer to usage guide added.
+
+**Tests:** 26 tests in `tests/test_weekly_review_usage_guide_sprint215.py`. 1954 total passing. RC2 green.
+
+**Next sprint recommendation:** Sprint 216 — Release hardening checkpoint across all Weekly Review sprints (209–215).
+
+---
+
 ## 2026-07-03: Sprint 214 — Journal Entry Aging Alerts
 
 Decision: Add deterministic aging detection for decision journal entries in the Weekly Investment Review.

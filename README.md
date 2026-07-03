@@ -39,6 +39,9 @@ APIs. It does not use AI or LLMs. It does not fetch live market data or news.
 | Daily Brief | `atlas.capabilities.daily_brief` | Current — all five input surfaces (RC2) |
 | JSON export pipeline | `atlas.cli` + `atlas.adapters` | Current |
 | Local demo | `examples/daily_brief_demo/` | Current — portfolio + evidence link resolution (RC2) |
+| Weekly Investment Review | `atlas weekly-review` | Current — local-only, 10-section deterministic output |
+
+For the v1 local Weekly Review workflow, see [docs/AtlasWeeklyReviewUsageGuide.md](docs/AtlasWeeklyReviewUsageGuide.md).
 
 Legacy engines (`atlas/analysis/`, `atlas/daily/`, `atlas/intelligence/`, etc.)
 remain functional. New product work belongs in `atlas/domains/` and

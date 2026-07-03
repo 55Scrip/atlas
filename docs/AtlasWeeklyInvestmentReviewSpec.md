@@ -1,7 +1,7 @@
 # Atlas Weekly Investment Review — Workflow Specification
 
 **Created:** 2026-07-03 (Sprint 209)  
-**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210) + CLI SKELETON IMPLEMENTED (Sprint 211) + DETERMINISTIC RENDERER IMPLEMENTED (Sprint 212) + REAL PORTFOLIO TRIAL RUN (Sprint 213) + JOURNAL AGING ALERTS (Sprint 214). Sprint 215 recommendation: v1 usage guide or release hardening checkpoint.
+**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210) + CLI SKELETON IMPLEMENTED (Sprint 211) + DETERMINISTIC RENDERER IMPLEMENTED (Sprint 212) + REAL PORTFOLIO TRIAL RUN (Sprint 213) + JOURNAL AGING ALERTS (Sprint 214) + V1 USAGE GUIDE (Sprint 215). Sprint 216 recommendation: Release hardening checkpoint.
 
 ---
 
@@ -1265,6 +1265,36 @@ Reason to Wait: NESTE decision journal notes are older than 90 days (475 days). 
 **Tests:** 56 tests in `tests/test_weekly_review_journal_aging_sprint214.py`. 1928 total passing.
 
 **Sprint 215 recommendation:** v1 usage guide — write a practical one-page guide for using `atlas weekly-review` with a real local portfolio. Bridges the gap between implementation and usability for a new user.
+
+---
+
+## Sprint 215 Implementation Status — COMPLETE
+
+Sprint 215 created the v1 Weekly Review usage guide.
+
+**Guide created:** `docs/AtlasWeeklyReviewUsageGuide.md`
+
+**Contents:**
+- What Atlas Weekly Review does and does not do
+- Required files (portfolio.json, watchlist.json) and optional files
+- Recommended folder structure with example paths
+- Portfolio file format with minimal and extended examples
+- Watchlist file format with allowed status values
+- Investor profile and decision journal file formats
+- Company facts and financials directory conventions
+- Full command examples (minimal and all-optional)
+- All 10 output sections explained in user terms
+- Section 10 philosophy (no action is a valid outcome)
+- Journal aging note behavior (>90 days, requires as_of)
+- Common warnings table with non-urgent resolution notes
+- Weekly update routine (7-step practical checklist)
+- Current limitations (explicit, no promises)
+
+**README updated:** pointer to usage guide added to capabilities table.
+
+**Tests:** 26 tests in `tests/test_weekly_review_usage_guide_sprint215.py`. 1954 total passing.
+
+**Sprint 216 recommendation:** Release hardening checkpoint — verify all Weekly Review sprints (209–215) are stable, all closed tracks remain clean, and `atlas weekly-review` end-to-end is solid before adding further engine wiring.
 
 ---
 

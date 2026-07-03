@@ -550,3 +550,11 @@ Sprint 214 added deterministic journal entry aging alerts to `atlas weekly-revie
 - 56 new tests in `tests/test_weekly_review_journal_aging_sprint214.py`; 1928 total passing
 
 **Sprint 215 recommendation:** v1 usage guide — write a practical one-page guide for using `atlas weekly-review` with a real local portfolio.
+
+---
+
+## Sprint 215 Status — COMPLETE
+
+Sprint 215 created `docs/AtlasWeeklyReviewUsageGuide.md` — a practical guide covering required/optional files, folder structure, all file formats, command examples, all 10 output sections, Section 10 philosophy, journal aging behavior, common warnings, weekly update routine, and current limitations. README updated with pointer and Weekly Review capability row. 26 new tests; 1954 total passing.
+
+**Sprint 216 recommendation:** Release hardening checkpoint across all Weekly Review sprints (209–215).
