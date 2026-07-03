@@ -558,3 +558,11 @@ Sprint 214 added deterministic journal entry aging alerts to `atlas weekly-revie
 Sprint 215 created `docs/AtlasWeeklyReviewUsageGuide.md` — a practical guide covering required/optional files, folder structure, all file formats, command examples, all 10 output sections, Section 10 philosophy, journal aging behavior, common warnings, weekly update routine, and current limitations. README updated with pointer and Weekly Review capability row. 26 new tests; 1954 total passing.
 
 **Sprint 216 recommendation:** Release hardening checkpoint across all Weekly Review sprints (209–215).
+
+---
+
+## Sprint 216 Status — COMPLETE
+
+Sprint 216 hardened the Weekly Review v1 track. Fix: CLI docstring and import updated from stale `render_weekly_review_skeleton` alias to `render_weekly_review` (no behavioral change). All three command variants verified (minimal, full, realistic). NESTE aging alert confirmed (473 days). All 13 guide-referenced paths verified present. Provider boundary clean. Language guardrails clean. 7 closed deletion targets remain absent. 1954 tests passing. RC2 green. Hardening doc: `docs/WeeklyReviewReleaseHardening.md`.
+
+**Sprint 217 recommendation:** Release candidate freeze for internal v1.

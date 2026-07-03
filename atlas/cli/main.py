@@ -380,18 +380,18 @@ def weekly_review_command(
         help="Path to a scope notes file (optional; contents included in review scope).",
     ),
 ):
-    """Run the Atlas Weekly Investment Review skeleton.
+    """Run the Atlas Weekly Investment Review.
 
     Loads local portfolio, watchlist, and optional inputs. Validates required
     files, reports warnings for missing optional inputs, and renders all 10
-    required Weekly Review section headings.
+    Weekly Review sections with deterministic content from loaded inputs.
 
     No live data. No recommendations. No provider dependency.
     """
     from atlas.weekly_review import (
         WeeklyReviewInputPaths,
         load_weekly_review_inputs,
-        render_weekly_review_skeleton,
+        render_weekly_review,
     )
 
     scope_notes = ""
@@ -423,7 +423,7 @@ def weekly_review_command(
         console.print(f"[red]Weekly review failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
-    console.print(render_weekly_review_skeleton(result))
+    console.print(render_weekly_review(result))
 
 
 @app.command("compare")

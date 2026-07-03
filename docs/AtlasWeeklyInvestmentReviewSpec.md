@@ -1,7 +1,7 @@
 # Atlas Weekly Investment Review — Workflow Specification
 
 **Created:** 2026-07-03 (Sprint 209)  
-**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210) + CLI SKELETON IMPLEMENTED (Sprint 211) + DETERMINISTIC RENDERER IMPLEMENTED (Sprint 212) + REAL PORTFOLIO TRIAL RUN (Sprint 213) + JOURNAL AGING ALERTS (Sprint 214) + V1 USAGE GUIDE (Sprint 215). Sprint 216 recommendation: Release hardening checkpoint.
+**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210) + CLI SKELETON IMPLEMENTED (Sprint 211) + DETERMINISTIC RENDERER IMPLEMENTED (Sprint 212) + REAL PORTFOLIO TRIAL RUN (Sprint 213) + JOURNAL AGING ALERTS (Sprint 214) + V1 USAGE GUIDE (Sprint 215) + RELEASE HARDENED (Sprint 216). Sprint 217 recommendation: Release candidate freeze for internal v1.
 
 ---
 
@@ -1295,6 +1295,32 @@ Sprint 215 created the v1 Weekly Review usage guide.
 **Tests:** 26 tests in `tests/test_weekly_review_usage_guide_sprint215.py`. 1954 total passing.
 
 **Sprint 216 recommendation:** Release hardening checkpoint — verify all Weekly Review sprints (209–215) are stable, all closed tracks remain clean, and `atlas weekly-review` end-to-end is solid before adding further engine wiring.
+
+---
+
+## Sprint 216 Implementation Status — COMPLETE
+
+Sprint 216 performed a release hardening checkpoint for the Weekly Review v1 track.
+
+**Fix applied:** CLI docstring in `atlas/cli/main.py` was stale ("skeleton"); updated to current description. Import updated from `render_weekly_review_skeleton` alias to `render_weekly_review` directly. No behavioral change.
+
+**Commands verified:** minimal, full minimal-bundle, and realistic bundle — all exit 0, all 10 sections render, Section 10 non-empty.
+
+**Journal aging verified:** NESTE (473 days) flagged; LVMH/MSFT/ADYEN not flagged; boundary conditions confirmed by 56 tests.
+
+**Usage guide verified:** all 13 referenced paths exist, all flags match CLI, all 10 sections explained.
+
+**Provider boundary:** clean across all `atlas/weekly_review/` modules.
+
+**Language guardrails:** clean in all output, examples, and docs.
+
+**Closed cleanup tracks:** all 7 deletion targets remain absent.
+
+**Tests:** 1954 passed, 3 skipped. RC2 green.
+
+**Hardening doc:** `docs/WeeklyReviewReleaseHardening.md`
+
+**Sprint 217 recommendation:** Release candidate freeze for internal v1.
 
 ---
 

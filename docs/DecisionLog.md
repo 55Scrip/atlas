@@ -2,6 +2,30 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 216 — Release Hardening Checkpoint for Weekly Review v1
+
+Decision: Pause feature expansion for a release hardening checkpoint across Weekly Review sprints 209–215.
+
+**Rationale:** After six productization sprints for Weekly Review, Atlas pauses feature expansion to verify local inputs, CLI behavior, renderer output, journal aging, usage documentation, guardrails, and provider-free boundaries before adding deeper engine wiring or new product surfaces.
+
+**Fix found and applied:** `atlas/cli/main.py` still referenced `render_weekly_review_skeleton` (Sprint 211 alias) instead of `render_weekly_review`. Docstring also said "skeleton". Updated import and docstring — no behavioral change since the alias delegates to the same function.
+
+**Verification results:**
+- Minimal command: exit 0, all 10 sections, Section 10 non-empty ✓
+- Full minimal-bundle command: exit 0, per-ticker missing facts/financials noted ✓
+- Realistic command: exit 0, NESTE aging (473 days) flagged, 3 other entries clean ✓
+- Provider boundary: clean ✓
+- Language guardrails: clean ✓
+- 7 closed cleanup deletion targets: all absent ✓
+- 13 usage guide example paths: all present ✓
+- Tests: 1954 passed, 3 skipped, RC2 green ✓
+
+**New doc:** `docs/WeeklyReviewReleaseHardening.md` — full checkpoint record.
+
+**Next sprint recommendation:** Sprint 217 — Release candidate freeze for internal v1. Mark current state as the internal v1 release candidate before further engine wiring.
+
+---
+
 ## 2026-07-03: Sprint 215 — v1 Weekly Review Usage Guide
 
 Decision: Create a practical v1 usage guide for `atlas weekly-review`.
