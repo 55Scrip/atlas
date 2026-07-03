@@ -2,6 +2,27 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 176 — Capabilities Package Audit
+
+Decision: Audit `atlas/capabilities/` and confirm no cleanup is warranted.
+
+**Rationale:** After 15 closed cleanup tracks and three RC checkpoints, `atlas/capabilities/` was the next highest-leverage audit target. Full inventory confirmed 5 subpackages (4 active + 1 closed Sprint 171), 52 total active exports, no stale imports, no provider coupling, no circular dependencies, no overlap with domain layer beyond correct dependency direction.
+
+**Findings:**
+- All capability exports are active and have production callers
+- Dependency direction is consistently: `domains/shared → capabilities`; no reverse coupling
+- `discovery` is the aggregating capability — correctly imports `CompanyAnalysisReport` and `WatchlistIntelligenceReport`
+- `WatchlistInput.from_json_file()` in models is a minor file-I/O note; not a risk
+- `atlas/domains/daily_brief/` is a correctly empty placeholder namespace; `atlas/capabilities/daily_brief/` owns the implementation
+- `portfolio_intelligence/` subtrack remains closed (Sprint 171); verified stable
+- No cleanup warranted
+
+**Changes made:** Audit-only. Created `docs/CapabilitiesCleanupPlan.md`, added 12 guardrail tests in `tests/test_capabilities_package_sprint176.py`.
+
+**Next sprint recommendation:** Audit `atlas/domains/` package.
+
+---
+
 ## 2026-07-03: Sprint 175 — RC Checkpoint After 15 Closed Cleanup Tracks
 
 Decision: Treat Atlas as RC2-stable after 15 closed cleanup tracks and three RC checkpoints (Sprint 163, Sprint 172, Sprint 175).
