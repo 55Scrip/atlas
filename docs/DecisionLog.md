@@ -3797,3 +3797,14 @@ Demo passed. Release verification green.
 - `.overlap_with_existing_holdings.score` → `.overlap.score` because `PortfolioFitResult` uses `overlap` as the field name (per models.py mapping).
 
 **Outcome:** 2 files changed (engine + test). 9 new tests. 1254 tests passing (3 skipped). Demo passed. RC2 green. Recommended Sprint 120: `atlas/suitability/engine.py`.
+
+---
+
+**Sprint 221 (2026-07-04): Specify Snapshot / Screenshot Input workflow**
+
+**Decision:** Specify the future Snapshot / Screenshot Input workflow as a product document. No implementation. New document `docs/AtlasSnapshotInputWorkflow.md` defines seven snapshot types, a classification contract, a draft contract, a confirmation workflow, accuracy and safety guardrails, a privacy and security boundary, mapping to Weekly Review local inputs, and the relationship to future chat-first workspace UX.
+
+**Rationale:**
+After the local-only Weekly Review output was validated and simplified in Sprint 220, Atlas can now define the next low-friction input layer. Snapshot Input should make it easier for users to provide portfolios, watchlists, orders, news, and research notes while preserving confirmation, local-first storage, and structured Weekly Review inputs. Specifying this as a document sprint keeps the v1 foundation unchanged while establishing the product direction for Sprint 222 and beyond.
+
+**Outcome:** `docs/AtlasSnapshotInputWorkflow.md` created. No runtime behavior changed. No provider or network imports introduced. 2078 tests still passing. Sprint 222 target: Add research notes input.

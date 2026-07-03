@@ -1412,6 +1412,31 @@ Create the v1 sample input file set and the corresponding input loader, includin
 
 ---
 
+## Snapshot Input — Future Input Layer
+
+As of Sprint 221, Atlas has specified a Snapshot / Screenshot Input workflow
+that will eventually serve as a low-friction input creation layer for Weekly Review.
+
+See [docs/AtlasSnapshotInputWorkflow.md](AtlasSnapshotInputWorkflow.md) for the
+full specification.
+
+**Mapping from Snapshot Input to Weekly Review inputs:**
+
+| Snapshot Type | Target File | Weekly Review Sections |
+|---------------|-------------|------------------------|
+| Portfolio Snapshot | `portfolio.json` | 1, 2, 4, 5, 6 |
+| Watchlist Snapshot | `watchlist.json` | 1, 3, 4, 8, 9 |
+| Open Orders Snapshot | `decision_journal.json` | 7, 10 |
+| News Snapshot | `scope_notes.md` / `research_notes/` | 1, 8, 9 |
+| External Analysis Snapshot | `research_notes/<ticker>/<source>.md` | 8, 9 |
+| Research Notes Snapshot | `research_notes/<ticker>/notes.md` | 8, 9 |
+| Company Facts Snapshot | `company_facts/<ticker>.json` | 8 |
+
+Snapshot Input is an input creation layer, not a replacement for Weekly Review
+schemas. Weekly Review continues to consume structured local files.
+
+---
+
 ## Repository Identity Confirmation
 
 This is Atlas. This is NOT Atlas Edge. No Atlas Edge concepts, naming, or architecture have been applied in this specification. No Atlas Edge naming was encountered during Sprint 209 discovery.

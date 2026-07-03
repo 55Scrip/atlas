@@ -241,7 +241,23 @@ dataclass tracks presence and source for each investable ticker. Section 8 emits
 per-ticker `Evidence Gap [TICKER]` lines. Section 9 adds per-ticker follow-up
 questions. Section 10 adds per-ticker reasons to wait. No provider dependency.
 
-Recommended next work (Sprint 220):
-**Run second real portfolio trial** — test the full Weekly Review output (profile
-context, per-ticker evidence checks, all Sprint 213–219 improvements) against a
-realistic bundle before adding deeper engines.
+**Sprint 220 (post-v1 improvement — complete):**
+Second realistic trial run. Four verbosity problems found and fixed: Section 8
+combined "both missing" into one line per ticker; Section 9 replaced 24 identical
+per-ticker questions with two grouped lists; Section 10 consolidated 24 per-ticker
+reasons into two summary lines and collapsed principle/constraint boilerplate into
+blocks. Section 10 reduced from ~40 to ~18 lines.
+
+**Sprint 221 (post-v1 specification — complete):**
+Snapshot / Screenshot Input workflow specified. New document
+`docs/AtlasSnapshotInputWorkflow.md` defines seven snapshot types (Portfolio,
+Watchlist, Open Orders, News, External Analysis, Research Notes, Company Facts),
+a classification contract, a draft contract with five confirmation states, accuracy
+and safety guardrails, a privacy and security boundary, mapping from each snapshot
+type to existing Atlas local input files, and relationship to future chat-first
+workspace UX. No runtime behavior changed. No OCR, AI, image parsing, or provider
+dependency introduced. Internal v1 foundation unchanged.
+
+Recommended next work (Sprint 222): **Add research notes input** — the safest
+and most useful bridge between Snapshot Input and Weekly Review, requiring no
+OCR, AI, or broker integration.

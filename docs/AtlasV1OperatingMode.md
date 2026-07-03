@@ -597,4 +597,12 @@ Sprint 219 added per-ticker local evidence presence checks. New `WeeklyReviewTic
 
 Sprint 220 ran the second realistic Weekly Review trial. Trial confirmed output is specific and safe but identified four verbosity problems. Four trial-driven renderer improvements applied: (1) Section 8 combines "both missing" into one line per ticker; (2) Section 9 replaces 24 identical per-ticker questions with two grouped ticker lists; (3) Section 10 consolidates per-ticker missing evidence into two summary lines; (4) Section 10 uses block format for principles and constraints instead of N identical boilerplate lines. Section 10 reduced from ~40 lines to ~18 lines. 20 new tests; 2078 total passing.
 
+---
+
+## Sprint 221 Status — COMPLETE
+
+Sprint 221 specified the Snapshot / Screenshot Input workflow. No runtime behavior was changed. A new document `docs/AtlasSnapshotInputWorkflow.md` defines: seven supported snapshot types (Portfolio, Watchlist, Open Orders, News, External Analysis, Research Notes, Company Facts); a classification contract with a structured JSON output; a draft contract with required fields and confirmation states; accuracy and safety guardrails; privacy and security boundary; mapping from each snapshot type to existing Atlas local input files; relationship to Weekly Review and future chat-first workspace UX; and an explicit out-of-scope section. No OCR, image parsing, AI, or provider dependencies introduced. 2078 tests still passing.
+
+**Sprint 222 recommendation:** Add research notes input — the safest bridge between Snapshot Input and Weekly Review, requiring no OCR, AI, or broker integration.
+
 **Sprint 221 recommendation:** Group or simplify Section 10 output — add visual grouping (reason-type headers) so the section is scannable rather than requiring sequential reading.
