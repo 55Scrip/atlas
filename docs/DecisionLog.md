@@ -2,6 +2,16 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 166 — Conversation Package Audit Checkpoint
+
+Decision: `atlas/conversation/` package is clean. No cleanup work is warranted.
+
+**Rationale:** After audit-first inventory (Sprint 166), the conversation package contains only active, intentional code. All 6 exports are active and consumed by CLI (`atlas ask`) and `atlas/principles/engine.py` (TYPE_CHECKING only). `ConversationEngine.answer()` is the sole public method, active at 1 production call site (CLI). All 16 private helpers are active. No zero-caller symbols. No stale exports. No closed-track import residue. No Blueprint-aligned successor exists. Provider boundary is clean and opt-in — `MockCompanyAnalysisProvider` is the default fallback; `YahooFinanceProvider` never imported. Intelligence dependency (`IntelligenceEngine`) is intentional and consumed by 2 of 8 intent branches. `RiskAnalysis` dependency is intentional, optional, and shallow.
+
+**Sprint 167 recommended target:** Close the conversation cleanup track — documentation-only sprint confirming audit findings. Pattern matches Sprint 150, 155, 158, 160, 162, and 165.
+
+---
+
 ## 2026-07-03: Sprint 165 — Close Intelligence Cleanup Track
 
 Decision: Close the `atlas/intelligence/` cleanup track. No cleanup work is warranted.
