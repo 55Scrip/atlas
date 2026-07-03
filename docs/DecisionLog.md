@@ -2,6 +2,31 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 189 — Watchlist Package Audit
+
+Decision: Confirm that the Atlas watchlist surface requires no cleanup. No standalone `atlas/watchlist/` package exists. Watchlist functionality is distributed across `atlas/capabilities/watchlist_intelligence/` (4 modules, 545 lines, 13 exports) and `atlas/adapters/watchlist.py` (198 lines, 2 public functions). Both are Blueprint-aligned, provider-free, stale-import-free, and boundary-correct.
+
+**Rationale:** The watchlist surface is among the most architecturally correct in the codebase. All 13 capability exports have active production callers. Both adapter functions have active production callers. The capability has no provider coupling (cleaner than watchlist_review which has acceptable legacy coupling). No upward dependency on watchlist_review. Legacy `atlas/analysis/watchlist.py` remains deleted (Sprint 101). `WatchlistEngine` remains absent (Sprint 99). Boundary direction is correct throughout: watchlist_review consumes capability types, not vice versa.
+
+**Final verified state:**
+- `atlas/watchlist/` standalone package: does not exist (correct — watchlist is a capability, not a legacy package) ✓
+- `atlas/capabilities/watchlist_intelligence/` — 13 exports, all active ✓
+- `atlas/adapters/watchlist.py` — 2 public functions, both active ✓
+- No stale imports from deleted modules ✓
+- No provider coupling in capability or adapter ✓
+- No CLI coupling in capability or adapter ✓
+- No upward dependency on atlas.watchlist_review ✓
+- `atlas/analysis/watchlist.py` remains deleted ✓
+- `CompanyAnalysisProvider` remains absent from atlas.analysis.company_analysis ✓
+- **1637 passed, 3 skipped | RC2 green | Demo passes ✓**
+- Suite growth since Sprint 188: 1622 → 1637 (+15 tests)
+
+**Changes made:** Created `docs/WatchlistCleanupPlan.md`. Created `tests/test_watchlist_package_sprint189.py` (15 guardrail tests). Updated `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`, `docs/DecisionLog.md`.
+
+**Next sprint recommendation:** Close watchlist cleanup track (Sprint 190).
+
+---
+
 ## 2026-07-03: Sprint 188 — Release Candidate Checkpoint
 
 Decision: Confirm Atlas release-candidate stability after closing `atlas/decision_journal/` (Sprint 185) and `atlas/watchlist_review/` (Sprint 187).
