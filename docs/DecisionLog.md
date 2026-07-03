@@ -2,6 +2,25 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 177 — Domains Package Audit
+
+Decision: Audit `atlas/domains/` and confirm no cleanup is warranted.
+
+**Rationale:** After auditing the capabilities layer (Sprint 176), the next audit target was the domain layer — the foundational Blueprint contracts that capabilities depend on. Full inventory confirmed 9 subpackages, ~1,730 lines, 68 total active exports. No stale imports, no provider coupling, no upward dependencies, no circular dependencies. Boundary direction is correct throughout: `atlas.shared → atlas.domains → atlas.capabilities`.
+
+**Key findings:**
+- 4 substantive domain subpackages (`decision`, `knowledge`, `portfolio`, `research`) are foundational and widely consumed
+- 5 thin/placeholder subpackages (`ai`, `authentication`, `daily_brief`, `decision_journal`, `watchlist`) are correct future-boundary markers
+- `atlas.domains.decision.ReasoningEngine` is the active Blueprint-layer class — distinct from deleted `atlas.reasoning.ReasoningEngine`; existing Sprint 163 guardrails confirm this
+- `atlas/domains/ai/` re-exports Protocol interfaces from `atlas.ai` — correct future-AI boundary, test-adjacent only, no production callers
+- No cleanup warranted
+
+**Changes made:** Audit-only. Created `docs/DomainsCleanupPlan.md`, added 18 guardrail tests in `tests/test_domains_package_sprint177.py`.
+
+**Next sprint recommendation:** Audit `atlas/adapters/` package.
+
+---
+
 ## 2026-07-03: Sprint 176 — Capabilities Package Audit
 
 Decision: Audit `atlas/capabilities/` and confirm no cleanup is warranted.
