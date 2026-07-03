@@ -337,6 +337,95 @@ def home_command(
     console.print(render_atlas_home(output))
 
 
+@app.command("weekly-review")
+def weekly_review_command(
+    portfolio_path: Path = typer.Option(
+        ...,
+        "--portfolio",
+        help="Portfolio JSON file path (required).",
+    ),
+    watchlist_path: Path = typer.Option(
+        ...,
+        "--watchlist",
+        help="Watchlist JSON file path (required).",
+    ),
+    profile_path: Path | None = typer.Option(
+        None,
+        "--profile",
+        help="Investor profile JSON file path (optional).",
+    ),
+    journal_path: Path | None = typer.Option(
+        None,
+        "--journal",
+        help="Decision journal JSON file path (optional).",
+    ),
+    company_facts_dir: Path | None = typer.Option(
+        None,
+        "--company-facts",
+        help="Directory of per-ticker company facts JSON files (optional).",
+    ),
+    financials_dir: Path | None = typer.Option(
+        None,
+        "--financials",
+        help="Directory of per-ticker financial history CSV files (optional).",
+    ),
+    as_of: str = typer.Option(
+        "",
+        "--as-of",
+        help="Review date in ISO 8601 format, e.g. 2026-01-05 (optional).",
+    ),
+    scope_notes_path: Path | None = typer.Option(
+        None,
+        "--scope-notes",
+        help="Path to a scope notes file (optional; contents included in review scope).",
+    ),
+):
+    """Run the Atlas Weekly Investment Review skeleton.
+
+    Loads local portfolio, watchlist, and optional inputs. Validates required
+    files, reports warnings for missing optional inputs, and renders all 10
+    required Weekly Review section headings.
+
+    No live data. No recommendations. No provider dependency.
+    """
+    from atlas.weekly_review import (
+        WeeklyReviewInputPaths,
+        load_weekly_review_inputs,
+        render_weekly_review_skeleton,
+    )
+
+    scope_notes = ""
+    if scope_notes_path is not None:
+        if scope_notes_path.exists():
+            try:
+                scope_notes = scope_notes_path.read_text(encoding="utf-8").strip()
+            except OSError:
+                scope_notes = ""
+        else:
+            console.print(
+                f"[yellow]Warning:[/yellow] Scope notes file not found: {scope_notes_path}"
+            )
+
+    paths = WeeklyReviewInputPaths(
+        portfolio_path=portfolio_path,
+        watchlist_path=watchlist_path,
+        profile_path=profile_path,
+        journal_path=journal_path,
+        company_facts_dir=company_facts_dir,
+        financials_dir=financials_dir,
+        as_of=as_of,
+        scope_notes=scope_notes,
+    )
+
+    try:
+        result = load_weekly_review_inputs(paths)
+    except ValueError as exc:
+        console.print(f"[red]Weekly review failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(render_weekly_review_skeleton(result))
+
+
 @app.command("compare")
 def compare_command(
     ideas: list[str] | None = typer.Argument(

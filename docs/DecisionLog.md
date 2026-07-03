@@ -2,6 +2,32 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 211 — Implement Weekly Review CLI Skeleton
+
+Decision: Add the `atlas weekly-review` command skeleton — the first end-to-end CLI surface for the Atlas Weekly Investment Review workflow.
+
+**Rationale:** After implementing deterministic local input schemas (Sprint 210), Atlas exposes a minimal CLI surface that proves the Weekly Investment Review can load inputs end-to-end and render the required review structure without live data, provider calls, or recommendation language.
+
+**Findings:**
+- `atlas weekly-review` registered as root-level Typer command on `app` in `atlas/cli/main.py`
+- Arguments: `--portfolio`/`--watchlist` required; `--profile`, `--journal`, `--company-facts`, `--financials`, `--as-of`, `--scope-notes` optional
+- `atlas/weekly_review/render.py` created with `render_weekly_review_skeleton()` — returns string, no engine calls, no provider dependency
+- Lazy import of `atlas.weekly_review` inside CLI command — avoids adding to module-level imports
+- All 10 section headings present in output
+- Section 10 (Non-Actions) always present and non-empty — includes deferred watchlist items
+- Section 8 (Missing Evidence) populated from watchlist `evidence_needed` fields
+- Missing required files → exit code 1 with clear error; missing optional → warning, not failure
+- No forbidden language in output, help text, or renderer — confirmed by guardrail tests
+- Zero provider/network imports in `render.py` or `__init__.py`
+- All existing CLI commands remain available (verified by tests)
+- 28 new tests | **1755 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Created `atlas/weekly_review/render.py`. Updated `atlas/weekly_review/__init__.py` (added `render_weekly_review_skeleton`). Added `weekly_review_command` to `atlas/cli/main.py`. Created `tests/test_weekly_review_cli_sprint211.py`. Updated `docs/AtlasWeeklyInvestmentReviewSpec.md`, `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 212 — Implement Weekly Investment Review renderer. Replace placeholder content with deterministic output derived from loaded inputs: portfolio summary, per-item watchlist review, open decisions from journal, consolidated evidence gaps, and non-actions from real data.
+
+---
+
 ## 2026-07-03: Sprint 210 — Implement Local Input Schemas for Weekly Investment Review
 
 Decision: Implement local input schemas for the Atlas Weekly Investment Review workflow as the first implementation step in the Atlas v1 productization track.

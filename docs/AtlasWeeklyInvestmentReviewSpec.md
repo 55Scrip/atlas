@@ -1,7 +1,7 @@
 # Atlas Weekly Investment Review — Workflow Specification
 
 **Created:** 2026-07-03 (Sprint 209)  
-**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210). Sprint 211 target: implement `atlas weekly-review` command skeleton.
+**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210) + CLI SKELETON IMPLEMENTED (Sprint 211). Sprint 212 target: implement Weekly Investment Review renderer.
 
 ---
 
@@ -1154,6 +1154,34 @@ Atlas supports better judgment. It does not replace it.
 ```
 
 ---
+
+## Sprint 211 Implementation Status — COMPLETE
+
+Sprint 211 implemented the `atlas weekly-review` CLI skeleton.
+
+**Command registered:** `atlas weekly-review` — root-level command on `app` in `atlas/cli/main.py`.
+
+**Arguments:** `--portfolio` (required), `--watchlist` (required), `--profile` (optional), `--journal` (optional), `--company-facts` (optional), `--financials` (optional), `--as-of` (optional), `--scope-notes` (optional).
+
+**Renderer created:** `atlas/weekly_review/render.py` — `render_weekly_review_skeleton(result)` returns a string with all 10 section headings and safe placeholder content. No engine calls. No provider dependency.
+
+**Behavior:**
+- Missing required portfolio or watchlist → exit code 1, clear error
+- Missing optional inputs → warning in output, not failure
+- Evidence gaps from watchlist `evidence_needed` fields surfaced in Section 8
+- Deferred/Needs-More-Evidence watchlist items appear in Section 10
+- Section 10 (Non-Actions) always present and non-empty
+- No forbidden language in output, help text, or renderer
+- Lazy import of `atlas.weekly_review` inside command — CLI module-level imports unchanged
+
+**Tests:** `tests/test_weekly_review_cli_sprint211.py` — 28 tests, all passing. **1755 passed, 3 skipped | RC2 green | Demo passes.**
+
+**Remaining gaps (for Sprint 212+):**
+- Placeholder content in sections 4, 5, 6, 7, 9 — to be replaced with deterministic engine output
+- Full investor profile object loading (with `principles`/`constraints`) not yet returned in `LoadResult`
+- Companies-needing-attention logic not yet implemented
+- Non-actions generator not yet connected to real decision data
+- Financial CSV parsing not yet implemented
 
 ## Sprint 210 Implementation Status — COMPLETE
 
