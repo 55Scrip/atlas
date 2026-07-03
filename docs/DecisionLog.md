@@ -2,6 +2,30 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 188 — Release Candidate Checkpoint
+
+Decision: Confirm Atlas release-candidate stability after closing `atlas/decision_journal/` (Sprint 185) and `atlas/watchlist_review/` (Sprint 187).
+
+**Rationale:** After closing two focused cleanup tracks, Atlas remains stable. All 17 closed cleanup tracks + company analysis residual cleanup are documented consistently. Decision journal and watchlist review closure states are verified unchanged. Watchlist review provider coupling remains classified as acceptable legacy coupling. Deleted modules remain absent. Retired CLI commands remain non-callable. Empty CLI groups remain absent from root help. 17 active packages remain importable. Demo is provider-free. Release verification is green.
+
+**Final verified state:**
+- 17 closed cleanup tracks + residual cleanup — all stable ✓
+- `atlas/decision_journal/` CLOSED Sprint 185 — 11 exports active, all callers valid ✓
+- `atlas/watchlist_review/` CLOSED Sprint 187 — 11 exports active, provider coupling: acceptable legacy coupling ✓
+- 13 deleted modules remain absent ✓
+- 7 retired CLI commands remain non-callable ✓
+- `evidence`, `reason`, `risk` groups absent from `atlas --help` ✓
+- 17 active packages importable ✓
+- Provider boundaries unchanged ✓
+- **1622 passed, 3 skipped | RC2 green | Demo passes ✓**
+- Suite growth since Sprint 181 RC: 1598 → 1622 (+24 tests)
+
+**Changes made:** Updated `docs/ReleaseCandidateCheckpoint.md` (Sprint 188 section: decision journal verification, watchlist review verification, provider boundary verification, closed-track table, deleted module guard, CLI verification, active package smoke, provider boundary table, RC verification). Updated standard docs.
+
+**Next sprint recommendation:** Audit `atlas/watchlist/` package.
+
+---
+
 ## 2026-07-03: Sprint 187 — Resolve Watchlist Review Provider Boundary
 
 Decision: Classify `atlas/watchlist_review/engine.py` provider coupling as acceptable legacy coupling. No code change. Declare `atlas/watchlist_review/` cleanup track CLOSED.
