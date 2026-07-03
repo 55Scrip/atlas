@@ -107,7 +107,7 @@ _RETIRED_REGISTRY: tuple[DeprecatedCommand, ...] = (
         removal_criteria=(
             "Command body retired in Sprint 88.",
             "atlas.risk engine remains on disk — RiskAnalysis type is still imported by "
-            "atlas/conversation, atlas/intelligence, and atlas/reasoning engines. "
+            "atlas/conversation and atlas/intelligence engines (atlas/reasoning deleted Sprint 153). "
             "RiskEngine has no production instantiation points outside deprecated CLI. "
             "Engine deletion deferred: RiskEngine and RiskAnalysis live in the same file; "
             "separating them requires surgery to atlas/risk/engine.py and atlas/risk/__init__.py.",

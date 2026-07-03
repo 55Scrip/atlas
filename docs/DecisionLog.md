@@ -2,6 +2,18 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 164 — Intelligence Package Audit Checkpoint
+
+Decision: `atlas/intelligence/` package is clean. No cleanup work is warranted.
+
+**Rationale:** After audit-first inventory (Sprint 164), the intelligence package contains only active, intentional code. All 5 exports are active and consumed by CLI (2 commands), `atlas/conversation/engine.py`, and `atlas/suitability/engine.py`. `IntelligenceEngine.analyze()` is the sole public method and has 3 production call sites. All 13 private helpers are internal and active. No zero-caller symbols exist. No stale exports. No closed-track import residue. No Blueprint-aligned successor exists. Provider boundary is clean and opt-in. The `RiskAnalysis` dependency is intentional, optional at call time, and shallow (4 fields read).
+
+**One correction made:** `atlas/cli/deprecations.py` `removal_criteria` for `atlas risk size` previously mentioned `atlas/reasoning engines` as a `RiskAnalysis` caller (stale since Sprint 153). Corrected to `atlas/conversation and atlas/intelligence engines`. Metadata-only, no runtime impact.
+
+**Sprint 165 recommended target:** Close the intelligence cleanup track — documentation-only sprint confirming audit findings. Pattern matches Sprint 150, 155, 158, 160, and 162.
+
+---
+
 ## 2026-07-03: Sprint 163 — Release Candidate Checkpoint After Cleanup Closures
 
 Decision: Sprint 163 confirms Atlas release-candidate stability after 10 cleanup tracks were closed.
