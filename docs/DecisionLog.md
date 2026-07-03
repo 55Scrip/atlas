@@ -2,6 +2,30 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 208 — Define Atlas v1 Operating Mode
+
+Decision: Define the Atlas v1 product boundary, operating mode, and flagship workflow (Atlas Weekly Investment Review).
+
+**Rationale:** After 25 closed cleanup tracks and repeated RC stability, Atlas has a clean, well-bounded codebase. Sprint 208 begins the productization track: defining what Atlas should do for the user, what it should never do, and what the canonical v1 workflow looks like. All 14 active packages were mapped to v1 roles. The Weekly Investment Review was selected as the flagship v1 workflow because it ties together company review, watchlist, suitability, risk/principles, open decisions, and missing evidence without requiring live data or recommendation language.
+
+**Findings:**
+- v1 product boundary defined: CLI-first, deterministic, local-only, long-term investor focus
+- 8 candidate v1 workflows mapped against 14 active packages — all 8 included in v1
+- Weekly Investment Review: flagship workflow, currently assembled manually from individual commands, no unified `atlas weekly-review` command yet
+- Company Review, Decision Memo, Watchlist Review specifications written
+- v1 input model: all local and file-based; no live data required
+- v1 output model: 10 output types, all with explicit language guardrails
+- Usable output criteria defined: evidence before opinion, reproducible, uncertainty stated, no recommendation language
+- Out-of-scope list codified: live data, LLM conclusions, UI, broker integrations, Atlas Edge, price targets, buy/sell
+- 10 guardrail principles for v1 and beyond
+- **1692 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Created `docs/AtlasV1OperatingMode.md`. Updated `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 209 — Specify the Atlas Weekly Investment Review workflow. Full specification: input data structures, workflow steps, output section definitions, CLI entrypoint design, missing implementation gaps, implementation plan, acceptance criteria.
+
+---
+
 ## 2026-07-03: Sprint 207 — Release Candidate Checkpoint Across 25 Closed Tracks
 
 Decision: Confirm Atlas release-candidate stability across all 25 closed cleanup tracks after suitability cleanup closure.
