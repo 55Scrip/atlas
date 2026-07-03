@@ -2,6 +2,34 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 192 — Audit Analysis Residual Surface
+
+Decision: Confirm that the `atlas/analysis/` active residual runtime surface preserved by Sprint 141 is clean, well-bounded, and requires no urgent cleanup. Sprint 192 is not a reopening of the Sprint 141 main analysis cleanup track.
+
+**Rationale:** The surviving analysis surface (5 modules, 652 lines, 12 active `__all__` exports) powers `atlas report`, `atlas analyze`, comparison, decision, monitoring, and suitability pipelines. All exports have production callers. No stale imports from deleted modules. Clean bidirectional boundary with `atlas/capabilities/company_analysis/`. No network access. Provider coupling is correct (engine receives provider as argument; selection is CLI-layer-only). One low-priority finding: 3 provider re-exports in `atlas/analysis/__init__.py` (`CompanyDataProvider`, `MockCompanyAnalysisProvider`, `YahooFinanceProvider`) have zero callers from the package root — all actual callers import from `atlas.providers` or submodules directly.
+
+**Final verified state:**
+- 5 surviving modules, 652 lines ✓
+- 12 `__all__` exports — all active ✓
+- `clamp_score` shared utility — 11 active callers across 11 packages ✓
+- `atlas.analysis` → `atlas.capabilities.company_analysis`: absent ✓
+- `atlas.capabilities.company_analysis` → `atlas.analysis`: absent ✓
+- `atlas.domains` → `atlas.analysis`: absent ✓
+- Sprint 141 deleted modules: all absent ✓
+- No stale imports from deleted modules ✓
+- No network access ✓
+- `MockCompanyAnalysisProvider` shim active — 4 test callers ✓
+- `CompanyAnalysisProvider` absent from active namespace ✓
+- One cleanup candidate: 3 zero-caller provider re-exports in `__init__.py` (low priority)
+- **1647 passed, 3 skipped | RC2 green | Demo passes ✓**
+- Suite growth since Sprint 191: 1637 → 1647 (+10 tests)
+
+**Changes made:** Created `docs/AnalysisResidualCleanupPlan.md`. Created `tests/test_analysis_residual_sprint192.py` (10 guardrail tests). Updated `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`, `docs/DecisionLog.md`.
+
+**Next sprint recommendation:** Close residual analysis cleanup track (Sprint 193).
+
+---
+
 ## 2026-07-03: Sprint 191 — Release Candidate Checkpoint Across 20 Closed Tracks
 
 Decision: Confirm Atlas release-candidate stability across all 20 closed cleanup tracks after three consecutive closures: `atlas/decision_journal/` (Sprint 185), `atlas/watchlist_review/` (Sprint 187), and `atlas/watchlist/` (Sprint 190).
