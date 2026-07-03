@@ -1,0 +1,23 @@
+{
+  "_comment": "Atlas Weekly Review sample investor profile. Placeholder data only. Educational sample. Atlas does not provide advice.",
+  "name": "Sample Long-Term Investor",
+  "investment_goals": ["Wealth accumulation"],
+  "portfolio_purpose": "Core Portfolio",
+  "risk_preference": "Balanced",
+  "risk_tolerance": "Balanced",
+  "risk_capacity": "Medium",
+  "time_horizon": "10+ years",
+  "principles": [
+    "Evidence before opinion",
+    "Avoid forced position exits",
+    "Keep reserve capacity",
+    "Prefer quality businesses over trading activity",
+    "No action is an acceptable and often correct outcome"
+  ],
+  "constraints": [
+    "Avoid excessive concentration in any single sector or geography",
+    "Avoid decisions based only on recent price movement",
+    "Avoid adding complexity without a clear evidence-based reason"
+  ],
+  "notes": "Long-term portfolio. Quality and evidence discipline are more important than reaction speed."
+}

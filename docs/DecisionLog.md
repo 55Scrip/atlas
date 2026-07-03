@@ -2,6 +2,30 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 210 — Implement Local Input Schemas for Weekly Investment Review
+
+Decision: Implement local input schemas for the Atlas Weekly Investment Review workflow as the first implementation step in the Atlas v1 productization track.
+
+**Rationale:** Atlas v1 should use deterministic local files rather than live provider data, broker integrations, or external APIs. Implementing the portfolio, watchlist, profile, journal, and optional evidence input bundle creates the foundation for the future `atlas weekly-review` command. Getting inputs right first prevents rework in later sprints.
+
+**Findings:**
+- Created `atlas/weekly_review/` package at top level (matching `atlas/decision_journal/` and `atlas/watchlist_review/` conventions)
+- `WeeklyReviewPortfolioInput`: supports both existing `positions[]` format and v1 extended `accounts[].holdings[]` format with market-value-derived weights and multi-account support
+- `WeeklyReviewWatchlistInput`: full v1 rich item format with `status`, `evidence_needed`, `open_questions`, `manual_observations`, `notes`; legacy status alias mapping covers all existing `WatchlistStatus` enum values
+- `WeeklyReviewInputWarning`: code + message, non-blocking; covers missing_optional_profile, missing_optional_journal, missing_optional_company_facts, missing_optional_financials, missing_sector, missing_watchlist_status, unknown_watchlist_status, invalid_journal
+- `load_weekly_review_inputs()`: validates required files (fail), handles optional files (warn), returns `WeeklyReviewLoadResult`
+- Decision journal: lightweight JSON read (entry count only) — avoids importing heavy `DecisionJournalEngine` in Sprint 210
+- Profile: path forwarded + `profile_available` flag — full object loading deferred to Sprint 211
+- Zero provider/network imports confirmed by guardrail test
+- Sample files created: 7 files under `examples/weekly_review/` with placeholder data and safe language
+- All 35 new tests pass | **1727 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Created `atlas/weekly_review/__init__.py`, `atlas/weekly_review/inputs.py`, `examples/weekly_review/` (7 files), `tests/test_weekly_review_inputs_sprint210.py`. Updated `docs/AtlasWeeklyInvestmentReviewSpec.md`, `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 211 — Implement `atlas weekly-review` command skeleton. Load inputs, validate, report warnings, print placeholder structure. No full orchestration yet.
+
+---
+
 ## 2026-07-03: Sprint 209 — Specify Atlas Weekly Investment Review Workflow
 
 Decision: Specify the Atlas Weekly Investment Review workflow as the flagship v1 workflow in sufficient detail for implementation.

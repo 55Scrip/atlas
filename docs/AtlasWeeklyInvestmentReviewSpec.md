@@ -1,7 +1,7 @@
 # Atlas Weekly Investment Review — Workflow Specification
 
 **Created:** 2026-07-03 (Sprint 209)  
-**Status:** SPECIFIED — workflow definition complete. Sprint 210 target: implement local input schemas.
+**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210). Sprint 211 target: implement `atlas weekly-review` command skeleton.
 
 ---
 
@@ -1155,7 +1155,52 @@ Atlas supports better judgment. It does not replace it.
 
 ---
 
-## Sprint 210 Recommendation
+## Sprint 210 Implementation Status — COMPLETE
+
+Sprint 210 implemented all local input schemas for the Weekly Investment Review.
+
+**Package created:** `atlas/weekly_review/` (top-level, matching `atlas/decision_journal/` and `atlas/watchlist_review/` conventions)
+
+**Modules:**
+- `atlas/weekly_review/__init__.py` — re-exports, `__all__`
+- `atlas/weekly_review/inputs.py` — all dataclasses, parsers, loader, warnings
+
+**Implemented:**
+
+| Component | Status |
+|---|---|
+| `WeeklyReviewPortfolioInput` — v1 extended accounts[] format | ✓ |
+| `WeeklyReviewPortfolioInput` — existing positions[] format | ✓ |
+| Weight derivation from market_value across all holdings | ✓ |
+| Multi-account support | ✓ |
+| `WeeklyReviewWatchlistInput` — v1 rich item format | ✓ |
+| `WeeklyReviewWatchlistStatus` enum with legacy alias mapping | ✓ |
+| Missing status → Watchlist + warning | ✓ |
+| Missing sector → Unclassified + warning | ✓ |
+| `WeeklyReviewInputWarning` (code + message) | ✓ |
+| `WeeklyReviewInputPaths` (required + optional paths) | ✓ |
+| `WeeklyReviewLoadResult` (all loaded inputs + warnings) | ✓ |
+| `load_weekly_review_inputs()` — top-level loader | ✓ |
+| Profile: existing `InvestorProfileEngine.load_profile` reused | ✓ (path forwarded; profile_available flag) |
+| Journal: entry count from existing `.atlas/decision_journal.json` | ✓ (lightweight JSON read, no full parse) |
+| Company facts dir: existence check | ✓ |
+| Financials dir: existence check | ✓ |
+| No provider/network imports | ✓ |
+| No buy/sell/price-target language in warnings or sample files | ✓ |
+
+**Sample files created:** `examples/weekly_review/portfolio.json`, `watchlist.json`, `investor_profile.json`, `decision_journal.json`, `company_facts/ASML.json`, `financials/ASML.csv`, `scope_notes.md`
+
+**Tests:** `tests/test_weekly_review_inputs_sprint210.py` — 35 tests, all passing. **1727 passed, 3 skipped | RC2 green | Demo passes.**
+
+**Remaining gaps (for Sprint 211+):**
+- No `atlas weekly-review` CLI command yet
+- No multi-section Weekly Review renderer yet
+- No "companies needing attention" orchestration logic yet
+- No non-actions generator yet
+- Full investor profile loading (with `principles`/`constraints` fields) deferred — profile_available flag is set but profile object not yet returned in LoadResult
+- Financial CSV parsing deferred — directory existence check only
+
+## Sprint 210 Recommendation (NOW COMPLETE)
 
 **Implement local input schemas for Weekly Investment Review.**
 

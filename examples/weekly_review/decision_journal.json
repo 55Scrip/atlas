@@ -1,0 +1,33 @@
+[
+  {
+    "_comment": "Atlas Weekly Review sample decision journal. Placeholder data only. Not real decisions. No investment advice.",
+    "entry_id": "wr-sample-001",
+    "decision_title": "Xylem — initial research decision",
+    "asset_or_idea": "XYL",
+    "decision_type": "Continue Research",
+    "decision_date": "2025-11-15",
+    "investor_profile_context": "Long-term investor, balanced risk tolerance, Core Portfolio",
+    "portfolio_context_summary": "No current position. Researching for potential future consideration.",
+    "atlas_rating": "Needs More Evidence",
+    "atlas_view": "Water infrastructure theme has long-term demand logic. Evidence on margin durability and valuation is incomplete.",
+    "atlas_fit": "Potentially compatible with long-term profile. Requires evidence review before any further step.",
+    "atlas_confidence": 35,
+    "investment_thesis": "Xylem addresses long-term infrastructure replacement demand in municipal water networks. The thesis depends on durable margins and reasonable valuation — neither of which has been reviewed with sufficient evidence.",
+    "key_reasons": [
+      "Long-term water infrastructure replacement demand is structural",
+      "Software and services mix may support margin expansion over time"
+    ],
+    "main_risks": [
+      "Revenue exposure to commodity and energy cost cycles",
+      "Municipal customer spending can be cyclical",
+      "Valuation assumptions not yet reviewed"
+    ],
+    "evidence_quality": "Low — early stage research only",
+    "evidence_summary": "Thesis is plausible but evidence on margin durability, valuation, and capital allocation track record is not yet available.",
+    "lessons_learned": [],
+    "follow_up_triggers": [
+      "Review after Q4 2025 earnings are available",
+      "Revisit when margin durability evidence is gathered"
+    ]
+  }
+]

@@ -1,0 +1,19 @@
+{
+  "_comment": "Atlas company facts sample. Placeholder data only. Not investment advice.",
+  "ticker": "ASML",
+  "name": "ASML Holding",
+  "business": "ASML designs and manufactures photolithography equipment used in semiconductor fabrication. Its EUV (Extreme Ultraviolet) lithography systems are required for producing the most advanced chips.",
+  "competitive_position": "Sole supplier of EUV lithography systems worldwide. Deep moat from decades of accumulated engineering knowledge, IP, and customer integration.",
+  "revenue_model": "Equipment sales (capital equipment) plus long-term service and upgrade contracts. Service revenue provides recurring income.",
+  "key_risks": [
+    "Export control restrictions limiting sales to certain countries — impact on bookings is an open research question",
+    "Customer concentration among a small number of leading-edge chip manufacturers",
+    "Long technology development cycles create execution risk",
+    "Cyclical semiconductor capital expenditure patterns"
+  ],
+  "evidence_gaps": [
+    "Impact of US export restrictions on 2024-2026 revenue and bookings",
+    "Customer concentration risk quantification"
+  ],
+  "notes": "Evidence gap: export control impact on long-term revenue not yet reviewed. No action warranted without resolving this evidence gap."
+}

@@ -1,0 +1,53 @@
+{
+  "_comment": "Atlas Weekly Review sample portfolio. Placeholder data only. Not real holdings. No investment advice.",
+  "as_of": "2026-01-05",
+  "accounts": [
+    {
+      "name": "Private",
+      "holdings": [
+        {
+          "ticker": "ASML",
+          "name": "ASML Holding",
+          "isin": "NL0010273215",
+          "currency": "EUR",
+          "quantity": 10,
+          "market_value": 95000,
+          "cost_basis": 82000,
+          "sector": "Semiconductors",
+          "country": "Netherlands",
+          "quality_score": 85,
+          "risk_score": 40,
+          "role": "Core holding",
+          "notes": "EUV monopoly position. Export control exposure is an open research question."
+        },
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "isin": "US5949181045",
+          "currency": "USD",
+          "quantity": 50,
+          "market_value": 135000,
+          "cost_basis": 110000,
+          "sector": "Technology",
+          "country": "USA",
+          "quality_score": 88,
+          "risk_score": 35,
+          "role": "Core holding",
+          "notes": "Cloud and productivity platform. Evidence on AI revenue durability is incomplete."
+        },
+        {
+          "ticker": "CASH",
+          "name": "Cash Reserve",
+          "currency": "EUR",
+          "market_value": 270000,
+          "sector": "Cash",
+          "country": "",
+          "quality_score": 100,
+          "risk_score": 0,
+          "role": "Reserve capacity",
+          "notes": "Maintained per stated principle: keep reserve capacity. No action warranted without more evidence."
+        }
+      ]
+    }
+  ]
+}

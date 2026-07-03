@@ -1,0 +1,51 @@
+{
+  "_comment": "Atlas Weekly Review sample watchlist. Placeholder data only. Not real positions. No investment advice.",
+  "name": "Core Research Watchlist",
+  "as_of": "2026-01-05",
+  "items": [
+    {
+      "ticker": "XYL",
+      "name": "Xylem",
+      "status": "Research",
+      "reason": "Water infrastructure theme — long-term demand visibility from aging water networks",
+      "evidence_needed": [
+        "Margin durability under commodity and energy cost cycles",
+        "Valuation context relative to sector peers",
+        "Portfolio overlap with existing holdings"
+      ],
+      "open_questions": [
+        "Is revenue mix shifting toward higher-margin software and services?",
+        "What is the capital allocation track record over the past ten years?",
+        "How durable is replacement demand from municipal customers?"
+      ],
+      "manual_observations": [
+        "Exposed to water infrastructure spending cycles.",
+        "No position currently. Research in early stage.",
+        "Evidence on margin durability not yet reviewed."
+      ],
+      "notes": "Reason to wait: margin durability and valuation assumptions require review before any further consideration. Evidence gap: cost structure under commodity cycles."
+    },
+    {
+      "ticker": "NOVO",
+      "name": "Novo Nordisk",
+      "status": "Needs More Evidence",
+      "reason": "Healthcare quality compounder candidate — GLP-1 platform",
+      "evidence_needed": [
+        "Long-term revenue durability beyond the GLP-1 franchise",
+        "Patent cliff exposure and pipeline strength",
+        "Pricing risk from US regulatory and policy environment"
+      ],
+      "open_questions": [
+        "What is the diversification strategy beyond GLP-1 products?",
+        "How is pricing risk managed in the US market?",
+        "What is the competitive response from pipeline entrants?"
+      ],
+      "manual_observations": [
+        "Revenue concentration in GLP-1 products is high.",
+        "Evidence on long-term competitive durability is incomplete.",
+        "No position currently."
+      ],
+      "notes": "Decision deferred until evidence on revenue diversification and patent exposure is reviewed. No action warranted without this evidence."
+    }
+  ]
+}
