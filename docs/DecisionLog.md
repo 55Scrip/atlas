@@ -2,6 +2,31 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 190 — Close Watchlist Cleanup Track
+
+Decision: Close the Atlas watchlist cleanup track. After inventory, export review, caller review, watchlist/watchlist-review boundary review, evidence/decision/watchlist boundary review, provider boundary review, persistence/data shape review, and stale import audit, the watchlist package contains only active, intentional code. Further cleanup would create churn without architectural benefit.
+
+**Rationale:** Sprint 190 confirmed all Sprint 189 findings unchanged. The watchlist surface (`atlas/capabilities/watchlist_intelligence/` + `atlas/adapters/watchlist.py`) is Blueprint-aligned, provider-free, stale-import-free, and boundary-correct. All 13 capability exports have active production callers. Both adapter functions have active production callers. Eleven production files consume watchlist types correctly. Boundary directions are correct throughout: watchlist_review consumes capability types; capability does not import watchlist_review. No dead code. No stale imports. No provider coupling.
+
+**Final verified state:**
+- `atlas/capabilities/watchlist_intelligence/` — 13 exports, all active, 11 production callers ✓
+- `atlas/adapters/watchlist.py` — 2 public functions, both active ✓
+- No stale imports from deleted modules ✓
+- No provider coupling in capability or adapter ✓
+- No CLI coupling in capability or adapter ✓
+- No upward dependency on atlas.watchlist_review ✓
+- `atlas/analysis/watchlist.py` remains deleted (Sprint 101) ✓
+- `WatchlistEngine` remains absent (Sprint 99) ✓
+- `CompanyAnalysisProvider` remains absent from atlas.analysis.company_analysis ✓
+- All Sprint 189 guardrail tests (15) passing ✓
+- **1637 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Updated `docs/WatchlistCleanupPlan.md` (status CLOSED, Sprint 190 closure verification table added). Updated `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`, `docs/DecisionLog.md`. No new tests added — Sprint 189 guardrails (15 tests) provide full closure coverage.
+
+**Next sprint recommendation:** Release candidate checkpoint (Sprint 191) — after closing the watchlist cleanup track adjacent to watchlist_review, Atlas should confirm release-candidate stability before the next broad audit.
+
+---
+
 ## 2026-07-03: Sprint 189 — Watchlist Package Audit
 
 Decision: Confirm that the Atlas watchlist surface requires no cleanup. No standalone `atlas/watchlist/` package exists. Watchlist functionality is distributed across `atlas/capabilities/watchlist_intelligence/` (4 modules, 545 lines, 13 exports) and `atlas/adapters/watchlist.py` (198 lines, 2 public functions). Both are Blueprint-aligned, provider-free, stale-import-free, and boundary-correct.

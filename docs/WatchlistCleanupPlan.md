@@ -1,7 +1,8 @@
 # Watchlist Package Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 189)  
-**Status:** CLOSED — No cleanup warranted. Sprint 190 recommended: Close watchlist cleanup track.
+**Updated:** 2026-07-03 (Sprint 190)  
+**Status:** CLOSED — Sprint 190 confirmed Sprint 189 findings unchanged. No cleanup warranted. No further watchlist cleanup work is planned until new dead code, stale exports, provider-boundary issues, watchlist/watchlist-review boundary issues, evidence/decision/watchlist boundary issues, persistence boundary issues, or a clear replacement/migration target emerges.
 
 ---
 
@@ -343,3 +344,32 @@ This plan may be reopened if:
 | RC2 verification | Green ✓ |
 | Demo | Passes, provider-free ✓ |
 | Behavior changes | None |
+
+---
+
+## Sprint 190 Closure Verification Table
+
+Sprint 190 re-ran all Sprint 189 checks. All findings unchanged.
+
+| Check | Sprint 189 | Sprint 190 | Δ |
+|---|---|---|---|
+| `watchlist_intelligence` exports importable | 13/13 ✓ | 13/13 ✓ | None |
+| `__all__` count | 13 ✓ | 13 ✓ | None |
+| Adapter functions importable | 2/2 ✓ | 2/2 ✓ | None |
+| Production callers | 11 files ✓ | 11 files ✓ | None |
+| Stale import from deleted reasoning | Not found ✓ | Not found ✓ | None |
+| Stale import from deleted analysis.* | Not found ✓ | Not found ✓ | None |
+| Provider import in capability | Not found ✓ | Not found ✓ | None |
+| Provider import in adapter | Not found ✓ | Not found ✓ | None |
+| CLI import in capability | Not found ✓ | Not found ✓ | None |
+| CLI import in adapter | Not found ✓ | Not found ✓ | None |
+| Upward dep on watchlist_review | Not found ✓ | Not found ✓ | None |
+| `atlas/analysis/watchlist.py` remains deleted | Confirmed ✓ | Confirmed ✓ | None |
+| `CompanyAnalysisProvider` absent from analysis | Confirmed ✓ | Confirmed ✓ | None |
+| Compile check | Green ✓ | Green ✓ | None |
+| Full test suite | 1637 passed, 3 skipped ✓ | **1637 passed, 3 skipped** ✓ | None |
+| RC2 verification | Green ✓ | Green ✓ | None |
+| Demo | Passes, provider-free ✓ | Passes, provider-free ✓ | None |
+| Behavior changes | None | None | — |
+
+**Sprint 190 closure decision: CLOSED.** No cleanup warranted. No further work planned.
