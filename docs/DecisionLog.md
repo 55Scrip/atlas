@@ -2,6 +2,29 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 186 — Watchlist Review Package Audit
+
+Decision: Audit `atlas/watchlist_review/` and identify provider boundary as the primary cleanup candidate.
+
+**Rationale:** Sprint 186 performed a full inventory of `atlas/watchlist_review/`. The package is active, with 2 modules (894 lines), 11 exports, CLI caller (`atlas watchlist review`), and application callers (`atlas/home/engine.py`, `atlas/conversation/engine.py`). One cleanup candidate was identified: `atlas.providers` is directly imported in `engine.py` — a non-adapter, non-CLI module — making `watchlist_review` the only legacy engine in the audited sequence that directly imports provider types outside the adapter layer. This is documented as a provider boundary issue. The deprecation note in `atlas/cli/deprecations.py` refers to `atlas.evidence` engine deletion deferral, not `atlas/watchlist_review` engine deletion — the note is still accurate.
+
+**Key findings:**
+- 2 modules, 894 lines, 11 active exports — all importable ✓
+- Active CLI: `atlas watchlist review` ✓
+- Active application callers: `atlas/home/engine.py`, `atlas/conversation/engine.py` ✓
+- 10 lateral dependencies — all intentional, all runtime-active ✓
+- **Provider boundary issue:** `engine.py:38` — `from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider` — direct provider import in a non-adapter, non-CLI module ⚠
+- No stale imports from any closed cleanup track ✓
+- `WatchlistEngine` correctly absent (Sprint 94 guardrail) ✓
+- Deprecation note accurately describes `atlas.evidence` engine deletion deferral, not `atlas/watchlist_review` deletion ✓
+- 1614 passed, 3 skipped | RC2 green | Demo passes ✓
+
+**Changes made:** Created `docs/WatchlistReviewCleanupPlan.md`. Added 8 Sprint 186 guardrail tests in `tests/test_watchlist_review_package_sprint186.py`. Updated standard docs.
+
+**Next sprint recommendation:** Sprint 187 — assess and resolve the provider boundary issue (decouple or classify as acceptable legacy coupling and close the track).
+
+---
+
 ## 2026-07-03: Sprint 185 — Close Decision Journal Cleanup Track
 
 Decision: Declare `atlas/decision_journal/` cleanup track CLOSED.
