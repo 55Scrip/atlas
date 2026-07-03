@@ -2,6 +2,33 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 201 — Release Candidate Checkpoint Across 23 Closed Tracks
+
+Decision: Confirm Atlas release-candidate stability across all 23 closed cleanup tracks after storage boundary closure.
+
+**Rationale:** After confirming storage/persistence ownership and closing the storage boundary cleanup track in Sprint 200, Atlas remains stable. `atlas/storage/` confirmed non-existent with zero Python imports anywhere. Database and services ownership remains unchanged. Deleted modules remain absent. Retired CLI paths remain retired. Provider boundaries remain unchanged or intentionally classified. Demo remains provider-free. Release verification remains green.
+
+**Findings:**
+- All 23 closed cleanup tracks verified in documentation and repository ✓
+- Sprint 200 storage boundary: `atlas/storage/` does not exist, zero `atlas.storage` imports, closure confirmed stable ✓
+- Sprint 198 removals: all 5 targets remain absent ✓
+- `atlas/reports/` absent — no follow-up needed ✓
+- Database/services: all 8 active symbols importable, boundary stable ✓
+- Config/database/services: config ← database ← services ← CLI — unchanged ✓
+- SQLAlchemy/SQLite/schema: unchanged ✓
+- 20 active packages importable in smoke test ✓
+- 16 deleted modules confirmed absent ✓
+- `CompanyAnalysisProvider` substring hits all match `MockCompanyAnalysisProvider` in intentional active code — no standalone stale reference ✓
+- CLI: 7 retired commands non-callable, empty CLI groups absent, all active commands present ✓
+- Provider boundaries unchanged or intentionally classified ✓
+- **1671 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Updated `docs/ReleaseCandidateCheckpoint.md` (Sprint 201 section, 23-track table, all verification tables). Updated `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 202 — Audit `atlas/models/` package. After database/services and storage boundary closure and two RC checkpoints (Sprint 199, Sprint 201), `atlas/models/` is the next natural persistence/data-shape package to audit. Sprint 198 already removed `atlas/models/investment_report.py`; the remaining surface (`entities.py`, `__init__.py`) has not had a dedicated audit.
+
+---
+
 ## 2026-07-03: Sprint 200 — Storage Boundary Cleanup Checkpoint
 
 Decision: Close the storage boundary cleanup track. `atlas/storage/` does not exist. Storage and persistence behavior are fully owned by `atlas/database/` and `atlas/services/`. No cleanup warranted.
