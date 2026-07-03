@@ -151,9 +151,6 @@ def create_placeholder_company_analysis(company: str) -> CompanyAnalysis:
     )
 
 
-from atlas.providers.base import CompanyDataProvider as CompanyAnalysisProvider  # noqa: E402
-
-
 def __getattr__(name: str):
     if name == "MockCompanyAnalysisProvider":
         from atlas.providers.mock import MockCompanyAnalysisProvider

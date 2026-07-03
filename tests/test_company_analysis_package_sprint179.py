@@ -166,19 +166,34 @@ def test_analysis_does_not_import_deleted_reasoning():
                 )
 
 
-# ── CompanyAnalysisProvider alias — stale, zero external callers ──────────────
+# ── CompanyAnalysisProvider alias — removed Sprint 180 ───────────────────────
 
-def test_company_analysis_provider_alias_is_not_in_analysis_all():
-    """Sprint 179: CompanyAnalysisProvider alias must not appear in atlas.analysis.__all__.
+def test_company_analysis_provider_alias_removed():
+    """Sprint 180: CompanyAnalysisProvider must not be importable from atlas.analysis.company_analysis.
 
-    The CompanyAnalysisProvider alias in atlas/analysis/company_analysis.py is a
-    module-level import with zero external callers. It is not re-exported from
-    atlas.analysis.__all__. This test guards that it was not inadvertently added.
+    The stale alias (from atlas.providers.base import CompanyDataProvider as CompanyAnalysisProvider)
+    was removed in Sprint 180. It had zero external callers and was not in __all__.
     """
+    import pytest
+    with pytest.raises((ImportError, AttributeError)):
+        from atlas.analysis.company_analysis import CompanyAnalysisProvider  # noqa: F401
+
+
+def test_company_analysis_provider_alias_not_in_analysis_all():
+    """Sprint 180: CompanyAnalysisProvider must not appear in atlas.analysis.__all__."""
     import atlas.analysis as pkg
     assert "CompanyAnalysisProvider" not in pkg.__all__, (
         "CompanyAnalysisProvider must not be in atlas.analysis.__all__ — "
-        "it is a stale alias with zero external callers"
+        "it was removed in Sprint 180 (zero external callers, stale alias)"
+    )
+
+
+def test_company_analysis_provider_alias_not_in_module_namespace():
+    """Sprint 180: CompanyAnalysisProvider must not exist in atlas.analysis.company_analysis namespace."""
+    import atlas.analysis.company_analysis as mod
+    assert not hasattr(mod, "CompanyAnalysisProvider"), (
+        "CompanyAnalysisProvider must not be in atlas.analysis.company_analysis — "
+        "removed Sprint 180"
     )
 
 

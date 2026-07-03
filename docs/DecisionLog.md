@@ -2,6 +2,26 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 180 — Remove Stale CompanyAnalysisProvider Alias
+
+Decision: Remove the stale `CompanyAnalysisProvider` alias from `atlas/analysis/company_analysis.py`.
+
+**Rationale:** Sprint 179 confirmed `atlas/company_analysis/` does not exist as a top-level package and audited the actual company analysis surfaces: `atlas/analysis/` and `atlas/capabilities/company_analysis/`. The only actionable cleanup was a non-exported zero-caller `CompanyAnalysisProvider` alias (`from atlas.providers.base import CompanyDataProvider as CompanyAnalysisProvider`) in `atlas/analysis/company_analysis.py`. Removing it eliminates stale migration residue without changing runtime behavior. This is targeted company-analysis residual cleanup found during Sprint 179 — it does not reopen the Sprint 141 `atlas/analysis/` closure.
+
+**Zero-caller audit:** Repo-wide grep confirmed no external production callers, no CLI callers, no active test imports of `CompanyAnalysisProvider` (excluding the Sprint 179 guard that tested it was absent from `__all__`).
+
+**Changes made:**
+- Removed alias line from `atlas/analysis/company_analysis.py`
+- Updated `tests/test_company_analysis_package_sprint179.py` — replaced `__all__` absence guard with three deletion guardrails: alias not importable, not in `__all__`, not in module namespace
+- Updated `docs/CompanyAnalysisCleanupPlan.md` — status CLOSED
+- All 12 active `atlas.analysis.__all__` exports preserved
+- 1598 tests passed, RC2 green, demo passes
+- No runtime behavior changed
+
+**Next sprint recommendation:** Release candidate checkpoint.
+
+---
+
 ## 2026-07-03: Sprint 179 — Company Analysis Package Audit
 
 Decision: Audit the legacy company analysis runtime surface (`atlas/analysis/`) and confirm the boundary with `atlas/capabilities/company_analysis/`.

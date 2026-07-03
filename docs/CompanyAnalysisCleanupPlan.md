@@ -1,7 +1,8 @@
 # Atlas Company Analysis Package Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 179)
-**Status:** AUDIT COMPLETE — one stale alias found (`CompanyAnalysisProvider`). Sprint 180 recommended: close `atlas/analysis/` cleanup track and remove the stale alias.
+**Updated:** 2026-07-03 (Sprint 180)
+**Status:** CLOSED — `CompanyAnalysisProvider` stale alias removed Sprint 180. All active exports preserved. No runtime behavior changed. Sprint 181 recommended: release candidate checkpoint.
 
 ---
 
@@ -45,17 +46,15 @@ Sprint 141 closed the `atlas/analysis/` cleanup track, deleting 12+ submodules. 
 - `create_placeholder_company_analysis(company: str) → CompanyAnalysis` — factory used by providers
 - 7 `placeholder_*_analysis()` factories — internal helpers used only by `create_placeholder_company_analysis`
 
-**⚠️ Stale symbol — `CompanyAnalysisProvider` (line 154):**
-```python
-from atlas.providers.base import CompanyDataProvider as CompanyAnalysisProvider  # noqa: E402
-```
-This alias is defined at module level but:
-- Has **zero external callers** in the entire codebase
-- Is **not in `atlas.analysis.__all__`** — not re-exported
-- Is defined only as a compatibility shim with no remaining consumer
-- Sprint 141 cleanup did not remove it
+**~~Stale symbol — `CompanyAnalysisProvider` (line 154)~~ — REMOVED Sprint 180:**
 
-This is the only cleanup candidate found in the entire legacy analysis surface.
+The alias `from atlas.providers.base import CompanyDataProvider as CompanyAnalysisProvider` was:
+- A module-level import with zero external callers
+- Not in `atlas.analysis.__all__` — never re-exported
+- A stale remnant from the older analysis cleanup era
+- Removed in Sprint 180 (targeted company-analysis residual cleanup found during Sprint 179)
+
+Guardrail `test_company_analysis_provider_alias_removed` in `tests/test_company_analysis_package_sprint179.py` confirms the alias remains absent.
 
 **`__getattr__` lazy-import:**
 ```python
@@ -203,7 +202,7 @@ The two CLI surfaces are served by two separate layers. No CLI command imports f
 | `InvestmentExplanation` | __init__.py | `test_explanation.py` | Active |
 | `explain_investment_report` | decision/memory, report.py, __init__.py | `test_explanation.py`, `test_watchlist_analyze_deprecation.py` | Active |
 | `clamp_score` | 12+ modules | `test_adapters_package_sprint178.py`, `test_analysis_package_sprint140.py` | Active |
-| `CompanyAnalysisProvider` | **zero external callers** | — | **STALE ALIAS** |
+| `CompanyAnalysisProvider` | **zero external callers** | — | **REMOVED Sprint 180** |
 | `MockCompanyAnalysisProvider` (via `__getattr__`) | __init__.py | `test_investment_engine.py`, `test_explanation.py`, `test_memory.py`, `test_scoring.py` | Active (lazy import) |
 
 ---
@@ -314,7 +313,7 @@ No stale exports. `CompanyAnalysisProvider` (stale alias) correctly excluded fro
 
 | Candidate | Evidence | Risk | Sprint 180? |
 |---|---|---|---|
-| `CompanyAnalysisProvider` alias in `atlas/analysis/company_analysis.py:154` | Module-level import, zero external callers, not in `__all__`, no other file references it | **LOW** — removing the alias line and the unused name from `company_analysis.py` has no effect on any caller | ✓ Yes — targeted single-line removal |
+| `CompanyAnalysisProvider` alias in `atlas/analysis/company_analysis.py` | Module-level import, zero external callers, not in `__all__`, no other file references it | **REMOVED Sprint 180** — single-line removal, no effect on any caller | ✓ Done |
 
 No other cleanup candidates found:
 - All 12 `__all__` exports are active
@@ -340,14 +339,19 @@ No other cleanup candidates found:
 
 ---
 
-## Recommended Sprint 180 Target
+## Sprint 180 — Completed
 
-**Close `atlas/analysis/` cleanup track** — remove the `CompanyAnalysisProvider` stale alias from `atlas/analysis/company_analysis.py` and declare the track closed.
+**Targeted company-analysis residual cleanup (Sprint 180):**
 
-The alias is the only cleanup candidate. Its removal requires:
-1. Delete line 154: `from atlas.providers.base import CompanyDataProvider as CompanyAnalysisProvider  # noqa: E402`
-2. Confirm zero callers (already verified — grep finds no external references)
-3. Update `tests/test_analysis_package_sprint140.py` or add a Sprint 180 guardrail asserting the alias is absent
-4. Declare `atlas/analysis/` CLOSED — confirm Sprint 141 cleanup track is complete
+The `CompanyAnalysisProvider` alias was removed from `atlas/analysis/company_analysis.py`. This was a targeted cleanup of stale migration residue found during Sprint 179 — it does not reopen the Sprint 141 `atlas/analysis/` closure.
 
-This is the smallest safe step with the best architectural value: removes the one stale remnant, closes a long-open track, and confirms the legacy analysis layer is stable and complete.
+- Alias removed: `from atlas.providers.base import CompanyDataProvider as CompanyAnalysisProvider`
+- Zero callers confirmed before removal
+- Not exported (`__all__` unchanged)
+- All 12 active `atlas.analysis.__all__` exports preserved
+- Three deletion guardrails added to `tests/test_company_analysis_package_sprint179.py`
+- 1598 tests passed, RC2 green, demo passes
+
+## Recommended Sprint 181 Target
+
+**Release candidate checkpoint** — verify all 15+ closed cleanup tracks remain stable after the company analysis residual cleanup, run the full RC2 verification suite, and confirm Atlas is ready for further development.
