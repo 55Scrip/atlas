@@ -1,7 +1,8 @@
 # Atlas Portfolio Intelligence Capability Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 170)  
-**Status:** ACTIVE — Sprint 170 audit-first inventory. No cleanup action identified yet.
+**Updated:** 2026-07-03 (Sprint 171)  
+**Status:** CLOSED — Sprint 171 confirmed Sprint 170 findings unchanged. No cleanup action is warranted. Package is self-contained, actively used via `PortfolioIntelligenceCapability`, and architecturally exemplary. No further `atlas/capabilities/portfolio_intelligence/` cleanup work is planned until new dead code, stale exports, dependency-boundary issues, provider-boundary issues, or a clear replacement/migration target emerges.
 
 ---
 
@@ -238,3 +239,53 @@ Sprint 170 audit found no runtime cleanup warranted. The package is clean, well-
 If the docstring cleanup is considered too minor to warrant a full sprint, Sprint 171 could instead target the next most valuable audit: `atlas/capabilities/company_analysis/` or `atlas/domains/portfolio/`.
 
 **Primary recommendation:** Sprint 171 = Close `atlas/capabilities/portfolio_intelligence/` cleanup track (docstring cleanup + track closure). This closes a 14th track cleanly.
+
+---
+
+## Sprint 171 — Track Closure (COMPLETED)
+
+**Portfolio intelligence capability cleanup track is CLOSED as of Sprint 171.**
+
+Sprint 171 verified:
+- All 4 `atlas.capabilities.portfolio_intelligence` exports remain importable ✓
+- `PortfolioIntelligenceCapability.analyze()` active — consumed by decision, intelligence, conversation, dashboard engines ✓
+- Provider boundary confirmed: no `MockCompanyAnalysisProvider`, no `YahooFinanceProvider`, no `CompanyDataProvider` — capability knows nothing about providers ✓
+- Zero stale closed-track imports ✓
+- No Blueprint-aligned successor introduced since Sprint 170 ✓
+- Docstring cleanup performed: removed stale "Future expansion" note (`themes`, `knowledge_context` fields never added) and completed-migration field-mapping table from `PortfolioFitInput` docstring in `models.py` ✓
+- No runtime behavior changed ✓
+
+**Closure rationale:** After inventory (Sprint 170) and final verification (Sprint 171), the portfolio intelligence capability contains only active, intentional code. `PortfolioIntelligenceCapability.analyze()` is the sole public method and is consumed by 5 production packages. All 4 exports are active. The dependency surface is minimal — capability depends only on `atlas.shared.entities`. Provider selection lives entirely at the CLI layer. Further cleanup would create churn without architectural benefit.
+
+**Reopening condition:** If a replacement capability is introduced, if any consumer is removed and `analyze()` becomes zero-caller, if new dead code or stale imports appear, or if a Blueprint migration target for `PortfolioFitInput`/`PortfolioFitResult` is identified.
+
+---
+
+## Closed-Track Summary
+
+| Track | Status |
+|---|---|
+| `atlas/analysis/` cleanup | CLOSED Sprint 141 |
+| `atlas/decision/` cleanup | CLOSED Sprint 144 |
+| Provider boundary audit | CLOSED Sprint 146 |
+| Portfolio boundary | CLOSED Sprint 148 |
+| Evidence package | CLOSED Sprint 150 |
+| Reasoning package | CLOSED Sprint 153 |
+| Risk package | CLOSED Sprint 155 |
+| Principles package | CLOSED Sprint 158 |
+| Comparison package | CLOSED Sprint 160 |
+| Home package | CLOSED Sprint 162 |
+| Intelligence package | CLOSED Sprint 165 |
+| Conversation package | CLOSED Sprint 167 |
+| Dashboard package | CLOSED Sprint 169 |
+| **Portfolio intelligence capability** | **CLOSED Sprint 171** |
+
+---
+
+## Recommended Sprint 172 Target
+
+**Release candidate checkpoint.**
+
+After closing 14 cleanup tracks, Atlas should run a release-candidate checkpoint before starting another broad package audit. Pattern matches Sprint 163 (RC checkpoint after 10 closed tracks).
+
+Sprint 172 should: verify all 14 closed tracks stable, confirm deleted modules absent, confirm active packages importable, confirm retired CLI commands retired, confirm provider boundaries unchanged, run demo and RC verification, update checkpoint documentation.

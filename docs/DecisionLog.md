@@ -2,6 +2,36 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 171 — Close Portfolio Intelligence Capability Cleanup Track
+
+Decision: Close the `atlas/capabilities/portfolio_intelligence/` cleanup track. No further cleanup work is warranted.
+
+**Rationale:** After inventory (Sprint 170) and final verification (Sprint 171), the portfolio intelligence capability contains only active, intentional code. `PortfolioIntelligenceCapability.analyze()` is the sole public method, consumed by 5 production packages (decision, intelligence, conversation, dashboard, providers). All 4 exports are active. Dependency surface is minimal — the capability depends only on `atlas.shared.entities` and its own sibling models module. No provider imports. No network calls. No deleted-module imports. No circular dependencies. Further cleanup would create churn without architectural benefit.
+
+**Final verification (Sprint 171):** All 4 exports importable. All 5 production consumer packages confirmed active. Provider boundary confirmed: no concrete provider class imported anywhere in the capability. Zero stale closed-track imports. No Blueprint-aligned successor introduced. No cleanup action warranted.
+
+**Docstring cleanup performed:** Removed stale "Future expansion" note (`themes`, `knowledge_context` fields never added) and completed-migration field-mapping table from `PortfolioFitInput` docstring in `models.py`. Documentation-only change; zero runtime impact.
+
+**Closed-track summary (14 tracks):**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — CLOSED Sprint 148
+- Evidence package — CLOSED Sprint 150
+- Reasoning package — CLOSED Sprint 153
+- Risk package — CLOSED Sprint 155
+- Principles package — CLOSED Sprint 158
+- Comparison package — CLOSED Sprint 160
+- Home package — CLOSED Sprint 162
+- Intelligence package — CLOSED Sprint 165
+- Conversation package — CLOSED Sprint 167
+- Dashboard package — CLOSED Sprint 169
+- **Portfolio intelligence capability — CLOSED Sprint 171**
+
+**Sprint 172 recommended target:** Release candidate checkpoint — after closing 14 cleanup tracks, Atlas should run a full RC checkpoint before starting another broad package audit. Pattern matches Sprint 163 (RC after 10 tracks).
+
+---
+
 ## 2026-07-03: Sprint 170 — Portfolio Intelligence Capability Audit Checkpoint
 
 Decision: `atlas/capabilities/portfolio_intelligence/` is clean and architecturally exemplary. No cleanup work is warranted.

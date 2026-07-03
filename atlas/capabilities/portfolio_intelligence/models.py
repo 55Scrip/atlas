@@ -26,23 +26,7 @@ class PortfolioFitDimension:
 
 @dataclass(frozen=True)
 class PortfolioFitInput:
-    """Input required to evaluate how a company fits an existing portfolio.
-
-    Blueprint-aligned equivalent of legacy `CompanyPortfolioProfile`.
-
-    Field mapping from CompanyPortfolioProfile:
-      ticker         → ticker          (unchanged)
-      company        → company         (unchanged)
-      sector         → sector          (unchanged)
-      country        → country         (unchanged)
-      market_cap     → market_cap      (unchanged, float in USD)
-      quality_score  → quality_score   (unchanged, 0–100)
-      risk_score     → risk_score      (unchanged, 0–100)
-
-    Future expansion (not yet in legacy type):
-      - themes: tuple[str, ...] — thematic tags for concentration tracking
-      - knowledge_context: tuple[str, ...] — relevant research or knowledge notes
-    """
+    """Input required to evaluate how a company fits an existing portfolio."""
 
     ticker: str
     company: str
