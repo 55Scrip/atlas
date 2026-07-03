@@ -2,6 +2,34 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 195 — Audit Config Package
+
+Decision: Confirm that `atlas/config.py` (the Atlas configuration layer) is clean, well-bounded, and requires no cleanup. Note that `atlas/config/` does not exist as a package directory — the configuration surface is a single 6-line module at `atlas/config.py`.
+
+**Rationale:** `atlas/config.py` is foundational infrastructure at its simplest: one environment variable read (`ATLAS_HOME`), three derived path constants (`BASE_DIR`, `DATABASE_DIR`, `DATABASE_PATH`), stdlib-only imports, zero Atlas package imports, zero provider coupling, zero network access, 2 active production callers (both in the database/services layer). Boundary direction is correct — config depends on nothing within Atlas. All boundaries are clean. No stale imports. No dead symbols.
+
+**Final verified state:**
+- `atlas/config.py` exists (single-file module, 6 lines) ✓
+- 3 public path constants: `BASE_DIR`, `DATABASE_DIR`, `DATABASE_PATH` ✓
+- `DATABASE_PATH` has 2 active production callers ✓
+- `BASE_DIR` and `DATABASE_DIR` are internal derivations only (no external callers) ✓
+- `ATLAS_HOME` env var: single configuration knob, deterministic fallback to `Path.cwd()` ✓
+- No Atlas package imports ✓
+- No provider imports ✓
+- No network access ✓
+- No stale imports from closed cleanup tracks ✓
+- No circular dependencies ✓
+- `atlas/storage/` package does not exist; storage layer is `atlas/database/` + `atlas/services/` ✓
+- Boundary direction correct: config ← database ← services ← CLI ✓
+- **1654 passed, 3 skipped | RC2 green | Demo passes ✓**
+- Suite growth since Sprint 194: 1648 → 1654 (+6 config guardrail tests)
+
+**Changes made:** Created `docs/ConfigCleanupPlan.md`. Created `tests/test_config_sprint195.py` (6 guardrail tests). Updated `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`, `docs/DecisionLog.md`.
+
+**Next sprint recommendation:** Close config cleanup track (Sprint 196).
+
+---
+
 ## 2026-07-03: Sprint 194 — Release Candidate Checkpoint After Residual Analysis Closure
 
 Decision: Confirm Atlas release-candidate stability across all 21 closed cleanup tracks after the residual analysis public export reduction (Sprint 193: `atlas.analysis.__all__` reduced from 12 to 9 core exports).
