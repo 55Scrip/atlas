@@ -2,6 +2,18 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 168 — Dashboard Package Audit Checkpoint
+
+Decision: `atlas/dashboard/` package is clean. No cleanup work is warranted.
+
+**Rationale:** After audit-first inventory (Sprint 168), the dashboard package contains only active, intentional code. All 6 exports are active. `DashboardEngine.build()` is the sole public method, active at 1 production call site (CLI `atlas dashboard show`). All 17 private helpers are active. No zero-caller symbols. No stale exports. No closed-track import residue. No Blueprint-aligned successor exists. Dashboard has the cleanest provider boundary of any audited package — it imports only `CompanyDataProvider` as a type annotation and never imports any concrete provider class. Provider selection lives entirely at the CLI layer. Dashboard does not import `atlas.intelligence` or `atlas.conversation` — it orchestrates independently at the application layer.
+
+**Notable:** Dashboard calls `_dashboard_text_without_principles()` twice — once before `PrinciplesEngine.check()` (for principles pre-check on draft text) and once via `render_dashboard()` at CLI time. This is an intentional design pattern.
+
+**Sprint 169 recommended target:** Close the dashboard cleanup track — documentation-only sprint confirming audit findings. Pattern matches Sprint 150, 155, 158, 160, 162, 165, and 167.
+
+---
+
 ## 2026-07-03: Sprint 167 — Close Conversation Cleanup Track
 
 Decision: Close the `atlas/conversation/` cleanup track. No cleanup work is warranted.
