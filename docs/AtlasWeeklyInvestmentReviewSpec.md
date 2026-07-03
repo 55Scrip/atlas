@@ -1,7 +1,7 @@
 # Atlas Weekly Investment Review — Workflow Specification
 
 **Created:** 2026-07-03 (Sprint 209)  
-**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210) + CLI SKELETON IMPLEMENTED (Sprint 211) + DETERMINISTIC RENDERER IMPLEMENTED (Sprint 212) + REAL PORTFOLIO TRIAL RUN (Sprint 213). Sprint 214 recommendation: Journal entry aging alerts.
+**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210) + CLI SKELETON IMPLEMENTED (Sprint 211) + DETERMINISTIC RENDERER IMPLEMENTED (Sprint 212) + REAL PORTFOLIO TRIAL RUN (Sprint 213) + JOURNAL AGING ALERTS (Sprint 214). Sprint 215 recommendation: v1 usage guide or release hardening checkpoint.
 
 ---
 
@@ -1220,11 +1220,51 @@ Sprint 212 replaced all placeholder renderer content with deterministic output d
 - Full investor profile object loading (principles/constraints) → now parsed into LoadResult ✓
 - Per-ticker company facts/financials presence check → now in LoadResult and rendered ✓
 
-**Remaining gaps (for Sprint 214+):**
+**Remaining gaps (for Sprint 215+):**
 - Company analysis engine not yet wired into Section 4
 - Suitability engine not yet wired into Section 5
 - Risk/principles engine not yet wired into Section 6
 - Financial CSV not yet parsed into financial model
+
+---
+
+## Sprint 214 Implementation Status — COMPLETE
+
+Sprint 214 added deterministic journal entry aging alerts to Sections 7 and 10.
+
+**Aging rule:** entries older than 90 calendar days (strictly greater than) from `as_of` are flagged if their status is not clearly closed (Closed, Archived, Completed, Resolved).
+
+**Date field priority (first valid field wins):** `decision_date`, `date`, `created_at`, `created`, `timestamp`, `review_date`
+
+**Status field priority:** `atlas_rating`, `decision_type`, `status`, `decision_status`, `state`
+
+**Section 7 output (aged entries):**
+```
+[Aging Note] NESTE: Review date is older than 90 days (475 days). Thesis assumptions may need to be rechecked.
+```
+
+**Section 7 output (missing date on open entry):**
+```
+[Date Missing] No decision date recorded; aging cannot be assessed.
+```
+
+**Section 10 output (aged entries):**
+```
+Reason to Wait: NESTE decision journal notes are older than 90 days (475 days). Assumptions should be refreshed before changing decision status.
+```
+
+**Determinism:** aging requires `as_of` to be provided; if absent, no aging notes are rendered.
+
+**Helper functions added to `render.py`:**
+- `_parse_journal_entry_date(entry)` — date-field priority parser
+- `_is_journal_entry_open(entry)` — closed-status filter
+- `_journal_entry_age_days(entry, as_of)` — calendar day computation
+- `_is_aged_journal_entry(entry, as_of, threshold_days=90)` — combined predicate
+- `_render_journal_aging_note(entry, age_days)` — safe aging note string
+
+**Tests:** 56 tests in `tests/test_weekly_review_journal_aging_sprint214.py`. 1928 total passing.
+
+**Sprint 215 recommendation:** v1 usage guide — write a practical one-page guide for using `atlas weekly-review` with a real local portfolio. Bridges the gap between implementation and usability for a new user.
 
 ---
 

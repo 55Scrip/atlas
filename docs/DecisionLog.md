@@ -2,6 +2,32 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 214 — Journal Entry Aging Alerts
+
+Decision: Add deterministic aging detection for decision journal entries in the Weekly Investment Review.
+
+**Rationale:** Decision journal entries older than 90 days are useful signals for thesis refresh and assumption review. Surfacing them in Open Decisions and Non-Actions / Reasons to Wait improves decision hygiene without creating recommendations, urgency, or live-data dependency.
+
+**Aging rule:** entry age > 90 calendar days from `as_of` (strictly greater than). Requires `as_of` to be deterministic — no current-date dependency.
+
+**Date field priority:** `decision_date`, `date`, `created_at`, `created`, `timestamp`, `review_date` (first valid field wins).
+
+**Status filtering:** aging only fires for open entries. Closed-like statuses (`Closed`, `Archived`, `Completed`, `Resolved`) suppress alerts. Unknown statuses are treated as open (Unclassified).
+
+**Section 7:** aged entries show `[Aging Note] {asset}: Review date is older than 90 days ({N} days). Thesis assumptions may need to be rechecked.` Open entries with no parseable date show `[Date Missing]` note.
+
+**Section 10:** aged entries create: `Reason to Wait: {asset} decision journal notes are older than 90 days ({N} days). Assumptions should be refreshed before changing decision status.`
+
+**What changed:** `atlas/weekly_review/render.py` — 5 new helper functions (`_parse_journal_entry_date`, `_is_journal_entry_open`, `_journal_entry_age_days`, `_is_aged_journal_entry`, `_render_journal_aging_note`), Section 7 aging note injection, Section 10 aged reason-to-wait injection.
+
+**Test coverage:** 56 tests in `tests/test_weekly_review_journal_aging_sprint214.py`. 1928 total tests passing.
+
+**Limitations:** No aging on missing `as_of`. No aging if date field is missing/invalid (renders safe note, does not fail). Financial/suitability engine not yet wired.
+
+**Next sprint recommendation:** Sprint 215 — v1 usage guide.
+
+---
+
 ## 2026-07-03: Sprint 213 — Run Real Portfolio Trial
 
 Decision: Run `atlas weekly-review` on a realistic (anonymized) input bundle and make targeted improvements based on trial findings.

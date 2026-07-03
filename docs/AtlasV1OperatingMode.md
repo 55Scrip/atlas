@@ -535,3 +535,18 @@ Sprint 213 ran a realistic end-to-end trial of `atlas weekly-review` on a 11-hol
 - No engine calls, no provider imports, no live data
 
 **Sprint 214 recommendation:** Journal entry aging alerts — flag journal entries older than 90 days in Section 7 and Section 10. Small scope, high signal value.
+
+---
+
+## Sprint 214 Status — COMPLETE
+
+Sprint 214 added deterministic journal entry aging alerts to `atlas weekly-review`.
+
+**What changed:**
+- `atlas/weekly_review/render.py` — 5 new aging helper functions; Section 7 renders `[Aging Note]` for open entries older than 90 days; Section 10 renders `Reason to Wait` for aged entries; open entries with no parseable date show `[Date Missing]` note
+- Aging requires `as_of` for determinism; no current-date dependency introduced
+- Date field priority: `decision_date`, `date`, `created_at`, `created`, `timestamp`, `review_date`
+- Status filtering: closed statuses (`Closed`, `Archived`, `Completed`, `Resolved`) suppress alerts
+- 56 new tests in `tests/test_weekly_review_journal_aging_sprint214.py`; 1928 total passing
+
+**Sprint 215 recommendation:** v1 usage guide — write a practical one-page guide for using `atlas weekly-review` with a real local portfolio.

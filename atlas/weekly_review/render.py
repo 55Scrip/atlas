@@ -9,6 +9,7 @@ Sprint 212: replaced placeholder content with input-derived deterministic output
 
 from __future__ import annotations
 
+import datetime
 from collections import defaultdict
 
 from atlas.weekly_review.inputs import (
@@ -454,6 +455,15 @@ def _section7_decisions(result: WeeklyReviewLoadResult) -> list[str]:
 
         lines.append(f"{title}{date_part}: {raw_status}")
 
+        # Aging note
+        if result.as_of and _is_journal_entry_open(entry):
+            age = _journal_entry_age_days(entry, result.as_of)
+            if age is not None and age > 90:
+                lines.append(_render_journal_aging_note(entry, age))
+            # If date is missing on an open entry, note it quietly
+            elif age is None and _parse_journal_entry_date(entry) is None:
+                lines.append("[Date Missing] No decision date recorded; aging cannot be assessed.")
+
         triggers = entry.get("follow_up_triggers", [])
         if isinstance(triggers, list):
             for trigger in triggers[:2]:  # show first two triggers
@@ -637,6 +647,24 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
             "Financial trend analysis is not available."
         )
 
+    # Aged journal entries as reasons to wait
+    if result.journal_entries and result.as_of:
+        aged = [
+            entry for entry in result.journal_entries
+            if _is_journal_entry_open(entry)
+            and (_journal_entry_age_days(entry, result.as_of) or 0) > 90
+        ]
+        for entry in aged:
+            asset = (
+                entry.get("asset_or_idea")
+                or entry.get("decision_title", "Unknown")
+            )
+            age = _journal_entry_age_days(entry, result.as_of)
+            lines.append(
+                f"Reason to Wait: {asset} decision journal notes are older than 90 days "
+                f"({age} days). Assumptions should be refreshed before changing decision status."
+            )
+
     # Universal reminders — always ensure section is non-empty
     lines.append(
         "No Action Warranted: This review is informational only. "
@@ -651,6 +679,74 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Journal aging helpers
+# ---------------------------------------------------------------------------
+
+# Date fields checked in this priority order (first valid field wins).
+_JOURNAL_DATE_FIELDS = ("decision_date", "date", "created_at", "created", "timestamp", "review_date")
+
+# Status fields checked in priority order for open/closed classification.
+_JOURNAL_STATUS_FIELDS = ("atlas_rating", "decision_type", "status", "decision_status", "state")
+
+# Statuses that are clearly closed — aged alerts are suppressed for these.
+_CLOSED_STATUSES = frozenset({"closed", "archived", "completed", "resolved"})
+
+
+def _parse_journal_entry_date(entry: dict) -> datetime.date | None:
+    """Return the first parseable date from known date fields, or None."""
+    for field in _JOURNAL_DATE_FIELDS:
+        raw = entry.get(field)
+        if not raw or not isinstance(raw, str):
+            continue
+        try:
+            return datetime.date.fromisoformat(raw[:10])
+        except ValueError:
+            continue
+    return None
+
+
+def _is_journal_entry_open(entry: dict) -> bool:
+    """Return True if the entry status is not a clearly closed/resolved status."""
+    for field in _JOURNAL_STATUS_FIELDS:
+        raw = entry.get(field)
+        if raw and isinstance(raw, str):
+            if raw.strip().lower() in _CLOSED_STATUSES:
+                return False
+            return True  # has a status that is not closed → treat as open
+    return True  # no status field found → treat as unresolved
+
+
+def _journal_entry_age_days(entry: dict, as_of: str) -> int | None:
+    """Return age in calendar days from entry date to as_of, or None if unavailable."""
+    entry_date = _parse_journal_entry_date(entry)
+    if entry_date is None:
+        return None
+    try:
+        review_date = datetime.date.fromisoformat(as_of[:10])
+    except ValueError:
+        return None
+    delta = (review_date - entry_date).days
+    return delta if delta >= 0 else None
+
+
+def _is_aged_journal_entry(entry: dict, as_of: str, threshold_days: int = 90) -> bool:
+    """Return True when entry is open and older than threshold_days (strictly greater)."""
+    if not _is_journal_entry_open(entry):
+        return False
+    age = _journal_entry_age_days(entry, as_of)
+    return age is not None and age > threshold_days
+
+
+def _render_journal_aging_note(entry: dict, age_days: int) -> str:
+    """Return a safe aging note line for a journal entry."""
+    asset = entry.get("asset_or_idea") or entry.get("decision_title", "Unknown")
+    return (
+        f"[Aging Note] {asset}: Review date is older than 90 days ({age_days} days). "
+        "Thesis assumptions may need to be rechecked."
+    )
 
 
 def _preview_scope_notes(scope_notes: str) -> str:
