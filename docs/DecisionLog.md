@@ -2,6 +2,31 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 207 — Release Candidate Checkpoint Across 25 Closed Tracks
+
+Decision: Confirm Atlas release-candidate stability across all 25 closed cleanup tracks after suitability cleanup closure.
+
+**Rationale:** After closing the suitability cleanup track, Atlas remains stable. Suitability remains active, CLI-exposed, correctly bounded, provider-free, and free of recommendation-language issues. Removed modules remain absent, deleted modules remain absent, retired CLI paths remain retired, provider boundaries remain unchanged or intentionally classified, the demo remains provider-free, and release verification remains green.
+
+**Findings:**
+- All 25 closed cleanup tracks verified in documentation and repository ✓
+- Sprint 206 suitability closure: `atlas/suitability/` unchanged — 7 exports all importable, `atlas suitability analyze` active, language clean, provider-free, no stale refs ✓
+- Sprint 203 models closure: `Company` + `FinancialHistory` unchanged, `__all__ = ["Company", "FinancialHistory"]`, `investment_report.py` absent ✓
+- Sprint 198/200 removals: all 5 targets remain absent — `investment_report.py`, `kpi_service.py`, `test_kpi_service.py`, `atlas/reports/`, `atlas/storage/` ✓
+- Database/services: importable, `config ← database ← services ← CLI` boundary stable ✓
+- 24 active packages importable in smoke test ✓
+- 12 deleted modules confirmed absent ✓
+- No stale active runtime references for any deleted/retired symbol ✓
+- CLI: `atlas reason` non-callable, `evidence`/`reason`/`risk` groups absent, `atlas suitability analyze` active, all other active commands present ✓
+- Provider boundaries unchanged or intentionally classified; `atlas/suitability/` provider-free ✓
+- **1692 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Updated `docs/ReleaseCandidateCheckpoint.md` (Sprint 207 section, 25-track table, all verification tables). Updated `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 208 — Define Atlas v1 operating mode. After 25 closed cleanup tracks and repeated RC stability, begin a productization track to define what Atlas should do for the user on a daily or weekly basis.
+
+---
+
 ## 2026-07-03: Sprint 206 — Close Suitability Cleanup Track
 
 Decision: Formally close the `atlas/suitability/` cleanup track. No code changes.
