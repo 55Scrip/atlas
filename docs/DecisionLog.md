@@ -2,6 +2,43 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 174 — Remove Empty CLI Groups and Close CLI Cleanup Track
+
+Decision: Remove empty shell CLI app groups and close the CLI cleanup track.
+
+**Rationale:** After the CLI registry audit (Sprint 173), the only actionable cleanup was removing empty `evidence`, `reason`, and `risk` CLI groups from `atlas/cli/main.py`. These groups were residual scaffolding from retired commands (`atlas evidence assess`, `atlas reason analyze`, `atlas risk size`). They exposed no callable commands and only cluttered `atlas --help`. Removing them improves CLI clarity without changing any active or retired command behavior.
+
+**Changes made:** Removed 3 app declarations and 3 `app.add_typer()` registrations (~6 lines total) from `atlas/cli/main.py`. Zero behavioral change — no callable command was removed.
+
+**Verified:**
+- `atlas --help` no longer shows `evidence`, `reason`, or `risk` groups ✓
+- All active groups remain (intelligence, dashboard, principles, risk-drift, watchlist, daily, portfolio, etc.) ✓
+- All 7 retired commands remain not callable ✓
+- `_RETIRED_REGISTRY` unchanged — 7 entries, all accurate ✓
+- 1536 tests passed, 3 skipped ✓
+- RC2 green ✓
+
+**Closed-track summary (15 tracks):**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — CLOSED Sprint 148
+- Evidence package — CLOSED Sprint 150
+- Reasoning package — CLOSED Sprint 153
+- Risk package — CLOSED Sprint 155
+- Principles package — CLOSED Sprint 158
+- Comparison package — CLOSED Sprint 160
+- Home package — CLOSED Sprint 162
+- Intelligence package — CLOSED Sprint 165
+- Conversation package — CLOSED Sprint 167
+- Dashboard package — CLOSED Sprint 169
+- Portfolio intelligence capability — CLOSED Sprint 171
+- **CLI deprecated command registry — CLOSED Sprint 174**
+
+**Sprint 175 recommended target:** Release candidate checkpoint after 15 closed tracks — pattern matches Sprint 163 (after 10 tracks) and Sprint 172 (after 14 tracks).
+
+---
+
 ## 2026-07-03: Sprint 173 — CLI Deprecated Command Registry Audit Checkpoint
 
 Decision: `atlas/cli/` deprecated command registry is clean. One cleanup action is warranted: remove 3 empty shell app groups.

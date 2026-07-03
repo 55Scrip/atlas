@@ -1,7 +1,8 @@
 # Atlas CLI Deprecated Command Registry Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 173)  
-**Status:** ACTIVE — Sprint 173 audit-first inventory. No cleanup action identified yet.
+**Updated:** 2026-07-03 (Sprint 174)  
+**Status:** CLOSED — Sprint 174 removed the 3 empty shell CLI app groups (`evidence`, `reason`, `risk`) from `atlas/cli/main.py`. No further `atlas/cli/` cleanup work is planned until new stale commands, broken active commands, or provider-boundary issues emerge.
 
 ---
 
@@ -310,3 +311,57 @@ Removing them is:
 - User-facing improvement (cleaner `atlas --help` output)
 
 After removing empty shells: close the CLI cleanup track. This closes a 15th cleanup track.
+
+---
+
+## Sprint 174 — Track Closure (COMPLETED)
+
+**CLI cleanup track is CLOSED as of Sprint 174.**
+
+Sprint 174 actions:
+- Removed `evidence_app` declaration and `app.add_typer(evidence_app, name="evidence")` from `atlas/cli/main.py` ✓
+- Removed `reason_app` declaration and `app.add_typer(reason_app, name="reason")` from `atlas/cli/main.py` ✓
+- Removed `risk_app` declaration and `app.add_typer(risk_app, name="risk")` from `atlas/cli/main.py` ✓
+
+Sprint 174 verified:
+- `atlas --help` no longer shows `evidence`, `reason`, or `risk` groups ✓
+- All active groups remain: intelligence, dashboard, principles, risk-drift, watchlist, daily, portfolio, and all others ✓
+- All 7 retired commands remain not callable ✓
+- `_RETIRED_REGISTRY` unchanged — 7 entries, all accurate ✓
+- `_REGISTRY` remains empty ✓
+- Provider boundary unchanged ✓
+- 1536 tests passed, 3 skipped ✓
+
+**Closure rationale:** The 3 empty groups were residual scaffolding from retired commands. They exposed no callable commands and only cluttered `atlas --help`. Removing them improves CLI clarity without changing any active or retired command behavior.
+
+**Reopening condition:** If a new `atlas evidence`, `atlas reason`, or `atlas risk` command group is introduced, or if any other CLI command or group becomes stale.
+
+---
+
+## Closed-Track Summary
+
+| Track | Status |
+|---|---|
+| `atlas/analysis/` cleanup | CLOSED Sprint 141 |
+| `atlas/decision/` cleanup | CLOSED Sprint 144 |
+| Provider boundary audit | CLOSED Sprint 146 |
+| Portfolio boundary | CLOSED Sprint 148 |
+| Evidence package | CLOSED Sprint 150 |
+| Reasoning package | CLOSED Sprint 153 |
+| Risk package | CLOSED Sprint 155 |
+| Principles package | CLOSED Sprint 158 |
+| Comparison package | CLOSED Sprint 160 |
+| Home package | CLOSED Sprint 162 |
+| Intelligence package | CLOSED Sprint 165 |
+| Conversation package | CLOSED Sprint 167 |
+| Dashboard package | CLOSED Sprint 169 |
+| Portfolio intelligence capability | CLOSED Sprint 171 |
+| **CLI deprecated command registry** | **CLOSED Sprint 174** |
+
+---
+
+## Recommended Sprint 175 Target
+
+**Release candidate checkpoint after 15 closed tracks.**
+
+After closing the CLI cleanup track and modifying the root CLI help surface, Atlas should run an RC checkpoint before starting another broad package audit. Pattern matches Sprint 163 (after 10 tracks) and Sprint 172 (after 14 tracks).
