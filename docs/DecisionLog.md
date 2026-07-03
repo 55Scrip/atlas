@@ -2,6 +2,35 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 198 — Remove Database/Services Dead Symbols and Close Track
+
+Decision: Remove three zero-caller dead symbols identified during the Sprint 197 database/services audit, delete the now-empty `atlas/reports/` directory, and close the database/services cleanup track.
+
+**Rationale:** All three targets had zero production callers confirmed by repo-wide search before removal. `kpi_service.py` was a pure math utility never wired into any production pipeline. `atlas/models/investment_report.py` was a dead re-export shim. `atlas/reports/investment_card.py` was a dead function. `atlas/reports/` had no `__init__.py` and became empty after removal — deleted safely with zero callers. No runtime, database, service, provider, or CLI behavior changed.
+
+**Actions taken:**
+- Deleted `atlas/services/kpi_service.py` (zero production callers)
+- Deleted `tests/test_kpi_service.py` (test for deleted dead module)
+- Deleted `atlas/models/investment_report.py` (zero callers anywhere)
+- Deleted `atlas/reports/investment_card.py` (zero callers anywhere)
+- Deleted `atlas/reports/` directory (empty after removal, no callers, no `__init__.py`)
+- Updated `tests/test_database_services_sprint197.py` — Sprint 197 "still present" stubs replaced with Sprint 198 absence guards
+
+**Final verified state:**
+- `atlas/services/` now 3 modules: `database_service.py`, `company_service.py`, `financial_import_service.py` — all active ✓
+- `atlas/models/` retains `entities.py` + `__init__.py` — all active ✓
+- `atlas/reports/` no longer exists ✓
+- All active database, services, models, CLI symbols unchanged ✓
+- No provider coupling, no network access ✓
+- Boundary direction: config ← database ← services ← CLI — unchanged ✓
+- **1671 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Deleted 4 files, 1 directory. Updated `tests/test_database_services_sprint197.py`. Updated `docs/DatabaseServicesCleanupPlan.md` (CLOSED). Updated standard docs.
+
+**Next sprint recommendation:** Sprint 199 — Release candidate checkpoint. After closing the database/services cleanup track (Sprint 198, 22nd closed track) following dead symbol removal, a release checkpoint is warranted before the next broad audit.
+
+---
+
 ## 2026-07-03: Sprint 197 — Audit Database and Services Packages
 
 Decision: Confirm that `atlas/database/` and `atlas/services/` are clean, well-bounded, and contain three zero-caller dead code items to remove in Sprint 198. No cleanup made this sprint — audit-only.

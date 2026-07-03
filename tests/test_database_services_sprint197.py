@@ -1,7 +1,10 @@
-"""Sprint 197 guardrail tests: atlas/database/ and atlas/services/ audit."""
+"""Sprint 197/198 guardrail tests: atlas/database/ and atlas/services/ audit.
+
+Sprint 198 updated: replaced Sprint 197 "still present" stubs with absence guards
+for the three zero-caller dead symbols removed in Sprint 198.
+"""
 
 import importlib
-import sys
 
 
 # --- database/connection.py imports ---
@@ -114,35 +117,39 @@ def test_database_connection_does_not_import_cli():
     assert "atlas.cli" not in content
 
 
-# --- deleted module guards: Sprint 197 zero-caller candidates still present ---
-# These tests assert the current state — they become EXPECTED TO FAIL after Sprint 198 removes them.
-# Sprint 198 will replace these with absence guards.
+# --- deleted module guards: Sprint 198 removal confirmed absent ---
 
 
-def test_kpi_service_still_present_sprint197():
-    """kpi_service.py identified as zero-production-caller candidate for Sprint 198 removal."""
-    import atlas.services.kpi_service as mod
+def test_kpi_service_removed_sprint198():
+    """atlas/services/kpi_service.py removed Sprint 198 — zero production callers confirmed."""
+    import importlib.util
 
-    assert hasattr(mod, "gross_margin")
-    assert hasattr(mod, "operating_margin")
-    assert hasattr(mod, "net_margin")
-    assert hasattr(mod, "fcf_margin")
-    assert hasattr(mod, "safe_divide")
+    assert importlib.util.find_spec("atlas.services.kpi_service") is None
 
 
-def test_investment_report_shim_still_present_sprint197():
-    """atlas/models/investment_report.py identified as dead re-export shim for Sprint 198 removal."""
-    import atlas.models.investment_report as mod
+def test_investment_report_shim_removed_sprint198():
+    """atlas/models/investment_report.py removed Sprint 198 — dead re-export shim, zero callers."""
+    import importlib.util
 
-    assert hasattr(mod, "InvestmentReport")
-    assert hasattr(mod, "ScoreCategory")
+    assert importlib.util.find_spec("atlas.models.investment_report") is None
 
 
-def test_investment_card_still_present_sprint197():
-    """atlas/reports/investment_card.py identified as zero-caller dead function for Sprint 198 removal."""
-    import atlas.reports.investment_card as mod
+def test_investment_card_removed_sprint198():
+    """atlas/reports/investment_card.py removed Sprint 198 — dead function, zero callers."""
+    import importlib.util
 
-    assert hasattr(mod, "generate_investment_card")
+    try:
+        spec = importlib.util.find_spec("atlas.reports.investment_card")
+    except ModuleNotFoundError:
+        spec = None
+    assert spec is None
+
+
+def test_atlas_reports_package_removed_sprint198():
+    """atlas/reports/ directory removed Sprint 198 — package was empty after investment_card removal."""
+    import importlib.util
+
+    assert importlib.util.find_spec("atlas.reports") is None
 
 
 # --- schema / ORM gap awareness ---

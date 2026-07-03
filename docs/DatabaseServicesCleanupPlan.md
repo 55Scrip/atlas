@@ -1,7 +1,8 @@
 # Database and Services Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 197)  
-**Status:** OPEN — Audit complete. Sprint 198 recommended: Close database/services cleanup track and remove zero-caller dead code.
+**Updated:** 2026-07-03 (Sprint 198)  
+**Status:** CLOSED — Sprint 198 removed all three zero-caller dead symbols and confirmed database/services packages are stable. No cleanup remains.
 
 ---
 
@@ -366,6 +367,89 @@ This plan may be reopened if:
 - `kpi_service.py` or `investment_card.py` equivalents are re-added
 - A storage/repository layer is introduced that overlaps with `atlas/database/`
 - ORM models are added for the 6 currently-unmodeled schema tables
+
+---
+
+## Sprint 198 Closure
+
+**Decision:** Close the database/services cleanup track.
+
+**Actions taken:**
+- Deleted `atlas/services/kpi_service.py` — zero production callers, pure math utility (5 functions: `safe_divide`, `gross_margin`, `operating_margin`, `net_margin`, `fcf_margin`). Not wired into any production pipeline.
+- Deleted `tests/test_kpi_service.py` — test file for deleted dead module.
+- Deleted `atlas/models/investment_report.py` — dead re-export shim (`InvestmentReport`, `ScoreCategory` from `atlas.analysis.engine`). Zero callers anywhere.
+- Deleted `atlas/reports/investment_card.py` — dead function (`generate_investment_card`). Zero callers in production or tests.
+- Deleted `atlas/reports/` directory — `atlas/reports/` had no `__init__.py` and contained only `investment_card.py`. After removing the file, the directory was empty and was deleted. `atlas.reports` package had zero callers; deletion is safe.
+- Updated `tests/test_database_services_sprint197.py` — replaced Sprint 197 "still present" stubs with Sprint 198 absence guards.
+
+**`atlas/reports/` status:**
+- No `__init__.py` existed in `atlas/reports/` — it was a namespace package directory containing only `investment_card.py`.
+- After deleting `investment_card.py` the directory had only `__pycache__/` — effectively empty.
+- Zero callers of `atlas.reports` anywhere in the codebase (production, CLI, tests).
+- Deleted `atlas/reports/` entirely in Sprint 198. Safe and covered by guardrail `test_atlas_reports_package_removed_sprint198`.
+
+**Post-removal state:**
+- `atlas/services/` now contains 3 modules (removed `kpi_service.py`): `database_service.py`, `company_service.py`, `financial_import_service.py` — all active.
+- `atlas/models/` retains `entities.py` and `__init__.py` — all active.
+- `atlas/reports/` no longer exists.
+- All active database, services, models, config, and CLI symbols are unchanged.
+- No runtime behavior changed.
+- No database behavior changed.
+- No service behavior changed.
+- No provider behavior changed.
+- No CLI behavior changed.
+
+**Closure conditions met:**
+- ✓ Three zero-caller dead symbols removed
+- ✓ No stale exports remain
+- ✓ No zero-caller production symbols remain in database or services
+- ✓ Database package stable
+- ✓ Services package stable
+- ✓ Config/database/services boundary stable
+- ✓ Provider boundary clean
+- ✓ Storage boundary documented
+- ✓ No stale imports from closed tracks
+- ✓ Tests pass
+- ✓ Demo passes
+- ✓ Release verification passes
+
+**The `atlas/database/` and `atlas/services/` cleanup track is CLOSED as of Sprint 198.**
+
+**Future reopening condition:** Reopen only if new dead code, stale exports, schema boundary issues, config/database/services boundary issues, provider-boundary issues, storage-boundary issues, or a clear replacement/migration target emerges.
+
+---
+
+## Sprint 198 Verification Table
+
+| Check | Result |
+|---|---|
+| `atlas/services/kpi_service.py` deleted | ✓ |
+| `tests/test_kpi_service.py` deleted | ✓ |
+| `atlas/models/investment_report.py` deleted | ✓ |
+| `atlas/reports/investment_card.py` deleted | ✓ |
+| `atlas/reports/` directory deleted (no `__init__.py`, no callers) | ✓ |
+| `atlas/database/connection.py` unchanged | ✓ |
+| `atlas/database/schema.sql` unchanged | ✓ |
+| `atlas/services/database_service.py` unchanged | ✓ |
+| `atlas/services/company_service.py` unchanged | ✓ |
+| `atlas/services/financial_import_service.py` unchanged | ✓ |
+| `atlas/models/entities.py` unchanged | ✓ |
+| `atlas/models/__init__.py` unchanged | ✓ |
+| `Base`, `get_engine`, `get_session` importable | ✓ |
+| `init_database`, `add_company`, `list_companies`, `get_company_by_ticker`, `import_financials` importable | ✓ |
+| `Company`, `FinancialHistory` importable via `atlas.models` | ✓ |
+| No provider coupling in database or services | ✓ |
+| No network access in database or services | ✓ |
+| No stale imports from closed cleanup tracks | ✓ |
+| Boundary direction: config ← database ← services ← CLI | ✓ |
+| `atlas/storage/` does not exist | ✓ |
+| `atlas.reports` does not exist | ✓ |
+| Compile check | Green ✓ |
+| Full test suite | **1671 passed, 3 skipped** ✓ |
+| RC2 verification | Green ✓ |
+| Demo | Passes, provider-free ✓ |
+| Behavior changes | None |
+| Track status | **CLOSED Sprint 198** ✓ |
 
 ---
 
