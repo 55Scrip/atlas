@@ -2,6 +2,33 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 206 — Close Suitability Cleanup Track
+
+Decision: Formally close the `atlas/suitability/` cleanup track. No code changes.
+
+**Rationale:** After inventory, export review, caller review, CLI suitability review, behavior review, boundary review, provider boundary review, recommendation-language guardrail review, closed-track guard, and overlap review, the suitability package contains only active, intentional application-layer suitability logic. Further cleanup would create churn without architectural benefit.
+
+**Findings:**
+- All Sprint 205 findings confirmed unchanged ✓
+- `atlas/suitability/` — 2 modules, 642 lines — `__init__.py` + `engine.py` ✓
+- 7 public exports all active: `OverallSuitability`, `SuitabilityAssessment`, `SuitabilityEngine`, `SuitabilityFactor`, `SuitabilityInput`, `SuitabilityMismatch`, `render_suitability_assessment` ✓
+- 6 production callers unchanged: `atlas/cli/main.py`, `atlas/dashboard/engine.py`, `atlas/comparison/engine.py`, `atlas/watchlist_review/engine.py`, `atlas/portfolio_review/engine.py`, `atlas/risk_drift/engine.py` ✓
+- `atlas suitability analyze` CLI command active, opt-in provider (default mock), no network calls ✓
+- Output language clean — anti-advice disclaimer present; no buy/sell/recommendation/urgent language ✓
+- `check_suitability_assessment` absent from active `atlas.suitability` exports ✓
+- Engine imports: `atlas.analysis.engine`, `atlas.analysis.scores`, `atlas.capabilities.portfolio_intelligence`, `atlas.intelligence`, `atlas.profile`, `atlas.themes` — all correct consumer-pattern deps ✓
+- No CLI, provider, database, services, or models imports in `atlas/suitability/` ✓
+- No circular dependencies ✓
+- No stale imports from any closed cleanup track ✓
+- No overlap with decision/risk/principles/evidence — distinct application-layer package ✓
+- **1692 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Updated `docs/SuitabilityCleanupPlan.md` (status CLOSED Sprint 206, Sprint 206 confirmation row, reopening condition). Updated `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 207 — Release candidate checkpoint across 25 closed cleanup tracks. After closing suitability as the 25th track, Atlas should run an RC checkpoint before the next broad audit, following the established RC pattern.
+
+---
+
 ## 2026-07-03: Sprint 205 — Suitability Package Cleanup Checkpoint
 
 Decision: Audit `atlas/suitability/` — no cleanup warranted. Sprint 206 target: close track.
