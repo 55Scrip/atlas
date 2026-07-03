@@ -2,6 +2,32 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 199 — Release Candidate Checkpoint Across 22 Closed Tracks
+
+Decision: Confirm Atlas release-candidate stability across all 22 closed cleanup tracks after database/services dead symbol removal.
+
+**Rationale:** After removing dead database/services-adjacent symbols (`kpi_service.py`, `atlas/models/investment_report.py`, `atlas/reports/investment_card.py`, `atlas/reports/` directory) and closing the database/services cleanup track in Sprint 198, Atlas remains stable. Database and services exports remain importable, schema/session behavior is unchanged, deleted modules remain absent, retired CLI paths remain retired, provider boundaries remain unchanged or intentionally classified, the demo remains provider-free, and release verification remains green.
+
+**Findings:**
+- All 22 closed cleanup tracks verified in documentation and repository ✓
+- Sprint 198 removals confirmed stable: 4 deleted targets remain absent ✓
+- `atlas/reports/` deleted and absent — no callers, no follow-up needed ✓
+- Database/services exports all importable: `Base`, `get_engine`, `get_session`, `init_database`, `add_company`, `list_companies`, `get_company_by_ticker`, `import_financials` ✓
+- Config/database/services boundary correct throughout ✓
+- SQLAlchemy/SQLite/schema behavior unchanged ✓
+- Active services behavior unchanged (3 service modules, all active) ✓
+- 21 packages importable in smoke test ✓
+- 16 deleted modules/packages confirmed absent ✓
+- CLI: 7 retired commands non-callable, empty CLI groups absent, all active commands present ✓
+- Provider boundaries unchanged or intentionally classified ✓
+- **1671 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Updated `docs/ReleaseCandidateCheckpoint.md` (Sprint 199 section, 22-track table, all verification tables). Updated `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 200 — Audit `atlas/storage/` package. After config and database/services are clean and closed, `atlas/storage/` is the natural next infrastructure boundary to audit before deeper runtime or model cleanup.
+
+---
+
 ## 2026-07-03: Sprint 198 — Remove Database/Services Dead Symbols and Close Track
 
 Decision: Remove three zero-caller dead symbols identified during the Sprint 197 database/services audit, delete the now-empty `atlas/reports/` directory, and close the database/services cleanup track.
