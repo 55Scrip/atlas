@@ -2,6 +2,33 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 209 — Specify Atlas Weekly Investment Review Workflow
+
+Decision: Specify the Atlas Weekly Investment Review workflow as the flagship v1 workflow in sufficient detail for implementation.
+
+**Rationale:** The Weekly Investment Review ties together company review, portfolio fit, suitability, watchlist review, risk/principle guardrails, decision history, missing evidence, and reasons to wait without requiring live data or recommendation language. Specifying it before implementing avoids ambiguity in later sprints and ensures the workflow respects all Atlas language and boundary guardrails.
+
+**Findings:**
+- Existing parsers that can be reused: `Portfolio.from_json_file`, `InvestorProfileEngine.load_profile`, `watchlist_review_input_from_json_file`, `DecisionJournalEngine.load_entries`
+- Existing `WatchlistInput.from_mapping` accepts only `tickers` — does not support v1 rich watchlist format (gap)
+- Existing `InvestorProfile` does not have `principles` or `constraints` fields (gap)
+- No `company_facts/<ticker>.json` convention or parser exists (gap)
+- No `atlas weekly-review` CLI command exists (gap)
+- No multi-section Weekly Review renderer exists (gap)
+- No "companies needing attention" orchestration engine exists (gap)
+- No "non-actions" generator exists (gap)
+- Sample data for weekly review does not exist in `examples/` (gap)
+- All 8 v1 workflows map to existing active packages — no package deletion or creation needed
+- 12 workflow steps specified, 10 output sections specified, CLI entrypoint designed
+- Repository identity confirmed: Atlas only, no Atlas Edge naming encountered
+- No runtime files changed | 1692 passed, 3 skipped | RC2 green | Demo passes ✓
+
+**Changes made:** Created `docs/AtlasWeeklyInvestmentReviewSpec.md`. Updated `docs/AtlasV1OperatingMode.md`, `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 210 — Implement local input schemas for Weekly Investment Review. Create `examples/weekly_review/` sample files, new rich watchlist parser, `WeeklyReviewInput` loader with validation, and guardrail tests.
+
+---
+
 ## 2026-07-03: Sprint 208 — Define Atlas v1 Operating Mode
 
 Decision: Define the Atlas v1 product boundary, operating mode, and flagship workflow (Atlas Weekly Investment Review).

@@ -1,7 +1,7 @@
 # Atlas v1 Operating Mode
 
 **Created:** 2026-07-03 (Sprint 208)  
-**Status:** DEFINED — v1 operating mode established. Sprint 209 target: specify the Weekly Investment Review workflow in detail.
+**Status:** DEFINED — v1 operating mode established. Sprint 209 COMPLETE: Weekly Investment Review workflow specified in full. See `docs/AtlasWeeklyInvestmentReviewSpec.md`. Sprint 210 target: implement local input schemas.
 
 ---
 
@@ -478,9 +478,21 @@ Atlas v1 must always preserve:
 
 ---
 
-## Sprint 209 Recommendation
+## Sprint 209 Status — COMPLETE
 
-**Specify the Atlas Weekly Investment Review workflow in detail.**
+Sprint 209 specified the Atlas Weekly Investment Review workflow in full. See [`docs/AtlasWeeklyInvestmentReviewSpec.md`](AtlasWeeklyInvestmentReviewSpec.md) for:
+- Product boundary, workflow steps, CLI entrypoint design
+- Input specifications (portfolio, watchlist, investor profile, journal, company facts, financials)
+- All 10 output sections with content requirements, acceptance criteria, and example phrasing
+- Safe and forbidden language reference
+- Missing data / failure behavior
+- Implementation gap analysis (input schema, parser, orchestration, renderer, CLI, sample data, tests)
+- Acceptance criteria for future implementation
+- Example output skeleton
+
+## Sprint 210 Recommendation
+
+**Implement local input schemas for Weekly Investment Review.**
 
 The Weekly Investment Review is the best flagship v1 workflow because it ties together company review, watchlist, suitability, risk/principles, open decisions, missing evidence, and non-actions without requiring live data or recommendation language. Sprint 209 should produce a detailed specification:
 
