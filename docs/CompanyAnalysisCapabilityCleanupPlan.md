@@ -1,7 +1,8 @@
 # Atlas Company Analysis Capability Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 182)
-**Status:** AUDIT COMPLETE — no cleanup warranted. Sprint 183 recommended: close company analysis capability cleanup track.
+**Updated:** 2026-07-03 (Sprint 183)
+**Status:** CLOSED — Sprint 183 confirmed Sprint 182 findings unchanged. No cleanup warranted. No further work planned until new dead code, stale exports, provider-boundary issues, legacy/capability boundary issues, or a clear migration target emerges.
 
 ---
 
@@ -289,10 +290,36 @@ No cleanup candidates found.
 
 ---
 
-## Recommended Sprint 183 Target
+## Sprint 183 — Closure Verification
 
-**Close the company analysis capability cleanup track** — confirm the audit is complete, no cleanup is warranted, and declare `atlas/capabilities/company_analysis/` closed.
+Sprint 183 confirmed all Sprint 182 findings unchanged:
 
-After auditing `atlas/capabilities/` (Sprint 176), `atlas/capabilities/portfolio_intelligence/` (Sprints 170–171), and now `atlas/capabilities/company_analysis/` (Sprint 182), a short closure sprint will produce consistent documentation and a clean transition to the next audit target.
+| Check | Result |
+|---|---|
+| All 9 exports importable, `__all__` exact match | ✓ |
+| Capability does not import `atlas.analysis` | ✓ |
+| `atlas.analysis` does not import capability | ✓ |
+| No provider imports | ✓ |
+| No CLI imports | ✓ |
+| `CompanyAnalysisProvider` absent from all active code | ✓ |
+| Sprint 182 guardrails (7 tests) | 7/7 passing ✓ |
+| Full test suite | 1605 passed, 3 skipped ✓ |
+| RC2 verification | Green ✓ |
+| Demo | Passes, provider-free ✓ |
 
-Following closure, the recommended next audit after Sprint 183 is `atlas/decision_journal/` — a package not yet audited and one of the smaller, more bounded runtime surfaces.
+**Track status: CLOSED as of Sprint 183.**
+
+No further `atlas/capabilities/company_analysis/` cleanup work is planned until new dead code, stale exports, provider-boundary issues, legacy/capability boundary issues, or a clear migration target emerges.
+
+## Reopening Conditions
+
+This track should only be reopened if:
+- A new zero-caller or stale export is introduced
+- A provider import is added directly to the capability
+- The capability begins importing from `atlas.analysis` (boundary violation)
+- A Blueprint successor changes the output type contract
+- A clear migration target or consolidation opportunity emerges
+
+## Recommended Sprint 184 Target
+
+**Audit `atlas/decision_journal/` package** — a focused active package not yet audited, with likely evidence/decision boundary relevance. Pattern: audit-first inventory (Sprint 184), then targeted action or closure (Sprint 185).

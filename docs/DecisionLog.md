@@ -2,6 +2,27 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 183 — Close Company Analysis Capability Cleanup Track
+
+Decision: Declare `atlas/capabilities/company_analysis/` cleanup track CLOSED.
+
+**Rationale:** After inventory, export review, CLI and pipeline caller review, legacy analysis boundary review, provider boundary review, stale import audit, and Blueprint/capability model review (Sprint 182), the company analysis capability contains only active, intentional code. Sprint 183 confirmed all Sprint 182 findings unchanged. Further cleanup would create churn without architectural benefit.
+
+**Final verified state:**
+- 4 modules, 571 lines, 9 active exports — all importable ✓
+- Capability does not import `atlas.analysis`; `atlas.analysis` does not import capability ✓
+- No provider imports — cleanest provider boundary of any capability ✓
+- No CLI imports ✓
+- No stale imports from any closed cleanup track ✓
+- `CompanyAnalysisProvider` alias remains absent ✓
+- 1605 passed, 3 skipped | RC2 green | Demo passes ✓
+
+**Changes made:** Documentation closure only. Updated `docs/CompanyAnalysisCapabilityCleanupPlan.md` (status CLOSED, Sprint 183 verification table, reopening conditions).
+
+**Next sprint recommendation:** Audit `atlas/decision_journal/` package.
+
+---
+
 ## 2026-07-03: Sprint 182 — Company Analysis Capability Audit
 
 Decision: Audit `atlas/capabilities/company_analysis/` and confirm no cleanup is warranted.
