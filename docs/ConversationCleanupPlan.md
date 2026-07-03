@@ -1,7 +1,8 @@
 # Atlas Conversation Package Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 166)  
-**Status:** ACTIVE — audit-first sprint. No cleanup action taken. Sprint 167 recommended: close the conversation cleanup track (documentation-only, no code changes warranted).
+**Updated:** 2026-07-03 (Sprint 167)  
+**Status:** CLOSED — Sprint 167 confirmed Sprint 166 findings unchanged. No cleanup action is warranted. Package is self-contained, actively used via `ConversationEngine`, and stable. No further `atlas/conversation/` cleanup work is planned until new dead code, stale exports, dependency-boundary issues, or a clear Blueprint-aligned successor emerges.
 
 ---
 
@@ -234,20 +235,48 @@ All checked. All hits in `atlas/conversation/` classified:
 
 ---
 
-## Recommended Sprint 167 Target
+## Sprint 167 — Track Closure (COMPLETED)
 
-**Close the conversation cleanup track.**
+**Conversation cleanup track is CLOSED as of Sprint 167.**
 
-After inventory (Sprint 166), the conversation package contains no actionable cleanup candidates:
-- All 6 exports are active
-- All 16 private helpers are active
-- No dead code or stale exports
-- No closed-track import residue
-- No Blueprint successor exists
-- Provider boundary is clean and opt-in
-- CLI is active and unchanged
-- Intelligence and risk dependencies are intentional and shallow
+Sprint 167 verified:
+- All 6 `atlas.conversation` exports remain importable ✓
+- `ConversationEngine` active — `atlas ask` CLI entrypoint confirmed ✓
+- `IntelligenceEngine` dependency confirmed intentional — runtime import, consumed by `_answer_company_analysis` and `_answer_general_guidance` ✓
+- `RiskAnalysis` dependency confirmed intentional — optional caller-supplied context, 6 fields read, graceful degradation ✓
+- `MockCompanyAnalysisProvider` default fallback — no network without opt-in ✓
+- `YahooFinanceProvider` not imported by `atlas/conversation/` ✓
+- Zero stale closed-track imports ✓
+- No Blueprint-aligned successor introduced since Sprint 166 ✓
+- No cleanup action is warranted ✓
 
-Sprint 167 should be a documentation-only sprint confirming the audit findings and closing the conversation cleanup track. No code changes are needed. Pattern matches Sprint 150, 155, 158, 160, 162, and 165.
+**Closure rationale:** After inventory (Sprint 166) and final verification (Sprint 167), the conversation package contains only active, intentional code. `ConversationEngine.answer()` is the sole public method and has 1 production call site (CLI). All 6 exports are active. All 16 private helpers are active. Intelligence and risk dependencies are intentional, optional in impact, and shallow. Further cleanup would create churn without architectural benefit.
 
 **Reopening condition:** If a Blueprint-aligned conversation capability emerges in `atlas/capabilities/`, if the CLI command is deprecated, or if new dead code or stale imports appear.
+
+---
+
+## Closed-Track Summary
+
+| Track | Status |
+|---|---|
+| `atlas/analysis/` cleanup | CLOSED Sprint 141 |
+| `atlas/decision/` cleanup | CLOSED Sprint 144 |
+| Provider boundary audit | CLOSED Sprint 146 |
+| Portfolio boundary | CLOSED Sprint 148 |
+| Evidence package | CLOSED Sprint 150 |
+| Reasoning package | CLOSED Sprint 153 |
+| Risk package | CLOSED Sprint 155 |
+| Principles package | CLOSED Sprint 158 |
+| Comparison package | CLOSED Sprint 160 |
+| Home package | CLOSED Sprint 162 |
+| Intelligence package | CLOSED Sprint 165 |
+| **Conversation package** | **CLOSED Sprint 167** |
+
+---
+
+## Recommended Sprint 168 Target
+
+**Audit `atlas/dashboard/` package.**
+
+`atlas/dashboard/` is another active runtime/application-facing surface. It should be audited after conversation is formally closed. Pattern: audit-first (Sprint 168 inventory), then targeted action or documentation closure sprint (Sprint 169).

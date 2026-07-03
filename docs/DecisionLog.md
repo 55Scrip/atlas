@@ -2,6 +2,32 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 167 — Close Conversation Cleanup Track
+
+Decision: Close the `atlas/conversation/` cleanup track. No cleanup work is warranted.
+
+**Rationale:** After inventory (Sprint 166) and final verification (Sprint 167), the conversation package contains only active, intentional code. `ConversationEngine.answer()` is the sole public method, active at 1 production call site (CLI `atlas ask`). All 6 exports are active. All 16 private helpers are active. `IntelligenceEngine` dependency is intentional — consumed by `_answer_company_analysis` and `_answer_general_guidance` intent branches. `RiskAnalysis` dependency is intentional, optional, and shallow. No stale imports. No Blueprint successor. Further cleanup would create churn without architectural benefit.
+
+**Final verification (Sprint 167):** All 6 exports importable. `atlas ask` CLI entrypoint confirmed active. Intelligence and risk dependencies confirmed intentional. Zero stale closed-track imports. No new Blueprint successor. Provider boundary unchanged. No cleanup action warranted.
+
+**Closed-track summary:**
+- `atlas/analysis/` cleanup — CLOSED Sprint 141
+- `atlas/decision/` cleanup — CLOSED Sprint 144
+- Provider boundary audit — CLOSED Sprint 146
+- Portfolio boundary — CLOSED Sprint 148
+- Evidence package — CLOSED Sprint 150
+- Reasoning package — CLOSED Sprint 153
+- Risk package — CLOSED Sprint 155
+- Principles package — CLOSED Sprint 158
+- Comparison package — CLOSED Sprint 160
+- Home package — CLOSED Sprint 162
+- Intelligence package — CLOSED Sprint 165
+- **Conversation package — CLOSED Sprint 167**
+
+**Sprint 168 recommended target:** Audit `atlas/dashboard/` package — another active runtime/application-facing surface, natural next step after conversation is closed.
+
+---
+
 ## 2026-07-03: Sprint 166 — Conversation Package Audit Checkpoint
 
 Decision: `atlas/conversation/` package is clean. No cleanup work is warranted.
