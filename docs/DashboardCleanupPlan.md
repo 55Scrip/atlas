@@ -1,7 +1,8 @@
 # Atlas Dashboard Package Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 168)  
-**Status:** ACTIVE — audit-first sprint. No cleanup action taken. Sprint 169 recommended: close the dashboard cleanup track (documentation-only, no code changes warranted).
+**Updated:** 2026-07-03 (Sprint 169)  
+**Status:** CLOSED — Sprint 169 confirmed Sprint 168 findings unchanged. No cleanup action is warranted. Package is self-contained, actively used via `DashboardEngine`, and stable. No further `atlas/dashboard/` cleanup work is planned until new dead code, stale exports, dependency-boundary issues, provider-boundary issues, or a clear Blueprint-aligned successor emerges.
 
 ---
 
@@ -224,19 +225,46 @@ All checked. All hits in `atlas/dashboard/` classified:
 
 ---
 
-## Recommended Sprint 169 Target
+## Sprint 169 — Track Closure (COMPLETED)
 
-**Close the dashboard cleanup track.**
+**Dashboard cleanup track is CLOSED as of Sprint 169.**
 
-After inventory (Sprint 168), the dashboard package contains no actionable cleanup candidates:
-- All 6 exports are active or intentional sub-types
-- All 17 private helpers are active
-- No dead code or stale exports
-- No closed-track import residue
-- No Blueprint successor exists
-- Cleanest provider boundary audited so far — no concrete provider imported
-- CLI is active and unchanged
+Sprint 169 verified:
+- All 6 `atlas.dashboard` exports remain importable ✓
+- `DashboardEngine` active — `atlas dashboard show` CLI entrypoint confirmed ✓
+- Provider boundary confirmed cleanest of any audited package: no `MockCompanyAnalysisProvider`, no `YahooFinanceProvider` — only `CompanyDataProvider` as type annotation ✓
+- Zero stale closed-track imports ✓
+- No Blueprint-aligned successor introduced since Sprint 168 ✓
+- No cleanup action is warranted ✓
 
-Sprint 169 should be a documentation-only sprint confirming the audit findings and closing the dashboard cleanup track. No code changes are needed. Pattern matches Sprint 150, 155, 158, 160, 162, 165, and 167.
+**Closure rationale:** After inventory (Sprint 168) and final verification (Sprint 169), the dashboard package contains only active, intentional code. `DashboardEngine.build()` is the sole public method and has 1 production call site (CLI). All 6 exports are active. All 17 private helpers are active. Provider boundary is the cleanest in the audited codebase — provider selection lives entirely at the CLI layer. Further cleanup would create churn without architectural benefit.
 
 **Reopening condition:** If a Blueprint-aligned dashboard capability emerges in `atlas/capabilities/`, if the CLI command is deprecated, or if new dead code or stale imports appear.
+
+---
+
+## Closed-Track Summary
+
+| Track | Status |
+|---|---|
+| `atlas/analysis/` cleanup | CLOSED Sprint 141 |
+| `atlas/decision/` cleanup | CLOSED Sprint 144 |
+| Provider boundary audit | CLOSED Sprint 146 |
+| Portfolio boundary | CLOSED Sprint 148 |
+| Evidence package | CLOSED Sprint 150 |
+| Reasoning package | CLOSED Sprint 153 |
+| Risk package | CLOSED Sprint 155 |
+| Principles package | CLOSED Sprint 158 |
+| Comparison package | CLOSED Sprint 160 |
+| Home package | CLOSED Sprint 162 |
+| Intelligence package | CLOSED Sprint 165 |
+| Conversation package | CLOSED Sprint 167 |
+| **Dashboard package** | **CLOSED Sprint 169** |
+
+---
+
+## Recommended Sprint 170 Target
+
+**Audit `atlas/portfolio_intelligence/` package.**
+
+`atlas/portfolio_intelligence/` is a major active domain-adjacent runtime surface. It should be audited after dashboard is formally closed. Pattern: audit-first (Sprint 170 inventory), then targeted action or documentation closure sprint (Sprint 171).
