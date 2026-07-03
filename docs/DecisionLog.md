@@ -2,6 +2,32 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 204 — Release Candidate Checkpoint Across 24 Closed Tracks
+
+Decision: Confirm Atlas release-candidate stability across all 24 closed cleanup tracks after models cleanup closure.
+
+**Rationale:** After closing the models cleanup track, Atlas remains stable. Models, database, and services ownership remains unchanged, removed modules remain absent, deleted modules remain absent, retired CLI paths remain retired, provider boundaries remain unchanged or intentionally classified, the demo remains provider-free, and release verification remains green.
+
+**Findings:**
+- All 24 closed cleanup tracks verified in documentation and repository ✓
+- Sprint 203 models closure: `atlas/models/` unchanged — `Company` (10 cols), `FinancialHistory` (15 cols), `__all__ = ["Company", "FinancialHistory"]`, lazy shim clean, no `investment_report` reference ✓
+- ORM/schema: `Base` in `atlas/database/connection.py`, schema creation in `database_service.py`, 6-table schema/ORM gap intentional ✓
+- Sprint 198/200 removals: all 6 targets remain absent — `investment_report.py`, `kpi_service.py`, `test_kpi_service.py`, `reports/investment_card.py`, `atlas/reports/`, `atlas/storage/` ✓
+- Database/services: all active symbols importable, `config ← database ← services ← CLI` boundary stable ✓
+- 24 active packages importable in smoke test (note: `atlas.watchlist` top-level does not exist — watchlist surface in capabilities + adapters, confirmed Sprint 189/190) ✓
+- 12 deleted modules confirmed absent ✓
+- `atlas.analysis.__all__` remains 9 exports ✓
+- `CompanyAnalysisProvider` — no standalone hits; all are `MockCompanyAnalysisProvider` substrings ✓
+- CLI: 7 retired commands non-callable, empty CLI groups (`evidence`, `reason`, `risk`) absent from root help, all active commands present ✓
+- Provider boundaries unchanged or intentionally classified; `atlas/watchlist_review/` coupling remains Outcome B (acceptable legacy coupling, Sprint 187) ✓
+- **1681 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Updated `docs/ReleaseCandidateCheckpoint.md` (Sprint 204 section, 24-track table, all verification tables). Updated `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 205 — Audit `atlas/suitability/` package. Active, CLI-exposed, not yet audited.
+
+---
+
 ## 2026-07-03: Sprint 203 — Close Models Cleanup Track
 
 Decision: Formally close the `atlas/models/` cleanup track. No code changes.
