@@ -2,6 +2,30 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 203 — Close Models Cleanup Track
+
+Decision: Formally close the `atlas/models/` cleanup track. No code changes.
+
+**Rationale:** After inventory, ORM model review, lazy shim review, export review, caller review, models/database/services boundary review, database/schema boundary review, services usage review, provider boundary review, and stale import audit, the models package contains only active, intentional ORM/data-shape code. Further cleanup would create churn without architectural benefit.
+
+**Findings:**
+- All Sprint 202 findings confirmed unchanged ✓
+- `atlas/models/__init__.py`: `__all__ = ["Company", "FinancialHistory"]`, lazy shim clean, no `investment_report` reference ✓
+- `atlas/models/entities.py`: `Company` (9 cols, `companies` table) and `FinancialHistory` (13 cols, `financial_history` table) — both active, all columns unchanged ✓
+- Production callers unchanged: `database_service.py`, `company_service.py`, `financial_import_service.py` ✓
+- Zero imports of `atlas.models.investment_report` anywhere in repo ✓
+- Boundary direction stable: models → database (Base), services → models — no upward dependency, no circular deps ✓
+- Zero provider coupling, zero network access in `atlas/models/` ✓
+- `atlas/models/investment_report.py`, `atlas/reports/`, `atlas/storage/` all confirmed absent ✓
+- Zero stale imports from any closed cleanup track in `atlas/models/` ✓
+- **1681 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Updated `docs/ModelsCleanupPlan.md` (closure sprint changed to Sprint 203, future reopening condition updated). Updated `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 204 — Release candidate checkpoint across 24 closed cleanup tracks. After closing models following config (Sprint 196), database/services (Sprint 198), and storage (Sprint 200), Atlas should run an RC checkpoint before the next broad audit.
+
+---
+
 ## 2026-07-03: Sprint 202 — Models Package Cleanup Checkpoint
 
 Decision: Confirm `atlas/models/` is clean and close the models cleanup track with no code changes.
