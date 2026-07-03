@@ -64,3 +64,30 @@ def render_snapshot_draft_validation_error(error_message: str) -> str:
         f"Error: {error_message}",
     ]
     return "\n".join(lines)
+
+
+def render_research_notes_export_success(ticker: str, output_path: object) -> str:
+    """Render a success summary after writing a research notes file."""
+    lines = [
+        "Research Notes Export",
+        "",
+        "Status: written",
+        f"Ticker: {ticker}",
+        f"Output File: {output_path}",
+        "",
+        "Safety Boundary:",
+        "  - Only local research notes were written.",
+        "  - No portfolio, watchlist, journal, or company facts files were changed.",
+    ]
+    return "\n".join(lines)
+
+
+def render_research_notes_export_blocked(reason: str) -> str:
+    """Render a blocked summary when research notes export cannot proceed."""
+    lines = [
+        "Research Notes Export",
+        "",
+        "Status: blocked",
+        f"Reason: {reason}",
+    ]
+    return "\n".join(lines)

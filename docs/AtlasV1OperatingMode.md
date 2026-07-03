@@ -621,6 +621,22 @@ Sprint 223 defined the formal Snapshot Draft schema. New package `atlas/snapshot
 
 ---
 
+## Sprint 225 Status — COMPLETE
+
+Sprint 225 implemented the first safe Snapshot Draft conversion path.
+`atlas snapshot export-research-notes <draft_path> --output-dir DIR` converts
+a confirmed `research_notes_snapshot` draft to `research_notes/<TICKER>/notes.md`.
+Type and confirmation status are enforced. Ticker is normalized and validated.
+Existing files are protected by default; `--overwrite` enables replacement.
+Output is bounded (500 chars/bullet, 20 bullets/section). Draft is never mutated.
+End-to-end path confirmed: exported file is immediately readable by
+`atlas weekly-review --research-notes DIR`. No provider imports. No network calls.
+No OCR. No AI. 52 new tests; 2327 total passing.
+
+**Sprint 226 recommendation:** Run third real portfolio trial with exported research notes.
+
+---
+
 ## Sprint 224 Status — COMPLETE
 
 Sprint 224 added `atlas snapshot validate <path>` — a read-only CLI command that validates a Snapshot Draft JSON file and renders a human-readable summary. Output includes: type, confidence, confirmation status, target local file, related tickers, uncertainties, missing required fields, and safety boundary. Exit 0 on valid draft, exit 1 on invalid JSON, invalid schema, or missing file. No file writing. No mutation. New `atlas/snapshot_input/render.py` created. CLI extended with `snapshot_app` Typer sub-group. No provider imports. No network calls. 44 new tests; 2275 total passing.

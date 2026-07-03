@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2275 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2327 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -273,6 +273,16 @@ Snapshot Draft schema defined. New `atlas/snapshot_input/` package. `SnapshotTyp
 `to_json`/`from_json`), and file helpers (`load_snapshot_draft`/`save_snapshot_draft`).
 Three example draft files. No OCR, AI, or provider dependency. No Weekly Review
 behavior changed. Internal v1 foundation unchanged.
+
+**Sprint 225 (post-v1 improvement — complete):**
+`atlas snapshot export-research-notes` added — the first safe Snapshot Draft
+conversion path. Converts a confirmed `research_notes_snapshot` draft to a local
+`research_notes/<TICKER>/notes.md` file. Enforces: type, confirmation status,
+safe ticker, overwrite guard. Bounded output (500 chars/bullet, 20/section).
+Draft never mutated. End-to-end path confirmed: exported notes.md immediately
+readable by Weekly Review `--research-notes DIR`. No provider imports. No network
+calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
+unchanged.
 
 **Sprint 224 (post-v1 improvement — complete):**
 `atlas snapshot validate <path>` CLI command added. Validates a Snapshot Draft JSON

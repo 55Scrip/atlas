@@ -1,0 +1,43 @@
+{
+  "confirmation_status": "confirmed",
+  "confidence": "high",
+  "created_at": "2026-01-05",
+  "draft_id": "draft-research-asml-20260105-confirmed-001",
+  "extracted_fields": {
+    "evidence_gaps": [
+      "Margin durability through a downcycle has not been reviewed recently.",
+      "China revenue exposure needs updated context.",
+      "Long-term service revenue contribution not modelled."
+    ],
+    "open_questions": [
+      "What assumptions about EUV demand durability should be rechecked?",
+      "Which financial history quarters are most relevant for margin review?",
+      "How does backlog composition change in a slower-growth environment?"
+    ],
+    "reasons_to_wait": [
+      "Evidence gaps on margin durability and China exposure should be resolved before any position decision.",
+      "Pending review of most recent quarterly earnings commentary."
+    ],
+    "risks_to_monitor": [
+      "Export controls affecting China shipments.",
+      "Customer capex cyclicality during semiconductor inventory corrections.",
+      "Competitive dynamics if alternative EUV or DUV approaches emerge."
+    ],
+    "thesis_notes": [
+      "ASML occupies a structural monopoly position in EUV lithography.",
+      "Aftermarket and service revenue provides resilience in soft capex environments."
+    ],
+    "ticker": "ASML",
+    "title": "ASML research notes"
+  },
+  "missing_required_fields": [],
+  "notes": "Confirmed after user review on 2026-01-05. Content is user-supplied — no external research was fetched.",
+  "raw_source_reference": "my_notes/asml_notes_2026.md",
+  "related_tickers": [
+    "ASML"
+  ],
+  "snapshot_type": "research_notes_snapshot",
+  "source_description": "User-written ASML research notes covering thesis, evidence gaps, and risks",
+  "target_local_file": "my_review/research_notes/ASML/notes.md",
+  "uncertainties": []
+}

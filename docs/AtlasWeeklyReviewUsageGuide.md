@@ -620,6 +620,37 @@ These may be addressed in future sprints. No timeline is committed here.
 
 ---
 
+## Snapshot Draft Export to Research Notes
+
+If you have a confirmed `research_notes_snapshot` draft, you can export it to
+a local `research_notes/<TICKER>/notes.md` file that the Weekly Review can load.
+
+**Export command:**
+```bash
+atlas snapshot export-research-notes \
+  my_review/drafts/research_notes_snapshot_confirmed.json \
+  --output-dir my_review/research_notes
+```
+
+This writes `my_review/research_notes/<TICKER>/notes.md`. The file is immediately
+usable with `--research-notes my_review/research_notes`.
+
+**Requirements:**
+- `snapshot_type` must be `research_notes_snapshot`
+- `confirmation_status` must be `confirmed`
+- Draft must contain a ticker in `extracted_fields["ticker"]` or `related_tickers`
+
+**Overwrite protection:** An existing notes.md is not overwritten unless
+`--overwrite` is supplied.
+
+**Safety:** Only research notes Markdown files are written. No portfolio,
+watchlist, journal, or company facts files are touched. Draft is never mutated.
+
+See [docs/AtlasSnapshotInputWorkflow.md](AtlasSnapshotInputWorkflow.md) for the
+full Snapshot Input workflow specification.
+
+---
+
 ## Next Steps
 
 - Add company facts files (`company_facts/TICKER.json`) for your most important
@@ -629,3 +660,5 @@ These may be addressed in future sprints. No timeline is committed here.
 - Keep your investor profile principles and constraints up to date — they appear
   directly in Sections 5 and 6.
 - Review Section 10 weekly and update journal notes when assumptions change.
+- Use `atlas snapshot export-research-notes` to export confirmed research drafts
+  directly into your weekly review research notes directory.

@@ -1,8 +1,8 @@
 # Atlas Snapshot / Screenshot Input Workflow
 
-**Sprint:** 224
+**Sprint:** 225
 **Date:** 2026-07-04
-**Status:** Specified and partially implemented — CLI validation complete
+**Status:** Specified and partially implemented — CLI validation and research notes export complete
 
 ---
 
@@ -572,6 +572,46 @@ atlas snapshot validate examples/snapshot_drafts/portfolio_snapshot.json
 - No provider imports. No network calls. No AI.
 - Renderer lives in `atlas/snapshot_input/render.py`.
 - CLI command registered in `atlas/cli/main.py` under `snapshot_app`.
+
+---
+
+## Research Notes Export — COMPLETE (Sprint 225)
+
+Sprint 225 implemented the first safe Snapshot Draft conversion path:
+`atlas snapshot export-research-notes` converts a confirmed
+`research_notes_snapshot` draft into a local `research_notes/<TICKER>/notes.md`
+file that the Weekly Review can load via `--research-notes DIR`.
+
+**Command:**
+```bash
+atlas snapshot export-research-notes \
+  examples/snapshot_drafts/research_notes_snapshot_confirmed.json \
+  --output-dir examples/weekly_review/research_notes
+```
+
+**Requirements enforced:**
+- `snapshot_type` must be `research_notes_snapshot`
+- `confirmation_status` must be `confirmed`
+- Ticker resolved from `extracted_fields["ticker"]` then `related_tickers[0]`
+- Ticker normalized to uppercase; path separators rejected
+- Output: `<output-dir>/<TICKER>/notes.md`
+- Existing file is not overwritten unless `--overwrite` is supplied
+
+**Markdown sections written** (omitted if empty):
+`Thesis Notes`, `Evidence Gaps`, `Open Questions`, `Risks to Monitor`,
+`Reason to Wait`, `Source`
+
+**Bounds:** max 500 chars per bullet, max 20 bullets per section.
+
+**Safety guarantees:**
+- Only `research_notes/<TICKER>/notes.md` is written
+- No portfolio, watchlist, journal, or company facts files are written
+- Draft file is never mutated
+- No provider calls. No network calls. No OCR. No AI.
+
+**End-to-end path confirmed:** exported notes.md is immediately readable by
+`atlas weekly-review --research-notes DIR`, surfacing evidence gaps (Section 8),
+open questions and risks (Section 9), and reasons to wait (Section 10).
 
 ---
 

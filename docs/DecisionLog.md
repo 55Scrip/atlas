@@ -3810,6 +3810,16 @@ Demo passed. Release verification green.
 
 ---
 
+**Sprint 225 (2026-07-04): Implement confirmed research_notes_snapshot export**
+
+**Decision:** Add `atlas snapshot export-research-notes <draft_path> --output-dir DIR` — the first safe Snapshot Draft conversion path. Converts a confirmed `research_notes_snapshot` draft to a local `research_notes/<TICKER>/notes.md` file. Enforces: type must be `research_notes_snapshot`, status must be `confirmed`, ticker must be present and safe. Existing files blocked without `--overwrite`. Output is bounded (500 chars/bullet, 20 bullets/section). Draft file is never mutated.
+
+**Rationale:** Research notes is the safest first conversion target — no portfolio, watchlist, journal, or company facts files are touched. The end-to-end path (confirmed draft → notes.md → Weekly Review Sections 8/9/10) can now be exercised before adding more conversion types.
+
+**Outcome:** `atlas/snapshot_input/export.py` created. `atlas/snapshot_input/render.py` extended with export render functions. `atlas/snapshot_input/__init__.py` updated. `atlas/cli/main.py` extended with `export-research-notes` command. Confirmed example draft added. 52 new tests. 2327 tests passing. Sprint 226 target: Third real portfolio trial with exported research notes.
+
+---
+
 **Sprint 224 (2026-07-04): Add Snapshot Draft CLI validation**
 
 **Decision:** Add `atlas snapshot validate <path>` — a read-only CLI command that loads a Snapshot Draft JSON file, validates the schema, and renders a human-readable summary (type, confidence, confirmation status, uncertainties, missing fields, safety boundary). Exit 0 on valid, exit 1 on invalid. No file writing, no mutation.

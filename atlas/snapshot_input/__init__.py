@@ -19,16 +19,26 @@ from atlas.snapshot_input.schema import (
     validate_snapshot_draft,
 )
 from atlas.snapshot_input.render import (
+    render_research_notes_export_blocked,
+    render_research_notes_export_success,
     render_snapshot_draft_validation,
     render_snapshot_draft_validation_error,
 )
+from atlas.snapshot_input.export import (
+    ResearchNotesExportResult,
+    export_research_notes,
+)
 
 __all__ = [
+    "ResearchNotesExportResult",
     "SnapshotConfidence",
     "SnapshotConfirmationStatus",
     "SnapshotDraft",
     "SnapshotType",
+    "export_research_notes",
     "load_snapshot_draft",
+    "render_research_notes_export_blocked",
+    "render_research_notes_export_success",
     "render_snapshot_draft_validation",
     "render_snapshot_draft_validation_error",
     "save_snapshot_draft",

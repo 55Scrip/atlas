@@ -131,7 +131,7 @@ profile_app = typer.Typer(help="Investor profile context commands")
 principles_app = typer.Typer(help="Atlas principles validation commands")
 research_app = typer.Typer(help="Research export commands")
 risk_drift_app = typer.Typer(help="Risk drift review commands")
-snapshot_app = typer.Typer(help="Snapshot Draft commands (validation only — no file writing).")
+snapshot_app = typer.Typer(help="Snapshot Draft commands (validation and safe local export).")
 suitability_app = typer.Typer(help="Investor suitability context commands")
 theme_app = typer.Typer(help="Theme intelligence commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
@@ -475,6 +475,67 @@ def snapshot_validate_command(
         raise typer.Exit(code=1)
 
     console.print(render_snapshot_draft_validation(draft))
+
+
+@snapshot_app.command("export-research-notes")
+def snapshot_export_research_notes_command(
+    draft_path: Path = typer.Argument(
+        ...,
+        help="Path to a confirmed research_notes_snapshot draft JSON file.",
+    ),
+    output_dir: Path = typer.Option(
+        ...,
+        "--output-dir",
+        help="Directory to write research_notes/<TICKER>/notes.md into.",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Overwrite an existing notes.md file if one already exists.",
+    ),
+):
+    """Export a confirmed research_notes_snapshot draft to a local notes.md file.
+
+    Writes research_notes/<TICKER>/notes.md under OUTPUT_DIR.
+    Only confirmed research_notes_snapshot drafts are accepted.
+
+    This command writes only local Markdown research notes files.
+    It does not write portfolio, watchlist, journal, or company facts files.
+    It does not call any provider, network, or external API.
+    It does not modify the draft file.
+
+    No live data. No recommendations. No OCR. No AI.
+    """
+    from atlas.snapshot_input.schema import SnapshotDraft
+    from atlas.snapshot_input.export import export_research_notes
+    from atlas.snapshot_input.render import (
+        render_research_notes_export_blocked,
+        render_research_notes_export_success,
+    )
+
+    if not draft_path.exists():
+        console.print(render_research_notes_export_blocked(f"file not found: {draft_path}"))
+        raise typer.Exit(code=1)
+
+    try:
+        text = draft_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        console.print(render_research_notes_export_blocked(f"could not read file: {exc}"))
+        raise typer.Exit(code=1)
+
+    try:
+        draft = SnapshotDraft.from_json(text)
+    except ValueError as exc:
+        console.print(render_research_notes_export_blocked(str(exc)))
+        raise typer.Exit(code=1)
+
+    result = export_research_notes(draft, output_dir, overwrite=overwrite)
+
+    if result.success:
+        console.print(render_research_notes_export_success(result.ticker, result.output_path))
+    else:
+        console.print(render_research_notes_export_blocked(result.reason))
+        raise typer.Exit(code=1)
 
 
 @app.command("compare")
