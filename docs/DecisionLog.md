@@ -2,6 +2,29 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 182 — Company Analysis Capability Audit
+
+Decision: Audit `atlas/capabilities/company_analysis/` and confirm no cleanup is warranted.
+
+**Rationale:** Sprint 179 verified the boundary between `atlas/analysis/` and `atlas/capabilities/company_analysis/` from outside. Sprint 182 performed a full internal inventory of the capability itself. The capability has 4 modules (571 lines), 9 exports, and is actively used by the `company-analysis export` CLI command, the daily summary pipeline, the discovery capability, and the watchlist intelligence capability.
+
+**Key findings:**
+- All 9 `__all__` exports are active — all either have production callers or are used internally by `engine.py` and verified in tests
+- `CompanyAnalysisObservation` and `CompanyAnalysisRisk` have low external reference counts (2 and 1 respectively) but are used extensively inside `engine.py` — not stale
+- Zero provider coupling — cleanest provider boundary of any capability audited
+- Zero imports from `atlas.analysis`, `atlas.providers`, or `atlas.cli`
+- `atlas/analysis/` confirmed not importing capability — bidirectional boundary clean
+- 8 private engine helpers are all internal — none dead or test-exposed
+- Dependency direction correct: `atlas.shared → atlas.domains → atlas.capabilities`
+- No stale imports, no circular dependencies, no upward coupling
+- No cleanup warranted
+
+**Changes made:** Audit-only. Created `docs/CompanyAnalysisCapabilityCleanupPlan.md`, added 7 guardrail tests in `tests/test_company_analysis_capability_sprint182.py`.
+
+**Next sprint recommendation:** Close company analysis capability cleanup track (Sprint 183 closure sprint).
+
+---
+
 ## 2026-07-03: Sprint 181 — Release Candidate Checkpoint After Company Analysis Residual Cleanup
 
 Decision: Confirm Atlas release-candidate stability after the Sprint 180 company analysis residual cleanup.
