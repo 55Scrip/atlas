@@ -1,0 +1,57 @@
+{
+  "confirmation_status": "needs_user_review",
+  "confidence": "medium",
+  "created_at": "2026-01-05",
+  "draft_id": "draft-portfolio-20260105-001",
+  "extracted_fields": {
+    "account_name": "Private",
+    "holdings": [
+      {
+        "confidence": "high",
+        "currency": "EUR",
+        "market_value": 95000,
+        "name": "ASML Holding",
+        "sector": "Semiconductors",
+        "ticker": "ASML",
+        "weight": 0.42
+      },
+      {
+        "confidence": "medium",
+        "currency": "EUR",
+        "market_value": 60000,
+        "name": "Microsoft Corporation",
+        "sector": "Technology",
+        "ticker": "MSFT",
+        "weight": 0.27
+      },
+      {
+        "confidence": "medium",
+        "currency": "EUR",
+        "market_value": null,
+        "name": "Cash Reserve",
+        "sector": "Cash",
+        "ticker": "CASH",
+        "weight": 0.31
+      }
+    ]
+  },
+  "missing_required_fields": [
+    "cost_basis for ASML",
+    "cost_basis for MSFT",
+    "currency not confirmed for CASH holding"
+  ],
+  "notes": "Extracted from user-pasted portfolio table. Sector classifications are user-supplied or inferred from ticker; review before confirming.",
+  "raw_source_reference": "user_pasted_table_2026-01-05.txt",
+  "related_tickers": [
+    "ASML",
+    "MSFT"
+  ],
+  "snapshot_type": "portfolio_snapshot",
+  "source_description": "User-pasted portfolio holdings table from broker overview",
+  "target_local_file": "my_review/portfolio.json",
+  "uncertainties": [
+    "Currency not explicitly visible for all holdings",
+    "Sector not confirmed for MSFT — defaulted to Technology",
+    "Market value for Cash holding not visible"
+  ]
+}

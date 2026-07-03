@@ -1,0 +1,36 @@
+{
+  "confirmation_status": "needs_user_review",
+  "confidence": "low",
+  "created_at": "2026-01-05",
+  "draft_id": "draft-news-20260105-001",
+  "extracted_fields": {
+    "affected_assumptions": [
+      "China revenue contribution assumption may need updating.",
+      "Export control impact on ASML long-term order book not yet assessed."
+    ],
+    "date": "2026-01-04",
+    "headline": "Export controls tighten: new restrictions on semiconductor equipment to China announced",
+    "related_tickers_visible": [
+      "ASML"
+    ],
+    "source": "Financial news excerpt (user-provided)",
+    "summary": "New restrictions announced on semiconductor equipment exports to China. Specific equipment categories affected have not been confirmed. Company-specific impact requires further evidence gathering."
+  },
+  "missing_required_fields": [
+    "Specific equipment categories affected — not visible in excerpt",
+    "Company revenue impact estimate — cannot be extracted without additional evidence"
+  ],
+  "notes": "User-provided news excerpt. No external scraping. Affected assumptions require review before changing any decision status.",
+  "raw_source_reference": "news_excerpt_2026-01-04.txt",
+  "related_tickers": [
+    "ASML"
+  ],
+  "snapshot_type": "news_snapshot",
+  "source_description": "User-pasted news headline and excerpt about semiconductor export controls",
+  "target_local_file": "my_review/scope_notes.md",
+  "uncertainties": [
+    "Exact scope of new restrictions not confirmed",
+    "ASML-specific impact not visible in excerpt",
+    "Date of article confirmed only from excerpt header"
+  ]
+}

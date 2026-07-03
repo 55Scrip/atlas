@@ -505,6 +505,32 @@ established in internal v1 remains unchanged.
 
 ---
 
+## Snapshot Draft Schema — DEFINED (Sprint 223)
+
+Sprint 223 defined the formal Snapshot Draft schema as a typed Python dataclass
+and local JSON file format. The schema lives in `atlas/snapshot_input/schema.py`.
+
+**Key types:**
+- `SnapshotType` — 8 supported snapshot types (string enum)
+- `SnapshotConfirmationStatus` — 5 confirmation states
+- `SnapshotConfidence` — 4 confidence levels (descriptive only)
+- `SnapshotDraft` — full draft schema with required and optional fields
+- `validate_snapshot_draft` — validation helper
+- `load_snapshot_draft` / `save_snapshot_draft` — local file helpers
+
+**Required draft fields:** `draft_id`, `snapshot_type`, `source_description`,
+`extracted_fields`, `uncertainties`, `missing_required_fields`,
+`confirmation_status`, `target_local_file`, `created_at`
+
+**Optional fields:** `confidence`, `related_tickers`, `raw_source_reference`, `notes`
+
+**Serialization:** `SnapshotDraft.to_dict()`, `from_dict()`, `to_json()`, `from_json()`
+— deterministic, sort-keyed JSON output.
+
+**Example drafts:** `examples/snapshot_drafts/` — portfolio, research notes, news.
+
+---
+
 ## First Implementation Step — COMPLETE (Sprint 222)
 
 The first implementation step was:

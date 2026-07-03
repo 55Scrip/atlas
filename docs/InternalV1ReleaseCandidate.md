@@ -266,5 +266,14 @@ open questions and risks in Section 9; reasons to wait in Section 10. Missing or
 malformed notes are non-blocking. Two example files added. No OCR, AI, image
 parsing, or provider dependency introduced. Internal v1 foundation unchanged.
 
-Recommended next work (Sprint 223): **Define Snapshot Draft schema** — the next
-step toward making Snapshot Input concrete, without requiring OCR or image parsing.
+**Sprint 223 (post-v1 improvement — complete):**
+Snapshot Draft schema defined. New `atlas/snapshot_input/` package. `SnapshotType`
+(8 values), `SnapshotConfirmationStatus` (5 states), `SnapshotConfidence` (4 levels),
+`SnapshotDraft` dataclass with validation, serialization (`to_dict`/`from_dict`/
+`to_json`/`from_json`), and file helpers (`load_snapshot_draft`/`save_snapshot_draft`).
+Three example draft files. No OCR, AI, or provider dependency. No Weekly Review
+behavior changed. Internal v1 foundation unchanged.
+
+Recommended next work (Sprint 224): **Add snapshot draft CLI validation** — a local
+`atlas snapshot validate` command that validates draft JSON files and reports
+uncertainties/missing fields without writing to Atlas input files.

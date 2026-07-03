@@ -3800,6 +3800,16 @@ Demo passed. Release verification green.
 
 ---
 
+**Sprint 223 (2026-07-04): Define Snapshot Draft schema**
+
+**Decision:** Create `atlas/snapshot_input/` package with formal Snapshot Draft schema. `SnapshotType` (8 values), `SnapshotConfirmationStatus` (5 states), `SnapshotConfidence` (4 levels), `SnapshotDraft` dataclass, `validate_snapshot_draft`, `to_dict`/`from_dict`/`to_json`/`from_json` serialization helpers, `load_snapshot_draft`/`save_snapshot_draft` file helpers. Three example draft files under `examples/snapshot_drafts/`.
+
+**Rationale:** After research notes created the first local bridge from user-supplied material into Weekly Review, Atlas defines a formal draft schema so future Snapshot Input modes can produce structured, confirmable local drafts before updating portfolio, watchlist, journal, research notes, or company facts inputs.
+
+**Outcome:** `atlas/snapshot_input/__init__.py` and `schema.py` created. Three example JSON drafts created. 72 new tests. 2231 tests passing. No Weekly Review behavior changed. Sprint 224 target: Add snapshot draft CLI validation.
+
+---
+
 **Sprint 222 (2026-07-04): Add research notes input to Weekly Review**
 
 **Decision:** Add an optional `--research-notes DIR` CLI argument that loads per-ticker Markdown notes files (`research_notes/<TICKER>/notes.md`) into Weekly Review. New `WeeklyReviewResearchNote` dataclass. New `_parse_research_notes` function extracts evidence gaps, open questions, risks to monitor, and reasons to wait from known `##` headings. Bounded file reading (8,000 chars max). Section 8 shows evidence gaps from notes; Section 9 shows open questions and risks; Section 10 shows reasons to wait.
