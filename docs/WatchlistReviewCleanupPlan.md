@@ -1,7 +1,8 @@
 # Atlas Watchlist Review Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 186)
-**Status:** OPEN — Sprint 186 audit complete. One active cleanup candidate: provider coupling in `engine.py`. Sprint 187 recommended: resolve provider boundary issue.
+**Updated:** 2026-07-03 (Sprint 187)
+**Status:** CLOSED — Sprint 187 assessed the provider boundary issue and classified it as acceptable legacy coupling. No code change made. No cleanup remains warranted. No further work planned until new dead code, stale exports, provider-boundary issues, evidence/watchlist/decision boundary issues, deferred engine deletion evidence, or a clear replacement/migration target emerges.
 
 ---
 
@@ -274,11 +275,11 @@ These are not duplicates. `watchlist_review` is a higher-level consumer of `Watc
 
 ## Technical Debt Summary
 
-`atlas/watchlist_review/` has one cleanup candidate:
+`atlas/watchlist_review/` has no remaining technical debt after Sprint 187:
 
 - 2 modules, 894 lines
 - 11 `__all__` exports — all active
-- **1 provider boundary issue** — `atlas.providers` directly imported in `engine.py` (non-adapter, non-CLI module)
+- `atlas.providers` import — **classified as acceptable legacy coupling** (see Sprint 187 resolution)
 - 0 stale imports from closed cleanup tracks
 - 0 dead private helpers
 - 0 circular dependencies
@@ -288,14 +289,92 @@ These are not duplicates. `watchlist_review` is a higher-level consumer of `Watc
 
 ---
 
+## Sprint 187 — Provider Boundary Resolution
+
+**Resolution: Option D — Acceptable Legacy Coupling. No code change.**
+
+### Provider Coupling Audit
+
+`engine.py:38`: `from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider`
+
+Usage sites:
+- `CompanyDataProvider` — type hint in `WatchlistReviewInput.provider` field and in 3 public function signatures (`demo_watchlist_review_input`, `watchlist_review_input_from_json_file`, `watchlist_review_input_from_mapping`) and 1 private helper (`_split_supported_items`). **Type-only. Zero runtime effect.**
+- `MockCompanyAnalysisProvider()` — instantiated as default in `WatchlistReviewEngine.review()` (line 131), `demo_watchlist_review_input()` (line 229), `watchlist_review_input_from_mapping()` (line 266). **Runtime construction. Required for deterministic behavior.**
+
+### Why Decoupling Is Not Safe Without Behavior Change
+
+**Option A (Structural Protocol):** `CompanyDataProvider` in `atlas/providers/base.py` is already a `Protocol` — it is a pure structural interface. Replacing it with a locally-defined duplicate protocol would add complexity with zero architectural gain. The import already IS a protocol import.
+
+**Option B (Loose Type Hint):** Replacing `CompanyDataProvider` with `Any | None` is possible but degrades type safety without removing the `atlas.providers` import (which is still needed for `MockCompanyAnalysisProvider`). Incomplete decoupling.
+
+**Option C (Move Default Outward):** `MockCompanyAnalysisProvider()` is instantiated in 3 locations in `engine.py`. Moving all three defaults to callers would require changes to:
+- `atlas/cli/main.py` — already imports `MockCompanyAnalysisProvider` directly (line 100)
+- `atlas/home/engine.py` — already imports `MockCompanyAnalysisProvider` directly (line 32)
+- `watchlist_review_input_from_mapping()` and `watchlist_review_input_from_json_file()` — public functions that produce a fully-formed `WatchlistReviewInput` with a default provider; removing the default from these functions would break their current API contract and require callers to supply a provider even for the common case
+
+### Why the Coupling Is Acceptable
+
+1. **Pattern is codebase-consistent:** `atlas/cli/main.py:100` and `atlas/home/engine.py:32` both contain `from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider`. This is the established pattern across all layers that need the provider — not a unique smell in `watchlist_review/engine.py`.
+
+2. **`CompanyDataProvider` is already a Protocol:** The import is structurally equivalent to importing a type alias. No runtime behavior is coupled; any object satisfying `get_company_analysis()` and `get_portfolio_profile()` works.
+
+3. **`MockCompanyAnalysisProvider` default is required for determinism:** The mock is the engine's deterministic default. Removing it would require callers to always supply a provider, changing the `WatchlistReviewEngine` API from "works with no configuration" to "requires explicit provider injection."
+
+4. **No network access:** `MockCompanyAnalysisProvider` is local and deterministic. No network calls are made by default. The opt-in provider pattern is preserved.
+
+5. **No circular dependency:** `atlas.watchlist_review` imports `atlas.providers`; `atlas.providers` does not import `atlas.watchlist_review`.
+
+### Decoupling Options Evaluated
+
+| Option | Assessment |
+|---|---|
+| A — Local structural Protocol | `CompanyDataProvider` is already a Protocol; local duplicate adds complexity, no gain |
+| B — `Any \| None` type hint | Removes type safety; `atlas.providers` import still needed for `MockCompanyAnalysisProvider` |
+| C — Move defaults outward | Changes API contract of 3 public functions; breaks "works with no configuration" behavior |
+| **D — Accept Legacy Coupling** | **Selected.** No behavior change, no API change, consistent with existing codebase pattern |
+
+### Deferred Engine Deletion Verification
+
+`atlas/cli/deprecations.py:79` note: "atlas.evidence engine remains on disk — still used by atlas/comparison, atlas/decision_journal, and atlas/watchlist_review. Engine deletion deferred until those callers are retired."
+
+Sprint 187 confirms:
+- `atlas/watchlist_review/engine.py` still imports `EvidenceQualityEngine` from `atlas.evidence` ✓
+- The deferred deletion note refers to `atlas.evidence` engine, not `atlas/watchlist_review` — still accurate ✓
+- Provider boundary resolution (accepting the coupling) does not change this conclusion ✓
+- Deprecation metadata unchanged ✓
+
+### Sprint 187 Verification
+
+| Check | Result |
+|---|---|
+| All 11 exports importable, `__all__` exact match | ✓ |
+| Provider coupling classified as acceptable legacy coupling | ✓ |
+| No code change to `engine.py` | ✓ |
+| `CompanyDataProvider` is a Protocol — type-only import confirmed | ✓ |
+| `MockCompanyAnalysisProvider` default required for determinism | ✓ |
+| Codebase-consistent pattern (`cli/main.py`, `home/engine.py` same import) | ✓ |
+| No stale imports from closed cleanup tracks | ✓ |
+| Deferred engine deletion note remains accurate | ✓ |
+| Sprint 186 guardrail test updated (docstring reflects Sprint 187 classification) | ✓ |
+| Full test suite | 1622 passed, 3 skipped ✓ |
+| RC2 verification | Green ✓ |
+| Demo | Passes, provider-free ✓ |
+
+**Track status: CLOSED as of Sprint 187.**
+
+No further `atlas/watchlist_review/` cleanup work is planned until new dead code, stale exports, new provider-boundary issues, deferred engine deletion evidence, watchlist/evidence/decision boundary issues, or a clear replacement/migration target emerges.
+
+---
+
 ## Reopening Conditions
 
-Beyond Sprint 187 resolution:
+This track should only be reopened if:
 - A new zero-caller or stale export is introduced
 - A stale import from a closed cleanup track is introduced
-- A new provider import is added beyond the existing documented coupling
+- A new uncoupled provider import is added beyond the documented `CompanyDataProvider`/`MockCompanyAnalysisProvider` coupling
 - CLI upward coupling is introduced
+- `atlas.evidence` callers (`atlas/comparison`, `atlas/decision_journal`, `atlas/watchlist_review`) are retired (opening `atlas.evidence` engine deletion)
 
-## Recommended Sprint 187 Target
+## Recommended Sprint 188 Target
 
-**Assess and resolve the provider boundary issue** — determine whether `CompanyDataProvider` and `MockCompanyAnalysisProvider` can be decoupled from `engine.py` without behavior change (replacing with a structural protocol, `Any | None`, or moving the default instantiation to the adapter/CLI layer). If decoupling is safe and non-behavior-changing, remove the `atlas.providers` import in Sprint 187. If decoupling would require behavior changes or new types, classify as acceptable legacy coupling and close the track instead.
+**Release candidate checkpoint** — after resolving or classifying the provider boundary issue in `atlas/watchlist_review/` and closing another cleanup track, Atlas should run a release candidate checkpoint to verify all closed tracks remain stable before the next broad audit.

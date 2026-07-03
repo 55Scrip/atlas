@@ -2,6 +2,34 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 187 — Resolve Watchlist Review Provider Boundary
+
+Decision: Classify `atlas/watchlist_review/engine.py` provider coupling as acceptable legacy coupling. No code change. Declare `atlas/watchlist_review/` cleanup track CLOSED.
+
+**Rationale:** Sprint 187 assessed all decoupling options for the `from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider` import in `engine.py`:
+
+- **`CompanyDataProvider`** is already a `Protocol` in `atlas/providers/base.py` — its import is type-only with zero runtime effect. Creating a local duplicate protocol would add complexity for no architectural gain.
+- **`MockCompanyAnalysisProvider()`** is instantiated as the deterministic default in 3 locations. Removing it would change the `WatchlistReviewEngine` API from "works with no configuration" to "requires explicit provider injection" — a behavior change not permitted in Sprint 187.
+- **Pattern is codebase-consistent:** `atlas/cli/main.py:100` and `atlas/home/engine.py:32` both use the identical `from atlas.providers import CompanyDataProvider, MockCompanyAnalysisProvider` pattern. The coupling is not a unique anomaly in `watchlist_review/engine.py`; it is the established codebase pattern.
+- **No circular dependency, no network access, no stale imports.**
+
+All four decoupling options (structural protocol, loose type hint, move defaults outward, accept coupling) were evaluated. Option D is the only one that preserves behavior and API contracts without adding complexity.
+
+**Final verified state:**
+- 2 modules, 894 lines, 11 active exports — all importable ✓
+- Provider coupling: `CompanyDataProvider` (Protocol, type-only) + `MockCompanyAnalysisProvider` (deterministic default) — acceptable legacy coupling ✓
+- Active CLI: `atlas watchlist review` ✓
+- Active application callers: `atlas/home/engine.py`, `atlas/conversation/engine.py` ✓
+- No stale imports from any closed cleanup track ✓
+- Deferred engine deletion note in `atlas/cli/deprecations.py` refers to `atlas.evidence` — still accurate ✓
+- 1622 passed, 3 skipped | RC2 green | Demo passes ✓
+
+**Changes made:** No code change to `engine.py`. Updated `tests/test_watchlist_review_package_sprint186.py` (guardrail docstring updated to reflect Sprint 187 classification). Updated `docs/WatchlistReviewCleanupPlan.md` (status CLOSED, Sprint 187 full resolution section including option analysis, deferred deletion verification, closure table).
+
+**Next sprint recommendation:** Release candidate checkpoint.
+
+---
+
 ## 2026-07-03: Sprint 186 — Watchlist Review Package Audit
 
 Decision: Audit `atlas/watchlist_review/` and identify provider boundary as the primary cleanup candidate.

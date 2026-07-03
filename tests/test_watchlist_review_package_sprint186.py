@@ -144,10 +144,12 @@ def test_watchlist_review_does_not_import_adapters():
 # ── Provider coupling: document that it exists (not a guard against it) ──────
 
 def test_watchlist_review_provider_coupling_is_documented():
-    """Sprint 186: atlas/watchlist_review/engine.py imports CompanyDataProvider and
-    MockCompanyAnalysisProvider from atlas.providers. This is the known provider coupling
-    documented in docs/WatchlistReviewCleanupPlan.md. This test asserts the coupling
-    EXISTS so any future removal is flagged for review.
+    """Sprint 186/187: atlas/watchlist_review/engine.py imports CompanyDataProvider and
+    MockCompanyAnalysisProvider from atlas.providers. Sprint 187 classified this as
+    acceptable legacy coupling — the same pattern is used in atlas/cli/main.py and
+    atlas/home/engine.py. CompanyDataProvider is a Protocol (type-only import);
+    MockCompanyAnalysisProvider is the required deterministic default. This test asserts
+    the coupling EXISTS so any future removal is flagged for review and docs updated.
     """
     source = pathlib.Path("atlas/watchlist_review/engine.py").read_text()
     assert "from atlas.providers import" in source, (
