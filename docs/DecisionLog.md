@@ -2,6 +2,33 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 191 — Release Candidate Checkpoint Across 20 Closed Tracks
+
+Decision: Confirm Atlas release-candidate stability across all 20 closed cleanup tracks after three consecutive closures: `atlas/decision_journal/` (Sprint 185), `atlas/watchlist_review/` (Sprint 187), and `atlas/watchlist/` (Sprint 190).
+
+**Rationale:** After closing decision journal, watchlist review, and watchlist, Atlas remains stable across all closed cleanup tracks. Active package exports remain importable, deleted modules remain absent, retired CLI paths remain retired, provider boundaries remain unchanged or intentionally classified, the demo remains provider-free, and release verification remains green.
+
+**Final verified state:**
+- 20 closed cleanup tracks — all stable ✓
+- `atlas/decision_journal/` CLOSED Sprint 185 — 11 exports active, all callers valid ✓
+- `atlas/watchlist_review/` CLOSED Sprint 187 — 11 exports active, provider coupling: acceptable legacy coupling ✓
+- `atlas/watchlist/` CLOSED Sprint 190 — 13 capability exports active, adapter functions active, provider-free ✓
+- 13 deleted modules remain absent ✓
+- 7 retired CLI commands remain non-callable ✓
+- `evidence`, `reason`, `risk` groups absent from `atlas --help` ✓
+- 18 active packages importable ✓
+- Provider boundaries unchanged or intentionally classified ✓
+- Watchlist review provider boundary: Outcome B (acceptable legacy coupling, unchanged since Sprint 187) ✓
+- `CompanyAnalysisProvider` absent from all active code ✓
+- **1637 passed, 3 skipped | RC2 green | Demo passes ✓**
+- Suite growth since Sprint 188 RC: 1622 → 1637 (+15 tests)
+
+**Changes made:** Updated `docs/ReleaseCandidateCheckpoint.md` (Sprint 191 section: recent closure verification, watchlist review provider boundary, 20-track closed-track table, deleted module guard, CLI verification, 18-package smoke table, provider boundary table, RC verification). Updated standard docs.
+
+**Next sprint recommendation:** Audit `atlas/analysis/` active residual surface (Sprint 192).
+
+---
+
 ## 2026-07-03: Sprint 190 — Close Watchlist Cleanup Track
 
 Decision: Close the Atlas watchlist cleanup track. After inventory, export review, caller review, watchlist/watchlist-review boundary review, evidence/decision/watchlist boundary review, provider boundary review, persistence/data shape review, and stale import audit, the watchlist package contains only active, intentional code. Further cleanup would create churn without architectural benefit.
