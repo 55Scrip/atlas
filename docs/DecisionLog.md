@@ -2,6 +2,23 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 173 — CLI Deprecated Command Registry Audit Checkpoint
+
+Decision: `atlas/cli/` deprecated command registry is clean. One cleanup action is warranted: remove 3 empty shell app groups.
+
+**Rationale:** After audit-first inventory (Sprint 173), the CLI registry is accurate and complete. `_REGISTRY` is correctly empty (all deprecated commands retired Sprint 91). All 7 `_RETIRED_REGISTRY` entries are accurate after 14 cleanup closures — all retirement metadata verified against repository reality. No retired command is accidentally callable. Provider boundary is correct: `_provider_from_name()` in CLI only; default mock; Yahoo opt-in only.
+
+**One cleanup candidate found:** Three sub-app groups are declared and registered in `main.py` but contain zero commands: `evidence_app` (`atlas evidence`), `reason_app` (`atlas reason`), `risk_app` (`atlas risk`). These are residual scaffolding from the retired commands `atlas evidence assess`, `atlas reason analyze`, and `atlas risk size`. They expose empty CLI groups confusing to users. Removing them is a 6-line-per-group change with zero behavioral impact.
+
+**Stale metadata confirmed accurate:** All `removal_criteria` strings verified:
+- `atlas evidence assess`: `atlas.evidence` still imported by comparison, decision_journal, watchlist_review ✓
+- `atlas risk size`: `RiskAnalysis` still imported by conversation and intelligence ✓
+- `atlas portfolio review`: `PortfolioReviewEngine` still instantiated by `atlas/home/engine.py` ✓
+
+**Sprint 174 recommended target:** Remove empty shell CLI app groups (`evidence_app`, `reason_app`, `risk_app`) and close the CLI cleanup track. This closes a 15th cleanup track.
+
+---
+
 ## 2026-07-03: Sprint 172 — Release Candidate Checkpoint After 14 Cleanup Closures
 
 Decision: Atlas is release-candidate stable after 14 cleanup track closures.
