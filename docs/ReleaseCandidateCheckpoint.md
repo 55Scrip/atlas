@@ -1,8 +1,8 @@
 # Atlas Release Candidate Checkpoint
 
 **Created:** 2026-07-03 (Sprint 163)  
-**Updated:** 2026-07-03 (Sprint 191)  
-**Status:** GREEN — Atlas RC2 is stable after 20 closed cleanup tracks.
+**Updated:** 2026-07-03 (Sprint 194)  
+**Status:** GREEN — Atlas RC2 is stable after 21 closed cleanup tracks.
 
 ---
 
@@ -1036,3 +1036,208 @@ Test suite growth since prior RC (Sprint 188): 1622 → 1637 (+15 tests from Spr
 ## Recommended Sprint 192 Target
 
 **Audit `atlas/analysis/` active residual surface** — after 20 closed cleanup tracks, the remaining active `atlas/analysis/` surface (company analysis scoring/investment-report functionality) should be audited as a residual legacy runtime layer. The Sprint 141 closure removed many submodules, but `atlas/analysis/company_analysis.py`, `atlas/analysis/investment_report.py`, and related modules remain active. A focused audit will inventory surviving exports, confirm boundaries with `atlas/capabilities/company_analysis/`, and close or document remaining technical debt.
+
+---
+
+## Sprint 194 Checkpoint Summary
+
+Sprint 194 is a verification, documentation, and stabilization sprint confirming Atlas remains release-candidate stable after:
+- Sprint 192: Audit of `atlas/analysis/` active residual surface
+- Sprint 193: Closure of residual analysis cleanup track; `atlas.analysis.__all__` reduced from 12 to 9 exports
+
+No runtime behavior changed. No modules deleted. No CLI behavior changed. No provider behavior changed.
+
+**Note on Sprint 181 historical reference:** The Sprint 181 section above lists "all 12 active `atlas.analysis.__all__` exports" including `CompanyDataProvider`, `MockCompanyAnalysisProvider`, `YahooFinanceProvider`. Those 3 were zero-caller re-exports removed in Sprint 193. The Sprint 181 section is an accurate historical record; the current `__all__` has 9 exports. See Sprint 194 verification below.
+
+---
+
+## Residual Analysis Closure Verification (Sprint 194)
+
+Sprint 193 closed the active residual analysis runtime audit track preserved by Sprint 141. Sprint 194 confirms all findings remain unchanged.
+
+| Check | Result |
+|---|---|
+| `atlas.analysis` importable | ✓ |
+| `__all__` has exactly 9 exports (reduced from 12) | ✓ |
+| `CompanyDataProvider` absent from `atlas.analysis.__all__` | ✓ |
+| `MockCompanyAnalysisProvider` absent from `atlas.analysis.__all__` | ✓ |
+| `YahooFinanceProvider` absent from `atlas.analysis.__all__` | ✓ |
+| All 9 remaining exports importable | ✓ |
+| Active CLI callers (`atlas report`, `atlas analyze`) | ✓ |
+| Capability boundary: no cross-imports in either direction | ✓ |
+| Sprint 141 deleted modules absent | 8/8 ✓ |
+| No stale imports from closed tracks | ✓ |
+| No network access in residual analysis modules | ✓ |
+| `MockCompanyAnalysisProvider` shim active (4 test callers) | ✓ |
+| Provider selection: CLI layer only via `_provider_from_name()` | ✓ |
+
+**Current `atlas.analysis.__all__` (9 exports):** `AtlasInvestmentEngine`, `CompanyAnalysis`, `InvestmentExplanation`, `InvestmentReport`, `ScoreCategory`, `build_investment_report`, `create_placeholder_company_analysis`, `explain_investment_report`, `render_investment_report`
+
+Track status: **CLOSED Sprint 193** ✓
+
+---
+
+## Closed Cleanup Tracks (Sprint 194) — 21 Total
+
+| # | Track | Closure Sprint | Outcome |
+|---|---|---|---|
+| 1 | `atlas/analysis/` main cleanup | Sprint 141 | Multiple analysis submodules deleted Sprints 100–141 |
+| 2 | `atlas/decision/` cleanup | Sprint 144 | `render_comparison_result` deleted Sprint 143; track closed Sprint 144 |
+| 3 | Provider boundary audit | Sprint 146 | Stale Yahoo re-exports removed; 4 clean public exports remain |
+| 4 | Portfolio boundary | Sprint 148 | Stale `PortfolioFitInput` import removed from adapter |
+| 5 | `atlas/evidence/` cleanup | Sprint 150 | No cleanup warranted; package clean and stable |
+| 6 | `atlas/reasoning/` cleanup | Sprint 153 | `atlas/reasoning/` package deleted; `check_reasoning_report` removed Sprint 152 |
+| 7 | `atlas/risk/` cleanup | Sprint 155 | No cleanup warranted; package clean and stable |
+| 8 | `atlas/principles/` cleanup | Sprint 158 | `check_intelligence_report` + `check_suitability_assessment` removed Sprint 157 |
+| 9 | `atlas/comparison/` cleanup | Sprint 160 | No cleanup warranted; package clean and stable |
+| 10 | `atlas/home/` cleanup | Sprint 162 | No cleanup warranted; package clean and stable |
+| 11 | `atlas/intelligence/` cleanup | Sprint 165 | No cleanup warranted; package clean and stable |
+| 12 | `atlas/conversation/` cleanup | Sprint 167 | No cleanup warranted; package clean and stable |
+| 13 | `atlas/dashboard/` cleanup | Sprint 169 | No cleanup warranted; cleanest provider boundary audited |
+| 14 | `atlas/capabilities/portfolio_intelligence/` cleanup | Sprint 171 | Stale docstring removed; no runtime cleanup warranted |
+| 15 | `atlas/cli/` cleanup | Sprint 174 | 3 empty shell app groups removed (`evidence`, `reason`, `risk`) |
+| 16 | Company analysis residual cleanup | Sprint 180 | `CompanyAnalysisProvider` alias removed from `atlas/analysis/company_analysis.py` |
+| 17 | `atlas/capabilities/company_analysis/` cleanup | Sprint 183 | No cleanup warranted; cleanest provider boundary of any capability |
+| 18 | `atlas/decision_journal/` cleanup | Sprint 185 | No cleanup warranted; 11 active exports; 4 intentional lateral dependencies |
+| 19 | `atlas/watchlist_review/` cleanup | Sprint 187 | Provider coupling classified as acceptable legacy coupling; no code change |
+| 20 | `atlas/watchlist/` cleanup | Sprint 190 | No cleanup warranted; 13 active exports; provider-free; exemplary Blueprint capability |
+| 21 | Active residual `atlas/analysis/` runtime audit | Sprint 193 | 3 zero-caller provider re-exports removed from `__all__`; `__all__` 12→9; no runtime behavior changed |
+
+---
+
+## Deleted Module Guard (Sprint 194)
+
+All deleted modules confirmed absent — unchanged since Sprint 181:
+
+| Module/Package | Status |
+|---|---|
+| `atlas/reasoning/` | Absent ✓ (deleted Sprint 153) |
+| `atlas/analysis/portfolio.py` | Absent ✓ |
+| `atlas/analysis/growth.py` | Absent ✓ |
+| `atlas/analysis/macro.py` | Absent ✓ |
+| `atlas/analysis/moat.py` | Absent ✓ |
+| `atlas/analysis/quality.py` | Absent ✓ |
+| `atlas/analysis/sentiment.py` | Absent ✓ |
+| `atlas/analysis/technicals.py` | Absent ✓ |
+| `atlas/analysis/valuation.py` | Absent ✓ |
+| `atlas/analysis/comparison.py` | Absent ✓ |
+| `atlas/analysis/memory.py` | Absent ✓ |
+| `atlas/analysis/scoring.py` | Absent ✓ |
+| `atlas/analysis/watchlist.py` | Absent ✓ |
+
+All retired symbol references in active code classified (unchanged from Sprint 191):
+- `atlas/domains/decision/engine.py` `ReasoningEngine` — distinct Blueprint-layer class, not deleted `atlas.reasoning.ReasoningEngine` ✓
+- `atlas/providers/yahoo.py` `YahooCompany/YahooFinancials/YahooMarketData` — active internal types in opt-in Yahoo provider ✓
+- `atlas/capabilities/portfolio_intelligence/models.py` — docstring migration notes only ✓
+- `atlas/cli/deprecations.py` — retired command metadata, never executed ✓
+- `CompanyAnalysisProvider` — absent from all active code; appears only in deletion guardrail tests and docs ✓
+- `MockCompanyAnalysisProvider`, `CompanyDataProvider` — active in `atlas/providers/`, `atlas/cli/main.py`, `atlas/home/engine.py`, `atlas/comparison/engine.py`, `atlas/conversation/engine.py`, `atlas/watchlist_review/engine.py` — all intentional, documented ✓
+
+No stale active runtime references found.
+
+---
+
+## CLI Verification (Sprint 194)
+
+### Help-surface state confirmed
+
+| Group | Status in `atlas --help` |
+|---|---|
+| `evidence` | **Absent** ✓ (removed Sprint 174) |
+| `reason` | **Absent** ✓ (removed Sprint 174) |
+| `risk` (bare group) | **Absent** ✓ (removed Sprint 174) |
+| `risk-drift` | Present ✓ (active) |
+| `journal` | Present ✓ (active) |
+| `watchlist` | Present ✓ (active) |
+| `company-analysis` | Present ✓ (active) |
+
+### Retired commands (unchanged since Sprint 163)
+
+| Command | Retired | Still non-callable |
+|---|---|---|
+| `atlas daily brief` | Sprint 85 | ✓ |
+| `atlas evidence assess` | Sprint 86 | ✓ |
+| `atlas reason analyze` | Sprint 87 | ✓ |
+| `atlas risk size` | Sprint 88 | ✓ |
+| `atlas portfolio analyze` | Sprint 89 | ✓ |
+| `atlas portfolio review` | Sprint 90 | ✓ |
+| `atlas watchlist analyze` | Sprint 91 | ✓ |
+
+`_REGISTRY` empty ✓ — `_RETIRED_REGISTRY` 7 entries ✓
+
+### Active commands confirmed
+
+`atlas home`, `atlas compare`, `atlas analyze`, `atlas daily summary`, `atlas intelligence analyze`, `atlas dashboard show`, `atlas journal create/list/review`, `atlas language explain`, `atlas memory save/show/compare`, `atlas economics analyze`, `atlas report`, `atlas monitor`, `atlas ask`, `atlas company-analysis export/merge`, `atlas watchlist review`, `atlas watchlist intelligence`, `atlas add-company`, `atlas list-companies`, `atlas import-financials` — all present and active ✓
+
+---
+
+## Active Package Smoke Verification (Sprint 194)
+
+| Package | Exports | Status |
+|---|---|---|
+| `atlas.evidence` | 9 | Importable ✓ |
+| `atlas.risk` | 8 | Importable ✓ |
+| `atlas.principles` | 9 | Importable ✓ |
+| `atlas.comparison` | 9 | Importable ✓ |
+| `atlas.home` | 7 | Importable ✓ |
+| `atlas.intelligence` | 5 | Importable ✓ |
+| `atlas.conversation` | 6 | Importable ✓ |
+| `atlas.dashboard` | 6 | Importable ✓ |
+| `atlas.capabilities.portfolio_intelligence` | 4 | Importable ✓ |
+| `atlas.capabilities.company_analysis` | 9 | Importable ✓ |
+| `atlas.capabilities` | 4 | Importable ✓ |
+| `atlas.domains` | 9 | Importable ✓ |
+| `atlas.adapters` | — | Importable ✓ |
+| `atlas.analysis` | 9 | Importable ✓ (reduced from 12; 3 zero-caller re-exports removed Sprint 193) |
+| `atlas.decision_journal` | 11 | Importable ✓ |
+| `atlas.watchlist_review` | 11 | Importable ✓ |
+| `atlas.capabilities.watchlist_intelligence` | 13 | Importable ✓ |
+| `atlas.cli` | — | Importable ✓ |
+
+18 packages — all importable ✓
+
+---
+
+## Provider Boundary (Sprint 194)
+
+| Package | Default | Network access | Direct Yahoo import? | Notes |
+|---|---|---|---|---|
+| `atlas/comparison/` | `MockCompanyAnalysisProvider` | CLI opt-in `--provider yahoo` | No ✓ | Unchanged |
+| `atlas/home/` | `MockCompanyAnalysisProvider` | CLI opt-in `--provider yahoo` | No ✓ | Unchanged |
+| `atlas/conversation/` | `MockCompanyAnalysisProvider` | CLI opt-in `--provider yahoo` | No ✓ | Unchanged |
+| `atlas/watchlist_review/` | `MockCompanyAnalysisProvider` | CLI opt-in `--provider yahoo` | No ✓ | Acceptable legacy coupling — Sprint 187 |
+| `atlas/intelligence/` | No direct provider | Via constructor injection | None ✓ | Unchanged |
+| `atlas/dashboard/` | No direct provider | Via annotation only | None ✓ | Unchanged |
+| `atlas/capabilities/portfolio_intelligence/` | No provider | Deterministic local only | None ✓ | Unchanged |
+| `atlas/capabilities/company_analysis/` | No provider | Deterministic local only | None ✓ | Cleanest boundary |
+| `atlas/capabilities/watchlist_intelligence/` | No provider | None | None ✓ | Cleanest — no provider coupling |
+| `atlas/adapters/watchlist.py` | No provider | None | None ✓ | Clean adapter |
+| `atlas/analysis/` | No direct network | Provider-injected via `analyze_ticker()` | Protocol import only ✓ | `__all__` no longer re-exports provider types |
+| `atlas/decision_journal/` | No provider | None | None ✓ | Clean boundary |
+| `atlas/cli/main.py` | — | `YahooFinanceProvider` via `_provider_from_name()` | Correct — CLI layer only ✓ | Unchanged |
+
+No new provider behavior introduced. Demo remains provider-free.
+
+**Sprint 193 provider boundary change:** `atlas/analysis/__init__.py` no longer re-exports `CompanyDataProvider`, `MockCompanyAnalysisProvider`, or `YahooFinanceProvider`. These were public `__all__` surface re-exports with zero callers. The provider selection mechanism (`_provider_from_name()` in CLI) is unchanged. The `analyze_ticker()` Protocol type annotation in `engine.py` is unchanged.
+
+---
+
+## Release Candidate Verification (Sprint 194)
+
+| Check | Result |
+|---|---|
+| `python -m compileall atlas tests` | Green ✓ |
+| `python -m pytest` | **1648 passed, 3 skipped** ✓ |
+| `scripts/verify_release_candidate.sh` | RC2 green ✓ |
+| `scripts/run_daily_brief_demo.sh` | Passes, provider-free ✓ |
+| Forbidden language check | No violations ✓ |
+
+Test suite growth since prior RC (Sprint 191): 1637 → 1648 (+11 tests from Sprints 192–193 guardrails).
+
+---
+
+## Recommended Sprint 195 Target
+
+**Audit `atlas/config/` package.**
+
+After 21 closed cleanup tracks and six RC checkpoints (Sprint 163, Sprint 172, Sprint 175, Sprint 181, Sprint 191, Sprint 194), `atlas/config/` is the next focused infrastructure package to audit. A configuration package audit will clarify configuration/provider/runtime boundaries before deeper storage or runtime audits. Pattern: audit-first inventory (Sprint 195), then targeted action or closure sprint (Sprint 196).

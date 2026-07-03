@@ -2,6 +2,33 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 194 — Release Candidate Checkpoint After Residual Analysis Closure
+
+Decision: Confirm Atlas release-candidate stability across all 21 closed cleanup tracks after the residual analysis public export reduction (Sprint 193: `atlas.analysis.__all__` reduced from 12 to 9 core exports).
+
+**Rationale:** After closing the active residual analysis runtime track and removing 3 zero-caller provider re-exports from `atlas.analysis.__all__`, Atlas remains stable. All 9 remaining exports are importable and have active callers. Deleted modules remain absent. Retired CLI paths remain retired. Provider boundaries remain unchanged or intentionally classified. The demo remains provider-free. Release verification remains green.
+
+**Final verified state:**
+- 21 closed cleanup tracks — all stable ✓
+- Residual analysis track CLOSED Sprint 193: `__all__` 12→9; 3 zero-caller provider re-exports removed ✓
+- All 9 active `atlas.analysis.__all__` exports importable ✓
+- `CompanyDataProvider`, `MockCompanyAnalysisProvider`, `YahooFinanceProvider` absent from `atlas.analysis.__all__` ✓
+- `MockCompanyAnalysisProvider` shim in `company_analysis.py` active — 4 test callers ✓
+- 13 deleted modules absent ✓
+- 7 retired CLI commands non-callable ✓
+- Empty CLI groups (`evidence`, `reason`, `risk`) absent from `atlas --help` ✓
+- 18 active packages importable ✓
+- Provider boundaries unchanged or intentionally classified ✓
+- No stale active runtime references found ✓
+- **1648 passed, 3 skipped | RC2 green | Demo passes ✓**
+- Suite growth since Sprint 191 RC: 1637 → 1648 (+11 tests)
+
+**Changes made:** Updated `docs/ReleaseCandidateCheckpoint.md` (Sprint 194 section: residual analysis closure verification, 21-track closed-track table, deleted module guard, CLI verification, 18-package smoke table, provider boundary table with Sprint 193 note, RC verification). Updated standard docs.
+
+**Next sprint recommendation:** Audit `atlas/config/` package (Sprint 195).
+
+---
+
 ## 2026-07-03: Sprint 193 — Close Residual Analysis Cleanup Track
 
 Decision: Close the active residual `atlas/analysis/` cleanup track preserved by Sprint 141, and remove 3 zero-caller provider re-exports from `atlas/analysis/__init__.py`.
