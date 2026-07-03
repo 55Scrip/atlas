@@ -369,6 +369,11 @@ def weekly_review_command(
         "--financials",
         help="Directory of per-ticker financial history CSV files (optional).",
     ),
+    research_notes_dir: Path | None = typer.Option(
+        None,
+        "--research-notes",
+        help="Directory of per-ticker research notes (research_notes/<TICKER>/notes.md, optional).",
+    ),
     as_of: str = typer.Option(
         "",
         "--as-of",
@@ -413,6 +418,7 @@ def weekly_review_command(
         journal_path=journal_path,
         company_facts_dir=company_facts_dir,
         financials_dir=financials_dir,
+        research_notes_dir=research_notes_dir,
         as_of=as_of,
         scope_notes=scope_notes,
     )

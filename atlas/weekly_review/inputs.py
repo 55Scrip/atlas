@@ -11,6 +11,7 @@ Supports:
   - Decision journal: reads entry count from existing .atlas/decision_journal.json
   - Company facts directory: existence check only
   - Financials directory: existence check only
+  - Research notes directory: per-ticker notes.md, bounded read, safe extraction
 """
 
 from __future__ import annotations
@@ -510,6 +511,77 @@ class WeeklyReviewTickerEvidence:
     source: str  # "portfolio", "watchlist", or "portfolio_and_watchlist"
 
 
+# Max characters read from a single research notes file.
+_RESEARCH_NOTES_MAX_CHARS = 8_000
+
+# Known section headings in research notes markdown files.
+_RESEARCH_NOTES_HEADINGS: dict[str, str] = {
+    "evidence gaps": "evidence_gaps",
+    "open questions": "open_questions",
+    "risks to monitor": "risks_to_monitor",
+    "reason to wait": "reasons_to_wait",
+    "reasons to wait": "reasons_to_wait",
+    "thesis notes": "thesis_notes",
+}
+
+
+@dataclass(frozen=True)
+class WeeklyReviewResearchNote:
+    """Local research notes for one ticker.
+
+    Loaded from research_notes/<TICKER>/notes.md (bounded read, safe extraction).
+    Parsed fields are non-empty tuples only when the corresponding section exists.
+    """
+
+    ticker: str
+    available: bool
+    evidence_gaps: tuple[str, ...] = ()
+    open_questions: tuple[str, ...] = ()
+    risks_to_monitor: tuple[str, ...] = ()
+    reasons_to_wait: tuple[str, ...] = ()
+
+
+def _parse_research_notes(text: str) -> dict[str, tuple[str, ...]]:
+    """Extract bullet items from known section headings in a research notes file.
+
+    Reads ## headings and captures bullet lines (starting with - or *) under
+    each known heading. Ignores unknown headings. Returns a dict keyed by the
+    canonical field name (e.g. "evidence_gaps").
+    """
+    result: dict[str, list[str]] = {k: [] for k in _RESEARCH_NOTES_HEADINGS.values()}
+    current_field: str | None = None
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("##"):
+            heading_text = stripped.lstrip("#").strip().lower()
+            current_field = _RESEARCH_NOTES_HEADINGS.get(heading_text)
+        elif current_field and stripped.startswith(("-", "*")):
+            bullet = stripped.lstrip("-*").strip()
+            if bullet:
+                result[current_field].append(bullet)
+
+    return {k: tuple(v) for k, v in result.items()}
+
+
+def _load_research_note(ticker: str, notes_path: Path) -> WeeklyReviewResearchNote:
+    """Load and parse one research notes file. Returns safe defaults on error."""
+    try:
+        raw = notes_path.read_text(encoding="utf-8", errors="replace")
+        bounded = raw[:_RESEARCH_NOTES_MAX_CHARS]
+        fields = _parse_research_notes(bounded)
+        return WeeklyReviewResearchNote(
+            ticker=ticker,
+            available=True,
+            evidence_gaps=fields.get("evidence_gaps", ()),
+            open_questions=fields.get("open_questions", ()),
+            risks_to_monitor=fields.get("risks_to_monitor", ()),
+            reasons_to_wait=fields.get("reasons_to_wait", ()),
+        )
+    except OSError:
+        return WeeklyReviewResearchNote(ticker=ticker, available=False)
+
+
 @dataclass(frozen=True)
 class WeeklyReviewInputPaths:
     """File paths for all weekly review inputs.
@@ -524,6 +596,7 @@ class WeeklyReviewInputPaths:
     journal_path: Path | None = None
     company_facts_dir: Path | None = None
     financials_dir: Path | None = None
+    research_notes_dir: Path | None = None
     as_of: str = ""
     scope_notes: str = ""
 
@@ -549,6 +622,7 @@ class WeeklyReviewLoadResult:
     tickers_missing_facts: tuple[str, ...] = ()  # investable tickers with no facts file
     tickers_missing_financials: tuple[str, ...] = ()  # investable tickers with no financials file
     ticker_evidence: tuple["WeeklyReviewTickerEvidence", ...] = ()  # full per-ticker evidence table
+    research_notes: tuple["WeeklyReviewResearchNote", ...] = ()  # per-ticker research notes
 
 
 # ---------------------------------------------------------------------------
@@ -779,6 +853,16 @@ def load_weekly_review_inputs(paths: WeeklyReviewInputPaths) -> WeeklyReviewLoad
         for t in investable_tickers
     )
 
+    # --- Optional: research notes directory ---
+    research_notes: tuple[WeeklyReviewResearchNote, ...] = ()
+    if paths.research_notes_dir is not None and paths.research_notes_dir.is_dir():
+        notes_list: list[WeeklyReviewResearchNote] = []
+        for ticker in investable_tickers:
+            notes_path = paths.research_notes_dir / ticker / "notes.md"
+            if notes_path.exists():
+                notes_list.append(_load_research_note(ticker, notes_path))
+        research_notes = tuple(notes_list)
+
     return WeeklyReviewLoadResult(
         portfolio=portfolio,
         watchlist=watchlist,
@@ -797,6 +881,7 @@ def load_weekly_review_inputs(paths: WeeklyReviewInputPaths) -> WeeklyReviewLoad
         tickers_missing_facts=tickers_missing_facts,
         tickers_missing_financials=tickers_missing_financials,
         ticker_evidence=ticker_evidence,
+        research_notes=research_notes,
     )
 
 

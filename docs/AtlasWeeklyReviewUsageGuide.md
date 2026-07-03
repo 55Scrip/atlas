@@ -61,6 +61,7 @@ noted in Section 8 (Missing Evidence) and Section 10 (Non-Actions / Reasons to W
 | `company_facts/` | Directory of per-ticker JSON files with company facts |
 | `financials/` | Directory of per-ticker CSV files with historical financials |
 | `scope_notes.md` | Free-text notes about the scope of this specific review |
+| `research_notes/` | Directory of per-ticker research notes Markdown files |
 
 ---
 
@@ -82,6 +83,11 @@ my_review/
   financials/
     ASML.csv
     MSFT.csv
+  research_notes/
+    ASML/
+      notes.md
+    XYL/
+      notes.md
 ```
 
 You do not need to use this exact layout. Any directory structure works as long
@@ -317,12 +323,65 @@ excluded, duplicates deduplicated). For each ticker, Atlas checks for the presen
 its facts and financials files. Results appear as:
 
 - **Section 8** (Missing Evidence): `Evidence Gap [TICKER]: local company facts file is missing.` per ticker
-- **Section 9** (Follow-Up Questions): `[TICKER] What local facts would help clarify the current thesis?`
-- **Section 10** (Non-Actions / Reasons to Wait): `Reason to Wait: TICKER is missing local company facts, so the thesis context remains incomplete.`
+- **Section 9** (Follow-Up Questions): grouped summary of tickers missing facts or financials
+- **Section 10** (Non-Actions / Reasons to Wait): consolidated summary of missing local evidence
 
 When the evidence directory is absent entirely, Atlas emits a single general note
 (not one line per ticker). File naming uses exact uppercase ticker match: no fuzzy
 matching, no aliases.
+
+---
+
+## Research Notes
+
+Research notes are user-supplied Markdown files that bring your own analysis,
+external excerpts, and research observations into the Weekly Review.
+
+**Convention:** `research_notes/<TICKER>/notes.md`
+
+**Example:**
+
+```markdown
+# ASML Research Notes
+
+## Evidence Gaps
+- Margin durability through a downcycle has not been reviewed recently.
+- China revenue exposure needs updated context.
+
+## Open Questions
+- What assumptions about EUV demand should be rechecked?
+- Which financial history quarters are most relevant?
+
+## Risks to Monitor
+- Export controls affecting China shipments.
+- Customer capex cyclicality.
+
+## Reason to Wait
+- Evidence gaps remain unresolved.
+```
+
+**Supported sections (case-insensitive):**
+
+| Section heading | Surfaced in |
+|-----------------|-------------|
+| `## Evidence Gaps` | Section 8 |
+| `## Open Questions` | Section 9 |
+| `## Risks to Monitor` | Section 9 |
+| `## Reason to Wait` / `## Reasons to Wait` | Section 10 |
+| `## Thesis Notes` | Parsed but not currently rendered separately |
+
+**Behavior:**
+- Only tickers in the evidence universe (portfolio + watchlist) are checked
+- Only `<TICKER>/notes.md` files are loaded — exact uppercase ticker match
+- No fuzzy matching, no alias inference, no provider lookup
+- Files are read up to 8,000 characters (bounded)
+- Missing notes files are not flagged — only present files are loaded
+- Malformed or unreadable files do not fail the review
+
+**Privacy and copyright:** Research notes are user-supplied local files.
+Atlas does not scrape or fetch external research. Notes should be your own
+writing or brief excerpts you have manually provided. Atlas does not reproduce
+large copyrighted content.
 
 ---
 
@@ -338,6 +397,7 @@ atlas weekly-review \
   --journal my_review/decision_journal.json \
   --company-facts my_review/company_facts \
   --financials my_review/financials \
+  --research-notes my_review/research_notes \
   --as-of 2026-01-01 \
   --scope-notes my_review/scope_notes.md
 ```

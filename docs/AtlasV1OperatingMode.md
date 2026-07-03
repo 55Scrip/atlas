@@ -605,4 +605,12 @@ Sprint 221 specified the Snapshot / Screenshot Input workflow. No runtime behavi
 
 **Sprint 222 recommendation:** Add research notes input — the safest bridge between Snapshot Input and Weekly Review, requiring no OCR, AI, or broker integration.
 
+---
+
+## Sprint 222 Status — COMPLETE
+
+Sprint 222 added local research notes input to Weekly Review. New `--research-notes DIR` CLI argument. New `WeeklyReviewResearchNote` dataclass. Per-ticker `research_notes/<TICKER>/notes.md` files are loaded using bounded reads (8,000 char max) and a lightweight section parser. Evidence gaps appear in Section 8; open questions and risks appear in Section 9; reasons to wait appear in Section 10. Missing or malformed notes do not fail the review. Two example files added (`ASML/notes.md`, `XYL/notes.md`). No OCR, AI, image parsing, or provider dependency introduced. 45 new tests; 2159 total passing.
+
+**Sprint 223 recommendation:** Define Snapshot Draft schema — the next step toward making Snapshot Input concrete without implementing OCR or image parsing.
+
 **Sprint 221 recommendation:** Group or simplify Section 10 output — add visual grouping (reason-type headers) so the section is scannable rather than requiring sequential reading.

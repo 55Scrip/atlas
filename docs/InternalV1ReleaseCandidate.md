@@ -258,6 +258,13 @@ type to existing Atlas local input files, and relationship to future chat-first
 workspace UX. No runtime behavior changed. No OCR, AI, image parsing, or provider
 dependency introduced. Internal v1 foundation unchanged.
 
-Recommended next work (Sprint 222): **Add research notes input** — the safest
-and most useful bridge between Snapshot Input and Weekly Review, requiring no
-OCR, AI, or broker integration.
+**Sprint 222 (post-v1 improvement — complete):**
+Research notes input added to Weekly Review. New `--research-notes DIR` CLI
+argument. Per-ticker `research_notes/<TICKER>/notes.md` files are loaded with
+bounded reads and lightweight section parsing. Evidence gaps surface in Section 8;
+open questions and risks in Section 9; reasons to wait in Section 10. Missing or
+malformed notes are non-blocking. Two example files added. No OCR, AI, image
+parsing, or provider dependency introduced. Internal v1 foundation unchanged.
+
+Recommended next work (Sprint 223): **Define Snapshot Draft schema** — the next
+step toward making Snapshot Input concrete, without requiring OCR or image parsing.

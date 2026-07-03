@@ -15,6 +15,7 @@ from collections import defaultdict
 from atlas.weekly_review.inputs import (
     WeeklyReviewInputWarning,
     WeeklyReviewLoadResult,
+    WeeklyReviewResearchNote,
     WeeklyReviewWatchlistStatus,
 )
 
@@ -97,6 +98,8 @@ def _section1_scope(result: WeeklyReviewLoadResult) -> list[str]:
         optionals.append("company facts")
     if result.financials_available:
         optionals.append("financial history")
+    if result.research_notes:
+        optionals.append(f"research notes ({len(result.research_notes)} ticker(s))")
 
     if optionals:
         lines.append(f"Optional inputs loaded: {', '.join(optionals)}")
@@ -511,6 +514,11 @@ def _section8_evidence(result: WeeklyReviewLoadResult) -> list[str]:
                     f"Evidence Gap [{ev.ticker}]: local financial history file is missing."
                 )
 
+    # Research note evidence gaps
+    for note in result.research_notes:
+        for gap in note.evidence_gaps:
+            lines.append(f"Evidence Gap [{note.ticker}] (research notes): {gap}")
+
     # Missing optional inputs
     if not result.profile_available:
         lines.append("Missing Optional Input: Investor profile not provided.")
@@ -582,6 +590,17 @@ def _section9_questions(result: WeeklyReviewLoadResult) -> list[str]:
                 f"Tickers without local financial history ({len(missing_fins_tickers)}): "
                 f"{', '.join(missing_fins_tickers)}"
             )
+
+    # Research note open questions and risks
+    for note in result.research_notes:
+        if note.open_questions:
+            lines.append(f"[{note.ticker}] Research notes — open questions:")
+            for q in note.open_questions:
+                lines.append(f"  - {q}")
+            lines.append("")
+        if note.risks_to_monitor:
+            for risk in note.risks_to_monitor:
+                lines.append(f"[{note.ticker}] Risk to Monitor (research notes): {risk}")
 
     # General questions when evidence directories are absent
     if not result.company_facts_available:
@@ -701,6 +720,19 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
             lines.append(
                 f"Reason to Wait: {asset} decision journal notes are older than 90 days "
                 f"({age} days). Assumptions should be refreshed before changing decision status."
+            )
+
+    # Research note reasons to wait
+    notes_with_gaps = [n for n in result.research_notes if n.evidence_gaps or n.reasons_to_wait]
+    for note in notes_with_gaps:
+        if note.reasons_to_wait:
+            for r in note.reasons_to_wait:
+                lines.append(f"Reason to Wait [{note.ticker}] (research notes): {r}")
+        elif note.evidence_gaps:
+            lines.append(
+                f"Reason to Wait: {note.ticker} research notes contain "
+                f"{len(note.evidence_gaps)} unresolved evidence gap(s). "
+                "Gathering evidence is the appropriate next step."
             )
 
     # Profile-derived reasons — grouped blocks to avoid N identical boilerplate lines
@@ -867,6 +899,10 @@ def _render_input_status(result: WeeklyReviewLoadResult) -> list[str]:
         f"- Financials: "
         f"{'Available' if result.financials_available else 'Not provided — evidence gaps noted.'}",
     )
+    if result.research_notes:
+        lines.append(f"- Research notes: {len(result.research_notes)} ticker(s) with local notes.")
+    else:
+        lines.append("- Research notes: Not provided.")
     if result.as_of:
         lines.append(f"- Review date: {result.as_of}")
     if result.warnings:

@@ -3800,6 +3800,16 @@ Demo passed. Release verification green.
 
 ---
 
+**Sprint 222 (2026-07-04): Add research notes input to Weekly Review**
+
+**Decision:** Add an optional `--research-notes DIR` CLI argument that loads per-ticker Markdown notes files (`research_notes/<TICKER>/notes.md`) into Weekly Review. New `WeeklyReviewResearchNote` dataclass. New `_parse_research_notes` function extracts evidence gaps, open questions, risks to monitor, and reasons to wait from known `##` headings. Bounded file reading (8,000 chars max). Section 8 shows evidence gaps from notes; Section 9 shows open questions and risks; Section 10 shows reasons to wait.
+
+**Rationale:** Research notes provide the safest first bridge from Snapshot Input to Weekly Review. Local notes allow users to bring their own analysis, external excerpts, and manual observations into the review without OCR, AI, broker integration, live data, or external research fetching.
+
+**Outcome:** `atlas/weekly_review/inputs.py` extended with `WeeklyReviewResearchNote`, `WeeklyReviewInputPaths.research_notes_dir`, and loader. `render.py` updated for Sections 1, 8, 9, 10, and Input Status. `atlas/cli/main.py` extended with `--research-notes`. Two example files added. 45 new tests. 2159 tests passing. Sprint 223 target: Define Snapshot Draft schema.
+
+---
+
 **Sprint 221 (2026-07-04): Specify Snapshot / Screenshot Input workflow**
 
 **Decision:** Specify the future Snapshot / Screenshot Input workflow as a product document. No implementation. New document `docs/AtlasSnapshotInputWorkflow.md` defines seven snapshot types, a classification contract, a draft contract, a confirmation workflow, accuracy and safety guardrails, a privacy and security boundary, mapping to Weekly Review local inputs, and the relationship to future chat-first workspace UX.

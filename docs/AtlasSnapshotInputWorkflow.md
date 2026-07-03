@@ -505,20 +505,19 @@ established in internal v1 remains unchanged.
 
 ---
 
-## First Implementation Step
+## First Implementation Step — COMPLETE (Sprint 222)
 
-The recommended first implementation step (Sprint 222 or later) is:
+The first implementation step was:
 
-**Add research notes input.**
+**Add research notes input** — completed in Sprint 222.
 
-Research notes are the safest and most useful bridge between Snapshot Input and
-Weekly Review. They can accept user-supplied analysis, external excerpts, and
-manual notes as local text files without requiring OCR, image parsing, AI,
-broker integration, or live data.
+Research notes (`research_notes/<TICKER>/notes.md`) are now supported by the
+Weekly Review CLI via `--research-notes DIR`. Evidence gaps appear in Section 8;
+open questions and risks in Section 9; reasons to wait in Section 10.
 
-A `research_notes/<ticker>/notes.md` file can be supplied directly at the
-CLI and loaded into Weekly Review Sections 8 and 9 to surface what the user
-has already written.
+This was implemented without OCR, image parsing, AI, broker integration, or live
+data. It is the first concrete step from Snapshot Input specification toward a
+working low-friction input layer.
 
 ---
 
