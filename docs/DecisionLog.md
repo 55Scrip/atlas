@@ -2,6 +2,31 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 205 — Suitability Package Cleanup Checkpoint
+
+Decision: Audit `atlas/suitability/` — no cleanup warranted. Sprint 206 target: close track.
+
+**Rationale:** After inventory, export review, caller map, CLI review, behavior review, boundary review, provider boundary review, recommendation-language guardrail review, closed-track deletion guard, and overlap review, `atlas/suitability/` contains only active, intentional application-layer code. All 7 public exports have production callers. No stale exports, dead helpers, forbidden language, provider coupling, or stale references from closed cleanup tracks were found. The package is correctly bounded as a mid-layer engine that consumes analysis, intelligence, capability, profile, and theme inputs.
+
+**Findings:**
+- `atlas/suitability/` — 2 modules, 642 lines (`__init__.py` + `engine.py`) ✓
+- 7 active public exports: `OverallSuitability`, `SuitabilityAssessment`, `SuitabilityEngine`, `SuitabilityFactor`, `SuitabilityInput`, `SuitabilityMismatch`, `render_suitability_assessment` — all with production callers ✓
+- 6 production callers: CLI, dashboard, comparison, watchlist_review, portfolio_review, risk_drift ✓
+- `atlas suitability analyze` CLI command — active, opt-in provider (default mock), no network calls ✓
+- Output language — anti-advice disclaimer present (`"does not judge investment merit or provide personalized financial advice"`); no forbidden buy/sell/recommendation language ✓
+- `check_suitability_assessment` not present in active `atlas.suitability` exports (correctly absent since Sprint 157) ✓
+- Boundary: suitability → analysis/capability/intelligence/profile/themes; CLI/dashboard/comparison/watchlist_review/portfolio_review/risk_drift → suitability; no upward dep, no circular dep ✓
+- Provider coupling: none in `atlas/suitability/` — provider access at CLI layer only (opt-in) ✓
+- No stale imports from any closed cleanup track ✓
+- No overlap with decision, risk, principles, or evidence — distinct application-layer package ✓
+- **1692 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Created `docs/SuitabilityCleanupPlan.md`. Created `tests/test_suitability_sprint205.py` (11 guardrail tests). Updated `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 206 — Close suitability cleanup track (no cleanup warranted; Sprint 205 confirmed clean).
+
+---
+
 ## 2026-07-03: Sprint 204 — Release Candidate Checkpoint Across 24 Closed Tracks
 
 Decision: Confirm Atlas release-candidate stability across all 24 closed cleanup tracks after models cleanup closure.
