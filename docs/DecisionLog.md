@@ -2,6 +2,29 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 202 — Models Package Cleanup Checkpoint
+
+Decision: Confirm `atlas/models/` is clean and close the models cleanup track with no code changes.
+
+**Rationale:** After Sprint 198 removed `atlas/models/investment_report.py` (dead re-export shim), the remaining surface (`entities.py`, `__init__.py`) had not had a dedicated audit. Sprint 202 audited both modules: 2 active ORM models, 3 production callers, lazy `__init__.py` shim with no stale references, correct boundary direction (models → database), zero provider coupling, zero stale imports from closed tracks. No cleanup warranted.
+
+**Findings:**
+- `atlas/models/__init__.py` (11 lines): lazy `__getattr__` shim, `__all__ = ["Company", "FinancialHistory"]`, no reference to removed `investment_report.py` ✓
+- `atlas/models/entities.py` (41 lines): `Company(Base)` (9 cols + relationship) and `FinancialHistory(Base)` (13 cols + relationship + UniqueConstraint) — both active ✓
+- Production callers: `database_service.py` (ORM registration), `company_service.py` (CRUD), `financial_import_service.py` (import pipeline) ✓
+- `InvestmentReport` in active code all routed through `atlas.analysis.engine` — zero imports from deleted `atlas.models.investment_report` ✓
+- Boundary direction correct: models import `Base` from `atlas.database.connection`, services import from models — no upward dependency, no circular deps ✓
+- Two `Company` classes (`atlas.models.entities.Company` vs. `atlas.shared.Company`) are architecturally intentional — different layers ✓
+- Schema/ORM gap (6 unmapped tables) is intentional and unchanged ✓
+- Sprint 198 removals and Sprint 200 storage findings remain confirmed absent ✓
+- **1671 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Created `docs/ModelsCleanupPlan.md`. Created `tests/test_models_sprint202.py` (guardrail tests). Updated `docs/DecisionLog.md`, `docs/LegacyConsolidationPlan.md`, `docs/ArchitectureConsolidation.md`.
+
+**Next sprint recommendation:** Sprint 203 — Close models cleanup track (no cleanup warranted; Sprint 202 confirmed clean). Confirm findings unchanged, run final verification.
+
+---
+
 ## 2026-07-03: Sprint 201 — Release Candidate Checkpoint Across 23 Closed Tracks
 
 Decision: Confirm Atlas release-candidate stability across all 23 closed cleanup tracks after storage boundary closure.
