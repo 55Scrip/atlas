@@ -501,6 +501,16 @@ class WeeklyReviewInputWarning:
 
 
 @dataclass(frozen=True)
+class WeeklyReviewTickerEvidence:
+    """Local evidence availability for one ticker in the evidence universe."""
+
+    ticker: str
+    company_facts_available: bool
+    financials_available: bool
+    source: str  # "portfolio", "watchlist", or "portfolio_and_watchlist"
+
+
+@dataclass(frozen=True)
 class WeeklyReviewInputPaths:
     """File paths for all weekly review inputs.
 
@@ -538,6 +548,7 @@ class WeeklyReviewLoadResult:
     profile_time_horizon: str = ""
     tickers_missing_facts: tuple[str, ...] = ()  # investable tickers with no facts file
     tickers_missing_financials: tuple[str, ...] = ()  # investable tickers with no financials file
+    ticker_evidence: tuple["WeeklyReviewTickerEvidence", ...] = ()  # full per-ticker evidence table
 
 
 # ---------------------------------------------------------------------------
@@ -728,22 +739,45 @@ def load_weekly_review_inputs(paths: WeeklyReviewInputPaths) -> WeeklyReviewLoad
     as_of = paths.as_of.strip() if paths.as_of else ""
 
     # --- Per-ticker company facts and financials presence check ---
-    investable_tickers = sorted(
-        {h.ticker for h in portfolio.all_holdings if not h.sector or h.sector.lower() != "cash"}
-        | {item.ticker for item in watchlist.items}
-    )
+    portfolio_tickers = {
+        h.ticker for h in portfolio.all_holdings
+        if not h.sector or h.sector.lower() != "cash"
+    }
+    watchlist_tickers = {item.ticker for item in watchlist.items}
+    investable_tickers = sorted(portfolio_tickers | watchlist_tickers)
+
+    facts_dir_available = paths.company_facts_dir is not None and paths.company_facts_dir.is_dir()
+    fins_dir_available = paths.financials_dir is not None and paths.financials_dir.is_dir()
+
     tickers_missing_facts: tuple[str, ...] = ()
-    if paths.company_facts_dir is not None and paths.company_facts_dir.is_dir():
+    if facts_dir_available:
         tickers_missing_facts = tuple(
             t for t in investable_tickers
-            if not (paths.company_facts_dir / f"{t}.json").exists()
+            if not (paths.company_facts_dir / f"{t}.json").exists()  # type: ignore[operator]
         )
     tickers_missing_financials: tuple[str, ...] = ()
-    if paths.financials_dir is not None and paths.financials_dir.is_dir():
+    if fins_dir_available:
         tickers_missing_financials = tuple(
             t for t in investable_tickers
-            if not (paths.financials_dir / f"{t}.csv").exists()
+            if not (paths.financials_dir / f"{t}.csv").exists()  # type: ignore[operator]
         )
+
+    # Build the full per-ticker evidence table (stable sort by ticker)
+    facts_missing_set = set(tickers_missing_facts)
+    fins_missing_set = set(tickers_missing_financials)
+    ticker_evidence: tuple[WeeklyReviewTickerEvidence, ...] = tuple(
+        WeeklyReviewTickerEvidence(
+            ticker=t,
+            company_facts_available=facts_dir_available and t not in facts_missing_set,
+            financials_available=fins_dir_available and t not in fins_missing_set,
+            source=(
+                "portfolio_and_watchlist" if t in portfolio_tickers and t in watchlist_tickers
+                else "portfolio" if t in portfolio_tickers
+                else "watchlist"
+            ),
+        )
+        for t in investable_tickers
+    )
 
     return WeeklyReviewLoadResult(
         portfolio=portfolio,
@@ -762,6 +796,7 @@ def load_weekly_review_inputs(paths: WeeklyReviewInputPaths) -> WeeklyReviewLoad
         profile_time_horizon=profile_time_horizon,
         tickers_missing_facts=tickers_missing_facts,
         tickers_missing_financials=tickers_missing_financials,
+        ticker_evidence=ticker_evidence,
     )
 
 

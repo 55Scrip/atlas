@@ -492,15 +492,17 @@ def _section8_evidence(result: WeeklyReviewLoadResult) -> list[str]:
         for gap in item.evidence_needed:
             lines.append(f"Evidence Gap [{item.ticker}]: {gap}")
 
-    # Per-ticker company facts presence check
-    if result.tickers_missing_facts:
-        tickers_str = ", ".join(result.tickers_missing_facts)
-        lines.append(f"Missing company facts for: {tickers_str}")
-
-    # Per-ticker financials presence check
-    if result.tickers_missing_financials:
-        tickers_str = ", ".join(result.tickers_missing_financials)
-        lines.append(f"Missing financial history for: {tickers_str}")
+    # Per-ticker evidence presence (when directories are available)
+    if result.ticker_evidence:
+        for ev in result.ticker_evidence:
+            if not ev.company_facts_available and result.company_facts_available:
+                lines.append(
+                    f"Evidence Gap [{ev.ticker}]: local company facts file is missing."
+                )
+            if not ev.financials_available and result.financials_available:
+                lines.append(
+                    f"Evidence Gap [{ev.ticker}]: local financial history file is missing."
+                )
 
     # Missing optional inputs
     if not result.profile_available:
@@ -553,7 +555,20 @@ def _section9_questions(result: WeeklyReviewLoadResult) -> list[str]:
                     lines.append(f"  - {trigger}")
                 lines.append("")
 
-    # Derived questions from missing data
+    # Per-ticker follow-up questions from missing local evidence
+    if result.ticker_evidence:
+        for ev in result.ticker_evidence:
+            if not ev.company_facts_available and result.company_facts_available:
+                lines.append(
+                    f"[{ev.ticker}] What local facts would help clarify the current thesis?"
+                )
+            if not ev.financials_available and result.financials_available:
+                lines.append(
+                    f"[{ev.ticker}] Which financial history should be reviewed "
+                    "before changing the decision status?"
+                )
+
+    # General questions when evidence directories are absent
     if not result.company_facts_available:
         lines.append(
             "What company facts are needed before changing the status of any watchlist item?"
@@ -622,26 +637,27 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
             "Reason to Wait: Decision journal not provided. "
             "Open decisions and prior context are not available for this review."
         )
-    if result.tickers_missing_facts:
-        lines.append(
-            f"Reason to Wait: Company facts missing for "
-            f"{len(result.tickers_missing_facts)} ticker(s): "
-            f"{', '.join(result.tickers_missing_facts[:5])}"
-            + (" and others" if len(result.tickers_missing_facts) > 5 else "")
-            + ". Evidence review is incomplete."
-        )
-    elif not result.company_facts_available:
+    # Per-ticker reasons to wait from missing local evidence
+    if result.ticker_evidence:
+        for ev in result.ticker_evidence:
+            if not ev.company_facts_available and result.company_facts_available:
+                lines.append(
+                    f"Reason to Wait: {ev.ticker} is missing local company facts, "
+                    "so the thesis context remains incomplete."
+                )
+            if not ev.financials_available and result.financials_available:
+                lines.append(
+                    f"Reason to Wait: {ev.ticker} is missing local financial history, "
+                    "so financial context remains incomplete."
+                )
+
+    # General reasons to wait when evidence directories are absent
+    if not result.company_facts_available:
         lines.append(
             "Reason to Wait: Company facts not loaded. "
             "Decision-relevant evidence is incomplete."
         )
-    if result.tickers_missing_financials:
-        lines.append(
-            f"Reason to Wait: Financial history missing for "
-            f"{len(result.tickers_missing_financials)} ticker(s). "
-            "Financial trend analysis is incomplete."
-        )
-    elif not result.financials_available:
+    if not result.financials_available:
         lines.append(
             "Reason to Wait: Financial history not loaded. "
             "Financial trend analysis is not available."

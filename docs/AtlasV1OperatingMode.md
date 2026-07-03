@@ -582,3 +582,11 @@ Sprint 217 froze the internal v1 release candidate. Created `docs/InternalV1Rele
 Sprint 218 surfaced investor profile principles and constraints in Weekly Review Sections 5, 6, and 10. Changes: added `invalid_profile_principles` and `invalid_profile_constraints` warnings in `inputs.py` for malformed fields; added profile-derived reasons to wait in Section 10 of `render.py` (each principle as "Reason to Wait", each constraint as "No Action Warranted"). No engine wiring. No suitability scoring. 46 new tests; 2016 total passing.
 
 **Sprint 219 recommendation:** Wire existing company facts and financial presence checks more deeply into Missing Evidence and Follow-Up Questions (per-ticker improvements without adding provider or engine dependencies).
+
+---
+
+## Sprint 219 Status — COMPLETE
+
+Sprint 219 added per-ticker local evidence presence checks. New `WeeklyReviewTickerEvidence` dataclass tracks `company_facts_available`, `financials_available`, and `source` (portfolio/watchlist/portfolio_and_watchlist) for each investable ticker. Section 8 now emits per-ticker `Evidence Gap [TICKER]` lines instead of a bulk comma-separated list. Section 9 adds per-ticker follow-up questions when facts or financials are missing. Section 10 adds per-ticker reasons to wait. Missing directories remain non-blocking. 42 new tests; 2058 total passing.
+
+**Sprint 220 recommendation:** Run second real portfolio trial — test the full Weekly Review output with the profile, per-ticker evidence checks, and all improvements from Sprints 213–219 against a realistic bundle before adding deeper engines.

@@ -235,7 +235,13 @@ and 10. Each principle appears as a "Reason to Wait" in Section 10; each
 constraint appears as a "No Action Warranted" note. Malformed fields warn and
 fail safely. No suitability scoring, no engine wiring, no provider dependency.
 
-Recommended next work (Sprint 219):
-**Wire per-ticker company facts and financials presence checks more deeply into
-Missing Evidence and Follow-Up Questions** — per-ticker improvements without
-adding provider or engine dependencies.
+**Sprint 219 (post-v1 improvement — complete):**
+Per-ticker local evidence presence checks added. `WeeklyReviewTickerEvidence`
+dataclass tracks presence and source for each investable ticker. Section 8 emits
+per-ticker `Evidence Gap [TICKER]` lines. Section 9 adds per-ticker follow-up
+questions. Section 10 adds per-ticker reasons to wait. No provider dependency.
+
+Recommended next work (Sprint 220):
+**Run second real portfolio trial** — test the full Weekly Review output (profile
+context, per-ticker evidence checks, all Sprint 213–219 improvements) against a
+realistic bundle before adding deeper engines.

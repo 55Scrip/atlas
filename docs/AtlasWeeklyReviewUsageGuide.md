@@ -312,9 +312,17 @@ company information. No required schema. Atlas detects presence/absence per tick
 **Financials** (`financials/TICKER.csv`): historical financial data. Minimal
 expected columns: `ticker`, `fiscal_year`, `revenue`, `net_income`, `free_cash_flow`.
 
-Atlas checks which tickers in your portfolio and watchlist have facts and financials
-files available. Missing files appear in Section 8 (Missing Evidence) and Section 10
-(Non-Actions / Reasons to Wait) as specific ticker lists — not just generic "no data" notices.
+Atlas builds an evidence universe from all portfolio and watchlist tickers (cash
+excluded, duplicates deduplicated). For each ticker, Atlas checks for the presence of
+its facts and financials files. Results appear as:
+
+- **Section 8** (Missing Evidence): `Evidence Gap [TICKER]: local company facts file is missing.` per ticker
+- **Section 9** (Follow-Up Questions): `[TICKER] What local facts would help clarify the current thesis?`
+- **Section 10** (Non-Actions / Reasons to Wait): `Reason to Wait: TICKER is missing local company facts, so the thesis context remains incomplete.`
+
+When the evidence directory is absent entirely, Atlas emits a single general note
+(not one line per ticker). File naming uses exact uppercase ticker match: no fuzzy
+matching, no aliases.
 
 ---
 

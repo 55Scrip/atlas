@@ -2,6 +2,26 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 219 — Per-Ticker Local Evidence Presence Checks in Weekly Review
+
+Decision: Add per-ticker local evidence presence checks to Weekly Review Sections 8, 9, and 10.
+
+**Rationale:** After profile principles and constraints were rendered, the next local-only improvement is to make Missing Evidence more specific by checking which portfolio and watchlist tickers have local company facts and financial history files. This improves follow-up quality without adding provider, engine, or live-data dependencies.
+
+**Changes:**
+- `atlas/weekly_review/inputs.py`: Added `WeeklyReviewTickerEvidence` dataclass (ticker, company_facts_available, financials_available, source). Added `ticker_evidence` tuple to `WeeklyReviewLoadResult`. Loader builds the universe from portfolio + watchlist tickers (cash excluded), deduplicates, sorts stably, tracks source (portfolio/watchlist/portfolio_and_watchlist).
+- `atlas/weekly_review/render.py`: Section 8 now emits per-ticker `Evidence Gap [TICKER]` lines (not bulk list). Section 9 adds per-ticker follow-up questions. Section 10 adds per-ticker reasons to wait.
+- `tests/test_weekly_review_evidence_presence_sprint219.py`: 42 new tests.
+- `tests/test_weekly_review_trial_sprint213.py`: Two existing tests updated to match new per-ticker format.
+
+**File convention:** `company_facts/<TICKER>.json` and `financials/<TICKER>.csv`. Ticker normalized to uppercase. Exact match. No fuzzy matching.
+
+**Directory missing behavior:** Missing directories remain non-blocking. When directory is absent, no per-ticker gap lines are emitted (to avoid noise); the general "not loaded" note remains.
+
+**Next sprint recommendation:** Sprint 220 — Run second real portfolio trial.
+
+---
+
 ## 2026-07-03: Sprint 218 — Load Investor Profile Principles and Constraints into Weekly Review
 
 Decision: Surface the user's stated principles and constraints directly in the Weekly Review output (Sections 5, 6, and 10) without invoking the suitability engine.
