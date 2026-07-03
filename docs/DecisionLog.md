@@ -3810,6 +3810,16 @@ Demo passed. Release verification green.
 
 ---
 
+**Sprint 226 (2026-07-04): Third real portfolio trial with exported research notes**
+
+**Decision:** Run end-to-end validation of the Snapshot conversion loop. Three confirmed `research_notes_snapshot` drafts (ASML, XYL, NOVO) were validated, exported, and consumed by `atlas weekly-review --research-notes DIR`. Sections 8, 9, and 10 were evaluated in both the example bundle and realistic bundle.
+
+**Rationale:** After implementing the first safe Snapshot Draft conversion path in Sprint 225, Atlas validates the end-to-end loop from confirmed draft to exported research notes to Weekly Review before adding more conversion types or broader confirmation workflows.
+
+**Outcome:** Loop validated as functional, useful, and safe. No code changes required — trial confirmed existing behavior is correct. Two additional confirmed draft examples added (XYL, NOVO). Full trial findings documented in `docs/SnapshotResearchNotesTrialFindings.md`. 2327 tests passing. Sprint 227 target: Add snapshot draft confirmation planning.
+
+---
+
 **Sprint 225 (2026-07-04): Implement confirmed research_notes_snapshot export**
 
 **Decision:** Add `atlas snapshot export-research-notes <draft_path> --output-dir DIR` — the first safe Snapshot Draft conversion path. Converts a confirmed `research_notes_snapshot` draft to a local `research_notes/<TICKER>/notes.md` file. Enforces: type must be `research_notes_snapshot`, status must be `confirmed`, ticker must be present and safe. Existing files blocked without `--overwrite`. Output is bounded (500 chars/bullet, 20 bullets/section). Draft file is never mutated.

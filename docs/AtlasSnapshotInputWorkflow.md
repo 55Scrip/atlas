@@ -1,8 +1,8 @@
 # Atlas Snapshot / Screenshot Input Workflow
 
-**Sprint:** 225
+**Sprint:** 226
 **Date:** 2026-07-04
-**Status:** Specified and partially implemented — CLI validation and research notes export complete
+**Status:** Specified and partially implemented — CLI validation, research notes export, and end-to-end trial complete
 
 ---
 
@@ -612,6 +612,38 @@ atlas snapshot export-research-notes \
 **End-to-end path confirmed:** exported notes.md is immediately readable by
 `atlas weekly-review --research-notes DIR`, surfacing evidence gaps (Section 8),
 open questions and risks (Section 9), and reasons to wait (Section 10).
+
+---
+
+## End-to-End Trial — COMPLETE (Sprint 226)
+
+Sprint 226 validated the full Snapshot conversion loop end-to-end. Three confirmed
+`research_notes_snapshot` drafts were created (ASML, XYL, NOVO), validated,
+exported, and consumed by `atlas weekly-review --research-notes DIR`.
+
+**Trial verdict:** Loop is functional, useful, and worth extending.
+
+Key findings:
+- `atlas snapshot validate` clearly surfaces confirmation status, uncertainties,
+  missing fields, and the safety boundary before any export step.
+- `atlas snapshot export-research-notes` produces well-structured Markdown that
+  the Weekly Review parser recognizes immediately.
+- Sections 8, 9, and 10 surface research-note content with clear `(research notes)`
+  provenance labels.
+- ASML (a portfolio holding with no watchlist entry) gained 3 evidence gaps,
+  3 open questions, 3 risks, and 2 reasons to wait — purely additive.
+- Research note gaps are complementary to watchlist gaps when drafts cover distinct
+  aspects; semantic duplication occurs when draft wording closely mirrors watchlist
+  wording (documented as a known gap, not a bug).
+- File mutation safety confirmed: only `notes.md` files written, no portfolio,
+  watchlist, journal, or company facts files touched.
+- No forbidden language in any output.
+
+Full findings: `docs/SnapshotResearchNotesTrialFindings.md`
+
+Sprint 227 recommendation: **Add snapshot draft confirmation planning** — define
+the workflow for moving drafts from `draft` → `confirmed` consistently before
+adding more conversion types.
 
 ---
 

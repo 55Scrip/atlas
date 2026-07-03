@@ -1,0 +1,44 @@
+{
+  "confirmation_status": "confirmed",
+  "confidence": "high",
+  "created_at": "2026-01-05",
+  "draft_id": "draft-research-novo-20260105-confirmed-001",
+  "extracted_fields": {
+    "evidence_gaps": [
+      "Long-term revenue durability beyond the GLP-1 franchise not yet assessed.",
+      "Patent cliff exposure and pipeline strength require updated review.",
+      "Pricing risk from US regulatory and policy environment not yet quantified."
+    ],
+    "open_questions": [
+      "What pipeline assets could offset GLP-1 revenue concentration risk?",
+      "How exposed is NOVO to US drug pricing policy changes in the next 3 years?",
+      "Is the obesity market large enough that concentration is a feature rather than a risk?"
+    ],
+    "reasons_to_wait": [
+      "Pipeline strength and patent exposure not yet reviewed in sufficient depth.",
+      "US pricing policy risk is a known unknown — not yet assessed."
+    ],
+    "risks_to_monitor": [
+      "GLP-1 revenue concentration — if demand growth slows or competitors gain share.",
+      "US drug pricing regulatory changes.",
+      "Currency sensitivity given large US revenue exposure."
+    ],
+    "thesis_notes": [
+      "NOVO holds a leading position in GLP-1 obesity and diabetes treatment.",
+      "Pipeline diversification is the key thesis question — not yet resolved.",
+      "Scale and manufacturing advantages in biologics are structurally significant."
+    ],
+    "ticker": "NOVO",
+    "title": "NOVO research notes"
+  },
+  "missing_required_fields": [],
+  "notes": "Confirmed after user review on 2026-01-05. Content is user-supplied — no external research was fetched.",
+  "raw_source_reference": "my_notes/novo_notes_2026.md",
+  "related_tickers": [
+    "NOVO"
+  ],
+  "snapshot_type": "research_notes_snapshot",
+  "source_description": "User-written NOVO research notes covering thesis, pipeline risk, and pricing exposure",
+  "target_local_file": "my_review/research_notes/NOVO/notes.md",
+  "uncertainties": []
+}

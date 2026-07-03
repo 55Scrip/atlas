@@ -621,6 +621,20 @@ Sprint 223 defined the formal Snapshot Draft schema. New package `atlas/snapshot
 
 ---
 
+## Sprint 226 Status — COMPLETE
+
+Sprint 226 ran the third real portfolio trial with exported research notes. Three
+confirmed `research_notes_snapshot` drafts (ASML, XYL, NOVO) were validated,
+exported, and consumed by `atlas weekly-review --research-notes DIR`. Sections 8,
+9, and 10 were evaluated. Loop confirmed functional, useful, and safe. ASML gained
+purely additive coverage in Sections 8/9/10. Research note provenance labels work
+correctly. File mutation safety confirmed. No forbidden language in any output.
+No code changes required. Trial findings in `docs/SnapshotResearchNotesTrialFindings.md`.
+
+**Sprint 227 recommendation:** Add snapshot draft confirmation planning.
+
+---
+
 ## Sprint 225 Status — COMPLETE
 
 Sprint 225 implemented the first safe Snapshot Draft conversion path.

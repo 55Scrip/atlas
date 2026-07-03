@@ -274,6 +274,14 @@ Snapshot Draft schema defined. New `atlas/snapshot_input/` package. `SnapshotTyp
 Three example draft files. No OCR, AI, or provider dependency. No Weekly Review
 behavior changed. Internal v1 foundation unchanged.
 
+**Sprint 226 (post-v1 validation — complete):**
+Third real portfolio trial with exported research notes. Full end-to-end loop
+validated: confirmed draft → `snapshot validate` → `export-research-notes` →
+`weekly-review --research-notes DIR` → Sections 8, 9, 10. Three tickers (ASML,
+XYL, NOVO) tested in both example and realistic bundles. Loop confirmed functional,
+useful, and safe. No code changes. Two additional confirmed draft examples added.
+Trial findings documented. Internal v1 foundation unchanged.
+
 **Sprint 225 (post-v1 improvement — complete):**
 `atlas snapshot export-research-notes` added — the first safe Snapshot Draft
 conversion path. Converts a confirmed `research_notes_snapshot` draft to a local

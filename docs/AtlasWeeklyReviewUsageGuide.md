@@ -649,6 +649,13 @@ watchlist, journal, or company facts files are touched. Draft is never mutated.
 See [docs/AtlasSnapshotInputWorkflow.md](AtlasSnapshotInputWorkflow.md) for the
 full Snapshot Input workflow specification.
 
+**End-to-end trial result (Sprint 226):** The full loop — validate, export, then
+`--research-notes DIR` — was validated across three tickers (ASML, XYL, NOVO) in
+both the example and realistic bundles. Sections 8, 9, and 10 surfaced research-
+note content with clear `(research notes)` provenance labels. ASML, a portfolio
+holding with no watchlist entry, gained purely additive evidence coverage.
+See `docs/SnapshotResearchNotesTrialFindings.md` for full findings.
+
 ---
 
 ## Next Steps
