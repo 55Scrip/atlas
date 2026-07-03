@@ -1,0 +1,30 @@
+{
+  "_comment": "Atlas Weekly Review realistic trial investor profile. Anonymized placeholder data. Not investment advice.",
+  "name": "Long-Term Quality Investor",
+  "investment_goals": [
+    "Long-term capital growth",
+    "Preservation of purchasing power over a 7-10 year horizon"
+  ],
+  "portfolio_purpose": "Core long-term portfolio — quality compounders and evidence-based research",
+  "risk_preference": "Balanced",
+  "risk_tolerance": "Balanced — quality focus",
+  "risk_capacity": "Medium-High",
+  "time_horizon": "7-10 years",
+  "principles": [
+    "Evidence before opinion: no position status change without documented evidence review",
+    "Avoid forced position changes: thesis change must be distinguished from price movement",
+    "Concentration discipline: review is required when any position exceeds 20% of portfolio",
+    "Cash is a position: reserve capacity is intentional and should not be deployed without evidence",
+    "Long-term horizon: capital allocation decisions should reflect 7-10 year expected holding periods",
+    "Quality over cyclicality: prefer businesses with recurring revenue and durable competitive positions",
+    "No action warranted is a valid review outcome: avoid action bias"
+  ],
+  "constraints": [
+    "Avoid concentrated exposure above 25% in any single position",
+    "Avoid speculative or early-stage companies without meaningful revenue history",
+    "Maintain minimum 3% cash reserve at all times",
+    "Avoid decisions based on recent price movement without accompanying evidence review",
+    "Avoid adding complexity without a clear evidence-based reason"
+  ],
+  "notes": "Long-term portfolio with quality focus. Evidence discipline and patience are more important than reaction speed. No action is often the correct outcome."
+}

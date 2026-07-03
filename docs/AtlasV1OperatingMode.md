@@ -518,3 +518,20 @@ Sprint 212 implemented the deterministic Weekly Investment Review renderer.
 - No engine calls, no provider imports, no live data
 
 **Sprint 213 recommendation:** Run real portfolio trial — run `atlas weekly-review` on a realistic local portfolio/watchlist/profile bundle and identify friction before wiring deeper engines.
+
+---
+
+## Sprint 213 Status — COMPLETE
+
+Sprint 213 ran a realistic end-to-end trial of `atlas weekly-review` on a 11-holding, 5-watchlist-item portfolio and made targeted code improvements based on trial findings.
+
+**Trial bundle:** `examples/weekly_review_realistic/` (anonymized placeholder data)
+
+**What changed:**
+- `WeeklyReviewLoadResult` extended with 6 new fields: `profile_principles`, `profile_constraints`, `profile_risk_tolerance`, `profile_time_horizon`, `tickers_missing_facts`, `tickers_missing_financials`
+- `atlas/weekly_review/render.py` — Sections 5 and 6 now render profile fields; Section 8 and 10 use per-ticker missing facts/financials; `_preview_scope_notes()` helper strips markdown headers/syntax; combined top-2 concentration note added; single-position threshold 30%→25%
+- 54 new tests in `tests/test_weekly_review_trial_sprint213.py`
+- Trial findings documented in `docs/WeeklyReviewTrialFindings.md`
+- No engine calls, no provider imports, no live data
+
+**Sprint 214 recommendation:** Journal entry aging alerts — flag journal entries older than 90 days in Section 7 and Section 10. Small scope, high signal value.

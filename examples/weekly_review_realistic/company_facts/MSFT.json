@@ -1,0 +1,19 @@
+{
+  "_comment": "Atlas company facts — realistic trial. Anonymized placeholder data. Not investment advice.",
+  "ticker": "MSFT",
+  "name": "Microsoft Corporation",
+  "business": "Microsoft is a diversified technology platform company with major positions in cloud computing (Azure), productivity software (Microsoft 365), gaming (Xbox/Activision), and developer tools (GitHub).",
+  "competitive_position": "Platform-level competitive advantages in enterprise software and cloud infrastructure. Azure is the second-largest cloud provider by revenue. Microsoft 365 has deep enterprise lock-in through workflow and data integration.",
+  "revenue_model": "Recurring subscription revenue from Microsoft 365 and Azure. Gaming revenue adds a consumer segment. LinkedIn contributes professional network and advertising revenue.",
+  "key_risks": [
+    "AI integration economics are not yet fully visible — Copilot monetization timeline is uncertain",
+    "Azure growth rate vs. AWS and Google Cloud competitive dynamics",
+    "Regulatory scrutiny in Europe and the US regarding market concentration",
+    "Activision integration execution risk"
+  ],
+  "evidence_gaps": [
+    "Copilot commercial adoption rate and incremental revenue contribution timeline",
+    "Azure market share trajectory relative to AWS over a 3-5 year horizon"
+  ],
+  "notes": "Core position with high quality score. AI economics evidence gap is the primary open research question for the medium term."
+}

@@ -532,6 +532,12 @@ class WeeklyReviewLoadResult:
     scope_notes: str
     warnings: tuple[WeeklyReviewInputWarning, ...]
     journal_entries: tuple[dict[str, Any], ...] = ()  # raw dicts, lightweight read
+    profile_principles: tuple[str, ...] = ()  # loaded from profile JSON if available
+    profile_constraints: tuple[str, ...] = ()
+    profile_risk_tolerance: str = ""
+    profile_time_horizon: str = ""
+    tickers_missing_facts: tuple[str, ...] = ()  # investable tickers with no facts file
+    tickers_missing_financials: tuple[str, ...] = ()  # investable tickers with no financials file
 
 
 # ---------------------------------------------------------------------------
@@ -575,9 +581,42 @@ def load_weekly_review_inputs(paths: WeeklyReviewInputPaths) -> WeeklyReviewLoad
 
     # --- Optional: investor profile ---
     profile_available = False
+    profile_principles: tuple[str, ...] = ()
+    profile_constraints: tuple[str, ...] = ()
+    profile_risk_tolerance: str = ""
+    profile_time_horizon: str = ""
     if paths.profile_path is not None:
         if paths.profile_path.exists():
             profile_available = True
+            try:
+                with paths.profile_path.open("r", encoding="utf-8") as fh:
+                    profile_data = json.load(fh)
+                if isinstance(profile_data, dict):
+                    raw_p = profile_data.get("principles", [])
+                    if isinstance(raw_p, list):
+                        profile_principles = tuple(str(p) for p in raw_p if p)
+                    raw_c = profile_data.get("constraints", [])
+                    if isinstance(raw_c, list):
+                        profile_constraints = tuple(str(c) for c in raw_c if c)
+                    rt = (
+                        profile_data.get("risk_tolerance")
+                        or profile_data.get("risk_preference")
+                        or ""
+                    )
+                    profile_risk_tolerance = str(rt).strip()
+                    profile_time_horizon = str(
+                        profile_data.get("time_horizon", "")
+                    ).strip()
+            except (json.JSONDecodeError, OSError):
+                warnings.append(
+                    WeeklyReviewInputWarning(
+                        code="invalid_profile",
+                        message=(
+                            f"Investor profile at {paths.profile_path} could not be "
+                            "parsed; profile fields unavailable."
+                        ),
+                    )
+                )
         else:
             warnings.append(
                 WeeklyReviewInputWarning(
@@ -668,6 +707,24 @@ def load_weekly_review_inputs(paths: WeeklyReviewInputPaths) -> WeeklyReviewLoad
 
     as_of = paths.as_of.strip() if paths.as_of else ""
 
+    # --- Per-ticker company facts and financials presence check ---
+    investable_tickers = sorted(
+        {h.ticker for h in portfolio.all_holdings if not h.sector or h.sector.lower() != "cash"}
+        | {item.ticker for item in watchlist.items}
+    )
+    tickers_missing_facts: tuple[str, ...] = ()
+    if paths.company_facts_dir is not None and paths.company_facts_dir.is_dir():
+        tickers_missing_facts = tuple(
+            t for t in investable_tickers
+            if not (paths.company_facts_dir / f"{t}.json").exists()
+        )
+    tickers_missing_financials: tuple[str, ...] = ()
+    if paths.financials_dir is not None and paths.financials_dir.is_dir():
+        tickers_missing_financials = tuple(
+            t for t in investable_tickers
+            if not (paths.financials_dir / f"{t}.csv").exists()
+        )
+
     return WeeklyReviewLoadResult(
         portfolio=portfolio,
         watchlist=watchlist,
@@ -679,6 +736,12 @@ def load_weekly_review_inputs(paths: WeeklyReviewInputPaths) -> WeeklyReviewLoad
         scope_notes=paths.scope_notes.strip() if paths.scope_notes else "",
         warnings=tuple(warnings),
         journal_entries=journal_entries,
+        profile_principles=profile_principles,
+        profile_constraints=profile_constraints,
+        profile_risk_tolerance=profile_risk_tolerance,
+        profile_time_horizon=profile_time_horizon,
+        tickers_missing_facts=tickers_missing_facts,
+        tickers_missing_financials=tickers_missing_financials,
     )
 
 

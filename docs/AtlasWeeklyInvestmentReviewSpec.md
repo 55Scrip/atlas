@@ -1,7 +1,7 @@
 # Atlas Weekly Investment Review — Workflow Specification
 
 **Created:** 2026-07-03 (Sprint 209)  
-**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210) + CLI SKELETON IMPLEMENTED (Sprint 211) + DETERMINISTIC RENDERER IMPLEMENTED (Sprint 212). Sprint 213 recommendation: Run real portfolio trial.
+**Status:** SPECIFIED (Sprint 209) + INPUT SCHEMAS IMPLEMENTED (Sprint 210) + CLI SKELETON IMPLEMENTED (Sprint 211) + DETERMINISTIC RENDERER IMPLEMENTED (Sprint 212) + REAL PORTFOLIO TRIAL RUN (Sprint 213). Sprint 214 recommendation: Journal entry aging alerts.
 
 ---
 
@@ -1216,13 +1216,40 @@ Sprint 212 replaced all placeholder renderer content with deterministic output d
 
 **Tests:** `tests/test_weekly_review_renderer_sprint212.py` — 63 new tests. Sprint 211 tests unchanged. **1818 passed, 3 skipped | RC2 green | Demo passes.**
 
-**Remaining gaps (for Sprint 213+):**
-- Full investor profile object loading (principles/constraints) not yet parsed into LoadResult
+**Remaining gaps addressed in Sprint 213:**
+- Full investor profile object loading (principles/constraints) → now parsed into LoadResult ✓
+- Per-ticker company facts/financials presence check → now in LoadResult and rendered ✓
+
+**Remaining gaps (for Sprint 214+):**
 - Company analysis engine not yet wired into Section 4
 - Suitability engine not yet wired into Section 5
 - Risk/principles engine not yet wired into Section 6
-- Financial CSV not yet parsed
-- Per-ticker company facts not yet checked against company_facts_dir
+- Financial CSV not yet parsed into financial model
+
+---
+
+## Sprint 213 Implementation Status — COMPLETE
+
+Sprint 213 ran a realistic end-to-end trial of `atlas weekly-review` on a 11-holding, 5-watchlist-item portfolio and made targeted improvements based on trial findings.
+
+**Trial bundle:** `examples/weekly_review_realistic/` (anonymized placeholder data)
+
+**Code improvements:**
+
+| Change | Trigger |
+|--------|---------|
+| Load profile principles/constraints/risk_tolerance/time_horizon into `WeeklyReviewLoadResult` | Sections 5+6 were empty without profile fields |
+| Per-ticker company facts presence check | Generic "facts not loaded" was not actionable |
+| Per-ticker financials presence check | Same |
+| `_preview_scope_notes()` helper strips markdown syntax | Raw markdown rendered in Section 1 |
+| Combined top-2 concentration note (>40% threshold) | ASML+NOVO at 45% was invisible under old threshold |
+| Single-position threshold lowered 30% → 25% | ASML at 24% should fire |
+
+**Tests added:** `tests/test_weekly_review_trial_sprint213.py` — 54 tests covering all 10 sections, profile fields, per-ticker checks, forbidden language, determinism, and CLI integration.
+
+**Findings documented:** `docs/WeeklyReviewTrialFindings.md`
+
+**Sprint 214 recommendation:** Journal entry aging alerts — flag journal entries older than 90 days in Section 7 and Section 10.
 
 ## Sprint 210 Implementation Status — COMPLETE
 

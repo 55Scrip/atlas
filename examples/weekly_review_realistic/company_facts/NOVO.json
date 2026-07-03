@@ -1,0 +1,20 @@
+{
+  "_comment": "Atlas company facts — realistic trial. Anonymized placeholder data. Not investment advice.",
+  "ticker": "NOVO",
+  "name": "Novo Nordisk",
+  "business": "Novo Nordisk is a global healthcare company specializing in diabetes care and obesity treatment. Its GLP-1 portfolio (Ozempic, Wegovy) has driven substantial volume growth.",
+  "competitive_position": "Market leader in GLP-1-based diabetes and obesity treatment. Platform advantage reinforced by manufacturing scale, clinical evidence base, and payer reimbursement relationships. Eli Lilly is the primary competitor.",
+  "revenue_model": "Pharmaceutical product sales with strong pricing power in reimbursed markets. High recurring volume from chronic disease management.",
+  "key_risks": [
+    "Revenue concentration in GLP-1 platform — diversification timeline is an evidence gap",
+    "Patent cliff exposure for core GLP-1 compounds over the 2030-2035 horizon",
+    "US pricing and reimbursement policy risk, including potential regulatory pressure on obesity drug pricing",
+    "Manufacturing capacity constraints limiting near-term volume capture"
+  ],
+  "evidence_gaps": [
+    "Revenue diversification timeline beyond GLP-1: pipeline strength and launch timing",
+    "Competitive response from Eli Lilly tirzepatide and next-generation entrants",
+    "Long-term pricing sustainability in the US obesity drug market"
+  ],
+  "notes": "Revenue concentration is the primary evidence gap. Thesis is intact but dependent on GLP-1 volume durability. Pipeline diversification is a medium-term watch area."
+}

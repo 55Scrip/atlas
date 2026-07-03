@@ -2,6 +2,29 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 213 — Run Real Portfolio Trial
+
+Decision: Run `atlas weekly-review` on a realistic (anonymized) input bundle and make targeted improvements based on trial findings.
+
+**Rationale:** The renderer from Sprint 212 was built against the minimal test bundle. A realistic trial (11 holdings, 5 watchlist items, full investor profile, decision journal, partial facts/financials) surfaces real usability issues before deeper engine integration.
+
+**Improvements made:**
+- Load investor profile principles/constraints/risk_tolerance/time_horizon into `WeeklyReviewLoadResult` (Sections 5+6 were nearly empty without these)
+- Per-ticker company facts and financials presence check — replaces generic binary "facts loaded/not loaded" with actionable "Missing company facts for: LVMH, COLB, ..."
+- `_preview_scope_notes()` helper strips markdown headers and inline syntax from scope notes (raw markdown was rendering in Section 1)
+- Combined top-2 concentration note fires when top-2 non-cash holdings together exceed 40%
+- Single-position concentration threshold lowered from >30% to >25%
+
+**Trial bundle:** `examples/weekly_review_realistic/` — 11-holding portfolio, 5-item watchlist, full profile, 4 journal entries, 3/16 tickers with facts/financials.
+
+**Test coverage:** 54 tests in `tests/test_weekly_review_trial_sprint213.py`. 1872 total tests passing.
+
+**Findings documented:** `docs/WeeklyReviewTrialFindings.md`
+
+**Next sprint recommendation:** Sprint 214 — Journal entry aging alerts. Flag journal entries older than 90 days in Sections 7 and 10. Small scope, high signal value.
+
+---
+
 ## 2026-07-03: Sprint 212 — Implement Weekly Investment Review Renderer
 
 Decision: Replace placeholder renderer content with deterministic output derived from the local `WeeklyReviewLoadResult`.

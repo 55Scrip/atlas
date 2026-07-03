@@ -105,7 +105,7 @@ def _section1_scope(result: WeeklyReviewLoadResult) -> list[str]:
         )
 
     if result.scope_notes:
-        lines.append(f"Scope notes: {result.scope_notes}")
+        lines.append(f"Scope notes: {_preview_scope_notes(result.scope_notes)}")
 
     if result.warnings:
         lines.append(f"Warnings: {len(result.warnings)} input warning(s) noted — see Input Warnings section")
@@ -146,15 +146,23 @@ def _section2_portfolio(result: WeeklyReviewLoadResult) -> list[str]:
     for sector, w in sorted(sector_weights.items(), key=lambda x: (-x[1], x[0])):
         lines.append(f"  {sector}: {w:.1%}")
 
-    # Concentration note — top non-cash holding
+    # Concentration notes — single and combined
     non_cash = [h for h in by_weight if not h.sector or h.sector.lower() != "cash"]
-    if non_cash and non_cash[0].weight > 0.30:
+    if non_cash and non_cash[0].weight > 0.25:
         top = non_cash[0]
         lines.append(
             f"Concentration note: {top.ticker} ({top.name}) represents "
             f"{top.weight:.1%} of loaded portfolio value. "
-            "High single-position weight may warrant periodic review."
+            "Single-position weight exceeds 25% threshold."
         )
+    if len(non_cash) >= 2:
+        combined = non_cash[0].weight + non_cash[1].weight
+        if combined > 0.40:
+            lines.append(
+                f"Combined concentration: {non_cash[0].ticker} + {non_cash[1].ticker} = "
+                f"{combined:.1%} of loaded portfolio value. "
+                "Top-2 combined exposure may warrant review."
+            )
 
     # Cash observation
     cash_total = sector_weights.get("Cash", 0.0)
@@ -271,7 +279,11 @@ def _section5_suitability(result: WeeklyReviewLoadResult) -> list[str]:
     holdings = result.portfolio.all_holdings
 
     if result.profile_available:
-        lines.append("Investor profile: Provided. Full suitability evaluation is deferred until engine wiring.")
+        lines.append("Investor profile: Provided.")
+        if result.profile_risk_tolerance:
+            lines.append(f"Risk tolerance: {result.profile_risk_tolerance}")
+        if result.profile_time_horizon:
+            lines.append(f"Time horizon: {result.profile_time_horizon}")
     else:
         lines.append(
             "Investor profile: Not provided. "
@@ -309,8 +321,16 @@ def _section5_suitability(result: WeeklyReviewLoadResult) -> list[str]:
             "Diversification should be reviewed against stated constraints."
         )
 
+    # Profile constraints
+    if result.profile_constraints:
+        lines.append("")
+        lines.append("Stated constraints (from investor profile):")
+        for constraint in result.profile_constraints:
+            lines.append(f"  Constraint: {constraint}")
+
     lines.append(
-        "Portfolio fit notes are limited to loaded local structure in this sprint."
+        "Full suitability evaluation is deferred until engine wiring. "
+        "Portfolio fit notes are limited to loaded local structure."
     )
     lines.append(
         "Note: Atlas does not judge investment merit or provide personalized guidance. "
@@ -327,6 +347,13 @@ def _section5_suitability(result: WeeklyReviewLoadResult) -> list[str]:
 def _section6_guardrails(result: WeeklyReviewLoadResult) -> list[str]:
     lines: list[str] = []
     holdings = result.portfolio.all_holdings
+
+    # Profile principles as guardrail reference
+    if result.profile_principles:
+        lines.append("Stated principles (from investor profile):")
+        for principle in result.profile_principles:
+            lines.append(f"  Principle: {principle}")
+        lines.append("")
 
     # Holdings with elevated risk score (user-supplied)
     high_risk = [h for h in holdings if h.risk_score > 60]
@@ -380,7 +407,7 @@ def _section6_guardrails(result: WeeklyReviewLoadResult) -> list[str]:
         "Principle Guardrail: No action is warranted when evidence is incomplete."
     )
 
-    if not [l for l in lines if "Risk to Monitor" in l or "Evidence Gap" in l]:
+    if not result.profile_principles and not [l for l in lines if "Risk to Monitor" in l or "Evidence Gap" in l]:
         lines.insert(0, "No guardrail flags raised from available local inputs.")
 
     lines.append(
@@ -454,6 +481,16 @@ def _section8_evidence(result: WeeklyReviewLoadResult) -> list[str]:
     for item in result.watchlist.items:
         for gap in item.evidence_needed:
             lines.append(f"Evidence Gap [{item.ticker}]: {gap}")
+
+    # Per-ticker company facts presence check
+    if result.tickers_missing_facts:
+        tickers_str = ", ".join(result.tickers_missing_facts)
+        lines.append(f"Missing company facts for: {tickers_str}")
+
+    # Per-ticker financials presence check
+    if result.tickers_missing_financials:
+        tickers_str = ", ".join(result.tickers_missing_financials)
+        lines.append(f"Missing financial history for: {tickers_str}")
 
     # Missing optional inputs
     if not result.profile_available:
@@ -575,12 +612,26 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
             "Reason to Wait: Decision journal not provided. "
             "Open decisions and prior context are not available for this review."
         )
-    if not result.company_facts_available:
+    if result.tickers_missing_facts:
+        lines.append(
+            f"Reason to Wait: Company facts missing for "
+            f"{len(result.tickers_missing_facts)} ticker(s): "
+            f"{', '.join(result.tickers_missing_facts[:5])}"
+            + (" and others" if len(result.tickers_missing_facts) > 5 else "")
+            + ". Evidence review is incomplete."
+        )
+    elif not result.company_facts_available:
         lines.append(
             "Reason to Wait: Company facts not loaded. "
             "Decision-relevant evidence is incomplete."
         )
-    if not result.financials_available:
+    if result.tickers_missing_financials:
+        lines.append(
+            f"Reason to Wait: Financial history missing for "
+            f"{len(result.tickers_missing_financials)} ticker(s). "
+            "Financial trend analysis is incomplete."
+        )
+    elif not result.financials_available:
         lines.append(
             "Reason to Wait: Financial history not loaded. "
             "Financial trend analysis is not available."
@@ -600,6 +651,34 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
+
+def _preview_scope_notes(scope_notes: str) -> str:
+    """Return a compact preview of scope notes, stripping markdown syntax."""
+    if not scope_notes:
+        return ""
+    raw_lines = scope_notes.splitlines()
+    # Strip markdown headers and formatting; collect substantive lines
+    substantive: list[str] = []
+    for line in raw_lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("#"):
+            continue  # skip markdown headers
+        # Strip basic inline markdown
+        cleaned = stripped.replace("**", "").replace("*", "").replace("`", "")
+        if cleaned:
+            substantive.append(cleaned)
+    if not substantive:
+        return scope_notes[:200]
+    preview = " | ".join(substantive[:4])
+    if len(preview) > 300:
+        preview = preview[:297] + "..."
+    total = len([l for l in raw_lines if l.strip()])
+    if total > 4:
+        preview += f" [{total} lines]"
+    return preview
 
 
 def _section(heading: str, content: list[str]) -> list[str]:

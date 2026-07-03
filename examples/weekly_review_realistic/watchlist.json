@@ -1,0 +1,117 @@
+{
+  "_comment": "Atlas Weekly Review realistic trial watchlist. Anonymized placeholder data. Not investment advice.",
+  "name": "Quality Research Watchlist",
+  "as_of": "2026-01-03",
+  "items": [
+    {
+      "ticker": "XYL",
+      "name": "Xylem",
+      "status": "Research",
+      "reason": "Water infrastructure theme with long-term demand logic from aging municipal networks. Initiation of early-stage research.",
+      "evidence_needed": [
+        "Margin durability under commodity and energy cost cycles",
+        "Valuation context relative to infrastructure and industrial peers",
+        "Portfolio overlap and concentration impact if added",
+        "Capital allocation track record: dividends, acquisitions, and organic growth split"
+      ],
+      "open_questions": [
+        "Is revenue mix shifting toward higher-margin software and services?",
+        "How durable is replacement demand from municipal water customers over a 5-year horizon?",
+        "What is the competitive response from adjacent infrastructure technology platforms?",
+        "How does the Evoqua acquisition change the long-term revenue and margin profile?"
+      ],
+      "manual_observations": [
+        "No position currently. Research in early stage.",
+        "Water infrastructure spending is structural — not economically cyclical in the same way as industrial capex.",
+        "Margin durability through the 2022-2024 cost cycle has not yet been reviewed."
+      ],
+      "notes": "Reason to wait: margin durability and valuation context require review before any further consideration. No action warranted at this stage."
+    },
+    {
+      "ticker": "ADYEN",
+      "name": "Adyen",
+      "status": "Needs More Evidence",
+      "reason": "Global payments infrastructure with enterprise focus. Monitoring recovery trajectory after 2023 deceleration.",
+      "evidence_needed": [
+        "Volume growth recovery durability and churn rate evidence",
+        "Competitive positioning relative to Stripe and incumbent processors",
+        "Margin trajectory following the headcount increase cycle",
+        "Enterprise win rate and contract renewal evidence"
+      ],
+      "open_questions": [
+        "Is the 2023 deceleration a structural shift or a temporary digestion period?",
+        "What is the medium-term margin target and path?",
+        "How does Adyen differentiate in the North American market where competition is most intense?"
+      ],
+      "manual_observations": [
+        "No position currently.",
+        "The 2023 deceleration was a significant negative surprise relative to prior trajectory.",
+        "Recovery indicators from recent quarters are encouraging but not yet sufficient for a thesis."
+      ],
+      "notes": "Decision deferred pending volume recovery confirmation over at least two more reporting periods. No action warranted without this evidence."
+    },
+    {
+      "ticker": "RCKWB",
+      "name": "Rockwool International B",
+      "status": "Watchlist",
+      "reason": "Building insulation with strong sustainability tailwinds from energy efficiency regulation in Europe.",
+      "evidence_needed": [
+        "Demand durability through current construction cycle downturn",
+        "Pricing power evidence relative to glass wool and spray foam competitors",
+        "Regulatory tailwind quantification: how binding are the European insulation mandates?"
+      ],
+      "open_questions": [
+        "How exposed is volume growth to new residential construction versus renovation?",
+        "Is the margin profile defensible through commodity and energy input cycles?",
+        "What is the growth opportunity outside Europe?"
+      ],
+      "manual_observations": [
+        "No position currently.",
+        "Construction downturn is creating near-term volume headwinds that may represent a research opportunity.",
+        "Family control reduces M&A risk but also limits capital allocation flexibility."
+      ],
+      "notes": "Watchlist observation stage. No evidence review completed yet. No action warranted."
+    },
+    {
+      "ticker": "VEEV",
+      "name": "Veeva Systems",
+      "status": "Suitable for Further Review",
+      "reason": "Vertical SaaS for life sciences with high switching costs and recurring revenue. Research substantially complete.",
+      "evidence_needed": [
+        "Vault platform adoption rate and account expansion penetration in existing accounts",
+        "Competitive risk from emerging vertical CRM entrants in pharma"
+      ],
+      "open_questions": [
+        "What is the realistic total addressable market once the CRM transition to Vault is complete?",
+        "How does the commercial CRM transition from Salesforce affect medium-term revenue?"
+      ],
+      "manual_observations": [
+        "No position currently. Research is substantially complete.",
+        "High net revenue retention above 120% indicates strong account expansion trajectory.",
+        "Founder involvement continues and capital allocation has been conservative and disciplined."
+      ],
+      "notes": "Suitable for further review and potential allocation consideration. Awaiting a review of portfolio concentration before proceeding. No action warranted without concentration check."
+    },
+    {
+      "ticker": "DXCM",
+      "name": "DexCom",
+      "status": "Decision Deferred",
+      "reason": "Continuous glucose monitoring platform. Research paused due to evidence gaps on long-term competitive durability.",
+      "evidence_needed": [
+        "Long-term competitive durability relative to Abbott FreeStyle Libre platform",
+        "Reimbursement pathway sustainability in the US and Europe",
+        "G7 platform adoption trajectory and market share stability"
+      ],
+      "open_questions": [
+        "Can DexCom maintain its premium positioning as Abbott improves accuracy parity?",
+        "What happens to volume if reimbursement policy changes in key markets?"
+      ],
+      "manual_observations": [
+        "No position currently.",
+        "Abbott FreeStyle Libre is a credible and growing competitive threat.",
+        "Reimbursement risk is not well-understood from available public data."
+      ],
+      "notes": "Decision deferred. Evidence on competitive durability and reimbursement risk is insufficient for a quality assessment. No action warranted."
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+[
+  {
+    "_comment": "Atlas decision journal entry. Placeholder data only. Not investment advice.",
+    "entry_id": "dj-2025-001",
+    "decision_title": "LVMH — thesis refresh following Q3 2025 results",
+    "asset_or_idea": "LVMH",
+    "decision_type": "Continue Research",
+    "decision_date": "2025-10-20",
+    "atlas_rating": "Continue Research",
+    "atlas_confidence": 65,
+    "atlas_view": "Organic volume growth has decelerated but the structural competitive position of the key brands remains intact. Input from recent Asia travel retail data is mixed. Thesis is intact but requires monitoring over the next two reporting periods.",
+    "follow_up_triggers": [
+      "Review after Q4 2025 revenue and organic growth disclosure",
+      "Monitor Asia travel retail recovery trajectory through Q1 2026",
+      "Revisit if organic growth returns to 5% or above"
+    ],
+    "decision_notes": "Thesis intact under current conditions. No action warranted. Monitoring organic growth recovery as the primary confirming indicator."
+  },
+  {
+    "_comment": "Atlas decision journal entry. Placeholder data only. Not investment advice.",
+    "entry_id": "dj-2025-002",
+    "decision_title": "MSFT position sizing review — Q4 2025",
+    "asset_or_idea": "MSFT",
+    "decision_type": "No Action Warranted",
+    "decision_date": "2025-12-10",
+    "atlas_rating": "No Action Warranted",
+    "atlas_confidence": 80,
+    "atlas_view": "Microsoft's cloud and productivity platform continues to compound. AI integration economics are not yet fully visible but early evidence from commercial adoption is encouraging. Position sizing at 17.5% of portfolio is within concentration constraints. No action warranted this period.",
+    "follow_up_triggers": [
+      "Review Azure revenue growth trajectory in Q1 2026 earnings",
+      "Assess Copilot commercial adoption data when available"
+    ],
+    "decision_notes": "No action warranted. Position size is appropriate. Continue monitoring cloud revenue trajectory."
+  },
+  {
+    "_comment": "Atlas decision journal entry. Placeholder data only. Not investment advice.",
+    "entry_id": "dj-2025-003",
+    "decision_title": "Adyen research initiation — payment infrastructure thesis",
+    "asset_or_idea": "ADYEN",
+    "decision_type": "Decision Deferred",
+    "decision_date": "2025-11-05",
+    "atlas_rating": "Needs More Evidence",
+    "atlas_confidence": 35,
+    "atlas_view": "Initial research on Adyen's payment infrastructure platform shows a high-quality business model with strong enterprise switching costs. However, the 2023 deceleration introduced significant uncertainty around volume trajectory and margin recovery. Insufficient evidence to form a thesis at this stage.",
+    "follow_up_triggers": [
+      "Review after two consecutive quarters of volume recovery evidence",
+      "Assess North American enterprise win rate disclosure when available",
+      "Monitor margin trajectory through H1 2026"
+    ],
+    "decision_notes": "Decision deferred. Evidence on volume recovery and competitive positioning in North America is insufficient. No action warranted without this evidence."
+  },
+  {
+    "_comment": "Atlas decision journal entry. Placeholder data only. Not investment advice.",
+    "entry_id": "dj-2024-004",
+    "decision_title": "NESTE position — thesis review following renewable fuels demand shift",
+    "asset_or_idea": "NESTE",
+    "decision_type": "Decision Deferred",
+    "decision_date": "2024-09-15",
+    "atlas_rating": "Needs More Evidence",
+    "atlas_confidence": 30,
+    "atlas_view": "Renewable fuels demand is under pressure from evolving regulatory signals and biofuel mandate uncertainty. The long-term demand thesis for renewable diesel is no longer clear. Position is a legacy holding from a prior research cycle. Evidence on long-term demand durability is insufficient under current conditions.",
+    "follow_up_triggers": [
+      "Monitor EU renewable energy regulatory developments through 2026",
+      "Review if renewable fuel demand evidence improves materially",
+      "Assess if mandate uncertainty resolves in a way that clarifies the thesis"
+    ],
+    "decision_notes": "Decision deferred. Thesis is unclear under current demand conditions. No action warranted without clearer evidence on demand durability. Position is monitored but no change is warranted at this time."
+  }
+]
