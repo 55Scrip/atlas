@@ -1,7 +1,8 @@
 # Config Cleanup Plan
 
 **Created:** 2026-07-03 (Sprint 195)  
-**Status:** OPEN — Audit complete. No cleanup warranted. Sprint 196 recommended: Close config cleanup track.
+**Updated:** 2026-07-03 (Sprint 196)  
+**Status:** CLOSED — Sprint 196 confirmed Sprint 195 findings unchanged. No cleanup warranted. No runtime behavior changed.
 
 ---
 
@@ -188,7 +189,7 @@ The default is deterministic: if `ATLAS_HOME` is unset, `Path.cwd()` resolves to
 
 **`ATLAS_HOME` is the only configuration knob.** No config file is read. No YAML/JSON/TOML loading. No dotenv. Simple and correct for a local SQLite tool.
 
-**Observation:** No test covers the `ATLAS_HOME` env var path. This is low-risk because the fallback behavior is straightforward and the database layer accepts `db_path` arguments that override the default in all tests. However, a guardrail test could confirm the env var is respected. Low priority.
+**Observation (Sprint 195):** No test covered the `ATLAS_HOME` env var path. Sprint 195 added `test_atlas_home_env_var_respected` in `tests/test_config_sprint195.py`. Now covered.
 
 ---
 
@@ -270,13 +271,24 @@ Added `tests/test_config_sprint195.py` with 6 tests:
 
 ---
 
-## Sprint 196 Target Recommendation
+## Sprint 196 Closure
 
-**Recommended:** Close config cleanup track.
+**Decision:** Close the config cleanup track.
 
-**Rationale:** The audit found no cleanup warranted. `atlas/config.py` is the thinnest possible infrastructure module. All boundaries are correct. No stale imports. No provider coupling. No dead symbols. One optional guardrail test for `ATLAS_HOME` env var behavior was added. Sprint 196 should confirm findings unchanged and close the track.
+**Rationale:** Sprint 196 confirmed all Sprint 195 findings unchanged. `atlas/config.py` is the thinnest possible infrastructure module — 6 lines, stdlib-only, zero Atlas imports, zero provider coupling, zero network access, 2 active production callers. All boundaries are correct. No stale imports from any closed cleanup track. No dead symbols. No cleanup warranted. Further cleanup would create churn without architectural benefit.
 
-**Alternative:** If Sprint 196 is green with no findings, recommend Sprint 197 audit `atlas/database/` and `atlas/services/` — the two packages that consume `atlas/config.py`. Understanding the database layer is the natural next step after understanding the configuration layer.
+**Final verified state (Sprint 196):**
+- `atlas/config.py` exists, 6 lines, unchanged ✓
+- 3 public constants (`BASE_DIR`, `DATABASE_DIR`, `DATABASE_PATH`) — unchanged ✓
+- 2 active production callers (`database/connection.py`, `services/database_service.py`) — unchanged ✓
+- `ATLAS_HOME` env var: unchanged, tested by `test_atlas_home_env_var_respected` ✓
+- No Atlas package imports ✓
+- No provider imports ✓
+- No network access ✓
+- No stale imports from closed cleanup tracks ✓
+- Boundary direction: config ← database ← services ← CLI — unchanged ✓
+- `atlas/storage/` does not exist (storage layer is `atlas/database/` + `atlas/services/`) ✓
+- **1654 passed, 3 skipped | RC2 green | Demo passes ✓**
 
 ---
 
@@ -288,6 +300,30 @@ This plan may be reopened if:
 - `DATABASE_PATH` behavior changes
 - A new caller imports `BASE_DIR` or `DATABASE_DIR` directly (should be treated as internal)
 - A config file loading mechanism is added
+
+---
+
+## Sprint 196 Verification Table
+
+| Check | Result |
+|---|---|
+| `atlas/config.py` exists | ✓ (single-file module, unchanged) |
+| Line count | 6 ✓ |
+| Public constants | 3 (`BASE_DIR`, `DATABASE_DIR`, `DATABASE_PATH`) ✓ |
+| Active production callers | 2 — unchanged ✓ |
+| `ATLAS_HOME` env var behavior | Unchanged; covered by guardrail test ✓ |
+| Atlas package imports | None ✓ |
+| Provider imports | None ✓ |
+| Network access | None ✓ |
+| Stale imports from closed tracks | None ✓ |
+| Boundary violations | None ✓ |
+| No cleanup warranted | ✓ |
+| Compile check | Green ✓ |
+| Full test suite | **1654 passed, 3 skipped** ✓ |
+| RC2 verification | Green ✓ |
+| Demo | Passes, provider-free ✓ |
+| Behavior changes | None |
+| Track status | **CLOSED Sprint 196** ✓ |
 
 ---
 

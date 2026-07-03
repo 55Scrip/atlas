@@ -2,6 +2,30 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-03: Sprint 196 — Close Config Cleanup Track
+
+Decision: Close the `atlas/config/` cleanup track. Sprint 196 confirmed all Sprint 195 findings unchanged — no cleanup warranted.
+
+**Rationale:** After inventory, export review, caller review, configuration/provider/runtime boundary review, provider boundary review, runtime defaults review, environment/file loading review, storage/database/services boundary review, and stale import audit, the config package contains only active, intentional infrastructure code. `atlas/config.py` is 6 lines, stdlib-only, with zero Atlas imports, zero provider coupling, zero network access, and 2 active production callers. Further cleanup would create churn without architectural benefit.
+
+**Final verified state:**
+- `atlas/config.py` exists, 6 lines, unchanged ✓
+- 3 public constants: `DATABASE_PATH` (2 active callers), `BASE_DIR` and `DATABASE_DIR` (internal derivations) ✓
+- `ATLAS_HOME` env var: unchanged; covered by `test_atlas_home_env_var_respected` ✓
+- No Atlas package imports ✓
+- No provider imports ✓
+- No network access ✓
+- No stale imports from closed cleanup tracks ✓
+- Boundary direction: config ← database ← services ← CLI — correct ✓
+- `atlas/storage/` does not exist; storage layer is `atlas/database/` + `atlas/services/` ✓
+- **1654 passed, 3 skipped | RC2 green | Demo passes ✓**
+
+**Changes made:** Marked `docs/ConfigCleanupPlan.md` CLOSED with Sprint 196 section and verification table. Updated standard docs.
+
+**Next sprint recommendation:** Audit `atlas/database/` and `atlas/services/` together (Sprint 197) — the two packages that consume `atlas/config.py` directly. Understanding the database/services layer is the logical next step.
+
+---
+
 ## 2026-07-03: Sprint 195 — Audit Config Package
 
 Decision: Confirm that `atlas/config.py` (the Atlas configuration layer) is clean, well-bounded, and requires no cleanup. Note that `atlas/config/` does not exist as a package directory — the configuration surface is a single 6-line module at `atlas/config.py`.
