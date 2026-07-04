@@ -442,6 +442,27 @@ and safety boundary. Exit 0 on valid draft, exit 1 on missing file, invalid JSON
 or invalid schema. Does not confirm, reject, or write any file. No provider imports.
 No network calls. No Weekly Review behavior changed. Internal v1 foundation unchanged.
 
+**Sprint 268 (post-v1 product architecture — complete):**
+Temporary workspace data model specified in `docs/TemporaryWorkspaceDataModel.md`.
+Principle: a temporary workspace is an unsaved, no-account structure that is
+inspectable, explainable, and safe to discard. Specifies: top-level workspace
+fields; source input model (7 fields, raw retention design noted); classification
+result model (10 categories, confidence, suggested cards); detected entity model
+(12 entity types, normalized value, source span); uncertainty model (4 severity
+levels, suggested user confirmation); missing field model (4 optional/required
+values); workspace card model (card_id, card_type, status, summary, items,
+related entities/uncertainties); 14 card types; 7 safe card status values;
+default card ordering (input_summary first, save_workspace_prompt last);
+save/account handoff state (account_required, save_requires_account,
+prompt_timing, prompt_reason); safety boundary (5 boolean fields); Snapshot
+Draft relationship (no silent persistence); Weekly Review Preview relationship
+(not implied history); canonical values remain English; example JSON; validation
+expectations; 8 implementation phases (Phase 0 complete). No runtime behaviour
+changed. No dataclasses, JSON Schema, classifier, renderer, workspace, database,
+UI, auth, or backend code added. No provider or network imports introduced.
+~170 new tests. All previous tests pass. All demos green. RC2 green. Internal
+v1 foundation unchanged.
+
 **Sprint 267 (post-v1 product specification — complete):**
 Input-first workspace onboarding model specified in
 `docs/InputFirstWorkspaceOnboarding.md`. Principle: Atlas starts with

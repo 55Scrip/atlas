@@ -498,14 +498,19 @@ value at the command line. Web phases follow.
 
 ## Recommended Next Sprint
 
-**Sprint 268 — Define Temporary Workspace Data Model**
+**Sprint 268 — Define Temporary Workspace Data Model (complete)**
 
-After specifying input-first onboarding, Atlas should define the temporary
-workspace data model: the data structure that captures input summary,
-classification output, detected entities, workspace card list, uncertainties,
-confidence levels, and save/account handoff state — without implementing
-persistence.
+The temporary workspace data model has been specified in
+[docs/TemporaryWorkspaceDataModel.md](TemporaryWorkspaceDataModel.md).
 
-This model is the bridge between the input classification layer (Sprint 267,
-Input Classification section) and the rendering layer (workspace cards). It
-must be defined before either can be implemented.
+It defines: top-level workspace fields, source input model, classification
+result model, detected entity model, uncertainty model, missing field model,
+workspace card model, card types, card status values, card ordering, save/account
+handoff state, safety boundary, Snapshot Draft relationship, Weekly Review
+Preview relationship, canonical values, example JSON, and validation expectations.
+
+**Sprint 269 — Define Temporary Workspace Card Rendering Contract (recommended)**
+
+After the temporary workspace data model is specified, Atlas should define how
+workspace cards are rendered in a safe, explainable, input-first, no-account
+experience — without implementing UI.

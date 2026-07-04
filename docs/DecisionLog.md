@@ -2,6 +2,48 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 268 — Define Temporary Workspace Data Model
+
+Decision: Specify the temporary workspace data model in
+`docs/TemporaryWorkspaceDataModel.md`.
+
+**Principle:** A temporary workspace is an unsaved, no-account structure
+created from a user's first input. It should be inspectable, explainable,
+and safe to discard. It must not imply persistence unless the user explicitly
+chooses to save.
+
+**What was specified:** top-level workspace fields (`workspace_id`, `status`,
+`created_at`, `source_input`, `classification`, `detected_entities`,
+`uncertainties`, `missing_fields`, `cards`, `save_handoff`, `safety_boundary`);
+source input model (`input_id`, `input_type`, `raw_text_preview`,
+`source_description`, `submitted_at`, `user_language_hint`,
+`contains_sensitive_data`); classification result model (10 categories from
+Sprint 267; `primary_type`, `secondary_types`, `confidence`, `rationale`,
+`uncertainties`, `suggested_cards`); detected entity model (12 entity types;
+`entity_id`, `entity_type`, `value`, `normalized_value`, `source_span`,
+`confidence`, `uncertainty_reason`); uncertainty model (`uncertainty_id`,
+`severity` low/medium/high/blocking, `message`, `related_entity_ids`,
+`related_card_ids`, `suggested_user_confirmation`); missing field model
+(`field_id`, `field_name`, `reason`, `related_card_ids`,
+`optional_or_required` with 4 values); workspace card model (`card_id`,
+`card_type`, `title`, `status`, `summary`, `items`, `related_entities`,
+`related_uncertainties`, `source_references`); 14 card types aligned with
+Sprint 267; 7 safe card status values; default card ordering (input_summary
+first, save_workspace_prompt last); save/account handoff state model
+(`account_required`, `save_available`, `save_requires_account`,
+`prompt_timing`, `prompt_reason` with 5 values); safety boundary model (5
+boolean fields); relationship to Snapshot Drafts (no silent persistence);
+relationship to Weekly Review Preview (temporary, not implied history);
+canonical values remain English; example JSON for a portfolio/watchlist input;
+validation expectations; 8 implementation phases (Phase 0 this sprint);
+open questions; recommended Sprint 269 target (card rendering contract).
+
+**No runtime behaviour changed.** No Python dataclasses, JSON Schema,
+validation code, classifier, renderer, workspace, database, UI, auth, or
+backend code was added. No provider or network imports were introduced.
+
+---
+
 ## 2026-07-04: Sprint 267 — Define Input-First Workspace Onboarding
 
 Decision: Specify Atlas's input-first workspace onboarding model in
