@@ -2,6 +2,32 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 231 — Add Snapshot Draft Reject CLI
+
+Decision: Add `atlas snapshot reject <draft_path> --output-draft <path>` as a safe, non-mutating rejection command.
+
+**Rationale:** After validating the review-confirm-export workflow, Atlas adds a safe reject command that writes a new rejected draft copy without mutating the original draft or any Atlas local input files. This completes the basic confirm/reject workflow boundary. Rejected drafts are not exportable; the export commands block them explicitly.
+
+**Behavior:**
+- `draft`, `needs_user_review`, `confirmed`, and `rejected` states may produce a rejected copy
+- `confirmed` input writes a rejected copy with a note that the input was confirmed
+- `rejected` input writes a copy with a note that it was already rejected
+- `superseded` state is hard-blocked (superseded drafts were replaced by newer drafts)
+- Output path must differ from input path (no in-place rejection)
+- Default: refuse to overwrite existing output draft; `--overwrite` enables replacement
+- `export-research-notes` blocks rejected copies explicitly
+
+**Changes:**
+- `atlas/snapshot_input/reject.py`: new module — `SnapshotRejectResult`, `reject_snapshot_draft`
+- `atlas/snapshot_input/render.py`: `render_snapshot_reject_success`, `render_snapshot_reject_blocked`, `render_snapshot_reject_error`
+- `atlas/snapshot_input/__init__.py`: updated exports
+- `atlas/cli/main.py`: `atlas snapshot reject` command added
+- `tests/test_snapshot_draft_reject_cli_sprint231.py`: 55 new tests
+
+**Sprint 232 recommendation:** Run fifth real portfolio trial with confirm and reject — validate both branches of the basic status workflow before adding conversion types.
+
+---
+
 ## 2026-07-04: Sprint 230 — Fourth Real Portfolio Trial With Confirm Then Export
 
 Decision: Run the full review-confirm-export-Weekly Review loop with realistic inputs after adding `atlas snapshot confirm`.

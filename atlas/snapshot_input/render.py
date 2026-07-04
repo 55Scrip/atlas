@@ -359,3 +359,64 @@ def render_snapshot_confirm_error(error_message: str) -> str:
         f"Error: {error_message}",
     ]
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Reject renderers
+# ---------------------------------------------------------------------------
+
+def render_snapshot_reject_success(
+    input_path: object,
+    output_path: object,
+    snapshot_type: str,
+    already_rejected: bool,
+    was_confirmed: bool,
+) -> str:
+    """Render a success summary after writing a rejected draft copy."""
+    lines = [
+        "Snapshot Draft Rejection",
+        "",
+        "Status: rejected",
+    ]
+    if already_rejected:
+        lines.append(
+            "Note: input draft was already rejected; a rejected copy was written."
+        )
+    elif was_confirmed:
+        lines.append(
+            "Note: input draft was confirmed; a rejected copy was written for this workflow branch."
+        )
+    lines += [
+        f"Input Draft: {input_path}",
+        f"Output Draft: {output_path}",
+        f"Snapshot Type: {snapshot_type}",
+        "Confirmation Status: rejected",
+        "",
+        "Safety Boundary:",
+        "  - Original draft was not modified.",
+        "  - No Atlas local input files were changed.",
+        "  - Rejected drafts are not exportable.",
+    ]
+    return "\n".join(lines)
+
+
+def render_snapshot_reject_blocked(reason: str) -> str:
+    """Render a blocked summary when rejection cannot proceed."""
+    lines = [
+        "Snapshot Draft Rejection",
+        "",
+        "Status: blocked",
+        f"Reason: {reason}",
+    ]
+    return "\n".join(lines)
+
+
+def render_snapshot_reject_error(error_message: str) -> str:
+    """Render an error summary for a failed snapshot reject load."""
+    lines = [
+        "Snapshot Draft Rejection",
+        "",
+        "Status: invalid",
+        f"Error: {error_message}",
+    ]
+    return "\n".join(lines)

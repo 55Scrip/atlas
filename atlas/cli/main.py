@@ -607,6 +607,94 @@ def snapshot_confirm_command(
         raise typer.Exit(code=1)
 
 
+@snapshot_app.command("reject")
+def snapshot_reject_command(
+    draft_path: Path = typer.Argument(
+        ...,
+        help="Path to a Snapshot Draft JSON file to reject.",
+    ),
+    output_draft: Path = typer.Option(
+        ...,
+        "--output-draft",
+        help="Path to write the rejected Snapshot Draft JSON copy.",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Overwrite the output draft file if it already exists.",
+    ),
+):
+    """Reject a Snapshot Draft and write a rejected copy.
+
+    Loads the draft and writes a new rejected draft copy to OUTPUT_DRAFT.
+    The original draft is not modified.
+
+    Drafts in draft, needs_user_review, confirmed, or rejected states may
+    produce a rejected copy. Superseded drafts are blocked.
+
+    Rejected drafts are not exportable. Use atlas snapshot confirm to produce
+    a confirmed copy suitable for export commands.
+
+    This command does not write Atlas local input files. It does not export
+    research notes, portfolio, watchlist, journal, or company facts files.
+
+    No live data. No recommendations. No OCR. No AI.
+    """
+    from atlas.snapshot_input.schema import SnapshotDraft
+    from atlas.snapshot_input.reject import reject_snapshot_draft
+    from atlas.snapshot_input.render import (
+        render_snapshot_reject_blocked,
+        render_snapshot_reject_error,
+        render_snapshot_reject_success,
+    )
+
+    # Guard: output path must differ from input path
+    try:
+        same = draft_path.resolve() == output_draft.resolve()
+    except Exception:
+        same = str(draft_path) == str(output_draft)
+    if same:
+        console.print(
+            render_snapshot_reject_blocked(
+                "Output draft path must differ from input draft path. "
+                "In-place rejection is not allowed."
+            )
+        )
+        raise typer.Exit(code=1)
+
+    if not draft_path.exists():
+        console.print(render_snapshot_reject_error(f"file not found: {draft_path}"))
+        raise typer.Exit(code=1)
+
+    try:
+        text = draft_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        console.print(render_snapshot_reject_error(f"could not read file: {exc}"))
+        raise typer.Exit(code=1)
+
+    try:
+        draft = SnapshotDraft.from_json(text)
+    except ValueError as exc:
+        console.print(render_snapshot_reject_error(str(exc)))
+        raise typer.Exit(code=1)
+
+    result = reject_snapshot_draft(draft, output_draft, overwrite=overwrite)
+
+    if result.success:
+        console.print(
+            render_snapshot_reject_success(
+                input_path=draft_path,
+                output_path=result.output_path,
+                snapshot_type=draft.snapshot_type.value,
+                already_rejected=result.already_rejected,
+                was_confirmed=result.was_confirmed,
+            )
+        )
+    else:
+        console.print(render_snapshot_reject_blocked(result.reason))
+        raise typer.Exit(code=1)
+
+
 @snapshot_app.command("export-research-notes")
 def snapshot_export_research_notes_command(
     draft_path: Path = typer.Argument(

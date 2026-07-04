@@ -29,6 +29,9 @@ from atlas.snapshot_input.render import (
     render_snapshot_draft_review_error,
     render_snapshot_draft_validation,
     render_snapshot_draft_validation_error,
+    render_snapshot_reject_blocked,
+    render_snapshot_reject_error,
+    render_snapshot_reject_success,
 )
 from atlas.snapshot_input.export import (
     ResearchNotesExportResult,
@@ -38,6 +41,10 @@ from atlas.snapshot_input.confirm import (
     SnapshotConfirmResult,
     confirm_snapshot_draft,
 )
+from atlas.snapshot_input.reject import (
+    SnapshotRejectResult,
+    reject_snapshot_draft,
+)
 
 __all__ = [
     "ResearchNotesExportResult",
@@ -45,11 +52,13 @@ __all__ = [
     "SnapshotConfirmationStatus",
     "SnapshotConfirmResult",
     "SnapshotDraft",
+    "SnapshotRejectResult",
     "SnapshotType",
     "collect_snapshot_draft_review_issues",
     "confirm_snapshot_draft",
     "export_research_notes",
     "load_snapshot_draft",
+    "reject_snapshot_draft",
     "render_research_notes_export_blocked",
     "render_research_notes_export_success",
     "render_snapshot_confirm_blocked",
@@ -59,6 +68,9 @@ __all__ = [
     "render_snapshot_draft_review_error",
     "render_snapshot_draft_validation",
     "render_snapshot_draft_validation_error",
+    "render_snapshot_reject_blocked",
+    "render_snapshot_reject_error",
+    "render_snapshot_reject_success",
     "save_snapshot_draft",
     "validate_snapshot_draft",
 ]

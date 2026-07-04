@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2505 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2560 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -300,6 +300,16 @@ Draft never mutated. End-to-end path confirmed: exported notes.md immediately
 readable by Weekly Review `--research-notes DIR`. No provider imports. No network
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
+
+**Sprint 231 (post-v1 improvement — complete):**
+`atlas snapshot reject <path> --output-draft <path>` CLI command added. Writes a
+rejected draft copy (`confirmation_status: rejected`) without mutating the original
+draft or any Atlas local input files. `draft`, `needs_user_review`, `confirmed`,
+and `rejected` states produce a rejected copy. `superseded` is hard-blocked.
+Confirmed and already-rejected inputs produce copies with informational notes.
+Output path must differ from input path. Default: refuse to overwrite; `--overwrite`
+enables replacement. `export-research-notes` blocks rejected copies. No OCR. No AI.
+No provider imports. Internal v1 foundation unchanged.
 
 **Sprint 230 (post-v1 validation — complete):**
 Fourth real portfolio trial — full review-confirm-export-Weekly Review loop. Full
