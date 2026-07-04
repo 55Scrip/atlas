@@ -363,30 +363,48 @@ def test_locale_support_still_has_en():
 # Renderer modules unchanged
 # ---------------------------------------------------------------------------
 
-def test_weekly_review_render_no_sv_dispatch():
-    source = WEEKLY_REVIEW_RENDER.read_text(encoding="utf-8")
-    assert '"sv"' not in source
+def test_weekly_review_render_sv_still_raises():
+    # Sprint 250 added dispatch; sv branch exists but is blocked by locale_support
+    import pytest
+    from pathlib import Path as P
+    from atlas.weekly_review.inputs import WeeklyReviewInputPaths, load_weekly_review_inputs
+    from atlas.weekly_review.render import render_weekly_review
+    paths = WeeklyReviewInputPaths(
+        portfolio_path=P("examples/weekly_review/portfolio.json"),
+        watchlist_path=P("examples/weekly_review/watchlist.json"),
+        as_of="2026-01-01",
+    )
+    result = load_weekly_review_inputs(paths)
+    with pytest.raises(ValueError, match="sv"):
+        render_weekly_review(result, locale="sv")
 
 
-def test_snapshot_render_no_sv_dispatch():
-    source = SNAPSHOT_RENDER.read_text(encoding="utf-8")
-    assert '"sv"' not in source
+def test_snapshot_render_sv_still_raises():
+    # Sprint 250 added dispatch; sv branch exists but is blocked by locale_support
+    import pytest
+    from atlas.snapshot_input.render import render_snapshot_draft_validation
+    import json
+    draft_path = Path("examples/snapshot_drafts/research_notes_snapshot.json")
+    from atlas.snapshot_input.schema import SnapshotDraft
+    draft = SnapshotDraft.from_dict(json.loads(draft_path.read_text(encoding="utf-8")))
+    with pytest.raises(ValueError, match="sv"):
+        render_snapshot_draft_validation(draft, locale="sv")
 
 
 # ---------------------------------------------------------------------------
-# No Swedish string constants modules created yet
+# Swedish string constants imported by renderer (Sprint 250 dispatch)
 # ---------------------------------------------------------------------------
 
-def test_strings_sv_weekly_review_not_imported_by_renderer():
-    # Sprint 249 created strings_sv.py; it must not be imported by the active renderer
+def test_strings_sv_weekly_review_imported_by_renderer():
+    # Sprint 250: strings_sv is now imported for dispatch readiness
     source = Path("atlas/weekly_review/render.py").read_text(encoding="utf-8")
-    assert "strings_sv" not in source
+    assert "strings_sv" in source
 
 
-def test_strings_sv_snapshot_not_imported_by_renderer():
-    # Sprint 249 created strings_sv.py; it must not be imported by the active renderer
+def test_strings_sv_snapshot_imported_by_renderer():
+    # Sprint 250: strings_sv is now imported for dispatch readiness
     source = Path("atlas/snapshot_input/render.py").read_text(encoding="utf-8")
-    assert "strings_sv" not in source
+    assert "strings_sv" in source
 
 
 # ---------------------------------------------------------------------------

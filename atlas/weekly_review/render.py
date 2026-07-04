@@ -5,6 +5,8 @@ the loaded WeeklyReviewLoadResult.  No engine calls, no provider dependency,
 no network access, no AI.
 
 Sprint 212: replaced placeholder content with input-derived deterministic output.
+Sprint 250: added locale-to-strings dispatch helper (_strings_for_locale).
+           Swedish strings are mapped but unreachable while sv is unsupported.
 """
 
 from __future__ import annotations
@@ -18,11 +20,26 @@ from atlas.weekly_review.inputs import (
     WeeklyReviewResearchNote,
     WeeklyReviewWatchlistStatus,
 )
-from atlas.weekly_review import strings as S
+from atlas.weekly_review import strings as strings_en
+from atlas.weekly_review import strings_sv as strings_sv
 from atlas.locale_support import ensure_supported_locale
 
 
-_TITLE = S.WEEKLY_REVIEW_TITLE
+# ---------------------------------------------------------------------------
+# Locale dispatch
+# ---------------------------------------------------------------------------
+
+def _strings_for_locale(locale: str):
+    """Return the strings module for the given locale.
+
+    Calls ensure_supported_locale — sv raises until locale_support.py is updated.
+    English strings are returned for locale="en".
+    Swedish strings are mapped for future locale="sv".
+    """
+    ensure_supported_locale(locale)
+    if locale == "sv":
+        return strings_sv
+    return strings_en
 
 
 def render_weekly_review(result: WeeklyReviewLoadResult, *, locale: str = "en") -> str:
@@ -31,34 +48,34 @@ def render_weekly_review(result: WeeklyReviewLoadResult, *, locale: str = "en") 
     Only locale="en" is currently supported. Unsupported locales raise ValueError.
     The CLI does not expose a locale parameter; it always uses the default.
     """
-    ensure_supported_locale(locale)
+    S = _strings_for_locale(locale)
     lines: list[str] = []
 
-    lines.append(f"# {_TITLE}")
+    lines.append(f"# {S.WEEKLY_REVIEW_TITLE}")
     lines.append("")
     lines.append(S.WEEKLY_REVIEW_DISCLAIMER)
     lines.append("")
 
-    lines.extend(_render_input_status(result))
+    lines.extend(_render_input_status(result, S))
     lines.append("")
 
     if result.warnings:
-        lines.extend(_render_warnings(result.warnings))
+        lines.extend(_render_warnings(result.warnings, S))
         lines.append("")
 
     lines.append("---")
     lines.append("")
 
-    lines.extend(_section(S.SECTION_REVIEW_SCOPE, _section1_scope(result)))
+    lines.extend(_section(S.SECTION_REVIEW_SCOPE, _section1_scope(result, S)))
     lines.extend(_section(S.SECTION_PORTFOLIO_CONTEXT, _section2_portfolio(result)))
-    lines.extend(_section(S.SECTION_WATCHLIST_REVIEW, _section3_watchlist(result)))
+    lines.extend(_section(S.SECTION_WATCHLIST_REVIEW, _section3_watchlist(result, S)))
     lines.extend(_section(S.SECTION_COMPANY_REVIEWS_NEEDING_ATTENTION, _section4_attention(result)))
     lines.extend(_section(S.SECTION_PORTFOLIO_FIT_AND_SUITABILITY_NOTES, _section5_suitability(result)))
-    lines.extend(_section(S.SECTION_RISK_AND_PRINCIPLE_GUARDRAILS, _section6_guardrails(result)))
-    lines.extend(_section(S.SECTION_OPEN_DECISIONS, _section7_decisions(result)))
-    lines.extend(_section(S.SECTION_MISSING_EVIDENCE, _section8_evidence(result)))
-    lines.extend(_section(S.SECTION_FOLLOW_UP_QUESTIONS, _section9_questions(result)))
-    lines.extend(_section(S.SECTION_NON_ACTIONS_REASONS_TO_WAIT, _section10_nonactions(result)))
+    lines.extend(_section(S.SECTION_RISK_AND_PRINCIPLE_GUARDRAILS, _section6_guardrails(result, S)))
+    lines.extend(_section(S.SECTION_OPEN_DECISIONS, _section7_decisions(result, S)))
+    lines.extend(_section(S.SECTION_MISSING_EVIDENCE, _section8_evidence(result, S)))
+    lines.extend(_section(S.SECTION_FOLLOW_UP_QUESTIONS, _section9_questions(result, S)))
+    lines.extend(_section(S.SECTION_NON_ACTIONS_REASONS_TO_WAIT, _section10_nonactions(result, S)))
 
     return "\n".join(lines)
 
@@ -73,7 +90,7 @@ def render_weekly_review_skeleton(result: WeeklyReviewLoadResult) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _section1_scope(result: WeeklyReviewLoadResult) -> list[str]:
+def _section1_scope(result: WeeklyReviewLoadResult, S) -> list[str]:
     lines: list[str] = []
 
     if result.as_of:
@@ -193,7 +210,7 @@ def _section2_portfolio(result: WeeklyReviewLoadResult) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _section3_watchlist(result: WeeklyReviewLoadResult) -> list[str]:
+def _section3_watchlist(result: WeeklyReviewLoadResult, S) -> list[str]:
     lines: list[str] = []
 
     if not result.watchlist.items:
@@ -351,7 +368,7 @@ def _section5_suitability(result: WeeklyReviewLoadResult) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _section6_guardrails(result: WeeklyReviewLoadResult) -> list[str]:
+def _section6_guardrails(result: WeeklyReviewLoadResult, S) -> list[str]:
     lines: list[str] = []
     holdings = result.portfolio.all_holdings
 
@@ -429,7 +446,7 @@ def _section6_guardrails(result: WeeklyReviewLoadResult) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _section7_decisions(result: WeeklyReviewLoadResult) -> list[str]:
+def _section7_decisions(result: WeeklyReviewLoadResult, S) -> list[str]:
     lines: list[str] = []
 
     if not result.journal_entries:
@@ -465,7 +482,7 @@ def _section7_decisions(result: WeeklyReviewLoadResult) -> list[str]:
         if result.as_of and _is_journal_entry_open(entry):
             age = _journal_entry_age_days(entry, result.as_of)
             if age is not None and age > 90:
-                lines.append(_render_journal_aging_note(entry, age))
+                lines.append(_render_journal_aging_note(entry, age, S))
             # If date is missing on an open entry, note it quietly
             elif age is None and _parse_journal_entry_date(entry) is None:
                 lines.append("[Date Missing] No decision date recorded; aging cannot be assessed.")
@@ -490,7 +507,7 @@ def _section7_decisions(result: WeeklyReviewLoadResult) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _section8_evidence(result: WeeklyReviewLoadResult) -> list[str]:
+def _section8_evidence(result: WeeklyReviewLoadResult, S) -> list[str]:
     lines: list[str] = []
 
     # Watchlist evidence gaps (grouped by ticker)
@@ -548,7 +565,7 @@ def _section8_evidence(result: WeeklyReviewLoadResult) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _section9_questions(result: WeeklyReviewLoadResult) -> list[str]:
+def _section9_questions(result: WeeklyReviewLoadResult, S) -> list[str]:
     lines: list[str] = []
 
     # Watchlist open questions
@@ -640,7 +657,7 @@ def _section9_questions(result: WeeklyReviewLoadResult) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
+def _section10_nonactions(result: WeeklyReviewLoadResult, S) -> list[str]:
     lines: list[str] = []
 
     # Deferred and needs-more-evidence watchlist items
@@ -827,7 +844,7 @@ def _is_aged_journal_entry(entry: dict, as_of: str, threshold_days: int = 90) ->
     return age is not None and age > threshold_days
 
 
-def _render_journal_aging_note(entry: dict, age_days: int) -> str:
+def _render_journal_aging_note(entry: dict, age_days: int, S) -> str:
     """Return a safe aging note line for a journal entry."""
     asset = entry.get("asset_or_idea") or entry.get("decision_title", "Unknown")
     return (
@@ -875,7 +892,7 @@ def _section(heading: str, content: list[str]) -> list[str]:
     return out
 
 
-def _render_input_status(result: WeeklyReviewLoadResult) -> list[str]:
+def _render_input_status(result: WeeklyReviewLoadResult, S) -> list[str]:
     lines = [f"## {S.LABEL_INPUT_STATUS}", ""]
     lines.append(f"- {S.INPUT_STATUS_PORTFOLIO_LOADED.format(count=len(result.portfolio.all_holdings))}")
     lines.append(
@@ -909,7 +926,7 @@ def _render_input_status(result: WeeklyReviewLoadResult) -> list[str]:
     return lines
 
 
-def _render_warnings(warnings: tuple[WeeklyReviewInputWarning, ...]) -> list[str]:
+def _render_warnings(warnings: tuple[WeeklyReviewInputWarning, ...], S) -> list[str]:
     lines = [f"## {S.LABEL_INPUT_WARNINGS}", ""]
     for w in warnings:
         lines.append(S.WARNING_ROW.format(code=w.code, message=w.message))

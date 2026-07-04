@@ -619,29 +619,46 @@ def test_sn_sv_module_no_canonical_values():
 
 
 # ---------------------------------------------------------------------------
-# Active renderers do not import Swedish constants
+# Active renderers import Swedish constants for dispatch (Sprint 250)
+# but sv remains unsupported at runtime
 # ---------------------------------------------------------------------------
 
-def test_weekly_review_render_does_not_import_strings_sv():
+def test_weekly_review_render_imports_strings_sv_for_dispatch():
+    # Sprint 250: strings_sv imported for locale dispatch readiness; sv still raises
     source = WR_RENDER.read_text(encoding="utf-8")
-    assert "strings_sv" not in source
+    assert "strings_sv" in source
 
 
-def test_snapshot_render_does_not_import_strings_sv():
+def test_snapshot_render_imports_strings_sv_for_dispatch():
+    # Sprint 250: strings_sv imported for locale dispatch readiness; sv still raises
     source = SN_RENDER.read_text(encoding="utf-8")
-    assert "strings_sv" not in source
+    assert "strings_sv" in source
 
 
-def test_weekly_review_render_does_not_import_sv_module():
-    source = WR_RENDER.read_text(encoding="utf-8")
-    assert "import strings_sv" not in source
-    assert "from atlas.weekly_review import strings_sv" not in source
+def test_weekly_review_sv_still_raises_at_runtime():
+    import pytest
+    from pathlib import Path as P
+    from atlas.weekly_review.inputs import WeeklyReviewInputPaths, load_weekly_review_inputs
+    from atlas.weekly_review.render import render_weekly_review
+    paths = WeeklyReviewInputPaths(
+        portfolio_path=P("examples/weekly_review/portfolio.json"),
+        watchlist_path=P("examples/weekly_review/watchlist.json"),
+        as_of="2026-01-01",
+    )
+    result = load_weekly_review_inputs(paths)
+    with pytest.raises(ValueError, match="sv"):
+        render_weekly_review(result, locale="sv")
 
 
-def test_snapshot_render_does_not_import_sv_module():
-    source = SN_RENDER.read_text(encoding="utf-8")
-    assert "import strings_sv" not in source
-    assert "from atlas.snapshot_input import strings_sv" not in source
+def test_snapshot_sv_still_raises_at_runtime():
+    import pytest, json
+    from atlas.snapshot_input.schema import SnapshotDraft
+    from atlas.snapshot_input.render import render_snapshot_draft_validation
+    draft = SnapshotDraft.from_dict(
+        json.loads(Path("examples/snapshot_drafts/research_notes_snapshot.json").read_text(encoding="utf-8"))
+    )
+    with pytest.raises(ValueError, match="sv"):
+        render_snapshot_draft_validation(draft, locale="sv")
 
 
 # ---------------------------------------------------------------------------

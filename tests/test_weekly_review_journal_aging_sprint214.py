@@ -280,26 +280,30 @@ def test_no_as_of_uses_default_threshold():
 
 
 def test_aging_note_contains_asset():
+    from atlas.weekly_review import strings as S
     entry = _make_entry(asset="XYL")
-    note = _render_journal_aging_note(entry, 108)
+    note = _render_journal_aging_note(entry, 108, S)
     assert "XYL" in note
 
 
 def test_aging_note_contains_age_days():
+    from atlas.weekly_review import strings as S
     entry = _make_entry(asset="XYL")
-    note = _render_journal_aging_note(entry, 108)
+    note = _render_journal_aging_note(entry, 108, S)
     assert "108" in note
 
 
 def test_aging_note_contains_aging_note_label():
+    from atlas.weekly_review import strings as S
     entry = _make_entry(asset="XYL")
-    note = _render_journal_aging_note(entry, 108)
+    note = _render_journal_aging_note(entry, 108, S)
     assert "Aging Note" in note
 
 
 def test_aging_note_no_forbidden_language():
+    from atlas.weekly_review import strings as S
     entry = _make_entry(asset="XYL")
-    note = _render_journal_aging_note(entry, 108).lower()
+    note = _render_journal_aging_note(entry, 108, S).lower()
     for term in FORBIDDEN_TERMS:
         assert term not in note, f"Forbidden term {term!r} in aging note"
 

@@ -107,25 +107,30 @@ activation begins.
 
 ---
 
-### B4 — Swedish Renderer Integration
+### B4 — Swedish Renderer Dispatch Boundary
 
-**Status: OPEN**
+**Status: DONE (Sprint 250)**
 
-`atlas/weekly_review/render.py` must dispatch to Swedish strings when
-`locale="sv"` is passed:
+`atlas/weekly_review/render.py` has a locale-to-strings dispatch helper:
 
-- [ ] `render_weekly_review(result, locale="sv")` returns output in Swedish
-- [ ] Output structure (10 sections, section count, blank-line rules) unchanged
-- [ ] Canonical internal values (`confirmed`, `rejected`, ticker symbols) not translated
-- [ ] User-provided content (research notes, scope notes) not modified
+- [x] `_strings_for_locale(locale)` dispatch helper defined
+- [x] Helper calls `ensure_supported_locale(locale)` before dispatching (sv remains blocked)
+- [x] `locale == "sv"` branch maps to `strings_sv` module (unreachable until B5)
+- [x] `locale == "en"` (default) returns `strings_en` module
+- [x] `render_weekly_review(result, locale="sv")` raises `ValueError` via `ensure_supported_locale`
+- [x] Default English output unchanged
 
-`atlas/snapshot_input/render.py` must dispatch to Swedish strings when
-`locale="sv"` is passed:
+`atlas/snapshot_input/render.py` has a locale-to-strings dispatch helper:
 
-- [ ] All 14 public renderer functions return Swedish output for `locale="sv"`
-- [ ] Safety boundary block renders as `Säkerhetsgräns` with equivalent content
-- [ ] Canonical enum values not translated
-- [ ] User-provided content not modified
+- [x] `_strings_for_locale(locale)` dispatch helper defined
+- [x] Helper calls `_ensure_locale(locale)` before dispatching (sv remains blocked)
+- [x] `locale == "sv"` branch maps to `strings_sv` module (unreachable until B5)
+- [x] `locale == "en"` (default) returns `strings_en` module
+- [x] All 14 public renderer functions raise `ValueError` for `locale="sv"`
+- [x] Default English output unchanged
+
+Full Swedish output (B7–B10) is gated behind B5. The dispatch boundary is a
+structural prerequisite only — sv is still unsupported at runtime.
 
 ---
 
@@ -332,7 +337,7 @@ that Atlas-generated Swedish headings surround unmodified Swedish user content.
 | B1 — Guardrail specification | **DONE** | 247 |
 | B2 — Readiness checklist (this document) | **DONE** | 248 |
 | B3 — Swedish string constants | **DONE** | 249 |
-| B4 — Swedish renderer integration | OPEN | — |
+| B4 — Swedish renderer dispatch boundary | **DONE** | 250 |
 | B5 — locale_support.py updated | OPEN | — |
 | B6 — Forbidden-category scan tests | OPEN | — |
 | B7 — Swedish heading output tests | OPEN | — |
@@ -344,11 +349,12 @@ that Atlas-generated Swedish headings surround unmodified Swedish user content.
 | B13 — Unsupported locale regression tests | OPEN | — |
 | B14 — Full suite green with sv enabled | OPEN | — |
 
-**3 of 14 blocking criteria satisfied. sv must not be enabled until all 14 are DONE.**
+**4 of 14 blocking criteria satisfied. sv must not be enabled until all 14 are DONE.**
 
 Swedish string constants exist in `atlas/weekly_review/strings_sv.py` and
-`atlas/snapshot_input/strings_sv.py`. Neither module is imported by active
-renderers. `atlas/locale_support.py` is unchanged. `sv` remains unsupported.
+`atlas/snapshot_input/strings_sv.py`. Both modules are imported by their
+respective renderers for dispatch readiness but the `sv` branch is unreachable
+at runtime until `locale_support.py` is updated (B5). `sv` remains unsupported.
 
 ---
 

@@ -302,13 +302,26 @@ def test_locale_support_ensure_function_unchanged():
 # Renderer modules unchanged
 # ---------------------------------------------------------------------------
 
-def test_weekly_review_render_no_sv_locale():
-    source = WEEKLY_REVIEW_RENDER.read_text(encoding="utf-8")
-    assert '"sv"' not in source
+def test_weekly_review_render_sv_still_raises():
+    # Sprint 250 added a dispatch branch for "sv" in the renderer, but sv
+    # remains unsupported until locale_support.py is updated (B5).
+    import pytest
+    from pathlib import Path as P
+    from atlas.weekly_review.inputs import WeeklyReviewInputPaths, load_weekly_review_inputs
+    from atlas.weekly_review.render import render_weekly_review
+    paths = WeeklyReviewInputPaths(
+        portfolio_path=P("examples/weekly_review/portfolio.json"),
+        watchlist_path=P("examples/weekly_review/watchlist.json"),
+        as_of="2026-01-01",
+    )
+    result = load_weekly_review_inputs(paths)
+    with pytest.raises(ValueError, match="sv"):
+        render_weekly_review(result, locale="sv")
 
 
-def test_snapshot_render_no_sv_locale():
-    source = SNAPSHOT_RENDER.read_text(encoding="utf-8")
+def test_snapshot_render_no_sv_in_locale_support():
+    # sv must not be in locale_support.py until B5 is intentionally completed
+    source = LOCALE_SUPPORT.read_text(encoding="utf-8")
     assert '"sv"' not in source
 
 

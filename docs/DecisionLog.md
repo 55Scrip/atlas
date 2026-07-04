@@ -2,6 +2,36 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 250 — Define Swedish Renderer Dispatch Without Enabling sv
+
+Decision: Add `_strings_for_locale(locale)` dispatch helpers to both `atlas/weekly_review/render.py` and `atlas/snapshot_input/render.py`. The dispatch helper calls `ensure_supported_locale(locale)` first, maps `"en"` to English string constants, and maps `"sv"` to Swedish string constants. The `sv` branch is structurally present but physically unreachable at runtime because `locale_support.py` still raises for `"sv"`. `atlas/locale_support.py` is unchanged. `sv` remains unsupported.
+
+**Rationale:** B4 (renderer dispatch boundary) is a prerequisite for B5 (locale_support.py update). Wiring the dispatch before enabling the locale means that when B5 is completed, the render path is fully ready. The safety layer (`ensure_supported_locale`) is called unconditionally inside the dispatch helper, so the architectural separation between locale-support activation (B5) and renderer readiness (B4) is enforced by code, not just convention.
+
+**`atlas/weekly_review/render.py` changes:**
+- Renamed import: `from atlas.weekly_review import strings as strings_en`
+- Added import: `from atlas.weekly_review import strings_sv as strings_sv`
+- Added `_strings_for_locale(locale)` dispatch helper
+- `render_weekly_review` now calls `S = _strings_for_locale(locale)` instead of bare `ensure_supported_locale(locale)`
+- Removed module-level `_TITLE` constant; `S.WEEKLY_REVIEW_TITLE` used inline
+- All section helpers and `_render_journal_aging_note` now take `S` as a parameter
+
+**`atlas/snapshot_input/render.py` changes:**
+- Renamed import: `from atlas.snapshot_input import strings as strings_en`
+- Added import: `from atlas.snapshot_input import strings_sv as strings_sv`
+- Added `_strings_for_locale(locale)` dispatch helper
+- All 14 public render functions now call `S = _strings_for_locale(locale)` instead of `_ensure_locale(locale)`
+
+**Safety:** Default English output is byte-for-byte identical to pre-Sprint 250. `render_weekly_review(result, locale="sv")` and all 14 Snapshot render functions still raise `ValueError` for `locale="sv"`. No new CLI options. No gettext. No network calls.
+
+**Readiness checklist:** B4 marked DONE. B5–B14 remain OPEN. 4 of 14 criteria satisfied.
+
+**Sprint 251 recommendation:** Update `atlas/locale_support.py` to accept `"sv"` (B5). Prerequisite: B3 and B4 now DONE. B5 is the gate between dispatch-ready and runtime-active.
+
+**Result:** 37 new tests. 3303 total passed. No runtime behavior changed. `sv` is not enabled.
+
+---
+
 ## 2026-07-04: Sprint 249 — Define Swedish Display String Constants
 
 Decision: Create `atlas/weekly_review/strings_sv.py` and `atlas/snapshot_input/strings_sv.py` — isolated Swedish display string constants modules. Neither module is imported by any active renderer. `atlas/locale_support.py` is unchanged. `sv` remains unsupported.
