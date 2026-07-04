@@ -2,6 +2,26 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 256 — Plan CLI Language Option Without Implementation
+
+Decision: Create `docs/CLILanguageOptionPlan.md` — the design document for the future `--language {en,sv}` CLI option. No production code changed. `--language` is not implemented. Swedish internal activation is complete (B1–B14 DONE). CLI language exposure is planned for a future sprint.
+
+**Option shape decided:** `--language {en,sv}`. Rationale: explicit user choice, no automatic detection, direct mapping to `locale_support._SUPPORTED_LOCALES`, avoids environment-variable or config-file language inference.
+
+**Propagation path decided:** CLI parameter → `ensure_supported_locale(language)` validation → renderer `locale=language` argument → `_strings_for_locale(language)` → English or Swedish constants. The CLI must not maintain its own supported-language list independently of `locale_support.py`.
+
+**Rollout order decided:** Phase 1 (read-only commands: `weekly-review`, `snapshot validate`, `snapshot review`) before Phase 2 (write-producing local commands: `snapshot confirm`, `snapshot reject`, `snapshot export-*`). Rationale: read-only commands produce terminal output only — no local files are written — making them the lowest-risk starting point.
+
+**Unsupported locale policy:** Fail before rendering. No fallback to English. No silent coercion. No case normalization. No region-code expansion. Exit non-zero. Name the bad value and the supported values.
+
+**Open questions documented:** argparse `choices` vs post-parse `ensure_supported_locale` validation; per-command vs global `--language` position; Phase 2 timing; Swedish `--help` text (deferred: CLI help is English-only in initial implementation).
+
+**Sprint 257 recommendation:** Implement `--language` for Phase 1 read-only commands.
+
+**Result:** Plan document created. Test file created (67 tests). No runtime behavior changed. CLI output unchanged.
+
+---
+
 ## 2026-07-04: Sprint 255 — Create Dedicated sv Activation Full-Suite Gate
 
 Decision: Create `tests/test_sv_activation_full_suite_gate_sprint255.py` — a compact release gate that verifies all 14 Swedish readiness criteria hold together. The file is not a duplicate of prior sprint tests; it checks that the activation artifacts exist and that essential safety invariants still hold as a combined gate. Marks B14 DONE. 14 of 14 blocking criteria satisfied.

@@ -324,6 +324,16 @@ is complete. Swedish remains direct-renderer/internal only — CLI remains Engli
 `--language` option. Any future CLI exposure requires a separate planning sprint. All
 14 of 14 blocking criteria satisfied. B14 is DONE.
 
+Sprint 256 created `docs/CLILanguageOptionPlan.md` — the design document for the
+future `--language {en,sv}` CLI option. The plan documents option naming, command
+coverage (Phase 1: read-only commands; Phase 2: write-producing local commands),
+locale propagation path from CLI through `ensure_supported_locale` to renderer
+`_strings_for_locale`, unsupported-locale error handling (fail before render, no
+fallback, no coercion), backward compatibility requirements, canonical values that
+must remain English, user-content passthrough requirements, safety guardrails, and
+the full test matrix required before implementation. No production code was changed.
+`--language` is not implemented. CLI output remains English.
+
 ### Future French guardrails (not yet defined)
 
 Same requirement applies. No French guardrail list is defined in this sprint.
