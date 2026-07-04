@@ -285,14 +285,30 @@ Test file: `tests/test_swedish_canonical_passthrough_sprint253.py`
 
 ### B13 — Unsupported Locale Regression Tests
 
-**Status: OPEN**
+**Status: DONE** (Sprint 254)
 
-After `sv` is enabled, existing unsupported-locale tests must still pass:
+Systematic unsupported-locale regression matrix covering the full locale-aware
+renderer surface. Supported locales remain exactly `"en"` and `"sv"`.
 
-- [ ] `ensure_supported_locale("fr")` still raises `ValueError`
-- [ ] `ensure_supported_locale("de")` still raises `ValueError`
-- [ ] `render_weekly_review(result, locale="fr")` still raises `ValueError`
-- [ ] All 14 Snapshot renderer functions still raise for `locale="fr"`
+- [x] `ensure_supported_locale` accepts `"en"` and `"sv"`; rejects all 13 unsupported
+  values: `fr`, `de`, `ja`, `no`, `da`, `fi`, `es`, `xx`, `""`, `EN`, `SV`, `en-US`, `sv-SE`
+- [x] Error message names the unsupported locale and lists supported locales
+- [x] `render_weekly_review` raises for all 13 unsupported locales; no partial output
+- [x] All 14 public Snapshot locale-aware renderer functions raise for unsupported locales:
+  `render_snapshot_draft_validation`, `render_snapshot_draft_validation_error`,
+  `render_snapshot_draft_review`, `render_snapshot_draft_review_error`,
+  `render_snapshot_confirm_success`, `render_snapshot_confirm_blocked`,
+  `render_snapshot_confirm_error`, `render_snapshot_reject_success`,
+  `render_snapshot_reject_blocked`, `render_snapshot_reject_error`,
+  `render_research_notes_export_success`, `render_research_notes_export_blocked`,
+  `render_company_facts_export_success`, `render_company_facts_export_blocked`
+- [x] Uppercase variants (`EN`, `SV`) fail
+- [x] Region variants (`en-US`, `sv-SE`) fail
+- [x] Empty string fails
+- [x] `en` and `sv` still pass in all renderer functions after the regression run
+- [x] CLI output remains English; no `--language` option
+
+Test file: `tests/test_unsupported_locale_regression_sprint254.py`
 
 ---
 
@@ -370,10 +386,10 @@ that Atlas-generated Swedish headings surround unmodified Swedish user content.
 | B10 — Swedish Snapshot CLI heading tests | **DONE** | 252 |
 | B11 — Canonical value preservation tests | **DONE** | 253 |
 | B12 — User-provided content passthrough tests | **DONE** | 253 |
-| B13 — Unsupported locale regression tests | OPEN | — |
+| B13 — Unsupported locale regression tests | **DONE** | 254 |
 | B14 — Full suite green with sv enabled | OPEN | — |
 
-**12 of 14 blocking criteria satisfied.**
+**13 of 14 blocking criteria satisfied.**
 
 `sv` is now supported in direct renderer calls. Swedish output is internally
 tested through `tests/test_swedish_output_matrix_sprint252.py`. All 10 Weekly
@@ -388,7 +404,15 @@ Sprint 253 added the canonical value and user-content passthrough matrix
 values, all 5 SnapshotConfirmationStatus values, all 4 SnapshotConfidence values,
 warning codes, ticker symbols, file paths, scope notes, watchlist reasons, research
 note text, journal entries, and snapshot extracted fields are verified unchanged in
-Swedish-locale output. B13 and B14 remain OPEN.
+Swedish-locale output. B13 marked DONE in Sprint 254.
+
+Sprint 254 added the unsupported-locale regression matrix
+(`tests/test_unsupported_locale_regression_sprint254.py`). 13 unsupported locale
+values (`fr`, `de`, `ja`, `no`, `da`, `fi`, `es`, `xx`, `""`, `EN`, `SV`, `en-US`,
+`sv-SE`) are verified to raise `ValueError` from `ensure_supported_locale`, from
+`render_weekly_review`, and from all 14 public Snapshot locale-aware renderer
+functions. Supported locales remain exactly `"en"` and `"sv"`. CLI remains English.
+B14 remains OPEN.
 
 ---
 

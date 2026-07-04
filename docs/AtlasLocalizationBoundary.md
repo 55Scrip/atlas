@@ -305,7 +305,15 @@ SnapshotConfirmationStatus values, all 4 SnapshotConfidence values, warning code
 ticker symbols, file paths, scope notes, watchlist reasons, research note text,
 journal entries, snapshot notes, and snapshot extracted fields are verified unchanged.
 English output is verified identical before and after calling the Swedish renderer.
-B11 and B12 are DONE. B13 and B14 remain OPEN.
+B11 and B12 are DONE.
+
+Sprint 254 created `tests/test_unsupported_locale_regression_sprint254.py` — a
+systematic regression matrix verifying that every unsupported locale raises
+`ValueError` from `ensure_supported_locale`, `render_weekly_review`, and all 14
+public Snapshot locale-aware renderer functions. 13 unsupported locale values tested:
+`fr`, `de`, `ja`, `no`, `da`, `fi`, `es`, `xx`, `""`, `EN`, `SV`, `en-US`, `sv-SE`.
+Supported locales remain exactly `"en"` and `"sv"`. No production code changes. B13 is
+DONE. B14 remains OPEN.
 
 ### Future French guardrails (not yet defined)
 

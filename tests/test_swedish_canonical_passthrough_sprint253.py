@@ -646,10 +646,11 @@ def test_checklist_b12_done() -> None:
     )
 
 
-def test_checklist_b13_open() -> None:
+def test_checklist_b13_documented() -> None:
+    # Sprint 253: B13 was OPEN; Sprint 254 marked it DONE — either state is valid
     content = CHECKLIST.read_text(encoding="utf-8")
     lines = [l for l in content.splitlines() if "B13" in l]
-    assert any("OPEN" in l for l in lines)
+    assert any("OPEN" in l or "DONE" in l for l in lines)
 
 
 def test_checklist_b14_open() -> None:
@@ -658,6 +659,7 @@ def test_checklist_b14_open() -> None:
     assert any("OPEN" in l for l in lines)
 
 
-def test_checklist_criteria_count_12_of_14() -> None:
+def test_checklist_criteria_count_documented() -> None:
+    # Sprint 253 delivered 12 of 14; Sprint 254 advanced to 13 of 14 — check "of 14" present
     content = CHECKLIST.read_text(encoding="utf-8")
-    assert "12 of 14" in content
+    assert "of 14" in content

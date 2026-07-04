@@ -2,6 +2,28 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 254 — Add Unsupported-Locale Regression Matrix
+
+Decision: Create `tests/test_unsupported_locale_regression_sprint254.py` — a systematic regression matrix covering the full locale-aware renderer surface after `sv` activation. Tests that 13 unsupported locale values (`fr`, `de`, `ja`, `no`, `da`, `fi`, `es`, `xx`, `""`, `EN`, `SV`, `en-US`, `sv-SE`) raise `ValueError` from `ensure_supported_locale`, `render_weekly_review`, and all 14 public Snapshot locale-aware renderer functions. Supported locales verified to remain exactly `"en"` and `"sv"`. Error message quality verified: unsupported locale named, supported locales listed.
+
+**Rationale:** After `sv` activation (B5), any new supported locale must be explicitly added to the allowlist in `locale_support.py`. This test matrix ensures the allowlist boundary is enforced consistently across the full renderer surface — not just the spot-checks scattered in prior sprint tests. Without a dedicated regression matrix, a future dispatch change could silently broaden the boundary.
+
+**Key properties verified:**
+- `_SUPPORTED_LOCALES` is exactly `frozenset({"en", "sv"})` — no extras
+- No other language code appears in `locale_support.py` as a supported value
+- Uppercase variants (`EN`, `SV`) fail — locale matching is exact, not case-folded
+- Region variants (`en-US`, `sv-SE`) fail — no partial matching
+- Empty string fails — no default fallback
+- `en` and `sv` still pass in all renderer functions after the full regression run
+
+**Readiness checklist:** B13 marked DONE. B14 remains OPEN. 13 of 14 criteria satisfied.
+
+**Sprint 255 recommendation:** Dedicated sv activation full-suite gate (B14). Now that B13 is complete, only B14 remains. Atlas needs a dedicated test gate that proves the complete sv-internal activation (all B1–B13 tests combined) remains green, CLI stays English, demos pass, and the RC check is clean — before any CLI exposure or user-facing language option is considered.
+
+**Result:** Tests added. No runtime behavior changed. No locale_support.py changes. No renderer changes. CLI output unchanged.
+
+---
+
 ## 2026-07-04: Sprint 253 — Add Swedish Canonical Value and User-Content Passthrough Matrix
 
 Decision: Create `tests/test_swedish_canonical_passthrough_sprint253.py` — a systematic matrix verifying that Swedish-locale output does not translate canonical internal values or user-provided content. Covers all 8 SnapshotType values, all 5 SnapshotConfirmationStatus values, all 4 SnapshotConfidence values, warning codes, warning code format, en/sv warning code parity, ticker symbols, file paths, scope notes, watchlist reasons, research note text, journal entries, snapshot notes, source descriptions, extracted field values, render idempotency, and English output preservation.
