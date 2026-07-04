@@ -68,6 +68,13 @@ INPUT_STATUS_REVIEW_DATE = "Review date: {date}"
 INPUT_STATUS_WARNINGS_COUNT = "Warnings: {count}"
 
 # ---------------------------------------------------------------------------
+# Warning display templates
+# ---------------------------------------------------------------------------
+
+WARNING_ROW = "- [{code}] {message}"
+WARNING_SCOPE_SUMMARY = "Warnings: {count} input warning(s) noted — see Input Warnings section"
+
+# ---------------------------------------------------------------------------
 # Disclaimer
 # ---------------------------------------------------------------------------
 

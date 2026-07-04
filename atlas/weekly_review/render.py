@@ -107,7 +107,7 @@ def _section1_scope(result: WeeklyReviewLoadResult) -> list[str]:
         lines.append(f"Scope notes: {_preview_scope_notes(result.scope_notes)}")
 
     if result.warnings:
-        lines.append(f"Warnings: {len(result.warnings)} input warning(s) noted — see Input Warnings section")
+        lines.append(S.WARNING_SCOPE_SUMMARY.format(count=len(result.warnings)))
 
     return lines
 
@@ -904,5 +904,5 @@ def _render_input_status(result: WeeklyReviewLoadResult) -> list[str]:
 def _render_warnings(warnings: tuple[WeeklyReviewInputWarning, ...]) -> list[str]:
     lines = [f"## {S.LABEL_INPUT_WARNINGS}", ""]
     for w in warnings:
-        lines.append(f"- [{w.code}] {w.message}")
+        lines.append(S.WARNING_ROW.format(code=w.code, message=w.message))
     return lines

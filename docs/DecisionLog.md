@@ -2,6 +2,28 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 243 — Extract Weekly Review Warning Display Templates Into Constants
+
+Decision: Extract the two Atlas-generated warning display format strings from `atlas/weekly_review/render.py` into named constants in `atlas/weekly_review/strings.py`. Warning codes remain canonical internal values and are not extracted. Warning messages in `inputs.py` remain inline because they embed dynamic file paths that cannot be cleanly templated without structural changes.
+
+**Rationale:** After input status messages were centralized in Sprint 242, the remaining bounded Atlas-generated display strings in the warning rendering path were the row format and the scope section summary. These are structural display templates — not user content, not canonical codes — and belong alongside the other display string constants. Warning codes (`missing_optional_profile`, etc.) are internal identifiers and intentionally remain in `inputs.py`.
+
+**Constants added to `atlas/weekly_review/strings.py`:**
+- `WARNING_ROW = "- [{code}] {message}"` — row format for each warning in `## Input Warnings`
+- `WARNING_SCOPE_SUMMARY = "Warnings: {count} input warning(s) noted — see Input Warnings section"` — scope section summary line
+
+**What stayed out:** warning codes (canonical internal values), warning messages in `inputs.py` (dynamic paths embedded), all body-section generated prose.
+
+**Output preservation:** warning rows verified byte-for-byte unchanged — `- [missing_optional_profile] No investor profile path provided...` format confirmed. Scope summary line confirmed. Full-input output (no-warning path) verified.
+
+**Warning codes:** remain in `inputs.py` as string literals. Not extracted to display constants. Tests verify codes do not appear as named constants in `strings.py`.
+
+**Sprint 244 recommendation:** Define locale-aware rendering helper — a minimal `render_weekly_review(result, locale="en")` signature stub that passes through to the current renderer, establishing the locale parameter boundary without implementing translation.
+
+**Result:** 30 new tests. 2954 total passed. All demos green. RC2 green. No runtime behavior changed.
+
+---
+
 ## 2026-07-04: Sprint 242 — Extract Weekly Review Input Status Messages Into Constants
 
 Decision: Extract all 14 `_render_input_status` message templates from inline f-string literals in `atlas/weekly_review/render.py` into named constants in `atlas/weekly_review/strings.py`. Dynamic values (counts, names, dates) remain as `.format(...)` slots. No output changed.
