@@ -2,6 +2,26 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 233 — Add Snapshot Company Facts Export CLI
+
+Decision: Add `atlas snapshot export-company-facts <draft_path> --output-dir DIR` to convert confirmed `company_facts_snapshot` drafts to `<TICKER>.json`.
+
+**Rationale:** After validating confirm/reject workflow, the next conversion type is company facts — a standalone local file with no cross-dependency on research notes or portfolio. Cleanest first conversion type to validate the end-to-end export pattern for structured fact data.
+
+**Behavior:**
+- Only `company_facts_snapshot` type accepted; all others blocked
+- Only `confirmed` status accepted; draft/needs_user_review/rejected/superseded all blocked
+- Ticker resolved from `extracted_fields["ticker"]` or `related_tickers[0]`; unsafe tickers blocked
+- Output: `output_dir/<TICKER>.json` (uppercase ticker)
+- Bounded output: 800 char strings, 30 list items, 500 chars per item
+- No overwrite by default; `--overwrite` to replace
+- No mutation of original draft; no portfolio/watchlist/journal/research notes written
+- Source provenance (`draft_id`, `source_description`) written into `source` key
+
+**Trial result:** Green. ASML example draft exported cleanly. `ASML.json` detected by `--company-facts` flag in Weekly Review. Safety boundaries accurate in CLI output.
+
+---
+
 ## 2026-07-04: Sprint 232 — Snapshot Confirm and Reject Status Workflow Trial
 
 Decision: Run the full confirm and reject branch trial after adding both `atlas snapshot confirm` and `atlas snapshot reject`.

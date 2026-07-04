@@ -1,0 +1,38 @@
+{
+  "confirmation_status": "confirmed",
+  "confidence": "high",
+  "created_at": "2026-01-10",
+  "draft_id": "draft-company-facts-asml-20260110-001",
+  "extracted_fields": {
+    "business_summary": "Supplier of photolithography equipment for semiconductor manufacturing. ASML is the sole producer of EUV lithography systems and a major supplier of DUV systems used globally by leading chipmakers.",
+    "company_name": "ASML Holding N.V.",
+    "geography": [
+      "Netherlands",
+      "Global — primary customers in Taiwan, South Korea, United States"
+    ],
+    "key_risks": [
+      "Export controls restricting shipments to China may reduce addressable market.",
+      "Customer capex cyclicality: orders correlate with semiconductor inventory cycles.",
+      "Geopolitical concentration risk from manufacturing in Netherlands.",
+      "EUV technology complexity creates execution risk on High-NA ramp."
+    ],
+    "revenue_drivers": [
+      "EUV lithography system sales to TSMC, Samsung, Intel.",
+      "DUV lithography system sales across a wider customer base.",
+      "Installed base services and upgrades on existing systems.",
+      "Metrology and inspection systems revenue."
+    ],
+    "sector": "Semiconductors — Capital Equipment",
+    "ticker": "ASML"
+  },
+  "missing_required_fields": [],
+  "notes": "Confirmed after user review on 2026-01-10. Content is user-supplied — no external research was fetched.",
+  "raw_source_reference": "my_notes/asml_company_facts_2026.md",
+  "related_tickers": [
+    "ASML"
+  ],
+  "snapshot_type": "company_facts_snapshot",
+  "source_description": "User-written ASML company facts covering business model, sector, revenue drivers, and key risks",
+  "target_local_file": "examples/weekly_review/company_facts/ASML.json",
+  "uncertainties": []
+}

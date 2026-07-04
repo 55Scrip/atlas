@@ -20,6 +20,8 @@ from atlas.snapshot_input.schema import (
 )
 from atlas.snapshot_input.render import (
     collect_snapshot_draft_review_issues,
+    render_company_facts_export_blocked,
+    render_company_facts_export_success,
     render_research_notes_export_blocked,
     render_research_notes_export_success,
     render_snapshot_confirm_blocked,
@@ -37,6 +39,10 @@ from atlas.snapshot_input.export import (
     ResearchNotesExportResult,
     export_research_notes,
 )
+from atlas.snapshot_input.export_company_facts import (
+    CompanyFactsExportResult,
+    export_company_facts,
+)
 from atlas.snapshot_input.confirm import (
     SnapshotConfirmResult,
     confirm_snapshot_draft,
@@ -47,6 +53,7 @@ from atlas.snapshot_input.reject import (
 )
 
 __all__ = [
+    "CompanyFactsExportResult",
     "ResearchNotesExportResult",
     "SnapshotConfidence",
     "SnapshotConfirmationStatus",
@@ -56,9 +63,12 @@ __all__ = [
     "SnapshotType",
     "collect_snapshot_draft_review_issues",
     "confirm_snapshot_draft",
+    "export_company_facts",
     "export_research_notes",
     "load_snapshot_draft",
     "reject_snapshot_draft",
+    "render_company_facts_export_blocked",
+    "render_company_facts_export_success",
     "render_research_notes_export_blocked",
     "render_research_notes_export_success",
     "render_snapshot_confirm_blocked",

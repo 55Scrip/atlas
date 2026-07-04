@@ -420,3 +420,34 @@ def render_snapshot_reject_error(error_message: str) -> str:
         f"Error: {error_message}",
     ]
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Company facts export renderers
+# ---------------------------------------------------------------------------
+
+def render_company_facts_export_success(ticker: str, output_path: object) -> str:
+    """Render a success summary after writing a company facts JSON file."""
+    lines = [
+        "Company Facts Export",
+        "",
+        "Status: written",
+        f"Ticker: {ticker}",
+        f"Output File: {output_path}",
+        "",
+        "Safety Boundary:",
+        "  - Only local company facts were written.",
+        "  - No portfolio, watchlist, journal, or research notes files were changed.",
+    ]
+    return "\n".join(lines)
+
+
+def render_company_facts_export_blocked(reason: str) -> str:
+    """Render a blocked summary when company facts export cannot proceed."""
+    lines = [
+        "Company Facts Export",
+        "",
+        "Status: blocked",
+        f"Reason: {reason}",
+    ]
+    return "\n".join(lines)

@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2560 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2607 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -300,6 +300,9 @@ Draft never mutated. End-to-end path confirmed: exported notes.md immediately
 readable by Weekly Review `--research-notes DIR`. No provider imports. No network
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
+
+**Sprint 233 (post-v1 improvement — complete):**
+`atlas snapshot export-company-facts <path> --output-dir DIR` added — the second safe Snapshot Draft conversion path. Converts a confirmed `company_facts_snapshot` draft to a local `<TICKER>.json` file under the output directory. Enforces: type (`company_facts_snapshot` only), confirmation status (`confirmed` only), safe ticker, overwrite guard. Bounded output (800 chars/string, 30 list items, 500 chars/item). Draft never mutated. No portfolio, watchlist, journal, or research notes files written. Source provenance (`draft_id`, `source_description`) written into `source` key. Output detected by `atlas weekly-review --company-facts DIR`. No OCR. No AI. No provider imports. No network calls. Internal v1 foundation unchanged.
 
 **Sprint 232 (post-v1 validation — complete):**
 Fifth real portfolio trial — confirm and reject branch validation. Both branches

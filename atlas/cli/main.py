@@ -756,6 +756,67 @@ def snapshot_export_research_notes_command(
         raise typer.Exit(code=1)
 
 
+@snapshot_app.command("export-company-facts")
+def snapshot_export_company_facts_command(
+    draft_path: Path = typer.Argument(
+        ...,
+        help="Path to a confirmed company_facts_snapshot draft JSON file.",
+    ),
+    output_dir: Path = typer.Option(
+        ...,
+        "--output-dir",
+        help="Directory to write <TICKER>.json into.",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Overwrite an existing <TICKER>.json file if one already exists.",
+    ),
+):
+    """Export a confirmed company_facts_snapshot draft to a local TICKER.json file.
+
+    Writes <TICKER>.json under OUTPUT_DIR.
+    Only confirmed company_facts_snapshot drafts are accepted.
+
+    This command writes only local company facts JSON files.
+    It does not write portfolio, watchlist, journal, or research notes files.
+    It does not call any provider, network, or external API.
+    It does not modify the draft file.
+
+    No live data. No recommendations. No OCR. No AI.
+    """
+    from atlas.snapshot_input.schema import SnapshotDraft
+    from atlas.snapshot_input.export_company_facts import export_company_facts
+    from atlas.snapshot_input.render import (
+        render_company_facts_export_blocked,
+        render_company_facts_export_success,
+    )
+
+    if not draft_path.exists():
+        console.print(render_company_facts_export_blocked(f"file not found: {draft_path}"))
+        raise typer.Exit(code=1)
+
+    try:
+        text = draft_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        console.print(render_company_facts_export_blocked(f"could not read file: {exc}"))
+        raise typer.Exit(code=1)
+
+    try:
+        draft = SnapshotDraft.from_json(text)
+    except ValueError as exc:
+        console.print(render_company_facts_export_blocked(str(exc)))
+        raise typer.Exit(code=1)
+
+    result = export_company_facts(draft, output_dir, overwrite=overwrite)
+
+    if result.success:
+        console.print(render_company_facts_export_success(result.ticker, result.output_path))
+    else:
+        console.print(render_company_facts_export_blocked(result.reason))
+        raise typer.Exit(code=1)
+
+
 @app.command("compare")
 def compare_command(
     ideas: list[str] | None = typer.Argument(
