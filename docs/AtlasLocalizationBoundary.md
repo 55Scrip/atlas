@@ -1,6 +1,6 @@
 # Atlas Localization Boundary
 
-**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper) / 247 (Swedish guardrail spec) / 248 (Swedish readiness checklist) / 249 (Swedish string constants) / 250 (Swedish renderer dispatch boundary) / 251 (sv locale activation) / 252 (Swedish output test matrix)
+**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper) / 247 (Swedish guardrail spec) / 248 (Swedish readiness checklist) / 249 (Swedish string constants) / 250 (Swedish renderer dispatch boundary) / 251 (sv locale activation) / 252 (Swedish output test matrix) / 258 (Phase 2 CLI language planning)
 **Date:** 2026-07-04
 **Status:** Shared locale boundary in `atlas/locale_support.py` — only "en" supported — no translations implemented
 
@@ -338,6 +338,17 @@ behavior is unchanged — omitting `--language` produces English output identica
 pre-Sprint-257. Deferred commands (`snapshot confirm`, `snapshot reject`,
 `snapshot export-*`) do not expose `--language`. No automatic detection. No
 environment-variable language inference. No gettext. No string catalogs.
+
+Sprint 258 created `docs/Phase2SnapshotCLILanguagePlan.md` — the design document
+for extending `--language {en,sv}` to Phase 2 write-producing Snapshot commands
+(`snapshot confirm`, `snapshot reject`, `snapshot export-research-notes`,
+`snapshot export-company-facts`). Documents the display-only localization boundary:
+`--language` affects only terminal output; written artifact content (confirmed/rejected
+draft JSON, `notes.md`, company facts JSON) must be identical regardless of language
+setting. Documents unsupported-language rejection before file writes, backward
+compatibility requirements, canonical value preservation, user-provided content
+passthrough, required implementation tests, and safety gates. No production code
+changed in Sprint 258. Phase 2 is planned but not implemented.
 
 ### Future French guardrails (not yet defined)
 

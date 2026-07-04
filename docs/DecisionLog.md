@@ -2,6 +2,42 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 258 — Plan Phase 2 CLI Language Option for Snapshot Write Commands
+
+Decision: Create `docs/Phase2SnapshotCLILanguagePlan.md` — the design document for
+extending `--language {en,sv}` to Phase 2 write-producing Snapshot commands. No
+production code changed.
+
+**Target commands documented:** `atlas snapshot confirm`, `atlas snapshot reject`,
+`atlas snapshot export-research-notes`, `atlas snapshot export-company-facts`.
+Phase 2 is planned but not implemented.
+
+**Key boundary decision:** `--language` for Phase 2 commands must affect only CLI
+display text printed to the terminal. Written artifact content (confirmed/rejected
+draft JSON, `notes.md`, company facts JSON) must be identical regardless of
+`--language en` vs `--language sv`. File-write invariance tests are required before
+Phase 2 is considered complete.
+
+**Unsupported-language policy:** Same as Phase 1 — fail before any file I/O using
+`ensure_supported_locale(language)`. No output files created or modified on failure.
+
+**Backward compatibility:** Omitting `--language` keeps existing English display
+output unchanged. All existing scripts and tests must remain green.
+
+**`CLILanguageOptionPlan.md` updated:** Phase 2 status changed from "DEFERRED" to
+"PLANNED (Sprint 258 planning complete. Implementation deferred to Sprint 259)."
+
+**`AtlasLocalizationBoundary.md` updated:** Sprint 258 entry added.
+
+**Sprint 259 recommendation:** Implement `--language` for all four Phase 2
+write-producing Snapshot commands in a single sprint.
+
+**Result:** 2 new files (`docs/Phase2SnapshotCLILanguagePlan.md`,
+`tests/test_phase2_snapshot_cli_language_plan_sprint258.py`). 4 docs updated.
+No CLI changes. No renderer changes. No schema changes. All demos green. RC2 green.
+
+---
+
 ## 2026-07-04: Sprint 257 — Implement --language for Phase 1 Read-Only CLI Commands
 
 Decision: Add `--language {en,sv}` to `atlas weekly-review`, `atlas snapshot validate`, and `atlas snapshot review`. Validate with `ensure_supported_locale`; pass as `locale=language` to the respective renderer. Default remains `"en"`. Deferred commands (`snapshot confirm`, `snapshot reject`, `snapshot export-*`) unchanged.

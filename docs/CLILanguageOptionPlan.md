@@ -1,7 +1,7 @@
 # CLI Language Option Plan
 
-**Status: Phase 1 implemented (Sprint 257). Phase 2 deferred.**
-**Sprint:** 256 (planning), 257 (Phase 1 implementation).
+**Status: Phase 1 implemented (Sprint 257). Phase 2 planned (Sprint 258). Phase 2 implementation deferred.**
+**Sprint:** 256 (planning), 257 (Phase 1 implementation), 258 (Phase 2 planning).
 
 ---
 
@@ -409,13 +409,15 @@ Phase 1 — COMPLETE (Sprint 257)
   Unsupported values fail before rendering with non-zero exit.
   68 CLI tests added. Default remains English.
 
-Phase 2 — DEFERRED (Sprint 258+ after planning sprint)
+Phase 2 — PLANNED (Sprint 258 planning complete. Implementation deferred to Sprint 259.)
   Extend --language to write-producing local commands:
     atlas snapshot confirm
     atlas snapshot reject
     atlas snapshot export-research-notes
     atlas snapshot export-company-facts
-  Requires safety review sprint before implementation.
+  Safety boundary documented in docs/Phase2SnapshotCLILanguagePlan.md.
+  Key constraint: --language affects display text only. Written files identical
+  regardless of language setting.
 
 Phase 3 — NOT YET PLANNED
   Consider Swedish user-facing documentation (N1)
@@ -436,10 +438,9 @@ Phase 3 — NOT YET PLANNED
    is safer — it limits scope and avoids ambiguity for commands that do not
    support it.
 
-3. **Phase 2 timing** — Should Phase 2 (write-producing commands) be a
-   separate sprint from Phase 1, or can they be combined if the implementation
-   is straightforward? Recommendation: keep them separate so Phase 1 can be
-   verified in isolation.
+3. **Phase 2 timing** — Sprint 258 planned Phase 2. Sprint 259 is the recommended
+   implementation sprint. All four write-producing commands implement the same
+   pattern so they can be added in a single sprint.
 
 4. **Swedish `--help` text** — Should `--help` output itself be localized? Not
    in the initial implementation. CLI help text is English only; `--language`
