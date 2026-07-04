@@ -168,10 +168,11 @@ def test_reject_success_default_equals_locale_en():
 # ---------------------------------------------------------------------------
 
 def test_validation_rejects_unsupported_locale():
+    # Sprint 251: sv is supported — use "fr" to verify unsupported locale raises
     import pytest
     from atlas.snapshot_input.render import render_snapshot_draft_validation
-    with pytest.raises(ValueError, match="sv"):
-        render_snapshot_draft_validation(_load_draft(_EXAMPLE_DRAFT_PATH), locale="sv")
+    with pytest.raises(ValueError, match="fr"):
+        render_snapshot_draft_validation(_load_draft(_EXAMPLE_DRAFT_PATH), locale="fr")
 
 
 def test_review_rejects_unsupported_locale():
@@ -196,10 +197,11 @@ def test_reject_success_rejects_unsupported_locale():
 
 
 def test_unsupported_locale_error_mentions_en():
+    # Sprint 251: sv is supported — use "fr" to verify error message mentions supported locales
     import pytest
     from atlas.snapshot_input.render import render_snapshot_draft_validation
     with pytest.raises(ValueError, match="en"):
-        render_snapshot_draft_validation(_load_draft(_EXAMPLE_DRAFT_PATH), locale="sv")
+        render_snapshot_draft_validation(_load_draft(_EXAMPLE_DRAFT_PATH), locale="fr")
 
 
 def test_locale_parameters_are_keyword_only():
@@ -297,6 +299,7 @@ def test_weekly_review_locale_boundary_intact():
 
 
 def test_weekly_review_unsupported_locale_still_raises():
+    # Sprint 251: sv is supported — use "fr" to verify unsupported locale still raises
     import pytest
     from atlas.weekly_review.render import render_weekly_review
     from atlas.weekly_review.inputs import WeeklyReviewInputPaths, load_weekly_review_inputs
@@ -307,7 +310,7 @@ def test_weekly_review_unsupported_locale_still_raises():
     )
     result = load_weekly_review_inputs(paths)
     with pytest.raises(ValueError):
-        render_weekly_review(result, locale="sv")
+        render_weekly_review(result, locale="fr")
 
 
 # ---------------------------------------------------------------------------

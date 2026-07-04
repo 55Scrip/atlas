@@ -344,9 +344,10 @@ def test_activate_section_mentions_string_constants_first():
 # locale_support.py unchanged
 # ---------------------------------------------------------------------------
 
-def test_locale_support_no_sv():
+def test_locale_support_sv_now_supported():
+    # Sprint 251: sv is now supported in locale_support.py (B5 DONE)
     source = LOCALE_SUPPORT.read_text(encoding="utf-8")
-    assert '"sv"' not in source
+    assert 'SUPPORTED_LOCALE_SV = "sv"' in source
 
 
 def test_locale_support_no_fr():
@@ -363,9 +364,8 @@ def test_locale_support_still_has_en():
 # Renderer modules unchanged
 # ---------------------------------------------------------------------------
 
-def test_weekly_review_render_sv_still_raises():
-    # Sprint 250 added dispatch; sv branch exists but is blocked by locale_support
-    import pytest
+def test_weekly_review_render_sv_now_renders():
+    # Sprint 251: sv is now supported — dispatch is reachable
     from pathlib import Path as P
     from atlas.weekly_review.inputs import WeeklyReviewInputPaths, load_weekly_review_inputs
     from atlas.weekly_review.render import render_weekly_review
@@ -375,20 +375,19 @@ def test_weekly_review_render_sv_still_raises():
         as_of="2026-01-01",
     )
     result = load_weekly_review_inputs(paths)
-    with pytest.raises(ValueError, match="sv"):
-        render_weekly_review(result, locale="sv")
+    out = render_weekly_review(result, locale="sv")
+    assert "Atlas veckovis investeringsgranskning" in out
 
 
-def test_snapshot_render_sv_still_raises():
-    # Sprint 250 added dispatch; sv branch exists but is blocked by locale_support
-    import pytest
-    from atlas.snapshot_input.render import render_snapshot_draft_validation
+def test_snapshot_render_sv_now_renders():
+    # Sprint 251: sv is now supported — dispatch is reachable
     import json
     draft_path = Path("examples/snapshot_drafts/research_notes_snapshot.json")
     from atlas.snapshot_input.schema import SnapshotDraft
+    from atlas.snapshot_input.render import render_snapshot_draft_validation
     draft = SnapshotDraft.from_dict(json.loads(draft_path.read_text(encoding="utf-8")))
-    with pytest.raises(ValueError, match="sv"):
-        render_snapshot_draft_validation(draft, locale="sv")
+    out = render_snapshot_draft_validation(draft, locale="sv")
+    assert "Validering av Snapshot Draft" in out
 
 
 # ---------------------------------------------------------------------------

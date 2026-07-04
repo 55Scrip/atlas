@@ -120,11 +120,11 @@ def test_locale_en_output_includes_input_status():
 # Unsupported locale raises explicit error
 # ---------------------------------------------------------------------------
 
-def test_unsupported_locale_sv_raises():
-    import pytest
+def test_unsupported_locale_sv_now_renders():
+    # Sprint 251: sv is now supported
     from atlas.weekly_review.render import render_weekly_review
-    with pytest.raises(ValueError, match="sv"):
-        render_weekly_review(_load_minimal_result(), locale="sv")
+    out = render_weekly_review(_load_minimal_result(), locale="sv")
+    assert "Atlas veckovis investeringsgranskning" in out
 
 
 def test_unsupported_locale_fr_raises():
@@ -148,11 +148,12 @@ def test_unsupported_locale_error_message_mentions_en():
         render_weekly_review(_load_minimal_result(), locale="xx")
 
 
-def test_unsupported_locale_does_not_return_output():
+def test_unsupported_locale_fr_does_not_return_output():
+    # Sprint 251: sv is supported — use "fr" to verify unsupported locale does not return output
     from atlas.weekly_review.render import render_weekly_review
     raised = False
     try:
-        render_weekly_review(_load_minimal_result(), locale="sv")
+        render_weekly_review(_load_minimal_result(), locale="fr")
     except ValueError:
         raised = True
     assert raised, "Expected ValueError for unsupported locale"

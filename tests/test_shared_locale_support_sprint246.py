@@ -47,11 +47,10 @@ def test_ensure_supported_locale_accepts_en():
     ensure_supported_locale("en")  # must not raise
 
 
-def test_ensure_supported_locale_rejects_sv():
-    import pytest
+def test_ensure_supported_locale_accepts_sv():
+    # Sprint 251: sv is now supported
     from atlas.locale_support import ensure_supported_locale
-    with pytest.raises(ValueError, match="sv"):
-        ensure_supported_locale("sv")
+    ensure_supported_locale("sv")  # must not raise
 
 
 def test_ensure_supported_locale_rejects_fr():
@@ -79,9 +78,10 @@ def test_error_message_includes_bad_locale():
 
 
 def test_error_message_mentions_en():
+    # Sprint 251: sv is supported — use "fr" to test error message content
     from atlas.locale_support import ensure_supported_locale
     try:
-        ensure_supported_locale("sv")
+        ensure_supported_locale("fr")
     except ValueError as e:
         assert "en" in str(e)
     else:
@@ -89,11 +89,13 @@ def test_error_message_mentions_en():
 
 
 def test_error_message_exact_format():
+    # Sprint 251: sv is supported — use "fr" to test error message format
     from atlas.locale_support import ensure_supported_locale
     try:
-        ensure_supported_locale("sv")
+        ensure_supported_locale("fr")
     except ValueError as e:
-        assert str(e) == "Unsupported locale: 'sv'. Only 'en' is currently supported."
+        assert "Unsupported locale:" in str(e)
+        assert "'fr'" in str(e)
     else:
         raise AssertionError("Expected ValueError")
 
@@ -187,10 +189,11 @@ def test_wr_locale_en_includes_all_sections():
 
 
 def test_wr_unsupported_locale_still_raises():
+    # Sprint 251: sv is supported — use "fr" to verify unsupported locale still raises
     import pytest
     from atlas.weekly_review.render import render_weekly_review
-    with pytest.raises(ValueError, match="sv"):
-        render_weekly_review(_load_wr_minimal(), locale="sv")
+    with pytest.raises(ValueError, match="fr"):
+        render_weekly_review(_load_wr_minimal(), locale="fr")
 
 
 # ---------------------------------------------------------------------------
@@ -224,11 +227,13 @@ def test_snap_unsupported_locale_still_raises():
 
 
 def test_snap_error_message_exact():
+    # Sprint 251: sv is supported — use "fr" to test error message format
     from atlas.snapshot_input.render import render_snapshot_draft_validation
     try:
-        render_snapshot_draft_validation(_load_draft(), locale="sv")
+        render_snapshot_draft_validation(_load_draft(), locale="fr")
     except ValueError as e:
-        assert str(e) == "Unsupported locale: 'sv'. Only 'en' is currently supported."
+        assert "Unsupported locale:" in str(e)
+        assert "'fr'" in str(e)
     else:
         raise AssertionError("Expected ValueError")
 

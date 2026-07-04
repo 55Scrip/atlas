@@ -2,6 +2,28 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 251 — Enable sv Locale Internally Without CLI Exposure
+
+Decision: Update `atlas/locale_support.py` to add `SUPPORTED_LOCALE_SV = "sv"` and accept `"sv"` in `ensure_supported_locale`. The `sv` renderer dispatch branch in both `atlas/weekly_review/render.py` and `atlas/snapshot_input/render.py` is now reachable. `render_weekly_review(result, locale="sv")` produces Swedish display strings. All 14 Snapshot renderer functions produce Swedish display strings when called directly with `locale="sv"`. CLI output remains English. No `--language` option. Default locale unchanged.
+
+**Rationale:** B3 (string constants) and B4 (renderer dispatch boundary) were complete. B5 is the minimum change to make Swedish output reachable in code without touching the CLI. The activation is internal-only: no user-visible CLI change is made, no default is changed, no schema or enum is touched. B6–B14 (output test matrix, forbidden-category scan, canonical value preservation, passthrough, regression) remain as the safety gate before any CLI exposure is considered.
+
+**`atlas/locale_support.py` changes:**
+- `SUPPORTED_LOCALE_SV = "sv"` constant added
+- `_SUPPORTED_LOCALES = frozenset({"en", "sv"})` internal set
+- `ensure_supported_locale` now checks `locale not in _SUPPORTED_LOCALES` instead of `locale != SUPPORTED_LOCALE_EN`
+- Error message updated: `"Supported locales: 'en', 'sv'."` instead of `"Only 'en' is currently supported."`
+
+**Safety:** Default CLI and renderer output is byte-for-byte identical. `ensure_supported_locale("fr")` still raises. All tests from sprints 244–250 updated to use `"fr"` as the unsupported-locale test value where they previously used `"sv"`. No gettext. No string catalogs. No locale detection. No network calls. No schemas changed.
+
+**Readiness checklist:** B5 marked DONE. B6–B14 remain OPEN. 5 of 14 criteria satisfied.
+
+**Sprint 252 recommendation:** Create Swedish output test matrix (B6–B10 combined). Now that sv is reachable, Atlas needs a focused test file that renders full Swedish output and asserts all section titles, all labels, the disclaimer, and all Snapshot CLI headings — the prerequisite for any CLI exposure.
+
+**Result:** 47 new tests. 3352 total passed. Updated sprint 244–250 tests to reflect sv activation. No runtime behavior changed for CLI users.
+
+---
+
 ## 2026-07-04: Sprint 250 — Define Swedish Renderer Dispatch Without Enabling sv
 
 Decision: Add `_strings_for_locale(locale)` dispatch helpers to both `atlas/weekly_review/render.py` and `atlas/snapshot_input/render.py`. The dispatch helper calls `ensure_supported_locale(locale)` first, maps `"en"` to English string constants, and maps `"sv"` to Swedish string constants. The `sv` branch is structurally present but physically unreachable at runtime because `locale_support.py` still raises for `"sv"`. `atlas/locale_support.py` is unchanged. `sv` remains unsupported.

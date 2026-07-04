@@ -1,6 +1,6 @@
 # Atlas Localization Boundary
 
-**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper) / 247 (Swedish guardrail spec) / 248 (Swedish readiness checklist) / 249 (Swedish string constants) / 250 (Swedish renderer dispatch boundary)
+**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper) / 247 (Swedish guardrail spec) / 248 (Swedish readiness checklist) / 249 (Swedish string constants) / 250 (Swedish renderer dispatch boundary) / 251 (sv locale activation)
 **Date:** 2026-07-04
 **Status:** Shared locale boundary in `atlas/locale_support.py` — only "en" supported — no translations implemented
 
@@ -281,9 +281,15 @@ constant modules.
 
 Sprint 250 added `_strings_for_locale(locale)` dispatch helpers to both
 renderers. Both `strings_sv` modules are now imported by their respective
-renderers and mapped in the dispatch helper, but the `sv` branch is unreachable
-at runtime until `locale_support.py` is updated (B5). Default English output
-is unchanged. `sv` is still not enabled.
+renderers and mapped in the dispatch helper.
+
+Sprint 251 updated `atlas/locale_support.py` to add `SUPPORTED_LOCALE_SV = "sv"`
+and accept `"sv"` in `ensure_supported_locale`. The `sv` dispatch branch in both
+renderers is now reachable. `render_weekly_review(result, locale="sv")` and all
+14 Snapshot renderer functions return Swedish display strings when called directly
+with `locale="sv"`. Default locale remains `"en"`. CLI output remains English —
+there is no `--language` option and the CLI does not pass a locale parameter.
+B5 is DONE. B6–B14 remain OPEN.
 
 ### Future French guardrails (not yet defined)
 

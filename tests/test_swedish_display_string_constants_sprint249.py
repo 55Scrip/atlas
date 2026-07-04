@@ -635,8 +635,8 @@ def test_snapshot_render_imports_strings_sv_for_dispatch():
     assert "strings_sv" in source
 
 
-def test_weekly_review_sv_still_raises_at_runtime():
-    import pytest
+def test_weekly_review_sv_now_renders_at_runtime():
+    # Sprint 251: sv is now supported
     from pathlib import Path as P
     from atlas.weekly_review.inputs import WeeklyReviewInputPaths, load_weekly_review_inputs
     from atlas.weekly_review.render import render_weekly_review
@@ -646,40 +646,41 @@ def test_weekly_review_sv_still_raises_at_runtime():
         as_of="2026-01-01",
     )
     result = load_weekly_review_inputs(paths)
-    with pytest.raises(ValueError, match="sv"):
-        render_weekly_review(result, locale="sv")
+    out = render_weekly_review(result, locale="sv")
+    assert "Atlas veckovis investeringsgranskning" in out
 
 
-def test_snapshot_sv_still_raises_at_runtime():
-    import pytest, json
+def test_snapshot_sv_now_renders_at_runtime():
+    # Sprint 251: sv is now supported
+    import json
     from atlas.snapshot_input.schema import SnapshotDraft
     from atlas.snapshot_input.render import render_snapshot_draft_validation
     draft = SnapshotDraft.from_dict(
         json.loads(Path("examples/snapshot_drafts/research_notes_snapshot.json").read_text(encoding="utf-8"))
     )
-    with pytest.raises(ValueError, match="sv"):
-        render_snapshot_draft_validation(draft, locale="sv")
+    out = render_snapshot_draft_validation(draft, locale="sv")
+    assert "Validering av Snapshot Draft" in out
 
 
 # ---------------------------------------------------------------------------
-# locale_support.py unchanged — sv still not supported
+# locale_support.py — Sprint 251 activated sv
 # ---------------------------------------------------------------------------
 
-def test_locale_support_no_sv():
+def test_locale_support_sv_now_present():
+    # Sprint 251: SUPPORTED_LOCALE_SV added
     source = LOCALE_SUPPORT.read_text(encoding="utf-8")
-    assert '"sv"' not in source
+    assert 'SUPPORTED_LOCALE_SV = "sv"' in source
 
 
-def test_locale_support_still_en_only():
+def test_locale_support_still_has_en():
     source = LOCALE_SUPPORT.read_text(encoding="utf-8")
     assert 'SUPPORTED_LOCALE_EN = "en"' in source
 
 
-def test_ensure_supported_locale_rejects_sv():
-    import pytest
+def test_ensure_supported_locale_accepts_sv():
+    # Sprint 251: sv is now supported
     from atlas.locale_support import ensure_supported_locale
-    with pytest.raises(ValueError, match="sv"):
-        ensure_supported_locale("sv")
+    ensure_supported_locale("sv")  # must not raise
 
 
 def test_ensure_supported_locale_accepts_en():

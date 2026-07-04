@@ -283,12 +283,13 @@ def test_user_content_ticker_symbols_preserved():
 
 
 # ---------------------------------------------------------------------------
-# locale_support.py unchanged — sv not added
+# locale_support.py — Sprint 251 activated sv; fr still absent
 # ---------------------------------------------------------------------------
 
-def test_locale_support_still_only_en():
+def test_locale_support_sv_activated():
+    # Sprint 251: sv is now supported (B5 DONE)
     source = LOCALE_SUPPORT.read_text(encoding="utf-8")
-    assert '"sv"' not in source
+    assert 'SUPPORTED_LOCALE_SV = "sv"' in source
     assert '"fr"' not in source
     assert 'SUPPORTED_LOCALE_EN = "en"' in source
 
@@ -302,10 +303,8 @@ def test_locale_support_ensure_function_unchanged():
 # Renderer modules unchanged
 # ---------------------------------------------------------------------------
 
-def test_weekly_review_render_sv_still_raises():
-    # Sprint 250 added a dispatch branch for "sv" in the renderer, but sv
-    # remains unsupported until locale_support.py is updated (B5).
-    import pytest
+def test_weekly_review_render_sv_now_renders():
+    # Sprint 251: sv is now supported — dispatch is reachable
     from pathlib import Path as P
     from atlas.weekly_review.inputs import WeeklyReviewInputPaths, load_weekly_review_inputs
     from atlas.weekly_review.render import render_weekly_review
@@ -315,14 +314,14 @@ def test_weekly_review_render_sv_still_raises():
         as_of="2026-01-01",
     )
     result = load_weekly_review_inputs(paths)
-    with pytest.raises(ValueError, match="sv"):
-        render_weekly_review(result, locale="sv")
+    out = render_weekly_review(result, locale="sv")
+    assert "Atlas veckovis investeringsgranskning" in out
 
 
-def test_snapshot_render_no_sv_in_locale_support():
-    # sv must not be in locale_support.py until B5 is intentionally completed
+def test_snapshot_render_sv_in_locale_support():
+    # Sprint 251: B5 complete — sv is in locale_support.py
     source = LOCALE_SUPPORT.read_text(encoding="utf-8")
-    assert '"sv"' not in source
+    assert 'SUPPORTED_LOCALE_SV = "sv"' in source
 
 
 def test_weekly_review_render_locale_default_still_en():

@@ -136,15 +136,15 @@ structural prerequisite only — sv is still unsupported at runtime.
 
 ### B5 — `atlas/locale_support.py` Updated
 
-**Status: OPEN**
+**Status: DONE (Sprint 251)**
 
-`atlas/locale_support.py` must add `"sv"` to its supported set:
+`atlas/locale_support.py` adds `"sv"` to its supported set:
 
-- [ ] `SUPPORTED_LOCALE_SV = "sv"` constant defined
-- [ ] `ensure_supported_locale` updated to accept `"sv"` without raising
-- [ ] `ensure_supported_locale("en")` still passes
-- [ ] `ensure_supported_locale("fr")` still raises (French not yet enabled)
-- [ ] `ensure_supported_locale("de")` still raises
+- [x] `SUPPORTED_LOCALE_SV = "sv"` constant defined
+- [x] `ensure_supported_locale` updated to accept `"sv"` without raising
+- [x] `ensure_supported_locale("en")` still passes
+- [x] `ensure_supported_locale("fr")` still raises (French not yet enabled)
+- [x] `ensure_supported_locale("de")` still raises
 
 ---
 
@@ -338,7 +338,7 @@ that Atlas-generated Swedish headings surround unmodified Swedish user content.
 | B2 — Readiness checklist (this document) | **DONE** | 248 |
 | B3 — Swedish string constants | **DONE** | 249 |
 | B4 — Swedish renderer dispatch boundary | **DONE** | 250 |
-| B5 — locale_support.py updated | OPEN | — |
+| B5 — locale_support.py updated | **DONE** | 251 |
 | B6 — Forbidden-category scan tests | OPEN | — |
 | B7 — Swedish heading output tests | OPEN | — |
 | B8 — Swedish label output tests | OPEN | — |
@@ -349,12 +349,13 @@ that Atlas-generated Swedish headings surround unmodified Swedish user content.
 | B13 — Unsupported locale regression tests | OPEN | — |
 | B14 — Full suite green with sv enabled | OPEN | — |
 
-**4 of 14 blocking criteria satisfied. sv must not be enabled until all 14 are DONE.**
+**5 of 14 blocking criteria satisfied.**
 
-Swedish string constants exist in `atlas/weekly_review/strings_sv.py` and
-`atlas/snapshot_input/strings_sv.py`. Both modules are imported by their
-respective renderers for dispatch readiness but the `sv` branch is unreachable
-at runtime until `locale_support.py` is updated (B5). `sv` remains unsupported.
+`sv` is now supported in direct renderer calls (B5 DONE). `ensure_supported_locale("sv")`
+passes. Both renderers produce Swedish display strings when called directly with
+`locale="sv"`. CLI output remains English — there is no `--language` option and the
+CLI does not pass a locale. B6–B14 (output test matrix, forbidden-category scan,
+canonical value preservation, passthrough, regression, full-suite) remain OPEN.
 
 ---
 
