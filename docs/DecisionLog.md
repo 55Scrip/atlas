@@ -2,6 +2,34 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 267 — Define Input-First Workspace Onboarding
+
+Decision: Specify Atlas's input-first workspace onboarding model in
+`docs/InputFirstWorkspaceOnboarding.md`.
+
+**Principle:** Atlas should start with the user's input, not with an empty
+dashboard or signup wall. The first product moment is: paste something
+investment-related and receive a structured temporary workspace.
+
+**What was specified:** first screen (single input surface, example inputs,
+no login required); 13 supported input types (portfolio, watchlist, order idea,
+broker text, research notes, company facts, question, journal note, news/analysis,
+pasted table, CSV-like text, screenshot-derived text, mixed); input classification
+contract (10 categories, confidence, detected tickers/dates/quantities,
+uncertainties, missing fields, suggested cards); temporary workspace model
+(no account, no broker, no persistence promised, account prompt only after
+cards rendered); 13 workspace cards (Input Summary through Save Workspace
+Prompt); 3 example flows (portfolio paste, watchlist/research, order idea);
+no-account flow (7 steps, account prompt in step 8 only); save/account handoff
+(persistence framing, dark patterns listed); privacy/trust boundary (no email
+before first value, no silent retention, no broker required); connection to
+existing workflows (Snapshot Drafts, Weekly Review, Decision Journal, Research
+Notes, Company Facts); 8 implementation phases (Phase 0 complete; Phases 1–7
+future); risks and mitigations.
+
+**No runtime behaviour changed.** No UI, auth, classifier, workspace, database,
+backend, or payment code added.
+
 ## 2026-07-04: Sprint 266 — Define No-Account First-Value Onboarding
 
 Decision: Establish Atlas's no-account first-value product principle and

@@ -442,6 +442,21 @@ and safety boundary. Exit 0 on valid draft, exit 1 on missing file, invalid JSON
 or invalid schema. Does not confirm, reject, or write any file. No provider imports.
 No network calls. No Weekly Review behavior changed. Internal v1 foundation unchanged.
 
+**Sprint 267 (post-v1 product specification — complete):**
+Input-first workspace onboarding model specified in
+`docs/InputFirstWorkspaceOnboarding.md`. Principle: Atlas starts with
+user input, not dashboard or signup wall. Specifies: first screen (single
+input surface, no login required); 13 supported input types; input
+classification contract (10 categories, confidence, detected entities,
+uncertainties); temporary workspace model (no account, no broker, no
+persistence, account prompt after cards); 13 workspace cards; 3 example
+flows (portfolio paste, watchlist/research, order idea); no-account 7-step
+flow; save/account handoff; privacy boundary; connection to Snapshot Drafts,
+Weekly Review, Decision Journal, Research Notes, Company Facts; 8 implementation
+phases (Phase 0 complete). No runtime behaviour changed. No UI/auth/classifier/
+workspace/database/backend code added. 75 new tests. 4541 passed, 3 skipped.
+All demos green. RC2 green. Internal v1 foundation unchanged.
+
 **Sprint 266 (post-v1 product specification — complete):**
 No-account first-value onboarding principle established in
 `docs/NoAccountFirstValueOnboarding.md`. Principle: Atlas should be useful
