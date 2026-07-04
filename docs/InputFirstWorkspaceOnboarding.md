@@ -509,8 +509,12 @@ workspace card model, card types, card status values, card ordering, save/accoun
 handoff state, safety boundary, Snapshot Draft relationship, Weekly Review
 Preview relationship, canonical values, example JSON, and validation expectations.
 
-**Sprint 269 — Define Temporary Workspace Card Rendering Contract (recommended)**
+**Sprint 269 — Define Temporary Workspace Card Rendering Contract (complete)**
 
-After the temporary workspace data model is specified, Atlas should define how
-workspace cards are rendered in a safe, explainable, input-first, no-account
-experience — without implementing UI.
+The temporary workspace card rendering contract has been specified in
+[docs/TemporaryWorkspaceCardRenderingContract.md](TemporaryWorkspaceCardRenderingContract.md).
+
+It defines how temporary workspace cards should later display shared layout,
+safe status labels, uncertainties, missing fields, source references,
+user-provided content, canonical internal values, safety copy, and all 14
+card-type contracts — without implementing UI or changing runtime behavior.

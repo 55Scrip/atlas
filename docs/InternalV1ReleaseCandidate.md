@@ -463,6 +463,24 @@ UI, auth, or backend code added. No provider or network imports introduced.
 ~170 new tests. All previous tests pass. All demos green. RC2 green. Internal
 v1 foundation unchanged.
 
+**Sprint 269 (post-v1 product architecture — complete):**
+Temporary workspace card rendering contract specified in
+`docs/TemporaryWorkspaceCardRenderingContract.md`. Principle: cards surface
+structure, gaps, uncertainty, missing inputs, and source references without
+creating recommendations, urgency, execution instructions, or implied
+persistence. Specifies shared rendered card layout; safe display labels for
+the 7 Sprint 268 card statuses; uncertainty display; missing field display;
+source reference display; user-provided content passthrough; canonical value
+preservation; safety copy rules; rendering contracts for all 14 temporary
+workspace card types; example cards for Evidence Gaps, Snapshot Drafts, Save
+Workspace Prompt, Portfolio Context, and Open Decisions; validation
+expectations; future implementation phases; open questions; recommended
+Sprint 270 target. No runtime behaviour changed. No renderer, dataclasses,
+JSON Schema, UI, CLI command, classifier, entity extractor, workspace
+generation, persistence, accounts/auth, backend/database code, provider
+imports, network calls, OCR, or AI/LLM calls added. Internal v1 foundation
+unchanged.
+
 **Sprint 267 (post-v1 product specification — complete):**
 Input-first workspace onboarding model specified in
 `docs/InputFirstWorkspaceOnboarding.md`. Principle: Atlas starts with

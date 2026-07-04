@@ -828,19 +828,22 @@ No implementation is performed in this sprint.
 
 ## Recommended Next Sprint
 
-**Sprint 269: Define temporary workspace card rendering contract**
+**Sprint 269: Define temporary workspace card rendering contract (complete)**
 
-After the temporary workspace data model is specified, Atlas should define how
-workspace cards are rendered in a safe, explainable, input-first, no-account
-experience — without implementing UI.
+The temporary workspace card rendering contract has been specified in
+[docs/TemporaryWorkspaceCardRenderingContract.md](TemporaryWorkspaceCardRenderingContract.md).
 
-The card rendering contract should specify:
+It defines:
 
-- How each card type maps to rendered sections
-- What text templates are needed for each card type
-- How uncertainties are surfaced in card rendering
-- How missing fields are surfaced in card rendering
-- How safety boundary constraints are reflected in card language
-- What remains deferred to future UI implementation
+- Shared rendered card layout
+- Safe status display labels
+- Uncertainty, missing field, and source reference display rules
+- User-provided content passthrough rules
+- Canonical internal value preservation
+- Safety copy rules
+- Rendering contracts for all 14 temporary workspace card types
+- Example rendered cards
+- Validation expectations
+- Future implementation phases
 
 This continues the pattern of specifying architecture before building it.

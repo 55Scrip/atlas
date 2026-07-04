@@ -2,6 +2,34 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 269 — Define Temporary Workspace Card Rendering Contract
+
+Decision: Specify the temporary workspace card rendering contract in
+`docs/TemporaryWorkspaceCardRenderingContract.md`.
+
+**Principle:** Temporary workspace cards should surface structure, gaps,
+uncertainty, missing inputs, and source references without creating
+recommendations, urgency, execution instructions, or implied persistence.
+
+**What was specified:** shared rendered card layout (`title`, `status_label`,
+`summary`, `items`, `uncertainties`, `missing_fields`, `source_references`,
+`next_prompt`); safe status display mapping for the 7 Sprint 268 card status
+values; uncertainty display structure and severity guidance; missing field
+display structure; source reference display rules; user-provided content
+passthrough requirements; canonical internal value preservation; safety copy
+rules; rendering contracts for all 14 temporary workspace card types; example
+rendered cards for Evidence Gaps, Snapshot Drafts, Save Workspace Prompt,
+Portfolio Context, and Open Decisions; validation expectations; future
+implementation phases; open questions; recommended Sprint 270 target
+(temporary workspace schema dataclasses).
+
+**No runtime behaviour changed.** No renderer, dataclasses, JSON Schema, UI,
+CLI command, classifier, entity extractor, workspace generation, persistence,
+accounts/auth, backend/database code, provider imports, network calls, OCR,
+or AI/LLM calls were added.
+
+---
+
 ## 2026-07-04: Sprint 268 — Define Temporary Workspace Data Model
 
 Decision: Specify the temporary workspace data model in
