@@ -297,7 +297,15 @@ calls. Renderer bug fixed: two hardcoded English phrases in Weekly Review sectio
 (`REMINDER_NO_ACTION_VALID`, `REMINDER_ATLAS_SUPPORTS_JUDGMENT`) now use locale
 constants via `S`. Swedish output is internally tested and passes forbidden-category
 scan for all 7 prohibited categories. CLI output remains English. B6–B10 are DONE.
-B11–B14 remain OPEN.
+
+Sprint 253 created `tests/test_swedish_canonical_passthrough_sprint253.py` — a
+systematic matrix verifying that Swedish-locale output does not translate canonical
+internal values or user-provided content. All 8 SnapshotType values, all 5
+SnapshotConfirmationStatus values, all 4 SnapshotConfidence values, warning codes,
+ticker symbols, file paths, scope notes, watchlist reasons, research note text,
+journal entries, snapshot notes, and snapshot extracted fields are verified unchanged.
+English output is verified identical before and after calling the Swedish renderer.
+B11 and B12 are DONE. B13 and B14 remain OPEN.
 
 ### Future French guardrails (not yet defined)
 

@@ -2,6 +2,27 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 253 — Add Swedish Canonical Value and User-Content Passthrough Matrix
+
+Decision: Create `tests/test_swedish_canonical_passthrough_sprint253.py` — a systematic matrix verifying that Swedish-locale output does not translate canonical internal values or user-provided content. Covers all 8 SnapshotType values, all 5 SnapshotConfirmationStatus values, all 4 SnapshotConfidence values, warning codes, warning code format, en/sv warning code parity, ticker symbols, file paths, scope notes, watchlist reasons, research note text, journal entries, snapshot notes, source descriptions, extracted field values, render idempotency, and English output preservation.
+
+**Rationale:** After B6–B10 prove that Atlas-generated display strings are Swedish and safe, the next safety gate is systematic evidence that the Swedish renderer does not touch values it must never translate: canonical enum strings, user-written content, and internal path identifiers. Without this gate, a future string dispatch change could accidentally translate a warning code or ticker symbol and produce silent data corruption.
+
+**Key invariants verified:**
+- `render_weekly_review(result, locale="sv")` does not mutate `result` fields
+- `render_weekly_review(result, locale="sv")` is idempotent
+- English output is identical before and after calling the Swedish renderer
+- Warning codes are identical between `sv` and `en` output
+- All user-provided content (scope notes, watchlist reasons, research notes, journal entries, snapshot fields) passes through unchanged in Swedish output
+
+**Readiness checklist:** B11 and B12 marked DONE. B13 and B14 remain OPEN. 12 of 14 criteria satisfied.
+
+**Sprint 254 recommendation:** Add unsupported-locale regression matrix (B13). Now that canonical values and user content are verified safe, the remaining safety gate before any CLI exposure is a systematic regression test confirming that all unsupported locales (`fr`, `de`, `ja`, etc.) still raise `ValueError` from both renderers and `ensure_supported_locale`. This ensures the allowlist boundary is enforced across all 14+ Snapshot renderer functions and the Weekly Review renderer.
+
+**Result:** Tests added. No runtime behavior changed. No locale_support.py changes. No renderer changes. No string module changes. CLI output unchanged.
+
+---
+
 ## 2026-07-04: Sprint 252 — Create Swedish Output Test Matrix
 
 Decision: Create `tests/test_swedish_output_matrix_sprint252.py` — a systematic Swedish output test matrix covering all Atlas-generated Swedish strings from direct renderer calls. Render full Swedish output and assert all 10 Weekly Review section titles, all body labels, the disclaimer, input status templates, warnings, all 6 Snapshot headings, all safety boundary labels, forbidden-category scan for all 7 prohibited categories, canonical value preservation, user content passthrough, English output unchanged, and CLI English preservation.

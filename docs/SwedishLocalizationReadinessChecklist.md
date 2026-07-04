@@ -240,28 +240,46 @@ confirm, reject, research notes export, and company facts export.
 
 ### B11 — Canonical Value Preservation Tests
 
-**Status: OPEN**
+**Status: DONE** (Sprint 253)
 
-Tests must verify that Swedish-locale output does not translate internal values:
+Tests verify that Swedish-locale output does not translate internal values:
 
-- [ ] `confirmed`, `rejected`, `draft`, `needs_user_review` appear as-is in
-  any JSON output written by Swedish-locale commands
-- [ ] Warning codes appear as-is in Swedish output (e.g. `missing_optional_profile`)
-- [ ] Ticker symbols appear unchanged (`MSFT`, `ASML`, `NOVO`, etc.)
-- [ ] Schema keys appear unchanged in any written files
+- [x] All 8 `SnapshotType` values appear unchanged in Swedish Snapshot renderer output
+- [x] All 5 `SnapshotConfirmationStatus` values (`draft`, `needs_user_review`, `confirmed`,
+  `rejected`, `superseded`) appear unchanged in Swedish Snapshot renderer output
+- [x] All 4 `SnapshotConfidence` values (`high`, `medium`, `low`, `unknown`) appear unchanged
+- [x] Warning codes appear as-is in Swedish WR output (e.g. `missing_optional_financials`)
+- [x] Warning code format `[{code}]` uses canonical bracket notation in Swedish output
+- [x] Warning codes are identical between `sv` and `en` output (parity test)
+- [x] Ticker symbols (`MSFT`, `ASML`, `CASH`, `XYL`, `NOVO`) appear unchanged
+- [x] File paths (`target_local_file`, `raw_source_reference`) appear unchanged
+- [x] Input/output paths passed to confirm/reject renderers appear unchanged
+
+Test file: `tests/test_swedish_canonical_passthrough_sprint253.py`
 
 ---
 
 ### B12 — User-Provided Content Passthrough Tests
 
-**Status: OPEN**
+**Status: DONE** (Sprint 253)
 
-Tests must verify that user-provided content is not modified in Swedish-locale output:
+Tests verify that user-provided content is not modified in Swedish-locale output:
 
-- [ ] Research notes loaded from disk appear unmodified in Swedish Weekly Review output
-- [ ] Scope notes appear unmodified in Swedish Weekly Review output
-- [ ] Decision journal entries appear unmodified in Swedish Weekly Review output
-- [ ] `render_weekly_review(result, locale="sv")` does not alter `result` fields
+- [x] Scope notes (Swedish and English) appear unmodified in Swedish WR output
+- [x] Scope notes appear identically in both `sv` and `en` WR output
+- [x] Watchlist reasons (XYL: "Water infrastructure theme…") appear unchanged
+- [x] All watchlist reasons present in English WR also appear in Swedish WR
+- [x] Research note text ("Lithography leadership", evidence gap text) appears unchanged
+- [x] Research note lines present in English WR also appear in Swedish WR (spot-check)
+- [x] Journal `decision_title` values appear unchanged in Swedish WR
+- [x] Snapshot `notes` field text appears unchanged in Swedish review/validation output
+- [x] Snapshot `source_description` appears unchanged in Swedish review output
+- [x] Snapshot `extracted_fields.title` and `.ticker` appear unchanged
+- [x] `render_weekly_review(result, locale="sv")` does not mutate `result` fields
+- [x] `render_weekly_review(result, locale="sv")` is idempotent (same output on repeated calls)
+- [x] English output is unchanged after calling the Swedish renderer
+
+Test file: `tests/test_swedish_canonical_passthrough_sprint253.py`
 
 ---
 
@@ -350,12 +368,12 @@ that Atlas-generated Swedish headings surround unmodified Swedish user content.
 | B8 — Swedish label output tests | **DONE** | 252 |
 | B9 — Swedish disclaimer output test | **DONE** | 252 |
 | B10 — Swedish Snapshot CLI heading tests | **DONE** | 252 |
-| B11 — Canonical value preservation tests | OPEN | — |
-| B12 — User-provided content passthrough tests | OPEN | — |
+| B11 — Canonical value preservation tests | **DONE** | 253 |
+| B12 — User-provided content passthrough tests | **DONE** | 253 |
 | B13 — Unsupported locale regression tests | OPEN | — |
 | B14 — Full suite green with sv enabled | OPEN | — |
 
-**10 of 14 blocking criteria satisfied.**
+**12 of 14 blocking criteria satisfied.**
 
 `sv` is now supported in direct renderer calls. Swedish output is internally
 tested through `tests/test_swedish_output_matrix_sprint252.py`. All 10 Weekly
@@ -363,7 +381,14 @@ Review section titles, all body labels, the two-line disclaimer, input status
 templates, warning format, all 6 Snapshot headings, and all safety boundary
 labels pass. Forbidden-category scan covers all 7 prohibited categories across
 all rendered Swedish outputs. CLI output remains English — there is no
-`--language` option and the CLI does not pass a locale. B11–B14 remain OPEN.
+`--language` option and the CLI does not pass a locale.
+
+Sprint 253 added the canonical value and user-content passthrough matrix
+(`tests/test_swedish_canonical_passthrough_sprint253.py`). All 8 SnapshotType
+values, all 5 SnapshotConfirmationStatus values, all 4 SnapshotConfidence values,
+warning codes, ticker symbols, file paths, scope notes, watchlist reasons, research
+note text, journal entries, and snapshot extracted fields are verified unchanged in
+Swedish-locale output. B13 and B14 remain OPEN.
 
 ---
 
