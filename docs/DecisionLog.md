@@ -2,6 +2,25 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 230 — Fourth Real Portfolio Trial With Confirm Then Export
+
+Decision: Run the full review-confirm-export-Weekly Review loop with realistic inputs after adding `atlas snapshot confirm`.
+
+**Rationale:** After adding Snapshot Draft review and confirm commands, Atlas validates the complete safe workflow from unconfirmed draft review to confirmed copy to research notes export to Weekly Review before adding more status commands or conversion types.
+
+**Trial result:** All five stages passed. MD5 checksum confirmed original draft unchanged. Confirmed copy validated and reviewed as `Exportable: yes`. Export wrote only `ASML/notes.md`. Weekly Review consumed notes in Sections 8, 9, and 10 with correct provenance labels. Both example and realistic bundles green.
+
+**Key findings:**
+1. Collision guard on `confirm` (exit 1 with `--overwrite` hint) is safe and useful
+2. `Exportable: yes` in review is a clear gate signal
+3. `(research notes)` provenance label in Sections 8/9 keeps source attribution traceable
+4. Review blocking issue message on confirmed drafts could be clearer (known gap, logged)
+5. Example draft is sparse — richer example would better demonstrate full export
+
+**Sprint 231 recommendation:** Add snapshot draft reject CLI — complete the basic status workflow (confirm/reject) before adding conversion types.
+
+---
+
 ## 2026-07-04: Sprint 229 — Add Snapshot Draft Confirm CLI
 
 Decision: Add `atlas snapshot confirm <draft_path> --output-draft <path>` as a safe, non-mutating confirmation command.

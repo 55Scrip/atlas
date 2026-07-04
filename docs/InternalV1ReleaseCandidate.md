@@ -301,6 +301,16 @@ readable by Weekly Review `--research-notes DIR`. No provider imports. No networ
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
 
+**Sprint 230 (post-v1 validation — complete):**
+Fourth real portfolio trial — full review-confirm-export-Weekly Review loop. Full
+chain confirmed green: `review` (draft, Exportable: no) → `confirm` (original
+unchanged, MD5 verified) → `validate` (confirmed copy valid) → `review` (confirmed
+copy, Exportable: yes) → `export-research-notes` (ASML/notes.md written) →
+`weekly-review` (Sections 8/9/10 surface ASML research notes with provenance
+labels). Both example and realistic bundles pass. No code changes. Trial findings
+documented in `docs/SnapshotConfirmExportTrialFindings.md`. Internal v1 foundation
+unchanged.
+
 **Sprint 229 (post-v1 improvement — complete):**
 `atlas snapshot confirm <path> --output-draft <path>` CLI command added. Loads a
 Snapshot Draft, applies Sprint 227/228 blocking rules, and writes a new confirmed
