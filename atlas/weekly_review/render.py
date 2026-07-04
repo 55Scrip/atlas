@@ -651,21 +651,15 @@ def _section10_nonactions(result: WeeklyReviewLoadResult, S) -> list[str]:
     all_gap_count = sum(len(i.evidence_needed) for i in result.watchlist.items)
     if all_gap_count > 0:
         lines.append(
-            f"{S.LABEL_REASON_TO_WAIT}: {all_gap_count} evidence gap(s) identified across "
-            "watchlist items. Gathering evidence is the appropriate next step."
+            f"{S.LABEL_REASON_TO_WAIT}: "
+            f"{S.NONACTIONS_WAIT_EVIDENCE_GAPS.format(count=all_gap_count)}"
         )
 
     # Missing optional inputs as reasons to wait
     if not result.profile_available:
-        lines.append(
-            f"{S.LABEL_REASON_TO_WAIT}: Investor profile not provided. "
-            "Structural suitability assessment is deferred."
-        )
+        lines.append(f"{S.LABEL_REASON_TO_WAIT}: {S.NONACTIONS_WAIT_NO_PROFILE}")
     if result.journal_entry_count == 0 and not result.journal_entries:
-        lines.append(
-            f"{S.LABEL_REASON_TO_WAIT}: Decision journal not provided. "
-            "Open decisions and prior context are not available for this review."
-        )
+        lines.append(f"{S.LABEL_REASON_TO_WAIT}: {S.NONACTIONS_WAIT_NO_JOURNAL}")
     # Per-ticker missing evidence — two summary lines instead of one per ticker
     if result.ticker_evidence:
         missing_facts = [
@@ -674,8 +668,8 @@ def _section10_nonactions(result: WeeklyReviewLoadResult, S) -> list[str]:
         ]
         if missing_facts:
             lines.append(
-                f"{S.LABEL_REASON_TO_WAIT}: Local company facts missing for {len(missing_facts)} ticker(s) "
-                f"({', '.join(missing_facts)}): thesis context is incomplete for these positions."
+                f"{S.LABEL_REASON_TO_WAIT}: "
+                f"{S.NONACTIONS_WAIT_MISSING_FACTS.format(count=len(missing_facts), tickers=', '.join(missing_facts))}"
             )
         missing_fins = [
             ev.ticker for ev in result.ticker_evidence
@@ -683,21 +677,15 @@ def _section10_nonactions(result: WeeklyReviewLoadResult, S) -> list[str]:
         ]
         if missing_fins:
             lines.append(
-                f"{S.LABEL_REASON_TO_WAIT}: Local financial history missing for {len(missing_fins)} ticker(s) "
-                f"({', '.join(missing_fins)}): financial context is incomplete for these positions."
+                f"{S.LABEL_REASON_TO_WAIT}: "
+                f"{S.NONACTIONS_WAIT_MISSING_FINS.format(count=len(missing_fins), tickers=', '.join(missing_fins))}"
             )
 
     # General reasons to wait when evidence directories are absent
     if not result.company_facts_available:
-        lines.append(
-            f"{S.LABEL_REASON_TO_WAIT}: Company facts not loaded. "
-            "Decision-relevant evidence is incomplete."
-        )
+        lines.append(f"{S.LABEL_REASON_TO_WAIT}: {S.NONACTIONS_WAIT_NO_COMPANY_FACTS}")
     if not result.financials_available:
-        lines.append(
-            f"{S.LABEL_REASON_TO_WAIT}: Financial history not loaded. "
-            "Financial trend analysis is not available."
-        )
+        lines.append(f"{S.LABEL_REASON_TO_WAIT}: {S.NONACTIONS_WAIT_NO_FINANCIALS}")
 
     # Aged journal entries as reasons to wait
     if result.journal_entries and result.as_of:
@@ -713,8 +701,8 @@ def _section10_nonactions(result: WeeklyReviewLoadResult, S) -> list[str]:
             )
             age = _journal_entry_age_days(entry, result.as_of)
             lines.append(
-                f"{S.LABEL_REASON_TO_WAIT}: {asset} decision journal notes are older than 90 days "
-                f"({age} days). Assumptions should be refreshed before changing decision status."
+                f"{S.LABEL_REASON_TO_WAIT}: {asset} "
+                f"{S.NONACTIONS_WAIT_AGING_JOURNAL.format(days=age)}"
             )
 
     # Research note reasons to wait
@@ -725,30 +713,22 @@ def _section10_nonactions(result: WeeklyReviewLoadResult, S) -> list[str]:
                 lines.append(f"{S.LABEL_REASON_TO_WAIT} [{note.ticker}] (research notes): {r}")
         elif note.evidence_gaps:
             lines.append(
-                f"{S.LABEL_REASON_TO_WAIT}: {note.ticker} research notes contain "
-                f"{len(note.evidence_gaps)} unresolved evidence gap(s). "
-                "Gathering evidence is the appropriate next step."
+                f"{S.LABEL_REASON_TO_WAIT}: "
+                f"{S.NONACTIONS_WAIT_RESEARCH_GAPS.format(ticker=note.ticker, count=len(note.evidence_gaps))}"
             )
 
     # Profile-derived reasons — grouped blocks to avoid N identical boilerplate lines
     if result.profile_principles:
-        lines.append(
-            f"{S.LABEL_REASON_TO_WAIT}: Stated principles support a measured approach to evidence and decision discipline:"
-        )
+        lines.append(f"{S.LABEL_REASON_TO_WAIT}: {S.NONACTIONS_WAIT_PRINCIPLES}")
         for principle in result.profile_principles:
             lines.append(f'  — "{principle}"')
     if result.profile_constraints:
-        lines.append(
-            f"{S.LABEL_NO_ACTION_WARRANTED}: Stated constraints apply to current portfolio and watchlist decisions:"
-        )
+        lines.append(f"{S.LABEL_NO_ACTION_WARRANTED}: {S.NONACTIONS_NO_ACTION_CONSTRAINTS}")
         for constraint in result.profile_constraints:
             lines.append(f'  — "{constraint}"')
 
     # Universal reminders — always ensure section is non-empty
-    lines.append(
-        f"{S.LABEL_NO_ACTION_WARRANTED}: This review is informational only. "
-        "All observations are based on user-supplied local inputs."
-    )
+    lines.append(f"{S.LABEL_NO_ACTION_WARRANTED}: {S.NONACTIONS_NO_ACTION_INFORMATIONAL}")
     lines.append(S.REMINDER_NO_ACTION_VALID)
     lines.append(S.REMINDER_ATLAS_SUPPORTS_JUDGMENT)
 

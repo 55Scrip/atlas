@@ -209,6 +209,57 @@ QUESTIONS_NONE = (
 )
 
 # ---------------------------------------------------------------------------
+# Section 10 — Non-Actions / Reasons to Wait body messages
+# ---------------------------------------------------------------------------
+
+NONACTIONS_WAIT_EVIDENCE_GAPS = (
+    "{count} underlagslucka(or) identifierade bland bevakningsposter. "
+    "Att samla in underlag är det lämpliga nästa steget."
+)
+NONACTIONS_WAIT_NO_PROFILE = (
+    "Investerarprofil ej angiven. "
+    "Strukturell lämplighetsbedömning är uppskjuten."
+)
+NONACTIONS_WAIT_NO_JOURNAL = (
+    "Beslutsjournal ej angiven. "
+    "Öppna beslut och tidigare kontext är inte tillgängliga för denna granskning."
+)
+NONACTIONS_WAIT_MISSING_FACTS = (
+    "Lokala företagsfakta saknas för {count} ticker(s) ({tickers}): "
+    "tesiskontext är ofullständig för dessa positioner."
+)
+NONACTIONS_WAIT_MISSING_FINS = (
+    "Lokal finansiell historik saknas för {count} ticker(s) ({tickers}): "
+    "finansiell kontext är ofullständig för dessa positioner."
+)
+NONACTIONS_WAIT_NO_COMPANY_FACTS = (
+    "Företagsfakta inte inlästa. "
+    "Beslutsrelevant underlag är ofullständigt."
+)
+NONACTIONS_WAIT_NO_FINANCIALS = (
+    "Finansiell historik inte inläst. "
+    "Analys av finansiella trender är inte tillgänglig."
+)
+NONACTIONS_WAIT_AGING_JOURNAL = (
+    "beslutsjournalnoteringar är äldre än 90 dagar ({days} dagar). "
+    "Antaganden bör uppdateras innan beslutsstatus ändras."
+)
+NONACTIONS_WAIT_RESEARCH_GAPS = (
+    "{ticker} analysnotisar innehåller {count} olösta underlagslucka(or). "
+    "Att samla in underlag är det lämpliga nästa steget."
+)
+NONACTIONS_WAIT_PRINCIPLES = (
+    "Angivna principer stödjer ett genomtänkt förhållningssätt till underlag och beslutsdisciplin:"
+)
+NONACTIONS_NO_ACTION_CONSTRAINTS = (
+    "Angivna begränsningar gäller för nuvarande portfölj- och bevakningsbeslut:"
+)
+NONACTIONS_NO_ACTION_INFORMATIONAL = (
+    "Denna granskning är informationell enbart. "
+    "Alla observationer baseras på användarsupplerade lokala indata."
+)
+
+# ---------------------------------------------------------------------------
 # Ordered tuple of all section titles (structural reference)
 # ---------------------------------------------------------------------------
 

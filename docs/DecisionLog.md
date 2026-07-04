@@ -2,6 +2,25 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 263 — Extract Weekly Review Section 10 Tail Messages Into Constants
+
+Decision: Extract 12 remaining hardcoded English tail suffixes in
+`_section10_nonactions` from `atlas/weekly_review/render.py` into named
+constants in `atlas/weekly_review/strings.py` and `atlas/weekly_review/strings_sv.py`.
+Output unchanged for English. Swedish output now uses Swedish tail constants.
+
+**What was extracted:** Evidence gaps count tail (template); no-profile tail;
+no-journal tail; missing per-ticker company facts tail (template); missing
+per-ticker financials tail (template); company facts directory absent tail;
+financials directory absent tail; aging journal tail (template, appended after
+asset name); research notes evidence gaps tail (template); stated principles
+intro tail; stated constraints intro tail; informational-only universal reminder.
+
+**Not extracted:** The `LABEL_DECISION_DEFERRED` formatted line
+(`{item.ticker} — {item.name}. Status: {item.status.value}`) interleaves user
+data (ticker, name) and a canonical enum value too tightly to cleanly isolate
+as a tail constant — left inline.
+
 ## 2026-07-04: Sprint 262 — Extract Weekly Review Body Message Templates Into Constants
 
 Decision: Extract 27 remaining hardcoded Weekly Review section body message

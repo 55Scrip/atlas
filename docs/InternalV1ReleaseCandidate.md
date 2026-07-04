@@ -442,6 +442,18 @@ and safety boundary. Exit 0 on valid draft, exit 1 on missing file, invalid JSON
 or invalid schema. Does not confirm, reject, or write any file. No provider imports.
 No network calls. No Weekly Review behavior changed. Internal v1 foundation unchanged.
 
+**Sprint 263 (post-v1 improvement — complete):**
+12 remaining hardcoded Section 10 (Non-Actions / Reasons to Wait) tail message
+templates extracted into locale-aware constants in `atlas/weekly_review/strings.py`
+(English) and `atlas/weekly_review/strings_sv.py` (Swedish). All tails in
+`_section10_nonactions` now reference `S.NONACTIONS_WAIT_*` or
+`S.NONACTIONS_NO_ACTION_*`: evidence gaps, no-profile, no-journal, missing
+per-ticker facts/fins, facts/fins directories absent, aging journal tail, research
+notes gaps, stated principles intro, stated constraints intro, and informational-only
+universal reminder. English output unchanged. Swedish Section 10 now fully locale-aware.
+No new locales, no gettext, no catalogs, no runtime detection. 51 new tests.
+4326 passed, 3 skipped. Internal v1 foundation unchanged.
+
 **Sprint 262 (post-v1 improvement — complete):**
 27 hardcoded Weekly Review section body message templates extracted into
 locale-aware constants in `atlas/weekly_review/strings.py` (English) and

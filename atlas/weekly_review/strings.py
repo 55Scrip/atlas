@@ -201,6 +201,57 @@ QUESTIONS_NONE = (
 )
 
 # ---------------------------------------------------------------------------
+# Section 10 — Non-Actions / Reasons to Wait body messages
+# ---------------------------------------------------------------------------
+
+NONACTIONS_WAIT_EVIDENCE_GAPS = (
+    "{count} evidence gap(s) identified across watchlist items. "
+    "Gathering evidence is the appropriate next step."
+)
+NONACTIONS_WAIT_NO_PROFILE = (
+    "Investor profile not provided. "
+    "Structural suitability assessment is deferred."
+)
+NONACTIONS_WAIT_NO_JOURNAL = (
+    "Decision journal not provided. "
+    "Open decisions and prior context are not available for this review."
+)
+NONACTIONS_WAIT_MISSING_FACTS = (
+    "Local company facts missing for {count} ticker(s) ({tickers}): "
+    "thesis context is incomplete for these positions."
+)
+NONACTIONS_WAIT_MISSING_FINS = (
+    "Local financial history missing for {count} ticker(s) ({tickers}): "
+    "financial context is incomplete for these positions."
+)
+NONACTIONS_WAIT_NO_COMPANY_FACTS = (
+    "Company facts not loaded. "
+    "Decision-relevant evidence is incomplete."
+)
+NONACTIONS_WAIT_NO_FINANCIALS = (
+    "Financial history not loaded. "
+    "Financial trend analysis is not available."
+)
+NONACTIONS_WAIT_AGING_JOURNAL = (
+    "decision journal notes are older than 90 days ({days} days). "
+    "Assumptions should be refreshed before changing decision status."
+)
+NONACTIONS_WAIT_RESEARCH_GAPS = (
+    "{ticker} research notes contain {count} unresolved evidence gap(s). "
+    "Gathering evidence is the appropriate next step."
+)
+NONACTIONS_WAIT_PRINCIPLES = (
+    "Stated principles support a measured approach to evidence and decision discipline:"
+)
+NONACTIONS_NO_ACTION_CONSTRAINTS = (
+    "Stated constraints apply to current portfolio and watchlist decisions:"
+)
+NONACTIONS_NO_ACTION_INFORMATIONAL = (
+    "This review is informational only. "
+    "All observations are based on user-supplied local inputs."
+)
+
+# ---------------------------------------------------------------------------
 # Ordered tuple of all section titles (structural reference)
 # ---------------------------------------------------------------------------
 
