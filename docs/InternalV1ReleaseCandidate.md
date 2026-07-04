@@ -442,6 +442,18 @@ and safety boundary. Exit 0 on valid draft, exit 1 on missing file, invalid JSON
 or invalid schema. Does not confirm, reject, or write any file. No provider imports.
 No network calls. No Weekly Review behavior changed. Internal v1 foundation unchanged.
 
+**Sprint 264 (post-v1 improvement — complete):**
+6 remaining hardcoded English tail strings visible in Swedish output extracted
+into locale-aware constants. Section 6 `_section6_guardrails`: 2 constants
+(`GUARDRAILS_EVIDENCE_NO_COMPANY_FACTS`, `GUARDRAILS_EVIDENCE_NO_FINANCIALS`)
+for the `LABEL_EVIDENCE_GAP: …` missing-evidence lines. Section 8
+`_section8_evidence`: 4 constants (`EVIDENCE_MISSING_PROFILE`,
+`EVIDENCE_MISSING_JOURNAL`, `EVIDENCE_MISSING_COMPANY_FACTS`,
+`EVIDENCE_MISSING_FINANCIALS`) for the `LABEL_MISSING_OPTIONAL_INPUT: …` lines.
+English output unchanged. Swedish Sections 6 and 8 no longer show hardcoded
+English strings. No gettext, no catalogs, no runtime detection. 41 new tests.
+4367 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
+
 **Sprint 263 (post-v1 improvement — complete):**
 12 remaining hardcoded Section 10 (Non-Actions / Reasons to Wait) tail message
 templates extracted into locale-aware constants in `atlas/weekly_review/strings.py`

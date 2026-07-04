@@ -402,15 +402,9 @@ def _section6_guardrails(result: WeeklyReviewLoadResult, S) -> list[str]:
 
     # Missing optional data
     if not result.company_facts_available:
-        lines.append(
-            f"{S.LABEL_EVIDENCE_GAP}: Company facts not loaded. "
-            "Evidence quality cannot be assessed from available inputs."
-        )
+        lines.append(f"{S.LABEL_EVIDENCE_GAP}: {S.GUARDRAILS_EVIDENCE_NO_COMPANY_FACTS}")
     if not result.financials_available:
-        lines.append(
-            f"{S.LABEL_EVIDENCE_GAP}: Financial history not loaded. "
-            "Financial trend analysis not available."
-        )
+        lines.append(f"{S.LABEL_EVIDENCE_GAP}: {S.GUARDRAILS_EVIDENCE_NO_FINANCIALS}")
 
     # Deferred engine wiring note
     lines.append(S.GUARDRAILS_ENGINE_DEFERRED)
@@ -525,13 +519,13 @@ def _section8_evidence(result: WeeklyReviewLoadResult, S) -> list[str]:
 
     # Missing optional inputs
     if not result.profile_available:
-        lines.append(f"{S.LABEL_MISSING_OPTIONAL_INPUT}: Investor profile not provided.")
+        lines.append(f"{S.LABEL_MISSING_OPTIONAL_INPUT}: {S.EVIDENCE_MISSING_PROFILE}")
     if result.journal_entry_count == 0 and not result.journal_entries:
-        lines.append(f"{S.LABEL_MISSING_OPTIONAL_INPUT}: Decision journal not provided.")
+        lines.append(f"{S.LABEL_MISSING_OPTIONAL_INPUT}: {S.EVIDENCE_MISSING_JOURNAL}")
     if not result.company_facts_available:
-        lines.append(f"{S.LABEL_MISSING_OPTIONAL_INPUT}: Company facts directory not provided.")
+        lines.append(f"{S.LABEL_MISSING_OPTIONAL_INPUT}: {S.EVIDENCE_MISSING_COMPANY_FACTS}")
     if not result.financials_available:
-        lines.append(f"{S.LABEL_MISSING_OPTIONAL_INPUT}: Financial history directory not provided.")
+        lines.append(f"{S.LABEL_MISSING_OPTIONAL_INPUT}: {S.EVIDENCE_MISSING_FINANCIALS}")
 
     # Holdings with missing sector
     for h in result.portfolio.all_holdings:

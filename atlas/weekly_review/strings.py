@@ -161,6 +161,14 @@ GUARDRAILS_NOTE_LOCAL_ONLY = (
     "No live market data or external analysis used."
 )
 GUARDRAILS_NO_FLAGS = "No guardrail flags raised from available local inputs."
+GUARDRAILS_EVIDENCE_NO_COMPANY_FACTS = (
+    "Company facts not loaded. "
+    "Evidence quality cannot be assessed from available inputs."
+)
+GUARDRAILS_EVIDENCE_NO_FINANCIALS = (
+    "Financial history not loaded. "
+    "Financial trend analysis not available."
+)
 
 # ---------------------------------------------------------------------------
 # Section 7 — Open Decisions body messages
@@ -181,6 +189,10 @@ AGING_NOTE_SUFFIX = (
 # ---------------------------------------------------------------------------
 
 EVIDENCE_NO_GAPS = "No evidence gaps identified from available local inputs."
+EVIDENCE_MISSING_PROFILE = "Investor profile not provided."
+EVIDENCE_MISSING_JOURNAL = "Decision journal not provided."
+EVIDENCE_MISSING_COMPANY_FACTS = "Company facts directory not provided."
+EVIDENCE_MISSING_FINANCIALS = "Financial history directory not provided."
 
 # ---------------------------------------------------------------------------
 # Section 9 — Follow-Up Questions body messages

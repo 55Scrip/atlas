@@ -169,6 +169,14 @@ GUARDRAILS_NOTE_LOCAL_ONLY = (
     "Inga live-marknadsdata eller extern analys används."
 )
 GUARDRAILS_NO_FLAGS = "Inga gränskontrollflaggor höjda från tillgängliga lokala indata."
+GUARDRAILS_EVIDENCE_NO_COMPANY_FACTS = (
+    "Företagsfakta inte inlästa. "
+    "Underlagskvalitet kan inte bedömas från tillgängliga indata."
+)
+GUARDRAILS_EVIDENCE_NO_FINANCIALS = (
+    "Finansiell historik inte inläst. "
+    "Analys av finansiella trender är inte tillgänglig."
+)
 
 # ---------------------------------------------------------------------------
 # Section 7 — Open Decisions body messages
@@ -189,6 +197,10 @@ AGING_NOTE_SUFFIX = (
 # ---------------------------------------------------------------------------
 
 EVIDENCE_NO_GAPS = "Inga underlagsluckor identifierade från tillgängliga lokala indata."
+EVIDENCE_MISSING_PROFILE = "Investerarprofil saknas."
+EVIDENCE_MISSING_JOURNAL = "Beslutsjournal saknas."
+EVIDENCE_MISSING_COMPANY_FACTS = "Företagsfakta-katalog saknas."
+EVIDENCE_MISSING_FINANCIALS = "Finansiell historik-katalog saknas."
 
 # ---------------------------------------------------------------------------
 # Section 9 — Follow-Up Questions body messages

@@ -2,6 +2,26 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 264 — Extract Section 6/8 Input-Status Tail Messages Into Constants
+
+Decision: Extract 6 remaining hardcoded English tail strings visible in Swedish
+output from `atlas/weekly_review/render.py` into named constants in
+`atlas/weekly_review/strings.py` and `atlas/weekly_review/strings_sv.py`.
+Output unchanged for English. Swedish Sections 6 and 8 no longer leak English.
+
+**What was extracted:**
+- Section 6 `_section6_guardrails`: `GUARDRAILS_EVIDENCE_NO_COMPANY_FACTS` and
+  `GUARDRAILS_EVIDENCE_NO_FINANCIALS` — the 2 × `LABEL_EVIDENCE_GAP: hardcoded
+  English tail` lines for missing optional evidence directories.
+- Section 8 `_section8_evidence`: `EVIDENCE_MISSING_PROFILE`,
+  `EVIDENCE_MISSING_JOURNAL`, `EVIDENCE_MISSING_COMPANY_FACTS`,
+  `EVIDENCE_MISSING_FINANCIALS` — the 4 × `LABEL_MISSING_OPTIONAL_INPUT:
+  hardcoded English tail` lines for missing optional inputs.
+
+**Note:** `_render_input_status` (the actual Section 1 input-status renderer)
+was already fully locale-aware since Sprint 242. The strings in scope for this
+sprint were in `_section6_guardrails` and `_section8_evidence`.
+
 ## 2026-07-04: Sprint 263 — Extract Weekly Review Section 10 Tail Messages Into Constants
 
 Decision: Extract 12 remaining hardcoded English tail suffixes in
