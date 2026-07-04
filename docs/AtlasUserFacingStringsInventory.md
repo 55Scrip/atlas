@@ -1,8 +1,8 @@
 # Atlas User-Facing Strings Inventory
 
-**Sprint:** 237 (inventory) / 238 (Snapshot CLI extraction) / 239 (Weekly Review section titles) / 240 (Weekly Review section labels)
+**Sprint:** 237 (inventory) / 238 (Snapshot CLI extraction) / 239 (Weekly Review section titles) / 240 (Weekly Review section labels) / 241 (Weekly Review disclaimer)
 **Date:** 2026-07-04
-**Status:** Snapshot CLI strings extracted / Weekly Review section titles extracted / Weekly Review section labels extracted
+**Status:** Snapshot CLI strings extracted / Weekly Review section titles extracted / Weekly Review section labels extracted / Weekly Review disclaimer extracted
 
 ---
 
@@ -18,6 +18,7 @@ Sprint 237: No strings moved. Audit only.
 Sprint 238: Snapshot CLI display strings extracted to `atlas/snapshot_input/strings.py`.
 Sprint 239: Weekly Review section titles extracted to `atlas/weekly_review/strings.py`.
 Sprint 240: Weekly Review section labels extracted to `atlas/weekly_review/strings.py` — `LABEL_EVIDENCE_GAP`, `LABEL_RISK_TO_MONITOR`, `LABEL_REASON_TO_WAIT`, `LABEL_DECISION_DEFERRED`, `LABEL_NO_ACTION_WARRANTED`, `LABEL_AGING_NOTE`, `LABEL_MISSING_OPTIONAL_INPUT`, `LABEL_INPUT_STATUS`, `LABEL_INPUT_WARNINGS`.
+Sprint 241: Weekly Review disclaimer extracted to `atlas/weekly_review/strings.py` as `WEEKLY_REVIEW_DISCLAIMER`. Inline `_DISCLAIMER` module-level assignment removed from `render.py`. Wording unchanged.
 
 ---
 

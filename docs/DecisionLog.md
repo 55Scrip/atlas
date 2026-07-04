@@ -2,6 +2,23 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 241 — Extract Weekly Review Disclaimer Into Constant
+
+Decision: Move the two-line Weekly Review disclaimer from a module-level `_DISCLAIMER` variable in `atlas/weekly_review/render.py` into `atlas/weekly_review/strings.py` as `WEEKLY_REVIEW_DISCLAIMER`. Renderer updated to reference `S.WEEKLY_REVIEW_DISCLAIMER`. No wording, punctuation, or spacing changed.
+
+**Rationale:** The disclaimer is the most visible guardrail-sensitive string in the Weekly Review output — it asserts the tool's deterministic, non-recommendation nature. Centralizing it alongside section titles and labels completes the extraction of all structural and guardrail strings from the renderer. Future locale work can now translate or adapt the disclaimer from a single canonical location.
+
+**Constant added to `atlas/weekly_review/strings.py`:**
+- `WEEKLY_REVIEW_DISCLAIMER` — two-line disclaimer string, wording preserved exactly.
+
+**What stayed out:** all body prose, input status message templates, warning explanations, and `_section()` helper strings remain inline.
+
+**Sprint 242 recommendation:** Extract Weekly Review input status messages into constants.
+
+**Result:** 25 new tests. 2872 total passed. All demos green. RC2 green. No runtime behavior changed.
+
+---
+
 ## 2026-07-04: Sprint 240 — Extract Weekly Review Section Labels Into Constants
 
 Decision: Extend `atlas/weekly_review/strings.py` with 9 repeated section body label constants. Update `atlas/weekly_review/render.py` with ~20 targeted replacements referencing `S.LABEL_*` constants. No output changed.

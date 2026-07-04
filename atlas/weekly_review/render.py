@@ -22,19 +22,13 @@ from atlas.weekly_review import strings as S
 
 
 _TITLE = S.WEEKLY_REVIEW_TITLE
-_DISCLAIMER = (
-    "Atlas Weekly Investment Review — deterministic, local-only, no recommendations.\n"
-    "Atlas supports better judgment. It does not replace it."
-)
-
-
 def render_weekly_review(result: WeeklyReviewLoadResult) -> str:
     """Render a full deterministic Weekly Investment Review from loaded inputs."""
     lines: list[str] = []
 
     lines.append(f"# {_TITLE}")
     lines.append("")
-    lines.append(_DISCLAIMER)
+    lines.append(S.WEEKLY_REVIEW_DISCLAIMER)
     lines.append("")
 
     lines.extend(_render_input_status(result))

@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2847 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2872 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -300,6 +300,9 @@ Draft never mutated. End-to-end path confirmed: exported notes.md immediately
 readable by Weekly Review `--research-notes DIR`. No provider imports. No network
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
+
+**Sprint 241 (post-v1 architecture — complete):**
+Weekly Review disclaimer extracted to constants. `atlas/weekly_review/strings.py` extended with `WEEKLY_REVIEW_DISCLAIMER` — the two-line guardrail disclaimer. Inline `_DISCLAIMER` module-level variable removed from `atlas/weekly_review/render.py`; renderer now references `S.WEEKLY_REVIEW_DISCLAIMER`. Disclaimer wording, punctuation, and line break preserved exactly. No `--language` added. No locale imports. No output changed. 25 new tests (2872 total). All demos green. RC2 green.
 
 **Sprint 240 (post-v1 architecture — complete):**
 Weekly Review section body labels extracted to constants. `atlas/weekly_review/strings.py` extended with 9 label constants: `LABEL_EVIDENCE_GAP`, `LABEL_RISK_TO_MONITOR`, `LABEL_REASON_TO_WAIT`, `LABEL_DECISION_DEFERRED`, `LABEL_NO_ACTION_WARRANTED`, `LABEL_AGING_NOTE`, `LABEL_MISSING_OPTIONAL_INPUT`, `LABEL_INPUT_STATUS`, `LABEL_INPUT_WARNINGS`. `atlas/weekly_review/render.py` updated with ~20 targeted replacements across sections 3, 6, 8, 9, 10, `_render_journal_aging_note`, `_render_input_status`, `_render_warnings`. Enum values, user passthrough content, and `_DISCLAIMER` remain inline. No `--language` added. No locale imports. No output changed. 38 new tests (2847 total). All demos green. RC2 green.

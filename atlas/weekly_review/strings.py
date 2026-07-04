@@ -49,6 +49,16 @@ LABEL_INPUT_STATUS = "Input Status"
 LABEL_INPUT_WARNINGS = "Input Warnings"
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Disclaimer
+# ---------------------------------------------------------------------------
+
+WEEKLY_REVIEW_DISCLAIMER = (
+    "Atlas Weekly Investment Review — deterministic, local-only, no recommendations.\n"
+    "Atlas supports better judgment. It does not replace it."
+)
+
+# ---------------------------------------------------------------------------
 # Ordered tuple of all section titles (structural reference)
 # ---------------------------------------------------------------------------
 
