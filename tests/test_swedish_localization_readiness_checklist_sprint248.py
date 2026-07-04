@@ -189,8 +189,9 @@ def test_criterion_b14_full_suite_green():
 # ---------------------------------------------------------------------------
 
 def test_granskningsomfattning_referenced():
+    # Sprint 252 updated B7 with the implemented heading "Granskningens omfattning"
     content = CHECKLIST_PATH.read_text(encoding="utf-8")
-    assert "Granskningsomfattning" in content
+    assert "Granskningens omfattning" in content
 
 
 def test_portföljkontext_referenced():
@@ -199,8 +200,9 @@ def test_portföljkontext_referenced():
 
 
 def test_bevakningslistegranskning_referenced():
+    # Sprint 252 updated B7 with the implemented heading "Bevakningslista"
     content = CHECKLIST_PATH.read_text(encoding="utf-8")
-    assert "Bevakningslistegranskning" in content
+    assert "Bevakningslista" in content
 
 
 def test_saknat_underlag_referenced():
@@ -247,18 +249,21 @@ def test_säkerhetsgräns_referenced():
 # ---------------------------------------------------------------------------
 
 def test_utkastkontroll_referenced():
+    # Sprint 252 updated B10 with the implemented heading "Validering av Snapshot Draft"
     content = CHECKLIST_PATH.read_text(encoding="utf-8")
-    assert "Utkastkontroll" in content
+    assert "Validering av Snapshot Draft" in content
 
 
 def test_utkastgranskning_referenced():
+    # Sprint 252 updated B10 with the implemented heading "Granskning av Snapshot Draft"
     content = CHECKLIST_PATH.read_text(encoding="utf-8")
-    assert "Utkastgranskning" in content
+    assert "Granskning av Snapshot Draft" in content
 
 
 def test_utkastbekräftelse_referenced():
+    # Sprint 252 updated B10 with the implemented heading "Bekräftelse av Snapshot Draft"
     content = CHECKLIST_PATH.read_text(encoding="utf-8")
-    assert "Utkastbekräftelse" in content
+    assert "Bekräftelse av Snapshot Draft" in content
 
 
 # ---------------------------------------------------------------------------

@@ -774,8 +774,8 @@ def _section10_nonactions(result: WeeklyReviewLoadResult, S) -> list[str]:
         f"{S.LABEL_NO_ACTION_WARRANTED}: This review is informational only. "
         "All observations are based on user-supplied local inputs."
     )
-    lines.append("Reminder: No action is a valid and often appropriate outcome of a weekly review.")
-    lines.append("Atlas supports better judgment. It does not replace it.")
+    lines.append(S.REMINDER_NO_ACTION_VALID)
+    lines.append(S.REMINDER_ATLAS_SUPPORTS_JUDGMENT)
 
     return lines
 

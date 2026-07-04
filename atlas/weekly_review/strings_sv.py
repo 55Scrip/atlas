@@ -91,6 +91,9 @@ WEEKLY_REVIEW_DISCLAIMER = (
     "Atlas stöder bättre omdöme. Det ersätter det inte."
 )
 
+REMINDER_NO_ACTION_VALID = "Påminnelse: Ingen åtgärd är ett giltigt och ofta lämpligt resultat av en veckogranskning."
+REMINDER_ATLAS_SUPPORTS_JUDGMENT = "Atlas stöder bättre omdöme. Det ersätter det inte."
+
 # ---------------------------------------------------------------------------
 # Ordered tuple of all section titles (structural reference)
 # ---------------------------------------------------------------------------

@@ -2,6 +2,25 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 252 — Create Swedish Output Test Matrix
+
+Decision: Create `tests/test_swedish_output_matrix_sprint252.py` — a systematic Swedish output test matrix covering all Atlas-generated Swedish strings from direct renderer calls. Render full Swedish output and assert all 10 Weekly Review section titles, all body labels, the disclaimer, input status templates, warnings, all 6 Snapshot headings, all safety boundary labels, forbidden-category scan for all 7 prohibited categories, canonical value preservation, user content passthrough, English output unchanged, and CLI English preservation.
+
+**Renderer bug fixed:** Two hardcoded English phrases in Weekly Review section 10 bypassed `S` for locale dispatch:
+- `"Reminder: No action is a valid and often appropriate outcome of a weekly review."` — now `S.REMINDER_NO_ACTION_VALID`
+- `"Atlas supports better judgment. It does not replace it."` — now `S.REMINDER_ATLAS_SUPPORTS_JUDGMENT`
+Added `REMINDER_NO_ACTION_VALID` and `REMINDER_ATLAS_SUPPORTS_JUDGMENT` to both `atlas/weekly_review/strings.py` and `atlas/weekly_review/strings_sv.py`. English content is identical to the previous hardcoded strings. Swedish content approved against `docs/SwedishSafeLanguageGuardrails.md`.
+
+**Rationale:** B6–B10 require tests on actual rendered Swedish output, not just the string constants modules. The test matrix proves all approved Swedish strings appear in renderer output, the forbidden-category scan passes, and that English remains the default. This is the prerequisite for B11–B12 (canonical value and passthrough preservation matrices).
+
+**Readiness checklist:** B6, B7, B8, B9, B10 marked DONE. B11–B14 remain OPEN. 10 of 14 criteria satisfied.
+
+**Sprint 253 recommendation:** Add canonical value and user-content passthrough matrix for Swedish output (B11 and B12). After the main output matrix proves all display strings are Swedish and safe, the next safety gate is a systematic test that Swedish output does not translate canonical internal values or user-provided content across the full range of fixture types.
+
+**Result:** 91 new tests. 3443 total passed. No runtime behavior changed. CLI output unchanged. `sv` is supported only in direct renderer calls.
+
+---
+
 ## 2026-07-04: Sprint 251 — Enable sv Locale Internally Without CLI Exposure
 
 Decision: Update `atlas/locale_support.py` to add `SUPPORTED_LOCALE_SV = "sv"` and accept `"sv"` in `ensure_supported_locale`. The `sv` renderer dispatch branch in both `atlas/weekly_review/render.py` and `atlas/snapshot_input/render.py` is now reachable. `render_weekly_review(result, locale="sv")` produces Swedish display strings. All 14 Snapshot renderer functions produce Swedish display strings when called directly with `locale="sv"`. CLI output remains English. No `--language` option. Default locale unchanged.

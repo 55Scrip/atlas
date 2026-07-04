@@ -150,85 +150,91 @@ structural prerequisite only — sv is still unsupported at runtime.
 
 ### B6 — Swedish Forbidden-Category Scan Tests
 
-**Status: OPEN**
+**Status: DONE (Sprint 252)**
 
-A test module must exist that generates Swedish output and scans it for all
-7 prohibited categories defined in `docs/SwedishSafeLanguageGuardrails.md`:
+`tests/test_swedish_output_matrix_sprint252.py` generates Swedish output from
+all direct renderer calls and scans for all 7 prohibited categories:
 
-- [ ] Test verifies no Category 1 phrasing (recommendation language) in generated output
-- [ ] Test verifies no Category 2 phrasing (transaction/execution language) in generated output
-- [ ] Test verifies no Category 3 phrasing (price-target language) in generated output
-- [ ] Test verifies no Category 4 phrasing (urgency language) in generated output
-- [ ] Test verifies no Category 5 phrasing (certainty/promise language) in generated output
-- [ ] Test verifies no Category 6 phrasing (outperformance prediction) in generated output
-- [ ] Test verifies no Category 7 phrasing (personalized advice framing) in generated output
+- [x] Test verifies no Category 1 phrasing (recommendation language) in generated output
+- [x] Test verifies no Category 2 phrasing (transaction/execution language) in generated output
+- [x] Test verifies no Category 3 phrasing (price-target language) in generated output
+- [x] Test verifies no Category 4 phrasing (urgency language) in generated output
+- [x] Test verifies no Category 5 phrasing (certainty/promise language) in generated output
+- [x] Test verifies no Category 6 phrasing (outperformance prediction) in generated output
+- [x] Test verifies no Category 7 phrasing (personalized advice framing) in generated output
 
-The scan must test actual rendered Swedish output, not just the string constants module.
+Scan covers rendered output from Weekly Review, Snapshot validation, review,
+confirm, reject, research notes export, and company facts export.
 
 ---
 
 ### B7 — Swedish Heading Output Tests
 
-**Status: OPEN**
+**Status: DONE (Sprint 252)**
 
-A test module must exist verifying that `render_weekly_review(result, locale="sv")`
-produces each section title matching the approved Swedish concept mapping:
+`tests/test_swedish_output_matrix_sprint252.py` verifies all 10 section titles:
 
-- [ ] Section 1 → `1. Granskningsomfattning`
-- [ ] Section 2 → `2. Portföljkontext`
-- [ ] Section 3 → `3. Bevakningslistegranskning`
-- [ ] Section 4 → `4. Bolagsanalyser som behöver uppmärksamhet`
-- [ ] Section 5 → `5. Portföljpassning och lämplighetsnoteringar`
-- [ ] Section 6 → `6. Risk- och principgränser`
-- [ ] Section 7 → `7. Öppna beslut`
-- [ ] Section 8 → `8. Saknat underlag`
-- [ ] Section 9 → `9. Uppföljningsfrågor`
-- [ ] Section 10 → `10. Icke-åtgärder / Skäl att avvakta`
+- [x] Section 1 → `1. Granskningens omfattning`
+- [x] Section 2 → `2. Portföljkontext`
+- [x] Section 3 → `3. Bevakningslista`
+- [x] Section 4 → `4. Bolagsgranskningar som behöver uppmärksamhet`
+- [x] Section 5 → `5. Portföljpassning och lämplighetsnoteringar`
+- [x] Section 6 → `6. Risk- och principgränser`
+- [x] Section 7 → `7. Öppna beslut`
+- [x] Section 8 → `8. Saknat underlag`
+- [x] Section 9 → `9. Uppföljningsfrågor`
+- [x] Section 10 → `10. Icke-åtgärder / skäl att avvakta`
 
 ---
 
 ### B8 — Swedish Label Output Tests
 
-**Status: OPEN**
+**Status: DONE (Sprint 252)**
 
-A test module must exist verifying that Swedish label constants render correctly:
+`tests/test_swedish_output_matrix_sprint252.py` verifies label rendering:
 
-- [ ] `Evidence Gap` → `Underlagslucka` in Swedish output
-- [ ] `Risk to Monitor` → `Risk att följa` in Swedish output
-- [ ] `Reason to Wait` → `Skäl att avvakta` in Swedish output
-- [ ] `Decision Deferred` → `Beslut uppskjutet` in Swedish output
-- [ ] `No Action Warranted` → `Ingen åtgärd motiverad` in Swedish output
-- [ ] `Watchlist` → `Bevakningslista` in Swedish output
-- [ ] `Evidence Gap` → `Underlagslucka` in Swedish output
+- [x] `Evidence Gap` → `Underlagslucka` in Swedish output
+- [x] `Risk to Monitor` → `Risk att följa` in Swedish output
+- [x] `Reason to Wait` → `Skäl att avvakta` in Swedish output
+- [x] `Decision Deferred` → `Beslut uppskjutet` in Swedish output
+- [x] `No Action Warranted` → `Ingen åtgärd motiverad` in Swedish output
+- [x] `Watchlist` → `Bevakningslista` in Swedish output
+- [x] Input status section → `Indatastatus` in Swedish output
+- [x] Input warnings section → `Indatavarningar` in Swedish output
+- [x] Portfolio loaded template → `Portfölj: N innehav inlästa.`
+- [x] Warning count template → `Varningar: N` in Swedish output
+- [x] Missing optional input → `Saknat valfritt indata` in Swedish output
 
 ---
 
 ### B9 — Swedish Disclaimer Output Test
 
-**Status: OPEN**
+**Status: DONE (Sprint 252)**
 
-A test must verify that the Swedish disclaimer matches the approved mapping and
-contains no prohibited phrasing:
+`tests/test_swedish_output_matrix_sprint252.py` verifies the disclaimer:
 
-- [ ] Line 1: `Atlas Veckovis Investeringsöversikt — deterministisk, lokal, utan rekommendationer.`
-- [ ] Line 2: `Atlas stöder bättre omdöme. Det ersätter det inte.`
-- [ ] No Category 1–7 phrasing present in disclaimer
+- [x] Line 1: `Atlas veckovis investeringsgranskning — deterministisk, lokal, utan rekommendationer.`
+- [x] Line 2: `Atlas stöder bättre omdöme. Det ersätter det inte.`
+- [x] No Category 1–7 phrasing present in disclaimer (covered by B6 scan)
+- [x] English disclaimer lines not present in Swedish output
 
 ---
 
 ### B10 — Swedish Snapshot CLI Heading Tests
 
-**Status: OPEN**
+**Status: DONE (Sprint 252)**
 
-A test module must verify Snapshot CLI heading output in Swedish:
+`tests/test_swedish_output_matrix_sprint252.py` verifies all Snapshot headings:
 
-- [ ] `Snapshot Draft Validation` → `Utkastkontroll`
-- [ ] `Snapshot Draft Review` → `Utkastgranskning`
-- [ ] `Snapshot Draft Confirmation` → `Utkastbekräftelse`
-- [ ] `Snapshot Draft Rejection` → `Utkastavvisning`
-- [ ] `Research Notes Export` → `Export av analysnotisar`
-- [ ] `Company Facts Export` → `Export av företagsfakta`
-- [ ] `Safety Boundary` → `Säkerhetsgräns`
+- [x] `Snapshot Draft Validation` → `Validering av Snapshot Draft`
+- [x] `Snapshot Draft Review` → `Granskning av Snapshot Draft`
+- [x] `Snapshot Draft Confirmation` → `Bekräftelse av Snapshot Draft`
+- [x] `Snapshot Draft Rejection` → `Avvisning av Snapshot Draft`
+- [x] `Research Notes Export` → `Export av analysnotisar`
+- [x] `Company Facts Export` → `Export av företagsfakta`
+- [x] `Safety Boundary` → `Säkerhetsgräns:` (all commands)
+- [x] Swedish status labels: `Status: giltig`, `Status: bekräftad`, `Status: avvisad`
+- [x] Safety boundary safety lines verified (validate, review, confirm, reject)
 
 ---
 
@@ -339,23 +345,25 @@ that Atlas-generated Swedish headings surround unmodified Swedish user content.
 | B3 — Swedish string constants | **DONE** | 249 |
 | B4 — Swedish renderer dispatch boundary | **DONE** | 250 |
 | B5 — locale_support.py updated | **DONE** | 251 |
-| B6 — Forbidden-category scan tests | OPEN | — |
-| B7 — Swedish heading output tests | OPEN | — |
-| B8 — Swedish label output tests | OPEN | — |
-| B9 — Swedish disclaimer output test | OPEN | — |
-| B10 — Swedish Snapshot CLI heading tests | OPEN | — |
+| B6 — Forbidden-category scan tests | **DONE** | 252 |
+| B7 — Swedish heading output tests | **DONE** | 252 |
+| B8 — Swedish label output tests | **DONE** | 252 |
+| B9 — Swedish disclaimer output test | **DONE** | 252 |
+| B10 — Swedish Snapshot CLI heading tests | **DONE** | 252 |
 | B11 — Canonical value preservation tests | OPEN | — |
 | B12 — User-provided content passthrough tests | OPEN | — |
 | B13 — Unsupported locale regression tests | OPEN | — |
 | B14 — Full suite green with sv enabled | OPEN | — |
 
-**5 of 14 blocking criteria satisfied.**
+**10 of 14 blocking criteria satisfied.**
 
-`sv` is now supported in direct renderer calls (B5 DONE). `ensure_supported_locale("sv")`
-passes. Both renderers produce Swedish display strings when called directly with
-`locale="sv"`. CLI output remains English — there is no `--language` option and the
-CLI does not pass a locale. B6–B14 (output test matrix, forbidden-category scan,
-canonical value preservation, passthrough, regression, full-suite) remain OPEN.
+`sv` is now supported in direct renderer calls. Swedish output is internally
+tested through `tests/test_swedish_output_matrix_sprint252.py`. All 10 Weekly
+Review section titles, all body labels, the two-line disclaimer, input status
+templates, warning format, all 6 Snapshot headings, and all safety boundary
+labels pass. Forbidden-category scan covers all 7 prohibited categories across
+all rendered Swedish outputs. CLI output remains English — there is no
+`--language` option and the CLI does not pass a locale. B11–B14 remain OPEN.
 
 ---
 

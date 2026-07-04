@@ -336,10 +336,11 @@ def test_checklist_b5_documented():
     assert any("OPEN" in l or "DONE" in l for l in lines)
 
 
-def test_checklist_b6_open():
+def test_checklist_b6_documented():
+    # Sprint 250: B6 was OPEN; Sprint 252 marked it DONE — either state is valid
     content = CHECKLIST.read_text(encoding="utf-8")
     lines = [l for l in content.splitlines() if "B6" in l]
-    assert any("OPEN" in l for l in lines)
+    assert any("OPEN" in l or "DONE" in l for l in lines)
 
 
 def test_checklist_criteria_count_documented():

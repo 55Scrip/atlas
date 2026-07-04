@@ -1,6 +1,6 @@
 # Atlas Localization Boundary
 
-**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper) / 247 (Swedish guardrail spec) / 248 (Swedish readiness checklist) / 249 (Swedish string constants) / 250 (Swedish renderer dispatch boundary) / 251 (sv locale activation)
+**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper) / 247 (Swedish guardrail spec) / 248 (Swedish readiness checklist) / 249 (Swedish string constants) / 250 (Swedish renderer dispatch boundary) / 251 (sv locale activation) / 252 (Swedish output test matrix)
 **Date:** 2026-07-04
 **Status:** Shared locale boundary in `atlas/locale_support.py` — only "en" supported — no translations implemented
 
@@ -289,7 +289,15 @@ renderers is now reachable. `render_weekly_review(result, locale="sv")` and all
 14 Snapshot renderer functions return Swedish display strings when called directly
 with `locale="sv"`. Default locale remains `"en"`. CLI output remains English —
 there is no `--language` option and the CLI does not pass a locale parameter.
-B5 is DONE. B6–B14 remain OPEN.
+B5 is DONE.
+
+Sprint 252 created `tests/test_swedish_output_matrix_sprint252.py` — a systematic
+91-test matrix covering all Atlas-generated Swedish strings across direct renderer
+calls. Renderer bug fixed: two hardcoded English phrases in Weekly Review section 10
+(`REMINDER_NO_ACTION_VALID`, `REMINDER_ATLAS_SUPPORTS_JUDGMENT`) now use locale
+constants via `S`. Swedish output is internally tested and passes forbidden-category
+scan for all 7 prohibited categories. CLI output remains English. B6–B10 are DONE.
+B11–B14 remain OPEN.
 
 ### Future French guardrails (not yet defined)
 

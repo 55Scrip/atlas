@@ -83,6 +83,9 @@ WEEKLY_REVIEW_DISCLAIMER = (
     "Atlas supports better judgment. It does not replace it."
 )
 
+REMINDER_NO_ACTION_VALID = "Reminder: No action is a valid and often appropriate outcome of a weekly review."
+REMINDER_ATLAS_SUPPORTS_JUDGMENT = "Atlas supports better judgment. It does not replace it."
+
 # ---------------------------------------------------------------------------
 # Ordered tuple of all section titles (structural reference)
 # ---------------------------------------------------------------------------
