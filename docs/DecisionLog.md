@@ -2,6 +2,38 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 242 — Extract Weekly Review Input Status Messages Into Constants
+
+Decision: Extract all 14 `_render_input_status` message templates from inline f-string literals in `atlas/weekly_review/render.py` into named constants in `atlas/weekly_review/strings.py`. Dynamic values (counts, names, dates) remain as `.format(...)` slots. No output changed.
+
+**Rationale:** After section titles, repeated labels, and the disclaimer were centralized, `_render_input_status` remained the highest-concentration source of inline display strings in the renderer. Its messages are bounded, patterned, and appear in every Weekly Review output. Centralizing them completes the extraction of all structured status display text from the renderer, leaving only body-section prose and warning explanations inline.
+
+**Constants added to `atlas/weekly_review/strings.py`:**
+- `INPUT_STATUS_PORTFOLIO_LOADED` — `"Portfolio: {count} holding(s) loaded."`
+- `INPUT_STATUS_WATCHLIST_LOADED` — `"Watchlist: {count} item(s) loaded from '{name}'."`
+- `INPUT_STATUS_INVESTOR_PROFILE_AVAILABLE` — `"Investor profile: Available"`
+- `INPUT_STATUS_INVESTOR_PROFILE_NOT_PROVIDED` — `"Investor profile: Not provided — default will be used."`
+- `INPUT_STATUS_JOURNAL_LOADED` — `"Decision journal: {count} entry/entries loaded."`
+- `INPUT_STATUS_JOURNAL_NOT_PROVIDED` — `"Decision journal: Not provided."`
+- `INPUT_STATUS_COMPANY_FACTS_AVAILABLE` — `"Company facts: Available"`
+- `INPUT_STATUS_COMPANY_FACTS_NOT_PROVIDED` — `"Company facts: Not provided — evidence gaps noted."`
+- `INPUT_STATUS_FINANCIALS_AVAILABLE` — `"Financials: Available"`
+- `INPUT_STATUS_FINANCIALS_NOT_PROVIDED` — `"Financials: Not provided — evidence gaps noted."`
+- `INPUT_STATUS_RESEARCH_NOTES_LOADED` — `"Research notes: {count} ticker(s) with local notes."`
+- `INPUT_STATUS_RESEARCH_NOTES_NOT_PROVIDED` — `"Research notes: Not provided."`
+- `INPUT_STATUS_REVIEW_DATE` — `"Review date: {date}"`
+- `INPUT_STATUS_WARNINGS_COUNT` — `"Warnings: {count}"`
+
+**What stayed out:** warning body prose (`_render_warnings` message content), all body-section generated text, `_render_journal_aging_note` text, section body labels already extracted in Sprint 240.
+
+**Output preservation:** full-input and minimal-input Weekly Review output verified line-for-line identical. Both loaded and not-provided paths confirmed.
+
+**Sprint 243 recommendation:** Extract Weekly Review warning explanations into constants.
+
+**Result:** 52 new tests. 2924 total passed. All demos green. RC2 green. No runtime behavior changed.
+
+---
+
 ## 2026-07-04: Sprint 241 — Extract Weekly Review Disclaimer Into Constant
 
 Decision: Move the two-line Weekly Review disclaimer from a module-level `_DISCLAIMER` variable in `atlas/weekly_review/render.py` into `atlas/weekly_review/strings.py` as `WEEKLY_REVIEW_DISCLAIMER`. Renderer updated to reference `S.WEEKLY_REVIEW_DISCLAIMER`. No wording, punctuation, or spacing changed.

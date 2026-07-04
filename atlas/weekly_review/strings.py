@@ -49,6 +49,24 @@ LABEL_INPUT_STATUS = "Input Status"
 LABEL_INPUT_WARNINGS = "Input Warnings"
 
 # ---------------------------------------------------------------------------
+# Input status message templates
+# ---------------------------------------------------------------------------
+
+INPUT_STATUS_PORTFOLIO_LOADED = "Portfolio: {count} holding(s) loaded."
+INPUT_STATUS_WATCHLIST_LOADED = "Watchlist: {count} item(s) loaded from '{name}'."
+INPUT_STATUS_INVESTOR_PROFILE_AVAILABLE = "Investor profile: Available"
+INPUT_STATUS_INVESTOR_PROFILE_NOT_PROVIDED = "Investor profile: Not provided — default will be used."
+INPUT_STATUS_JOURNAL_LOADED = "Decision journal: {count} entry/entries loaded."
+INPUT_STATUS_JOURNAL_NOT_PROVIDED = "Decision journal: Not provided."
+INPUT_STATUS_COMPANY_FACTS_AVAILABLE = "Company facts: Available"
+INPUT_STATUS_COMPANY_FACTS_NOT_PROVIDED = "Company facts: Not provided — evidence gaps noted."
+INPUT_STATUS_FINANCIALS_AVAILABLE = "Financials: Available"
+INPUT_STATUS_FINANCIALS_NOT_PROVIDED = "Financials: Not provided — evidence gaps noted."
+INPUT_STATUS_RESEARCH_NOTES_LOADED = "Research notes: {count} ticker(s) with local notes."
+INPUT_STATUS_RESEARCH_NOTES_NOT_PROVIDED = "Research notes: Not provided."
+INPUT_STATUS_REVIEW_DATE = "Review date: {date}"
+INPUT_STATUS_WARNINGS_COUNT = "Warnings: {count}"
+
 # ---------------------------------------------------------------------------
 # Disclaimer
 # ---------------------------------------------------------------------------

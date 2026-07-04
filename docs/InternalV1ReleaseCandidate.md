@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2872 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2924 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -300,6 +300,9 @@ Draft never mutated. End-to-end path confirmed: exported notes.md immediately
 readable by Weekly Review `--research-notes DIR`. No provider imports. No network
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
+
+**Sprint 242 (post-v1 architecture — complete):**
+Weekly Review input status message templates extracted to constants. `atlas/weekly_review/strings.py` extended with 14 `INPUT_STATUS_*` constants covering all `_render_input_status` output lines. `atlas/weekly_review/render.py` `_render_input_status` updated to reference all constants via `.format(...)` or direct reference. Inline f-string literals removed from status function. Both full-input (available paths) and minimal-input (not-provided paths) output verified unchanged. Warning body prose remains inline. No `--language` added. No locale imports. No output changed. 52 new tests (2924 total). All demos green. RC2 green.
 
 **Sprint 241 (post-v1 architecture — complete):**
 Weekly Review disclaimer extracted to constants. `atlas/weekly_review/strings.py` extended with `WEEKLY_REVIEW_DISCLAIMER` — the two-line guardrail disclaimer. Inline `_DISCLAIMER` module-level variable removed from `atlas/weekly_review/render.py`; renderer now references `S.WEEKLY_REVIEW_DISCLAIMER`. Disclaimer wording, punctuation, and line break preserved exactly. No `--language` added. No locale imports. No output changed. 25 new tests (2872 total). All demos green. RC2 green.

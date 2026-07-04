@@ -869,39 +869,35 @@ def _section(heading: str, content: list[str]) -> list[str]:
 
 def _render_input_status(result: WeeklyReviewLoadResult) -> list[str]:
     lines = [f"## {S.LABEL_INPUT_STATUS}", ""]
-    lines.append(f"- Portfolio: {len(result.portfolio.all_holdings)} holding(s) loaded.")
+    lines.append(f"- {S.INPUT_STATUS_PORTFOLIO_LOADED.format(count=len(result.portfolio.all_holdings))}")
     lines.append(
-        f"- Watchlist: {len(result.watchlist.items)} item(s) loaded "
-        f"from '{result.watchlist.name}'."
+        f"- {S.INPUT_STATUS_WATCHLIST_LOADED.format(count=len(result.watchlist.items), name=result.watchlist.name)}"
     )
     lines.append(
-        f"- Investor profile: "
-        f"{'Available' if result.profile_available else 'Not provided — default will be used.'}",
+        f"- {S.INPUT_STATUS_INVESTOR_PROFILE_AVAILABLE if result.profile_available else S.INPUT_STATUS_INVESTOR_PROFILE_NOT_PROVIDED}",
     )
     lines.append(
-        f"- Decision journal: "
+        f"- "
         + (
-            f"{result.journal_entry_count} entry/entries loaded."
+            S.INPUT_STATUS_JOURNAL_LOADED.format(count=result.journal_entry_count)
             if result.journal_entry_count
-            else "Not provided."
+            else S.INPUT_STATUS_JOURNAL_NOT_PROVIDED
         )
     )
     lines.append(
-        f"- Company facts: "
-        f"{'Available' if result.company_facts_available else 'Not provided — evidence gaps noted.'}",
+        f"- {S.INPUT_STATUS_COMPANY_FACTS_AVAILABLE if result.company_facts_available else S.INPUT_STATUS_COMPANY_FACTS_NOT_PROVIDED}",
     )
     lines.append(
-        f"- Financials: "
-        f"{'Available' if result.financials_available else 'Not provided — evidence gaps noted.'}",
+        f"- {S.INPUT_STATUS_FINANCIALS_AVAILABLE if result.financials_available else S.INPUT_STATUS_FINANCIALS_NOT_PROVIDED}",
     )
     if result.research_notes:
-        lines.append(f"- Research notes: {len(result.research_notes)} ticker(s) with local notes.")
+        lines.append(f"- {S.INPUT_STATUS_RESEARCH_NOTES_LOADED.format(count=len(result.research_notes))}")
     else:
-        lines.append("- Research notes: Not provided.")
+        lines.append(f"- {S.INPUT_STATUS_RESEARCH_NOTES_NOT_PROVIDED}")
     if result.as_of:
-        lines.append(f"- Review date: {result.as_of}")
+        lines.append(f"- {S.INPUT_STATUS_REVIEW_DATE.format(date=result.as_of)}")
     if result.warnings:
-        lines.append(f"- Warnings: {len(result.warnings)}")
+        lines.append(f"- {S.INPUT_STATUS_WARNINGS_COUNT.format(count=len(result.warnings))}")
     return lines
 
 

@@ -1,8 +1,8 @@
 # Atlas User-Facing Strings Inventory
 
-**Sprint:** 237 (inventory) / 238 (Snapshot CLI extraction) / 239 (Weekly Review section titles) / 240 (Weekly Review section labels) / 241 (Weekly Review disclaimer)
+**Sprint:** 237 (inventory) / 238 (Snapshot CLI extraction) / 239 (Weekly Review section titles) / 240 (Weekly Review section labels) / 241 (Weekly Review disclaimer) / 242 (Weekly Review input status messages)
 **Date:** 2026-07-04
-**Status:** Snapshot CLI strings extracted / Weekly Review section titles extracted / Weekly Review section labels extracted / Weekly Review disclaimer extracted
+**Status:** Snapshot CLI strings extracted / Weekly Review section titles extracted / Weekly Review section labels extracted / Weekly Review disclaimer extracted / Weekly Review input status messages extracted
 
 ---
 
@@ -19,6 +19,7 @@ Sprint 238: Snapshot CLI display strings extracted to `atlas/snapshot_input/stri
 Sprint 239: Weekly Review section titles extracted to `atlas/weekly_review/strings.py`.
 Sprint 240: Weekly Review section labels extracted to `atlas/weekly_review/strings.py` — `LABEL_EVIDENCE_GAP`, `LABEL_RISK_TO_MONITOR`, `LABEL_REASON_TO_WAIT`, `LABEL_DECISION_DEFERRED`, `LABEL_NO_ACTION_WARRANTED`, `LABEL_AGING_NOTE`, `LABEL_MISSING_OPTIONAL_INPUT`, `LABEL_INPUT_STATUS`, `LABEL_INPUT_WARNINGS`.
 Sprint 241: Weekly Review disclaimer extracted to `atlas/weekly_review/strings.py` as `WEEKLY_REVIEW_DISCLAIMER`. Inline `_DISCLAIMER` module-level assignment removed from `render.py`. Wording unchanged.
+Sprint 242: Weekly Review input status message templates extracted to `atlas/weekly_review/strings.py` — 14 constants covering all `_render_input_status` output lines (portfolio loaded, watchlist loaded, investor profile available/not-provided, decision journal loaded/not-provided, company facts available/not-provided, financials available/not-provided, research notes loaded/not-provided, review date, warnings count). Warning body prose remains inline.
 
 ---
 
