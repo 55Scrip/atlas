@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2954 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2984 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -300,6 +300,9 @@ Draft never mutated. End-to-end path confirmed: exported notes.md immediately
 readable by Weekly Review `--research-notes DIR`. No provider imports. No network
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
+
+**Sprint 244 (post-v1 architecture — complete):**
+Weekly Review locale boundary defined. `render_weekly_review(result, *, locale: str = "en") -> str` now accepts an explicit keyword-only `locale` parameter. Only `"en"` is currently supported; unsupported locales raise `ValueError`. Default output and all CLI behavior unchanged. No `--language` added. No translations, gettext, or locale detection introduced. No locale files created. `docs/AtlasLocalizationBoundary.md` updated with boundary definition and usage examples. 30 new tests (2984 total). All demos green. RC2 green.
 
 **Sprint 243 (post-v1 architecture — complete):**
 Weekly Review warning display templates extracted to constants. `atlas/weekly_review/strings.py` extended with `WARNING_ROW = "- [{code}] {message}"` and `WARNING_SCOPE_SUMMARY = "Warnings: {count} input warning(s) noted — see Input Warnings section"`. `_render_warnings` and `_section1_scope` in `render.py` updated to reference constants. Warning codes remain canonical internal values in `inputs.py`. Warning messages remain inline (embed dynamic file paths). Warning row format `- [missing_optional_profile] ...` verified unchanged. No `--language` added. No locale imports. No output changed. 30 new tests (2954 total). All demos green. RC2 green.

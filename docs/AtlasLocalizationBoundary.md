@@ -1,8 +1,8 @@
 # Atlas Localization Boundary
 
-**Sprint:** 236
+**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary)
 **Date:** 2026-07-04
-**Status:** Specification only — no localization implemented
+**Status:** Weekly Review locale boundary defined — only "en" supported — no translations implemented
 
 ---
 
@@ -353,6 +353,23 @@ Snapshot Draft schema is canonical English. It does not change with locale.
 The 10-section structure of the Weekly Review remains stable regardless of
 output language. Section count, section order, and section content logic do
 not change with locale.
+
+**Sprint 244 — Locale Boundary Defined:**
+
+`render_weekly_review(result, *, locale: str = "en") -> str` now accepts an
+explicit `locale` keyword argument. Only `"en"` is currently supported.
+Unsupported locales raise `ValueError` immediately. The CLI does not expose
+`--language`; it always uses the default. No translations are implemented.
+This is a boundary-only change — all output is identical to pre-Sprint 244.
+
+```python
+# Supported:
+render_weekly_review(result)             # default en
+render_weekly_review(result, locale="en")  # explicit en
+
+# Not yet supported:
+render_weekly_review(result, locale="sv")  # raises ValueError
+```
 
 ---
 

@@ -2,6 +2,27 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 244 — Define Locale-Aware Weekly Review Rendering Helper
+
+Decision: Add `*, locale: str = "en"` as a keyword-only parameter to `render_weekly_review` in `atlas/weekly_review/render.py`. Unsupported locales raise `ValueError` immediately. Default behavior and all output are unchanged. The CLI does not expose `--language`. No translations are implemented.
+
+**Rationale:** Sprints 238–243 centralized all bounded Atlas-generated display strings from the Weekly Review and Snapshot CLI renderers into constants modules. Sprint 244 establishes the explicit rendering boundary that future locale work will target. Without this boundary, future translation attempts would require discovering the locale handoff point under time pressure. Adding it now — as a keyword-only parameter with an explicit guard and no implementation — is the minimum viable boundary: one function call site, zero behavior change, zero translation work.
+
+**Design choice:** Option B (extend existing `render_weekly_review` signature) selected over Option A (rename to `_render_weekly_review_en` + new public wrapper) because the CLI and test suite import `render_weekly_review` by name; renaming the internal function would require wider changes with no localization benefit yet.
+
+**Locale rules (Sprint 244):**
+- Supported locale: `"en"`
+- Default locale: `"en"` (keyword-only, `locale: str = "en"`)
+- Unsupported locale: `ValueError` with message naming the bad locale and `"en"` as the supported option
+- CLI: unchanged — no `--language`, always uses default
+- No translations, no gettext, no locale detection, no locale files
+
+**Sprint 245 recommendation:** Define locale-aware Snapshot CLI rendering helper — same minimal `locale="en"` boundary applied to `atlas/snapshot_input/render.py`.
+
+**Result:** 30 new tests. 2984 total passed. All demos green. RC2 green. No runtime behavior changed.
+
+---
+
 ## 2026-07-04: Sprint 243 — Extract Weekly Review Warning Display Templates Into Constants
 
 Decision: Extract the two Atlas-generated warning display format strings from `atlas/weekly_review/render.py` into named constants in `atlas/weekly_review/strings.py`. Warning codes remain canonical internal values and are not extracted. Warning messages in `inputs.py` remain inline because they embed dynamic file paths that cannot be cleanly templated without structural changes.

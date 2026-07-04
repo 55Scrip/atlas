@@ -22,8 +22,16 @@ from atlas.weekly_review import strings as S
 
 
 _TITLE = S.WEEKLY_REVIEW_TITLE
-def render_weekly_review(result: WeeklyReviewLoadResult) -> str:
-    """Render a full deterministic Weekly Investment Review from loaded inputs."""
+def render_weekly_review(result: WeeklyReviewLoadResult, *, locale: str = "en") -> str:
+    """Render a full deterministic Weekly Investment Review from loaded inputs.
+
+    Only locale="en" is currently supported. Unsupported locales raise ValueError.
+    The CLI does not expose a locale parameter; it always uses the default.
+    """
+    if locale != "en":
+        raise ValueError(
+            f"Unsupported locale: {locale!r}. Only 'en' is currently supported."
+        )
     lines: list[str] = []
 
     lines.append(f"# {_TITLE}")
