@@ -2,6 +2,29 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 237 — Extract User-Facing Strings Inventory
+
+Decision: Create `docs/AtlasUserFacingStringsInventory.md` as Phase 1 of the localization plan — a complete audit of all Atlas-generated display strings without changing any runtime behavior.
+
+**Rationale:** The localization boundary (Sprint 236) defined which strings may eventually be translated. The inventory makes that abstract boundary concrete and testable. It enumerates every Atlas-generated display string across the Weekly Review renderer and Snapshot CLI renderer, classifies each as `localizable_display`, `canonical_internal`, `user_content_passthrough`, `command_or_file_convention`, or `guardrail_sensitive_display`, and identifies future extraction priority order.
+
+**Key findings:**
+- Weekly Review renderer: ~90 distinct string groups across 10 sections + Input Status
+- Snapshot CLI renderer: ~50 distinct string groups across 6 commands
+- Section 10 (Non-Actions/Reasons to Wait) has the highest density of guardrail-sensitive strings
+- Safety Boundary text blocks are the highest-risk localization targets — semantics must be preserved exactly per locale
+- All display strings are currently inline literals; no string catalog exists yet
+
+**Canonical internal values inventoried:** All confirmation_status, snapshot_type, confidence enum values; all CLI option and command names; all schema field names; all file/directory conventions.
+
+**User-provided passthrough inventoried:** 17 distinct passthrough contexts — research notes, scope notes, journal entries, profile fields, snapshot draft content. None are localization targets.
+
+**Sprint 238 recommendation:** Extract Snapshot CLI display strings into named constants (lowest-risk extraction, bounded scope).
+
+**Result:** 49 new tests. 2707 total passed. No runtime behavior changed.
+
+---
+
 ## 2026-07-04: Sprint 236 — Define Localization Boundary
 
 Decision: Create `docs/AtlasLocalizationBoundary.md` to define the boundary between canonical internal English and future user-facing localizable output before any multilingual implementation begins.

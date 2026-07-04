@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2658 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2707 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -300,6 +300,9 @@ Draft never mutated. End-to-end path confirmed: exported notes.md immediately
 readable by Weekly Review `--research-notes DIR`. No provider imports. No network
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
+
+**Sprint 237 (post-v1 architecture — complete):**
+User-facing strings inventory extracted. `docs/AtlasUserFacingStringsInventory.md` catalogs all Atlas-generated display strings across the Weekly Review renderer (~90 string groups, 10 sections) and Snapshot CLI renderer (~50 string groups, 6 commands). Classifies each as `localizable_display`, `canonical_internal`, `user_content_passthrough`, `command_or_file_convention`, or `guardrail_sensitive_display`. Identifies Section 10 as highest-density guardrail-sensitive section. Identifies Safety Boundary text as highest-risk localization target. Inventories 17 distinct user-provided content passthrough contexts. Documents all canonical internal enum values, CLI option names, schema keys, and file conventions that must never be localized. Recommends extracting Snapshot CLI strings as the lowest-risk Phase 2 starting point. 49 new tests. No runtime behavior changed. No strings moved. Internal v1 foundation unchanged.
 
 **Sprint 236 (post-v1 architecture — complete):**
 Localization boundary defined. `docs/AtlasLocalizationBoundary.md` specifies which Atlas strings are permanent canonical English (enum values, schema keys, CLI option names, file conventions, test fixture keys) and which are localizable display text (rendered CLI output, Weekly Review section titles, explanatory text). Documents 10 boundary rules, locale-specific guardrail requirements, user-provided content handling, Snapshot Draft boundary table, Weekly Review boundary table, documentation boundary, 6-phase future implementation plan, and explicit out-of-scope list. 28 new tests verify document completeness and confirm no runtime behavior or enum values changed. No `--language` option added. No multilingual rendering implemented. Internal v1 foundation unchanged.
