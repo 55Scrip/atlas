@@ -477,6 +477,50 @@ def snapshot_validate_command(
     console.print(render_snapshot_draft_validation(draft))
 
 
+@snapshot_app.command("review")
+def snapshot_review_command(
+    draft_path: Path = typer.Argument(
+        ...,
+        help="Path to a Snapshot Draft JSON file to review.",
+    ),
+):
+    """Review a Snapshot Draft and display the full confirmation checklist.
+
+    Loads the draft, validates its schema, and prints a read-only checklist
+    showing snapshot type, confidence, confirmation status, exportability,
+    source, extracted fields summary, uncertainties, missing fields, blocking
+    issues, and safety boundary.
+
+    This command is read-only. It does not confirm, reject, or modify the draft.
+    It does not write to any file.
+
+    No live data. No recommendations. No provider dependency.
+    """
+    from atlas.snapshot_input.schema import SnapshotDraft
+    from atlas.snapshot_input.render import (
+        render_snapshot_draft_review,
+        render_snapshot_draft_review_error,
+    )
+
+    if not draft_path.exists():
+        console.print(render_snapshot_draft_review_error(f"file not found: {draft_path}"))
+        raise typer.Exit(code=1)
+
+    try:
+        text = draft_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        console.print(render_snapshot_draft_review_error(f"could not read file: {exc}"))
+        raise typer.Exit(code=1)
+
+    try:
+        draft = SnapshotDraft.from_json(text)
+    except ValueError as exc:
+        console.print(render_snapshot_draft_review_error(str(exc)))
+        raise typer.Exit(code=1)
+
+    console.print(render_snapshot_draft_review(draft))
+
+
 @snapshot_app.command("export-research-notes")
 def snapshot_export_research_notes_command(
     draft_path: Path = typer.Argument(

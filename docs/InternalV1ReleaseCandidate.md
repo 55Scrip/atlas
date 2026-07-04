@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2384 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2452 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -300,6 +300,16 @@ Draft never mutated. End-to-end path confirmed: exported notes.md immediately
 readable by Weekly Review `--research-notes DIR`. No provider imports. No network
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
+
+**Sprint 228 (post-v1 improvement — complete):**
+`atlas snapshot review <path>` CLI command added. Read-only confirmation checklist
+for a Snapshot Draft. Renders: snapshot type, confidence, confirmation status,
+exportability (yes/no with reason), source, extracted fields summary (bounded,
+no unbounded output), uncertainties, missing required fields, blocking issues per
+Sprint 227 rules, research-notes-specific section for `research_notes_snapshot`,
+and safety boundary. Exit 0 on valid draft, exit 1 on missing file, invalid JSON,
+or invalid schema. Does not confirm, reject, or write any file. No provider imports.
+No network calls. No Weekly Review behavior changed. Internal v1 foundation unchanged.
 
 **Sprint 224 (post-v1 improvement — complete):**
 `atlas snapshot validate <path>` CLI command added. Validates a Snapshot Draft JSON

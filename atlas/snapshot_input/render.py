@@ -1,12 +1,24 @@
-"""Human-readable renderer for Snapshot Draft validation output.
+"""Human-readable renderer for Snapshot Draft validation, review, and export output.
 
 No OCR. No image parsing. No AI. No provider imports. No network calls.
-Output is informational only. Validation does not write to Atlas local input files.
+Output is informational only. No function in this module writes to any file.
 """
 
 from __future__ import annotations
 
-from atlas.snapshot_input.schema import SnapshotDraft
+from atlas.snapshot_input.schema import SnapshotConfirmationStatus, SnapshotDraft, SnapshotType
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+# Snapshot types that require a ticker for export/review purposes.
+_TICKER_REQUIRED_TYPES = {
+    SnapshotType.RESEARCH_NOTES_SNAPSHOT,
+    SnapshotType.COMPANY_FACTS_SNAPSHOT,
+}
+
+_MAX_SCALAR_DISPLAY = 80
 
 
 def render_snapshot_draft_validation(draft: SnapshotDraft) -> str:
@@ -89,5 +101,205 @@ def render_research_notes_export_blocked(reason: str) -> str:
         "",
         "Status: blocked",
         f"Reason: {reason}",
+    ]
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Review helpers
+# ---------------------------------------------------------------------------
+
+def _ticker_from_draft(draft: SnapshotDraft) -> str:
+    """Return the ticker from extracted_fields or first related_tickers entry."""
+    raw = draft.extracted_fields.get("ticker", "")
+    if raw and str(raw).strip():
+        return str(raw).strip().upper()
+    if draft.related_tickers:
+        return draft.related_tickers[0].strip().upper()
+    return ""
+
+
+def _is_unsafe_ticker(ticker: str) -> bool:
+    return not ticker or "/" in ticker or "\\" in ticker or ".." in ticker
+
+
+def _summarise_extracted_fields(extracted_fields: dict) -> list[str]:
+    """Return concise summary lines for extracted_fields. No unbounded output."""
+    lines: list[str] = []
+    for key in sorted(extracted_fields.keys()):
+        value = extracted_fields[key]
+        if isinstance(value, list):
+            lines.append(f"  - {key}: {len(value)} item(s)")
+        elif isinstance(value, dict):
+            lines.append(f"  - {key}: {len(value)} key(s)")
+        elif isinstance(value, str):
+            display = value[:_MAX_SCALAR_DISPLAY] + "..." if len(value) > _MAX_SCALAR_DISPLAY else value
+            lines.append(f"  - {key}: {display!r}")
+        else:
+            lines.append(f"  - {key}: {value!r}")
+    return lines
+
+
+def collect_snapshot_draft_review_issues(draft: SnapshotDraft) -> tuple[str, ...]:
+    """Collect blocking issues for a Snapshot Draft per Sprint 227 rules.
+
+    Returns a tuple of issue strings. Empty tuple means no blocking issues.
+    These issues survive schema validation — schema-level errors prevent a draft
+    from being constructed at all.
+    """
+    issues: list[str] = []
+
+    if draft.snapshot_type == SnapshotType.UNKNOWN_SNAPSHOT:
+        issues.append("Unsupported snapshot type: unknown_snapshot cannot be confirmed.")
+
+    already_terminal = draft.confirmation_status in (
+        SnapshotConfirmationStatus.CONFIRMED,
+        SnapshotConfirmationStatus.REJECTED,
+        SnapshotConfirmationStatus.SUPERSEDED,
+    )
+    if already_terminal:
+        issues.append(
+            f"Draft is already in terminal state: {draft.confirmation_status.value}. "
+            "Confirmation is not applicable."
+        )
+
+    if not draft.extracted_fields:
+        issues.append("Extracted fields are empty. Review the source interpretation before confirming.")
+
+    if draft.snapshot_type in _TICKER_REQUIRED_TYPES:
+        ticker = _ticker_from_draft(draft)
+        if not ticker:
+            issues.append(
+                f"Ticker is required for {draft.snapshot_type.value} drafts "
+                "but was not found in extracted_fields or related_tickers."
+            )
+        elif _is_unsafe_ticker(ticker):
+            issues.append(
+                f"Unsafe ticker value {ticker!r}: ticker must not contain path separators."
+            )
+
+    return tuple(issues)
+
+
+def render_snapshot_draft_review(draft: SnapshotDraft) -> str:
+    """Render a read-only confirmation checklist for a Snapshot Draft.
+
+    This function is informational only. It does not confirm, reject, or
+    modify the draft. It does not write to any file.
+    """
+    lines: list[str] = []
+
+    # Header
+    lines.append("Snapshot Draft Review")
+    lines.append("")
+    lines.append("Status: reviewable")
+    lines.append(f"Snapshot Type: {draft.snapshot_type.value}")
+    lines.append(f"Confidence: {draft.confidence.value}")
+    lines.append(f"Confirmation Status: {draft.confirmation_status.value}")
+
+    # Exportability
+    is_confirmed = draft.confirmation_status == SnapshotConfirmationStatus.CONFIRMED
+    if is_confirmed:
+        lines.append("Exportable: yes")
+    else:
+        lines.append("Exportable: no")
+        lines.append("  Reason: only confirmed drafts are exportable.")
+
+    lines.append(f"Target Local File: {draft.target_local_file}")
+
+    if draft.related_tickers:
+        lines.append(f"Related Tickers: {', '.join(draft.related_tickers)}")
+
+    # Source
+    lines.append("")
+    lines.append("Source:")
+    lines.append(f"  - Source Description: {draft.source_description}")
+    if draft.raw_source_reference:
+        lines.append(f"  - Raw Source Reference: {draft.raw_source_reference}")
+    if draft.notes:
+        lines.append(f"  - Notes: {draft.notes[:_MAX_SCALAR_DISPLAY]}")
+
+    # Review Checklist
+    lines.append("")
+    lines.append("Review Checklist:")
+    lines.append(f"  - Draft ID: {'present' if draft.draft_id else 'missing'}")
+    lines.append(f"  - Snapshot Type: {'present' if draft.snapshot_type else 'missing'}")
+    lines.append(f"  - Source Description: {'present' if draft.source_description else 'missing'}")
+    lines.append(f"  - Target Local File: {'present' if draft.target_local_file else 'missing'}")
+    lines.append(f"  - Extracted Fields: {'present' if draft.extracted_fields else 'empty'}")
+    if draft.uncertainties:
+        lines.append(f"  - Uncertainties: {len(draft.uncertainties)} listed")
+    else:
+        lines.append("  - Uncertainties: none listed")
+    if draft.missing_required_fields:
+        lines.append(f"  - Missing Required Fields: {len(draft.missing_required_fields)} listed")
+    else:
+        lines.append("  - Missing Required Fields: none listed")
+    lines.append("  - Safety Boundary: visible")
+
+    # Uncertainties detail
+    if draft.uncertainties:
+        lines.append("")
+        lines.append("Uncertainties:")
+        for u in draft.uncertainties:
+            lines.append(f"  - {u}")
+
+    # Missing required fields detail
+    if draft.missing_required_fields:
+        lines.append("")
+        lines.append("Missing Required Fields (warnings — review before confirming):")
+        for f in draft.missing_required_fields:
+            lines.append(f"  - {f}")
+
+    # Extracted fields summary
+    lines.append("")
+    lines.append("Extracted Fields:")
+    if draft.extracted_fields:
+        lines.extend(_summarise_extracted_fields(draft.extracted_fields))
+    else:
+        lines.append("  (empty)")
+
+    # Blocking issues
+    issues = collect_snapshot_draft_review_issues(draft)
+    lines.append("")
+    lines.append("Blocking Issues:")
+    if issues:
+        for issue in issues:
+            lines.append(f"  - {issue}")
+    else:
+        lines.append("  None")
+
+    # Research notes specific checklist
+    if draft.snapshot_type == SnapshotType.RESEARCH_NOTES_SNAPSHOT:
+        ef = draft.extracted_fields
+        lines.append("")
+        lines.append("Research Notes Review:")
+        ticker = _ticker_from_draft(draft)
+        lines.append(f"  - Ticker: {ticker if ticker else 'missing'}")
+        lines.append(f"  - Title: {'present' if ef.get('title') else 'missing'}")
+        lines.append(f"  - Thesis Notes: {'present' if ef.get('thesis_notes') else 'missing'}")
+        lines.append(f"  - Evidence Gaps: {'present' if ef.get('evidence_gaps') else 'missing'}")
+        lines.append(f"  - Open Questions: {'present' if ef.get('open_questions') else 'missing'}")
+        lines.append(f"  - Risks to Monitor: {'present' if ef.get('risks_to_monitor') else 'missing'}")
+        rw = ef.get("reasons_to_wait") or ef.get("reason_to_wait")
+        lines.append(f"  - Reasons to Wait: {'present' if rw else 'missing'}")
+
+    # Safety boundary
+    lines.append("")
+    lines.append("Safety Boundary:")
+    lines.append("  - Review is read-only.")
+    lines.append("  - Review does not confirm the draft.")
+    lines.append("  - Review does not write Atlas local input files.")
+
+    return "\n".join(lines)
+
+
+def render_snapshot_draft_review_error(error_message: str) -> str:
+    """Render an error summary for a failed snapshot review load."""
+    lines = [
+        "Snapshot Draft Review",
+        "",
+        "Status: invalid",
+        f"Error: {error_message}",
     ]
     return "\n".join(lines)
