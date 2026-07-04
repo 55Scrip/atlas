@@ -203,7 +203,7 @@ def _section3_watchlist(result: WeeklyReviewLoadResult) -> list[str]:
         if item.reason:
             lines.append(f"[{item.ticker}] Reason: {item.reason}")
         for gap in item.evidence_needed:
-            lines.append(f"[{item.ticker}] Evidence Gap: {gap}")
+            lines.append(f"[{item.ticker}] {S.LABEL_EVIDENCE_GAP}: {gap}")
         for q in item.open_questions:
             lines.append(f"[{item.ticker}] Question: {q}")
         for obs in item.manual_observations:
@@ -365,7 +365,7 @@ def _section6_guardrails(result: WeeklyReviewLoadResult) -> list[str]:
     if high_risk:
         lines.append("Elevated risk scores (user-supplied, > 60):")
         for h in sorted(high_risk, key=lambda x: -x.risk_score):
-            lines.append(f"  Risk to Monitor: {h.ticker} — risk score {h.risk_score}")
+            lines.append(f"  {S.LABEL_RISK_TO_MONITOR}: {h.ticker} — risk score {h.risk_score}")
 
     # Missing cost basis (non-cash holdings)
     no_cost = [
@@ -389,18 +389,18 @@ def _section6_guardrails(result: WeeklyReviewLoadResult) -> list[str]:
         if w > 0.35:
             lines.append(
                 f"Sector concentration: {sector} represents {w:.1%} of invested holdings. "
-                "Risk to Monitor: sector exposure may warrant review."
+                f"{S.LABEL_RISK_TO_MONITOR}: sector exposure may warrant review."
             )
 
     # Missing optional data
     if not result.company_facts_available:
         lines.append(
-            "Evidence Gap: Company facts not loaded. "
+            f"{S.LABEL_EVIDENCE_GAP}: Company facts not loaded. "
             "Evidence quality cannot be assessed from available inputs."
         )
     if not result.financials_available:
         lines.append(
-            "Evidence Gap: Financial history not loaded. "
+            f"{S.LABEL_EVIDENCE_GAP}: Financial history not loaded. "
             "Financial trend analysis not available."
         )
 
@@ -494,7 +494,7 @@ def _section8_evidence(result: WeeklyReviewLoadResult) -> list[str]:
     # Watchlist evidence gaps (grouped by ticker)
     for item in result.watchlist.items:
         for gap in item.evidence_needed:
-            lines.append(f"Evidence Gap [{item.ticker}]: {gap}")
+            lines.append(f"{S.LABEL_EVIDENCE_GAP} [{item.ticker}]: {gap}")
 
     # Per-ticker evidence presence (when directories are available)
     # Combine into one line per ticker when both are missing, to avoid repeating the same ticker twice.
@@ -504,31 +504,31 @@ def _section8_evidence(result: WeeklyReviewLoadResult) -> list[str]:
             missing_fins = not ev.financials_available and result.financials_available
             if missing_facts and missing_fins:
                 lines.append(
-                    f"Evidence Gap [{ev.ticker}]: no local company facts file or financial history file."
+                    f"{S.LABEL_EVIDENCE_GAP} [{ev.ticker}]: no local company facts file or financial history file."
                 )
             elif missing_facts:
                 lines.append(
-                    f"Evidence Gap [{ev.ticker}]: local company facts file is missing."
+                    f"{S.LABEL_EVIDENCE_GAP} [{ev.ticker}]: local company facts file is missing."
                 )
             elif missing_fins:
                 lines.append(
-                    f"Evidence Gap [{ev.ticker}]: local financial history file is missing."
+                    f"{S.LABEL_EVIDENCE_GAP} [{ev.ticker}]: local financial history file is missing."
                 )
 
     # Research note evidence gaps
     for note in result.research_notes:
         for gap in note.evidence_gaps:
-            lines.append(f"Evidence Gap [{note.ticker}] (research notes): {gap}")
+            lines.append(f"{S.LABEL_EVIDENCE_GAP} [{note.ticker}] (research notes): {gap}")
 
     # Missing optional inputs
     if not result.profile_available:
-        lines.append("Missing Optional Input: Investor profile not provided.")
+        lines.append(f"{S.LABEL_MISSING_OPTIONAL_INPUT}: Investor profile not provided.")
     if result.journal_entry_count == 0 and not result.journal_entries:
-        lines.append("Missing Optional Input: Decision journal not provided.")
+        lines.append(f"{S.LABEL_MISSING_OPTIONAL_INPUT}: Decision journal not provided.")
     if not result.company_facts_available:
-        lines.append("Missing Optional Input: Company facts directory not provided.")
+        lines.append(f"{S.LABEL_MISSING_OPTIONAL_INPUT}: Company facts directory not provided.")
     if not result.financials_available:
-        lines.append("Missing Optional Input: Financial history directory not provided.")
+        lines.append(f"{S.LABEL_MISSING_OPTIONAL_INPUT}: Financial history directory not provided.")
 
     # Holdings with missing sector
     for h in result.portfolio.all_holdings:
@@ -601,7 +601,7 @@ def _section9_questions(result: WeeklyReviewLoadResult) -> list[str]:
             lines.append("")
         if note.risks_to_monitor:
             for risk in note.risks_to_monitor:
-                lines.append(f"[{note.ticker}] Risk to Monitor (research notes): {risk}")
+                lines.append(f"[{note.ticker}] {S.LABEL_RISK_TO_MONITOR} (research notes): {risk}")
 
     # General questions when evidence directories are absent
     if not result.company_facts_available:
@@ -649,7 +649,7 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
     deferred = [i for i in result.watchlist.items if i.status in deferred_statuses]
     for item in deferred:
         lines.append(
-            f"Decision Deferred: {item.ticker} — {item.name}. "
+            f"{S.LABEL_DECISION_DEFERRED}: {item.ticker} — {item.name}. "
             f"Status: {item.status.value}."
         )
 
@@ -657,19 +657,19 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
     all_gap_count = sum(len(i.evidence_needed) for i in result.watchlist.items)
     if all_gap_count > 0:
         lines.append(
-            f"Reason to Wait: {all_gap_count} evidence gap(s) identified across "
+            f"{S.LABEL_REASON_TO_WAIT}: {all_gap_count} evidence gap(s) identified across "
             "watchlist items. Gathering evidence is the appropriate next step."
         )
 
     # Missing optional inputs as reasons to wait
     if not result.profile_available:
         lines.append(
-            "Reason to Wait: Investor profile not provided. "
+            f"{S.LABEL_REASON_TO_WAIT}: Investor profile not provided. "
             "Structural suitability assessment is deferred."
         )
     if result.journal_entry_count == 0 and not result.journal_entries:
         lines.append(
-            "Reason to Wait: Decision journal not provided. "
+            f"{S.LABEL_REASON_TO_WAIT}: Decision journal not provided. "
             "Open decisions and prior context are not available for this review."
         )
     # Per-ticker missing evidence — two summary lines instead of one per ticker
@@ -680,7 +680,7 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
         ]
         if missing_facts:
             lines.append(
-                f"Reason to Wait: Local company facts missing for {len(missing_facts)} ticker(s) "
+                f"{S.LABEL_REASON_TO_WAIT}: Local company facts missing for {len(missing_facts)} ticker(s) "
                 f"({', '.join(missing_facts)}): thesis context is incomplete for these positions."
             )
         missing_fins = [
@@ -689,19 +689,19 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
         ]
         if missing_fins:
             lines.append(
-                f"Reason to Wait: Local financial history missing for {len(missing_fins)} ticker(s) "
+                f"{S.LABEL_REASON_TO_WAIT}: Local financial history missing for {len(missing_fins)} ticker(s) "
                 f"({', '.join(missing_fins)}): financial context is incomplete for these positions."
             )
 
     # General reasons to wait when evidence directories are absent
     if not result.company_facts_available:
         lines.append(
-            "Reason to Wait: Company facts not loaded. "
+            f"{S.LABEL_REASON_TO_WAIT}: Company facts not loaded. "
             "Decision-relevant evidence is incomplete."
         )
     if not result.financials_available:
         lines.append(
-            "Reason to Wait: Financial history not loaded. "
+            f"{S.LABEL_REASON_TO_WAIT}: Financial history not loaded. "
             "Financial trend analysis is not available."
         )
 
@@ -719,7 +719,7 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
             )
             age = _journal_entry_age_days(entry, result.as_of)
             lines.append(
-                f"Reason to Wait: {asset} decision journal notes are older than 90 days "
+                f"{S.LABEL_REASON_TO_WAIT}: {asset} decision journal notes are older than 90 days "
                 f"({age} days). Assumptions should be refreshed before changing decision status."
             )
 
@@ -728,10 +728,10 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
     for note in notes_with_gaps:
         if note.reasons_to_wait:
             for r in note.reasons_to_wait:
-                lines.append(f"Reason to Wait [{note.ticker}] (research notes): {r}")
+                lines.append(f"{S.LABEL_REASON_TO_WAIT} [{note.ticker}] (research notes): {r}")
         elif note.evidence_gaps:
             lines.append(
-                f"Reason to Wait: {note.ticker} research notes contain "
+                f"{S.LABEL_REASON_TO_WAIT}: {note.ticker} research notes contain "
                 f"{len(note.evidence_gaps)} unresolved evidence gap(s). "
                 "Gathering evidence is the appropriate next step."
             )
@@ -739,20 +739,20 @@ def _section10_nonactions(result: WeeklyReviewLoadResult) -> list[str]:
     # Profile-derived reasons — grouped blocks to avoid N identical boilerplate lines
     if result.profile_principles:
         lines.append(
-            "Reason to Wait: Stated principles support a measured approach to evidence and decision discipline:"
+            f"{S.LABEL_REASON_TO_WAIT}: Stated principles support a measured approach to evidence and decision discipline:"
         )
         for principle in result.profile_principles:
             lines.append(f'  — "{principle}"')
     if result.profile_constraints:
         lines.append(
-            "No Action Warranted: Stated constraints apply to current portfolio and watchlist decisions:"
+            f"{S.LABEL_NO_ACTION_WARRANTED}: Stated constraints apply to current portfolio and watchlist decisions:"
         )
         for constraint in result.profile_constraints:
             lines.append(f'  — "{constraint}"')
 
     # Universal reminders — always ensure section is non-empty
     lines.append(
-        "No Action Warranted: This review is informational only. "
+        f"{S.LABEL_NO_ACTION_WARRANTED}: This review is informational only. "
         "All observations are based on user-supplied local inputs."
     )
     lines.append("Reminder: No action is a valid and often appropriate outcome of a weekly review.")
@@ -829,7 +829,7 @@ def _render_journal_aging_note(entry: dict, age_days: int) -> str:
     """Return a safe aging note line for a journal entry."""
     asset = entry.get("asset_or_idea") or entry.get("decision_title", "Unknown")
     return (
-        f"[Aging Note] {asset}: Review date is older than 90 days ({age_days} days). "
+        f"[{S.LABEL_AGING_NOTE}] {asset}: Review date is older than 90 days ({age_days} days). "
         "Thesis assumptions may need to be rechecked."
     )
 
@@ -874,7 +874,7 @@ def _section(heading: str, content: list[str]) -> list[str]:
 
 
 def _render_input_status(result: WeeklyReviewLoadResult) -> list[str]:
-    lines = ["## Input Status", ""]
+    lines = [f"## {S.LABEL_INPUT_STATUS}", ""]
     lines.append(f"- Portfolio: {len(result.portfolio.all_holdings)} holding(s) loaded.")
     lines.append(
         f"- Watchlist: {len(result.watchlist.items)} item(s) loaded "
@@ -912,7 +912,7 @@ def _render_input_status(result: WeeklyReviewLoadResult) -> list[str]:
 
 
 def _render_warnings(warnings: tuple[WeeklyReviewInputWarning, ...]) -> list[str]:
-    lines = ["## Input Warnings", ""]
+    lines = [f"## {S.LABEL_INPUT_WARNINGS}", ""]
     for w in warnings:
         lines.append(f"- [{w.code}] {w.message}")
     return lines

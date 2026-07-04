@@ -30,6 +30,25 @@ SECTION_FOLLOW_UP_QUESTIONS = "9. Follow-Up Questions"
 SECTION_NON_ACTIONS_REASONS_TO_WAIT = "10. Non-Actions / Reasons to Wait"
 
 # ---------------------------------------------------------------------------
+# Repeated section body labels
+# ---------------------------------------------------------------------------
+
+LABEL_EVIDENCE_GAP = "Evidence Gap"
+LABEL_RISK_TO_MONITOR = "Risk to Monitor"
+LABEL_REASON_TO_WAIT = "Reason to Wait"
+LABEL_DECISION_DEFERRED = "Decision Deferred"
+LABEL_NO_ACTION_WARRANTED = "No Action Warranted"
+LABEL_AGING_NOTE = "Aging Note"
+LABEL_MISSING_OPTIONAL_INPUT = "Missing Optional Input"
+
+# ---------------------------------------------------------------------------
+# Input status / warnings section headings
+# ---------------------------------------------------------------------------
+
+LABEL_INPUT_STATUS = "Input Status"
+LABEL_INPUT_WARNINGS = "Input Warnings"
+
+# ---------------------------------------------------------------------------
 # Ordered tuple of all section titles (structural reference)
 # ---------------------------------------------------------------------------
 

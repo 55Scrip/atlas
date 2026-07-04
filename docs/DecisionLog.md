@@ -2,6 +2,33 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 240 — Extract Weekly Review Section Labels Into Constants
+
+Decision: Extend `atlas/weekly_review/strings.py` with 9 repeated section body label constants. Update `atlas/weekly_review/render.py` with ~20 targeted replacements referencing `S.LABEL_*` constants. No output changed.
+
+**Rationale:** Sprint 239 extracted the 10 structural section titles. Sprint 240 extracts the repeated semantic labels that appear in generated body text across multiple sections — `Evidence Gap`, `Risk to Monitor`, `Reason to Wait`, etc. These labels carry meaningful semantics (they form the user-visible taxonomy of the tool's output), and centralizing them prevents drift, makes future locale work tractable, and eliminates the risk of inconsistent capitalization across sections.
+
+**Constants added to `atlas/weekly_review/strings.py`:**
+- `LABEL_EVIDENCE_GAP = "Evidence Gap"`
+- `LABEL_RISK_TO_MONITOR = "Risk to Monitor"`
+- `LABEL_REASON_TO_WAIT = "Reason to Wait"`
+- `LABEL_DECISION_DEFERRED = "Decision Deferred"`
+- `LABEL_NO_ACTION_WARRANTED = "No Action Warranted"`
+- `LABEL_AGING_NOTE = "Aging Note"`
+- `LABEL_MISSING_OPTIONAL_INPUT = "Missing Optional Input"`
+- `LABEL_INPUT_STATUS = "Input Status"`
+- `LABEL_INPUT_WARNINGS = "Input Warnings"`
+
+**Scope constraints honored:** enum values (`confirmed`, `rejected`, `research_notes_snapshot`) remain inline. User-provided passthrough content (research notes, scope notes) remain inline. `_DISCLAIMER` not touched. No output wording, capitalization, punctuation, or blank lines changed.
+
+**Output preservation:** all label strings verified unchanged in representative Weekly Review output. Evidence Gap, Risk to Monitor, Reason to Wait, No Action Warranted, Missing Optional Input, Input Status all confirmed present with correct formatting.
+
+**Sprint 241 recommendation:** Extract CLI help text and top-level command descriptions into constants, or extract `_DISCLAIMER` into a named constant.
+
+**Result:** 38 new tests. 2847 total passed. All demos green. RC2 green. No runtime behavior changed.
+
+---
+
 ## 2026-07-04: Sprint 239 — Extract Weekly Review Section Titles Into Constants
 
 Decision: Create `atlas/weekly_review/strings.py` containing the 10 Weekly Review section title constants and the document title. Update `atlas/weekly_review/render.py` to reference these constants via `from atlas.weekly_review import strings as S`. No output changed.

@@ -1,8 +1,8 @@
 # Atlas User-Facing Strings Inventory
 
-**Sprint:** 237 (inventory) / 238 (Snapshot CLI extraction)
+**Sprint:** 237 (inventory) / 238 (Snapshot CLI extraction) / 239 (Weekly Review section titles) / 240 (Weekly Review section labels)
 **Date:** 2026-07-04
-**Status:** Snapshot CLI strings extracted to constants — Weekly Review strings pending
+**Status:** Snapshot CLI strings extracted / Weekly Review section titles extracted / Weekly Review section labels extracted
 
 ---
 
@@ -17,7 +17,7 @@ localization plan from `docs/AtlasLocalizationBoundary.md`.
 Sprint 237: No strings moved. Audit only.
 Sprint 238: Snapshot CLI display strings extracted to `atlas/snapshot_input/strings.py`.
 Sprint 239: Weekly Review section titles extracted to `atlas/weekly_review/strings.py`.
-Weekly Review body text and section labels remain inline — pending Sprint 240.
+Sprint 240: Weekly Review section labels extracted to `atlas/weekly_review/strings.py` — `LABEL_EVIDENCE_GAP`, `LABEL_RISK_TO_MONITOR`, `LABEL_REASON_TO_WAIT`, `LABEL_DECISION_DEFERRED`, `LABEL_NO_ACTION_WARRANTED`, `LABEL_AGING_NOTE`, `LABEL_MISSING_OPTIONAL_INPUT`, `LABEL_INPUT_STATUS`, `LABEL_INPUT_WARNINGS`.
 
 ---
 
