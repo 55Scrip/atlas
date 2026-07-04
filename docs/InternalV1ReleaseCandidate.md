@@ -481,6 +481,22 @@ generation, persistence, accounts/auth, backend/database code, provider
 imports, network calls, OCR, or AI/LLM calls added. Internal v1 foundation
 unchanged.
 
+**Sprint 270 (post-v1 schema foundation — complete):**
+Temporary workspace schema dataclasses added in
+`atlas/temporary_workspace/schema.py`. Implements canonical English enums for
+workspace status, classification categories, entity types, uncertainty
+severity, missing field requiredness, card types, card statuses, save prompt
+reasons, and confidence; schema dataclasses for source input, classification,
+detected entities, uncertainties, missing fields, workspace cards,
+save/account handoff, safety boundary, and top-level temporary workspace;
+lightweight deterministic validation; `to_dict`, `from_dict`, `to_json`, and
+`from_json` round trips preserving nested objects and user-provided content.
+No runtime behaviour changed. No UI, renderer, card renderer, classifier,
+entity extraction, workspace generation, persistence, accounts/auth,
+database/backend code, CLI command, provider imports, network calls, OCR,
+image parsing, or AI/LLM calls added. Recommended Sprint 271 target: add
+temporary workspace schema examples.
+
 **Sprint 267 (post-v1 product specification — complete):**
 Input-first workspace onboarding model specified in
 `docs/InputFirstWorkspaceOnboarding.md`. Principle: Atlas starts with

@@ -208,13 +208,20 @@ def test_document_includes_validation_expectations() -> None:
 
 def test_no_runtime_temporary_workspace_rendering_code_added() -> None:
     forbidden_paths = [
-        ATLAS_DIR / "temporary_workspace",
         ATLAS_DIR / "workspace_cards",
         ATLAS_DIR / "card_renderer.py",
         ATLAS_DIR / "temporary_workspace.py",
-        ATLAS_DIR / "temporary_workspace_schema.py",
     ]
     assert not any(path.exists() for path in forbidden_paths)
+    schema_path = ATLAS_DIR / "temporary_workspace" / "schema.py"
+    if schema_path.exists():
+        schema_tree = ast.parse(schema_path.read_text(encoding="utf-8"))
+        defined_names = {
+            node.name.lower()
+            for node in ast.walk(schema_tree)
+            if isinstance(node, ast.FunctionDef | ast.ClassDef)
+        }
+        assert not any("render" in name for name in defined_names)
 
 
 def test_no_provider_or_network_imports_in_contract_tests() -> None:

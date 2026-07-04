@@ -2,6 +2,40 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 270 — Prototype Temporary Workspace Schema Dataclasses
+
+Decision: Add schema-only temporary workspace dataclasses in
+`atlas/temporary_workspace/schema.py`.
+
+**Principle:** Atlas can now represent the Sprint 268 temporary workspace
+model as deterministic Python objects while preserving the Sprint 269
+rendering boundary. The schema layer stores canonical English values and
+validates structure, but it does not classify input, extract entities,
+render cards, persist workspaces, or change user-facing behavior.
+
+**What was implemented:** `WorkspaceStatus`, `WorkspaceInputClassification`,
+`WorkspaceEntityType`, `WorkspaceUncertaintySeverity`,
+`WorkspaceMissingFieldRequiredness`, `WorkspaceCardType`,
+`WorkspaceCardStatus`, `WorkspaceSavePromptReason`, and `WorkspaceConfidence`
+canonical enums; `SourceInput`, `ClassificationResult`, `DetectedEntity`,
+`WorkspaceUncertainty`, `WorkspaceMissingField`, `WorkspaceCard`,
+`SaveAccountHandoff`, `WorkspaceSafetyBoundary`, and `TemporaryWorkspace`
+dataclasses; lightweight `__post_init__` validation for required IDs,
+canonical values, confidence, safety boundaries, and temporary account
+handoff; deterministic `to_dict`, `from_dict`, `to_json`, and `from_json`
+round trips preserving nested objects and user-provided text.
+
+**No runtime behaviour changed.** No UI, renderer, card renderer, classifier,
+entity extractor, workspace generation, persistence, accounts/auth,
+database/backend code, CLI command, provider imports, network calls, OCR,
+image parsing, or AI/LLM calls were added.
+
+**Recommended Sprint 271 target:** Add temporary workspace schema examples.
+After schema dataclasses exist, Atlas should add example temporary workspace
+JSON fixtures that can support future renderer and classifier work.
+
+---
+
 ## 2026-07-04: Sprint 269 — Define Temporary Workspace Card Rendering Contract
 
 Decision: Specify the temporary workspace card rendering contract in

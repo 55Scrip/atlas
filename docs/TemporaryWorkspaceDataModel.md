@@ -20,9 +20,10 @@ detected entities, uncertainties, workspace cards, and save/account handoff
 state — without committing any of it to persistent storage unless the user
 explicitly chooses to save.
 
-This is a product architecture specification. No Python dataclasses, JSON
-Schema, validation code, classifier, renderer, database schema, UI, auth,
-backend services, or persistence are implemented here.
+This began as a product architecture specification. Sprint 270 adds minimal
+schema-only Python dataclasses in `atlas/temporary_workspace/schema.py` that
+represent this model without implementing JSON Schema, classifier, renderer,
+database schema, UI, auth, backend services, or persistence.
 
 ---
 
@@ -39,7 +40,7 @@ It must not imply persistence unless the user explicitly chooses to save.
 
 ## Non-Goals
 
-This sprint does not:
+Sprint 268 did not:
 
 - implement Python dataclasses or typed models
 - implement JSON Schema or formal schema validation
@@ -786,15 +787,17 @@ following properties should be validated:
 | Phase | Target | Status |
 |---|---|---|
 | Phase 0 | Define data model (this sprint) | Complete |
-| Phase 1 | Define card rendering contract | Future (Sprint 269 candidate) |
-| Phase 2 | Prototype Python dataclasses for the model | Future |
+| Phase 1 | Define card rendering contract (Sprint 269) | Complete |
+| Phase 2 | Prototype Python dataclasses for the model (Sprint 270) | Complete |
 | Phase 3 | Implement input classifier | Future |
 | Phase 4 | Implement entity extraction | Future |
 | Phase 5 | Implement card assembly from classification output | Future |
 | Phase 6 | Implement temporary workspace CLI command | Future |
 | Phase 7 | Implement save/account handoff | Future |
 
-No implementation is performed in this sprint.
+Sprint 268 performed no implementation. Sprint 270 later added schema-only
+dataclasses in `atlas/temporary_workspace/schema.py`; classifier, renderer,
+persistence, accounts, and CLI behavior remain future work.
 
 ---
 
@@ -828,22 +831,13 @@ No implementation is performed in this sprint.
 
 ## Recommended Next Sprint
 
-**Sprint 269: Define temporary workspace card rendering contract (complete)**
+**Sprint 271: Add temporary workspace schema examples**
 
-The temporary workspace card rendering contract has been specified in
-[docs/TemporaryWorkspaceCardRenderingContract.md](TemporaryWorkspaceCardRenderingContract.md).
+After schema dataclasses exist, Atlas should add example temporary workspace
+JSON fixtures that can support future renderer and classifier work.
 
-It defines:
-
-- Shared rendered card layout
-- Safe status display labels
-- Uncertainty, missing field, and source reference display rules
-- User-provided content passthrough rules
-- Canonical internal value preservation
-- Safety copy rules
-- Rendering contracts for all 14 temporary workspace card types
-- Example rendered cards
-- Validation expectations
-- Future implementation phases
+This should remain documentation and fixture work only. It should not implement
+classification, entity extraction, rendering, CLI commands, persistence,
+accounts, providers, network calls, OCR, or AI.
 
 This continues the pattern of specifying architecture before building it.

@@ -1064,7 +1064,7 @@ properties should be validated:
 |---|---|---|
 | Phase 0 | Define data model (Sprint 268) | Complete |
 | Phase 1 | Define card rendering contract (this sprint) | Complete |
-| Phase 2 | Prototype Python dataclasses for the model | Future (Sprint 270 candidate) |
+| Phase 2 | Prototype Python dataclasses for the model (Sprint 270) | Complete |
 | Phase 3 | Implement input classifier | Future |
 | Phase 4 | Implement entity extraction | Future |
 | Phase 5 | Implement card assembly from classification output | Future |
@@ -1072,7 +1072,9 @@ properties should be validated:
 | Phase 7 | Implement temporary workspace CLI command | Future |
 | Phase 8 | Implement save/account handoff | Future |
 
-No implementation is performed in this sprint.
+For Sprint 269, no implementation is performed in this sprint. Sprint 270
+later added schema-only dataclasses in `atlas/temporary_workspace/schema.py`;
+rendering remains future work.
 
 ---
 
@@ -1108,20 +1110,11 @@ No implementation is performed in this sprint.
 
 ## Recommended Next Sprint
 
-**Sprint 270: Prototype temporary workspace schema dataclasses**
+**Sprint 271: Add temporary workspace schema examples**
 
-After the temporary workspace data model (Sprint 268) and card rendering
-contract (Sprint 269) are both specified, Atlas can safely introduce minimal
-Python dataclasses for the model — without UI, persistence, accounts, or
-classifier implementation.
+After schema dataclasses exist, Atlas should add example temporary workspace
+JSON fixtures that can support future renderer and classifier work.
 
-The dataclass prototype should:
-
-- Define `TemporaryWorkspace`, `SourceInput`, `ClassificationResult`,
-  `DetectedEntity`, `Uncertainty`, `MissingField`, `WorkspaceCard`, and
-  `SaveHandoff` as simple `@dataclass` or `TypedDict` structures
-- Use only Python standard library (`dataclasses`, `typing`)
-- Not import any provider, network, database, or UI library
-- Not implement any classifier or rendering logic
-- Pass `compileall` and existing tests without modification
-- Add a minimal test for instantiating each dataclass with valid fields
+The examples should remain local, deterministic, documentation-friendly, and
+free of classifier, renderer, CLI, persistence, account, provider, network,
+OCR, or AI behavior.
