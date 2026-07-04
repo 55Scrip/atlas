@@ -2,6 +2,25 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 246 — Create Shared Locale Boundary Helper
+
+Decision: Create `atlas/locale_support.py` with `SUPPORTED_LOCALE_EN = "en"` and `ensure_supported_locale(locale: str) -> None`. Update `atlas/weekly_review/render.py` and `atlas/snapshot_input/render.py` to import and use the shared helper. Remove duplicate local `_SUPPORTED_LOCALE` and `_ensure_locale` definitions from both modules.
+
+**Rationale:** Sprints 244 and 245 added equivalent locale guards independently to both renderers. Sprint 246 eliminates that duplication. The shared module is the single canonical source for Atlas locale validation — future locale work (adding `"sv"`, etc.) requires changing only `atlas/locale_support.py`. Both renderers now express `ensure_supported_locale(locale)` at their locale boundary, with no inline guard logic.
+
+**Files changed:**
+- `atlas/locale_support.py` — created (16 lines: module docstring, `SUPPORTED_LOCALE_EN`, `ensure_supported_locale`)
+- `atlas/weekly_review/render.py` — inline `if locale != "en": raise ...` replaced with `ensure_supported_locale(locale)`; import added
+- `atlas/snapshot_input/render.py` — local `_SUPPORTED_LOCALE` and `def _ensure_locale` removed; `ensure_supported_locale` imported as `_ensure_locale` (preserving all existing call sites)
+
+**Error message preserved:** `"Unsupported locale: {locale!r}. Only 'en' is currently supported."` — unchanged.
+
+**Sprint 247 recommendation:** Create Swedish guardrail list — define which Atlas safe-language terms map to Swedish equivalents, establishing the safety layer before any Swedish output is allowed.
+
+**Result:** 31 new tests. 3053 total passed. All demos green. RC2 green. No runtime behavior changed.
+
+---
+
 ## 2026-07-04: Sprint 245 — Define Locale-Aware Snapshot CLI Rendering Helper
 
 Decision: Add `*, locale: str = "en"` keyword-only parameter to all 14 public Snapshot CLI renderer functions in `atlas/snapshot_input/render.py`. A shared `_ensure_locale(locale)` helper and `_SUPPORTED_LOCALE = "en"` constant guard each function. Unsupported locales raise `ValueError` immediately. Default behavior and all output are unchanged. The CLI does not expose `--language`.

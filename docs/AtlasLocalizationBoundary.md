@@ -1,8 +1,8 @@
 # Atlas Localization Boundary
 
-**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary)
+**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper)
 **Date:** 2026-07-04
-**Status:** Both renderers have locale boundaries — only "en" supported — no translations implemented
+**Status:** Shared locale boundary in `atlas/locale_support.py` — only "en" supported — no translations implemented
 
 ---
 
@@ -330,6 +330,13 @@ Snapshot Draft schema is canonical English. It does not change with locale.
 | CLI output of `snapshot confirm` | Yes (future) |
 | CLI output of `snapshot reject` | Yes (future) |
 | CLI output of `snapshot export-*` | Yes (future) |
+
+**Sprint 246 — Shared Locale Helper:**
+
+`atlas/locale_support.py` provides `SUPPORTED_LOCALE_EN = "en"` and
+`ensure_supported_locale(locale: str) -> None`. Both `atlas/weekly_review/render.py`
+and `atlas/snapshot_input/render.py` now import and call this shared helper.
+Local duplicate guards have been removed from both renderer modules.
 
 **Sprint 245 — Locale Boundary Defined:**
 

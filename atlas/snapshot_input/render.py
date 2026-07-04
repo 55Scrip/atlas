@@ -8,20 +8,7 @@ from __future__ import annotations
 
 from atlas.snapshot_input.schema import SnapshotConfirmationStatus, SnapshotDraft, SnapshotType
 from atlas.snapshot_input import strings as S
-
-# ---------------------------------------------------------------------------
-# Locale boundary
-# ---------------------------------------------------------------------------
-
-_SUPPORTED_LOCALE = "en"
-
-
-def _ensure_locale(locale: str) -> None:
-    if locale != _SUPPORTED_LOCALE:
-        raise ValueError(
-            f"Unsupported locale: {locale!r}. Only 'en' is currently supported."
-        )
-
+from atlas.locale_support import ensure_supported_locale as _ensure_locale
 
 # ---------------------------------------------------------------------------
 # Constants

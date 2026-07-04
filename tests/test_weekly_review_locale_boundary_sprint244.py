@@ -191,7 +191,8 @@ def test_render_module_has_locale_default_en():
 
 def test_render_module_has_locale_guard():
     source = RENDER_MODULE.read_text(encoding="utf-8")
-    assert 'locale != "en"' in source
+    # Guard may be inline or via shared helper import
+    assert ('locale != "en"' in source) or ("ensure_supported_locale" in source)
 
 
 # ---------------------------------------------------------------------------

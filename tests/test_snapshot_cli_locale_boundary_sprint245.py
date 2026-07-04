@@ -230,9 +230,10 @@ def test_render_module_has_ensure_locale_helper():
     assert "_ensure_locale" in source
 
 
-def test_render_module_has_supported_locale_constant():
+def test_render_module_has_locale_guard():
     source = RENDER_MODULE.read_text(encoding="utf-8")
-    assert "_SUPPORTED_LOCALE" in source
+    # Guard may be inline or via shared helper import (Sprint 246 centralized it)
+    assert ("_SUPPORTED_LOCALE" in source) or ("ensure_supported_locale" in source)
 
 
 def test_render_module_locale_default_is_en():
