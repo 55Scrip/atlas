@@ -2,6 +2,31 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 236 — Define Localization Boundary
+
+Decision: Create `docs/AtlasLocalizationBoundary.md` to define the boundary between canonical internal English and future user-facing localizable output before any multilingual implementation begins.
+
+**Rationale:** Atlas now has a stable internal v1 demo package. Before the product surface expands further, the architecture must define which strings are permanent canonical English identifiers (enums, schema keys, CLI option names, file conventions) and which are localizable display text (rendered section titles, CLI output messages, explanatory text). This prevents future localization from destabilizing internal logic or test assertions.
+
+**Core principle documented:** Atlas thinks internally in canonical English and may eventually speak externally in the user's selected language.
+
+**Key boundary rules:**
+1. Enum values, schema keys, CLI option names, and file conventions remain English permanently
+2. Localized display text is generated only at the final rendering layer
+3. Tests for logic assert canonical values — they never need to change for localization
+4. User-provided content (research notes, scope notes) is not translated
+5. Each locale requires its own safe-language guardrail list before activation
+6. Missing localization fails safely to English
+7. Localization never changes program behavior — display text only
+
+**Future phases defined (not implemented):** strings inventory → locale-aware renderers → `--language` option → per-locale guardrail tests → Swedish output → French output.
+
+**Result:** 28 new tests. 2658 total passed. All demos green. No runtime behavior changed.
+
+**Sprint 237 recommendation:** Extract user-facing strings inventory.
+
+---
+
 ## 2026-07-04: Sprint 235 — Create Internal v1 Demo Package
 
 Decision: Create `docs/InternalV1DemoPackage.md` and `scripts/run_internal_v1_demo.sh` to show the complete safe Atlas user journey in a reproducible, local-only form.

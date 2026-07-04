@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2630 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2658 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -300,6 +300,9 @@ Draft never mutated. End-to-end path confirmed: exported notes.md immediately
 readable by Weekly Review `--research-notes DIR`. No provider imports. No network
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
+
+**Sprint 236 (post-v1 architecture — complete):**
+Localization boundary defined. `docs/AtlasLocalizationBoundary.md` specifies which Atlas strings are permanent canonical English (enum values, schema keys, CLI option names, file conventions, test fixture keys) and which are localizable display text (rendered CLI output, Weekly Review section titles, explanatory text). Documents 10 boundary rules, locale-specific guardrail requirements, user-provided content handling, Snapshot Draft boundary table, Weekly Review boundary table, documentation boundary, 6-phase future implementation plan, and explicit out-of-scope list. 28 new tests verify document completeness and confirm no runtime behavior or enum values changed. No `--language` option added. No multilingual rendering implemented. Internal v1 foundation unchanged.
 
 **Sprint 235 (post-v1 packaging — complete):**
 Internal v1 demo package created. `docs/InternalV1DemoPackage.md` documents the complete safe user journey across 7 stages: snapshot draft validate, review, confirm, reject, export-research-notes, export-company-facts, and weekly-review. `scripts/run_internal_v1_demo.sh` runs all 7 stages end-to-end, writes only to `/tmp/atlas_internal_v1_demo/`, verifies output file presence and that rejected drafts are blocked from export, and cleans up after itself. 23 new tests verify doc completeness, script safety, command coverage, and language guardrails. No runtime behavior changed. No new commands added. Internal v1 foundation unchanged.
