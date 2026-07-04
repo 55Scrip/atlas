@@ -2,6 +2,32 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 238 — Extract Snapshot CLI Display Strings Into Constants
+
+Decision: Create `atlas/snapshot_input/strings.py` containing all Snapshot CLI display string constants. Update `atlas/snapshot_input/render.py` to import and reference these constants. No output changed.
+
+**Rationale:** Sprint 237 inventoried all user-facing strings. Sprint 238 acts on that inventory for the lowest-risk target — Snapshot CLI strings — which are smaller and more bounded than Weekly Review output. Centralizing display strings creates the extraction pattern needed before any locale-aware rendering layer can be added.
+
+**Constants extracted to `atlas/snapshot_input/strings.py`:**
+- 6 command headings (`HEADING_VALIDATION`, `HEADING_REVIEW`, `HEADING_CONFIRMATION`, `HEADING_REJECTION`, `HEADING_RESEARCH_NOTES_EXPORT`, `HEADING_COMPANY_FACTS_EXPORT`)
+- 7 status display lines (`STATUS_VALID`, `STATUS_INVALID`, `STATUS_REVIEWABLE`, `STATUS_BLOCKED`, `STATUS_WRITTEN`, `STATUS_CONFIRMED`, `STATUS_REJECTED`)
+- Exportability lines (`EXPORTABLE_YES`, `EXPORTABLE_NO`, `EXPORTABLE_NO_REASON`)
+- 9 section header labels (`SECTION_SAFETY_BOUNDARY`, `SECTION_SOURCE`, `SECTION_REVIEW_CHECKLIST`, `SECTION_UNCERTAINTIES`, `SECTION_MISSING_REQUIRED_FIELDS`, `SECTION_MISSING_REQUIRED_FIELDS_WARNINGS`, `SECTION_EXTRACTED_FIELDS`, `SECTION_BLOCKING_ISSUES`, `SECTION_RESEARCH_NOTES_REVIEW`)
+- 12 safety boundary lines (validation, review, confirm, reject, research notes export, company facts export)
+- 3 confirm/reject note lines
+
+**What stayed out of constants:** canonical enum values (`confirmed`, `rejected`, `research_notes_snapshot`, etc.), user-provided content, f-string value slots.
+
+**Output preservation:** all 6 representative CLI commands verified byte-for-byte unchanged before and after extraction.
+
+**Canonical values unchanged:** all `SnapshotConfirmationStatus` and `SnapshotType` enum values confirmed stable.
+
+**Sprint 239 recommendation:** Extract Weekly Review section titles into constants (10 bounded strings, structural, low risk).
+
+**Result:** 64 new tests. 2771 total passed. All demos green. RC2 green. No runtime behavior changed.
+
+---
+
 ## 2026-07-04: Sprint 237 — Extract User-Facing Strings Inventory
 
 Decision: Create `docs/AtlasUserFacingStringsInventory.md` as Phase 1 of the localization plan — a complete audit of all Atlas-generated display strings without changing any runtime behavior.

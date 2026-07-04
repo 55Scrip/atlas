@@ -7,6 +7,7 @@ Output is informational only. No function in this module writes to any file.
 from __future__ import annotations
 
 from atlas.snapshot_input.schema import SnapshotConfirmationStatus, SnapshotDraft, SnapshotType
+from atlas.snapshot_input import strings as S
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -29,9 +30,9 @@ def render_snapshot_draft_validation(draft: SnapshotDraft) -> str:
     """
     lines: list[str] = []
 
-    lines.append("Snapshot Draft Validation")
+    lines.append(S.HEADING_VALIDATION)
     lines.append("")
-    lines.append("Status: valid")
+    lines.append(S.STATUS_VALID)
     lines.append(f"Snapshot Type: {draft.snapshot_type.value}")
     lines.append(f"Confidence: {draft.confidence.value}")
     lines.append(f"Confirmation Status: {draft.confirmation_status.value}")
@@ -41,18 +42,18 @@ def render_snapshot_draft_validation(draft: SnapshotDraft) -> str:
         lines.append(f"Related Tickers: {', '.join(draft.related_tickers)}")
 
     if draft.uncertainties:
-        lines.append("Uncertainties:")
+        lines.append(S.SECTION_UNCERTAINTIES)
         for u in draft.uncertainties:
             lines.append(f"  - {u}")
     else:
-        lines.append("Uncertainties: none")
+        lines.append(S.UNCERTAINTIES_NONE)
 
     if draft.missing_required_fields:
-        lines.append("Missing Required Fields:")
+        lines.append(S.SECTION_MISSING_REQUIRED_FIELDS)
         for f in draft.missing_required_fields:
             lines.append(f"  - {f}")
     else:
-        lines.append("Missing Required Fields: none")
+        lines.append(S.MISSING_REQUIRED_FIELDS_NONE)
 
     if draft.raw_source_reference:
         lines.append(f"Source Reference: {draft.raw_source_reference}")
@@ -61,8 +62,8 @@ def render_snapshot_draft_validation(draft: SnapshotDraft) -> str:
         lines.append(f"Notes: {draft.notes}")
 
     lines.append("")
-    lines.append("Safety Boundary:")
-    lines.append("  - Draft validation does not write to Atlas local input files.")
+    lines.append(S.SECTION_SAFETY_BOUNDARY)
+    lines.append(S.SAFETY_VALIDATION_NO_WRITE)
 
     return "\n".join(lines)
 
@@ -70,9 +71,9 @@ def render_snapshot_draft_validation(draft: SnapshotDraft) -> str:
 def render_snapshot_draft_validation_error(error_message: str) -> str:
     """Render a human-readable error summary for a failed draft validation."""
     lines = [
-        "Snapshot Draft Validation",
+        S.HEADING_VALIDATION,
         "",
-        "Status: invalid",
+        S.STATUS_INVALID,
         f"Error: {error_message}",
     ]
     return "\n".join(lines)
@@ -81,15 +82,15 @@ def render_snapshot_draft_validation_error(error_message: str) -> str:
 def render_research_notes_export_success(ticker: str, output_path: object) -> str:
     """Render a success summary after writing a research notes file."""
     lines = [
-        "Research Notes Export",
+        S.HEADING_RESEARCH_NOTES_EXPORT,
         "",
-        "Status: written",
+        S.STATUS_WRITTEN,
         f"Ticker: {ticker}",
         f"Output File: {output_path}",
         "",
-        "Safety Boundary:",
-        "  - Only local research notes were written.",
-        "  - No portfolio, watchlist, journal, or company facts files were changed.",
+        S.SECTION_SAFETY_BOUNDARY,
+        S.SAFETY_RESEARCH_NOTES_ONLY,
+        S.SAFETY_RESEARCH_NOTES_NO_OTHER,
     ]
     return "\n".join(lines)
 
@@ -97,9 +98,9 @@ def render_research_notes_export_success(ticker: str, output_path: object) -> st
 def render_research_notes_export_blocked(reason: str) -> str:
     """Render a blocked summary when research notes export cannot proceed."""
     lines = [
-        "Research Notes Export",
+        S.HEADING_RESEARCH_NOTES_EXPORT,
         "",
-        "Status: blocked",
+        S.STATUS_BLOCKED,
         f"Reason: {reason}",
     ]
     return "\n".join(lines)
@@ -190,9 +191,9 @@ def render_snapshot_draft_review(draft: SnapshotDraft) -> str:
     lines: list[str] = []
 
     # Header
-    lines.append("Snapshot Draft Review")
+    lines.append(S.HEADING_REVIEW)
     lines.append("")
-    lines.append("Status: reviewable")
+    lines.append(S.STATUS_REVIEWABLE)
     lines.append(f"Snapshot Type: {draft.snapshot_type.value}")
     lines.append(f"Confidence: {draft.confidence.value}")
     lines.append(f"Confirmation Status: {draft.confirmation_status.value}")
@@ -200,10 +201,10 @@ def render_snapshot_draft_review(draft: SnapshotDraft) -> str:
     # Exportability
     is_confirmed = draft.confirmation_status == SnapshotConfirmationStatus.CONFIRMED
     if is_confirmed:
-        lines.append("Exportable: yes")
+        lines.append(S.EXPORTABLE_YES)
     else:
-        lines.append("Exportable: no")
-        lines.append("  Reason: only confirmed drafts are exportable.")
+        lines.append(S.EXPORTABLE_NO)
+        lines.append(S.EXPORTABLE_NO_REASON)
 
     lines.append(f"Target Local File: {draft.target_local_file}")
 
@@ -212,7 +213,7 @@ def render_snapshot_draft_review(draft: SnapshotDraft) -> str:
 
     # Source
     lines.append("")
-    lines.append("Source:")
+    lines.append(S.SECTION_SOURCE)
     lines.append(f"  - Source Description: {draft.source_description}")
     if draft.raw_source_reference:
         lines.append(f"  - Raw Source Reference: {draft.raw_source_reference}")
@@ -221,7 +222,7 @@ def render_snapshot_draft_review(draft: SnapshotDraft) -> str:
 
     # Review Checklist
     lines.append("")
-    lines.append("Review Checklist:")
+    lines.append(S.SECTION_REVIEW_CHECKLIST)
     lines.append(f"  - Draft ID: {'present' if draft.draft_id else 'missing'}")
     lines.append(f"  - Snapshot Type: {'present' if draft.snapshot_type else 'missing'}")
     lines.append(f"  - Source Description: {'present' if draft.source_description else 'missing'}")
@@ -240,20 +241,20 @@ def render_snapshot_draft_review(draft: SnapshotDraft) -> str:
     # Uncertainties detail
     if draft.uncertainties:
         lines.append("")
-        lines.append("Uncertainties:")
+        lines.append(S.SECTION_UNCERTAINTIES)
         for u in draft.uncertainties:
             lines.append(f"  - {u}")
 
     # Missing required fields detail
     if draft.missing_required_fields:
         lines.append("")
-        lines.append("Missing Required Fields (warnings — review before confirming):")
+        lines.append(S.SECTION_MISSING_REQUIRED_FIELDS_WARNINGS)
         for f in draft.missing_required_fields:
             lines.append(f"  - {f}")
 
     # Extracted fields summary
     lines.append("")
-    lines.append("Extracted Fields:")
+    lines.append(S.SECTION_EXTRACTED_FIELDS)
     if draft.extracted_fields:
         lines.extend(_summarise_extracted_fields(draft.extracted_fields))
     else:
@@ -262,7 +263,7 @@ def render_snapshot_draft_review(draft: SnapshotDraft) -> str:
     # Blocking issues
     issues = collect_snapshot_draft_review_issues(draft)
     lines.append("")
-    lines.append("Blocking Issues:")
+    lines.append(S.SECTION_BLOCKING_ISSUES)
     if issues:
         for issue in issues:
             lines.append(f"  - {issue}")
@@ -273,7 +274,7 @@ def render_snapshot_draft_review(draft: SnapshotDraft) -> str:
     if draft.snapshot_type == SnapshotType.RESEARCH_NOTES_SNAPSHOT:
         ef = draft.extracted_fields
         lines.append("")
-        lines.append("Research Notes Review:")
+        lines.append(S.SECTION_RESEARCH_NOTES_REVIEW)
         ticker = _ticker_from_draft(draft)
         lines.append(f"  - Ticker: {ticker if ticker else 'missing'}")
         lines.append(f"  - Title: {'present' if ef.get('title') else 'missing'}")
@@ -286,10 +287,10 @@ def render_snapshot_draft_review(draft: SnapshotDraft) -> str:
 
     # Safety boundary
     lines.append("")
-    lines.append("Safety Boundary:")
-    lines.append("  - Review is read-only.")
-    lines.append("  - Review does not confirm the draft.")
-    lines.append("  - Review does not write Atlas local input files.")
+    lines.append(S.SECTION_SAFETY_BOUNDARY)
+    lines.append(S.SAFETY_REVIEW_READONLY)
+    lines.append(S.SAFETY_REVIEW_NO_CONFIRM)
+    lines.append(S.SAFETY_REVIEW_NO_WRITE)
 
     return "\n".join(lines)
 
@@ -297,9 +298,9 @@ def render_snapshot_draft_review(draft: SnapshotDraft) -> str:
 def render_snapshot_draft_review_error(error_message: str) -> str:
     """Render an error summary for a failed snapshot review load."""
     lines = [
-        "Snapshot Draft Review",
+        S.HEADING_REVIEW,
         "",
-        "Status: invalid",
+        S.STATUS_INVALID,
         f"Error: {error_message}",
     ]
     return "\n".join(lines)
@@ -317,24 +318,22 @@ def render_snapshot_confirm_success(
 ) -> str:
     """Render a success summary after writing a confirmed draft copy."""
     lines = [
-        "Snapshot Draft Confirmation",
+        S.HEADING_CONFIRMATION,
         "",
-        "Status: confirmed",
+        S.STATUS_CONFIRMED,
     ]
     if already_confirmed:
-        lines.append(
-            "Note: input draft was already confirmed; a confirmed copy was written."
-        )
+        lines.append(S.NOTE_ALREADY_CONFIRMED)
     lines += [
         f"Input Draft: {input_path}",
         f"Output Draft: {output_path}",
         f"Snapshot Type: {snapshot_type}",
         "Confirmation Status: confirmed",
         "",
-        "Safety Boundary:",
-        "  - Original draft was not modified.",
-        "  - No Atlas local input files were changed.",
-        "  - Export commands must still be run separately.",
+        S.SECTION_SAFETY_BOUNDARY,
+        S.SAFETY_ORIGINAL_NOT_MODIFIED,
+        S.SAFETY_NO_INPUT_FILES_CHANGED,
+        S.SAFETY_CONFIRM_EXPORT_SEPARATE,
     ]
     return "\n".join(lines)
 
@@ -342,9 +341,9 @@ def render_snapshot_confirm_success(
 def render_snapshot_confirm_blocked(reason: str) -> str:
     """Render a blocked summary when confirmation cannot proceed."""
     lines = [
-        "Snapshot Draft Confirmation",
+        S.HEADING_CONFIRMATION,
         "",
-        "Status: blocked",
+        S.STATUS_BLOCKED,
         f"Reason: {reason}",
     ]
     return "\n".join(lines)
@@ -353,9 +352,9 @@ def render_snapshot_confirm_blocked(reason: str) -> str:
 def render_snapshot_confirm_error(error_message: str) -> str:
     """Render an error summary for a failed snapshot confirm load."""
     lines = [
-        "Snapshot Draft Confirmation",
+        S.HEADING_CONFIRMATION,
         "",
-        "Status: invalid",
+        S.STATUS_INVALID,
         f"Error: {error_message}",
     ]
     return "\n".join(lines)
@@ -374,28 +373,24 @@ def render_snapshot_reject_success(
 ) -> str:
     """Render a success summary after writing a rejected draft copy."""
     lines = [
-        "Snapshot Draft Rejection",
+        S.HEADING_REJECTION,
         "",
-        "Status: rejected",
+        S.STATUS_REJECTED,
     ]
     if already_rejected:
-        lines.append(
-            "Note: input draft was already rejected; a rejected copy was written."
-        )
+        lines.append(S.NOTE_ALREADY_REJECTED)
     elif was_confirmed:
-        lines.append(
-            "Note: input draft was confirmed; a rejected copy was written for this workflow branch."
-        )
+        lines.append(S.NOTE_CONFIRMED_TO_REJECTED)
     lines += [
         f"Input Draft: {input_path}",
         f"Output Draft: {output_path}",
         f"Snapshot Type: {snapshot_type}",
         "Confirmation Status: rejected",
         "",
-        "Safety Boundary:",
-        "  - Original draft was not modified.",
-        "  - No Atlas local input files were changed.",
-        "  - Rejected drafts are not exportable.",
+        S.SECTION_SAFETY_BOUNDARY,
+        S.SAFETY_ORIGINAL_NOT_MODIFIED,
+        S.SAFETY_NO_INPUT_FILES_CHANGED,
+        S.SAFETY_REJECT_NOT_EXPORTABLE,
     ]
     return "\n".join(lines)
 
@@ -403,9 +398,9 @@ def render_snapshot_reject_success(
 def render_snapshot_reject_blocked(reason: str) -> str:
     """Render a blocked summary when rejection cannot proceed."""
     lines = [
-        "Snapshot Draft Rejection",
+        S.HEADING_REJECTION,
         "",
-        "Status: blocked",
+        S.STATUS_BLOCKED,
         f"Reason: {reason}",
     ]
     return "\n".join(lines)
@@ -414,9 +409,9 @@ def render_snapshot_reject_blocked(reason: str) -> str:
 def render_snapshot_reject_error(error_message: str) -> str:
     """Render an error summary for a failed snapshot reject load."""
     lines = [
-        "Snapshot Draft Rejection",
+        S.HEADING_REJECTION,
         "",
-        "Status: invalid",
+        S.STATUS_INVALID,
         f"Error: {error_message}",
     ]
     return "\n".join(lines)
@@ -429,15 +424,15 @@ def render_snapshot_reject_error(error_message: str) -> str:
 def render_company_facts_export_success(ticker: str, output_path: object) -> str:
     """Render a success summary after writing a company facts JSON file."""
     lines = [
-        "Company Facts Export",
+        S.HEADING_COMPANY_FACTS_EXPORT,
         "",
-        "Status: written",
+        S.STATUS_WRITTEN,
         f"Ticker: {ticker}",
         f"Output File: {output_path}",
         "",
-        "Safety Boundary:",
-        "  - Only local company facts were written.",
-        "  - No portfolio, watchlist, journal, or research notes files were changed.",
+        S.SECTION_SAFETY_BOUNDARY,
+        S.SAFETY_COMPANY_FACTS_ONLY,
+        S.SAFETY_COMPANY_FACTS_NO_OTHER,
     ]
     return "\n".join(lines)
 
@@ -445,9 +440,9 @@ def render_company_facts_export_success(ticker: str, output_path: object) -> str
 def render_company_facts_export_blocked(reason: str) -> str:
     """Render a blocked summary when company facts export cannot proceed."""
     lines = [
-        "Company Facts Export",
+        S.HEADING_COMPANY_FACTS_EXPORT,
         "",
-        "Status: blocked",
+        S.STATUS_BLOCKED,
         f"Reason: {reason}",
     ]
     return "\n".join(lines)

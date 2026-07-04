@@ -338,8 +338,11 @@ def test_weekly_review_title_constant_unchanged():
 
 
 def test_snapshot_render_headings_unchanged():
-    """Core snapshot render headings must still be present in render.py."""
-    source = Path("atlas/snapshot_input/render.py").read_text(encoding="utf-8")
+    """Core snapshot render headings must still be defined in the snapshot_input package."""
+    # Headings may live in strings.py (constants) or render.py — check both
+    render_source = Path("atlas/snapshot_input/render.py").read_text(encoding="utf-8")
+    strings_source = Path("atlas/snapshot_input/strings.py").read_text(encoding="utf-8") if Path("atlas/snapshot_input/strings.py").exists() else ""
+    combined = render_source + strings_source
     for heading in [
         "Snapshot Draft Validation",
         "Snapshot Draft Review",
@@ -348,7 +351,7 @@ def test_snapshot_render_headings_unchanged():
         "Research Notes Export",
         "Company Facts Export",
     ]:
-        assert heading in source, f"Snapshot render heading missing: {heading!r}"
+        assert heading in combined, f"Snapshot render heading missing: {heading!r}"
 
 
 def test_enum_values_still_canonical_english():

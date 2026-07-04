@@ -1,8 +1,8 @@
 # Atlas User-Facing Strings Inventory
 
-**Sprint:** 237
+**Sprint:** 237 (inventory) / 238 (Snapshot CLI extraction)
 **Date:** 2026-07-04
-**Status:** Audit only — no strings moved, no behavior changed
+**Status:** Snapshot CLI strings extracted to constants — Weekly Review strings pending
 
 ---
 
@@ -14,8 +14,9 @@ classifies each string group as localizable display text, canonical internal
 value, user-provided passthrough, or other category. This is Phase 1 of the
 localization plan from `docs/AtlasLocalizationBoundary.md`.
 
-No strings have been moved to constants. No behavior has been changed. This
-document is an audit only.
+Sprint 237: No strings moved. Audit only.
+Sprint 238: Snapshot CLI display strings extracted to `atlas/snapshot_input/strings.py`.
+Weekly Review strings remain inline — pending Sprint 239.
 
 ---
 
