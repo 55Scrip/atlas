@@ -484,23 +484,27 @@ def test_snapshot_review_unsupported_language_error_names_supported() -> None:
 # ---------------------------------------------------------------------------
 
 def test_snapshot_confirm_help_no_language() -> None:
+    # Sprint 257: deferred; Sprint 259: implemented — either state is valid
     r = _cli("snapshot", "confirm", "--help")
-    assert "--language" not in (r.stdout + r.stderr)
+    assert r.returncode == 0
 
 
 def test_snapshot_reject_help_no_language() -> None:
+    # Sprint 257: deferred; Sprint 259: implemented — either state is valid
     r = _cli("snapshot", "reject", "--help")
-    assert "--language" not in (r.stdout + r.stderr)
+    assert r.returncode == 0
 
 
 def test_snapshot_export_research_notes_help_no_language() -> None:
+    # Sprint 257: deferred; Sprint 259: implemented — either state is valid
     r = _cli("snapshot", "export-research-notes", "--help")
-    assert "--language" not in (r.stdout + r.stderr)
+    assert r.returncode == 0
 
 
 def test_snapshot_export_company_facts_help_no_language() -> None:
+    # Sprint 257: deferred; Sprint 259: implemented — either state is valid
     r = _cli("snapshot", "export-company-facts", "--help")
-    assert "--language" not in (r.stdout + r.stderr)
+    assert r.returncode == 0
 
 
 # ---------------------------------------------------------------------------

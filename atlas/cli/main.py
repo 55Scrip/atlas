@@ -573,6 +573,11 @@ def snapshot_confirm_command(
         "--overwrite",
         help="Overwrite the output draft file if it already exists.",
     ),
+    language: str = typer.Option(
+        "en",
+        "--language",
+        help="Output language: en (English, default) or sv (Swedish).",
+    ),
 ):
     """Confirm a Snapshot Draft and write a confirmed copy.
 
@@ -589,6 +594,7 @@ def snapshot_confirm_command(
 
     No live data. No recommendations. No OCR. No AI.
     """
+    from atlas.locale_support import ensure_supported_locale
     from atlas.snapshot_input.schema import SnapshotDraft
     from atlas.snapshot_input.confirm import confirm_snapshot_draft
     from atlas.snapshot_input.render import (
@@ -596,6 +602,12 @@ def snapshot_confirm_command(
         render_snapshot_confirm_error,
         render_snapshot_confirm_success,
     )
+
+    try:
+        ensure_supported_locale(language)
+    except ValueError as exc:
+        console.print(f"[red]Unsupported language:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
 
     # Guard: output path must differ from input path
     try:
@@ -606,25 +618,26 @@ def snapshot_confirm_command(
         console.print(
             render_snapshot_confirm_blocked(
                 "Output draft path must differ from input draft path. "
-                "In-place confirmation is not allowed."
+                "In-place confirmation is not allowed.",
+                locale=language,
             )
         )
         raise typer.Exit(code=1)
 
     if not draft_path.exists():
-        console.print(render_snapshot_confirm_error(f"file not found: {draft_path}"))
+        console.print(render_snapshot_confirm_error(f"file not found: {draft_path}", locale=language))
         raise typer.Exit(code=1)
 
     try:
         text = draft_path.read_text(encoding="utf-8")
     except OSError as exc:
-        console.print(render_snapshot_confirm_error(f"could not read file: {exc}"))
+        console.print(render_snapshot_confirm_error(f"could not read file: {exc}", locale=language))
         raise typer.Exit(code=1)
 
     try:
         draft = SnapshotDraft.from_json(text)
     except ValueError as exc:
-        console.print(render_snapshot_confirm_error(str(exc)))
+        console.print(render_snapshot_confirm_error(str(exc), locale=language))
         raise typer.Exit(code=1)
 
     result = confirm_snapshot_draft(draft, output_draft, overwrite=overwrite)
@@ -636,10 +649,11 @@ def snapshot_confirm_command(
                 output_path=result.output_path,
                 snapshot_type=draft.snapshot_type.value,
                 already_confirmed=result.already_confirmed,
+                locale=language,
             )
         )
     else:
-        console.print(render_snapshot_confirm_blocked(result.reason))
+        console.print(render_snapshot_confirm_blocked(result.reason, locale=language))
         raise typer.Exit(code=1)
 
 
@@ -659,6 +673,11 @@ def snapshot_reject_command(
         "--overwrite",
         help="Overwrite the output draft file if it already exists.",
     ),
+    language: str = typer.Option(
+        "en",
+        "--language",
+        help="Output language: en (English, default) or sv (Swedish).",
+    ),
 ):
     """Reject a Snapshot Draft and write a rejected copy.
 
@@ -676,6 +695,7 @@ def snapshot_reject_command(
 
     No live data. No recommendations. No OCR. No AI.
     """
+    from atlas.locale_support import ensure_supported_locale
     from atlas.snapshot_input.schema import SnapshotDraft
     from atlas.snapshot_input.reject import reject_snapshot_draft
     from atlas.snapshot_input.render import (
@@ -683,6 +703,12 @@ def snapshot_reject_command(
         render_snapshot_reject_error,
         render_snapshot_reject_success,
     )
+
+    try:
+        ensure_supported_locale(language)
+    except ValueError as exc:
+        console.print(f"[red]Unsupported language:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
 
     # Guard: output path must differ from input path
     try:
@@ -693,25 +719,26 @@ def snapshot_reject_command(
         console.print(
             render_snapshot_reject_blocked(
                 "Output draft path must differ from input draft path. "
-                "In-place rejection is not allowed."
+                "In-place rejection is not allowed.",
+                locale=language,
             )
         )
         raise typer.Exit(code=1)
 
     if not draft_path.exists():
-        console.print(render_snapshot_reject_error(f"file not found: {draft_path}"))
+        console.print(render_snapshot_reject_error(f"file not found: {draft_path}", locale=language))
         raise typer.Exit(code=1)
 
     try:
         text = draft_path.read_text(encoding="utf-8")
     except OSError as exc:
-        console.print(render_snapshot_reject_error(f"could not read file: {exc}"))
+        console.print(render_snapshot_reject_error(f"could not read file: {exc}", locale=language))
         raise typer.Exit(code=1)
 
     try:
         draft = SnapshotDraft.from_json(text)
     except ValueError as exc:
-        console.print(render_snapshot_reject_error(str(exc)))
+        console.print(render_snapshot_reject_error(str(exc), locale=language))
         raise typer.Exit(code=1)
 
     result = reject_snapshot_draft(draft, output_draft, overwrite=overwrite)
@@ -724,10 +751,11 @@ def snapshot_reject_command(
                 snapshot_type=draft.snapshot_type.value,
                 already_rejected=result.already_rejected,
                 was_confirmed=result.was_confirmed,
+                locale=language,
             )
         )
     else:
-        console.print(render_snapshot_reject_blocked(result.reason))
+        console.print(render_snapshot_reject_blocked(result.reason, locale=language))
         raise typer.Exit(code=1)
 
 
@@ -747,6 +775,11 @@ def snapshot_export_research_notes_command(
         "--overwrite",
         help="Overwrite an existing notes.md file if one already exists.",
     ),
+    language: str = typer.Option(
+        "en",
+        "--language",
+        help="Output language: en (English, default) or sv (Swedish).",
+    ),
 ):
     """Export a confirmed research_notes_snapshot draft to a local notes.md file.
 
@@ -760,6 +793,7 @@ def snapshot_export_research_notes_command(
 
     No live data. No recommendations. No OCR. No AI.
     """
+    from atlas.locale_support import ensure_supported_locale
     from atlas.snapshot_input.schema import SnapshotDraft
     from atlas.snapshot_input.export import export_research_notes
     from atlas.snapshot_input.render import (
@@ -767,28 +801,34 @@ def snapshot_export_research_notes_command(
         render_research_notes_export_success,
     )
 
+    try:
+        ensure_supported_locale(language)
+    except ValueError as exc:
+        console.print(f"[red]Unsupported language:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
     if not draft_path.exists():
-        console.print(render_research_notes_export_blocked(f"file not found: {draft_path}"))
+        console.print(render_research_notes_export_blocked(f"file not found: {draft_path}", locale=language))
         raise typer.Exit(code=1)
 
     try:
         text = draft_path.read_text(encoding="utf-8")
     except OSError as exc:
-        console.print(render_research_notes_export_blocked(f"could not read file: {exc}"))
+        console.print(render_research_notes_export_blocked(f"could not read file: {exc}", locale=language))
         raise typer.Exit(code=1)
 
     try:
         draft = SnapshotDraft.from_json(text)
     except ValueError as exc:
-        console.print(render_research_notes_export_blocked(str(exc)))
+        console.print(render_research_notes_export_blocked(str(exc), locale=language))
         raise typer.Exit(code=1)
 
     result = export_research_notes(draft, output_dir, overwrite=overwrite)
 
     if result.success:
-        console.print(render_research_notes_export_success(result.ticker, result.output_path))
+        console.print(render_research_notes_export_success(result.ticker, result.output_path, locale=language))
     else:
-        console.print(render_research_notes_export_blocked(result.reason))
+        console.print(render_research_notes_export_blocked(result.reason, locale=language))
         raise typer.Exit(code=1)
 
 
@@ -808,6 +848,11 @@ def snapshot_export_company_facts_command(
         "--overwrite",
         help="Overwrite an existing <TICKER>.json file if one already exists.",
     ),
+    language: str = typer.Option(
+        "en",
+        "--language",
+        help="Output language: en (English, default) or sv (Swedish).",
+    ),
 ):
     """Export a confirmed company_facts_snapshot draft to a local TICKER.json file.
 
@@ -821,6 +866,7 @@ def snapshot_export_company_facts_command(
 
     No live data. No recommendations. No OCR. No AI.
     """
+    from atlas.locale_support import ensure_supported_locale
     from atlas.snapshot_input.schema import SnapshotDraft
     from atlas.snapshot_input.export_company_facts import export_company_facts
     from atlas.snapshot_input.render import (
@@ -828,28 +874,34 @@ def snapshot_export_company_facts_command(
         render_company_facts_export_success,
     )
 
+    try:
+        ensure_supported_locale(language)
+    except ValueError as exc:
+        console.print(f"[red]Unsupported language:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
     if not draft_path.exists():
-        console.print(render_company_facts_export_blocked(f"file not found: {draft_path}"))
+        console.print(render_company_facts_export_blocked(f"file not found: {draft_path}", locale=language))
         raise typer.Exit(code=1)
 
     try:
         text = draft_path.read_text(encoding="utf-8")
     except OSError as exc:
-        console.print(render_company_facts_export_blocked(f"could not read file: {exc}"))
+        console.print(render_company_facts_export_blocked(f"could not read file: {exc}", locale=language))
         raise typer.Exit(code=1)
 
     try:
         draft = SnapshotDraft.from_json(text)
     except ValueError as exc:
-        console.print(render_company_facts_export_blocked(str(exc)))
+        console.print(render_company_facts_export_blocked(str(exc), locale=language))
         raise typer.Exit(code=1)
 
     result = export_company_facts(draft, output_dir, overwrite=overwrite)
 
     if result.success:
-        console.print(render_company_facts_export_success(result.ticker, result.output_path))
+        console.print(render_company_facts_export_success(result.ticker, result.output_path, locale=language))
     else:
-        console.print(render_company_facts_export_blocked(result.reason))
+        console.print(render_company_facts_export_blocked(result.reason, locale=language))
         raise typer.Exit(code=1)
 
 

@@ -1,7 +1,7 @@
 # CLI Language Option Plan
 
-**Status: Phase 1 implemented (Sprint 257). Phase 2 planned (Sprint 258). Phase 2 implementation deferred.**
-**Sprint:** 256 (planning), 257 (Phase 1 implementation), 258 (Phase 2 planning).
+**Status: Phase 1 implemented (Sprint 257). Phase 2 implemented (Sprint 259).**
+**Sprint:** 256 (planning), 257 (Phase 1 implementation), 258 (Phase 2 planning), 259 (Phase 2 implementation).
 
 ---
 
@@ -409,15 +409,15 @@ Phase 1 — COMPLETE (Sprint 257)
   Unsupported values fail before rendering with non-zero exit.
   68 CLI tests added. Default remains English.
 
-Phase 2 — PLANNED (Sprint 258 planning complete. Implementation deferred to Sprint 259.)
-  Extend --language to write-producing local commands:
-    atlas snapshot confirm
-    atlas snapshot reject
-    atlas snapshot export-research-notes
-    atlas snapshot export-company-facts
-  Safety boundary documented in docs/Phase2SnapshotCLILanguagePlan.md.
-  Key constraint: --language affects display text only. Written files identical
-  regardless of language setting.
+Phase 2 — COMPLETE (Sprint 259)
+  --language extended to write-producing local commands:
+    atlas snapshot confirm               --language {en,sv}   ✓
+    atlas snapshot reject                --language {en,sv}   ✓
+    atlas snapshot export-research-notes --language {en,sv}   ✓
+    atlas snapshot export-company-facts  --language {en,sv}   ✓
+  Safety boundary: docs/Phase2SnapshotCLILanguagePlan.md.
+  Written files verified byte-for-byte identical across language settings.
+  Unsupported values fail before any file writes.
 
 Phase 3 — NOT YET PLANNED
   Consider Swedish user-facing documentation (N1)

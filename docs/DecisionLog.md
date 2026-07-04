@@ -2,6 +2,31 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 259 — Implement --language for Phase 2 Snapshot Write Commands
+
+Decision: Add `--language {en,sv}` to `atlas snapshot confirm`, `atlas snapshot reject`, `atlas snapshot export-research-notes`, and `atlas snapshot export-company-facts`. Same pattern as Phase 1. Language validation occurs before any file I/O. Written artifact content is unaffected by display language.
+
+**Implementation pattern (identical for all four commands):**
+1. Add `language: str = typer.Option("en", "--language", help="Output language: en (English, default) or sv (Swedish).")` to the command signature.
+2. Import `ensure_supported_locale` and call it immediately inside the command body; catch `ValueError`, print `[red]Unsupported language:[/red] {exc}`, exit code 1 — before any file reads or writes.
+3. Pass `locale=language` to all renderer calls within the command.
+
+**Display-only localization confirmed:** All four commands produce Swedish display text with `--language sv`. Written files (confirmed/rejected draft JSON, `notes.md`, `<TICKER>.json`) are byte-for-byte identical regardless of `--language en` vs `--language sv`.
+
+**File-write invariance verified:** `diff` confirmed identical output files for default, `--language en`, and `--language sv` for all four commands.
+
+**Unsupported-locale behavior:** Fails before any file I/O. Exit code 1. No output files or directories created. Tested for `fr`, `de`, `EN`, `SV`, `en-US`, `sv-SE`, `xx`.
+
+**Backward compatibility:** Omitting `--language` → English output identical to pre-Sprint-259. `--language en` → identical to omitted. Default output unchanged.
+
+**Prior sprint test update:** 4 tests in `test_cli_language_phase1_sprint257.py` that asserted `--language` absent from Phase 2 command help updated to accept current state (same stale-assertion pattern as Sprint 257 applied to Sprint 236–256 tests).
+
+**Sprint 260 recommendation:** Add Swedish CLI usage documentation — explain how to request Swedish output, what remains canonical English, and what Atlas will not translate.
+
+**Result:** 4 command functions updated. 74 new CLI tests. No renderer changes. No locale_support changes. No string module changes. Default English output unchanged. All demos green. RC2 green.
+
+---
+
 ## 2026-07-04: Sprint 258 — Plan Phase 2 CLI Language Option for Snapshot Write Commands
 
 Decision: Create `docs/Phase2SnapshotCLILanguagePlan.md` — the design document for

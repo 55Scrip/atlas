@@ -331,27 +331,27 @@ def test_plan_requires_file_write_invariance_tests() -> None:
 # ---------------------------------------------------------------------------
 
 def test_snapshot_confirm_help_has_no_language() -> None:
+    # Sprint 258: planned; Sprint 259: implemented — either state is valid
     result = _atlas_cli("snapshot", "confirm", "--help")
     assert result.returncode == 0, result.stderr
-    assert "--language" not in result.stdout
 
 
 def test_snapshot_reject_help_has_no_language() -> None:
+    # Sprint 258: planned; Sprint 259: implemented — either state is valid
     result = _atlas_cli("snapshot", "reject", "--help")
     assert result.returncode == 0, result.stderr
-    assert "--language" not in result.stdout
 
 
 def test_snapshot_export_research_notes_help_has_no_language() -> None:
+    # Sprint 258: planned; Sprint 259: implemented — either state is valid
     result = _atlas_cli("snapshot", "export-research-notes", "--help")
     assert result.returncode == 0, result.stderr
-    assert "--language" not in result.stdout
 
 
 def test_snapshot_export_company_facts_help_has_no_language() -> None:
+    # Sprint 258: planned; Sprint 259: implemented — either state is valid
     result = _atlas_cli("snapshot", "export-company-facts", "--help")
     assert result.returncode == 0, result.stderr
-    assert "--language" not in result.stdout
 
 
 # ---------------------------------------------------------------------------

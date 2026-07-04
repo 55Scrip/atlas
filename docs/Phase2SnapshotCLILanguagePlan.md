@@ -1,7 +1,7 @@
 # Phase 2 Snapshot CLI Language Plan
 
-**Status: Planned — not implemented. Phase 1 is live (Sprint 257). Phase 2 implementation deferred.**
-**Sprint:** 258 (planning). Implementation sprint to be determined.
+**Status: Implemented (Sprint 259). Phase 1 live (Sprint 257). Phase 2 live (Sprint 259).**
+**Sprint:** 258 (planning), 259 (implementation).
 
 ---
 
@@ -41,11 +41,11 @@ Phase 1 (complete — Sprint 257):
   atlas snapshot validate      --language {en,sv}   ✓ implemented
   atlas snapshot review        --language {en,sv}   ✓ implemented
 
-Phase 2 (this document — not yet implemented):
-  atlas snapshot confirm               --language   deferred
-  atlas snapshot reject                --language   deferred
-  atlas snapshot export-research-notes --language   deferred
-  atlas snapshot export-company-facts  --language   deferred
+Phase 2 (implemented — Sprint 259):
+  atlas snapshot confirm               --language {en,sv}   ✓ implemented
+  atlas snapshot reject                --language {en,sv}   ✓ implemented
+  atlas snapshot export-research-notes --language {en,sv}   ✓ implemented
+  atlas snapshot export-company-facts  --language {en,sv}   ✓ implemented
 
 Default:                  en (English)
 Runtime detection:        not implemented
@@ -418,14 +418,14 @@ Phase 1 — COMPLETE (Sprint 257)
     atlas snapshot validate      --language {en,sv}
     atlas snapshot review        --language {en,sv}
 
-Phase 2 — PLANNED (this document — not yet implemented)
+Phase 2 — COMPLETE (Sprint 259)
   --language for write-producing local commands:
-    atlas snapshot confirm               --language {en,sv}
-    atlas snapshot reject                --language {en,sv}
-    atlas snapshot export-research-notes --language {en,sv}
-    atlas snapshot export-company-facts  --language {en,sv}
-  Key constraint: --language affects display text only.
-  Written files must be identical regardless of language setting.
+    atlas snapshot confirm               --language {en,sv}   ✓
+    atlas snapshot reject                --language {en,sv}   ✓
+    atlas snapshot export-research-notes --language {en,sv}   ✓
+    atlas snapshot export-company-facts  --language {en,sv}   ✓
+  Key constraint confirmed: --language affects display text only.
+  Written files verified identical regardless of language setting.
 
 Phase 3 — NOT YET PLANNED
   Consider Swedish user-facing documentation (N1)
