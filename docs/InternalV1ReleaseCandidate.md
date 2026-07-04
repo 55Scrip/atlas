@@ -442,6 +442,19 @@ and safety boundary. Exit 0 on valid draft, exit 1 on missing file, invalid JSON
 or invalid schema. Does not confirm, reject, or write any file. No provider imports.
 No network calls. No Weekly Review behavior changed. Internal v1 foundation unchanged.
 
+**Sprint 262 (post-v1 improvement — complete):**
+27 hardcoded Weekly Review section body message templates extracted into
+locale-aware constants in `atlas/weekly_review/strings.py` (English) and
+`atlas/weekly_review/strings_sv.py` (Swedish). Sections 1–9 covered:
+scope mode/summaries, portfolio/watchlist/attention/suitability/guardrails/decisions/
+evidence/questions static and template messages. `_section2_portfolio`,
+`_section4_attention`, and `_section5_suitability` updated to accept locale
+strings module. Section 6 guardrails no-flags insertion check fixed to use
+locale-correct label values (latent Swedish bug). English output unchanged.
+Swedish output now fully uses Swedish constants for all extracted body messages.
+No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
+4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
+
 **Sprint 261 (post-v1 improvement — complete):**
 Full CLI Swedish regression matrix added. 80-test release guard covers all seven
 `--language`-aware CLI commands: `weekly-review`, `snapshot validate`, `snapshot

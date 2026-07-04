@@ -67,10 +67,10 @@ def render_weekly_review(result: WeeklyReviewLoadResult, *, locale: str = "en") 
     lines.append("")
 
     lines.extend(_section(S.SECTION_REVIEW_SCOPE, _section1_scope(result, S)))
-    lines.extend(_section(S.SECTION_PORTFOLIO_CONTEXT, _section2_portfolio(result)))
+    lines.extend(_section(S.SECTION_PORTFOLIO_CONTEXT, _section2_portfolio(result, S)))
     lines.extend(_section(S.SECTION_WATCHLIST_REVIEW, _section3_watchlist(result, S)))
-    lines.extend(_section(S.SECTION_COMPANY_REVIEWS_NEEDING_ATTENTION, _section4_attention(result)))
-    lines.extend(_section(S.SECTION_PORTFOLIO_FIT_AND_SUITABILITY_NOTES, _section5_suitability(result)))
+    lines.extend(_section(S.SECTION_COMPANY_REVIEWS_NEEDING_ATTENTION, _section4_attention(result, S)))
+    lines.extend(_section(S.SECTION_PORTFOLIO_FIT_AND_SUITABILITY_NOTES, _section5_suitability(result, S)))
     lines.extend(_section(S.SECTION_RISK_AND_PRINCIPLE_GUARDRAILS, _section6_guardrails(result, S)))
     lines.extend(_section(S.SECTION_OPEN_DECISIONS, _section7_decisions(result, S)))
     lines.extend(_section(S.SECTION_MISSING_EVIDENCE, _section8_evidence(result, S)))
@@ -94,19 +94,24 @@ def _section1_scope(result: WeeklyReviewLoadResult, S) -> list[str]:
     lines: list[str] = []
 
     if result.as_of:
-        lines.append(f"Review date: {result.as_of}")
+        lines.append(S.INPUT_STATUS_REVIEW_DATE.format(date=result.as_of))
     else:
-        lines.append("Review date: Not specified")
+        lines.append(S.SCOPE_REVIEW_DATE_NOT_SPECIFIED)
 
-    lines.append("Input mode: Local files only. No external data, no live pricing.")
+    lines.append(S.SCOPE_INPUT_MODE)
 
     holdings = result.portfolio.all_holdings
     lines.append(
-        f"Portfolio: {len(holdings)} holding(s) across "
-        f"{len(result.portfolio.accounts)} account(s)"
+        S.SCOPE_PORTFOLIO_SUMMARY.format(
+            count=len(holdings),
+            accounts=len(result.portfolio.accounts),
+        )
     )
     lines.append(
-        f"Watchlist: {len(result.watchlist.items)} item(s) in '{result.watchlist.name}'"
+        S.SCOPE_WATCHLIST_SUMMARY.format(
+            count=len(result.watchlist.items),
+            name=result.watchlist.name,
+        )
     )
 
     optionals: list[str] = []
@@ -122,11 +127,9 @@ def _section1_scope(result: WeeklyReviewLoadResult, S) -> list[str]:
         optionals.append(f"research notes ({len(result.research_notes)} ticker(s))")
 
     if optionals:
-        lines.append(f"Optional inputs loaded: {', '.join(optionals)}")
+        lines.append(S.SCOPE_OPTIONAL_INPUTS_LOADED.format(items=", ".join(optionals)))
     else:
-        lines.append(
-            "Optional inputs: none provided — review uses portfolio and watchlist only"
-        )
+        lines.append(S.SCOPE_OPTIONAL_INPUTS_NONE)
 
     if result.scope_notes:
         lines.append(f"Scope notes: {_preview_scope_notes(result.scope_notes)}")
@@ -142,7 +145,7 @@ def _section1_scope(result: WeeklyReviewLoadResult, S) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _section2_portfolio(result: WeeklyReviewLoadResult) -> list[str]:
+def _section2_portfolio(result: WeeklyReviewLoadResult, S) -> list[str]:
     lines: list[str] = []
     holdings = result.portfolio.all_holdings
 
@@ -152,7 +155,7 @@ def _section2_portfolio(result: WeeklyReviewLoadResult) -> list[str]:
     # Top holdings sorted by weight descending (stable: secondary sort by ticker)
     by_weight = sorted(holdings, key=lambda h: (-h.weight, h.ticker))
     lines.append("")
-    lines.append("Holdings by weight (user-supplied values, highest first):")
+    lines.append(S.PORTFOLIO_HOLDINGS_HEADER)
     for h in by_weight:
         weight_str = f"{h.weight:.1%}" if h.weight > 0 else "weight not specified"
         sector_part = f", {h.sector}" if h.sector else ""
@@ -166,7 +169,7 @@ def _section2_portfolio(result: WeeklyReviewLoadResult) -> list[str]:
         sector_weights[sector] += h.weight
 
     lines.append("")
-    lines.append("Sector exposure:")
+    lines.append(S.PORTFOLIO_SECTOR_HEADER)
     for sector, w in sorted(sector_weights.items(), key=lambda x: (-x[1], x[0])):
         lines.append(f"  {sector}: {w:.1%}")
 
@@ -201,7 +204,7 @@ def _section2_portfolio(result: WeeklyReviewLoadResult) -> list[str]:
         tickers = ", ".join(h.ticker for h in unclassified)
         lines.append(f"Unclassified sector: {tickers} — sector not specified in input.")
 
-    lines.append("Note: All values are user-supplied. No live pricing or external data used.")
+    lines.append(S.PORTFOLIO_NOTE_LOCAL_ONLY)
     return lines
 
 
@@ -214,7 +217,7 @@ def _section3_watchlist(result: WeeklyReviewLoadResult, S) -> list[str]:
     lines: list[str] = []
 
     if not result.watchlist.items:
-        lines.append("No watchlist items loaded.")
+        lines.append(S.WATCHLIST_NO_ITEMS)
         return lines
 
     for item in result.watchlist.items:
@@ -239,7 +242,7 @@ def _section3_watchlist(result: WeeklyReviewLoadResult, S) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _section4_attention(result: WeeklyReviewLoadResult) -> list[str]:
+def _section4_attention(result: WeeklyReviewLoadResult, S) -> list[str]:
     lines: list[str] = []
     holdings = result.portfolio.all_holdings
     portfolio_tickers = {h.ticker for h in holdings}
@@ -282,14 +285,9 @@ def _section4_attention(result: WeeklyReviewLoadResult) -> list[str]:
             )
 
     if not lines:
-        lines.append(
-            "No items flagged for immediate attention from available local inputs."
-        )
+        lines.append(S.ATTENTION_NO_ITEMS)
 
-    lines.append(
-        "Note: All observations are derived from user-supplied local inputs only. "
-        "No external data, no engine analysis, no recommendations."
-    )
+    lines.append(S.ATTENTION_NOTE_LOCAL_ONLY)
     return lines
 
 
@@ -298,21 +296,18 @@ def _section4_attention(result: WeeklyReviewLoadResult) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _section5_suitability(result: WeeklyReviewLoadResult) -> list[str]:
+def _section5_suitability(result: WeeklyReviewLoadResult, S) -> list[str]:
     lines: list[str] = []
     holdings = result.portfolio.all_holdings
 
     if result.profile_available:
-        lines.append("Investor profile: Provided.")
+        lines.append(S.SUITABILITY_PROFILE_PROVIDED)
         if result.profile_risk_tolerance:
             lines.append(f"Risk tolerance: {result.profile_risk_tolerance}")
         if result.profile_time_horizon:
             lines.append(f"Time horizon: {result.profile_time_horizon}")
     else:
-        lines.append(
-            "Investor profile: Not provided. "
-            "Suitability observations below are structural only and not personalized."
-        )
+        lines.append(S.SUITABILITY_PROFILE_NOT_PROVIDED)
 
     # Concentration observations (non-cash)
     by_weight = sorted(holdings, key=lambda h: (-h.weight, h.ticker))
@@ -335,7 +330,7 @@ def _section5_suitability(result: WeeklyReviewLoadResult) -> list[str]:
 
     # Invested positions count
     invested = [h for h in holdings if not h.sector or h.sector.lower() != "cash"]
-    lines.append(f"Invested positions: {len(invested)} (excluding cash holdings).")
+    lines.append(S.SUITABILITY_INVESTED_POSITIONS.format(count=len(invested)))
 
     # Sector visibility
     sectors = {h.sector for h in holdings if h.sector and h.sector.lower() != "cash"}
@@ -352,14 +347,8 @@ def _section5_suitability(result: WeeklyReviewLoadResult) -> list[str]:
         for constraint in result.profile_constraints:
             lines.append(f"  Constraint: {constraint}")
 
-    lines.append(
-        "Full suitability evaluation is deferred until engine wiring. "
-        "Portfolio fit notes are limited to loaded local structure."
-    )
-    lines.append(
-        "Note: Atlas does not judge investment merit or provide personalized guidance. "
-        "Suitability assessment requires manual review."
-    )
+    lines.append(S.SUITABILITY_ENGINE_DEFERRED)
+    lines.append(S.SUITABILITY_NOTE_NO_MERIT_JUDGMENT)
     return lines
 
 
@@ -424,20 +413,15 @@ def _section6_guardrails(result: WeeklyReviewLoadResult, S) -> list[str]:
         )
 
     # Deferred engine wiring note
-    lines.append(
-        "Risk and principle guardrail engine wiring is deferred to a later sprint."
-    )
-    lines.append(
-        "Principle Guardrail: No action is warranted when evidence is incomplete."
-    )
+    lines.append(S.GUARDRAILS_ENGINE_DEFERRED)
+    lines.append(S.GUARDRAILS_PRINCIPLE_GUARDRAIL)
 
-    if not result.profile_principles and not [l for l in lines if "Risk to Monitor" in l or "Evidence Gap" in l]:
-        lines.insert(0, "No guardrail flags raised from available local inputs.")
+    if not result.profile_principles and not [
+        l for l in lines if S.LABEL_RISK_TO_MONITOR in l or S.LABEL_EVIDENCE_GAP in l
+    ]:
+        lines.insert(0, S.GUARDRAILS_NO_FLAGS)
 
-    lines.append(
-        "Note: Guardrail checks are based on user-supplied data only. "
-        "No live market data or external analysis used."
-    )
+    lines.append(S.GUARDRAILS_NOTE_LOCAL_ONLY)
     return lines
 
 
@@ -456,10 +440,10 @@ def _section7_decisions(result: WeeklyReviewLoadResult, S) -> list[str]:
                 "Journal entries could not be loaded for summary."
             )
         else:
-            lines.append("No decision journal provided. Open decisions not reviewed.")
+            lines.append(S.DECISIONS_NO_JOURNAL)
         return lines
 
-    lines.append(f"Decision journal: {len(result.journal_entries)} entry/entries reviewed.")
+    lines.append(S.DECISIONS_JOURNAL_REVIEWED.format(count=len(result.journal_entries)))
     lines.append("")
 
     for entry in result.journal_entries:
@@ -485,7 +469,7 @@ def _section7_decisions(result: WeeklyReviewLoadResult, S) -> list[str]:
                 lines.append(_render_journal_aging_note(entry, age, S))
             # If date is missing on an open entry, note it quietly
             elif age is None and _parse_journal_entry_date(entry) is None:
-                lines.append("[Date Missing] No decision date recorded; aging cannot be assessed.")
+                lines.append(S.DECISIONS_DATE_MISSING)
 
         triggers = entry.get("follow_up_triggers", [])
         if isinstance(triggers, list):
@@ -555,7 +539,7 @@ def _section8_evidence(result: WeeklyReviewLoadResult, S) -> list[str]:
             lines.append(f"Missing Classification: {h.ticker} — sector not specified.")
 
     if not lines:
-        lines.append("No evidence gaps identified from available local inputs.")
+        lines.append(S.EVIDENCE_NO_GAPS)
 
     return lines
 
@@ -624,13 +608,9 @@ def _section9_questions(result: WeeklyReviewLoadResult, S) -> list[str]:
 
     # General questions when evidence directories are absent
     if not result.company_facts_available:
-        lines.append(
-            "What company facts are needed before changing the status of any watchlist item?"
-        )
+        lines.append(S.QUESTIONS_NO_COMPANY_FACTS)
     if not result.financials_available:
-        lines.append(
-            "Which financial trends should be reviewed before any watchlist decision changes?"
-        )
+        lines.append(S.QUESTIONS_NO_FINANCIALS)
 
     # Evidence gap prompts
     all_gaps = [
@@ -639,15 +619,10 @@ def _section9_questions(result: WeeklyReviewLoadResult, S) -> list[str]:
         for gap in item.evidence_needed
     ]
     if all_gaps:
-        lines.append(
-            "What evidence would confirm or weaken the current assumptions for each open watchlist item?"
-        )
+        lines.append(S.QUESTIONS_OPEN_WATCHLIST_GAPS)
 
     if not lines:
-        lines.append(
-            "No follow-up questions identified. "
-            "Add open_questions to watchlist items to surface them here."
-        )
+        lines.append(S.QUESTIONS_NONE)
 
     return lines
 
@@ -847,10 +822,7 @@ def _is_aged_journal_entry(entry: dict, as_of: str, threshold_days: int = 90) ->
 def _render_journal_aging_note(entry: dict, age_days: int, S) -> str:
     """Return a safe aging note line for a journal entry."""
     asset = entry.get("asset_or_idea") or entry.get("decision_title", "Unknown")
-    return (
-        f"[{S.LABEL_AGING_NOTE}] {asset}: Review date is older than 90 days ({age_days} days). "
-        "Thesis assumptions may need to be rechecked."
-    )
+    return f"[{S.LABEL_AGING_NOTE}] {asset}: {S.AGING_NOTE_SUFFIX.format(days=age_days)}"
 
 
 def _preview_scope_notes(scope_notes: str) -> str:

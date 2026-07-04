@@ -2,6 +2,41 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 262 — Extract Weekly Review Body Message Templates Into Constants
+
+Decision: Extract 27 remaining hardcoded Weekly Review section body message
+templates from `atlas/weekly_review/render.py` into named constants in
+`atlas/weekly_review/strings.py` and `atlas/weekly_review/strings_sv.py`.
+Output unchanged.
+
+**What was extracted:** Section 1 scope messages (6 constants: input mode, date
+not specified, portfolio/watchlist/optional-inputs summaries); Section 2
+portfolio headers and note (3); Section 3 watchlist no-items (1); Section 4
+attention no-items and note (2); Section 5 suitability profile/invested/deferred/note
+(5); Section 6 guardrails deferred/principle/note/no-flags (4); Section 7
+decisions journal/date-missing/aging-suffix (4); Section 8 evidence no-gaps (1);
+Section 9 questions no-facts/no-financials/open-watchlist/none (4).
+
+**Bug fix in Section 6:** The `_section6_guardrails` "no flags" insertion check
+previously matched against hardcoded English strings `"Risk to Monitor"` and
+`"Evidence Gap"`. In Swedish these labels are different, causing the "no flags"
+message to incorrectly appear even when flags were present. Fixed: the check
+now uses `S.LABEL_RISK_TO_MONITOR` and `S.LABEL_EVIDENCE_GAP` (locale-correct).
+
+**Renderer changes:** `_section2_portfolio`, `_section4_attention`, and
+`_section5_suitability` now accept `S` as a parameter (matching existing
+pattern in sections 3, 6, 7, 8, 9, 10).
+
+**Sprint 263 recommendation:** Continue Weekly Review body template extraction
+— remaining hardcoded inline f-string templates with user data (concentration
+notes, cash observations, sector/holding lines) if safe batch can be identified.
+
+**Result:** 5 files changed. 90 new tests. 4275 passed, 3 skipped. All demos
+green. RC2 green. English output byte-for-byte identical. Swedish output now
+fully uses Swedish constants for all extracted messages.
+
+---
+
 ## 2026-07-04: Sprint 261 — Add Full CLI Swedish Regression Matrix
 
 Decision: Create `tests/test_full_cli_swedish_regression_matrix_sprint261.py` —

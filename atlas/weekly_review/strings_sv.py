@@ -95,6 +95,120 @@ REMINDER_NO_ACTION_VALID = "Påminnelse: Ingen åtgärd är ett giltigt och ofta
 REMINDER_ATLAS_SUPPORTS_JUDGMENT = "Atlas stöder bättre omdöme. Det ersätter det inte."
 
 # ---------------------------------------------------------------------------
+# Section 1 — Review Scope body messages
+# ---------------------------------------------------------------------------
+
+SCOPE_REVIEW_DATE_NOT_SPECIFIED = "Granskningsdatum: Inte angivet"
+SCOPE_INPUT_MODE = "Indataläge: Lokala filer enbart. Inga externa data, ingen live-prissättning."
+SCOPE_PORTFOLIO_SUMMARY = "Portfölj: {count} innehav i {accounts} konto(n)"
+SCOPE_WATCHLIST_SUMMARY = "Bevakningslista: {count} post(er) i '{name}'"
+SCOPE_OPTIONAL_INPUTS_LOADED = "Valfria indata inlästa: {items}"
+SCOPE_OPTIONAL_INPUTS_NONE = (
+    "Valfria indata: inga angivna — granskning använder portfölj och bevakningslista enbart"
+)
+
+# ---------------------------------------------------------------------------
+# Section 2 — Portfolio Context body messages
+# ---------------------------------------------------------------------------
+
+PORTFOLIO_HOLDINGS_HEADER = "Innehav efter vikt (användarsupplerade värden, högst först):"
+PORTFOLIO_SECTOR_HEADER = "Sektorexponering:"
+PORTFOLIO_NOTE_LOCAL_ONLY = (
+    "Notering: Alla värden är användarsupplerade. Ingen live-prissättning eller externa data används."
+)
+
+# ---------------------------------------------------------------------------
+# Section 3 — Watchlist Review body messages
+# ---------------------------------------------------------------------------
+
+WATCHLIST_NO_ITEMS = "Inga bevakningsposter inlästa."
+
+# ---------------------------------------------------------------------------
+# Section 4 — Company Reviews Needing Attention body messages
+# ---------------------------------------------------------------------------
+
+ATTENTION_NO_ITEMS = (
+    "Inga poster flaggade för omedelbar uppmärksamhet från tillgängliga lokala indata."
+)
+ATTENTION_NOTE_LOCAL_ONLY = (
+    "Notering: Alla observationer härrör enbart från användarsupplerade lokala indata. "
+    "Inga externa data, ingen motoranalys, inga rekommendationer."
+)
+
+# ---------------------------------------------------------------------------
+# Section 5 — Portfolio Fit and Suitability Notes body messages
+# ---------------------------------------------------------------------------
+
+SUITABILITY_PROFILE_PROVIDED = "Investerarprofil: Angiven."
+SUITABILITY_PROFILE_NOT_PROVIDED = (
+    "Investerarprofil: Inte angiven. "
+    "Lämplighetsnoteringar nedan är strukturella enbart och ej personaliserade."
+)
+SUITABILITY_INVESTED_POSITIONS = "Investerade positioner: {count} (exklusive kassainnehav)."
+SUITABILITY_ENGINE_DEFERRED = (
+    "Fullständig lämplighetsbedömning är uppskjuten tills motorkoppling finns. "
+    "Portföljpassningsnoteringar är begränsade till inläst lokal struktur."
+)
+SUITABILITY_NOTE_NO_MERIT_JUDGMENT = (
+    "Notering: Atlas bedömer inte investeringsmerit eller ger personaliserad vägledning. "
+    "Lämplighetsbedömning kräver manuell granskning."
+)
+
+# ---------------------------------------------------------------------------
+# Section 6 — Risk and Principle Guardrails body messages
+# ---------------------------------------------------------------------------
+
+GUARDRAILS_ENGINE_DEFERRED = (
+    "Motorkoppling för risk- och principgränser är uppskjuten till ett senare sprint."
+)
+GUARDRAILS_PRINCIPLE_GUARDRAIL = (
+    "Principgräns: Ingen åtgärd är motiverad när underlag är ofullständigt."
+)
+GUARDRAILS_NOTE_LOCAL_ONLY = (
+    "Notering: Gränskontroller baseras enbart på användarsupplerade data. "
+    "Inga live-marknadsdata eller extern analys används."
+)
+GUARDRAILS_NO_FLAGS = "Inga gränskontrollflaggor höjda från tillgängliga lokala indata."
+
+# ---------------------------------------------------------------------------
+# Section 7 — Open Decisions body messages
+# ---------------------------------------------------------------------------
+
+DECISIONS_NO_JOURNAL = "Ingen beslutsjournal angiven. Öppna beslut granskas inte."
+DECISIONS_JOURNAL_REVIEWED = "Beslutsjournal: {count} post(er) granskade."
+DECISIONS_DATE_MISSING = (
+    "[Datum saknas] Inget beslutsdatum registrerat; ålder kan inte bedömas."
+)
+AGING_NOTE_SUFFIX = (
+    "Granskningsdatum är äldre än 90 dagar ({days} dagar). "
+    "Antaganden för tesen kan behöva kontrolleras."
+)
+
+# ---------------------------------------------------------------------------
+# Section 8 — Missing Evidence body messages
+# ---------------------------------------------------------------------------
+
+EVIDENCE_NO_GAPS = "Inga underlagsluckor identifierade från tillgängliga lokala indata."
+
+# ---------------------------------------------------------------------------
+# Section 9 — Follow-Up Questions body messages
+# ---------------------------------------------------------------------------
+
+QUESTIONS_NO_COMPANY_FACTS = (
+    "Vilken företagsfakta behövs innan statusen för något bevakningsobjekt ändras?"
+)
+QUESTIONS_NO_FINANCIALS = (
+    "Vilka finansiella trender bör granskas innan beslut om bevakningslista ändras?"
+)
+QUESTIONS_OPEN_WATCHLIST_GAPS = (
+    "Vilket underlag skulle bekräfta eller försvaga nuvarande antaganden för varje öppet bevakningsobjekt?"
+)
+QUESTIONS_NONE = (
+    "Inga uppföljningsfrågor identifierade. "
+    "Lägg till open_questions till bevakningsposter för att de ska visas här."
+)
+
+# ---------------------------------------------------------------------------
 # Ordered tuple of all section titles (structural reference)
 # ---------------------------------------------------------------------------
 

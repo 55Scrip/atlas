@@ -87,6 +87,120 @@ REMINDER_NO_ACTION_VALID = "Reminder: No action is a valid and often appropriate
 REMINDER_ATLAS_SUPPORTS_JUDGMENT = "Atlas supports better judgment. It does not replace it."
 
 # ---------------------------------------------------------------------------
+# Section 1 — Review Scope body messages
+# ---------------------------------------------------------------------------
+
+SCOPE_REVIEW_DATE_NOT_SPECIFIED = "Review date: Not specified"
+SCOPE_INPUT_MODE = "Input mode: Local files only. No external data, no live pricing."
+SCOPE_PORTFOLIO_SUMMARY = "Portfolio: {count} holding(s) across {accounts} account(s)"
+SCOPE_WATCHLIST_SUMMARY = "Watchlist: {count} item(s) in '{name}'"
+SCOPE_OPTIONAL_INPUTS_LOADED = "Optional inputs loaded: {items}"
+SCOPE_OPTIONAL_INPUTS_NONE = (
+    "Optional inputs: none provided — review uses portfolio and watchlist only"
+)
+
+# ---------------------------------------------------------------------------
+# Section 2 — Portfolio Context body messages
+# ---------------------------------------------------------------------------
+
+PORTFOLIO_HOLDINGS_HEADER = "Holdings by weight (user-supplied values, highest first):"
+PORTFOLIO_SECTOR_HEADER = "Sector exposure:"
+PORTFOLIO_NOTE_LOCAL_ONLY = (
+    "Note: All values are user-supplied. No live pricing or external data used."
+)
+
+# ---------------------------------------------------------------------------
+# Section 3 — Watchlist Review body messages
+# ---------------------------------------------------------------------------
+
+WATCHLIST_NO_ITEMS = "No watchlist items loaded."
+
+# ---------------------------------------------------------------------------
+# Section 4 — Company Reviews Needing Attention body messages
+# ---------------------------------------------------------------------------
+
+ATTENTION_NO_ITEMS = (
+    "No items flagged for immediate attention from available local inputs."
+)
+ATTENTION_NOTE_LOCAL_ONLY = (
+    "Note: All observations are derived from user-supplied local inputs only. "
+    "No external data, no engine analysis, no recommendations."
+)
+
+# ---------------------------------------------------------------------------
+# Section 5 — Portfolio Fit and Suitability Notes body messages
+# ---------------------------------------------------------------------------
+
+SUITABILITY_PROFILE_PROVIDED = "Investor profile: Provided."
+SUITABILITY_PROFILE_NOT_PROVIDED = (
+    "Investor profile: Not provided. "
+    "Suitability observations below are structural only and not personalized."
+)
+SUITABILITY_INVESTED_POSITIONS = "Invested positions: {count} (excluding cash holdings)."
+SUITABILITY_ENGINE_DEFERRED = (
+    "Full suitability evaluation is deferred until engine wiring. "
+    "Portfolio fit notes are limited to loaded local structure."
+)
+SUITABILITY_NOTE_NO_MERIT_JUDGMENT = (
+    "Note: Atlas does not judge investment merit or provide personalized guidance. "
+    "Suitability assessment requires manual review."
+)
+
+# ---------------------------------------------------------------------------
+# Section 6 — Risk and Principle Guardrails body messages
+# ---------------------------------------------------------------------------
+
+GUARDRAILS_ENGINE_DEFERRED = (
+    "Risk and principle guardrail engine wiring is deferred to a later sprint."
+)
+GUARDRAILS_PRINCIPLE_GUARDRAIL = (
+    "Principle Guardrail: No action is warranted when evidence is incomplete."
+)
+GUARDRAILS_NOTE_LOCAL_ONLY = (
+    "Note: Guardrail checks are based on user-supplied data only. "
+    "No live market data or external analysis used."
+)
+GUARDRAILS_NO_FLAGS = "No guardrail flags raised from available local inputs."
+
+# ---------------------------------------------------------------------------
+# Section 7 — Open Decisions body messages
+# ---------------------------------------------------------------------------
+
+DECISIONS_NO_JOURNAL = "No decision journal provided. Open decisions not reviewed."
+DECISIONS_JOURNAL_REVIEWED = "Decision journal: {count} entry/entries reviewed."
+DECISIONS_DATE_MISSING = (
+    "[Date Missing] No decision date recorded; aging cannot be assessed."
+)
+AGING_NOTE_SUFFIX = (
+    "Review date is older than 90 days ({days} days). "
+    "Thesis assumptions may need to be rechecked."
+)
+
+# ---------------------------------------------------------------------------
+# Section 8 — Missing Evidence body messages
+# ---------------------------------------------------------------------------
+
+EVIDENCE_NO_GAPS = "No evidence gaps identified from available local inputs."
+
+# ---------------------------------------------------------------------------
+# Section 9 — Follow-Up Questions body messages
+# ---------------------------------------------------------------------------
+
+QUESTIONS_NO_COMPANY_FACTS = (
+    "What company facts are needed before changing the status of any watchlist item?"
+)
+QUESTIONS_NO_FINANCIALS = (
+    "Which financial trends should be reviewed before any watchlist decision changes?"
+)
+QUESTIONS_OPEN_WATCHLIST_GAPS = (
+    "What evidence would confirm or weaken the current assumptions for each open watchlist item?"
+)
+QUESTIONS_NONE = (
+    "No follow-up questions identified. "
+    "Add open_questions to watchlist items to surface them here."
+)
+
+# ---------------------------------------------------------------------------
 # Ordered tuple of all section titles (structural reference)
 # ---------------------------------------------------------------------------
 
