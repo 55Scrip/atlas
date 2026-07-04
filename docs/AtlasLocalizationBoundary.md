@@ -1,6 +1,6 @@
 # Atlas Localization Boundary
 
-**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper) / 247 (Swedish guardrail spec) / 248 (Swedish readiness checklist) / 249 (Swedish string constants) / 250 (Swedish renderer dispatch boundary) / 251 (sv locale activation) / 252 (Swedish output test matrix) / 258 (Phase 2 CLI language planning)
+**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper) / 247 (Swedish guardrail spec) / 248 (Swedish readiness checklist) / 249 (Swedish string constants) / 250 (Swedish renderer dispatch boundary) / 251 (sv locale activation) / 252 (Swedish output test matrix) / 258 (Phase 2 CLI language planning) / 260 (Swedish CLI usage documentation)
 **Date:** 2026-07-04
 **Status:** Shared locale boundary in `atlas/locale_support.py` — only "en" supported — no translations implemented
 
@@ -338,6 +338,17 @@ behavior is unchanged — omitting `--language` produces English output identica
 pre-Sprint-257. Deferred commands (`snapshot confirm`, `snapshot reject`,
 `snapshot export-*`) do not expose `--language`. No automatic detection. No
 environment-variable language inference. No gettext. No string catalogs.
+
+Sprint 260 created `docs/SwedishCLIUsageGuide.md` — the user-facing guide for
+Swedish CLI output. Documents how to request Swedish output with `--language sv`,
+which seven commands support it, what changes (Atlas-generated display labels
+only), what remains canonical English (schema keys, enum values, warning codes,
+ticker symbols, file paths), what user-provided content is never translated
+(notes, scope notes, research text, watchlist reasons, journal entries, company
+facts values), the written-file invariance guarantee (written files identical
+across `--language en` and `--language sv`), unsupported-language failure
+behavior (no fallback, no case normalization, no region-code expansion), and
+safety boundaries. No production code changed in Sprint 260.
 
 Sprint 258 created `docs/Phase2SnapshotCLILanguagePlan.md` — the design document
 for extending `--language {en,sv}` to Phase 2 write-producing Snapshot commands

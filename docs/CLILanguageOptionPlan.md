@@ -1,7 +1,7 @@
 # CLI Language Option Plan
 
-**Status: Phase 1 implemented (Sprint 257). Phase 2 implemented (Sprint 259).**
-**Sprint:** 256 (planning), 257 (Phase 1 implementation), 258 (Phase 2 planning), 259 (Phase 2 implementation).
+**Status: Phase 1 implemented (Sprint 257). Phase 2 implemented (Sprint 259). Usage documented (Sprint 260).**
+**Sprint:** 256 (planning), 257 (Phase 1 implementation), 258 (Phase 2 planning), 259 (Phase 2 implementation), 260 (documentation).
 
 ---
 

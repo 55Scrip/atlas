@@ -2,6 +2,34 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 260 — Add Swedish CLI Usage Documentation
+
+Decision: Create `docs/SwedishCLIUsageGuide.md` — the user-facing guide for
+Swedish CLI output. No production code changed.
+
+**Content:** How to request Swedish output (`--language sv`); all seven
+supported commands; default English behavior (omitting `--language` = English);
+what changes (Atlas-generated display labels/headings only); what remains
+canonical English (schema keys, enum values, warning codes, CLI flags, ticker
+symbols, file paths); what Atlas does not translate (user-provided notes, scope
+notes, research text, watchlist reasons, journal entries, snapshot fields,
+company facts values); written-file invariance guarantee (written files
+byte-for-byte identical across language settings); unsupported-language behavior
+(no fallback, no case normalization, no region-code expansion, non-zero exit);
+safety boundaries (no recommendations, no urgency, no price targets); related
+documents.
+
+**Sprint 261 recommendation:** Add full CLI Swedish regression matrix — a
+compact matrix proving English defaults, Swedish opt-in output, written-file
+invariance, and unsupported-language behavior remain stable across all seven
+commands.
+
+**Result:** 2 new files (`docs/SwedishCLIUsageGuide.md`,
+`tests/test_swedish_cli_usage_guide_sprint260.py`). 3 docs updated. No CLI
+changes. No renderer changes. No schema changes. All demos green. RC2 green.
+
+---
+
 ## 2026-07-04: Sprint 259 — Implement --language for Phase 2 Snapshot Write Commands
 
 Decision: Add `--language {en,sv}` to `atlas snapshot confirm`, `atlas snapshot reject`, `atlas snapshot export-research-notes`, and `atlas snapshot export-company-facts`. Same pattern as Phase 1. Language validation occurs before any file I/O. Written artifact content is unaffected by display language.
