@@ -301,6 +301,9 @@ readable by Weekly Review `--research-notes DIR`. No provider imports. No networ
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
 
+**Sprint 234 (post-v1 validation — complete):**
+Sixth real portfolio trial — company facts export loop. Full chain confirmed green: `validate` (valid, confirmed) → `review` (Exportable: yes) → `export-company-facts` (ASML.json written, draft MD5 unchanged) → `weekly-review --company-facts DIR` (Section 8 clears ASML, MSFT/NOVO/XYL remain; Section 9 lists tickers without facts by name; Section 10 narrows reason-to-wait to named tickers). Mutation safety verified. Language guardrails clean. No code changes. Findings documented in `docs/SnapshotCompanyFactsExportTrialFindings.md`. Internal v1 foundation unchanged.
+
 **Sprint 233 (post-v1 improvement — complete):**
 `atlas snapshot export-company-facts <path> --output-dir DIR` added — the second safe Snapshot Draft conversion path. Converts a confirmed `company_facts_snapshot` draft to a local `<TICKER>.json` file under the output directory. Enforces: type (`company_facts_snapshot` only), confirmation status (`confirmed` only), safe ticker, overwrite guard. Bounded output (800 chars/string, 30 list items, 500 chars/item). Draft never mutated. No portfolio, watchlist, journal, or research notes files written. Source provenance (`draft_id`, `source_description`) written into `source` key. Output detected by `atlas weekly-review --company-facts DIR`. No OCR. No AI. No provider imports. No network calls. Internal v1 foundation unchanged.
 

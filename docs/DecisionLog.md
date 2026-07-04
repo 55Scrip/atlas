@@ -2,6 +2,25 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 234 — Company Facts Export Trial
+
+Decision: Run sixth portfolio trial validating the full company facts export path: confirmed draft → `export-company-facts` → local `ASML.json` → `weekly-review --company-facts DIR`.
+
+**Rationale:** After adding company facts draft export, Atlas validates the full path from confirmed company facts draft to local company facts file to Weekly Review evidence presence before adding another conversion type.
+
+**Trial result:** Green. All stages clean. ASML section 8 evidence gap cleared when facts file present. Section 9 and 10 improve from generic "no facts" to per-ticker precision. MD5 confirmed draft unchanged throughout. No mutation outside expected output path.
+
+**Key findings:**
+1. Section 8 clears the correct ticker only — detection is per-ticker and precise
+2. Section 9 adds "Tickers without local company facts (N): …" list when facts are partially present — meaningful precision improvement over no-facts state
+3. Section 10 narrows reason-to-wait from "company facts not loaded" to "missing for N ticker(s) (X, Y, Z)" — same precision improvement
+4. "Blocking Issues" label in `snapshot review` is slightly confusing when draft is already confirmed and exportable — the correct information is present but a future wording improvement could help
+5. overwrite guard and file mutation boundaries confirmed correct
+
+**Sprint 235 recommendation:** Create internal v1 demo package. All conversion paths validated; stable enough for a repeatable internal demo flow before adding higher-risk conversion types.
+
+---
+
 ## 2026-07-04: Sprint 233 — Add Snapshot Company Facts Export CLI
 
 Decision: Add `atlas snapshot export-company-facts <draft_path> --output-dir DIR` to convert confirmed `company_facts_snapshot` drafts to `<TICKER>.json`.
