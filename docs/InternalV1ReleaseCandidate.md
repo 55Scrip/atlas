@@ -442,6 +442,22 @@ and safety boundary. Exit 0 on valid draft, exit 1 on missing file, invalid JSON
 or invalid schema. Does not confirm, reject, or write any file. No provider imports.
 No network calls. No Weekly Review behavior changed. Internal v1 foundation unchanged.
 
+**Sprint 265 (post-v1 documentation — complete):**
+Swedish CLI examples added to `docs/AtlasWeeklyReviewUsageGuide.md`. New
+"Language Option" section documents: default English behaviour; `--language en`
+and `--language sv` command examples; Swedish section heading table (all 10
+sections plus Input Status and Input Warnings); Swedish inline label table
+(Evidence Gap, Reason to Wait, No Action Warranted, Missing Optional Input,
+etc.); canonical English values that remain unchanged (warning codes, ticker
+symbols, enum values, schema keys, CLI flags); user-provided content that is
+not translated (scope notes, watchlist reasons, research notes, journal notes,
+principles, constraints); and safety boundaries (display-text-only; no
+recommendations in any language; Atlas supports better judgment, does not
+replace it). Stale limitation bullet "support multiple languages in renderer
+output" removed. Links to AtlasLocalizationBoundary.md and
+SwedishCLIUsageGuide.md added. No runtime behaviour changed. 43 new tests.
+4410 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
+
 **Sprint 264 (post-v1 improvement — complete):**
 6 remaining hardcoded English tail strings visible in Swedish output extracted
 into locale-aware constants. Section 6 `_section6_guardrails`: 2 constants

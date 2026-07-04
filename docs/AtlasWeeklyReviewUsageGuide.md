@@ -600,6 +600,119 @@ routine is manual and local.
 
 ---
 
+## Language Option
+
+Atlas Weekly Review supports a `--language` option that changes Atlas-generated
+display text. English is the default.
+
+### Default behaviour
+
+If `--language` is omitted, all output is in English:
+
+```bash
+atlas weekly-review \
+  --portfolio my_review/portfolio.json \
+  --watchlist my_review/watchlist.json
+```
+
+### Explicit English
+
+```bash
+atlas weekly-review \
+  --portfolio my_review/portfolio.json \
+  --watchlist my_review/watchlist.json \
+  --language en
+```
+
+### Swedish output
+
+```bash
+atlas weekly-review \
+  --portfolio my_review/portfolio.json \
+  --watchlist my_review/watchlist.json \
+  --language sv
+```
+
+`--language sv` changes Atlas-generated section headings, labels, and body
+messages to Swedish. The structure of the review (10 sections, same order,
+same logic) is unchanged.
+
+**Swedish section headings produced by `--language sv`:**
+
+| English | Swedish |
+|---------|---------|
+| Atlas Weekly Investment Review | Atlas veckovis investeringsgranskning |
+| 1. Review Scope | 1. Granskningens omfattning |
+| 2. Portfolio Context | 2. Portföljkontext |
+| 3. Watchlist Review | 3. Bevakningslista |
+| 4. Company Reviews Needing Attention | 4. Bolagsgranskningar som behöver uppmärksamhet |
+| 5. Portfolio Fit and Suitability Notes | 5. Portföljpassning och lämplighetsnoteringar |
+| 6. Risk and Principle Guardrails | 6. Risk- och principgränser |
+| 7. Open Decisions | 7. Öppna beslut |
+| 8. Missing Evidence | 8. Saknat underlag |
+| 9. Follow-Up Questions | 9. Uppföljningsfrågor |
+| 10. Non-Actions / Reasons to Wait | 10. Icke-åtgärder / skäl att avvakta |
+| Input Status | Indatastatus |
+| Input Warnings | Indatavarningar |
+
+**Swedish inline labels produced by `--language sv`:**
+
+| English label | Swedish label |
+|---------------|---------------|
+| Evidence Gap | Underlagslucka |
+| Risk to Monitor | Risk att följa |
+| Reason to Wait | Skäl att avvakta |
+| Decision Deferred | Beslut uppskjutet |
+| No Action Warranted | Ingen åtgärd motiverad |
+| Aging Note | Äldre notering |
+| Missing Optional Input | Saknat valfritt indata |
+
+### What `--language sv` does not change
+
+**Canonical values remain English** in all output regardless of `--language`:
+
+- warning codes (e.g., `missing_sector`, `invalid_profile`)
+- schema keys
+- enum values (e.g., `confirmed`, `needs_more_evidence`)
+- ticker symbols (e.g., `ASML`, `MSFT`)
+- file paths
+- CLI command names and flags (e.g., `weekly-review`, `--language`)
+
+These are structural identifiers, not display text. They must remain stable
+across locales to be machine-readable and unambiguous.
+
+**User-provided content is not translated.** Atlas passes through your own
+text unchanged regardless of `--language`:
+
+- scope notes
+- watchlist item reasons, evidence gaps, and open questions
+- research notes content
+- decision journal notes and follow-up triggers
+- company names
+- investor profile principles and constraints
+
+Only Atlas-generated labels, headings, and body messages may appear in Swedish.
+Your own words are always returned as-is.
+
+### Safety boundaries
+
+`--language sv` changes display text only. It does not change Atlas reasoning,
+logic, section structure, or output data.
+
+- Swedish output is informational only — the same as English output.
+- Atlas does not provide investment recommendations in any language.
+- Language selection does not affect the determinism or local-only character
+  of the review.
+- Atlas supports better judgment. It does not replace it.
+
+See [docs/AtlasLocalizationBoundary.md](AtlasLocalizationBoundary.md) for the
+full localization boundary specification.
+
+See [docs/SwedishCLIUsageGuide.md](SwedishCLIUsageGuide.md) for additional
+Swedish CLI usage examples across all `--language`-aware commands.
+
+---
+
 ## Current Limitations
 
 Atlas Weekly Review v1 does not yet:
@@ -614,7 +727,6 @@ Atlas Weekly Review v1 does not yet:
 - support multiple currencies in weight calculations
 - generate any investment recommendations
 - provide a user interface
-- support multiple languages in renderer output
 
 These may be addressed in future sprints. No timeline is committed here.
 

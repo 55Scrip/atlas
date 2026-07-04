@@ -2,6 +2,22 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 265 — Add Swedish Examples to Weekly Review Usage Guide
+
+Decision: Add a Language Option section to `docs/AtlasWeeklyReviewUsageGuide.md`
+documenting `--language sv`, `--language en`, default English behaviour, Swedish
+section headings and inline labels, canonical English values, user-content
+passthrough, safety boundaries, and links to `AtlasLocalizationBoundary.md` and
+`SwedishCLIUsageGuide.md`. Also removed the stale "support multiple languages in
+renderer output" bullet from Current Limitations (this was completed across Sprints
+238–264). No runtime behaviour changed.
+
+**Why documented here:** The Swedish CLI track is now complete and user-facing.
+This closes the gap between the implemented `--language sv` capability and
+what the primary usage guide tells users. The localization boundary (display text
+only; canonical values and user content unchanged) is now explicitly documented
+for Weekly Review users.
+
 ## 2026-07-04: Sprint 264 — Extract Section 6/8 Input-Status Tail Messages Into Constants
 
 Decision: Extract 6 remaining hardcoded English tail strings visible in Swedish
