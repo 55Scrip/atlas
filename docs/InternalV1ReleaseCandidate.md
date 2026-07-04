@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2607 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2630 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -300,6 +300,9 @@ Draft never mutated. End-to-end path confirmed: exported notes.md immediately
 readable by Weekly Review `--research-notes DIR`. No provider imports. No network
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
+
+**Sprint 235 (post-v1 packaging — complete):**
+Internal v1 demo package created. `docs/InternalV1DemoPackage.md` documents the complete safe user journey across 7 stages: snapshot draft validate, review, confirm, reject, export-research-notes, export-company-facts, and weekly-review. `scripts/run_internal_v1_demo.sh` runs all 7 stages end-to-end, writes only to `/tmp/atlas_internal_v1_demo/`, verifies output file presence and that rejected drafts are blocked from export, and cleans up after itself. 23 new tests verify doc completeness, script safety, command coverage, and language guardrails. No runtime behavior changed. No new commands added. Internal v1 foundation unchanged.
 
 **Sprint 234 (post-v1 validation — complete):**
 Sixth real portfolio trial — company facts export loop. Full chain confirmed green: `validate` (valid, confirmed) → `review` (Exportable: yes) → `export-company-facts` (ASML.json written, draft MD5 unchanged) → `weekly-review --company-facts DIR` (Section 8 clears ASML, MSFT/NOVO/XYL remain; Section 9 lists tickers without facts by name; Section 10 narrows reason-to-wait to named tickers). Mutation safety verified. Language guardrails clean. No code changes. Findings documented in `docs/SnapshotCompanyFactsExportTrialFindings.md`. Internal v1 foundation unchanged.

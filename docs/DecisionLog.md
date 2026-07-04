@@ -2,6 +2,23 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 235 — Create Internal v1 Demo Package
+
+Decision: Create `docs/InternalV1DemoPackage.md` and `scripts/run_internal_v1_demo.sh` to show the complete safe Atlas user journey in a reproducible, local-only form.
+
+**Rationale:** After six validated portfolio trials, Atlas has a stable enough foundation to package into a documented internal demo. The demo provides a repeatable checkpoint for internal testers and developers before further product surface expansion.
+
+**Deliverables:**
+- `docs/InternalV1DemoPackage.md` — full demo guide covering 7 stages: validate, review, confirm, reject, export-research-notes, export-company-facts, weekly-review
+- `scripts/run_internal_v1_demo.sh` — executable bash script running all 7 stages end-to-end, writing only to `/tmp/atlas_internal_v1_demo/`, verifying output checkpoints including that rejected drafts are blocked from export
+- `tests/test_internal_v1_demo_package_sprint235.py` — 23 tests covering doc and script completeness, safety boundary terms, forbidden language, and command coverage
+
+**Result:** Green. Script runs end-to-end. All 2630 tests pass. RC2 green.
+
+**Sprint 236 recommendation:** Define Localization Boundary — establish what is internal canonical English logic versus future user-facing language output before expanding the product surface further.
+
+---
+
 ## 2026-07-04: Sprint 234 — Company Facts Export Trial
 
 Decision: Run sixth portfolio trial validating the full company facts export path: confirmed draft → `export-company-facts` → local `ASML.json` → `weekly-review --company-facts DIR`.
