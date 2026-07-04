@@ -2,6 +2,27 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 239 — Extract Weekly Review Section Titles Into Constants
+
+Decision: Create `atlas/weekly_review/strings.py` containing the 10 Weekly Review section title constants and the document title. Update `atlas/weekly_review/render.py` to reference these constants via `from atlas.weekly_review import strings as S`. No output changed.
+
+**Rationale:** Sprint 238 established the extraction pattern for Snapshot CLI strings. Sprint 239 applies the same pattern to the most bounded Weekly Review strings — the 10 section titles — before touching body text or locale-aware rendering. Centralizing section titles makes the section structure explicit and refactor-safe, with no behavioral risk.
+
+**Constants extracted to `atlas/weekly_review/strings.py`:**
+- `WEEKLY_REVIEW_TITLE = "Atlas Weekly Investment Review"`
+- 10 section title constants (`SECTION_REVIEW_SCOPE` through `SECTION_NON_ACTIONS_REASONS_TO_WAIT`)
+- `WEEKLY_REVIEW_SECTION_TITLES` — ordered tuple of all 10 titles
+
+**What stayed out of constants:** all body text, `_DISCLAIMER`, section labels (`Evidence Gap`, `Reason to Wait`, input status labels), formatting strings. Only the 10 structural section titles and document title were extracted.
+
+**Output preservation:** all 10 section headings verified identical before and after (`## 1. Review Scope` through `## 10. Non-Actions / Reasons to Wait`). Full representative Weekly Review command confirmed green.
+
+**Sprint 240 recommendation:** Extract Weekly Review section labels into constants (repeated body labels: `Evidence Gap`, `Risk to Monitor`, `Reason to Wait`, input status messages).
+
+**Result:** 38 new tests. 2809 total passed. All demos green. RC2 green. No runtime behavior changed.
+
+---
+
 ## 2026-07-04: Sprint 238 — Extract Snapshot CLI Display Strings Into Constants
 
 Decision: Create `atlas/snapshot_input/strings.py` containing all Snapshot CLI display string constants. Update `atlas/snapshot_input/render.py` to import and reference these constants. No output changed.

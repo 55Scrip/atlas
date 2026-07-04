@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2771 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2809 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -300,6 +300,9 @@ Draft never mutated. End-to-end path confirmed: exported notes.md immediately
 readable by Weekly Review `--research-notes DIR`. No provider imports. No network
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
+
+**Sprint 239 (post-v1 architecture — complete):**
+Weekly Review section titles extracted to constants. New `atlas/weekly_review/strings.py` contains `WEEKLY_REVIEW_TITLE`, 10 section title constants (`SECTION_REVIEW_SCOPE` through `SECTION_NON_ACTIONS_REASONS_TO_WAIT`), and `WEEKLY_REVIEW_SECTION_TITLES` ordered tuple. `atlas/weekly_review/render.py` updated to import `strings as S` and reference all section title constants. Inline title literals removed from renderer. All 10 section headings verified byte-for-byte identical after refactor. Weekly Review body text, `_DISCLAIMER`, and all section body labels remain inline — pending Sprint 240. No `--language` added. No locale imports. No output changed. 38 new tests. Snapshot CLI strings unaffected.
 
 **Sprint 238 (post-v1 architecture — complete):**
 Snapshot CLI display strings extracted to constants. New `atlas/snapshot_input/strings.py` contains 6 command headings, 7 status display lines, exportability lines, 9 section header labels, 12 safety boundary lines, and 3 confirm/reject note lines. `atlas/snapshot_input/render.py` updated to import and reference all constants via `from atlas.snapshot_input import strings as S`. All 6 representative CLI commands verified byte-for-byte unchanged. Canonical enum values (`confirmed`, `rejected`, `research_notes_snapshot`, etc.) did not move — they remain in schema enums. Weekly Review renderer untouched. No `--language` option added. No locale imports added. No output changed. 64 new tests. Sprint 239 recommendation: extract Weekly Review section titles into constants.

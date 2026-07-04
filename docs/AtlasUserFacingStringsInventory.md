@@ -16,7 +16,8 @@ localization plan from `docs/AtlasLocalizationBoundary.md`.
 
 Sprint 237: No strings moved. Audit only.
 Sprint 238: Snapshot CLI display strings extracted to `atlas/snapshot_input/strings.py`.
-Weekly Review strings remain inline — pending Sprint 239.
+Sprint 239: Weekly Review section titles extracted to `atlas/weekly_review/strings.py`.
+Weekly Review body text and section labels remain inline — pending Sprint 240.
 
 ---
 

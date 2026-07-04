@@ -18,9 +18,10 @@ from atlas.weekly_review.inputs import (
     WeeklyReviewResearchNote,
     WeeklyReviewWatchlistStatus,
 )
+from atlas.weekly_review import strings as S
 
 
-_TITLE = "Atlas Weekly Investment Review"
+_TITLE = S.WEEKLY_REVIEW_TITLE
 _DISCLAIMER = (
     "Atlas Weekly Investment Review — deterministic, local-only, no recommendations.\n"
     "Atlas supports better judgment. It does not replace it."
@@ -46,16 +47,16 @@ def render_weekly_review(result: WeeklyReviewLoadResult) -> str:
     lines.append("---")
     lines.append("")
 
-    lines.extend(_section("1. Review Scope", _section1_scope(result)))
-    lines.extend(_section("2. Portfolio Context", _section2_portfolio(result)))
-    lines.extend(_section("3. Watchlist Review", _section3_watchlist(result)))
-    lines.extend(_section("4. Company Reviews Needing Attention", _section4_attention(result)))
-    lines.extend(_section("5. Portfolio Fit and Suitability Notes", _section5_suitability(result)))
-    lines.extend(_section("6. Risk and Principle Guardrails", _section6_guardrails(result)))
-    lines.extend(_section("7. Open Decisions", _section7_decisions(result)))
-    lines.extend(_section("8. Missing Evidence", _section8_evidence(result)))
-    lines.extend(_section("9. Follow-Up Questions", _section9_questions(result)))
-    lines.extend(_section("10. Non-Actions / Reasons to Wait", _section10_nonactions(result)))
+    lines.extend(_section(S.SECTION_REVIEW_SCOPE, _section1_scope(result)))
+    lines.extend(_section(S.SECTION_PORTFOLIO_CONTEXT, _section2_portfolio(result)))
+    lines.extend(_section(S.SECTION_WATCHLIST_REVIEW, _section3_watchlist(result)))
+    lines.extend(_section(S.SECTION_COMPANY_REVIEWS_NEEDING_ATTENTION, _section4_attention(result)))
+    lines.extend(_section(S.SECTION_PORTFOLIO_FIT_AND_SUITABILITY_NOTES, _section5_suitability(result)))
+    lines.extend(_section(S.SECTION_RISK_AND_PRINCIPLE_GUARDRAILS, _section6_guardrails(result)))
+    lines.extend(_section(S.SECTION_OPEN_DECISIONS, _section7_decisions(result)))
+    lines.extend(_section(S.SECTION_MISSING_EVIDENCE, _section8_evidence(result)))
+    lines.extend(_section(S.SECTION_FOLLOW_UP_QUESTIONS, _section9_questions(result)))
+    lines.extend(_section(S.SECTION_NON_ACTIONS_REASONS_TO_WAIT, _section10_nonactions(result)))
 
     return "\n".join(lines)
 
