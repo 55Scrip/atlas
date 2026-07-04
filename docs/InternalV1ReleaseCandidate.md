@@ -301,6 +301,16 @@ readable by Weekly Review `--research-notes DIR`. No provider imports. No networ
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
 
+**Sprint 232 (post-v1 validation — complete):**
+Fifth real portfolio trial — confirm and reject branch validation. Both branches
+green. Confirm branch: `confirm` → `validate` → `review` (Exportable: yes) →
+`export-research-notes` → `weekly-review` (Sections 8/9/10 correct). Reject branch:
+`reject` → `validate` → `review` (Exportable: no) → `export-research-notes` blocked
+(exit 1, no directory created). MD5 verified original draft unchanged throughout.
+Safety boundaries correct and distinct per command. No code changes. Findings
+documented in `docs/SnapshotStatusWorkflowTrialFindings.md`. Internal v1 foundation
+unchanged.
+
 **Sprint 231 (post-v1 improvement — complete):**
 `atlas snapshot reject <path> --output-draft <path>` CLI command added. Writes a
 rejected draft copy (`confirmation_status: rejected`) without mutating the original

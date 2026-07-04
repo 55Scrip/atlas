@@ -2,6 +2,25 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 232 — Snapshot Confirm and Reject Status Workflow Trial
+
+Decision: Run the full confirm and reject branch trial after adding both `atlas snapshot confirm` and `atlas snapshot reject`.
+
+**Rationale:** After adding both confirm and reject commands, Atlas validates both branches of the basic Snapshot Draft status workflow before adding more conversion types or status lifecycle commands.
+
+**Trial result:** Both branches green. MD5 verified original draft unchanged throughout. Confirm branch: confirmed copy validates, reviews as Exportable: yes, exports cleanly, Weekly Review consumes notes in Sections 8/9/10. Reject branch: rejected copy validates, reviews as Exportable: no, export blocked (exit 1) with no export directory created.
+
+**Key findings:**
+1. Branch choice is visible from review output — user sees draft state, exportability, and blocking issues before deciding
+2. The confirm three-step chain (confirm → validate → export) is clean and consistent
+3. The reject two-step chain (reject → validate/review) is clean; export block is reliable and produces no side effects
+4. Safety boundaries are distinct per command and accurate
+5. `(research notes)` provenance label in Sections 8/9 remains accurate from confirm branch
+
+**Sprint 233 recommendation:** Implement draft-to-company-facts conversion — safest next conversion type, writes `company_facts/<TICKER>.json`, improves Weekly Review evidence presence.
+
+---
+
 ## 2026-07-04: Sprint 231 — Add Snapshot Draft Reject CLI
 
 Decision: Add `atlas snapshot reject <draft_path> --output-draft <path>` as a safe, non-mutating rejection command.
