@@ -1,7 +1,7 @@
 # CLI Language Option Plan
 
-**Status: Planned — not implemented.**
-**Sprint:** 256 (planning only). Implementation requires a separate sprint.
+**Status: Phase 1 implemented (Sprint 257). Phase 2 deferred.**
+**Sprint:** 256 (planning), 257 (Phase 1 implementation).
 
 ---
 
@@ -36,8 +36,9 @@ by this document.
 ```
 Supported internally:   en, sv
 Default:                en
-CLI exposure:           none
---language:             not implemented
+CLI exposure:           Phase 1 (weekly-review, snapshot validate, snapshot review)
+--language:             implemented for Phase 1 read-only commands (Sprint 257)
+--language Phase 2:     deferred (snapshot confirm/reject/export-*)
 Runtime detection:      not implemented
 String catalogs:        not used
 gettext:                not used
@@ -45,8 +46,10 @@ gettext:                not used
 
 Swedish internal activation is complete (B1–B14 DONE, Sprint 255). Both
 `render_weekly_review` and all 14 Snapshot renderer functions accept
-`locale="sv"` and produce correct Swedish output. The CLI does not pass a
-locale parameter to any renderer — all CLI output is English by default.
+`locale="sv"` and produce correct Swedish output. Phase 1 CLI commands pass
+`locale=language` to their respective renderers after `ensure_supported_locale`
+validation. Default CLI output remains English — `--language` is an explicit
+opt-in.
 
 ---
 
@@ -92,7 +95,7 @@ do not need to be re-implemented in CLI argument parsing.
 
 ## Command Coverage
 
-### Phase 1 — Read-Only Commands (implement first)
+### Phase 1 — Read-Only Commands ✓ IMPLEMENTED (Sprint 257)
 
 ```
 atlas weekly-review     --language {en,sv}
@@ -397,21 +400,22 @@ considered complete:
 Phase 0 — COMPLETE (Sprints 247–255)
   Swedish internal activation (B1–B14 all DONE)
 
-Phase 1 — PLANNED (Sprint 257 or later)
-  Implement --language for read-only CLI commands:
-    atlas weekly-review
-    atlas snapshot validate
-    atlas snapshot review
-  Run CLI Swedish output matrix
-  Run full test suite and demos
+Phase 1 — COMPLETE (Sprint 257)
+  Implemented --language for read-only CLI commands:
+    atlas weekly-review     --language {en,sv}
+    atlas snapshot validate --language {en,sv}
+    atlas snapshot review   --language {en,sv}
+  Validation via ensure_supported_locale; locale passed to renderers.
+  Unsupported values fail before rendering with non-zero exit.
+  68 CLI tests added. Default remains English.
 
-Phase 2 — DEFERRED
+Phase 2 — DEFERRED (Sprint 258+ after planning sprint)
   Extend --language to write-producing local commands:
     atlas snapshot confirm
     atlas snapshot reject
     atlas snapshot export-research-notes
     atlas snapshot export-company-facts
-  Confirm Phase 1 stability before Phase 2 begins
+  Requires safety review sprint before implementation.
 
 Phase 3 — NOT YET PLANNED
   Consider Swedish user-facing documentation (N1)

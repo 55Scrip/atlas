@@ -243,15 +243,17 @@ def test_snap_error_message_exact():
 # ---------------------------------------------------------------------------
 
 def test_no_language_option_in_cli():
+    # Sprint 257: --language added to Phase 1 read-only commands.
     import atlas.cli.main as main_mod
     source = Path(main_mod.__file__).read_text(encoding="utf-8")
-    assert "--language" not in source
+    assert "--language" in source
 
 
 def test_cli_does_not_pass_locale_kwarg():
+    # Sprint 257: Phase 1 commands now pass locale=language to renderers.
     import atlas.cli.main as main_mod
     source = Path(main_mod.__file__).read_text(encoding="utf-8")
-    assert "locale=" not in source
+    assert "locale=" in source
 
 
 # ---------------------------------------------------------------------------

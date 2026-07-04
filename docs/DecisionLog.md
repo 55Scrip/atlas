@@ -2,6 +2,27 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 257 — Implement --language for Phase 1 Read-Only CLI Commands
+
+Decision: Add `--language {en,sv}` to `atlas weekly-review`, `atlas snapshot validate`, and `atlas snapshot review`. Validate with `ensure_supported_locale`; pass as `locale=language` to the respective renderer. Default remains `"en"`. Deferred commands (`snapshot confirm`, `snapshot reject`, `snapshot export-*`) unchanged.
+
+**Implementation pattern (identical for all three commands):**
+1. Add `language: str = typer.Option("en", "--language", help="Output language: en (English, default) or sv (Swedish).")` to the command signature.
+2. Import `ensure_supported_locale` and call it immediately inside the command body; catch `ValueError`, print `[red]Unsupported language:[/red] {exc}`, exit code 1.
+3. Pass `locale=language` to the renderer call.
+
+**Validation approach:** Post-parse `ensure_supported_locale` (not argparse/Typer `choices`). Rationale: consistent error message format with direct renderer calls; the existing `ValueError` message already names the bad value and supported locales; avoids maintaining a separate CLI-level supported-values list.
+
+**Unsupported-locale behavior:** Fails before any file I/O or rendering. Exit code 1. No partial output. Error message includes the unsupported value and the supported values `'en'` and `'sv'`. Tested for `fr`, `de`, `EN`, `SV`, `en-US`, `sv-SE`, `xx`.
+
+**Backward compatibility:** `--language` omitted → English output identical to pre-Sprint-257. `--language en` → identical to omitted. Verified by `test_weekly_review_language_en_equals_default`, `test_snapshot_validate_language_en_equals_default`, `test_snapshot_review_language_en_equals_default`.
+
+**Sprint 258 recommendation:** Plan Phase 2 CLI language option for write-producing Snapshot commands. After Phase 1 is stable, document the safety boundary for `snapshot confirm`, `snapshot reject`, and `snapshot export-*` before extending `--language` there.
+
+**Result:** 3 command functions updated. 68 new CLI tests. No renderer changes. No locale_support changes. No string module changes. Default English output unchanged. All demos green. RC2 green.
+
+---
+
 ## 2026-07-04: Sprint 256 — Plan CLI Language Option Without Implementation
 
 Decision: Create `docs/CLILanguageOptionPlan.md` — the design document for the future `--language {en,sv}` CLI option. No production code changed. `--language` is not implemented. Swedish internal activation is complete (B1–B14 DONE). CLI language exposure is planned for a future sprint.

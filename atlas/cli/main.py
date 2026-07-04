@@ -386,6 +386,11 @@ def weekly_review_command(
         "--scope-notes",
         help="Path to a scope notes file (optional; contents included in review scope).",
     ),
+    language: str = typer.Option(
+        "en",
+        "--language",
+        help="Output language: en (English, default) or sv (Swedish).",
+    ),
 ):
     """Run the Atlas Weekly Investment Review.
 
@@ -395,11 +400,18 @@ def weekly_review_command(
 
     No live data. No recommendations. No provider dependency.
     """
+    from atlas.locale_support import ensure_supported_locale
     from atlas.weekly_review import (
         WeeklyReviewInputPaths,
         load_weekly_review_inputs,
         render_weekly_review,
     )
+
+    try:
+        ensure_supported_locale(language)
+    except ValueError as exc:
+        console.print(f"[red]Unsupported language:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
 
     scope_notes = ""
     if scope_notes_path is not None:
@@ -431,7 +443,7 @@ def weekly_review_command(
         console.print(f"[red]Weekly review failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
-    console.print(render_weekly_review(result))
+    console.print(render_weekly_review(result, locale=language))
 
 
 @snapshot_app.command("validate")
@@ -439,6 +451,11 @@ def snapshot_validate_command(
     draft_path: Path = typer.Argument(
         ...,
         help="Path to a Snapshot Draft JSON file to validate.",
+    ),
+    language: str = typer.Option(
+        "en",
+        "--language",
+        help="Output language: en (English, default) or sv (Swedish).",
     ),
 ):
     """Validate a Snapshot Draft JSON file and display a summary.
@@ -452,11 +469,18 @@ def snapshot_validate_command(
 
     No live data. No recommendations. No provider dependency.
     """
+    from atlas.locale_support import ensure_supported_locale
     from atlas.snapshot_input.schema import SnapshotDraft
     from atlas.snapshot_input.render import (
         render_snapshot_draft_validation,
         render_snapshot_draft_validation_error,
     )
+
+    try:
+        ensure_supported_locale(language)
+    except ValueError as exc:
+        console.print(f"[red]Unsupported language:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
 
     if not draft_path.exists():
         console.print(render_snapshot_draft_validation_error(f"file not found: {draft_path}"))
@@ -474,7 +498,7 @@ def snapshot_validate_command(
         console.print(render_snapshot_draft_validation_error(str(exc)))
         raise typer.Exit(code=1)
 
-    console.print(render_snapshot_draft_validation(draft))
+    console.print(render_snapshot_draft_validation(draft, locale=language))
 
 
 @snapshot_app.command("review")
@@ -482,6 +506,11 @@ def snapshot_review_command(
     draft_path: Path = typer.Argument(
         ...,
         help="Path to a Snapshot Draft JSON file to review.",
+    ),
+    language: str = typer.Option(
+        "en",
+        "--language",
+        help="Output language: en (English, default) or sv (Swedish).",
     ),
 ):
     """Review a Snapshot Draft and display the full confirmation checklist.
@@ -496,11 +525,18 @@ def snapshot_review_command(
 
     No live data. No recommendations. No provider dependency.
     """
+    from atlas.locale_support import ensure_supported_locale
     from atlas.snapshot_input.schema import SnapshotDraft
     from atlas.snapshot_input.render import (
         render_snapshot_draft_review,
         render_snapshot_draft_review_error,
     )
+
+    try:
+        ensure_supported_locale(language)
+    except ValueError as exc:
+        console.print(f"[red]Unsupported language:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
 
     if not draft_path.exists():
         console.print(render_snapshot_draft_review_error(f"file not found: {draft_path}"))
@@ -518,7 +554,7 @@ def snapshot_review_command(
         console.print(render_snapshot_draft_review_error(str(exc)))
         raise typer.Exit(code=1)
 
-    console.print(render_snapshot_draft_review(draft))
+    console.print(render_snapshot_draft_review(draft, locale=language))
 
 
 @snapshot_app.command("confirm")

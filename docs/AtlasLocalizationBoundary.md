@@ -325,14 +325,19 @@ is complete. Swedish remains direct-renderer/internal only — CLI remains Engli
 14 of 14 blocking criteria satisfied. B14 is DONE.
 
 Sprint 256 created `docs/CLILanguageOptionPlan.md` — the design document for the
-future `--language {en,sv}` CLI option. The plan documents option naming, command
-coverage (Phase 1: read-only commands; Phase 2: write-producing local commands),
-locale propagation path from CLI through `ensure_supported_locale` to renderer
-`_strings_for_locale`, unsupported-locale error handling (fail before render, no
-fallback, no coercion), backward compatibility requirements, canonical values that
-must remain English, user-content passthrough requirements, safety guardrails, and
-the full test matrix required before implementation. No production code was changed.
-`--language` is not implemented. CLI output remains English.
+`--language {en,sv}` CLI option. No production code changed in Sprint 256.
+
+Sprint 257 implemented Phase 1 of `--language` for the three read-only CLI
+commands: `atlas weekly-review`, `atlas snapshot validate`, `atlas snapshot review`.
+Each command accepts `--language en` (default) or `--language sv`. The language
+value is validated with `ensure_supported_locale` before any rendering; unsupported
+values fail with a non-zero exit code, naming the bad value and supported values.
+The locale is then passed directly to the corresponding renderer (`render_weekly_review`,
+`render_snapshot_draft_validation`, `render_snapshot_draft_review`). Default
+behavior is unchanged — omitting `--language` produces English output identical to
+pre-Sprint-257. Deferred commands (`snapshot confirm`, `snapshot reject`,
+`snapshot export-*`) do not expose `--language`. No automatic detection. No
+environment-variable language inference. No gettext. No string catalogs.
 
 ### Future French guardrails (not yet defined)
 

@@ -767,9 +767,12 @@ def test_no_translation_directories():
 
 
 def test_no_language_option_in_cli():
+    # Sprint 257: --language added to Phase 1 read-only commands (weekly-review,
+    # snapshot validate, snapshot review). Deferred commands remain without it.
     import atlas.cli.main as main_mod
     source = Path(main_mod.__file__).read_text(encoding="utf-8")
-    assert "--language" not in source
+    # Phase 1 implementation is present
+    assert "--language" in source
 
 
 # ---------------------------------------------------------------------------
