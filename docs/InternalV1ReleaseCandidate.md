@@ -442,6 +442,21 @@ and safety boundary. Exit 0 on valid draft, exit 1 on missing file, invalid JSON
 or invalid schema. Does not confirm, reject, or write any file. No provider imports.
 No network calls. No Weekly Review behavior changed. Internal v1 foundation unchanged.
 
+**Sprint 266 (post-v1 product specification — complete):**
+No-account first-value onboarding principle established in
+`docs/NoAccountFirstValueOnboarding.md`. Principle: Atlas should be useful
+before it asks for trust. Account creation introduced only after first
+meaningful value or when user wants persistence/history/collaboration. Document
+covers: first-value definition; guest/no-account mode; example first session;
+pre-account capabilities; account-required capabilities; account-prompt timing
+(never before first output, dark patterns listed); data handling and privacy
+boundary; local-first and deterministic alignment; input-first UI implications;
+trust-building copy principles; risks and mitigations; six implementation
+phases (Phase 0 and Phase 1 complete; Phases 2–5 future). No runtime
+behaviour changed. No auth/login/backend/database/payment/analytics added.
+56 new tests. 4466 passed, 3 skipped. All demos green. RC2 green.
+Internal v1 foundation unchanged.
+
 **Sprint 265 (post-v1 documentation — complete):**
 Swedish CLI examples added to `docs/AtlasWeeklyReviewUsageGuide.md`. New
 "Language Option" section documents: default English behaviour; `--language en`

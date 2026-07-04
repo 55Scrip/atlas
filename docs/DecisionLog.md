@@ -2,6 +2,29 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 266 — Define No-Account First-Value Onboarding
+
+Decision: Establish Atlas's no-account first-value product principle and
+document it in `docs/NoAccountFirstValueOnboarding.md`.
+
+**Principle:** Atlas should be useful before it asks for trust. Account
+creation is introduced only after first meaningful value is delivered, or
+when the user explicitly wants persistence, history, collaboration, or
+cross-device access.
+
+**What was documented:** product principle; first-value definition; guest/
+no-account mode; example first session (future direction, not current
+implementation); pre-account capabilities; account-required capabilities;
+account-prompt timing (never before first output; dark patterns listed);
+data handling and privacy boundary (no silent retention, no email before
+first value, no broker required); local-first and deterministic alignment;
+future input-first UI implications; trust-building copy principles with safe
+and unsafe examples; risks and mitigations; six implementation phases
+(Phase 0 and Phase 1 complete; Phases 2–5 future).
+
+**No runtime behaviour changed.** No auth, login, signup, backend, database,
+payment, analytics, or telemetry code added.
+
 ## 2026-07-04: Sprint 265 — Add Swedish Examples to Weekly Review Usage Guide
 
 Decision: Add a Language Option section to `docs/AtlasWeeklyReviewUsageGuide.md`
