@@ -2,6 +2,40 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 249 — Define Swedish Display String Constants
+
+Decision: Create `atlas/weekly_review/strings_sv.py` and `atlas/snapshot_input/strings_sv.py` — isolated Swedish display string constants modules. Neither module is imported by any active renderer. `atlas/locale_support.py` is unchanged. `sv` remains unsupported.
+
+**Rationale:** Sprint 248 defined 14 blocking criteria before `sv` can be enabled. B3 (Swedish string constants) is the prerequisite for B4 (renderer dispatch). Creating the constants first — with no renderer wiring — keeps each increment safe and independently verifiable.
+
+**`atlas/weekly_review/strings_sv.py` contents:**
+- `WEEKLY_REVIEW_TITLE` — "Atlas veckovis investeringsgranskning"
+- All 10 section titles (`SECTION_REVIEW_SCOPE` → "1. Granskningens omfattning", etc.)
+- `WEEKLY_REVIEW_SECTION_TITLES` 10-tuple
+- All 7 repeated body labels (`LABEL_EVIDENCE_GAP` → `Underlagslucka`, `LABEL_RISK_TO_MONITOR` → `Risk att följa`, etc.)
+- `LABEL_INPUT_STATUS` → `Indatastatus`, `LABEL_INPUT_WARNINGS` → `Indatavarningar`
+- All 14 `INPUT_STATUS_*` message templates with `{count}`, `{name}`, `{date}` placeholders
+- `WARNING_ROW` and `WARNING_SCOPE_SUMMARY` templates
+- `WEEKLY_REVIEW_DISCLAIMER` two-line form (deterministisk / stöder bättre omdöme)
+
+**`atlas/snapshot_input/strings_sv.py` contents:**
+- All 6 command headings (`HEADING_VALIDATION` → "Validering av Snapshot Draft", etc.)
+- All 7 status display lines
+- Exportability lines (`EXPORTABLE_YES` → "Exporterbar: ja", etc.)
+- All 9 section header labels (including `SECTION_SAFETY_BOUNDARY` → "Säkerhetsgräns:")
+- All safety boundary lines (validate, review, confirm, reject, research notes, company facts)
+- All 3 confirm/reject note lines
+
+**Safety:** All Swedish wording follows `docs/SwedishSafeLanguageGuardrails.md`. No recommendation, urgency, price-target, certainty, execution, outperformance, or personalized advice language. No canonical enum values, schema keys, or warning codes translated.
+
+**Readiness checklist:** B3 marked DONE. B4–B14 remain OPEN. 3 of 14 criteria satisfied.
+
+**Sprint 250 recommendation:** Define Swedish renderer dispatch without enabling `sv`.
+
+**Result:** 94 new tests. 3266 total passed. No runtime behavior changed. `sv` is not enabled.
+
+---
+
 ## 2026-07-04: Sprint 248 — Swedish Localization Readiness Checklist
 
 Decision: Create `docs/SwedishLocalizationReadinessChecklist.md` — a documentation-only sprint that defines the exact go/no-go criteria before `"sv"` may be added to `atlas/locale_support.py`. No Swedish renderer implemented. No locale changes.

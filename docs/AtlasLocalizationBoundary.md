@@ -1,6 +1,6 @@
 # Atlas Localization Boundary
 
-**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper) / 247 (Swedish guardrail spec) / 248 (Swedish readiness checklist)
+**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper) / 247 (Swedish guardrail spec) / 248 (Swedish readiness checklist) / 249 (Swedish string constants)
 **Date:** 2026-07-04
 **Status:** Shared locale boundary in `atlas/locale_support.py` — only "en" supported — no translations implemented
 
@@ -271,7 +271,12 @@ rules, and 10 testing requirements. Swedish renderer is not yet implemented.
 
 `docs/SwedishLocalizationReadinessChecklist.md` (Sprint 248) defines the 14
 blocking criteria (B1–B14) that must all be satisfied before `sv` is added to
-`atlas/locale_support.py`. 2 of 14 are currently DONE. `sv` is not enabled.
+`atlas/locale_support.py`. 3 of 14 are currently DONE (B1 guardrail spec,
+B2 readiness checklist, B3 string constants). `sv` is not enabled.
+
+Sprint 249 created `atlas/weekly_review/strings_sv.py` and
+`atlas/snapshot_input/strings_sv.py` — isolated Swedish display string
+constant modules. Neither is imported by active renderers.
 
 ### Future French guardrails (not yet defined)
 

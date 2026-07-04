@@ -85,25 +85,25 @@ activation begins.
 
 ### B3 — Swedish String Constants Module
 
-**Status: OPEN**
+**Status: DONE (Sprint 249)**
 
-`atlas/weekly_review/strings_sv.py` (or equivalent) must exist with:
+`atlas/weekly_review/strings_sv.py` exists with:
 
-- [ ] All 10 section titles in Swedish matching the approved concept mapping
-- [ ] `WEEKLY_REVIEW_TITLE` in Swedish
-- [ ] All label constants in Swedish (`LABEL_EVIDENCE_GAP` → `Underlagslucka`, etc.)
-- [ ] All `INPUT_STATUS_*` message templates in Swedish
-- [ ] `WARNING_ROW` and `WARNING_SCOPE_SUMMARY` in Swedish
-- [ ] `WEEKLY_REVIEW_DISCLAIMER` two-line form in Swedish
-- [ ] All Swedish strings verified against `docs/SwedishSafeLanguageGuardrails.md`
+- [x] All 10 section titles in Swedish matching the approved concept mapping
+- [x] `WEEKLY_REVIEW_TITLE` in Swedish
+- [x] All label constants in Swedish (`LABEL_EVIDENCE_GAP` → `Underlagslucka`, etc.)
+- [x] All `INPUT_STATUS_*` message templates in Swedish
+- [x] `WARNING_ROW` and `WARNING_SCOPE_SUMMARY` in Swedish
+- [x] `WEEKLY_REVIEW_DISCLAIMER` two-line form in Swedish
+- [x] All Swedish strings verified against `docs/SwedishSafeLanguageGuardrails.md`
   safe alternatives table and concept mapping
 
-`atlas/snapshot_input/strings_sv.py` (or equivalent) must exist with:
+`atlas/snapshot_input/strings_sv.py` exists with:
 
-- [ ] All Snapshot CLI headings in Swedish (validation, review, confirm, reject,
+- [x] All Snapshot CLI headings in Swedish (validation, review, confirm, reject,
   export-research-notes, export-company-facts)
-- [ ] Safety boundary text in Swedish (`Säkerhetsgräns`)
-- [ ] Status display strings in Swedish (exportable, blocked, confirmed, etc.)
+- [x] Safety boundary text in Swedish (`Säkerhetsgräns`)
+- [x] Status display strings in Swedish (exportable, blocked, confirmed, etc.)
 
 ---
 
@@ -331,7 +331,7 @@ that Atlas-generated Swedish headings surround unmodified Swedish user content.
 |-----------|--------|-----------------|
 | B1 — Guardrail specification | **DONE** | 247 |
 | B2 — Readiness checklist (this document) | **DONE** | 248 |
-| B3 — Swedish string constants | OPEN | — |
+| B3 — Swedish string constants | **DONE** | 249 |
 | B4 — Swedish renderer integration | OPEN | — |
 | B5 — locale_support.py updated | OPEN | — |
 | B6 — Forbidden-category scan tests | OPEN | — |
@@ -344,7 +344,11 @@ that Atlas-generated Swedish headings surround unmodified Swedish user content.
 | B13 — Unsupported locale regression tests | OPEN | — |
 | B14 — Full suite green with sv enabled | OPEN | — |
 
-**2 of 14 blocking criteria satisfied. sv must not be enabled until all 14 are DONE.**
+**3 of 14 blocking criteria satisfied. sv must not be enabled until all 14 are DONE.**
+
+Swedish string constants exist in `atlas/weekly_review/strings_sv.py` and
+`atlas/snapshot_input/strings_sv.py`. Neither module is imported by active
+renderers. `atlas/locale_support.py` is unchanged. `sv` remains unsupported.
 
 ---
 
