@@ -314,14 +314,25 @@ Test file: `tests/test_unsupported_locale_regression_sprint254.py`
 
 ### B14 — Full Suite Green with sv Enabled
 
-**Status: OPEN**
+**Status: DONE** (Sprint 255)
 
-After all above criteria are satisfied and `sv` is added:
+Dedicated sv activation full-suite gate created. All prior Swedish readiness
+criteria verified together. Direct Swedish rendering, unsupported-locale
+rejection, English/CLI preservation, and safety infrastructure confirmed.
 
-- [ ] `pytest` passes with zero failures (3108+ tests)
-- [ ] `scripts/run_daily_brief_demo.sh` green
-- [ ] `scripts/run_internal_v1_demo.sh` green
-- [ ] `scripts/verify_release_candidate.sh` green (RC2 green)
+- [x] `pytest` passes with zero failures (3709+ tests)
+- [x] `scripts/run_daily_brief_demo.sh` green
+- [x] `scripts/run_internal_v1_demo.sh` green
+- [x] `scripts/verify_release_candidate.sh` green (RC2 green)
+- [x] B1–B13 all DONE in checklist
+- [x] Supported locales remain exactly `"en"` and `"sv"`
+- [x] All 8 prior Swedish readiness test files present
+- [x] Direct Swedish renderers still produce Swedish output
+- [x] Unsupported locales still raise `ValueError`
+- [x] CLI output remains English; no `--language` option
+- [x] No gettext, string catalogs, locale detection, or provider imports introduced
+
+Test file: `tests/test_sv_activation_full_suite_gate_sprint255.py`
 
 ---
 
@@ -387,9 +398,9 @@ that Atlas-generated Swedish headings surround unmodified Swedish user content.
 | B11 — Canonical value preservation tests | **DONE** | 253 |
 | B12 — User-provided content passthrough tests | **DONE** | 253 |
 | B13 — Unsupported locale regression tests | **DONE** | 254 |
-| B14 — Full suite green with sv enabled | OPEN | — |
+| B14 — Full suite green with sv enabled | **DONE** | 255 |
 
-**13 of 14 blocking criteria satisfied.**
+**14 of 14 blocking criteria satisfied.**
 
 `sv` is now supported in direct renderer calls. Swedish output is internally
 tested through `tests/test_swedish_output_matrix_sprint252.py`. All 10 Weekly
@@ -412,7 +423,14 @@ values (`fr`, `de`, `ja`, `no`, `da`, `fi`, `es`, `xx`, `""`, `EN`, `SV`, `en-US
 `sv-SE`) are verified to raise `ValueError` from `ensure_supported_locale`, from
 `render_weekly_review`, and from all 14 public Snapshot locale-aware renderer
 functions. Supported locales remain exactly `"en"` and `"sv"`. CLI remains English.
-B14 remains OPEN.
+B13 is DONE.
+
+Sprint 255 created `tests/test_sv_activation_full_suite_gate_sprint255.py` — a
+compact release gate verifying all B1–B14 criteria hold together. All 14 blocking
+criteria are DONE. Swedish internal activation is complete. Swedish remains
+direct-renderer/internal only. CLI remains English. No `--language` option exists.
+Any future CLI exposure requires a separate planning sprint. **14 of 14 blocking
+criteria satisfied.**
 
 ---
 

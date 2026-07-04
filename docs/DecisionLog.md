@@ -2,6 +2,27 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 255 — Create Dedicated sv Activation Full-Suite Gate
+
+Decision: Create `tests/test_sv_activation_full_suite_gate_sprint255.py` — a compact release gate that verifies all 14 Swedish readiness criteria hold together. The file is not a duplicate of prior sprint tests; it checks that the activation artifacts exist and that essential safety invariants still hold as a combined gate. Marks B14 DONE. 14 of 14 blocking criteria satisfied.
+
+**Rationale:** After B1–B13 are individually satisfied by eight dedicated test files, a combined gate is needed to ensure no criterion has regressed and that the activation state is coherent as a whole. A single gate file is the right shape — compact, dependency-declaring (prior test files must exist), and unambiguous about the final activation status.
+
+**Swedish activation state at Sprint 255:**
+- Swedish is active in direct renderer calls (`render_weekly_review(..., locale="sv")`, all Snapshot renderer functions with `locale="sv"`)
+- Swedish is internal only — CLI output remains English
+- No `--language` CLI option exists
+- Supported locales: `"en"` and `"sv"` only
+- Any future CLI language option requires a separate planning sprint
+
+**Readiness checklist:** B14 marked DONE. All 14 of 14 blocking criteria satisfied. Swedish internal activation is complete.
+
+**Sprint 256 recommendation:** Plan CLI language option without implementation. Now that all Swedish internal activation criteria are complete, the next step should be planning the user-facing `--language` option and its safety boundaries — documenting the design, migration path, locale forwarding, and error handling — before any implementation begins.
+
+**Result:** Gate test file added. No runtime behavior changed. No production code changes. CLI output unchanged.
+
+---
+
 ## 2026-07-04: Sprint 254 — Add Unsupported-Locale Regression Matrix
 
 Decision: Create `tests/test_unsupported_locale_regression_sprint254.py` — a systematic regression matrix covering the full locale-aware renderer surface after `sv` activation. Tests that 13 unsupported locale values (`fr`, `de`, `ja`, `no`, `da`, `fi`, `es`, `xx`, `""`, `EN`, `SV`, `en-US`, `sv-SE`) raise `ValueError` from `ensure_supported_locale`, `render_weekly_review`, and all 14 public Snapshot locale-aware renderer functions. Supported locales verified to remain exactly `"en"` and `"sv"`. Error message quality verified: unsupported locale named, supported locales listed.

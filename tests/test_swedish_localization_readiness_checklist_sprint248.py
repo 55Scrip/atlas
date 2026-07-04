@@ -304,10 +304,11 @@ def test_status_table_b3_present():
     assert any("OPEN" in l or "DONE" in l for l in lines)
 
 
-def test_status_table_b14_open():
+def test_status_table_b14_documented():
+    # Sprint 248: B14 was OPEN; Sprint 255 marked it DONE — either state is valid
     content = CHECKLIST_PATH.read_text(encoding="utf-8")
     lines = [l for l in content.splitlines() if "B14" in l]
-    assert any("OPEN" in l for l in lines)
+    assert any("OPEN" in l or "DONE" in l for l in lines)
 
 
 def test_status_summary_criteria_count_documented():

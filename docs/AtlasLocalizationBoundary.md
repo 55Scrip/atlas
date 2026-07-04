@@ -313,7 +313,16 @@ systematic regression matrix verifying that every unsupported locale raises
 public Snapshot locale-aware renderer functions. 13 unsupported locale values tested:
 `fr`, `de`, `ja`, `no`, `da`, `fi`, `es`, `xx`, `""`, `EN`, `SV`, `en-US`, `sv-SE`.
 Supported locales remain exactly `"en"` and `"sv"`. No production code changes. B13 is
-DONE. B14 remains OPEN.
+DONE.
+
+Sprint 255 created `tests/test_sv_activation_full_suite_gate_sprint255.py` — a compact
+release gate verifying all 14 blocking criteria hold together: B1–B13 all DONE in
+checklist, all 8 prior Swedish test files present, supported locales exactly `"en"` and
+`"sv"`, direct Swedish renderers working, unsupported locales failing, English/CLI
+preserved, no gettext/catalogs/detection/provider imports. Swedish internal activation
+is complete. Swedish remains direct-renderer/internal only — CLI remains English, no
+`--language` option. Any future CLI exposure requires a separate planning sprint. All
+14 of 14 blocking criteria satisfied. B14 is DONE.
 
 ### Future French guardrails (not yet defined)
 
