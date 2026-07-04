@@ -3810,6 +3810,16 @@ Demo passed. Release verification green.
 
 ---
 
+**Sprint 227 (2026-07-04): Add snapshot draft confirmation planning**
+
+**Decision:** Define the formal confirmation workflow for Snapshot Drafts. New document `docs/SnapshotDraftConfirmationWorkflow.md` specifies: 11 confirmation principles, definitions for all five confirmation states, exportability rules, a review checklist, blocking rules, a field correction model (revised-draft approach), future CLI command shapes (`review`, `confirm`, `reject`, `supersede`), export command dependency, audit/traceability expectations, safety boundary, and relationship to Weekly Review.
+
+**Rationale:** Export commands correctly enforce `confirmation_status == confirmed`, but there was no documented workflow for how a draft reaches that state. Before adding more conversion types, the confirmation boundary must be consistently specified so every future export command follows the same upstream user-review rules.
+
+**Outcome:** `docs/SnapshotDraftConfirmationWorkflow.md` created. No runtime behavior changes. No new CLI commands. 57 new documentation and regression tests. 2384 tests passing. Sprint 228 target: Add `atlas snapshot review` command.
+
+---
+
 **Sprint 226 (2026-07-04): Third real portfolio trial with exported research notes**
 
 **Decision:** Run end-to-end validation of the Snapshot conversion loop. Three confirmed `research_notes_snapshot` drafts (ASML, XYL, NOVO) were validated, exported, and consumed by `atlas weekly-review --research-notes DIR`. Sections 8, 9, and 10 were evaluated in both the example bundle and realistic bundle.

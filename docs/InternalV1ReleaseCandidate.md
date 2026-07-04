@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2327 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2384 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -273,6 +273,15 @@ Snapshot Draft schema defined. New `atlas/snapshot_input/` package. `SnapshotTyp
 `to_json`/`from_json`), and file helpers (`load_snapshot_draft`/`save_snapshot_draft`).
 Three example draft files. No OCR, AI, or provider dependency. No Weekly Review
 behavior changed. Internal v1 foundation unchanged.
+
+**Sprint 227 (post-v1 specification — complete):**
+Snapshot Draft confirmation workflow defined. New document
+`docs/SnapshotDraftConfirmationWorkflow.md`. Specifies 11 confirmation principles,
+all five state definitions, exportability rule, review checklist, blocking rules,
+field correction model, future CLI shapes (`review`, `confirm`, `reject`,
+`supersede`), export dependency, audit/traceability expectations, and safety
+boundary. No runtime behavior changed. No new CLI commands. Internal v1 foundation
+unchanged.
 
 **Sprint 226 (post-v1 validation — complete):**
 Third real portfolio trial with exported research notes. Full end-to-end loop

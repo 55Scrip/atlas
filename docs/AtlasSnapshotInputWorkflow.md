@@ -1,8 +1,8 @@
 # Atlas Snapshot / Screenshot Input Workflow
 
-**Sprint:** 226
+**Sprint:** 227
 **Date:** 2026-07-04
-**Status:** Specified and partially implemented — CLI validation, research notes export, and end-to-end trial complete
+**Status:** Specified and partially implemented — CLI validation, research notes export, end-to-end trial, and confirmation workflow defined
 
 ---
 
@@ -612,6 +612,28 @@ atlas snapshot export-research-notes \
 **End-to-end path confirmed:** exported notes.md is immediately readable by
 `atlas weekly-review --research-notes DIR`, surfacing evidence gaps (Section 8),
 open questions and risks (Section 9), and reasons to wait (Section 10).
+
+---
+
+## Confirmation Workflow — DEFINED (Sprint 227)
+
+Sprint 227 defined the standard confirmation workflow for Snapshot Drafts.
+See `docs/SnapshotDraftConfirmationWorkflow.md` for the full specification.
+
+**Key rules:**
+- Only `confirmed` drafts are exportable.
+- Confirmation is explicit, local, and requires no live data, AI, or provider calls.
+- Confirmation does not write Atlas input files — that is the export command's job.
+- Uncertainties and missing fields are preserved through confirmation.
+- Draft corrections create revised drafts; the original is marked superseded.
+
+**Future CLI commands defined (not yet implemented):**
+- `atlas snapshot review` — read-only confirmation checklist
+- `atlas snapshot confirm` — writes a confirmed draft copy
+- `atlas snapshot reject` — writes a rejected draft copy
+- `atlas snapshot supersede` — marks old draft as superseded
+
+Sprint 228 recommendation: **Add `atlas snapshot review` command.**
 
 ---
 

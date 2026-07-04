@@ -621,6 +621,21 @@ Sprint 223 defined the formal Snapshot Draft schema. New package `atlas/snapshot
 
 ---
 
+## Sprint 227 Status — COMPLETE
+
+Sprint 227 defined the standard Snapshot Draft confirmation workflow.
+New document `docs/SnapshotDraftConfirmationWorkflow.md` specifies:
+11 confirmation principles, all five state definitions, the exportability rule
+(only `confirmed` is exportable), a review checklist, blocking rules, a field
+correction model, future CLI command shapes, export command dependency,
+audit/traceability expectations, and safety boundary. No runtime behavior changed.
+No new CLI commands implemented. 57 new tests. 2384 total passing.
+
+**Sprint 228 recommendation:** Add `atlas snapshot review` command — a read-only
+command that renders the full confirmation checklist for a draft.
+
+---
+
 ## Sprint 226 Status — COMPLETE
 
 Sprint 226 ran the third real portfolio trial with exported research notes. Three
