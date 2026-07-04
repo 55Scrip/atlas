@@ -1,6 +1,6 @@
 # Atlas Localization Boundary
 
-**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper) / 247 (Swedish guardrail spec) / 248 (Swedish readiness checklist) / 249 (Swedish string constants) / 250 (Swedish renderer dispatch boundary) / 251 (sv locale activation) / 252 (Swedish output test matrix) / 258 (Phase 2 CLI language planning) / 260 (Swedish CLI usage documentation)
+**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper) / 247 (Swedish guardrail spec) / 248 (Swedish readiness checklist) / 249 (Swedish string constants) / 250 (Swedish renderer dispatch boundary) / 251 (sv locale activation) / 252 (Swedish output test matrix) / 258 (Phase 2 CLI language planning) / 260 (Swedish CLI usage documentation) / 261 (Full CLI Swedish regression matrix)
 **Date:** 2026-07-04
 **Status:** Shared locale boundary in `atlas/locale_support.py` — only "en" supported — no translations implemented
 

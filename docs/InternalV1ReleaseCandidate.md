@@ -442,6 +442,19 @@ and safety boundary. Exit 0 on valid draft, exit 1 on missing file, invalid JSON
 or invalid schema. Does not confirm, reject, or write any file. No provider imports.
 No network calls. No Weekly Review behavior changed. Internal v1 foundation unchanged.
 
+**Sprint 261 (post-v1 improvement — complete):**
+Full CLI Swedish regression matrix added. 80-test release guard covers all seven
+`--language`-aware CLI commands: `weekly-review`, `snapshot validate`, `snapshot
+review`, `snapshot confirm`, `snapshot reject`, `snapshot export-research-notes`,
+`snapshot export-company-facts`. Per-command: help has `--language`; default is
+English; `--language en` matches default; `--language sv` produces correct Swedish
+display markers; unsupported language fails non-zero. Write/export commands: written
+files are byte-for-byte identical across default/en/sv; unsupported language causes
+no file writes. Canonical values and user-provided content verified unchanged.
+Infrastructure: supported locales remain frozenset({"en","sv"}), no gettext, no
+catalogs, no network imports. No production code changed. 4185 passed, 3 skipped.
+All demos green. RC2 green. Internal v1 foundation unchanged.
+
 **Sprint 224 (post-v1 improvement — complete):**
 `atlas snapshot validate <path>` CLI command added. Validates a Snapshot Draft JSON
 file and renders a human-readable summary: type, confidence, confirmation status,

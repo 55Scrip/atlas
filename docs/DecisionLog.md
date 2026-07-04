@@ -2,6 +2,31 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 261 — Add Full CLI Swedish Regression Matrix
+
+Decision: Create `tests/test_full_cli_swedish_regression_matrix_sprint261.py` —
+a compact 80-test release guard covering all seven `--language`-aware CLI
+commands. No production code changed.
+
+**Content:** Help surface (all 7 commands have `--language`); English default
+behavior (default == `--language en`); Swedish opt-in markers per command;
+written-file invariance for all 4 write/export commands (byte-for-byte identical
+across default/en/sv); unsupported-language rejection before file writes;
+canonical value preservation (snapshot_type, confirmation_status, ticker symbols);
+user-provided content passthrough (watchlist reasons, research notes, snapshot
+notes); infrastructure safety (supported locales = frozenset({"en","sv"}), no
+gettext, no catalogs, no runtime detection, no network imports).
+
+**Sprint 262 recommendation:** Extract Weekly Review body message templates into
+constants — the next useful localization hardening step now that the CLI language
+track is complete and guarded by the regression matrix.
+
+**Result:** 1 new test file (80 tests). 3 docs updated. No CLI changes. No
+renderer changes. No schema changes. 4185 passed, 3 skipped. All demos green.
+RC2 green.
+
+---
+
 ## 2026-07-04: Sprint 260 — Add Swedish CLI Usage Documentation
 
 Decision: Create `docs/SwedishCLIUsageGuide.md` — the user-facing guide for
