@@ -1,6 +1,6 @@
 # Atlas Localization Boundary
 
-**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper)
+**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary) / 246 (Shared locale helper) / 247 (Swedish guardrail spec) / 248 (Swedish readiness checklist)
 **Date:** 2026-07-04
 **Status:** Shared locale boundary in `atlas/locale_support.py` — only "en" supported — no translations implemented
 
@@ -260,20 +260,18 @@ output. Prohibited terms span recommendation, price-target, urgency, certainty,
 and execution-language categories. These are enforced today across all CLI
 output, generated JSON, docs, and test fixtures.
 
-### Future Swedish guardrails (not yet defined)
+### Future Swedish guardrails (specification complete — Sprint 247)
 
-Swedish output must not use equivalent prohibited phrases. The specific phrase
-list must be defined and tested before Swedish output is enabled. Examples of
-category coverage (illustrative, not exhaustive):
+`docs/SwedishSafeLanguageGuardrails.md` defines all safety requirements before
+`sv` can be enabled. 7 prohibited categories (recommendation, transaction,
+price-target, urgency, certainty, outperformance, personalized advice), safe
+Swedish alternatives table, concept mapping, style rules, user-provided content
+rules, and 10 testing requirements. Swedish renderer is not yet implemented.
+`sv` is not enabled.
 
-```
-Recommendation: (Swedish equivalents of "strong buy", "sell immediately")
-Price-target:   (Swedish equivalents of "price target", "target price")
-Urgency:        (Swedish equivalents of "act now", "don't miss")
-Certainty:      (Swedish equivalents of "guaranteed", "will outperform")
-```
-
-No Swedish guardrail list is defined in this sprint.
+`docs/SwedishLocalizationReadinessChecklist.md` (Sprint 248) defines the 14
+blocking criteria (B1–B14) that must all be satisfied before `sv` is added to
+`atlas/locale_support.py`. 2 of 14 are currently DONE. `sv` is not enabled.
 
 ### Future French guardrails (not yet defined)
 

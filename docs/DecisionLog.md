@@ -2,6 +2,67 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 248 — Swedish Localization Readiness Checklist
+
+Decision: Create `docs/SwedishLocalizationReadinessChecklist.md` — a documentation-only sprint that defines the exact go/no-go criteria before `"sv"` may be added to `atlas/locale_support.py`. No Swedish renderer implemented. No locale changes.
+
+**Rationale:** Sprint 247 defined what Swedish output must not say (guardrails). Sprint 248 defines what must exist and pass before Swedish output is enabled (readiness). This checklist is the operational complement to the guardrail spec: a structured gate that prevents premature activation.
+
+**Document contents:**
+- Purpose and scope
+- Non-Goals
+- 14 blocking criteria (B1–B14), each with explicit sub-items:
+  - B1: Guardrail specification (DONE, Sprint 247)
+  - B2: This readiness checklist (DONE, Sprint 248)
+  - B3: Swedish string constants modules
+  - B4: Swedish renderer integration
+  - B5: `locale_support.py` updated to accept `"sv"`
+  - B6: Forbidden-category scan tests
+  - B7: Swedish heading output tests
+  - B8: Swedish label output tests
+  - B9: Swedish disclaimer output test
+  - B10: Swedish Snapshot CLI heading tests
+  - B11: Canonical value preservation tests
+  - B12: User-provided content passthrough tests
+  - B13: Unsupported locale regression tests
+  - B14: Full suite green with sv enabled
+- 5 non-blocking criteria (N1–N5) for post-activation polish
+- Current status table (2 of 14 DONE)
+- How to activate `sv` (step-by-step with ordering warning)
+- Recommended implementation order across future sprints
+
+**Sprint 249 recommendation:** Create `atlas/weekly_review/strings_sv.py` with all approved Swedish section titles and labels (B3, first half).
+
+**Result:** 64 new tests. 3172 total passed. No runtime behavior changed. `sv` is not enabled.
+
+---
+
+## 2026-07-04: Sprint 247 — Swedish Safe-Language Guardrail Specification
+
+Decision: Create `docs/SwedishSafeLanguageGuardrails.md` — a documentation-only sprint that defines the safety layer required before Atlas may generate Swedish output. No Swedish renderer is implemented. No `sv` locale is enabled. `atlas/locale_support.py` is unchanged.
+
+**Rationale:** Sprint 246 centralized the locale boundary. Before any non-English locale can be enabled, that locale must have its own safe-language guardrail list — a prerequisite established in `docs/AtlasLocalizationBoundary.md`. This sprint satisfies that prerequisite for Swedish. It does not satisfy it for French (Sprint 248 recommendation).
+
+**Document contents:**
+- Purpose and scope
+- Non-Goals (no translations, no `sv`, no gettext, no `--language`)
+- Core Swedish Output Principle (Swedish and English)
+- 7 prohibited language categories (recommendation, transaction, price-target, urgency, certainty, outperformance, personalized advice) with guardrail-context-only examples
+- Safe Swedish alternatives table (~25 entries including `Kräver mer underlag`, `Bevakningslista`, `Beslut uppskjutet`, `Ingen åtgärd motiverad`, `Skäl att avvakta`, `Underlagslucka`, `Risk att följa`, `Säkerhetsgräns`)
+- Atlas concept mapping (Weekly Review title, 10 section titles, disclaimer, Snapshot CLI headings)
+- Swedish Weekly Review style rules (10 rules)
+- Swedish Snapshot CLI style rules (6 rules)
+- User-provided Swedish content handling
+- Guardrail-sensitive phrase table
+- 10 testing requirements that must pass before `sv` can be enabled
+- Remaining gaps and Sprint 248 recommendation
+
+**Sprint 248 recommendation:** Create French safe-language guardrail specification.
+
+**Result:** 55 new tests. 3108 total passed. No runtime behavior changed. `sv` is not enabled.
+
+---
+
 ## 2026-07-04: Sprint 246 — Create Shared Locale Boundary Helper
 
 Decision: Create `atlas/locale_support.py` with `SUPPORTED_LOCALE_EN = "en"` and `ensure_supported_locale(locale: str) -> None`. Update `atlas/weekly_review/render.py` and `atlas/snapshot_input/render.py` to import and use the shared helper. Remove duplicate local `_SUPPORTED_LOCALE` and `_ensure_locale` definitions from both modules.
