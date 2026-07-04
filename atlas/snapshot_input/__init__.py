@@ -22,6 +22,9 @@ from atlas.snapshot_input.render import (
     collect_snapshot_draft_review_issues,
     render_research_notes_export_blocked,
     render_research_notes_export_success,
+    render_snapshot_confirm_blocked,
+    render_snapshot_confirm_error,
+    render_snapshot_confirm_success,
     render_snapshot_draft_review,
     render_snapshot_draft_review_error,
     render_snapshot_draft_validation,
@@ -31,18 +34,27 @@ from atlas.snapshot_input.export import (
     ResearchNotesExportResult,
     export_research_notes,
 )
+from atlas.snapshot_input.confirm import (
+    SnapshotConfirmResult,
+    confirm_snapshot_draft,
+)
 
 __all__ = [
     "ResearchNotesExportResult",
     "SnapshotConfidence",
     "SnapshotConfirmationStatus",
+    "SnapshotConfirmResult",
     "SnapshotDraft",
     "SnapshotType",
     "collect_snapshot_draft_review_issues",
+    "confirm_snapshot_draft",
     "export_research_notes",
     "load_snapshot_draft",
     "render_research_notes_export_blocked",
     "render_research_notes_export_success",
+    "render_snapshot_confirm_blocked",
+    "render_snapshot_confirm_error",
+    "render_snapshot_confirm_success",
     "render_snapshot_draft_review",
     "render_snapshot_draft_review_error",
     "render_snapshot_draft_validation",

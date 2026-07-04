@@ -303,3 +303,59 @@ def render_snapshot_draft_review_error(error_message: str) -> str:
         f"Error: {error_message}",
     ]
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Confirm renderers
+# ---------------------------------------------------------------------------
+
+def render_snapshot_confirm_success(
+    input_path: object,
+    output_path: object,
+    snapshot_type: str,
+    already_confirmed: bool,
+) -> str:
+    """Render a success summary after writing a confirmed draft copy."""
+    lines = [
+        "Snapshot Draft Confirmation",
+        "",
+        "Status: confirmed",
+    ]
+    if already_confirmed:
+        lines.append(
+            "Note: input draft was already confirmed; a confirmed copy was written."
+        )
+    lines += [
+        f"Input Draft: {input_path}",
+        f"Output Draft: {output_path}",
+        f"Snapshot Type: {snapshot_type}",
+        "Confirmation Status: confirmed",
+        "",
+        "Safety Boundary:",
+        "  - Original draft was not modified.",
+        "  - No Atlas local input files were changed.",
+        "  - Export commands must still be run separately.",
+    ]
+    return "\n".join(lines)
+
+
+def render_snapshot_confirm_blocked(reason: str) -> str:
+    """Render a blocked summary when confirmation cannot proceed."""
+    lines = [
+        "Snapshot Draft Confirmation",
+        "",
+        "Status: blocked",
+        f"Reason: {reason}",
+    ]
+    return "\n".join(lines)
+
+
+def render_snapshot_confirm_error(error_message: str) -> str:
+    """Render an error summary for a failed snapshot confirm load."""
+    lines = [
+        "Snapshot Draft Confirmation",
+        "",
+        "Status: invalid",
+        f"Error: {error_message}",
+    ]
+    return "\n".join(lines)

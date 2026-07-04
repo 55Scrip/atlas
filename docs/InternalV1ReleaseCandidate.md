@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2452 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 2505 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -300,6 +300,17 @@ Draft never mutated. End-to-end path confirmed: exported notes.md immediately
 readable by Weekly Review `--research-notes DIR`. No provider imports. No network
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
+
+**Sprint 229 (post-v1 improvement — complete):**
+`atlas snapshot confirm <path> --output-draft <path>` CLI command added. Loads a
+Snapshot Draft, applies Sprint 227/228 blocking rules, and writes a new confirmed
+draft copy. `draft` and `needs_user_review` states confirm if no blocking issues.
+`confirmed` input writes a confirmed copy with a note. `rejected` and `superseded`
+are hard-blocked. Output path must differ from input path (no in-place confirmation).
+Default: refuse to overwrite existing output; `--overwrite` enables replacement.
+Original draft is never mutated. No Atlas local input files written. No OCR. No AI.
+No provider imports. End-to-end chain confirmed: review → confirm → validate →
+review (Exportable: yes) → export-research-notes. Internal v1 foundation unchanged.
 
 **Sprint 228 (post-v1 improvement — complete):**
 `atlas snapshot review <path>` CLI command added. Read-only confirmation checklist

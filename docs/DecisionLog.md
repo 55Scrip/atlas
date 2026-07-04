@@ -2,6 +2,31 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 229 — Add Snapshot Draft Confirm CLI
+
+Decision: Add `atlas snapshot confirm <draft_path> --output-draft <path>` as a safe, non-mutating confirmation command.
+
+**Rationale:** After adding read-only Snapshot Draft review (Sprint 228), Atlas adds a safe confirmation command that writes a new confirmed draft copy without mutating the original draft or any Atlas local input files. This completes the review-before-export boundary: a draft must be reviewed, then explicitly confirmed, before export commands are used. Confirmation is a deliberate human decision recorded as a file — not an automatic promotion. The original draft is preserved to allow audit and comparison.
+
+**Behavior:**
+- `draft` and `needs_user_review` states confirm if no blocking issues are found
+- `confirmed` input writes a confirmed copy with a note that it was already confirmed
+- `rejected` and `superseded` states are hard-blocked
+- Output path must differ from input path (no in-place confirmation)
+- Default: refuse to overwrite existing output draft; `--overwrite` enables replacement
+- All Sprint 227/228 blocking rules apply: unsupported type, empty fields, missing ticker, unsafe ticker
+
+**Changes:**
+- `atlas/snapshot_input/confirm.py`: new module — `SnapshotConfirmResult`, `confirm_snapshot_draft`
+- `atlas/snapshot_input/render.py`: `render_snapshot_confirm_success`, `render_snapshot_confirm_blocked`, `render_snapshot_confirm_error`
+- `atlas/snapshot_input/__init__.py`: updated exports
+- `atlas/cli/main.py`: `atlas snapshot confirm` command added
+- `tests/test_snapshot_draft_confirm_cli_sprint229.py`: 53 new tests
+
+**Sprint 230 recommendation:** Run fourth real portfolio trial with confirm then export — validate the complete safe workflow: review → confirm copy → validate → export research notes → Weekly Review.
+
+---
+
 ## 2026-07-04: Sprint 220 — Second Realistic Weekly Review Trial
 
 Decision: Run a second realistic Weekly Review trial after Sprints 218 and 219 to validate usability before adding deeper engines.
