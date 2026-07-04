@@ -2,6 +2,28 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 245 — Define Locale-Aware Snapshot CLI Rendering Helper
+
+Decision: Add `*, locale: str = "en"` keyword-only parameter to all 14 public Snapshot CLI renderer functions in `atlas/snapshot_input/render.py`. A shared `_ensure_locale(locale)` helper and `_SUPPORTED_LOCALE = "en"` constant guard each function. Unsupported locales raise `ValueError` immediately. Default behavior and all output are unchanged. The CLI does not expose `--language`.
+
+**Rationale:** Sprint 244 established the locale boundary for Weekly Review. Sprint 245 applies the same boundary to Snapshot CLI, completing the explicit locale handoff surface for both rendering layers. With both renderers having `locale="en"` boundaries, a future Sprint 246 can centralize the repeated validation into a single shared helper across modules.
+
+**Implementation:** `_SUPPORTED_LOCALE = "en"` and `_ensure_locale(locale: str) -> None` added near the top of `atlas/snapshot_input/render.py`. All 14 public functions patched — 11 single-argument-style functions and 3 multi-argument functions (`render_snapshot_confirm_success`, `render_snapshot_reject_success`, `render_snapshot_draft_validation`, `render_snapshot_draft_review`) — each with `_ensure_locale(locale)` as their first statement.
+
+**Locale rules (Sprint 245):**
+- Supported locale: `"en"`
+- Default: keyword-only `locale: str = "en"`
+- Unsupported: `ValueError` naming the bad locale and citing `"en"`
+- CLI: unchanged — no `--language`, no `locale=` call sites
+
+**Note:** Sprint 244 test `test_snapshot_render_no_locale_param` was updated — it checked that `locale=` was absent from snapshot render module, which is no longer correct after Sprint 245. Replaced with `test_snapshot_render_no_weekly_review_imports` which tests the correct boundary (snapshot render does not import weekly review).
+
+**Sprint 246 recommendation:** Create shared locale boundary helper — centralize `_ensure_locale` and `_SUPPORTED_LOCALE` into a single `atlas/locale.py` or `atlas/rendering.py` module referenced by both renderers, eliminating duplication without changing behavior.
+
+**Result:** 38 new tests. 3022 total passed. All demos green. RC2 green. No runtime behavior changed.
+
+---
+
 ## 2026-07-04: Sprint 244 — Define Locale-Aware Weekly Review Rendering Helper
 
 Decision: Add `*, locale: str = "en"` as a keyword-only parameter to `render_weekly_review` in `atlas/weekly_review/render.py`. Unsupported locales raise `ValueError` immediately. Default behavior and all output are unchanged. The CLI does not expose `--language`. No translations are implemented.

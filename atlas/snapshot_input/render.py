@@ -10,6 +10,20 @@ from atlas.snapshot_input.schema import SnapshotConfirmationStatus, SnapshotDraf
 from atlas.snapshot_input import strings as S
 
 # ---------------------------------------------------------------------------
+# Locale boundary
+# ---------------------------------------------------------------------------
+
+_SUPPORTED_LOCALE = "en"
+
+
+def _ensure_locale(locale: str) -> None:
+    if locale != _SUPPORTED_LOCALE:
+        raise ValueError(
+            f"Unsupported locale: {locale!r}. Only 'en' is currently supported."
+        )
+
+
+# ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
@@ -22,12 +36,14 @@ _TICKER_REQUIRED_TYPES = {
 _MAX_SCALAR_DISPLAY = 80
 
 
-def render_snapshot_draft_validation(draft: SnapshotDraft) -> str:
+def render_snapshot_draft_validation(draft: SnapshotDraft, *, locale: str = "en") -> str:
     """Render a human-readable validation summary for a Snapshot Draft.
 
     Output is informational only. This function does not write to any
     Atlas local input file and does not modify the draft.
+    Only locale="en" is currently supported.
     """
+    _ensure_locale(locale)
     lines: list[str] = []
 
     lines.append(S.HEADING_VALIDATION)
@@ -68,8 +84,9 @@ def render_snapshot_draft_validation(draft: SnapshotDraft) -> str:
     return "\n".join(lines)
 
 
-def render_snapshot_draft_validation_error(error_message: str) -> str:
+def render_snapshot_draft_validation_error(error_message: str, *, locale: str = "en") -> str:
     """Render a human-readable error summary for a failed draft validation."""
+    _ensure_locale(locale)
     lines = [
         S.HEADING_VALIDATION,
         "",
@@ -79,8 +96,9 @@ def render_snapshot_draft_validation_error(error_message: str) -> str:
     return "\n".join(lines)
 
 
-def render_research_notes_export_success(ticker: str, output_path: object) -> str:
+def render_research_notes_export_success(ticker: str, output_path: object, *, locale: str = "en") -> str:
     """Render a success summary after writing a research notes file."""
+    _ensure_locale(locale)
     lines = [
         S.HEADING_RESEARCH_NOTES_EXPORT,
         "",
@@ -95,8 +113,9 @@ def render_research_notes_export_success(ticker: str, output_path: object) -> st
     return "\n".join(lines)
 
 
-def render_research_notes_export_blocked(reason: str) -> str:
+def render_research_notes_export_blocked(reason: str, *, locale: str = "en") -> str:
     """Render a blocked summary when research notes export cannot proceed."""
+    _ensure_locale(locale)
     lines = [
         S.HEADING_RESEARCH_NOTES_EXPORT,
         "",
@@ -182,12 +201,14 @@ def collect_snapshot_draft_review_issues(draft: SnapshotDraft) -> tuple[str, ...
     return tuple(issues)
 
 
-def render_snapshot_draft_review(draft: SnapshotDraft) -> str:
+def render_snapshot_draft_review(draft: SnapshotDraft, *, locale: str = "en") -> str:
     """Render a read-only confirmation checklist for a Snapshot Draft.
 
     This function is informational only. It does not confirm, reject, or
     modify the draft. It does not write to any file.
+    Only locale="en" is currently supported.
     """
+    _ensure_locale(locale)
     lines: list[str] = []
 
     # Header
@@ -295,8 +316,9 @@ def render_snapshot_draft_review(draft: SnapshotDraft) -> str:
     return "\n".join(lines)
 
 
-def render_snapshot_draft_review_error(error_message: str) -> str:
+def render_snapshot_draft_review_error(error_message: str, *, locale: str = "en") -> str:
     """Render an error summary for a failed snapshot review load."""
+    _ensure_locale(locale)
     lines = [
         S.HEADING_REVIEW,
         "",
@@ -315,8 +337,11 @@ def render_snapshot_confirm_success(
     output_path: object,
     snapshot_type: str,
     already_confirmed: bool,
+    *,
+    locale: str = "en",
 ) -> str:
     """Render a success summary after writing a confirmed draft copy."""
+    _ensure_locale(locale)
     lines = [
         S.HEADING_CONFIRMATION,
         "",
@@ -338,8 +363,9 @@ def render_snapshot_confirm_success(
     return "\n".join(lines)
 
 
-def render_snapshot_confirm_blocked(reason: str) -> str:
+def render_snapshot_confirm_blocked(reason: str, *, locale: str = "en") -> str:
     """Render a blocked summary when confirmation cannot proceed."""
+    _ensure_locale(locale)
     lines = [
         S.HEADING_CONFIRMATION,
         "",
@@ -349,8 +375,9 @@ def render_snapshot_confirm_blocked(reason: str) -> str:
     return "\n".join(lines)
 
 
-def render_snapshot_confirm_error(error_message: str) -> str:
+def render_snapshot_confirm_error(error_message: str, *, locale: str = "en") -> str:
     """Render an error summary for a failed snapshot confirm load."""
+    _ensure_locale(locale)
     lines = [
         S.HEADING_CONFIRMATION,
         "",
@@ -370,8 +397,11 @@ def render_snapshot_reject_success(
     snapshot_type: str,
     already_rejected: bool,
     was_confirmed: bool,
+    *,
+    locale: str = "en",
 ) -> str:
     """Render a success summary after writing a rejected draft copy."""
+    _ensure_locale(locale)
     lines = [
         S.HEADING_REJECTION,
         "",
@@ -395,8 +425,9 @@ def render_snapshot_reject_success(
     return "\n".join(lines)
 
 
-def render_snapshot_reject_blocked(reason: str) -> str:
+def render_snapshot_reject_blocked(reason: str, *, locale: str = "en") -> str:
     """Render a blocked summary when rejection cannot proceed."""
+    _ensure_locale(locale)
     lines = [
         S.HEADING_REJECTION,
         "",
@@ -406,8 +437,9 @@ def render_snapshot_reject_blocked(reason: str) -> str:
     return "\n".join(lines)
 
 
-def render_snapshot_reject_error(error_message: str) -> str:
+def render_snapshot_reject_error(error_message: str, *, locale: str = "en") -> str:
     """Render an error summary for a failed snapshot reject load."""
+    _ensure_locale(locale)
     lines = [
         S.HEADING_REJECTION,
         "",
@@ -421,8 +453,9 @@ def render_snapshot_reject_error(error_message: str) -> str:
 # Company facts export renderers
 # ---------------------------------------------------------------------------
 
-def render_company_facts_export_success(ticker: str, output_path: object) -> str:
+def render_company_facts_export_success(ticker: str, output_path: object, *, locale: str = "en") -> str:
     """Render a success summary after writing a company facts JSON file."""
+    _ensure_locale(locale)
     lines = [
         S.HEADING_COMPANY_FACTS_EXPORT,
         "",
@@ -437,8 +470,9 @@ def render_company_facts_export_success(ticker: str, output_path: object) -> str
     return "\n".join(lines)
 
 
-def render_company_facts_export_blocked(reason: str) -> str:
+def render_company_facts_export_blocked(reason: str, *, locale: str = "en") -> str:
     """Render a blocked summary when company facts export cannot proceed."""
+    _ensure_locale(locale)
     lines = [
         S.HEADING_COMPANY_FACTS_EXPORT,
         "",

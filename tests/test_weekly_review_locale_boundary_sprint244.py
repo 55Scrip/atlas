@@ -270,9 +270,9 @@ def test_snapshot_strings_module_unaffected():
     assert Path("atlas/snapshot_input/strings.py").exists()
 
 
-def test_snapshot_render_no_locale_param():
+def test_snapshot_render_no_weekly_review_imports():
     source = Path("atlas/snapshot_input/render.py").read_text(encoding="utf-8")
-    assert "locale=" not in source
+    assert "from atlas.weekly_review" not in source
 
 
 def test_snapshot_heading_constants_unchanged():

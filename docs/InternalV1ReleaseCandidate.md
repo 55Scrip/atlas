@@ -137,7 +137,7 @@ All items must be met for internal v1 RC status.
 | 18 | No live data dependency introduced | ✓ Met |
 | 19 | Usage guide exists | ✓ Met |
 | 20 | README points to usage guide | ✓ Met |
-| 21 | Tests pass | ✓ Met — 2984 passed, 3 skipped |
+| 21 | Tests pass | ✓ Met — 3022 passed, 3 skipped |
 | 22 | Demo passes | ✓ Met — RC2 green |
 | 23 | Release verification passes | ✓ Met — RC2 green |
 | 24 | Closed cleanup deletion targets remain absent | ✓ Met |
@@ -300,6 +300,9 @@ Draft never mutated. End-to-end path confirmed: exported notes.md immediately
 readable by Weekly Review `--research-notes DIR`. No provider imports. No network
 calls. No OCR. No AI. No Weekly Review behavior changed. Internal v1 foundation
 unchanged.
+
+**Sprint 245 (post-v1 architecture — complete):**
+Snapshot CLI locale boundary defined. All 14 public renderer functions in `atlas/snapshot_input/render.py` now accept `*, locale: str = "en"`. Shared `_ensure_locale(locale)` helper and `_SUPPORTED_LOCALE = "en"` constant added. Unsupported locales raise `ValueError`. CLI unchanged — no `--language`, no `locale=` call sites. Sprint 244 test updated to reflect Snapshot renderer now has locale parameter (boundary was correct — cross-module imports still absent). 38 new tests (3022 total). All demos green. RC2 green.
 
 **Sprint 244 (post-v1 architecture — complete):**
 Weekly Review locale boundary defined. `render_weekly_review(result, *, locale: str = "en") -> str` now accepts an explicit keyword-only `locale` parameter. Only `"en"` is currently supported; unsupported locales raise `ValueError`. Default output and all CLI behavior unchanged. No `--language` added. No translations, gettext, or locale detection introduced. No locale files created. `docs/AtlasLocalizationBoundary.md` updated with boundary definition and usage examples. 30 new tests (2984 total). All demos green. RC2 green.

@@ -1,8 +1,8 @@
 # Atlas Localization Boundary
 
-**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary)
+**Sprint:** 236 (specification) / 244 (Weekly Review locale boundary) / 245 (Snapshot CLI locale boundary)
 **Date:** 2026-07-04
-**Status:** Weekly Review locale boundary defined — only "en" supported — no translations implemented
+**Status:** Both renderers have locale boundaries — only "en" supported — no translations implemented
 
 ---
 
@@ -330,6 +330,21 @@ Snapshot Draft schema is canonical English. It does not change with locale.
 | CLI output of `snapshot confirm` | Yes (future) |
 | CLI output of `snapshot reject` | Yes (future) |
 | CLI output of `snapshot export-*` | Yes (future) |
+
+**Sprint 245 — Locale Boundary Defined:**
+
+All 14 public Snapshot CLI renderer functions now accept `*, locale: str = "en"`.
+A shared `_ensure_locale(locale)` helper raises `ValueError` for unsupported locales.
+Only `"en"` is currently supported. The CLI does not pass `locale=`; it always uses the default.
+
+```python
+# Supported:
+render_snapshot_draft_review(draft)               # default en
+render_snapshot_draft_review(draft, locale="en")  # explicit en
+
+# Not yet supported:
+render_snapshot_draft_review(draft, locale="sv")  # raises ValueError
+```
 
 ---
 
