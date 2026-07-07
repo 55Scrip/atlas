@@ -612,6 +612,24 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 284 (post-v1 architecture — complete):**
+Risk Review V1 defined in `docs/RiskReviewV1.md`. Makes Stage 7 of the Investment
+Review Pipeline concrete. Ten canonical risk categories (Business, Financial,
+Competitive, Management, Industry, Regulatory, Macro, Valuation, Portfolio Construction,
+Behavioural) — each with purpose, examples, common evidence sources, and common
+assumption dependencies. Canonical risk object with eleven descriptive fields; no
+numeric scoring; no probability field. Deterministic nine-step flow: Evidence → Evidence
+Quality → Assumptions → Risk Identification → Risk Classification → Evidence Links →
+Open Questions → Monitoring Triggers → Risk Register → Value Scenario. Monitoring
+philosophy defined: observational, not predictive; monitoring triggers identify what
+events to watch and which assumptions they test; Atlas does not forecast. Five worked
+examples: business execution, valuation, customer concentration, management succession,
+portfolio concentration. Eight canonical principles including: every material risk links
+to assumptions; missing evidence may itself represent risk; monitoring supports revision
+not prediction. Future extension table for AI, SEC filings, earnings transcripts, broker
+imports, market data, OCR, and collaboration. No runtime behavior changed. No CLI.
+No action recommendations. No forecasts. No execution advice.
+
 **Sprint 283 (post-v1 architecture — complete):**
 Assumption Review V1 defined in `docs/AssumptionReviewV1.md`. Makes Stage 6 of the
 Investment Review Pipeline concrete. Ten assumption categories with purpose, examples,

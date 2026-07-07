@@ -2,6 +2,35 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-08: Sprint 284 — Define Risk Review V1
+
+Decision: Define the canonical Risk Review architecture for Atlas as a product document.
+
+**New document:** `docs/RiskReviewV1.md` — defines how Atlas identifies, classifies, traces,
+and monitors risks before any Value Scenario Review or Weekly Review is produced. Makes
+Stage 7 of the Investment Review Pipeline concrete.
+
+**Rationale:** After Assumption Review (Stage 6) surfaces unsupported, conflicting, and
+partially supported assumptions, Atlas needs a structured process for converting those
+assumption failures into a risk register. Risk Review bridges assumption analysis and
+Value Scenario Review without introducing scoring, probability estimates, or
+recommendations.
+
+**Outcome:** `docs/RiskReviewV1.md` created. Defines ten canonical risk categories
+(Business, Financial, Competitive, Management, Industry, Regulatory, Macro, Valuation,
+Portfolio Construction, Behavioural) each with purpose, examples, common evidence sources,
+and common assumption dependencies. Canonical risk object with eleven descriptive fields —
+no numeric scoring, no probability field. Deterministic nine-step flow from evidence through
+risk register to Value Scenario. Monitoring philosophy: observational, not predictive —
+monitoring triggers identify what to watch, not what will happen. Five worked examples
+covering business execution, valuation, customer concentration, management succession, and
+portfolio concentration. Eight canonical principles including: every material risk links to
+assumptions; missing evidence may itself represent risk; monitoring supports revision not
+prediction. Future extension table for AI, SEC filings, earnings transcripts, broker
+imports, market data, OCR, and collaboration. No runtime behavior changed. No CLI.
+
+---
+
 ## 2026-07-08: Sprint 283 — Define Assumption Review V1
 
 Decision: Define the canonical Assumption Review architecture for Atlas as a product document.
