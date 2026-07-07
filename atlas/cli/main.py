@@ -133,6 +133,7 @@ research_app = typer.Typer(help="Research export commands")
 risk_drift_app = typer.Typer(help="Risk drift review commands")
 snapshot_app = typer.Typer(help="Snapshot Draft commands (validation and safe local export).")
 suitability_app = typer.Typer(help="Investor suitability context commands")
+temporary_workspace_app = typer.Typer(help="Temporary workspace commands")
 theme_app = typer.Typer(help="Theme intelligence commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
 app.add_typer(company_analysis_app, name="company-analysis")
@@ -152,6 +153,7 @@ app.add_typer(research_app, name="research")
 app.add_typer(risk_drift_app, name="risk-drift")
 app.add_typer(snapshot_app, name="snapshot")
 app.add_typer(suitability_app, name="suitability")
+app.add_typer(temporary_workspace_app, name="temporary-workspace")
 app.add_typer(theme_app, name="theme")
 app.add_typer(watchlist_app, name="watchlist")
 console = Console()
@@ -499,6 +501,61 @@ def snapshot_validate_command(
         raise typer.Exit(code=1)
 
     console.print(render_snapshot_draft_validation(draft, locale=language))
+
+
+@temporary_workspace_app.command("validate")
+def temporary_workspace_validate_command(
+    workspace_path: Path = typer.Argument(
+        ...,
+        help="Path to a Temporary Workspace JSON file to validate.",
+    ),
+):
+    """Validate a Temporary Workspace JSON file and display a summary.
+
+    Loads the workspace, validates its schema, and prints a human-readable
+    summary including workspace ID, status, card count, detected entity count,
+    uncertainty count, and missing field count.
+
+    This command is read-only. It does not write to any file and does not
+    modify the workspace file.
+
+    No live data. No recommendations. No provider dependency.
+    """
+    from atlas.temporary_workspace import TemporaryWorkspace
+
+    if workspace_path.is_dir():
+        console.print(
+            "[red]Temporary workspace validation failed:[/red] expected a JSON file path, got a directory."
+        )
+        raise typer.Exit(code=1)
+
+    if not workspace_path.exists():
+        console.print(
+            "[red]Temporary workspace validation failed:[/red] file not found."
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        text = workspace_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        console.print(
+            f"[red]Temporary workspace validation failed:[/red] could not read file: {exc}"
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        workspace = TemporaryWorkspace.from_json(text)
+    except ValueError as exc:
+        console.print(f"[red]Temporary workspace validation failed:[/red] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("Temporary workspace is valid.")
+    console.print(f"Workspace ID: {workspace.workspace_id}")
+    console.print(f"Status: {workspace.status.value}")
+    console.print(f"Cards: {len(workspace.cards)}")
+    console.print(f"Detected entities: {len(workspace.detected_entities)}")
+    console.print(f"Uncertainties: {len(workspace.uncertainties)}")
+    console.print(f"Missing fields: {len(workspace.missing_fields)}")
 
 
 @snapshot_app.command("review")

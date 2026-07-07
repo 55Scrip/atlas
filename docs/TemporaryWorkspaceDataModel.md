@@ -829,6 +829,40 @@ persistence, accounts, and CLI behavior remain future work.
 
 ---
 
+## CLI Validation Command
+
+**Sprint 273: Add Temporary Workspace Read-Only Validation CLI**
+
+`atlas temporary-workspace validate <path>` reads a JSON file, parses it as a
+`TemporaryWorkspace`, validates the schema using existing dataclasses, and prints
+a human-readable summary.
+
+**Success output format:**
+
+```
+Temporary workspace is valid.
+Workspace ID: <workspace_id>
+Status: <status>
+Cards: <count>
+Detected entities: <count>
+Uncertainties: <count>
+Missing fields: <count>
+```
+
+**Exit codes:**
+
+- 0: workspace is valid
+- 1: file not found, directory path, unreadable file, invalid JSON, or schema
+  validation failure
+
+**Constraints:**
+
+- Read-only. The command never writes to any file.
+- No `--language` option. Validation output is technical, not locale-specific.
+- No provider imports. No network calls. No AI. No live data.
+
+---
+
 ## Recommended Next Sprint
 
 **Sprint 271: Add temporary workspace schema examples**

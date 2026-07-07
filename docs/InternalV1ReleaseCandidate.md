@@ -612,6 +612,17 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 273 (post-v1 improvement — complete):**
+`atlas temporary-workspace validate <path>` CLI command added. Validates a
+Temporary Workspace JSON file and renders a human-readable summary: workspace
+ID, status, card count, detected entity count, uncertainty count, and missing
+field count. Exit 0 on valid, exit 1 on invalid JSON, invalid schema, missing
+file, or directory path. No file writing. No mutation. No `--language` option.
+CLI extended with `temporary_workspace_app` Typer sub-group registered as
+`temporary-workspace`. All three example fixtures validate cleanly. 80 new tests.
+No provider imports. No network calls. No Weekly Review behavior changed.
+Internal v1 foundation unchanged.
+
 **Sprint 261 (post-v1 improvement — complete):**
 Full CLI Swedish regression matrix added. 80-test release guard covers all seven
 `--language`-aware CLI commands: `weekly-review`, `snapshot validate`, `snapshot

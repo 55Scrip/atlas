@@ -2,6 +2,37 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-07: Sprint 273 — Add Temporary Workspace Read-Only Validation CLI
+
+Decision: Add `atlas temporary-workspace validate <path>` CLI command.
+
+**Design:** Follows the `atlas snapshot validate` pattern exactly. A
+`temporary_workspace_app = typer.Typer(...)` sub-app is registered with
+`app.add_typer(temporary_workspace_app, name="temporary-workspace")`. The
+`@temporary_workspace_app.command("validate")` function reads the JSON file,
+parses it via `TemporaryWorkspace.from_json()`, and prints a summary or error.
+
+**Read-only guarantee:** The command never writes to any file. No file is
+created, modified, or deleted. This is the same guarantee as `snapshot validate`.
+
+**No `--language` option:** Validation output is technical (workspace ID, counts,
+error messages). It does not require locale-specific language.
+
+**Error cases:** Missing file (exit 1), directory path (exit 1), unreadable file
+(exit 1), invalid JSON (exit 1), schema validation failure (exit 1). All errors
+print a clear message beginning with "Temporary workspace validation failed:".
+
+**Rationale:** A read-only validation command lets users and tooling verify that
+a workspace JSON file is structurally correct before using it. It provides a
+stable, inspectable CLI surface for integration and debugging.
+
+**Outcome:** `atlas/cli/main.py` extended with `temporary_workspace_app` and
+`temporary_workspace_validate_command`. `docs/TemporaryWorkspaceDataModel.md`
+updated with CLI validation section. 80 new tests. All three example fixtures
+validate cleanly. Full test suite green.
+
+---
+
 ## 2026-07-07: Sprint 272 — Add Atlas Product Positioning v1
 
 Decision: Define Atlas's product positioning in

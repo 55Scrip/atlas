@@ -376,9 +376,11 @@ def test_schema_code_does_not_write_files_or_add_persistence_helpers() -> None:
     assert not any(token in source for token in forbidden)
 
 
-def test_no_cli_behavior_changed_for_temporary_workspace() -> None:
+def test_cli_temporary_workspace_validate_command_present() -> None:
+    # Sprint 273 added the temporary-workspace validate command.
     cli_source = CLI_FILE.read_text(encoding="utf-8")
-    assert "temporary_workspace" not in cli_source
+    assert "temporary_workspace_app" in cli_source
+    assert '@temporary_workspace_app.command("validate")' in cli_source
 
 
 def test_no_provider_network_or_ai_imports_added_to_schema() -> None:
