@@ -2,6 +2,29 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-08: Sprint 283 — Define Assumption Review V1
+
+Decision: Define the canonical Assumption Review architecture for Atlas as a product document.
+
+**New document:** `docs/AssumptionReviewV1.md` — defines how Atlas identifies, documents,
+links, challenges, and revises assumptions before any risk review or value scenario is
+produced. Ten assumption categories (Business, Financial, Competitive, Management,
+Industry, Macro, Valuation, Portfolio, Behavioural, User) each with purpose, examples,
+evidence required, and common failure modes. Explicit vs implicit distinction with
+concrete examples. Deterministic seven-step review flow. Structured challenge questions
+(evidence, invalidation, review trigger, dependency). Assumption states: evidence-
+supported, partially supported, unsupported, contradicted, obsolete. Five examples
+(well-supported, unsupported, conflicting, revised, obsolete). Downstream relationships
+to Risk Review, Value Scenario, Weekly Review, Decision Journal. Eight canonical
+principles. Future extension points table.
+
+**Key principle:** A hidden assumption is an unexamined risk. Challenge is not
+pessimism — challenged assumptions strengthen decisions.
+
+**No runtime behavior changed.** No CLI. No AI. No calculations. No new Python modules.
+
+---
+
 ## 2026-07-08: Sprint 282 — Define Evidence Quality Review V1
 
 Decision: Define the canonical Evidence Quality Review architecture for Atlas as a product document.

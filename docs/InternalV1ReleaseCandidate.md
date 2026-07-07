@@ -612,6 +612,21 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 283 (post-v1 architecture — complete):**
+Assumption Review V1 defined in `docs/AssumptionReviewV1.md`. Makes Stage 6 of the
+Investment Review Pipeline concrete. Ten assumption categories with purpose, examples,
+evidence required, and common failure modes. Explicit vs implicit distinction defined
+with concrete examples; Atlas surfaces implicit assumptions without resolving them.
+Deterministic seven-step flow: Extract Assumptions → Link Evidence → Identify
+Unsupported → Identify Conflicting → Surface Open Questions → Revision Candidates →
+Risk Review. Structured challenge questions across four dimensions (evidence,
+invalidation, review trigger, dependency). Five assumption states: evidence-supported,
+partially supported, unsupported, contradicted, obsolete — all visible. Five worked
+examples. Eight canonical principles including: assumptions are not facts; challenged
+assumptions strengthen decisions; a hidden assumption is an unexamined risk. Future
+extension table for AI, SEC filings, earnings transcripts, broker imports, market data,
+OCR, and collaboration. No runtime behavior changed. No CLI. 135 new tests.
+
 **Sprint 282 (post-v1 architecture — complete):**
 Evidence Quality Review V1 defined in `docs/EvidenceQualityReviewV1.md`. Makes Stage 5
 of the Investment Review Pipeline concrete. Eight quality dimensions (Freshness, Source
