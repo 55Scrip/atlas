@@ -593,10 +593,13 @@ class TestFutureImplementationPhases:
 
 
 class TestNoRuntimeBehaviorChanges:
-    def test_no_valuation_code_added(self):
+    def test_no_valuation_calculation_code_added(self):
+        # Sprint 274 added only documentation. Sprint 276 added schema dataclasses.
+        # Guard against calculation/forecast code, not the schema package itself.
         for src_file in Path("atlas").rglob("*.py"):
             content = src_file.read_text(encoding="utf-8")
-            assert "value_scenario" not in content, f"unexpected value_scenario in {src_file}"
+            assert "scenario_range_calc" not in content, f"unexpected calc code in {src_file}"
+            assert "valuation_model" not in content, f"unexpected valuation_model in {src_file}"
 
     def test_no_ai_or_network_imports_in_cli_added_by_sprint_274(self):
         # atlas.providers pre-exists in the CLI; this test guards against Sprint 274

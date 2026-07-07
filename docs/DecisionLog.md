@@ -2,6 +2,48 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-07: Sprint 276 — Add Value Scenario Schema Dataclasses
+
+Decision: Implement Python schema dataclasses for the Value Scenario data model.
+
+**Pattern:** Follows Sprint 270 (Temporary Workspace schema dataclasses) exactly.
+Uses `str(Enum)` mixin, `_coerce_enum`, `_require_non_empty`, `_list_of_strings`,
+`_objects` helpers. All dataclasses have `__post_init__` validation,
+`to_dict()`, `from_dict()`, `to_json()`, `from_json()`.
+
+**Single-point range rejection:** `ScenarioRange` raises `ValueError` if
+`lower_percent >= upper_percent`. This enforces that Atlas does not accept
+single-point forecast outputs.
+
+**Safety boundary enforcement:** `ScenarioSafetyBoundary` raises `ValueError`
+if any of its eight boolean fields is set to `False`. The boundary is always on.
+
+**Structural validation:** `ValueScenarioReview` with `review_type = "holding"`
+requires at least one `HoldingScenario`. With `review_type = "portfolio"`,
+it requires a `PortfolioScenario`. `review_type = "mixed"` has no structural
+requirement.
+
+**Dataclasses implemented:** `ScenarioSubject`, `ScenarioRange`,
+`ScenarioAssumption`, `ScenarioEvidenceItem`, `ScenarioChangeTrigger`,
+`ScenarioRevision`, `PortfolioContribution`, `HoldingScenario`,
+`PortfolioScenario`, `ScenarioSafetyBoundary`, `ValueScenarioReview`.
+
+**Enums implemented:** `ScenarioReviewType` (3), `ScenarioSubjectType` (3),
+`ScenarioTimeHorizon` (3), `ScenarioCaseType` (6), `ScenarioEvidenceQuality`
+(6), `ScenarioConfidence` (4), `ScenarioAssumptionType` (12), `ScenarioDirection`
+(5), `ScenarioEvidenceType` (8), `ScenarioFreshness` (4),
+`ScenarioChangeTriggerType` (15), `ScenarioExpectedEffect` (7),
+`ScenarioRangeImpactLevel` (4).
+
+**What is not implemented:** No valuation calculations, forecasts, scoring,
+probability weighting, market data, live prices, news, external APIs, AI/LLM
+calls, CLI commands, UI, persistence, or broker integrations.
+
+**Outcome:** `atlas/value_scenario/schema.py`, `atlas/value_scenario/__init__.py`
+created. 153 new tests. No existing CLI behavior changed. Full test suite green.
+
+---
+
 ## 2026-07-07: Sprint 275 — Define Value Scenario Data Model
 
 Decision: Define the data model for Atlas Value Scenario Reviews.

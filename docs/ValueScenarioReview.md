@@ -1,9 +1,10 @@
 # Value Scenario Review
 
 **Created:** 2026-07-07 (Sprint 274)
-**Status:** DEFINED — product specification complete. Data model specified in Sprint 275.
+**Status:** DEFINED — product specification complete. Data model specified in Sprint 275. Schema dataclasses implemented in Sprint 276.
 **Depends on:** [docs/AtlasProductPositioningV1.md](AtlasProductPositioningV1.md)
 **Data model:** [docs/ValueScenarioDataModel.md](ValueScenarioDataModel.md) (Sprint 275)
+**Schema implementation:** `atlas/value_scenario/schema.py` (Sprint 276)
 
 ---
 

@@ -612,6 +612,21 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 276 (post-v1 improvement — complete):**
+Value Scenario schema dataclasses implemented in `atlas/value_scenario/schema.py`
+and `atlas/value_scenario/__init__.py`. 11 dataclasses: `ScenarioSubject`,
+`ScenarioRange`, `ScenarioAssumption`, `ScenarioEvidenceItem`,
+`ScenarioChangeTrigger`, `ScenarioRevision`, `PortfolioContribution`,
+`HoldingScenario`, `PortfolioScenario`, `ScenarioSafetyBoundary`,
+`ValueScenarioReview`. 13 canonical enums. Full validation: single-point ranges
+rejected (lower_percent must be strictly less than upper_percent); safety
+boundary false flags rejected; structural review-type consistency enforced;
+invalid enum values raise ValueError with field name; empty required IDs raise
+ValueError with field name. Round-trip JSON serialization. User-provided
+descriptions, notes, and reasons preserved. No calculations, no forecasts, no
+market data, no CLI commands, no UI, no persistence, no external APIs, no AI.
+153 new tests. Full suite green. All demos green. RC green.
+
 **Sprint 275 (post-v1 improvement — complete):**
 Value Scenario Data Model specified in `docs/ValueScenarioDataModel.md`.
 Defines all objects, fields, canonical values, relationships, and validation
