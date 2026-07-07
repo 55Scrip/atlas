@@ -2,6 +2,60 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-07: Sprint 275 — Define Value Scenario Data Model
+
+Decision: Define the data model for Atlas Value Scenario Reviews.
+
+**Principle:** The model represents scenario-based ranges, not predictions.
+Every range must be connected to assumptions, evidence quality, uncertainty, and
+change triggers. Confidence describes confidence in the scenario structure, not
+certainty about future returns. Revisions must explain what changed and why.
+Portfolio scenarios preserve holding-level uncertainty. Canonical values remain
+English. The safety boundary is always enforced.
+
+**What is defined:**
+
+- Top-level `ValueScenarioReview` object with `scenario_review_id`,
+  `review_type`, `subject`, `time_horizons`, `holding_scenarios`,
+  `portfolio_scenario`, `assumptions`, `evidence_items`, `change_triggers`,
+  `revisions`, and `safety_boundary`
+- `Subject` model with subject_type (holding / portfolio / watchlist_item)
+- `ScenarioRange` model with `range_id`, `horizon`, `case_type`,
+  `lower_percent`, `upper_percent`, `assumption_ids`, `evidence_item_ids`,
+  `confidence`, `evidence_quality`, and `uncertainty_note`
+- Case types: bear, base, bull, downside, upside, uncertainty_band
+- `HoldingScenario` model with ranges, key_drivers, key_risks, assumptions,
+  evidence_quality, confidence, change_triggers, and revision_ids
+- `PortfolioScenario` model with ranges, weighted_contributions,
+  main_upside_drivers, main_downside_drivers, concentration_sensitivity,
+  valuation_sensitivity, evidence_gaps, and holdings_requiring_review
+- `PortfolioContribution` model with range_impact_level
+  (low / medium / high / dominant)
+- `Assumption` model with assumption_type (12 types) and direction
+  (positive / negative / mixed / neutral / unknown)
+- `EvidenceItem` model with evidence_type (8 types) and freshness
+  (current / recent / stale / unknown)
+- Evidence quality: strong / adequate / incomplete / weak / outdated /
+  conflicting
+- Confidence: low / medium / high / unknown
+- `ChangeTrigger` model with 15 trigger_types and 7 expected_effect values
+- `ScenarioRevision` model: previous_range_ids, updated_range_ids, reason,
+  trigger_ids, changed_assumption_ids, evidence_item_ids
+- `SafetyBoundary` model: 8 boolean fields, all default true, never false
+- Full canonical value tables
+- Two valid example JSON objects (holding-level and portfolio-level)
+- Validation expectations table
+- Future implementation phases (Phase 0–8)
+
+**What is not implemented:** No dataclasses, no validators, no JSON schema,
+no calculations, no market data, no scoring, no CLI commands, no runtime
+changes.
+
+**Outcome:** `docs/ValueScenarioDataModel.md` created. 238 new tests. No
+production code changed. Full test suite green.
+
+---
+
 ## 2026-07-07: Sprint 274 — Define Value Scenario Review
 
 Decision: Define the Value Scenario Review concept as a product specification.

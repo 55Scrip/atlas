@@ -612,6 +612,20 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 275 (post-v1 improvement — complete):**
+Value Scenario Data Model specified in `docs/ValueScenarioDataModel.md`.
+Defines all objects, fields, canonical values, relationships, and validation
+expectations for future Value Scenario schema dataclasses. Objects defined:
+ValueScenarioReview, Subject, ScenarioRange (case types: bear/base/bull/downside/
+upside/uncertainty_band), HoldingScenario, PortfolioScenario, PortfolioContribution
+(impact levels: low/medium/high/dominant), Assumption (12 types, 5 directions),
+EvidenceItem (8 types, 4 freshness values), ChangeTrigger (15 trigger types, 7
+expected_effect values), ScenarioRevision, SafetyBoundary (8 boolean fields, all
+default true). Two valid example JSON objects included. Validation expectations
+table included. No dataclasses, no calculations, no market data, no CLI commands,
+no runtime behavior changes. 238 new tests. Full suite green. All demos green.
+RC green.
+
 **Sprint 274 (post-v1 improvement — complete):**
 Value Scenario Review product specification defined in `docs/ValueScenarioReview.md`.
 Defines how Atlas may eventually support scenario-based value and return ranges
