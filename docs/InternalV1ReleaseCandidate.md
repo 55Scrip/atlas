@@ -612,6 +612,21 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 281 (post-v1 architecture — complete):**
+Evidence Assembly V1 defined in `docs/EvidenceAssemblyV1.md`. Makes Stage 4 of the
+Investment Review Pipeline concrete. Defines eight distinct information types (Evidence,
+Observation, Assumption, Question, Hypothesis, Risk, Opinion, Decision — not
+interchangeable). Ten canonical evidence categories with purpose, strengths, weaknesses,
+expected freshness, and relationships documented. Deterministic assembly flow:
+Extract → Normalize → Deduplicate → Link Sources → Preserve User Content → Canonical
+Evidence Set → Evidence Quality Review. Full source traceability requirements. Evidence
+quality inputs (freshness, source quality, corroboration, conflict, missing evidence,
+traceability, user confidence, documentation quality). Ten canonical principles
+including: missing evidence is itself evidence; newer evidence does not automatically
+replace older; evidence is independent of recommendations. Future extension points for
+SEC filings, earnings transcripts, OCR, broker import, AI summarisation, market data.
+No runtime behavior changed. No CLI. 123 new tests.
+
 **Sprint 280 (post-v1 architecture — complete):**
 Investment Review Pipeline V1 defined in `docs/InvestmentReviewPipelineV1.md`.
 Canonical 12-stage internal pipeline: Input → Classification → Entity Extraction →

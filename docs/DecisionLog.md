@@ -2,6 +2,27 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-08: Sprint 281 — Define Evidence Assembly V1
+
+Decision: Define the canonical Evidence Assembly architecture for Atlas as a product document.
+
+**New document:** `docs/EvidenceAssemblyV1.md` — defines what counts as evidence inside
+Atlas, the eight distinct information types (Evidence, Observation, Assumption, Question,
+Hypothesis, Risk, Opinion, Decision), ten canonical evidence categories (Company Facts,
+Research Notes, Decision Journal, Portfolio Holdings, Watchlist, Weekly Review
+Observations, Snapshot Drafts, User Observations, Historical Revisions, External
+Documents), the deterministic assembly flow (Extract → Normalize → Deduplicate →
+Link Sources → Preserve User Content → Canonical Evidence Set), source traceability
+requirements, evidence quality inputs, and ten canonical principles.
+
+**Key distinctions:** Evidence is not opinion, assumption, hypothesis, or decision.
+An item with no traceable source is not evidence. Missing evidence is itself evidence
+(a first-class output). Newer evidence does not automatically replace older evidence.
+
+**No runtime behavior changed.** No CLI. No AI. No calculations. No new Python modules.
+
+---
+
 ## 2026-07-08: Sprint 280 — Define Investment Review Pipeline V1
 
 Decision: Define the canonical internal Investment Review Pipeline for Atlas as a product architecture document.
