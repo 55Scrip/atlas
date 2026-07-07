@@ -630,6 +630,65 @@ def value_scenario_validate_command(
     console.print(f"Change Triggers: {len(review.change_triggers)}")
 
 
+@value_scenario_app.command("summary")
+def value_scenario_summary_command(
+    scenario_path: Path = typer.Argument(
+        ...,
+        help="Path to a Value Scenario JSON file to summarise.",
+    ),
+):
+    """Render a read-only neutral summary of a Value Scenario JSON file.
+
+    Validates the file then renders a human-readable overview: review type,
+    subject, time horizons, scenario ranges, evidence quality, confidence,
+    assumption count, evidence item count, change trigger count, and safety
+    boundary status.
+
+    This command is read-only. It does not write to any file, does not modify
+    the scenario file, and does not calculate, forecast, or recommend anything.
+
+    No calculations. No forecasts. No live data. No recommendations. No provider dependency.
+    """
+    from atlas.value_scenario import ValueScenarioReview
+    from atlas.value_scenario.render import render_value_scenario_summary
+
+    if scenario_path.is_dir():
+        console.print(
+            "[red]Value scenario summary failed:[/red] expected a JSON file path, got a directory."
+        )
+        raise typer.Exit(code=1)
+
+    if not scenario_path.exists():
+        console.print(
+            "[red]Value scenario summary failed:[/red] file not found."
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        text = scenario_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        console.print(
+            f"[red]Value scenario summary failed:[/red] could not read file: {exc}"
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        import json as _json
+        _json.loads(text)
+    except _json.JSONDecodeError:
+        console.print("[red]Value scenario summary failed:[/red] invalid JSON.")
+        raise typer.Exit(code=1)
+
+    try:
+        review = ValueScenarioReview.from_json(text)
+    except ValueError as exc:
+        console.print(f"[red]Value scenario summary failed:[/red] {exc}")
+        raise typer.Exit(code=1)
+
+    summary = render_value_scenario_summary(review)
+    console.print(summary, markup=False, highlight=False)
+
+
 @snapshot_app.command("review")
 def snapshot_review_command(
     draft_path: Path = typer.Argument(
