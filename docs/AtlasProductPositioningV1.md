@@ -190,10 +190,16 @@ Atlas helps users:
 - identify reasons to wait
 - run weekly investment reviews
 - reduce impulsive decisions
+- understand possible value ranges and scenario assumptions
 - learn how better investment decisions are built
 - feel calmer, clearer, and more in control
 
 Atlas turns investment input into a workspace.
+
+Atlas may support scenario-based value and return ranges when assumptions,
+evidence quality, uncertainty, and change triggers are shown clearly. Atlas
+does not issue single-point price targets or action calls. See
+[docs/ValueScenarioReview.md](ValueScenarioReview.md).
 
 ---
 

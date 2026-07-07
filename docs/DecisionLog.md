@@ -2,6 +2,52 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-07: Sprint 274 — Define Value Scenario Review
+
+Decision: Define the Value Scenario Review concept as a product specification.
+
+**Principle:** Atlas should help users understand possible value ranges, not
+pretend to know the future. Atlas does not issue single-point price targets or
+action calls. Atlas may estimate scenario-based value and return ranges when
+assumptions, evidence quality, uncertainty, and change triggers are shown
+clearly.
+
+**Why:** Atlas's positioning as a judgment system creates a design space for
+value scenario support. Users need to understand how much value potential and
+downside risk a holding or portfolio may have without Atlas becoming a
+prediction product or trading product. Scenario ranges with explicit
+assumptions and change triggers are the right tool: they make the user's
+reasoning visible without claiming certainty about future outcomes.
+
+**What is defined:**
+- Scenario-based value range types (bear/base/bull, downside/upside,
+  uncertainty band)
+- Holding-level and portfolio-level review shapes
+- Three time horizons: short (1–3 months), medium (6–12 months), long
+  (3–5 years)
+- Scenario components (revenue growth, margins, valuation multiple, etc.)
+- Evidence quality labels: strong, adequate, incomplete, weak, outdated,
+  conflicting
+- Confidence labels: low, medium, high, unknown
+- Change triggers (15 defined)
+- Scenario revision format (previous range, updated range, revision reason)
+- Safe language and prohibited language
+- Three example outputs (holding 12-month, holding long-term, portfolio-level)
+- Future implementation phases (Phase 0–8)
+
+**What is not implemented:** No valuation calculations, market data, scoring,
+forecasts, probability models, portfolio return engine, AI, external APIs,
+CLI commands, or runtime behavior changes.
+
+**Atlas Product Positioning update:** `docs/AtlasProductPositioningV1.md`
+updated to note that Atlas may support scenario-based value and return ranges
+with assumptions, evidence quality, uncertainty, and change triggers shown.
+
+**Outcome:** `docs/ValueScenarioReview.md` created. 125 new tests. No
+production code changed. Full test suite green.
+
+---
+
 ## 2026-07-07: Sprint 273 — Add Temporary Workspace Read-Only Validation CLI
 
 Decision: Add `atlas temporary-workspace validate <path>` CLI command.

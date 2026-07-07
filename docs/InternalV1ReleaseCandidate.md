@@ -612,6 +612,20 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 274 (post-v1 improvement — complete):**
+Value Scenario Review product specification defined in `docs/ValueScenarioReview.md`.
+Defines how Atlas may eventually support scenario-based value and return ranges
+without becoming a prediction product, trading product, or signal product.
+Covers: scenario range types (bear/base/bull, downside/upside, uncertainty band),
+holding-level and portfolio-level review shapes, three time horizons, scenario
+components, evidence quality labels (strong/adequate/incomplete/weak/outdated/
+conflicting), confidence labels (low/medium/high/unknown), 15 change triggers,
+scenario revision format, safe and prohibited language, three illustrative example
+outputs, and eight future implementation phases. Atlas Product Positioning updated
+to note scenario range support intent. No valuation calculations, market data,
+scoring, forecasts, AI, external APIs, CLI commands, or runtime behavior changes.
+125 new tests. Full suite green. All demos green. RC green.
+
 **Sprint 273 (post-v1 improvement — complete):**
 `atlas temporary-workspace validate <path>` CLI command added. Validates a
 Temporary Workspace JSON file and renders a human-readable summary: workspace
