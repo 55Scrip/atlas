@@ -2,6 +2,41 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-07: Sprint 272 — Add Atlas Product Positioning v1
+
+Decision: Define Atlas's product positioning in
+`docs/AtlasProductPositioningV1.md`.
+
+**Principle:** Atlas is a private investment workspace for people who care
+about capital. It turns messy investment input into structured judgment. This
+document is the north-star for future product and implementation decisions.
+
+**What was documented:** product thesis (judgment system, not prediction
+system; not a stock app or trading product); core positioning in English and
+Swedish; primary user (serious private capital owner — entrepreneur, business
+owner, long-term investor with fragmented thinking); secondary user (people
+held back by uncertainty or lack of process); core problem (lack of structured
+judgment, not lack of information); product promise (structure, not predictions
+or winners); what Atlas does (14 capabilities from portfolio structuring to
+weekly review); what Atlas does not do (no buy/sell signals, no trade
+execution, no price targets, no market timing); first user experience
+(input-first, not dashboard-first; first-screen prompt in English and Swedish;
+Paste → Temporary Workspace → Structured Review → Save Optional flow);
+no-account first value (useful before asking for trust; account framed around
+persistence, not first value); aha moment for primary and secondary users;
+emotional outcome (calm, clarity, control, reduced impulse); pricing
+philosophy (genuine long-term users first; Guest 0 kr, Personal 99–199 kr,
+Plus 299–499 kr); 8 internal product principles; positioning lines in English
+and Swedish; landing page copy in English and Swedish; category definition
+(Private Investment Workspace externally, judgment system internally);
+strategic standard (best of its kind or should not be built); final north
+star in English and Swedish.
+
+**No runtime behaviour changed.** No UI, auth, database, backend, accounts,
+API, OCR, AI/LLM, or provider imports were added. CLI behavior unchanged.
+
+---
+
 ## 2026-07-04: Sprint 271 — Add Temporary Workspace Schema Examples
 
 Decision: Add schema-valid temporary workspace JSON examples in

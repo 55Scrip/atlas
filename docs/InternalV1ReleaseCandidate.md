@@ -497,6 +497,23 @@ database/backend code, CLI command, provider imports, network calls, OCR,
 image parsing, or AI/LLM calls added. Recommended Sprint 271 target: add
 temporary workspace schema examples.
 
+**Sprint 272 (post-v1 product positioning — complete):**
+Atlas product positioning v1 defined in `docs/AtlasProductPositioningV1.md`.
+Establishes north-star for all future product and implementation decisions.
+Defines: product thesis (judgment system, not prediction system; not a stock
+app or trading product); primary user (serious private capital owner); secondary
+user (people held back by uncertainty); core problem (lack of structured
+judgment); product promise (structure, not predictions); what Atlas does and
+does not do; input-first first user experience with English and Swedish prompts;
+no-account first value; aha moment; emotional outcome (calm, clarity, control);
+pricing philosophy with Guest/Personal/Plus tiers; 8 internal principles; 6
+positioning lines in English and Swedish; landing page copy in English and
+Swedish; category (Private Investment Workspace / judgment system); strategic
+standard; final north star in English and Swedish. No runtime behaviour
+changed. No UI/auth/database/backend/account/provider code added. 97 new
+tests. All previous tests pass. All demos green. RC2 green. Internal v1
+foundation unchanged.
+
 **Sprint 271 (post-v1 example fixture foundation — complete):**
 Temporary workspace example fixtures added in `examples/temporary_workspaces/`:
 portfolio snapshot workspace, watchlist/research workspace, and order idea
