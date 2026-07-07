@@ -612,6 +612,23 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 282 (post-v1 architecture — complete):**
+Evidence Quality Review V1 defined in `docs/EvidenceQualityReviewV1.md`. Makes Stage 5
+of the Investment Review Pipeline concrete. Eight quality dimensions (Freshness, Source
+Quality, Corroboration, Conflicting Evidence, Missing Evidence, Traceability,
+Documentation Completeness, User Verification Status) — descriptive, no scores, no
+weights. Six canonical quality levels (Strong, Adequate, Incomplete, Weak, Outdated,
+Conflicting) with characteristics, limitations, and downstream implications. Deterministic
+eight-step review flow. Five worked examples. Downstream behaviour rules (evidence quality
+influences uncertainty visibility, scenario width, follow-up questions, reasons to wait,
+and revision prompts; must never trigger action recommendations or execution advice). Eight cross-cutting
+principles including: evidence quality is independent of investment attractiveness;
+conflicting evidence must remain visible; uncertainty must never be hidden; stronger
+evidence narrows uncertainty, not guarantees outcomes; overall quality determined by
+most significant weakness. Future extension table for SEC filings, earnings transcripts,
+broker imports, market data, AI summarisation, OCR. No runtime behavior changed.
+No CLI. 128 new tests.
+
 **Sprint 281 (post-v1 architecture — complete):**
 Evidence Assembly V1 defined in `docs/EvidenceAssemblyV1.md`. Makes Stage 4 of the
 Investment Review Pipeline concrete. Defines eight distinct information types (Evidence,

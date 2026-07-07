@@ -2,6 +2,30 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-08: Sprint 282 — Define Evidence Quality Review V1
+
+Decision: Define the canonical Evidence Quality Review architecture for Atlas as a product document.
+
+**New document:** `docs/EvidenceQualityReviewV1.md` — defines how Atlas evaluates
+the quality of assembled evidence before any assumptions, risks, or scenarios are
+produced. Covers eight quality dimensions (Freshness, Source Quality, Corroboration,
+Conflicting Evidence, Missing Evidence, Traceability, Documentation Completeness,
+User Verification Status), six canonical quality levels (Strong / Adequate /
+Incomplete / Weak / Outdated / Conflicting), a deterministic eight-step review flow,
+five examples, downstream behaviour rules, eight cross-cutting principles, and future
+extension points for SEC filings, earnings transcripts, broker imports, market data,
+AI summarisation, and OCR.
+
+**Key distinctions:** Evidence quality is not investment quality. Strong evidence
+about a poor business is still strong evidence. No scores assigned. No weights
+calculated. Conflicting evidence must remain visible — never resolved silently.
+Uncertainty must never be hidden. Overall quality is determined by the most
+significant weakness in the set, not by averaging.
+
+**No runtime behavior changed.** No CLI. No AI. No calculations. No new Python modules.
+
+---
+
 ## 2026-07-08: Sprint 281 — Define Evidence Assembly V1
 
 Decision: Define the canonical Evidence Assembly architecture for Atlas as a product document.
