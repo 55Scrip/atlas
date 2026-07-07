@@ -1,0 +1,240 @@
+{
+  "cards": [
+    {
+      "card_id": "card_order_input_summary",
+      "card_type": "input_summary",
+      "items": [
+        "Possible order idea detected.",
+        "User note: \"Possible order idea needs fit check before decision.\""
+      ],
+      "next_prompt": null,
+      "related_entity_ids": [
+        "ent_order_lvmh",
+        "ent_order_decision"
+      ],
+      "related_missing_field_ids": [],
+      "related_uncertainty_ids": [
+        "unc_order_constraints"
+      ],
+      "source_references": [
+        "src_order_idea_paste"
+      ],
+      "status": "ready_for_review",
+      "summary": "Atlas detected an open decision from user-provided text.",
+      "title": "Input Summary"
+    },
+    {
+      "card_id": "card_order_open_decisions",
+      "card_type": "open_decisions",
+      "items": [
+        "Open Decision: possible order idea for LVMH.",
+        "Fit / constraint check is not complete.",
+        "Decision Deferred until the evidence gap is reviewed."
+      ],
+      "next_prompt": null,
+      "related_entity_ids": [
+        "ent_order_lvmh",
+        "ent_order_decision"
+      ],
+      "related_missing_field_ids": [
+        "missing_order_profile_constraints"
+      ],
+      "related_uncertainty_ids": [
+        "unc_order_constraints"
+      ],
+      "source_references": [
+        "src_order_idea_paste"
+      ],
+      "status": "decision_deferred",
+      "summary": "The text describes an unresolved decision, not an instruction.",
+      "title": "Open Decisions"
+    },
+    {
+      "card_id": "card_order_evidence_gaps",
+      "card_type": "evidence_gaps",
+      "items": [
+        "Evidence gap: investor constraints are not attached.",
+        "Evidence gap: portfolio fit context is not attached.",
+        "Evidence gap: rationale is incomplete."
+      ],
+      "next_prompt": null,
+      "related_entity_ids": [
+        "ent_order_lvmh"
+      ],
+      "related_missing_field_ids": [
+        "missing_order_profile_constraints",
+        "missing_order_rationale"
+      ],
+      "related_uncertainty_ids": [
+        "unc_order_constraints"
+      ],
+      "source_references": [],
+      "status": "needs_more_evidence",
+      "summary": "More context is needed for a higher-quality future review.",
+      "title": "Evidence Gaps"
+    },
+    {
+      "card_id": "card_order_reasons_to_wait",
+      "card_type": "reasons_to_wait",
+      "items": [
+        "Reason to Wait: fit / constraint check is incomplete.",
+        "Reason to Wait: rationale is not yet attached.",
+        "No Action Warranted from this temporary workspace alone."
+      ],
+      "next_prompt": null,
+      "related_entity_ids": [
+        "ent_order_decision"
+      ],
+      "related_missing_field_ids": [
+        "missing_order_profile_constraints",
+        "missing_order_rationale"
+      ],
+      "related_uncertainty_ids": [
+        "unc_order_constraints"
+      ],
+      "source_references": [],
+      "status": "needs_more_evidence",
+      "summary": "The current workspace surfaces reasons for review discipline.",
+      "title": "Reasons to Wait"
+    },
+    {
+      "card_id": "card_order_follow_up",
+      "card_type": "follow_up_questions",
+      "items": [
+        "Question to Revisit: Which investor constraint applies to this possible order idea?",
+        "Question to Revisit: What evidence supports the decision rationale?"
+      ],
+      "next_prompt": "Which constraint should Atlas attach to this open decision later?",
+      "related_entity_ids": [
+        "ent_order_decision"
+      ],
+      "related_missing_field_ids": [
+        "missing_order_profile_constraints",
+        "missing_order_rationale"
+      ],
+      "related_uncertainty_ids": [
+        "unc_order_constraints"
+      ],
+      "source_references": [],
+      "status": "user_confirmation_needed",
+      "summary": "Follow-up questions are neutral and do not imply an answer.",
+      "title": "Follow-Up Questions"
+    },
+    {
+      "card_id": "card_order_save_prompt",
+      "card_type": "save_workspace_prompt",
+      "items": [
+        "Save this temporary workspace to continue later.",
+        "Discarding this workspace means the provided input is not retained."
+      ],
+      "next_prompt": "Would you like to save this temporary workspace later?",
+      "related_entity_ids": [],
+      "related_missing_field_ids": [],
+      "related_uncertainty_ids": [],
+      "source_references": [],
+      "status": "ready_for_review",
+      "summary": "Saving is optional and appears only after first value.",
+      "title": "Save Workspace Prompt"
+    }
+  ],
+  "classification": {
+    "confidence": "high",
+    "primary_type": "order_review_input",
+    "rationale": "The user text describes a possible order idea and requests a fit check.",
+    "secondary_types": [],
+    "suggested_card_types": [
+      "input_summary",
+      "open_decisions",
+      "evidence_gaps",
+      "reasons_to_wait",
+      "follow_up_questions",
+      "save_workspace_prompt"
+    ],
+    "uncertainty_ids": [
+      "unc_order_constraints"
+    ]
+  },
+  "created_at": "2026-07-04T09:20:00Z",
+  "detected_entities": [
+    {
+      "confidence": "high",
+      "entity_id": "ent_order_lvmh",
+      "entity_type": "ticker",
+      "normalized_value": "LVMH",
+      "source_reference": "src_order_idea_paste",
+      "uncertainty_reason": null,
+      "value": "LVMH"
+    },
+    {
+      "confidence": "high",
+      "entity_id": "ent_order_decision",
+      "entity_type": "open_decision",
+      "normalized_value": null,
+      "source_reference": "src_order_idea_paste",
+      "uncertainty_reason": "Fit and constraint context are not attached.",
+      "value": "User note: \"Possible order idea needs fit check before decision.\""
+    }
+  ],
+  "missing_fields": [
+    {
+      "field_id": "missing_order_profile_constraints",
+      "field_name": "profile_constraints",
+      "reason": "Investor constraints are needed for a future fit check.",
+      "related_card_ids": [
+        "card_order_open_decisions",
+        "card_order_follow_up"
+      ],
+      "requiredness": "required_for_review_quality"
+    },
+    {
+      "field_id": "missing_order_rationale",
+      "field_name": "decision_rationale",
+      "reason": "The decision rationale is incomplete.",
+      "related_card_ids": [
+        "card_order_evidence_gaps",
+        "card_order_reasons_to_wait"
+      ],
+      "requiredness": "required_for_review_quality"
+    }
+  ],
+  "safety_boundary": {
+    "local_or_temporary_context": true,
+    "no_order_execution": true,
+    "no_price_targets": true,
+    "no_recommendations": true,
+    "user_judgment_required": true
+  },
+  "save_handoff": {
+    "account_required": false,
+    "prompt_reason": "continue_later",
+    "prompt_timing": "after_first_value",
+    "save_available": true,
+    "save_requires_account": true
+  },
+  "source_input": {
+    "contains_sensitive_data": false,
+    "input_id": "input_order_idea_001",
+    "input_type": "order_review_input",
+    "raw_text_preview": "LVMH. User note: \"Possible order idea needs fit check before decision.\"",
+    "source_description": "User-provided possible order idea text",
+    "submitted_at": "2026-07-04T09:20:00Z",
+    "user_language_hint": "en"
+  },
+  "status": "temporary",
+  "uncertainties": [
+    {
+      "message": "Investor constraints are not attached to this open decision.",
+      "related_card_ids": [
+        "card_order_open_decisions",
+        "card_order_follow_up"
+      ],
+      "related_entity_ids": [
+        "ent_order_decision"
+      ],
+      "severity": "high",
+      "suggested_user_confirmation": "Which profile constraint applies to this open decision?",
+      "uncertainty_id": "unc_order_constraints"
+    }
+  ],
+  "workspace_id": "tmp_ws_order_idea_001"
+}

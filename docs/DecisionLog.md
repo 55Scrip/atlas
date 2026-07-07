@@ -2,6 +2,36 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-04: Sprint 271 — Add Temporary Workspace Schema Examples
+
+Decision: Add schema-valid temporary workspace JSON examples in
+`examples/temporary_workspaces/`.
+
+**Principle:** Atlas now has stable example fixtures that future renderer and
+classifier work can use without implementing rendering, classification,
+workspace generation, persistence, accounts, or CLI behavior. The examples
+preserve canonical English schema values, user-provided text, temporary status,
+after-first-value save handoff, and all safety boundary flags.
+
+**What was added:** portfolio snapshot workspace, watchlist/research
+workspace, and order idea workspace fixtures; each validates through
+`TemporaryWorkspace.from_json`; each round-trips through `to_json/from_json`;
+each includes detected entities, uncertainties, missing fields, workspace
+cards, source/user-provided text, save handoff, and safety boundary.
+
+**No runtime behaviour changed.** No UI, renderer, card renderer, classifier,
+entity extractor, workspace generation, persistence, accounts/auth,
+database/backend code, CLI command, provider imports, network calls, OCR,
+image parsing, or AI/LLM calls were added.
+
+**Recommended Sprint 272 target:** Add temporary workspace read-only
+validation CLI. After schema dataclasses and example fixtures exist, the next
+safe implementation step is a read-only CLI validator for temporary workspace
+JSON. This validates the schema without rendering, classification,
+persistence, accounts, or UI.
+
+---
+
 ## 2026-07-04: Sprint 270 — Prototype Temporary Workspace Schema Dataclasses
 
 Decision: Add schema-only temporary workspace dataclasses in

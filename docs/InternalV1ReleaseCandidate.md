@@ -497,6 +497,21 @@ database/backend code, CLI command, provider imports, network calls, OCR,
 image parsing, or AI/LLM calls added. Recommended Sprint 271 target: add
 temporary workspace schema examples.
 
+**Sprint 271 (post-v1 example fixture foundation — complete):**
+Temporary workspace example fixtures added in `examples/temporary_workspaces/`:
+portfolio snapshot workspace, watchlist/research workspace, and order idea
+workspace. Each fixture is valid JSON, loads through `TemporaryWorkspace`,
+round-trips through schema serialization, uses canonical English model values,
+preserves user-provided text, keeps `status: temporary`, uses save handoff
+after first value, keeps all safety boundary flags true, and avoids
+recommendation, price-target, urgency, execution, certainty, and
+personalized-advice language. No runtime behaviour changed. No UI, renderer,
+card renderer, classifier, entity extraction, workspace generation,
+persistence, accounts/auth, database/backend code, CLI command, provider
+imports, network calls, OCR, image parsing, or AI/LLM calls added.
+Recommended Sprint 272 target: add temporary workspace read-only validation
+CLI.
+
 **Sprint 267 (post-v1 product specification — complete):**
 Input-first workspace onboarding model specified in
 `docs/InputFirstWorkspaceOnboarding.md`. Principle: Atlas starts with

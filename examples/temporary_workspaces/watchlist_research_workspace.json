@@ -1,0 +1,252 @@
+{
+  "cards": [
+    {
+      "card_id": "card_watchlist_input_summary",
+      "card_type": "input_summary",
+      "items": [
+        "Mixed watchlist and research-note input detected.",
+        "User note: \"Water infrastructure thesis needs evidence.\"",
+        "User note: \"Margin durability test 2026.\""
+      ],
+      "next_prompt": null,
+      "related_entity_ids": [
+        "ent_watchlist_xyl",
+        "ent_watchlist_note"
+      ],
+      "related_missing_field_ids": [],
+      "related_uncertainty_ids": [
+        "unc_watchlist_evidence"
+      ],
+      "source_references": [
+        "src_watchlist_research_paste"
+      ],
+      "status": "ready_for_review",
+      "summary": "Atlas detected a watchlist idea with research notes.",
+      "title": "Input Summary"
+    },
+    {
+      "card_id": "card_watchlist_review",
+      "card_type": "watchlist_review",
+      "items": [
+        "XYL appears as a watchlist item.",
+        "User-provided reason: Water infrastructure thesis needs evidence.",
+        "Research note: Margin durability test 2026."
+      ],
+      "next_prompt": null,
+      "related_entity_ids": [
+        "ent_watchlist_xyl",
+        "ent_watchlist_note"
+      ],
+      "related_missing_field_ids": [
+        "missing_watchlist_sources"
+      ],
+      "related_uncertainty_ids": [
+        "unc_watchlist_evidence"
+      ],
+      "source_references": [
+        "src_watchlist_research_paste"
+      ],
+      "status": "needs_more_evidence",
+      "summary": "The watchlist item has a stated thesis and unresolved evidence needs.",
+      "title": "Watchlist Review"
+    },
+    {
+      "card_id": "card_watchlist_evidence_gaps",
+      "card_type": "evidence_gaps",
+      "items": [
+        "Evidence gap: margin durability evidence is not attached.",
+        "Evidence gap: source references for the thesis are not attached."
+      ],
+      "next_prompt": null,
+      "related_entity_ids": [
+        "ent_watchlist_xyl"
+      ],
+      "related_missing_field_ids": [
+        "missing_watchlist_sources"
+      ],
+      "related_uncertainty_ids": [
+        "unc_watchlist_evidence"
+      ],
+      "source_references": [],
+      "status": "needs_more_evidence",
+      "summary": "The current evidence is not enough for a high-confidence future review.",
+      "title": "Evidence Gaps"
+    },
+    {
+      "card_id": "card_watchlist_reasons_to_wait",
+      "card_type": "reasons_to_wait",
+      "items": [
+        "Reason to Wait: margin durability evidence is still missing.",
+        "Reason to Wait: source references are incomplete."
+      ],
+      "next_prompt": null,
+      "related_entity_ids": [
+        "ent_watchlist_xyl"
+      ],
+      "related_missing_field_ids": [
+        "missing_watchlist_sources"
+      ],
+      "related_uncertainty_ids": [
+        "unc_watchlist_evidence"
+      ],
+      "source_references": [],
+      "status": "needs_more_evidence",
+      "summary": "These reasons support further review discipline, not a recommendation.",
+      "title": "Reasons to Wait"
+    },
+    {
+      "card_id": "card_watchlist_follow_up",
+      "card_type": "follow_up_questions",
+      "items": [
+        "Question to Revisit: What evidence supports margin durability?",
+        "Question to Revisit: Which source supports the water infrastructure thesis?"
+      ],
+      "next_prompt": "Which source should Atlas associate with this research note later?",
+      "related_entity_ids": [
+        "ent_watchlist_xyl",
+        "ent_watchlist_note"
+      ],
+      "related_missing_field_ids": [
+        "missing_watchlist_sources"
+      ],
+      "related_uncertainty_ids": [
+        "unc_watchlist_evidence"
+      ],
+      "source_references": [],
+      "status": "user_confirmation_needed",
+      "summary": "Open questions remain before future review quality can improve.",
+      "title": "Follow-Up Questions"
+    },
+    {
+      "card_id": "card_watchlist_snapshot_drafts",
+      "card_type": "snapshot_drafts",
+      "items": [
+        "Research notes snapshot draft candidate detected for XYL.",
+        "User confirmation would be needed before any future export."
+      ],
+      "next_prompt": "Would you like to review this research-notes draft later?",
+      "related_entity_ids": [
+        "ent_watchlist_xyl",
+        "ent_watchlist_note"
+      ],
+      "related_missing_field_ids": [],
+      "related_uncertainty_ids": [],
+      "source_references": [
+        "src_watchlist_research_paste"
+      ],
+      "status": "user_confirmation_needed",
+      "summary": "A future snapshot draft could be reviewed from the user-provided note.",
+      "title": "Snapshot Drafts"
+    },
+    {
+      "card_id": "card_watchlist_save_prompt",
+      "card_type": "save_workspace_prompt",
+      "items": [
+        "Save this temporary workspace to continue later.",
+        "No workspace history is implied unless saved later."
+      ],
+      "next_prompt": "Would you like to save this temporary workspace later?",
+      "related_entity_ids": [],
+      "related_missing_field_ids": [],
+      "related_uncertainty_ids": [],
+      "source_references": [],
+      "status": "ready_for_review",
+      "summary": "Saving is optional and appears only after first value.",
+      "title": "Save Workspace Prompt"
+    }
+  ],
+  "classification": {
+    "confidence": "medium",
+    "primary_type": "mixed_input",
+    "rationale": "The user text includes a watchlist item and research-note content.",
+    "secondary_types": [
+      "watchlist_input",
+      "research_note_input"
+    ],
+    "suggested_card_types": [
+      "input_summary",
+      "watchlist_review",
+      "evidence_gaps",
+      "reasons_to_wait",
+      "follow_up_questions",
+      "snapshot_drafts",
+      "save_workspace_prompt"
+    ],
+    "uncertainty_ids": [
+      "unc_watchlist_evidence"
+    ]
+  },
+  "created_at": "2026-07-04T09:10:00Z",
+  "detected_entities": [
+    {
+      "confidence": "high",
+      "entity_id": "ent_watchlist_xyl",
+      "entity_type": "ticker",
+      "normalized_value": "XYL",
+      "source_reference": "src_watchlist_research_paste",
+      "uncertainty_reason": null,
+      "value": "XYL"
+    },
+    {
+      "confidence": "high",
+      "entity_id": "ent_watchlist_note",
+      "entity_type": "research_note",
+      "normalized_value": null,
+      "source_reference": "src_watchlist_research_paste",
+      "uncertainty_reason": "Evidence source is not attached.",
+      "value": "User note: \"Water infrastructure thesis needs evidence.\" User note: \"Margin durability test 2026.\""
+    }
+  ],
+  "missing_fields": [
+    {
+      "field_id": "missing_watchlist_sources",
+      "field_name": "evidence_sources",
+      "reason": "The research note does not include source references.",
+      "related_card_ids": [
+        "card_watchlist_evidence_gaps",
+        "card_watchlist_follow_up"
+      ],
+      "requiredness": "required_for_review_quality"
+    }
+  ],
+  "safety_boundary": {
+    "local_or_temporary_context": true,
+    "no_order_execution": true,
+    "no_price_targets": true,
+    "no_recommendations": true,
+    "user_judgment_required": true
+  },
+  "save_handoff": {
+    "account_required": false,
+    "prompt_reason": "continue_later",
+    "prompt_timing": "after_first_value",
+    "save_available": true,
+    "save_requires_account": true
+  },
+  "source_input": {
+    "contains_sensitive_data": false,
+    "input_id": "input_watchlist_research_001",
+    "input_type": "mixed_input",
+    "raw_text_preview": "XYL watchlist. User note: \"Water infrastructure thesis needs evidence.\" User note: \"Margin durability test 2026.\"",
+    "source_description": "User-provided watchlist and research-note text",
+    "submitted_at": "2026-07-04T09:10:00Z",
+    "user_language_hint": "en"
+  },
+  "status": "temporary",
+  "uncertainties": [
+    {
+      "message": "Evidence source for the research note is not attached.",
+      "related_card_ids": [
+        "card_watchlist_review",
+        "card_watchlist_evidence_gaps"
+      ],
+      "related_entity_ids": [
+        "ent_watchlist_note"
+      ],
+      "severity": "medium",
+      "suggested_user_confirmation": "Which source supports this thesis note?",
+      "uncertainty_id": "unc_watchlist_evidence"
+    }
+  ],
+  "workspace_id": "tmp_ws_watchlist_research_001"
+}

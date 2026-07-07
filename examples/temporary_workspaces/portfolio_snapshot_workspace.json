@@ -1,0 +1,290 @@
+{
+  "cards": [
+    {
+      "card_id": "card_portfolio_input_summary",
+      "card_type": "input_summary",
+      "items": [
+        "User-provided portfolio text detected.",
+        "User note: \"Portfolio paste from broker overview, July review.\""
+      ],
+      "next_prompt": null,
+      "related_entity_ids": [
+        "ent_portfolio_asml",
+        "ent_portfolio_msft",
+        "ent_portfolio_cash_weight"
+      ],
+      "related_missing_field_ids": [],
+      "related_uncertainty_ids": [
+        "unc_portfolio_currency"
+      ],
+      "source_references": [
+        "src_portfolio_paste"
+      ],
+      "status": "ready_for_review",
+      "summary": "Atlas detected portfolio-like input from user-provided text.",
+      "title": "Input Summary"
+    },
+    {
+      "card_id": "card_portfolio_detected_holdings",
+      "card_type": "detected_holdings",
+      "items": [
+        "ASML weight detected as 12%.",
+        "MSFT weight detected as 10%.",
+        "Cash weight detected as 52%."
+      ],
+      "next_prompt": "Are these detected holdings and weights accurate?",
+      "related_entity_ids": [
+        "ent_portfolio_asml",
+        "ent_portfolio_msft",
+        "ent_portfolio_cash_weight"
+      ],
+      "related_missing_field_ids": [
+        "missing_portfolio_currency"
+      ],
+      "related_uncertainty_ids": [
+        "unc_portfolio_currency"
+      ],
+      "source_references": [
+        "src_portfolio_paste"
+      ],
+      "status": "user_confirmation_needed",
+      "summary": "Detected holdings need user confirmation before future use.",
+      "title": "Detected Holdings"
+    },
+    {
+      "card_id": "card_portfolio_context",
+      "card_type": "portfolio_context",
+      "items": [
+        "Detected listed holdings represent 48% of the provided text.",
+        "Currency is not confirmed.",
+        "The remaining 52% is labeled as cash in the user text."
+      ],
+      "next_prompt": null,
+      "related_entity_ids": [
+        "ent_portfolio_cash_weight"
+      ],
+      "related_missing_field_ids": [
+        "missing_portfolio_currency",
+        "missing_portfolio_account"
+      ],
+      "related_uncertainty_ids": [
+        "unc_portfolio_currency"
+      ],
+      "source_references": [
+        "src_portfolio_paste"
+      ],
+      "status": "needs_more_evidence",
+      "summary": "Portfolio context is partial because currency and account context are missing.",
+      "title": "Portfolio Context"
+    },
+    {
+      "card_id": "card_portfolio_evidence_gaps",
+      "card_type": "evidence_gaps",
+      "items": [
+        "Research notes missing for ASML.",
+        "Company facts missing for MSFT.",
+        "Currency not confirmed."
+      ],
+      "next_prompt": null,
+      "related_entity_ids": [
+        "ent_portfolio_asml",
+        "ent_portfolio_msft"
+      ],
+      "related_missing_field_ids": [
+        "missing_portfolio_research_notes",
+        "missing_portfolio_currency"
+      ],
+      "related_uncertainty_ids": [],
+      "source_references": [],
+      "status": "needs_more_evidence",
+      "summary": "Some context needed for a higher-quality future review is missing.",
+      "title": "Evidence Gaps"
+    },
+    {
+      "card_id": "card_portfolio_risks",
+      "card_type": "risks_to_monitor",
+      "items": [
+        "Risk to Monitor: single-position weights require context from the investor profile.",
+        "Risk to Monitor: mixed currency exposure is unclear."
+      ],
+      "next_prompt": null,
+      "related_entity_ids": [
+        "ent_portfolio_asml",
+        "ent_portfolio_msft"
+      ],
+      "related_missing_field_ids": [
+        "missing_portfolio_profile"
+      ],
+      "related_uncertainty_ids": [
+        "unc_portfolio_currency"
+      ],
+      "source_references": [],
+      "status": "ready_for_review",
+      "summary": "These are monitoring notes, not instructions.",
+      "title": "Risks to Monitor"
+    },
+    {
+      "card_id": "card_portfolio_weekly_review_preview",
+      "card_type": "weekly_review_preview",
+      "items": [
+        "Preview can include detected holdings and missing evidence.",
+        "Preview cannot include saved history because this workspace is temporary."
+      ],
+      "next_prompt": null,
+      "related_entity_ids": [],
+      "related_missing_field_ids": [
+        "missing_portfolio_research_notes",
+        "missing_portfolio_profile"
+      ],
+      "related_uncertainty_ids": [],
+      "source_references": [],
+      "status": "needs_more_evidence",
+      "summary": "A future Weekly Review preview would be partial with current inputs.",
+      "title": "Weekly Review Preview"
+    },
+    {
+      "card_id": "card_portfolio_save_prompt",
+      "card_type": "save_workspace_prompt",
+      "items": [
+        "Save this temporary workspace to continue later.",
+        "Discarding this workspace means the provided input is not retained."
+      ],
+      "next_prompt": "Would you like to save this temporary workspace later?",
+      "related_entity_ids": [],
+      "related_missing_field_ids": [],
+      "related_uncertainty_ids": [],
+      "source_references": [],
+      "status": "ready_for_review",
+      "summary": "Saving is optional and appears only after first value.",
+      "title": "Save Workspace Prompt"
+    }
+  ],
+  "classification": {
+    "confidence": "high",
+    "primary_type": "portfolio_input",
+    "rationale": "Weights and ticker-like strings were present in the user-provided text.",
+    "secondary_types": [],
+    "suggested_card_types": [
+      "input_summary",
+      "detected_holdings",
+      "portfolio_context",
+      "evidence_gaps",
+      "risks_to_monitor",
+      "weekly_review_preview",
+      "save_workspace_prompt"
+    ],
+    "uncertainty_ids": [
+      "unc_portfolio_currency"
+    ]
+  },
+  "created_at": "2026-07-04T09:00:00Z",
+  "detected_entities": [
+    {
+      "confidence": "high",
+      "entity_id": "ent_portfolio_asml",
+      "entity_type": "ticker",
+      "normalized_value": "ASML",
+      "source_reference": "src_portfolio_paste",
+      "uncertainty_reason": null,
+      "value": "ASML"
+    },
+    {
+      "confidence": "high",
+      "entity_id": "ent_portfolio_msft",
+      "entity_type": "ticker",
+      "normalized_value": "MSFT",
+      "source_reference": "src_portfolio_paste",
+      "uncertainty_reason": null,
+      "value": "MSFT"
+    },
+    {
+      "confidence": "medium",
+      "entity_id": "ent_portfolio_cash_weight",
+      "entity_type": "portfolio_weight",
+      "normalized_value": "52%",
+      "source_reference": "src_portfolio_paste",
+      "uncertainty_reason": "Currency and account context are not provided.",
+      "value": "cash 52%"
+    }
+  ],
+  "missing_fields": [
+    {
+      "field_id": "missing_portfolio_currency",
+      "field_name": "currency",
+      "reason": "Currency was not provided in the pasted text.",
+      "related_card_ids": [
+        "card_portfolio_context",
+        "card_portfolio_detected_holdings"
+      ],
+      "requiredness": "optional"
+    },
+    {
+      "field_id": "missing_portfolio_account",
+      "field_name": "account_context",
+      "reason": "Account context would improve interpretation of the portfolio snapshot.",
+      "related_card_ids": [
+        "card_portfolio_context"
+      ],
+      "requiredness": "required_for_review_quality"
+    },
+    {
+      "field_id": "missing_portfolio_research_notes",
+      "field_name": "research_notes",
+      "reason": "Research notes would improve future evidence checks.",
+      "related_card_ids": [
+        "card_portfolio_evidence_gaps",
+        "card_portfolio_weekly_review_preview"
+      ],
+      "requiredness": "required_for_review_quality"
+    },
+    {
+      "field_id": "missing_portfolio_profile",
+      "field_name": "investor_profile",
+      "reason": "Profile context would improve risk monitoring notes.",
+      "related_card_ids": [
+        "card_portfolio_risks"
+      ],
+      "requiredness": "required_for_review_quality"
+    }
+  ],
+  "safety_boundary": {
+    "local_or_temporary_context": true,
+    "no_order_execution": true,
+    "no_price_targets": true,
+    "no_recommendations": true,
+    "user_judgment_required": true
+  },
+  "save_handoff": {
+    "account_required": false,
+    "prompt_reason": "save_workspace",
+    "prompt_timing": "after_first_value",
+    "save_available": true,
+    "save_requires_account": true
+  },
+  "source_input": {
+    "contains_sensitive_data": false,
+    "input_id": "input_portfolio_snapshot_001",
+    "input_type": "portfolio_input",
+    "raw_text_preview": "User note: \"Portfolio paste from broker overview, July review.\" ASML 12%, MSFT 10%, cash 52%.",
+    "source_description": "User-provided portfolio snapshot text",
+    "submitted_at": "2026-07-04T09:00:00Z",
+    "user_language_hint": "en"
+  },
+  "status": "temporary",
+  "uncertainties": [
+    {
+      "message": "Currency was not included in the user-provided text.",
+      "related_card_ids": [
+        "card_portfolio_context",
+        "card_portfolio_detected_holdings"
+      ],
+      "related_entity_ids": [
+        "ent_portfolio_cash_weight"
+      ],
+      "severity": "medium",
+      "suggested_user_confirmation": "Are all listed values in the same currency?",
+      "uncertainty_id": "unc_portfolio_currency"
+    }
+  ],
+  "workspace_id": "tmp_ws_portfolio_snapshot_001"
+}
