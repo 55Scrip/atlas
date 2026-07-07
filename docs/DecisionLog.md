@@ -2,6 +2,34 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-07: Sprint 277 — Add Value Scenario Example Fixtures
+
+Decision: Add two example JSON fixtures for Value Scenario Review.
+
+**Fixtures:**
+- `examples/value_scenarios/holding_scenario_review.json` — holding-level review
+  for a hypothetical cloud infrastructure company (HYP). review_type: holding.
+  4 ranges: bear/base/bull (medium_term) and base (long_term). 5 assumptions,
+  2 evidence items, 3 change triggers. Safety boundary all true.
+- `examples/value_scenarios/portfolio_scenario_review.json` — portfolio-level review
+  for a hypothetical concentrated growth portfolio. review_type: portfolio.
+  3 ranges: downside/base/upside (medium_term). 3 weighted contributions (HSMC 28%
+  dominant, HYP 19% high, HWIF 14% medium). 3 assumptions, 2 evidence items,
+  2 change triggers. Safety boundary all true.
+
+**Rationale:** Fixtures establish the canonical JSON form for both holding and
+portfolio review types. Both validate via `ValueScenarioReview.from_json()` and
+round-trip cleanly. Fixtures use hypothetical tickers only. No calculations, no
+network, no AI.
+
+**Tests:** `tests/test_value_scenario_examples_sprint277.py` — covers file existence,
+valid JSON, schema loading, round-trip, canonical enum values, no single-point ranges,
+safety boundary, assumptions, evidence, change triggers, holding and portfolio
+structure, descriptive text preservation, prohibited language absence, and no runtime
+behavior changes.
+
+---
+
 ## 2026-07-07: Sprint 276 — Add Value Scenario Schema Dataclasses
 
 Decision: Implement Python schema dataclasses for the Value Scenario data model.

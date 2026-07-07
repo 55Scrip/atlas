@@ -1,0 +1,295 @@
+{
+  "scenario_review_id": "vsr_holding_hyp_001",
+  "review_type": "holding",
+  "created_at": "2026-07-07T12:00:00Z",
+  "subject": {
+    "subject_id": "subj_hyp_001",
+    "subject_type": "holding",
+    "display_name": "Hypothetical Cloud Infrastructure Co.",
+    "ticker": "HYP",
+    "portfolio_id": null,
+    "source_reference": "user_note_2026_07_07"
+  },
+  "time_horizons": [
+    "medium_term",
+    "long_term"
+  ],
+  "holding_scenarios": [
+    {
+      "holding_scenario_id": "hsc_hyp_001",
+      "subject": {
+        "subject_id": "subj_hyp_001",
+        "subject_type": "holding",
+        "display_name": "Hypothetical Cloud Infrastructure Co.",
+        "ticker": "HYP",
+        "portfolio_id": null,
+        "source_reference": null
+      },
+      "ranges": [
+        {
+          "range_id": "rng_hyp_bear_mt",
+          "horizon": "medium_term",
+          "case_type": "bear",
+          "lower_percent": -18.0,
+          "upper_percent": -8.0,
+          "currency_basis": null,
+          "assumption_ids": [
+            "asm_hyp_revenue",
+            "asm_hyp_margin",
+            "asm_hyp_multiple"
+          ],
+          "evidence_item_ids": [
+            "evi_hyp_q2report"
+          ],
+          "confidence": "low",
+          "evidence_quality": "incomplete",
+          "uncertainty_note": "Bear case assumes revenue growth decelerates significantly and margin expansion reverses. Evidence for this scenario is incomplete."
+        },
+        {
+          "range_id": "rng_hyp_base_mt",
+          "horizon": "medium_term",
+          "case_type": "base",
+          "lower_percent": 6.0,
+          "upper_percent": 16.0,
+          "currency_basis": null,
+          "assumption_ids": [
+            "asm_hyp_revenue",
+            "asm_hyp_margin",
+            "asm_hyp_multiple"
+          ],
+          "evidence_item_ids": [
+            "evi_hyp_q2report",
+            "evi_hyp_guidance"
+          ],
+          "confidence": "medium",
+          "evidence_quality": "adequate",
+          "uncertainty_note": "Revenue growth assumption requires confirmation. Forward guidance has not been reaffirmed for the next quarter."
+        },
+        {
+          "range_id": "rng_hyp_bull_mt",
+          "horizon": "medium_term",
+          "case_type": "bull",
+          "lower_percent": 18.0,
+          "upper_percent": 32.0,
+          "currency_basis": null,
+          "assumption_ids": [
+            "asm_hyp_revenue",
+            "asm_hyp_margin",
+            "asm_hyp_multiple"
+          ],
+          "evidence_item_ids": [
+            "evi_hyp_q2report",
+            "evi_hyp_guidance"
+          ],
+          "confidence": "low",
+          "evidence_quality": "incomplete",
+          "uncertainty_note": "Bull case requires multiple expansion above historical range. Margin durability evidence is incomplete."
+        },
+        {
+          "range_id": "rng_hyp_base_lt",
+          "horizon": "long_term",
+          "case_type": "base",
+          "lower_percent": 35.0,
+          "upper_percent": 75.0,
+          "currency_basis": null,
+          "assumption_ids": [
+            "asm_hyp_revenue",
+            "asm_hyp_competitive",
+            "asm_hyp_capital"
+          ],
+          "evidence_item_ids": [
+            "evi_hyp_q2report"
+          ],
+          "confidence": "low",
+          "evidence_quality": "incomplete",
+          "uncertainty_note": "Long-term range is wide because multi-year assumptions have not been tested by sufficient evidence. Scenario range should be revisited after the next company update."
+        }
+      ],
+      "key_drivers": [
+        "Revenue growth trajectory and customer retention",
+        "Margin durability as the business scales",
+        "Valuation multiple in relation to growth rate",
+        "Competitive position in cloud infrastructure"
+      ],
+      "key_risks": [
+        "Revenue growth deceleration from current levels",
+        "Margin pressure from infrastructure investment",
+        "Valuation multiple compression if growth slows",
+        "Increased competition in core markets"
+      ],
+      "assumption_ids": [
+        "asm_hyp_revenue",
+        "asm_hyp_margin",
+        "asm_hyp_multiple",
+        "asm_hyp_competitive",
+        "asm_hyp_capital"
+      ],
+      "evidence_quality": "adequate",
+      "confidence": "medium",
+      "change_trigger_ids": [
+        "trg_hyp_earnings",
+        "trg_hyp_guidance",
+        "trg_hyp_competitor"
+      ],
+      "revision_ids": [],
+      "notes": "Margin durability evidence is incomplete. This review should be updated after the next earnings report and any guidance update."
+    }
+  ],
+  "portfolio_scenario": null,
+  "assumptions": [
+    {
+      "assumption_id": "asm_hyp_revenue",
+      "assumption_type": "revenue_growth",
+      "description": "Revenue growth assumption requires confirmation. Base case assumes 18–22% annual growth; bear case 8–10%; bull case 28%+.",
+      "direction": "positive",
+      "related_horizon": "medium_term",
+      "related_range_ids": [
+        "rng_hyp_bear_mt",
+        "rng_hyp_base_mt",
+        "rng_hyp_bull_mt"
+      ],
+      "evidence_item_ids": [
+        "evi_hyp_q2report",
+        "evi_hyp_guidance"
+      ],
+      "confidence": "medium"
+    },
+    {
+      "assumption_id": "asm_hyp_margin",
+      "assumption_type": "margin",
+      "description": "Margin durability evidence is incomplete. Operating margin assumed at 18–22% in base case; below 14% in bear; above 26% in bull.",
+      "direction": "mixed",
+      "related_horizon": "medium_term",
+      "related_range_ids": [
+        "rng_hyp_bear_mt",
+        "rng_hyp_base_mt",
+        "rng_hyp_bull_mt"
+      ],
+      "evidence_item_ids": [
+        "evi_hyp_q2report"
+      ],
+      "confidence": "low"
+    },
+    {
+      "assumption_id": "asm_hyp_multiple",
+      "assumption_type": "valuation_multiple",
+      "description": "EV/Revenue multiple holds at 8–10x in base case; compresses to 5–6x in bear; expands to 12–14x in bull.",
+      "direction": "neutral",
+      "related_horizon": "medium_term",
+      "related_range_ids": [
+        "rng_hyp_bear_mt",
+        "rng_hyp_base_mt",
+        "rng_hyp_bull_mt"
+      ],
+      "evidence_item_ids": [],
+      "confidence": "low"
+    },
+    {
+      "assumption_id": "asm_hyp_competitive",
+      "assumption_type": "competitive_position",
+      "description": "Competitive position in cloud infrastructure assumed to be durable over the long term. Evidence is adequate but not strong.",
+      "direction": "positive",
+      "related_horizon": "long_term",
+      "related_range_ids": [
+        "rng_hyp_base_lt"
+      ],
+      "evidence_item_ids": [
+        "evi_hyp_q2report"
+      ],
+      "confidence": "low"
+    },
+    {
+      "assumption_id": "asm_hyp_capital",
+      "assumption_type": "capital_allocation",
+      "description": "Capital allocation assumed to favor reinvestment in infrastructure over near-term returns. No major M&A assumed in base case.",
+      "direction": "neutral",
+      "related_horizon": "long_term",
+      "related_range_ids": [
+        "rng_hyp_base_lt"
+      ],
+      "evidence_item_ids": [],
+      "confidence": "low"
+    }
+  ],
+  "evidence_items": [
+    {
+      "evidence_item_id": "evi_hyp_q2report",
+      "evidence_type": "company_report",
+      "description": "Hypothetical Q2 2026 earnings: revenue growth 19% YoY, operating margin 20.1%, guidance maintained for full year.",
+      "source_reference": "Hypothetical Q2 2026 earnings release",
+      "evidence_quality": "adequate",
+      "freshness": "current",
+      "related_assumption_ids": [
+        "asm_hyp_revenue",
+        "asm_hyp_margin",
+        "asm_hyp_competitive"
+      ]
+    },
+    {
+      "evidence_item_id": "evi_hyp_guidance",
+      "evidence_type": "guidance",
+      "description": "Management guided for full-year revenue growth of 18–22%. No update to margin guidance. Next earnings expected in 3 months.",
+      "source_reference": "Hypothetical Q2 2026 earnings call",
+      "evidence_quality": "adequate",
+      "freshness": "current",
+      "related_assumption_ids": [
+        "asm_hyp_revenue"
+      ]
+    }
+  ],
+  "change_triggers": [
+    {
+      "trigger_id": "trg_hyp_earnings",
+      "trigger_type": "earnings_report",
+      "description": "Next scheduled earnings report — will test revenue growth and margin assumptions. Scenario range should be revisited after the next company update.",
+      "expected_effect": "range_may_compress",
+      "related_assumption_ids": [
+        "asm_hyp_revenue",
+        "asm_hyp_margin"
+      ],
+      "related_range_ids": [
+        "rng_hyp_bear_mt",
+        "rng_hyp_base_mt",
+        "rng_hyp_bull_mt"
+      ],
+      "monitoring_note": "Watch operating margin trajectory and revenue growth rate versus the 18–22% base case assumption."
+    },
+    {
+      "trigger_id": "trg_hyp_guidance",
+      "trigger_type": "guidance_change",
+      "description": "Any management update to revenue or margin guidance outside the current range would require scenario revision.",
+      "expected_effect": "range_may_shift_up",
+      "related_assumption_ids": [
+        "asm_hyp_revenue"
+      ],
+      "related_range_ids": [
+        "rng_hyp_base_mt"
+      ],
+      "monitoring_note": null
+    },
+    {
+      "trigger_id": "trg_hyp_competitor",
+      "trigger_type": "product_or_strategy_update",
+      "description": "Major competitive product launch or pricing change in cloud infrastructure could affect the competitive position assumption.",
+      "expected_effect": "range_may_shift_down",
+      "related_assumption_ids": [
+        "asm_hyp_competitive"
+      ],
+      "related_range_ids": [
+        "rng_hyp_base_lt"
+      ],
+      "monitoring_note": "Monitor competitor announcements in cloud infrastructure segment."
+    }
+  ],
+  "revisions": [],
+  "safety_boundary": {
+    "no_single_point_targets": true,
+    "no_action_calls": true,
+    "no_execution_instructions": true,
+    "no_prediction_certainty": true,
+    "assumptions_required": true,
+    "evidence_quality_required": true,
+    "uncertainty_required": true,
+    "change_triggers_required": true
+  }
+}

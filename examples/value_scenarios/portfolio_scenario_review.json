@@ -1,0 +1,250 @@
+{
+  "scenario_review_id": "vsr_portfolio_hyp_001",
+  "review_type": "portfolio",
+  "created_at": "2026-07-07T12:00:00Z",
+  "subject": {
+    "subject_id": "subj_port_hyp_001",
+    "subject_type": "portfolio",
+    "display_name": "Hypothetical Concentrated Growth Portfolio",
+    "ticker": null,
+    "portfolio_id": "port_hyp_growth_001",
+    "source_reference": "portfolio_review_2026_07"
+  },
+  "time_horizons": [
+    "medium_term"
+  ],
+  "holding_scenarios": [],
+  "portfolio_scenario": {
+    "portfolio_scenario_id": "psc_hyp_001",
+    "portfolio_id": "port_hyp_growth_001",
+    "ranges": [
+      {
+        "range_id": "rng_port_downside_mt",
+        "horizon": "medium_term",
+        "case_type": "downside",
+        "lower_percent": -16.0,
+        "upper_percent": -7.0,
+        "currency_basis": null,
+        "assumption_ids": [
+          "asm_port_semi",
+          "asm_port_rate",
+          "asm_port_margins"
+        ],
+        "evidence_item_ids": [
+          "evi_port_macro"
+        ],
+        "confidence": "low",
+        "evidence_quality": "incomplete",
+        "uncertainty_note": "Downside range could widen if margin assumptions weaken across multiple positions simultaneously. Rate sensitivity is the primary driver of the downside scenario."
+      },
+      {
+        "range_id": "rng_port_base_mt",
+        "horizon": "medium_term",
+        "case_type": "base",
+        "lower_percent": 5.0,
+        "upper_percent": 13.0,
+        "currency_basis": null,
+        "assumption_ids": [
+          "asm_port_semi",
+          "asm_port_rate",
+          "asm_port_margins"
+        ],
+        "evidence_item_ids": [
+          "evi_port_macro",
+          "evi_port_earnings"
+        ],
+        "confidence": "medium",
+        "evidence_quality": "incomplete",
+        "uncertainty_note": "Portfolio range is sensitive to valuation assumptions and concentration. Several holdings require evidence refresh before confidence can improve."
+      },
+      {
+        "range_id": "rng_port_upside_mt",
+        "horizon": "medium_term",
+        "case_type": "upside",
+        "lower_percent": 16.0,
+        "upper_percent": 26.0,
+        "currency_basis": null,
+        "assumption_ids": [
+          "asm_port_semi",
+          "asm_port_margins"
+        ],
+        "evidence_item_ids": [
+          "evi_port_earnings"
+        ],
+        "confidence": "low",
+        "evidence_quality": "incomplete",
+        "uncertainty_note": "Upside scenario requires both semiconductor position above base case and multiple expansion. Both conditions are speculative at current evidence levels."
+      }
+    ],
+    "weighted_contributions": [
+      {
+        "contribution_id": "ctb_semi_001",
+        "holding_id": "hld_hyp_semi_001",
+        "display_name": "Hypothetical Semiconductor Co.",
+        "ticker": "HSMC",
+        "portfolio_weight": 0.28,
+        "contribution_to_range": "Largest contributor to both upside and downside range due to high portfolio weight and wide scenario range.",
+        "range_impact_level": "dominant",
+        "key_reason": "High weight (28%) combined with earnings revision sensitivity and valuation multiple exposure.",
+        "evidence_quality": "adequate"
+      },
+      {
+        "contribution_id": "ctb_cloud_001",
+        "holding_id": "hld_hyp_cloud_001",
+        "display_name": "Hypothetical Cloud Infrastructure Co.",
+        "ticker": "HYP",
+        "portfolio_weight": 0.19,
+        "contribution_to_range": "Moderate upside contribution if revenue growth assumptions hold. Downside limited by lower valuation multiple.",
+        "range_impact_level": "high",
+        "key_reason": "Second-largest position; thesis depends on revenue growth and margin durability assumptions not yet confirmed.",
+        "evidence_quality": "adequate"
+      },
+      {
+        "contribution_id": "ctb_water_001",
+        "holding_id": "hld_hyp_water_001",
+        "display_name": "Hypothetical Water Infrastructure Fund",
+        "ticker": "HWIF",
+        "portfolio_weight": 0.14,
+        "contribution_to_range": "Stabilising influence on downside range. Upside limited by structural growth constraints.",
+        "range_impact_level": "medium",
+        "key_reason": "Defensive infrastructure exposure; evidence quality is incomplete for long-term thesis assumptions.",
+        "evidence_quality": "incomplete"
+      }
+    ],
+    "main_upside_drivers": [
+      "Semiconductor position — earnings acceleration could contribute +5–8% to portfolio return in the upside scenario",
+      "Cloud infrastructure position — margin durability confirmation would improve range and confidence",
+      "Valuation re-rating across growth positions if rate environment becomes more favorable"
+    ],
+    "main_downside_drivers": [
+      "Rate sensitivity — three of six positions have high valuation multiples exposed to rate increases",
+      "Earnings revision risk — two positions have guidance that has not been reaffirmed for the next quarter",
+      "Concentration — semiconductor and cloud positions together represent 47% of portfolio weight"
+    ],
+    "concentration_sensitivity": "Portfolio range is sensitive to valuation assumptions and concentration. The semiconductor and cloud positions together account for 47% of weight. A bear case outcome for either position would move the portfolio downside range by 3–6 percentage points.",
+    "valuation_sensitivity": "Three positions have EV/Revenue or P/E multiples above historical average levels. A 15% multiple compression across these positions would reduce the base case range by approximately 4 percentage points.",
+    "evidence_gaps": [
+      "Forward guidance reaffirmation outstanding for two positions ahead of next earnings season",
+      "Margin durability evidence is incomplete for three of six positions",
+      "Competitive position evidence is weak for one position — requires evidence refresh"
+    ],
+    "holdings_requiring_review": [
+      "hld_hyp_water_001",
+      "hld_hyp_industrial_001"
+    ],
+    "confidence": "medium",
+    "evidence_quality": "incomplete"
+  },
+  "assumptions": [
+    {
+      "assumption_id": "asm_port_semi",
+      "assumption_type": "earnings_growth",
+      "description": "Semiconductor position earnings grow 20–28% in the base case, driven by data centre and AI infrastructure demand. Bear case assumes 5–8% growth on inventory correction.",
+      "direction": "positive",
+      "related_horizon": "medium_term",
+      "related_range_ids": [
+        "rng_port_base_mt",
+        "rng_port_downside_mt",
+        "rng_port_upside_mt"
+      ],
+      "evidence_item_ids": [
+        "evi_port_earnings"
+      ],
+      "confidence": "medium"
+    },
+    {
+      "assumption_id": "asm_port_rate",
+      "assumption_type": "macro_rate_sensitivity",
+      "description": "Rate environment holds broadly stable in the base case. A rate surprise upward would compress multiples for three high-multiple positions. Downside range could widen if margin assumptions weaken.",
+      "direction": "mixed",
+      "related_horizon": "medium_term",
+      "related_range_ids": [
+        "rng_port_downside_mt",
+        "rng_port_base_mt"
+      ],
+      "evidence_item_ids": [
+        "evi_port_macro"
+      ],
+      "confidence": "low"
+    },
+    {
+      "assumption_id": "asm_port_margins",
+      "assumption_type": "margin",
+      "description": "Aggregate operating margin improvement of 0.5–1.5 percentage points across the portfolio in the base case. Several holdings require evidence refresh before confidence can improve.",
+      "direction": "positive",
+      "related_horizon": "medium_term",
+      "related_range_ids": [
+        "rng_port_base_mt",
+        "rng_port_upside_mt"
+      ],
+      "evidence_item_ids": [],
+      "confidence": "low"
+    }
+  ],
+  "evidence_items": [
+    {
+      "evidence_item_id": "evi_port_macro",
+      "evidence_type": "market_context",
+      "description": "Current macro context: central bank holding rates; market pricing 1–2 cuts over the next 12 months. Rate sensitivity is the primary driver of the downside scenario.",
+      "source_reference": "User market context note, 2026-07-07",
+      "evidence_quality": "adequate",
+      "freshness": "current",
+      "related_assumption_ids": [
+        "asm_port_rate"
+      ]
+    },
+    {
+      "evidence_item_id": "evi_port_earnings",
+      "evidence_type": "financial_history",
+      "description": "Semiconductor position: last two quarters beat earnings estimates by 3–5%. Revenue growth accelerating. Guidance maintained.",
+      "source_reference": "Hypothetical Q2 2026 earnings summary",
+      "evidence_quality": "adequate",
+      "freshness": "current",
+      "related_assumption_ids": [
+        "asm_port_semi"
+      ]
+    }
+  ],
+  "change_triggers": [
+    {
+      "trigger_id": "trg_port_earnings_season",
+      "trigger_type": "earnings_report",
+      "description": "Next earnings season — four of six portfolio positions report within the next six weeks. Key test for margin and revenue growth assumptions across multiple holdings.",
+      "expected_effect": "range_may_compress",
+      "related_assumption_ids": [
+        "asm_port_semi",
+        "asm_port_margins"
+      ],
+      "related_range_ids": [
+        "rng_port_base_mt",
+        "rng_port_downside_mt"
+      ],
+      "monitoring_note": "Prioritise semiconductor and cloud infrastructure positions first. Monitor margin commentary specifically."
+    },
+    {
+      "trigger_id": "trg_port_rate_decision",
+      "trigger_type": "macro_rate_regime_change",
+      "description": "Central bank rate decision — any surprise above or below current market pricing would affect valuation multiples for three positions.",
+      "expected_effect": "range_may_shift_down",
+      "related_assumption_ids": [
+        "asm_port_rate"
+      ],
+      "related_range_ids": [
+        "rng_port_downside_mt",
+        "rng_port_base_mt"
+      ],
+      "monitoring_note": "A rate surprise upward of 25bps or more would require scenario revision for the three high-multiple positions."
+    }
+  ],
+  "revisions": [],
+  "safety_boundary": {
+    "no_single_point_targets": true,
+    "no_action_calls": true,
+    "no_execution_instructions": true,
+    "no_prediction_certainty": true,
+    "assumptions_required": true,
+    "evidence_quality_required": true,
+    "uncertainty_required": true,
+    "change_triggers_required": true
+  }
+}

@@ -612,6 +612,17 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 277 (post-v1 improvement — complete):**
+Two Value Scenario example fixtures added to `examples/value_scenarios/`:
+`holding_scenario_review.json` (holding type, hypothetical HYP, 4 ranges across
+medium_term and long_term, 5 assumptions, 2 evidence items, 3 change triggers) and
+`portfolio_scenario_review.json` (portfolio type, hypothetical concentrated growth
+portfolio, 3 ranges medium_term, 3 weighted contributions, 3 assumptions, 2 evidence
+items, 2 change triggers). Both validate via `ValueScenarioReview.from_json()` and
+round-trip cleanly. Safety boundary all true. No single-point ranges. No calculations,
+no AI, no network, no CLI changes. New test file
+`tests/test_value_scenario_examples_sprint277.py`.
+
 **Sprint 276 (post-v1 improvement — complete):**
 Value Scenario schema dataclasses implemented in `atlas/value_scenario/schema.py`
 and `atlas/value_scenario/__init__.py`. 11 dataclasses: `ScenarioSubject`,

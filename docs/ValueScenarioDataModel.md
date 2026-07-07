@@ -1,7 +1,7 @@
 # Value Scenario Data Model
 
 **Created:** 2026-07-07 (Sprint 275)
-**Status:** DEFINED — data model specified. Schema dataclasses implemented in Sprint 276.
+**Status:** DEFINED — data model specified. Schema dataclasses implemented in Sprint 276. Example fixtures added in Sprint 277.
 **Depends on:** [docs/ValueScenarioReview.md](ValueScenarioReview.md)
 **Depends on:** [docs/AtlasProductPositioningV1.md](AtlasProductPositioningV1.md)
 **Schema implementation:** `atlas/value_scenario/schema.py` (Sprint 276)
