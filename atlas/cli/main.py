@@ -135,6 +135,7 @@ snapshot_app = typer.Typer(help="Snapshot Draft commands (validation and safe lo
 suitability_app = typer.Typer(help="Investor suitability context commands")
 temporary_workspace_app = typer.Typer(help="Temporary workspace commands")
 theme_app = typer.Typer(help="Theme intelligence commands")
+value_scenario_app = typer.Typer(help="Value Scenario commands")
 watchlist_app = typer.Typer(help="Watchlist intelligence commands")
 app.add_typer(company_analysis_app, name="company-analysis")
 app.add_typer(dashboard_app, name="dashboard")
@@ -155,6 +156,7 @@ app.add_typer(snapshot_app, name="snapshot")
 app.add_typer(suitability_app, name="suitability")
 app.add_typer(temporary_workspace_app, name="temporary-workspace")
 app.add_typer(theme_app, name="theme")
+app.add_typer(value_scenario_app, name="value-scenario")
 app.add_typer(watchlist_app, name="watchlist")
 console = Console()
 
@@ -556,6 +558,76 @@ def temporary_workspace_validate_command(
     console.print(f"Detected entities: {len(workspace.detected_entities)}")
     console.print(f"Uncertainties: {len(workspace.uncertainties)}")
     console.print(f"Missing fields: {len(workspace.missing_fields)}")
+
+
+@value_scenario_app.command("validate")
+def value_scenario_validate_command(
+    scenario_path: Path = typer.Argument(
+        ...,
+        help="Path to a Value Scenario JSON file to validate.",
+    ),
+):
+    """Validate a Value Scenario JSON file and display a summary.
+
+    Loads the scenario, validates its schema, and prints a human-readable
+    summary including scenario review ID, review type, holding scenario count,
+    portfolio scenario presence, range count, assumption count, evidence item
+    count, and change trigger count.
+
+    This command is read-only. It does not write to any file and does not
+    modify the scenario file.
+
+    No calculations. No forecasts. No live data. No recommendations. No provider dependency.
+    """
+    from atlas.value_scenario import ValueScenarioReview
+
+    if scenario_path.is_dir():
+        console.print(
+            "[red]Value scenario validation failed:[/red] expected a JSON file path, got a directory."
+        )
+        raise typer.Exit(code=1)
+
+    if not scenario_path.exists():
+        console.print(
+            "[red]Value scenario validation failed:[/red] file not found."
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        text = scenario_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        console.print(
+            f"[red]Value scenario validation failed:[/red] could not read file: {exc}"
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        import json as _json
+        _json.loads(text)
+    except _json.JSONDecodeError:
+        console.print("[red]Value scenario validation failed:[/red] invalid JSON.")
+        raise typer.Exit(code=1)
+
+    try:
+        review = ValueScenarioReview.from_json(text)
+    except ValueError as exc:
+        console.print(f"[red]Value scenario validation failed:[/red] {exc}")
+        raise typer.Exit(code=1)
+
+    portfolio_scenario_label = "yes" if review.portfolio_scenario is not None else "no"
+    total_ranges = sum(len(hs.ranges) for hs in review.holding_scenarios)
+    if review.portfolio_scenario is not None:
+        total_ranges += len(review.portfolio_scenario.ranges)
+
+    console.print("Value scenario is valid.")
+    console.print(f"Scenario Review ID: {review.scenario_review_id}")
+    console.print(f"Review Type: {review.review_type}")
+    console.print(f"Holding Scenarios: {len(review.holding_scenarios)}")
+    console.print(f"Portfolio Scenario: {portfolio_scenario_label}")
+    console.print(f"Ranges: {total_ranges}")
+    console.print(f"Assumptions: {len(review.assumptions)}")
+    console.print(f"Evidence Items: {len(review.evidence_items)}")
+    console.print(f"Change Triggers: {len(review.change_triggers)}")
 
 
 @snapshot_app.command("review")

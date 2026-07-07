@@ -664,10 +664,11 @@ class TestSafeLanguage:
 
 
 class TestNoRuntimeBehaviorChanges:
-    def test_no_new_value_scenario_cli_commands(self):
+    def test_cli_value_scenario_validate_command_present(self):
         cli_source = CLI_FILE.read_text(encoding="utf-8")
-        assert "value_scenario" not in cli_source
-        assert "value-scenario" not in cli_source
+        assert "value_scenario_app" in cli_source
+        assert 'name="value-scenario"' in cli_source
+        assert '@value_scenario_app.command("validate")' in cli_source
 
     def test_no_ai_imports_added(self):
         for src_file in Path("atlas").rglob("*.py"):

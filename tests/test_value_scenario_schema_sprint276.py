@@ -1062,10 +1062,11 @@ class TestNoBehaviorChanges:
         for forbidden in ["openai", "anthropic", "langchain"]:
             assert forbidden not in src
 
-    def test_cli_unchanged(self):
+    def test_cli_value_scenario_validate_command_present(self):
         cli_source = CLI_FILE.read_text(encoding="utf-8")
-        assert "value_scenario" not in cli_source
-        assert "value-scenario" not in cli_source
+        assert "value_scenario_app" in cli_source
+        assert 'name="value-scenario"' in cli_source
+        assert '@value_scenario_app.command("validate")' in cli_source
 
     def test_schema_creates_no_files_on_import(self, tmp_path):
         files_before = set(tmp_path.iterdir())

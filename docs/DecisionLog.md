@@ -2,6 +2,30 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-07: Sprint 278 — Add Value Scenario Read-Only Validation CLI
+
+Decision: Add `atlas value-scenario validate <path>` CLI command.
+
+**Pattern:** Mirrors `atlas temporary-workspace validate` exactly. Same sub-app
+Typer pattern: `value_scenario_app = typer.Typer(...)` → `app.add_typer(...,
+name="value-scenario")` → `@value_scenario_app.command("validate")`. Local import
+of `ValueScenarioReview` inside the command function.
+
+**Output fields:** Scenario Review ID, Review Type, Holding Scenarios count,
+Portfolio Scenario (yes/no), Ranges (sum across all holding scenarios plus portfolio
+scenario), Assumptions, Evidence Items, Change Triggers.
+
+**Error handling:** Directory path, missing file, invalid JSON, and schema
+validation failures each print a clear non-advisory message and exit non-zero.
+No stack traces printed. Read-only — no file writes.
+
+**Rationale:** Follows the established validation CLI pattern set by Temporary
+Workspace validate (Sprint 273) and Snapshot validate (Sprint 224). Allows Atlas
+users to confirm a Value Scenario JSON file is valid before use, without any
+calculations, rendering, or persistence.
+
+---
+
 ## 2026-07-07: Sprint 277 — Add Value Scenario Example Fixtures
 
 Decision: Add two example JSON fixtures for Value Scenario Review.

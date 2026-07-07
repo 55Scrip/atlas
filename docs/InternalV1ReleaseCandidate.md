@@ -612,6 +612,16 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 278 (post-v1 improvement — complete):**
+`atlas value-scenario validate <path>` CLI command added. Validates a Value
+Scenario JSON file and renders a human-readable summary: scenario review ID,
+review type, holding scenario count, portfolio scenario presence (yes/no), total
+range count, assumption count, evidence item count, and change trigger count.
+Exit 0 on valid, exit 1 on invalid JSON, schema error, single-point range, missing
+file, or directory path. No file writing. No mutation. No calculations. No
+forecasts. No provider imports. No network calls. Mirrors the temporary workspace
+validation CLI pattern. 79 new tests. Full suite green. All demos green. RC green.
+
 **Sprint 277 (post-v1 improvement — complete):**
 Two Value Scenario example fixtures added to `examples/value_scenarios/`:
 `holding_scenario_review.json` (holding type, hypothetical HYP, 4 ranges across

@@ -982,10 +982,11 @@ class TestNoRuntimeBehaviorChanges:
         new_files = list(Path("atlas").rglob("*275*.py"))
         assert new_files == [], f"unexpected python files: {new_files}"
 
-    def test_cli_unchanged_by_sprint_275(self):
+    def test_cli_value_scenario_validate_command_present(self):
         cli_source = CLI_FILE.read_text(encoding="utf-8")
-        assert "value_scenario" not in cli_source
-        assert "value-scenario" not in cli_source
+        assert "value_scenario_app" in cli_source
+        assert 'name="value-scenario"' in cli_source
+        assert '@value_scenario_app.command("validate")' in cli_source
 
     def test_no_ai_imports_added(self):
         for src_file in Path("atlas").rglob("*.py"):
