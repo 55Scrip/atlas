@@ -2,6 +2,62 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-08: Sprint 280 — Define Investment Review Pipeline V1
+
+Decision: Define the canonical internal Investment Review Pipeline for Atlas as a product architecture document.
+
+**New document:** `docs/InvestmentReviewPipelineV1.md` — defines 12 sequential stages:
+Input → Classification → Entity Extraction → Evidence Assembly → Evidence Quality
+Review → Assumption Review → Risk Review → Value Scenario Review → Weekly Review →
+Snapshot Draft → Decision Journal → Workspace / Save.
+
+**Core principle:** Atlas never begins with conclusions. Atlas always begins with
+evidence. No stage may skip earlier reasoning.
+
+**Cross-cutting principles:** evidence before conclusions, uncertainty always visible,
+assumptions explicit, revisions preserved, user content preserved, canonical values
+in English, deterministic first, no action warranted is a valid outcome, AI optional.
+
+**Extension points:** Market data, valuation models, AI reasoning, OCR, broker sync,
+collaboration, news fetching plug into existing stages. They do not add new stages.
+They do not skip reasoning.
+
+**Rationale:** Atlas now has multiple independent capabilities (Temporary Workspace,
+Snapshot Drafts, Weekly Review, Value Scenario Review, Research Notes, Company Facts,
+Decision Journal). Sprint 280 defines the shared internal pipeline that makes these
+capabilities coherent rather than isolated.
+
+**No runtime behavior changed.** No CLI. No AI. No calculations. No persistence.
+
+---
+
+## 2026-07-08: Sprint 279 — Add Value Scenario Read-Only Summary Renderer
+
+Decision: Add `atlas value-scenario summary <path>` CLI command and `atlas/value_scenario/render.py`.
+
+**New file:** `atlas/value_scenario/render.py` — `render_value_scenario_summary(review)`
+renders a neutral, read-only overview of a `ValueScenarioReview`. Output sections:
+Review Type, Subject (with ticker or portfolio_id), Time Horizons, Scenario Ranges
+(with horizon label when >3 ranges per holding scenario), Evidence Quality, Confidence,
+Portfolio Contributions (portfolio reviews only), Concentration Note (if present),
+Assumptions count, Evidence Items count, Change Triggers count, Safety Boundary
+(✓/✗ per field), and a fixed Reminder: "Atlas helps structure judgment. It does not
+predict future returns."
+
+**Safety:** No prohibited phrases in renderer or CLI output. No calculations, no
+averaging, no forecasts, no recommendations. Ranges rendered exactly as stored.
+`markup=False, highlight=False` passed to `console.print` to prevent Rich from
+interpreting `[...]` notation as markup tags.
+
+**Pattern:** Mirrors `atlas/snapshot_input/render.py` (Sprint 224). Local imports
+inside command function. No new provider/network/AI imports.
+
+**Rationale:** After Atlas can validate Value Scenario JSON files, the next safe
+step is a read-only renderer. Users can now validate and then read a structured
+neutral overview of any Value Scenario fixture.
+
+---
+
 ## 2026-07-07: Sprint 278 — Add Value Scenario Read-Only Validation CLI
 
 Decision: Add `atlas value-scenario validate <path>` CLI command.

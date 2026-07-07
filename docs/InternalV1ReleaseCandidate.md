@@ -612,6 +612,28 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 280 (post-v1 architecture — complete):**
+Investment Review Pipeline V1 defined in `docs/InvestmentReviewPipelineV1.md`.
+Canonical 12-stage internal pipeline: Input → Classification → Entity Extraction →
+Evidence Assembly → Evidence Quality Review → Assumption Review → Risk Review →
+Value Scenario Review → Weekly Review → Snapshot Draft → Decision Journal →
+Workspace / Save. Core principle: Atlas never begins with conclusions; Atlas always
+begins with evidence. Eight cross-cutting principles documented. Future extension
+points (market data, AI, OCR, broker sync, valuation models, collaboration) placed
+at specific stages without changing the pipeline. No runtime behavior changed. No
+CLI. No calculations. No new Python modules. 93 new tests.
+
+**Sprint 279 (post-v1 improvement — complete):**
+`atlas value-scenario summary <path>` CLI command added. Validates a Value Scenario
+JSON file then renders a read-only neutral overview: review type, subject (with ticker
+or portfolio ID), time horizons, scenario ranges (with horizon labels for multi-horizon
+reviews), evidence quality, confidence, portfolio contributions (for portfolio reviews),
+concentration note (if present), assumption count, evidence item count, change trigger
+count, safety boundary (✓ per field), and a fixed Reminder. New renderer module
+`atlas/value_scenario/render.py`. Exit 0 on success, non-zero on invalid JSON, schema
+error, missing file, or directory. No calculations. No forecasts. No recommendations.
+No file writes. 102 new tests. Full suite green. All demos green. RC green.
+
 **Sprint 278 (post-v1 improvement — complete):**
 `atlas value-scenario validate <path>` CLI command added. Validates a Value
 Scenario JSON file and renders a human-readable summary: scenario review ID,
