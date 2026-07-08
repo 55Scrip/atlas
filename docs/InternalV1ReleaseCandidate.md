@@ -612,6 +612,23 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 287 (Chapter 2 — product UX flow — complete):**
+Temporary Workspace UX Flow defined in `docs/TemporaryWorkspaceUXFlow.md`. Transforms
+the Alpha Experience Specification into a screen-by-screen product flow. Six screens:
+Landing Screen (headline, paste box, examples, privacy and no-account messaging, submit
+behaviour, empty and error states); Processing State (three-line progress sequence, no
+spinner, no AI-thinking language, long-wait fallback, error recovery); Temporary
+Workspace (three layout zones, six card types with position rationale, disambiguation
+card, first aha moment timing at 90 seconds); Weekly Review Preview (trigger conditions,
+inline expansion, partial review, quiet link affordance); Snapshot Draft Preview
+(unconfirmed/editing/confirmed/discarded/low-confidence states, undo with 5-second
+window); Save Workspace Prompt (trigger conditions requiring prior interaction, non-
+blocking sticky footer, equally prominent continue-without-saving option, account
+creation offered only after user saves — rationale documented). Emotional journey map
+for all six screens. Anti-goals applied explicitly per screen: no dashboards, no
+gamification, no urgency, no prediction language, no action recommendations, no account
+walls. No runtime code. No implementation technology.
+
 **Sprint 286 (Chapter 2 — product experience — complete):**
 Atlas Alpha 0.1 first five-minute experience defined in
 `docs/AtlasAlphaExperienceSpecification.md`. Canonical product specification answering:

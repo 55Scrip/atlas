@@ -2,6 +2,18 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-08: Sprint 287 — Prototype Temporary Workspace UX Flow
+
+Decision: Transform the Atlas Alpha Experience Specification into a screen-by-screen UX flow. Documentation only. No implementation.
+
+**New document:** `docs/TemporaryWorkspaceUXFlow.md` — the primary reference for the first Atlas Alpha prototype. Covers six screens from Landing to Save Workspace Prompt.
+
+**Rationale:** Sprint 286 established what the experience should feel like. Sprint 287 answers how it works, screen by screen. A designer or frontend engineer reading this document should not need to ask "how should this work?" for any step in the Temporary Workspace journey.
+
+**Outcome:** `docs/TemporaryWorkspaceUXFlow.md` created. Six screens documented: (1) Landing Screen — headline, paste box, examples, privacy messaging, no-account messaging, submit; (2) Processing State — three-line progress sequence, no spinner, no AI-thinking language, error recovery; (3) Temporary Workspace — three layout zones, six card types with positions and rationale for each, disambiguation card, first "aha" moment timing; (4) Weekly Review Preview — trigger conditions, inline expansion, partial review, quiet link affordance; (5) Snapshot Draft Preview — unconfirmed/editing/confirmed/discarded states, undo timing, low-confidence handling; (6) Save Workspace Prompt — trigger conditions, non-blocking footer, equally prominent continue-without-saving option, why account is first offered here and not earlier. Emotional journey map covers all six screens. Anti-goals applied to each screen explicitly. No runtime code. No implementation technology.
+
+---
+
 ## 2026-07-08: Sprint 286 — Atlas Alpha 0.1 Experience Specification
 
 Decision: Define the canonical first five-minute user experience for Atlas Alpha 0.1 as a product specification document. First sprint of Chapter 2 — Building the Product.
