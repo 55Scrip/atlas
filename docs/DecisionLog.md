@@ -2,6 +2,18 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-08: Sprint 286 — Atlas Alpha 0.1 Experience Specification
+
+Decision: Define the canonical first five-minute user experience for Atlas Alpha 0.1 as a product specification document. First sprint of Chapter 2 — Building the Product.
+
+**New document:** `docs/AtlasAlphaExperienceSpecification.md` — answers the question: what should a first-time user experience from second 0 until they have received meaningful value, without creating an account?
+
+**Rationale:** Atlas now has a complete architectural foundation (Sprints 280–285). Before any UI, CLI, rendering, or persistence is implemented, a canonical product experience specification is needed so that designers and frontend engineers can build without ambiguity. This sprint produces that specification. It is binding — every implementation decision must be consistent with it.
+
+**Outcome:** `docs/AtlasAlphaExperienceSpecification.md` created. Specifies: Arrival, Landing Page, First Input, Processing Experience, Temporary Workspace, Workspace Cards (ordering, anatomy, card types), Weekly Review Preview, Snapshot Draft Preview, Save Workspace Prompt, Optional Account Creation, Empty States (5 variants), Error States (4 variants), Success States (4 variants), Emotional Goals (complete map for every step), Product Principles (8, binding), Anti-Goals (5 feelings Atlas must never produce), Trust Boundaries, Privacy Expectations, First "Aha" Moment specification, and Future Extension Notes. Eight product principles are binding constraints, not aspirations. Account creation is never offered before the user has received meaningful value. Nothing is saved until the user explicitly chooses to save. No implementation: no React, no backend, no authentication, no persistence, no CLI, no API, no AI, no market data, no network.
+
+---
+
 ## 2026-07-08: Sprint 285 — Define Atlas Decision Engine V1
 
 Decision: Define the canonical Atlas Decision Engine as a product document connecting all pipeline stages.

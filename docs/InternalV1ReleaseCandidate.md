@@ -612,6 +612,20 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 286 (Chapter 2 — product experience — complete):**
+Atlas Alpha 0.1 first five-minute experience defined in
+`docs/AtlasAlphaExperienceSpecification.md`. Canonical product specification answering:
+what should a first-time user experience from second 0 until they have received
+meaningful value, without creating an account? Covers: Arrival, Landing Page, First
+Input, Processing Experience, Temporary Workspace, Workspace Cards (ordering and
+anatomy), Weekly Review Preview, Snapshot Draft Preview, Save Workspace prompt, Optional
+Account Creation, Empty States, Error States, Success States, Emotional Goals per step,
+Product Principles (8, binding), Anti-Goals, Trust Boundaries, Privacy Expectations,
+and Future Extension Notes. Eight product principles are constraints, not aspirations.
+Trust before accounts: account creation is never offered before meaningful value is
+delivered. Nothing stored until the user explicitly saves. No action recommendations.
+No predictions. No forced decisions. Documentation only. No runtime code.
+
 **Sprint 285 (post-v1 architecture — complete):**
 Atlas Decision Engine V1 defined in `docs/AtlasDecisionEngineV1.md`. The orchestration
 layer that connects all pipeline stages into a complete deterministic flow. Documents the
