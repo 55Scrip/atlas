@@ -2,6 +2,33 @@
 
 This log records architectural decisions that shape future development.
 
+## 2026-07-08: Sprint 285 — Define Atlas Decision Engine V1
+
+Decision: Define the canonical Atlas Decision Engine as a product document connecting all pipeline stages.
+
+**New document:** `docs/AtlasDecisionEngineV1.md` — defines how Atlas produces structured judgment
+from raw user input. The orchestration layer that connects Classification, Entity Extraction,
+Evidence Assembly, Evidence Quality Review, Assumption Review, Risk Review, Value Scenario Review,
+Weekly Review, Snapshot Draft, and Decision Journal into a complete deterministic flow.
+
+**Rationale:** Sprints 280–284 defined each pipeline stage in isolation. The Decision Engine
+document answers the missing question: how do these stages connect? It specifies what flows
+between stages, which stages are mandatory (Classification through Risk Review) versus optional
+(Value Scenario Review, Weekly Review, Snapshot Draft, Decision Journal), and what the invariant
+core of the engine is. It makes the overall architecture legible as a whole system, not just as
+a collection of stage definitions.
+
+**Outcome:** `docs/AtlasDecisionEngineV1.md` created. Documents the complete deterministic flow
+from User Input to Structured Judgment. Defines mandatory and optional stages with a table.
+Defines dependency graph between stages. Documents what flows between each pair of stages.
+Eight canonical principles: deterministic first; evidence before conclusions; assumptions explicit;
+uncertainty visible; recommendations never generated; user content preserved; revisions accumulate;
+structured judgment over prediction. Extension points table: AI, market data, SEC filings,
+earnings transcripts, broker sync, OCR, collaboration — all connect as inputs, none bypass the
+core chain. No runtime code. No CLI. No new architectural concepts introduced.
+
+---
+
 ## 2026-07-08: Sprint 284 — Define Risk Review V1
 
 Decision: Define the canonical Risk Review architecture for Atlas as a product document.

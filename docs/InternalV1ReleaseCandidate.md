@@ -612,6 +612,21 @@ Swedish output now fully uses Swedish constants for all extracted body messages.
 No new locales, no gettext, no catalogs, no runtime detection. 90 new tests.
 4275 passed, 3 skipped. All demos green. RC2 green. Internal v1 foundation unchanged.
 
+**Sprint 285 (post-v1 architecture — complete):**
+Atlas Decision Engine V1 defined in `docs/AtlasDecisionEngineV1.md`. The orchestration
+layer that connects all pipeline stages into a complete deterministic flow. Documents the
+full sequence from User Input to Structured Judgment. Defines mandatory stages
+(Classification, Entity Extraction, Evidence Assembly, Evidence Quality Review, Assumption
+Review, Risk Review) and optional stages (Value Scenario Review, Weekly Review, Snapshot
+Draft, Decision Journal) with a dependency table. Documents what flows between each pair
+of stages. Eight canonical principles: deterministic first; evidence before conclusions;
+assumptions explicit; uncertainty visible; action recommendations never generated; user
+content preserved; revisions accumulate; structured judgment over prediction. Extension
+points table: AI, market data, SEC filings, earnings transcripts, broker sync, OCR,
+collaboration — all connect as Evidence Assembly inputs; none bypass the invariant core
+chain. References all prior architecture documents. No runtime code. No CLI. No new
+architectural concepts. Connects the existing ones.
+
 **Sprint 284 (post-v1 architecture — complete):**
 Risk Review V1 defined in `docs/RiskReviewV1.md`. Makes Stage 7 of the Investment
 Review Pipeline concrete. Ten canonical risk categories (Business, Financial,
