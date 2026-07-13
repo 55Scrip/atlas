@@ -3,16 +3,17 @@
 These are transport-layer contracts, deliberately separate from the domain's
 value objects: the wire format (JSON, UUID-as-string) is an HTTP concern, not
 a business rule, and the two are free to diverge without touching the
-domain.
+domain. Per ADR-004, the wire format is camelCase (`CamelModel`); Python
+attribute names below stay snake_case, matching the domain and every other
+internal layer.
 """
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
-
 from atlas.core.domain.decision.entity import Decision
+from atlas.core.infrastructure.api.serialization import CamelModel
 
 ATLAS_LEARNING_MESSAGE = (
     "Atlas has recorded your decision. It has started learning, but does not "
@@ -20,7 +21,7 @@ ATLAS_LEARNING_MESSAGE = (
 )
 
 
-class CreateDecisionRequest(BaseModel):
+class CreateDecisionRequest(CamelModel):
     user_id: uuid.UUID
     decision_type: str
     subject: str
@@ -30,7 +31,7 @@ class CreateDecisionRequest(BaseModel):
     source: str = "Manual"
 
 
-class DecisionSummary(BaseModel):
+class DecisionSummary(CamelModel):
     id: uuid.UUID
     user_id: uuid.UUID
     decision_type: str

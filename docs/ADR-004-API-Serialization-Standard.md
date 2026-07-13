@@ -1,6 +1,6 @@
 # ADR-004 — API Serialization Standard
 
-**Status:** Proposed. Backlog item — not implemented. To be addressed as its own dedicated Product Increment, not folded into API-001, API-002, or any increment that follows before it is scheduled.
+**Status:** Implemented. Atlas's first Product Increment after the v0.1.0-beta baseline freeze.
 
 ---
 
@@ -19,30 +19,60 @@ increments' delivery reports and documented in
 
 ## Decision
 
-Not yet made. Recommendation on the table, pending its own Product
-Increment:
-
 - **camelCase** for all public REST API request/response bodies.
 - **snake_case** internally — Python domain, application, and
-  infrastructure code keeps its existing convention throughout.
+  infrastructure code (including the Python attribute names on the API
+  schema classes themselves) keeps its existing convention throughout.
 
 The boundary between the two stays exactly where API-002 already put it:
 pydantic schemas at the API layer translate between the wire format and
-the Python-side attribute names (e.g. via an alias generator), so this is a
+the Python-side attribute names via an alias generator, so this is a
 serialization-layer decision only — it does not reach into domain models,
 value objects, or persistence.
 
-## Why Deferred
+**Implementation:** a single shared base,
+`atlas.core.infrastructure.api.serialization.CamelModel`
+(`alias_generator=to_camel`, `populate_by_name=True`), used by every schema
+class under `atlas/core/infrastructure/api/**/schemas.py`. API-002's
+schemas already had this pattern locally (`_CamelModel`); they now import
+the shared one instead, with no behavior change. API-001's schemas
+(`CreateDecisionRequest`, `DecisionSummary`, `DecisionCreatedResponse`)
+were the only ones that changed behavior: `userId`, `decisionType`,
+`decidedAt`, `recordedAt` replace `user_id`, `decision_type`, `decided_at`,
+`recorded_at` on the wire.
 
-Changing API-001's existing snake_case responses is a breaking change for
-any caller already integrated against it. Addressing this now, inside an
-unrelated Product Increment, would be exactly the kind of incidental
-refactor the engineering discipline established across API-001 and API-002
-has deliberately avoided. This is scoped as its own increment so the
-migration (versioning, deprecation window, or a coordinated single cutover)
-can be decided on its own terms rather than as a side effect of other work.
+## Migration Approach (resolves "Why Deferred" below)
+
+**Responses:** a single coordinated cutover, not versioning or a
+deprecation window. Every API-001 response is camelCase now,
+unconditionally. Atlas is local-only with no evidence of external
+integrators depending on the pre-standard format; introducing API
+versioning or dual-format response negotiation for a Beta-stage,
+not-yet-externally-consumed API would have been exactly the kind of
+speculative, generic-enterprise machinery this project's engineering
+discipline has consistently avoided.
+
+**Requests:** `populate_by_name=True` means a request body may still use
+the old snake_case keys (`user_id`, `decision_type`, ...) — this was
+already true for API-002 before this ADR, and now holds for API-001 too.
+This is the concrete backward-compatibility guarantee: any existing caller
+sending a snake_case request body continues to work unchanged; only the
+response format is a clean, unconditional cutover.
+
+## Why It Was Deferred (historical)
+
+At the time this ADR was written, changing API-001's existing snake_case
+responses inside an unrelated Product Increment would have been exactly
+the kind of incidental refactor the engineering discipline established
+across API-001 and API-002 had deliberately avoided. It was scoped as its
+own increment specifically so the migration approach above could be
+decided deliberately, on its own terms, rather than as a side effect of
+other work — which is what happened once its own Product Increment
+specification arrived.
 
 ## Action
 
-None at this time. Do not implement. Await a dedicated Product Increment
-specification for this ADR.
+Done. See [DecisionCaptureAPI001.md](DecisionCaptureAPI001.md) and
+[DecisionContextAPI002.md](DecisionContextAPI002.md) for the per-endpoint
+detail; both docs' notes about the casing inconsistency this ADR describes
+have been updated to reflect that it's now resolved.

@@ -140,6 +140,15 @@ directly with it for request/response validation).
 | `GET /decisions` | 200 + every recorded Decision (oldest first) |
 | `GET /decisions/{id}` | 200 + the Decision, or 404 if the id is unknown |
 
+**Wire format (updated by ADR-004, implemented):** request/response JSON
+uses camelCase (`userId`, `decisionType`, `decidedAt`, `recordedAt`) via
+the shared `atlas.core.infrastructure.api.serialization.CamelModel`.
+Request bodies may still use the original snake_case keys —
+`populate_by_name=True` accepts either — so this was a response-format
+cutover, not a breaking change for existing callers. Python attribute
+names throughout `schemas.py`, and everything below the API layer, remain
+snake_case; only the JSON on the wire changed.
+
 Validation failures ([`errors.py`](../atlas/core/infrastructure/api/decision/errors.py))
 map every `DecisionValidationError` and stray `ValueError` (e.g. an unknown
 `source`) to `422` with the domain's own message as `detail` — malformed

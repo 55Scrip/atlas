@@ -1,4 +1,10 @@
-"""API tests for the Decision Capture REST controller (API-001)."""
+"""API tests for the Decision Capture REST controller (API-001).
+
+Per ADR-004, the wire format is camelCase — request/response bodies below
+use `userId`/`decisionType` etc. `TestBackwardCompatibleSnakeCaseInput`
+explicitly covers the one place the old snake_case format still works:
+request bodies, via `populate_by_name`.
+"""
 from __future__ import annotations
 
 import uuid
@@ -34,8 +40,8 @@ def client():
 
 def _valid_payload(**overrides) -> dict:
     payload = {
-        "user_id": str(uuid.uuid4()),
-        "decision_type": "BUY",
+        "userId": str(uuid.uuid4()),
+        "decisionType": "BUY",
         "reason": "Durable moat, undervalued relative to peers",
         "confidence": 75,
         "subject": "ASML",
@@ -51,13 +57,15 @@ class TestCreateDecision:
 
         assert response.status_code == 201
         body = response.json()
-        assert body["decision_type"] == "BUY"
+        assert body["decisionType"] == "BUY"
         assert body["reason"] == payload["reason"]
         assert body["confidence"] == 75
         assert body["subject"] == "ASML"
         assert body["source"] == "Manual"
         assert uuid.UUID(body["id"])
-        assert uuid.UUID(body["user_id"]) == uuid.UUID(payload["user_id"])
+        assert uuid.UUID(body["userId"]) == uuid.UUID(payload["userId"])
+        assert "decidedAt" in body
+        assert "recordedAt" in body
 
     def test_communicates_that_atlas_is_still_learning(self, client):
         response = client.post("/decisions", json=_valid_payload())
@@ -79,6 +87,27 @@ class TestCreateDecision:
         assert fetched.json()["id"] == created["id"]
 
 
+class TestBackwardCompatibleSnakeCaseInput:
+    """ADR-004: existing callers sending the pre-standard snake_case body
+    are not broken — only the response format changed unconditionally."""
+
+    def test_accepts_a_legacy_snake_case_request_body(self, client):
+        payload = {
+            "user_id": str(uuid.uuid4()),
+            "decision_type": "BUY",
+            "reason": "Durable moat, undervalued relative to peers",
+            "confidence": 75,
+            "subject": "ASML",
+        }
+        response = client.post("/decisions", json=payload)
+
+        assert response.status_code == 201
+        body = response.json()
+        # Response is camelCase regardless of the request's casing.
+        assert body["decisionType"] == "BUY"
+        assert uuid.UUID(body["userId"]) == uuid.UUID(payload["user_id"])
+
+
 class TestCreateDecisionValidationFailures:
     def test_rejects_missing_reason(self, client):
         response = client.post("/decisions", json=_valid_payload(reason=""))
@@ -89,11 +118,11 @@ class TestCreateDecisionValidationFailures:
         assert response.status_code == 422
 
     def test_rejects_missing_decision_type(self, client):
-        response = client.post("/decisions", json=_valid_payload(decision_type=""))
+        response = client.post("/decisions", json=_valid_payload(decisionType=""))
         assert response.status_code == 422
 
     def test_rejects_invalid_decision_type(self, client):
-        response = client.post("/decisions", json=_valid_payload(decision_type="STRONG_BUY"))
+        response = client.post("/decisions", json=_valid_payload(decisionType="STRONG_BUY"))
         assert response.status_code == 422
 
     @pytest.mark.parametrize("confidence", [-1, 101, 1000])
@@ -102,7 +131,7 @@ class TestCreateDecisionValidationFailures:
         assert response.status_code == 422
 
     def test_rejects_malformed_user_id(self, client):
-        response = client.post("/decisions", json=_valid_payload(user_id="not-a-uuid"))
+        response = client.post("/decisions", json=_valid_payload(userId="not-a-uuid"))
         assert response.status_code == 422
 
     def test_rejects_unknown_source(self, client):

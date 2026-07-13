@@ -1,27 +1,21 @@
 """HTTP request/response schemas for Decision Context (API-002).
 
-Per the API-002 specification's own example, this endpoint's JSON uses
-camelCase (`portfolioRelevance`, `capturedAt`, ...) — unlike API-001's
-snake_case. That is a real inconsistency across the two endpoints, kept
-here deliberately because the spec's example is explicit about it; see
-docs/DecisionContextAPI002.md for the observation.
+Per ADR-004, all public REST API schemas share one camelCase wire format
+via `CamelModel` (`atlas.core.infrastructure.api.serialization`). API-002
+was the first endpoint to use camelCase, ahead of the standard being
+formalized — it originally defined its own local `_CamelModel`; this now
+points at the shared one instead, with no behavior change.
 """
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
-from pydantic.alias_generators import to_camel
-
 from atlas.core.domain.decision_context.entity import DecisionContext
+from atlas.core.infrastructure.api.serialization import CamelModel
 
 
-class _CamelModel(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-
-class CreateDecisionContextRequest(_CamelModel):
+class CreateDecisionContextRequest(CamelModel):
     situation: str
     captured_at: datetime
     portfolio_relevance: str | None = None
@@ -30,7 +24,7 @@ class CreateDecisionContextRequest(_CamelModel):
     uncertainties: list[str] = []
 
 
-class DecisionContextResponse(_CamelModel):
+class DecisionContextResponse(CamelModel):
     context_id: uuid.UUID
     decision_id: uuid.UUID
     situation: str

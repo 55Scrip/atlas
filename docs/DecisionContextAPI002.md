@@ -169,11 +169,14 @@ literally; there is no code path that could perform any of them.
 requested by this spec, neither touching API-001 itself:**
 
 1. **JSON casing.** The spec's example request/response uses camelCase
-   (`portfolioRelevance`, `capturedAt`, `contextId`). API-001's endpoints
-   are snake_case. Implemented literally via pydantic's `to_camel` alias
-   generator (`schemas.py`) — the Python-side attribute names stay
-   snake_case, only the wire format changes. The two endpoints now speak
-   different JSON conventions; see §7.
+   (`portfolioRelevance`, `capturedAt`, `contextId`). At the time, API-001's
+   endpoints were snake_case. Implemented literally via pydantic's
+   `to_camel` alias generator (`schemas.py`) — the Python-side attribute
+   names stay snake_case, only the wire format changes. **Resolved by
+   ADR-004** (implemented): API-001 now uses the same camelCase convention,
+   via the shared `atlas.core.infrastructure.api.serialization.CamelModel`
+   this file's `_CamelModel` was consolidated into. The two endpoints no
+   longer diverge; see [ADR-004](ADR-004-API-Serialization-Standard.md).
 2. **Status code for invalid content.** The spec calls for `400`, where
    API-001 uses `422` for the equivalent case. Implemented via a **new**
    exception handler registered only for `DecisionContextValidationError`
@@ -290,10 +293,9 @@ pre-existing + 55 new).
 
 ## 10. Genuine Risks / Unresolved Questions
 
-- **JSON casing is now inconsistent across the two live endpoints**
-  (§5.1). Not a defect in either increment individually — a cumulative
-  cross-increment consistency question worth a decision before API-003,
-  one way or the other.
+- ~~JSON casing is now inconsistent across the two live endpoints~~ —
+  **resolved by ADR-004** (implemented): both endpoints now share the same
+  camelCase convention via `CamelModel`.
 - **400 vs. 422 boundary is a little uneven** (§5.2): a domain-rejected
   value (blank situation) is 400; a missing field entirely is 422. Both
   are "invalid context" from the caller's point of view but produce
