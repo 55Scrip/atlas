@@ -12,12 +12,20 @@ from atlas.core.infrastructure.api.decision.errors import (
     register_error_handlers as register_decision_error_handlers,
 )
 from atlas.core.infrastructure.api.decision.router import router as decision_router
+from atlas.core.infrastructure.api.decision_context.errors import (
+    register_error_handlers as register_decision_context_error_handlers,
+)
+from atlas.core.infrastructure.api.decision_context.router import (
+    router as decision_context_router,
+)
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Atlas Core API")
     app.include_router(decision_router)
+    app.include_router(decision_context_router)
     register_decision_error_handlers(app)
+    register_decision_context_error_handlers(app)
     return app
 
 
