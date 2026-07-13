@@ -40,20 +40,29 @@ APIs. It does not use AI or LLMs. It does not fetch live market data or news.
 | JSON export pipeline | `atlas.cli` + `atlas.adapters` | Current |
 | Local demo | `examples/daily_brief_demo/` | Current — portfolio + evidence link resolution (RC2) |
 | Weekly Investment Review | `atlas weekly-review` | Current — local-only, 10-section deterministic output |
+| Decision Capture (API-001) | `atlas.core.domain.decision` | Current — Atlas Beta baseline |
+| Decision Context (API-002) | `atlas.core.domain.decision_context` | Current — Atlas Beta baseline |
 
 For the v1 local Weekly Review workflow, see [docs/AtlasWeeklyReviewUsageGuide.md](docs/AtlasWeeklyReviewUsageGuide.md).
+For the Atlas Beta baseline (Decision Capture / Decision Context), see [docs/DecisionCaptureAPI001.md](docs/DecisionCaptureAPI001.md) and [docs/DecisionContextAPI002.md](docs/DecisionContextAPI002.md).
 
 Legacy engines (`atlas/analysis/`, `atlas/daily/`, `atlas/intelligence/`, etc.)
-remain functional. New product work belongs in `atlas/domains/` and
-`atlas/capabilities/` only. See [Architecture State](#architecture-state).
+remain functional. **New Product Increment work belongs in `atlas/core/`** —
+not in `atlas/domains/` or `atlas/capabilities/`, which are pre-existing and
+are not the current default for new work. See
+[Architecture State](#architecture-state) for details.
 
 ## Install
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install -e ".[dev]"
 ```
+
+`.[dev]` installs `pytest` alongside Atlas's runtime dependencies — required
+to run the test suite below. `pip install -e .` alone (without `[dev]`)
+installs Atlas itself but not its test tooling.
 
 ## Run Tests
 
@@ -62,7 +71,8 @@ pip install -e .
 .venv/bin/python -m pytest
 ```
 
-947 tests pass as of RC2.
+7,041 tests pass, 3 skipped, as of the Atlas Beta baseline freeze
+(API-001 Decision Capture + API-002 Decision Context).
 
 ## Quickstart: Daily Brief Demo
 
@@ -81,23 +91,50 @@ Full details: [examples/daily_brief_demo/README.md](examples/daily_brief_demo/RE
 
 ## Architecture State
 
-Atlas has two layers:
+Atlas has three layers. **`atlas/core/` is the Atlas Beta baseline and the
+official location for new Product Increment work** — read this section
+before adding a new capability anywhere else.
 
-**Current (Blueprint-aligned):**
+**`atlas/core/` — Atlas Beta baseline (current, official location for new Product Increment work):**
+- Clean Architecture: `domain/` → `application/` → `infrastructure/`
+  (`persistence/`, `api/`); no layer depends outward on the one above it.
+- `atlas/core/domain/decision/` — `Decision`, the aggregate root for API-001
+  (Decision Capture). This is the approved baseline `Decision` concept.
+- `atlas/core/domain/decision_context/` — `DecisionContext`, a separate
+  aggregate for API-002 (Decision Context), referencing `Decision` by id
+  only. This is the approved baseline `DecisionContext` concept.
+- Full design of each: [docs/DecisionCaptureAPI001.md](docs/DecisionCaptureAPI001.md),
+  [docs/DecisionContextAPI002.md](docs/DecisionContextAPI002.md).
+- New Product Increments that extend Decision/DecisionContext, or that
+  follow the same Clean Architecture pattern, belong here.
+
+**Blueprint-aligned layer (pre-existing; not the current default for new work):**
 - `atlas/domains/` — canonical concepts: portfolio, research, knowledge, decision, daily_brief, watchlist, ai, authentication
 - `atlas/capabilities/` — product capabilities: company_analysis, discovery, watchlist_intelligence, daily_brief
 - `atlas/shared/` — immutable canonical entities
 - `atlas/adapters/` — bridges between domain types and legacy types
 - `atlas/providers/` — opt-in market data providers (not called by demo or Daily Brief)
 - `atlas/cli/` — CLI commands
+- This layer remains functional and is not being touched or deprecated by
+  the Atlas Beta baseline freeze. It is simply no longer the default
+  location for *new* Product Increment work — that is `atlas/core/`, above.
 
 **Legacy (preserved, not for expansion):**
 - `atlas/analysis/`, `atlas/daily/`, `atlas/dashboard/`, `atlas/home/`,
   `atlas/intelligence/`, `atlas/portfolio_review/`, `atlas/watchlist_review/`,
   and others — original working engines. Remain functional and fully tested.
-  New capabilities belong in `atlas/domains/` and `atlas/capabilities/`.
+- **Note on naming:** `atlas/domains/decision/`, `atlas/decision/`, and
+  `atlas/decision_journal/` each define their own, older Decision-shaped
+  concepts — in places using the same names (`DecisionContext`,
+  `DecisionType`) for different meanings than the `atlas/core/` baseline
+  above. These predate the Atlas Beta baseline, are unrelated to it, and
+  are deliberately left untouched until a separate future consolidation
+  Product Increment addresses them explicitly — see the Future Backlog in
+  [docs/BetaBaselineReadiness.md](docs/BetaBaselineReadiness.md). Do not
+  treat any of them as the current `Decision`/`DecisionContext` baseline.
 
-See [docs/ArchitectureConsolidation.md](docs/ArchitectureConsolidation.md) for guardrails.
+See [docs/ArchitectureConsolidation.md](docs/ArchitectureConsolidation.md)
+for the older domains/capabilities guardrails.
 
 ## Documentation
 
@@ -107,6 +144,10 @@ See [docs/ArchitectureConsolidation.md](docs/ArchitectureConsolidation.md) for g
 | [docs/ATLAS_PRODUCT.md](docs/ATLAS_PRODUCT.md) | Product scope |
 | [docs/ATLAS_ARCHITECTURE.md](docs/ATLAS_ARCHITECTURE.md) | Architecture intent |
 | [docs/ArchitectureConsolidation.md](docs/ArchitectureConsolidation.md) | Current layer map and guardrails |
+| [docs/DecisionCaptureAPI001.md](docs/DecisionCaptureAPI001.md) | Atlas Beta baseline — Decision Capture (`atlas/core`) |
+| [docs/DecisionContextAPI002.md](docs/DecisionContextAPI002.md) | Atlas Beta baseline — Decision Context (`atlas/core`) |
+| [docs/ADR-004-API-Serialization-Standard.md](docs/ADR-004-API-Serialization-Standard.md) | Backlog ADR — API serialization standard (not yet implemented) |
+| [docs/BetaBaselineReadiness.md](docs/BetaBaselineReadiness.md) | Atlas Beta baseline release-readiness review |
 | [docs/LegacyConsolidationPlan.md](docs/LegacyConsolidationPlan.md) | Legacy module inventory and migration plan |
 | [docs/DailyBrief.md](docs/DailyBrief.md) | Daily Brief capability reference |
 | [docs/CompanyAnalysis.md](docs/CompanyAnalysis.md) | Company Analysis reference |

@@ -9,9 +9,43 @@ new legacy patterns were introduced in Sprints 69–70. The Blueprint-aligned
 adapter layer (`atlas/adapters/watchlist.py`) was extended to support knowledge
 fact distribution — consistent with existing adapter patterns.
 
+## Atlas Beta Baseline (`atlas/core/`) — Current, Official Location for New Product Increment Work
+
+**This supersedes the "new work belongs in `atlas/domains`/`atlas/capabilities`" guidance below for any new Product Increment.** As of the Atlas Beta baseline freeze:
+
+- `atlas/core/` is the official location for the current Beta core
+  implementation, using Clean Architecture (`domain/` → `application/` →
+  `infrastructure/`, with `infrastructure/` split into `persistence/` and
+  `api/`).
+- `Decision` (`atlas.core.domain.decision`) is the approved baseline
+  aggregate root for API-001 (Decision Capture).
+- `DecisionContext` (`atlas.core.domain.decision_context`) is the approved
+  baseline, separate aggregate for API-002 (Decision Context), referencing
+  `Decision` by id only — it does not modify or extend `Decision`.
+- Full design of each: [DecisionCaptureAPI001.md](DecisionCaptureAPI001.md),
+  [DecisionContextAPI002.md](DecisionContextAPI002.md).
+- **New Product Increments that extend Decision/DecisionContext, or that
+  follow the same Clean Architecture pattern, belong in `atlas/core/`** —
+  not in `atlas/domains/` or `atlas/capabilities/` below, which remain in
+  place for their existing, pre-existing scope but are no longer the
+  default location for *new* Product Increment work.
+- Older, parallel Decision-shaped concepts — `atlas/domains/decision/`,
+  `atlas/decision/`, `atlas/decision_journal/` — predate this baseline and
+  are explicitly out of scope for consolidation here, including two places
+  where those modules reuse the names `DecisionContext` and `DecisionType`
+  for unrelated meanings. They remain untouched until a separate, future
+  consolidation Product Increment addresses them explicitly — see the
+  Future Backlog in [BetaBaselineReadiness.md](BetaBaselineReadiness.md).
+
+The rest of this document describes the pre-existing `atlas/domains`/
+`atlas/capabilities` vs. legacy-engine consolidation effort, which
+continues under its own scope and is unaffected by the above.
+
 ## Current Layers
 
-Atlas currently has two parallel layers that have not yet been merged:
+Atlas currently has two parallel layers that have not yet been merged
+(pre-dating and separate from the Atlas Beta baseline in `atlas/core/`
+above):
 
 ### 1. Blueprint-aligned layer (current architecture)
 
@@ -26,7 +60,11 @@ Atlas currently has two parallel layers that have not yet been merged:
   `Company`, `Watchlist`, `ResearchNote`, `JournalEntry`, `User`,
   `MarketEvent`, `Decision`, `KnowledgeNode`).
 
-This is the architecture all new product work should build on.
+This was, historically, the architecture all new product work should build
+on. As of the Atlas Beta baseline freeze, that is superseded for *new
+Product Increment* work by `atlas/core/` — see "Atlas Beta Baseline" above.
+This layer remains current for its own pre-existing scope and continues
+under its own consolidation effort below.
 
 ### 2. Legacy / engine layer (compatibility, not for expansion)
 
@@ -294,8 +332,11 @@ untouched across all sprints.
 
 ## Rules for Future Sprints
 
-- New product capabilities are built in `atlas/domains` and
-  `atlas/capabilities`, not in the legacy engine layer.
+- **New Product Increment work belongs in `atlas/core/`** (the Atlas Beta
+  baseline — see above), not in `atlas/domains`/`atlas/capabilities` or the
+  legacy engine layer. Work that specifically extends the pre-existing
+  `atlas/domains`/`atlas/capabilities` consolidation effort described below
+  continues to belong there, not in the legacy engine layer.
 - Domains must not import capabilities, providers, the CLI, or
   frontend/backend/database/services modules.
 - Capabilities must not call external APIs or providers directly.

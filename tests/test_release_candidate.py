@@ -282,9 +282,13 @@ def test_readme_mentions_rc2() -> None:
     assert "RC2" in content or "Release Candidate 2" in content
 
 
-def test_readme_mentions_947_tests() -> None:
+def test_readme_mentions_current_test_count() -> None:
+    # README's "current" test count is expected to change as the suite
+    # grows; this checks the currently-documented count is present, not a
+    # frozen historical figure (that's what test_rc_doc_mentions_947_tests,
+    # against the dated ReleaseCandidate.md snapshot, is for).
     content = README.read_text()
-    assert "947" in content
+    assert "7,041" in content
 
 
 def test_verify_script_says_rc2() -> None:
