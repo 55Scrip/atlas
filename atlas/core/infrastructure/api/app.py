@@ -18,6 +18,10 @@ from atlas.core.infrastructure.api.decision_context.errors import (
 from atlas.core.infrastructure.api.decision_context.router import (
     router as decision_context_router,
 )
+from atlas.core.infrastructure.api.evidence.errors import (
+    register_error_handlers as register_evidence_error_handlers,
+)
+from atlas.core.infrastructure.api.evidence.router import router as evidence_router
 from atlas.core.infrastructure.api.hypothesis.errors import (
     register_error_handlers as register_hypothesis_error_handlers,
 )
@@ -34,10 +38,12 @@ def create_app() -> FastAPI:
     app.include_router(decision_context_router)
     app.include_router(observation_router)
     app.include_router(hypothesis_router)
+    app.include_router(evidence_router)
     register_decision_error_handlers(app)
     register_decision_context_error_handlers(app)
     register_observation_error_handlers(app)
     register_hypothesis_error_handlers(app)
+    register_evidence_error_handlers(app)
     return app
 
 
