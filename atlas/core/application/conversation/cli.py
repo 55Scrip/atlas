@@ -8,26 +8,24 @@ question router — see docs/FirstDecisionConversationATLAS002.md for the
 distinction). This script has zero imports to or from atlas/conversation/
 and does not register anything inside atlas/cli/main.py.
 
-No framework, no new dependency: a plain input()/print() loop, its own
-throwaway SQLite database file for this one conversation.
+No framework, no new dependency: a plain input()/print() loop. The
+database comes from the shared, neutral infrastructure configuration
+boundary (atlas/core/infrastructure/config/database.py, ATLAS-003) so a
+Decision recorded here can be found again later by a Decision Review —
+not a throwaway per-run database as in this file's original version.
 """
 from __future__ import annotations
-
-import tempfile
-from pathlib import Path
-
-from sqlalchemy import create_engine
 
 from atlas.core.application.conversation import prompts
 from atlas.core.application.conversation.composition import (
     build_conversation_orchestrator,
     create_conversation_tables,
 )
+from atlas.core.infrastructure.config.database import create_database_engine
 
 
 def run() -> None:
-    db_path = Path(tempfile.mkdtemp()) / "atlas_conversation.db"
-    engine = create_engine(f"sqlite:///{db_path}", future=True)
+    engine = create_database_engine()
     create_conversation_tables(engine)
     orchestrator = build_conversation_orchestrator(engine)
 
