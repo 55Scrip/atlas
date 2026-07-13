@@ -459,6 +459,14 @@ unchanged at 1,202 pre-existing findings.
 - **Revisit the Interpretation/Hypothesis boundary** once real usage
   patterns emerge — the anchored/unanchored distinction (§3) is a
   reasonable first cut, not guaranteed to be the final word.
+- **Design the Outcome/Evaluation/Learning review re-entry point** —
+  ATLAS-002 (see [docs/FirstDecisionConversationATLAS002.md](FirstDecisionConversationATLAS002.md))
+  gave a person a way to reach a recorded Decision through conversation,
+  but stops there by design: a decision cannot honestly produce its own
+  outcome, evaluation, and learning in the same sitting it was made in.
+  How a person later finds and resumes *that* Decision to attach an
+  Outcome, then an Evaluation, then a Learning, once real time has
+  passed, is not designed yet.
 - Carried forward, unaffected by this increment: the shared structured
   Error Contract and the brittle hard-coded test-count assertion in
   `README.md`/`tests/test_release_candidate.py`, both already recorded as

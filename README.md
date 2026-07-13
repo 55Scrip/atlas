@@ -150,6 +150,7 @@ for the older domains/capabilities guardrails.
 | [docs/HypothesisCaptureAPI004.md](docs/HypothesisCaptureAPI004.md) | Atlas Beta baseline — Hypothesis Capture (`atlas/core`) |
 | [docs/EvidenceCaptureAPI005.md](docs/EvidenceCaptureAPI005.md) | Atlas Beta baseline — Evidence Capture (`atlas/core`) |
 | [docs/CoreLoopATLAS001.md](docs/CoreLoopATLAS001.md) | Core Loop Skeleton — Question through Learning reasoning cycle (`atlas/core`) |
+| [docs/FirstDecisionConversationATLAS002.md](docs/FirstDecisionConversationATLAS002.md) | First Decision Conversation — standalone CLI, Question through Decision (`atlas/core`) |
 | [docs/ADR-004-API-Serialization-Standard.md](docs/ADR-004-API-Serialization-Standard.md) | ADR — API serialization standard (implemented: camelCase wire format) |
 | [docs/BetaBaselineReadiness.md](docs/BetaBaselineReadiness.md) | Atlas Beta baseline release-readiness review |
 | [docs/LegacyConsolidationPlan.md](docs/LegacyConsolidationPlan.md) | Legacy module inventory and migration plan |
