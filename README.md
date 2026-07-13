@@ -146,6 +146,7 @@ for the older domains/capabilities guardrails.
 | [docs/ArchitectureConsolidation.md](docs/ArchitectureConsolidation.md) | Current layer map and guardrails |
 | [docs/DecisionCaptureAPI001.md](docs/DecisionCaptureAPI001.md) | Atlas Beta baseline — Decision Capture (`atlas/core`) |
 | [docs/DecisionContextAPI002.md](docs/DecisionContextAPI002.md) | Atlas Beta baseline — Decision Context (`atlas/core`) |
+| [docs/ObservationCaptureAPI003.md](docs/ObservationCaptureAPI003.md) | Atlas Beta baseline — Observation Capture (`atlas/core`) |
 | [docs/ADR-004-API-Serialization-Standard.md](docs/ADR-004-API-Serialization-Standard.md) | ADR — API serialization standard (implemented: camelCase wire format) |
 | [docs/BetaBaselineReadiness.md](docs/BetaBaselineReadiness.md) | Atlas Beta baseline release-readiness review |
 | [docs/LegacyConsolidationPlan.md](docs/LegacyConsolidationPlan.md) | Legacy module inventory and migration plan |
