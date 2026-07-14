@@ -50,6 +50,7 @@ from atlas.core.application.reasoning_link.observe_from_question import (
     ObserveFromQuestionRequest,
     ObserveFromQuestionService,
 )
+from atlas.core.domain.decision.value_objects import UserId
 
 
 def _now() -> datetime:
@@ -72,6 +73,7 @@ class ConversationOrchestrator:
         capture_evidence_service: CaptureEvidenceFromHypothesisService,
         conclusion_service: ConclusionService,
         commit_decision_service: CommitDecisionFromConclusionService,
+        investor_id: UserId,
     ) -> None:
         self._question_service = question_service
         self._observe_from_question_service = observe_from_question_service
@@ -80,6 +82,7 @@ class ConversationOrchestrator:
         self._capture_evidence_service = capture_evidence_service
         self._conclusion_service = conclusion_service
         self._commit_decision_service = commit_decision_service
+        self._investor_id = investor_id
 
     def start(self) -> ConversationSession:
         return ConversationSession()
@@ -220,7 +223,7 @@ class ConversationOrchestrator:
             result = self._commit_decision_service.commit(
                 CommitDecisionFromConclusionRequest(
                     conclusion_id=session.conclusion_id,
-                    user_id=session.session_id,
+                    user_id=self._investor_id.value,
                     decision_type=decision_type,
                     subject=session.observation_subject,
                     reason=session.conclusion_statement,

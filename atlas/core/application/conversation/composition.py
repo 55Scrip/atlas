@@ -17,6 +17,9 @@ from atlas.core.application.decision.capture_decision import CaptureDecisionServ
 from atlas.core.application.evidence.capture_evidence import EvidenceService
 from atlas.core.application.hypothesis.capture_hypothesis import HypothesisService
 from atlas.core.application.interpretation.capture_interpretation import InterpretationService
+from atlas.core.application.investor_identity.composition import (
+    resolve_investor_identity,
+)
 from atlas.core.application.observation.capture_observation import CaptureObservationService
 from atlas.core.application.question.capture_question import QuestionService
 from atlas.core.application.reasoning_link.capture_evidence_from_hypothesis import (
@@ -89,6 +92,8 @@ def create_conversation_tables(engine: Engine) -> None:
 
 
 def build_conversation_orchestrator(engine: Engine) -> ConversationOrchestrator:
+    investor_id = resolve_investor_identity(engine)
+
     question_repository = SqlAlchemyQuestionRepository(engine)
     observation_repository = SqlAlchemyObservationRepository(engine)
     interpretation_repository = SqlAlchemyInterpretationRepository(engine)
@@ -125,4 +130,5 @@ def build_conversation_orchestrator(engine: Engine) -> ConversationOrchestrator:
         commit_decision_service=CommitDecisionFromConclusionService(
             conclusion_repository, decision_service, conclusion_decision_links
         ),
+        investor_id=investor_id,
     )
