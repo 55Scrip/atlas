@@ -153,6 +153,7 @@ for the older domains/capabilities guardrails.
 | [docs/FirstDecisionConversationATLAS002.md](docs/FirstDecisionConversationATLAS002.md) | First Decision Conversation — standalone CLI, Question through Decision (`atlas/core`) |
 | [docs/DecisionReviewATLAS003.md](docs/DecisionReviewATLAS003.md) | Decision Review — standalone CLI, Outcome through Learning for a prior Decision (`atlas/core`) |
 | [docs/DecisionTimelineATLAS004.md](docs/DecisionTimelineATLAS004.md) | Decision Timeline — standalone read-only CLI, chronological Decision history with nested review chains (`atlas/core`) |
+| [docs/PatternRecognitionATLAS005.md](docs/PatternRecognitionATLAS005.md) | Pattern Recognition — standalone read-only CLI, discovers recurring structure across recorded Decisions (`atlas/core`) |
 | [docs/ADR-004-API-Serialization-Standard.md](docs/ADR-004-API-Serialization-Standard.md) | ADR — API serialization standard (implemented: camelCase wire format) |
 | [docs/BetaBaselineReadiness.md](docs/BetaBaselineReadiness.md) | Atlas Beta baseline release-readiness review |
 | [docs/LegacyConsolidationPlan.md](docs/LegacyConsolidationPlan.md) | Legacy module inventory and migration plan |
