@@ -31,6 +31,22 @@ being silently miscategorized as an answer to the next real Core Loop
 prompt (confidence). ConversationSession/ConversationStep gain no new
 state from this — it is a CLI-level pause between two Core Loop turns,
 never a Core Loop step itself.
+
+ATLAS-009's fourth disclosed touch: if the investor's ephemeral response
+to Coach is non-empty, one more explicit, optional question asks whether
+they would like to keep it. Only an explicit "yes" constructs a
+ProvisionalReflectionResponse — held in a local variable here, never on
+ConversationSession, exactly like the Reflection/Coach objects
+themselves. It becomes a durable ReflectionResponse only at the exact
+moment session.current_step transitions to DECISION_RECORDED — i.e.,
+only once Decision capture has already, unambiguously, succeeded.
+Decision capture and Reflection Response capture are two separate
+writes, not one transaction: CommitDecisionFromConclusionService is
+untouched, and if the second write fails, the already-recorded Decision
+is unaffected — the CLI reports the failure honestly rather than
+retrying, duplicating, or rolling anything back. session.py,
+orchestrator.py, prompts.py, and decision_coach/coach.py remain
+completely unmodified.
 """
 from __future__ import annotations
 
@@ -49,49 +65,108 @@ from atlas.core.application.decision_reflection.composition import (
 )
 from atlas.core.application.decision_reflection.query import DecisionReflectionQuery
 from atlas.core.application.decision_reflection.reasoning_context import ReasoningContext
+from atlas.core.application.reflection_response.capture_reflection_response import (
+    CaptureReflectionResponseService,
+)
+from atlas.core.application.reflection_response.composition import (
+    build_capture_reflection_response_service,
+    create_reflection_response_tables,
+)
+from atlas.core.application.reflection_response.preservation_choice import (
+    parse_preservation_choice,
+)
+from atlas.core.application.reflection_response.provisional_response import (
+    ProvisionalReflectionResponse,
+    build_provenance_snapshot,
+)
+from atlas.core.domain.decision.value_objects import DecisionId
 from atlas.core.infrastructure.config.database import create_database_engine
 
 
 def _maybe_reflect_and_coach(
     decision_reflection_query: DecisionReflectionQuery,
     session: ConversationSession,
+    provisional_response: ProvisionalReflectionResponse | None,
     input_fn: Callable[[str], str] = input,
-) -> None:
+) -> ProvisionalReflectionResponse | None:
     if not (
         session.current_step is ConversationStep.DECISION
         and "decision_type" in session.pending
     ):
-        return
+        return provisional_response
     context = ReasoningContext(
         subject=session.observation_subject,
         decision_type=session.pending["decision_type"],
     )
     reflection = decision_reflection_query.reflect(context)
     if reflection is None:
-        return
+        return provisional_response
     print(f"(Reflection) {reflection.description}")
 
     coaching_question = select_coaching_question(reflection)
     print(f"(Coach) {coaching_question.text}")
     print("(You may respond, or press Enter to continue.)")
-    input_fn("> ")  # read once, discarded unconditionally — never
-    # persisted, interpreted, evaluated, classified, or followed up;
-    # not passed to the orchestrator
+    response_text = input_fn("> ")  # raw, exactly as typed — never stripped or altered
+
+    if not response_text.strip():
+        return provisional_response  # nothing to preserve; unchanged from ATLAS-008
+
+    print("(Would you like to keep this response for your own future reference? yes/no)")
+    choice = input_fn("> ")
+    if not parse_preservation_choice(choice):
+        return provisional_response  # explicit decline; discarded, exactly as before
+
+    provenance = build_provenance_snapshot(reflection, coaching_question, context)
+    return ProvisionalReflectionResponse(response_text=response_text, provenance=provenance)
+
+
+def _maybe_commit_reflection_response(
+    capture_reflection_response_service: CaptureReflectionResponseService,
+    session: ConversationSession,
+    provisional_response: ProvisionalReflectionResponse | None,
+) -> None:
+    if provisional_response is None:
+        return
+    try:
+        capture_reflection_response_service.capture(
+            provisional_response, decision_id=DecisionId(session.decision_id)
+        )
+    except Exception:
+        # Decision capture already succeeded, independently, before this
+        # second write was attempted — its failure never calls that into
+        # question. No retry, no duplicate-write attempt, no rollback of
+        # the Decision; the failure is reported, not swallowed.
+        print(
+            "(Note) Your decision was recorded, but the response you chose "
+            "to keep could not be saved."
+        )
 
 
 def run() -> None:
     engine = create_database_engine()
     create_conversation_tables(engine)
     create_decision_reflection_tables(engine)
+    create_reflection_response_tables(engine)
     orchestrator = build_conversation_orchestrator(engine)
     decision_reflection_query = build_decision_reflection_query(engine)
+    capture_reflection_response_service = build_capture_reflection_response_service(engine)
 
     session = orchestrator.start()
+    provisional_response: ProvisionalReflectionResponse | None = None
     print(prompts.QUESTION_PROMPT)
     while not session.is_complete():
         answer = input("> ")
         turn = orchestrator.respond(session, answer)
-        _maybe_reflect_and_coach(decision_reflection_query, session)
+
+        if session.current_step is ConversationStep.DECISION_RECORDED:
+            _maybe_commit_reflection_response(
+                capture_reflection_response_service, session, provisional_response
+            )
+        else:
+            provisional_response = _maybe_reflect_and_coach(
+                decision_reflection_query, session, provisional_response
+            )
+
         print(turn.prompt)
 
 

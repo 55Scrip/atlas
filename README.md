@@ -157,6 +157,7 @@ for the older domains/capabilities guardrails.
 | [docs/StrategySignatureATLAS006.md](docs/StrategySignatureATLAS006.md) | Strategy Signature Recognition — standalone read-only CLI, connected-component coherence across recognized Patterns (`atlas/core`) |
 | [docs/DecisionReflectionATLAS007.md](docs/DecisionReflectionATLAS007.md) | Decision Reflection — optional, occasion-bound correspondence between an ongoing First Decision Conversation and recognized Patterns/Strategy Signatures (`atlas/core`) |
 | [docs/DecisionCoachATLAS008.md](docs/DecisionCoachATLAS008.md) | Decision Coach — bounded, question-only engagement with one Decision Reflection, with a genuine ephemeral response opportunity (`atlas/core`) |
+| [docs/ReflectionResponseATLAS009.md](docs/ReflectionResponseATLAS009.md) | Reflection Response — investor-authored, durably preserved response to a Decision Coach question, with immutable provenance (`atlas/core`) |
 | [docs/ADR-004-API-Serialization-Standard.md](docs/ADR-004-API-Serialization-Standard.md) | ADR — API serialization standard (implemented: camelCase wire format) |
 | [docs/BetaBaselineReadiness.md](docs/BetaBaselineReadiness.md) | Atlas Beta baseline release-readiness review |
 | [docs/LegacyConsolidationPlan.md](docs/LegacyConsolidationPlan.md) | Legacy module inventory and migration plan |

@@ -85,11 +85,14 @@ def _run_scripted_conversation(engine, ephemeral_response: str = ""):
 
     prompts_seen: list[str] = []
     reflections_and_coaching_printed: list[str] = []
+    provisional_response = None
     for answer in _ANSWERS:
         turn = orchestrator.respond(session, answer)
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            _maybe_reflect_and_coach(decision_reflection_query, session, input_fn=input_fn)
+            provisional_response = _maybe_reflect_and_coach(
+                decision_reflection_query, session, provisional_response, input_fn=input_fn
+            )
         printed = buffer.getvalue()
         if printed:
             reflections_and_coaching_printed.append(printed)
@@ -138,7 +141,12 @@ class TestProgressionUnaffectedByReflectionAndCoach:
         assert len(with_printed) == 1
         assert "(Reflection)" in with_printed[0]
         assert "(Coach)" in with_printed[0]
-        assert with_input_calls == 1  # ephemeral response read exactly once
+        # Two input_fn calls: the ephemeral response itself, then the
+        # ATLAS-009 preservation choice (declined here, since "90" is not
+        # an affirmative keyword) — this test file covers ATLAS-007/008
+        # only; the full preservation/commit flow has its own dedicated
+        # test file, test_reflection_response_integration.py.
+        assert with_input_calls == 2
 
         assert with_session.observation_subject == without_session.observation_subject
         assert with_session.conclusion_statement == without_session.conclusion_statement
@@ -151,9 +159,13 @@ class TestProgressionUnaffectedByReflectionAndCoach:
         orchestrator = build_conversation_orchestrator(engine)
         decision_reflection_query = build_decision_reflection_query(engine)
         session = orchestrator.start()
+        provisional_response = None
         for answer in _ANSWERS:
             orchestrator.respond(session, answer)
-            _maybe_reflect_and_coach(
-                decision_reflection_query, session, input_fn=_never_called_input
+            provisional_response = _maybe_reflect_and_coach(
+                decision_reflection_query,
+                session,
+                provisional_response,
+                input_fn=_never_called_input,
             )  # must not raise, since no Reflection ever fires here
         assert session_result[3] == 0
