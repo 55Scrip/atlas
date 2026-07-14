@@ -20,7 +20,7 @@ from typing import Any
 from sqlalchemy import insert, select
 from sqlalchemy.engine import Engine
 
-from atlas.core.domain.decision.value_objects import DecisionId
+from atlas.core.domain.decision.value_objects import DecisionId, UserId
 from atlas.core.domain.reflection_response.entity import ReflectionResponse
 from atlas.core.domain.reflection_response.value_objects import (
     PatternMembershipSnapshot,
@@ -28,6 +28,7 @@ from atlas.core.domain.reflection_response.value_objects import (
     ReflectionResponseId,
     ResponseText,
 )
+from atlas.core.infrastructure.persistence.decision.table import decisions_table
 from atlas.core.infrastructure.persistence.reflection_response.table import (
     reflection_responses_table,
 )
@@ -71,6 +72,30 @@ class SqlAlchemyReflectionResponseRepository:
                 .first()
             )
         return _to_entity(row) if row is not None else None
+
+    def list_all_for_owner(self, user_id: UserId) -> list[ReflectionResponse]:
+        """Read-only owner-scoped join against decisions.user_id (ATLAS-010).
+
+        ReflectionResponse carries no user_id of its own — ownership is
+        transitive through decision_id, established by ATLAS-009B-D §6.
+        Unordered; ReflectionHistoryQuery owns final ordering.
+        """
+        with self._engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    select(reflection_responses_table)
+                    .select_from(
+                        reflection_responses_table.join(
+                            decisions_table,
+                            decisions_table.c.id == reflection_responses_table.c.decision_id,
+                        )
+                    )
+                    .where(decisions_table.c.user_id == str(user_id))
+                )
+                .mappings()
+                .all()
+            )
+        return [_to_entity(row) for row in rows]
 
 
 def _to_row(reflection_response: ReflectionResponse) -> dict[str, Any]:
