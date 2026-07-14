@@ -59,6 +59,7 @@ class SameSubjectAndTypeStrategy:
                     member_decision_ids=member_decision_ids,
                     description=description,
                     recognized_at=recognized_at,
+                    matching_key=(subject, decision_type),
                 )
             )
         return tuple(results)
@@ -100,6 +101,7 @@ class SameConfidenceStrategy:
                     member_decision_ids=member_decision_ids,
                     description=description,
                     recognized_at=recognized_at,
+                    matching_key=(str(confidence_value),),
                 )
             )
         return tuple(results)
