@@ -1,13 +1,15 @@
-"""Proves the ATLAS-007 CLI-level integration point (conversation/cli.py).
+"""Proves the ATLAS-007/ATLAS-008 CLI-level integration point (conversation/cli.py).
 
 Scripts the same seven-step conversation twice against
 ConversationOrchestrator.respond() directly — once with no prior
-recorded Decisions (no Reflection possible) and once with two prior
-matching Decisions already recorded (a Reflection fires) — and asserts
-the sequence of turn.prompt values and the final captured Decision
-fields are identical in both cases. Also exercises
-conversation.cli._maybe_print_reflection directly to confirm it fires
-only at the documented moment and prints the expected content.
+recorded Decisions (no Reflection/Coach possible) and once with two
+prior matching Decisions already recorded (a Reflection and a Coach
+question fire) — and asserts the sequence of turn.prompt values and the
+final captured Decision fields are identical in both cases. Also
+exercises conversation.cli._maybe_reflect_and_coach directly, with a
+fake input_fn standing in for the ephemeral response opportunity, to
+confirm it fires only at the documented moment, prints the expected
+content, and never lets the ephemeral input reach the orchestrator.
 """
 from __future__ import annotations
 
@@ -20,7 +22,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
-from atlas.core.application.conversation.cli import _maybe_print_reflection
+from atlas.core.application.conversation.cli import _maybe_reflect_and_coach
 from atlas.core.application.conversation.composition import (
     build_conversation_orchestrator,
     create_conversation_tables,
@@ -66,34 +68,48 @@ def engine():
     return eng
 
 
-def _run_scripted_conversation(engine):
+def _never_called_input(prompt: str) -> str:
+    raise AssertionError("input_fn must not be called when no Reflection fires")
+
+
+def _run_scripted_conversation(engine, ephemeral_response: str = ""):
     orchestrator = build_conversation_orchestrator(engine)
     decision_reflection_query = build_decision_reflection_query(engine)
     session = orchestrator.start()
 
+    call_count = {"n": 0}
+
+    def input_fn(prompt: str) -> str:
+        call_count["n"] += 1
+        return ephemeral_response
+
     prompts_seen: list[str] = []
-    reflections_printed: list[str] = []
+    reflections_and_coaching_printed: list[str] = []
     for answer in _ANSWERS:
         turn = orchestrator.respond(session, answer)
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            _maybe_print_reflection(decision_reflection_query, session)
+            _maybe_reflect_and_coach(decision_reflection_query, session, input_fn=input_fn)
         printed = buffer.getvalue()
         if printed:
-            reflections_printed.append(printed)
+            reflections_and_coaching_printed.append(printed)
         prompts_seen.append(turn.prompt)
 
-    return session, prompts_seen, reflections_printed
+    return session, prompts_seen, reflections_and_coaching_printed, call_count["n"]
 
 
-class TestProgressionUnaffectedByReflection:
+class TestProgressionUnaffectedByReflectionAndCoach:
     def test_prompt_sequence_and_captured_decision_identical_with_and_without_a_reflection(
         self, engine
     ):
-        without_session, without_prompts, without_reflections = _run_scripted_conversation(
-            engine
-        )
-        assert without_reflections == []  # no prior Decisions recorded yet
+        (
+            without_session,
+            without_prompts,
+            without_printed,
+            without_input_calls,
+        ) = _run_scripted_conversation(engine)
+        assert without_printed == []  # no prior Decisions recorded yet
+        assert without_input_calls == 0  # no Reflection -> input_fn never called
 
         # Now seed two prior matching Decisions so the third, identical
         # conversation script has a genuine Pattern to be reflected on.
@@ -111,12 +127,33 @@ class TestProgressionUnaffectedByReflection:
                 )
             )
 
-        with_session, with_prompts, with_reflections = _run_scripted_conversation(engine)
+        (
+            with_session,
+            with_prompts,
+            with_printed,
+            with_input_calls,
+        ) = _run_scripted_conversation(engine, ephemeral_response="90")
 
         assert with_prompts == without_prompts
-        assert len(with_reflections) == 1
-        assert "(Reflection)" in with_reflections[0]
+        assert len(with_printed) == 1
+        assert "(Reflection)" in with_printed[0]
+        assert "(Coach)" in with_printed[0]
+        assert with_input_calls == 1  # ephemeral response read exactly once
 
         assert with_session.observation_subject == without_session.observation_subject
         assert with_session.conclusion_statement == without_session.conclusion_statement
         assert with_session.is_complete() and without_session.is_complete()
+
+    def test_no_reflection_never_invokes_input_fn(self, engine):
+        session_result = _run_scripted_conversation(engine)
+        # _never_called_input is exercised directly here to make the
+        # "never called" guarantee explicit and independently checkable.
+        orchestrator = build_conversation_orchestrator(engine)
+        decision_reflection_query = build_decision_reflection_query(engine)
+        session = orchestrator.start()
+        for answer in _ANSWERS:
+            orchestrator.respond(session, answer)
+            _maybe_reflect_and_coach(
+                decision_reflection_query, session, input_fn=_never_called_input
+            )  # must not raise, since no Reflection ever fires here
+        assert session_result[3] == 0

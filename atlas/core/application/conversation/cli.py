@@ -21,8 +21,20 @@ additive — session.py, orchestrator.py, and prompts.py are all
 unmodified, and the check reads only fields ConversationSession already
 exposes publicly. Nothing about the Reflection's presence or absence
 changes turn.prompt, session state, or what gets recorded.
+
+ATLAS-008's third disclosed touch: when a Reflection fires, Decision
+Coach asks at most one fixed question, followed by a single, ephemeral
+input() call — read once and unconditionally discarded, never passed to
+ConversationOrchestrator, never inspected. This gives the investor a
+genuine, separate opportunity to respond to Coach without that response
+being silently miscategorized as an answer to the next real Core Loop
+prompt (confidence). ConversationSession/ConversationStep gain no new
+state from this — it is a CLI-level pause between two Core Loop turns,
+never a Core Loop step itself.
 """
 from __future__ import annotations
+
+from collections.abc import Callable
 
 from atlas.core.application.conversation import prompts
 from atlas.core.application.conversation.composition import (
@@ -30,6 +42,7 @@ from atlas.core.application.conversation.composition import (
     create_conversation_tables,
 )
 from atlas.core.application.conversation.session import ConversationSession, ConversationStep
+from atlas.core.application.decision_coach.coach import select_coaching_question
 from atlas.core.application.decision_reflection.composition import (
     build_decision_reflection_query,
     create_decision_reflection_tables,
@@ -39,8 +52,10 @@ from atlas.core.application.decision_reflection.reasoning_context import Reasoni
 from atlas.core.infrastructure.config.database import create_database_engine
 
 
-def _maybe_print_reflection(
-    decision_reflection_query: DecisionReflectionQuery, session: ConversationSession
+def _maybe_reflect_and_coach(
+    decision_reflection_query: DecisionReflectionQuery,
+    session: ConversationSession,
+    input_fn: Callable[[str], str] = input,
 ) -> None:
     if not (
         session.current_step is ConversationStep.DECISION
@@ -52,8 +67,16 @@ def _maybe_print_reflection(
         decision_type=session.pending["decision_type"],
     )
     reflection = decision_reflection_query.reflect(context)
-    if reflection is not None:
-        print(f"(Reflection) {reflection.description}")
+    if reflection is None:
+        return
+    print(f"(Reflection) {reflection.description}")
+
+    coaching_question = select_coaching_question(reflection)
+    print(f"(Coach) {coaching_question.text}")
+    print("(You may respond, or press Enter to continue.)")
+    input_fn("> ")  # read once, discarded unconditionally — never
+    # persisted, interpreted, evaluated, classified, or followed up;
+    # not passed to the orchestrator
 
 
 def run() -> None:
@@ -68,7 +91,7 @@ def run() -> None:
     while not session.is_complete():
         answer = input("> ")
         turn = orchestrator.respond(session, answer)
-        _maybe_print_reflection(decision_reflection_query, session)
+        _maybe_reflect_and_coach(decision_reflection_query, session)
         print(turn.prompt)
 
 
