@@ -13,7 +13,10 @@ from atlas.core.application.decision_timeline.composition import (
     create_decision_timeline_tables,
 )
 from atlas.core.application.pattern_recognition.query import PatternRecognitionQuery
-from atlas.core.application.pattern_recognition.strategies import SameSubjectAndTypeStrategy
+from atlas.core.application.pattern_recognition.strategies import (
+    SameConfidenceStrategy,
+    SameSubjectAndTypeStrategy,
+)
 
 
 def create_pattern_recognition_tables(engine: Engine) -> None:
@@ -28,5 +31,5 @@ def create_pattern_recognition_tables(engine: Engine) -> None:
 def build_pattern_recognition_query(engine: Engine) -> PatternRecognitionQuery:
     return PatternRecognitionQuery(
         decision_timeline_query=build_decision_timeline_query(engine),
-        strategies=(SameSubjectAndTypeStrategy(),),
+        strategies=(SameSubjectAndTypeStrategy(), SameConfidenceStrategy()),
     )

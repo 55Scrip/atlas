@@ -37,7 +37,7 @@ recognized* — not a new species of Observation.
 ```
 atlas/core/application/pattern_recognition/
     recognized_pattern.py   # RecognizedPattern — the recorded artifact of one recognition act
-    strategies.py             # PatternRecognitionStrategy protocol + SameSubjectAndTypeStrategy
+    strategies.py             # PatternRecognitionStrategy protocol + SameSubjectAndTypeStrategy + SameConfidenceStrategy (ATLAS-005B)
     query.py                   # PatternRecognitionQuery — runs registered strategies over a DecisionTimeline
     composition.py               # build_pattern_recognition_query(engine) — the only place aware of an Engine
     cli.py                          # standalone entry point: python -m atlas.core.application.pattern_recognition.cli
@@ -263,3 +263,118 @@ half-built now.
   recurrence — to prove the `PatternRecognitionStrategy` protocol
   actually supports multiple, independent, non-reconciled strategies in
   practice, not just in test doubles.
+
+---
+
+## 15. ATLAS-005B Addendum — Confidence Pattern Recognition
+
+**Status:** Implemented, pending review.
+**Scope:** The second `PatternRecognitionStrategy`, added to unblock ATLAS-006's feasibility gap — `SameSubjectAndTypeStrategy` is a strict partition and can never overlap with itself, so no genuine, non-coexistence Strategy Signature coherence rule could ever fire with only one strategy in place. `SameConfidenceStrategy` gives Atlas a second, orthogonal grouping so a single Decision can genuinely belong to two independently-recognized Patterns at once.
+
+### 15.1 Confidence-Pattern Domain Meaning
+
+A confidence Pattern represents the same kind of fact
+`SameSubjectAndTypeStrategy` already represents, on a different axis:
+*this investor has recorded the identical confidence level on two or
+more separate Decisions.* It says nothing about whether that confidence
+was warranted, nothing about future confidence, and recommends nothing.
+
+### 15.2 Grouping Rule — Exact Equality, Not Invented Ranges
+
+`SameConfidenceStrategy` groups Decisions by exact `Confidence.value`
+equality (the existing `0–100` int field). No bucket, band, or
+threshold was introduced: nothing in the existing domain defines a
+"high/medium/low" segmentation, and inventing one (deciles, quartiles,
+an "80+ is high" cutoff) would have been exactly the kind of arbitrary,
+unjustified range the ATLAS-005B-P brief forbade — and would have
+introduced boundary-inclusion ambiguity (is 80 "high"?) that exact
+equality has no version of. This mirrors `SameSubjectAndTypeStrategy`'s
+own discipline — exact equality on already-structured fields — applied
+to `Confidence` instead of `Subject`/`DecisionType`. Meaningful
+confidence *banding* remains a legitimate future idea, deferred until a
+deliberate, product-approved scheme is defined.
+
+### 15.3 Implementation
+
+One class appended to the existing `strategies.py` — `git diff` confirms
+zero deletions, `SameSubjectAndTypeStrategy` and the
+`PatternRecognitionStrategy` protocol entirely untouched:
+
+```python
+class SameConfidenceStrategy:
+    name = "same_confidence"
+
+    def recognize(self, timeline: DecisionTimeline) -> tuple[RecognizedPattern, ...]:
+        # groups Decisions by decision.confidence.value; any group of
+        # 2+ becomes one RecognizedPattern, identical shape and
+        # ordering discipline to SameSubjectAndTypeStrategy.
+```
+
+`composition.py`'s `build_pattern_recognition_query(engine)` registers
+both strategies by default — the one disclosed touch to an existing
+file, an additive change to a tuple literal.
+
+### 15.4 Test Summary
+
+6 new tests in
+`tests/unit/application/pattern_recognition/test_same_confidence_strategy.py`:
+
+- **`TestNoRecurrence`** — no Decisions, a single Decision, and two
+  Decisions with different confidence values all yield no results.
+- **`TestSameConfidenceRecurrence`** — two matching Decisions yield one
+  `RecognizedPattern` with the correct members, description, and
+  `recognized_at`; three matching Decisions are all captured as members
+  of one `RecognizedPattern`.
+- **`TestCrossStrategyOverlap`** — the concrete proof required by
+  ATLAS-005B-P: three Decisions constructed so one Decision belongs to
+  both a `same_subject_and_type` Pattern and a `same_confidence`
+  Pattern; `PatternRecognitionQuery.build()`'s combined output contains
+  both, sharing that Decision's id.
+- **Manual verification:** three First Decision Conversation CLI runs
+  sharing one `ATLAS_HOME` (NVIDIA/BUY/confidence 90, NVIDIA/BUY/
+  confidence 60, AMD/SELL/confidence 90), followed by the Pattern
+  Recognition CLI — correctly surfaced both a `same_subject_and_type`
+  Pattern (the two NVIDIA/BUY Decisions) and a `same_confidence` Pattern
+  (the two confidence-90 Decisions), sharing the NVIDIA/BUY/
+  confidence-90 Decision between them.
+
+**Regression:** full repository suite: **7,573 passed, 3 skipped**
+(7,567 pre-existing + 6 new). Scoped lint: clean. Whole-repo `ruff check
+.` count unchanged at 1,202. `git diff --stat` confirms the change set
+touches only `strategies.py` (additive) and `composition.py` (one-line
+registration change), plus the new test file — no other existing file
+touched.
+
+### 15.5 Architectural Decisions
+
+1. **Exact `Confidence.value` equality, not invented bands** — the only
+   currently-justified, boundary-ambiguity-free grouping rule available
+   (§15.2).
+2. **Appended to the existing `strategies.py`** rather than a new
+   submodule — smaller diff, no restructuring.
+3. **A wholly independent second strategy**, not a merged
+   `(subject, type, confidence)` key on the existing strategy — required
+   to preserve `SameSubjectAndTypeStrategy` unchanged and to make
+   genuine cross-strategy Decision overlap possible at all.
+4. **Registered by default in `composition.py`** — mirrors how
+   `SameSubjectAndTypeStrategy` is registered, so the CLI actually
+   demonstrates the new capability.
+
+### 15.6 Risks
+
+- **Exact-value equality may be too narrow** to catch "roughly similar"
+  confidence (84 and 85 won't group) — disclosed; broader banding needs
+  a deliberate, justified scheme, not built here.
+- **Genuine cross-strategy overlap is possible, not guaranteed** for any
+  given investor's real data — depends on whether a Decision actually
+  happens to share both dimensions with others. This increment proves
+  the capability exists; it does not fabricate overlap.
+- **This unblocks, but does not itself implement, ATLAS-006** — Strategy
+  Signature Recognition still needs its own planning brief, now with a
+  non-vacuous basis to compose from.
+
+### 15.7 Recommendation for the Next Sprint
+
+Return to ATLAS-006 — Strategy Signature Recognition — now that a
+genuine, real (not test-double-only) cross-strategy Decision overlap is
+possible between `same_subject_and_type` and `same_confidence` Patterns.

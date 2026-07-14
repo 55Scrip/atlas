@@ -62,3 +62,44 @@ class SameSubjectAndTypeStrategy:
                 )
             )
         return tuple(results)
+
+
+class SameConfidenceStrategy:
+    """Recognizes two or more Decisions sharing the identical confidence value.
+
+    Uses only exact equality on Confidence.value — no bucketing, no
+    threshold, no heuristic — so every result is trivially explainable
+    and traceable, exactly mirroring SameSubjectAndTypeStrategy's own
+    discipline applied to a different structured field.
+    """
+
+    name = "same_confidence"
+
+    def __init__(self, clock=_utc_now) -> None:
+        self._clock = clock
+
+    def recognize(self, timeline: DecisionTimeline) -> tuple[RecognizedPattern, ...]:
+        groups: dict[int, list[Decision]] = defaultdict(list)
+        for entry in timeline.entries:
+            decision = entry.decision
+            groups[decision.confidence.value].append(decision)
+
+        recognized_at = self._clock()
+        results: list[RecognizedPattern] = []
+        for confidence_value, decisions in groups.items():
+            if len(decisions) < 2:
+                continue
+            member_decision_ids = tuple(decision.id for decision in decisions)
+            description = (
+                f"You recorded confidence {confidence_value} on "
+                f"{len(decisions)} separate Decisions."
+            )
+            results.append(
+                RecognizedPattern(
+                    strategy_name=self.name,
+                    member_decision_ids=member_decision_ids,
+                    description=description,
+                    recognized_at=recognized_at,
+                )
+            )
+        return tuple(results)
