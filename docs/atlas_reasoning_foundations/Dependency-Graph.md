@@ -44,7 +44,7 @@ Where an ADR does not state a fact explicitly, this table records "Unknown" or "
 | Observation | Planned | Not yet written | Reality (per current chain) | Not yet defined | Evidence (per current chain; not established by any ADR) |
 | Evidence | Planned | Not yet written | Observation (per current chain) | Not yet defined | Reasoning (per current chain) — see Open Questions on the relationship between "Evidence" here and "Knowledge" in ADR-001 |
 | Reasoning | Final | ADR-001 | Knowledge (per ADR-001) | None currently open in ADR-001 | Judgment (per ADR-001: "a completed Reasoning Act produces an explicit Judgment") |
-| Judgment | Draft | ADR-002 | Reasoning (per ADR-001 and ADR-002) | Candidate, Confidence, Agent (per ADR-002) | Confidence — see Open Questions on "produces" versus ADR-002's own "updates" framing |
+| Judgment | Draft | ADR-002 | Reasoning / Reasoning Act (per ADR-001, as used by ADR-002's Current Best Definition, Identity Criterion, and Equivalence Criterion) | None — Candidate, Confidence, and Agent were removed from ADR-002 as historical residue of a rejected candidate (ADR-002 Revision 2); they are not dependencies of the settled ontology | None established or implied by ADR-001 or ADR-002. This chain's own Judgment→Confidence adjacency is an unresolved chain assumption only, not a production relation ADR-002 asserts |
 | Confidence | Planned | Not yet written | Judgment (per current chain) | Not yet defined | Conviction (per current chain; not established by any ADR) |
 | Conviction | Planned | Not yet written | Confidence (per current chain) | Not yet defined | Decision (per current chain; not established by any ADR) |
 | Decision | Planned | Not yet written | Conviction (per current chain) | Not yet defined | Action (per current chain; not established by any ADR) |
@@ -56,11 +56,9 @@ Where an ADR does not state a fact explicitly, this table records "Unknown" or "
 
 Collected from existing ADRs and from directly comparing this chain against them. None are answered here.
 
-- ADR-002's own open dependencies: what is a *Candidate* ("candidates generated through reasoning")? What is *Confidence*? What or who is the *Agent* that updates confidence? None have an ADR.
-- *Candidate* and *Agent*, both named as open dependencies in ADR-002, do not currently appear anywhere in the chain above. Whether they belong elsewhere in this graph, are subsumed by an existing node, or require a node of their own is not decided here.
 - ADR-001 states that Reasoning operates over established **Knowledge**. This chain instead places **Evidence** immediately prior to Reasoning. Whether Evidence and Knowledge name the same concept, or Evidence is a distinct, not-yet-defined primitive with its own relationship to Knowledge, is unresolved.
-- ADR-002's working definition describes Judgment as the process by which confidence is *updated* — implying an existing confidence state acted upon — while this chain places Confidence as a node Judgment simply *produces*. Whether these are compatible framings of the same relationship, or a genuine tension, is unresolved.
-- ADR-002 itself already records an open contradiction (whether Judgment is a process or an object) and is not Final. Every downstream node in this chain that would depend on Judgment inherits that same unresolved status.
+- This chain places Confidence immediately after Judgment. Neither ADR-001 nor ADR-002 establishes or implies any such production relation — Judgment → Confidence is, at most, an unresolved adjacency assumed by this chain's own illustrative ordering, not a relation ADR-002 owns (ADR-002 Revision 2).
+- ADR-002's process/object contradiction is resolved (Resolution Session 1); Judgment is an ontological object, with an explicit numerical-identity and equivalence criterion (Resolution Session 2). Candidate, Confidence, and Agent, previously listed here as open dependencies, have been removed entirely as historical residue of a rejected candidate (ADR-002 Revision 2) — they are no longer part of ADR-002's dependency graph. ADR-002 remains Draft overall: Knowledge's own identity criterion, the fuller account of semantic equivalence, and the narrower question of whether Judgment presupposes antecedent uncertainty remain open. Every downstream node in this chain that would depend on Judgment inherits that narrower, remaining unresolved status.
 
 # Maintenance Rules
 

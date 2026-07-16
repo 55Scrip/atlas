@@ -1,6 +1,6 @@
 # ADR-002 — The Nature of Judgment
 
-**Status: Draft.** This is a working document, not a settled account. It follows the Standard ADR Structure fixed by the [Atlas Reasoning Foundations Development Doctrine](Doctrine.md). Contradictions and open questions recorded below are left open deliberately, per that doctrine's own discipline — none are resolved in this draft.
+**Status: Draft.** This is a working document, not a settled account. It follows the Standard ADR Structure fixed by the [Atlas Reasoning Foundations Development Doctrine](Doctrine.md). Resolution Sessions 1 and 2 have settled Judgment's fundamental ontological category (an object, not a process) and its identity and equivalence criteria; those conclusions are incorporated below and are no longer open. Candidate, Confidence, and Agent were terms introduced only by the rejected process-based candidate and are not carried forward as dependencies or blockers (Revision 2). Knowledge's own identity criterion, the fuller account of semantic equivalence, and the narrower question of whether Judgment presupposes antecedent uncertainty remain genuinely open and are recorded as such, per the Doctrine's own discipline of never presenting an unresolved issue as settled.
 
 ## Question
 
@@ -8,7 +8,7 @@ What is Judgment?
 
 ## Motivation
 
-ADR-001 established that a completed Reasoning Act produces an explicit Judgment, and that Judgment is its own ontological object — distinct from the Reasoning Act that produced it and from the Knowledge that Act concerned. ADR-001 deliberately did not settle what Judgment itself is, reserving that question for a document whose sole concern is Judgment (ADR-001, §5). Downstream architecture cannot proceed — how a Judgment is represented, compared, or related to the confidence it expresses — until this question has a stable answer. This document is that reserved document, and it does not yet reach a stable answer.
+ADR-001 established that a completed Reasoning Act produces an explicit Judgment, and that Judgment is its own ontological object — distinct from the Reasoning Act that produced it and from the Knowledge that Act concerned. ADR-001 deliberately did not settle what Judgment itself is, reserving that question for a document whose sole concern is Judgment (ADR-001, §5). Downstream architecture cannot proceed — how a Judgment is represented, compared, or related to the confidence it expresses — until this question has a stable answer. This document is that reserved document. It now reaches a stable answer for Judgment's ontological category and for its identity and equivalence criteria (Resolution Sessions 1–2); it does not yet reach a stable answer for Knowledge's own identity criterion, the fuller account of semantic equivalence, or whether Judgment presupposes antecedent uncertainty.
 
 ## First Principles
 
@@ -22,74 +22,81 @@ The following are already fixed by ADR-001 (Final) and are treated here as const
 
 ## Candidate Definitions
 
-Three candidates are considered.
+Three candidates were originally considered.
 
-**(a) Judgment as a static conclusion or verdict.** A fixed determination reached by a completed Reasoning Act — an object in the plainest sense, consistent with ADR-001's characterization of Judgment as "its own ontological object." This candidate accommodates "acknowledgment of uncertainty" comfortably: a verdict can itself be a verdict of insufficiency.
+**(a) Judgment as a static conclusion or verdict.** A fixed determination reached by a completed Reasoning Act — an object in the plainest sense, consistent with ADR-001's characterization of Judgment as "its own ontological object." This candidate accommodates "acknowledgment of uncertainty" comfortably: a verdict can itself be a verdict of insufficiency. **Resolution Session 1 tested this candidate further and adopted it, refined, as the current best definition (see below); it is the only one of the three that survives.**
 
-**(b) Judgment as the process by which an agent updates confidence in candidates generated through reasoning under conditions of uncertainty.** This is the current best working definition (see below). It emphasizes movement — a transition from a prior state of confidence to a posterior one — rather than a static determination.
+**(b) Judgment as the process by which an agent updates confidence in candidates generated through reasoning under conditions of uncertainty.** This was originally recorded as the current best working definition. **Resolution Session 1 falsified this candidate: characterizing Judgment as a process directly contradicts ADR-001's own characterization of Judgment as "its own ontological object," distinct from the Act, which ADR-001 itself characterizes as the process/event. This candidate is rejected — see Contradictions Found and Current Best Definition below.**
 
-**(c) Judgment as a disposition.** A standing readiness of an agent to respond in a certain way, rather than either a fixed object produced at a point or a process unfolding over an interval.
+**(c) Judgment as a disposition.** A standing readiness of an agent to respond in a certain way, rather than either a fixed object produced at a point or a process unfolding over an interval. Not pursued further, as originally recorded below; unaffected by Resolution Sessions 1–2.
 
 ## Falsification Attempts
 
-**Against (a), static conclusion or verdict:** this candidate sits comfortably with ADR-001's "ontological object" language but does not, by itself, explain the dynamic character candidate (b) is meant to capture — a Judgment arrived at by weighing several possibilities against each other and revising an initial estimate. A bare "verdict" account is silent on this movement. Not falsified outright, but incomplete relative to what (b) is trying to capture.
+**Against (a), static conclusion or verdict:** this candidate sits comfortably with ADR-001's "ontological object" language but was originally judged not to, by itself, explain the dynamic character candidate (b) was meant to capture — a Judgment arrived at by weighing several possibilities against each other and revising an initial estimate. **Resolution Session 1 addressed this directly: (a) is not obligated to narrate its own genesis. That is the Reasoning Act's job, already fully handled by ADR-001. (a) only needs to *be* what results, not explain how it came about — exactly mirroring how ADR-001 never asks the Act to explain the Judgment either. This objection is answered, not a surviving weakness; (a) is adopted.**
 
 **Against (c), disposition:** ADR-001 states that a completed Reasoning Act *produces* a Judgment — language of production, at a point, following completion of a bounded Act. A disposition, by contrast, is ordinarily a standing property of an agent, already present before and after any particular Act, not something brought into being by one. This sits poorly with "produces." (c) is not pursued further, though it is not conclusively ruled out.
 
-**Against (b), the current best working definition, examined closely:**
+**Against (b), the originally-proposed working definition — now rejected:**
 
-1. *Process versus object.* The definition characterizes Judgment as "the process by which..." ADR-001, however, characterizes the Reasoning Act itself as properly describable as a bounded process or event, and characterizes Judgment as "its own ontological object," produced by that Act and distinct from it. If Judgment is now defined as a process, it is not obvious how it remains distinct from the Act — the very distinction ADR-001 argued for in rejecting "Judgment as identical to the Act." This is a direct tension, not falsified away here — see Contradictions Found.
+1. *Process versus object.* **RESOLVED (Resolution Session 1).** The definition characterized Judgment as "the process by which..." ADR-001, however, characterizes the Reasoning Act itself as properly describable as a bounded process or event, and characterizes Judgment as "its own ontological object," produced by that Act and distinct from it. Resolution Session 1 tested this tension directly and rejected the process-based candidate on exactly this ground: a process cannot be Judgment without collapsing the very distinction ADR-001 argued for in rejecting "Judgment as identical to the Act." See Contradictions Found.
 
-2. *Unconditional production versus conditional update.* ADR-001 requires that every completed Reasoning Act produce a Judgment, without qualification. If Judgment is defined specifically as an *update* to confidence, it is unclear whether a Reasoning Act whose honest result is "the prior confidence level stands, unchanged" has produced a Judgment at all under this definition, or has produced nothing, since no update occurred. Whether a null update counts as an update is not addressed by the definition as given.
+2. *Unconditional production versus conditional update.* **RESOLVED, by reframing (Resolution Session 1).** This tension arose only because (b) characterized Judgment as an *update* to confidence, leaving unclear whether a Reasoning Act with no change in confidence had produced a Judgment at all. Since Judgment is now an object rather than an update-process, this question no longer arises in its original form — every completed Act produces exactly one Judgment-object, unconditionally, regardless of how its content compares to any other Judgment.
 
-3. *"Candidates generated through reasoning."* The definition presupposes that Reasoning generates "candidates" prior to Judgment being formed. Nothing in ADR-001 establishes "candidates," in this sense, as part of Atlas Reasoning Foundations' ontology, nor addresses how they relate to Knowledge or to the Reasoning Act. This may be an implicit further primitive that has not yet passed the Primitive Discovery Test, or it may be reducible to existing vocabulary — this draft does not attempt to decide which.
+3. *"Candidates generated through reasoning."* This term was introduced only by rejected candidate (b) and is not carried forward as a dependency of Judgment's settled ontology (Revision 2). It does not appear in the adopted definition, the identity criterion, or the equivalence criterion.
 
-4. *"Conditions of uncertainty."* ADR-001 establishes uncertainty as a legitimate *outcome* of a Reasoning Act. The working definition instead treats uncertainty as a *precondition* — something Judgment occurs "under." Whether these two roles for uncertainty (outcome versus precondition) are consistent, or whether the definition implicitly assumes a Reasoning Act cannot occur, or cannot produce genuine Judgment, in the absence of prior uncertainty, is not resolved here.
+4. *"Conditions of uncertainty."* No longer part of the adopted definition, which does not invoke uncertainty as a precondition in this form. A narrower question about antecedent uncertainty survives independently of (b)'s own wording — see Remaining Open Questions.
 
-5. *"An agent."* The definition attributes the updating to "an agent." No prior ADR names an agent as a primitive, nor establishes whether "the agent" is identical to whatever exercises the Reasoning capability, or is a further, distinct concept. This term is used by the working definition without being grounded in anything settled so far.
+5. *"An agent."* This term was introduced only by rejected candidate (b) and is not carried forward as a dependency of Judgment's settled ontology (Revision 2). It does not appear in the adopted definition, the identity criterion, or the equivalence criterion.
 
 ## Contradictions Found
 
-- **Process versus object.** The current best working definition describes Judgment as a process; ADR-001 (Final) describes Judgment as an ontological object distinct from the Act, and separately characterizes an Act as the thing properly describable as a process or event. These two characterizations are not currently reconciled. This is recorded as an open contradiction, not resolved in this draft.
-- **Unconditional production versus conditional update.** ADR-001 requires every completed Act to produce a Judgment, unconditionally. The working definition's framing around "updating" confidence leaves it unclear whether a Reasoning Act that leaves confidence unchanged has produced a Judgment. This tension is recorded, not resolved.
+- **Process versus object — RESOLVED (Resolution Session 1).** The prior working definition described Judgment as a process; ADR-001 (Final) describes Judgment as an ontological object distinct from the Act, and separately characterizes an Act as the thing properly describable as a process or event. Resolution Session 1 tested this directly and rejected the process-based candidate: Judgment is an ontological object, produced by, and never identical to, the Reasoning Act. No unresolved contradiction remains on this point.
+- **Unconditional production versus conditional update — RESOLVED, by reframing (Resolution Session 1).** This tension arose only because the prior working definition characterized Judgment as an *update* to confidence. Since Judgment is now an object rather than an update-process, the question of whether a "null update" counts no longer arises in its original form: every completed Reasoning Act produces exactly one Judgment-object, unconditionally, regardless of how that determination compares to any other. No unresolved contradiction remains on this point.
 
 ## Current Best Definition
 
-*(Working, unresolved — carried forward as-is, not endorsed as final.)*
+*(Judgment's ontological category, identity, and equivalence are now settled, per Resolution Sessions 1–2, and are no longer working/unresolved. Knowledge's own identity criterion, the fuller account of semantic equivalence, and whether Judgment presupposes antecedent uncertainty remain open and are not addressed by this definition. Candidate, Confidence, and Agent were introduced only by the rejected process-based candidate and are not dependencies of this definition — see Candidate Definitions and Falsification Attempts for the historical record.)*
 
-> Judgment is the process by which an agent updates confidence in candidates generated through reasoning under conditions of uncertainty.
+> Judgment is the ontological object produced by a completed Reasoning Act: the specific, complete determination that Act reaches concerning the Knowledge it operated over — a determination that may itself consist in the honest conclusion that the available Knowledge does not settle the matter. Judgment is not the activity of reaching it; that activity is the Reasoning Act, already established in ADR-001.
 
-This definition is retained as the current best account despite the contradictions and open questions recorded above, per this document's Draft status. It is not to be treated as settled.
+This definition settles Judgment's fundamental ontological category. It does not depend on Candidate, Confidence, or Agent, and introduces no new primitive. The identity and equivalence criteria below are stated separately and are part of this same settled position.
+
+## Identity Criterion (Numerical)
+
+> Numerical identity: two Judgments are numerically identical if and only if they were produced by the same Reasoning Act.
+
+Since Reasoning Acts are individuated by numerical distinctness of occurrence alone (ADR-001), no two distinct Acts ever produce a numerically identical Judgment. Every Judgment has exactly one producing Act, and every completed Act produces exactly one Judgment. No Reasoning Act produces more than one Judgment, and no Judgment is produced by more than one Reasoning Act.
+
+## Equivalence Criterion
+
+> Equivalence: two numerically distinct Judgments are equivalent if and only if they express identical content concerning identical subject matter.
+
+Equivalence is not numerical identity: two equivalent Judgments remain two. ADR-001's phrase that separate Acts "might yield what is recognizably the same Judgment" is interpreted, per Resolution Session 2, as a claim about equivalence, not numerical identity — a reading adopted by argument, since ADR-001's own phrasing does not itself unambiguously specify which was meant (see Remaining Open Questions). "Judgment type," where the term is used at all, refers only to this equivalence relation over Judgment tokens — it is not introduced as a further ontological primitive.
 
 ## Dependency Graph
 
 **Depends on (settled, Final):**
 - ADR-001 — The Nature of Reasoning: Reasoning, Reasoning Act, Knowledge, and the prior conclusion that Judgment is an ontological object produced by a completed Act.
 
-**Introduces as open, unresolved dependencies (no ADR yet exists for these):**
-- *Candidate* — whatever "candidates generated through reasoning" refers to.
-- *Confidence* — whatever is being updated; its own structure (comparative? quantitative? something else) is undefined.
-- *Agent* — whoever or whatever performs the updating; its relationship to the exerciser of the Reasoning capability is undefined.
+This is the only dependency the Current Best Definition, Identity Criterion, and Equivalence Criterion actually use. Candidate, Confidence, and Agent were introduced only by the rejected process-based candidate (b) — see Candidate Definitions and Falsification Attempts for the historical record of why (b) was rejected. They are not dependencies of the settled ontology, and are not relocated elsewhere in this document as open Judgment primitives (Revision 2).
 
-This dependency graph is itself incomplete, and is recorded as incomplete rather than papered over: ADR-002 currently rests on primitives that have not themselves been through the Primitive Discovery Test required by the Doctrine.
+*Judgment type* was considered directly (Resolution Session 2) and explicitly **not** introduced as a new primitive: where "type" language is used, it names only the equivalence relation over Judgment tokens defined above, not a further kind of entity.
+
+This dependency graph now reflects only what the settled ontology actually requires. It remains incomplete in one respect already recorded elsewhere: the Equivalence Criterion depends on Knowledge's own identity criterion, which ADR-001 does not supply — see Remaining Open Questions.
 
 ## Architectural Consequences
 
-Held tentatively, contingent on the current best definition and subject to revision once the contradictions above are addressed:
+The adopted ontology of Judgment yields one settled consequence:
 
-- If Judgment involves updating confidence, some representation of confidence — whether comparative or quantitative — would need to exist wherever a Judgment is represented.
-- If Judgment concerns "candidates," a Judgment's representation would need some way of referring to the candidates it concerns, distinct from referring to the Knowledge a Reasoning Act operated over.
-- If the process/object contradiction above is resolved in favor of "object," a Judgment would presumably need to capture the *result* of an update (a posterior confidence state) rather than the updating itself; if resolved in favor of "process," a Judgment's own boundaries as a bounded, terminating thing would need further clarification, echoing the same question already asked and answered for Reasoning Acts in ADR-001.
+- Judgment, being an object rather than a process, captures the *result* a Reasoning Act reaches — not the activity of reaching it, and not any ongoing or unbounded state. Its own boundaries are fixed by, and only by, the boundedness of the Act that produced it (ADR-001); no further clarification of Judgment's own boundaries as a bounded, terminating thing is needed, since Judgment is not itself process-like.
 
-None of these consequences are committed to. They are recorded as *what would follow if* the current draft definition is retained, not as decisions.
+This is a settled consequence, not a contingency. No representation obligation for Candidate, Confidence, or Agent is recorded here: none of the three is a dependency of the settled ontology (Revision 2), so there is nothing about them for this section to hold even tentatively.
 
 ## Remaining Open Questions
 
-- Is Judgment fundamentally a process or an object? This draft's working definition and ADR-001's established conclusion point in different directions, and this contradiction is not resolved here.
-- Does Judgment require an actual change in confidence to have occurred, or can a Reasoning Act that leaves confidence unchanged still produce a genuine Judgment?
-- What is a "candidate," in "candidates generated through reasoning"? Is this a distinct primitive requiring its own ADR, or reducible to Knowledge and Reasoning as already defined?
-- What is "confidence"? Does it require its own ADR and its own identity or comparison structure, or is it a simpler, derivative notion?
-- What or who is "the agent" that updates confidence? Is this identical to whatever exercises the Reasoning capability defined in ADR-001, or a further, distinct concept not yet named anywhere in Atlas Reasoning Foundations' doctrine?
-- Is uncertainty, as invoked by "under conditions of uncertainty," the same uncertainty ADR-001 treats as a legitimate *outcome* of reasoning, or a distinct, precondition-like role uncertainty plays that has not yet been reconciled with ADR-001's treatment?
+- **Resolved by Resolution Session 1:** Judgment is an ontological object, not a process; this is no longer an open question. **Resolved by Resolution Sessions 1–2, by reframing:** since Judgment is not an update-process, the null-update question no longer arises in its original form; every completed Reasoning Act produces exactly one Judgment, unconditionally. **Removed (Revision 2):** Candidate, Confidence, and Agent are no longer listed as open questions of ADR-002 — each was introduced only by rejected candidate (b) and is not a dependency, blocker, or open question of the settled ontology (see Candidate Definitions and Falsification Attempts for the historical record).
+- Does every Judgment presuppose antecedent uncertainty, or may a completed Reasoning Act produce a Judgment where no prior uncertainty existed? Not settled by Resolution Sessions 1–2. This is a narrower question than the original "conditions of uncertainty" framing, which depended on rejected candidate (b)'s own wording and is no longer live in that form.
+- What is Knowledge's own identity criterion — what makes two bodies of Knowledge, or two instances of subject matter, "the same"? ADR-001 never supplies this, and the equivalence criterion above depends on it. Identified as an ambiguity inherited from ADR-001 (Resolution Sessions 1–2), not resolved here.
+- What, precisely, counts as "identical content" for two differently-worded Judgments — a full account of semantic/propositional equivalence? Used at an intuitive level in the equivalence criterion above; not formally specified.
 
 None of the above are resolved by this draft. They are carried forward exactly as open.
