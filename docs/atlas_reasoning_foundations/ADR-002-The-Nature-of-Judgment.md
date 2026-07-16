@@ -1,6 +1,6 @@
 # ADR-002 — The Nature of Judgment
 
-**Status: Draft.** This is a working document, not a settled account. It follows the Standard ADR Structure fixed by the [Atlas Core Development Doctrine](Doctrine.md). Contradictions and open questions recorded below are left open deliberately, per that doctrine's own discipline — none are resolved in this draft.
+**Status: Draft.** This is a working document, not a settled account. It follows the Standard ADR Structure fixed by the [Atlas Reasoning Foundations Development Doctrine](Doctrine.md). Contradictions and open questions recorded below are left open deliberately, per that doctrine's own discipline — none are resolved in this draft.
 
 ## Question
 
@@ -42,7 +42,7 @@ Three candidates are considered.
 
 2. *Unconditional production versus conditional update.* ADR-001 requires that every completed Reasoning Act produce a Judgment, without qualification. If Judgment is defined specifically as an *update* to confidence, it is unclear whether a Reasoning Act whose honest result is "the prior confidence level stands, unchanged" has produced a Judgment at all under this definition, or has produced nothing, since no update occurred. Whether a null update counts as an update is not addressed by the definition as given.
 
-3. *"Candidates generated through reasoning."* The definition presupposes that Reasoning generates "candidates" prior to Judgment being formed. Nothing in ADR-001 establishes "candidates," in this sense, as part of Atlas Core's ontology, nor addresses how they relate to Knowledge or to the Reasoning Act. This may be an implicit further primitive that has not yet passed the Primitive Discovery Test, or it may be reducible to existing vocabulary — this draft does not attempt to decide which.
+3. *"Candidates generated through reasoning."* The definition presupposes that Reasoning generates "candidates" prior to Judgment being formed. Nothing in ADR-001 establishes "candidates," in this sense, as part of Atlas Reasoning Foundations' ontology, nor addresses how they relate to Knowledge or to the Reasoning Act. This may be an implicit further primitive that has not yet passed the Primitive Discovery Test, or it may be reducible to existing vocabulary — this draft does not attempt to decide which.
 
 4. *"Conditions of uncertainty."* ADR-001 establishes uncertainty as a legitimate *outcome* of a Reasoning Act. The working definition instead treats uncertainty as a *precondition* — something Judgment occurs "under." Whether these two roles for uncertainty (outcome versus precondition) are consistent, or whether the definition implicitly assumes a Reasoning Act cannot occur, or cannot produce genuine Judgment, in the absence of prior uncertainty, is not resolved here.
 
@@ -89,7 +89,7 @@ None of these consequences are committed to. They are recorded as *what would fo
 - Does Judgment require an actual change in confidence to have occurred, or can a Reasoning Act that leaves confidence unchanged still produce a genuine Judgment?
 - What is a "candidate," in "candidates generated through reasoning"? Is this a distinct primitive requiring its own ADR, or reducible to Knowledge and Reasoning as already defined?
 - What is "confidence"? Does it require its own ADR and its own identity or comparison structure, or is it a simpler, derivative notion?
-- What or who is "the agent" that updates confidence? Is this identical to whatever exercises the Reasoning capability defined in ADR-001, or a further, distinct concept not yet named anywhere in Atlas Core's doctrine?
+- What or who is "the agent" that updates confidence? Is this identical to whatever exercises the Reasoning capability defined in ADR-001, or a further, distinct concept not yet named anywhere in Atlas Reasoning Foundations' doctrine?
 - Is uncertainty, as invoked by "under conditions of uncertainty," the same uncertainty ADR-001 treats as a legitimate *outcome* of reasoning, or a distinct, precondition-like role uncertainty plays that has not yet been reconciled with ADR-001's treatment?
 
 None of the above are resolved by this draft. They are carried forward exactly as open.

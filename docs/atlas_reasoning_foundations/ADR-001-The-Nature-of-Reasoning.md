@@ -1,4 +1,4 @@
-# Atlas Core — Sprint 1 · Session 1 — ADR-001: The Nature of Reasoning
+# Atlas Reasoning Foundations — Sprint 1 · Session 1 — ADR-001: The Nature of Reasoning
 
 This document answers exactly one question: **What is Reasoning?** It follows the method established throughout Atlas Foundation — first principles, alternative candidates tested and rejected on contradiction rather than preference, ontology kept separate from genealogy, identity, and implementation. No implementation detail, mechanism, or claim about how any system might carry out reasoning is introduced anywhere below; those questions do not belong to this document.
 

@@ -1,8 +1,8 @@
-**Atlas Core — Dependency Graph.** Purely descriptive and navigational. It does not define ontology, does not settle architecture, and is never itself the source of truth — [Doctrine.md](Doctrine.md) and the individual ADRs are.
+**Atlas Reasoning Foundations — Dependency Graph.** Purely descriptive and navigational. It does not define ontology, does not settle architecture, and is never itself the source of truth — [Doctrine.md](Doctrine.md) and the individual ADRs are.
 
 # Purpose
 
-As the number of Atlas Core primitives grows, no single ADR gives a reader a view of how they all relate to one another — each ADR argues its own primitive from first principles, with only its own immediate dependencies stated explicitly (per the Doctrine's Explicit Dependency Graph principle). This document exists to collect those individually-stated dependencies into one place, so the current shape of the whole structure — what is settled, what is in progress, and what is merely anticipated — can be seen at a glance. It restates status and dependency facts already established elsewhere; it establishes none of its own.
+As the number of Atlas Reasoning Foundations primitives grows, no single ADR gives a reader a view of how they all relate to one another — each ADR argues its own primitive from first principles, with only its own immediate dependencies stated explicitly (per the Doctrine's Explicit Dependency Graph principle). This document exists to collect those individually-stated dependencies into one place, so the current shape of the whole structure — what is settled, what is in progress, and what is merely anticipated — can be seen at a glance. It restates status and dependency facts already established elsewhere; it establishes none of its own.
 
 # Current Cognitive Dependency Graph
 

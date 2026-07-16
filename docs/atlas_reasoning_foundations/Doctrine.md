@@ -1,20 +1,20 @@
-# Atlas Core Development Doctrine
+# Atlas Reasoning Foundations Development Doctrine
 
-**Status:** Normative. This document governs *how* Atlas Core is developed. It does not define what Atlas Core's concepts are — that is the province of individual ADRs — but it fixes the discipline every ADR must follow, and the discipline that governs the transition from ontology to architecture to implementation.
+**Status:** Normative. This document governs *how* Atlas Reasoning Foundations is developed. It does not define what Atlas Reasoning Foundations' concepts are — that is the province of individual ADRs — but it fixes the discipline every ADR must follow, and the discipline that governs the transition from ontology to architecture to implementation.
 
 ---
 
 ## Purpose
 
-Atlas Core is built by first establishing what things *are* before deciding how they are structured, and by deciding how they are structured before writing any code that implements them. This document exists to make that discipline explicit, permanent, and binding, so that Atlas Core's foundations remain sound as the system grows in scope and complexity. Every contributor to Atlas Core — human or otherwise — is bound by this doctrine when authoring an ADR, designing an architecture, or writing implementation code.
+Atlas Reasoning Foundations is built by first establishing what things *are* before deciding how they are structured, and by deciding how they are structured before writing any code that implements them. This document exists to make that discipline explicit, permanent, and binding, so that Atlas Reasoning Foundations' own foundations remain sound as the system grows in scope and complexity. Every contributor to Atlas Reasoning Foundations — human or otherwise — is bound by this doctrine when authoring an ADR, designing an architecture, or writing implementation code.
 
 ## Core Philosophy
 
-Rigor precedes speed. Complexity must be discovered through argument, never introduced for convenience or anticipated future need. Every concept admitted into Atlas Core's ontology must earn its place by surviving deliberate attempts to falsify it — it does not earn its place merely by being plausible, useful, or easy to implement. Where a genuine contradiction or a genuinely open question is found, it is recorded and left open rather than papered over. An honest, incomplete doctrine is preferable to a complete one that conceals an unresolved tension.
+Rigor precedes speed. Complexity must be discovered through argument, never introduced for convenience or anticipated future need. Every concept admitted into Atlas Reasoning Foundations' ontology must earn its place by surviving deliberate attempts to falsify it — it does not earn its place merely by being plausible, useful, or easy to implement. Where a genuine contradiction or a genuinely open question is found, it is recorded and left open rather than papered over. An honest, incomplete doctrine is preferable to a complete one that conceals an unresolved tension.
 
 ## First Principles
 
-Every ontological question addressed in Atlas Core is reasoned from first principles: from the nature of the thing itself, not from analogy to an existing system, from precedent, or from implementation convenience. Reasoning by analogy may suggest a candidate worth testing, but a candidate is never accepted merely because something similar worked elsewhere — it must be independently argued for on its own terms, against the specific concepts it is meant to relate to.
+Every ontological question addressed in Atlas Reasoning Foundations is reasoned from first principles: from the nature of the thing itself, not from analogy to an existing system, from precedent, or from implementation convenience. Reasoning by analogy may suggest a candidate worth testing, but a candidate is never accepted merely because something similar worked elsewhere — it must be independently argued for on its own terms, against the specific concepts it is meant to relate to.
 
 ## Falsification
 
@@ -34,11 +34,11 @@ Each ADR introduces and settles exactly one new ontological primitive. An ADR th
 
 ## Primitive Discovery Test
 
-Before a new primitive is admitted into Atlas Core's ontology, it must pass a discovery test: is this genuinely a distinct kind of thing, not reducible to, and not already covered by, an existing primitive? A primitive that fails this test — that turns out to be an existing concept restated under a new name, or a property of an existing concept rather than a concept of its own — is not admitted, regardless of how convenient a separate name for it might be. This test is applied the same way falsification is applied to definitions: by attempting to reduce the candidate primitive to what already exists, and admitting it only if that attempt genuinely fails.
+Before a new primitive is admitted into Atlas Reasoning Foundations' ontology, it must pass a discovery test: is this genuinely a distinct kind of thing, not reducible to, and not already covered by, an existing primitive? A primitive that fails this test — that turns out to be an existing concept restated under a new name, or a property of an existing concept rather than a concept of its own — is not admitted, regardless of how convenient a separate name for it might be. This test is applied the same way falsification is applied to definitions: by attempting to reduce the candidate primitive to what already exists, and admitting it only if that attempt genuinely fails.
 
 ## Complexity Must Be Discovered, Never Introduced
 
-Complexity is added to Atlas Core's ontology, architecture, or implementation only when a specific, demonstrated contradiction or necessity forces it. It is never introduced speculatively, for a need that is merely anticipated, for symmetry with an unrelated part of the system, or for convenience. Where a simpler account is sufficient to avoid contradiction, the simpler account is preferred, even if a more elaborate one seems more complete or more future-proof.
+Complexity is added to Atlas Reasoning Foundations' ontology, architecture, or implementation only when a specific, demonstrated contradiction or necessity forces it. It is never introduced speculatively, for a need that is merely anticipated, for symmetry with an unrelated part of the system, or for convenience. Where a simpler account is sufficient to avoid contradiction, the simpler account is preferred, even if a more elaborate one seems more complete or more future-proof.
 
 ## Explicit Dependency Graph
 
@@ -46,7 +46,7 @@ Every ADR states explicitly what it depends on — which prior ADRs and primitiv
 
 ## Traceability
 
-Every architectural decision and every implementation choice must be traceable back to the specific ADR — and within it, the specific argument — that justifies it. A decision with no documented lineage back to first-principles reasoning has no standing in Atlas Core, regardless of how reasonable it may appear in isolation.
+Every architectural decision and every implementation choice must be traceable back to the specific ADR — and within it, the specific argument — that justifies it. A decision with no documented lineage back to first-principles reasoning has no standing in Atlas Reasoning Foundations, regardless of how reasonable it may appear in isolation.
 
 ## Every Layer Should Make the Next Layer Inevitable
 
@@ -71,7 +71,7 @@ An ADR carries a status of **Draft** or **Final**. A Draft may contain unresolve
 
 ## Acceptance Criteria
 
-An ADR — of any status — is acceptable for inclusion in Atlas Core's doctrine only if:
+An ADR — of any status — is acceptable for inclusion in Atlas Reasoning Foundations' doctrine only if:
 
 - every candidate definition it considers was genuinely tested by falsification, not merely listed;
 - every contradiction it surfaces, against itself or against a prior ADR, is stated explicitly rather than silently resolved or omitted;

@@ -164,6 +164,8 @@ for the older domains/capabilities guardrails.
 | [docs/ReflectionExplorationATLAS012.md](docs/ReflectionExplorationATLAS012.md) | Reflection Exploration — standalone read-only CLI, investor-enumerated temporary scope over any number of preserved Reflection Responses (`atlas/core`) |
 | [docs/ReflectionUnderstandingFormationATLAS013.md](docs/ReflectionUnderstandingFormationATLAS013.md) | Reflection Understanding Formation — standalone CLI, investor-substance-authored Formation acts over explicitly selected, explicitly requested Reflection Response material; Atlas- and jointly-authored modes authorized and structurally supported but not yet operative (`atlas/core`) |
 | [docs/ADR-004-API-Serialization-Standard.md](docs/ADR-004-API-Serialization-Standard.md) | ADR — API serialization standard (implemented: camelCase wire format) |
+| [docs/ADR-005-Atlas-Reasoning-Foundations-Naming-and-Authority.md](docs/ADR-005-Atlas-Reasoning-Foundations-Naming-and-Authority.md) | ADR — resolves the "Atlas Core" naming collision; `atlas/core/` remains sole runtime authority, ontology track renamed to Atlas Reasoning Foundations |
+| [docs/atlas_reasoning_foundations/README.md](docs/atlas_reasoning_foundations/README.md) | Atlas Reasoning Foundations — ontology-first, pre-implementation ADR track (Reasoning, Judgment); ontology only, does not govern current runtime behavior; separate from the executable `atlas/core` baseline |
 | [docs/BetaBaselineReadiness.md](docs/BetaBaselineReadiness.md) | Atlas Beta baseline release-readiness review |
 | [docs/LegacyConsolidationPlan.md](docs/LegacyConsolidationPlan.md) | Legacy module inventory and migration plan |
 | [docs/DailyBrief.md](docs/DailyBrief.md) | Daily Brief capability reference |
