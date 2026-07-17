@@ -30,7 +30,7 @@ No work currently exists at the Architecture or Implementation layers.
 
 1. [Doctrine.md](Doctrine.md) — read first. Defines the standard every document below it is expected to meet, and how to read an ADR's own status.
 2. [ADR-001-The-Nature-of-Reasoning.md](ADR-001-The-Nature-of-Reasoning.md) — Final. Foundational: establishes Reasoning, the Reasoning Act, Reasoning's relationship to Knowledge, and the existence (but not full definition) of Judgment.
-3. [ADR-002-The-Nature-of-Judgment.md](ADR-002-The-Nature-of-Judgment.md) — Draft. Depends on ADR-001. Attempts to settle what Judgment is; currently carries an open, unresolved contradiction and several open dependencies, recorded rather than resolved.
+3. [ADR-002-The-Nature-of-Judgment.md](ADR-002-The-Nature-of-Judgment.md) — Final. Depends on ADR-001. Settles Judgment's ontological category (an object, not a process), its numerical identity criterion, and its equivalence criterion, including the minimal criterion for identical content. Carries no remaining open question of its own; its one external dependency — Knowledge's own identity criterion — is addressed by ADR-003.
 4. [ADR-003-The-Nature-of-Knowledge.md](ADR-003-The-Nature-of-Knowledge.md) — Final. Depends on ADR-001 and ADR-002. Characterizes Knowledge's established standing — material available for Reasoning's examination and free of current active revision — without settling Knowledge's intrinsic category, without settling whether Knowledge decomposes into portions, without resolving Knowledge's relationship to Evidence, Observation, or Reality, and without asserting that its current dependence on Reasoning is necessarily essential rather than provisional. These are recorded as explicit, stated boundaries of a Final document, not as open contradictions.
 
 Further ADRs, as they are written, are added to this list in the order a new reader should encounter them — which is not necessarily their numeric order, if a later ADR is more foundational to a given reading path than its number suggests.
@@ -42,13 +42,13 @@ This section reports actual status; it does not commit to a plan for work that h
 **Completed:**
 - Development Doctrine established.
 - ADR-001 — The Nature of Reasoning — Final.
+- ADR-002 — The Nature of Judgment — Final. Settles Judgment's ontological category, numerical identity criterion, and equivalence criterion (including the minimal criterion for identical content); carries no remaining open question of its own. *Candidate*, *Confidence*, and *Agent* were terms introduced only by an earlier, rejected candidate definition and were explicitly removed as dependencies — they are historical record, not open items.
 - ADR-003 — The Nature of Knowledge — Final, carrying four explicitly stated open boundaries (Knowledge's intrinsic category; whether Knowledge decomposes into portions; whether its Reasoning-dependence is essential or provisional; its relationship to Evidence, Observation, and Reality) rather than unresolved contradictions.
 
 **In progress:**
-- ADR-002 — The Nature of Judgment — Draft, with one open contradiction (process vs. object) and three open dependencies (*Candidate*, *Confidence*, *Agent*) identified but not yet defined.
+- None currently.
 
 **Not yet scheduled:**
-- Any ADR addressing *Candidate*, *Confidence*, or *Agent* — these are open dependencies surfaced by ADR-002, not commitments to future ADRs in any particular order or timeframe.
 - Any ADR addressing *Evidence*, *Observation*, or *Reality*, or otherwise resolving Knowledge's relationship to them — these are open boundaries surfaced by ADR-003, not commitments to future ADRs in any particular order or timeframe.
 - All Architecture and Implementation work, gated behind further ontology reaching Final status.
 
@@ -57,7 +57,7 @@ This section reports actual status; it does not commit to a plan for work that h
 | ADR | Title | Status | Depends On |
 |---|---|---|---|
 | [ADR-001](ADR-001-The-Nature-of-Reasoning.md) | The Nature of Reasoning | Final | — |
-| [ADR-002](ADR-002-The-Nature-of-Judgment.md) | The Nature of Judgment | Draft | ADR-001 |
+| [ADR-002](ADR-002-The-Nature-of-Judgment.md) | The Nature of Judgment | Final | ADR-001 |
 | [ADR-003](ADR-003-The-Nature-of-Knowledge.md) | The Nature of Knowledge | Final | ADR-001, ADR-002 |
 
 ## Dependency Graph Overview
@@ -68,11 +68,7 @@ Doctrine.md
 
 ADR-001 — The Nature of Reasoning [Final]
    |
-   +--> ADR-002 — The Nature of Judgment [Draft]
-   |         |
-   |         +--> Candidate   (undefined — no ADR yet)
-   |         +--> Confidence  (undefined — no ADR yet)
-   |         +--> Agent       (undefined — no ADR yet)
+   +--> ADR-002 — The Nature of Judgment [Final]
    |
    +--> ADR-003 — The Nature of Knowledge [Final] (also depends on ADR-002 directly; see below)
               |
@@ -81,7 +77,7 @@ ADR-001 — The Nature of Reasoning [Final]
               +--> Reality      (undefined — no ADR yet)
 ```
 
-The three dangling edges under ADR-002 are recorded as open dependencies in ADR-002 itself, not resolved here or anywhere else yet. The three dangling edges under ADR-003 are recorded as open dependencies in ADR-003 itself, likewise not resolved here or anywhere else yet. ADR-003 also depends directly on ADR-002 (not only via ADR-001, per ADR-003's own Dependency Graph), and carries two further boundaries that are not separate primitives awaiting their own ADR: whether Knowledge has a settled intrinsic category, and whether Knowledge decomposes into determinate portions. Both are recorded in ADR-003 as open questions about Knowledge itself, not as dangling edges to some other, not-yet-named primitive.
+The three dangling edges under ADR-003 are recorded as open dependencies in ADR-003 itself, not resolved here or anywhere else yet. ADR-003 also depends directly on ADR-002 (not only via ADR-001, per ADR-003's own Dependency Graph), and carries two further boundaries that are not separate primitives awaiting their own ADR: whether Knowledge has a settled intrinsic category, and whether Knowledge decomposes into determinate portions. Both are recorded in ADR-003 as open questions about Knowledge itself, not as dangling edges to some other, not-yet-named primitive. ADR-002 itself carries no remaining open question or dependency of its own; *Candidate*, *Confidence*, and *Agent* — previously shown here as dangling edges under ADR-002 — were terms introduced only by an earlier, rejected candidate definition and were explicitly removed as dependencies (ADR-002 Revision 2). They are historical record, not part of ADR-002's settled ontology, and are not shown in the diagram above.
 
 ## Contribution Guidelines
 
@@ -100,7 +96,7 @@ docs/atlas_reasoning_foundations/
     README.md                          — this document; entry point and index
     Doctrine.md                        — normative development doctrine
     ADR-001-The-Nature-of-Reasoning.md — Final
-    ADR-002-The-Nature-of-Judgment.md  — Draft
+    ADR-002-The-Nature-of-Judgment.md  — Final
     ADR-003-The-Nature-of-Knowledge.md — Final
 ```
 
