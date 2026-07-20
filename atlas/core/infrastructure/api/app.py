@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from atlas.core.infrastructure.api.case.errors import (
+    register_error_handlers as register_case_error_handlers,
+)
+from atlas.core.infrastructure.api.case.router import router as case_router
 from atlas.core.infrastructure.api.decision.errors import (
     register_error_handlers as register_decision_error_handlers,
 )
@@ -34,11 +38,13 @@ from atlas.core.infrastructure.api.observation.router import router as observati
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Atlas Core API")
+    app.include_router(case_router)
     app.include_router(decision_router)
     app.include_router(decision_context_router)
     app.include_router(observation_router)
     app.include_router(hypothesis_router)
     app.include_router(evidence_router)
+    register_case_error_handlers(app)
     register_decision_error_handlers(app)
     register_decision_context_error_handlers(app)
     register_observation_error_handlers(app)
