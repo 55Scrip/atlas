@@ -73,7 +73,7 @@ def _never_called_input(prompt: str) -> str:
 
 
 def _run_scripted_conversation(engine, ephemeral_response: str = ""):
-    orchestrator = build_conversation_orchestrator(engine)
+    orchestrator = build_conversation_orchestrator(engine, case_id=uuid.uuid4())
     decision_reflection_query = build_decision_reflection_query(engine)
     session = orchestrator.start()
 
@@ -156,7 +156,7 @@ class TestProgressionUnaffectedByReflectionAndCoach:
         session_result = _run_scripted_conversation(engine)
         # _never_called_input is exercised directly here to make the
         # "never called" guarantee explicit and independently checkable.
-        orchestrator = build_conversation_orchestrator(engine)
+        orchestrator = build_conversation_orchestrator(engine, case_id=uuid.uuid4())
         decision_reflection_query = build_decision_reflection_query(engine)
         session = orchestrator.start()
         provisional_response = None

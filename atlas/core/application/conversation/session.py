@@ -42,8 +42,17 @@ class ConversationSession:
     Not persisted: a First Decision Conversation is a single sitting, and
     is not designed to be resumed after a gap (see Alternatives Considered
     in docs/FirstDecisionConversationATLAS002.md).
+
+    `case_id` is the Case this conversation's Domain Objects belong to,
+    resolved once — either by creating a new Case or by validating an
+    existing one — before the conversation begins (Core-Loop-Observation-
+    Case-Context-Implementation-Design.md, Section 23). It is required,
+    has no default, and is never reassigned: carrying it here is ordinary
+    application context, not a claim that ConversationSession is itself a
+    Case or a Domain Object.
     """
 
+    case_id: uuid.UUID
     session_id: uuid.UUID = field(default_factory=uuid.uuid4)
     current_step: ConversationStep = ConversationStep.QUESTION
 

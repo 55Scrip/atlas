@@ -17,6 +17,7 @@ docs/FirstDecisionConversationATLAS002.md.
 """
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -74,6 +75,7 @@ class ConversationOrchestrator:
         conclusion_service: ConclusionService,
         commit_decision_service: CommitDecisionFromConclusionService,
         investor_id: UserId,
+        case_id: uuid.UUID,
     ) -> None:
         self._question_service = question_service
         self._observe_from_question_service = observe_from_question_service
@@ -83,9 +85,10 @@ class ConversationOrchestrator:
         self._conclusion_service = conclusion_service
         self._commit_decision_service = commit_decision_service
         self._investor_id = investor_id
+        self._case_id = case_id
 
     def start(self) -> ConversationSession:
-        return ConversationSession()
+        return ConversationSession(case_id=self._case_id)
 
     def respond(self, session: ConversationSession, answer: str) -> ConversationTurn:
         handler = self._HANDLERS[session.current_step]
@@ -112,6 +115,7 @@ class ConversationOrchestrator:
         try:
             result = self._observe_from_question_service.observe(
                 ObserveFromQuestionRequest(
+                    case_id=session.case_id,
                     question_id=session.question_id,
                     subject=subject,
                     statement=answer,

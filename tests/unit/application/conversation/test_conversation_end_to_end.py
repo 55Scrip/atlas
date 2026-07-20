@@ -12,6 +12,8 @@ own composition root.
 """
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.pool import StaticPool
@@ -70,8 +72,13 @@ def engine():
 
 
 @pytest.fixture
-def orchestrator(engine):
-    return build_conversation_orchestrator(engine)
+def resolved_case_id():
+    return uuid.uuid4()
+
+
+@pytest.fixture
+def orchestrator(engine, resolved_case_id):
+    return build_conversation_orchestrator(engine, case_id=resolved_case_id)
 
 
 SCRIPTED_ANSWERS = [
@@ -89,8 +96,11 @@ SCRIPTED_ANSWERS = [
 
 
 class TestCompleteConversation:
-    def test_walks_all_seven_steps_question_to_decision(self, engine, orchestrator):
+    def test_walks_all_seven_steps_question_to_decision(
+        self, engine, orchestrator, resolved_case_id
+    ):
         session = orchestrator.start()
+        assert session.case_id == resolved_case_id
         turn = None
         for answer in SCRIPTED_ANSWERS:
             turn = orchestrator.respond(session, answer)
@@ -131,6 +141,11 @@ class TestCompleteConversation:
             conclusion,
             decision,
         )
+
+        # The persisted Observation carries exactly the session's own,
+        # already-resolved CaseId — never a default, fabricated, or
+        # session_id/investor_id-derived substitute.
+        assert observation.case_id.value == resolved_case_id
 
         # Decision -> Conclusion via ConclusionDecisionLink.
         decision_links = conclusion_decision_links.list_by_decision_id(decision.id)

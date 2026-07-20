@@ -1,6 +1,8 @@
 """Unit tests for ConversationOrchestrator's seven step handlers (ATLAS-002)."""
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
@@ -11,6 +13,10 @@ from atlas.core.application.conversation.composition import (
     create_conversation_tables,
 )
 from atlas.core.application.conversation.session import ConversationStep
+from atlas.core.domain.observation.value_objects import ObservationId
+from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
+    SqlAlchemyObservationRepository,
+)
 
 
 @pytest.fixture
@@ -26,8 +32,17 @@ def engine():
 
 
 @pytest.fixture
-def orchestrator(engine):
-    return build_conversation_orchestrator(engine)
+def resolved_case_id():
+    """A genuine, already-resolved CaseId for this test's own conversation —
+    not a shared sentinel, mirroring the exact idiom already established
+    for Observation's own tests (case_id=uuid.uuid4() per test).
+    """
+    return uuid.uuid4()
+
+
+@pytest.fixture
+def orchestrator(engine, resolved_case_id):
+    return build_conversation_orchestrator(engine, case_id=resolved_case_id)
 
 
 class TestStart:
@@ -35,6 +50,35 @@ class TestStart:
         session = orchestrator.start()
         assert session.current_step is ConversationStep.QUESTION
         assert not session.is_complete()
+
+
+class TestCaseContext:
+    def test_start_creates_a_session_carrying_the_resolved_case_id(
+        self, orchestrator, resolved_case_id
+    ):
+        session = orchestrator.start()
+        assert session.case_id == resolved_case_id
+
+    def test_case_id_remains_stable_across_every_step(self, orchestrator, resolved_case_id):
+        session = _drive_to_observation(orchestrator)
+        assert session.case_id == resolved_case_id
+        orchestrator.respond(session, "Semiconductor sector")
+        orchestrator.respond(session, "Several companies raised capex guidance.")
+        assert session.case_id == resolved_case_id
+        orchestrator.respond(session, "This suggests demand may be accelerating.")
+        assert session.case_id == resolved_case_id
+
+    def test_observation_step_persists_exactly_the_session_case_id(
+        self, orchestrator, resolved_case_id, engine
+    ):
+        session = _drive_to_observation(orchestrator)
+        orchestrator.respond(session, "Semiconductor sector")
+        orchestrator.respond(session, "Several companies raised capex guidance.")
+
+        observation = SqlAlchemyObservationRepository(engine).get(
+            ObservationId(session.observation_id)
+        )
+        assert observation.case_id.value == resolved_case_id
 
 
 class TestQuestionStep:

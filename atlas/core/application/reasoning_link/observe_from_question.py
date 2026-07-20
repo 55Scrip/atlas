@@ -29,6 +29,7 @@ from atlas.core.domain.reasoning_link.repository import QuestionObservationLinkR
 
 @dataclass(frozen=True)
 class ObserveFromQuestionRequest:
+    case_id: uuid.UUID
     question_id: uuid.UUID
     subject: str
     statement: str
@@ -62,6 +63,7 @@ class ObserveFromQuestionService:
 
         observation = self._observation_service.capture(
             CaptureObservationRequest(
+                case_id=request.case_id,
                 subject=request.subject,
                 statement=request.statement,
                 observed_at=request.observed_at,

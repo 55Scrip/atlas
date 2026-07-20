@@ -10,6 +10,8 @@ unchanged.
 """
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.pool import StaticPool
@@ -58,10 +60,10 @@ class TestTwoSeparateProcessInvocationsShareOneInvestorIdentity:
         # Each build_conversation_orchestrator(engine) call simulates a
         # separate process invocation of conversation/cli.py against the
         # same ATLAS_HOME database.
-        first_orchestrator = build_conversation_orchestrator(engine)
+        first_orchestrator = build_conversation_orchestrator(engine, case_id=uuid.uuid4())
         first_session = _run_conversation_to_decision(first_orchestrator)
 
-        second_orchestrator = build_conversation_orchestrator(engine)
+        second_orchestrator = build_conversation_orchestrator(engine, case_id=uuid.uuid4())
         second_session = _run_conversation_to_decision(second_orchestrator)
 
         with engine.connect() as connection:
@@ -81,10 +83,10 @@ class TestTwoSeparateProcessInvocationsShareOneInvestorIdentity:
     def test_conversation_session_ids_remain_distinct_and_random(self, engine):
         # ConversationSession.session_id must stay exactly what it was:
         # ephemeral, per-conversation, and independent of Investor Identity.
-        first_orchestrator = build_conversation_orchestrator(engine)
+        first_orchestrator = build_conversation_orchestrator(engine, case_id=uuid.uuid4())
         first_session = _run_conversation_to_decision(first_orchestrator)
 
-        second_orchestrator = build_conversation_orchestrator(engine)
+        second_orchestrator = build_conversation_orchestrator(engine, case_id=uuid.uuid4())
         second_session = _run_conversation_to_decision(second_orchestrator)
 
         assert first_session.session_id != second_session.session_id
@@ -121,7 +123,7 @@ class TestLegacyDecisionsAreReconciledOnFirstUse:
         # The first conversation run after this increment ships resolves
         # Investor Identity and, in the same transaction, reconciles every
         # existing Decision to it.
-        orchestrator = build_conversation_orchestrator(engine)
+        orchestrator = build_conversation_orchestrator(engine, case_id=uuid.uuid4())
         _run_conversation_to_decision(orchestrator)
 
         with engine.connect() as connection:

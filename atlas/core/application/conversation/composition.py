@@ -6,11 +6,23 @@ the construction order already proven correct by
 tests/unit/application/reasoning_link/test_core_loop_end_to_end.py.
 Does not construct OutcomeService, EvaluationService, or LearningService
 — those belong to a future review phase, not this conversation.
+
+`resolve_new_case`/`resolve_existing_case` are the two explicit,
+distinctly named Case-resolution operations required by
+Core-Loop-Observation-Case-Context-Implementation-Design.md Section 19.
+Each constructs its own `CaseService` locally, exactly like every other
+repository in this module, and is never held open across calls. Neither
+is invoked by `build_conversation_orchestrator`, which now requires an
+already-resolved `case_id` and performs no Case resolution of its own —
+the orchestrator gains no `CaseService`/`CaseRepository` dependency.
 """
 from __future__ import annotations
 
+import uuid
+
 from sqlalchemy.engine import Engine
 
+from atlas.core.application.case.create_case import CaseService
 from atlas.core.application.conclusion.capture_conclusion import ConclusionService
 from atlas.core.application.conversation.orchestrator import ConversationOrchestrator
 from atlas.core.application.decision.capture_decision import CaptureDecisionService
@@ -34,6 +46,12 @@ from atlas.core.application.reasoning_link.form_hypothesis_from_interpretation i
 from atlas.core.application.reasoning_link.observe_from_question import (
     ObserveFromQuestionService,
 )
+from atlas.core.domain.case.exceptions import CaseNotFoundError
+from atlas.core.domain.case.value_objects import CaseId
+from atlas.core.infrastructure.persistence.case.sqlalchemy_repository import (
+    SqlAlchemyCaseRepository,
+)
+from atlas.core.infrastructure.persistence.case.table import create_case_table
 from atlas.core.infrastructure.persistence.conclusion.sqlalchemy_repository import (
     SqlAlchemyConclusionRepository,
 )
@@ -81,6 +99,7 @@ def create_conversation_tables(engine: Engine) -> None:
     Deliberately does not create the outcomes/evaluations/learnings
     tables — this conversation never touches them.
     """
+    create_case_table(engine)
     create_question_table(engine)
     create_observation_table(engine)
     create_interpretation_table(engine)
@@ -91,7 +110,33 @@ def create_conversation_tables(engine: Engine) -> None:
     create_reasoning_link_tables(engine)
 
 
-def build_conversation_orchestrator(engine: Engine) -> ConversationOrchestrator:
+def resolve_new_case(engine: Engine) -> uuid.UUID:
+    """Establish a brand-new Case via the existing, unmodified CaseService.
+
+    Creates no other Domain Object; returns the new Case's own id.
+    """
+    create_case_table(engine)
+    case = CaseService(SqlAlchemyCaseRepository(engine)).create()
+    return case.id.value
+
+
+def resolve_existing_case(engine: Engine, case_id: uuid.UUID) -> uuid.UUID | None:
+    """Validate an investor-supplied CaseId via the existing CaseService.
+
+    Returns the same id back once validated, or None if no such Case
+    exists — never a replacement Case, never a fabricated substitute.
+    """
+    create_case_table(engine)
+    try:
+        case = CaseService(SqlAlchemyCaseRepository(engine)).get(CaseId(case_id))
+    except CaseNotFoundError:
+        return None
+    return case.id.value
+
+
+def build_conversation_orchestrator(
+    engine: Engine, case_id: uuid.UUID
+) -> ConversationOrchestrator:
     investor_id = resolve_investor_identity(engine)
 
     question_repository = SqlAlchemyQuestionRepository(engine)
@@ -131,4 +176,5 @@ def build_conversation_orchestrator(engine: Engine) -> ConversationOrchestrator:
             conclusion_repository, decision_service, conclusion_decision_links
         ),
         investor_id=investor_id,
+        case_id=case_id,
     )

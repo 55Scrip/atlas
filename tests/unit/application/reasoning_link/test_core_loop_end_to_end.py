@@ -219,6 +219,7 @@ class TestCompleteReasoningCycle:
         # 2. Observation (answering the Question)
         observe_result = services["observe_from_question"].observe(
             ObserveFromQuestionRequest(
+                case_id=uuid.uuid4(),
                 question_id=question.id.value,
                 subject="Semiconductor sector",
                 statement="Several companies raised capex guidance.",
@@ -342,6 +343,7 @@ class TestNegativeCasesNothingIsWrittenOnFailure:
         with pytest.raises(QuestionNotFoundError):
             services["observe_from_question"].observe(
                 ObserveFromQuestionRequest(
+                    case_id=uuid.uuid4(),
                     question_id=QuestionId().value,
                     subject="Semiconductor sector",
                     statement="Several companies raised capex guidance.",

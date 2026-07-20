@@ -1,6 +1,7 @@
 """Tests for ObserveFromQuestionService (ATLAS-001 Core Loop, step 2 of 10)."""
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timezone
 
 import pytest
@@ -77,6 +78,7 @@ def existing_question(question_repository):
 
 def _request(question_id, **overrides) -> ObserveFromQuestionRequest:
     defaults = dict(
+        case_id=uuid.uuid4(),
         question_id=question_id.value,
         subject="Semiconductor sector",
         statement="Several companies raised capex guidance.",
@@ -92,6 +94,13 @@ class TestObserveFromQuestion:
         assert result.observation.statement.value == "Several companies raised capex guidance."
         assert result.link.question_id == existing_question.id
         assert result.link.observation_id == result.observation.id
+
+    def test_propagates_exactly_the_requests_case_id_unchanged(
+        self, service, existing_question
+    ):
+        request = _request(existing_question.id)
+        result = service.observe(request)
+        assert result.observation.case_id.value == request.case_id
 
     def test_rejects_unknown_question(self, service):
         with pytest.raises(QuestionNotFoundError):

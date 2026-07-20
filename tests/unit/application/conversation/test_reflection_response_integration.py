@@ -99,7 +99,7 @@ def _run_full_conversation(
     """Runs the entire scripted conversation, including the final
     confidence answer, using the real cli.py private functions.
     """
-    orchestrator = build_conversation_orchestrator(engine)
+    orchestrator = build_conversation_orchestrator(engine, case_id=uuid.uuid4())
     decision_reflection_query = build_decision_reflection_query(engine)
     session = orchestrator.start()
 
@@ -174,7 +174,7 @@ class TestExplicitPreservationChoice:
         def raising_if_asked_twice(prompt: str) -> str:
             raise AssertionError("preservation question must not be asked when response is empty")
 
-        orchestrator = build_conversation_orchestrator(engine)
+        orchestrator = build_conversation_orchestrator(engine, case_id=uuid.uuid4())
         decision_reflection_query = build_decision_reflection_query(engine)
         session = orchestrator.start()
         provisional_response = None
@@ -199,7 +199,7 @@ class TestAbandonmentBeforeDecisionCapture:
     def test_saying_yes_then_abandoning_before_confidence_persists_nothing(self, engine):
         _seed_two_matching_decisions(engine)
 
-        orchestrator = build_conversation_orchestrator(engine)
+        orchestrator = build_conversation_orchestrator(engine, case_id=uuid.uuid4())
         decision_reflection_query = build_decision_reflection_query(engine)
         session = orchestrator.start()
         answers = iter(["This feels similar to before.", "yes"])

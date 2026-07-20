@@ -50,12 +50,17 @@ completely unmodified.
 """
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable
+
+from sqlalchemy.engine import Engine
 
 from atlas.core.application.conversation import prompts
 from atlas.core.application.conversation.composition import (
     build_conversation_orchestrator,
     create_conversation_tables,
+    resolve_existing_case,
+    resolve_new_case,
 )
 from atlas.core.application.conversation.session import ConversationSession, ConversationStep
 from atlas.core.application.decision_coach.coach import select_coaching_question
@@ -142,12 +147,50 @@ def _maybe_commit_reflection_response(
         )
 
 
+def _resolve_case_id(engine: Engine, input_fn: Callable[[str], str] = input) -> uuid.UUID:
+    """Require one explicit choice — new investigation, or continue an
+    existing one — before the Question prompt or any Core Loop step.
+
+    There is no blank-input default: an unrecognized answer re-asks the
+    same question, an unparseable or unknown existing CaseId re-asks for
+    the id only, and no Case is ever created to paper over either case
+    (Core-Loop-Observation-Case-Context-Implementation-Design.md, Section
+    19/31).
+    """
+    while True:
+        choice = input_fn(
+            "Start a new investigation, or continue an existing one? (new/continue) > "
+        ).strip().lower()
+        if choice == "new":
+            case_id = resolve_new_case(engine)
+            print(
+                f"(New investigation started. Your Case id is {case_id} — "
+                "save this if you want to continue it later.)"
+            )
+            return case_id
+        if choice == "continue":
+            while True:
+                raw = input_fn("Enter the Case id to continue > ").strip()
+                try:
+                    candidate = uuid.UUID(raw)
+                except ValueError:
+                    print("(That doesn't look like a valid Case id — please try again.)")
+                    continue
+                resolved = resolve_existing_case(engine, candidate)
+                if resolved is None:
+                    print("(No investigation found with that id — please try again.)")
+                    continue
+                return resolved
+        print("Sorry, please answer 'new' or 'continue'.")
+
+
 def run() -> None:
     engine = create_database_engine()
     create_conversation_tables(engine)
     create_decision_reflection_tables(engine)
     create_reflection_response_tables(engine)
-    orchestrator = build_conversation_orchestrator(engine)
+    case_id = _resolve_case_id(engine)
+    orchestrator = build_conversation_orchestrator(engine, case_id=case_id)
     decision_reflection_query = build_decision_reflection_query(engine)
     capture_reflection_response_service = build_capture_reflection_response_service(engine)
 
