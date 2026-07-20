@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy import insert, select
 from sqlalchemy.engine import Engine
 
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.observation.entity import Observation
 from atlas.core.domain.observation.value_objects import ObservationId, Statement, Subject
 from atlas.core.infrastructure.persistence.observation.table import observations_table
@@ -47,6 +48,7 @@ class SqlAlchemyObservationRepository:
 def _to_row(observation: Observation) -> dict[str, Any]:
     return {
         "observation_id": str(observation.id),
+        "case_id": str(observation.case_id),
         "subject": observation.subject.value,
         "statement": observation.statement.value,
         "source": observation.source,
@@ -59,6 +61,7 @@ def _to_row(observation: Observation) -> dict[str, Any]:
 def _to_observation(row: Mapping[str, Any]) -> Observation:
     return Observation(
         id=ObservationId(uuid.UUID(row["observation_id"])),
+        case_id=CaseId(uuid.UUID(row["case_id"])),
         subject=Subject(row["subject"]),
         statement=Statement(row["statement"]),
         observed_at=datetime.fromisoformat(row["observed_at"]),

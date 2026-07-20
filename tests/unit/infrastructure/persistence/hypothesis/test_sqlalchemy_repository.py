@@ -192,6 +192,7 @@ class TestNoForeignKeysOrCoupling:
         }
         assert set(observations_table.columns.keys()) == {
             "observation_id",
+            "case_id",
             "subject",
             "statement",
             "source",

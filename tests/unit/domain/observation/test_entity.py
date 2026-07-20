@@ -6,10 +6,12 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.observation.entity import Observation
 from atlas.core.domain.observation.exceptions import InvalidObservedAtError
 from atlas.core.domain.observation.value_objects import Statement, Subject
 
+_CASE_ID = CaseId()
 _SUBJECT = Subject("Semiconductor sector")
 _STATEMENT = Statement(
     "Several semiconductor companies raised capital expenditure guidance "
@@ -25,24 +27,26 @@ def _fixed_clock(dt: datetime):
 class TestObservationCapture:
     def test_captures_the_given_fields(self):
         observation = Observation.capture(
-            subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT
+            case_id=_CASE_ID, subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT
         )
+        assert observation.case_id == _CASE_ID
         assert observation.subject == _SUBJECT
         assert observation.statement == _STATEMENT
         assert observation.observed_at == _OBSERVED_AT
 
     def test_assigns_a_fresh_id(self):
         first = Observation.capture(
-            subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT
+            case_id=_CASE_ID, subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT
         )
         second = Observation.capture(
-            subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT
+            case_id=_CASE_ID, subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT
         )
         assert first.id != second.id
 
     def test_recorded_at_is_always_now(self):
         now = datetime(2026, 7, 13, 17, 30, tzinfo=timezone.utc)
         observation = Observation.capture(
+            case_id=_CASE_ID,
             subject=_SUBJECT,
             statement=_STATEMENT,
             observed_at=_OBSERVED_AT,
@@ -53,6 +57,7 @@ class TestObservationCapture:
     def test_observed_at_preserves_its_original_offset_unlike_recorded_at(self):
         now_utc = datetime(2026, 7, 13, 17, 30, tzinfo=timezone.utc)
         observation = Observation.capture(
+            case_id=_CASE_ID,
             subject=_SUBJECT,
             statement=_STATEMENT,
             observed_at=_OBSERVED_AT,
@@ -64,13 +69,14 @@ class TestObservationCapture:
 
     def test_optional_fields_default_to_none(self):
         observation = Observation.capture(
-            subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT
+            case_id=_CASE_ID, subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT
         )
         assert observation.source is None
         assert observation.note is None
 
     def test_accepts_source_and_note(self):
         observation = Observation.capture(
+            case_id=_CASE_ID,
             subject=_SUBJECT,
             statement=_STATEMENT,
             observed_at=_OBSERVED_AT,
@@ -83,19 +89,28 @@ class TestObservationCapture:
     @pytest.mark.parametrize("blank", ["", "   "])
     def test_blank_source_normalizes_to_none(self, blank):
         observation = Observation.capture(
-            subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT, source=blank
+            case_id=_CASE_ID,
+            subject=_SUBJECT,
+            statement=_STATEMENT,
+            observed_at=_OBSERVED_AT,
+            source=blank,
         )
         assert observation.source is None
 
     @pytest.mark.parametrize("blank", ["", "   "])
     def test_blank_note_normalizes_to_none(self, blank):
         observation = Observation.capture(
-            subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT, note=blank
+            case_id=_CASE_ID,
+            subject=_SUBJECT,
+            statement=_STATEMENT,
+            observed_at=_OBSERVED_AT,
+            note=blank,
         )
         assert observation.note is None
 
     def test_source_and_note_are_stripped_not_just_kept(self):
         observation = Observation.capture(
+            case_id=_CASE_ID,
             subject=_SUBJECT,
             statement=_STATEMENT,
             observed_at=_OBSERVED_AT,
@@ -107,29 +122,63 @@ class TestObservationCapture:
 
     def test_rejects_missing_observed_at(self):
         with pytest.raises(InvalidObservedAtError):
-            Observation.capture(subject=_SUBJECT, statement=_STATEMENT, observed_at=None)
+            Observation.capture(
+                case_id=_CASE_ID, subject=_SUBJECT, statement=_STATEMENT, observed_at=None
+            )
 
     def test_rejects_naive_observed_at(self):
         with pytest.raises(InvalidObservedAtError):
             Observation.capture(
+                case_id=_CASE_ID,
                 subject=_SUBJECT,
                 statement=_STATEMENT,
                 observed_at=datetime(2026, 7, 13, 10, 30, 0),
             )
 
+    def test_requires_a_case_id(self):
+        with pytest.raises(TypeError):
+            Observation.capture(subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT)
+
     def test_requires_a_subject(self):
         with pytest.raises(TypeError):
-            Observation.capture(statement=_STATEMENT, observed_at=_OBSERVED_AT)
+            Observation.capture(
+                case_id=_CASE_ID, statement=_STATEMENT, observed_at=_OBSERVED_AT
+            )
 
     def test_requires_a_statement(self):
         with pytest.raises(TypeError):
-            Observation.capture(subject=_SUBJECT, observed_at=_OBSERVED_AT)
+            Observation.capture(case_id=_CASE_ID, subject=_SUBJECT, observed_at=_OBSERVED_AT)
+
+
+class TestCaseOwnership:
+    def test_two_observations_in_the_same_case_remain_distinct(self):
+        first = Observation.capture(
+            case_id=_CASE_ID, subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT
+        )
+        second = Observation.capture(
+            case_id=_CASE_ID, subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT
+        )
+        assert first.case_id == second.case_id == _CASE_ID
+        assert first.id != second.id
+
+    def test_observations_in_different_cases_are_independent(self):
+        other_case_id = CaseId()
+        first = Observation.capture(
+            case_id=_CASE_ID, subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT
+        )
+        second = Observation.capture(
+            case_id=other_case_id,
+            subject=_SUBJECT,
+            statement=_STATEMENT,
+            observed_at=_OBSERVED_AT,
+        )
+        assert first.case_id != second.case_id
 
 
 class TestObservationImmutability:
     def test_is_frozen(self):
         observation = Observation.capture(
-            subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT
+            case_id=_CASE_ID, subject=_SUBJECT, statement=_STATEMENT, observed_at=_OBSERVED_AT
         )
         with pytest.raises(dataclasses.FrozenInstanceError):
             observation.statement = Statement("changed")

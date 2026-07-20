@@ -14,6 +14,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.observation.exceptions import InvalidObservedAtError
 from atlas.core.domain.observation.value_objects import ObservationId, Statement, Subject
 
@@ -48,13 +49,14 @@ def _normalize_blank(value: str | None) -> str | None:
 class Observation:
     """A single, immutable observation.
 
-    Valid only if it carries an id, a subject, a statement, the moment it
-    was observed, and the moment Atlas recorded it. Source and note are
-    optional context: blank values normalize to None rather than being
-    rejected or stored as empty strings.
+    Valid only if it carries an id, the Case it belongs to, a subject, a
+    statement, the moment it was observed, and the moment Atlas recorded
+    it. Source and note are optional context: blank values normalize to
+    None rather than being rejected or stored as empty strings.
     """
 
     id: ObservationId
+    case_id: CaseId
     subject: Subject
     statement: Statement
     observed_at: datetime
@@ -71,6 +73,7 @@ class Observation:
     def capture(
         cls,
         *,
+        case_id: CaseId,
         subject: Subject,
         statement: Statement,
         observed_at: datetime,
@@ -90,6 +93,7 @@ class Observation:
         now = clock()
         return cls(
             id=ObservationId(),
+            case_id=case_id,
             subject=subject,
             statement=statement,
             observed_at=observed_at,

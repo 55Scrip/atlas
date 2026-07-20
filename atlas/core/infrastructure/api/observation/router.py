@@ -37,6 +37,7 @@ def create_observation(
 ) -> ObservationResponse:
     observation = service.capture(
         CaptureObservationRequest(
+            case_id=payload.case_id,
             subject=payload.subject,
             statement=payload.statement,
             observed_at=payload.observed_at,

@@ -14,6 +14,7 @@ observations_table = Table(
     "observations",
     metadata,
     Column("observation_id", String, primary_key=True),
+    Column("case_id", String, nullable=False, index=True),
     Column("subject", String, nullable=False),
     Column("statement", String, nullable=False),
     Column("source", String, nullable=True),

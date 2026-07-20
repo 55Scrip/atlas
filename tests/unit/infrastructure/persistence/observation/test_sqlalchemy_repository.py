@@ -4,9 +4,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.observation.entity import Observation
 from atlas.core.domain.observation.value_objects import ObservationId, Statement, Subject
 from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
@@ -31,6 +33,7 @@ def repository():
 
 def _new_observation(**overrides) -> Observation:
     defaults = dict(
+        case_id=CaseId(),
         subject=Subject("Semiconductor sector"),
         statement=Statement(
             "Several semiconductor companies raised capital expenditure "
@@ -92,6 +95,7 @@ class TestEqualsOriginal:
         reloaded = repository.get(original.id)
 
         assert reloaded == original
+        assert reloaded.case_id == original.case_id
         assert reloaded.subject == original.subject
         assert reloaded.statement == original.statement
         assert reloaded.source == original.source
@@ -116,15 +120,57 @@ class TestEqualsOriginal:
         assert reloaded.recorded_at.utcoffset() == timedelta(0)
 
 
+class TestCaseOwnership:
+    def test_same_statement_in_different_cases_is_permitted(self, repository):
+        first = _new_observation(statement=Statement("Repeated claim"))
+        second = _new_observation(statement=Statement("Repeated claim"))
+        repository.add(first)
+        repository.add(second)
+        assert first.case_id != second.case_id
+        assert repository.get(first.id).statement == repository.get(second.id).statement
+
+    def test_duplicate_statement_in_one_case_is_permitted(self, repository):
+        case_id = CaseId()
+        first = _new_observation(case_id=case_id, statement=Statement("Repeated claim"))
+        second = _new_observation(case_id=case_id, statement=Statement("Repeated claim"))
+        repository.add(first)
+        repository.add(second)
+        assert repository.get(first.id).case_id == repository.get(second.id).case_id
+        assert first.id != second.id
+
+    def test_case_id_not_null_is_enforced(self, repository):
+        engine = repository._engine
+        with pytest.raises(IntegrityError):
+            with engine.begin() as connection:
+                from atlas.core.infrastructure.persistence.observation.table import (
+                    observations_table,
+                )
+
+                connection.execute(
+                    insert(observations_table).values(
+                        observation_id=str(ObservationId()),
+                        case_id=None,
+                        subject="Semiconductor sector",
+                        statement="Something happened.",
+                        source=None,
+                        note=None,
+                        observed_at=_OBSERVED_AT.isoformat(),
+                        recorded_at=_OBSERVED_AT.isoformat(),
+                    )
+                )
+
+
 class TestNoForeignKeysOrCoupling:
     def test_observation_table_has_no_decision_or_context_columns(self, repository):
         # A structural check that the table stays standalone: only the
-        # columns API-003 defines, nothing referencing another aggregate.
+        # columns API-003 (as corrected for Case ownership) defines,
+        # nothing referencing another aggregate.
         from atlas.core.infrastructure.persistence.observation.table import observations_table
 
         column_names = set(observations_table.columns.keys())
         assert column_names == {
             "observation_id",
+            "case_id",
             "subject",
             "statement",
             "source",
@@ -132,3 +178,8 @@ class TestNoForeignKeysOrCoupling:
             "observed_at",
             "recorded_at",
         }
+
+    def test_no_foreign_key_to_any_other_table(self, repository):
+        from atlas.core.infrastructure.persistence.observation.table import observations_table
+
+        assert observations_table.foreign_keys == set()

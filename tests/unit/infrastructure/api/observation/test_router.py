@@ -34,6 +34,7 @@ def client():
 
 def _valid_payload(**overrides) -> dict:
     payload = {
+        "caseId": str(uuid.uuid4()),
         "subject": "Semiconductor sector",
         "statement": (
             "Several semiconductor companies raised capital expenditure "
@@ -55,6 +56,7 @@ class TestCreateObservation:
         assert response.status_code == 201
         body = response.json()
         assert uuid.UUID(body["observationId"])
+        assert body["caseId"] == payload["caseId"]
         assert body["subject"] == "Semiconductor sector"
         assert body["statement"] == payload["statement"]
         assert body["source"] == "Quarterly earnings reports"
@@ -64,6 +66,7 @@ class TestCreateObservation:
 
     def test_optional_fields_may_be_omitted(self, client):
         payload = {
+            "caseId": str(uuid.uuid4()),
             "subject": "NVIDIA",
             "statement": "The company raised full-year guidance.",
             "observedAt": "2026-07-13T10:30:00+02:00",
@@ -89,6 +92,28 @@ class TestCreateObservation:
         fetched = client.get(f"/observations/{created['observationId']}")
         assert fetched.status_code == 200
         assert fetched.json()["observationId"] == created["observationId"]
+        assert fetched.json()["caseId"] == created["caseId"]
+
+    def test_same_statement_in_different_cases_is_permitted(self, client):
+        first = client.post(
+            "/observations", json=_valid_payload(statement="Repeated claim")
+        ).json()
+        second = client.post(
+            "/observations", json=_valid_payload(statement="Repeated claim")
+        ).json()
+        assert first["caseId"] != second["caseId"]
+        assert first["observationId"] != second["observationId"]
+
+    def test_duplicate_statement_in_one_case_is_permitted(self, client):
+        case_id = str(uuid.uuid4())
+        first = client.post(
+            "/observations", json=_valid_payload(caseId=case_id, statement="Repeated claim")
+        ).json()
+        second = client.post(
+            "/observations", json=_valid_payload(caseId=case_id, statement="Repeated claim")
+        ).json()
+        assert first["caseId"] == second["caseId"]
+        assert first["observationId"] != second["observationId"]
 
 
 class TestCreateObservationValidationFailures:
@@ -116,6 +141,16 @@ class TestCreateObservationValidationFailures:
         )
         assert response.status_code == 422
 
+    def test_rejects_missing_case_id(self, client):
+        payload = _valid_payload()
+        del payload["caseId"]
+        response = client.post("/observations", json=payload)
+        assert response.status_code == 422
+
+    def test_rejects_malformed_case_id(self, client):
+        response = client.post("/observations", json=_valid_payload(caseId="not-a-uuid"))
+        assert response.status_code == 422
+
 
 class TestListObservations:
     def test_returns_empty_list_when_nothing_recorded(self, client):
@@ -132,6 +167,7 @@ class TestListObservations:
         assert response.status_code == 200
         subjects = {o["subject"] for o in response.json()}
         assert subjects == {"NVIDIA", "US interest rates"}
+        assert all("caseId" in o for o in response.json())
 
 
 class TestGetObservation:

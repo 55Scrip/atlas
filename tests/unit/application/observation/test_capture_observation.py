@@ -6,6 +6,7 @@ persistence, matching the pattern established for API-001/002.
 """
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -43,6 +44,7 @@ def service(repository):
 
 def _request(**overrides) -> CaptureObservationRequest:
     defaults = dict(
+        case_id=uuid.uuid4(),
         subject="Semiconductor sector",
         statement="Several semiconductor companies raised guidance.",
         observed_at=_OBSERVED_AT,
@@ -56,6 +58,11 @@ class TestCaptureObservation:
         observation = service.capture(_request())
         assert observation.subject.value == "Semiconductor sector"
         assert observation.statement.value == "Several semiconductor companies raised guidance."
+
+    def test_case_ownership_is_assigned(self, service):
+        case_id = uuid.uuid4()
+        observation = service.capture(_request(case_id=case_id))
+        assert observation.case_id.value == case_id
 
     def test_recorded_at_is_assigned_by_atlas_not_the_caller(self, service):
         before = datetime.now(timezone.utc)
@@ -77,3 +84,24 @@ class TestCaptureObservation:
         assert recorded_ats == sorted(recorded_ats)
         subjects = [o.subject.value for o in repository.list_all()]
         assert subjects == ["NVIDIA", "US interest rates", "My portfolio liquidity"]
+
+    def test_same_statement_in_different_cases_is_permitted(self, service):
+        first = service.capture(_request(case_id=uuid.uuid4(), statement="Repeated claim"))
+        second = service.capture(_request(case_id=uuid.uuid4(), statement="Repeated claim"))
+        assert first.case_id != second.case_id
+        assert first.id != second.id
+
+    def test_duplicate_statement_in_one_case_is_permitted(self, service):
+        case_id = uuid.uuid4()
+        first = service.capture(_request(case_id=case_id, statement="Repeated claim"))
+        second = service.capture(_request(case_id=case_id, statement="Repeated claim"))
+        assert first.case_id == second.case_id
+        assert first.id != second.id
+
+
+class TestServiceDependencySimplification:
+    def test_service_depends_only_on_its_own_repository(self):
+        import inspect
+
+        signature = inspect.signature(CaptureObservationService.__init__)
+        assert list(signature.parameters) == ["self", "repository"]

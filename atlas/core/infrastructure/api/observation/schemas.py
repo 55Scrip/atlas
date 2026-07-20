@@ -13,6 +13,7 @@ from atlas.core.infrastructure.api.serialization import CamelModel
 
 
 class CreateObservationRequest(CamelModel):
+    case_id: uuid.UUID
     subject: str
     statement: str
     observed_at: datetime
@@ -22,6 +23,7 @@ class CreateObservationRequest(CamelModel):
 
 class ObservationResponse(CamelModel):
     observation_id: uuid.UUID
+    case_id: uuid.UUID
     subject: str
     statement: str
     source: str | None
@@ -33,6 +35,7 @@ class ObservationResponse(CamelModel):
     def from_domain(cls, observation: Observation) -> ObservationResponse:
         return cls(
             observation_id=observation.id.value,
+            case_id=observation.case_id.value,
             subject=observation.subject.value,
             statement=observation.statement.value,
             source=observation.source,
