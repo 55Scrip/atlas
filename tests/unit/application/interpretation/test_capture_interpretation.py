@@ -18,6 +18,7 @@ from atlas.core.application.interpretation.capture_interpretation import (
     InterpretationService,
     ObservationNotFoundError,
 )
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.interpretation.exceptions import InterpretationNotFoundError
 from atlas.core.domain.interpretation.value_objects import InterpretationId
 from atlas.core.domain.observation.entity import Observation
@@ -35,6 +36,10 @@ from atlas.core.infrastructure.persistence.observation.table import create_obser
 
 _OBSERVED_AT = datetime(2026, 7, 13, 8, 30, 0, tzinfo=timezone.utc)
 _INTERPRETED_AT = datetime(2026, 7, 13, 9, 0, 0, tzinfo=timezone(timedelta(hours=2)))
+# The Case that owns this file's fixture Observation — one fixed, named
+# identity, not a fresh id per call, mirroring the established pattern in
+# tests/unit/domain/observation/test_entity.py.
+_CASE_ID = CaseId()
 
 
 @pytest.fixture
@@ -65,6 +70,7 @@ def service(engine, observation_repository):
 @pytest.fixture
 def existing_observation(observation_repository):
     observation = Observation.capture(
+        case_id=_CASE_ID,
         subject=Subject("Semiconductor sector"),
         statement=Statement("Several companies raised capex guidance."),
         observed_at=_OBSERVED_AT,
