@@ -30,6 +30,10 @@ from atlas.core.infrastructure.api.hypothesis.errors import (
     register_error_handlers as register_hypothesis_error_handlers,
 )
 from atlas.core.infrastructure.api.hypothesis.router import router as hypothesis_router
+from atlas.core.infrastructure.api.judgment.errors import (
+    register_error_handlers as register_judgment_error_handlers,
+)
+from atlas.core.infrastructure.api.judgment.router import router as judgment_router
 from atlas.core.infrastructure.api.knowledge_reference.errors import (
     register_error_handlers as register_knowledge_reference_error_handlers,
 )
@@ -51,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(hypothesis_router)
     app.include_router(evidence_router)
     app.include_router(knowledge_reference_router)
+    app.include_router(judgment_router)
     register_case_error_handlers(app)
     register_decision_error_handlers(app)
     register_decision_context_error_handlers(app)
@@ -58,6 +63,7 @@ def create_app() -> FastAPI:
     register_hypothesis_error_handlers(app)
     register_evidence_error_handlers(app)
     register_knowledge_reference_error_handlers(app)
+    register_judgment_error_handlers(app)
     return app
 
 
