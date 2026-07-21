@@ -44,6 +44,10 @@ from atlas.core.infrastructure.api.observation.errors import (
     register_error_handlers as register_observation_error_handlers,
 )
 from atlas.core.infrastructure.api.observation.router import router as observation_router
+from atlas.core.infrastructure.api.reasoning_trace.errors import (
+    register_error_handlers as register_reasoning_trace_error_handlers,
+)
+from atlas.core.infrastructure.api.reasoning_trace.router import router as reasoning_trace_router
 
 
 def create_app() -> FastAPI:
@@ -56,6 +60,7 @@ def create_app() -> FastAPI:
     app.include_router(evidence_router)
     app.include_router(knowledge_reference_router)
     app.include_router(judgment_router)
+    app.include_router(reasoning_trace_router)
     register_case_error_handlers(app)
     register_decision_error_handlers(app)
     register_decision_context_error_handlers(app)
@@ -64,6 +69,7 @@ def create_app() -> FastAPI:
     register_evidence_error_handlers(app)
     register_knowledge_reference_error_handlers(app)
     register_judgment_error_handlers(app)
+    register_reasoning_trace_error_handlers(app)
     return app
 
 
