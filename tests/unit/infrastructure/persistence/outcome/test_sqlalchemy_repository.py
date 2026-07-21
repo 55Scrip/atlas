@@ -1,19 +1,22 @@
 """Aggregate persistence tests for Outcome: create, persist, read, equals original."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.value_objects import DecisionId
 from atlas.core.domain.outcome.entity import Outcome
 from atlas.core.domain.outcome.value_objects import OutcomeId, Statement
 from atlas.core.infrastructure.persistence.outcome.sqlalchemy_repository import (
     SqlAlchemyOutcomeRepository,
 )
-from atlas.core.infrastructure.persistence.outcome.table import create_outcome_table
+from atlas.core.infrastructure.persistence.outcome.table import create_outcome_table, outcomes_table
 
 _DECISION_ID = DecisionId()
 _OCCURRED_AT = datetime(2026, 10, 1, 12, 0, 0, tzinfo=timezone(timedelta(hours=2)))
@@ -33,6 +36,7 @@ def repository():
 
 def _new_outcome(**overrides) -> Outcome:
     defaults = dict(
+        case_id=CaseId(),
         decision_id=_DECISION_ID,
         statement=Statement("Revenue growth accelerated as expected."),
         occurred_at=_OCCURRED_AT,
@@ -98,6 +102,7 @@ class TestEqualsOriginal:
         reloaded = repository.get(original.id)
 
         assert reloaded == original
+        assert reloaded.case_id == original.case_id
         assert reloaded.decision_id == original.decision_id
         assert reloaded.statement == original.statement
         assert reloaded.note == original.note
@@ -122,11 +127,10 @@ class TestInsertOnly:
 
 class TestNoForeignKeysOrCoupling:
     def test_outcome_table_has_no_sql_foreign_key(self, repository):
-        from atlas.core.infrastructure.persistence.outcome.table import outcomes_table
-
         column_names = set(outcomes_table.columns.keys())
         assert column_names == {
             "outcome_id",
+            "case_id",
             "decision_id",
             "statement",
             "note",
@@ -134,3 +138,26 @@ class TestNoForeignKeysOrCoupling:
             "recorded_at",
         }
         assert outcomes_table.foreign_keys == set()
+
+
+class TestCaseOwnership:
+    def test_case_id_round_trips(self, repository):
+        case_id = CaseId()
+        original = _new_outcome(case_id=case_id)
+        repository.add(original)
+        reloaded = repository.get(original.id)
+        assert reloaded.case_id == case_id
+
+    def test_case_id_not_null_is_enforced(self, repository):
+        with pytest.raises(IntegrityError):
+            with repository._engine.begin() as connection:
+                connection.execute(
+                    insert(outcomes_table).values(
+                        outcome_id=str(OutcomeId()),
+                        decision_id=str(_DECISION_ID),
+                        statement="Revenue growth accelerated as expected.",
+                        note=None,
+                        occurred_at=_OCCURRED_AT.isoformat(),
+                        recorded_at=_OCCURRED_AT.isoformat(),
+                    )
+                )

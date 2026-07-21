@@ -6,6 +6,7 @@ DecisionRepository) before constructing the new Outcome. Decision
 the same situation decision_context (API-002) was in. Never writes to
 DecisionRepository.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -40,10 +41,12 @@ class OutcomeService:
     def capture(self, request: CaptureOutcomeRequest) -> Outcome:
         decision_id = DecisionId(request.decision_id)
 
-        if self._decisions.get(decision_id) is None:
+        decision = self._decisions.get(decision_id)
+        if decision is None:
             raise DecisionNotFoundError(f"No Decision found with id {decision_id}")
 
         outcome = Outcome.capture(
+            case_id=decision.case_id,
             decision_id=decision_id,
             statement=Statement(request.statement),
             occurred_at=request.occurred_at,

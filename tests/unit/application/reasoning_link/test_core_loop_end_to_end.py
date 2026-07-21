@@ -10,6 +10,7 @@ docs/CoreLoopATLAS001.md) and walks every step, asserting round-trip
 correctness of every entity and link by id, and that each composite
 service's not-found case is exercised negatively with nothing written.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -176,9 +177,7 @@ def services(engine):
         "observe_from_question": ObserveFromQuestionService(
             question_repository, observation_service, question_observation_links
         ),
-        "interpretation": InterpretationService(
-            observation_repository, interpretation_repository
-        ),
+        "interpretation": InterpretationService(observation_repository, interpretation_repository),
         "form_hypothesis": FormHypothesisFromInterpretationService(
             interpretation_repository, hypothesis_service, interpretation_hypothesis_links
         ),
@@ -325,6 +324,7 @@ class TestCompleteReasoningCycle:
         assert interpretation.observation_id == observation.id
         assert conclusion.evidence_id == evidence.id
         assert outcome.decision_id == decision.id
+        assert outcome.case_id == decision.case_id
         assert evaluation.outcome_id == outcome.id
         assert learning.evaluation_id == evaluation.id
 

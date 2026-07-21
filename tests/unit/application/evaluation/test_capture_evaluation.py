@@ -3,6 +3,7 @@
 Exercises the service against real (in-memory) SQLite repositories for
 both Outcome and Evaluation — not fakes.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -15,6 +16,7 @@ from atlas.core.application.evaluation.capture_evaluation import (
     CaptureEvaluationRequest,
     EvaluationService,
 )
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.value_objects import DecisionId
 from atlas.core.domain.evaluation.exceptions import EvaluationNotFoundError
 from atlas.core.domain.evaluation.value_objects import EvaluationId
@@ -61,6 +63,7 @@ def service(engine, outcome_repository):
 @pytest.fixture
 def existing_outcome(outcome_repository):
     outcome = Outcome.capture(
+        case_id=CaseId(),
         decision_id=DecisionId(),
         statement=OutcomeStatement("Revenue growth accelerated as expected."),
         occurred_at=_OCCURRED_AT,

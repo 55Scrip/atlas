@@ -1,4 +1,5 @@
 """Aggregate persistence tests for Case: create, persist, read, equals original."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -92,9 +93,9 @@ class TestNoForeignKeysOrCoupling:
         from atlas.core.infrastructure.persistence.decision.table import decisions_table
         from atlas.core.infrastructure.persistence.outcome.table import outcomes_table
 
-        # decisions_table has since gained case_id (Decision Case Context
-        # package); outcomes_table has not — Outcome's own Case-integration
-        # remains a separate, later, not-yet-authorized package.
+        # decisions_table gained case_id via the Decision Case Context
+        # package; outcomes_table has since gained case_id too, via the
+        # Outcome Case Context package.
         assert set(decisions_table.columns.keys()) == {
             "id",
             "case_id",
@@ -109,6 +110,7 @@ class TestNoForeignKeysOrCoupling:
         }
         assert set(outcomes_table.columns.keys()) == {
             "outcome_id",
+            "case_id",
             "decision_id",
             "statement",
             "note",

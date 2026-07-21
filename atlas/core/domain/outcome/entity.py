@@ -6,12 +6,14 @@ A Decision may accrue more than one Outcome entry over time (e.g. an
 interim reading followed by a final one) — there is no uniqueness
 constraint on decision_id.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.value_objects import DecisionId
 from atlas.core.domain.outcome.exceptions import InvalidOccurredAtError
 from atlas.core.domain.outcome.value_objects import OutcomeId, Statement
@@ -53,6 +55,7 @@ class Outcome:
     """
 
     id: OutcomeId
+    case_id: CaseId
     decision_id: DecisionId
     statement: Statement
     occurred_at: datetime
@@ -67,6 +70,7 @@ class Outcome:
     def capture(
         cls,
         *,
+        case_id: CaseId,
         decision_id: DecisionId,
         statement: Statement,
         occurred_at: datetime,
@@ -84,6 +88,7 @@ class Outcome:
         now = clock()
         return cls(
             id=OutcomeId(),
+            case_id=case_id,
             decision_id=decision_id,
             statement=statement,
             occurred_at=occurred_at,

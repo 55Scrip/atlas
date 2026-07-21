@@ -1,4 +1,5 @@
 """SQLAlchemy-backed OutcomeRepository."""
+
 from __future__ import annotations
 
 import uuid
@@ -9,6 +10,7 @@ from typing import Any
 from sqlalchemy import insert, select
 from sqlalchemy.engine import Engine
 
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.value_objects import DecisionId
 from atlas.core.domain.outcome.entity import Outcome
 from atlas.core.domain.outcome.value_objects import OutcomeId, Statement
@@ -25,27 +27,37 @@ class SqlAlchemyOutcomeRepository:
 
     def get(self, outcome_id: OutcomeId) -> Outcome | None:
         with self._engine.connect() as connection:
-            row = connection.execute(
-                select(outcomes_table).where(outcomes_table.c.outcome_id == str(outcome_id))
-            ).mappings().first()
+            row = (
+                connection.execute(
+                    select(outcomes_table).where(outcomes_table.c.outcome_id == str(outcome_id))
+                )
+                .mappings()
+                .first()
+            )
         return _to_outcome(row) if row is not None else None
 
     def list_all(self) -> list[Outcome]:
         with self._engine.connect() as connection:
-            rows = connection.execute(
-                select(outcomes_table).order_by(outcomes_table.c.recorded_at)
-            ).mappings().all()
+            rows = (
+                connection.execute(select(outcomes_table).order_by(outcomes_table.c.recorded_at))
+                .mappings()
+                .all()
+            )
         outcomes = [_to_outcome(row) for row in rows]
         outcomes.sort(key=lambda o: (o.occurred_at, o.recorded_at, o.id.value))
         return outcomes
 
     def list_by_decision_id(self, decision_id: DecisionId) -> list[Outcome]:
         with self._engine.connect() as connection:
-            rows = connection.execute(
-                select(outcomes_table)
-                .where(outcomes_table.c.decision_id == str(decision_id))
-                .order_by(outcomes_table.c.recorded_at)
-            ).mappings().all()
+            rows = (
+                connection.execute(
+                    select(outcomes_table)
+                    .where(outcomes_table.c.decision_id == str(decision_id))
+                    .order_by(outcomes_table.c.recorded_at)
+                )
+                .mappings()
+                .all()
+            )
         outcomes = [_to_outcome(row) for row in rows]
         outcomes.sort(key=lambda o: (o.occurred_at, o.recorded_at, o.id.value))
         return outcomes
@@ -54,6 +66,7 @@ class SqlAlchemyOutcomeRepository:
 def _to_row(outcome: Outcome) -> dict[str, Any]:
     return {
         "outcome_id": str(outcome.id),
+        "case_id": str(outcome.case_id),
         "decision_id": str(outcome.decision_id),
         "statement": outcome.statement.value,
         "note": outcome.note,
@@ -65,6 +78,7 @@ def _to_row(outcome: Outcome) -> dict[str, Any]:
 def _to_outcome(row: Mapping[str, Any]) -> Outcome:
     return Outcome(
         id=OutcomeId(uuid.UUID(row["outcome_id"])),
+        case_id=CaseId(uuid.UUID(row["case_id"])),
         decision_id=DecisionId(uuid.UUID(row["decision_id"])),
         statement=Statement(row["statement"]),
         occurred_at=datetime.fromisoformat(row["occurred_at"]),

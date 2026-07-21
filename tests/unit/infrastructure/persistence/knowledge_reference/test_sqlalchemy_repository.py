@@ -1,6 +1,7 @@
 """Aggregate persistence tests for Knowledge Reference: create, persist,
 read, equals original.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -165,6 +166,7 @@ class TestExistingCoreTablesAreUnchanged:
         }
         assert set(outcomes_table.columns.keys()) == {
             "outcome_id",
+            "case_id",
             "decision_id",
             "statement",
             "note",

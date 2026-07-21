@@ -4,6 +4,7 @@ Constructs DecisionTimelineQuery directly from repository interfaces —
 no composition.py, no Engine — proving assembly is independently
 testable against whatever repositories are supplied.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -18,6 +19,7 @@ from atlas.core.application.decision.capture_decision import (
     CaptureDecisionService,
 )
 from atlas.core.application.decision_timeline.query import DecisionTimelineQuery
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.evaluation.entity import Evaluation
 from atlas.core.domain.evaluation.value_objects import Statement as EvaluationStatement
 from atlas.core.domain.learning.entity import Learning
@@ -103,6 +105,7 @@ def _make_decision(decision_repository, decided_at, subject="NVIDIA"):
 
 def _make_outcome(outcome_repository, decision_id, recorded_at):
     outcome = Outcome.capture(
+        case_id=CaseId(),
         decision_id=decision_id,
         statement=OutcomeStatement("Revenue grew as expected."),
         occurred_at=_T0,
@@ -159,9 +162,7 @@ class TestDecisionOrdering:
         timeline = query.build()
 
         expected_order = sorted([first, second], key=lambda d: d.id.value)
-        assert [entry.decision.id for entry in timeline.entries] == [
-            d.id for d in expected_order
-        ]
+        assert [entry.decision.id for entry in timeline.entries] == [d.id for d in expected_order]
 
 
 class TestReviewChainNesting:
@@ -174,9 +175,7 @@ class TestReviewChainNesting:
         self, decision_repository, outcome_repository, query
     ):
         decision = _make_decision(decision_repository, _T0)
-        later_outcome = _make_outcome(
-            outcome_repository, decision.id, _T0 + timedelta(hours=2)
-        )
+        later_outcome = _make_outcome(outcome_repository, decision.id, _T0 + timedelta(hours=2))
         earlier_outcome = _make_outcome(outcome_repository, decision.id, _T0)
 
         timeline = query.build()

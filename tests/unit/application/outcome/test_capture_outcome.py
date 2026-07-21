@@ -3,6 +3,7 @@
 Exercises the service against real (in-memory) SQLite repositories for
 both Decision and Outcome — not fakes.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -94,6 +95,7 @@ class TestCapture:
     def test_captures_an_outcome_of_an_existing_decision(self, service, existing_decision):
         outcome = service.capture(_request(existing_decision.id))
         assert outcome.decision_id == existing_decision.id
+        assert outcome.case_id == existing_decision.case_id
 
     def test_recorded_at_is_assigned_by_atlas(self, service, existing_decision):
         before = datetime.now(timezone.utc)
