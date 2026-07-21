@@ -1,0 +1,73 @@
+# Outcome Implementation Design — Scope Audit
+
+## 1. Status
+
+Engineering audit artifact. Not a normative document; carries no Doctrine status. This document does not amend architecture, does not resolve any ontological question, and does not implement any code. It answers one narrow, procedural question: **does `Outcome-Implementation-Design.md` currently define a single, bounded, implementable increment?** It does not. This audit identifies exactly which parts of that document are ready to implement, which parts are not, why the document itself does not draw that line, and what must happen before an implementation task may begin. No scope is inferred, assumed, or narrowed here — that determination is left to the user, per explicit instruction.
+
+## 2. Trigger
+
+During the mandatory pre-implementation verification step of "R4: Outcome Integration Implementation" (read the design fresh, verify every claim against current repository state before writing any code), a full, fresh read of `Outcome-Implementation-Design.md` (Sections 1–45) surfaced that the document's own text places roughly half of what it describes outside its own authorized scope, without ever stating where the boundary falls in a way an implementation task could act on directly. This audit was produced instead of proceeding with implementation, per direct user instruction not to infer or narrow the scope unilaterally.
+
+## 3. Method
+
+Direct, citation-by-citation review of the source document's own text — no new architectural reasoning is introduced, and no claim is taken from this audit's own authority. Cross-referenced against the one directly comparable precedent in this repository: Decision.
+
+## 4. The Decision Precedent
+
+Decision's own `Decision-Implementation-Design.md` had an identical structural feature: it adopted a full ontological shape (Storage-Permissive, Admission-Restricted, per its own Committed-To Matter Completeness Review) while separately noting that reconciling Decision's existing rich field set with that shape was an undefined, deferred question. That deferral did not block implementation, because a **second, narrower document** was produced before any code was written: `Decision-Case-Context-Implementation-Design.md`. That document:
+
+- Isolated exactly one gap — the missing `case_id` (INV-002) — as genuinely in-scope, additive, and independent of the deferred field-set question.
+- Was individually authored, audited, and committed on its own (`c4def37`), separately from the original design.
+- Contained a dedicated **Section 14, "Permission or Prohibition for Implementation,"** stating in terms an implementation task could act on directly that this narrow slice, and only this narrow slice, was authorized to be built now.
+
+`Outcome-Implementation-Design.md` has no equivalent second document. `ls docs/atlas_domain_object_architecture/` confirms only the one file exists for Outcome. The original document was never split the way Decision's was, and it contains no section analogous to Decision-Case-Context's Section 14.
+
+## 5. Category A — Parts of the Design That Are Additive and Self-Contained
+
+These claims, examined on their own terms, do not depend on resolving any open question and do not conflict with any existing, currently-mandatory field:
+
+- **`case_id: CaseId` (INV-002, Section 26, Section 34).** The existing `outcomes` table has no `case_id` column at all today (Section 42). Adding one is a purely additive schema change — a new, non-nullable column with no prior value to reconcile, no existing behavior it contradicts, and no existing consumer that currently omits it (because it does not exist to omit). This is structurally identical to Decision's own `case_id` addition: a new required field bolted onto an already-shipped shape, not a change to any existing field's nullability or meaning.
+- **`recorded_at` (Section 34, INV-015).** Already implemented, already required, already timezone-validated. No change of any kind is implied.
+- **`occurred_at` (Section 29, Section 34).** Already implemented, already required (non-nullable) in existing code. Section 42 explicitly classifies this as "not a deviation from the corrected design" — a permissible, stricter-than-canonical-minimum policy already in place. No change is implied here either.
+
+Nothing else in the document meets this bar. Everything else either changes an existing field's nullability, introduces a new field the current schema has no analog for, or requires infrastructure (a REST API) that does not exist.
+
+**This is an observation about which claims are structurally additive, not a determination that this slice is authorized for implementation.** Unlike Decision, no document states that this slice, specifically, may be built now. Section 6 below explains why that matters.
+
+## 6. Category B — Parts the Design's Own Text Places Outside Its Own Scope
+
+Section 42 ("Existing-Code Impact") and Section 45 ("Final Implementation Recommendation") state directly, in the document's own words:
+
+- `decision_id` must become **nullable and non-constitutive** — a change to an existing, currently `NOT NULL` column's own constraint, not an addition.
+- `statement` must become **nullable** — likewise a change to an existing `NOT NULL` column, not an addition.
+- A generic `matter_target_type`/`matter_target_id` pair must be **introduced to replace** the Decision-only reference — a new reference mechanism replacing the current hardcoded one, not sitting alongside it unchanged.
+- The current **unconditional-AND** requirement (content and a Decision reference both mandatory today, per Section 42 point 3) must be replaced by a **minimum-presence** CHECK constraint.
+- A **REST API layer that does not exist at all today** (Section 39, Section 42: "no `atlas/core/infrastructure/api/outcome/` directory exists... This design does not currently exist as a REST API... these are the specifications the future API layer must satisfy, not a description of code already present").
+
+Section 42's own classification, verbatim: **"this design requires a future migration, not additive compatibility."** Section 45's own closing sentence: **"Reconcile the existing `atlas/core/domain/outcome/` implementation with this minimal design as a genuine future migration effort (Section 42), not as part of this document."**
+
+These are not open ontological questions (like the both-forms-coexisting question, which the document correctly and explicitly leaves open without blocking anything). These are **specific, concrete code changes the document itself names**, and then, in the same breath, declines to authorize as part of itself.
+
+## 7. Why the Document Does Not Currently Define a Single Bounded Implementation
+
+Section 45 opens by recommending adoption of the full seven-slot shape — `case_id`, the generic `matter_target_type`/`matter_target_id` pair, nullable `decision_id`/`statement`, the minimum-presence CHECK — as "the" final recommendation, framed as one undivided design. The same section then closes by stating that reconciling existing code to that shape is a future effort "not as part of this document." **The document names its target shape and simultaneously disclaims authorizing the migration required to reach it, without ever drawing a line between the piece that is additive (Category A) and the piece that is a breaking migration (Category B).**
+
+This differs from Decision's situation in one specific, material way: Decision's original document had the identical tension, but the tension was *resolved* by a second document that drew the line explicitly and got its own review-and-commit cycle. Outcome's document states the tension but never resolves it — no section of `Outcome-Implementation-Design.md` says "implement only Category A now"; Section 45 recommends the whole shape in one paragraph. An implementation task handed this document alone has no textual basis for stopping at `case_id` rather than proceeding to the full migration — the document reads as a single recommendation, even though it is not, on inspection, a single implementable increment.
+
+## 8. Additional Design Decisions Required Before Implementation Can Begin
+
+1. **Scope decision (the primary blocker).** Whether R4 targets only Category A (`case_id`, mirroring Decision's Case Context precedent exactly) or Category B (the full migration: nullable `decision_id`/`statement`, generic `matter_target_type`/`matter_target_id`, new CHECK constraint, and a REST API layer built for the first time) — or some other explicitly bounded slice. This determination is the user's to make; it is not derivable from the source document, which recommends both in the same section without distinguishing them.
+2. **If Category A is selected:** a dedicated `Outcome-Case-Context-Implementation-Design.md`, mirroring `Decision-Case-Context-Implementation-Design.md` in form — individually authored, audited, and committed, including an explicit "Permission or Prohibition for Implementation" section — is needed before an implementation task has the same textual authorization Decision's R3 had. This audit does not substitute for that document.
+3. **If Category B is selected:** the migration itself needs its own design treatment beyond what Section 42/45 sketch, specifically:
+   - **A data-migration policy** for existing `outcomes` rows once `decision_id`/`statement` become nullable and the reference mechanism changes shape — not addressed anywhere in the source document, which states only the target schema, not a transition path from the current one.
+   - **Whether this is the trigger for introducing Alembic-style migrations.** No migration tooling exists anywhere in this repository today: `docs/atlas_domain_object_architecture/Domain-Object-Implementation-Reconciliation-Plan.md` confirms directly ("No migration tooling exists anywhere — no Alembic, no `migrations/`/`versions/` directory, no schema-versioning dependency. Every table is defined as a plain SQLAlchemy Core `Table`... schema change means writing a new `Table` definition and an explicit, hand-written data-carrying transformation script, run once, outside any migration framework."), and this has been the standing product decision through every prior increment (`docs/EvidenceCaptureAPI005.md`: "No Alembic, same standing product decision as prior increments."). Loosening `decision_id`/`statement` from `NOT NULL` to nullable on an existing table is exactly the class of change — an in-place alteration of an already-populated column's own constraint, not an additive new column — that every prior Domain Object package in this series (Observation, Hypothesis, Evidence, Decision's own `case_id`) has so far avoided needing. Whether that standing decision (hand-written, one-time, non-Alembic transformation) still holds for this specific change, or whether it is the first case significant enough to revisit it, is a separate infrastructure decision the source document does not raise at all.
+   - **API design for the new-from-scratch Outcome REST surface** — Section 39 states validation rules and consequences in prose but was never built against a concrete schema/router design the way Decision's or Observation's API layers were; a Category B implementation task would be designing, not merely implementing, this layer.
+4. **Either way:** confirmation of whether `OutcomeService` is intended to remain unwired from any orchestrator or whether Case-context propagation needs to reach an existing wiring. **Correction, made during a later audit of this document against fresh repository evidence:** the phrasing above, as originally written, assumed `OutcomeService` was currently unwired from any orchestrator. That assumption was independently checked and found **incorrect** — `OutcomeService` is, in fact, already wired into `DecisionReviewOrchestrator` (`atlas/core/application/decision_review/orchestrator.py`, `_handle_outcome`), a real, standalone, CLI-exposed composite service (ATLAS-003, `decision_review/cli.py`), confirmed by direct repository search (`grep -rn "OutcomeService("`/`"CaptureOutcomeRequest("`). `DecisionReviewSession` has no `case_id` field and no Case-resolution mechanism of its own, unlike `ConversationSession`. This repository fact materially affects the Case-context propagation design: the open question this bullet originally posed ("wire it in for the first time") does not apply — `OutcomeService` is already reached through a real, CLI-exposed flow, and the actual question was how `case_id` reaches that already-existing wiring, not whether to create new wiring. `Outcome-Case-Context-Implementation-Design.md` (Section 6, Section 6a) resolves this question directly: `case_id` is derived internally by `OutcomeService.capture()` from the Decision it already fetches, requiring **zero changes** to `decision_review/orchestrator.py` or `composition.py`. (Section 4 of this document does not itself repeat the unwired-orchestrator assumption — it only observes that no second, narrower Outcome document existed at the time this audit was written; that observation is unaffected by this correction.) This assumption's origin — `Decision-Case-Context-Implementation-Design.md`'s own "Next Genuine Integration Boundary" section, which stated Outcome "has no current Core Loop integration to break, since `OutcomeService` is not wired into any orchestrator" — is disclosed here rather than silently revised.
+
+## 9. What This Audit Does Not Do
+
+Does not select between Category A and Category B. Does not author the narrower Case-Context design document described in Section 8.2. Does not resolve the both-forms-coexisting question (correctly and permanently left open by OE-002 §5.6 itself, and not the source of this scope problem). Does not touch any production code, test, or the original design document. Does not recommend Alembic adoption — only flags that Category B would trigger the previously-recorded decision point.
+
+## 10. Final Statement
+
+`Outcome-Implementation-Design.md` is not currently implementable as a single task. It contains one small, additive slice (`case_id`) that is structurally ready in the same sense Decision's `case_id` was, and a much larger slice (nullable `decision_id`/`statement`, generic typed reference, new REST API) that its own text calls a future migration outside its scope — and it never states which of the two an implementation task should act on. No implementation should begin until the user selects a scope (Section 8.1) and, if Category A is selected, the corresponding narrow design document (Section 8.2) is authored, audited, and committed first, exactly as was done for Decision.
