@@ -7,6 +7,22 @@ tests/unit/application/reasoning_link/test_core_loop_end_to_end.py.
 Does not construct OutcomeService, EvaluationService, or LearningService
 — those belong to a future review phase, not this conversation.
 
+Also wires `ReasoningTraceService` (Legacy-Core-Loop-Canonical-
+Reconciliation-Investigation.md, Package M1): after a Decision commits,
+the orchestrator captures one canonical Reasoning Trace citing the
+conversation's own Observation as its sole support. `ReasoningTraceService`
+requires one repository per eligible supporting-object type by
+construction (Reasoning-Trace-Implementation-Design.md, Section 29), so
+`KnowledgeReferenceRepository`, `JudgmentRepository`, and
+`OutcomeRepository` are constructed here too — each lazily wraps the
+engine and touches no table until actually queried, and this
+conversation's own support set is always exactly one Observation
+reference, so those three are never queried in practice. Their own
+tables are therefore deliberately not created here (see
+`create_conversation_tables`) — only `reasoning_traces`/
+`reasoning_trace_supports`, which every captured Trace actually writes
+to.
+
 `resolve_new_case`/`resolve_existing_case` are the two explicit,
 distinctly named Case-resolution operations required by
 Core-Loop-Observation-Case-Context-Implementation-Design.md Section 19.
@@ -46,6 +62,7 @@ from atlas.core.application.reasoning_link.form_hypothesis_from_interpretation i
 from atlas.core.application.reasoning_link.observe_from_question import (
     ObserveFromQuestionService,
 )
+from atlas.core.application.reasoning_trace.capture_reasoning_trace import ReasoningTraceService
 from atlas.core.domain.case.exceptions import CaseNotFoundError
 from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.infrastructure.persistence.case.sqlalchemy_repository import (
@@ -74,10 +91,19 @@ from atlas.core.infrastructure.persistence.interpretation.sqlalchemy_repository 
 from atlas.core.infrastructure.persistence.interpretation.table import (
     create_interpretation_table,
 )
+from atlas.core.infrastructure.persistence.judgment.sqlalchemy_repository import (
+    SqlAlchemyJudgmentRepository,
+)
+from atlas.core.infrastructure.persistence.knowledge_reference.sqlalchemy_repository import (
+    SqlAlchemyKnowledgeReferenceRepository,
+)
 from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
     SqlAlchemyObservationRepository,
 )
 from atlas.core.infrastructure.persistence.observation.table import create_observation_table
+from atlas.core.infrastructure.persistence.outcome.sqlalchemy_repository import (
+    SqlAlchemyOutcomeRepository,
+)
 from atlas.core.infrastructure.persistence.question.sqlalchemy_repository import (
     SqlAlchemyQuestionRepository,
 )
@@ -91,13 +117,23 @@ from atlas.core.infrastructure.persistence.reasoning_link.sqlalchemy_repository 
 from atlas.core.infrastructure.persistence.reasoning_link.table import (
     create_reasoning_link_tables,
 )
+from atlas.core.infrastructure.persistence.reasoning_trace.sqlalchemy_repository import (
+    SqlAlchemyReasoningTraceRepository,
+)
+from atlas.core.infrastructure.persistence.reasoning_trace.table import (
+    create_reasoning_trace_tables,
+)
 
 
 def create_conversation_tables(engine: Engine) -> None:
-    """Create every table this conversation's seven steps need.
+    """Create every table this conversation's seven steps need, plus the
+    Reasoning Trace tables the post-Decision write (Package M1) uses.
 
-    Deliberately does not create the outcomes/evaluations/learnings
-    tables — this conversation never touches them.
+    Deliberately does not create the outcomes/evaluations/learnings/
+    knowledge_references/judgments tables — this conversation never
+    reads or writes any of them: the Reasoning Trace captured here
+    always cites exactly one Observation as its sole support, never an
+    Outcome, Judgment, or Knowledge Reference.
     """
     create_case_table(engine)
     create_question_table(engine)
@@ -108,6 +144,7 @@ def create_conversation_tables(engine: Engine) -> None:
     create_conclusion_table(engine)
     create_decision_table(engine)
     create_reasoning_link_tables(engine)
+    create_reasoning_trace_tables(engine)
 
 
 def resolve_new_case(engine: Engine) -> uuid.UUID:
@@ -146,6 +183,10 @@ def build_conversation_orchestrator(
     evidence_repository = SqlAlchemyEvidenceRepository(engine)
     conclusion_repository = SqlAlchemyConclusionRepository(engine)
     decision_repository = SqlAlchemyDecisionRepository(engine)
+    reasoning_trace_repository = SqlAlchemyReasoningTraceRepository(engine)
+    knowledge_reference_repository = SqlAlchemyKnowledgeReferenceRepository(engine)
+    judgment_repository = SqlAlchemyJudgmentRepository(engine)
+    outcome_repository = SqlAlchemyOutcomeRepository(engine)
 
     question_observation_links = SqlAlchemyQuestionObservationLinkRepository(engine)
     interpretation_hypothesis_links = SqlAlchemyInterpretationHypothesisLinkRepository(engine)
@@ -156,6 +197,14 @@ def build_conversation_orchestrator(
     hypothesis_service = HypothesisService(hypothesis_repository)
     evidence_service = EvidenceService(evidence_repository)
     decision_service = CaptureDecisionService(decision_repository)
+    reasoning_trace_service = ReasoningTraceService(
+        reasoning_trace_repository,
+        observation_repository,
+        knowledge_reference_repository,
+        judgment_repository,
+        decision_repository,
+        outcome_repository,
+    )
 
     return ConversationOrchestrator(
         question_service=QuestionService(question_repository),
@@ -175,6 +224,7 @@ def build_conversation_orchestrator(
         commit_decision_service=CommitDecisionFromConclusionService(
             conclusion_repository, decision_service, conclusion_decision_links
         ),
+        reasoning_trace_service=reasoning_trace_service,
         investor_id=investor_id,
         case_id=case_id,
     )

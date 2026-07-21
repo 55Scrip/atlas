@@ -36,6 +36,18 @@ CLOSING_MESSAGE = (
     "about once time has actually passed."
 )
 
+# Decision succeeded and is permanently recorded either way — the only
+# difference from CLOSING_MESSAGE is that the separate, additive
+# Reasoning Trace write (Package M1) failed. Never returned instead of
+# CLOSING_MESSAGE for any Decision-side failure, only for this second,
+# independent write's own failure.
+CLOSING_MESSAGE_REASONING_TRACE_FAILED = (
+    "Your decision has been recorded. There's nothing more to do right "
+    "now — how it played out is something we'll only be able to talk "
+    "about once time has actually passed. (Note: the supporting "
+    "reasoning trace could not be saved.)"
+)
+
 UNRECOGNIZED_DIRECTION_PROMPT = (
     "Sorry, I didn't catch that — does it support your belief, or challenge it?"
 )

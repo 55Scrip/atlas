@@ -51,7 +51,13 @@ from atlas.core.application.reasoning_link.observe_from_question import (
     ObserveFromQuestionRequest,
     ObserveFromQuestionService,
 )
+from atlas.core.application.reasoning_trace.capture_reasoning_trace import (
+    CaptureReasoningTraceRequest,
+    ReasoningTraceService,
+)
 from atlas.core.domain.decision.value_objects import UserId
+from atlas.core.domain.shared.domain_object_type import DomainObjectType
+from atlas.core.domain.shared.typed_reference import TypedDomainObjectReference
 
 
 def _now() -> datetime:
@@ -74,6 +80,7 @@ class ConversationOrchestrator:
         capture_evidence_service: CaptureEvidenceFromHypothesisService,
         conclusion_service: ConclusionService,
         commit_decision_service: CommitDecisionFromConclusionService,
+        reasoning_trace_service: ReasoningTraceService,
         investor_id: UserId,
         case_id: uuid.UUID,
     ) -> None:
@@ -84,6 +91,7 @@ class ConversationOrchestrator:
         self._capture_evidence_service = capture_evidence_service
         self._conclusion_service = conclusion_service
         self._commit_decision_service = commit_decision_service
+        self._reasoning_trace_service = reasoning_trace_service
         self._investor_id = investor_id
         self._case_id = case_id
 
@@ -243,6 +251,36 @@ class ConversationOrchestrator:
         session.pending.clear()
         session.decision_id = result.decision.id.value
         session.current_step = ConversationStep.DECISION_RECORDED
+
+        # The Decision is now permanently committed, and the session has
+        # already reached its terminal step — DECISION_RECORDED has no
+        # entry in _HANDLERS, so nothing below this point can cause
+        # `respond()` to invoke this method, or commit_decision_service,
+        # again. The Reasoning Trace capture is therefore a second,
+        # independent write in its own try/except, never sharing the
+        # Decision's own retry/reprompt boundary above: a failure here
+        # can surface as a different closing message, but can never
+        # retry, duplicate, or roll back the Decision that already
+        # exists (Legacy-Core-Loop-Canonical-Reconciliation-Investigation.md,
+        # Section 15 and Section 21, Package M1). This is an additive
+        # canonical fact alongside the Decision, not a replacement for
+        # it, Conclusion, or any reasoning_link record.
+        try:
+            self._reasoning_trace_service.capture(
+                CaptureReasoningTraceRequest(
+                    case_id=session.case_id,
+                    supports=[
+                        TypedDomainObjectReference(
+                            target_type=DomainObjectType.OBSERVATION,
+                            target_id=session.observation_id,
+                        )
+                    ],
+                )
+            )
+        except Exception:
+            return ConversationTurn(
+                prompt=prompts.CLOSING_MESSAGE_REASONING_TRACE_FAILED, is_complete=True
+            )
         return ConversationTurn(prompt=prompts.CLOSING_MESSAGE, is_complete=True)
 
     _HANDLERS = {
