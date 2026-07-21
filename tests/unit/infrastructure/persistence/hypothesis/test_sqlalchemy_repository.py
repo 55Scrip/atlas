@@ -170,6 +170,7 @@ class TestNoForeignKeysOrCoupling:
 
         assert set(decisions_table.columns.keys()) == {
             "id",
+            "case_id",
             "user_id",
             "decision_type",
             "subject",

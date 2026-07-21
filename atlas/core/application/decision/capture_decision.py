@@ -11,6 +11,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.decision.repository import DecisionRepository
 from atlas.core.domain.decision.value_objects import (
@@ -25,6 +26,7 @@ from atlas.core.domain.decision.value_objects import (
 
 @dataclass(frozen=True)
 class CaptureDecisionRequest:
+    case_id: uuid.UUID
     user_id: uuid.UUID
     decision_type: str
     subject: str
@@ -40,6 +42,7 @@ class CaptureDecisionService:
 
     def capture(self, request: CaptureDecisionRequest) -> Decision:
         decision = Decision.register(
+            case_id=CaseId(request.case_id),
             user_id=UserId(request.user_id),
             decision_type=DecisionType.coerce(request.decision_type),
             subject=Subject(request.subject),

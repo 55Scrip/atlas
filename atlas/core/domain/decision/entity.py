@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.exceptions import InvalidDecidedAtError
 from atlas.core.domain.decision.value_objects import (
     Confidence,
@@ -50,6 +51,7 @@ class Decision:
     """
 
     id: DecisionId
+    case_id: CaseId
     user_id: UserId
     decision_type: DecisionType
     subject: Subject
@@ -66,6 +68,7 @@ class Decision:
     def register(
         cls,
         *,
+        case_id: CaseId,
         user_id: UserId,
         decision_type: DecisionType | str,
         subject: Subject,
@@ -84,6 +87,7 @@ class Decision:
         now = clock()
         return cls(
             id=DecisionId(),
+            case_id=case_id,
             user_id=user_id,
             decision_type=DecisionType.coerce(decision_type),
             subject=subject,

@@ -16,6 +16,7 @@ decisions_table = Table(
     "decisions",
     metadata,
     Column("id", String, primary_key=True),
+    Column("case_id", String, nullable=False, index=True),
     Column("user_id", String, nullable=False, index=True),
     Column("decision_type", String, nullable=False),
     Column("subject", String, nullable=False),

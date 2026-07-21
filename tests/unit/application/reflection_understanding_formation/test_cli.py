@@ -27,6 +27,7 @@ from atlas.core.application.reflection_understanding_formation.formation import 
     ArticulationAuthorshipMode,
     SubstanceAuthorshipMode,
 )
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.decision.value_objects import (
     Confidence,
@@ -214,6 +215,7 @@ class TestRunEndToEnd:
         decision_repo = SqlAlchemyDecisionRepository(engine)
         response_repo = SqlAlchemyReflectionResponseRepository(engine)
         decision = Decision.register(
+            case_id=CaseId(),
             user_id=owner_user_id,
             decision_type=DecisionType.BUY,
             subject=Subject("NVIDIA"),

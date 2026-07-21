@@ -146,6 +146,9 @@ class TestCompleteConversation:
         # already-resolved CaseId — never a default, fabricated, or
         # session_id/investor_id-derived substitute.
         assert observation.case_id.value == resolved_case_id
+        # The persisted Decision carries exactly the same, already-resolved
+        # CaseId, propagated through CommitDecisionFromConclusionService.
+        assert decision.case_id.value == resolved_case_id
 
         # Decision -> Conclusion via ConclusionDecisionLink.
         decision_links = conclusion_decision_links.list_by_decision_id(decision.id)

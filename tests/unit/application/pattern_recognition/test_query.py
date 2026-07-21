@@ -83,6 +83,7 @@ def _make_decision(decision_repository, decided_at, subject="NVIDIA", decision_t
     service = CaptureDecisionService(decision_repository)
     return service.capture(
         CaptureDecisionRequest(
+            case_id=uuid.uuid4(),
             user_id=uuid.uuid4(),
             decision_type=decision_type,
             subject=subject,

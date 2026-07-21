@@ -22,6 +22,7 @@ ATLAS_LEARNING_MESSAGE = (
 
 
 class CreateDecisionRequest(CamelModel):
+    case_id: uuid.UUID
     user_id: uuid.UUID
     decision_type: str
     subject: str
@@ -33,6 +34,7 @@ class CreateDecisionRequest(CamelModel):
 
 class DecisionSummary(CamelModel):
     id: uuid.UUID
+    case_id: uuid.UUID
     user_id: uuid.UUID
     decision_type: str
     subject: str
@@ -46,6 +48,7 @@ class DecisionSummary(CamelModel):
     def from_domain(cls, decision: Decision) -> DecisionSummary:
         return cls(
             id=decision.id.value,
+            case_id=decision.case_id.value,
             user_id=decision.user_id.value,
             decision_type=decision.decision_type.value,
             subject=decision.subject.value,

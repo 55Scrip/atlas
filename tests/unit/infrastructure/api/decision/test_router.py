@@ -40,6 +40,7 @@ def client():
 
 def _valid_payload(**overrides) -> dict:
     payload = {
+        "caseId": str(uuid.uuid4()),
         "userId": str(uuid.uuid4()),
         "decisionType": "BUY",
         "reason": "Durable moat, undervalued relative to peers",
@@ -63,6 +64,7 @@ class TestCreateDecision:
         assert body["subject"] == "ASML"
         assert body["source"] == "Manual"
         assert uuid.UUID(body["id"])
+        assert uuid.UUID(body["caseId"]) == uuid.UUID(payload["caseId"])
         assert uuid.UUID(body["userId"]) == uuid.UUID(payload["userId"])
         assert "decidedAt" in body
         assert "recordedAt" in body
@@ -93,6 +95,7 @@ class TestBackwardCompatibleSnakeCaseInput:
 
     def test_accepts_a_legacy_snake_case_request_body(self, client):
         payload = {
+            "case_id": str(uuid.uuid4()),
             "user_id": str(uuid.uuid4()),
             "decision_type": "BUY",
             "reason": "Durable moat, undervalued relative to peers",
@@ -136,6 +139,16 @@ class TestCreateDecisionValidationFailures:
 
     def test_rejects_unknown_source(self, client):
         response = client.post("/decisions", json=_valid_payload(source="Telepathy"))
+        assert response.status_code == 422
+
+    def test_rejects_missing_case_id(self, client):
+        payload = _valid_payload()
+        del payload["caseId"]
+        response = client.post("/decisions", json=payload)
+        assert response.status_code == 422
+
+    def test_rejects_malformed_case_id(self, client):
+        response = client.post("/decisions", json=_valid_payload(caseId="not-a-uuid"))
         assert response.status_code == 422
 
 

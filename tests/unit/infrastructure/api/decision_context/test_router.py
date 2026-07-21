@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.decision.value_objects import (
     Confidence,
@@ -58,6 +59,7 @@ def client(repositories):
 def _existing_decision(repositories) -> Decision:
     decision_repository, _ = repositories
     decision = Decision.register(
+        case_id=CaseId(),
         user_id=UserId(uuid.uuid4()),
         decision_type=DecisionType.BUY,
         subject=Subject("ASML"),

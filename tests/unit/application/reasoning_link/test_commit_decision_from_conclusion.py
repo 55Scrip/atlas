@@ -82,6 +82,7 @@ def existing_conclusion(conclusion_repository):
 
 def _request(conclusion_id, **overrides) -> CommitDecisionFromConclusionRequest:
     defaults = dict(
+        case_id=uuid.uuid4(),
         conclusion_id=conclusion_id.value,
         user_id=uuid.uuid4(),
         decision_type="BUY",
@@ -100,6 +101,13 @@ class TestCommitDecisionFromConclusion:
         assert result.decision.subject.value == "NVIDIA"
         assert result.link.conclusion_id == existing_conclusion.id
         assert result.link.decision_id == result.decision.id
+
+    def test_propagates_exactly_the_requests_case_id_unchanged(
+        self, service, existing_conclusion
+    ):
+        request = _request(existing_conclusion.id)
+        result = service.commit(request)
+        assert result.decision.case_id.value == request.case_id
 
     def test_rejects_unknown_conclusion(self, service):
         with pytest.raises(ConclusionNotFoundError):

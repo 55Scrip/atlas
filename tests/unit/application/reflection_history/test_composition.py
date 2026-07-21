@@ -20,6 +20,7 @@ from atlas.core.application.reflection_history.composition import (
     build_reflection_history_query,
     create_reflection_history_tables,
 )
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.decision.value_objects import (
     Confidence,
@@ -63,6 +64,7 @@ def engine():
 
 def _make_decision(user_id: UserId) -> Decision:
     return Decision.register(
+        case_id=CaseId(),
         user_id=user_id,
         decision_type=DecisionType.BUY,
         subject=Subject("NVIDIA"),

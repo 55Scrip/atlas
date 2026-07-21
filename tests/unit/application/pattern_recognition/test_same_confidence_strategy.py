@@ -98,6 +98,7 @@ def _make_decision(
     service = CaptureDecisionService(decision_repository)
     return service.capture(
         CaptureDecisionRequest(
+            case_id=uuid.uuid4(),
             user_id=uuid.uuid4(),
             decision_type=decision_type,
             subject=subject,

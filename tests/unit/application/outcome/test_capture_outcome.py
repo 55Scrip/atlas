@@ -16,6 +16,7 @@ from atlas.core.application.outcome.capture_outcome import (
     CaptureOutcomeRequest,
     OutcomeService,
 )
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.decision.value_objects import (
     Confidence,
@@ -66,6 +67,7 @@ def service(engine, decision_repository):
 @pytest.fixture
 def existing_decision(decision_repository):
     decision = Decision.register(
+        case_id=CaseId(),
         user_id=UserId(uuid.uuid4()),
         decision_type=DecisionType.BUY,
         subject=Subject("NVIDIA"),

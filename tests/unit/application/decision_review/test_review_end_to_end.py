@@ -65,6 +65,7 @@ def existing_decision(engine):
     service = CaptureDecisionService(SqlAlchemyDecisionRepository(engine))
     return service.capture(
         CaptureDecisionRequest(
+            case_id=uuid.uuid4(),
             user_id=uuid.uuid4(),
             decision_type="BUY",
             subject="NVIDIA",

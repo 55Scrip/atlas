@@ -54,6 +54,7 @@ def _insert_legacy_decision(engine, user_id: uuid.UUID) -> str:
         connection.execute(
             insert(decisions_table).values(
                 id=decision_id,
+                case_id=str(uuid.uuid4()),
                 user_id=str(user_id),
                 decision_type="BUY",
                 subject="NVIDIA",

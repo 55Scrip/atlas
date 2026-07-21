@@ -33,6 +33,7 @@ from atlas.core.domain.reasoning_link.repository import ConclusionDecisionLinkRe
 
 @dataclass(frozen=True)
 class CommitDecisionFromConclusionRequest:
+    case_id: uuid.UUID
     conclusion_id: uuid.UUID
     user_id: uuid.UUID
     decision_type: str
@@ -70,6 +71,7 @@ class CommitDecisionFromConclusionService:
 
         decision = self._decision_service.capture(
             CaptureDecisionRequest(
+                case_id=request.case_id,
                 user_id=request.user_id,
                 decision_type=request.decision_type,
                 subject=request.subject,

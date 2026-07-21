@@ -153,6 +153,7 @@ class TestExistingCoreTablesAreUnchanged:
         assert set(cases_table.columns.keys()) == {"case_id", "recorded_at"}
         assert set(decisions_table.columns.keys()) == {
             "id",
+            "case_id",
             "user_id",
             "decision_type",
             "subject",

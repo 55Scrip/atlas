@@ -121,6 +121,7 @@ class TestProgressionUnaffectedByReflectionAndCoach:
         for confidence in (90, 70):
             service.capture(
                 CaptureDecisionRequest(
+                    case_id=uuid.uuid4(),
                     user_id=uuid.uuid4(),
                     decision_type="BUY",
                     subject="NVIDIA",

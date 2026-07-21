@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.decision.exceptions import InvalidDecidedAtError
 from atlas.core.domain.decision.value_objects import (
@@ -23,6 +24,10 @@ _SUBJECT = Subject("ASML")
 _CASE = InvestmentCase("Durable moat, undervalued relative to peers")
 _CONFIDENCE = Confidence(75)
 _PAST = datetime(2026, 1, 1, tzinfo=timezone.utc)
+# The Case that owns this file's Decision fixtures — one fixed, named
+# identity, mirroring the established pattern in
+# tests/unit/domain/observation/test_entity.py.
+_CASE_ID = CaseId()
 
 
 def _fixed_clock(dt: datetime):
@@ -32,6 +37,7 @@ def _fixed_clock(dt: datetime):
 class TestDecisionRegistration:
     def test_captures_the_given_fields(self):
         decision = Decision.register(
+            case_id=_CASE_ID,
             user_id=_USER,
             decision_type=DecisionType.BUY,
             subject=_SUBJECT,
@@ -48,6 +54,7 @@ class TestDecisionRegistration:
 
     def test_assigns_a_fresh_id(self):
         first = Decision.register(
+            case_id=_CASE_ID,
             user_id=_USER,
             decision_type=DecisionType.BUY,
             subject=_SUBJECT,
@@ -55,6 +62,7 @@ class TestDecisionRegistration:
             confidence=_CONFIDENCE,
         )
         second = Decision.register(
+            case_id=_CASE_ID,
             user_id=_USER,
             decision_type=DecisionType.BUY,
             subject=_SUBJECT,
@@ -65,6 +73,7 @@ class TestDecisionRegistration:
 
     def test_accepts_a_decision_type_string(self):
         decision = Decision.register(
+            case_id=_CASE_ID,
             user_id=_USER,
             decision_type="BUY",
             subject=_SUBJECT,
@@ -76,8 +85,19 @@ class TestDecisionRegistration:
     def test_requires_a_subject(self):
         with pytest.raises(TypeError):
             Decision.register(
+                case_id=_CASE_ID,
                 user_id=_USER,
                 decision_type=DecisionType.BUY,
+                investment_case=_CASE,
+                confidence=_CONFIDENCE,
+            )
+
+    def test_requires_a_case_id(self):
+        with pytest.raises(TypeError):
+            Decision.register(
+                user_id=_USER,
+                decision_type=DecisionType.BUY,
+                subject=_SUBJECT,
                 investment_case=_CASE,
                 confidence=_CONFIDENCE,
             )
@@ -85,6 +105,7 @@ class TestDecisionRegistration:
     def test_recorded_at_is_always_now_regardless_of_decided_at(self):
         now = datetime(2026, 7, 13, tzinfo=timezone.utc)
         decision = Decision.register(
+            case_id=_CASE_ID,
             user_id=_USER,
             decision_type=DecisionType.BUY,
             subject=_SUBJECT,
@@ -99,6 +120,7 @@ class TestDecisionRegistration:
     def test_decided_at_defaults_to_now_when_omitted(self):
         now = datetime(2026, 7, 13, tzinfo=timezone.utc)
         decision = Decision.register(
+            case_id=_CASE_ID,
             user_id=_USER,
             decision_type=DecisionType.BUY,
             subject=_SUBJECT,
@@ -110,6 +132,7 @@ class TestDecisionRegistration:
 
     def test_source_defaults_to_manual(self):
         decision = Decision.register(
+            case_id=_CASE_ID,
             user_id=_USER,
             decision_type=DecisionType.BUY,
             subject=_SUBJECT,
@@ -120,6 +143,7 @@ class TestDecisionRegistration:
 
     def test_accepts_an_explicit_source(self):
         decision = Decision.register(
+            case_id=_CASE_ID,
             user_id=_USER,
             decision_type=DecisionType.WATCH,
             subject=_SUBJECT,
@@ -132,6 +156,7 @@ class TestDecisionRegistration:
     def test_rejects_naive_decided_at(self):
         with pytest.raises(InvalidDecidedAtError):
             Decision.register(
+                case_id=_CASE_ID,
                 user_id=_USER,
                 decision_type=DecisionType.BUY,
                 subject=_SUBJECT,
@@ -144,6 +169,7 @@ class TestDecisionRegistration:
         tokyo = timezone(timedelta(hours=9))
         decided_at = datetime(2026, 1, 1, 9, 0, tzinfo=tokyo)
         decision = Decision.register(
+            case_id=_CASE_ID,
             user_id=_USER,
             decision_type=DecisionType.BUY,
             subject=_SUBJECT,
@@ -157,6 +183,7 @@ class TestDecisionRegistration:
 class TestDecisionImmutability:
     def test_is_frozen(self):
         decision = Decision.register(
+            case_id=_CASE_ID,
             user_id=_USER,
             decision_type=DecisionType.BUY,
             subject=_SUBJECT,
@@ -168,6 +195,7 @@ class TestDecisionImmutability:
 
     def test_a_changed_opinion_is_a_new_decision_not_a_mutation(self):
         original = Decision.register(
+            case_id=_CASE_ID,
             user_id=_USER,
             decision_type=DecisionType.BUY,
             subject=_SUBJECT,
@@ -175,6 +203,7 @@ class TestDecisionImmutability:
             confidence=_CONFIDENCE,
         )
         revised = Decision.register(
+            case_id=_CASE_ID,
             user_id=_USER,
             decision_type=DecisionType.SELL,
             subject=_SUBJECT,
@@ -183,3 +212,45 @@ class TestDecisionImmutability:
         )
         assert original.id != revised.id
         assert original.decision_type is DecisionType.BUY
+
+
+class TestCaseOwnership:
+    def test_two_decisions_in_the_same_case_remain_distinct(self):
+        first = Decision.register(
+            case_id=_CASE_ID,
+            user_id=_USER,
+            decision_type=DecisionType.BUY,
+            subject=_SUBJECT,
+            investment_case=_CASE,
+            confidence=_CONFIDENCE,
+        )
+        second = Decision.register(
+            case_id=_CASE_ID,
+            user_id=_USER,
+            decision_type=DecisionType.BUY,
+            subject=_SUBJECT,
+            investment_case=_CASE,
+            confidence=_CONFIDENCE,
+        )
+        assert first.id != second.id
+        assert first.case_id == second.case_id == _CASE_ID
+
+    def test_decisions_in_different_cases_are_independent(self):
+        other_case_id = CaseId()
+        first = Decision.register(
+            case_id=_CASE_ID,
+            user_id=_USER,
+            decision_type=DecisionType.BUY,
+            subject=_SUBJECT,
+            investment_case=_CASE,
+            confidence=_CONFIDENCE,
+        )
+        second = Decision.register(
+            case_id=other_case_id,
+            user_id=_USER,
+            decision_type=DecisionType.BUY,
+            subject=_SUBJECT,
+            investment_case=_CASE,
+            confidence=_CONFIDENCE,
+        )
+        assert first.case_id != second.case_id

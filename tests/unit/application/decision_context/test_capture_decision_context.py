@@ -18,6 +18,7 @@ from atlas.core.application.decision_context.capture_decision_context import (
     CaptureDecisionContextRequest,
     CaptureDecisionContextService,
 )
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.decision.value_objects import (
     Confidence,
@@ -74,6 +75,7 @@ def service(decision_repository, context_repository):
 
 def _existing_decision(decision_repository) -> Decision:
     decision = Decision.register(
+        case_id=CaseId(),
         user_id=UserId(uuid.uuid4()),
         decision_type=DecisionType.BUY,
         subject=Subject("ASML"),

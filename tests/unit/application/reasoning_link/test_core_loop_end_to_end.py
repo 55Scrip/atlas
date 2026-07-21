@@ -270,6 +270,7 @@ class TestCompleteReasoningCycle:
         # 7. Decision (committed from the Conclusion)
         commit_result = services["commit_decision"].commit(
             CommitDecisionFromConclusionRequest(
+                case_id=uuid.uuid4(),
                 conclusion_id=conclusion.id.value,
                 user_id=uuid.uuid4(),
                 decision_type="BUY",
@@ -409,6 +410,7 @@ class TestNegativeCasesNothingIsWrittenOnFailure:
         with pytest.raises(ConclusionNotFoundError):
             services["commit_decision"].commit(
                 CommitDecisionFromConclusionRequest(
+                    case_id=uuid.uuid4(),
                     conclusion_id=ConclusionId().value,
                     user_id=uuid.uuid4(),
                     decision_type="BUY",

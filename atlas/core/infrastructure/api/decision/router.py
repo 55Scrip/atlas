@@ -36,6 +36,7 @@ def create_decision(
 ) -> DecisionCreatedResponse:
     decision = service.capture(
         CaptureDecisionRequest(
+            case_id=payload.case_id,
             user_id=payload.user_id,
             decision_type=payload.decision_type,
             reason=payload.reason,

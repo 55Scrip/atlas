@@ -92,11 +92,12 @@ class TestNoForeignKeysOrCoupling:
         from atlas.core.infrastructure.persistence.decision.table import decisions_table
         from atlas.core.infrastructure.persistence.outcome.table import outcomes_table
 
-        # No case_id column was added to any existing aggregate table —
-        # DO-IMP-001's own scope forbids that (reserved for a later,
-        # separately-reviewed package).
+        # decisions_table has since gained case_id (Decision Case Context
+        # package); outcomes_table has not — Outcome's own Case-integration
+        # remains a separate, later, not-yet-authorized package.
         assert set(decisions_table.columns.keys()) == {
             "id",
+            "case_id",
             "user_id",
             "decision_type",
             "subject",

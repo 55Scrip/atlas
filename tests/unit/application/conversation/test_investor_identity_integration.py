@@ -109,6 +109,7 @@ class TestLegacyDecisionsAreReconciledOnFirstUse:
                 connection.execute(
                     insert(decisions_table).values(
                         id=str(uuid.uuid4()),
+                        case_id=str(uuid.uuid4()),
                         user_id=legacy_user_id,
                         decision_type="BUY",
                         subject=f"Legacy Subject {i}",

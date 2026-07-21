@@ -14,6 +14,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.decision.value_objects import (
     Confidence,
@@ -67,6 +68,7 @@ def repository(engine):
 
 def _make_decision(user_id: UserId) -> Decision:
     return Decision.register(
+        case_id=CaseId(),
         user_id=user_id,
         decision_type=DecisionType.BUY,
         subject=Subject("NVIDIA"),

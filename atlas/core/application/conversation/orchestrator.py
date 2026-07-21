@@ -226,6 +226,7 @@ class ConversationOrchestrator:
         try:
             result = self._commit_decision_service.commit(
                 CommitDecisionFromConclusionRequest(
+                    case_id=session.case_id,
                     conclusion_id=session.conclusion_id,
                     user_id=self._investor_id.value,
                     decision_type=decision_type,

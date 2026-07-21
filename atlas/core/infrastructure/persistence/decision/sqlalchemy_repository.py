@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy import insert, select
 from sqlalchemy.engine import Engine
 
+from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.decision.value_objects import (
     Confidence,
@@ -53,6 +54,7 @@ class SqlAlchemyDecisionRepository:
 def _to_row(decision: Decision) -> dict[str, Any]:
     return {
         "id": str(decision.id),
+        "case_id": str(decision.case_id),
         "user_id": str(decision.user_id),
         "decision_type": decision.decision_type.value,
         "subject": decision.subject.value,
@@ -67,6 +69,7 @@ def _to_row(decision: Decision) -> dict[str, Any]:
 def _to_decision(row: Mapping[str, Any]) -> Decision:
     return Decision(
         id=DecisionId(uuid.UUID(row["id"])),
+        case_id=CaseId(uuid.UUID(row["case_id"])),
         user_id=UserId(uuid.UUID(row["user_id"])),
         decision_type=DecisionType(row["decision_type"]),
         subject=Subject(row["subject"]),
