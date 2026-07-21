@@ -14,6 +14,7 @@ status, so a subject reference whose applicable invariant (INV-004
 same-Case, INV-005 prior acceptance) cannot currently be positively
 established is rejected, not admitted with a gap.
 """
+
 from __future__ import annotations
 
 
@@ -33,8 +34,9 @@ class TargetNotFoundError(JudgmentError):
     """Raised when a subject reference of a currently capture-enabled
     type does not exist, or has not yet been accepted, in that type's
     own repository (INV-005). Today this can be raised for a Knowledge
-    Reference or Judgment subject — the only two types whose prior
-    acceptance can currently be positively established.
+    Reference, Judgment, Observation, Decision, or Outcome subject —
+    every currently capture-enabled type except Reasoning Trace, which
+    has no accepted-instance repository at all.
     """
 
 
@@ -54,12 +56,11 @@ class TargetTypeUnavailableError(JudgmentError):
     This is **not** a claim that the target type is unknown, invalid,
     or non-adopted — every `DomainObjectType` member remains a
     canonical, reference-eligible Domain Object (OE-002 §5.4). It is a
-    claim about present *capture availability* only: Observation,
-    Decision, and Outcome each lack a `case_id` today, so INV-004
-    cannot currently be established against any of them; Reasoning
-    Trace has no accepted-instance repository at all, so INV-005 is
-    determinately violated, not merely unverifiable, for it. Capture
-    for each affected type becomes available once its own prerequisite
-    implementation or reconciliation work lands — no change to
-    Judgment's own schema or API contract is required when it does.
+    claim about present *capture availability* only: Reasoning Trace
+    has no accepted-instance repository at all, so INV-005 is
+    determinately violated, not merely unverifiable, for it — the only
+    remaining canonical target type this currently applies to. Capture
+    against it becomes available once its own prerequisite
+    implementation lands — no change to Judgment's own schema or API
+    contract is required when it does.
     """

@@ -29,6 +29,7 @@ operation, for reasons stated per-type where it is raised (see
 `atlas/core/application/knowledge_reference/
 capture_knowledge_reference.py`).
 """
+
 from __future__ import annotations
 
 
@@ -43,18 +44,19 @@ class KnowledgeReferenceNotFoundError(KnowledgeReferenceError):
 class TargetNotFoundError(KnowledgeReferenceError):
     """Raised when a target of an implemented, currently capture-enabled
     type does not exist, or has not yet been accepted, in that type's own
-    repository (INV-005). Today this can only be raised for a Knowledge
-    Reference target — the only type whose prior acceptance can
-    currently be positively established.
+    repository (INV-005). Today this can be raised for an Observation,
+    Knowledge Reference, Judgment, Decision, or Outcome target — every
+    currently capture-enabled type except Reasoning Trace, which has no
+    accepted-instance repository at all.
     """
 
 
 class CrossCaseTargetError(KnowledgeReferenceError):
     """Raised when a target of an implemented, currently capture-enabled
     type is verified to belong to a different Case than the capturing
-    Knowledge Reference (INV-004). Today this can only be raised for a
-    Knowledge Reference target — the only type whose same-Case
-    membership can currently be positively established.
+    Knowledge Reference (INV-004). Today this can be raised for an
+    Observation, Knowledge Reference, Judgment, Decision, or Outcome
+    target — every currently capture-enabled type.
     """
 
 

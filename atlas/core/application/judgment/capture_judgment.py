@@ -11,35 +11,35 @@ target to be an already-accepted, same-Case object.
 **Canonical target eligibility and present capture availability are
 distinct** — the identical principle already established and corrected
 for Knowledge Reference (see docs/atlas_domain_object_architecture/
-Knowledge-Reference-Pre-Commit-Architecture-Review.md, Outcome 2). All
-six `DomainObjectType` members remain fully canonical, reference-eligible
+Knowledge-Reference-Pre-Commit-Architecture-Review.md, Outcome 2), and
+widened per docs/atlas_domain_object_architecture/
+Reference-Validation-Availability-Implementation-Design.md. All six
+`DomainObjectType` members remain fully canonical, reference-eligible
 Domain Object types (OE-002 §5.4) as Judgment subjects — none is
 removed, narrowed, or reinterpreted here. At the current repository
-state, only **Knowledge Reference** and **Judgment** targets can have
-both INV-005 and INV-004 positively established:
+state, Knowledge Reference, Judgment, Observation, Decision, and Outcome
+each have both INV-005 (prior acceptance, via a working, accepted-
+instance repository) and INV-004 (same-Case membership, via a `case_id`
+field) positively establishable. Only **Reasoning Trace** does not: it
+has no accepted-instance repository at all, so prior acceptance
+(INV-005) is not merely unverifiable but determinately violated for it
+— no instance of that type has ever been accepted anywhere in this
+system.
 
-- Observation, Decision, and Outcome each lack a `case_id` today
-  (DO-REC-026, DO-REC-005, DO-REC-013, none yet implemented), so
-  same-Case membership (INV-004) cannot currently be established
-  against any of them.
-- Reasoning Trace has no accepted-instance repository yet (DO-IMP-009
-  has not shipped), so prior acceptance (INV-005) is not merely
-  unverifiable but determinately violated for it: no instance of that
-  type has ever been accepted anywhere in this system.
-
-Every one of these four target types therefore fails the "every
-applicable invariant positively established" bar OE-006 §5/§9/§16
-requires, and capture against any of them is rejected with
-`TargetTypeUnavailableError`. Capture against each becomes available,
-with no change to Judgment's own schema or API contract, once that
-type's own prerequisite work lands.
+Capture against Reasoning Trace is rejected with
+`TargetTypeUnavailableError`. Capture against it becomes available,
+with no change to Judgment's own schema or API contract, once its own
+prerequisite work lands.
 """
+
 from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
 
 from atlas.core.domain.case.value_objects import CaseId
+from atlas.core.domain.decision.repository import DecisionRepository
+from atlas.core.domain.decision.value_objects import DecisionId
 from atlas.core.domain.judgment.entity import Judgment
 from atlas.core.domain.judgment.exceptions import (
     CrossCaseTargetError,
@@ -51,11 +51,21 @@ from atlas.core.domain.judgment.repository import JudgmentRepository
 from atlas.core.domain.judgment.value_objects import Characterization, JudgmentId
 from atlas.core.domain.knowledge_reference.repository import KnowledgeReferenceRepository
 from atlas.core.domain.knowledge_reference.value_objects import KnowledgeReferenceId
+from atlas.core.domain.observation.repository import ObservationRepository
+from atlas.core.domain.observation.value_objects import ObservationId
+from atlas.core.domain.outcome.repository import OutcomeRepository
+from atlas.core.domain.outcome.value_objects import OutcomeId
 from atlas.core.domain.shared.domain_object_type import DomainObjectType
 from atlas.core.domain.shared.typed_reference import TypedDomainObjectReference
 
 _CURRENTLY_CAPTURE_ENABLED_SUBJECT_TARGET_TYPES = frozenset(
-    {DomainObjectType.KNOWLEDGE_REFERENCE, DomainObjectType.JUDGMENT}
+    {
+        DomainObjectType.KNOWLEDGE_REFERENCE,
+        DomainObjectType.JUDGMENT,
+        DomainObjectType.OBSERVATION,
+        DomainObjectType.DECISION,
+        DomainObjectType.OUTCOME,
+    }
 )
 
 
@@ -71,9 +81,15 @@ class JudgmentService:
         self,
         repository: JudgmentRepository,
         knowledge_reference_repository: KnowledgeReferenceRepository,
+        observation_repository: ObservationRepository,
+        decision_repository: DecisionRepository,
+        outcome_repository: OutcomeRepository,
     ) -> None:
         self._judgments = repository
         self._knowledge_references = knowledge_reference_repository
+        self._observations = observation_repository
+        self._decisions = decision_repository
+        self._outcomes = outcome_repository
 
     def capture(self, request: CaptureJudgmentRequest) -> Judgment:
         case_id = CaseId(request.case_id)
@@ -104,8 +120,14 @@ class JudgmentService:
 
         if subject.target_type is DomainObjectType.JUDGMENT:
             existing = self._judgments.get(JudgmentId(subject.target_id))
-        else:
+        elif subject.target_type is DomainObjectType.KNOWLEDGE_REFERENCE:
             existing = self._knowledge_references.get(KnowledgeReferenceId(subject.target_id))
+        elif subject.target_type is DomainObjectType.OBSERVATION:
+            existing = self._observations.get(ObservationId(subject.target_id))
+        elif subject.target_type is DomainObjectType.DECISION:
+            existing = self._decisions.get(DecisionId(subject.target_id))
+        else:
+            existing = self._outcomes.get(OutcomeId(subject.target_id))
 
         if existing is None:
             raise TargetNotFoundError(
