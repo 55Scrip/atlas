@@ -2,9 +2,11 @@
 (DO-IMP-003).
 
 **Corrected per docs/atlas_domain_object_architecture/
-Knowledge-Reference-Pre-Commit-Architecture-Review.md, Outcome 2, and
+Knowledge-Reference-Pre-Commit-Architecture-Review.md, Outcome 2;
 widened per docs/atlas_domain_object_architecture/
-Reference-Validation-Availability-Implementation-Design.md.**
+Reference-Validation-Availability-Implementation-Design.md; widened
+again to include Reasoning Trace per the Reasoning Trace Implementation
+Design's own Section 34 follow-on classification.**
 
 OE-006 §5 and §16 require that acceptance actually establish every
 applicable invariant; OE-006 §9 recognizes no "accepted with a deferred
@@ -18,22 +20,18 @@ canonically adopted.
 distinct.** All six `DomainObjectType` members (Observation, Knowledge
 Reference, Reasoning Trace, Judgment, Decision, Outcome) remain fully
 canonical, reference-eligible Domain Object types (OE-002 §5.2) — none
-of them is removed, narrowed, or reinterpreted here. At the current
-repository state, Observation, Knowledge Reference, Judgment, Decision,
-and Outcome each have both INV-005 (prior acceptance, via a working,
-accepted-instance repository) and INV-004 (same-Case membership, via a
-`case_id` field) positively establishable. Only **Reasoning Trace**
-does not: it has no accepted-instance repository at all, so prior
-acceptance (INV-005) is not merely unverifiable but determinately
-violated for it — no instance of that type has ever been accepted
-anywhere in this system.
+of them is removed, narrowed, or reinterpreted here. **All six now also
+have present capture availability**: each has both INV-005 (prior
+acceptance, via a working, accepted-instance repository) and INV-004
+(same-Case membership, via a `case_id` field) positively establishable.
+Reasoning Trace's own package (DO-IMP-009) supplied its accepted-
+instance repository, closing the one remaining gap.
 
-Capture against Reasoning Trace is rejected with
-`TargetTypeUnavailableError` — not because the type is unknown,
-invalid, or non-adopted, but because this specific capture operation
-cannot currently verify what acceptance would need to certify. Capture
-against it becomes available, with no change to Knowledge Reference's
-own schema or API contract, once its own prerequisite work lands.
+`TargetTypeUnavailableError` is retained for structural symmetry with
+the currently-enabled-set check, but is not presently reachable for any
+adopted type — this is the deliberate, forced consequence of every
+member of the closed `DomainObjectType` set now having a working
+repository, not a defect to be cleaned up here.
 """
 
 from __future__ import annotations
@@ -59,6 +57,8 @@ from atlas.core.domain.observation.repository import ObservationRepository
 from atlas.core.domain.observation.value_objects import ObservationId
 from atlas.core.domain.outcome.repository import OutcomeRepository
 from atlas.core.domain.outcome.value_objects import OutcomeId
+from atlas.core.domain.reasoning_trace.repository import ReasoningTraceRepository
+from atlas.core.domain.reasoning_trace.value_objects import ReasoningTraceId
 from atlas.core.domain.shared.domain_object_type import DomainObjectType
 from atlas.core.domain.shared.typed_reference import TypedDomainObjectReference
 
@@ -69,6 +69,7 @@ _CURRENTLY_CAPTURE_ENABLED_TARGET_TYPES = frozenset(
         DomainObjectType.JUDGMENT,
         DomainObjectType.DECISION,
         DomainObjectType.OUTCOME,
+        DomainObjectType.REASONING_TRACE,
     }
 )
 
@@ -88,12 +89,14 @@ class KnowledgeReferenceService:
         judgment_repository: JudgmentRepository,
         decision_repository: DecisionRepository,
         outcome_repository: OutcomeRepository,
+        reasoning_trace_repository: ReasoningTraceRepository,
     ) -> None:
         self._knowledge_references = repository
         self._observations = observation_repository
         self._judgments = judgment_repository
         self._decisions = decision_repository
         self._outcomes = outcome_repository
+        self._reasoning_traces = reasoning_trace_repository
 
     def capture(self, request: CaptureKnowledgeReferenceRequest) -> KnowledgeReference:
         case_id = CaseId(request.case_id)
@@ -134,6 +137,8 @@ class KnowledgeReferenceService:
             existing = self._decisions.get(DecisionId(target_id))
         elif target_type is DomainObjectType.OUTCOME:
             existing = self._outcomes.get(OutcomeId(target_id))
+        elif target_type is DomainObjectType.REASONING_TRACE:
+            existing = self._reasoning_traces.get(ReasoningTraceId(target_id))
         else:
             existing = self._knowledge_references.get(KnowledgeReferenceId(target_id))
 

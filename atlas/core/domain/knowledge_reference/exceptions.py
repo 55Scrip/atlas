@@ -44,19 +44,18 @@ class KnowledgeReferenceNotFoundError(KnowledgeReferenceError):
 class TargetNotFoundError(KnowledgeReferenceError):
     """Raised when a target of an implemented, currently capture-enabled
     type does not exist, or has not yet been accepted, in that type's own
-    repository (INV-005). Today this can be raised for an Observation,
-    Knowledge Reference, Judgment, Decision, or Outcome target — every
-    currently capture-enabled type except Reasoning Trace, which has no
-    accepted-instance repository at all.
+    repository (INV-005). Today this can be raised for any of the six
+    adopted types — Observation, Knowledge Reference, Judgment, Decision,
+    Outcome, or Reasoning Trace.
     """
 
 
 class CrossCaseTargetError(KnowledgeReferenceError):
     """Raised when a target of an implemented, currently capture-enabled
     type is verified to belong to a different Case than the capturing
-    Knowledge Reference (INV-004). Today this can be raised for an
-    Observation, Knowledge Reference, Judgment, Decision, or Outcome
-    target — every currently capture-enabled type.
+    Knowledge Reference (INV-004). Today this can be raised for any of
+    the six adopted types — Observation, Knowledge Reference, Judgment,
+    Decision, Outcome, or Reasoning Trace.
     """
 
 
@@ -69,11 +68,11 @@ class TargetTypeUnavailableError(KnowledgeReferenceError):
     This is **not** a claim that the target type is unknown, invalid,
     or non-adopted — every `DomainObjectType` member remains a
     canonical, reference-eligible Domain Object (OE-002 §5.2). It is a
-    claim about present *capture availability* only: canonical target
-    eligibility and present capture availability are distinct facts,
-    and this exception concerns exclusively the latter. Capture for
-    each affected type becomes available once its own prerequisite
-    implementation or reconciliation work lands — no change to
-    Knowledge Reference's own schema or API contract is required when
-    it does (see the review document cited above, §10).
+    claim about present *capture availability* only, kept for
+    structural symmetry with the currently-enabled-set check: as of
+    Reasoning Trace's own package (DO-IMP-009) and this availability
+    widening, every one of the six adopted types now has both a
+    working, accepted-instance repository and same-Case membership
+    positively establishable, so this exception is not presently
+    reachable for any adopted type.
     """

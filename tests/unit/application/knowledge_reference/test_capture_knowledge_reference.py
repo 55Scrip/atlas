@@ -1,16 +1,14 @@
 """Application-layer tests for KnowledgeReferenceService (DO-IMP-003).
 
 **Corrected per docs/atlas_domain_object_architecture/
-Knowledge-Reference-Pre-Commit-Architecture-Review.md, Outcome 2, and
+Knowledge-Reference-Pre-Commit-Architecture-Review.md, Outcome 2;
 widened per docs/atlas_domain_object_architecture/
-Reference-Validation-Availability-Implementation-Design.md**: capture
-is now enabled for `DomainObjectType.KNOWLEDGE_REFERENCE`, `OBSERVATION`,
-`JUDGMENT`, `DECISION`, and `OUTCOME` targets. Reasoning Trace remains
-fully canonical, reference-eligible (OE-002 §5.2) but is currently
-rejected with `TargetTypeUnavailableError`, since it has no
-accepted-instance repository at all (see
-`capture_knowledge_reference.py`'s own module docstring for the precise
-reason).
+Reference-Validation-Availability-Implementation-Design.md; widened
+again to include Reasoning Trace per the Reasoning Trace Implementation
+Design's own Section 34 follow-on classification**: capture is now
+enabled for `DomainObjectType.KNOWLEDGE_REFERENCE`, `OBSERVATION`,
+`JUDGMENT`, `DECISION`, `OUTCOME`, and `REASONING_TRACE` targets — all
+six adopted types.
 
 **A genuine consequence of the ontology, not a test artifact**: Knowledge
 Reference has no internal-content alternative form (OE-002 §5.2 names
@@ -56,7 +54,6 @@ from atlas.core.domain.knowledge_reference.exceptions import (
     CrossCaseTargetError,
     KnowledgeReferenceNotFoundError,
     TargetNotFoundError,
-    TargetTypeUnavailableError,
 )
 from atlas.core.domain.knowledge_reference.value_objects import KnowledgeReferenceId
 from atlas.core.domain.observation.entity import Observation
@@ -64,6 +61,7 @@ from atlas.core.domain.observation.value_objects import Statement as Observation
 from atlas.core.domain.observation.value_objects import Subject as ObservationSubject
 from atlas.core.domain.outcome.entity import Outcome
 from atlas.core.domain.outcome.value_objects import Statement as OutcomeStatement
+from atlas.core.domain.reasoning_trace.entity import ReasoningTrace
 from atlas.core.domain.shared.domain_object_type import DomainObjectType
 from atlas.core.domain.shared.typed_reference import TypedDomainObjectReference
 from atlas.core.infrastructure.persistence.decision.sqlalchemy_repository import (
@@ -89,14 +87,19 @@ from atlas.core.infrastructure.persistence.outcome.sqlalchemy_repository import 
     SqlAlchemyOutcomeRepository,
 )
 from atlas.core.infrastructure.persistence.outcome.table import create_outcome_table
-
-_CURRENTLY_UNAVAILABLE_TARGET_TYPES = (DomainObjectType.REASONING_TRACE,)
+from atlas.core.infrastructure.persistence.reasoning_trace.sqlalchemy_repository import (
+    SqlAlchemyReasoningTraceRepository,
+)
+from atlas.core.infrastructure.persistence.reasoning_trace.table import (
+    create_reasoning_trace_tables,
+)
 
 _NEWLY_ENABLED_TARGET_TYPES = (
     DomainObjectType.OBSERVATION,
     DomainObjectType.JUDGMENT,
     DomainObjectType.DECISION,
     DomainObjectType.OUTCOME,
+    DomainObjectType.REASONING_TRACE,
 )
 
 
@@ -113,6 +116,7 @@ def engine():
     create_judgment_table(eng)
     create_decision_table(eng)
     create_outcome_table(eng)
+    create_reasoning_trace_tables(eng)
     return eng
 
 
@@ -142,8 +146,18 @@ def outcome_repository(engine):
 
 
 @pytest.fixture
+def reasoning_trace_repository(engine):
+    return SqlAlchemyReasoningTraceRepository(engine)
+
+
+@pytest.fixture
 def service(
-    repository, observation_repository, judgment_repository, decision_repository, outcome_repository
+    repository,
+    observation_repository,
+    judgment_repository,
+    decision_repository,
+    outcome_repository,
+    reasoning_trace_repository,
 ):
     return KnowledgeReferenceService(
         repository,
@@ -151,6 +165,7 @@ def service(
         judgment_repository,
         decision_repository,
         outcome_repository,
+        reasoning_trace_repository,
     )
 
 
@@ -177,6 +192,7 @@ def _seed_target(
     judgment_repository,
     decision_repository,
     outcome_repository,
+    reasoning_trace_repository=None,
     case_id: uuid.UUID,
 ) -> uuid.UUID:
     """Construct and persist an accepted instance of `target_type` directly
@@ -199,6 +215,19 @@ def _seed_target(
             case_id=CaseId(case_id), characterization=Characterization("a settled assessment")
         )
         judgment_repository.add(seed)
+        return seed.id.value
+    if target_type is DomainObjectType.REASONING_TRACE:
+        seed = ReasoningTrace.capture(
+            case_id=CaseId(case_id),
+            supports=frozenset(
+                {
+                    TypedDomainObjectReference(
+                        target_type=DomainObjectType.OBSERVATION, target_id=uuid.uuid4()
+                    )
+                }
+            ),
+        )
+        reasoning_trace_repository.add(seed)
         return seed.id.value
     if target_type is DomainObjectType.DECISION:
         seed = Decision.register(
@@ -366,6 +395,7 @@ class TestSuccessfulCaptureAgainstNewlyEnabledTargetTypes:
         judgment_repository,
         decision_repository,
         outcome_repository,
+        reasoning_trace_repository,
         target_type,
     ):
         case_id = uuid.uuid4()
@@ -375,6 +405,7 @@ class TestSuccessfulCaptureAgainstNewlyEnabledTargetTypes:
             judgment_repository=judgment_repository,
             decision_repository=decision_repository,
             outcome_repository=outcome_repository,
+            reasoning_trace_repository=reasoning_trace_repository,
             case_id=case_id,
         )
         captured = service.capture(
@@ -406,6 +437,7 @@ class TestSameCaseForNewlyEnabledTargetTypes:
         judgment_repository,
         decision_repository,
         outcome_repository,
+        reasoning_trace_repository,
         target_type,
     ):
         target_id = _seed_target(
@@ -414,6 +446,7 @@ class TestSameCaseForNewlyEnabledTargetTypes:
             judgment_repository=judgment_repository,
             decision_repository=decision_repository,
             outcome_repository=outcome_repository,
+            reasoning_trace_repository=reasoning_trace_repository,
             case_id=uuid.uuid4(),  # its own random Case
         )
         with pytest.raises(CrossCaseTargetError):
@@ -426,57 +459,46 @@ class TestSameCaseForNewlyEnabledTargetTypes:
             )
 
 
-class TestCanonicalButCurrentlyUnavailableTargetTypes:
-    """Every one of these five target types is a fully adopted,
-    canonical DomainObjectType member (OE-002 §5.2) — rejection here
-    reflects only that Knowledge Reference capture cannot currently
-    establish every applicable invariant for it, never that the type
-    itself is unknown, invalid, or non-adopted.
+class TestAllSixTargetTypesAreCaptureEnabled:
+    """All six adopted `DomainObjectType` members — including Reasoning
+    Trace, following its own package (DO-IMP-009) and this availability
+    widening — are now capture-enabled Knowledge Reference target types.
+    Replaces the prior `TestCanonicalButCurrentlyUnavailableTargetTypes`
+    class, which tested a condition that no longer holds for any
+    adopted type.
     """
 
-    @pytest.mark.parametrize("target_type", _CURRENTLY_UNAVAILABLE_TARGET_TYPES)
-    def test_the_target_type_is_structurally_valid(self, target_type):
-        assert target_type in set(DomainObjectType)
+    def test_every_adopted_type_is_in_the_enabled_set(self):
+        from atlas.core.application.knowledge_reference.capture_knowledge_reference import (
+            _CURRENTLY_CAPTURE_ENABLED_TARGET_TYPES,
+        )
 
-    @pytest.mark.parametrize("target_type", _CURRENTLY_UNAVAILABLE_TARGET_TYPES)
-    def test_capture_rejects_it(self, service, target_type):
-        with pytest.raises(TargetTypeUnavailableError):
-            service.capture(
-                CaptureKnowledgeReferenceRequest(
-                    case_id=uuid.uuid4(),
-                    target_type=target_type,
-                    target_id=uuid.uuid4(),
-                )
-            )
+        assert _CURRENTLY_CAPTURE_ENABLED_TARGET_TYPES == frozenset(DomainObjectType)
 
-    @pytest.mark.parametrize("target_type", _CURRENTLY_UNAVAILABLE_TARGET_TYPES)
-    def test_the_error_does_not_claim_the_type_is_unknown_or_non_adopted(
-        self, service, target_type
+    def test_reasoning_trace_target_no_longer_raises_target_type_unavailable(
+        self, service, reasoning_trace_repository
     ):
-        with pytest.raises(TargetTypeUnavailableError) as excinfo:
-            service.capture(
-                CaptureKnowledgeReferenceRequest(
-                    case_id=uuid.uuid4(),
-                    target_type=target_type,
-                    target_id=uuid.uuid4(),
-                )
+        case_id = uuid.uuid4()
+        seed = ReasoningTrace.capture(
+            case_id=CaseId(case_id),
+            supports=frozenset(
+                {
+                    TypedDomainObjectReference(
+                        target_type=DomainObjectType.OBSERVATION, target_id=uuid.uuid4()
+                    )
+                }
+            ),
+        )
+        reasoning_trace_repository.add(seed)
+        captured = service.capture(
+            CaptureKnowledgeReferenceRequest(
+                case_id=case_id,
+                target_type=DomainObjectType.REASONING_TRACE,
+                target_id=seed.id.value,
             )
-        message = str(excinfo.value).lower()
-        assert "unknown" not in message
-        assert "invalid" not in message
-        assert "canonical" in message or "reference-eligible" in message
-
-    @pytest.mark.parametrize("target_type", _CURRENTLY_UNAVAILABLE_TARGET_TYPES)
-    def test_no_knowledge_reference_is_persisted(self, service, repository, target_type):
-        with pytest.raises(TargetTypeUnavailableError):
-            service.capture(
-                CaptureKnowledgeReferenceRequest(
-                    case_id=uuid.uuid4(),
-                    target_type=target_type,
-                    target_id=uuid.uuid4(),
-                )
-            )
-        assert _row_ids(repository) == set()
+        )
+        assert captured.target.target_type is DomainObjectType.REASONING_TRACE
+        assert captured.target.target_id == seed.id.value
 
 
 class TestUnknownTargetTypeIsNotConflatedWithUnavailableTypes:
@@ -484,10 +506,7 @@ class TestUnknownTargetTypeIsNotConflatedWithUnavailableTypes:
         # "Case" is not a member of DomainObjectType at all (the
         # ownership boundary, OE-002 §3.1 — not a Domain Object). This
         # is rejected by DomainObjectType.parse/the API schema layer,
-        # never reaching KnowledgeReferenceService at all — a
-        # different failure mode from the five canonical-but-
-        # unavailable types above, which DO reach the service and are
-        # rejected there, deliberately, with a distinct exception.
+        # never reaching KnowledgeReferenceService at all.
         from atlas.core.domain.shared.exceptions import UnknownDomainObjectTypeError
 
         with pytest.raises(UnknownDomainObjectTypeError):
@@ -519,10 +538,11 @@ class TestServiceDependencyExpansion:
     per docs/atlas_domain_object_architecture/
     Reference-Validation-Availability-Implementation-Design.md,
     cross-type reference validation against Observation, Judgment,
-    Decision, and Outcome genuinely requires their own repositories.
+    Decision, Outcome, and (per this widening) Reasoning Trace
+    genuinely requires their own repositories.
     """
 
-    def test_service_depends_on_exactly_its_five_repositories(self):
+    def test_service_depends_on_exactly_its_six_repositories(self):
         import inspect
 
         signature = inspect.signature(KnowledgeReferenceService.__init__)
@@ -533,4 +553,5 @@ class TestServiceDependencyExpansion:
             "judgment_repository",
             "decision_repository",
             "outcome_repository",
+            "reasoning_trace_repository",
         ]

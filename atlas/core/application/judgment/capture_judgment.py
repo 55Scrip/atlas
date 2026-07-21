@@ -11,25 +11,25 @@ target to be an already-accepted, same-Case object.
 **Canonical target eligibility and present capture availability are
 distinct** — the identical principle already established and corrected
 for Knowledge Reference (see docs/atlas_domain_object_architecture/
-Knowledge-Reference-Pre-Commit-Architecture-Review.md, Outcome 2), and
+Knowledge-Reference-Pre-Commit-Architecture-Review.md, Outcome 2),
 widened per docs/atlas_domain_object_architecture/
-Reference-Validation-Availability-Implementation-Design.md. All six
+Reference-Validation-Availability-Implementation-Design.md, and widened
+again to include Reasoning Trace per the Reasoning Trace Implementation
+Design's own Section 34 follow-on classification. All six
 `DomainObjectType` members remain fully canonical, reference-eligible
 Domain Object types (OE-002 §5.4) as Judgment subjects — none is
-removed, narrowed, or reinterpreted here. At the current repository
-state, Knowledge Reference, Judgment, Observation, Decision, and Outcome
-each have both INV-005 (prior acceptance, via a working, accepted-
-instance repository) and INV-004 (same-Case membership, via a `case_id`
-field) positively establishable. Only **Reasoning Trace** does not: it
-has no accepted-instance repository at all, so prior acceptance
-(INV-005) is not merely unverifiable but determinately violated for it
-— no instance of that type has ever been accepted anywhere in this
-system.
+removed, narrowed, or reinterpreted here. **All six now also have
+present capture availability**: each has both INV-005 (prior
+acceptance, via a working, accepted-instance repository) and INV-004
+(same-Case membership, via a `case_id` field) positively establishable.
+Reasoning Trace's own package (DO-IMP-009) supplied its accepted-
+instance repository, closing the one remaining gap.
 
-Capture against Reasoning Trace is rejected with
-`TargetTypeUnavailableError`. Capture against it becomes available,
-with no change to Judgment's own schema or API contract, once its own
-prerequisite work lands.
+`TargetTypeUnavailableError` is retained for structural symmetry with
+the currently-enabled-set check, but is not presently reachable for any
+adopted type — this is the deliberate, forced consequence of every
+member of the closed `DomainObjectType` set now having a working
+repository, not a defect to be cleaned up here.
 """
 
 from __future__ import annotations
@@ -55,6 +55,8 @@ from atlas.core.domain.observation.repository import ObservationRepository
 from atlas.core.domain.observation.value_objects import ObservationId
 from atlas.core.domain.outcome.repository import OutcomeRepository
 from atlas.core.domain.outcome.value_objects import OutcomeId
+from atlas.core.domain.reasoning_trace.repository import ReasoningTraceRepository
+from atlas.core.domain.reasoning_trace.value_objects import ReasoningTraceId
 from atlas.core.domain.shared.domain_object_type import DomainObjectType
 from atlas.core.domain.shared.typed_reference import TypedDomainObjectReference
 
@@ -65,6 +67,7 @@ _CURRENTLY_CAPTURE_ENABLED_SUBJECT_TARGET_TYPES = frozenset(
         DomainObjectType.OBSERVATION,
         DomainObjectType.DECISION,
         DomainObjectType.OUTCOME,
+        DomainObjectType.REASONING_TRACE,
     }
 )
 
@@ -84,12 +87,14 @@ class JudgmentService:
         observation_repository: ObservationRepository,
         decision_repository: DecisionRepository,
         outcome_repository: OutcomeRepository,
+        reasoning_trace_repository: ReasoningTraceRepository,
     ) -> None:
         self._judgments = repository
         self._knowledge_references = knowledge_reference_repository
         self._observations = observation_repository
         self._decisions = decision_repository
         self._outcomes = outcome_repository
+        self._reasoning_traces = reasoning_trace_repository
 
     def capture(self, request: CaptureJudgmentRequest) -> Judgment:
         case_id = CaseId(request.case_id)
@@ -126,8 +131,10 @@ class JudgmentService:
             existing = self._observations.get(ObservationId(subject.target_id))
         elif subject.target_type is DomainObjectType.DECISION:
             existing = self._decisions.get(DecisionId(subject.target_id))
-        else:
+        elif subject.target_type is DomainObjectType.OUTCOME:
             existing = self._outcomes.get(OutcomeId(subject.target_id))
+        else:
+            existing = self._reasoning_traces.get(ReasoningTraceId(subject.target_id))
 
         if existing is None:
             raise TargetNotFoundError(

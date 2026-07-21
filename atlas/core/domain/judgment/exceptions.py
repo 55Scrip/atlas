@@ -33,10 +33,9 @@ class JudgmentNotFoundError(JudgmentError):
 class TargetNotFoundError(JudgmentError):
     """Raised when a subject reference of a currently capture-enabled
     type does not exist, or has not yet been accepted, in that type's
-    own repository (INV-005). Today this can be raised for a Knowledge
-    Reference, Judgment, Observation, Decision, or Outcome subject —
-    every currently capture-enabled type except Reasoning Trace, which
-    has no accepted-instance repository at all.
+    own repository (INV-005). Today this can be raised for any of the
+    six adopted types — Knowledge Reference, Judgment, Observation,
+    Decision, Outcome, or Reasoning Trace.
     """
 
 
@@ -56,11 +55,11 @@ class TargetTypeUnavailableError(JudgmentError):
     This is **not** a claim that the target type is unknown, invalid,
     or non-adopted — every `DomainObjectType` member remains a
     canonical, reference-eligible Domain Object (OE-002 §5.4). It is a
-    claim about present *capture availability* only: Reasoning Trace
-    has no accepted-instance repository at all, so INV-005 is
-    determinately violated, not merely unverifiable, for it — the only
-    remaining canonical target type this currently applies to. Capture
-    against it becomes available once its own prerequisite
-    implementation lands — no change to Judgment's own schema or API
-    contract is required when it does.
+    claim about present *capture availability* only, kept for
+    structural symmetry with the currently-enabled-set check: as of
+    Reasoning Trace's own package (DO-IMP-009) and this availability
+    widening, every one of the six adopted types now has both a
+    working, accepted-instance repository and same-Case membership
+    positively establishable, so this exception is not presently
+    reachable for any adopted type.
     """

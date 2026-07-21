@@ -1,13 +1,14 @@
 """API tests for the Knowledge Reference REST controller (DO-IMP-003).
 
 **Corrected per docs/atlas_domain_object_architecture/
-Knowledge-Reference-Pre-Commit-Architecture-Review.md, Outcome 2, and
+Knowledge-Reference-Pre-Commit-Architecture-Review.md, Outcome 2;
 widened per docs/atlas_domain_object_architecture/
-Reference-Validation-Availability-Implementation-Design.md**: capture
-is now enabled for `targetType` values `"KnowledgeReference"`,
-`"Observation"`, `"Judgment"`, `"Decision"`, and `"Outcome"`.
-`"ReasoningTrace"` remains rejected — it has no accepted-instance
-repository at all anywhere in this codebase.
+Reference-Validation-Availability-Implementation-Design.md; widened
+again to include Reasoning Trace per the Reasoning Trace Implementation
+Design's own Section 34 follow-on classification**: capture is now
+enabled for `targetType` values `"KnowledgeReference"`, `"Observation"`,
+`"Judgment"`, `"Decision"`, `"Outcome"`, and `"ReasoningTrace"` — all six
+adopted types.
 
 Since capture cannot itself produce the *first* accepted Domain Object
 in an empty store (there is nothing yet to target — see the
@@ -15,6 +16,11 @@ application-layer test module's own docstring for the full argument),
 tests that need a pre-existing accepted target seed one directly into
 the shared repository instance the API's dependency override provides,
 bypassing the API/service layers for setup only.
+
+The fixture overrides every collaborator dependency the router's
+dependency graph resolves — including the newly added
+`_get_reasoning_trace_repository` — so no request under test can fall
+through to the real, on-disk `atlas.db` engine.
 """
 
 from __future__ import annotations
@@ -44,12 +50,14 @@ from atlas.core.domain.observation.value_objects import Statement as Observation
 from atlas.core.domain.observation.value_objects import Subject as ObservationSubject
 from atlas.core.domain.outcome.entity import Outcome
 from atlas.core.domain.outcome.value_objects import Statement as OutcomeStatement
+from atlas.core.domain.reasoning_trace.entity import ReasoningTrace
 from atlas.core.domain.shared.domain_object_type import DomainObjectType
 from atlas.core.domain.shared.typed_reference import TypedDomainObjectReference
 from atlas.core.infrastructure.api.app import create_app
 from atlas.core.infrastructure.api.decision.dependencies import get_decision_repository
 from atlas.core.infrastructure.api.knowledge_reference.dependencies import (
     _get_judgment_repository,
+    _get_reasoning_trace_repository,
     get_knowledge_reference_repository,
     get_outcome_repository,
 )
@@ -76,10 +84,14 @@ from atlas.core.infrastructure.persistence.outcome.sqlalchemy_repository import 
     SqlAlchemyOutcomeRepository,
 )
 from atlas.core.infrastructure.persistence.outcome.table import create_outcome_table
+from atlas.core.infrastructure.persistence.reasoning_trace.sqlalchemy_repository import (
+    SqlAlchemyReasoningTraceRepository,
+)
+from atlas.core.infrastructure.persistence.reasoning_trace.table import (
+    create_reasoning_trace_tables,
+)
 
-_CURRENTLY_UNAVAILABLE_TARGET_TYPES = ("ReasoningTrace",)
-
-_NEWLY_ENABLED_TARGET_TYPES = ("Observation", "Judgment", "Decision", "Outcome")
+_NEWLY_ENABLED_TARGET_TYPES = ("Observation", "Judgment", "Decision", "Outcome", "ReasoningTrace")
 
 
 @pytest.fixture
@@ -95,6 +107,7 @@ def engine():
     create_judgment_table(eng)
     create_decision_table(eng)
     create_outcome_table(eng)
+    create_reasoning_trace_tables(eng)
     return eng
 
 
@@ -119,8 +132,18 @@ def outcome_repository(engine):
 
 
 @pytest.fixture
+def reasoning_trace_repository(engine):
+    return SqlAlchemyReasoningTraceRepository(engine)
+
+
+@pytest.fixture
 def context(
-    engine, observation_repository, judgment_repository, decision_repository, outcome_repository
+    engine,
+    observation_repository,
+    judgment_repository,
+    decision_repository,
+    outcome_repository,
+    reasoning_trace_repository,
 ):
     repository = SqlAlchemyKnowledgeReferenceRepository(engine)
 
@@ -130,6 +153,7 @@ def context(
     app.dependency_overrides[_get_judgment_repository] = lambda: judgment_repository
     app.dependency_overrides[get_decision_repository] = lambda: decision_repository
     app.dependency_overrides[get_outcome_repository] = lambda: outcome_repository
+    app.dependency_overrides[_get_reasoning_trace_repository] = lambda: reasoning_trace_repository
     return TestClient(app), repository
 
 
@@ -157,6 +181,7 @@ def _seed_target(
     judgment_repository,
     decision_repository,
     outcome_repository,
+    reasoning_trace_repository=None,
     case_id: uuid.UUID,
 ) -> uuid.UUID:
     """Construct and persist an accepted instance of `target_type` directly
@@ -179,6 +204,19 @@ def _seed_target(
             case_id=CaseId(case_id), characterization=Characterization("a settled assessment")
         )
         judgment_repository.add(seed)
+        return seed.id.value
+    if target_type == "ReasoningTrace":
+        seed = ReasoningTrace.capture(
+            case_id=CaseId(case_id),
+            supports=frozenset(
+                {
+                    TypedDomainObjectReference(
+                        target_type=DomainObjectType.OBSERVATION, target_id=uuid.uuid4()
+                    )
+                }
+            ),
+        )
+        reasoning_trace_repository.add(seed)
         return seed.id.value
     if target_type == "Decision":
         seed = Decision.register(
@@ -281,6 +319,7 @@ class TestCreateKnowledgeReferenceAgainstNewlyEnabledTargetTypes:
         judgment_repository,
         decision_repository,
         outcome_repository,
+        reasoning_trace_repository,
         target_type,
     ):
         case_id = uuid.uuid4()
@@ -290,6 +329,7 @@ class TestCreateKnowledgeReferenceAgainstNewlyEnabledTargetTypes:
             judgment_repository=judgment_repository,
             decision_repository=decision_repository,
             outcome_repository=outcome_repository,
+            reasoning_trace_repository=reasoning_trace_repository,
             case_id=case_id,
         )
         response = _create(client, case_id, target_type, target_id)
@@ -311,6 +351,7 @@ class TestCreateKnowledgeReferenceAgainstNewlyEnabledTargetTypes:
         judgment_repository,
         decision_repository,
         outcome_repository,
+        reasoning_trace_repository,
         target_type,
     ):
         target_id = _seed_target(
@@ -319,33 +360,18 @@ class TestCreateKnowledgeReferenceAgainstNewlyEnabledTargetTypes:
             judgment_repository=judgment_repository,
             decision_repository=decision_repository,
             outcome_repository=outcome_repository,
+            reasoning_trace_repository=reasoning_trace_repository,
             case_id=uuid.uuid4(),  # its own random Case
         )
         response = _create(client, uuid.uuid4(), target_type, target_id)
         assert response.status_code == 400
 
 
-class TestCanonicalButCurrentlyUnavailableTargetTypes:
-    @pytest.mark.parametrize("target_type", _CURRENTLY_UNAVAILABLE_TARGET_TYPES)
-    def test_rejects_with_a_client_error_not_a_server_fault(self, client, target_type):
-        response = _create(client, uuid.uuid4(), target_type, uuid.uuid4())
-        assert response.status_code == 400
-        assert "detail" in response.json()
-
-    @pytest.mark.parametrize("target_type", _CURRENTLY_UNAVAILABLE_TARGET_TYPES)
-    def test_error_detail_does_not_call_the_type_unknown(self, client, target_type):
-        response = _create(client, uuid.uuid4(), target_type, uuid.uuid4())
-        detail = response.json()["detail"].lower()
-        assert "unknown" not in detail
-        assert "not adopted" not in detail
-
-
 class TestUnknownTargetTypeRejection:
     def test_rejects_case_as_an_unknown_target_type_distinctly(self, client):
-        # Distinct failure mode from the five canonical-but-unavailable
-        # types above: this is rejected by Pydantic's own enum
-        # validation (422), never reaching the application service at
-        # all, unlike the 400s above.
+        # "Case" is rejected by Pydantic's own enum validation (422),
+        # never reaching the application service at all — a distinct
+        # failure mode from any adopted-type rejection (400).
         response = _create(client, uuid.uuid4(), "Case", uuid.uuid4())
         assert response.status_code == 422
 

@@ -1,15 +1,21 @@
 """API tests for the Judgment REST controller (DO-IMP-004).
 
 **Widened per docs/atlas_domain_object_architecture/
-Reference-Validation-Availability-Implementation-Design.md**: capture
-is now enabled for a subject targeting a Knowledge Reference, another
-Judgment, an Observation, a Decision, or an Outcome (see the
-application-layer test module's own docstring). `"ReasoningTrace"`
-remains rejected — it has no accepted-instance repository at all
-anywhere in this codebase. Tests exercising the referential form seed a
-pre-existing accepted target directly into the shared repository
-instances the API's dependency overrides provide, bypassing the
-API/service layers for setup only.
+Reference-Validation-Availability-Implementation-Design.md, and widened
+again to include Reasoning Trace per the Reasoning Trace Implementation
+Design's own Section 34 follow-on classification**: capture is now
+enabled for a subject targeting any of the six adopted types —
+Knowledge Reference, Judgment, Observation, Decision, Outcome, or
+Reasoning Trace (see the application-layer test module's own
+docstring). Tests exercising the referential form seed a pre-existing
+accepted target directly into the shared repository instances the
+API's dependency overrides provide, bypassing the API/service layers
+for setup only.
+
+The fixture overrides every collaborator dependency the router's
+dependency graph resolves — including the newly added
+`_get_reasoning_trace_repository` — so no request under test can fall
+through to the real, on-disk `atlas.db` engine.
 """
 
 from __future__ import annotations
@@ -39,12 +45,14 @@ from atlas.core.domain.observation.value_objects import Statement as Observation
 from atlas.core.domain.observation.value_objects import Subject as ObservationSubject
 from atlas.core.domain.outcome.entity import Outcome
 from atlas.core.domain.outcome.value_objects import Statement as OutcomeStatement
+from atlas.core.domain.reasoning_trace.entity import ReasoningTrace
 from atlas.core.domain.shared.domain_object_type import DomainObjectType
 from atlas.core.domain.shared.typed_reference import TypedDomainObjectReference
 from atlas.core.infrastructure.api.app import create_app
 from atlas.core.infrastructure.api.decision.dependencies import get_decision_repository
 from atlas.core.infrastructure.api.judgment.dependencies import get_judgment_repository
 from atlas.core.infrastructure.api.knowledge_reference.dependencies import (
+    _get_reasoning_trace_repository,
     get_knowledge_reference_repository,
     get_outcome_repository,
 )
@@ -71,10 +79,14 @@ from atlas.core.infrastructure.persistence.outcome.sqlalchemy_repository import 
     SqlAlchemyOutcomeRepository,
 )
 from atlas.core.infrastructure.persistence.outcome.table import create_outcome_table
+from atlas.core.infrastructure.persistence.reasoning_trace.sqlalchemy_repository import (
+    SqlAlchemyReasoningTraceRepository,
+)
+from atlas.core.infrastructure.persistence.reasoning_trace.table import (
+    create_reasoning_trace_tables,
+)
 
-_CURRENTLY_UNAVAILABLE_TARGET_TYPES = ("ReasoningTrace",)
-
-_NEWLY_ENABLED_TARGET_TYPES = ("Observation", "Decision", "Outcome")
+_NEWLY_ENABLED_TARGET_TYPES = ("Observation", "Decision", "Outcome", "ReasoningTrace")
 
 
 @pytest.fixture
@@ -90,6 +102,7 @@ def engine():
     create_observation_table(eng)
     create_decision_table(eng)
     create_outcome_table(eng)
+    create_reasoning_trace_tables(eng)
     return eng
 
 
@@ -109,7 +122,18 @@ def outcome_repository(engine):
 
 
 @pytest.fixture
-def context(engine, observation_repository, decision_repository, outcome_repository):
+def reasoning_trace_repository(engine):
+    return SqlAlchemyReasoningTraceRepository(engine)
+
+
+@pytest.fixture
+def context(
+    engine,
+    observation_repository,
+    decision_repository,
+    outcome_repository,
+    reasoning_trace_repository,
+):
     judgment_repository = SqlAlchemyJudgmentRepository(engine)
     knowledge_reference_repository = SqlAlchemyKnowledgeReferenceRepository(engine)
 
@@ -121,6 +145,7 @@ def context(engine, observation_repository, decision_repository, outcome_reposit
     app.dependency_overrides[get_observation_repository] = lambda: observation_repository
     app.dependency_overrides[get_decision_repository] = lambda: decision_repository
     app.dependency_overrides[get_outcome_repository] = lambda: outcome_repository
+    app.dependency_overrides[_get_reasoning_trace_repository] = lambda: reasoning_trace_repository
     return TestClient(app), judgment_repository, knowledge_reference_repository
 
 
@@ -157,6 +182,7 @@ def _seed_subject(
     observation_repository,
     decision_repository,
     outcome_repository,
+    reasoning_trace_repository=None,
     case_id: uuid.UUID,
 ) -> uuid.UUID:
     """Construct and persist an accepted instance of `target_type` directly
@@ -173,6 +199,19 @@ def _seed_subject(
             observed_at=now,
         )
         observation_repository.add(seed)
+        return seed.id.value
+    if target_type == "ReasoningTrace":
+        seed = ReasoningTrace.capture(
+            case_id=CaseId(case_id),
+            supports=frozenset(
+                {
+                    TypedDomainObjectReference(
+                        target_type=DomainObjectType.OBSERVATION, target_id=uuid.uuid4()
+                    )
+                }
+            ),
+        )
+        reasoning_trace_repository.add(seed)
         return seed.id.value
     if target_type == "Decision":
         seed = Decision.register(
@@ -315,7 +354,13 @@ class TestCreateJudgmentReferentialFormAgainstJudgment:
 class TestCreateJudgmentAgainstNewlyEnabledSubjectTypes:
     @pytest.mark.parametrize("target_type", _NEWLY_ENABLED_TARGET_TYPES)
     def test_returns_201_when_targeting_an_existing_same_case_subject(
-        self, client, observation_repository, decision_repository, outcome_repository, target_type
+        self,
+        client,
+        observation_repository,
+        decision_repository,
+        outcome_repository,
+        reasoning_trace_repository,
+        target_type,
     ):
         case_id = uuid.uuid4()
         target_id = _seed_subject(
@@ -323,6 +368,7 @@ class TestCreateJudgmentAgainstNewlyEnabledSubjectTypes:
             observation_repository=observation_repository,
             decision_repository=decision_repository,
             outcome_repository=outcome_repository,
+            reasoning_trace_repository=reasoning_trace_repository,
             case_id=case_id,
         )
         response = _create(
@@ -350,13 +396,20 @@ class TestCreateJudgmentAgainstNewlyEnabledSubjectTypes:
 
     @pytest.mark.parametrize("target_type", _NEWLY_ENABLED_TARGET_TYPES)
     def test_rejects_a_cross_case_subject(
-        self, client, observation_repository, decision_repository, outcome_repository, target_type
+        self,
+        client,
+        observation_repository,
+        decision_repository,
+        outcome_repository,
+        reasoning_trace_repository,
+        target_type,
     ):
         target_id = _seed_subject(
             target_type,
             observation_repository=observation_repository,
             decision_repository=decision_repository,
             outcome_repository=outcome_repository,
+            reasoning_trace_repository=reasoning_trace_repository,
             case_id=uuid.uuid4(),  # its own random Case
         )
         response = _create(
@@ -366,31 +419,6 @@ class TestCreateJudgmentAgainstNewlyEnabledSubjectTypes:
             subject={"targetType": target_type, "targetId": str(target_id)},
         )
         assert response.status_code == 400
-
-
-class TestCanonicalButCurrentlyUnavailableTargetTypes:
-    @pytest.mark.parametrize("target_type", _CURRENTLY_UNAVAILABLE_TARGET_TYPES)
-    def test_rejects_with_a_client_error_not_a_server_fault(self, client, target_type):
-        response = _create(
-            client,
-            uuid.uuid4(),
-            "settled",
-            subject={"targetType": target_type, "targetId": str(uuid.uuid4())},
-        )
-        assert response.status_code == 400
-        assert "detail" in response.json()
-
-    @pytest.mark.parametrize("target_type", _CURRENTLY_UNAVAILABLE_TARGET_TYPES)
-    def test_error_detail_does_not_call_the_type_unknown(self, client, target_type):
-        response = _create(
-            client,
-            uuid.uuid4(),
-            "settled",
-            subject={"targetType": target_type, "targetId": str(uuid.uuid4())},
-        )
-        detail = response.json()["detail"].lower()
-        assert "unknown" not in detail
-        assert "not adopted" not in detail
 
 
 class TestUnknownTargetTypeRejection:
