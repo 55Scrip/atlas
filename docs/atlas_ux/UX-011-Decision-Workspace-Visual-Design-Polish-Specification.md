@@ -6,6 +6,11 @@ Governs: Decision Workspace — visual philosophy, hierarchy, typography, spacin
 Depends on: UX-008, UX-009, UX-009A, UX-010
 Defers to: UX-012 — Atlas Design System & Workspace Consistency Specification
 
+**Correction Notice (Phase 2A, governed by ADR-002 — 2026-07-24):** This document's original identity (Status, Owner, Governs, Depends on, Defers to, as above) and original date are preserved unchanged. One semantic area was corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md` and the Atlas UX Source Correction Plan:
+- **C-03 (Decision Workspace Sequence):** the superseded terms "Final Decision Summary" (including "Final Decision Summary card") and "What Supports This Decision" were corrected to "Final Decision Card" and "Supporting Factors" throughout — this document previously used the superseded names in its Section 12 and Section 5 references, component descriptions, and narrative passages, including its own Section 18 heading, which already read "Final Decision Card" while the body beneath it read "Final Decision Summary." No section order, count, or unaffected visual-design content (typography, spacing, color, motion, layout values) was changed.
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. All content outside this one terminology correction is unchanged.
+
 ⸻
 
 Visual Design Philosophy
@@ -36,7 +41,7 @@ Highest emphasis — the eye pauses here without instruction:
 
 — Current Conclusion (Section 1): the conclusion statement is the largest, most prominent text in the upper body. It sets the intellectual context for everything that follows.
 — User Decision Field (Section 3): the most prominent user-editable element in the Workspace. When the user is in this field, it should feel like the center of the document.
-— Final Decision Summary (Section 12): as the document approaches completion, this card becomes the visual center of gravity in the lower body.
+— Final Decision Card (Section 12): as the document approaches completion, this card becomes the visual center of gravity in the lower body.
 — Record Decision action: the terminal action of the Workspace. Its visual weight communicates finality without urgency.
 
 Medium emphasis — the reasoning scaffold, read attentively but not involuntarily:
@@ -107,7 +112,7 @@ The Workspace reads as a single continuous document. Visual rhythm guides the us
 
 Section separation creates pace. The space between sections is the primary pacing mechanism — generous enough that the user feels they have arrived somewhere new, not so large that the document feels disconnected. The space between sections is larger than the space within sections. The space within sections is larger than the space between individual rows.
 
-The four scroll-pause moments (Section 1, Section 3 decision field, Section 7 opportunity cost conclusion, Section 12 Final Decision Summary) are visually distinct from their surroundings. Each one creates a slight visual weight that causes the eye to slow — this is achieved through larger type size, greater surrounding space, or a contained surface — not through color, animation, or graphic treatment.
+The four scroll-pause moments (Section 1, Section 3 decision field, Section 7 opportunity cost conclusion, Section 12 Final Decision Card) are visually distinct from their surroundings. Each one creates a slight visual weight that causes the eye to slow — this is achieved through larger type size, greater surrounding space, or a contained surface — not through color, animation, or graphic treatment.
 
 No section visually interrupts the narrative. Section dividers, where used, are hairline — thin enough to mark a boundary without asserting one. The goal is that the sections feel like paragraphs in a long document, not like panels in an application.
 
@@ -123,7 +128,7 @@ Strong containers — a surface with clear boundaries, used for the most signifi
 
 Current Conclusion card (Section 1): the opening statement of the Workspace deserves a clearly defined surface. It is the foundational context for every section that follows. The card should feel settled and authoritative — like the opening paragraph of a considered document. Subtle elevation or a distinct background surface achieves this. No decorative border treatment.
 
-Final Decision Summary card (Section 12): this is the permanent record — the element that will be referenced in Atlas Memory, in future reviews, and in daily briefings. It should feel more substantial than any other element in the body. A clearly defined surface, slightly elevated from the body background, with generous internal spacing. The card should communicate permanence.
+Final Decision Card (Section 12): this is the permanent record — the element that will be referenced in Atlas Memory, in future reviews, and in daily briefings. It should feel more substantial than any other element in the body. A clearly defined surface, slightly elevated from the body background, with generous internal spacing. The card should communicate permanence.
 
 Atlas proposal block (Section 3): a subtly contained surface that distinguishes the Atlas proposal from the surrounding body. Smaller than the above two — contained enough to be clearly set apart, not so prominent that it competes with the user decision field above it.
 
@@ -139,7 +144,7 @@ Dividers only — a hairline rule, used where content needs separation without c
 
 Between section groups within Section 9 (Assumptions / Monitoring / Invalidation): hairline rules separate the three subsections without the overhead of full containers.
 
-Within Section 5 (What Supports This Decision): the four groups (evidence, intact assumptions, portfolio alignment, historical consistency) are separated by hairlines.
+Within Section 5 (Supporting Factors): the four groups (evidence, intact assumptions, portfolio alignment, historical consistency) are separated by hairlines.
 
 Within Section 8 (Portfolio Consequences): consequence rows separated by hairlines.
 
@@ -187,7 +192,7 @@ The Workspace operates on a warm dark editorial background consistent with the A
 
 Primary surface: the overlay background — the base on which all content rests. Warm dark.
 
-Elevated surface: used for strong containers (Current Conclusion card, Final Decision Summary card). Slightly lighter than the primary surface. Subtle, not dramatic.
+Elevated surface: used for strong containers (Current Conclusion card, Final Decision Card). Slightly lighter than the primary surface. Subtle, not dramatic.
 
 Panel surface: used for the Atlas proposal block and subtle row backgrounds. Between primary and elevated.
 
@@ -237,7 +242,7 @@ Historical content (prior decision records shown in review mode):
 Historical content uses the tertiary text color and a reduced opacity surface. A timestamp and version indicator appear in metadata scale. The visual treatment communicates "this is the past" without making it hard to read.
 
 Recorded / locked content:
-When the Workspace transitions to post-recording state, all content — Atlas-generated and user-authored alike — renders in primary text color on the elevated Final Decision Summary card. The authorship distinction becomes irrelevant in the recorded record; what matters is what was decided.
+When the Workspace transitions to post-recording state, all content — Atlas-generated and user-authored alike — renders in primary text color on the elevated Final Decision Card. The authorship distinction becomes irrelevant in the recorded record; what matters is what was decided.
 
 ⸻
 
@@ -374,7 +379,7 @@ A portfolio dashboard, a pie chart, a bar chart, or a heat map. Structural conse
 
 Confidence is nuanced and qualitative. Its presentation must reflect this.
 
-The confidence indicator in the Final Decision Summary card:
+The confidence indicator in the Final Decision Card:
 A small label — one of five qualitative states — in metadata scale. Adjacent to the decision statement. Not more prominent than the decision itself. The label's visual weight communicates: "this is context for the decision, not the decision."
 
 When the confidence panel is open (the user has tapped the indicator):
@@ -434,7 +439,7 @@ Tertiary text scale. Quiet. It is a description of future system behavior, not a
 
 18. Final Decision Card
 
-The Final Decision Summary card is one of Atlas's signature UI components. Its visual design should be determined by three qualities: simplicity, durability, and authority.
+The Final Decision Card is one of Atlas's signature UI components. Its visual design should be determined by three qualities: simplicity, durability, and authority.
 
 The card in live-updating state (during editing):
 A clearly defined surface at elevated background level. The six fields render in a consistent left-aligned layout. Labels are in metadata scale (small, uppercase, spaced). Values are in primary body text. Fields not yet populated show placeholder text in tertiary color.
@@ -444,7 +449,7 @@ The live-updating behavior is visually subtle — values update in place without
 The card in completed state (after recording):
 The same surface and layout, but with all six fields populated in primary text weight and color. The card now communicates authority — it is the settled record. Its visual weight should be slightly heavier than in the draft state — achieved through more generous internal spacing or a subtle increase in the surface's visual distinction from the body background.
 
-The Final Decision Summary card must not resemble a data card, a dashboard tile, or a notification card. It is a document artifact. It should feel like the kind of card that would sit inside a private investment journal.
+The Final Decision Card must not resemble a data card, a dashboard tile, or a notification card. It is a document artifact. It should feel like the kind of card that would sit inside a private investment journal.
 
 ⸻
 
@@ -462,13 +467,13 @@ The Record Decision button in disabled state:
 The label remains "Record Decision." The button renders at reduced opacity — approximately 40–45%. The cursor is not-allowed on pointer devices. The adjacent explanation text renders in secondary body text scale. The explanation should feel like a calm note, not an error message.
 
 After recording — the 400ms transition:
-The body clears. This transition is the one moment in the Workspace where a slight pause is appropriate — not a celebration, but a breath. The Final Decision Summary card is the first element to appear in the cleared body, fading or sliding into place. The confirmation line appears below it. Three contextual next steps appear below the confirmation line.
+The body clears. This transition is the one moment in the Workspace where a slight pause is appropriate — not a celebration, but a breath. The Final Decision Card is the first element to appear in the cleared body, fading or sliding into place. The confirmation line appears below it. Three contextual next steps appear below the confirmation line.
 
 The confirmation line ("Decision recorded · [date] · [investment name]"):
 Tertiary text scale. Small and quiet. The meaning of the moment is in the card above it, not in the confirmation itself. The line should almost disappear behind the card — it is a timestamp, not an announcement.
 
 The three contextual next steps:
-Primary body text links, left-aligned. The first — "Return to [Workspace name]" — is the most visually prominent of the three, but still not as prominent as the Final Decision Summary card above it.
+Primary body text links, left-aligned. The first — "Return to [Workspace name]" — is the most visually prominent of the three, but still not as prominent as the Final Decision Card above it.
 
 The footer in post-decision state:
 The footer simplifies to "Close Workspace" only — same visual treatment as the secondary actions in the pre-recording footer.
@@ -501,7 +506,7 @@ The completion gate explanation in the footer handles this — the section itsel
 Historical decisions, shown in review mode, must be immediately distinguishable from current reasoning without creating visual clutter.
 
 The prior decision reference panel (top of scrolling body in review mode):
-Collapsed by default. Header: "Prior Decision · [date] · [decision type]" in metadata scale. The collapsed panel has a subtly distinct surface — slightly reduced opacity or a left-border rule in a historical color (a quieter variant of a neutral) — that signals "this is the past." Expanding the panel reveals the prior Final Decision Summary card, rendered in tertiary text color at slightly reduced opacity. The layout is identical to the current Final Decision Summary card, ensuring the comparison is structural, not just textual.
+Collapsed by default. Header: "Prior Decision · [date] · [decision type]" in metadata scale. The collapsed panel has a subtly distinct surface — slightly reduced opacity or a left-border rule in a historical color (a quieter variant of a neutral) — that signals "this is the past." Expanding the panel reveals the prior Final Decision Card, rendered in tertiary text color at slightly reduced opacity. The layout is identical to the current Final Decision Card, ensuring the comparison is structural, not just textual.
 
 Superseded decisions (visible in the version history panel):
 Each superseded decision listed in chronological order. Decision type, date, and first line of the decision statement in metadata-to-secondary scale. Superseded status indicated by a small label — "Superseded" in tertiary text, not in a color. The visual treatment communicates that the record exists and is readable, without claiming current relevance.
@@ -519,14 +524,14 @@ Motion principles:
 
 Duration: brief. The longest transitions in the Workspace — section expand/collapse, the post-recording transition — should complete in 250–400ms. Shorter for small state changes (suggestion affordance appearing, acknowledgment control disappearing) — 100–150ms. The 400ms post-recording pause is the only moment where duration carries meaning.
 
-Easing: use ease-out for elements entering the screen (content revealing on expansion, panels opening, the Final Decision Summary entering post-decision). Use ease-in for elements leaving (suggestions dismissing, the body clearing on recording). Ease-in-out for movements (smooth scroll, elements repositioning).
+Easing: use ease-out for elements entering the screen (content revealing on expansion, panels opening, the Final Decision Card entering post-decision). Use ease-in for elements leaving (suggestions dismissing, the body clearing on recording). Ease-in-out for movements (smooth scroll, elements repositioning).
 
 What motion clarifies:
 — Section expansion: content reveals from beneath the section header, downward. The surrounding sections shift to accommodate the new height. The user follows where the content came from.
 — Section collapse: content compresses upward. The summary line replaces it. The user understands that the content is preserved, not deleted.
 — Scroll pause behavior at high-emphasis moments: a very subtle velocity deceleration — not a snap, not a lock. Motion communicates "this is worth reading."
 — Auto-scroll to incomplete field: an animated travel from the footer to the field. The user follows the movement and arrives oriented.
-— Post-recording body transition: the editing content dissolves (400ms pause, then a clean surface). The Final Decision Summary card appears. This is the most significant motion event in the Workspace.
+— Post-recording body transition: the editing content dissolves (400ms pause, then a clean surface). The Final Decision Card appears. This is the most significant motion event in the Workspace.
 
 What motion must not do:
 — Celebrate the Record Decision action with particle effects, confetti, or success animations
@@ -671,13 +676,13 @@ Understanding:
 The user reads the supporting and challenging sections. They see what works in their favor and what complicates the decision. The Opportunity Cost section surfaces the alternatives. The user feels: "I can see the full picture now. This decision has real context."
 
 Reflection:
-The user authors their primary reason. They adjust Atlas's proposed assumptions. They review the invalidation conditions. They set a review trigger. The Workspace does not rush them. The Final Decision Summary card begins to fill in as they work. The user feels: "I'm building this decision carefully. I understand what I'm committing to."
+The user authors their primary reason. They adjust Atlas's proposed assumptions. They review the invalidation conditions. They set a review trigger. The Workspace does not rush them. The Final Decision Card begins to fill in as they work. The user feels: "I'm building this decision carefully. I understand what I'm committing to."
 
 Decision:
-The Final Decision Summary card is complete. The user reads it in full — seeing their decision, their reason, their confidence level, their review condition assembled in one place. The Record Decision button is available. The user feels: "This decision is clear. I'm ready."
+The Final Decision Card is complete. The user reads it in full — seeing their decision, their reason, their confidence level, their review condition assembled in one place. The Record Decision button is available. The user feels: "This decision is clear. I'm ready."
 
 Commitment:
-The user selects Record Decision. The 400ms pause. The body clears. The Final Decision Summary card occupies the cleared space, settled and permanent. The user feels: "That is exactly what I decided. It's recorded correctly."
+The user selects Record Decision. The 400ms pause. The body clears. The Final Decision Card occupies the cleared space, settled and permanent. The user feels: "That is exactly what I decided. It's recorded correctly."
 
 Calm completion:
 The confirmation line appears below the card. Three contextual next steps. The footer shows "Close Workspace." Nothing celebrates. Nothing demands further action. The user feels: "I've done something meaningful and careful. I can return to my work."
@@ -694,7 +699,7 @@ Six visual moments should be designed with particular care. These are the moment
 The opening moment. The first thing the user sees below the header. It must communicate authority and clarity simultaneously. The card's visual weight, its typography, and its contained surface must immediately communicate: "This is the foundation for your decision."
 
 2. The User Decision Field
-The most important interactive element in the Workspace. The moment the user begins writing in this field — when the document waits for their commitment — must feel significant. The typographic treatment of the text as it appears, the subtle activation of the field, and the live updating of the Final Decision Summary card in the distance must work together to create a sense of authoring, not form-filling.
+The most important interactive element in the Workspace. The moment the user begins writing in this field — when the document waits for their commitment — must feel significant. The typographic treatment of the text as it appears, the subtle activation of the field, and the live updating of the Final Decision Card in the distance must work together to create a sense of authoring, not form-filling.
 
 3. The Opportunity Cost Section
 The comparative reasoning moment. The presentation of decision subject versus alternatives in a qualitative, reasoning-first layout — without scores, without rankings — is one of the visual ideas that most clearly separates Atlas from conventional investment tools. This section should feel like reading a considered analysis, not looking at a comparison table.
@@ -706,7 +711,7 @@ The moment Atlas surfaces a conflict with prior reasoning. Section 6 expands qui
 The document assembling itself into a permanent record. The live-updating card, filling in as the user works through the Workspace, arriving at its completed form before the user records. The visual moment when the card is complete and the user reads it in full before committing.
 
 6. The Post-Recording Moment
-The 400ms pause. The body clearing. The Final Decision Summary card settling into the center of the cleared space. This is the closest the Workspace comes to ceremony — achieved entirely through space, timing, and the visual authority of the card. No animation, no icon, no celebratory element. The record speaks for itself.
+The 400ms pause. The body clearing. The Final Decision Card settling into the center of the cleared space. This is the closest the Workspace comes to ceremony — achieved entirely through space, timing, and the visual authority of the card. No animation, no icon, no celebratory element. The record speaks for itself.
 
 ⸻
 
@@ -745,7 +750,7 @@ The following visual decisions are now fixed:
 
 — Four foundational commitments: restraint over decoration, structure over borders, typography over color, permanence over novelty.
 
-— Three-tier visual hierarchy: highest (Conclusion, Decision, Final Summary, Record Decision), medium (Trigger, Opportunity Cost, Challenges, Consequences, Invalidation), lower (Supporting factors, Assumptions, Monitoring, Implementation, Metadata).
+— Three-tier visual hierarchy: highest (Conclusion, Decision, Final Decision Card, Record Decision), medium (Trigger, Opportunity Cost, Challenges, Consequences, Invalidation), lower (Supporting factors, Assumptions, Monitoring, Implementation, Metadata).
 
 — Typography system: seven conceptual roles (Workspace subject, section labels, conclusion statement, decision statement, supporting explanations, metadata, confidence labels) with defined relationships. Long-form text at editorial line length (65–70 characters) and line height (1.65–1.7).
 
@@ -848,7 +853,7 @@ Spacing scale:
 — The maximum content width token and its behavior at different viewport widths
 
 Card variants:
-— Strong container: the definitive specification for the Current Conclusion card and Final Decision Summary card — their surface treatment, internal padding, corner radius, and elevation treatment
+— Strong container: the definitive specification for the Current Conclusion card and Final Decision Card — their surface treatment, internal padding, corner radius, and elevation treatment
 — Subtle container: the definitive specification for challenge item and alternative row backgrounds
 — The Atlas proposal block as a named card variant
 
