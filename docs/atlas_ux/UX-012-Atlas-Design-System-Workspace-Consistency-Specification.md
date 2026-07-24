@@ -5,6 +5,13 @@ Assembled from UX-012A (Foundations), UX-012B (Components & Reusable Patterns), 
 
 This is the single authoritative reference for every future Atlas interface, component, interaction, visual pattern, and governance decision. Every future Workspace, component, interaction, and visual pattern derives from this specification. All prior part documents (012A–D) are superseded by this assembled version.
 
+**Correction Notice (Phase 1, governed by ADR-002 — 2026-07-24):** This document's original identity — Version 1.0, "Final Governing Document," assembled from UX-012A–D as originally imported at commit `f2d5adbb7cd260853f56197e35fcc776caf85a78` — is preserved unchanged. Three semantic areas were corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md` and the Atlas UX Source Correction Plan, Phase 1:
+- **Section 5 (C-01 — Information Hierarchy):** Level 2 was retitled from "Structural Element" to "Material Implication," and Level 4 from "Contextual Information" to "Challenges, Uncertainty, and Contradiction," adopting UX-012A's original wording for both. Structural Element is retained as a cross-cutting typographic convention, not a hierarchy level.
+- **Section 17 (C-03 — Decision Workspace Sequence):** the "Reasoning sequence" was replaced with the canonical thirteen-section order, removing the standalone "What Changed" section (originally at position 3) and moving Proposed Decision from position 11 to position 3.
+- **Sections 23, 48, 50, and the Decision Field validation rule (C-04 — Record Decision Completion Gate):** the completion model was corrected so that Challenges acknowledgment is soft friction and never blocks recording, and the conditional-by-decision-type matrix and explicit override path were added alongside the existing two-field universal minimum (Decision Statement, Primary Reason).
+
+This notice does not claim any of the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at each corrected passage below. All content outside these three areas is unchanged.
+
 ---
 
 # Canonical Glossary
@@ -136,20 +143,22 @@ All Atlas content occupies one of six levels. This hierarchy governs typography 
 **Level 1 — Primary Conclusion**
 The single most important piece of information in a Workspace or Section. Presented at the top, in the largest weight. One per Workspace or major Section.
 
-**Level 2 — Structural Element**
-Section headings, Category labels, Named areas of a Workspace. Communicate what a region is for.
+**Level 2 — Material Implication**
+Why the Level 1 statement matters — its consequence or significance for the user's situation. Not supporting evidence; the stakes. *(Corrected per ADR-002/C-01: this level was originally named "Structural Element" and defined as "Section headings, Category labels, Named areas of a Workspace. Communicate what a region is for." It is now Material Implication, adopting UX-012A's original wording. See the Structural Element note below for where that concept now lives.)*
 
 **Level 3 — Supporting Narrative**
 Primary body text. The substance of reasoning, context, and analysis. Comfortable reading weight and line height.
 
-**Level 4 — Contextual Information**
-Secondary text — timestamps, sources, metadata, annotations. Present but not dominant.
+**Level 4 — Challenges, Uncertainty, and Contradiction**
+What weakens, complicates, or contradicts the Level 1 statement. Receives deliberate design attention: must be visible and readable, never buried, suppressed, or defaulted to collapsed-and-hidden, though it does not compete with Level 1 for primary emphasis. Explicitly acknowledged by the user when severity is Material or Blocking (see Section 48). Challenges and contradiction content are fixed permanently at this level and must never be reduced to, or treated as equivalent to, Level 6 generic system metadata. *(Corrected per ADR-002/C-01: this level was originally named "Contextual Information" and defined as "Secondary text — timestamps, sources, metadata, annotations. Present but not dominant." It is now fixed as Challenges, Uncertainty, and Contradiction, adopting UX-012A's original wording. Metadata content — timestamps, sources, annotations — belongs at Levels 5–6.)*
 
 **Level 5 — Reference Content**
 Tertiary text — historical content labels, collapsed section previews, supporting references. Visually quiet.
 
 **Level 6 — System Metadata**
 Version numbers, identifiers, system-generated labels. Visible only when needed.
+
+**Structural Element — a cross-cutting typographic convention, not a hierarchy level.** A section heading, category label, or named Workspace area is not itself a rank in this hierarchy — it labels whatever content follows it and inherits that content's own level for visual weight. A heading over Level 1 content renders with Level-1-appropriate prominence; a heading over Level 5 reference detail renders correspondingly quieter. No content is ever "Level 2" merely because it happens to be a heading. *(Corrected per ADR-002/C-01: Structural Element previously occupied Level 2 as a competing rank; it is now this cross-cutting convention, applicable across multiple levels.)*
 
 ## 6. The Fifteen Universal Design Principles
 
@@ -434,20 +443,22 @@ Primarily navigational. The Dashboard is a launching point. Actions are minimal 
 **Cognitive mode:** deliberating, committing, recording.
 **Primary output:** a Recorded Decision with complete reasoning.
 
-**Reasoning sequence:**
-1. Current Conclusion (what the reasoning currently points to)
-2. Decision Required (the specific choice that must be made)
-3. What Changed (what triggered this decision moment)
-4. Supporting Factors (reasons for the proposed action)
-5. Challenges (reasons against; contradictions surfaced here)
-6. Assumptions (the conditions this reasoning depends on)
-7. Portfolio Consequences (what this decision means for the portfolio)
-8. Opportunity Cost (what is foregone by this decision)
-9. Implementation (how the decision would be executed)
-10. Review Conditions (what should trigger re-examination)
-11. Proposed Decision (the structured statement of intent)
-12. Final Decision Card (the completion form; appears after Proposed Decision is authored)
+**Reasoning sequence** *(corrected per ADR-002/C-03 — see note below)*:
+1. Current Conclusion (establishes shared understanding before the decision begins; Atlas-generated, read-only)
+2. Why a Decision Is Required (states the specific trigger for this decision moment; Atlas-generated, read-only)
+3. Proposed Decision (the user's own stated intention, in their own words, as a testable working hypothesis — not a conclusion; tested, not finalized, by Sections 4–11)
+4. Decision Rationale (the user's own reasoning for the Proposed Decision)
+5. Supporting Factors (what supports the Proposed Decision)
+6. Challenges (what challenges the Proposed Decision; Level 4 content, never defaulted to hidden)
+7. Opportunity Cost (what is foregone by the Proposed Decision)
+8. Portfolio Consequences (what this decision means for the portfolio; conditional — see Section 48's completion matrix)
+9. Assumptions, Monitoring and Invalidation (the conditions this reasoning depends on, what Atlas will watch, what would invalidate the decision)
+10. Implementation Plan (how the decision would be executed; conditional by decision type, per Section 48's completion matrix)
+11. Review Plan (what should trigger re-examination; required unless explicitly overridden, per Section 48)
+12. Final Decision Card (the six-field structured, permanent record; assembles content from Sections 3–11)
 13. Record Decision (the submission action)
+
+*Corrected per ADR-002/C-03: this document previously stated a different order — Current Conclusion, Decision Required, What Changed, Supporting Factors, Challenges, Assumptions, Portfolio Consequences, Opportunity Cost, Implementation, Review Conditions, Proposed Decision, Final Decision Card, Record Decision — with Proposed Decision at position 11 and a standalone "What Changed" section at position 3. Per ADR-002/C-03, "What Changed" is a templating artifact carried over from the Investment Workspace and is not adopted as a standalone Decision Workspace section; Proposed Decision is restored to its canonical early position (3) as a testable working hypothesis, preceding the sections that test it.*
 
 **Primary authorship:** Decision Workspace is the primary authoring environment in Atlas. Every Section with a user-editable field uses editorial typography, document-like proportions, and authorship visual treatments.
 
@@ -601,7 +612,7 @@ Purpose: Surfaces recent developments relevant to the current reasoning session.
 Position: after the Current Conclusion, before the full reasoning body.
 Behavior: optional; present only when there are relevant recent changes.
 States: present, empty (with informative empty state label).
-Reuse: Investment Workspace, Decision Workspace.
+Reuse: Investment Workspace. *(Corrected per ADR-002/C-03: this line previously also listed Decision Workspace. Per the canonical Decision Workspace sequence, "What Changed" is not a standalone Decision Workspace section; this component's reuse remains canonical for the Investment Workspace only.)*
 
 **Portfolio Conclusion**
 Purpose: The integration of individual investment reasoning into a portfolio-level understanding.
@@ -626,7 +637,7 @@ Purpose: Reasons that complicate, contradict, or argue against the reasoning dir
 Three severity levels, communicated with a left-border visual treatment:
 - Informational challenge: a relevant concern that does not invalidate the reasoning.
 - Material challenge: a concern that requires explicit acknowledgment in the Decision.
-- Blocking challenge: a concern that must be resolved or explicitly overridden before the Decision can be recorded.
+- Blocking challenge: the most severe concern; still requires only explicit acknowledgment, never resolution, before the Decision can be recorded — acknowledgment means the user has seen and considered the concern, never that they agree with it. *(Corrected per ADR-002/C-04: this line previously stated a Blocking challenge "must be resolved or explicitly overridden before the Decision can be recorded." Challenges acknowledgment, at any severity, is soft friction and is never a hard block on recording; see Section 48.)*
 Reuse: Investment Workspace, Decision Workspace.
 
 **Assumptions**
@@ -871,7 +882,7 @@ Reuse: all Workspaces with authoring.
 Purpose: The primary editing component for the six Final Decision Card fields.
 Character: the most deliberate editing experience in Atlas. Generous padding. Strong typography. Clear label. The field communicates the weight of what is being authored.
 States: empty (with instructive placeholder), drafting, authored, validated, invalid, locked (once Recorded).
-Validation: soft, deferred. Appears on blur, not while typing. Two fields are required for completion: the Decision statement and the Primary Reason.
+Validation: soft, deferred. Appears on blur, not while typing. Two fields are the universal minimum required for completion: the Decision statement and the Primary Reason; additional fields are conditionally required by decision type, per the Completion Requirements by Decision Type table in Section 48. *(Clarified per ADR-002/C-04; the two-field universal minimum itself is unchanged.)*
 Reuse: Decision Workspace (Final Decision Card).
 
 **Structured Comparison Editor**
@@ -1188,12 +1199,27 @@ Validation in Atlas is soft and deferred. It does not interrupt reasoning. It ap
 
 Soft validation: field-level validation appears on blur (when the user leaves the field). Not while typing.
 
-Completion gate: two fields are required before a Decision can be recorded — the Decision statement and the Primary Reason. The completion action communicates this requirement clearly before the user attempts to submit.
+Completion gate — semantic completeness: two fields are universally required, with no exception, before a Decision can be recorded — the Decision statement and the Primary Reason. Beyond this universal minimum, additional fields are conditionally required depending on decision type (see the Completion Requirements by Decision Type table below). The completion action communicates any unmet requirement clearly before the user attempts to submit. This section defines *what* must be true of a Decision record for it to be complete; *how* that requirement is presented and enforced in the interface (field markers, the Record Decision control's own state) is a separate, later interaction-design concern.
+
+**Completion Requirements by Decision Type** *(added per ADR-002/C-04):*
+
+| Decision type | Implementation Plan required? | Review Condition required? | Portfolio Consequences acknowledgment required? |
+|---|---|---|---|
+| Action decision (Increase / Reduce / Exit / Initiate) | Yes | Yes, unless explicitly overridden | Yes if portfolio-level; no if single-position |
+| No-action / Hold decision | No | Yes, unless explicitly overridden | As above |
+| Deferred decision | No | Yes — the one field a deferred decision cannot omit | As above |
+| Review outcome | Conditional — only if the review concludes with a new or amended action | Yes, unless explicitly overridden | As above |
+| Portfolio-level decision | Per action/no-action rule above | Yes, unless explicitly overridden | Yes, always |
+| Conditional implementation decision | Yes | Yes, unless explicitly overridden | As above |
+
+**Optional, non-blocking fields:** any field not named in the universal minimum above and not made conditionally required by this table is optional and never blocks completion — for example, Assumptions detail beyond what Monitoring or Invalidation strictly requires, Opportunity Cost elaboration beyond the single required comparison, and Portfolio Consequences detail beyond the required acknowledgment for non-portfolio-level decisions. *(Added per ADR-002/C-04 and the Resolution Design's own "Recommended, non-blocking" guidance; these remain optional examples, not new required fields.)*
+
+**Explicit override path:** where Review Condition would otherwise be required but genuinely does not apply (e.g., a full, final exit with no remaining stake to monitor), an explicit, single-click, logged override ("No further review is needed for this decision because ___") stands in place of a populated Review Condition, and the override text itself becomes the recorded content — the record is never silently thinner than a genuine review requirement would produce.
 
 Contradiction severity:
 - Informational: a highlighted note within the relevant Section. Does not block.
 - Material: a Warning component in the relevant Section. Requires acknowledgment (not resolution) to proceed.
-- Blocking: prevents the completion action until resolved or explicitly overridden with documented reason.
+- Blocking: requires explicit acknowledgment (not resolution) before the completion action proceeds — never resolution, and never a silent hard block on its own. *(Corrected per ADR-002/C-04: this line previously stated that Blocking severity "prevents the completion action until resolved or explicitly overridden with documented reason." Challenges acknowledgment — at any severity, including Blocking — is soft friction and is never a hard block on recording; acknowledgment means the user has seen and considered the concern, never that they agree with it. The universal minimum and conditional-by-type fields above are the only hard-blocking requirements.)*
 
 ## 49. Error Behavior
 
@@ -1217,7 +1243,7 @@ Preservation of work is non-negotiable across all error types. No error conditio
 
 Completion is the most deliberate moment in Atlas. It is not celebrated. It is confirmed.
 
-Completion gate check: before the Record Decision action is activated, the system verifies that the two required fields are complete. Any Blocking Issues are surfaced. If requirements are unmet, the completion action communicates what is needed — it does not silently fail.
+Completion gate check: before the Record Decision action is activated, the system verifies that the universal minimum (Decision Statement, Primary Reason) and any decision-type-conditional fields (Section 48) are complete. Unacknowledged Blocking-severity Challenges are surfaced as a required acknowledgment, never as a field that blocks completion on its own. If requirements are unmet, the completion action communicates what is needed — it does not silently fail. *(Corrected per ADR-002/C-04: this line previously referenced only "the two required fields" and an undifferentiated "Blocking Issues are surfaced"; it now reflects the full completion matrix in Section 48.)*
 
 400ms pause: when all requirements are met and the user activates the Record Decision action, a 400ms pause precedes the transition to the recorded state. This pause is not theatrical; it gives the interface time to settle into the transition.
 
@@ -1907,11 +1933,8 @@ Required evidence: User research observing editing sessions across the four Work
 Implementation impact: The pause timing may need to be context-sensitive (longer in intensive editing phases, shorter in review phases). This would add a behavioral variant to the Atlas Suggestion component.
 Priority: Medium. The 1.5s default is a reasonable starting point; this question validates or adjusts it.
 
-**Question 2: Completion Gate Threshold**
-Why unresolved: Two fields are specified as required for Completion (Decision statement, Primary Reason). Whether these two fields are sufficient to warrant the gravity of a Recorded Decision — or whether additional required acknowledgments are needed for specific Decision types — requires evidence from Decision recording sessions.
-Required evidence: Analysis of the quality and completeness of recorded Decisions in early implementation. Qualitative research on user confidence at the completion moment.
-Implementation impact: May require conditional required fields based on Decision type (e.g., a Decision that contradicts a prior Decision may require explicit acknowledgment of the contradiction before recording).
-Priority: High. This directly affects Decision quality — the primary Atlas output.
+**Question 2: Completion Gate Threshold — Resolved per ADR-002/C-04**
+This question asked whether the two-field universal minimum (Decision statement, Primary Reason) is sufficient to warrant the gravity of a Recorded Decision, or whether additional required acknowledgments are needed for specific Decision types. It is now resolved: the two-field universal minimum is retained without exception, and a conditional-by-decision-type matrix (Implementation Plan, Review Condition, Portfolio Consequences acknowledgment) is layered on top of it, per Section 48's Completion Requirements by Decision Type table. Challenges acknowledgment, at any severity, is soft friction and never hard-blocking. *(Resolved per ADR-002/C-04 and the Atlas UX Source Correction Plan, Phase 1. This question is retained here, marked resolved, rather than deleted, so the historical fact that it was once open remains visible. Original text: "Why unresolved: Two fields are specified as required for Completion (Decision statement, Primary Reason). Whether these two fields are sufficient to warrant the gravity of a Recorded Decision — or whether additional required acknowledgments are needed for specific Decision types — requires evidence from Decision recording sessions." Priority was originally stated as High.)*
 
 **Question 3: Mobile Long-Form Editing Experience**
 Why unresolved: The full-screen editing mode for mobile is specified as the approach. The precise interaction — how the user enters and exits full-screen editing, how they navigate between the six Final Decision Card fields while in full-screen mode, whether the Workspace body remains visible in any form — requires usability testing on actual mobile devices.
@@ -1984,7 +2007,7 @@ The first official Atlas Component Inventory. All components are at experimental
 | Primary Conclusion | Central conclusion of a Workspace | All | Universal | Immediate | Candidate |
 | Current Conclusion | Live-updating Atlas understanding | Investment, Decision | Reasoning Workspaces | High | Candidate |
 | Decision Required | Frames the specific choice to be made | Decision | Decision-oriented surfaces | High | Candidate |
-| What Changed | Recent developments relevant to current reasoning | Investment, Decision | Reasoning Workspaces | Medium | Experimental |
+| What Changed | Recent developments relevant to current reasoning | Investment *(corrected per ADR-002/C-03; previously also listed Decision)* | Investment Workspace | Medium | Experimental |
 | Portfolio Conclusion | Portfolio-level integration conclusion | Portfolio | Portfolio Workspace | High | Experimental |
 | Review Conclusion | Conclusion produced by a formal Review | Decision (review mode) | Future Review Workspace | Medium | Experimental |
 | Decision Summary | Condensed portable record of a Recorded Decision | Dashboard, Investment, Portfolio | Universal | High | Candidate |
@@ -2123,7 +2146,7 @@ The first official Atlas Pattern Inventory. Each pattern represents a recurring 
 | **Reasoning** | Structures the full reasoning body: conclusion → supporting factors → challenges → assumptions → opportunity | Investment, Decision | Reasoning Workspaces | Immediate |
 | **Comparison** | Presents two or more options, states, or outcomes in parallel with consistent structure | Portfolio, Decision | Portfolio, Decision | High |
 | **Opportunity Cost** | Makes explicit what is foregone by a Decision; always presented alongside the proposed action | Decision | Decision, Portfolio | High |
-| **Contradiction** | Surfaces logical conflicts between reasoning elements; classifies by severity; gates completion for Blocking severity | Decision | Decision, Investment | High |
+| **Contradiction** | Surfaces logical conflicts between reasoning elements; classifies by severity; requires explicit acknowledgment, never resolution, for Blocking severity *(corrected per ADR-002/C-04; previously stated it "gates completion" for Blocking severity)* | Decision | Decision, Investment | High |
 | **Decision** | Sequences Proposed Decision → Final Decision Card → Record Decision with deliberate spacing and completion gate | Decision | Decision | Immediate |
 | **Monitoring Establishment** | The process by which Monitoring Conditions and Review Conditions are defined at Decision time and activated upon recording | Decision | Decision | High |
 | **Historical Review** | Presents a prior Recorded Decision alongside current reasoning for formal review; produces a Review Conclusion | Decision (review mode) | Future Review Workspace | Medium |
