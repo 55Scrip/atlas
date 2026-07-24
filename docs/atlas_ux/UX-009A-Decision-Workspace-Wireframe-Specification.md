@@ -6,6 +6,13 @@ Governs: Decision Workspace — component hierarchy, section behavior, editing m
 Depends on: UX-008 — Decision Workspace Philosophy, UX-009 — Decision Workspace Screen Specification
 Defers to: UX-010 — Decision Workspace Visual Design
 
+**Correction Notice (Phase 2, governed by ADR-002 — 2026-07-24):** This document's original identity (Status, Owner, Governs, Depends on, Defers to, as above) and original date are preserved unchanged. Three semantic areas were corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md` and the Atlas UX Source Correction Plan, Phase 2:
+- **C-03 (Decision Workspace Sequence):** Sections 5, 6, and 12 renamed to "Supporting Factors," "Challenges," and "Final Decision Card" — this document previously named them "What Supports This Decision," "What Challenges This Decision," and "Final Decision Summary" — no change to section order, count, or content.
+- **C-04 (Record Decision Completion Gate):** the Validation Rules section, the "What UX-009A Establishes" summary, and the review-trigger empty states were corrected from a flat four-field rule (with Review Condition unconditionally required and no override path) to the universal minimum (Decision Statement, Primary Reason), a decision-type-conditional matrix, and an explicit override path for Review Condition.
+- **C-06 (Unavailable Primary Action Accessibility):** the Fixed Footer and Section 13 unavailable-state descriptions were corrected to specify `aria-disabled="true"` (never native `disabled`), permanent focusability, and that activation while unavailable navigates focus to the first unmet required field.
+
+This notice does not claim any of the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at each corrected passage. All content outside these three areas is unchanged.
+
 ⸻
 
 Overall Layout
@@ -31,7 +38,7 @@ Scrolling Body
 
 Fixed Footer
 — Spans the full width of the overlay
-— Contains: primary Record Decision action, secondary actions (Save as Draft, Return to Workspace), and the completion gate explanation when the primary action is disabled
+— Contains: primary Record Decision action, secondary actions (Save as Draft, Return to Workspace), and the completion gate explanation when the primary action is unavailable (`aria-disabled`, never native `disabled`)
 — Does not scroll
 — Always visible
 
@@ -59,8 +66,8 @@ Fixed Footer — Component Specification
 Primary action:
 — Label: "Record Decision"
 — Occupies the right portion of the footer
-— Two states: Available (full emphasis) and Disabled (reduced emphasis, not-allowed cursor)
-— When disabled: a single-line explanation sits adjacent to the button naming the specific incomplete requirement. Not a generic error. Example: "State a primary reason before recording." This text updates as requirements are met.
+— Two states: Available (full emphasis) and Unavailable (reduced emphasis, not-allowed cursor). The unavailable state carries `aria-disabled="true"` — never the native HTML `disabled` attribute — and the control remains focusable and in the natural tab order throughout. *(Corrected per ADR-002/C-06: this line previously named the state "Disabled" without qualification, which could be read as native `disabled` semantics that would remove the control from the tab order.)*
+— When unavailable: a single-line explanation sits adjacent to the button, and is also exposed via `aria-describedby`, naming the specific incomplete requirement. Not a generic error. Example: "State a primary reason before recording." This text updates as requirements are met. Activating the action while unavailable does not record the decision — it moves focus to the first unmet required field and re-announces the explanation there.
 — The primary action does not animate, pulse, or draw unnecessary attention
 
 Secondary actions (left side of footer):
@@ -188,7 +195,7 @@ Primary reason field:
   — Labeled: "Primary reason"
   — A text area — the user's own first-person explanation of why they are making this decision
   — Placeholder: "Why are you making this decision?"
-  — Required. The Record Decision action is disabled until this field contains text.
+  — Required. The Record Decision action remains unavailable (`aria-disabled`) until this field contains text.
   — Atlas does not pre-populate this field. The user authors it from scratch.
 
 Atlas supporting conclusions:
@@ -217,7 +224,7 @@ Collapsed state:
 
 ⸻
 
-Section 5 — What Supports This Decision
+Section 5 — Supporting Factors
 
 Position: Below Section 4. Collapsed by default for minor decisions (Maintain, No Action, Defer). Expanded by default for allocation-change decisions.
 Width: Full reading width.
@@ -225,7 +232,7 @@ Width: Full reading width.
 Components:
 
 Section header (always visible when section exists):
-  — Section label: "WHAT SUPPORTS THIS DECISION"
+  — Section label: "SUPPORTING FACTORS"
   — Collapse / expand control
   — Collapsed summary: a single count. "4 supporting factors." If all are from Atlas: "4 Atlas-identified factors."
 
@@ -234,7 +241,7 @@ Expanded state — four groups, each labeled:
 Supporting evidence:
   — Two to four items from the originating analysis, each as a one-to-two line statement
   — Source indicator for each item
-  — Each item has a "Flag as particularly important" control — flagged items are highlighted in the Final Decision Summary
+  — Each item has a "Flag as particularly important" control — flagged items are highlighted in the Final Decision Card
 
 Intact assumptions:
   — Assumptions from the originating analysis that remain unbroken
@@ -248,10 +255,10 @@ Portfolio alignment:
   — If partially aligned: specific statements about the areas of alignment and the areas of tension (tension items appear in Section 6)
 
 Historical consistency:
-  — If a prior decision exists on this investment: "Consistent with [date] decision to [prior decision type]" or "Departs from [date] decision to [prior decision type] — see What Challenges This Decision."
+  — If a prior decision exists on this investment: "Consistent with [date] decision to [prior decision type]" or "Departs from [date] decision to [prior decision type] — see Challenges."
   — If no prior decision: "No prior recorded decision for this investment."
 
-Interaction ownership: All items Atlas-generated. Read-only. The Flag control is user-owned, persists to the Final Decision Summary.
+Interaction ownership: All items Atlas-generated. Read-only. The Flag control is user-owned, persists to the Final Decision Card.
 
 Empty states:
   — No supporting evidence: "No supporting evidence identified in the originating analysis. Proceed with caution or return to the analysis."
@@ -260,7 +267,7 @@ Empty states:
 
 ⸻
 
-Section 6 — What Challenges This Decision
+Section 6 — Challenges
 
 Position: Below Section 5. Collapsed by default for Maintain and No Action. Expanded by default for any allocation-change, initiation, or exit decision.
 Width: Full reading width.
@@ -268,7 +275,7 @@ Width: Full reading width.
 Components:
 
 Section header:
-  — Section label: "WHAT CHALLENGES THIS DECISION"
+  — Section label: "CHALLENGES"
   — Collapse / expand control
   — Collapsed summary: "[N] unresolved challenges · [M] acknowledged" — this count updates as the user acknowledges items
   — If all challenges are acknowledged: "All challenges acknowledged."
@@ -542,11 +549,11 @@ Atlas reminder behavior:
 
 Interaction ownership: All fields collaborative. Atlas proposes, user confirms. Locked after recording.
 
-Empty state: if no review trigger is set, the footer explanation reads: "Set a review condition before recording." Review conditions are required for all decision types. A Maintain decision may use: "Next scheduled portfolio review or earlier if thesis changes."
+Empty state: if no review trigger is set, the footer explanation reads: "Set a review condition before recording." A Review Condition is required unless explicitly overridden with a logged reason (a full, final exit with no remaining stake to monitor) — the override text itself becomes the recorded content. A Maintain decision may use: "Next scheduled portfolio review or earlier if thesis changes." *(Corrected per ADR-002/C-04: this line previously stated Review Conditions are "required for all decision types" with no override path.)*
 
 ⸻
 
-Section 12 — Final Decision Summary
+Section 12 — Final Decision Card
 
 Position: Below Section 11. Always visible. Never collapsible.
 Width: Full reading width.
@@ -555,7 +562,7 @@ This is the most prominent section in the lower half of the Workspace. It is a r
 
 Components:
 
-Section label: "FINAL DECISION SUMMARY"
+Section label: "FINAL DECISION CARD"
 
 The summary is rendered as a contained card — visually distinct from the sections above it.
 
@@ -618,15 +625,15 @@ Available state:
 — Label: "Record Decision"
 — Selecting this action triggers the recording behavior described in UX-009
 
-Disabled state:
-— Reduced emphasis, cursor: not-allowed
+Unavailable state: *(Corrected per ADR-002/C-06: this state was previously named "Disabled" without qualification. It carries `aria-disabled="true"` — never the native HTML `disabled` attribute — and remains focusable and in the natural tab order.)*
+— Reduced emphasis, cursor: not-allowed (visual treatment unchanged)
 — Label: "Record Decision" — label unchanged
-— Adjacent explanation: a single sentence naming the specific incomplete element. Examples:
+— Adjacent explanation, also exposed via `aria-describedby`: a single sentence naming the specific incomplete element. Examples:
   "State your decision before recording."
   "Add a primary reason before recording."
   "Select an implementation approach before recording."
   "Set a review condition before recording."
-— The explanation updates as requirements are met. When all requirements are met, it disappears and the button becomes available.
+— The explanation updates as requirements are met. When all requirements are met, it disappears and the button becomes available. Activating the action while unavailable does not record the decision — it moves focus to the first unmet required field and re-announces the explanation there.
 
 Secondary actions (always available):
 — Save as Draft: saves the current state to Atlas as an in-progress decision. Available at any time. Drafts appear in the Daily Briefing as unresolved.
@@ -634,7 +641,7 @@ Secondary actions (always available):
 
 Completion behavior — after selecting Record Decision:
 — A brief transition to the post-decision state
-— The scrolling body shows: the Final Decision Summary card (full reading width, elevated visual prominence) surrounded by clear space
+— The scrolling body shows: the Final Decision Card (full reading width, elevated visual prominence) surrounded by clear space
 — Below the card: a single calm confirmation line — "Decision recorded · [date] · [investment name or portfolio scope]"
 — Below the confirmation: three contextual next steps (rendered as clearly labeled links, not buttons):
   "Return to [originating Workspace name]" — the most prominent of the three
@@ -657,7 +664,7 @@ Produced entirely by Atlas from originating analysis. The user cannot edit these
 — Trigger label and elaboration (Section 2)
 — Atlas proposal text (Section 3)
 — Supporting conclusions (Section 4)
-— All items in Section 5 (What Supports This Decision)
+— All items in Section 5 (Supporting Factors)
 — Challenge items (Section 6)
 — Behavioral context items (Section 6)
 — Alternative comparisons (Section 7)
@@ -758,15 +765,20 @@ Expected duration: under three minutes.
 
 Validation Rules
 
+*(Corrected per ADR-002/C-04: this section previously listed a flat four-field "Required" rule — user decision field, primary reason field, implementation type, review trigger — applied identically regardless of decision type. The corrected model below distinguishes the universal minimum from decision-type-conditional requirements.)*
+
 The following must be complete before Record Decision is available:
 
-Required:
+Universal minimum, required for every decision type, no exceptions:
 1. Section 3 — user decision field: must contain text
 2. Section 4 — primary reason field: must contain text
-3. Section 10 — implementation type: must be selected
-4. Section 11 — review trigger: must be set
 
-Soft friction (reduces emphasis, adds explanation, does not fully block):
+Conditionally required, by decision type:
+3. Section 10 — implementation type: must be selected for decisions that entail an action; selecting "No Action" or "Deferred" itself satisfies this requirement for decisions where no action is entailed
+4. Section 11 — review trigger: must be set, unless explicitly overridden with a logged reason (a full, final exit with no remaining stake to monitor)
+5. Section 8 — Portfolio Consequences acknowledgment: required for portfolio-level decisions; not required for single-position decisions
+
+Soft friction (reduces emphasis, adds explanation, does not fully block — never a hard block regardless of severity):
 — One or more "Consider addressing before recording" challenges in Section 6 remain unacknowledged
 — Two or more total challenges remain unacknowledged
 
@@ -812,10 +824,10 @@ Versioning
 When a user revisits a recorded decision, they enter the Decision Workspace in Review Mode.
 
 Review Mode layout:
-— The recorded decision appears in a left panel or collapsed header region: the Final Decision Summary card from the original decision, with its date and recorded state
+— The recorded decision appears in a left panel or collapsed header region: the Final Decision Card from the original decision, with its date and recorded state
 — The current analysis appears in the right panel or main body in the same thirteen-section structure, but populated with current data
 — The user can scroll both panels or collapse the original to focus on current conditions
-— Section 6 (What Challenges This Decision) in Review Mode includes a comparison: "How has this changed since the original decision?"
+— Section 6 (Challenges) in Review Mode includes a comparison: "How has this changed since the original decision?"
 
 Version types — when the user records in Review Mode, they select one of:
 
@@ -856,7 +868,7 @@ No implementation required (Section 10):
 For No Action decisions: the section shows the deliberate acknowledgment — "This is a deliberate decision to take no action" — once confirmed. No further fields appear.
 
 No review scheduled (Section 11):
-The Record Decision completion gate requires a review trigger. If no trigger is set, the gate explanation reads: "Set a review condition before recording." This is the only empty state that blocks recording.
+The Record Decision completion gate requires a review trigger unless explicitly overridden with a logged reason. If no trigger is set and no override has been given, the gate explanation reads: "Set a review condition before recording." *(Corrected per ADR-002/C-04: this line previously stated the review-trigger requirement had no override path.)*
 
 ⸻
 
@@ -877,7 +889,7 @@ Appears in Section 6 as a challenge: "This implementation would bring the positi
 Interaction: acknowledged. Not blocked.
 
 Primary reason field left empty:
-The Record Decision action is disabled with the explanation: "Add a primary reason before recording." No inline error shown on the field itself — the explanation in the footer is sufficient.
+The Record Decision action remains unavailable (`aria-disabled`) with the explanation: "Add a primary reason before recording." No inline error shown on the field itself — the explanation in the footer is sufficient.
 
 Critical assumption unresolved:
 If an assumption in Section 9 has status "Broken" and has not been acknowledged, a soft friction item appears in Section 6: "A supporting assumption for this decision has been classified as Broken." The user acknowledges. Not blocked.
@@ -893,7 +905,7 @@ Completion Experience
 
 After selecting Record Decision, the Workspace transitions to the post-decision state.
 
-The scrolling body clears all sections. The Final Decision Summary card is displayed centered in the body, at full reading width, with generous space above and below it. The card is in its completed form — all six fields populated with the recorded values.
+The scrolling body clears all sections. The Final Decision Card is displayed centered in the body, at full reading width, with generous space above and below it. The card is in its completed form — all six fields populated with the recorded values.
 
 Immediately below the card, a single line:
 "Decision recorded · [date] · [investment name or portfolio scope]"
@@ -960,7 +972,7 @@ Scrolling Body — maximum reading width, centered
     — Material risks (Atlas-proposed, Accept / Edit)
     — "Add assumption" / "Add risk" controls
 
-[5] WHAT SUPPORTS THIS DECISION
+[5] SUPPORTING FACTORS
   — Section header + collapse control
   — Collapsed summary: item count
   — [Expanded]
@@ -969,7 +981,7 @@ Scrolling Body — maximum reading width, centered
     — Portfolio alignment statements
     — Historical consistency statement
 
-[6] WHAT CHALLENGES THIS DECISION
+[6] CHALLENGES
   — Section header + collapse control
   — Collapsed summary: challenge count + acknowledged count
   — [Expanded]
@@ -1018,7 +1030,7 @@ Scrolling Body — maximum reading width, centered
   — Review depth note field
   — Atlas reminder behavior note
 
-[12] FINAL DECISION SUMMARY
+[12] FINAL DECISION CARD
   — Section label
   — Summary card (live-updating)
     — Decision
@@ -1036,10 +1048,10 @@ Scrolling Body — maximum reading width, centered
 Fixed Footer
   — Save as Draft (secondary)
   — Return to Workspace (secondary)
-  — Record Decision (primary — available or disabled with explanation)
+  — Record Decision (primary — available or unavailable via `aria-disabled="true"`, never native `disabled`, remaining focusable; unavailable activation navigates to the first unmet required field)
 
 Post-Decision State (replaces body after recording)
-  — Final Decision Summary card (full emphasis)
+  — Final Decision Card (full emphasis)
   — Confirmation line
   — Three contextual next steps
 
@@ -1056,7 +1068,7 @@ The following component-level decisions are now fixed:
 
 — Fixed Header components: decision subject, decision type label, Atlas badge, "Return to [Workspace name]" control, close control.
 
-— Fixed Footer components: primary Record Decision action (available / disabled with named explanation), Save as Draft, Return to Workspace. Post-decision: Close Workspace only.
+— Fixed Footer components: primary Record Decision action (available, or unavailable via `aria-disabled="true"` with named explanation — never native `disabled`, remains focusable), Save as Draft, Return to Workspace. Post-decision: Close Workspace only.
 
 — Section 1 — Current Conclusion: conclusion card with source reference, conclusion statement, confidence indicator, and "View full analysis →" link. Atlas-generated, read-only.
 
@@ -1066,9 +1078,9 @@ The following component-level decisions are now fixed:
 
 — Section 4 — Decision Rationale: primary reason text area (user-authored, required), Atlas supporting conclusions (toggleable), assumptions (Atlas-proposed, Accept/Edit), risks (Atlas-proposed, Accept/Edit).
 
-— Section 5 — What Supports This Decision: four groups — evidence, intact assumptions, portfolio alignment, historical consistency. Flag control on evidence items. Atlas-generated.
+— Section 5 — Supporting Factors: four groups — evidence, intact assumptions, portfolio alignment, historical consistency. Flag control on evidence items. Atlas-generated.
 
-— Section 6 — What Challenges This Decision: challenge rows with type labels, action indicators, and Acknowledge controls (preserved in record, not deletable). Behavioral context items separately labeled with dismiss control. Unacknowledged challenges create soft friction at the footer.
+— Section 6 — Challenges: challenge rows with type labels, action indicators, and Acknowledge controls (preserved in record, not deletable). Behavioral context items separately labeled with dismiss control. Unacknowledged challenges create soft friction at the footer.
 
 — Section 7 — Opportunity Cost: decision subject summary row, alternative rows (with user note fields per row), Atlas-generated comparison lines, user-editable conclusion line. Required for allocation decisions; hidden for No Action and Maintain.
 
@@ -1078,17 +1090,17 @@ The following component-level decisions are now fixed:
 
 — Section 10 — Implementation Plan: five-type selector, conditional detail fields per type. No Action requires deliberate acknowledgment. Implementation status tracked externally after recording.
 
-— Section 11 — Review Plan: four-type trigger selector, conditional detail fields, review depth note, Atlas reminder behavior note. Required before recording.
+— Section 11 — Review Plan (the section): four-type trigger selector, conditional detail fields, review depth note, Atlas reminder behavior note. The Review Condition it produces (the completion-gate content) is required only where the decision-type matrix requires it, and an explicit logged override may stand in place of it.
 
-— Section 12 — Final Decision Summary: live-updating summary card assembled from user inputs across six fields (Decision, Reason, Confidence, Portfolio impact, Implementation, Review condition). Becomes the permanent Atlas Memory record.
+— Section 12 — Final Decision Card: live-updating summary card assembled from user inputs across six fields (Decision, Reason, Confidence, Portfolio impact, Implementation, Review condition). Becomes the permanent Atlas Memory record.
 
-— Section 13 — Record Decision: context statement, challenge count note, primary action with available/disabled states and named explanation per incomplete requirement.
+— Section 13 — Record Decision: context statement, challenge count note, primary action available or unavailable via `aria-disabled="true"` (never native `disabled`, remains focusable; unavailable activation navigates to the first unmet required field) with named explanation per incomplete requirement.
 
 — Editing model: four ownership classifications (Atlas Generated, Atlas Suggested, User Owned, Collaborative) with consistent application across all fields. All fields lock after recording. Post-recording amendments create version history entries.
 
 — Adaptive depth: nine decision types with defined expansion patterns (Maintain, Add minor, Add major / Initiate, Reduce minor, Reduce major / Exit, Avoid / Reject, Portfolio Reallocation, Defer, No Action).
 
-— Validation rules: four required fields before recording (decision text, primary reason, implementation type, review trigger). Soft friction for unacknowledged challenges. All other fields optional.
+— Validation rules: universal minimum before recording is decision text and primary reason; implementation type, review trigger, and Portfolio Consequences acknowledgment are conditionally required by decision type. Soft friction, never a hard block, for unacknowledged challenges. All other fields optional. *(Corrected per ADR-002/C-04; this line previously stated a flat four-field rule with no decision-type conditionality.)*
 
 — Navigation: continuous scroll, context-preserving overlay, "View full analysis" as nested context, draft restoration, history access from header, escape-key behavior.
 
@@ -1098,7 +1110,7 @@ The following component-level decisions are now fixed:
 
 — Error prevention: six identified concern types, each surfaced through Section 6 as challenge items or footer friction. None block recording except genuinely incomplete required fields.
 
-— Completion experience: Final Decision Summary card displayed at full emphasis, single confirmation line, three contextual next steps. No celebratory language.
+— Completion experience: Final Decision Card displayed at full emphasis, single confirmation line, three contextual next steps. No celebratory language.
 
 ⸻
 

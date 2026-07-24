@@ -6,6 +6,12 @@ Governs: Decision Workspace — all behavioral and interaction patterns, microin
 Depends on: UX-008 — Decision Workspace Philosophy, UX-009 — Screen Specification, UX-009A — Wireframe Specification
 Defers to: UX-011 — Decision Workspace Visual Design & Polish Specification
 
+**Correction Notice (Phase 2, governed by ADR-002 — 2026-07-24):** This document's original identity (Status, Owner, Governs, Depends on, Defers to, as above) and original date are preserved unchanged. Two semantic areas were corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md` and the Atlas UX Source Correction Plan, Phase 2:
+- **C-04 (Record Decision Completion Gate):** the completion-progression and "What UX-010 Establishes" summary lines were corrected from a flat "four required fields" restatement to the universal minimum plus decision-type-conditional requirements, with unacknowledged Challenges never affecting availability.
+- **C-06 (Unavailable Primary Action Accessibility):** the touch-deliberateness, screen-reader-announcement, and error-announcement passages were corrected to specify `aria-disabled="true"` (never native `disabled`), and to state explicitly that the control remains tappable and focusable while unavailable.
+
+This notice does not claim any of the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at each corrected passage. All content outside these two areas is unchanged. Section naming (Section 5, 6, 12 references) already matched the canonical "Supporting Factors," "Challenges," and "Final Decision Card" names used by the corrected UX-012 and its own C-03-corrected sibling documents, except for "Final Decision Summary," which this correction also updated to "Final Decision Card" for consistency.
+
 ⸻
 
 Governing Intent
@@ -55,7 +61,7 @@ The four high-emphasis moments from UX-009A create natural reading pauses. When 
 — Section 1: Current Conclusion
 — Section 3: Proposed Decision (specifically the user decision field)
 — Section 7: Opportunity Cost conclusion line
-— Section 12: Final Decision Summary
+— Section 12: Final Decision Card
 
 The deceleration is subtle — it should feel like gravity, not a lock. The user can scroll through without stopping if they choose.
 
@@ -72,7 +78,7 @@ Sections expand and collapse based on decision significance, not user choice alo
 Automatic expansion triggers — Atlas expands a section without user action when:
 
 A material contradiction is detected:
-Section 6 (What Challenges This Decision) expands automatically. A brief ambient note appears at the top of the section: "Atlas has identified a conflict with prior reasoning." The section does not flash or animate aggressively — it opens, and the relevant challenge item is briefly highlighted.
+Section 6 (Challenges) expands automatically. A brief ambient note appears at the top of the section: "Atlas has identified a conflict with prior reasoning." The section does not flash or animate aggressively — it opens, and the relevant challenge item is briefly highlighted.
 
 Confidence is assessed as low:
 Section 6 expands. The uncertainty items are presented first. Section 9 (Assumptions, Monitoring and Invalidation) expands to the Assumptions subsection.
@@ -81,7 +87,7 @@ Portfolio impact is significant (position change exceeds 2% of portfolio or a sh
 Section 8 (Portfolio Consequences) expands. The summary line is shown at the top of the section before the user scrolls to it.
 
 A prior decision exists on the same investment with an opposing decision type:
-Section 5 (What Supports This Decision) — historical consistency row — is expanded and the conflict is presented with a link to the prior decision.
+Section 5 (Supporting Factors) — historical consistency row — is expanded and the conflict is presented with a link to the prior decision.
 
 The implementation type is set to "Conditional" or "Deferred":
 Section 9 (Monitoring Conditions subsection) expands automatically, because deferred and conditional decisions require monitoring conditions to be meaningful.
@@ -325,7 +331,7 @@ The user selects "Discard draft" and confirms once: "Discard this draft? Your pr
 
 11. Confidence Interaction
 
-The confidence indicator in Section 12 (Final Decision Summary) is tappable/clickable.
+The confidence indicator in Section 12 (Final Decision Card) is tappable/clickable.
 
 When the user taps the confidence indicator:
 A compact explanation panel expands adjacent to the indicator. It shows:
@@ -350,7 +356,7 @@ Expand / collapse:
 The row shows the assumption statement and status indicator in collapsed state. Tapping the row expands it to show the supporting reasoning and any linked evidence.
 
 Edit:
-Tapping the edit control opens the assumption statement as an inline text field. The user may reword it. Atlas's original wording is accessible via "View original →". Saving the edit updates the assumption in the Final Decision Summary if the assumption appears there.
+Tapping the edit control opens the assumption statement as an inline text field. The user may reword it. Atlas's original wording is accessible via "View original →". Saving the edit updates the assumption in the Final Decision Card if the assumption appears there.
 
 Comment:
 A comment field opens below the assumption. The user adds a note — for example, "This assumes Q3 data confirms the trend. Revisit after September earnings." The comment is preserved in the record.
@@ -441,9 +447,9 @@ Atlas never overwrites. Every change creates a new version entry. The original r
 As the user approaches completion, the Workspace reduces its interactive surface. This is a deliberate editorial choice — the final section should feel quiet and focused.
 
 Progression signal:
-When all four required fields are complete (user decision text, primary reason, implementation type, review trigger), the Record Decision button reaches full availability. No fanfare. No progress percentage. The button simply becomes available. The completion gate explanation disappears.
+When the universal minimum (user decision text, primary reason) and any decision-type-conditional requirements (implementation type, review trigger unless overridden, Portfolio Consequences acknowledgment where applicable) are complete, the Record Decision button reaches full availability. Unacknowledged Challenges never affect this availability. No fanfare. No progress percentage. The button simply becomes available. The completion gate explanation disappears. *(Corrected per ADR-002/C-04: this line previously stated a flat "four required fields" rule with no decision-type conditionality.)*
 
-The Final Decision Summary (Section 12) has been live-updating throughout. By the time the user reaches it, it reflects their completed work. Reading it in full before recording is the natural last step.
+The Final Decision Card (Section 12) has been live-updating throughout. By the time the user reaches it, it reflects their completed work. Reading it in full before recording is the natural last step.
 
 The body content immediately above the footer (Section 13) shows the context statement: "Recording this decision will preserve it in Atlas Memory." If any challenges remain unacknowledged, the count note appears. No other elements compete for attention at this point.
 
@@ -459,7 +465,7 @@ Transition:
 The scrolling body transitions to the post-decision state. The transition is not instantaneous — a brief pause (approximately 400ms) follows the action before the body clears. This pause is the moment of recording. It should feel like something meaningful just happened, without requiring any visual celebration to communicate it.
 
 Post-decision state content:
-The Final Decision Summary card appears at full reading width, centered in the body, with generous surrounding space. It is the only content in the body. The card is in completed form — all six fields, all user-authored and Atlas-assembled content, rendered as a read-only document.
+The Final Decision Card appears at full reading width, centered in the body, with generous surrounding space. It is the only content in the body. The card is in completed form — all six fields, all user-authored and Atlas-assembled content, rendered as a read-only document.
 
 Confirmation line:
 A single line immediately below the card: "Decision recorded · [date] · [investment name or portfolio scope]."
@@ -573,7 +579,7 @@ Record Decision on mobile:
 The footer is always visible. On mobile, the footer occupies the bottom of the viewport — the primary action, secondary actions, and (when relevant) the completion gate explanation are all within thumb reach. The Record Decision button has a minimum tap target of 48px height.
 
 Touch deliberateness:
-Touch interactions are designed to be deliberate, not accidental. The Record Decision action requires a single deliberate tap — no double-tap, no swipe, no hold. Its disabled state makes it untappable without any visual feedback suggesting it is active.
+Touch interactions are designed to be deliberate, not accidental. The Record Decision action requires a single deliberate tap — no double-tap, no swipe, no hold. Its unavailable state carries no visual feedback suggesting it is active, but the control remains tappable: a single deliberate tap while unavailable behaves identically to the keyboard contract described in Section 2 — it does not record the decision, but moves focus to the first unmet required field and re-announces the explanation there. *(Corrected per ADR-002/C-06: this line previously stated the disabled state "makes it untappable," which would contradict the requirement that the control remain focusable and reachable on tap.)*
 
 ⸻
 
@@ -586,7 +592,7 @@ Challenge item acknowledgment: announced as "[Challenge text] — acknowledged."
 
 Atlas suggestions: announced as "Atlas suggestion available for [field name]. [First sentence of suggestion]." The suggestion controls are announced as "Accept suggestion," "Dismiss suggestion," "Show reasoning."
 
-Record Decision button: announced as "Record Decision — [available / disabled: reason]." The reason for the disabled state is included in the announcement.
+Record Decision button: announced as "Record Decision — [available / unavailable: reason]." The reason for the unavailable state is included in the announcement. The button carries `aria-disabled="true"` — never the native HTML `disabled` attribute — so it remains in the accessibility tree and reachable by screen reader navigation at all times. *(Corrected per ADR-002/C-06: this line previously used "disabled" without qualification.)*
 
 Confidence indicator: announced as "Decision confidence: [level]. Tap to inspect." When expanded: the explanation content is announced in full.
 
@@ -608,7 +614,7 @@ Interaction timing:
 No time limits on any interaction. No auto-dismissing tooltips or suggestions that require the user to respond within a window. The Atlas suggestion affordance appears after a pause but remains available until the user acts. Drafts are saved continuously — there is no session timeout that would lose work.
 
 Error announcements:
-Completion gate explanations (the text adjacent to the disabled Record Decision button) are announced when the button is focused and when its state changes (from disabled to available, or when a new explanation appears).
+Completion gate explanations (the text adjacent to the unavailable Record Decision button, exposed via `aria-describedby`) are announced when the button is focused and when its state changes (from unavailable to available, or when a new explanation appears). This is reachable because the button carries `aria-disabled="true"` rather than the native `disabled` attribute, and therefore remains focusable throughout. *(Corrected per ADR-002/C-06: this line previously assumed the button could be "focused" while "disabled" without stating the mechanism — native `disabled` would remove the button from the tab order and make this requirement unsatisfiable.)*
 
 ⸻
 
@@ -718,7 +724,7 @@ The following interaction behaviors are now fixed:
 
 — Interaction philosophy: three behavioral modes (Ambient, Responsive, Collaborative) with clear transition logic. The governing test for every interaction: "Does this help the user think more clearly?"
 
-— Scroll behavior: gentle deceleration at the four high-emphasis moments (Current Conclusion, Proposed Decision, Opportunity Cost conclusion, Final Decision Summary). Smooth animated scrolling for all auto-scroll events. Tapping Record Decision while incomplete scrolls to the first incomplete field.
+— Scroll behavior: gentle deceleration at the four high-emphasis moments (Current Conclusion, Proposed Decision, Opportunity Cost conclusion, Final Decision Card). Smooth animated scrolling for all auto-scroll events. Tapping Record Decision while incomplete scrolls to the first incomplete field.
 
 — Progressive disclosure triggers: seven automatic expansion conditions (material contradiction, low confidence, significant portfolio impact, prior opposing decision, conditional/deferred implementation type, price-based invalidation condition, major decision entry). Four automatic collapse conditions (decision type changed to Maintain/No Action, all challenges acknowledged, decision type changed to Defer, major type change).
 
@@ -748,9 +754,9 @@ The following interaction behaviors are now fixed:
 
 — Version behavior: version type must be selected before editing begins. Five version types with defined scopes. Version history panel (read-only) accessible from decision record. Original reasoning never overwritten.
 
-— Completion behavior: Record Decision reaches availability when four required fields are complete. No fanfare. Live-updating Final Decision Summary throughout. 400ms transition pause before post-decision state.
+— Completion behavior: Record Decision reaches availability when the universal minimum and any decision-type-conditional requirements are complete; unacknowledged Challenges never affect availability. No fanfare. Live-updating Final Decision Card throughout. 400ms transition pause before post-decision state. *(Corrected per ADR-002/C-04; this line previously stated a flat "four required fields" rule.)*
 
-— Post-recording behavior: Final Decision Summary at full emphasis. Single confirmation line. No celebration. Maximum three contextual next steps. Footer changes to "Close Workspace" only.
+— Post-recording behavior: Final Decision Card at full emphasis. Single confirmation line. No celebration. Maximum three contextual next steps. Footer changes to "Close Workspace" only.
 
 — Error prevention: nine defined concern types, each surfaced through ambient notes, challenge items, or completion gate explanations. No blocking except missing required fields. All error prevention language is collaborative and specific.
 
@@ -760,7 +766,7 @@ The following interaction behaviors are now fixed:
 
 — Mobile interaction adaptations: fields expand to full screen when focused. Section headers full-row tap target. Opportunity cost comparison is fullscreen modal on mobile. Collaboration via bottom sheet. Footer always accessible at thumb height.
 
-— Accessibility behavior: screen reader announcements for all section state changes, Atlas suggestions, challenge acknowledgments, button states, post-recording content. Focus management on auto-expansion and Record Decision disabled tap. Motion reduction removes all transitions. No time limits on any interaction.
+— Accessibility behavior: screen reader announcements for all section state changes, Atlas suggestions, challenge acknowledgments, button states, post-recording content. Focus management on auto-expansion and on activation of the Record Decision button while unavailable (`aria-disabled="true"`, never native `disabled`) — focus moves to the first unmet required field. Motion reduction removes all transitions. No time limits on any interaction.
 
 — Interaction hierarchy: three tiers (Immediate, Secondary, Rare) with defined membership. Rare interactions not surfaced in the primary flow.
 
@@ -800,10 +806,10 @@ Typography hierarchy:
 Spacing system:
 — The rhythm between sections — how much space separates them, and how the section boundary divider behaves
 — The internal rhythm within sections — between labeled groups, between rows, between the section label and the first content item
-— The spacing within the Final Decision Summary card
+— The spacing within the Final Decision Card
 
 Visual emphasis:
-— How the four high-emphasis moments (Current Conclusion, Proposed Decision, Opportunity Cost conclusion, Final Decision Summary) are visually distinguished from the surrounding sections
+— How the four high-emphasis moments (Current Conclusion, Proposed Decision, Opportunity Cost conclusion, Final Decision Card) are visually distinguished from the surrounding sections
 — How the user decision field is visually elevated above all other text fields
 
 Color semantics:
@@ -815,7 +821,7 @@ Color semantics:
 
 Card treatments:
 — The visual form of the Current Conclusion card (Section 1)
-— The visual form of the Final Decision Summary card (Section 12) — both in live-updating and completed states
+— The visual form of the Final Decision Card (Section 12) — both in live-updating and completed states
 — The visual form of the Atlas proposal block (Section 3)
 — Whether individual challenge items, assumption rows, and alternative rows use card-level containment or divider-level separation
 
@@ -830,7 +836,7 @@ Dividers:
 
 Elevation:
 — Whether the fixed header and footer use elevation (shadow, surface distinction) to communicate their fixed nature
-— Whether the Final Decision Summary card uses elevation in its completed form
+— Whether the Final Decision Card uses elevation in its completed form
 
 Motion design:
 — The duration and easing of section expand/collapse animations
@@ -858,7 +864,7 @@ Empty-state visuals:
 — The empty state for the primary reason field
 
 Completion visuals:
-— The exact visual form of the post-decision state — the Final Decision Summary card at full emphasis, the confirmation line, and the three contextual next steps
+— The exact visual form of the post-decision state — the Final Decision Card at full emphasis, the confirmation line, and the three contextual next steps
 — Whether the 400ms recording pause includes any visual feedback (a momentary surface change, a text change on the button before the transition, or simply a pause with no change)
 
 Overall premium feel:
