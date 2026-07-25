@@ -6,6 +6,11 @@ Governs: Design token philosophy and taxonomy, naming conventions, component gov
 Depends on: UX-012A — Foundations; UX-012B — Components & Reusable Patterns; UX-012C — Interaction, Navigation & Responsive Behavior; UX-008 through UX-011
 Part D of: UX-012 — Atlas Design System & Workspace Consistency Specification
 
+**Correction Notice (Phase 3C, governed by ADR-002 — 2026-07-25):** This document's original identity (Status, Owner, Governs, Depends on, Part D of, as above) and original date are preserved unchanged. One semantic area was corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md` and the Atlas UX Source Correction Plan, Phase 3C:
+- **C-03 (Decision Workspace Sequence terminology):** the Naming Conventions section's "Sections" example bullet mixed two already-canonical terms with two superseded ones in the same sentence. "What Supports This Decision" was corrected to "Supporting Factors," and "Challenge Review" was corrected to "Challenges." The bullet's other two examples — "Why a Decision Is Required" and "Portfolio Consequences" — were already canonical and are unchanged.
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. All content outside this one example bullet, including all governance, token, and evolution content, is unchanged.
+
 ⸻
 
 1. Governance Philosophy
@@ -149,7 +154,7 @@ Actions:
 — Destructive actions name the consequence. "Discard Draft." "Supersede Decision." "Remove Monitoring Condition." Not "Delete." Not "Cancel."
 
 Sections:
-— Section names describe their content role in the reasoning arc. "What Supports This Decision." "Why a Decision Is Required." "Challenge Review." "Portfolio Consequences."
+— Section names describe their content role in the reasoning arc. "Supporting Factors." "Why a Decision Is Required." "Challenges." "Portfolio Consequences."
 — Not: "Section 1." Not: "Top Card." Not: "Analysis Area."
 
 AI behaviors:

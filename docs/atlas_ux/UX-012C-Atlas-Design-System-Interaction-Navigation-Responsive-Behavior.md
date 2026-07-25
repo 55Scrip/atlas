@@ -6,6 +6,12 @@ Governs: Interaction language, navigation model, motion principles, interaction 
 Depends on: UX-012A — Foundations; UX-012B — Components & Reusable Patterns; UX-008 through UX-011
 Part C of: UX-012 — Atlas Design System & Workspace Consistency Specification
 
+**Correction Notice (Phase 3C, governed by ADR-002 — 2026-07-25):** This document's original identity (Status, Owner, Governs, Depends on, Part C of, as above) and original date are preserved unchanged. Two semantic areas were corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md` and the Atlas UX Source Correction Plan, Phase 3C:
+- **C-02 (AI Authorship and Provenance):** the AI Interaction section's Accept behavior previously stated that accepting an Atlas suggestion, by itself, transitioned the field directly to "user-modified-from-atlas" state — this read as authorship transferring on acceptance alone. This was corrected so that acceptance alone produces an Accepted state ("Atlas Suggested / User Accepted"), with authorship not yet transferred; "user-modified-from-atlas" is now reached only after a genuine, subsequent edit — the same model already corrected in UX-012B. The adjacent label was also corrected, from "modification indicator" to "attribution indicator," because acceptance alone has not modified the content — the indicator's placement and interaction behavior are unchanged; only what it represents was corrected.
+- **C-03 (Decision Workspace Sequence terminology):** one stale illustrative naming example — "Section names describe their content role ('What Supports This Decision,' not 'Supporting Section')" — was corrected to use the canonical name "Supporting Factors."
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. All content outside these two areas, including all interaction, navigation, responsive, and accessibility content, is unchanged.
+
 ⸻
 
 1. Interaction Philosophy
@@ -443,7 +449,7 @@ Atlas AI assistance is contextual, secondary, and always explicitly attributed. 
 
 Suggestion appearance: The Atlas Suggestion panel appears after a 1.5-second pause in the user's editing — enough time to complete a thought but brief enough that the suggestion feels timely. The panel uses the motion token for Insert. On first appearance, the user's attention is not forced to it — it appears in the peripheral content area below the field. The user may continue editing and the suggestion remains available until they interact with it or navigate away.
 
-Accept: The user accepts the Atlas suggestion by activating the "Accept" control. The field content replaces with the suggestion text. The field transitions to the user-modified-from-atlas state. The modification indicator appears in metadata scale below the field. A five-second structural undo window activates.
+Accept: The user accepts the Atlas suggestion by activating the "Accept" control. The field content replaces with the suggestion text. The field transitions to Accepted state ("Atlas Suggested / User Accepted") — authorship is not yet transferred; only a subsequent genuine edit transitions it to user-modified-from-atlas state. The attribution indicator appears in metadata scale below the field. A five-second structural undo window activates.
 
 Partial accept: The user activates "Partial accept." The suggestion text appears with segment boundaries visible — individual sentences or clauses are selectable. The user taps or clicks segments to confirm them. Confirmed segments render at primary text weight; unconfirmed segments render at tertiary. When the user completes their selection, the confirmed segments assemble in the field. The five-second undo window activates.
 
@@ -777,7 +783,7 @@ Component governance:
 
 Naming conventions (full system):
 — Workspace names describe their reasoning purpose ("Decision Workspace," not "Decision Panel" or "Decision View")
-— Section names describe their content role ("What Supports This Decision," not "Supporting Section")
+— Section names describe their content role ("Supporting Factors," not "Supporting Section")
 — Action names use Verb + Noun ("Record Decision," "Complete Review," "Dismiss Suggestion")
 — State names use consistent vocabulary from the state vocabulary defined in UX-012B Section 13
 — Color token names describe semantic meaning ("color.semantic.amber" not "color.warning-orange")
