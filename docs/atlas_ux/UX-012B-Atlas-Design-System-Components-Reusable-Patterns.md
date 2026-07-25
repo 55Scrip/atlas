@@ -6,6 +6,12 @@ Governs: Reusable component library, component taxonomy, component states, acces
 Depends on: UX-012A — Atlas Design System Foundations; UX-008 through UX-011
 Part B of: UX-012 — Atlas Design System & Workspace Consistency Specification
 
+**Correction Notice (Phase 3, governed by ADR-002 — 2026-07-25):** This document's original identity (Status, Owner, Governs, Depends on, Part B of, as above) and original date are preserved unchanged. Two semantic areas were corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md` and the Atlas UX Source Correction Plan, Phase 3:
+- **C-02 (AI Authorship and Provenance):** the Decision Section, Proposed Decision, and Atlas Suggestion components previously stated that accepting an Atlas proposal, by itself, transitioned the field directly to "user-modified-from-atlas" state — this read as authorship transferring on acceptance alone. These passages were corrected so that acceptance alone produces an Accepted state ("Atlas Suggested / User Accepted"), with authorship not yet transferred; "user-modified-from-atlas" is now reached only after a genuine, subsequent edit to the accepted content. The Long-form Editor's own "User-modified-from-atlas" states-list entry already described this correctly (a genuine-edit state, not an acceptance-triggered one) and is unchanged.
+- **C-03 (Decision Workspace Sequence terminology):** two "Reuse rules" cross-references to the Decision Workspace's own section names were corrected — "Section 5 — What Supports This Decision" to "Section 5 — Supporting Factors," and "Section 6 — Challenge Review" to "Section 6 — Challenges."
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. All content outside these two areas, including every other component's own reusable definitions, is unchanged.
+
 ⸻
 
 1. Component Philosophy
@@ -240,9 +246,9 @@ Decision Section
 
 Extends Editable Section. Used for the sections in the Decision Workspace that contain the user's primary authored commitment — the decision statement, primary reason, confidence assessment.
 Additional anatomy: Atlas proposal block (the Atlas-proposed version of the content — distinct surface, "ATLAS SUGGESTS" label, secondary text weight). User decision field (the user's authored version — primary text weight, no label). Accept/modify controls for the Atlas proposal (appear in the proposal block's hover/focused state).
-States: all standard Editable Section states, plus: atlas-proposed (content is Atlas-suggested, not yet user-confirmed), user-authored (user has written original content), user-modified-from-atlas (user has edited the Atlas proposal).
+States: all standard Editable Section states, plus: atlas-proposed (content is Atlas-suggested, not yet user-confirmed), atlas-accepted (content is Atlas-suggested and has been accepted by the user, unedited — displayed as "Atlas Suggested / User Accepted"; authorship is not yet transferred), user-authored (user has written original content), user-modified-from-atlas (user has genuinely edited the Atlas proposal after acceptance).
 Collapse behavior: The collapsed summary reflects the user's authored content when present. When only the Atlas proposal exists, the summary reflects the proposal with a subtle "Atlas proposed" qualifier.
-Interaction: The user decision field is the primary authoring target. The Atlas proposal block is secondary — it can be accepted, modified, or ignored. If accepted, the content copies into the user decision field and becomes user-modified-from-atlas state.
+Interaction: The user decision field is the primary authoring target. The Atlas proposal block is secondary — it can be accepted, modified, or ignored. If accepted, the content copies into the user decision field and becomes atlas-accepted state ("Atlas Suggested / User Accepted") — authorship is not yet transferred. Only a subsequent genuine edit to the copied content transitions it to user-modified-from-atlas state.
 
 ⸻
 
@@ -331,7 +337,7 @@ Optional content: A grouping of items by type (evidence, assumptions, alignment,
 Priority: Level 3 in the information hierarchy. Presented after the conclusion and implication, before challenges.
 Visual emphasis: Subtle — supporting factors do not compete with the conclusion for the user's primary attention. They are available for the user who wants to understand why the conclusion holds.
 Interaction: Each item may expand to show additional reasoning or a link to the source.
-Reuse rules: Used in Investment Workspace (thesis support), Portfolio Workspace (portfolio strengths), Decision Workspace (Section 5 — What Supports This Decision). Not used in Dashboard.
+Reuse rules: Used in Investment Workspace (thesis support), Portfolio Workspace (portfolio strengths), Decision Workspace (Section 5 — Supporting Factors). Not used in Dashboard.
 
 ⸻
 
@@ -343,7 +349,7 @@ Optional content: An Atlas reasoning line beneath Material and Unresolved challe
 Priority: Level 4 in the information hierarchy. Presented after supporting factors — the user builds understanding of what is working before encountering what is not.
 Visual treatment: Left-border rule in amber at three opacity levels corresponding to the three severity tiers. See Section 14 (Feedback Components) for the severity model.
 Interaction: Informational challenges: expand/collapse. Material challenges: expand/collapse plus visible acknowledgment control. Unresolved challenges: expand/collapse plus acknowledgment control that requires deliberate interaction (not a one-tap dismiss).
-Reuse rules: Used in Investment Workspace (thesis challenges), Portfolio Workspace (portfolio weaknesses), Decision Workspace (Section 6 — Challenge Review). One of the most widely reused components in the system.
+Reuse rules: Used in Investment Workspace (thesis challenges), Portfolio Workspace (portfolio weaknesses), Decision Workspace (Section 6 — Challenges). One of the most widely reused components in the system.
 
 ⸻
 
@@ -487,7 +493,7 @@ Purpose: Presents the Atlas-proposed version of the user's decision — the sugg
 Required content: "ATLAS SUGGESTS" label in section-label scale. The proposed decision statement in secondary text weight on a subtle panel surface. The primary reason for the proposal in secondary body text.
 Optional content: A condensed opportunity cost note ("Over maintaining current position or initiating Danaher"). Accept, Modify, and Ignore controls.
 States: Pending (user has not yet interacted with the proposal), Accepted (user has confirmed the proposal as their decision), Modified (user has edited the proposal), Ignored (user has written a different decision).
-Interaction: Accept copies the proposal into the user decision field (user-modified-from-atlas state). Modify opens the user decision field with the proposal pre-populated for editing. Ignore keeps the proposal visible but moves focus to the empty user decision field.
+Interaction: Accept copies the proposal into the user decision field, entering Accepted state ("Atlas Suggested / User Accepted" — authorship is not yet transferred). Modify opens the user decision field with the proposal pre-populated for editing; a genuine edit to the field transitions it to user-modified-from-atlas state. Ignore keeps the proposal visible but moves focus to the empty user decision field.
 Visual treatment: Clearly subordinate to the user decision field above it. Contained within a panel-surface block with the "ATLAS SUGGESTS" label. Not as visually prominent as the user's authored decision.
 Reuse rules: Decision Workspace (Section 3 — Proposed Decision). Must not appear outside this context — the proposal is specific to the moment of decision formation.
 
@@ -657,7 +663,7 @@ Optional content: A "View difference →" control that shows a before/after comp
 Trigger: Appears after a defined editing pause (approximately 1.5 seconds of inactivity following the user's most recent edit). Never appears while the user is actively typing. Appears at most once per editing session per field.
 Placement: Below the field it addresses, on a panel-surface block. Not as an overlay or modal.
 Dismiss behavior: Dismissing removes the suggestion immediately. The suggestion does not reappear during the current editing session.
-Accept behavior: Accepting replaces the field content with the suggestion. The field transitions to user-modified-from-atlas state. A five-second undo control appears.
+Accept behavior: Accepting replaces the field content with the suggestion. The field transitions to Accepted state ("Atlas Suggested / User Accepted") — authorship is not yet transferred; only a subsequent genuine edit transitions it to user-modified-from-atlas state. A five-second undo control appears.
 Partial accept behavior: A partial accept mode shows the suggestion with selectable segments. The user confirms individual sentences or clauses. The confirmed selections assemble in the field.
 Editing behavior: If the user edits the field after the suggestion appears without accepting or dismissing, the suggestion panel dims and then disappears after a short delay.
 Historical behavior: Suggestions are not preserved in the decision record. Only the final content of the field — whatever the user authored or confirmed — is recorded.

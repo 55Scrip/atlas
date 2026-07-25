@@ -1,10 +1,16 @@
 UX-012A — Atlas Design System Foundations
 
-Status: Foundation Specification Complete
+Status: Superseded — see UX-012 §5 (Level 2/4 hierarchy, corrected per ADR-002 C-01)
 Owner: Atlas Product
 Governs: Design system philosophy, cross-workspace principles, information hierarchy, typography, spacing, layout, Workspace frame, section template, reading rhythm, responsive philosophy, accessibility
 Depends on: UX-008, UX-009, UX-009A, UX-010, UX-011
 Part A of: UX-012 — Atlas Design System & Workspace Consistency Specification
+
+**Correction Notice (Phase 3, governed by ADR-002 — 2026-07-25):** This document's original identity (Owner, Governs, Depends on, Part A of, as above) and original date are preserved unchanged. Two semantic areas were corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md` and the Atlas UX Source Correction Plan, Phase 3:
+- **C-01 (Information Hierarchy authority):** the `Status:` line above is updated to record that this document's own Level 2/4 hierarchy wording — originally "Foundation Specification Complete" — is superseded specifically for hierarchy authority by UX-012 §5, which was corrected to adopt this document's own original Level 2/4 wording (Material Implication / Challenges, Uncertainty, and Contradiction). This supersession is scoped to hierarchy authority only; the remaining Foundation content below (product philosophy, typography, spacing, layout, Workspace frame, accessibility, and all other sections) is not superseded and remains part of this document.
+- **C-03 (Decision Workspace Sequence terminology):** one stale component reference — "The Final Decision Summary card" — was corrected to "The Final Decision Card" in the card-emphasis discussion, matching the ten other, already-correct occurrences of the canonical name elsewhere in this document.
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. All content outside these two areas is unchanged.
 
 ⸻
 
@@ -223,7 +229,7 @@ Density: The Dashboard uses compact signal density. The Decision Workspace uses 
 
 Default expansion: The Dashboard defaults most content to collapsed. The Decision Workspace opens its most important sections by default. This reflects the different reading modes: scanning versus linear reading.
 
-Card emphasis: The Final Decision Summary card is one of the most prominently contained elements in Atlas — it deserves strong visual framing because it is a permanent record. Supporting factor cards in the Investment Workspace require only subtle separation. Containment strength is proportional to the significance and permanence of the content.
+Card emphasis: The Final Decision Card is one of the most prominently contained elements in Atlas — it deserves strong visual framing because it is a permanent record. Supporting factor cards in the Investment Workspace require only subtle separation. Containment strength is proportional to the significance and permanence of the content.
 
 Editing presence: The Dashboard has essentially no editing. The Investment Workspace has moderate editing. The Decision Workspace has extensive editing. The editing affordances are present or absent based on the surface's purpose.
 

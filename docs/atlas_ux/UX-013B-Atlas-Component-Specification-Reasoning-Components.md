@@ -4,6 +4,14 @@ Governing references: UX-012 — Atlas Design System & Workspace Consistency Spe
 
 Volume 2 of the Atlas Component Library. This document specifies every Atlas Reasoning Component in production-ready detail. Figma components can be built directly from these specifications. Engineering can implement without inventing behavior. Future designers can extend Atlas without reinterpretation.
 
+**Correction Notice (Phase 3, governed by ADR-002 — 2026-07-25):** This document's original identity (title, governing references, and original date, as above) is preserved unchanged. Two semantic areas were corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md` and the Atlas UX Source Correction Plan, Phase 3:
+- **C-01 (Information Hierarchy):** the Reasoning Audit's "Metadata, labels, contextual text: Level 4–5" clause was corrected to "Levels 5–6," and the Context Panel's own hierarchy classification was corrected from "Level 4 or Level 5" to "Level 5," since Level 4 is now reserved exclusively for Challenges, Uncertainty, and Contradiction (per UX-012 §5, corrected), and the Context Panel's own declared purpose — background, definitional, and reference content — never includes Challenge or contradiction content.
+- **C-02 (AI Authorship and Provenance):** the Conclusion component's Engineering Notes were clarified, without changing the existing silent-label-update behavior, to state that the original Atlas text and acceptance/edit timestamps are separately, permanently preserved in the provenance record regardless of the current attribution label.
+
+**This correction does not resolve, and does not claim to resolve, this document's own separately labeled "Decision Workspace sequence"** (§14, Reasoning Relationships, below), which remains unchanged and is held for a dedicated future reconciliation with the canonical Decision Workspace sequence (Phase 3D of the Atlas UX Source Correction Plan) — this document is not fully C-03-consistent as a result, and no claim of complete C-03 consistency is made here.
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. All content outside these two corrected areas, including every Reasoning Component's own specification, is unchanged.
+
 ---
 
 # Reasoning Component Philosophy
@@ -149,6 +157,9 @@ Conclusion
 | `lastUpdated` | Date | — | No | Shows update indicator if set |
 | `isEditable` | boolean | `false` | No | True for Current Conclusion in Decision Workspace |
 | `historicalDate` | Date | — | No | Required when `variant === 'historical'` |
+| `originalAtlasText` | `string \| null` | `null` | No | The original Atlas-generated text, permanently preserved regardless of the current attribution label |
+| `acceptedAt` | `timestamp \| null` | `null` | No | When Atlas-generated content was accepted, if applicable |
+| `editedAt` | `timestamp \| null` | `null` | No | When the user genuinely edited the content, if applicable — distinct from acceptance |
 
 ## States
 
@@ -242,7 +253,7 @@ Figma Properties: `variant` (enum), `isEditable` (boolean), `hasSubStatement` (b
 
 - For the Current Conclusion (editable): implement as a rich text field, not a plain `<textarea>`. The statement supports basic formatting (bold for emphasis within the statement). Maximum recommended length: 3 sentences.
 - The Conclusion component is always server-persisted — it is never stored locally only. Draft state is handled by the Draft Indicator in the Workspace Header, not by the Conclusion component itself.
-- When `isAtlasGenerated` transitions to `isUserModified` (user edits Atlas-generated content), update the attribution silently. Do not prompt the user to confirm they have modified it.
+- When `isAtlasGenerated` transitions to `isUserModified` (user edits Atlas-generated content), update the attribution silently. Do not prompt the user to confirm they have modified it. The original Atlas text and the acceptance/edit timestamps are, regardless of the current attribution label, separately and permanently preserved in the provenance record — "silently" governs only the displayed label, never the underlying record.
 
 ## Anti-Patterns
 
@@ -1492,7 +1503,7 @@ A Context Panel communicates: here is relevant context that supports your reason
 
 ## Context Hierarchy
 
-Context Panels are Level 4 or Level 5 in the information hierarchy — subordinate to the reasoning content they support. Their typography is Role 5 (Contextual Text), never Role 1–2.
+Context Panels are Level 5 in the information hierarchy — subordinate to the reasoning content they support. Their typography is Role 5 (Contextual Text), never Role 1–2.
 
 ## Associated Reasoning
 
@@ -2149,7 +2160,7 @@ All Reasoning Components use the six-level Information Hierarchy consistently:
 - Conclusions, Opportunity Statements, Recommendation Statements: Level 1 typography
 - Component and Group names: Level 2–3 typography
 - Narrative explanations: Level 3 typography
-- Metadata, labels, contextual text: Level 4–5 typography
+- Metadata, labels, contextual text: Levels 5–6 typography
 
 ## Consistent Terminology
 
