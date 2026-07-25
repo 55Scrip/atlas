@@ -221,3 +221,108 @@ No source correction is begun within this ADR. The next task is to produce the S
 **Untracked files:** `docs/atlas_ux/governance/ADR-002-Critical-UX-Architecture-Resolutions.md`.
 
 No commit was made.
+
+## Addendum — C-02 Mixed-Origin Single-Field Content (2026-07-25)
+
+### Status
+
+Accepted, as an addendum to C-02. This addendum does not reopen, revise, or supersede any text under "C-02 — AI Authorship and Provenance" above, which remains unchanged and remains the governing rule for the case it already resolved. This addendum resolves a narrower, previously-undefined case that C-02's own canonical API property list named but never operationally defined.
+
+### Context
+
+A read-only scope reassessment of `UX-010-Decision-Workspace-Interaction-Microinteraction-Specification.md` (Section 4, "Atlas Suggestion Model," the passage "Accept: Atlas text replaces or appends to the user's text. A modification indicator appears: 'Modified with Atlas suggestion.'") and a matching passage in `UX-011-Decision-Workspace-Visual-Design-Polish-Specification.md` (Section 10, "AI Suggestion Presentation," line 311) found that both documents describe two distinct outcomes of accepting an Atlas suggestion — the suggestion **replacing** the field's content, and the suggestion being **appended** to pre-existing user-authored content in the same field — without distinguishing the two, and describe the "modification indicator" as firing on Accept alone in both cases.
+
+The replace case is already governed by C-02 above, and the wording describing it as producing "modification"/authorship transfer on Accept alone is a straightforward instance of the pattern C-02 already rejects (matching the defect already corrected in `UX-012B-Atlas-Design-System-Components-Reusable-Patterns.md` and `UX-012C-Atlas-Design-System-Interaction-Navigation-Responsive-Behavior.md`, whose own Accept passages, for the identical feature, were corrected under Phase 3 and Phase 3C of the Atlas UX Source Correction Plan).
+
+The append case is not resolved by the existing C-02 text. C-02's own canonical API properties (above) already name `authorship: 'atlas' | 'user' | 'mixed'` — the `'mixed'` value is present in that enumeration but its trigger, lifecycle, display label, and provenance requirements were never separately defined anywhere in this ADR, the Resolution Design, or any corrected UX source document. A dedicated architectural decision task, informed by a fresh reading of this ADR, the Atlas UX Source Correction Plan, both review documents, UX-010, UX-011, UX-012B, UX-012C, UX-013B, and UX-013E, and a corpus-wide search for every relevant term, concluded that existing authority plus first-principles reasoning is sufficient to define this case without inventing new architecture, and that the result should take the form of an addendum to C-02 rather than a new ADR, since every element of the decision below is inherited directly from C-02's own already-accepted model.
+
+This addendum exists because `mixed` was already named but not yet defined for this specific, single-field append case — not because C-02 as originally written was wrong about anything it actually decided.
+
+### Decision
+
+#### Semantic definition of `mixed`
+
+Authorship and provenance remain **field-level**, exactly as in the unamended C-02 model above. This addendum does not adopt token-level, character-level, span-level, or fragment-level provenance of any kind.
+
+A field may nonetheless contain content contributed by more than one origin. The field-level authorship value `mixed` means: **the field's current value contains both a user-authored component that existed before the current Atlas suggestion was accepted, and an Atlas-suggested component that was appended through Accept and has not subsequently been genuinely edited.** The exact textual boundary between the two components is not retained and is not claimed by this value.
+
+`mixed` does **not** mean: uncertain authorship; collaborative or real-time joint editing; wholly user-authored content; wholly Atlas-authored content; or `user-modified-from-atlas`.
+
+#### Replace behavior (unchanged)
+
+When Accept causes Atlas text to **replace** the field's current content, the resulting state is unchanged from the existing C-02 model above: Atlas-originated content, accepted by the user, not subsequently edited. **Canonical user-facing label: "Atlas Suggested / User Accepted."** This addendum makes no change to this case.
+
+#### Append behavior (newly defined)
+
+When Accept causes Atlas-suggested text to be **appended** to pre-existing user-authored text already present in the same field, the resulting state is `mixed`, accepted, unedited. The field contains two known origins — the pre-existing user-authored content and the accepted Atlas-suggested content. The field must not be labeled as wholly Atlas-originated. The field must not be labeled as wholly user-authored. The field must not be labeled `user-modified-from-atlas` merely because Accept occurred.
+
+**Canonical user-facing label for this state: "User Authored / Atlas Suggestion Accepted."** This label means: some current field content originated with the user; some current field content originated with Atlas; the Atlas portion was accepted; no genuine subsequent edit has yet occurred. This exact wording is adopted following the corpus's own established convention for disclosing dual-origin content (`UX-013E-Atlas-Component-Library-Final-Assembly-Architecture-Implementation-Readiness.md`'s own state-composition rule for "AI-generated + user-edited" content: "Atlas generated / User modified") and directly reuses the vocabulary of the already-canonical "Atlas Suggested / User Accepted" label. A corpus-wide search performed as part of the decision that produced this addendum found no existing, already-adopted canonical label for this exact case; the following are explicitly rejected as the canonical label, and must not be used in its place: "Modified with Atlas suggestion" (overstates editing — this is precisely the wording this addendum exists to correct); "User edited from Atlas" (overstates editing); "Atlas-assisted" (under-specifies which content originated where and omits acceptance state); "User + Atlas" (under-specifies acceptance versus editing); "Mixed Origin" (accurate but does not, by itself, distinguish acceptance from editing or match the corpus's own compound-label convention).
+
+#### Accept-versus-edit distinction
+
+Accept is consent to adopt Atlas-suggested content. **Accept alone does not constitute genuine editing.** This applies identically whether Atlas text replaces the field content or is appended to existing user-authored content — append is a strictly gentler transformation of the field's prior content than replace (it preserves rather than discards the user's own prior text), and since Accept-by-replacement already does not transfer authorship under the unamended C-02 model above, there is no principled basis for Accept-by-append to be treated differently. Accept alone, by either mechanism, must never produce "User Authored," `user-modified-from-atlas`, or any label implying genuine user editing occurred.
+
+#### State transitions
+
+| Path | Sequence |
+|---|---|
+| Replace | Atlas suggestion offered → Accept with replacement → **Atlas Suggested / User Accepted** → genuine later edit → `user-modified-from-atlas` |
+| Append | Atlas suggestion offered → Accept with append into pre-existing user-authored content → **mixed ("User Authored / Atlas Suggestion Accepted")** → genuine later edit → `user-modified-from-atlas` |
+
+Any genuine user edit occurring while a field is in the `mixed` state transitions it to `user-modified-from-atlas`, regardless of whether the edit touches the pre-existing user-authored portion, the appended Atlas portion, both, or the field as a whole without regard to which portion is which. This reuses the existing edit-triggered transition rule from the unamended C-02 model above without modification — that rule was never scoped to require the pre-edit state to be purely Atlas-originated, and no new, fragment-aware transition logic is introduced or required.
+
+Both accepted states (`Atlas Suggested / User Accepted` and `mixed`) may later transition through the existing Recorded → Historical lifecycle (per the unamended C-02 model above) without loss of provenance, exactly as already governed for the replace case.
+
+#### Minimum provenance requirements
+
+For the `mixed` state, the minimum provenance record must semantically preserve: the field value immediately before Accept; the field's authorship/provenance state immediately before that same Accept action; the Atlas suggestion text that was accepted; the resulting field value after append; the acceptance timestamp; an edit timestamp, initially unset until a genuine edit occurs; and the field's current authorship/provenance state. No token ranges, character offsets, text fragments, or per-segment ownership metadata are required or introduced.
+
+The property names below are illustrative, following the naming convention already used for the replace case's `originalAtlasText` / `acceptedAt` / `editedAt` properties (established in `UX-013B-Atlas-Component-Specification-Reasoning-Components.md` and referenced in the canonical API properties above) — they are not themselves a binding database schema; as with the rest of this ADR, they express the semantic requirement that a future implementation must satisfy, not a mandated field name or storage layout:
+
+- a record of the field's user-authored content immediately prior to Accept (the pre-Accept snapshot),
+- a record of the field's own authorship/provenance state immediately prior to Accept, associated with that same pre-Accept snapshot (for example, `priorAuthorship`) — so that Undo can restore the exact prior state rather than one that must be re-inferred, including in the case where that prior state was itself already `user-modified-from-atlas` from an earlier interaction cycle,
+- `originalAtlasText` (the Atlas suggestion text offered and accepted),
+- `acceptedAt`,
+- `editedAt` (`null` until a genuine subsequent edit occurs),
+- `authorship: 'mixed'` (the currently-displayed state, per the enumeration already established in the unamended C-02 model above).
+
+#### Attribution behavior
+
+The indicator associated with the `mixed` state is an **attribution indicator** — it discloses provenance and acceptance state; it is not evidence that modification occurred. This addendum does not redesign, and takes no position on, the indicator's placement, interaction behavior, animation, timing, or visual styling — those remain governed by existing and future UX specifications, unchanged by this addendum.
+
+#### Undo requirements
+
+Undo must atomically restore the previous field value, the previous authorship/provenance state, and the previous attribution display state together, as one operation. Undo must never restore the field's prior text while leaving the field's authorship state incorrectly marked as `mixed` or `Atlas Suggested / User Accepted`. The existing undo-window mechanics already specified elsewhere in the corpus (the five-second structural undo window) are unchanged by this addendum; this addendum only requires that whatever snapshot mechanism already backs that undo window restore provenance state, not merely displayed text.
+
+#### Forbidden transitions
+
+Extending the forbidden-transition principles already stated under the unamended C-02 model above, the following are also forbidden:
+
+- Accept-by-append producing `user-modified-from-atlas`.
+- `mixed` content displaying as though wholly Atlas-originated.
+- `mixed` content displaying as though wholly user-authored.
+- Any transition that erases, from the provenance record, either the user-authored pre-Accept contribution or the accepted Atlas contribution.
+- Undo restoring field content without also restoring the field's provenance/authorship state.
+- A display label claiming fragment-level or positional precision about the boundary between contributions when no fragment-level data is retained.
+
+### Explicit Non-Decisions
+
+This addendum does not decide, and takes no position on: when the product chooses replace versus append; whether the user selects the insertion mode; whether append occurs at the cursor position or at the end of the field; exact concatenation, whitespace, or punctuation rules; or whether append remains available in every context a suggestion can appear. These are interaction- and product-behavior questions, separate from the provenance semantics this addendum governs. This addendum governs only what authorship/provenance state results **if** append occurs — it does not establish when append occurs, including not establishing that append occurs whenever the field is non-empty; that inference arose during the analysis that produced this addendum as one plausible product reading, but it is not adopted here as settled authority and remains open for a future, separate product decision.
+
+This addendum does not introduce token-level provenance, arbitrary collaborative or multi-user authorship semantics, paragraph-level attribution, rich-text range ownership, a new general-purpose provenance engine, new UI components, exact visual styling, implementation code, or database migrations. It does not amend the Atlas UX Source Correction Plan, does not authorize any correction to UX-010 or UX-011, and does not begin or affect Phase 3D of that Plan.
+
+### Downstream Governance Consequence
+
+Implementation in `UX-010-Decision-Workspace-Interaction-Microinteraction-Specification.md` and `UX-011-Decision-Workspace-Visual-Design-Polish-Specification.md` remains unauthorized until: (1) this addendum is independently reviewed and accepted; (2) the Atlas UX Source Correction Plan is separately amended to reflect it; (3) UX-010 and UX-011 are added to that Plan as authorized C-02 correction targets for this specific finding; and (4) a separate source-correction implementation task is approved. This addendum, by itself, authorizes none of those four steps.
+
+### Working Tree Verification (Addendum)
+
+**Branch:** main
+**HEAD at time of this addendum:** `d382fdb285a1888ab3d5dbb1bc59d14d6bb6367b` ("docs(ux): correct Phase 3C source specifications") — unchanged throughout this task.
+**Files modified:** `docs/atlas_ux/governance/ADR-002-Critical-UX-Architecture-Resolutions.md` (this addendum, appended). All text preceding this addendum, including the original "C-02 — AI Authorship and Provenance" section, is unchanged.
+**Files created:** none.
+**Other files modified:** none. `docs/atlas_ux/governance/Atlas-UX-Source-Correction-Plan.md` was not modified. `UX-010-Decision-Workspace-Interaction-Microinteraction-Specification.md` and `UX-011-Decision-Workspace-Visual-Design-Polish-Specification.md` were not modified.
+**Staged files:** none.
+**Untracked files:** none.
+
+No commit was made.
