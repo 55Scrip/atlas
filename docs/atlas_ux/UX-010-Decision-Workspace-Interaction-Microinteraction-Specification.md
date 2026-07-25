@@ -12,6 +12,11 @@ Defers to: UX-011 — Decision Workspace Visual Design & Polish Specification
 
 This notice does not claim any of the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at each corrected passage. All content outside these two areas is unchanged. Section naming (Section 5, 6, 12 references) already matched the canonical "Supporting Factors," "Challenges," and "Final Decision Card" names used by the corrected UX-012 and its own C-03-corrected sibling documents, except for "Final Decision Summary," which this correction also updated to "Final Decision Card" for consistency.
 
+**Correction Notice (Phase 2B, governed by ADR-002 — 2026-07-25):** This is a later, additive correction, discovered after the Phase 2 correction above had already closed; it does not revise, replace, or reopen that notice, which remains historically accurate for the two areas it corrected. One further semantic area was corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md`'s C-02 finding and its 2026-07-25 "Addendum — C-02 Mixed-Origin Single-Field Content," as authorized by the Atlas UX Source Correction Plan, Phase 2B:
+- **C-02 (AI Authorship and Provenance):** the Atlas Suggestion Model's Accept behavior (Section 4) previously stated that accepting an Atlas suggestion — whether the suggestion replaced the field's content or was appended to the user's own pre-existing text — produced a "modification indicator" reading "Modified with Atlas suggestion" immediately on Accept, conflating acceptance with genuine editing and, in the append case, with mixed-origin authorship. This was corrected so that Accept alone, by either mechanism, never constitutes genuine editing: when the suggestion replaces the field's content, the result reads "Atlas Suggested / User Accepted"; when it is appended to pre-existing user-authored content, the field's authorship becomes field-level `mixed`, displayed as "User Authored / Atlas Suggestion Accepted." In both cases, "user-modified-from-atlas" is reached only after a genuine, subsequent edit — the same model already corrected in UX-012B and UX-012C for this identical feature.
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. The three other "modification indicator" occurrences in this document (the restore-to-original passage in Section 5, the Opportunity Cost conclusion-overwrite passage in Section 8, and the color-treatment reference in Requirements for UX-011) were reviewed as part of this same correction and confirmed to already describe genuine subsequent editing, not Accept alone — they are unaffected and unchanged. All content outside this one area is unchanged.
+
 ⸻
 
 Governing Intent
@@ -124,7 +129,7 @@ The suggestion is presented as an offer, not an instruction:
 — "This reasoning mirrors your [date] decision on [investment]. Consider noting the connection."
 
 The user may:
-— Accept: Atlas text replaces or appends to the user's text. A modification indicator appears: "Modified with Atlas suggestion." Undo is immediately available.
+— Accept: Atlas text replaces the user's text, or is appended to it. When it replaces, the field transitions to Accepted state ("Atlas Suggested / User Accepted") — Atlas remains the recorded author of the accepted text; accepting it is not itself an edit. When it is appended to pre-existing user-authored text, the field becomes field-level mixed ("User Authored / Atlas Suggestion Accepted") — both origins remain legible at the field level, with no fragment-level attribution. In either case, the attribution indicator reflects the resulting state, and "user-modified-from-atlas" is reached only after a genuine, subsequent edit. Undo is immediately available.
 — Dismiss: the suggestion disappears. It does not reappear for the same field unless the content changes materially.
 — Engage: the user selects "Show reasoning →" and Atlas explains why it made the suggestion in one or two sentences. The user can then accept, dismiss, or modify.
 

@@ -11,6 +11,11 @@ Defers to: UX-012 — Atlas Design System & Workspace Consistency Specification
 
 This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. All content outside this one terminology correction is unchanged.
 
+**Correction Notice (Phase 2B, governed by ADR-002 — 2026-07-25):** This is a later, additive correction, discovered after the Phase 2A correction above had already closed; it does not revise, replace, or reopen that notice, which remains historically accurate for the one area it corrected. One further semantic area was corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md`'s C-02 finding and its 2026-07-25 "Addendum — C-02 Mixed-Origin Single-Field Content," as authorized by the Atlas UX Source Correction Plan, Phase 2B:
+- **C-02 (AI Authorship and Provenance):** the AI Suggestion Presentation section's "When accepted" passage (Section 10) previously stated that accepting an Atlas suggestion — whether it replaced the field's content or was appended to the user's own pre-existing text — produced a "modification indicator" immediately on Accept, matching the identical Accept-alone authorship conflation already corrected in UX-010 for this same feature. This was corrected so that Accept alone, by either mechanism, never constitutes genuine editing: a replacement reads "Atlas Suggested / User Accepted"; an append reads field-level `mixed`, displayed as "User Authored / Atlas Suggestion Accepted." "user-modified-from-atlas" is reached only after a genuine, subsequent edit. The field-update, panel-closing, and animation mechanics this passage describes are unchanged.
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. The other "modification indicator" occurrence in this document (the "User-modified Atlas content" passage in Section 9, describing a field the user has genuinely edited) was reviewed as part of this same correction and confirmed to already describe genuine editing, not Accept alone — it is unaffected and unchanged. All content outside this one area is unchanged.
+
 ⸻
 
 Visual Design Philosophy
@@ -308,7 +313,7 @@ A compact surface — either inline adjacent to the field or as a nearby panel �
 The suggestion panel does not interrupt reading flow. It appears at the field level, not at the document level. It occupies space proportional to its content — compact for short suggestions, slightly taller for longer ones, but never dominating the surrounding document.
 
 When dismissed: the panel and affordance disappear without animation.
-When accepted: the field updates with a smooth text replacement, the modification indicator appears, and the panel closes.
+When accepted: the field updates smoothly — replacing its content, or appending to text the user had already written — the attribution indicator appears, reflecting the resulting attribution ("Atlas Suggested / User Accepted" for a replacement; "User Authored / Atlas Suggestion Accepted" for an append), and the panel closes.
 When the partial accept model is active: the suggestion text shows highlighted segments. Selected segments render at primary weight; unselected segments render at tertiary. The user's confirmed selection assembles in the field.
 
 The visual language of suggestions must consistently communicate: "This is Atlas offering. You remain in control." The suggestion surface is never darker, brighter, or larger than the surrounding document.
