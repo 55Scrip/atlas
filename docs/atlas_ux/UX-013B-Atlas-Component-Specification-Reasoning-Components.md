@@ -12,6 +12,8 @@ Volume 2 of the Atlas Component Library. This document specifies every Atlas Rea
 
 This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. All content outside these two corrected areas, including every Reasoning Component's own specification, is unchanged.
 
+**Correction Notice (Phase 3D-1, governed by `ADR-003-Recommendation-Identity-and-Terminology-Resolution.md` — 2026-07-25):** This document's own former "Recommendation" component (previously `# 10. Recommendation`) has been renamed **Proposed Decision Candidate Content** (short form, once established in context: "candidate content"). ADR-003 distinguishes two previously conflated concepts: **Atlas Recommendation** — a general, Atlas-origin directional advisory artifact defined in `UX-012-Atlas-Design-System-Workspace-Consistency-Specification.md` §28, unrelated to this document and not touched by this correction — and **Proposed Decision Candidate Content** — the transient, Atlas- or user-originated candidate wording this document's own component specifies, destined for the Proposed Decision field. This document's former "Recommendation" component always represented the latter; only its own naming has changed, not its behavior, relationships, or interaction model. Prior text (component heading): "`# 10. Recommendation`." Prior text (variant names): "`**Atlas Recommendation**`" and "`**User Recommendation**`," now "Atlas-Generated Candidate Content" and "User-Authored Candidate Content" respectively — the former "Atlas Recommendation" variant name is retired specifically because it collided with UX-012 §28's own, unrelated "Atlas Recommendation" artifact (ADR-003 R-02). This document's own separately labeled "Decision Workspace sequence" (§14, Reasoning Relationships) previously listed this component as item 11; per ADR-003 R-08, that item has been **removed outright, not renamed and not relocated** — this component was never a valid, independent canonical Decision Workspace sequence member. The remaining items in that list (1–10, 12–13) are unchanged in content, order, and numbering by this correction — item 11's own number is not reused, and no replacement item has been added. **This correction does not resolve, and does not narrow, Scenario Analysis's or Comparison's own canonical-sequence placement, the retained "What Changed" entry, or the Portfolio Consequences/Opportunity Cost ordering** — all remain exactly as unresolved as the Phase 3 notice above states them, now tracked as Phase 3D-2 of the Atlas UX Source Correction Plan. The "Portfolio Recommendation" variant is unaffected by this correction — ADR-003 does not examine it, and it is not renamed, reclassified, or otherwise altered here.
+
 ---
 
 # Reasoning Component Philosophy
@@ -85,7 +87,7 @@ The Conclusion is the primary output of a reasoning session or Workspace. It sta
 
 ## Semantic Meaning
 
-The Conclusion communicates: given everything I know and have examined, this is what I currently believe to be true. It is not a recommendation (that is the Recommendation component). It is not a decision (that is the Decision component). It is the current state of the reasoning — a synthesis rather than an action.
+The Conclusion communicates: given everything I know and have examined, this is what I currently believe to be true. It is not candidate content (that is the Proposed Decision Candidate Content component). It is not a decision (that is the Decision component). It is the current state of the reasoning — a synthesis rather than an action.
 
 ## When Used
 
@@ -1288,47 +1290,47 @@ Historical Scenario Analysis preserves the scenarios as they were framed at the 
 
 ---
 
-# 10. Recommendation
+# 10. Proposed Decision Candidate Content
 
 ## Purpose
 
-The Recommendation is an Atlas-generated or user-authored statement of what action or direction the reasoning suggests. It bridges the Conclusion (what the reasoning indicates) and the Decision (the user's commitment). A Recommendation is not a Decision — it is a suggestion that the user evaluates and either adopts, modifies, or rejects.
+Proposed Decision Candidate Content is an Atlas-generated or user-authored statement of what action or direction the reasoning suggests. It bridges the Conclusion (what the reasoning indicates) and the Decision (the user's commitment). Candidate content is not a Decision — it is a suggestion that the user evaluates and either adopts, modifies, or rejects.
 
 ## Semantic Meaning
 
-A Recommendation communicates: based on this reasoning, the suggested course of action is X. It is directional, not binding. The user may accept, modify, or decline a Recommendation. The Decision is always the user's own.
+Candidate content communicates: based on this reasoning, the suggested course of action is X. It is directional, not binding. The user may accept, modify, or decline candidate content. The Decision is always the user's own.
 
 ## When Used
 
 - As an Atlas-generated component that surfaces when analysis supports a specific direction
 - As a user-authored statement of their current intent before formalizing the Decision
-- In the Investment Workspace to capture the investment recommendation before a Decision is formally initiated
+- In the Investment Workspace to capture the investment candidate content before a Decision is formally initiated
 
 ## When Not Used
 
-- As a Conclusion substitute. The Conclusion is the current state of the reasoning; the Recommendation is the suggested action that follows from it.
-- As a Decision. The Recommendation has no permanence — it is a working suggestion.
-- In Historical Records as an independent component (the Recommendation at decision time is captured in the Decision itself).
+- As a Conclusion substitute. The Conclusion is the current state of the reasoning; candidate content is the suggested action that follows from it.
+- As a Decision. Candidate content has no permanence — it is a working suggestion.
+- In Historical Records as an independent component (candidate content at decision time is captured in the Decision itself).
 
 ## Relationship to Reasoning
 
-The Recommendation should follow logically from the Conclusion and the weighted balance of Supporting Factors and Challenges. If a Recommendation appears to contradict the Challenges, Atlas surfaces this as a Contradiction.
+Candidate content should follow logically from the Conclusion and the weighted balance of Supporting Factors and Challenges. If candidate content appears to contradict the Challenges, Atlas surfaces this as a Contradiction.
 
 ## Relationship to Conclusions
 
-The Recommendation is directionally derived from the Conclusion. The Conclusion is what is believed; the Recommendation is what that belief implies for action. They should be consistent — a Conclusion that an investment represents a strong opportunity should produce a Recommendation to invest, not to pass.
+Candidate content is directionally derived from the Conclusion. The Conclusion is what is believed; candidate content is what that belief implies for action. They should be consistent — a Conclusion that an investment represents a strong opportunity should produce candidate content to invest, not to pass.
 
 ## Relationship to Decisions
 
-The Recommendation is the input to the Decision. When the user is ready to formalize a Decision, the Recommendation content flows into the Proposed Decision field. The user may accept the Recommendation as-is or modify it.
+Candidate content is the input to the Decision. When the user is ready to formalize a Decision, the candidate content flows into the Proposed Decision field. The user may accept the candidate content as-is or modify it.
 
 ## Variants
 
-**Atlas Recommendation**
+**Atlas-Generated Candidate Content**
 Atlas-generated. Appears with Atlas attribution. The user can accept (flows to Proposed Decision), modify (user edits, attribution updates), or decline (dismissed for session).
 
-**User Recommendation**
-User-authored. The user has decided what they intend to recommend before formalizing. Used in Investment Workspace when the user wants to capture a working intent.
+**User-Authored Candidate Content**
+User-authored. The user has decided their working intent before formalizing. Used in Investment Workspace when the user wants to capture a working intent.
 
 **Portfolio Recommendation**
 A portfolio-level recommendation from the Portfolio Workspace — what the portfolio analysis recommends for the composition.
@@ -1336,10 +1338,10 @@ A portfolio-level recommendation from the Portfolio Workspace — what the portf
 ## Anatomy
 
 ```
-Recommendation
-├── SourceLabel [Role 4 — "Atlas recommends" or "Working intent"]
-├── RecommendationStatement [Role 2 — the recommended action]
-├── PrimaryReason [Role 3 — the key reason for this recommendation]
+CandidateContent
+├── SourceLabel [Role 4 — "Atlas suggested" or "Working intent"]
+├── RecommendationStatement [Role 2 — the candidate action]
+├── PrimaryReason [Role 3 — the key reason for this candidate content]
 └── RecommendationActions
     ├── AcceptAction [→ flows to Proposed Decision]
     ├── ModifyAction [→ enters editing state]
@@ -1358,26 +1360,26 @@ Recommendation
 
 ## Interaction
 
-**Atlas Recommendation:**
-- Accept: `RecommendationStatement` and `PrimaryReason` flow to the Proposed Decision Section. Recommendation component transitions to "Accepted" state (soft success state with "Moved to Proposed Decision" label).
+**Atlas-Generated Candidate Content:**
+- Accept: `RecommendationStatement` and `PrimaryReason` flow to the Proposed Decision Section. The candidate content transitions to "Accepted" state (soft success state with "Moved to Proposed Decision" label).
 - Modify: Statement enters Long-Form Editor mode. On save, attribution updates to "User modified".
 - Decline: Dismissed for the session. Not shown again in the current session.
 - Structural Undo: 5-second window after Accept to undo the acceptance.
 
-**User Recommendation:**
+**User-Authored Candidate Content:**
 Editing model — same as other editable Reasoning Components. No Accept/Decline actions.
 
 ## Historical Persistence
 
-A Recommendation that leads to a recorded Decision is preserved in the Decision's Historical Record as the attribution context. The Recommendation itself does not appear as a standalone Historical component — its content is absorbed into the Decision.
+Candidate content that leads to a recorded Decision is preserved in the Decision's Historical Record as the attribution context. The candidate content itself does not appear as a standalone Historical component — its content is absorbed into the Decision.
 
 ## Accessibility
 
-- SourceLabel: `aria-label` on the component: "Recommendation from Atlas" or "Your working intent".
+- SourceLabel: `aria-label` on the component: "Candidate content from Atlas" or "Your working intent".
 - Statement: `<h4>` or appropriate heading level.
-- Accept/Modify/Decline: explicit `<button>` labels ("Accept recommendation", "Modify recommendation", "Decline recommendation").
-- Dismissed state: announced via `aria-live="polite"` ("Recommendation dismissed").
-- Accepted state: announced via `aria-live="polite"` ("Recommendation moved to Proposed Decision").
+- Accept/Modify/Decline: explicit `<button>` labels ("Accept candidate content", "Modify candidate content", "Decline candidate content").
+- Dismissed state: announced via `aria-live="polite"` ("Candidate content dismissed").
+- Accepted state: announced via `aria-live="polite"` ("Candidate content moved to Proposed Decision").
 
 ## Responsive Behavior
 
@@ -1697,7 +1699,7 @@ Opportunity Cost
   ↓ (considered alongside)
 Scenario Analysis + Comparison
   ↓ (synthesized into)
-Recommendation
+Candidate Content
   ↓ (formalized as)
 Decision [UX-013C]
 ```
@@ -1713,14 +1715,14 @@ A Supporting Factor may be dependent on one or more Assumptions. When an Assumpt
 **Challenges ← Assumptions**
 A Broken Assumption automatically generates a Challenge of severity determined by the Assumption's monitored significance. The Challenge references the Broken Assumption.
 
-**Opportunity Cost ← Conclusion + Recommendation**
-The Opportunity Cost names what is foregone by the chosen direction. It is directionally informed by the Conclusion and the Recommendation — the chosen path in the Opportunity Cost should match the direction indicated by those components.
+**Opportunity Cost ← Conclusion + Candidate Content**
+The Opportunity Cost names what is foregone by the chosen direction. It is directionally informed by the Conclusion and the candidate content — the chosen path in the Opportunity Cost should match the direction indicated by those components.
 
 **Scenario Analysis ← Supporting Factors + Challenges**
 Each scenario in the Scenario Analysis should be grounded in the Supporting Factors and Challenges. The Base Case should reflect the balance of Supporting and Challenge evidence. Upside and Downside cases should be derivable from specific Supporting Factors or Challenges.
 
-**Recommendation ← Conclusion + Supporting Factors + Challenges**
-The Recommendation follows from the Conclusion. It should be challenged if it is inconsistent with the Challenges or if the Supporting Factors do not appear to support the recommended direction.
+**Candidate Content ← Conclusion + Supporting Factors + Challenges**
+The candidate content follows from the Conclusion. It should be challenged if it is inconsistent with the Challenges or if the Supporting Factors do not appear to support the direction indicated by the candidate content.
 
 ## Ordering
 
@@ -1737,7 +1739,6 @@ The Reasoning Components appear in a defined sequence within each Workspace. The
 8. Opportunity Cost
 9. Scenario Analysis (conditional)
 10. Comparison (conditional)
-11. Recommendation
 12. Implementation (UX-013C)
 13. Review Conditions (UX-013C)
 
@@ -1750,7 +1751,7 @@ The Reasoning Components appear in a defined sequence within each Workspace. The
 6. Challenges
 7. Assumptions
 8. Evidence Summary
-9. Recommendation (conditional)
+9. Candidate Content (conditional)
 
 ## Composition
 
@@ -1901,7 +1902,7 @@ A consolidated mapping of all Reasoning Components to the Atlas semantic token s
 |-------|-----------|
 | `typography.role1.*` | Conclusion Statement, Opportunity Statement (primary), Recommendation Statement |
 | `typography.role2.*` | Comparison Column Headers, Scenario Names, Supporting Factors / Challenges Group Headers |
-| `typography.role3.*` | Factor/Challenge/Assumption explanations; Opportunity/Scenario/Recommendation narrative text |
+| `typography.role3.*` | Factor/Challenge/Assumption explanations; Opportunity/Scenario/Candidate-Content narrative text |
 | `typography.role4.*` | Section variant labels, Group Headers, Opportunity Panel labels |
 | `typography.role5.*` | Supporting Metadata, Evidence dates/sources, Relationship links, Summary text |
 
@@ -1941,7 +1942,7 @@ A consolidated mapping of all Reasoning Components to the Atlas semantic token s
 | `surface.challenge.blocking` | Blocking Challenge background tint |
 | `surface.assumption.weakening` | Weakening Assumption background tint |
 | `surface.assumption.broken` | Broken Assumption background tint |
-| `surface.elevated.background` | Context Panel, Recommendation panel |
+| `surface.elevated.background` | Context Panel, candidate content panel |
 | `surface.historical.background` | Historical variants of all Reasoning Components |
 
 ## Border Tokens
@@ -2024,7 +2025,7 @@ Reasoning/
 │   └── ScenarioAnalysis
 │       └── ScenarioItem
 ├── Synthesis/
-│   └── Recommendation
+│   └── CandidateContent
 ├── Structure/
 │   ├── ReasoningBlock
 │   └── ContextPanel
@@ -2139,7 +2140,7 @@ Same semantic versioning as Foundation Components (major.minor.patch). Reasoning
 ## No Duplicated Reasoning Components
 
 Review confirms:
-- Conclusion and Recommendation are semantically distinct (what is believed vs. what is suggested).
+- Conclusion and Proposed Decision Candidate Content are semantically distinct (what is believed vs. what is suggested).
 - Supporting Factors and Evidence Summary are semantically distinct (reasoning claims vs. evidence grounding).
 - Challenges and Assumptions are semantically distinct (current concerns vs. conditions depended on).
 - Opportunity Summary and Opportunity Cost are semantically distinct (what the opportunity is vs. what is foregone to pursue it).
@@ -2218,9 +2219,9 @@ Comparison is fully specified: four comparison types (Before/After, Alternative,
 
 Scenario Analysis is fully specified: Base/Upside/Downside/Alternative structure, fixed ordering rule, qualitative probability (Likely/Possible/Unlikely), relationship to the reasoning chain, Historical behavior, and conditional expandability on mobile.
 
-## Recommendations
+## Candidate Content
 
-Recommendation is fully specified: Atlas Recommendation and User Recommendation variants, the three-response model (Accept/Modify/Decline), flow to Proposed Decision on acceptance, 5-second structural undo, and Historical persistence within the Decision.
+Proposed Decision Candidate Content is fully specified: Atlas-Generated Candidate Content and User-Authored Candidate Content variants, the three-response model (Accept/Modify/Decline), flow to Proposed Decision on acceptance, 5-second structural undo, and Historical persistence within the Decision.
 
 ## Context
 
@@ -2234,7 +2235,7 @@ Supporting Metadata is fully specified: six metadata types (Source, Date, Author
 
 ## Relationships
 
-The reasoning dependency chain (Conclusion → Factors + Challenges + Assumptions → Evidence → Opportunity → Cost → Scenarios + Comparison → Recommendation → Decision) is fully specified. Dependencies between components (Assumption → Factor → Challenge), ordering within each Workspace, and cross-component navigation (RelationshipIndicators, Highlight motion token, smooth scroll) are established.
+The reasoning dependency chain (Conclusion → Factors + Challenges + Assumptions → Evidence → Opportunity → Cost → Scenarios + Comparison → Candidate Content → Decision) is fully specified. Dependencies between components (Assumption → Factor → Challenge), ordering within each Workspace, and cross-component navigation (RelationshipIndicators, Highlight motion token, smooth scroll) are established.
 
 ## Accessibility
 
@@ -2256,7 +2257,7 @@ Priority: High. Resolving this before implementing the Atlas Suggestion model wi
 
 **Question 2: Contradiction Detection Scope**
 Reason: The specification states that Atlas detects Contradictions between Reasoning Components (e.g., a Conclusion inconsistent with Challenges). The scope of automated detection — which types of contradictions are within Atlas's detection capability — has not been specified.
-Required Evidence: Atlas AI team definition of which contradiction types Atlas can reliably detect: (a) Assumption Broken → Factor Invalidated (specified), (b) Conclusion direction vs. balance of Factors/Challenges, (c) Opportunity Cost inconsistency with Conclusion, (d) Recommendation inconsistency with Challenges.
+Required Evidence: Atlas AI team definition of which contradiction types Atlas can reliably detect: (a) Assumption Broken → Factor Invalidated (specified), (b) Conclusion direction vs. balance of Factors/Challenges, (c) Opportunity Cost inconsistency with Conclusion, (d) candidate content inconsistency with Challenges.
 Implementation Impact: Determines the trigger conditions for automatically surfacing Contradictions in the Challenges section. Over-triggering false contradictions would create noise; under-triggering misses the value of Atlas analysis.
 Priority: High. The Contradiction model is central to Atlas's value proposition.
 
@@ -2315,8 +2316,8 @@ The official Atlas Reasoning Component Inventory for UX-013B. Maturity is Candid
 | Analysis | Comparison (Historical) | Current vs. historical reasoning | Decision | Investment | Medium | Medium | Candidate | Design System |
 | Analysis | ScenarioAnalysis Container | Section for scenario structure | Decision | Investment | Medium | Medium | Candidate | Design System |
 | Analysis | ScenarioItem | Single named scenario | Decision | Investment | Medium | Medium | Candidate | Design System |
-| Synthesis | Recommendation (Atlas) | Atlas-generated directional suggestion | Decision | Investment | High | High | Candidate | Design System |
-| Synthesis | Recommendation (User) | User-authored working intent | Investment | Decision | Medium | Medium | Candidate | Design System |
+| Synthesis | Candidate Content (Atlas) | Atlas-generated directional suggestion | Decision | Investment | High | High | Candidate | Design System |
+| Synthesis | Candidate Content (User) | User-authored working intent | Investment | Decision | Medium | Medium | Candidate | Design System |
 | Structure | ReasoningBlock | Named container for unclassified reasoning | All | All | Medium | Medium | Candidate | Design System |
 | Structure | ContextPanel (Inline) | Supplementary background in reading flow | Investment | All | Medium | Medium | Candidate | Design System |
 | Structure | ContextPanel (Companion) | Supplementary context adjacent to component | Investment | Decision | Low | Low | Experimental | Design System |
@@ -2352,7 +2353,7 @@ The Reasoning Engineering Mapping provides: component hierarchy, naming conventi
 9. Comparison (all four types)
 10. EvidenceSummary and EvidenceItem
 11. ScenarioAnalysis Container and ScenarioItem
-12. Recommendation (Atlas and User variants)
+12. Candidate Content (Atlas and User variants)
 13. ReasoningBlock
 14. ContextPanel (all three variants)
 15. Historical variants of all components
