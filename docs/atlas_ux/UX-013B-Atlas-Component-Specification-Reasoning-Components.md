@@ -22,6 +22,14 @@ This notice does not claim the corrected wording existed in this document's orig
 
 **This correction does not claim the UX-013B sequence is now fully reconciled with ADR-002.** Positions 3 and 11 remain visible gaps; Scenario Analysis and Comparison remain unresolved at positions 9 and 10; Proposed Decision and Decision Rationale remain absent, pending Phase 3D-2b. Phase 3D-1 (above) remains complete and unchanged by this correction. The "Portfolio Recommendation" variant remains unaffected — this correction does not classify, rename, or otherwise touch it. No Domain Object, persistence, provenance, backend, interaction, or visual-layout decision is introduced by this correction.
 
+**Correction Notice (Phase 3D-2b-1, governed by `ADR-004-Scenario-Analysis-Comparison-and-Sequence-Authority-Resolution.md` — 2026-07-26):** ADR-004 resolves the dedicated architectural decision Scenario Analysis's and Comparison's own canonical-sequence status required, per the Phase 3D-2a notice above. ADR-004 settles that this document's own separately labeled "Decision Workspace sequence" (§14, Reasoning Relationships, below) carries **no canonical Decision Workspace sequence authority at all** — it is a local Reasoning-component dependency/synthesis-order model, describing only the order and derivation relationships among this document's own specified Reasoning components, never examined by `ADR-002-Critical-UX-Architecture-Resolutions.md` C-03 and never a competing claim to that canonical authority. **ADR-002's own canonical positions 9 ("Assumptions, Monitoring and Invalidation") and 10 ("Implementation Plan") are unrelated to, and unaffected by, this list's own local numbering** — this list's own local items 9 ("Scenario Analysis") and 10 ("Comparison") do not correspond to, displace, or reinterpret those canonical positions; the shared numerals are coincidental. Neither Scenario Analysis nor Comparison is, or was ever validly, a canonical Decision Workspace sequence member.
+
+Second, "Scenario Comparison" — previously named as a fifth type in this document's own Comparison component (§8, "Comparison Types") — is **formally retired as a named Comparison type**, per ADR-004 R-05. Prior text (§8, "Comparison Types," fifth entry): "`**Scenario Comparison** Two or more potential outcome scenarios. Each column is one scenario. Rows are outcome dimensions.`" This document's own Component Inventory table and `UX-013E-Atlas-Component-Library-Final-Assembly-Architecture-Implementation-Readiness.md`'s own classification already stated four Comparison variants (Before/After, Alternative, Allocation, Historical) and required no correction on this point. Comparison's own generic anatomy, properties, and interaction model are unchanged by this retirement; scenario content, if ever compared side by side, may still be rendered through Comparison's existing, generic variant model, without this correction mandating which existing type performs that rendering.
+
+Third, conditionality is now defined, in ordinary language, for Scenario Analysis and Comparison (§14, Ordering, below), per ADR-004 R-07. Fourth, Scenario Analysis's relationship to Opportunity Cost is clarified as informational, not a strict, required, one-directional sequence dependency, per ADR-004 R-08 — **Opportunity Cost's own canonical position 7 is unchanged and not reopened by this correction.**
+
+**Proposed Decision and Decision Rationale remain omitted from this list**, exactly as the Phase 3D-2a notice above discloses — their restoration is now tracked as Phase 3D-2b-2 of the Atlas UX Source Correction Plan, held pending its own dedicated numbering-policy assessment. This correction does not reopen or narrow that disclosure, and does not describe their own governance as unsettled — ADR-002 already, unambiguously governs both. **This correction does not claim UX-013B's §14 list is now a complete or canonical Decision Workspace sequence** — the visible gaps at positions 3 and 11 remain; Proposed Decision and Decision Rationale remain absent, pending Phase 3D-2b-2. Phase 3D-1 and Phase 3D-2a (above) remain complete and unchanged by this correction. The "Portfolio Recommendation" variant remains unaffected. No Domain Object, persistence, provenance, backend, or Scenario Workspace decision is introduced by this correction.
+
 ---
 
 # Reasoning Component Philosophy
@@ -1105,9 +1113,6 @@ Portfolio allocation before and after a Decision. Visual representations of each
 **Historical Comparison**
 Current reasoning alongside Historical Record reasoning. Historical column uses historical visual treatment.
 
-**Scenario Comparison**
-Two or more potential outcome scenarios. Each column is one scenario. Rows are outcome dimensions.
-
 ## Ordering
 
 For Before/After and Historical: the current or proposed state appears on the right. The prior or baseline state appears on the left. This is consistent with reading direction — from old to new.
@@ -1712,6 +1717,8 @@ Candidate Content
 Decision [UX-013C]
 ```
 
+**This diagram states a typical reading and synthesis order for this document's own Reasoning components; it does not assert a strict, required, one-directional dependency at every step.** In particular, Opportunity Cost's own relationship to Scenario Analysis is informational, not sequential (per `ADR-004-Scenario-Analysis-Comparison-and-Sequence-Authority-Resolution.md` R-08 — see Correction Notice, Phase 3D-2b-1, above): Scenario Analysis, where present, may inform Opportunity Cost's own content (see Dependencies, below), independent of this diagram's own reading-order placement of the two relative to each other. Opportunity Cost's own canonical Decision Workspace position (`ADR-002-Critical-UX-Architecture-Resolutions.md` C-03, position 7) and its own definition are unaffected by whether Scenario Analysis exists, is populated, or logically precedes or follows it in this document's own reading order.
+
 ## Dependencies
 
 **Conclusion ← Supporting Factors, Challenges, Assumptions**
@@ -1723,8 +1730,8 @@ A Supporting Factor may be dependent on one or more Assumptions. When an Assumpt
 **Challenges ← Assumptions**
 A Broken Assumption automatically generates a Challenge of severity determined by the Assumption's monitored significance. The Challenge references the Broken Assumption.
 
-**Opportunity Cost ← Conclusion + Candidate Content**
-The Opportunity Cost names what is foregone by the chosen direction. It is directionally informed by the Conclusion and the candidate content — the chosen path in the Opportunity Cost should match the direction indicated by those components.
+**Opportunity Cost ← Conclusion + Candidate Content + Scenario Analysis (where present)**
+The Opportunity Cost names what is foregone by the chosen direction. It is directionally informed by the Conclusion and the candidate content — the chosen path in the Opportunity Cost should match the direction indicated by those components. Where Scenario Analysis is present, its Upside and Downside cases may also inform the Opportunity Cost's own content — this is an informational relationship only, not a strict, required, one-directional sequence dependency: Opportunity Cost's own canonical Decision Workspace position (`ADR-002-Critical-UX-Architecture-Resolutions.md` C-03, position 7) is unaffected either way.
 
 **Scenario Analysis ← Supporting Factors + Challenges**
 Each scenario in the Scenario Analysis should be grounded in the Supporting Factors and Challenges. The Base Case should reflect the balance of Supporting and Challenge evidence. Upside and Downside cases should be derivable from specific Supporting Factors or Challenges.
@@ -1734,9 +1741,9 @@ The candidate content follows from the Conclusion. It should be challenged if it
 
 ## Ordering
 
-The Reasoning Components appear in a defined sequence within each Workspace. The sequence is not arbitrary — it reflects the reading order that produces the most coherent reasoning arc:
+The Reasoning Components appear in a defined reading order within each Workspace. This reading order is not arbitrary — it reflects the sequence that produces the most coherent reasoning arc for this document's own Reasoning components. **This is a local reading order for this document's own Reasoning components, not the canonical ADR-002 Decision Workspace sequence** (per `ADR-004-Scenario-Analysis-Comparison-and-Sequence-Authority-Resolution.md` R-01 — see Correction Notice, Phase 3D-2b-1, above): it does not carry, compete with, or require reconciliation against that canonical thirteen-item sequence, and its own numbered positions, where used, do not correspond to that sequence's own canonical positions of the same number.
 
-**Decision Workspace sequence:**
+**Decision Workspace reading order (local to this document; see Correction Notice, Phase 3D-2b-1, above):**
 1. Current Conclusion
 2. Decision Required (UX-013C)
 4. Supporting Factors
@@ -1748,6 +1755,10 @@ The Reasoning Components appear in a defined sequence within each Workspace. The
 10. Comparison (conditional)
 12. Implementation (UX-013C)
 13. Review Conditions (UX-013C)
+
+**This list's own numbered positions are local to this document only and do not correspond to `ADR-002-Critical-UX-Architecture-Resolutions.md`'s own canonical Decision Workspace sequence positions of the same number.** In particular: local position 9 (Scenario Analysis) is not ADR-002's canonical position 9 (Assumptions, Monitoring and Invalidation), and local position 10 (Comparison) is not ADR-002's canonical position 10 (Implementation Plan). Neither Scenario Analysis nor Comparison is, or was ever validly, a canonical Decision Workspace sequence member (ADR-004 R-06).
+
+**Conditionality.** Scenario Analysis is available/rendered when the current decision materially depends on multiple plausible future conditions or outcome paths — i.e., when the reasoning genuinely requires acknowledging more than one plausible way the relevant future could unfold. Comparison is available/rendered when two or more comparable entities, states, alternatives, or outputs exist for which side-by-side evaluation would be useful. In both cases, "conditional" means the component is not always rendered — its presence is gated by whether its own stated precondition currently holds for the specific reasoning session (ADR-004 R-07).
 
 **Investment Workspace sequence:**
 1. Primary Conclusion
