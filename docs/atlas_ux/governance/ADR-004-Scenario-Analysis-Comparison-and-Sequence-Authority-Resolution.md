@@ -10,7 +10,7 @@ Accepted
 
 ## Decision Owners / Authority
 
-Formulated following the same process that produced `ADR-003-Recommendation-Identity-and-Terminology-Resolution.md`: a dedicated, read-only architectural investigation (the "Scenario Analysis / Comparison Architectural Investigation," performed against HEAD `867a0338e8ce8eed5c6c70cd6407ec68b32bcd94`), followed by this formal decision document. This ADR is **Proposed**, not Accepted — it requires independent review before adoption, exactly as ADR-003 did.
+Formulated following the same process that produced `ADR-003-Recommendation-Identity-and-Terminology-Resolution.md`: a dedicated, read-only architectural investigation (the "Scenario Analysis / Comparison Architectural Investigation," performed against HEAD `867a0338e8ce8eed5c6c70cd6407ec68b32bcd94`), followed by this formal decision document. This ADR is **Accepted governance following independent review**. Its authority is limited to the architectural decisions stated here; downstream source correction remains subject to the separately authorized governance steps identified by this ADR.
 
 ## Context
 
