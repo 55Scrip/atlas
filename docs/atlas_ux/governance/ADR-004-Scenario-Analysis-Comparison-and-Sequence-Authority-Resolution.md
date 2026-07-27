@@ -539,3 +539,130 @@ This ADR is Done, for the purpose of this task, when: it exists as a complete, s
 **Untracked files:** `docs/atlas_ux/governance/ADR-004-Scenario-Analysis-Comparison-and-Sequence-Authority-Resolution.md`.
 
 No commit was made.
+
+## Addendum — Corpus-Wide Scenario Comparison Extension (2026-07-27)
+
+### Status
+
+Accepted, as an addendum to R-02, R-04, and R-05 above. This addendum does not reopen, revise, or supersede any text under R-01 through R-12 above, which remain unchanged and remain the governing rules for the questions they already resolved. This addendum extends R-02's, R-04's, and R-05's already-adopted architecture to three active source documents — `UX-012-Atlas-Design-System-Workspace-Consistency-Specification.md`, `UX-012B-Atlas-Design-System-Components-Reusable-Patterns.md`, and `UX-013A-Atlas-Component-Specification-Foundation-Components.md` — that this ADR's own original decision did not examine or classify.
+
+### Parent ADR
+
+This is a formal addendum to `ADR-004-Scenario-Analysis-Comparison-and-Sequence-Authority-Resolution.md` (Accepted, 2026-07-26), governed by, and subordinate to, its own already-adopted Decision, Governing Facts, and Contradictions sections above, none of which this addendum revises.
+
+### Scope
+
+This addendum resolves: whether R-02, R-04, and R-05's already-adopted architecture applies to UX-012, UX-012B, and UX-013A's own active "Scenario Comparison" references; the individual classification of each file's own content; the evidentiary basis required before any future source correction to UX-012B specifically; and the boundary of a future, separately-authorized source-correction task. This addendum does not itself correct any source document, does not amend the Atlas UX Source Correction Plan, and does not adopt any new Domain Object, component identity, or architecture.
+
+### Trigger for Addendum
+
+A dedicated, read-only "UX-012 Scenario Comparison Governance Investigation," followed by a dedicated, read-only "UX-012 / UX-012B / UX-013A Scenario Comparison Corpus-Wide Evidence Assessment," found that this ADR's own R-05 resolution — which states "This resolves Finding 8.3/M-6" — was reached from evidence limited to `UX-013B-Atlas-Component-Specification-Reasoning-Components.md` and `UX-013E-Atlas-Component-Library-Final-Assembly-Architecture-Implementation-Readiness.md`. `UX-Architecture-Review-001.md`'s own Finding 8.3/M-6 (line 159) explicitly traces "Scenario Comparison" to UX-012 as a Comparison Type — a document this ADR's own Required Downstream Corrections and file classification never listed as requiring correction on this specific point, and never disclosed as still containing the term. The corpus-wide assessment additionally found two further active documents (UX-012B, UX-013A) containing the same term, one of them (UX-012B) with a complete, bespoke component definition materially different in anatomy from UX-012's own generic definition of the identically-named term.
+
+### Evidence Reviewed
+
+This addendum is grounded in fresh review of: this ADR's own complete adopted text (R-01–R-12, Governing Facts, Contradictions K-1–K-4); `UX-012-...md` (Layout Model §10, Portfolio Workspace usage note, the full Comparison component definitions section, and the Component Inventory table); `UX-012B-Atlas-Design-System-Components-Reusable-Patterns.md` (its own "Scenario Comparison" component definition, its component-taxonomy list, and its "Remaining Component Questions" item 4); `UX-013A-Atlas-Component-Specification-Foundation-Components.md` (its own Comparison Components scope-list mention); `UX-013B-...md` §9 (Scenario Analysis's own ScenarioItem anatomy) and §8 (Comparison's own generic anatomy, and the Phase 3D-2b-1 retirement correction notice, left unchanged and unexamined by this addendum); `UX-013E-...md`'s own four-variant Comparison classification (already confirmed correct, unchanged by this addendum); `UX-012D-Atlas-Design-System-Governance-Tokens-Evolution.md`'s own "Experimental status" governance definition; `UX-005-Investment-Workspace-Screen-Specification.md`'s own "Scenario Cards"/"Scenario Card" wireframe-level element listings; the Atlas UX Source Correction Plan's own current Scenario Comparison disclosures; and `UX-Architecture-Review-001.md`'s Finding 8.3/M-6 text. Git history (`git blame`, `git log --diff-filter=A`) was inspected for every active-specification line in UX-012, UX-012B, and UX-013A referencing "Scenario Comparison," all of which trace to the single original corpus-import commit `f2d5adbb7cd260853f56197e35fcc776caf85a78` and have never been edited since.
+
+### Existing ADR-004 Authority (Preserved, Unchanged)
+
+R-01 (§14 authority classification), R-03 (Comparison identity), R-06 (canonical sequence membership), R-07 (conditionality), R-08 (Opportunity Cost relationship), R-09 (Candidate Content relationship), R-10 (Scenario Workspace status), R-11 (Domain Object/persistence non-decision), and R-12 (Phase 3D-2b authorization boundary) are unchanged and are not reopened, revised, or reinterpreted by this addendum. This addendum rests entirely on, and extends the corpus-wide application of, three already-adopted resolutions:
+
+- **R-02** — Scenario Analysis is the exclusive semantic owner of scenario-specific analytical structure.
+- **R-04** — Comparison owns generic, side-by-side rendering; it may render Scenario Analysis's output without owning its semantics; no dedicated "Scenario Comparison" variant is required for this.
+- **R-05** — "Scenario Comparison" is retired, formally, as a named Comparison type.
+
+### Corpus-Wide Findings
+
+A repository-wide search for the exact phrase "Scenario Comparison" found seven files. Two (`UX-013B`, in its own historical correction notices) and one (`UX-013E`, never containing the term) are already consistent with R-05 and are unaffected by this addendum. Two (the Atlas UX Source Correction Plan, this ADR itself) are governance discourse, not specification claims, and are unaffected. One (`UX-Architecture-Review-001.md`) is the original finding text and its findings-summary listing, preserved as historical record. **Three files — `UX-012`, `UX-012B`, and `UX-013A` — contain active, live specification text using the term, none of it examined, corrected, or disclosed by this ADR's original decision.** All traced, via `git blame`, to the single original import commit, unedited since; none postdates, and none was created in response to, this ADR's own adoption.
+
+### Corpus-Wide Rule (Adopted Extension)
+
+The following restates R-02 and R-04, without modification, as the rule now formally extended to UX-012, UX-012B, and UX-013A: scenario-specific analytical content (scenario naming, conditions, outcome framing, qualitative probability) is owned exclusively by Scenario Analysis; generic side-by-side comparison rendering is owned by Comparison; "Scenario Comparison" is not a distinct adopted component and is not a required dedicated Comparison variant; where Scenario Analysis's output is ever rendered side by side, Comparison's existing generic variant model is sufficient, without either component acquiring the other's ownership.
+
+### UX-012 Classification
+
+UX-012's four "Scenario Comparison" references (Layout Model, Portfolio Workspace usage note, component definition, inventory row) are **generic in anatomy** — its own component definition reads "Layout: parallel columns; row-per-scenario structure," structurally identical to its Before/After and Alternative Comparison entries in the same section. UX-012 adds no irreducible behavior, state model, or interaction beyond what Comparison's already-adopted generic model (R-04) already supplies. UX-012's own references are already, substantively, satisfied by R-04's existing architecture; they do not, on their own evidence, justify preserving "Scenario Comparison" as an independent identity. UX-012's own Component Inventory table separately marks this entry's Maturity as **Experimental** (see UX-012D Maturity-Role Analysis, below). These references may be corrected mechanically in a future, separately-authorized source-correction phase.
+
+### UX-012B Classification
+
+UX-012B's "Scenario Comparison" definition (its own Reusable Patterns section, its component-taxonomy list, and its "Remaining Component Questions" item 4) is **substantive** — it specifies Purpose, Structure (a card-per-scenario grid: scenario name, outcome label with semantic color, consequence line, optional expandable detail), Interaction, Visual treatment, and Reuse rules, matching the depth given to its five sibling Comparison entries in the same document. Because it is substantive, it must not be silently deleted; any future correction requires the explicit evidentiary disclosure this addendum records:
+
+- UX-012's own Component Inventory table marks this same-named entry **Experimental** — under UX-012D's own governing maturity definition (see below), an idea that had not completed the approval process.
+- UX-013B's own, later, independently-authored Reasoning Component Inventory table promoted two of Scenario Comparison's Experimental-maturity Comparison siblings from UX-012 (Allocation Comparison, Historical Comparison — both raised to "Candidate") but did not carry Scenario Comparison forward into that table at all.
+- No test, token, prop, route, persisted field, or other downstream implementation artifact referencing "Scenario Comparison" as a distinct, adopted rendering artifact was found anywhere in the repository.
+- UX-012B's own card-per-scenario anatomy (scenario name, an outcome-type label, a detail field) materially overlaps `UX-013B-...md` §9's own `ScenarioItem` anatomy (`ScenarioType`, `ScenarioName`, `ProbabilityLabel`, `Conditions`, `Implications`) — the exclusive scenario-content ownership R-02 already assigns to Scenario Analysis.
+- `UX-005-Investment-Workspace-Screen-Specification.md`'s own earlier "Scenario Cards"/"Scenario Card" wireframe-level element listings provide a plausible, documented lineage for a card-based scenario presentation concept predating this corpus's later, more authoritative Scenario Analysis specification — offered here as observed evidence of a documented lineage, not as proof of the original authors' own intent, which the repository cannot establish.
+
+On this evidentiary basis, this addendum classifies UX-012B's "Scenario Comparison" definition as an **unreconciled, pre-approval presentation concept whose scenario-content ownership R-02 already assigns to Scenario Analysis** — not as a settled, adopted, distinct Comparison component, and not as content requiring preservation under generic Comparison's own architecture (whose anatomy has no card-grid or per-item-expand primitive of any kind, per R-04's own already-adopted description). A future correction to UX-012B may proceed only if it explicitly carries forward this evidentiary basis, rather than silently deleting a fully-written component definition.
+
+### UX-013A Classification
+
+UX-013A's single mention ("Comparison Components: Before/After, Alternative Comparison, Opportunity Cost Component..., Scenario Comparison, Allocation Comparison, Historical Comparison") is a **scope-list echo** — it supplies no independent anatomy, interaction, or architecture of its own; it simply names Scenario Comparison as one of six items UX-013B was, at the time UX-013A was authored, expected to specify. It creates no separate architectural question and should be corrected, in any future source-correction task, only mechanically, to match whatever UX-012 and UX-012B's own eventual correction states.
+
+### UX-005 Evidentiary Role
+
+`UX-005-Investment-Workspace-Screen-Specification.md` contains earlier "Scenario Cards"/"Scenario Card" wireframe-level element listings, structurally suggestive of a Base/Upside/Downside grouping. This supports a plausible lineage toward Scenario Analysis's own later, more formal card-based specification. It does not, by itself, independently authorize any component identity, and this addendum does not find that UX-005 itself requires correction — no reference in UX-005 asserts "Scenario Comparison" by name, and its own wireframe-level listing is not, on the evidence available, a specification claim of the kind this addendum otherwise addresses. Should later evidence establish that UX-005 itself requires correction, that remains outside this addendum's own scope and requires its own, separate governance authorization.
+
+### UX-012D Maturity-Role Analysis
+
+`UX-012D-...md`'s own "Experimental status" definition states: "A component idea that has not yet completed the approval process may be designated experimental... An experimental component may not be considered a shared system component until it has completed the full approval process." UX-012's own inventory table marks "Scenario Comparison" Experimental. This is relevant, corroborating evidence that Scenario Comparison was never treated, even within UX-012's own governing maturity model, as a settled, adopted, shared system component — **but Experimental status alone does not, by itself, constitute proof of invalidity.** It is treated here as one element of a converging evidence chain (alongside UX-013B's own later non-promotion and the absence of any downstream implementation reference), not as sole or sufficient grounds for the classification above.
+
+### Rejected Interpretations
+
+1. **Scenario Comparison as a distinct adopted component.** Rejected — no downstream implementation, test, token, or runtime reference establishes adoption; UX-013B's own later inventory did not carry it forward despite promoting its Experimental siblings.
+2. **Scenario Comparison as a required named Comparison variant.** Rejected — directly reopens R-05 with no new evidence favoring reversal; R-04 already establishes that Comparison's existing generic model is sufficient without a dedicated variant.
+3. **UX-012B's card grid as a new generic Comparison rendering model.** Rejected — Comparison's own already-adopted anatomy (R-03/R-04; `UX-013B-...md` §8) has no card, grid, or per-item-expand primitive; adopting one would introduce new rendering architecture this addendum's own no-new-architecture confirmation (below) forecloses.
+4. **Scenario Comparison as a separate owner of scenario content.** Rejected — directly contradicted by R-02, which already, exclusively, assigns scenario-specific analytical content to Scenario Analysis.
+5. **No correction required.** Rejected — UX-012's generic definition and UX-012B's bespoke definition materially contradict each other, and R-05's own "resolves Finding 8.3/M-6" claim remains incomplete while the finding's own cited origin (UX-012) and its detailed-anatomy companion (UX-012B) remain unexamined.
+6. **A new ADR is required.** Rejected — no genuinely new architecture, ontology, identity, or runtime behavior is implicated (see No-New-Architecture Confirmation, below); R-02, R-04, and R-05 already supply the complete governing rule, requiring only propagation, not fresh architectural reasoning.
+
+### No-New-Architecture Confirmation
+
+This addendum introduces none of the following: new Domain Object; new component identity; new canonical Decision Workspace position; new Comparison variant; new state; new interaction model; new rendering primitive; new layout primitive; new persistence; new route; new runtime ownership; new semantic token; new API; or any implementation requirement beyond a future, separately-authorized documentary correction. Every element of this addendum's own Decision is inherited directly from R-02, R-04, and R-05's own already-adopted text.
+
+### Explicit Non-Decisions
+
+This addendum does not decide, and takes no position on: the exact future wording of any correction to UX-012, UX-012B, or UX-013A; whether UX-012B's own bespoke anatomy should be preserved in an archival or historical form outside the active specification; any change to UX-012's own §17 canonical sequence restatement or §69 Scenario Workspace characterization, both preserved unchanged; any change to Portfolio Recommendation's, Proposed Decision Candidate Content's, or Recommendation's own settled identity; any Domain Object adoption for either Scenario Analysis or Comparison; any Scenario Workspace design; and whether UX-005 itself requires correction (Evidentiary Role, above). None of these is decided by implication anywhere above.
+
+### Historical Integrity
+
+`UX-Architecture-Review-001.md` and `UX-Critical-Findings-Resolution-Design-001.md` remain unchanged by this addendum. This ADR's own original text (Status, Context, Decision R-01–R-12, Governing Facts, Contradictions K-1–K-4, Consequences, Validation Criteria, Working Tree Verification above) remains unchanged and is not superseded by this addendum — it is preserved as the historical record of what this ADR originally decided, from the evidence originally examined. Superseded or unreconciled source text in UX-012, UX-012B, and UX-013A remains visible, unmodified, in the working tree and in Git history until a separately-authorized future correction lands. This addendum does not retroactively alter the documented scope of Phase 3D-2b-1, Phase 3D-2b-2, or any earlier-completed phase of the Atlas UX Source Correction Plan; none of their own prior completion records requires revision.
+
+### Finding 8.3/M-6 Treatment
+
+This addendum extends the architectural interpretation R-05 already adopted to the finding's own actual cited origin (UX-012) and its detailed-anatomy companion (UX-012B), which R-05's own original text did not examine. **This addendum does not itself declare Finding 8.3/M-6 fully resolved corpus-wide.** Finding 8.3/M-6 should be treated as resolved corpus-wide only once the future, separately-authorized source corrections to UX-012, UX-012B, and UX-013A (per the boundary below) are themselves implemented, independently reviewed, and committed — mirroring exactly how R-05's own resolution of the finding, relative to UX-013B and UX-013E, required their own separate implementation and review before being treated as complete.
+
+### Finding F-2 Boundary
+
+Finding F-2 (UX-013B §14's local "Assumptions" entry lacking a `(UX-013C)` forward-reference disclosure tag) is unrelated to this addendum. It is not analyzed here, not resolved here, no F-2 source text is modified by this addendum, and no F-2 authorization is created by this addendum. F-2 remains exactly as separate, non-blocking, and unauthorized-for-modification as every prior task in this program has recorded it.
+
+### Future Source-Correction Boundary
+
+A future, separately-authorized source-correction task's scope should be limited to: UX-012's active "Scenario Comparison" references (Layout Model, Portfolio Workspace usage note, component definition, inventory row); UX-012B's active "Scenario Comparison" definition, its component-taxonomy list entry, and its "Remaining Component Questions" item 4; UX-013A's active scope-list mention; and any cross-reference directly, strictly coupled to those specific passages (for example, a reuse-rule sentence naming Scenario Comparison elsewhere in the same document, if any is later found). This addendum does not itself authorize that task.
+
+### Explicit Exclusions
+
+The following are excluded from any future source-correction task this addendum's own findings might eventually support, and require their own, separate governance authorization if ever pursued: `UX-013B-...md`'s own historical Phase 3D-2b-1 retirement correction notice (preserved, unchanged, as historical record); `UX-013E-...md` (already correct, per R-05, unchanged); `UX-005-...md` (Evidentiary Role, above — not itself found to require correction); `UX-012D-...md`; both historical review documents; `ADR-002-...md`; `ADR-003-...md`; this ADR's own adopted text (R-01 through R-12, unmodified by this addendum); Finding F-2 (Boundary, above); any unrelated Comparison type (Before/After, Alternative, Allocation, Historical); any unrelated Scenario Analysis content beyond the ownership boundary already stated by R-02; and any runtime code, test, route, persisted model, token, or component API.
+
+### Authorization Boundary
+
+This addendum establishes architectural interpretation only. Consistent with this ADR's own original "Relationship to the Source Correction Plan" section and with the precedent already established by `ADR-002-...md`'s own C-02 addendum ("Downstream Governance Consequence": implementation remains unauthorized until the addendum is independently reviewed and accepted, the Source Correction Plan is separately amended, the affected files are added to that Plan as authorized correction targets, and a separate source-correction implementation task is approved), **this addendum does not by itself authorize any source implementation.** A separate Atlas UX Source Correction Plan governance amendment, following this program's own established amendment-then-implementation-then-independent-review-then-commit-gate pattern, is required before any edit to UX-012, UX-012B, or UX-013A may occur.
+
+### Required Next Governance Action
+
+Independent review of this addendum, following this program's own established pattern for ADR-003 and ADR-004 themselves. Only if this addendum is independently reviewed and accepted, and only after it is committed, may a Source Correction Plan governance amendment authorizing the bounded future correction (per the boundary above) be drafted.
+
+### Definition of Done (Addendum)
+
+This addendum is Done, for the purpose of this task, when: it exists as a complete, self-contained section, internally consistent with this ADR's own unmodified original text; every required decision dimension (the corpus-wide rule; the three files' own individual classification; the UX-005 and UX-012D evidentiary roles; the rejected interpretations; the no-new-architecture confirmation; the historical-integrity, Finding-8.3/M-6, and Finding-F-2 boundaries; the future correction boundary and its exclusions; and the authorization boundary) is addressed by an explicit resolution or an explicit non-decision; no existing ADR-004 text above is modified; and the addendum is staged for independent review, not adopted. Adoption requires a separate, future independent-review task, following this program's own established pattern.
+
+### Working Tree Verification (Addendum)
+
+**Branch:** main
+**HEAD at time of this addendum:** `e06b6010e90ad17940223000d5b1406b67a2e040` ("docs(ux): record Phase 3D-2b-2 completion") — unchanged throughout this task.
+**Files modified:** `docs/atlas_ux/governance/ADR-004-Scenario-Analysis-Comparison-and-Sequence-Authority-Resolution.md` (this addendum, appended). All text preceding this addendum, including the original Status, Date, Decision Owners/Authority, Context, Authority and Dependencies, Exact Question, Scope, Non-Scope, Definitions, Governing Facts, Contradictions, Candidate Architectures, Selected Architecture, Rejected Alternatives, Decision (R-01–R-12), Consequences, Non-Decisions, Required Downstream Corrections, Explicit Non-Decisions, Relationship sections, Supersession and Precedence, Validation Criteria, Open Questions, Definition of Done, and original Working Tree Verification sections, is unchanged.
+**Files created:** none.
+**Other files modified:** none. `docs/atlas_ux/governance/Atlas-UX-Source-Correction-Plan.md` was not modified. `UX-012-Atlas-Design-System-Workspace-Consistency-Specification.md`, `UX-012B-Atlas-Design-System-Components-Reusable-Patterns.md`, and `UX-013A-Atlas-Component-Specification-Foundation-Components.md` were not modified. Neither `UX-Architecture-Review-001.md` nor `UX-Critical-Findings-Resolution-Design-001.md` was modified.
+**Staged files:** none.
+**Untracked files:** none.
+
+No commit was made.
