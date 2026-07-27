@@ -30,6 +30,18 @@ Third, conditionality is now defined, in ordinary language, for Scenario Analysi
 
 **Proposed Decision and Decision Rationale remain omitted from this list**, exactly as the Phase 3D-2a notice above discloses — their restoration is now tracked as Phase 3D-2b-2 of the Atlas UX Source Correction Plan, held pending its own dedicated numbering-policy assessment. This correction does not reopen or narrow that disclosure, and does not describe their own governance as unsettled — ADR-002 already, unambiguously governs both. **This correction does not claim UX-013B's §14 list is now a complete or canonical Decision Workspace sequence** — the visible gaps at positions 3 and 11 remain; Proposed Decision and Decision Rationale remain absent, pending Phase 3D-2b-2. Phase 3D-1 and Phase 3D-2a (above) remain complete and unchanged by this correction. The "Portfolio Recommendation" variant remains unaffected. No Domain Object, persistence, provenance, backend, or Scenario Workspace decision is introduced by this correction.
 
+**Correction Notice (Phase 3D-2b-2, governed by the Atlas UX Source Correction Plan's own Phase 3D-2b-2 governance amendment, committed `c6aed7a204320e2ccbd4fd7a328b434ecf44cc63` — 2026-07-27):** The governance amendment adopted a contextual-hybrid numbering policy following a dedicated, read-only numbering-policy assessment and its compliance verification. Per that amendment's own authorization boundary, this document's own separately labeled "Decision Workspace sequence" (§14, Reasoning Relationships, below) is corrected as follows.
+
+First, **Proposed Decision (UX-013C)** is inserted into the list at local position 3, as a forward reference to the canonical Proposed Decision field (ADR-002 C-03, canonical position 3). This insertion does not define, redefine, or reopen Proposed Decision's own component identity or canonical position, both of which remain governed exclusively by ADR-002.
+
+Second, **Decision Rationale (UX-013C)** is inserted into the list at local position 4, as a forward reference to the canonical Decision Rationale field (ADR-002 C-03, canonical position 4). This insertion does not define, redefine, or reopen Decision Rationale's own component identity or canonical position, both of which remain governed exclusively by ADR-002. Both new entries are UX-013C forward references, consistent with the existing "(UX-013C)"-tagged entries (Decision Required, Portfolio Consequences, Implementation, Review Conditions) already present in this list.
+
+Third, the previously-disclosed gaps at local positions 3 (from the Phase 3D-2a removal of "What Changed") and 11 (from the Phase 3D-1 removal of "Recommendation") are closed by contiguously renumbering every remaining entry: Supporting Factors, Challenges, and Assumptions (previously local 4, 5, 6) are now local 5, 6, 7; Opportunity Cost and Portfolio Consequences (previously local 7, 8) are now local 8, 9; Scenario Analysis and Comparison (previously local 9, 10) are now local 10, 11. Implementation and Review Conditions remain at local 12 and 13, unchanged. No local position is left as a gap by this renumbering.
+
+**This renumbering is local and non-canonical.** It does not amend ADR-002, ADR-003, or ADR-004, and does not alter, replace, reassign, or reinterpret any canonical Decision Workspace sequence position — ADR-002 (C-03) remains the sole canonical authority for Decision Workspace section order and membership. Local numbering, wherever it appears in this list, creates no component identity, Domain Object identity, persistence identity, or routing identity — it is a documentary reading-order label only. The disambiguations this renumbering now requires are restated in full immediately below the renumbered list, above.
+
+**This correction does not claim UX-013B's §14 list is now a complete or canonical Decision Workspace sequence** — it is, and remains, a local Reasoning-component ordering model, exactly as ADR-004 R-01 established; the list no longer contains a visible gap only because every previously-omitted entry has now been restored, not because the list has thereby acquired canonical status. This correction does not resolve UX-012's own four unresolved "Scenario Comparison" references; does not resolve Finding F-2 (the Assumptions entry's own missing UX-013C forward-reference disclosure tag); does not modify UX-013C (which does not exist in the repository) or UX-013E; and does not amend ADR-002, ADR-003, or ADR-004. Phase 3D-1, Phase 3D-2a, and Phase 3D-2b-1 (all above) remain complete and unchanged by this correction. The "Portfolio Recommendation" variant remains unaffected. No Domain Object, persistence, provenance, backend, or Scenario Workspace decision is introduced by this correction.
+
 ---
 
 # Reasoning Component Philosophy
@@ -1743,20 +1755,22 @@ The candidate content follows from the Conclusion. It should be challenged if it
 
 The Reasoning Components appear in a defined reading order within each Workspace. This reading order is not arbitrary — it reflects the sequence that produces the most coherent reasoning arc for this document's own Reasoning components. **This is a local reading order for this document's own Reasoning components, not the canonical ADR-002 Decision Workspace sequence** (per `ADR-004-Scenario-Analysis-Comparison-and-Sequence-Authority-Resolution.md` R-01 — see Correction Notice, Phase 3D-2b-1, above): it does not carry, compete with, or require reconciliation against that canonical thirteen-item sequence, and its own numbered positions, where used, do not correspond to that sequence's own canonical positions of the same number.
 
-**Decision Workspace reading order (local to this document; see Correction Notice, Phase 3D-2b-1, above):**
+**Decision Workspace reading order (local to this document; see Correction Notice, Phase 3D-2b-1 and Phase 3D-2b-2, above):**
 1. Current Conclusion
 2. Decision Required (UX-013C)
-4. Supporting Factors
-5. Challenges
-6. Assumptions
-7. Opportunity Cost
-8. Portfolio Consequences (UX-013C)
-9. Scenario Analysis (conditional)
-10. Comparison (conditional)
+3. Proposed Decision (UX-013C)
+4. Decision Rationale (UX-013C)
+5. Supporting Factors
+6. Challenges
+7. Assumptions
+8. Opportunity Cost
+9. Portfolio Consequences (UX-013C)
+10. Scenario Analysis (conditional)
+11. Comparison (conditional)
 12. Implementation (UX-013C)
 13. Review Conditions (UX-013C)
 
-**This list's own numbered positions are local to this document only and do not correspond to `ADR-002-Critical-UX-Architecture-Resolutions.md`'s own canonical Decision Workspace sequence positions of the same number.** In particular: local position 9 (Scenario Analysis) is not ADR-002's canonical position 9 (Assumptions, Monitoring and Invalidation), and local position 10 (Comparison) is not ADR-002's canonical position 10 (Implementation Plan). Neither Scenario Analysis nor Comparison is, or was ever validly, a canonical Decision Workspace sequence member (ADR-004 R-06).
+**This list's own numbered positions are local to this document only and do not correspond to `ADR-002-Critical-UX-Architecture-Resolutions.md`'s own canonical Decision Workspace sequence positions of the same number.** Specifically, and without exception: Opportunity Cost remains canonical position 7 (ADR-002 C-03) even though it appears at local position 8 in this list; Portfolio Consequences remains canonical position 8 (ADR-002 C-03) even though it appears at local position 9 in this list — its appearance at local position 9 does not alter, replace, reassign, or reinterpret its canonical position 8, which remains governed exclusively by ADR-002; Assumptions, Monitoring and Invalidation remains canonical position 9 (ADR-002 C-03) even though this list's local item is labeled "Assumptions" and appears at local position 7; Implementation Plan remains canonical position 10 (ADR-002 C-03) even though the local forward-reference entry appears at local position 12; and Scenario Analysis and Comparison remain independent conditional Reasoning components without any canonical position under ADR-004, regardless of their own local positions (10 and 11 respectively) in this list. Neither Scenario Analysis nor Comparison is, or was ever validly, a canonical Decision Workspace sequence member (ADR-004 R-06).
 
 **Conditionality.** Scenario Analysis is available/rendered when the current decision materially depends on multiple plausible future conditions or outcome paths — i.e., when the reasoning genuinely requires acknowledging more than one plausible way the relevant future could unfold. Comparison is available/rendered when two or more comparable entities, states, alternatives, or outputs exist for which side-by-side evaluation would be useful. In both cases, "conditional" means the component is not always rendered — its presence is gated by whether its own stated precondition currently holds for the specific reasoning session (ADR-004 R-07).
 
