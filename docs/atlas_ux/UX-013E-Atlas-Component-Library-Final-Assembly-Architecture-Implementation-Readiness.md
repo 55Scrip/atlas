@@ -1,5 +1,9 @@
 # UX-013E — Atlas Component Library Final Assembly, Architecture & Implementation Readiness
 
+Status: Superseded — see `UX-013F-Foundation-Reasoning-Component-Library-Assembly.md` for Foundation/Reasoning component-library assembly authority, and `UX-013-Interim-Decision-Monitoring-AI-Metadata-Governance-Note.md` for provisional Decision/Monitoring/AI-Collaboration/Metadata authority, pending genuine future UX-013C/UX-013D authorship. This split implements `ADR-002-Critical-UX-Architecture-Resolutions.md` C-05 (Phase 4 of the Atlas UX Source Correction Plan). UX-013C and UX-013D provenance is unconfirmed; see the interim note's own three-tier claim classification.
+
+**Corrected 2026-07-28:** this document's own body, below, is preserved verbatim as the historical record of the original assembly attempt and is not edited further. Its own "Governing Introduction" (immediately below) still states, as it originally did, that this document "supersedes UX-013A through UX-013D" and that "the four source volumes... established the component families independently" — treating UX-013C and UX-013D as settled, existing sources. Per ADR-002 C-05, neither UX-013C nor UX-013D exists anywhere in the committed repository, and this document's own account of their contribution is, and was, unconfirmed. This correction notice does not alter the paragraph below; it is added, per the Atlas UX Source Correction Plan's own non-erasure principle, so a reader encountering this document directly sees both the original claim and the fact that it is now superseded by a scoped, provenance-classified split. See `git log` for the full diff and the Atlas UX Source Correction Plan, Section 10, for the complete migration architecture.
+
 ---
 
 ## Governing Introduction
