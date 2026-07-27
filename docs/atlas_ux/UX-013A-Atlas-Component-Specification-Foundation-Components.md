@@ -4,6 +4,8 @@ Governing references: UX-012 — Atlas Design System & Workspace Consistency Spe
 
 Volume 1 of the Atlas Component Library. This document specifies every Foundation Component in production-ready detail. Figma components can be built directly from these specifications. Engineering can implement without inventing behavior. Future designers can extend Atlas without reinterpretation.
 
+**Correction Notice (Phase 3E, governed by `ADR-004-Scenario-Analysis-Comparison-and-Sequence-Authority-Resolution.md`'s own committed Corpus-Wide Scenario Comparison Extension addendum — 2026-07-27):** This document's "Requirements for UX-013B" section previously named "Scenario Comparison" among the Comparison Components UX-013B was expected to specify. Per the ADR-004 addendum, "Scenario Comparison" is not, and was never validly, an independently adopted Comparison component or a required named Comparison variant — Scenario Analysis (`UX-013B-Atlas-Component-Specification-Reasoning-Components.md` §9) exclusively owns scenario-specific analytical content, and Comparison (UX-013B §8) is a generic, non-owning renderer. This correction removes "Scenario Comparison" from that scope-list mention; the remaining five Comparison Components (Before/After, Alternative Comparison, Opportunity Cost Component, Allocation Comparison, Historical Comparison) are unaffected. This is this document's first correction under this program; all content outside this single mention is unchanged. This correction is documentary only — it introduces no new component, variant, state, interaction, or architecture, and does not amend ADR-002, ADR-003, or ADR-004. Finding F-2 and any other unrelated matter remain untouched.
+
 ---
 
 # Foundation Component Philosophy
@@ -2420,7 +2422,7 @@ UX-013B specifies every Reasoning Component in the same production-ready depth a
 
 **Evidence and Opportunity Components:** Opportunity Summary, Opportunity Cost (as a Reasoning component — the standalone visual is a Comparison Component), Evidence Summary.
 
-**Comparison Components:** Before/After, Alternative Comparison, Opportunity Cost Component (the structured visual), Scenario Comparison, Allocation Comparison, Historical Comparison.
+**Comparison Components:** Before/After, Alternative Comparison, Opportunity Cost Component (the structured visual), Allocation Comparison, Historical Comparison.
 
 **Reasoning Block Components:** Context Panel, Relationship display, Supporting Metadata within Reasoning.
 

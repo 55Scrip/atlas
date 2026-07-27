@@ -12,6 +12,8 @@ This is the single authoritative reference for every future Atlas interface, com
 
 This notice does not claim any of the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at each corrected passage below. All content outside these three areas is unchanged.
 
+**Correction Notice (Phase 3E, governed by `ADR-004-Scenario-Analysis-Comparison-and-Sequence-Authority-Resolution.md`'s own committed Corpus-Wide Scenario Comparison Extension addendum — 2026-07-27):** This document previously named "Scenario Comparison" as a distinct use case in the Comparison Layout definition (§10), a Portfolio Workspace usage example (§16), a fully specified Comparison component (§24), and a Component Inventory entry. The ADR-004 addendum settled that Scenario Analysis (`UX-013B-Atlas-Component-Specification-Reasoning-Components.md` §9) is the exclusive semantic owner of scenario-specific analytical content, that Comparison (UX-013B §8) is a generic, non-owning side-by-side rendering capability, and that "Scenario Comparison" is not, and was never validly, an independently adopted Comparison component or a required named Comparison variant — its own anatomy, as previously stated here ("parallel columns; row-per-scenario structure"), was already generic and already fully satisfied by Comparison's existing capability. This correction removes "Scenario Comparison" as a distinctly named item from the Comparison Layout enumeration (§10) and the Portfolio Workspace usage note (§16), and removes its entire entry, outright, from the Comparison Components section (§24) and the Component Inventory table. Prior text (§24, full entry): "`**Scenario Comparison** Purpose: Comparison of potential outcomes under different conditions or assumptions. Layout: parallel columns; row-per-scenario structure. Reuse: Investment Workspace, Decision Workspace.`" Prior text (Component Inventory row): "`| Scenario Comparison | Comparison of potential outcomes | Investment, Decision | Reasoning Workspaces | Medium | Experimental |`" Before/After, Opportunity Cost, Alternative Comparison, Allocation Comparison, and Historical Comparison — and the generic Comparison Layout definition itself — remain entirely unchanged and unaffected by this correction. Scenario-related content, if ever compared side by side, may still be rendered through Comparison's existing, generic model, without this correction mandating which existing type performs that rendering. This correction is documentary only — it introduces no new component, variant, state, interaction, rendering primitive, persistence, route, API, or token, and does not amend ADR-002, ADR-003, or ADR-004. Finding F-2 and any other unrelated matter remain untouched.
+
 ---
 
 # Canonical Glossary
@@ -315,7 +317,7 @@ Used when: reading and writing narrative. A column sized for comfortable reading
 Used when: displaying structured data, comparisons, or side-by-side reasoning. A wider column with internal grid for structured alignment. The primary layout for comparison sections and data-heavy Investment Workspace sections.
 
 **Comparison Layout**
-Two or more columns of equivalent width presenting parallel information. Used for Before/After, Opportunity Cost, Alternative Comparison, and Scenario Comparison.
+Two or more columns of equivalent width presenting parallel information. Used for Before/After, Opportunity Cost, and Alternative Comparison.
 
 **Overlay Model**
 Historical Records, Monitoring detail, and related Workspace context are presented in overlays that preserve the underlying Workspace. Overlays do not navigate away from the primary Workspace.
@@ -433,7 +435,7 @@ Primarily navigational. The Dashboard is a launching point. Actions are minimal 
 5. Consequences (what changes to individual positions mean for the whole)
 6. Portfolio Monitoring (portfolio-level conditions)
 
-**Comparison layouts:** Portfolio Workspace uses Comparison layouts extensively. Before/After, Allocation Comparison, and Scenario Comparison components are used here more than in any other Workspace.
+**Comparison layouts:** Portfolio Workspace uses Comparison layouts extensively. Before/After and Allocation Comparison components are used here more than in any other Workspace.
 
 **Spacing and density:** Standard to Generous. Comparison sections use wider layouts; narrative sections use editorial column.
 
@@ -693,11 +695,6 @@ Purpose: The structured visual representation of the opportunity cost calculatio
 Layout: what is chosen versus what is foregone, with explicit comparison framing.
 This is a signature visual element. It should be visually distinct and clearly labeled.
 Reuse: Decision Workspace (required).
-
-**Scenario Comparison**
-Purpose: Comparison of potential outcomes under different conditions or assumptions.
-Layout: parallel columns; row-per-scenario structure.
-Reuse: Investment Workspace, Decision Workspace.
 
 **Allocation Comparison**
 Purpose: Visual representation of portfolio allocation before and after a proposed Decision.
@@ -2032,7 +2029,6 @@ The first official Atlas Component Inventory. All components are at experimental
 | Before/After | Explicit comparison of current and proposed state | Decision, Portfolio | Decision, Portfolio | High | Candidate |
 | Alternative Comparison | Structured comparison of two or more options | Decision, Investment | Reasoning Workspaces | High | Candidate |
 | Opportunity Cost Component | Structured visual of opportunity cost | Decision | Decision, Portfolio | High | Candidate |
-| Scenario Comparison | Comparison of potential outcomes | Investment, Decision | Reasoning Workspaces | Medium | Experimental |
 | Allocation Comparison | Before/after portfolio allocation representation | Portfolio | Portfolio | High | Experimental |
 | Historical Comparison | Current state alongside Historical Record | Decision, Investment | All Workspaces with history | Medium | Experimental |
 

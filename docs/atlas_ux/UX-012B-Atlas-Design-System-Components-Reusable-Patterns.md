@@ -12,6 +12,15 @@ Part B of: UX-012 — Atlas Design System & Workspace Consistency Specification
 
 This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. All content outside these two areas, including every other component's own reusable definitions, is unchanged.
 
+**Correction Notice (Phase 3E, governed by `ADR-004-Scenario-Analysis-Comparison-and-Sequence-Authority-Resolution.md`'s own committed Corpus-Wide Scenario Comparison Extension addendum — 2026-07-27):** This document previously presented "Scenario Comparison" as a fully specified Comparison component — with Purpose, Structure (a card-per-scenario grid: scenario name, outcome label with semantic color, consequence line, optional expandable detail), Interaction, Visual treatment, and Reuse rules — listed alongside its five sibling Comparison components in this document's own component-taxonomy list, and the subject of its own "Remaining Component Questions" item 4 concerning mobile layout. **This correction does not delete that design material.** It is retained below, relabeled, as historical experimental design evidence, on the following evidentiary basis, per the ADR-004 addendum:
+- This document's own companion, `UX-012-Atlas-Design-System-Workspace-Consistency-Specification.md`, marked the same-named entry Maturity: **Experimental** in its own Component Inventory table (since corrected — see that document's own Phase 3E notice) — under `UX-012D-Atlas-Design-System-Governance-Tokens-Evolution.md`'s own governing maturity definition, an idea that had not completed the approval process and "may not be considered a shared system component until it has."
+- `UX-013B-Atlas-Component-Specification-Reasoning-Components.md`'s own later, independently-authored Reasoning Component Inventory table promoted two of this same entry's Experimental-maturity Comparison siblings (Allocation Comparison, Historical Comparison) to "Candidate" but did not carry this entry forward at all.
+- No test, token, prop, route, persisted field, or other downstream implementation artifact referencing "Scenario Comparison" as a distinct, adopted rendering artifact was found anywhere in the repository.
+- This entry's own card-per-scenario anatomy materially overlaps `UX-013B-...md` §9's own `ScenarioItem` anatomy (`ScenarioType`, `ScenarioName`, `ProbabilityLabel`, `Conditions`, `Implications`) — scenario-specific content that ADR-004 R-02 assigns exclusively to Scenario Analysis.
+- `UX-005-Investment-Workspace-Screen-Specification.md`'s own earlier "Scenario Cards"/"Scenario Card" wireframe-level element listings offer a plausible, documented lineage for this card-based concept, predating Scenario Analysis's own later, more authoritative specification — offered as observed evidence of a documented lineage only, not as proof of this document's own original authors' intent, which the repository cannot establish.
+
+On this basis, the entry below is retained as historical experimental evidence, not as an adopted Comparison component or a required named Comparison variant; its own scenario-specific content is owned by Scenario Analysis, not by Comparison, per ADR-004 R-02/R-04. Its component-taxonomy list entry has been removed accordingly, and its "Remaining Component Questions" item 4 has been marked moot. This correction introduces no new component, variant, state, interaction, rendering primitive, persistence, route, API, or token, and does not amend ADR-002, ADR-003, or ADR-004. Finding F-2 and any other unrelated matter remain untouched.
+
 ⸻
 
 1. Component Philosophy
@@ -455,13 +464,15 @@ Signature status: One of the six signature Atlas visual moments (per UX-011 Sect
 
 ⸻
 
-Scenario Comparison
+Scenario Comparison (Historical Experimental Concept — Not an Adopted Comparison Component; see Correction Notice, Phase 3E, above)
+
+The following describes a card-grid presentation concept explored at this document's original Experimental maturity stage and never promoted into adopted shared architecture. It is retained here as historical design evidence, not as a live Comparison component; its own scenario-specific content (scenario naming, outcome framing, detail) is owned by Scenario Analysis (`UX-013B-Atlas-Component-Specification-Reasoning-Components.md` §9), not by Comparison.
 
 Purpose: Presents multiple scenarios (economic, thesis, or market) as a structured comparison of outcomes and portfolio impacts.
 Structure: Each scenario card: scenario name, outcome label (with semantic color), consequence line, optional detail (behind expand). Cards arranged in a consistent grid (typically two or three columns on desktop, single column on mobile).
 Interaction: Each card may expand to show additional scenario detail and the specific portfolio consequence.
 Visual treatment: The outcome label (the most important line on each card) receives the highest emphasis within the card. The consequence line is secondary. Scenario name is tertiary.
-Reuse rules: Portfolio Workspace (scenario analysis section). Investment Workspace (scenario section). Decision Workspace (scenario context when relevant to the decision).
+Reuse rules (historical): Portfolio Workspace (scenario analysis section). Investment Workspace (scenario section). Decision Workspace (scenario context when relevant to the decision).
 
 ⸻
 
@@ -1074,7 +1085,7 @@ Conclusion components: Primary Conclusion, Current Conclusion, Decision Required
 
 Reasoning components: Supporting Factors, Challenges, Assumptions, Invalidation Condition, Portfolio Consequences, Opportunity Summary, Implementation Summary, Review Condition — all with purpose, content, hierarchy, interaction, visual emphasis, and reuse rules.
 
-Comparison components: Before/After, Alternative Comparison, Opportunity Cost, Scenario Comparison, Allocation Comparison, Historical Comparison — all with structure, interaction, responsive layout, reading order, and expansion behavior.
+Comparison components: Before/After, Alternative Comparison, Opportunity Cost, Allocation Comparison, Historical Comparison — all with structure, interaction, responsive layout, reading order, and expansion behavior. (A previously explored "Scenario Comparison" concept remains documented earlier in this document as historical experimental evidence, not as an adopted Comparison component; see Correction Notice, Phase 3E, above.)
 
 Decision components: Proposed Decision, Final Decision Card, Decision Summary, Decision History, Decision Amendment, Decision Review — all with required and optional content, states, interaction, and historical behavior. The Final Decision Card is established as a signature Atlas component.
 
@@ -1116,9 +1127,9 @@ Evidence needed: Dashboard design context from a Dashboard specification update.
 The Historical Timeline Entry component is defined, but the container panel within which it appears — the version history panel in the Decision Workspace — is referenced but not given its own full specification. It may warrant its own component definition.
 Evidence needed: Decision Workspace implementation experience. Does not block UX-012C.
 
-4. The Scenario Comparison component on mobile:
-The component is defined with a two-to-three-column card grid on desktop and single-column on mobile. The specific layout adaptation — whether cards stack vertically as full-width or collapse to a list-row format — has not been specified.
-Evidence needed: Mobile rendering test. Does not block UX-012C.
+4. The historical Scenario Comparison concept's mobile layout (moot — not an adopted component):
+This question, as originally posed, concerned the mobile responsive treatment of the Scenario Comparison card grid described earlier in this document. Per the ADR-004 corpus-wide addendum (see Correction Notice, Phase 3E, above), that concept was never adopted as a shared Comparison component; this question is accordingly moot and requires no further resolution. Scenario-specific content and its own responsive presentation remain governed by Scenario Analysis (UX-013B §9), not by this document.
+Evidence needed: none — moot. Does not block UX-012C.
 
 ⸻
 
