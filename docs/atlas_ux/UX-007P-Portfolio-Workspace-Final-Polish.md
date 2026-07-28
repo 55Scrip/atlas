@@ -2,12 +2,12 @@ UX-007P — Portfolio Workspace Final Polish
 
 Status: Final Polish Pass
 Owner: Atlas Product
-Applies to: Existing Portfolio Workspace implementation after UX-007 and UX-007A
+Applies to: Existing Portfolio Workspace implementation after UX-007A
 Depends on:
 - UX-000 — The Atlas Experience
-- UX-006 — Portfolio Workspace Philosophy
-- UX-007 — Portfolio Workspace Screen Specification
 - UX-007A — Portfolio Workspace Wireframe Specification
+
+**Correction Notice (Phase 6A, governed by the Atlas UX Source Correction Plan's own Section 3 documentary-truthfulness principles and Section 18 bullet 13 — 2026-07-28):** This document's `Applies to` line and `Depends on` list previously cited `UX-006 — Portfolio Workspace Philosophy` and `UX-007 — Portfolio Workspace Screen Specification` as settled prior/governing sources. Neither exists anywhere in the committed repository. This document's own polish-pass content is self-contained and does not require UX-006's or UX-007's content to be understood or implemented. Neither is available as current governing authority. This repository cannot verify whether either historically influenced this document's own approach — that question is neither confirmed nor denied by this correction; the unsupported active attribution is removed without deciding it. Prior text (`Applies to` line): "Applies to: Existing Portfolio Workspace implementation after UX-007 and UX-007A". Prior text (`Depends on` list): "- UX-006 — Portfolio Workspace Philosophy" and "- UX-007 — Portfolio Workspace Screen Specification". `UX-000` and `UX-007A` remain accurate, existing dependencies and are unaffected.
 
 Purpose:
 Refine the existing Portfolio Workspace implementation without changing its established information architecture, section order, reasoning model, or interaction pattern.

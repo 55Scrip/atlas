@@ -3,7 +3,9 @@ UX-008 — Decision Workspace Philosophy
 Status: Philosophy Complete
 Owner: Atlas Product
 Sequence: Dashboard → Investment Workspace → Portfolio Workspace → Decision Workspace
-Depends on: UX-000 — The Atlas Experience, UX-006 — Portfolio Workspace Philosophy
+Depends on: UX-000 — The Atlas Experience
+
+**Correction Notice (Phase 6A, governed by the Atlas UX Source Correction Plan's own Section 3 documentary-truthfulness principles and Section 18 bullet 13 — 2026-07-28):** This document's `Depends on` line previously cited `UX-006 — Portfolio Workspace Philosophy` as a settled governing source. `UX-006` does not exist anywhere in the committed repository. This document's own Decision Workspace philosophy is self-contained and does not require UX-006's content to be understood. `UX-006` is unavailable and cannot serve as current governing authority. This repository cannot verify whether UX-006 historically influenced this document — that question is neither confirmed nor denied by this correction. Prior text: "Depends on: UX-000 — The Atlas Experience, UX-006 — Portfolio Workspace Philosophy". `UX-000` remains an accurate, existing dependency and is unaffected.
 
 ⸻
 

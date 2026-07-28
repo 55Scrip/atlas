@@ -2,16 +2,18 @@ UX-007A — Portfolio Workspace Wireframe Specification
 
 Status: Draft v1.0
 Owner: Atlas Product
-Depends on: UX-000 — The Atlas Experience, UX-006 — Portfolio Workspace Philosophy, UX-007 — Portfolio Workspace Screen Specification
+Depends on: UX-000 — The Atlas Experience
 Primary use: Figma wireframe refinement and interaction prototype
 Visual fidelity: Low-fidelity, monochrome, structure-first
+
+**Correction Notice (Phase 6A, governed by the Atlas UX Source Correction Plan's own Section 3 documentary-truthfulness principles and Section 18 bullet 13 — 2026-07-28):** This document's `Depends on` line previously cited `UX-006 — Portfolio Workspace Philosophy` and `UX-007 — Portfolio Workspace Screen Specification` as settled governing sources; its Purpose section attributed this document's own behavioral and information requirements to UX-007 as their point of origin; its closing section instructed the reader to consult UX-006 and UX-007 directly. Neither `UX-006` nor `UX-007` exists anywhere in the committed repository. This document's own wireframe specification (Sections 2 onward) is self-contained and does not require UX-007's content to be understood or implemented. `UX-007` is unavailable and cannot serve as current governing authority. This repository cannot verify whether UX-007 historically established or influenced the requirements this document states — that claim is neither confirmed nor denied by this correction; the unsupported active attribution is removed without deciding the question of historical origin. Prior text (`Depends on` line): "Depends on: UX-000 — The Atlas Experience, UX-006 — Portfolio Workspace Philosophy, UX-007 — Portfolio Workspace Screen Specification". Prior text (Purpose section): "It translates the behavioral and information requirements established in UX-007 into a precise layout, hierarchy, component structure, viewport model, interaction pattern, and Figma prototype." Prior text (closing section): "Use UX-007 for behavioral requirements." and "Use UX-006 for portfolio philosophy." This correction does not reconstruct UX-006 or UX-007, does not claim either ever existed, and does not schedule their future authorship. `UX-000 — The Atlas Experience` remains an accurate, existing dependency and is unaffected.
 
 
 1. PURPOSE
 
 This document defines the exact structural wireframe for the Atlas Portfolio Workspace.
 
-It translates the behavioral and information requirements established in UX-007 into a precise layout, hierarchy, component structure, viewport model, interaction pattern, and Figma prototype.
+It translates the behavioral and information requirements represented in this document into a precise layout, hierarchy, component structure, viewport model, interaction pattern, and Figma prototype.
 
 This document specifies:
 
@@ -1601,10 +1603,6 @@ Apply the following refinements:
 - do not add automatic rebalancing,
 - do not add trading execution,
 - do not manufacture urgency.
-
-Use UX-007 for behavioral requirements.
-
-Use UX-006 for portfolio philosophy.
 
 Use UX-000 as the governing Atlas experience standard.
 
