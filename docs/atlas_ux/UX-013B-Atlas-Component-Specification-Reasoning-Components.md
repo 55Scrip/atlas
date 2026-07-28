@@ -42,6 +42,8 @@ Third, the previously-disclosed gaps at local positions 3 (from the Phase 3D-2a 
 
 **This correction does not claim UX-013B's §14 list is now a complete or canonical Decision Workspace sequence** — it is, and remains, a local Reasoning-component ordering model, exactly as ADR-004 R-01 established; the list no longer contains a visible gap only because every previously-omitted entry has now been restored, not because the list has thereby acquired canonical status. This correction does not resolve UX-012's own four unresolved "Scenario Comparison" references; does not resolve Finding F-2 (the Assumptions entry's own missing UX-013C forward-reference disclosure tag); does not modify UX-013C (which does not exist in the repository) or UX-013E; and does not amend ADR-002, ADR-003, or ADR-004. Phase 3D-1, Phase 3D-2a, and Phase 3D-2b-1 (all above) remain complete and unchanged by this correction. The "Portfolio Recommendation" variant remains unaffected. No Domain Object, persistence, provenance, backend, or Scenario Workspace decision is introduced by this correction.
 
+**Correction Notice (Phase 5, governed by the Atlas UX Source Correction Plan's own Section 22 Q2-resolved corpus-wide cross-reference sweep — 2026-07-28):** A corpus-wide mechanical inventory, followed by human semantic disposition per Section 22's Q2 resolution, found five untagged passages in this document presenting `UX-013C` or `UX-013D` as an existing, currently consulted specification, rather than as the absent, unconfirmed source ADR-002 C-05 and ADR-001 require. Per ADR-002 C-05, neither `UX-013C` nor `UX-013D` exists anywhere in the committed repository. Each passage is corrected to remove the settled-fact framing and, where an accurate current source exists, to point to it: the Conclusion component's own cross-reference to the Proposed Decision component (Purpose section) now cites the interim governance note's DecisionProposal classification as its current, Unconfirmed source, rather than UX-013C; the Conclusion component's own Editing cross-reference (Interaction section) now cites `UX-012-Atlas-Design-System-Workspace-Consistency-Specification.md` §29 ("Editing Components"), where Long-Form Editor is, and always was, actually specified — UX-013D was never its governing source; the Challenges component's own "When Not Used" cross-reference to the Monitoring Condition component, and the Assumption component's own "Add Monitoring" interaction cross-reference, now cite the interim governance note as the Monitoring Condition component's current source (its broad existence is Independently Confirmed per `UX-012` and this document's own ID reference; its detailed specification remains Unconfirmed); and the Metadata component's own Final Decision Card provenance cross-reference now cites the interim governance note's DecisionCard classification (Unconfirmed) in place of UX-013C. Prior text (verbatim, each passage): "The Proposed Decision is specified in UX-013C."; "Editing: Long-Form Editor behavior applies (see UX-013D)"; "As a location for monitoring conditions (those are the Monitoring Condition component, specified in UX-013C)"; "Opens a Monitoring Condition creation flow (specified in UX-013C)"; "Within the Final Decision Card (see UX-013C) as the provenance record." This correction changes no component's behavior, states, anatomy, or relationships — only these five citations. This correction does not resolve, reopen, or take any position on Q1, Finding F-2, ADR-002 C-05, or any canonical Decision, Monitoring, or AI-Collaboration authorship question; the interim governance note's own provisional, non-canonical status is unchanged by these new citations to it, and none of them promotes it toward canonical status. Phase 3, Phase 3D-1, Phase 3D-2a, and Phase 3D-2b-1/Phase 3D-2b-2 (all above) remain complete and unchanged by this correction. This document's own six `(UX-013C)`-tagged §14 sequence-list entries and its own correction-notice narration (Phase 3D-2b-2, above, which itself references the `(UX-013C)` tag pattern twice in prose) are unaffected — those are already-authorized forward references and historical narration, not settled-fact citations, and are outside this correction's scope. The "Question 3: Assumption Monitoring Condition Creation Flow" passage (Remaining Questions, below) was reviewed and confirmed to already, correctly, use future-tense, pending-question framing ("will be fully specified in UX-013C," "will be resolved in UX-013C") — it is not a settled-fact claim and is unaffected by this correction. The "Requirements for UX-013C" section (Overall Implementation Readiness, below) was likewise reviewed and confirmed to already use planned/future framing throughout ("Do not produce UX-013C yet") and is unaffected.
+
 ---
 
 # Reasoning Component Philosophy
@@ -139,7 +141,7 @@ Within the Decision Workspace, there are two Conclusion positions:
 1. **Current Conclusion** — at the top of the reasoning body, updated dynamically as the user reasons.
 2. **Proposed Decision** — at the bottom of the reasoning body, the user's authored commitment before formalization.
 
-These are distinct components. The Conclusion component specifies the Current Conclusion. The Proposed Decision is specified in UX-013C.
+These are distinct components. The Conclusion component specifies the Current Conclusion. The Proposed Decision's detailed specification is not yet committed; see the interim governance note's DecisionProposal entry (`UX-013-Interim-Decision-Monitoring-AI-Metadata-Governance-Note.md`, Unconfirmed), pending genuine UX-013C authorship.
 
 ## Variants
 
@@ -212,7 +214,7 @@ No editing interaction. Hover has no effect. The Conclusion is not a tap target 
 **Current Conclusion (editable):**
 - Hover: subtle edit invitation (cursor changes, background lightens slightly)
 - Click/tap: enters editing state, cursor placed in the statement text
-- Editing: Long-Form Editor behavior applies (see UX-013D)
+- Editing: Long-Form Editor behavior applies (see Long-Form Editor, `UX-012-Atlas-Design-System-Workspace-Consistency-Specification.md` §29)
 - Blur: exits editing state, triggers autosave
 - Atlas Suggestion: appears after 1.5s pause during editing inactivity
 
@@ -503,7 +505,7 @@ A Challenge communicates: here is one specific reason the reasoning may not be c
 ## When Not Used
 
 - For observations that support the Conclusion (those belong in Supporting Factors)
-- As a location for monitoring conditions (those are the Monitoring Condition component, specified in UX-013C)
+- As a location for monitoring conditions (those are the Monitoring Condition component; its broad existence is Independently Confirmed per `UX-012` and this document's own ID reference, but its detailed specification remains provisional — see `UX-013-Interim-Decision-Monitoring-AI-Metadata-Governance-Note.md`, pending genuine UX-013C authorship)
 
 ## Relationship to Supporting Factors
 
@@ -760,7 +762,7 @@ AssumptionItem
 
 **Change Status:** A direct status selector on the AssumptionItem (a compact inline control: Holding / Under Review / Weakening / Broken). Changing status to "Broken" triggers the downstream Contradiction flow: affected Factors enter Invalidated state, Challenges section surfaces a Contradiction. A confirmation dialog precedes the Broken transition ("Marking this assumption as Broken will surface a Contradiction in your Challenges. Continue?").
 
-**Add Monitoring:** A Section Action on each AssumptionItem. Opens a Monitoring Condition creation flow (specified in UX-013C).
+**Add Monitoring:** A Section Action on each AssumptionItem. Opens a Monitoring Condition creation flow (detailed behavior not yet committed; see `UX-013-Interim-Decision-Monitoring-AI-Metadata-Governance-Note.md`, pending genuine UX-013C authorship).
 
 **Dependency:** Set during factor creation or via an association control on the Assumption item.
 
@@ -1617,7 +1619,7 @@ Supporting Metadata communicates: here is the provenance of this reasoning. Wher
 - Attached to Supporting Factors and Challenges (source of the claim)
 - As the attribution line on Atlas-generated content
 - As the timestamp and lock indicator on Historical content
-- Within the Final Decision Card (see UX-013C) as the provenance record
+- Within the Final Decision Card (Decision-tier content; see `UX-013-Interim-Decision-Monitoring-AI-Metadata-Governance-Note.md`, Unconfirmed, pending genuine UX-013C authorship) as the provenance record
 
 ## When Not Used
 
