@@ -21,6 +21,11 @@ This notice does not claim the corrected wording existed in this document's orig
 
 On this basis, the entry below is retained as historical experimental evidence, not as an adopted Comparison component or a required named Comparison variant; its own scenario-specific content is owned by Scenario Analysis, not by Comparison, per ADR-004 R-02/R-04. Its component-taxonomy list entry has been removed accordingly, and its "Remaining Component Questions" item 4 has been marked moot. This correction introduces no new component, variant, state, interaction, rendering primitive, persistence, route, API, or token, and does not amend ADR-002, ADR-003, or ADR-004. Finding F-2 and any other unrelated matter remain untouched.
 
+**Correction Notice (Phase 6C, governed by ADR-002 C-06 — 2026-07-29):** This is a later, additive correction, discovered after the Phase 3 and Phase 3E corrections above had already closed; it does not revise, replace, or reopen either notice, both of which remain historically accurate for the areas they corrected. One active occurrence of unqualified "disabled" wording applied to the Record Decision control was corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md` C-06 and the Atlas UX Source Correction Plan, Phase 6C:
+- The "Blocking Issue" feedback-pattern definition's "Behavior:" line previously stated "The primary action (Record Decision) remains disabled" — corrected to "remains unavailable (`aria-disabled=\"true\"`, never native `disabled`)."
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at the corrected passage. No described interaction behavior (the blocking-condition explanation, the auto-scroll-to-field behavior) is changed by this correction — only the terminology naming the control's unavailable state. The immediately adjacent "Visual treatment:" line, and the separate "Required content"/"Interaction:" passage at this document's own Primary Action definition (reviewed and excluded per the governance amendment's own classification, since it describes a generic, cross-Workspace, cross-action pattern rather than the Record Decision C-06 contract specifically), remain byte-identical and unaffected. The Completion Section and Completion Action definitions elsewhere in this document, and this document's own Universal state model and Interaction-token lists, are likewise unaffected. All content outside the one corrected passage above, including this document's own already-corrected Phase 3 and Phase 3E passages, is unchanged.
+
 ⸻
 
 1. Component Philosophy
@@ -840,7 +845,7 @@ Visual treatment: Amber left-border rule at full opacity. Amber label at medium 
 
 Blocking Issue:
 Used for: conditions that prevent the primary action from becoming available — incomplete required fields, unresolved states that make the decision incoherent.
-Behavior: The primary action (Record Decision) remains disabled. The footer explanation references the specific blocking condition. An "Auto-scroll to [field] →" link navigates the user to the specific element that must be addressed.
+Behavior: The primary action (Record Decision) remains unavailable (`aria-disabled="true"`, never native `disabled`). The footer explanation references the specific blocking condition. An "Auto-scroll to [field] →" link navigates the user to the specific element that must be addressed. *(Corrected per ADR-002/C-06, Phase 6C — 2026-07-29: this line previously used "disabled" without qualification.)*
 Visual treatment: The footer explanation uses secondary body text, not error styling. The tone is "this is what's still needed" not "you made an error."
 
 Validation:

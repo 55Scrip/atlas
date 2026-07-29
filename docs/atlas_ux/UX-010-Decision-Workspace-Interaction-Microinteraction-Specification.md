@@ -17,6 +17,13 @@ This notice does not claim any of the corrected wording existed in this document
 
 This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. The three other "modification indicator" occurrences in this document (the restore-to-original passage in Section 5, the Opportunity Cost conclusion-overwrite passage in Section 8, and the color-treatment reference in Requirements for UX-011) were reviewed as part of this same correction and confirmed to already describe genuine subsequent editing, not Accept alone — they are unaffected and unchanged. All content outside this one area is unchanged.
 
+**Correction Notice (Phase 6C, governed by ADR-002 C-06 — 2026-07-29):** This is a later, additive correction, discovered after the Phase 2 and Phase 2B corrections above had already closed; it does not revise, replace, or reopen either notice, both of which remain historically accurate for the areas they corrected. Three further active occurrences of unqualified "disabled" wording applied to the Record Decision control, missed by Phase 2's own original C-06 correction pass, were corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md` C-06 and the Atlas UX Source Correction Plan, Phase 6C:
+- Section 19 ("Error Prevention"): "The Record Decision button is disabled" was corrected to "is unavailable (`aria-disabled=\"true\"`, never native `disabled`)."
+- Section 21 ("Keyboard Behavior"): "Does not function when the button is disabled" was corrected to "when the button is unavailable (`aria-disabled=\"true\"`)."
+- Section 23 ("Accessibility Behavior"): "When the Record Decision button is tapped while disabled" was corrected to "tapped while unavailable (`aria-disabled=\"true\"`)."
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at each corrected passage. No described interaction behavior (explanation text, keyboard-shortcut behavior, focus movement, screen-reader announcement) is changed by this correction — only the terminology naming the control's unavailable state. All content outside these three passages, including this document's own already-corrected Phase 2 and Phase 2B passages, is unchanged.
+
 ⸻
 
 Governing Intent
@@ -504,7 +511,7 @@ Implementation conflicts with portfolio strategy:
 A challenge item appears in Section 6. (See Section 7, Contradiction Handling.)
 
 Primary reason field left empty:
-The Record Decision button is disabled. The adjacent explanation: "Add a primary reason before recording." No inline error on the field. The user navigates to the field via the scroll behavior described in Section 2.
+The Record Decision button is unavailable (`aria-disabled="true"`, never native `disabled`). The adjacent explanation: "Add a primary reason before recording." No inline error on the field. The user navigates to the field via the scroll behavior described in Section 2. *(Corrected per ADR-002/C-06, Phase 6C — 2026-07-29: this line previously used "disabled" without qualification.)*
 
 Critical assumption has Broken status:
 A challenge item appears in Section 6: "A supporting assumption for this decision is classified as Broken." The user acknowledges. Not blocked.
@@ -547,7 +554,7 @@ Quick navigation — keyboard shortcuts:
 
 Cmd/Ctrl+1 through Cmd/Ctrl+9: navigate to Sections 1 through 9 directly. Sections 10–13 are reached via Cmd/Ctrl+0, Cmd/Ctrl+Shift+1, Cmd/Ctrl+Shift+2, Cmd/Ctrl+Shift+3.
 
-Cmd/Ctrl+Enter (when the Record Decision button is available): records the decision. Does not function when the button is disabled — prevents accidental recording.
+Cmd/Ctrl+Enter (when the Record Decision button is available): records the decision. Does not function when the button is unavailable (`aria-disabled="true"`) — prevents accidental recording. *(Corrected per ADR-002/C-06, Phase 6C — 2026-07-29: this line previously used "disabled" without qualification.)*
 
 Cmd/Ctrl+S: saves draft. Functions at any point.
 
@@ -608,7 +615,7 @@ Post-recording: announced as "Decision recorded. [Decision summary card content]
 Focus management:
 When a section expands automatically (Atlas-triggered), focus moves to the first new content item within the expanded section if the user was not already within that section. If the user was in the section when Atlas expanded additional content, focus does not move — the new content appears below their current position.
 
-When the Record Decision button is tapped while disabled, focus moves to the first incomplete required field. A screen reader announcement names the incomplete field: "Primary reason required — navigating to the primary reason field."
+When the Record Decision button is tapped while unavailable (`aria-disabled="true"`), focus moves to the first incomplete required field. A screen reader announcement names the incomplete field: "Primary reason required — navigating to the primary reason field." *(Corrected per ADR-002/C-06, Phase 6C — 2026-07-29: this line previously used "disabled" without qualification.)*
 
 When a collaboration panel opens, focus moves to the first action in the panel. When the panel closes, focus returns to the triggering field.
 

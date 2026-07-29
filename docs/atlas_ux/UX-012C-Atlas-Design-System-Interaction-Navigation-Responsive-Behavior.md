@@ -12,6 +12,13 @@ Part C of: UX-012 — Atlas Design System & Workspace Consistency Specification
 
 This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. All content outside these two areas, including all interaction, navigation, responsive, and accessibility content, is unchanged.
 
+**Correction Notice (Phase 6C, governed by ADR-002 C-06 — 2026-07-29):** This is a later, additive correction, discovered after the Phase 3C correction above had already closed; it does not revise, replace, or reopen that notice, which remains historically accurate for the areas it corrected. Three active occurrences of unqualified "disabled" wording applied to the Record Decision control were corrected per `ADR-002-Critical-UX-Architecture-Resolutions.md` C-06 and the Atlas UX Source Correction Plan, Phase 6C:
+- §21 ("Completion Behavior"), pre-completion state: "If the button is disabled" was corrected to "is unavailable (`aria-disabled=\"true\"`)."
+- §21 ("Completion Behavior"), completion gate check: "the button remains in the disabled state" was corrected to "remains in the unavailable state (`aria-disabled=\"true\"`)."
+- §24 ("Cross-Workspace Interaction Consistency," permitted cross-workspace variation): "the primary action may be disabled based on content conditions" was corrected to "may become unavailable (`aria-disabled=\"true\"`, never native `disabled`) based on content conditions."
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at each corrected passage. No described interaction behavior (the completion-gate evaluation, the missing-content explanation, the auto-scroll-to-field behavior, the cross-Workspace-variation reasoning) is changed by this correction — only the terminology naming the control's unavailable state. This document's own hover-treatment line ("Primary action in disabled state: no change on hover"), its foundational Interaction-tokens "disabled:" definition, and its Interaction-tokens summary list are presentation-only or generic-vocabulary content, reviewed and outside the scope of this correction, and remain byte-identical. All content outside the three corrected passages above, including this document's own already-corrected Phase 3C passage, is unchanged.
+
 ⸻
 
 1. Interaction Philosophy
@@ -545,9 +552,9 @@ Empty Workspace: When the Decision Workspace is first opened with no prior analy
 
 Recording a decision is the most significant action in Atlas. The interaction model at this moment must communicate finality without pressure, and calm without dismissiveness.
 
-Pre-completion state: The Completion Section is visible at the bottom of the Workspace body. The Final Decision Card shows the live-updating draft state — all six fields reflecting the current content of the Workspace above. The footer shows the Record Decision button. If the button is disabled, the footer explanation names the specific missing content. The user may return to any section above to complete missing content.
+Pre-completion state: The Completion Section is visible at the bottom of the Workspace body. The Final Decision Card shows the live-updating draft state — all six fields reflecting the current content of the Workspace above. The footer shows the Record Decision button. If the button is unavailable (`aria-disabled="true"`), the footer explanation names the specific missing content. The user may return to any section above to complete missing content. *(Corrected per ADR-002/C-06, Phase 6C — 2026-07-29: this line previously used "disabled" without qualification.)*
 
-Completion gate check: When the user activates the Record Decision button, the system evaluates the completion gate conditions. If all conditions are met, the recording proceeds. If a required field is missing, the button remains in the disabled state, the footer explanation updates to name the specific missing content, and the Workspace auto-scrolls to the missing field.
+Completion gate check: When the user activates the Record Decision button, the system evaluates the completion gate conditions. If all conditions are met, the recording proceeds. If a required field is missing, the button remains in the unavailable state (`aria-disabled="true"`), the footer explanation updates to name the specific missing content, and the Workspace auto-scrolls to the missing field. *(Corrected per ADR-002/C-06, Phase 6C — 2026-07-29: this line previously used "the disabled state" without qualification.)*
 
 Recording transition: On successful activation, the button enters the loading state. The system saves the record. On save confirmation (from the server), the 400ms behavioral pause begins. During this pause, the Workspace is fully visible and non-interactive — a deliberate moment before the transition.
 
@@ -629,7 +636,7 @@ Permitted cross-workspace variation (variations that are justified by the distin
 
 The Dashboard uses signal density — the interaction model is lower-depth (tap to navigate, no in-place editing, no complex expansion). This is a justified variation because the cognitive task is scanning, not reading.
 
-The Decision Workspace has a completion gate — the primary action may be disabled based on content conditions. This is a justified variation because no other Workspace has the consequence of creating a permanent, immutable record.
+The Decision Workspace has a completion gate — the primary action may become unavailable (`aria-disabled="true"`, never native `disabled`) based on content conditions. This is a justified variation because no other Workspace has the consequence of creating a permanent, immutable record. *(Corrected per ADR-002/C-06, Phase 6C — 2026-07-29: this line previously used "disabled" without qualification.)*
 
 The full-screen editing mode on mobile is specific to the Decision Workspace and Investment Workspace long-form fields — not appropriate for the Dashboard's compact signals.
 
