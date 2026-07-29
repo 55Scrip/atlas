@@ -3,7 +3,8 @@ UX-000 — The Atlas Experience
 Status: Draft v1.0
 Owner: Atlas Product
 Priority: Foundational
-Depends on: Atlas Product Vision v1.0
+
+**Correction Notice (Phase 6B, governed by the Atlas UX Source Correction Plan's own Section 3 documentary-truthfulness principles and Section 18 bullet 13 — 2026-07-29):** This document's `Depends on` line previously cited `Atlas Product Vision v1.0` as a settled governing source. `Atlas Product Vision v1.0` does not exist anywhere in the committed repository. This document's own experience philosophy (Sections 1 through 15, and the Atlas Promise) is self-contained and does not require Atlas Product Vision v1.0's content to be understood. `Atlas Product Vision v1.0` is unavailable and cannot serve as current governing authority. This repository cannot verify whether Atlas Product Vision v1.0 historically existed or influenced this document — that question is neither confirmed nor denied by this correction; the unsupported active attribution is removed without deciding it. Prior text: "Depends on: Atlas Product Vision v1.0". This correction does not reconstruct Atlas Product Vision v1.0, does not claim it ever existed, and does not schedule its future authorship. This document names no other dependency, and none is introduced by this correction.
 
 ⸻
 

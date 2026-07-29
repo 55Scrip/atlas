@@ -2,8 +2,9 @@ ATLAS — UX-005: INVESTMENT WORKSPACE SCREEN SPECIFICATION
 Version: 1.0
 Status: Implementation Specification
 Depends on:
-• UX-003 – The Atlas Working Session
 • UX-004 – Investment Workspace Philosophy
+
+**Correction Notice (Phase 6B, governed by the Atlas UX Source Correction Plan's own Section 3 documentary-truthfulness principles and Section 18 bullet 13 — 2026-07-29):** This document's `Depends on` list previously cited `UX-003 — The Atlas Working Session` as a settled governing source. `UX-003` does not exist anywhere in the committed repository. This document's own screen specification (Sections 1 onward) is self-contained and does not require UX-003's content to be understood or implemented. `UX-003` is unavailable and cannot serve as current governing authority. This repository cannot verify whether UX-003 historically existed or influenced this document — that question is neither confirmed nor denied by this correction; the unsupported active attribution is removed without deciding it. Prior text: "• UX-003 – The Atlas Working Session". This correction does not reconstruct UX-003, does not claim it ever existed, and does not schedule its future authorship. `UX-004 — Investment Workspace Philosophy` remains an accurate, existing dependency and is unaffected.
 
 Purpose
 
