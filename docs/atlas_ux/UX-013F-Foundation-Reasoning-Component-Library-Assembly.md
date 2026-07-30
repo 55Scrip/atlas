@@ -16,6 +16,10 @@ Its authority is genuinely traceable: Foundation content is grounded in the comm
 
 This document does not redesign components, introduce new product functionality, or redefine the Atlas reasoning model. It reconciles and formalizes what UX-013A, UX-013B, and their cross-cutting infrastructure counterparts already established, exactly as UX-013E did for these same tiers, minus UX-013E's own unsupported four-volume framing.
 
+**Correction Notice (Phase 6D, governed by `ADR-003-Recommendation-Identity-and-Terminology-Resolution.md` — 2026-07-30):** This document's own "Recommendation" component name, used throughout to name ADR-003 Concept B, is corrected to **Proposed Decision Candidate Content** (short form, once established in context: "Candidate Content"), consistent with `UX-013B`'s own Phase 3D-1 correction of the same component. ADR-003 reserves "Atlas Recommendation" exclusively for Concept A — the general, Atlas-origin directional advisory artifact defined in `UX-012-Atlas-Design-System-Workspace-Consistency-Specification.md` §28 — which is unrelated to this document and unaffected by this correction. This document's own "Recommendation" always represented Concept B, not Concept A; only its own naming has changed, not its behavior, inputs, outputs, authorship model, or hierarchy position. Prior text, quoted verbatim at each corrected passage: "the difference between a Conclusion and a Recommendation" (line ~51); "...and Recommendation to Decision" (line ~65); "...ScenarioAnalysis, ScenarioItem, Recommendation, ReasoningBlock..." (line ~132); "*Recommendation ↔ Atlas Recommendation Presentation.* Recommendation is the canonical Reasoning component. ...on Recommendation itself, not a second component." (line ~137); "Examples: Reasoning, Conclusion, Recommendation, Decision, Monitoring..." (line ~184); "Recommendation with `isAtlasGenerated={true}`" (line ~208, right column only); "...Comparison, Scenario Analysis, Recommendation, Reasoning Block, Context Panel" (line ~230); "Correct: `Recommendation` with `isAtlasGenerated={true}`." (line ~274, "Correct:" reference only); "## Recommendation vs. Atlas Recommendation Presentation" (line ~335, component-name portion only); "Recommendation is the canonical Reasoning Component. ...alongside Recommendation to present..." (line ~337); "| Recommendation | Component | Suggested direction from reasoning | ... |" (line ~409); "Do not conflate with Decision or Recommendation" (line ~482); "| Recommendation | A suggested direction that follows from reasoning; not a decision | Recommendation component | ... |" (line ~483); "...Comparison, ScenarioAnalysis, Recommendation, ReasoningBlock, ContextPanel" (line ~788).
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. No new component, variant, state, interaction, API, runtime behavior, persistence model, routing model, or Domain Object is introduced by this correction; Concept B's own semantics, inputs, outputs, authorship behavior, and hierarchy position are unchanged. This correction does not rewrite the historical chronology of when this document was assembled (Phase 4, 2026-07-28), and does not claim `UX-013E-Atlas-Component-Library-Final-Assembly-Architecture-Implementation-Readiness.md` — the document this terminology was originally drawn from — was inaccurate or improperly reasoned at the time UX-013E itself was written; UX-013E remains governed exclusively by its own existing correction notice and ADR-003 R-09's own characterization of it as non-governing historical evidence, and its entire body remains byte-identical and unedited by this correction. The `AtlasRecommendationPresentation` label (lines ~137, ~208, ~297) is not Concept B's own component name — it is a distinct authorship-configuration label whose own provenance this document already, explicitly attributes to the currently-unconfirmed UX-013C/UX-013D account (line ~297); it is unrenamed and unaffected by this correction, as is line ~297's surrounding prose in full. `UX-012` §28's own "Atlas Recommendation" (Concept A) is not referenced anywhere in this document and requires no change. Line ~274's illustrative "Incorrect: `AtlasRecommendation` as a separate component" anti-pattern is left as a literal illustration, unrenamed, per this Plan's own express latitude on that point — it teaches a general naming rule (no "Atlas"-prefixed component names) and does not itself assert Concept B's current name. All content outside the corrected passages named above is unchanged.
+
 ## Relationship to Predecessor and Peer Documents
 
 **Relationship to UX-013E.** This document supersedes UX-013E **only for Foundation and Reasoning component-library assembly authority, and for the cross-cutting infrastructure categories assigned to this document below.** It does not supersede UX-013E's Decision, Monitoring, AI-Collaboration, or domain-specific Metadata content — that authority belongs to the interim note. UX-013E remains, unedited in body, as the historical record of the original assembly attempt; its own status line names both this document and the interim note as its successors.
@@ -48,7 +52,7 @@ This document does not produce wireframes, visual designs, or Workspace screen s
 
 A component library is not a collection of visual building blocks. It is a system of named meanings. Every component carries a semantic responsibility — a specific claim about what a piece of the interface means and what it does. When that semantic responsibility is clear, components can be reused reliably, tested predictably, documented accurately, and evolved without breakage.
 
-Atlas's component library serves an investment reasoning platform. Its semantics are unusually precise: the difference between a Conclusion and a Recommendation, between a Monitoring Trigger and a Review Trigger, between a Recorded Decision and a historical Decision Card variant, is not incidental. These distinctions protect the integrity of the reasoning Atlas supports.
+Atlas's component library serves an investment reasoning platform. Its semantics are unusually precise: the difference between a Conclusion and Proposed Decision Candidate Content, between a Monitoring Trigger and a Review Trigger, between a Recorded Decision and a historical Decision Card variant, is not incidental. These distinctions protect the integrity of the reasoning Atlas supports.
 
 ## Why Component Identity Is Determined by Meaning, Not Appearance
 
@@ -62,7 +66,7 @@ A large fragmented library of similar components creates decision paralysis for 
 
 ## Why Composition Is Essential to Reasoning Hierarchy
 
-Atlas's reasoning hierarchy — from Conclusion through Supporting Factors, Challenges, Assumptions, Evidence, Opportunity, and Recommendation to Decision — is expressed through component composition, not through monolithic components. This composition preserves the hierarchy visually and semantically and allows each level to be independently accessible, testable, historicized, and governed.
+Atlas's reasoning hierarchy — from Conclusion through Supporting Factors, Challenges, Assumptions, Evidence, Opportunity, and Proposed Decision Candidate Content to Decision — is expressed through component composition, not through monolithic components. This composition preserves the hierarchy visually and semantically and allows each level to be independently accessible, testable, historicized, and governed.
 
 ## Why Component APIs Must Not Expose Accidental Visual Details
 
@@ -129,12 +133,12 @@ This section documents the normalization decisions made when assembling UX-013A 
 
 ## UX-013B — Reasoning Components
 
-**Contribution:** 19 Reasoning component types across 13 families: Conclusion, SupportingFactorsContainer, FactorItem, FactorGroup, ChallengesContainer, ChallengeItem, AssumptionsContainer, AssumptionItem, EvidenceSummary, EvidenceItem, OpportunitySummary, OpportunityCost, AlternativeItem, Comparison, ScenarioAnalysis, ScenarioItem, Recommendation, ReasoningBlock, ContextPanel — plus Reasoning Relationships, States, Accessibility, Token Mapping, and Engineering Mapping.
+**Contribution:** 19 Reasoning component types across 13 families: Conclusion, SupportingFactorsContainer, FactorItem, FactorGroup, ChallengesContainer, ChallengeItem, AssumptionsContainer, AssumptionItem, EvidenceSummary, EvidenceItem, OpportunitySummary, OpportunityCost, AlternativeItem, Comparison, ScenarioAnalysis, ScenarioItem, Proposed Decision Candidate Content, ReasoningBlock, ContextPanel — plus Reasoning Relationships, States, Accessibility, Token Mapping, and Engineering Mapping.
 
 **Overlaps detected and resolutions applied:**
 
 - *Supporting Metadata ↔ MetadataBlock.* Supporting Metadata is normalized as a configured instance of MetadataBlock (`context="reasoning"`). No component named `SupportingMetadata` exists in this library.
-- *Recommendation ↔ Atlas Recommendation Presentation.* Recommendation is the canonical Reasoning component. Atlas-generated authorship is expressed through `isAtlasGenerated={true}` and `authorship="atlas-generated"` on Recommendation itself, not a second component.
+- *Proposed Decision Candidate Content ↔ Atlas Recommendation Presentation.* Candidate Content is the canonical Reasoning component. Atlas-generated authorship is expressed through `isAtlasGenerated={true}` and `authorship="atlas-generated"` on Candidate Content itself, not a second component.
 - *ReasoningBlock ↔ ContextPanel.* Confirmed as separate components — distinct structural placement (`<section>` vs. `<aside>`), distinct semantic purposes.
 - *EvidenceSummary source display ↔ SourceReference.* EvidenceSummary uses SourceReference instances for each evidence item; no bespoke source display exists in the Reasoning namespace.
 
@@ -181,7 +185,7 @@ The canonical classification model assigns every item in the Atlas Component Lib
 
 **Composed Pattern** — a documented strategy for composing multiple canonical components for a defined multi-component task; the pattern does not own state. Examples: DecisionTimeline, ReasoningToDecisionFlow, SuggestionComparison, ErrorRecovery, ConfirmationFlow, CurrentToHistoricalTransition.
 
-**Semantic Concept** — an important Atlas domain concept represented through components but not itself a component. Examples: Reasoning, Conclusion, Recommendation, Decision, Monitoring, Historical State, Authorship, Confidence.
+**Semantic Concept** — an important Atlas domain concept represented through components but not itself a component. Examples: Reasoning, Conclusion, Proposed Decision Candidate Content, Decision, Monitoring, Historical State, Authorship, Confidence.
 
 **Deferred Item** — a component, variant, action, or pattern acknowledged but not yet justified by approved product requirements. Example: Notification Center.
 
@@ -205,7 +209,7 @@ The canonical classification model assigns every item in the Atlas Component Lib
 | SupportingMetadata | MetadataBlock configuration (not a component) | Normalized with `context="reasoning"` |
 | SkeletonState | Variant of ProgressIndicator | Presentation mode, not a separate component family |
 | ConfirmationDialog | Composed Pattern | DialogContainer + Dialog (Confirmation type) + content rules |
-| AtlasRecommendationPresentation | Authorship configuration (not a component) | Recommendation with `isAtlasGenerated={true}` |
+| AtlasRecommendationPresentation | Authorship configuration (not a component) | Proposed Decision Candidate Content with `isAtlasGenerated={true}` |
 | Notification Center | Deferred | No approved product requirements establish this |
 | AIUnavailableState | UnavailableDataState (reason="ai-unavailable") | Same component; reason is a prop value |
 
@@ -227,7 +231,7 @@ Tier 1 components establish the structural environment every Atlas Workspace req
 
 ## Tier 2 — Content (Domain-Specific): Reasoning
 
-**Reasoning** — components through which investment reasoning is structured, displayed, examined, and preserved. Scope: Conclusion, Supporting Factors, Challenges, Assumptions, Evidence, Opportunity, Opportunity Cost, Comparison, Scenario Analysis, Recommendation, Reasoning Block, Context Panel. Does not include Decision or Monitoring components. Figma: `Reasoning/`. Engineering: `@atlas/reasoning`. Owner: Product Design + Domain. Dependencies: Foundation, Metadata & Provenance. **Cross-category references:** Reasoning components reference Decision-tier components via typed IDs only (e.g., AssumptionItem references a MonitoringCondition via `monitoringConditionId`) — this document does not import or redefine the Decision/Monitoring implementation those IDs point to; see the interim note for that content.
+**Reasoning** — components through which investment reasoning is structured, displayed, examined, and preserved. Scope: Conclusion, Supporting Factors, Challenges, Assumptions, Evidence, Opportunity, Opportunity Cost, Comparison, Scenario Analysis, Proposed Decision Candidate Content, Reasoning Block, Context Panel. Does not include Decision or Monitoring components. Figma: `Reasoning/`. Engineering: `@atlas/reasoning`. Owner: Product Design + Domain. Dependencies: Foundation, Metadata & Provenance. **Cross-category references:** Reasoning components reference Decision-tier components via typed IDs only (e.g., AssumptionItem references a MonitoringCondition via `monitoringConditionId`) — this document does not import or redefine the Decision/Monitoring implementation those IDs point to; see the interim note for that content.
 
 *(Decision, Monitoring, and Historical — the remaining Tier 2 categories — are the interim note's own operative content; named here only for taxonomy completeness: Decision governs the decision lifecycle from proposal through recorded history; Monitoring governs post-decision condition tracking, triggers, and reviews; Historical governs chronological event display and completed lifecycle records.)*
 
@@ -271,7 +275,7 @@ Tier 1 components establish the structural environment every Atlas Workspace req
 
 **Historical content:** expressed through `isHistorical`, not a separate "Historical" component name. Correct: `DecisionCard` with `isHistorical={true}`. Incorrect: `HistoricalDecisionCard` as a separate component.
 
-**AI-authored content:** expressed through `authorship` and `isAtlasGenerated`, not a separate "AI"/"Atlas" prefix on the parent component. Correct: `Recommendation` with `isAtlasGenerated={true}`. Incorrect: `AtlasRecommendation` as a separate component.
+**AI-authored content:** expressed through `authorship` and `isAtlasGenerated`, not a separate "AI"/"Atlas" prefix on the parent component. Correct: `Proposed Decision Candidate Content` with `isAtlasGenerated={true}`. Incorrect: `AtlasRecommendation` as a separate component.
 
 **Namespace prefixes** are used only for components whose semantic responsibility is inherently AI-originated (AtlasSuggestion, AtlasInsight, AtlasQuestion, AtlasClarification, AtlasWarning, AIGeneratedSummary, AIAuthorshipIndicator) — those components' own detailed specification lives in the interim note; this naming rule itself is cross-cutting and applies to them exactly as it applies to Foundation and Reasoning names.
 
@@ -332,9 +336,9 @@ Three separate canonical Components. Merging any two would produce an API with n
 
 MetadataBlock is the canonical Composite Component; Supporting Metadata is a configured instance (`context="reasoning"`). No component named `SupportingMetadata` exists.
 
-## Recommendation vs. Atlas Recommendation Presentation
+## Proposed Decision Candidate Content vs. Atlas Recommendation Presentation
 
-Recommendation is the canonical Reasoning Component. Atlas-generated authorship is `isAtlasGenerated={true}`, `authorship="atlas-generated"`, with AIAuthorshipIndicator (interim note) shown — not a second component. AtlasSuggestion may be displayed alongside Recommendation to present an "Accept as draft" action; this is a composition, not a third component.
+Proposed Decision Candidate Content is the canonical Reasoning Component. Atlas-generated authorship is `isAtlasGenerated={true}`, `authorship="atlas-generated"`, with AIAuthorshipIndicator (interim note) shown — not a second component. AtlasSuggestion may be displayed alongside Candidate Content to present an "Accept as draft" action; this is a composition, not a third component.
 
 ## SourceReference vs. Evidence Summary Source Representation
 
@@ -406,7 +410,7 @@ SourceReference is the canonical Component (Metadata & Provenance, this document
 | Comparison | Composite | Side-by-side structured comparison | Decision, Portfolio | type, columns[], rows[] | Yes | No | P1 |
 | ScenarioAnalysis | Composite | Structured scenario examination | Decision, Investment | scenarios[] | Yes | Yes | P2 |
 | ScenarioItem | Component | Single named scenario | Decision, Investment | id, scenarioType, name, probability, conditions, implications | Yes | Yes | P2 |
-| Recommendation | Component | Suggested direction from reasoning | Investment, Decision | source, statement, primaryReason, isEditable | Yes | Yes | P1 |
+| Proposed Decision Candidate Content | Component | Suggested direction from reasoning | Investment, Decision | source, statement, primaryReason, isEditable | Yes | Yes | P1 |
 | ReasoningBlock | Component | Named container for unclassified reasoning | All | id, blockName, isExpanded, isEditable | Yes | Yes | P2 |
 | ContextPanel | Component | Supplementary contextual information | Investment, Decision | variant, panelName, crossReferences[] | Yes | No | P2 |
 
@@ -479,8 +483,8 @@ SourceReference is the canonical Component (Metadata & Provenance, this document
 | Concept | Semantic Meaning | Primary Component Carriers | Direct Component? | Misuse to Prevent |
 |---|---|---|---|---|
 | Reasoning | The structured process of working through evidence, factors, and challenges to reach a conclusion | Conclusion, SupportingFactors, Challenges, Assumptions, ReasoningBlock | No | Do not use "reasoning" as a generic label for any analytical display |
-| Conclusion | The current state of what the reasoning indicates to be true | Conclusion component | Yes | Do not conflate with Decision or Recommendation |
-| Recommendation | A suggested direction that follows from reasoning; not a decision | Recommendation component | Yes | Do not present as binding or equivalent to a Decision |
+| Conclusion | The current state of what the reasoning indicates to be true | Conclusion component | Yes | Do not conflate with Decision or Proposed Decision Candidate Content |
+| Proposed Decision Candidate Content | A suggested direction that follows from reasoning; not a decision | Candidate Content component | Yes | Do not present as binding or equivalent to a Decision |
 | Evidence | The factual grounding from which reasoning is derived | EvidenceSummary, EvidenceItem, SourceReference | Yes | Do not conflate evidence with reasoning conclusions |
 | Source | The origin of a piece of information | SourceReference, SourceGroup | Yes | Do not imply reliability merely through visual presentation |
 | Reference | A navigable pointer to a related object | RelationshipReference | Yes | Do not invent domain relationships in the presentation layer |
@@ -785,7 +789,7 @@ Atlas Component Library [Figma File]
 ├── Metadata & Provenance [page] — this document
 │   ├── MetadataBlock, Author, Timestamp, Version, SourceReference, SourceGroup, RelationshipReference, ConfidencePresentation
 ├── Reasoning [page] — this document
-│   ├── Conclusion, SupportingFactors, Challenges, Assumptions, Evidence, Opportunity, OpportunityCost, Comparison, ScenarioAnalysis, Recommendation, ReasoningBlock, ContextPanel
+│   ├── Conclusion, SupportingFactors, Challenges, Assumptions, Evidence, Opportunity, OpportunityCost, Comparison, ScenarioAnalysis, Proposed Decision Candidate Content, ReasoningBlock, ContextPanel
 ├── Decision [page] — interim note
 ├── Monitoring [page] — interim note
 ├── Historical [page] — interim note
