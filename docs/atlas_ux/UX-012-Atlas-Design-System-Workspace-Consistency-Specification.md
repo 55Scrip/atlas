@@ -14,6 +14,14 @@ This notice does not claim any of the corrected wording existed in this document
 
 **Correction Notice (Phase 3E, governed by `ADR-004-Scenario-Analysis-Comparison-and-Sequence-Authority-Resolution.md`'s own committed Corpus-Wide Scenario Comparison Extension addendum — 2026-07-27):** This document previously named "Scenario Comparison" as a distinct use case in the Comparison Layout definition (§10), a Portfolio Workspace usage example (§16), a fully specified Comparison component (§24), and a Component Inventory entry. The ADR-004 addendum settled that Scenario Analysis (`UX-013B-Atlas-Component-Specification-Reasoning-Components.md` §9) is the exclusive semantic owner of scenario-specific analytical content, that Comparison (UX-013B §8) is a generic, non-owning side-by-side rendering capability, and that "Scenario Comparison" is not, and was never validly, an independently adopted Comparison component or a required named Comparison variant — its own anatomy, as previously stated here ("parallel columns; row-per-scenario structure"), was already generic and already fully satisfied by Comparison's existing capability. This correction removes "Scenario Comparison" as a distinctly named item from the Comparison Layout enumeration (§10) and the Portfolio Workspace usage note (§16), and removes its entire entry, outright, from the Comparison Components section (§24) and the Component Inventory table. Prior text (§24, full entry): "`**Scenario Comparison** Purpose: Comparison of potential outcomes under different conditions or assumptions. Layout: parallel columns; row-per-scenario structure. Reuse: Investment Workspace, Decision Workspace.`" Prior text (Component Inventory row): "`| Scenario Comparison | Comparison of potential outcomes | Investment, Decision | Reasoning Workspaces | Medium | Experimental |`" Before/After, Opportunity Cost, Alternative Comparison, Allocation Comparison, and Historical Comparison — and the generic Comparison Layout definition itself — remain entirely unchanged and unaffected by this correction. Scenario-related content, if ever compared side by side, may still be rendered through Comparison's existing, generic model, without this correction mandating which existing type performs that rendering. This correction is documentary only — it introduces no new component, variant, state, interaction, rendering primitive, persistence, route, API, or token, and does not amend ADR-002, ADR-003, or ADR-004. Finding F-2 and any other unrelated matter remain untouched.
 
+**Authority and Governance Notice (2026-08-02, per the Atlas UX Architecture UX-012 Authority Migration task):** This is a later, additive notice; it does not revise, replace, or reopen the Phase 1 or Phase 3E Correction Notices above, both of which remain historically accurate for the areas they corrected. This document was originally authored, and the two corrections above were made, without an explicit citation to `UX-000-Atlas-UX-Doctrine.md`, which did not yet exist in its current Release Candidate form. `UX-000-Atlas-UX-Doctrine.md`, Release Candidate RC v1.0, is now the governing UX doctrine baseline for the entire Atlas UX Architecture, per its own UXD-R-097 ("This Doctrine governs every UX specification"). This document is accordingly subordinate to it. Four clarifications follow; none changes any UI, layout, component, interaction, accessibility, animation, token, or governance behavior previously specified in this document:
+- **Governing authority.** This document is subordinate to the Atlas Core Architecture Doctrine (Final); to APP-000 and APP-001 (Normative Product); to APS-001 through APS-005 (Normative Product); and to `UX-000-Atlas-UX-Doctrine.md` (Release Candidate RC v1.0), per UXD-R-097. `ADR-002-Critical-UX-Architecture-Resolutions.md` and `ADR-004-Scenario-Analysis-Comparison-and-Sequence-Authority-Resolution.md`, already cited in the corrections above, remain authoritative only within their own stated scope, per UXD-R-098.
+- **Part I is not an independent UX philosophy.** The Atlas Product Philosophy design constraints in Section 2 operationalize Product Principles PP-001, PP-003, PP-005, PP-006, PP-007, and PP-009 at the presentation layer, consistent with `UX-000`'s own UXP-001 through UXP-012. Section 2 carries no independent normative authority over Product meaning; where its wording and a Product Principle could be read to diverge, the Product Principle governs, per UXD-R-003.
+- **Part VII does not amend UX-000 or any ADR.** The Governance & Evolution model in Sections 57–69 (component, pattern, and Workspace-level governance: ownership, approval, versioning, deprecation, migration, consistency audit, anti-patterns, cross-team collaboration) governs implementation-level design-system evolution — a different governance layer than `UX-000` Section 21's UX Governance and ADR Authority, which governs Doctrine- and ADR-level amendment. Nothing in Part VII SHALL be read as amending `UX-000`, `ADR-002`, `ADR-003`, or `ADR-004`, per UXD-R-006 and UXD-R-099.
+- **Terminology corrections.** Three narrowly scoped terminology corrections are made below — at the Canonical Glossary's Conclusion entry, at the Conclusion Components section (Current Conclusion, Review Conclusion), and at the Atlas Reasoning Flow's Memory stage — marked individually where they appear, each per `UX-000`'s own UXD-R-056, UXD-R-071, UXD-R-086, and UXD-R-094.
+
+This notice does not claim `UX-000` existed, in any form, at the time this document or its prior corrections were authored. All content outside the specific passages corrected below, including this document's own Correction Notices above, is unchanged.
+
 ---
 
 # Canonical Glossary
@@ -30,7 +38,7 @@ Before any specification, one vocabulary. The following terms are established on
 
 **Token** — A named design variable representing a semantic value in typography, spacing, color, motion, or interaction. Not a style, variable, or setting.
 
-**Conclusion** — The primary output of a reasoning step or Workspace: the thing Atlas or the user concludes is true, required, or recommended. Not a summary, result, or outcome.
+**Conclusion** — The primary output of a reasoning step or Workspace: the settled synthesis Atlas presents, or the user's own reasoning arrives at, as the leading statement before its supporting detail. Not a summary, result, or outcome. *(Corrected per the Atlas UX Architecture UX-012 Authority Migration task, 2026-08-02 — see the Authority and Governance Notice above. Prior text: "the thing Atlas or the user concludes is true, required, or recommended," which risked framing Atlas as an independent authority that concludes truth. Per `UX-000-Atlas-UX-Doctrine.md` UXD-R-056 and UXD-R-071, Atlas-originated Conclusion content is presented as attributed system output, not as independent belief, and its Product-layer correspondence depends on its variant and lifecycle stage, per UXD-R-071's own five-item model.)*
 
 **Decision** — A specific user-authored commitment to a course of action, recorded permanently. Not a conclusion, recommendation, or outcome.
 
@@ -108,7 +116,7 @@ Atlas supports a structured reasoning arc. This arc is not a rigid workflow; it 
 
 **Monitoring** — Active tracking of conditions that validate or challenge the Decision. (Primary surface: Decision Workspace, Dashboard)
 
-**Memory** — The permanent historical record of decisions, reviews, and reasoning, accessible for future reference. (Primary surface: Historical Record, Dashboard)
+**Memory** — The permanent historical record of decisions, reviews, and reasoning, accessible for future reference. (Primary surface: Historical Record, Dashboard) *(Clarified per the Atlas UX Architecture UX-012 Authority Migration task, 2026-08-02: this UX-layer reasoning-flow stage is not a Product Concept; per `UX-000-Atlas-UX-Doctrine.md` UXD-R-094, it maps to the Historical Record and Decision History components defined elsewhere in this document, not to a separate "Atlas Memory" artifact.)*
 
 This flow governs the navigation structure, the component hierarchy, and the information architecture of every Atlas Workspace.
 
@@ -595,6 +603,7 @@ Position: top of the Workspace body, immediately below the Header.
 Typography: Level 1.
 Behavior: always visible; does not collapse.
 Reuse: all Workspaces.
+*(Boundary clarification per the Atlas UX Architecture UX-012 Authority Migration Targeted Correction, 2026-08-02: this is a UX presentation artifact, not an independent Product Concept; no new Product meaning is established by this entry.)*
 
 **Current Conclusion**
 Purpose: Atlas's current understanding of the investment or situation — a live, updated summary that reflects the current state of reasoning.
@@ -602,6 +611,7 @@ Distinction from Primary Conclusion: the Current Conclusion updates as the user 
 Position: within the reasoning sequence, before supporting detail.
 States: initial, updated (subtle Update token), atlas-generated, user-modified.
 Reuse: Investment Workspace, Decision Workspace.
+*(Clarified per the Atlas UX Architecture UX-012 Authority Migration task, 2026-08-02: this component's Product-layer correspondence is governed by `UX-000-Atlas-UX-Doctrine.md` UXD-R-071 items 1–2 — Atlas-originated Current Conclusion content remains pre-Reasoning material until the user performs a genuine act connecting it into their own Investor Reasoning; passive viewing or unedited acceptance does not, by itself, transfer authorship.)*
 
 **Decision Required**
 Purpose: Frames the specific choice the user must make. Sets the decision question.
@@ -620,11 +630,13 @@ Reuse: Investment Workspace. *(Corrected per ADR-002/C-03: this line previously 
 Purpose: The integration of individual investment reasoning into a portfolio-level understanding.
 Position: top of Portfolio Workspace body.
 Reuse: Portfolio Workspace (primary).
+*(Boundary clarification per the Atlas UX Architecture UX-012 Authority Migration Targeted Correction, 2026-08-02: per `UX-000-Atlas-UX-Doctrine.md` UXD-R-071 item 5, this remains a UX presentation artifact whose complete Product-layer correspondence is open pending future Investment Case / Portfolio Product Architecture treatment. This entry SHALL NOT be read as establishing Portfolio as an independent Product Concept.)*
 
 **Review Conclusion**
 Purpose: The conclusion produced by a Review — what the review determined about the continued validity of a prior Decision.
 Position: top of Historical Review, displayed alongside the original Decision.
 Reuse: Historical Review (future Workspace), Decision Workspace review mode.
+*(Clarified per the Atlas UX Architecture UX-012 Authority Migration task, 2026-08-02: per `UX-000-Atlas-UX-Doctrine.md` UXD-R-071 item 4 and UXD-R-086, this component MAY be populated only following a genuine, Investor-initiated Learning Act; a Review workflow or occasion, by itself, does not constitute or produce a Review Conclusion.)*
 
 ## 23. Reasoning Components
 

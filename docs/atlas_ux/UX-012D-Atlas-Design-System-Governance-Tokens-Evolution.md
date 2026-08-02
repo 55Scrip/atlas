@@ -11,6 +11,12 @@ Part D of: UX-012 — Atlas Design System & Workspace Consistency Specification
 
 This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. All content outside this one example bullet, including all governance, token, and evolution content, is unchanged.
 
+**Correction Notice (Atlas UX Architecture UX-012 Authority Migration task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen the Phase 3C notice above, which remains historically accurate for the area it corrected. This document is subordinate to `UX-000-Atlas-UX-Doctrine.md`, Release Candidate RC v1.0, per that Doctrine's own UXD-R-097. Two semantic areas are corrected:
+- **Atlas Memory terminology (Section 7, Workspace Governance questions 4 and 5):** two passages named "Atlas Memory" as the destination of Workspace-produced analysis. Per `UX-000-Atlas-UX-Doctrine.md` UXD-R-094, Memory is UX-layer language only and MAY NOT be used as a Product Concept; the accepted successor terms, per the completed Atlas Memory Status Investigation, are DecisionHistory (catalog lookup across recorded Decisions) and Decision Timeline (one Decision's own chronological narrative), applied below according to each passage's own meaning.
+- **AI-belief framing (Section 16, Cross-Team Collaboration):** "what Atlas concludes" risked framing Atlas as an independent authority that concludes truth, contrary to `UX-000-Atlas-UX-Doctrine.md` UXD-R-056.
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at each corrected passage below. All content outside these two areas is unchanged.
+
 ⸻
 
 1. Governance Philosophy
@@ -248,9 +254,9 @@ A new Workspace is a significant product decision, not a design decision. Before
 
 3. What context does it inherit? Every Workspace receives context from another surface. The new Workspace must specify what it receives (from which surface, what information, in what form) and how that context is displayed when the Workspace opens.
 
-4. What conclusion does it produce? A Workspace that does not produce a conclusion or a recorded output cannot feed the reasoning arc. The new Workspace must specify its output — the decision it records, the analysis it adds to Atlas Memory, the monitoring conditions it establishes.
+4. What conclusion does it produce? A Workspace that does not produce a conclusion or a recorded output cannot feed the reasoning arc. The new Workspace must specify its output — the decision it records, the analysis it contributes to the decision's own Decision Timeline, the monitoring conditions it establishes. *(Corrected per the Atlas UX Architecture UX-012 Authority Migration task, 2026-08-02 — see the Correction Notice above. Prior text: "the analysis it adds to Atlas Memory." Refined per the Atlas UX Architecture UX-012 Authority Migration Targeted Correction, 2026-08-02: per the completed Atlas Memory Status Investigation, analysis contributed to one decision's own record is its Decision Timeline, distinct from DecisionHistory's catalog-wide scope.)*
 
-5. How does it feed future reasoning? The output of the Workspace must connect to the Atlas reasoning arc — appearing in future Dashboard signals, informing future Investment or Portfolio Workspace analysis, or contributing to Atlas Memory. A Workspace that produces output with no downstream use is isolated from the product's core function.
+5. How does it feed future reasoning? The output of the Workspace must connect to the Atlas reasoning arc — appearing in future Dashboard signals, informing future Investment or Portfolio Workspace analysis, or contributing to DecisionHistory. A Workspace that produces output with no downstream use is isolated from the product's core function. *(Corrected per the same task and notice. Prior text: "contributing to Atlas Memory." Refined per the Atlas UX Architecture UX-012 Authority Migration Targeted Correction, 2026-08-02: this item describes output feeding future, cross-decision reasoning across the corpus, which is DecisionHistory's catalog-wide scope, per the completed Atlas Memory Status Investigation.)*
 
 6. What existing components and patterns does it use? A new Workspace specification must begin with a map of existing components from UX-012B and patterns from the pattern library that it will use. Only after establishing this map should new component or pattern needs be identified.
 
@@ -562,7 +568,7 @@ Engineering:
 — Surfaces implementation constraints that may require specification adjustments — when a specified behavior is not achievable in the target environment, Engineering proposes an alternative and UX reviews whether the alternative meets the semantic requirement.
 
 AI (Atlas intelligence team):
-— Defines the content of Atlas-generated outputs — what Atlas concludes, suggests, proposes, and warns — within the interaction and presentation conventions established by UX-012.
+— Defines the content of Atlas-generated outputs — what Atlas synthesizes, suggests, proposes, and warns — within the interaction and presentation conventions established by UX-012. *(Corrected per the Atlas UX Architecture UX-012 Authority Migration task, 2026-08-02 — see the Correction Notice above. Prior text: "what Atlas concludes," which risked framing Atlas as an independent authority that concludes truth, contrary to `UX-000-Atlas-UX-Doctrine.md` UXD-R-056.)*
 — Ensures that Atlas-generated content follows the language conventions established in UX-012 (calm, direct, honest about uncertainty).
 — Coordinates with UX when AI capability changes require new interaction patterns (a new type of Atlas suggestion, a new category of monitoring condition) to ensure the new patterns go through the design review process.
 

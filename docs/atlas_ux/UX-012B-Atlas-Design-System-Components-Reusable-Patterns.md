@@ -26,6 +26,8 @@ On this basis, the entry below is retained as historical experimental evidence, 
 
 This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at the corrected passage. No described interaction behavior (the blocking-condition explanation, the auto-scroll-to-field behavior) is changed by this correction — only the terminology naming the control's unavailable state. The immediately adjacent "Visual treatment:" line, and the separate "Required content"/"Interaction:" passage at this document's own Primary Action definition (reviewed and excluded per the governance amendment's own classification, since it describes a generic, cross-Workspace, cross-action pattern rather than the Record Decision C-06 contract specifically), remain byte-identical and unaffected. The Completion Section and Completion Action definitions elsewhere in this document, and this document's own Universal state model and Interaction-token lists, are likewise unaffected. All content outside the one corrected passage above, including this document's own already-corrected Phase 3 and Phase 3E passages, is unchanged.
 
+**Clarification Notice (Atlas UX Architecture UX-012 Authority Migration task — 2026-08-02):** This is a later, additive clarification; it does not revise, replace, or reopen any notice above. This document is subordinate to `UX-000-Atlas-UX-Doctrine.md`, Release Candidate RC v1.0, per that Doctrine's own UXD-R-097. One clarification is added, without changing any specified component behavior: the Review Conclusion component (Section 5) is annotated with its governing Product-layer precondition, per `UX-000-Atlas-UX-Doctrine.md` UXD-R-071 item 4 and UXD-R-086.
+
 ⸻
 
 1. Component Philosophy
@@ -286,6 +288,7 @@ Priority: Always the first content in the scrolling body, or the first content i
 Placement: Full editorial column width. Strong container (elevated surface) when it is the anchor conclusion of a Workspace (Current Conclusion card in Decision Workspace, for example). Subtle or no container when it appears as the headline of a subordinate section.
 Interaction: Non-interactive in its primary form. May contain an inline link to supporting analysis ("Based on Investment Workspace analysis →").
 Historical behavior: When a prior version of the conclusion exists, a Historical Section shows the prior conclusion below the current one. The current conclusion is always shown first; history follows.
+*(Boundary clarification per the Atlas UX Architecture UX-012 Authority Migration Targeted Correction, 2026-08-02: this is a UX presentation artifact, not an independent Product Concept; no new Product meaning is established by this entry.)*
 
 ⸻
 
@@ -329,6 +332,7 @@ Extends Primary Conclusion. Specific to the Portfolio Workspace. Presents the At
 Required content: The portfolio conclusion statement ("The portfolio remains structurally sound across seven of eight positions"). Source label ("ATLAS PORTFOLIO CONCLUSION").
 Optional content: Primary issue and implication in a structured two-column label-and-statement layout (as specified in UX-007P).
 Interaction: Non-interactive as a block. May link to the underlying analysis sections.
+*(Boundary clarification per the Atlas UX Architecture UX-012 Authority Migration Targeted Correction, 2026-08-02: per `UX-000-Atlas-UX-Doctrine.md` UXD-R-071 item 5, this remains a UX presentation artifact whose complete Product-layer correspondence is open pending future Investment Case / Portfolio Product Architecture treatment. This entry SHALL NOT be read as establishing Portfolio as an independent Product Concept.)*
 
 ⸻
 
@@ -338,6 +342,7 @@ Extends Primary Conclusion. Appears at the top of a Review Workspace or within t
 Required content: The review verdict ("THESIS VALID," "THESIS WEAKENED," "ASSUMPTION BROKEN," "DECISION SUPERSEDED"). The most important finding from the review.
 Optional content: Comparison with the original conclusion ("Original thesis: Intact · January 2025 → Current assessment: Weakening").
 States: Valid, Weakened, Broken, Superseded — each with the appropriate semantic color treatment (green, amber, red, neutral).
+*(Clarified per the Atlas UX Architecture UX-012 Authority Migration task, 2026-08-02: per `UX-000-Atlas-UX-Doctrine.md` UXD-R-071 item 4 and UXD-R-086, this component MAY be populated only following a genuine, Investor-initiated Learning Act; a Review workflow or occasion, by itself, does not constitute or produce a Review Conclusion.)*
 
 ⸻
 

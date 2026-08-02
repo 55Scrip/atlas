@@ -12,6 +12,12 @@ Part A of: UX-012 — Atlas Design System & Workspace Consistency Specification
 
 This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. All content outside these two areas is unchanged.
 
+**Correction Notice (Atlas UX Architecture UX-012 Authority Migration task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen the Phase 3 notice above, which remains historically accurate for the areas it corrected. This document is subordinate to `UX-000-Atlas-UX-Doctrine.md`, Release Candidate RC v1.0, per that Doctrine's own UXD-R-097. Its own Status line above already marks it Superseded — see UX-012 §5 — for hierarchy-authority purposes only; the remainder of its content, including the two passages corrected below, remains part of the active record cited by UX-012B, UX-012C, and UX-012D. Two semantic areas are corrected:
+- **Atlas Memory terminology (Section 4):** two passages attributed the creation of permanence to "Atlas Memory" itself rather than to the act of recording. Per `UX-000-Atlas-UX-Doctrine.md` UXD-R-094, Memory is UX-layer language only and MAY NOT be used as a Product Concept; the accepted successor terms, per the completed Atlas Memory Status Investigation, are DecisionHistory (catalog lookup across recorded Decisions) and Decision Timeline (one Decision's own chronological narrative), applied below according to each passage's own meaning, alongside the pre-existing Historical Record component defined in this document's own companion `UX-012-Atlas-Design-System-Workspace-Consistency-Specification.md` §27 (Decision History itself is defined at §25).
+- **AI-belief framing (Section 5, Principle 5):** "Atlas concludes" risked framing Atlas as an independent authority that concludes truth, contrary to `UX-000-Atlas-UX-Doctrine.md` UXD-R-056.
+
+This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at each corrected passage below. All content outside these two areas is unchanged.
+
 ⸻
 
 1. The Atlas Design System Defined
@@ -134,7 +140,7 @@ Decision: The user's explicit commitment — what they have decided, why, what t
 
 Monitoring: The conditions Atlas will observe after the decision is recorded — the triggers that will surface the decision for review. Monitoring appears in the Decision Workspace's review plan and in the Dashboard's ongoing signals.
 
-Memory: The permanent record of the decision — preserved in Atlas Memory and available across all surfaces for future reference, review, and comparison.
+Memory: The permanent record of the decision — created by the act of recording, and accessible across all surfaces for future reference, review, and comparison through the Historical Record and the decision's own Decision Timeline. *(Corrected per the Atlas UX Architecture UX-012 Authority Migration task, 2026-08-02 — see the Correction Notice above. Prior text: "preserved in Atlas Memory and available across all surfaces for future reference, review, and comparison," which risked attributing the creation of permanence to Atlas Memory itself rather than to the act of recording. Refined per the Atlas UX Architecture UX-012 Authority Migration Targeted Correction, 2026-08-02: per the completed Atlas Memory Status Investigation, one decision's own chronological narrative is its Decision Timeline, distinct from DecisionHistory's catalog-wide scope.)*
 
 How each Workspace participates:
 
@@ -142,7 +148,7 @@ Dashboard → Signal. It initiates the flow by identifying what matters.
 Investment Workspace → Context + Understanding. It examines whether the thesis behind the signal remains valid.
 Portfolio Workspace → Understanding + Analysis. It examines what the signal means for the whole portfolio.
 Decision Workspace → Analysis + Decision + Monitoring. It closes the loop by producing a durable, reviewable commitment.
-Atlas Memory → Memory. It preserves the output and makes it available for future signals.
+DecisionHistory and Historical Record → Memory. Recording creates the permanent record; these components make it accessible for future signals. *(Corrected per the Atlas UX Architecture UX-012 Authority Migration task, 2026-08-02 — see the Correction Notice above. Prior text: "Atlas Memory → Memory. It preserves the output and makes it available for future signals," which named an undefined "Atlas Memory" surface as the actor performing preservation. Refined per the Atlas UX Architecture UX-012 Authority Migration Targeted Correction, 2026-08-02: per the completed Atlas Memory Status Investigation, the catalog-wide, cross-decision lookup this stage of the reasoning flow describes is DecisionHistory; Historical Record is the base immutable component each catalogued record is presented through, per this document's own companion `UX-012-Atlas-Design-System-Workspace-Consistency-Specification.md` §27 (Decision History itself is defined at §25).)*
 
 The Design System ensures that movement through this flow feels continuous. When the user arrives in the Decision Workspace from the Portfolio Workspace, the context they built in both prior surfaces is present and legible. Nothing requires the user to re-explain their situation. The Workspace knows where they came from and begins from there.
 
@@ -165,7 +171,7 @@ The reasoning that supports a decision or recommendation is always visible befor
 Atlas prioritizes the most material items within any list, section, or Workspace. Completeness is not an Atlas value. Relevance is.
 
 5. The user owns judgment and decisions.
-Atlas concludes, suggests, and proposes — but the user decides. Every recorded decision is the user's. The user's authored content is always visually distinguishable from Atlas's generated content. The user may override, reject, or edit any Atlas-generated content without justification.
+Atlas synthesizes, suggests, and proposes — but the user decides. *(Corrected per the Atlas UX Architecture UX-012 Authority Migration task, 2026-08-02 — see the Correction Notice above. Prior text: "Atlas concludes, suggests, and proposes," which risked framing Atlas as an independent authority that concludes truth, contrary to `UX-000-Atlas-UX-Doctrine.md` UXD-R-056.)* Every recorded decision is the user's. The user's authored content is always visually distinguishable from Atlas's generated content. The user may override, reject, or edit any Atlas-generated content without justification.
 
 6. Uncertainty remains visible.
 Atlas does not smooth over uncertainty with confident-sounding summaries. Confidence levels, incomplete assumptions, unresolved contradictions, and genuinely unknown outcomes are all surfaced. The user makes their decision with the uncertainty in view.
