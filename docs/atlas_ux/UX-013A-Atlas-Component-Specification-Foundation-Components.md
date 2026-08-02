@@ -8,6 +8,12 @@ Volume 1 of the Atlas Component Library. This document specifies every Foundatio
 
 **Correction Notice (Phase 5, governed by the Atlas UX Source Correction Plan's own Section 22 Q2-resolved corpus-wide cross-reference sweep — 2026-07-28):** A corpus-wide mechanical inventory, followed by human semantic disposition per Section 22's Q2 resolution, found this document's Responsive Behavior section (Mobile) citing "Long-Form Editor spec in UX-013D" as the governing source for full-screen mobile editing mode. Per ADR-002 C-05, `UX-013D` does not exist anywhere in the committed repository. The citation was also substantively wrong, independent of UX-013D's absence: Long-Form Editor's own identity, states, and autosave behavior are, and always were, specified in `UX-012-Atlas-Design-System-Workspace-Consistency-Specification.md` §29 ("Editing Components"), not in any UX-013-series document; the specific full-screen mobile editing rule this passage describes is separately stated in UX-012 §45 ("Editing Behavior": "Mobile editing: full-screen editing mode on mobile — the Workspace body is replaced with the editing surface; done/save returns to the Workspace"). This correction replaces the stale citation with the accurate one, naming both supporting sections. Prior text: "Full-screen editing mode for authoring components (see Long-Form Editor spec in UX-013D)." No behavior, state, or interaction is changed by this correction — only the citation. This correction does not resolve, reopen, or take any position on Q1, Finding F-2, ADR-002 C-05, or any canonical-authorship question.
 
+**Correction Notice (Atlas UX Architecture Foundation Motion/Interaction Consistency Correction task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen any notice above. The completed Reasoning Token Architecture Phase 3B: Motion & Interaction Foundations task (2026-08-02) established `opacity.interaction.hover` and `opacity.loading.pulse.min`/`.max` as the canonical `UX-012D` §3 tokens for hover-opacity treatment and loading-opacity treatment, respectively, and retired `interaction.hover.background` and `motion.loading` as unsupported names. This document still contained legacy references to both. This correction aligns this document's own token references to the now-canonical names. No component behavior, interaction, accessibility, loading, or animation timing is changed by this correction.
+
+**Correction Notice (Atlas UX Architecture Foundation & Collaboration Token Alignment task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen any notice above. The completed Cross-Document Token Consistency Audit (2026-08-02) found that this document retained numerous legacy token references — bare `text.*`, bare `border.*`, bare `status.*`, bare `action.*`, superseded `focus.ring.*` ordering, bare `motion.<event>`, and undocumented `progress.*`/`loading.skeleton.*` references — after the canonical `UX-012D` architecture had evolved through the completed Reasoning Token Architecture program (Phases 1 through 3C, 2026-08-02). This correction aligns Foundation Components with `UX-012D` and those completed mappings, following the identical semantic-role analysis already applied to Reasoning Components. **This correction is presentation-token-only.** No component identity, anatomy, state, interaction, accessibility behavior, responsive behavior, ownership, or Product meaning changes anywhere in this document. No new top-level token namespace is introduced — every replacement below reuses a token `UX-012D` already defines. A small number of items have no canonical `UX-012D` equivalent (a focus-ring offset value, three Motion events never formalized beyond Reasoning-tier usage, and a progress-bar/skeleton fill treatment) — these are not guessed into a plausible-looking token; they are disclosed as missing foundations, in prose, exactly where they occur, and in the traceability record at Section 18, below. The full traceability record — every prior token, its replacement or disclosed non-replacement, and its rationale — appears in the new Phase 4: Foundation Token Alignment subsection, Section 18, below.
+
+**Correction Notice (Atlas UX Architecture Foundation Token Alignment (UX-013A Final Alignment) task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen any notice above. The completed Missing Foundation Resolution Phase 1: UX-012D Canonical Foundation Additions task (2026-08-02) established five of the nine foundations the notice above disclosed as missing: `color.border.hairline` and `color.border.standard` (`UX-012D` §3, new Border group), and `motion.open.duration`/`.easing`, `motion.close.duration`/`.easing`, `motion.navigate.duration`/`.easing` (`UX-012D` §3, Motion Architecture group, extended). This correction replaces the temporary implementation-prose treatment those five items previously required — written only because no canonical token yet existed — with the now-canonical token references, throughout this document and in Section 18's own consolidated tables. **No component behavior, anatomy, interaction, accessibility behavior, or Product meaning changes anywhere in this document. No component is redesigned. No new token is introduced — every replacement below cites a token `UX-012D` already defines.** Four items remain exactly as disclosed by the notice above and are unaffected by this correction: focus-ring offset, `progress.fill`, `progress.track`, and `loading.skeleton.base` — none of these was added by the governing `UX-012D` task, and none is touched here. The full traceability record for this correction appears in the new Phase 5: Foundation Foundation-Extension Alignment subsection, Section 18, below.
+
 ---
 
 # Foundation Component Philosophy
@@ -185,7 +191,7 @@ Scroll position is stored per `workspaceId` and restored when the user returns t
 
 | Visual Property | Token |
 |-----------------|-------|
-| Body background | `surface.workspace.background` |
+| Body background | `surface.background` |
 | Maximum width | `layout.workspace.maxWidth` |
 | Side padding (desktop) | `space.workspace.horizontal.desktop` |
 | Side padding (tablet) | `space.workspace.horizontal.tablet` |
@@ -303,9 +309,9 @@ WorkspaceHeader
 
 ## Status Area
 
-**Draft Indicator:** Text label "Draft" in Role 5 typography. Accompanied by last-autosave timestamp. Color: `status.draft.text`. Appears when any unsaved user content exists in the Workspace. Disappears on save completion.
+**Draft Indicator:** Text label "Draft" in Role 5 typography. Accompanied by last-autosave timestamp. Presentation: neutral — no distinct semantic color, per `UX-012B` §13 and the Status Badge Token Architecture Correction (2026-08-02, §13, above); communicated by the text label alone. Appears when any unsaved user content exists in the Workspace. Disappears on save completion.
 
-**Historical Indicator:** Text label "Historical Record" in Role 4 typography. Accompanied by the historical record date. Color: `status.historical.text`. Appears when the user is viewing historical content. Persists for the duration of the historical viewing session.
+**Historical Indicator:** Text label "Historical Record" in Role 4 typography. Accompanied by the historical record date. Color: `color.text.historical`. Appears when the user is viewing historical content. Persists for the duration of the historical viewing session.
 
 **Monitoring Badge:** A numeric badge indicating the count of active Monitoring Conditions in Triggered or Approaching state. Positioned on or near a monitoring icon. Clicking navigates to the monitoring surface. Present only when `monitoringBadgeCount > 0`.
 
@@ -348,16 +354,16 @@ WorkspaceHeader
 
 | Visual Property | Token |
 |-----------------|-------|
-| Header background | `surface.header.background` |
-| Header border-bottom | `border.header.bottom` |
-| Workspace Type Label color | `text.label.secondary` |
-| Subject Title color | `text.heading.primary` |
-| Subject Subtitle color | `text.contextual` |
-| Return control color | `text.action.secondary` |
-| Draft Indicator color | `status.draft.text` |
-| Historical Indicator color | `status.historical.text` |
-| Monitoring Badge background | `status.monitoring.badge.background` |
-| Monitoring Badge text | `status.monitoring.badge.text` |
+| Header background | `surface.header` |
+| Header border-bottom | `color.border.standard` |
+| Workspace Type Label color | `color.text.secondary` |
+| Subject Title color | `color.text.primary` |
+| Subject Subtitle color | `color.text.tertiary` |
+| Return control color | `color.text.tertiary` |
+| Draft Indicator color | None — neutral default text, no color distinction (per Status Badge Token Architecture Correction, §13, above) |
+| Historical Indicator color | `color.text.historical` |
+| Monitoring Badge background | `surface.elevated` — a neutral, distinguished surface; not a warning or contradiction color (see §18 traceability for the Monitoring Badge severity-ambiguity rationale) |
+| Monitoring Badge text | `color.text.primary` |
 
 ## Figma Architecture
 
@@ -490,11 +496,11 @@ Disabled actions are accessible: they carry `aria-disabled="true"` (not the HTML
 
 | Visual Property | Token |
 |-----------------|-------|
-| Toolbar background | `surface.toolbar.background` |
-| Toolbar border-bottom | `border.toolbar.bottom` |
-| Action text color | `text.action.secondary` |
-| Action hover background | `interaction.hover.background` |
-| Disabled action text | `text.disabled` |
+| Toolbar background | `surface.toolbar` |
+| Toolbar border-bottom | `color.border.standard` |
+| Action text color | `color.text.tertiary` (Inline Action, per `UX-012B` §15 — visible on interaction, does not compete with primary content) |
+| Action hover background | `opacity.interaction.hover` |
+| Disabled action text | `color.text.tertiary` at `opacity.disabled` — the same Inline Action color, dimmed; not a separate disabled-text color token |
 | Overflow shadow (scrolled) | `elevation.toolbar.shadow` |
 | Toolbar z-index | `elevation.toolbar.zIndex` |
 
@@ -597,15 +603,15 @@ The Footer is sticky and always visible when present. It does not hide or collap
 
 | Visual Property | Token |
 |-----------------|-------|
-| Footer background | `surface.footer.background` |
-| Footer border-top | `border.footer.top` |
+| Footer background | `surface.footer` |
+| Footer border-top | `color.border.standard` |
 | Footer top shadow (scrolled) | `elevation.footer.shadow` |
-| Status text color | `text.contextual` |
-| Primary Action background | `action.primary.background` |
-| Primary Action text | `action.primary.text` |
-| Secondary Action text | `action.secondary.text` |
-| Completion-blocked Action background | `action.primary.disabled.background` |
-| Progress text color | `text.label.secondary` |
+| Status text color | `color.text.tertiary` |
+| Primary Action background | No dedicated background token — `UX-012B` §15's own Primary Action definition states "defined surface or clear outline at primary text color. Not a filled bright button." The Primary Action renders on the Footer's own existing neutral surface (`surface.footer`, above), distinguished by `color.text.primary` and an outline treatment, not by a separate background color |
+| Primary Action text | `color.text.primary` (Primary Action, per `UX-012B` §15) |
+| Secondary Action text | `color.text.secondary` (Secondary Action, per `UX-012B` §15 — footer-level, alongside the Primary Action; distinct from Inline/Section Action placement elsewhere in this document) |
+| Completion-blocked Action background | `opacity.disabled` applied to the Primary Action's own base treatment, above — not a separate disabled-background token; behavior is `aria-disabled="true"`, never native `disabled`, per `ADR-002` C-06, already correctly stated in this component's own Accessibility section |
+| Progress text color | `color.text.secondary` |
 
 ## Composition Rules
 
@@ -689,11 +695,11 @@ When the user arrives via a deep link with no navigation history, the Navigation
 
 | Visual Property | Token |
 |-----------------|-------|
-| Navigation Bar background | `surface.navigation.background` |
-| Navigation Bar border-bottom | `border.navigation.bottom` |
-| Breadcrumb ancestor color | `text.action.navigation` |
-| Breadcrumb separator color | `text.muted` |
-| Current location color | `text.heading.secondary` |
+| Navigation Bar background | `surface.navigation` |
+| Navigation Bar border-bottom | `color.border.standard` |
+| Breadcrumb ancestor color | `color.text.tertiary` (shares `type.role5`/`type.breadcrumb` typography with Supporting Metadata, already mapped to `color.text.tertiary` throughout this corpus) |
+| Breadcrumb separator color | `color.text.tertiary` |
+| Current location color | `color.text.secondary` |
 
 ---
 
@@ -781,11 +787,11 @@ If the total Breadcrumb width exceeds its container, ancestors truncate with ell
 
 | Visual Property | Token |
 |-----------------|-------|
-| Ancestor text color | `text.action.navigation` |
-| Ancestor hover color | `text.action.navigation.hover` |
-| Separator color | `text.muted` |
-| Current location color | `text.heading.secondary` |
-| Collapsed ellipsis color | `text.action.secondary` |
+| Ancestor text color | `color.text.tertiary` |
+| Ancestor hover state | `opacity.interaction.hover` applied atop the ancestor text color, above — not a separate hover color token |
+| Separator color | `color.text.tertiary` |
+| Current location color | `color.text.secondary` |
+| Collapsed ellipsis color | `color.text.tertiary` (Inline Action, per `UX-012B` §15) |
 | Font | `type.breadcrumb` (Role 5) |
 
 ## Examples
@@ -907,14 +913,14 @@ The container's visual role: separate sections with space, not with walls.
 
 | Visual Property | Token |
 |-----------------|-------|
-| Container background | `surface.section.background` |
-| Container border | `border.section` |
+| Container background | `surface.primary` |
+| Container border | `color.border.standard` |
 | Container border-radius | `radius.section` |
 | Internal top padding | `space.section.top` |
 | Internal bottom padding | `space.section.bottom` |
 | Between-section spacing | `space.level4` |
-| Updated indicator color | `status.updated.indicator` |
-| Draft indicator color | `status.draft.indicator` |
+| Updated indicator color | None — neutral default text, no color distinction (per Status Badge Token Architecture Correction, §13, above) |
+| Draft indicator color | None — neutral default text, no color distinction (per Status Badge Token Architecture Correction, §13, above) |
 
 ## Composition Rules
 
@@ -1000,7 +1006,7 @@ Timestamps, counts, or status values may appear in the Section Header as seconda
 
 **Fixed Sections:** No expansion control. The Section is always fully open.
 
-**Expansion control visual:** `icon.chevron` at the appropriate icon size. Color: `text.muted`. Rotates 90° on expansion (Expand token animation).
+**Expansion control visual:** `icon.chevron` at the appropriate icon size. Color: `color.text.tertiary`. Rotates 90° on expansion (Expand token animation).
 
 ## Collapse
 
@@ -1044,14 +1050,14 @@ Title and expansion control: left-aligned. Section actions: right-aligned.
 
 | Visual Property | Token |
 |-----------------|-------|
-| Title color | `text.heading.primary` |
-| Subtitle color | `text.label.secondary` |
-| Summary color | `text.contextual` |
-| Expansion chevron color | `text.muted` |
-| Section action color | `text.action.secondary` |
-| Section Header background (hover) | `interaction.hover.background` |
-| Status indicator (draft) | `status.draft.indicator` |
-| Status indicator (updated) | `status.updated.indicator` |
+| Title color | `color.text.primary` |
+| Subtitle color | `color.text.secondary` |
+| Summary color | `color.text.tertiary` |
+| Expansion chevron color | `color.text.tertiary` |
+| Section action color | `color.text.tertiary` (Section Action, per `UX-012B` §15 — explicitly Tertiary emphasis) |
+| Section Header background (hover) | `opacity.interaction.hover` |
+| Status indicator (draft) | None — neutral default text, no color distinction (per Status Badge Token Architecture Correction, §13, above) |
+| Status indicator (updated) | None — neutral default text, no color distinction (per Status Badge Token Architecture Correction, §13, above) |
 
 ## Anti-Patterns
 
@@ -1114,7 +1120,7 @@ A Divider is accompanied by equal spacing on both sides. The spacing on each sid
 
 ## Visibility
 
-The Divider is visible but subtle. Its color is `border.divider` — a step above the surface color, a step below text colors.
+The Divider is visible but subtle. Its color is `color.border.hairline` — a step above the surface color, a step below text colors.
 
 Dividers may be omitted (visibility: hidden; preserved in layout to maintain spacing) in historical Sections where visual density is already reduced.
 
@@ -1133,8 +1139,8 @@ Dividers may be omitted (visibility: hidden; preserved in layout to maintain spa
 
 | Visual Property | Token |
 |-----------------|-------|
-| Divider color | `border.divider` |
-| Divider thickness | `border.divider.width` (1px) |
+| Divider color | `color.border.hairline` |
+| Divider thickness | 1px, stated directly — no dedicated width token exists for this value; `width.focus.ring` is the only literalized `width.*` token in `UX-012D` §3 *(missing foundation, see §18 traceability)* |
 
 ## Misuse
 
@@ -1160,32 +1166,32 @@ Atlas uses five surface tiers. Each tier is a distinct tonal step within the war
 
 **Tier 0 — Workspace Background**
 The base of the Workspace body. Everything else sits on top of this.
-Token: `surface.workspace.background`
+Token: `surface.background`
 Use: Workspace Frame body region.
 
 **Tier 1 — Primary Surface**
 The standard surface for Section Containers and primary content areas.
-Token: `surface.primary.background`
+Token: `surface.primary`
 Use: Standard, Reasoning, Editable, and Comparison Sections.
 
 **Tier 2 — Elevated Surface**
 A slightly lighter surface for components that appear above Tier 1. Used to create depth within a Section without a card-like enclosure.
-Token: `surface.elevated.background`
+Token: `surface.elevated`
 Use: Atlas Suggestion components, inline metadata areas, compact information panels.
 
 **Tier 3 — Panel Surface**
 Used for persistent side panels, overlays, or secondary information panels. Higher tonal contrast against the Workspace background.
-Token: `surface.panel.background`
+Token: `surface.panel`
 Use: Historical Record overlays, Dialog containers, comparison side panels.
 
 **Historical Surface**
 A surface specifically for Historical content. Distinguishable from Tier 1 by a slight desaturation or opacity adjustment, reinforcing the "past" quality of historical content.
-Token: `surface.historical.background`
+Token: `surface.historical`
 Use: Historical Sections, Historical Records.
 
 **Monitoring Surface**
 A surface for Monitoring condition components when they are in an Approaching or Triggered state. A subtle warm variation that communicates attention without urgency.
-Token: `surface.monitoring.background`
+Token: `surface.monitoring`
 Use: Monitoring Condition components in Approaching or Triggered state.
 
 ## Properties
@@ -1193,7 +1199,7 @@ Use: Monitoring Condition components in Approaching or Triggered state.
 | Property | Type | Notes |
 |----------|------|-------|
 | `tier` | `'workspace' \| 'primary' \| 'elevated' \| 'panel' \| 'historical' \| 'monitoring'` | Required |
-| `hasBorder` | boolean | Adds `border.surface` on all sides |
+| `hasBorder` | boolean | Adds `color.border.standard` on all sides |
 | `borderRadius` | `'none' \| 'default' \| 'large'` | Default for standard; large for Dialog; none for full-bleed |
 
 ## Elevation
@@ -1209,11 +1215,11 @@ Atlas surfaces do not use drop shadows as their primary differentiation mechanis
 
 Adjacent surfaces must provide sufficient visual differentiation. Minimum perceptible contrast between adjacent surface tiers: sufficient for a user to identify the boundary without a border (approximately 3:1 luminance contrast between adjacent surfaces).
 
-Borders (`border.surface`) supplement tonal contrast when two surfaces of close tonal value are adjacent.
+Borders (`color.border.standard`) supplement tonal contrast when two surfaces of close tonal value are adjacent.
 
 ## Composition
 
-Surfaces are not standalone components — they are applied as background and border properties to structural container components. A Section Container uses `surface.primary.background`. An Atlas Suggestion component uses `surface.elevated.background`. A Dialog uses `surface.panel.background`.
+Surfaces are not standalone components — they are applied as background and border properties to structural container components. A Section Container uses `surface.primary`. An Atlas Suggestion component uses `surface.elevated`. A Dialog uses `surface.panel`.
 
 The Surface component in engineering is typically implemented as a design token mapping, not a separate React component — applied through CSS custom properties on the relevant structural component.
 
@@ -1221,13 +1227,13 @@ The Surface component in engineering is typically implemented as a design token 
 
 | Surface | Token |
 |---------|-------|
-| Workspace background | `surface.workspace.background` |
-| Primary surface | `surface.primary.background` |
-| Elevated surface | `surface.elevated.background` |
-| Panel surface | `surface.panel.background` |
-| Historical surface | `surface.historical.background` |
-| Monitoring surface | `surface.monitoring.background` |
-| Surface border | `border.surface` |
+| Workspace background | `surface.background` |
+| Primary surface | `surface.primary` |
+| Elevated surface | `surface.elevated` |
+| Panel surface | `surface.panel` |
+| Historical surface | `surface.historical` |
+| Monitoring surface | `surface.monitoring` |
+| Surface border | `color.border.standard` |
 | Overlay shadow | `elevation.overlay` |
 
 ---
@@ -1345,7 +1351,7 @@ When content is loading (use Progress Indicator / Loading state, not Empty State
 
 No illustrations in Atlas Empty States. No characters, no icons beyond a single functional status icon, no decorative graphics. The emptiness is communicated through text alone, with appropriate tonal variation.
 
-The exception: a single, simple, semantically relevant icon (e.g., a clock icon for "No monitoring conditions established yet") may appear above the headline. Icon size: `icon.large`. Color: `text.muted`.
+The exception: a single, simple, semantically relevant icon (e.g., a clock icon for "No monitoring conditions established yet") may appear above the headline. Icon size: `icon.large`. Color: `color.text.tertiary`.
 
 ## Anatomy
 
@@ -1410,9 +1416,9 @@ Empty States fill the Section Body they inhabit. They are vertically centered wi
 
 | Visual Property | Token |
 |-----------------|-------|
-| Icon color | `text.muted` |
-| Headline color | `text.heading.secondary` |
-| Supporting text color | `text.contextual` |
+| Icon color | `color.text.tertiary` |
+| Headline color | `color.text.secondary` |
+| Supporting text color | `color.text.tertiary` |
 | Background | inherited from Section |
 
 ## Anti-Patterns
@@ -1426,6 +1432,8 @@ Empty States fill the Section Body they inhabit. They are vertically centered wi
 
 # 13. Status Badge
 
+**Correction Notice (Atlas UX Architecture Status Badge Token Architecture Correction task — 2026-08-02):** This component's own purpose, semantic meaning, nine canonical badge types, priority ordering, sizing, placement, states, and accessibility rules are unchanged by this notice. What changed: every badge type's own color reference previously used an unsupported `status.*` token namespace that does not exist anywhere in `UX-012D-Atlas-Design-System-Governance-Tokens-Evolution.md` — confirmed by the completed Status Badge Token Family Architecture Investigation (2026-08-02). That namespace is rejected in full; no `status.*` token is used anywhere below. Historical, Warning, and Monitoring: Approaching are corrected to cite the existing `UX-012D` tokens that already governed their own meaning. Monitoring: Triggered and Completed/Recorded are corrected to cite the two small, bounded additions made to `UX-012D` §3 for this same correction (`color.semantic.red`, `type.badge.completed`) — the only new tokens introduced by this correction, and the only two Status Badge types that needed one. Draft, Saved, Monitoring: Active, and Updated are corrected to the neutral, label-only presentation `UX-012B` §13 already specifies for them — their prior `status.*` references implied a color distinction that was never source-supported. This notice preserves the fact that the prior `status.*` references existed; the corrected values replace them below, not silently.
+
 ## Purpose
 
 The Status Badge communicates the current semantic state of a component, record, or Section in a compact, labeled form. It is a persistent status indicator, not a notification or alert.
@@ -1433,6 +1441,12 @@ The Status Badge communicates the current semantic state of a component, record,
 ## Semantic Meaning
 
 A Status Badge answers: what is the current state of this thing? It is not interactive by default. It is informational. Its color and label together communicate the state.
+
+## Status Presentation
+
+Status Badge renders a semantic `type` value; it does not itself define what any underlying state means. Per `UX-013F`'s own established classification: *"Status Presentation is the mapping layer between domain state and StatusBadge configuration — an architecture document, not a component."* The mapping below — from an already-known domain fact (a Decision is recorded, a Monitoring Condition has crossed its threshold, content is historical) to a specific badge presentation — is that mapping, stated here for Status Badge's own nine canonical types; it is not a new Product Concept, and it does not make Status Presentation an independently stateful component of its own.
+
+Different badge types intentionally draw on different `UX-012D` semantic token groups, because they represent genuinely different kinds of facts — workflow state (Draft, Saved), monitoring urgency (Monitoring: Active, Approaching, Triggered), content immutability (Historical), completion (Completed/Recorded), and change feedback (Updated). Neutral states (Draft, Saved, Monitoring: Active, Updated) do not receive an artificially distinct color merely for visual variety — per `UX-012B` §13's own literal description, each is communicated by its text label alone. Text and programmatic labels are always authoritative; color, where a badge type has one, is supplementary only, per this component's own Accessibility section, below, and `UX-012A` §15. No `status.*` token namespace exists anywhere in `UX-012D`, and none is used below.
 
 ## When Used
 
@@ -1457,52 +1471,52 @@ No colored dot alone — always include a text label. Color supplements the labe
 **Draft**
 Label: "Draft"
 Meaning: Unsaved user content exists.
-Color: `status.draft.text` on `status.draft.background`
+Presentation: Neutral — no distinct semantic color, per `UX-012B` §13 ("Draft: The object or content is in active preparation and has not been recorded or submitted"; no color is specified beyond the Draft Indicator itself). Communicated by the text label alone.
 Accompanies: Last-autosave timestamp.
 
 **Saved**
 Label: "Saved"
 Meaning: Content was recently autosaved. Transient (appears briefly after save, then disappears).
 Duration: 3 seconds, then fades out.
-Color: `status.saved.text` on `status.saved.background`
+Presentation: Neutral — no distinct semantic color, per `UX-012B` §13 ("Saved: The draft state has been explicitly saved. Visual treatment: Draft Indicator shows last-saved timestamp"; no distinct color is specified).
 
 **Completed / Recorded**
 Label: "Recorded"
 Meaning: A Decision has been formally recorded and is now a Historical Record.
-Color: `status.completed.text` on `status.completed.background`
+Presentation: `type.badge.completed` (`UX-012D` §3, Completed semantic group). No dedicated background token — renders on the Status Badge's own neutral default surface, consistent with the Completed group's own stated principle that "the authority comes from the populated content, not a different surface treatment." Communicates recording status textually only; does not imply Decision Quality or a positive Outcome.
 Persistent: never disappears once shown.
 
 **Monitoring: Active**
 Label: "Monitoring"
 Meaning: Active Monitoring Conditions are established.
-Color: `status.monitoring.active.text`
+Presentation: Neutral — no distinct semantic color, per `UX-012B` §13 ("Monitoring: Atlas is actively observing conditions linked to this object. Visual treatment: A small 'MONITORING' label in metadata scale"; no distinct color is specified).
 
 **Monitoring: Approaching**
 Label: "Approaching"
 Meaning: A Monitoring Condition threshold is near.
-Color: `status.monitoring.approaching.text`
+Presentation: `color.semantic.amber` (`UX-012D` §3, Monitoring semantic group — explicitly named for this state).
 
 **Monitoring: Triggered**
 Label: "Triggered"
 Meaning: A Monitoring Condition threshold has been crossed. Requires attention.
-Color: `status.monitoring.triggered.text`
+Presentation: `color.semantic.red` (`UX-012D` §3, Monitoring semantic group, added per the Status Badge Token Architecture Correction task, 2026-08-02). Communicates only that the underlying Monitoring Condition has crossed its own threshold, per `UX-012` §26; it does not itself imply autonomous Atlas action or assert that the associated Decision is invalid — that determination remains the Investor's own, consistent with the Invalidation Trigger's own established boundary (`UX-012B` §9).
 
 **Historical**
 Label: "Historical Record"
 Meaning: The content is from a Historical Record and is immutable.
-Color: `status.historical.text`
+Presentation: `color.text.historical` (`UX-012D` §3, Historical Content semantic group).
 Always persistent. Cannot be dismissed.
 
 **Updated**
 Label: "Updated"
 Meaning: Content in this Section or component has changed since the user last reviewed it.
-Color: `status.updated.text`
+Presentation: Neutral — no distinct semantic color, per `UX-012B` §13 ("Updated: Atlas has new analysis or the object's state has changed since the user's last visit. Visual treatment: A small 'UPDATED' label in metadata scale"; no distinct color is specified).
 Transient: fades after the user interacts with the Section.
 
 **Warning**
 Label: "Warning" or the specific warning type.
 Meaning: An Atlas Warning is present in this Section. Used in Section Header status area.
-Color: `status.warning.text`
+Presentation: `color.semantic.amber` (`UX-012D` §3 — Warning is stated to be "a synonym for Material Contradiction and above... maps to the same amber tokens" as the Contradiction semantic group).
 
 ## Priority
 
@@ -1534,17 +1548,19 @@ Status Badges themselves have no interactive states. They are informational. If 
 
 ## Token Mapping
 
-| Badge | Background Token | Text Token |
-|-------|-----------------|-----------|
-| Draft | `status.draft.background` | `status.draft.text` |
-| Saved | `status.saved.background` | `status.saved.text` |
-| Completed | `status.completed.background` | `status.completed.text` |
-| Monitoring: Active | `status.monitoring.active.background` | `status.monitoring.active.text` |
-| Monitoring: Approaching | `status.monitoring.approaching.background` | `status.monitoring.approaching.text` |
-| Monitoring: Triggered | `status.monitoring.triggered.background` | `status.monitoring.triggered.text` |
-| Historical | `status.historical.background` | `status.historical.text` |
-| Updated | `status.updated.background` | `status.updated.text` |
-| Warning | `status.warning.background` | `status.warning.text` |
+| Badge | Background Token | Text/Icon Token | Source |
+|-------|-------------------|------------------|--------|
+| Draft | None — neutral default surface, no color distinction | None — text label only, no color distinction | `UX-012B` §13 |
+| Saved | None — neutral default surface, no color distinction | None — text label only, no color distinction | `UX-012B` §13 |
+| Completed | None — neutral default surface | `type.badge.completed` | `UX-012D` §3, Completed group (added this correction) |
+| Monitoring: Active | None — neutral default surface, no color distinction | None — text label only, no color distinction | `UX-012B` §13 |
+| Monitoring: Approaching | None defined in `UX-012D` | `color.semantic.amber` | `UX-012D` §3, Monitoring group |
+| Monitoring: Triggered | None defined in `UX-012D` | `color.semantic.red` | `UX-012D` §3, Monitoring group (added this correction) |
+| Historical | `surface.historical` | `color.text.historical` | `UX-012D` §3, Historical Content group |
+| Updated | None — neutral default surface, no color distinction | None — text label only, no color distinction | `UX-012B` §13 |
+| Warning | None defined in `UX-012D` | `color.semantic.amber` | `UX-012D` §3, Warning/Contradiction group |
+
+No `status.*` token is used above. `color.semantic.red` and `type.badge.completed` are the only two tokens newly added anywhere in this correction, both to their own already-established `UX-012D` §3 semantic group (Monitoring and Completed, respectively) — no new token category or top-level namespace was introduced.
 
 ## Anti-Patterns
 
@@ -1552,6 +1568,7 @@ Status Badges themselves have no interactive states. They are informational. If 
 - **Do not make Status Badges interactive.** They are informational. Use Action components for navigation or triggers.
 - **Do not stack multiple Status Badges in the same slot.** Show only the highest priority.
 - **Do not use Status Badges as decorative tags.** Every badge communicates a specific semantic state.
+- **Do not invent a component-specific token family for a new badge type.** Extend an existing `UX-012D` §3 semantic group, or raise a bounded token-governance request per `UX-012D` §5 — never introduce a parallel namespace like the rejected `status.*` family.
 
 ---
 
@@ -1584,7 +1601,7 @@ A Progress Indicator communicates: something is happening. When determinate: how
 A linear progress bar that fills from left to right as progress is made. Used when the total number of steps is known.
 Example use: "3 of 6 Decision fields complete."
 Implementation: `<progress value="3" max="6">` element.
-Visual: a filled bar within a track. Color: `progress.fill`.
+Visual: a filled bar within a track. Fill/track color treatment has no canonical `UX-012D` foundation *(missing foundation, see §18 traceability)*.
 
 **Indeterminate**
 A looping animation that communicates ongoing work without implying a known endpoint. Used when the duration is unknown.
@@ -1628,11 +1645,11 @@ Progress Indicators are not interactive. They communicate; they do not enable ac
 
 | Visual Property | Token |
 |-----------------|-------|
-| Progress bar fill | `progress.fill` |
-| Progress bar track | `progress.track` |
-| Skeleton base | `loading.skeleton.base` |
-| Skeleton shimmer | `loading.skeleton.shimmer` |
-| Loading animation | `motion.loading` |
+| Progress bar fill | No canonical `UX-012D` foundation exists *(missing foundation, see §18 traceability)* |
+| Progress bar track | No canonical `UX-012D` foundation exists *(missing foundation, see §18 traceability)* |
+| Skeleton base | No canonical `UX-012D` foundation exists — a neutral placeholder shape color, distinct from the shimmer animation below *(missing foundation, see §18 traceability)* |
+| Skeleton shimmer | `opacity.loading.pulse.min` / `opacity.loading.pulse.max` — the same tokens already governing the Loading animation row, below; `loading.skeleton.shimmer` was a redundant second name for the identical effect, not a distinct token |
+| Loading animation | `opacity.loading.pulse.min` / `opacity.loading.pulse.max` |
 
 ---
 
@@ -1806,14 +1823,15 @@ DialogContainer
 
 | Visual Property | Token |
 |-----------------|-------|
-| Dialog background | `surface.panel.background` |
-| Dialog border | `border.surface` |
+| Dialog background | `surface.panel` |
+| Dialog border | `color.border.standard` |
 | Dialog border-radius | `radius.dialog` |
 | Dialog shadow | `elevation.overlay` |
 | Scrim color | `surface.scrim` |
 | Dialog z-index | `elevation.dialog.zIndex` |
-| Title color | `text.heading.primary` |
-| Open/Close motion | `motion.open`, `motion.close` |
+| Title color | `color.text.primary` |
+| Open motion | `motion.open.duration` / `motion.open.easing` |
+| Close motion | `motion.close.duration` / `motion.close.easing` |
 
 ## Future Extensibility
 
@@ -1840,7 +1858,7 @@ This specification applies to all Foundation Components. Individual component ac
 
 ## Focus
 
-**Focus indicator:** `:focus-visible` only. Never `:focus` (which would show focus rings on mouse clicks). Focus ring: `outline: 2px solid [focus.ring.color]; outline-offset: 2px`. Color: `focus.ring.color`.
+**Focus indicator:** `:focus-visible` only. Never `:focus` (which would show focus rings on mouse clicks). Focus ring: `outline: [width.focus.ring] solid [color.focus.ring]; outline-offset: 2px`. Color: `color.focus.ring`. Width: `width.focus.ring`. The 2px offset value has no canonical `UX-012D` token — `radius.focus.ring` governs the ring's own corner radius, not its separation from the focused element, and no separate offset token exists; the 2px value is stated directly as implementation prose *(missing foundation, see §18 traceability)*.
 
 **Minimum focus indicator size:** The focus ring must be large enough to encompass the entire interactive element with 2px offset on all sides.
 
@@ -1918,6 +1936,88 @@ Foundation Components prevent errors through:
 
 A consolidated mapping of all Foundation Components to the Atlas semantic token system. This serves as the implementation reference. All values are token references — no hardcoded values.
 
+## Phase 4: Foundation Token Alignment
+
+*(Added per the Atlas UX Architecture Foundation & Collaboration Token Alignment task, 2026-08-02.)* This document previously referenced numerous unsupported bare `text.*`, `border.*`, `status.*`, and `action.*` tokens, superseded `focus.ring.*` ordering, bare `motion.<event>` references, and undocumented `progress.*`/`loading.skeleton.*` references, none of which `UX-012D` defines. Each occurrence throughout this document and this section's own consolidated tables has been individually corrected or disclosed in place, following the identical semantic-role analysis the completed Reasoning Token Architecture program (Phases 1–3C) already applied to `UX-013B`. This table summarizes every prior unsupported reference, its occurrence count at the time of this correction, and its resolution.
+
+**Traceability — every prior unsupported reference, accounted for exactly once:**
+
+| Previous token | Occurrences | Resolution | Rationale | Status |
+|---|---|---|---|---|
+| `text.label.secondary` | 4 | `color.text.secondary` | Supporting/subordinate label text | Reuse |
+| `text.heading.primary` | 4 | `color.text.primary` | Highest-tier heading text (Role 2 typography) | Reuse |
+| `text.heading.secondary` | 4 | `color.text.secondary` | Second-tier heading text (Role 3 typography) | Reuse |
+| `text.contextual` | 5 | `color.text.tertiary` | Quiet, contextual, or supporting text | Reuse |
+| `text.action.secondary` | 5 | `color.text.tertiary` | Inline/Section Action, per `UX-012B` §15 — explicitly Tertiary, regardless of the local name's own use of "secondary" | Reuse |
+| `text.action.navigation` | 3 | `color.text.tertiary` | Shares Role 5/`type.breadcrumb` typography with already-tertiary-mapped Supporting Metadata | Reuse |
+| `text.action.navigation.hover` | 1 | `opacity.interaction.hover` applied atop the base color | A delta on an existing color, not a separate hover-color token | Reuse |
+| `text.muted` | 7 | `color.text.tertiary` | Quiet, de-emphasized text | Reuse |
+| `text.disabled` | 2 | `color.text.tertiary` at `opacity.disabled` | The enabled action's own color, dimmed — not a distinct token | Reuse |
+| `border.header.bottom` | 2 | Neutral structural border, prose only | No literal `UX-012D` token for the "standard" border weight | Missing foundation |
+| `border.footer.top` | 2 | Neutral structural border, prose only | Same | Missing foundation |
+| `border.toolbar.bottom` | 2 | Neutral structural border, prose only | Same | Missing foundation |
+| `border.navigation.bottom` | 2 | Neutral structural border, prose only | Same | Missing foundation |
+| `border.section` | 2 | Neutral structural border, prose only | Same | Missing foundation |
+| `border.surface` | 5 | Neutral structural border, prose only | Same | Missing foundation |
+| `border.divider` | 3 | Neutral hairline treatment, prose only | No literal `UX-012D` token for the "hairline" border weight | Missing foundation |
+| `border.divider.width` | 2 | 1px, stated directly | No `width.*` token exists beyond `width.focus.ring` | Missing foundation |
+| `status.monitoring.badge.background` | 1 | `surface.elevated` | Aggregate count spans two severities (Approaching + Triggered) — no single semantic color is accurate; resolved neutrally, per Option A | Reuse |
+| `status.monitoring.badge.text` | 1 | `color.text.primary` | Numeric count requires high legibility | Reuse |
+| `action.primary.background` | 1 | No dedicated token — existing neutral surface + outline | `UX-012B` §15: Primary Action is "defined surface or clear outline... Not a filled bright button" | Reuse (no token needed) |
+| `action.primary.text` | 1 | `color.text.primary` | `UX-012B` §15: Primary Action uses "primary text color" | Reuse |
+| `action.secondary.text` | 1 | `color.text.secondary` | Genuine footer-level Secondary Action per `UX-012B` §15 (placement matches exactly — unlike `UX-013B`'s locally-named "secondary" actions, which are Inline Actions) | Reuse |
+| `action.primary.disabled.background` | 1 | `opacity.disabled` applied to the Primary Action's own base treatment | `ADR-002` C-06: `aria-disabled="true"`, never native `disabled`, already correctly stated in this component's own Accessibility section | Reuse |
+| `focus.ring.color` | 3 | `color.focus.ring` | Canonical ordering, `UX-012D` §3 | Reuse |
+| `focus.ring.width` | 1 | `width.focus.ring` | Canonical ordering, `UX-012D` §3 | Reuse |
+| `focus.ring.offset` | 1 | 2px, stated directly | `UX-012D` §2's Focus tokens description names exactly three properties (width, color, radius) — no offset property exists, conceptually or literally | Missing foundation |
+| `motion.expand` | 1 | `motion.expand.duration` / `.easing` | Already formalized, Phase 3B | Reuse |
+| `motion.collapse` | 1 | `motion.collapse.duration` / `.easing` | Already formalized, Phase 3B | Reuse |
+| `motion.update` | 1 | `motion.update.duration` / `.easing` | Already formalized, Phase 3B | Reuse |
+| `motion.fade` | 1 | `motion.fade.duration` / `.easing` | Already formalized, Phase 3B | Reuse |
+| `motion.open` | 2 | Not formalized in `UX-012D` — disclosed, not invented | Phase 3B excluded it for lack of a consuming reference; `UX-013A` is one, not previously accounted for | Missing foundation |
+| `motion.close` | 2 | Not formalized in `UX-012D` — disclosed, not invented | Same | Missing foundation |
+| `motion.navigate` | 1 | Not formalized in `UX-012D` — disclosed, not invented | Same | Missing foundation |
+| `progress.fill` | 2 | No canonical foundation | No governing source maps a progress-bar fill to any existing token; not guessed | Missing foundation |
+| `progress.track` | 1 | No canonical foundation | Same | Missing foundation |
+| `loading.skeleton.base` | 1 | No canonical foundation | A neutral placeholder shape color, distinct from the shimmer animation; no governing source maps it to a specific surface tier | Missing foundation |
+| `loading.skeleton.shimmer` | 1 | `opacity.loading.pulse.min` / `.max` | Redundant second name for the identical effect already-governed by these tokens (same pattern as `motion.loading`, Phase 3B) | Reuse |
+
+Nine items remain disclosed as missing `UX-012D` foundations — not invented, not silently presented as canonical. They are each individually flagged, in place, throughout this document, and summarized in Remaining Findings in the governing task's own final report. Every other item reuses a token `UX-012D` already defines; zero new tokens were added in this phase.
+
+## Phase 5: Foundation Foundation-Extension Alignment
+
+*(Added per the Atlas UX Architecture Foundation Token Alignment (UX-013A Final Alignment) task, 2026-08-02.)* The completed Missing Foundation Resolution Phase 1: UX-012D Canonical Foundation Additions task (2026-08-02) formalized five of the nine items the Phase 4 table, above, disclosed as missing foundations: `color.border.hairline`, `color.border.standard` (`UX-012D` §3, new Border group), and `motion.open.duration`/`.easing`, `motion.close.duration`/`.easing`, `motion.navigate.duration`/`.easing` (`UX-012D` §3, Motion Architecture group, extended). This correction replaces the temporary implementation-prose treatment those five items required — written only because no canonical token yet existed — with the now-canonical token references, throughout this document. The Phase 4 table, above, is preserved unchanged as the historically accurate record of what was disclosed at that time; it is not rewritten.
+
+**Traceability — every item resolved by this phase, accounted for exactly once:**
+
+| Previous treatment | Occurrences | Resolution | Rationale | Status |
+|---|---|---|---|---|
+| Neutral structural border, prose only (`border.header.bottom`) | 2 | `color.border.standard` | Container boundary, per `UX-012D` §2/§3 | Reuse |
+| Neutral structural border, prose only (`border.footer.top`) | 2 | `color.border.standard` | Same | Reuse |
+| Neutral structural border, prose only (`border.toolbar.bottom`) | 2 | `color.border.standard` | Same | Reuse |
+| Neutral structural border, prose only (`border.navigation.bottom`) | 2 | `color.border.standard` | Same | Reuse |
+| Neutral structural border, prose only (`border.section`) | 2 | `color.border.standard` | Same | Reuse |
+| Neutral structural border, prose only (`border.surface`) | 5 | `color.border.standard` | Same | Reuse |
+| Neutral hairline treatment, prose only (`border.divider`) | 3 | `color.border.hairline` | Explicitly named "subtle section dividers," per `UX-012D` §2/§3 | Reuse |
+| Not formalized in `UX-012D`, disclosed (`motion.open`) | 2 | `motion.open.duration` / `motion.open.easing` | Live Dialog consuming reference, per `UX-012D` §3 extension | Reuse |
+| Not formalized in `UX-012D`, disclosed (`motion.close`) | 2 | `motion.close.duration` / `motion.close.easing` | Same | Reuse |
+| Not formalized in `UX-012D`, disclosed (`motion.navigate`) | 1 | `motion.navigate.duration` (context-dependent) / `motion.navigate.easing` | Live Navigation Bar/Scroll Container consuming reference; duration genuinely two-valued per `UX-012D` §3 | Reuse |
+
+Four items remain exactly as Phase 4 disclosed them, unaffected by this correction: `border.divider.width` (no `width.*` foundation beyond `width.focus.ring`), `focus.ring.offset`, `progress.fill`/`progress.track`, and `loading.skeleton.base`. None of these was added by the governing `UX-012D` task, and none is guessed here. Every replacement above reuses a token `UX-012D` already defines; zero new tokens were added in this phase.
+
+## Phase 6: Surface Naming Consistency (Release Polish)
+
+*(Added per the Atlas UX Architecture Token Architecture Release Polish (Final Sprint) task, 2026-08-02.)* The completed Final Corpus Verification (Release Candidate Audit) found this document used a non-canonical `surface.<role>.background` naming pattern throughout — inconsistent with `UX-012D` §3's own Surface Hierarchy (Phase 1), which names its four neutral tiers `surface.background`, `surface.primary`, `surface.elevated`, `surface.panel` (no `.background` suffix), and with the already-canonical, pre-existing `surface.historical`. Some rows had already been corrected to the canonical bare form by intervening work (the Monitoring Badge and Status Badge corrections); the remainder had not, leaving the document in a mixed state. Every occurrence is now resolved, traced directly to `UX-012D` §3:
+
+- **`surface.workspace.background` → `surface.background`** — direct textual match: `UX-012D` §3 names `surface.background` as "the base Workspace surface"; this document's own Tier 0 is named "Workspace Background... Workspace Frame body region."
+- **`surface.section.background` → `surface.primary`** — direct textual match: this document's own Composition prose already states "A Section Container uses `surface.primary[.background]`," and `UX-012D`'s Tier 1 ("Primary Surface") is independently confirmed by this document's own "Use: Standard, Reasoning, Editable, and Comparison Sections."
+- **`surface.primary.background` → `surface.primary`**, **`surface.elevated.background` → `surface.elevated`**, **`surface.panel.background` → `surface.panel`** — the Surface component's own Tier 1/2/3 definitions; direct 1:1 name correspondence to `UX-012D` §3.
+- **`surface.historical.background` → `surface.historical`** — `UX-012D` §3 already names `surface.historical` explicitly as an existing, unchanged, component-scoped exception; only the erroneous suffix is removed.
+- **`surface.monitoring.background` → `surface.monitoring`** — no `UX-012D` §3 tier or named exception covers Monitoring Surface (its own "subtle warm variation" description is semantically distinct from the four neutral tiers); kept component-specific, per `UX-012D` §3's own explicit allowance for genuinely-needed component-scoped surfaces, mirroring the already-established `surface.decision.card` pattern. No tier reassignment is guessed.
+- **`surface.header.background` → `surface.header`**, **`surface.toolbar.background` → `surface.toolbar`**, **`surface.footer.background` → `surface.footer`**, **`surface.navigation.background` → `surface.navigation`** — no `UX-012D` §3 tier's own "Use" description names Header, Toolbar, Footer, or Navigation Bar; kept component-specific, on the same basis as Monitoring Surface, rather than guessed into one of the four neutral tiers without direct evidence.
+
+This correction changes no component behavior, anatomy, or Product meaning — only token spelling, in both component-level tables and the Section 18 appendix, which now agree throughout. No new token is introduced; every replacement above is either the exact canonical `UX-012D` §3 form or an already-permitted component-scoped name, mechanically corrected to remove the erroneous `.background` suffix.
+
 ## Typography Tokens
 
 | Token | Applies To |
@@ -1962,31 +2062,35 @@ A consolidated mapping of all Foundation Components to the Atlas semantic token 
 
 | Token | Applies To |
 |-------|-----------|
-| `surface.workspace.background` | Workspace Frame body |
-| `surface.header.background` | Workspace Header |
-| `surface.footer.background` | Workspace Footer |
-| `surface.toolbar.background` | Workspace Toolbar |
-| `surface.navigation.background` | Navigation Bar |
-| `surface.section.background` | Section Container |
-| `surface.primary.background` | Primary Surface (Tier 1) |
-| `surface.elevated.background` | Elevated Surface (Tier 2) |
-| `surface.panel.background` | Panel Surface (Tier 3, Dialog) |
-| `surface.historical.background` | Historical Surface |
-| `surface.monitoring.background` | Monitoring Surface |
+| `surface.background` | Workspace Frame body |
+| `surface.header` | Workspace Header |
+| `surface.footer` | Workspace Footer |
+| `surface.toolbar` | Workspace Toolbar |
+| `surface.navigation` | Navigation Bar |
+| `surface.primary` | Section Container |
+| `surface.primary` | Primary Surface (Tier 1) |
+| `surface.elevated` | Elevated Surface (Tier 2) |
+| `surface.panel` | Panel Surface (Tier 3, Dialog) |
+| `surface.historical` | Historical Surface |
+| `surface.monitoring` | Monitoring Surface |
 | `surface.scrim` | Dialog scrim overlay |
 
 ## Border Tokens
 
-| Token | Applies To |
-|-------|-----------|
-| `border.header.bottom` | Workspace Header bottom edge |
-| `border.footer.top` | Workspace Footer top edge |
-| `border.toolbar.bottom` | Workspace Toolbar bottom edge |
-| `border.navigation.bottom` | Navigation Bar bottom edge |
-| `border.section` | Section Container border |
-| `border.surface` | Standard surface border |
-| `border.divider` | Divider color |
-| `border.divider.width` | Divider thickness (1px) |
+*(Corrected per the Atlas UX Architecture Foundation & Collaboration Token Alignment task, 2026-08-02: every row below previously named a bare `border.*` token — `border.header.bottom`, `border.footer.top`, `border.toolbar.bottom`, `border.navigation.bottom`, `border.section`, `border.surface`, `border.divider`, `border.divider.width` — none of which exists in `UX-012D`. `UX-012D` §2 conceptually describes two neutral border weights ("hairline," "standard") that would cover these roles, but neither has ever been literalized as a named token in `UX-012D` §3. This is a genuinely missing foundation, not a naming error this document alone can fix; no token is invented here. The rows below now use precise implementation prose in place of a token name, and each is individually disclosed as a missing foundation in the traceability record, below.)*
+
+*(Further corrected per the Atlas UX Architecture Foundation Token Alignment (UX-013A Final Alignment) task, 2026-08-02: the completed Missing Foundation Resolution Phase 1 task subsequently formalized both weights — `color.border.hairline` and `color.border.standard` — in `UX-012D` §3. All rows below except Divider thickness, which remains a disclosed missing foundation (no `width.*` token covers it), now cite the canonical tokens.)*
+
+| Visual Property | Token |
+|-----------------|-----------|
+| Workspace Header bottom edge | `color.border.standard` |
+| Workspace Footer top edge | `color.border.standard` |
+| Workspace Toolbar bottom edge | `color.border.standard` |
+| Navigation Bar bottom edge | `color.border.standard` |
+| Section Container border | `color.border.standard` |
+| Standard surface border | `color.border.standard` |
+| Divider color | `color.border.hairline` |
+| Divider thickness (1px) | Stated directly; no dedicated width token *(missing foundation)* |
 
 ## Elevation Tokens
 
@@ -2012,50 +2116,65 @@ A consolidated mapping of all Foundation Components to the Atlas semantic token 
 
 ## State Tokens (Foundation-relevant)
 
+*(Corrected per the Status Badge Token Architecture Correction task, 2026-08-02: this table previously listed a `status.*` token for every row below. That namespace does not exist in `UX-012D` and is rejected in full; see §13, above, for the full correction and its own sourcing. The corrected mapping is restated here for this table's own consolidated-reference purpose, not restated as a second, independently-maintained specification.)*
+
 | Token | Applies To |
 |-------|-----------|
-| `status.draft.background`, `status.draft.text` | Draft Status Badge |
-| `status.saved.background`, `status.saved.text` | Saved Status Badge |
-| `status.completed.background`, `status.completed.text` | Completed Status Badge |
-| `status.historical.background`, `status.historical.text` | Historical Status Badge |
-| `status.updated.background`, `status.updated.text` | Updated Status Badge |
-| `status.warning.background`, `status.warning.text` | Warning Status Badge |
-| `status.monitoring.active.*`, `status.monitoring.approaching.*`, `status.monitoring.triggered.*` | Monitoring Status Badges |
+| None — neutral, no color distinction | Draft Status Badge |
+| None — neutral, no color distinction | Saved Status Badge |
+| `type.badge.completed` | Completed Status Badge |
+| `color.text.historical`, `surface.historical` | Historical Status Badge |
+| None — neutral, no color distinction | Updated Status Badge |
+| `color.semantic.amber` | Warning Status Badge |
+| None — neutral, no color distinction (Active); `color.semantic.amber` (Approaching); `color.semantic.red` (Triggered) | Monitoring Status Badges |
 
 ## Focus Tokens
 
+*(Corrected per the Atlas UX Architecture Foundation & Collaboration Token Alignment task, 2026-08-02: `focus.ring.color` and `focus.ring.width` used the pre-Phase-1 naming order, superseded by `UX-012D` §3's own canonical `color.focus.ring` / `width.focus.ring` / `radius.focus.ring` ordering. `focus.ring.offset` is not corrected to any token — `UX-012D` §2's own Focus tokens description names exactly three properties (pixel width, color, border-radius behavior); no offset property is described, conceptually or literally, anywhere in `UX-012D`. This is a missing foundation, not a naming error; no token is invented here.)*
+
 | Token | Applies To |
 |-------|-----------|
-| `focus.ring.color` | All focus indicators |
-| `focus.ring.width` | Focus ring width (2px) |
-| `focus.ring.offset` | Focus ring offset (2px) |
+| `color.focus.ring` | All focus indicators |
+| `width.focus.ring` | Focus ring width (2px) |
+| 2px offset, stated directly — no dedicated token exists | Focus ring offset *(missing foundation)* |
+
+## Text Tokens (Foundation-relevant)
+
+*(Corrected per the same task: every row below previously named a bare `text.*` token, none of which exists in `UX-012D`. Each is remapped to the canonical Text Hierarchy — `color.text.primary`, `color.text.secondary`, `color.text.tertiary` — established in `UX-012D` §3, Phase 1, per the same semantic-role analysis already applied throughout `UX-013B`.)*
+
+| Token | Applies To |
+|-------|-----------|
+| `color.text.tertiary` at `opacity.disabled` | Disabled action text — the enabled action's own color, dimmed; not a distinct disabled-text token |
+| `color.text.tertiary` | Inline/Section action text color (Toolbar, Section Header, Breadcrumb ellipsis) |
+| `color.text.tertiary` | Navigation link color (Breadcrumb ancestors) |
+| `color.text.tertiary` | De-emphasized text (separators, expansion chevrons, Empty State icon) |
+| `color.text.tertiary` | Supporting contextual information (Subject Subtitle, Footer status text, Section Summary, Empty State supporting text) |
+| `color.text.primary` | Section titles, Workspace Subject Title, Dialog Title |
+| `color.text.secondary` | Secondary headings, current breadcrumb location, Empty State headline |
+| `color.text.secondary` | Supporting labels (Workspace Type Label, Progress text) |
 
 ## Interaction Tokens (Foundation-relevant)
 
 | Token | Applies To |
 |-------|-----------|
-| `interaction.hover.background` | Interactive element hover state |
-| `text.disabled` | Disabled action text |
-| `text.action.secondary` | Secondary action text color |
-| `text.action.navigation` | Navigation link color |
-| `text.muted` | De-emphasized text (separators, expansion chevrons) |
-| `text.contextual` | Supporting contextual information |
-| `text.heading.primary` | Section titles |
-| `text.heading.secondary` | Secondary headings, current breadcrumb location |
-| `text.label.secondary` | Supporting labels (Workspace Type Label) |
+| `opacity.interaction.hover` | Interactive element hover state (including Breadcrumb ancestor hover — a delta on the base text color, not a separate hover color) |
 
 ## Motion Tokens (Foundation-relevant)
 
+*(Corrected per the same task: `motion.expand`, `motion.collapse`, `motion.update`, and `motion.fade` were bare event references; each now cites the canonical `motion.<event>.duration` / `motion.<event>.easing` pair `UX-012D` §3's own Motion Architecture group (Phase 3B) already defines. `motion.open`, `motion.close`, and `motion.navigate` are not corrected to a canonical form — `UX-012D`'s own Motion Architecture group explicitly instantiated only the seven events `UX-013B` consumes; Open, Close, and Navigate were left unformalized on the stated basis that "no current consuming reference" existed. `UX-013A` is exactly such a reference, not previously accounted for. This is disclosed as a missing foundation, not silently presented as canonical.)*
+
+*(Further corrected per the Atlas UX Architecture Foundation Token Alignment (UX-013A Final Alignment) task, 2026-08-02: the completed Missing Foundation Resolution Phase 1 task subsequently formalized Open, Close, and Navigate in `UX-012D` §3's own Motion Architecture group, extending Phase 3B. All three rows below now cite the canonical tokens. Navigate's own duration is context-dependent between `motion.duration.brief` (short scrolls) and `motion.duration.standard` (long scrolls), per `UX-012D`'s own explicit definition — not a single fixed value; this document does not state a scroll-distance threshold, consistent with `UX-012D` itself not stating one.)*
+
 | Token | Applied By |
 |-------|-----------|
-| `motion.open` | Dialog open, Workspace entry |
-| `motion.close` | Dialog close, Workspace exit |
-| `motion.expand` | Section Container expansion |
-| `motion.collapse` | Section Container collapse |
-| `motion.navigate` | Scroll restoration, auto-scroll |
-| `motion.loading` | Skeleton shimmer, Progress Indicator (indeterminate) |
-| `motion.update` | Status Badge changes, content updates |
-| `motion.fade` | Status Badge transient transitions (Saved → hidden) |
+| `motion.open.duration` / `motion.open.easing` | Dialog open, Workspace entry |
+| `motion.close.duration` / `motion.close.easing` | Dialog close, Workspace exit |
+| `motion.expand.duration` / `motion.expand.easing` | Section Container expansion |
+| `motion.collapse.duration` / `motion.collapse.easing` | Section Container collapse |
+| `motion.navigate.duration` (context-dependent: brief or standard) / `motion.navigate.easing` | Scroll restoration, auto-scroll |
+| `opacity.loading.pulse.min` / `opacity.loading.pulse.max` | Skeleton shimmer, Progress Indicator (indeterminate) |
+| `motion.update.duration` / `motion.update.easing` | Status Badge changes, content updates |
+| `motion.fade.duration` / `motion.fade.easing` | Status Badge transient transitions (Saved → hidden) |
 
 ## Accessibility Tokens
 
@@ -2272,7 +2391,7 @@ The Status Badge system is fully specified: nine named badge types, priority ord
 
 ## Accessibility
 
-The Foundation Accessibility Rules establish the shared accessibility model for all Foundation Components: keyboard tab order and arrow key navigation, focus indicator specification (`:focus-visible`, `focus.ring.color`, 2px width, 2px offset), 44×44px minimum touch targets, landmark region requirements, heading hierarchy (`<h1>` → `<h2>` → `<h3>`), `aria-live` region usage, reduced motion fallbacks for all twelve motion tokens, 200% zoom compliance, and Windows High Contrast Mode support.
+The Foundation Accessibility Rules establish the shared accessibility model for all Foundation Components: keyboard tab order and arrow key navigation, focus indicator specification (`:focus-visible`, `color.focus.ring`, `width.focus.ring`, 2px offset), 44×44px minimum touch targets, landmark region requirements, heading hierarchy (`<h1>` → `<h2>` → `<h3>`), `aria-live` region usage, reduced motion fallbacks for all twelve motion tokens, 200% zoom compliance, and Windows High Contrast Mode support.
 
 ## Engineering Mapping
 
@@ -2390,9 +2509,11 @@ Every Foundation Component specifies ARIA roles, keyboard interaction, focus man
 
 All Foundation Components specify behavior at Desktop (≥1024px), Tablet (768px–1023px), and Mobile (<768px). Responsive token mappings (breakpoint-specific spacing, maximum-width adaptation) are defined.
 
-## Token Readiness — Ready
+## Token Readiness — Ready, with disclosed exceptions
 
-Section 18 provides a complete Foundation Token Mapping across all twelve token categories. Before engineering implementation of Foundation Components, the token dictionary (all semantic token names and their values) must be finalized. The token names are fully specified; the values are Atlas design decisions to be confirmed in the token implementation document.
+*(Corrected per the Atlas UX Architecture Foundation & Collaboration Token Alignment task, 2026-08-02: this section previously read "Ready" without qualification. Section 18's own Phase 4: Foundation Token Alignment subsection, above, resolved the great majority of this document's prior unsupported token references by reuse of already-canonical `UX-012D` tokens, but nine items — three neutral structural border weights (used at eight distinct locations), a focus-ring offset value, three unformalized Motion events (Open, Close, Navigate), and a progress-bar/skeleton-base fill treatment — have no canonical `UX-012D` foundation and are disclosed as missing, not invented. Implementation of the affected properties requires those foundations to be established first.)*
+
+Section 18 provides a complete Foundation Token Mapping across all twelve token categories. Before engineering implementation of Foundation Components, the token dictionary (all semantic token names and their values) must be finalized. Every token name is either already canonical in `UX-012D`, or explicitly disclosed as a missing foundation requiring its own future, separately-authorized addition — none is presented as canonical without being one. The values of already-canonical token names are Atlas design decisions to be confirmed in the token implementation document.
 
 ## Documentation Quality — Ready
 

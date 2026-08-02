@@ -8,6 +8,8 @@
 
 **Provenance convention used in this document**, identical to `UX-013C`'s and `UX-013D`'s own: **[C]** (Canonical — traced directly to `UX-012`, `UX-012B`, `UX-000`, an Accepted UX ADR, or a directly-cited Product Architecture document's own committed text) and **[IR]** (Implementation Refinement — anatomy, property, or token detail newly authored here, required to make a canonical purpose production-ready, and not itself asserting new meaning). No claim in this document is tagged **[U]** — anything that would require such a tag is moved to Section 9, Deferred.
 
+**Correction Notice (Atlas UX Architecture Foundation & Collaboration Token Alignment task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen the identity or scope stated above. The completed Reasoning Token Architecture Phase 3C: Attribution & Action Text task (2026-08-02) established the canonical Attribution Text mapping — attribution labels use `color.text.secondary`, per `UX-012D` §3's own Canonical Attribution & Action Text Mapping contract — and retired `text.attribution.atlas` as an unsupported name. This document, authored before Phase 3C completed, retained three live references to it. They are now aligned to `color.text.secondary`. Authorship identity (Atlas-origin vs. user-origin) remains communicated by the component's own explicit label and provenance property, not by color alone — this correction changes no AI ownership, authority, or authorship semantics, and no component anatomy, property, state, or accessibility behavior. No new token is introduced.
+
 ---
 
 ## 1. Purpose
@@ -86,12 +88,12 @@ Not specified in this document — see Section 9: `AtlasQuestion` (as a construc
 
 **Responsive Behaviour [IR].** Consistent with `UX-012` §73's own general AI Suggestion responsive rule (below the relevant field on all breakpoints).
 
-**Token Mapping [IR].** No dedicated Atlas Suggestion token group was found named in `UX-012D` §3; this component reuses `type.body.atlas` (existing, `UX-012D` §3) for the suggestion text and the general attribution color already used for Conclusion's own Atlas-attribution indicator (`text.attribution.atlas`, per `UX-013B` §1's own Token Mapping).
+**Token Mapping [IR].** No dedicated Atlas Suggestion token group was found named in `UX-012D` §3; this component reuses `type.body.atlas` (existing, `UX-012D` §3) for the suggestion text and `color.text.secondary` — the canonical Attribution Text mapping, per `UX-012D` §3's own Canonical Attribution & Action Text Mapping contract, Phase 3C — for the general attribution color already used for Conclusion's own Atlas-attribution indicator (per `UX-013B` §1's own Token Mapping).
 
 | Visual Property | Token |
 |---|---|
 | Suggestion text | `type.body.atlas` |
-| Attribution label | `text.attribution.atlas` |
+| Attribution label | `color.text.secondary` |
 
 **Engineering Notes [C].** Per `UX-012B` §11: *"Historical behavior: Suggestions are not preserved in the decision record. Only the final content of the field — whatever the user authored or confirmed — is recorded."*
 
@@ -296,7 +298,7 @@ All six components above share the identical ownership boundary stated once in S
 The following constructs, named in `UX-013-Interim-Decision-Monitoring-AI-Metadata-Governance-Note.md`'s own AI Collaboration-category account, are explicitly **not** specified in this document. Each is named here, with the exact reason for deferral, per `ADR-001` Governance Rule 5.
 
 - **`AtlasQuestion`** (as a construct independent of Atlas Clarification) — the interim note's own account lists `AtlasQuestion` and `AtlasClarification` as two separate components. `UX-012`/`UX-012B` name only one component for this purpose — Atlas Clarification (§7.5, above), which already covers "a question Atlas poses to the user." The interim note's own two-component split is not independently supported by `UX-012`/`UX-012B` and is not adopted here.
-- **`AIAuthorshipIndicator`** (as a standalone AI Collaboration-tier component) — `UX-013F` itself already states this construct is *"shared with AI Collaboration; primary ownership here,"* i.e., owned by `UX-013F`'s own Metadata & Provenance category, not by this document's own tier. No `UX-012`/`UX-012B` component separately named "AI Authorship Indicator," distinct from the general `Author` metadata component and each individual component's own attribution properties (already specified throughout this document — e.g., Atlas Suggestion's own `text.attribution.atlas` token, §7.1), was found. Authoring a competing, AI-Collaboration-tier version here would duplicate `UX-013F`'s own already-stated ownership.
+- **`AIAuthorshipIndicator`** (as a standalone AI Collaboration-tier component) — `UX-013F` itself already states this construct is *"shared with AI Collaboration; primary ownership here,"* i.e., owned by `UX-013F`'s own Metadata & Provenance category, not by this document's own tier. No `UX-012`/`UX-012B` component separately named "AI Authorship Indicator," distinct from the general `Author` metadata component and each individual component's own attribution properties (already specified throughout this document — e.g., Atlas Suggestion's own `color.text.secondary` attribution token, §7.1), was found. Authoring a competing, AI-Collaboration-tier version here would duplicate `UX-013F`'s own already-stated ownership.
 
 ## 10. Out of Scope
 

@@ -21,6 +21,8 @@ This notice does not claim the corrected wording existed in this document's orig
 
 **Authority Notice (Atlas UX Architecture UX-012 Authority Migration task — 2026-08-02):** `UX-000-Atlas-UX-Doctrine.md`, Release Candidate RC v1.0, is the governing UX doctrine, per its own UXD-R-097. This document is a subordinate operational specification governing interaction, navigation, and responsive behavior only, within the scope stated in its own header. Product meaning remains governed exclusively by APP-000, APP-001, and the applicable APS documents; nothing in this document amends `UX-000`, Product Architecture, Core Architecture, or any ADR.
 
+**Correction Notice (Atlas UX Architecture Token Architecture Release Polish (Final Sprint) task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen any notice above. This document's own token-naming-convention worked example (§9, "Token naming convention") mixed a canonical form (`surface.elevated`) with a retired, pre-Phase-1 bare form (`text.primary`) in the same illustrative sentence. Prior text: "e.g., `surface.elevated`, `text.primary`, `space.inter-section`, `motion.expand.duration`." Corrected to `color.text.primary`, matching `UX-012D` §3's own Text Hierarchy (Phase 1). This is an illustrative-example correction only — no architecture, interaction behavior, motion behavior, or accessibility content changes anywhere in this document.
+
 ⸻
 
 1. Interaction Philosophy
@@ -779,7 +781,7 @@ UX-012D — Atlas Design System Tokens, Governance & Extensibility — will cove
 
 Design tokens:
 — The complete token taxonomy for Atlas: typography tokens (scale, weight, line height, letter-spacing by role), spacing tokens (the six spacing levels by name), layout tokens (column widths, overlay dimensions, reading widths), semantic color tokens (the full set established in UX-011 and referenced in UX-012B, specified as named tokens), surface tokens (the four surface levels — primary, elevated, panel, hairline), border tokens (the three border/divider weights), elevation tokens (the shadow or surface-distinction model for strong containers), radius tokens (corner radius for containers and controls), motion tokens (the twelve tokens from UX-012C, specified with duration ranges and easing functions), focus tokens (focus ring width, color, radius), state tokens (the fourteen interaction tokens from UX-012C, specified as composable visual properties), responsive tokens (breakpoint definitions, spacing scale reduction ratios for each breakpoint), accessibility tokens (minimum contrast ratios, minimum touch target size, minimum text size).
-— Token naming convention: a two or three-part semantic name structure (category.role.variant — e.g., `surface.elevated`, `text.primary`, `space.inter-section`, `motion.expand.duration`). No raw values exposed directly — all implementation references a named token.
+— Token naming convention: a two or three-part semantic name structure (category.role.variant — e.g., `surface.elevated`, `color.text.primary`, `space.inter-section`, `motion.expand.duration`). No raw values exposed directly — all implementation references a named token.
 — Token hierarchy: global tokens (the underlying values — hex colors, pixel sizes, millisecond durations) → semantic tokens (named by meaning, referencing global tokens — `color.text.primary` references the global warm near-white value) → component tokens (component-specific overrides, referencing semantic tokens).
 
 Component governance:

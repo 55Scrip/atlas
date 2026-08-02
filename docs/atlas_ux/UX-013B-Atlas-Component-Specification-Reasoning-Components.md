@@ -46,6 +46,20 @@ Third, the previously-disclosed gaps at local positions 3 (from the Phase 3D-2a 
 
 **Clarification Notice (Atlas UX Architecture UX-013B Conclusion Architecture Clarification task — 2026-08-02):** This is a later, additive clarification; it does not revise, replace, or reopen any correction notice above. Per the accepted Conclusion Component Decomposition decision (Atlas UX Architecture, 2026-08-02): `UX-012-Atlas-Design-System-Workspace-Consistency-Specification.md` §22's own four named Conclusion entries (Primary Conclusion, Current Conclusion, Portfolio Conclusion, Review Conclusion) and this document's own single Conclusion component with a `variant` property (§1, below) are compatible statements at different specification tiers, not competing architectures. `UX-012` governs the semantic distinctions — which Product-grounded variants exist and why. This document governs their component-level realization — anatomy, properties, states, interaction, accessibility, and tokens. The Historical variant, specifically, is this document's own component-level realization of historical behavior `UX-012` §22 already describes (as a stated behavior of Primary Conclusion, not a separately named component); it is not, and does not introduce, a new Product Concept. Two further, narrowly bounded clarifications are added below, at the Review and Portfolio variant entries in §1, per the same accepted decision. This notice changes no component anatomy, property, state, token, interaction, or accessibility behavior.
 
+**Correction Notice (Atlas UX Architecture Reasoning-Tier Named Token Remap Correction task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen any notice above. This document previously referenced an unsupported Reasoning-tier token set — `status.historical.text`, `text.historical.opacity`, `surface.historical.background`, `status.acknowledged.text`, `status.outdated.text`, and `status.updated.text` — none of which exists in `UX-012D-Atlas-Design-System-Governance-Tokens-Evolution.md`, confirmed by the completed Reasoning-Tier Token Architecture Investigation (2026-08-02). Every Historical-content reference below is corrected to the canonical `UX-012D` §3 Historical Content tokens, `color.text.historical` and `surface.historical` — `color.text.historical` already includes the reduced-opacity historical treatment as part of its own definition, so no separate opacity token is used; where a redundant separate opacity reference previously appeared beside a historical-color reference, the redundant one is removed, not replaced with a second token. Acknowledged, Outdated, and Updated do not receive an invented semantic text color: Challenge acknowledgment is corrected to reduced emphasis on the item's own already-existing severity treatment, per `UX-012D` §2's own explicit instruction ("challenge item opacity reduction after acknowledgment"); Evidence Summary's Outdated label and Conclusion's Updated indicator are corrected to neutral, textual-only presentation, per `UX-012B` §13's own literal state descriptions. **No component's anatomy, property, state, interaction, accessibility contract, ownership, or lifecycle meaning is changed by this correction — only the token references and their immediate presentation-rule wording.** The Acknowledged/Resolved distinction (`UX-012` §26) and the Outdated state's own recency-only meaning are preserved unchanged; nothing here redefines what either state means. A larger, separately-scoped token-family audit — covering this document's own bare `text.*`, `border.*`, `reasoning.*`, `conclusion.*`, and remaining unsupported `surface.*` references, none of which is touched here — remains outside this correction, per the completed investigation's own explicit recommendation.
+
+**Correction Notice (Atlas UX Architecture Reasoning Token Architecture Phase 2: UX-013B Mechanical Remap task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen any notice above. `UX-012D-Atlas-Design-System-Governance-Tokens-Evolution.md` now provides the canonical shared text, surface, semantic accent, focus, and editing-opacity foundations required for Reasoning-tier presentation, per the completed Reasoning Token Architecture Phase 1: UX-012D Foundations task (2026-08-02). This document's prior bare `text.*`, bare `border.*`, `status.assumption.*`, `status.scenario.*`, `focus.ring.color`, and `editing.field.background` references were unsupported namespace forms; every safely-remappable occurrence below is corrected to the canonical `UX-012D` token it names, without altering any component's own architecture, states, properties, interaction, accessibility, or responsive behavior. `text.attribution.atlas` and the `text.action.*` family are deliberately left unremapped — the governing task found no independently-supported basis for collapsing them into the three-tier text hierarchy without guessing, and they remain open for Phase 3. `reasoning.*`, `conclusion.*`, `motion.*`, and `interaction.*` remain explicitly out of this correction's own scope and are unchanged, deferred to Phase 3. A genuine, previously-undisclosed color-family tension was found while remapping the Blocking Challenge and Invalidated Factor borders: `UX-012D` §3's own Contradiction group states all three Challenge severity tiers, including the one this document calls "Blocking," are amber (at increasing opacity); this document's own prose, both before and after this correction, describes Blocking's own visual result as red. This correction preserves the user-facing label "Blocking" while mapping its underlying token to `color.border.contradiction.unresolved` (per `ADR-002`'s own already-established Blocking/Unresolved label-versus-token split) and corrects the immediately adjacent color-value annotations to accurately describe that token's own canonical amber value, rather than leaving a token name and its own inline description contradict each other; the deeper question of whether Blocking Challenge's own visual treatment should genuinely be red is a Product/interaction-design question this token-only correction does not have the authority to resolve, and is flagged as a Remaining Finding for a dedicated future task, not silently decided here. No new token is introduced anywhere in this correction — every replacement cites a token `UX-012D` already defines.
+
+**Correction Notice (Atlas UX Architecture Blocking Challenge Amber Resolution Confirmation task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen the Phase 2 notice above, which remains historically accurate for what it flagged at the time. **Resolved by the subsequent, completed Blocking Challenge Color Semantics Resolution investigation (2026-08-02): Blocking Challenge is canonically amber, not red.** `color.border.contradiction.unresolved` is the canonical token for Blocking Challenge's own left border and background tint, exactly as Phase 2 already mapped it — this confirmation changes no token. The user-facing severity label remains "Blocking." The `.unresolved` leaf is retained as an implementation-level name inherited from the earlier, pre-`ADR-002` vocabulary — it is not renamed, and no red treatment is adopted anywhere in this document for Blocking Challenge. **Semantic boundary, stated once here rather than repeated throughout this component:** Blocking is the highest tier of Challenge attention a concern can reach — it is not equivalent to a Broken Assumption, an Invalidated Factor, or a Triggered Monitoring Condition, each of which marks a fact that has become false and is independently governed by its own lifecycle. Amber communicates a condition requiring the Investor's own attention; red remains reserved for those independently-governed broken or deteriorated conditions, per `UX-012D` §12's own general semantic-color rule ("amber: a condition requiring attention... red: a broken or deteriorated condition"). The Blocking token renders this severity; it does not itself define Decision validity, reasoning truth, or a requirement that the concern be resolved rather than acknowledged. This confirmation resolves only the color question. A separate, larger, previously-undiscovered defect — this component's own completion-gate language ("must be resolved," "prevent the completion action," the States table's "hard gate," and the Engineering Roadmap's "Must-resolve concern, hard gate") directly contradicting `ADR-002` C-04's own "soft friction, never hard blocking" rule — is explicitly **not** addressed here and remains open for its own dedicated future task; this notice does not claim it is resolved, and no completion-gate wording anywhere in this document is changed by this correction.
+
+**Correction Notice (Atlas UX Architecture Blocking Challenge Completion-Gate Consistency Correction task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen any notice above, each of which remains historically accurate for what it addressed at the time. **This correction resolves the completion-gate defect the prior notice flagged and deliberately left open.** Prior text throughout this component's own Blocking Challenge treatment — "A concern that must be resolved or explicitly overridden with documented rationale before the Decision can be recorded," "Blocking Challenges that are unresolved or unacknowledged prevent the completion action from proceeding. The user must either resolve the challenge, dismiss it with explicit justification, or reclassify it," the States table's "hard gate," and the Engineering Roadmap's "Must-resolve concern, hard gate" — incorrectly modeled Blocking Challenge as a must-resolve hard validation gate. `ADR-002` C-04 governs and supersedes that behavior: *"Soft friction, never hard blocking: unacknowledged Challenges. A Material or Blocking-severity Challenge must be shown, and for Blocking severity must be explicitly acknowledged before recording — but acknowledgment means 'I have seen and considered this,' never 'I agree with this.' Atlas never blocks recording because the user's own judgment differs from Atlas's own surfaced concern."* Every corrected passage below now states: Material and Blocking Challenges require explicit Investor acknowledgment before Decision recording; resolution is never required; acknowledgment does not mean agreement, and does not resolve, downgrade, or remove the Challenge; the Challenge and its own acknowledgment rationale remain preserved, including after recording; Atlas may surface and explain a Challenge but may never acknowledge, resolve, or override one on the Investor's own behalf. **This correction changes no component identity, severity name, token, color, anatomy property, or unrelated interaction.** The already-completed amber-color resolution (Correction Notice above) is unaffected and unchanged. `UX-012B`'s own stale "Unresolved" terminology (disclosed elsewhere in this corpus, e.g. `UX-013E`'s own Documentary Note) is not addressed here. No `reasoning.*`, `conclusion.*`, `motion.*`, `interaction.*`, `text.attribution.atlas`, or `text.action.*` reference is touched by this correction.
+
+**Correction Notice (Atlas UX Architecture Reasoning Token Architecture Phase 3A: Canonical Reasoning Token Mapping task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen any notice above. This document previously referenced unsupported `reasoning.*` and `conclusion.*` top-level token namespaces at thirteen distinct locations. Per `UX-012D`'s own newly-added Canonical Reasoning Token Mapping contract (Section 3), direct inspection found every occurrence to be a text-color role — not a typography role, which remains separately and already correctly governed by this document's own `type.role1.*`–`type.role5.*` system, unaffected by this correction. Every occurrence below is remapped to the already-existing `color.text.primary` or `color.text.secondary` Text Hierarchy token (`UX-012D` §3, Phase 1 correction) — **no new token was required or added anywhere in this correction.** A complete traceability table, mapping every prior unsupported reference to its canonical replacement, appears in the Reasoning Token Mapping subsection, below. This correction changes no component anatomy, property, state, ownership, lifecycle, interaction, or accessibility behavior — only color-token references and their immediate Token Mapping rows. `motion.*`, `interaction.*`, `text.attribution.atlas`, and `text.action.*` remain untouched and are deferred to their own later phase.
+
+**Correction Notice (Atlas UX Architecture Reasoning Token Architecture Phase 3B: Motion & Interaction Foundations task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen any notice above. This document previously referenced eight bare `motion.*` tokens (`motion.expand`, `motion.collapse`, `motion.insert`, `motion.remove`, `motion.highlight`, `motion.update`, `motion.fade`, `motion.loading`) and one `interaction.hover.background` token, none of which named a literal token `UX-012D` defined. `UX-012D` now provides a canonical Motion Architecture group and Interaction group (Section 3, per the completed Reasoning Token Architecture Phase 3B: Motion & Interaction Foundations task, 2026-08-02). Seven of the eight motion references are remapped to their now-canonical per-event `motion.<event>.duration` / `motion.<event>.easing` token pairs — `motion.expand`, `motion.collapse`, `motion.insert`, `motion.remove`, `motion.highlight`, `motion.update`, `motion.fade` — each pair a documented alias of a shared duration category and a shared easing reference, not an independent value. `motion.loading` is removed, not remapped: it was found to duplicate the already-existing `opacity.loading.pulse.min`/`.max` tokens (`UX-012D` §3, Loading group, already correctly cited elsewhere in this document's own reduced-motion behavior) — the Skeleton Loading state now cites those tokens directly. `interaction.hover.background` is corrected to `opacity.interaction.hover` — the governing investigation found the prior name implied a fixed background color, where `UX-012D` §2 describes hover as "a surface lightening delta," and found `interaction.*` was never an established top-level token category in `UX-012D`, the same defect class already resolved for `reasoning.*`, `conclusion.*`, and `status.*`. A complete traceability table appears in the Phase 3B Motion & Interaction Token Mapping subsection, below. **This correction changes no component anatomy, property, state, ownership, lifecycle, or accessibility behavior — only token references, their immediate Token Mapping rows, and the two summary appendix tables in Section 17.** No reduced-motion fallback behavior is changed: this document's own existing Reduced Motion section (below) already describes each event's own fallback, and remains the authoritative source for that behavior — this correction only names the canonical full-motion tokens those fallbacks suspend. `reasoning.*`, `conclusion.*`, `text.attribution.atlas`, and `text.action.*` remain untouched, per the Phase 3A notice above; `text.attribution.atlas` and `text.action.*` remain deferred to Phase 3C.
+
+**Correction Notice (Atlas UX Architecture Reasoning Token Architecture Phase 3C: Attribution & Action Text task — 2026-08-02):** This is a later, additive correction; it does not revise, replace, or reopen any notice above. This document previously referenced `text.attribution.atlas` (4 occurrences) and the `text.action.*` family — `text.action.navigation` (4), `text.action.secondary` (2), `text.action.dismiss` (2) — none of which named a token `UX-012D` defined. A corpus sweep conducted for this task also found two further unsupported wildcard references on the Recommendation / Proposed Decision Candidate Content component, `action.primary.*` and `action.secondary.*` (1 occurrence each), not previously disclosed. `UX-012D` §3 now provides a Canonical Attribution & Action Text Mapping contract (per the completed Reasoning Token Architecture Phase 3C: Attribution & Action Text task, 2026-08-02), reusing the existing Text Hierarchy rather than introducing a new token family. Every occurrence below is remapped: attribution labels to `color.text.secondary` (matching the already-mapped sibling user-origin label wherever both appear in the same table); Edit/Remove/Acknowledge actions (`text.action.secondary`), cross-reference/relationship links (`text.action.navigation`), Dismiss/Decline actions (`text.action.dismiss`), and the Modify action (`action.secondary.*`) to `color.text.tertiary` — all five are Inline Actions or Section Actions under `UX-012B` §15's own explicit taxonomy, both tiers Tertiary emphasis by that section's own stated rule, regardless of any local name that happened to contain the word "secondary"; the Accept action (`action.primary.*`) to `color.text.primary`, by direct analogy to `UX-012B` §15's own Primary Action color rule ("primary text color"), given Accept's own described role as the decisive, terminal response among Proposed Decision Candidate Content's three actions. **No new token is introduced anywhere in this correction — every replacement cites a token `UX-012D` already defines.** A complete traceability table appears in the Phase 3C Attribution & Action Text Mapping subsection, below. This correction changes no component anatomy, property, state, ownership, lifecycle, interaction, or accessibility behavior — only color-token references and their immediate Token Mapping rows and the two summary appendix tables in Section 17. **With this correction, the Reasoning Token Architecture program (Phases 1, 2, 3A, 3B, 3C) is complete.**
+
 ---
 
 # Reasoning Component Philosophy
@@ -168,7 +182,7 @@ Visual: Same as Primary Conclusion, with a "Review Conclusion" label and the rev
 
 **Historical Conclusion**
 The preserved conclusion from a prior reasoning session. Displayed in Historical mode.
-Visual: Role 1 typography at reduced opacity (`text.historical.opacity`). Permanently labeled "Historical" with the session date. Immutable.
+Visual: Role 1 typography using `color.text.historical`, which already includes the reduced-opacity historical treatment as part of its own canonical definition. Permanently labeled "Historical" with the session date. Immutable.
 
 ## Anatomy
 
@@ -228,7 +242,7 @@ No interaction. No hover effect. No cursor change.
 ## Historical Behavior
 
 When displayed as a Historical Conclusion:
-- Statement text at `text.historical.opacity` (approximately 70% opacity)
+- Statement text at `color.text.historical` (approximately 70% opacity, per that token's own canonical treatment — no separate opacity token)
 - "Historical Record — [date]" label above the statement, in Role 5 typography
 - No editing controls, no hover state, no focus ring on the statement
 - Included in the Historical Section's accessible content — screen reader announces historical status
@@ -261,15 +275,14 @@ The Historical Conclusion is presented alongside the current reasoning for compa
 
 | Visual Property | Token |
 |-----------------|-------|
-| Statement color | `conclusion.text.primary` |
-| Sub-statement color | `conclusion.text.secondary` |
-| Variant label color | `text.label.secondary` |
-| Historical opacity | `text.historical.opacity` |
-| Historical label color | `status.historical.text` |
-| Updated indicator color | `status.updated.text` |
-| Atlas attribution color | `text.attribution.atlas` |
-| Editing background | `editing.field.background` |
-| Editing focus ring | `focus.ring.color` |
+| Statement color | `color.text.primary` |
+| Sub-statement color | `color.text.secondary` |
+| Variant label color | `color.text.secondary` |
+| Historical text color | `color.text.historical` (includes the reduced-opacity historical treatment; no separate opacity token) |
+| Updated indicator | Neutral text label; `motion.update.duration` / `motion.update.easing` cue only — no persistent semantic color, per `UX-012B` §13 |
+| Atlas attribution color | `color.text.secondary` |
+| Editing overlay opacity | `opacity.editing.overlay` (a document/field dimming treatment, not a background color; does not imply disabled, unavailable, or loading, and does not alter editability) |
+| Editing focus ring | `color.focus.ring` |
 
 ## Figma Structure
 
@@ -426,7 +439,7 @@ FactorItem
 | Empty | No factors yet; Action-Required Empty State |
 | Loading | Skeleton placeholders for expected factors |
 
-**Weakening and Invalidated states:** visually distinguished with a left-border treatment (same visual language as Challenges severity levels — a consistent system across components). Weakening: `border.factor.weakening` (amber). Invalidated: `border.factor.invalidated` (red). The label "Weakening" or "Invalidated" appears as a Status Badge adjacent to the Factor Name.
+**Weakening and Invalidated states:** visually distinguished with a left-border treatment (the same general amber/red semantic accent family Challenges also draws on, not the Challenge-specific severity-tier tokens themselves, since Weakening/Invalidated is a single-valued state pair, not a three-tier severity gradation). Weakening: `color.semantic.amber`. Invalidated: `color.semantic.red`. The label "Weakening" or "Invalidated" appears as a Status Badge adjacent to the Factor Name.
 
 ## Interaction
 
@@ -470,15 +483,15 @@ FactorItem
 
 | Visual Property | Token |
 |-----------------|-------|
-| Factor Name color | `reasoning.factor.name` |
-| Explanation color | `text.body.primary` |
-| Weight label color | `text.label.secondary` |
-| Group header color | `text.label.primary` |
-| Weakening border | `border.factor.weakening` |
-| Invalidated border | `border.factor.invalidated` |
-| Historical opacity | `text.historical.opacity` |
-| Atlas attribution | `text.attribution.atlas` |
-| Edit action color | `text.action.secondary` |
+| Factor Name color | `color.text.primary` |
+| Explanation color | `color.text.primary` |
+| Weight label color | `color.text.secondary` |
+| Group header color | `color.text.primary` |
+| Weakening border | `color.semantic.amber` |
+| Invalidated border | `color.semantic.red` |
+| Historical text color | `color.text.historical` (includes the reduced-opacity historical treatment; no separate opacity token) |
+| Atlas attribution | `color.text.secondary` |
+| Edit action color | `color.text.tertiary` |
 
 ## Anti-Patterns
 
@@ -523,17 +536,17 @@ Challenges have three severity levels, governing their visual treatment and thei
 
 **Informational**
 A relevant concern that the user should be aware of but that does not require resolution before proceeding.
-Visual: left border in `border.challenge.informational` (a subtle neutral tone). No blocking effect.
+Visual: left border in `color.border.contradiction.informational` (a subtle neutral tone). No blocking effect.
 
 **Material**
 A significant concern that requires explicit acknowledgment in the reasoning. The user must address it (not necessarily resolve it — they may accept the risk and document that acceptance).
-Visual: left border in `border.challenge.material` (amber). Subtle amber tint to the FactorItem background. A "Material" Status Badge.
+Visual: left border in `color.border.contradiction.material` (amber). Subtle amber tint to the FactorItem background. A "Material" Status Badge.
 Completion gate effect: Acknowledged Challenges (user has marked them as reviewed) do not block. Unacknowledged Material Challenges create a soft gate — a warning before proceeding, not a hard block.
 
 **Blocking**
-A concern that must be resolved or explicitly overridden with documented rationale before the Decision can be recorded.
-Visual: left border in `border.challenge.blocking` (red). Red-tinted background. "Blocking" Status Badge.
-Completion gate effect: Blocking Challenges that are unresolved or unacknowledged prevent the completion action from proceeding. The user must either resolve the challenge, dismiss it with explicit justification, or reclassify it.
+The highest attention tier. Before Decision recording, the Investor must explicitly acknowledge the Challenge and, per `ADR-002` C-04, may proceed without resolving it — acknowledgment means "I have seen and considered this," never "I agree with this." The Challenge need not be resolved and remains part of the permanent reasoning record, including after recording.
+Visual: left border in `color.border.contradiction.unresolved` (amber, full opacity, slightly thicker — per `UX-012D` §3's own canonical Contradiction group value; the user-facing severity label remains "Blocking," per `ADR-002`'s own already-established label/token split). Background tint at the same amber value. "Blocking" Status Badge.
+Completion gate effect: this is soft friction, never a hard block, per `ADR-002` C-04. Informational Challenges never require acknowledgment and never gate completion. Material and Blocking Challenges require explicit Investor acknowledgment before Decision recording; the Challenge itself need not be resolved. Before the required acknowledgment, the Record Decision control is temporarily unavailable — `aria-disabled="true"`, never the native `disabled` attribute, remaining permanently focusable and in the tab order, per `ADR-002` C-06 — and its explanation identifies the specific outstanding Challenge and the exact recovery act (activate "Acknowledge" on that Challenge; see Interaction, below). Once the Investor performs that act, Record Decision becomes available; the Challenge itself remains unresolved, visible, and preserved. Atlas cannot supply, infer, or perform acknowledgment on the Investor's own behalf.
 
 ## Grouping
 
@@ -599,15 +612,15 @@ ChallengeItem
 | Informational | Left border, no badge, no gate effect |
 | Material-unacknowledged | Amber border, amber tint, Material badge, soft gate |
 | Material-acknowledged | Amber border, "Acknowledged" label, no gate effect |
-| Blocking-unresolved | Red border, red tint, Blocking badge, hard gate |
-| Blocking-acknowledged | Red border, amber acknowledgement note, gate cleared |
+| Blocking-unresolved | Amber border (full opacity, slightly thicker), amber tint, Blocking badge, acknowledgment required — Record Decision temporarily unavailable until acknowledged; resolution not required |
+| Blocking-acknowledged | Amber border unchanged, amber acknowledgement note preserved, severity remains Blocking — the Challenge itself remains unresolved; only the acknowledgment requirement is satisfied, and Record Decision becomes available |
 | Contradiction | Informational/Material/Blocking + Contradiction label + relationship link |
 | Historical | All states at historical opacity, immutable |
 | Atlas-surfaced | Attribution indicator, pending acceptance |
 
 ## Interaction
 
-**Acknowledge:** A "Mark as acknowledged" action on Material and Blocking Challenges. On activation: the user is prompted to enter an acknowledgement note (why this challenge does not block the Decision). Note is required for Blocking; optional for Material.
+**Acknowledge:** An explicit Investor action on Material and Blocking Challenges — acknowledges specifically that "I have seen and considered this Challenge," per `ADR-002` C-04; it is never agreement with the Challenge and never resolution of it. On activation: the Investor is prompted to enter an optional (Material) or required (Blocking) acknowledgement note stating why they are proceeding despite the Challenge. Acknowledging preserves the Challenge unchanged — its severity, content, and relationship links are unaffected; only the acknowledgment state and note are added. This action is available to the Investor only; Atlas may surface, explain, and clarify a Challenge, and may prompt the Investor to acknowledge it, but cannot activate this control or supply its note on the Investor's own behalf. The resulting state change is attributable to the Investor and is announced to assistive technology (see Accessibility, below).
 
 **Reclassify:** The user may reclassify a Challenge's severity (e.g., from Blocking to Material with justification). Reclassification is recorded in the challenge's history.
 
@@ -619,7 +632,7 @@ ChallengeItem
 
 ## Historical Behavior
 
-Historical Challenges are immutable. Their severity, acknowledgement state, and notes are preserved exactly as they were at the time of recording. Historical Blocking Challenges that were acknowledged are shown with their acknowledgement notes intact — providing a complete record of how the user resolved the concern at the time.
+Historical Challenges are immutable. Their severity, acknowledgement state, and notes are preserved exactly as they were at the time of recording. Historical Blocking Challenges that were acknowledged are shown with their acknowledgement notes intact — providing a complete record of the rationale for proceeding at the time, whether or not the underlying concern was ever resolved. An unresolved Challenge remains visible and unresolved in the Historical Record; recording never implies, and this preservation never suggests, that the concern itself was addressed.
 
 ## Accessibility
 
@@ -628,7 +641,7 @@ Historical Challenges are immutable. Their severity, acknowledgement state, and 
 - Severity communicated via Status Badge text label (not color alone).
 - SeverityBorder: supplementary to the Badge — color alone is not the only communicator.
 - Acknowledge action: `<button aria-label="Acknowledge [ChallengeName]">`.
-- Blocking gate announcement: `aria-live="assertive"` — screen reader announces when a Blocking Challenge is cleared.
+- Acknowledgment-requirement announcement: `aria-live="assertive"` — screen reader announces when a Blocking Challenge's own acknowledgment requirement is satisfied and Record Decision becomes available ("Blocking challenge acknowledged. Completion is now available."); this announcement is distinguishable from, and never worded as, "resolved" — the Challenge itself remains unresolved and visible. Severity (Blocking) and acknowledgment state (outstanding/satisfied) are announced as two separate facts, never conflated. Focus is not moved automatically by acknowledging a Challenge; the Investor's own focus remains on the control they just activated.
 
 ## Responsive Behavior
 
@@ -640,22 +653,28 @@ Historical Challenges are immutable. Their severity, acknowledgement state, and 
 
 | Visual Property | Token |
 |-----------------|-------|
-| Informational border | `border.challenge.informational` |
-| Material border | `border.challenge.material` |
-| Material background tint | `surface.challenge.material` |
-| Blocking border | `border.challenge.blocking` |
-| Blocking background tint | `surface.challenge.blocking` |
-| Challenge Name color | `reasoning.challenge.name` |
-| Explanation color | `text.body.primary` |
-| Acknowledged state color | `status.acknowledged.text` |
-| Historical opacity | `text.historical.opacity` |
+| Informational border | `color.border.contradiction.informational` |
+| Material border | `color.border.contradiction.material` |
+| Material background tint | `surface.primary` with restrained tint derived from `color.border.contradiction.material`; no independent component-specific surface token |
+| Blocking border | `color.border.contradiction.unresolved` |
+| Blocking background tint | `surface.primary` with restrained tint derived from `color.border.contradiction.unresolved` (amber, per `UX-012D` §3 — user-facing label remains "Blocking"); no independent component-specific surface token |
+| Challenge Name color | `color.text.primary` |
+| Explanation color | `color.text.primary` |
+| Acknowledged state | Existing severity treatment (`color.border.contradiction.*`, composed with `surface.primary` per the Material/Blocking tint mapping, above) at reduced emphasis, per `UX-012D` §2 ("challenge item opacity reduction after acknowledgment"); no independent text-color token — the challenge's own severity tier remains visible, unchanged from Resolved |
+| Historical text color | `color.text.historical` (includes the reduced-opacity historical treatment; no separate opacity token) |
 
 ## Anti-Patterns
 
-- **Do not auto-resolve Blocking Challenges.** The user must explicitly acknowledge or resolve each one.
+- **Do not auto-resolve Blocking Challenges.** Only the Investor may acknowledge one, per `ADR-002` C-04; resolution is never required.
+- **Do not treat Blocking as a must-resolve validation error.** It is the highest attention tier of an acknowledgment-only concern, not a hard gate — see Completion gate effect, above.
+- **Do not treat acknowledgment as agreement.** Acknowledging means "I have seen and considered this," never "I agree with this," per `ADR-002` C-04.
+- **Do not treat acknowledgment as resolution.** Acknowledging a Challenge does not resolve, downgrade, or remove it — its severity remains unchanged and it remains visible.
+- **Do not let Atlas acknowledge a Challenge on the Investor's own behalf**, under any circumstance, including auto-acknowledgment after a timeout or a bulk action.
+- **Do not hide or suppress an unresolved Challenge after Decision recording.** Historical Challenges remain visible and unresolved, per Historical Behavior, above.
 - **Do not suppress Challenges when the conclusion is positive.** An honest Challenges list is required regardless of the conclusion direction.
 - **Do not use Challenges as the location for monitoring conditions.** Monitoring Conditions have their own component.
 - **Do not apply the Blocking severity without user or Atlas justification.** Blocking is a serious classification; it should not be the default.
+- **Do not use a red or broken-state visual treatment for Blocking Challenge.** It renders `color.border.contradiction.unresolved` (amber), per `UX-012D` §3 and the Blocking Challenge Color Semantics Resolution, above — red is reserved for independently-governed broken, invalidated, or triggered states, never for an acknowledgment-only concern.
 
 ---
 
@@ -788,14 +807,14 @@ AssumptionItem
 
 | Visual Property | Token |
 |-----------------|-------|
-| Assumption Name color | `reasoning.assumption.name` |
-| Holding badge | `status.assumption.holding.*` |
-| Under Review badge | `status.assumption.underReview.*` |
-| Weakening badge | `status.assumption.weakening.*` |
-| Weakening background | `surface.assumption.weakening` |
-| Broken badge | `status.assumption.broken.*` |
-| Broken background | `surface.assumption.broken` |
-| Historical opacity | `text.historical.opacity` |
+| Assumption Name color | `color.text.primary` |
+| Holding badge | `color.semantic.green`; text label required — not a success score, approval signal, Decision Quality signal, or positive Outcome judgment |
+| Under Review badge | `color.semantic.amber`, reduced emphasis/opacity; text label required |
+| Weakening badge | `color.semantic.amber`, full emphasis; text label required |
+| Weakening background | `surface.primary` with restrained tint derived from `color.semantic.amber`; no independent component-specific surface token |
+| Broken badge | `color.semantic.red`; text label required — communicates only the Assumption's own state, not an autonomous Decision invalidation |
+| Broken background | `surface.primary` with restrained tint derived from `color.semantic.red`; no independent component-specific surface token |
+| Historical text color | `color.text.historical` (includes the reduced-opacity historical treatment; no separate opacity token) |
 
 ---
 
@@ -896,11 +915,11 @@ EvidenceItem
 
 | Visual Property | Token |
 |-----------------|-------|
-| Source label color | `text.label.secondary` |
-| Date color | `text.contextual` |
-| Relevance note color | `text.body.secondary` |
-| Historical opacity | `text.historical.opacity` |
-| Outdated label color | `status.outdated.text` |
+| Source label color | `color.text.secondary` |
+| Date color | `color.text.tertiary` |
+| Relevance note color | `color.text.secondary` |
+| Historical text color | `color.text.historical` (includes the reduced-opacity historical treatment; no separate opacity token) |
+| Outdated label | Neutral metadata treatment; no independent semantic color token — a subtle recency label only, per this component's own States description, above |
 
 ---
 
@@ -977,9 +996,9 @@ Reviewers can compare the historical opportunity framing with current conditions
 
 | Visual Property | Token |
 |-----------------|-------|
-| Opportunity Statement color | `reasoning.opportunity.statement` |
-| Why/Window text color | `text.body.primary` |
-| Historical opacity | `text.historical.opacity` |
+| Opportunity Statement color | `color.text.primary` |
+| Why/Window text color | `color.text.primary` |
+| Historical text color | `color.text.historical` (includes the reduced-opacity historical treatment; no separate opacity token) |
 
 ---
 
@@ -1084,13 +1103,13 @@ Historical Opportunity Cost shows what was foregone at the time of the Decision.
 
 | Visual Property | Token |
 |-----------------|-------|
-| Chosen path label | `reasoning.opportunityCost.chosen.label` |
-| Chosen path statement | `reasoning.opportunityCost.chosen.statement` |
-| Alternative label | `reasoning.opportunityCost.alternative.label` |
-| Alternative name | `reasoning.opportunityCost.alternative.name` |
-| What it offered | `text.body.secondary` |
-| Why not chosen | `text.contextual` |
-| Historical opacity | `text.historical.opacity` |
+| Chosen path label | `color.text.secondary` |
+| Chosen path statement | `color.text.primary` |
+| Alternative label | `color.text.secondary` |
+| Alternative name | `color.text.primary` |
+| What it offered | `color.text.secondary` |
+| Why not chosen | `color.text.tertiary` |
+| Historical text color | `color.text.historical` (includes the reduced-opacity historical treatment; no separate opacity token) |
 
 ---
 
@@ -1201,13 +1220,13 @@ ComparisonRow
 
 | Visual Property | Token |
 |-----------------|-------|
-| Column header color | `text.heading.primary` |
-| Row label color | `text.label.secondary` |
-| Value color | `text.body.primary` |
-| Comparison note color | `text.contextual` |
-| Column divider | `border.comparison.column` |
-| Historical column overlay | `surface.historical.background` |
-| Historical opacity | `text.historical.opacity` |
+| Column header color | `color.text.primary` |
+| Row label color | `color.text.secondary` |
+| Value color | `color.text.primary` |
+| Comparison note color | `color.text.tertiary` |
+| Column divider | Neutral structural divider; no independent semantic border token |
+| Historical column overlay | `surface.historical` |
+| Historical text color | `color.text.historical` (includes the reduced-opacity historical treatment; no separate opacity token) |
 
 ---
 
@@ -1310,14 +1329,14 @@ Historical Scenario Analysis preserves the scenarios as they were framed at the 
 
 | Visual Property | Token |
 |-----------------|-------|
-| Scenario type label | `text.label.secondary` |
-| Scenario name color | `reasoning.scenario.name` |
-| Conditions color | `text.body.primary` |
-| Implications color | `text.body.secondary` |
-| Likely badge | `status.scenario.likely.*` |
-| Possible badge | `status.scenario.possible.*` |
-| Unlikely badge | `status.scenario.unlikely.*` |
-| Historical opacity | `text.historical.opacity` |
+| Scenario type label | `color.text.secondary` |
+| Scenario name color | `color.text.primary` |
+| Conditions color | `color.text.primary` |
+| Implications color | `color.text.secondary` |
+| Likely badge | Neutral label treatment; no independent semantic color token |
+| Possible badge | Neutral label treatment; no independent semantic color token |
+| Unlikely badge | Neutral label treatment; no independent semantic color token |
+| Historical text color | `color.text.historical` (includes the reduced-opacity historical treatment; no separate opacity token) |
 
 ---
 
@@ -1421,13 +1440,13 @@ Candidate content that leads to a recorded Decision is preserved in the Decision
 
 | Visual Property | Token |
 |-----------------|-------|
-| Source label (Atlas) | `text.attribution.atlas` |
-| Source label (User) | `text.label.secondary` |
-| Recommendation statement | `reasoning.recommendation.statement` |
-| Primary reason | `text.body.primary` |
-| Accept action | `action.primary.*` |
-| Modify action | `action.secondary.*` |
-| Decline action | `text.action.dismiss` |
+| Source label (Atlas) | `color.text.secondary` |
+| Source label (User) | `color.text.secondary` |
+| Recommendation statement | `color.text.primary` |
+| Primary reason | `color.text.primary` |
+| Accept action | `color.text.primary` |
+| Modify action | `color.text.tertiary` |
+| Decline action | `color.text.tertiary` |
 
 ---
 
@@ -1504,11 +1523,11 @@ Same as Section Container: Expanded, Collapsed, Updated, Draft, Historical, Empt
 
 | Visual Property | Token |
 |-----------------|-------|
-| Block name color | `reasoning.block.name` |
-| Block summary color | `text.contextual` |
-| Block background | `surface.primary.background` |
-| Block border | `border.reasoning.block` |
-| Historical opacity | `text.historical.opacity` |
+| Block name color | `color.text.primary` |
+| Block summary color | `color.text.tertiary` |
+| Block background | `surface.primary` |
+| Block border | Neutral structural divider; no independent semantic border token |
+| Historical text color | `color.text.historical` (includes the reduced-opacity historical treatment; no separate opacity token) |
 
 ---
 
@@ -1549,7 +1568,7 @@ A Context Panel may contain links to:
 - Historical Records (prior reasoning sessions for this investment)
 - External references (source documents)
 
-Cross-reference links use Role 5 typography in `text.action.navigation` color. They do not open in new tabs — they navigate within Atlas.
+Cross-reference links use Role 5 typography in `color.text.tertiary` color. They do not open in new tabs — they navigate within Atlas.
 
 ## Historical Context
 
@@ -1599,11 +1618,11 @@ ContextPanel
 
 | Visual Property | Token |
 |-----------------|-------|
-| Panel header | `text.label.secondary` |
-| Panel body | `text.contextual` |
-| Cross-reference links | `text.action.navigation` |
-| Panel background | `surface.elevated.background` |
-| Panel border | `border.contextPanel` |
+| Panel header | `color.text.secondary` |
+| Panel body | `color.text.tertiary` |
+| Cross-reference links | `color.text.tertiary` |
+| Panel background | `surface.elevated` |
+| Panel border | Neutral structural divider; no independent semantic border token |
 
 ---
 
@@ -1647,7 +1666,7 @@ When multiple metadata items appear together: Date → Author → Source → Con
 
 ## Visibility
 
-Supporting Metadata is always visually quiet — Role 5 typography, `text.contextual` color. It is present but not dominant. It does not compete with the reasoning content it supports.
+Supporting Metadata is always visually quiet — Role 5 typography, `color.text.tertiary` color. It is present but not dominant. It does not compete with the reasoning content it supports.
 
 On compact or collapsed views, metadata may be reduced to a single line (the single most important item — typically Date for historical content, Author for attribution).
 
@@ -1655,7 +1674,7 @@ On compact or collapsed views, metadata may be reduced to a single line (the sin
 
 Historical Supporting Metadata has one additional required field: the Historical lock indicator (a lock icon or "Historical" label). This communicates that the metadata — and the content it supports — cannot be modified.
 
-All Historical content's Supporting Metadata is displayed with the `text.historical.opacity` treatment.
+All Historical content's Supporting Metadata is displayed using `color.text.historical`, which already includes the reduced-opacity historical treatment.
 
 ## Variants
 
@@ -1697,11 +1716,11 @@ SupportingMetadata [Frame, Auto Layout, horizontal or vertical]
 
 | Visual Property | Token |
 |-----------------|-------|
-| All metadata text | `text.contextual` |
-| Historical metadata text | `text.contextual` at `text.historical.opacity` |
-| Lock indicator color | `status.historical.text` |
-| Separator color | `text.muted` |
-| Relationship link | `text.action.navigation` |
+| All metadata text | `color.text.tertiary` |
+| Historical metadata text | `color.text.historical` |
+| Lock indicator color | `color.text.historical` |
+| Separator color | `color.text.tertiary` |
+| Relationship link | `color.text.tertiary` |
 
 ## Engineering Mapping
 
@@ -1820,7 +1839,7 @@ These states apply to every Reasoning Component. Their visual treatments are def
 | **Draft** | Content exists but has not been saved in the current session | Draft Indicator in Section Header; content in Unsaved token state | Editable | `aria-label` includes "Draft" |
 | **Accepted** | Atlas-suggested content has been accepted by the user | Attribution label updates to "Atlas generated / User accepted"; editing enabled | Editable | Attribution announced via `aria-live` |
 | **Updated** | Content has changed since the user's last session | Update motion token fires once on render; StatusBadge "Updated" in Section Header settles after interaction | Normal editing | StatusBadge announced via `aria-live="polite"` |
-| **Historical** | Content is from a prior recorded session | `text.historical.opacity` applied to all text; lock indicator present; all editing disabled; Historical label + date | No interaction | All ARIA labels include "Historical Record from [date]" |
+| **Historical** | Content is from a prior recorded session | `color.text.historical` applied to all text (includes reduced opacity); lock indicator present; all editing disabled; Historical label + date | No interaction | All ARIA labels include "Historical Record from [date]" |
 | **Monitoring** | An Assumption with this content has an active Monitoring Condition | Compact monitoring status indicator attached to the component | Links to Monitoring Condition | `aria-label` includes "Monitored" and current monitoring status |
 | **Superseded** | This reasoning has been explicitly replaced by newer reasoning | "Superseded" Status Badge; reduced opacity (not as low as Historical); link to successor reasoning | Read-only, not immutable | `aria-label` includes "Superseded by: [successor]" |
 | **Collapsed** | Section is collapsed; only header and summary visible | Section Header with summary; SectionBody `display: none` | Full header row is expand target | `aria-expanded="false"` on header |
@@ -1934,6 +1953,83 @@ At 200% browser zoom:
 
 A consolidated mapping of all Reasoning Components to the Atlas semantic token system.
 
+## Reasoning Status Presentation
+
+*(Added per the Atlas UX Architecture Reasoning-Tier Named Token Remap Correction task, 2026-08-02.)* Reasoning Status Presentation maps an already-established state — Historical, Acknowledged, Outdated, Updated — into a specific visual treatment below; it does not itself define what any of those states mean. Historical content uses the canonical `UX-012D` §3 Historical Content tokens (`color.text.historical`, `surface.historical`) throughout this document — `color.text.historical` already includes the reduced-opacity treatment, so no separate opacity token is used anywhere below. Acknowledged uses reduced emphasis on the challenge's own already-existing severity treatment, per `UX-012D` §2, rather than a new text color — this preserves the distinction between Acknowledged ("seen, not yet resolved," per `UX-012` §26) and Resolved, which visual treatment does not redefine. Outdated and Updated use neutral, textual-only indicators, consistent with `UX-012B` §13's own literal description of both states, unless a governing source explicitly requires semantic color (none does, for either, anywhere in `UX-012`/`UX-012B`). Text and programmatic labels remain authoritative throughout; color, where a state has one, is supplementary only. No Reasoning-specific `status.*` namespace is adopted — this mirrors the identical architecture and packaging already established for Status Badge in `UX-013A` §13, per `UX-013F`'s own classification of Status Presentation as "an architecture document, not a component," not a new canonical component or inventory entry of its own.
+
+## Phase 2 Foundations Mapping
+
+*(Added per the Atlas UX Architecture Reasoning Token Architecture Phase 2: UX-013B Mechanical Remap task, 2026-08-02.)* This document's own shared presentation tokens now map to the canonical foundations `UX-012D` established in its own Phase 1 correction. Neutral text throughout this document uses `color.text.primary` (normal, high-emphasis body/content text), `color.text.secondary` (supporting, metadata-adjacent, or subordinate text), and `color.text.tertiary` (quiet, contextual, or muted text) — the same three-tier hierarchy, applied consistently, rather than the many locally-invented names this document previously used for the identical three roles. Neutral surfaces use `surface.background`, `surface.primary`, `surface.elevated`, and `surface.panel`. Semantic state colors use `color.semantic.green`, `.amber`, and `.red` only where a governing source (`UX-012`, `UX-012B`) explicitly supports a distinct color for that state — Assumption Holding, Under Review/Weakening, and Broken are the confirmed cases; Scenario Analysis's own Likely/Possible/Unlikely labels are not, and remain neutral. Structural borders that exist only to separate content (comparison columns, Reasoning Block, Context Panel) do not receive an invented semantic token identity of their own. As throughout this document, tokens render states this document or `UX-012`/`UX-012B` already establish; they do not themselves define what a state means. `reasoning.*`, `conclusion.*`, `motion.*`, and `interaction.*` are unaffected by this mapping and remain Phase 3 work — this section does not claim they are resolved.
+
+## Phase 3A Reasoning Token Mapping
+
+*(Added per the Atlas UX Architecture Reasoning Token Architecture Phase 3A: Canonical Reasoning Token Mapping task, 2026-08-02.)* Every `reasoning.*` and `conclusion.*` reference this document previously used was found, on direct inspection, to be a text-color role rather than a typography role — typography for these same components is unaffected and remains separately governed by `type.role1.*` through `type.role5.*`, below. Each reference is remapped to the already-existing `color.text.primary` or `color.text.secondary` Text Hierarchy token (`UX-012D` §3); no new token was required. Shared visual roles reuse the same token across components — an item's own identifying name (Supporting Factor, Challenge, Assumption, Scenario, Reasoning Block, Opportunity Cost Alternative) is `color.text.primary` in every case, matching the emphasis of its own accompanying explanation/body text (also `color.text.primary`); a structural sub-label ("Pursuing," "Instead of") is `color.text.secondary`, matching the Conclusion's own sub-statement. This mapping renders Reasoning content; it does not define the Product Concept Reasoning, does not create a new Conclusion variant, does not merge Atlas Recommendation with Proposed Decision Candidate Content (`ADR-003` is unaffected), does not alter Scenario Analysis's own content ownership (`ADR-004` is unaffected), and does not encode epistemic importance, truth, Confidence, or authority.
+
+**Traceability — every prior unsupported reference, accounted for exactly once:**
+
+| Previous token | Canonical replacement | Visual role | Component(s) | Reuse or new |
+|---|---|---|---|---|
+| `conclusion.text.primary` | `color.text.primary` | Primary statement | Conclusion | Reuse |
+| `conclusion.text.secondary` | `color.text.secondary` | Sub-statement (structural, subordinate) | Conclusion | Reuse |
+| `reasoning.factor.name` | `color.text.primary` | Item-identifying name (Role 3), same tier as its own Explanation | Supporting Factors | Reuse |
+| `reasoning.challenge.name` | `color.text.primary` | Item-identifying name (Role 3), same tier as its own Explanation | Challenges | Reuse |
+| `reasoning.assumption.name` | `color.text.primary` | Item-identifying name (Role 3), same tier as its own Explanation | Assumptions | Reuse |
+| `reasoning.opportunity.statement` | `color.text.primary` | Compressed thesis statement (Role 1/2) | Opportunity Summary | Reuse |
+| `reasoning.opportunityCost.chosen.label` | `color.text.secondary` | Structural label "Pursuing" (Role 4) | Opportunity Cost | Reuse |
+| `reasoning.opportunityCost.chosen.statement` | `color.text.primary` | Primary statement (Role 3) | Opportunity Cost | Reuse |
+| `reasoning.opportunityCost.alternative.label` | `color.text.secondary` | Structural label "Instead of" (Role 4) | Opportunity Cost | Reuse |
+| `reasoning.opportunityCost.alternative.name` | `color.text.primary` | Item-identifying name (Role 3) | Opportunity Cost | Reuse |
+| `reasoning.scenario.name` | `color.text.primary` | Item-identifying name (Role 3) | Scenario Analysis | Reuse |
+| `reasoning.recommendation.statement` | `color.text.primary` | Candidate-action statement (Role 2), same tier as "Primary reason" in the same table | Recommendation / Proposed Decision Candidate Content | Reuse |
+| `reasoning.block.name` | `color.text.primary` | Item-identifying name (Role 3) | Reasoning Block | Reuse |
+
+Every replacement reuses a token `UX-012D` §3 already defines; zero new tokens were added in this phase.
+
+## Phase 3B Motion & Interaction Token Mapping
+
+*(Added per the Atlas UX Architecture Reasoning Token Architecture Phase 3B: Motion & Interaction Foundations task, 2026-08-02.)* This document previously referenced eight bare `motion.*` tokens and one `interaction.hover.background` token, none of which named a literal token `UX-012D` defined. `UX-012D` §3 now provides a canonical Motion Architecture group — seven per-event `motion.<event>.duration` / `motion.<event>.easing` token pairs, each an alias of a shared duration category (`motion.duration.immediate` / `.brief` / `.standard` / `.deliberate`) and a shared easing reference (`motion.easing.out` / `.in` / `.in-out`) — and a canonical Interaction group (`opacity.interaction.hover`). `motion.loading` is not remapped to a Motion token: it duplicated the already-existing `opacity.loading.pulse.min`/`.max` tokens, which already govern the identical Skeleton Loading effect (and were already correctly cited elsewhere in this document's own token appendices); the reference is replaced by those tokens directly, not renamed. `interaction.hover.background` is corrected to `opacity.interaction.hover` — `UX-012D` §2 describes hover as a "surface lightening delta," not a fixed background color, and `interaction.*` was never an established `UX-012D` top-level category. This mapping renders Reasoning-component motion and hover presentation; it does not alter any component's own anatomy, states, interaction model, or accessibility contract — every reduced-motion fallback behavior remains exactly as stated in the Reduced Motion section, below, which this mapping does not modify.
+
+**Traceability — every prior unsupported or duplicated reference, accounted for exactly once:**
+
+| Previous token | Canonical replacement | Applies to | Reuse or new |
+|---|---|---|---|
+| `motion.expand` | `motion.expand.duration`, `motion.expand.easing` | Section expansion | New (alias of shared duration/easing) |
+| `motion.collapse` | `motion.collapse.duration`, `motion.collapse.easing` | Section collapse | New (alias of shared duration/easing) |
+| `motion.insert` | `motion.insert.duration`, `motion.insert.easing` | New Factor/Challenge/Assumption item addition | New (alias of shared duration/easing) |
+| `motion.remove` | `motion.remove.duration`, `motion.remove.easing` | Factor/Challenge/Assumption removal | New (alias of shared duration/easing) |
+| `motion.highlight` | `motion.highlight.duration`, `motion.highlight.easing` | Cross-component navigation target highlight | New (alias of shared duration/easing) |
+| `motion.update` | `motion.update.duration`, `motion.update.easing` | Content updated since last session | New (alias of shared duration/easing) |
+| `motion.fade` | `motion.fade.duration`, `motion.fade.easing` | Dismissed Atlas Suggestion fade-out | New (alias of shared duration/easing) |
+| `motion.loading` | `opacity.loading.pulse.min`, `opacity.loading.pulse.max` | Skeleton loading states | Reuse (duplicate removed, not renamed) |
+| `interaction.hover.background` | `opacity.interaction.hover` | Hoverable Reasoning Component areas | New (corrected category and value shape) |
+
+Seven per-event duration/easing token pairs and one hover token are newly instantiated in `UX-012D` §3 by this phase's own governing task — each event pair is itself an alias of a small, shared foundation (four duration categories, three easing references) rather than an independent value, per that task's own governing preference for shared aliases over per-component unique values.
+
+## Phase 3C Attribution & Action Text Mapping
+
+*(Added per the Atlas UX Architecture Reasoning Token Architecture Phase 3C: Attribution & Action Text task, 2026-08-02.)* This document previously referenced `text.attribution.atlas` and the `text.action.*` family, none of which named a token `UX-012D` defined; a corpus sweep also found two further unsupported wildcard references, `action.primary.*` and `action.secondary.*`, on the Recommendation / Proposed Decision Candidate Content component. `UX-012D` §3 now provides a Canonical Attribution & Action Text Mapping contract, reusing the existing Text Hierarchy rather than introducing a new token family. Attribution labels reuse `color.text.secondary` — direct sibling-row evidence: the Recommendation component's own "Source label (User)" row, immediately adjacent to "Source label (Atlas)" in the same table, was already correctly mapped to `color.text.secondary`; both rows name the identical visual role (a content-origin label), differing only in which origin they name. Action-affordance text is resolved against `UX-012B` §15's own explicit Action Components taxonomy: Edit, Remove, Acknowledge, Dismiss/Decline, cross-reference/relationship navigation, and the Modify action are all Inline Actions or Section Actions under that taxonomy (Inline Action's own named examples include "Edit," "Dismiss," and navigation-style links; both Inline and Section Action are explicitly Tertiary emphasis) — corrected to `color.text.tertiary`, regardless of any local name (`text.action.secondary`, `action.secondary.*`) that happened to contain the word "secondary." Cross-reference links receive independent, converging confirmation: they already share `type.role5.*` typography with Supporting Metadata and Evidence dates/sources, both already mapped to `color.text.tertiary` — the same-typography-tier, same-color-tier pattern this document's own Phase 3A correction already established. The Accept action is corrected to `color.text.primary`, by direct analogy to `UX-012B` §15's own Primary Action rule ("the single dominant action... primary text color"), given Accept's own described role as the decisive, terminal response among Proposed Decision Candidate Content's three actions — not a claim that Accept is literally `UX-012B`'s footer-scoped, one-per-Workspace Primary Action component, only that the identical color principle applies by role. This mapping renders attribution and action-affordance presentation; it does not define authorship, provenance, or acceptance behavior, which remain governed by `ADR-002` C-02 and its addendum and by `ADR-003`'s own Accept/Modify/Decline mapping.
+
+**Traceability — every prior unsupported reference, accounted for exactly once:**
+
+| Previous token | Canonical replacement | Applies to | Reuse or new |
+|---|---|---|---|
+| `text.attribution.atlas` | `color.text.secondary` | Atlas attribution color (Conclusion) | Reuse |
+| `text.attribution.atlas` | `color.text.secondary` | Atlas attribution (Supporting Factors) | Reuse |
+| `text.attribution.atlas` | `color.text.secondary` | Source label, Atlas (Recommendation) | Reuse |
+| `text.action.secondary` | `color.text.tertiary` | Edit action color (Supporting Factors) | Reuse |
+| `action.primary.*` | `color.text.primary` | Accept action (Recommendation) | Reuse |
+| `action.secondary.*` | `color.text.tertiary` | Modify action (Recommendation) | Reuse |
+| `text.action.dismiss` | `color.text.tertiary` | Decline action (Recommendation) | Reuse |
+| `text.action.navigation` | `color.text.tertiary` | Cross-reference links, inline prose (Recommendation) | Reuse |
+| `text.action.navigation` | `color.text.tertiary` | Cross-reference links (Recommendation token mapping) | Reuse |
+| `text.action.navigation` | `color.text.tertiary` | Relationship link (Supporting Metadata) | Reuse |
+| `text.attribution.atlas` | `color.text.secondary` | Atlas attribution labels (appendix) | Reuse |
+| `text.action.secondary` | `color.text.tertiary` | Edit/Remove/Acknowledge actions (appendix) | Reuse |
+| `text.action.navigation` | `color.text.tertiary` | Cross-reference/relationship links (appendix) | Reuse |
+| `text.action.dismiss` | `color.text.tertiary` | Dismiss actions on Atlas Suggestions (appendix) | Reuse |
+
+Every replacement reuses a token `UX-012D` §3 already defines; zero new tokens were added in this phase. With this correction, the Reasoning Token Architecture program (Phases 1, 2, 3A, 3B, 3C) is complete.
+
 ## Typography Tokens
 
 | Token | Applies To |
@@ -1958,75 +2054,79 @@ A consolidated mapping of all Reasoning Components to the Atlas semantic token s
 
 | Token Group | Applies To |
 |-------------|-----------|
-| `conclusion.text.*` | Conclusion Statement, sub-statement |
-| `reasoning.factor.name` | Supporting Factor name |
-| `reasoning.challenge.name` | Challenge name |
-| `reasoning.assumption.name` | Assumption name |
-| `reasoning.opportunity.statement` | Opportunity Summary statement |
-| `reasoning.opportunityCost.*` | Opportunity Cost chosen/alternative labels and text |
-| `reasoning.scenario.name` | Scenario Analysis scenario names |
-| `reasoning.recommendation.statement` | Recommendation statement |
-| `reasoning.block.name` | Reasoning Block name |
-| `text.attribution.atlas` | Atlas attribution labels |
-| `text.body.primary` | Primary narrative body text in reasoning |
-| `text.body.secondary` | Secondary/supporting body text |
-| `text.contextual` | Supporting Metadata, Evidence, context text |
+| `color.text.primary` | Conclusion Statement |
+| `color.text.secondary` | Conclusion sub-statement |
+| `color.text.primary` | Supporting Factor name |
+| `color.text.primary` | Challenge name |
+| `color.text.primary` | Assumption name |
+| `color.text.primary` | Opportunity Summary statement |
+| `color.text.secondary` | Opportunity Cost chosen/alternative structural labels ("Pursuing," "Instead of") |
+| `color.text.primary` | Opportunity Cost chosen path statement and alternative name |
+| `color.text.primary` | Scenario Analysis scenario names |
+| `color.text.primary` | Recommendation statement |
+| `color.text.primary` | Reasoning Block name |
+| `color.text.secondary` | Atlas attribution labels *(also used for user-origin attribution labels and all other secondary-tier text — not an exclusive attribution token)* |
+| `color.text.primary` | Primary narrative body text in reasoning |
+| `color.text.secondary` | Secondary/supporting body text |
+| `color.text.tertiary` | Supporting Metadata, Evidence, context text |
 
 ## Surface Tokens
 
 | Token | Applies To |
 |-------|-----------|
-| `surface.challenge.material` | Material Challenge background tint |
-| `surface.challenge.blocking` | Blocking Challenge background tint |
-| `surface.assumption.weakening` | Weakening Assumption background tint |
-| `surface.assumption.broken` | Broken Assumption background tint |
-| `surface.elevated.background` | Context Panel, candidate content panel |
-| `surface.historical.background` | Historical variants of all Reasoning Components |
+| `surface.primary` + `color.border.contradiction.material` tint | Material Challenge background tint |
+| `surface.primary` + `color.border.contradiction.unresolved` tint | Blocking Challenge background tint |
+| `surface.primary` + `color.semantic.amber` tint | Weakening Assumption background tint |
+| `surface.primary` + `color.semantic.red` tint | Broken Assumption background tint |
+| `surface.elevated` | Context Panel, candidate content panel |
+| `surface.historical` | Historical variants of all Reasoning Components |
 
 ## Border Tokens
 
 | Token | Applies To |
 |-------|-----------|
-| `border.challenge.informational` | Informational Challenge left border |
-| `border.challenge.material` | Material Challenge left border |
-| `border.challenge.blocking` | Blocking Challenge left border |
-| `border.factor.weakening` | Weakening Supporting Factor left border |
-| `border.factor.invalidated` | Invalidated Supporting Factor left border |
-| `border.comparison.column` | Divider between comparison columns |
-| `border.reasoning.block` | Reasoning Block border |
-| `border.contextPanel` | Context Panel border |
+| `color.border.contradiction.informational` | Informational Challenge left border |
+| `color.border.contradiction.material` | Material Challenge left border |
+| `color.border.contradiction.unresolved` | Blocking Challenge left border |
+| `color.semantic.amber` | Weakening Supporting Factor left border |
+| `color.semantic.red` | Invalidated Supporting Factor left border |
+| None — neutral structural divider, no independent semantic token | Divider between comparison columns |
+| None — neutral structural divider, no independent semantic token | Reasoning Block border |
+| None — neutral structural divider, no independent semantic token | Context Panel border |
 
 ## State Tokens
 
 | Token Group | Applies To |
 |-------------|-----------|
-| `status.assumption.*` | All four Assumption status states |
-| `status.scenario.*` | Likely/Possible/Unlikely probability labels |
-| `status.updated.*` | Updated state across all components |
-| `status.acknowledged.*` | Acknowledged state on Material/Blocking Challenges |
-| `status.historical.*` | Historical state across all components |
-| `status.outdated.*` | Outdated Evidence label |
+| `color.semantic.green` (Holding), `color.semantic.amber` (Under Review, Weakening), `color.semantic.red` (Broken) | All four Assumption status states |
+| None — neutral label treatment, no independent semantic color token | Likely/Possible/Unlikely probability labels |
+| `color.text.historical`, `surface.historical` | Historical state across all components |
+| Existing severity treatment (`color.border.contradiction.*`) at reduced emphasis — no independent color token | Acknowledged state on Material/Blocking Challenges |
+| None — neutral metadata treatment, no independent semantic color token | Outdated Evidence label |
+| None — neutral text label; `motion.update.duration` / `motion.update.easing` cue only, no persistent semantic color | Updated state across all components |
+
+*(Corrected per the Reasoning-Tier Named Token Remap Correction task, 2026-08-02, and further corrected per the Reasoning Token Architecture Phase 2: UX-013B Mechanical Remap task, 2026-08-02: the `status.assumption.*` and `status.scenario.*` rows above previously named a wildcard `status.*` token for each state family. That namespace does not exist in `UX-012D` for these states and is rejected. Assumption states now cite the canonical `UX-012D` §3 semantic accent tokens directly, per "Reasoning Status Presentation," above; Scenario states remain neutral, label-only — the completed Full Reasoning-Tier Token Architecture Audit found no governing source requiring a distinct probability color, and none is inferred here.)*
 
 ## Motion Tokens
 
 | Token | Applied By |
 |-------|-----------|
-| `motion.highlight` | Cross-component navigation target highlight |
-| `motion.insert` | New Factor/Challenge/Assumption item addition |
-| `motion.remove` | Factor/Challenge/Assumption removal |
-| `motion.update` | Content updated since last session |
-| `motion.expand` / `motion.collapse` | Section expansion/collapse |
-| `motion.fade` | Dismissed Atlas Suggestion fade-out |
-| `motion.loading` | Skeleton loading states |
+| `motion.highlight.duration` / `motion.highlight.easing` | Cross-component navigation target highlight |
+| `motion.insert.duration` / `motion.insert.easing` | New Factor/Challenge/Assumption item addition |
+| `motion.remove.duration` / `motion.remove.easing` | Factor/Challenge/Assumption removal |
+| `motion.update.duration` / `motion.update.easing` | Content updated since last session |
+| `motion.expand.duration` / `motion.expand.easing` | Section expansion |
+| `motion.collapse.duration` / `motion.collapse.easing` | Section collapse |
+| `motion.fade.duration` / `motion.fade.easing` | Dismissed Atlas Suggestion fade-out |
+| `opacity.loading.pulse.min` / `opacity.loading.pulse.max` | Skeleton loading states *(corrected per the Phase 3B: Motion & Interaction Foundations task, 2026-08-02 — see Token Mapping note below; not a Motion token)* |
 
 ## Interaction Tokens
 
 | Token | Applies To |
 |-------|-----------|
-| `interaction.hover.background` | Hoverable Reasoning Component areas |
-| `text.action.secondary` | Edit/Remove/Acknowledge actions within components |
-| `text.action.navigation` | Cross-reference and relationship links |
-| `text.action.dismiss` | Dismiss actions on Atlas Suggestions |
+| `opacity.interaction.hover` | Hoverable Reasoning Component areas |
+| `color.text.tertiary` | Edit/Remove/Acknowledge actions, cross-reference/relationship links, Dismiss/Decline actions, and the Modify action *(all Inline or Section Actions per `UX-012B` §15 — also used for Supporting Metadata and other tertiary-tier text, not an exclusive action token)* |
+| `color.text.primary` | Accept action (Recommendation / Proposed Decision Candidate Content) *(the decisive, terminal action among Accept/Modify/Decline, per `UX-012B` §15's own Primary Action color rule)* |
 
 ---
 
@@ -2336,7 +2436,7 @@ The official Atlas Reasoning Component Inventory for UX-013B. Maturity is Candid
 | Core | Challenges Container | Section for named concerns and risks | Investment, Decision | Portfolio | Immediate | Immediate | Candidate | Design System |
 | Core | ChallengeItem (Informational) | Relevant concern, no gate effect | Investment, Decision | All | Immediate | Immediate | Candidate | Design System |
 | Core | ChallengeItem (Material) | Significant concern, soft gate | Decision | Investment | Immediate | Immediate | Candidate | Design System |
-| Core | ChallengeItem (Blocking) | Must-resolve concern, hard gate | Decision | — | Immediate | Immediate | Candidate | Design System |
+| Core | ChallengeItem (Blocking) | Highest-tier concern, acknowledgment-required soft gate | Decision | — | Immediate | Immediate | Candidate | Design System |
 | Core | ChallengeItem (Contradiction) | Logic conflict between reasoning elements | Decision | Investment | High | High | Candidate | Design System |
 | Core | Assumptions Container | Section for explicit conditions | Investment, Decision | Portfolio | High | High | Candidate | Design System |
 | Core | AssumptionItem (Holding) | Active assumption in good standing | Investment, Decision | All | High | High | Candidate | Design System |
@@ -2406,7 +2506,7 @@ All Reasoning Components specify behavior at Desktop, Tablet, and Mobile. The pr
 
 ## Token Readiness — Ready
 
-Section 17 provides the complete Reasoning Token Mapping. New token groups introduced in UX-013B (reasoning.factor.*, reasoning.challenge.*, reasoning.assumption.*, reasoning.opportunity.*, reasoning.scenario.*, reasoning.recommendation.*, border.factor.*, border.challenge.*, surface.challenge.*, surface.assumption.*) must be added to the token dictionary before Reasoning Component implementation begins.
+Section 17 provides the complete Reasoning Token Mapping. The draft token groups originally introduced in this document for Reasoning-tier presentation and severity/border treatment (formerly `reasoning.*`, `border.factor.*`, `border.challenge.*`, `surface.challenge.*`, `surface.assumption.*`) have since been resolved by reuse of already-canonical `UX-012D` tokens (`color.text.*`, `color.border.contradiction.*`, `color.semantic.*`), per the Reasoning-Tier Token Architecture Investigation and its own completed correction phases. *(Corrected per the Phase 3B: Motion & Interaction Foundations task, 2026-08-02: this section previously stated that no new token dictionary entries were required for Reasoning Component implementation. That was accurate through Phase 3A, which added zero new tokens, but the completed Phase 3B correction did add new `UX-012D` §3 token dictionary entries — seven per-event `motion.<event>.duration`/`.easing` pairs, four shared duration-category tokens, three shared easing-reference tokens, and `opacity.interaction.hover` — to formalize this document's own previously-unsupported `motion.*` and `interaction.hover.background` references, per the Phase 3B Motion & Interaction Token Mapping subsection, above. Reasoning Component implementation now depends on those additions being present in the token dictionary before implementation begins.)*
 
 ## Documentation Quality — Ready
 
