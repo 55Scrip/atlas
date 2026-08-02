@@ -1,0 +1,167 @@
+/*
+ * Atlas Design Tokens — semantic layer.
+ *
+ * Source of authority: UX-012D-Atlas-Design-System-Governance-Tokens-Evolution.md
+ * (Section 2 "Design Token Philosophy", Section 3 "Semantic Token Model",
+ * Section 4 "Naming Conventions"), cross-referenced against UX-012A/UX-012C
+ * where UX-012D itself defers to them.
+ *
+ * UX-012C §13 (its own token-hierarchy statement) defines three tiers:
+ *   global tokens (raw values: hex, px, ms) -> semantic tokens (named,
+ *   referencing globals) -> component tokens.
+ * Every token below that has a repository-evidenced raw value now
+ * references its global-tier counterpart in ./global.css (Sprint 1,
+ * Commit 4) rather than repeating the literal. Tokens with no
+ * repository-evidenced raw value are unchanged from Commit 3: they use
+ * CSS system-color/generic keywords (Canvas, CanvasText, transparent,
+ * currentColor) rather than an invented hex or px number. System keywords
+ * are not a design choice — they are the browser's own neutral default,
+ * honestly signaling "not yet Atlas-branded" while keeping the shell
+ * legible in both OS color schemes. These are not global-tier values
+ * (no repository evidence backs them as canonical) and so are not moved
+ * to global.css — see Commit 4's deliverable, "Tokens Still Undefined."
+ *
+ * Every literal value below is cited to its source sentence. Do not add a
+ * value here without an equivalent citation — see Architecture-Governance.md
+ * and this session's "do not invent values" precedent (UX-012D's own
+ * Missing Foundation Resolution tasks left focus-ring offset, progress.fill,
+ * progress.track, and loading.skeleton.base unresolved rather than invented).
+ */
+
+@import "./global.css";
+
+:root {
+  /* ---------------------------------------------------------------------
+   * color.* — UX-012D §3 names these semantic slots; none is given a
+   * literal hex value anywhere in UX-012A/B/C/D. "Warm-dark palette" is
+   * described qualitatively (§2, Surface tokens) but never quantified.
+   * --------------------------------------------------------------------- */
+  --color-text-primary: CanvasText;      /* UX-012D §3 Text Hierarchy — unresolved raw value */
+  --color-text-secondary: CanvasText;    /* UX-012D §3 Text Hierarchy — unresolved raw value */
+  --color-text-tertiary: GrayText;       /* UX-012D §3 Text Hierarchy — unresolved raw value */
+
+  --color-semantic-amber: currentColor;  /* UX-012D §3 Monitoring group — unresolved raw value */
+  --color-semantic-green: currentColor;  /* UX-012D §3 Monitoring group — unresolved raw value */
+  --color-semantic-red: currentColor;    /* UX-012D §3 Monitoring group — unresolved raw value */
+  /* color.semantic.blue is not formalized anywhere in UX-012D; not declared here. */
+
+  --color-border-hairline: currentColor; /* UX-012D §3 Border group — width is literal (width.border.* below); color is unresolved */
+  --color-border-standard: currentColor; /* UX-012D §3 Border group — width is literal (width.border.* below); color is unresolved */
+  --width-border-hairline: var(--global-width-border-hairline); /* UX-012D §3: "1px, the subtlest structural separator" */
+  --width-border-standard: var(--global-width-border-standard); /* UX-012D §3: "1px at higher opacity" */
+
+  --color-focus-ring: Highlight;         /* UX-012D §3 Focus group — unresolved raw value; Highlight keyword approximates "sufficient contrast" requirement */
+
+  /* ---------------------------------------------------------------------
+   * surface.* — UX-012D §3 Surface Hierarchy. Named; no literal value.
+   * --------------------------------------------------------------------- */
+  --surface-background: Canvas;
+  --surface-primary: Canvas;
+  --surface-elevated: Canvas;
+  --surface-panel: Canvas;
+
+  /* ---------------------------------------------------------------------
+   * type.* — UX-012A §"Typographic system" establishes font family
+   * literally; UX-012A explicitly states the px size table is not yet
+   * specified ("requires specification under UX-012B or UX-013").
+   * --------------------------------------------------------------------- */
+  --type-family-prose: var(--global-font-family-prose);
+  --type-family-metadata: var(--global-font-family-metadata);
+  --type-body-min-size: var(--global-font-size-body-min);
+  --type-body-line-height: var(--global-line-height-body);
+
+  /* ---------------------------------------------------------------------
+   * space.* — UX-012D §2 names six conceptual levels but its own §4
+   * governance clarification states a conceptual description does not
+   * authorize an inferred literal token. Only `space.inter-section` has
+   * ever been given canonical status (UX-012D §4's own naming-convention
+   * worked example). The other five levels are not declared here.
+   * --------------------------------------------------------------------- */
+  --space-inter-section: 0; /* UX-012D §4 worked example confirms the name is canonical; no numeric value exists anywhere in the corpus */
+
+  /* ---------------------------------------------------------------------
+   * radius.* — UX-012D §2 describes two tiers conceptually ("consistent
+   * corner radius for all Atlas containers, a slightly larger radius for
+   * the overlay Workspace frame") but never names or values a foundation-
+   * level radius token in §3. UX-013A's radius.section/.dialog/.badge/
+   * .button are component-scoped (Design System component layer, out of
+   * this shell's scope) and are not declared here.
+   * --------------------------------------------------------------------- */
+
+  /* ---------------------------------------------------------------------
+   * elevation.* — UX-012D §2 describes three container elevation tiers
+   * conceptually (strong / subtle / open) but never names or values a
+   * foundation-level shadow or z-index token in §3. UX-013A's
+   * elevation.header.zIndex etc. are component-scoped and out of scope.
+   * --------------------------------------------------------------------- */
+
+  /* ---------------------------------------------------------------------
+   * motion.* — UX-012D §3 Motion Architecture. Duration categories are
+   * given as literal ms ranges; a single value is picked from each range
+   * (documented) since CSS custom properties require one concrete number.
+   * Easing references are named exactly (ease-out/in/in-out, standard CSS
+   * keywords — UX-012D never specifies a custom cubic-bezier).
+   * --------------------------------------------------------------------- */
+  --motion-duration-immediate: var(--global-duration-immediate);
+  --motion-duration-brief: var(--global-duration-brief);
+  --motion-duration-standard: var(--global-duration-standard);
+  --motion-duration-deliberate: var(--global-duration-deliberate);
+
+  --motion-easing-out: var(--global-easing-out);
+  --motion-easing-in: var(--global-easing-in);
+  --motion-easing-in-out: var(--global-easing-in-out);
+
+  /* Event aliases — each names one shared duration + easing pair, never an
+   * independent value (UX-012D §3 Motion Architecture). Only events with a
+   * current consuming reference are instantiated there; this shell uses
+   * none of them yet, so none are aliased here. Declared for completeness
+   * per this task's "motion timing constants" requirement using the
+   * shared foundation above, which is what every event token aliases. */
+
+  /* ---------------------------------------------------------------------
+   * opacity.* — UX-012D §3. Editing and Disabled ranges are literal;
+   * Interaction hover and Loading pulse are named with no numeric value
+   * ("No specific numeric delta is established by any governing source").
+   * --------------------------------------------------------------------- */
+  --opacity-disabled: var(--global-opacity-disabled);
+  --opacity-editing-overlay: var(--global-opacity-editing-overlay);
+  /* opacity.interaction.hover and opacity.loading.pulse.min/.max are named
+   * in UX-012D §3 but explicitly carry no numeric value anywhere in the
+   * corpus; not declared here rather than invented. */
+
+  /* ---------------------------------------------------------------------
+   * width.* / radius.* (Focus group) — UX-012D §3 Focus: color.focus.ring,
+   * width.focus.ring, radius.focus.ring. Width is literal; radius aliases
+   * whatever the focused element's own border-radius is (UX-012D §2:
+   * "matches the focused element's border-radius") — not a fixed number.
+   * --------------------------------------------------------------------- */
+  --width-focus-ring: var(--global-width-focus-ring);
+  /* radius.focus.ring intentionally has no standalone value — it is
+   * defined relationally ("matches the focused element's border-radius"),
+   * applied per-element, not as a global constant. */
+
+  /* ---------------------------------------------------------------------
+   * accessibility.* — UX-012D §2, fully literal.
+   * --------------------------------------------------------------------- */
+  --accessibility-touch-target-min: var(--global-size-touch-target-min);
+  --accessibility-contrast-body-min: var(--global-contrast-body-min);
+  --accessibility-contrast-body-large-min: var(--global-contrast-body-large-min);
+  --accessibility-contrast-metadata-min: var(--global-contrast-metadata-min);
+  --accessibility-contrast-focus-ring-min: var(--global-contrast-focus-ring-min);
+
+  /* ---------------------------------------------------------------------
+   * cursor.* — UX-012D §3 Disabled group, literal.
+   * --------------------------------------------------------------------- */
+  --cursor-disabled: var(--global-cursor-disabled);
+
+  /* ---------------------------------------------------------------------
+   * Breakpoints / z-index / sizing constants — no foundation-level token
+   * name or value exists anywhere in UX-012A/B/C/D for these categories.
+   * The one recurring number set (1280/768/375px) appears only inside
+   * UX-013A/B/E's "Testing Expectations" sections as visual-regression
+   * viewport widths, not as a declared `breakpoint.*` token — reusing it
+   * here as a design token would be inferring a canonical value from a
+   * testing artifact. Not declared. See the Commit 3 deliverable's Token
+   * Architecture section for the full list of open categories.
+   * --------------------------------------------------------------------- */
+}

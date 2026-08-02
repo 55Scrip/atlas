@@ -1,0 +1,26 @@
+/*
+ * Canonical Atlas focus ring — UX-012D §3 Focus group: color.focus.ring,
+ * width.focus.ring, radius.focus.ring.
+ *
+ * :focus-visible (not :focus) per UX-012A §15: "The focus ring is
+ * suppressed on pointer interaction using :focus-visible."
+ *
+ * radius.focus.ring has no fixed value anywhere in the corpus — UX-012D
+ * §2 defines it relationally ("matches the focused element's own
+ * border-radius"), so `border-radius: inherit` is the literal, honest
+ * implementation of that rule, not an invented radius.
+ *
+ * No outline-offset is set: UX-013A's own traceability table found "no
+ * offset property exists, conceptually or literally" for this token
+ * (missing foundation) — omitting it uses the browser default (0)
+ * rather than inventing a value.
+ *
+ * This is the single declaration of this rule in the codebase — Button
+ * and Link compose it via CSS Modules' `composes`, and the FocusRing
+ * component applies the same class to arbitrary children, so the rule
+ * is never duplicated.
+ */
+.focusRing:focus-visible {
+  outline: var(--width-focus-ring) solid var(--color-focus-ring);
+  border-radius: inherit;
+}

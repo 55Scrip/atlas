@@ -9,3 +9,5 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 tmp/
+frontend/node_modules/
+frontend/dist/

@@ -1,0 +1,88 @@
+/*
+ * Atlas Design Tokens — Global Token Tier.
+ *
+ * UX-012C §13's own token-hierarchy statement: global tokens (the
+ * underlying raw values — hex colors, pixel sizes, millisecond durations)
+ * -> semantic tokens (named by meaning, referencing globals) -> component
+ * tokens. This file is that global tier: it holds every raw value the
+ * governing corpus (UX-012A/B/C/D, Architecture-Governance.md,
+ * Atlas-Alpha-Baseline-v1.0.md) actually states a literal number or
+ * keyword for. The semantic layer (./tokens.css) references these via
+ * var() rather than repeating the literal.
+ *
+ * Repository investigation (Sprint 1, Commit 4): searched docs/atlas_ux
+ * in full, plus a repository-wide search for Figma exports, design-token
+ * JSON/YAML files, or any other imported design artifact. None exists —
+ * confirmed by `find`/`grep` across the whole repository (excluding
+ * .venv/node_modules/.git): no *figma*, *design-token*, or hex-bearing
+ * file anywhere outside this UX-012 doc family, and the one hex code
+ * found there (UX-012D, "#D2A95E") is an illustrative example inside a
+ * sentence explaining why semantic tokens are reviewed by meaning rather
+ * than by hex value ("asking whether #D2A95E is the right color") — not
+ * a value assignment, and not used as one here.
+ *
+ * Every value below is cited. A category with no repository-evidenced
+ * value has no entry here — see tokens.css's own per-category comments,
+ * and this commit's deliverable, "Tokens Still Undefined," for the full
+ * list of open categories (color primitives, radius scale, shadow/
+ * elevation, z-index, breakpoints, spacing scale beyond inter-section,
+ * container widths, grid constants).
+ */
+
+:root {
+  /* Motion durations — UX-012D §3: four named categories, each a stated
+   * ms range. A single value is fixed here (documented per-token) since a
+   * CSS custom property holds one value; each choice stays inside its
+   * governing range, never outside it. */
+  --global-duration-immediate: 0ms;    /* UX-012D §3: "immediate: 0ms" — exact */
+  --global-duration-brief: 125ms;      /* UX-012D §3: "brief: 100–150ms" — midpoint */
+  --global-duration-standard: 225ms;   /* UX-012D §3: "standard: 200–250ms" — midpoint */
+  --global-duration-deliberate: 375ms; /* UX-012D §3: "deliberate: 350–400ms" — midpoint */
+
+  /* Motion easing — UX-012D §3 names these three exact CSS keywords; no
+   * custom cubic-bezier curve is specified anywhere in the corpus. */
+  --global-easing-out: ease-out;
+  --global-easing-in: ease-in;
+  --global-easing-in-out: ease-in-out;
+
+  /* Typography primitives — UX-012A: "The font family is established (DM
+   * Sans and DM Mono, from UX-011 implementation)." Body min size and line
+   * height are each a stated range; the floor of each range is used. */
+  --global-font-family-prose: "DM Sans", system-ui, sans-serif;
+  --global-font-family-metadata: "DM Mono", ui-monospace, monospace;
+  --global-font-size-body-min: 15px;   /* UX-012A: "minimum of 15–16px at 1x display scale" — floor */
+  --global-line-height-body: 1.65;     /* UX-012A: "1.65–1.7 for long-form reading" — floor */
+
+  /* Focus ring width — UX-012A §15 / UX-012D §2: "minimum 2px". */
+  --global-width-focus-ring: 2px;
+
+  /* Touch target — UX-012D §2 / UX-012A §15: "44×44px". */
+  --global-size-touch-target-min: 44px;
+
+  /* Opacity — UX-012D §2/§3: Disabled and Editing are each a stated range;
+   * the floor of each is used (a lower opacity multiplier is the more
+   * conservative/visible choice for both a disabled-state dimming and an
+   * editing overlay). */
+  --global-opacity-disabled: 0.40;         /* UX-012D §2: "0.40–0.45" — floor */
+  --global-opacity-editing-overlay: 0.05;  /* UX-012D §3 Editing group: "0.05–0.08" — floor */
+
+  /* Cursor — UX-012D §3 Disabled group, exact keyword. */
+  --global-cursor-disabled: not-allowed;
+
+  /* Border widths — UX-012D §3 Border group states these widths as part of
+   * each token's own description: "color.border.hairline (1px, the
+   * subtlest structural separator...)", "color.border.standard (1px at
+   * higher opacity...)". Surfaced here in Sprint 1, Commit 5 while
+   * building Divider/Surface, which are the first consumers that need an
+   * actual border-width value — not a new value, transcribing what §3
+   * already states. */
+  --global-width-border-hairline: 1px;
+  --global-width-border-standard: 1px;
+
+  /* Accessibility contrast ratios (unitless WCAG ratios, not colors) —
+   * UX-012D §2, fully literal. */
+  --global-contrast-body-min: 4.5;        /* WCAG AA normal text, 4.5:1 */
+  --global-contrast-body-large-min: 3;    /* WCAG AA large text, 3:1 */
+  --global-contrast-metadata-min: 4.5;    /* "metadata must meet AA even at its small scale" */
+  --global-contrast-focus-ring-min: 3;    /* "focus ring minimum contrast ratio (3:1...)" */
+}

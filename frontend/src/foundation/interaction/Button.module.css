@@ -1,0 +1,22 @@
+.button {
+  composes: focusRing from "../accessibility/focus-ring.module.css";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--accessibility-touch-target-min);
+  min-width: var(--accessibility-touch-target-min);
+  font-family: var(--type-family-prose);
+  font-size: var(--type-body-min-size);
+  line-height: var(--type-body-line-height);
+  background: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+/* UX-012B: Primary Action Disabled state — "rendered at 40–45% opacity,
+   not-allowed cursor" — global-opacity-disabled (0.40) / global-cursor-disabled
+   are the exact tokens for these two figures. */
+.button:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: var(--cursor-disabled);
+}

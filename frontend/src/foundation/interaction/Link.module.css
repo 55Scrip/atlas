@@ -1,0 +1,7 @@
+.link {
+  composes: focusRing from "../accessibility/focus-ring.module.css";
+  font-family: var(--type-family-prose);
+  font-size: var(--type-body-min-size);
+  line-height: var(--type-body-line-height);
+  color: var(--color-text-tertiary);
+}

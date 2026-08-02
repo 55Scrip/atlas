@@ -1,0 +1,18 @@
+/*
+ * Standard visually-hidden-but-screen-reader-accessible technique (the
+ * WAI-ARIA Authoring Practices pattern, identical to e.g. Bootstrap's
+ * .sr-only). These 1px/clip/margin values are the fixed mechanics of this
+ * well-known technique, not Atlas visual-language tokens — they carry no
+ * design meaning and are not a spacing or sizing token substitute.
+ */
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
