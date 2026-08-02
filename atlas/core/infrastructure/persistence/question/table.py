@@ -7,6 +7,8 @@ from __future__ import annotations
 from sqlalchemy import Column, MetaData, String, Table
 from sqlalchemy.engine import Engine
 
+from atlas.core.infrastructure.persistence.shared.schema_sync import sync_table_schema
+
 metadata = MetaData()
 
 questions_table = Table(
@@ -21,4 +23,4 @@ questions_table = Table(
 
 
 def create_question_table(engine: Engine) -> None:
-    metadata.create_all(engine, tables=[questions_table])
+    sync_table_schema(engine, questions_table)

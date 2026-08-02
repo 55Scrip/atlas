@@ -10,6 +10,8 @@ from __future__ import annotations
 from sqlalchemy import Column, MetaData, String, Table
 from sqlalchemy.engine import Engine
 
+from atlas.core.infrastructure.persistence.shared.schema_sync import sync_table_schema
+
 metadata = MetaData()
 
 evidence_table = Table(
@@ -26,4 +28,4 @@ evidence_table = Table(
 
 
 def create_evidence_table(engine: Engine) -> None:
-    metadata.create_all(engine, tables=[evidence_table])
+    sync_table_schema(engine, evidence_table)

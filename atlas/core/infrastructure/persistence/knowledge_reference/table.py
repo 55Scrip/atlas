@@ -15,6 +15,7 @@ from sqlalchemy import CheckConstraint, Column, MetaData, String, Table
 from sqlalchemy.engine import Engine
 
 from atlas.core.domain.shared.domain_object_type import DomainObjectType
+from atlas.core.infrastructure.persistence.shared.schema_sync import sync_table_schema
 
 metadata = MetaData()
 
@@ -38,4 +39,4 @@ knowledge_references_table = Table(
 
 
 def create_knowledge_reference_table(engine: Engine) -> None:
-    metadata.create_all(engine, tables=[knowledge_references_table])
+    sync_table_schema(engine, knowledge_references_table)

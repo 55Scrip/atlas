@@ -8,6 +8,8 @@ from __future__ import annotations
 from sqlalchemy import Column, MetaData, String, Table
 from sqlalchemy.engine import Engine
 
+from atlas.core.infrastructure.persistence.shared.schema_sync import sync_table_schema
+
 metadata = MetaData()
 
 evaluations_table = Table(
@@ -23,4 +25,4 @@ evaluations_table = Table(
 
 
 def create_evaluation_table(engine: Engine) -> None:
-    metadata.create_all(engine, tables=[evaluations_table])
+    sync_table_schema(engine, evaluations_table)

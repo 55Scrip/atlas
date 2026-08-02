@@ -16,6 +16,8 @@ from __future__ import annotations
 from sqlalchemy import Column, MetaData, String, Table
 from sqlalchemy.engine import Engine
 
+from atlas.core.infrastructure.persistence.shared.schema_sync import sync_table_schema
+
 metadata = MetaData()
 
 question_observation_links_table = Table(
@@ -56,12 +58,10 @@ conclusion_decision_links_table = Table(
 
 
 def create_reasoning_link_tables(engine: Engine) -> None:
-    metadata.create_all(
-        engine,
-        tables=[
-            question_observation_links_table,
-            interpretation_hypothesis_links_table,
-            hypothesis_evidence_links_table,
-            conclusion_decision_links_table,
-        ],
-    )
+    for table in (
+        question_observation_links_table,
+        interpretation_hypothesis_links_table,
+        hypothesis_evidence_links_table,
+        conclusion_decision_links_table,
+    ):
+        sync_table_schema(engine, table)

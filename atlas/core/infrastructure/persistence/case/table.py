@@ -8,6 +8,8 @@ from __future__ import annotations
 from sqlalchemy import Column, MetaData, String, Table
 from sqlalchemy.engine import Engine
 
+from atlas.core.infrastructure.persistence.shared.schema_sync import sync_table_schema
+
 metadata = MetaData()
 
 cases_table = Table(
@@ -19,4 +21,6 @@ cases_table = Table(
 
 
 def create_case_table(engine: Engine) -> None:
-    metadata.create_all(engine, tables=[cases_table])
+    # Concurrency-safe: sync_table_schema serializes per table name
+    # (Sprint 1, Commit 11) — no lock of this module's own is needed.
+    sync_table_schema(engine, cases_table)

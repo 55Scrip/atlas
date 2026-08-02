@@ -9,6 +9,8 @@ from __future__ import annotations
 from sqlalchemy import Column, MetaData, String, Table
 from sqlalchemy.engine import Engine
 
+from atlas.core.infrastructure.persistence.shared.schema_sync import sync_table_schema
+
 metadata = MetaData()
 
 decision_contexts_table = Table(
@@ -27,4 +29,4 @@ decision_contexts_table = Table(
 
 
 def create_decision_context_table(engine: Engine) -> None:
-    metadata.create_all(engine, tables=[decision_contexts_table])
+    sync_table_schema(engine, decision_contexts_table)

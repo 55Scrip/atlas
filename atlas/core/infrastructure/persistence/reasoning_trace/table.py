@@ -31,6 +31,7 @@ from sqlalchemy import CheckConstraint, Column, MetaData, String, Table, UniqueC
 from sqlalchemy.engine import Engine
 
 from atlas.core.domain.shared.domain_object_type import DomainObjectType
+from atlas.core.infrastructure.persistence.shared.schema_sync import sync_table_schema
 
 metadata = MetaData()
 
@@ -67,4 +68,5 @@ reasoning_trace_supports_table = Table(
 
 
 def create_reasoning_trace_tables(engine: Engine) -> None:
-    metadata.create_all(engine, tables=[reasoning_traces_table, reasoning_trace_supports_table])
+    for table in (reasoning_traces_table, reasoning_trace_supports_table):
+        sync_table_schema(engine, table)

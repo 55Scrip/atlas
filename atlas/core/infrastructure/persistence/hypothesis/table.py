@@ -8,6 +8,8 @@ from __future__ import annotations
 from sqlalchemy import Column, MetaData, String, Table
 from sqlalchemy.engine import Engine
 
+from atlas.core.infrastructure.persistence.shared.schema_sync import sync_table_schema
+
 metadata = MetaData()
 
 hypotheses_table = Table(
@@ -22,4 +24,4 @@ hypotheses_table = Table(
 
 
 def create_hypothesis_table(engine: Engine) -> None:
-    metadata.create_all(engine, tables=[hypotheses_table])
+    sync_table_schema(engine, hypotheses_table)

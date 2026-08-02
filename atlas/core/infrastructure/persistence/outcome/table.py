@@ -9,6 +9,8 @@ from __future__ import annotations
 from sqlalchemy import Column, MetaData, String, Table
 from sqlalchemy.engine import Engine
 
+from atlas.core.infrastructure.persistence.shared.schema_sync import sync_table_schema
+
 metadata = MetaData()
 
 outcomes_table = Table(
@@ -25,4 +27,4 @@ outcomes_table = Table(
 
 
 def create_outcome_table(engine: Engine) -> None:
-    metadata.create_all(engine, tables=[outcomes_table])
+    sync_table_schema(engine, outcomes_table)
