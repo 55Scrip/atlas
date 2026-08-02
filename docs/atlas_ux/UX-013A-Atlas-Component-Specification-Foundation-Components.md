@@ -187,9 +187,9 @@ Scroll position is stored per `workspaceId` and restored when the user returns t
 |-----------------|-------|
 | Body background | `surface.workspace.background` |
 | Maximum width | `layout.workspace.maxWidth` |
-| Side padding (desktop) | `spacing.workspace.horizontal.desktop` |
-| Side padding (tablet) | `spacing.workspace.horizontal.tablet` |
-| Side padding (mobile) | `spacing.workspace.horizontal.mobile` |
+| Side padding (desktop) | `space.workspace.horizontal.desktop` |
+| Side padding (tablet) | `space.workspace.horizontal.tablet` |
+| Side padding (mobile) | `space.workspace.horizontal.mobile` |
 | Header z-index | `elevation.header.zIndex` |
 | Footer z-index | `elevation.footer.zIndex` |
 
@@ -332,8 +332,8 @@ WorkspaceHeader
 
 - Header height (desktop): determined by content, minimum 56px, typical 64–72px.
 - Internal horizontal padding: matches Workspace Frame side padding.
-- Vertical padding: `spacing.header.vertical` (top and bottom).
-- Identity stack: `spacing.level2` between Workspace Type Label and Subject Title.
+- Vertical padding: `space.header.vertical` (top and bottom).
+- Identity stack: `space.level2` between Workspace Type Label and Subject Title.
 
 ## Accessibility
 
@@ -572,7 +572,7 @@ Footer navigation links (e.g., "View Portfolio Context", "Open Comparison") are 
 
 - Footer height: determined by content, minimum 56px, typical 64px.
 - Internal horizontal padding: matches Workspace Frame side padding.
-- Vertical padding: `spacing.footer.vertical`.
+- Vertical padding: `space.footer.vertical`.
 - Between status and actions: space distributed to push actions to the right.
 
 ## Responsive Behavior
@@ -786,7 +786,7 @@ If the total Breadcrumb width exceeds its container, ancestors truncate with ell
 | Separator color | `text.muted` |
 | Current location color | `text.heading.secondary` |
 | Collapsed ellipsis color | `text.action.secondary` |
-| Font | `typography.breadcrumb` (Role 5) |
+| Font | `type.breadcrumb` (Role 5) |
 
 ## Examples
 
@@ -847,11 +847,11 @@ The container's visual role: separate sections with space, not with walls.
 
 ## Spacing
 
-**Between Section Containers:** `spacing.level4` (Section-level spacing). This is the primary structural separator between reasoning topics.
+**Between Section Containers:** `space.level4` (Section-level spacing). This is the primary structural separator between reasoning topics.
 
-**Internal top padding:** `spacing.section.top` (distance from Section Container top to the Section Header).
+**Internal top padding:** `space.section.top` (distance from Section Container top to the Section Header).
 
-**Internal bottom padding:** `spacing.section.bottom` (distance from last content element to Section Container bottom).
+**Internal bottom padding:** `space.section.bottom` (distance from last content element to Section Container bottom).
 
 **Internal horizontal padding:** None at the Section Container level. Internal horizontal padding is governed by the Layout Container within the Section Body.
 
@@ -910,9 +910,9 @@ The container's visual role: separate sections with space, not with walls.
 | Container background | `surface.section.background` |
 | Container border | `border.section` |
 | Container border-radius | `radius.section` |
-| Internal top padding | `spacing.section.top` |
-| Internal bottom padding | `spacing.section.bottom` |
-| Between-section spacing | `spacing.level4` |
+| Internal top padding | `space.section.top` |
+| Internal bottom padding | `space.section.bottom` |
+| Between-section spacing | `space.level4` |
 | Updated indicator color | `status.updated.indicator` |
 | Draft indicator color | `status.draft.indicator` |
 
@@ -1016,8 +1016,8 @@ Title and expansion control: left-aligned. Section actions: right-aligned.
 
 - Section Header height: minimum 44px (for tap target compliance). Typical 48–56px.
 - Horizontal padding: inherited from Section Container's internal padding.
-- Vertical padding: `spacing.section.header.vertical` above and below.
-- Between Title and Summary: `spacing.level1`.
+- Vertical padding: `space.section.header.vertical` above and below.
+- Between Title and Summary: `space.level1`.
 
 ## Variants
 
@@ -1080,7 +1080,7 @@ A Divider communicates: what is above and what is below are related but distinct
 
 ## When Not Used
 
-- Between Section Containers. Section-to-Section separation is achieved with spacing (`spacing.level4`), not Dividers.
+- Between Section Containers. Section-to-Section separation is achieved with spacing (`space.level4`), not Dividers.
 - As decoration.
 - To create visual interest in an otherwise empty area.
 - Between every element — Dividers used too frequently lose meaning.
@@ -1100,7 +1100,7 @@ No text, no icons, no interactive elements.
 
 ## Spacing
 
-A Divider is accompanied by equal spacing on both sides. The spacing on each side is at minimum `spacing.level2` (Tight). The Divider itself has no margin of its own — the surrounding components provide spacing.
+A Divider is accompanied by equal spacing on both sides. The spacing on each side is at minimum `space.level2` (Tight). The Divider itself has no margin of its own — the surrounding components provide spacing.
 
 ## Thickness
 
@@ -1263,7 +1263,7 @@ Children are arranged horizontally. Wraps to the next line at the breakpoint spe
 Children are stacked vertically with consistent spacing between them. The Stack is the most commonly used Layout Container within Section Bodies.
 
 **Properties:**
-- `spacing`: `spacing.level1` through `spacing.level6` (between children)
+- `spacing`: `space.level1` through `space.level6` (between children)
 - `align`: `'start' | 'center' | 'end' | 'stretch'`
 
 ## Split Layout
@@ -1301,9 +1301,9 @@ A multi-column grid for dashboard-style content (Dashboard Section bodies only).
 ## Spacing
 
 Layout Container spacing is governed by the spacing tier appropriate to the context:
-- Within a reasoning Section: `spacing.level3` between components.
-- Within a dense Section (Dashboard): `spacing.level2` between components.
-- Within a comparison layout: `spacing.level3` between columns.
+- Within a reasoning Section: `space.level3` between components.
+- Within a dense Section (Dashboard): `space.level2` between components.
+- Within a comparison layout: `space.level3` between columns.
 
 ## Alignment
 
@@ -1922,32 +1922,32 @@ A consolidated mapping of all Foundation Components to the Atlas semantic token 
 
 | Token | Applies To |
 |-------|-----------|
-| `typography.role1.size`, `typography.role1.weight`, `typography.role1.lineHeight` | Workspace Primary Conclusion (not a Foundation Component — reference for context) |
-| `typography.role2.size`, `typography.role2.weight`, `typography.role2.lineHeight` | Section Header titles, Workspace Subject Title |
-| `typography.role4.size`, `typography.role4.weight`, `typography.role4.lineHeight`, `typography.role4.letterSpacing` | Workspace Type Label, Section action labels, Status Badge labels |
-| `typography.role5.size`, `typography.role5.weight`, `typography.role5.lineHeight` | Breadcrumb labels, Contextual text, Summary text, Timestamps, Empty State supporting text |
-| `typography.breadcrumb` | Breadcrumb-specific composite typography token |
-| `typography.sans` | All non-monospace Foundation Components |
-| `typography.mono` | System text, identifiers (not common in Foundation Components) |
+| `type.role1.size`, `type.role1.weight`, `type.role1.lineHeight` | Workspace Primary Conclusion (not a Foundation Component — reference for context) |
+| `type.role2.size`, `type.role2.weight`, `type.role2.lineHeight` | Section Header titles, Workspace Subject Title |
+| `type.role4.size`, `type.role4.weight`, `type.role4.lineHeight`, `type.role4.letterSpacing` | Workspace Type Label, Section action labels, Status Badge labels |
+| `type.role5.size`, `type.role5.weight`, `type.role5.lineHeight` | Breadcrumb labels, Contextual text, Summary text, Timestamps, Empty State supporting text |
+| `type.breadcrumb` | Breadcrumb-specific composite typography token |
+| `type.sans` | All non-monospace Foundation Components |
+| `type.mono` | System text, identifiers (not common in Foundation Components) |
 
 ## Spacing Tokens
 
 | Token | Applies To |
 |-------|-----------|
-| `spacing.level1` | Between closely related inline elements (icon + label in badges) |
-| `spacing.level2` | Between label and subtitle in Section Header; compact Divider surroundings |
-| `spacing.level3` | Between components within a Section Body |
-| `spacing.level4` | Between Section Containers |
-| `spacing.level5` | Between major Workspace regions |
-| `spacing.level6` | Workspace outer padding (supplemented by breakpoint-specific tokens) |
-| `spacing.workspace.horizontal.desktop` | Workspace Frame side padding, desktop |
-| `spacing.workspace.horizontal.tablet` | Workspace Frame side padding, tablet |
-| `spacing.workspace.horizontal.mobile` | Workspace Frame side padding, mobile |
-| `spacing.section.top` | Section Container internal top padding |
-| `spacing.section.bottom` | Section Container internal bottom padding |
-| `spacing.section.header.vertical` | Section Header internal top and bottom padding |
-| `spacing.header.vertical` | Workspace Header internal padding |
-| `spacing.footer.vertical` | Workspace Footer internal padding |
+| `space.level1` | Between closely related inline elements (icon + label in badges) |
+| `space.level2` | Between label and subtitle in Section Header; compact Divider surroundings |
+| `space.level3` | Between components within a Section Body |
+| `space.level4` | Between Section Containers |
+| `space.level5` | Between major Workspace regions |
+| `space.level6` | Workspace outer padding (supplemented by breakpoint-specific tokens) |
+| `space.workspace.horizontal.desktop` | Workspace Frame side padding, desktop |
+| `space.workspace.horizontal.tablet` | Workspace Frame side padding, tablet |
+| `space.workspace.horizontal.mobile` | Workspace Frame side padding, mobile |
+| `space.section.top` | Section Container internal top padding |
+| `space.section.bottom` | Section Container internal bottom padding |
+| `space.section.header.vertical` | Section Header internal top and bottom padding |
+| `space.header.vertical` | Workspace Header internal padding |
+| `space.footer.vertical` | Workspace Footer internal padding |
 
 ## Layout Tokens
 

@@ -44,6 +44,8 @@ Third, the previously-disclosed gaps at local positions 3 (from the Phase 3D-2a 
 
 **Correction Notice (Phase 5, governed by the Atlas UX Source Correction Plan's own Section 22 Q2-resolved corpus-wide cross-reference sweep — 2026-07-28):** A corpus-wide mechanical inventory, followed by human semantic disposition per Section 22's Q2 resolution, found five untagged passages in this document presenting `UX-013C` or `UX-013D` as an existing, currently consulted specification, rather than as the absent, unconfirmed source ADR-002 C-05 and ADR-001 require. Per ADR-002 C-05, neither `UX-013C` nor `UX-013D` exists anywhere in the committed repository. Each passage is corrected to remove the settled-fact framing and, where an accurate current source exists, to point to it: the Conclusion component's own cross-reference to the Proposed Decision component (Purpose section) now cites the interim governance note's DecisionProposal classification as its current, Unconfirmed source, rather than UX-013C; the Conclusion component's own Editing cross-reference (Interaction section) now cites `UX-012-Atlas-Design-System-Workspace-Consistency-Specification.md` §29 ("Editing Components"), where Long-Form Editor is, and always was, actually specified — UX-013D was never its governing source; the Challenges component's own "When Not Used" cross-reference to the Monitoring Condition component, and the Assumption component's own "Add Monitoring" interaction cross-reference, now cite the interim governance note as the Monitoring Condition component's current source (its broad existence is Independently Confirmed per `UX-012` and this document's own ID reference; its detailed specification remains Unconfirmed); and the Metadata component's own Final Decision Card provenance cross-reference now cites the interim governance note's DecisionCard classification (Unconfirmed) in place of UX-013C. Prior text (verbatim, each passage): "The Proposed Decision is specified in UX-013C."; "Editing: Long-Form Editor behavior applies (see UX-013D)"; "As a location for monitoring conditions (those are the Monitoring Condition component, specified in UX-013C)"; "Opens a Monitoring Condition creation flow (specified in UX-013C)"; "Within the Final Decision Card (see UX-013C) as the provenance record." This correction changes no component's behavior, states, anatomy, or relationships — only these five citations. This correction does not resolve, reopen, or take any position on Q1, Finding F-2, ADR-002 C-05, or any canonical Decision, Monitoring, or AI-Collaboration authorship question; the interim governance note's own provisional, non-canonical status is unchanged by these new citations to it, and none of them promotes it toward canonical status. Phase 3, Phase 3D-1, Phase 3D-2a, and Phase 3D-2b-1/Phase 3D-2b-2 (all above) remain complete and unchanged by this correction. This document's own six `(UX-013C)`-tagged §14 sequence-list entries and its own correction-notice narration (Phase 3D-2b-2, above, which itself references the `(UX-013C)` tag pattern twice in prose) are unaffected — those are already-authorized forward references and historical narration, not settled-fact citations, and are outside this correction's scope. The "Question 3: Assumption Monitoring Condition Creation Flow" passage (Remaining Questions, below) was reviewed and confirmed to already, correctly, use future-tense, pending-question framing ("will be fully specified in UX-013C," "will be resolved in UX-013C") — it is not a settled-fact claim and is unaffected by this correction. The "Requirements for UX-013C" section (Overall Implementation Readiness, below) was likewise reviewed and confirmed to already use planned/future framing throughout ("Do not produce UX-013C yet") and is unaffected.
 
+**Clarification Notice (Atlas UX Architecture UX-013B Conclusion Architecture Clarification task — 2026-08-02):** This is a later, additive clarification; it does not revise, replace, or reopen any correction notice above. Per the accepted Conclusion Component Decomposition decision (Atlas UX Architecture, 2026-08-02): `UX-012-Atlas-Design-System-Workspace-Consistency-Specification.md` §22's own four named Conclusion entries (Primary Conclusion, Current Conclusion, Portfolio Conclusion, Review Conclusion) and this document's own single Conclusion component with a `variant` property (§1, below) are compatible statements at different specification tiers, not competing architectures. `UX-012` governs the semantic distinctions — which Product-grounded variants exist and why. This document governs their component-level realization — anatomy, properties, states, interaction, accessibility, and tokens. The Historical variant, specifically, is this document's own component-level realization of historical behavior `UX-012` §22 already describes (as a stated behavior of Primary Conclusion, not a separately named component); it is not, and does not introduce, a new Product Concept. Two further, narrowly bounded clarifications are added below, at the Review and Portfolio variant entries in §1, per the same accepted decision. This notice changes no component anatomy, property, state, token, interaction, or accessibility behavior.
+
 ---
 
 # Reasoning Component Philosophy
@@ -157,10 +159,12 @@ Behavior: Editable by the user. Atlas may suggest updates; user accepts or modif
 **Portfolio Conclusion**
 The integration-level conclusion for the Portfolio Workspace — synthesizes multiple investment positions into a portfolio-level view.
 Visual: Same as Primary Conclusion. Contains a secondary sub-conclusion area for individual position summaries.
+*Product-layer boundary (per `UX-000-Atlas-UX-Doctrine.md` UXD-R-071 item 5): this variant remains a UX presentation artifact, not an independent Product Concept. Its complete Product-layer correspondence remains open pending future Investment Case / Portfolio Product Architecture treatment. This document SHALL NOT infer or create Product meaning, ownership, identity, lifecycle, or authority for it before then.*
 
 **Review Conclusion**
 The conclusion produced by a formal Decision Review — what the review determined about the continued validity of a prior Decision.
 Visual: Same as Primary Conclusion, with a "Review Conclusion" label and the review date.
+*Product-layer precondition (per `UX-000-Atlas-UX-Doctrine.md` UXD-R-071 item 4 and UXD-R-086, and APS-004 LR-R-030, LR-R-147, LRINV-018, and LR-F-012): this variant MAY be populated only as the presentation of a Learning Result, per LR-R-030's own "generalized conclusion" definition, whose underlying Learning Result arose from a genuine, Investor-initiated Learning Act, per LR-R-147. The existence of a Review workflow, a Review screen, Atlas analysis, an automated summary, or Pattern Recognition output is not, by itself, sufficient to populate this variant, per LRINV-018 ("Atlas SHALL NOT exercise Learning autonomously on the Investor's behalf") and LR-F-012. Atlas MAY assist, surface material toward, and present a Review Conclusion; Atlas SHALL NOT autonomously create the underlying Learning Result. This variant remains read-only after creation, per its own Interaction section, below.*
 
 **Historical Conclusion**
 The preserved conclusion from a prior reasoning session. Displayed in Historical mode.
@@ -248,10 +252,10 @@ The Historical Conclusion is presented alongside the current reasoning for compa
 
 ## Spacing Rules
 
-- Above the Conclusion (from Workspace Header or preceding component): `spacing.level5`
-- Below the Conclusion (before first Reasoning Block or Section): Pause Point 1 spacing (`spacing.pause1`)
-- Between Statement and Sub-statement: `spacing.level1`
-- Between Sub-statement and metadata: `spacing.level2`
+- Above the Conclusion (from Workspace Header or preceding component): `space.level5`
+- Below the Conclusion (before first Reasoning Block or Section): Pause Point 1 spacing (`space.pause1`)
+- Between Statement and Sub-statement: `space.level1`
+- Between Sub-statement and metadata: `space.level2`
 
 ## Token Mapping
 
@@ -456,11 +460,11 @@ FactorItem
 
 ## Spacing Rules
 
-- Between FactorItems: `spacing.level3`
-- Between GroupHeader and first FactorItem: `spacing.level2`
-- Between groups: `spacing.level4`
-- Factor Name to Explanation: `spacing.level1`
-- Explanation to Metadata: `spacing.level2`
+- Between FactorItems: `space.level3`
+- Between GroupHeader and first FactorItem: `space.level2`
+- Between groups: `space.level4`
+- Factor Name to Explanation: `space.level1`
+- Explanation to Metadata: `space.level2`
 
 ## Token Mapping
 
@@ -1934,21 +1938,21 @@ A consolidated mapping of all Reasoning Components to the Atlas semantic token s
 
 | Token | Applies To |
 |-------|-----------|
-| `typography.role1.*` | Conclusion Statement, Opportunity Statement (primary), Recommendation Statement |
-| `typography.role2.*` | Comparison Column Headers, Scenario Names, Supporting Factors / Challenges Group Headers |
-| `typography.role3.*` | Factor/Challenge/Assumption explanations; Opportunity/Scenario/Candidate-Content narrative text |
-| `typography.role4.*` | Section variant labels, Group Headers, Opportunity Panel labels |
-| `typography.role5.*` | Supporting Metadata, Evidence dates/sources, Relationship links, Summary text |
+| `type.role1.*` | Conclusion Statement, Opportunity Statement (primary), Recommendation Statement |
+| `type.role2.*` | Comparison Column Headers, Scenario Names, Supporting Factors / Challenges Group Headers |
+| `type.role3.*` | Factor/Challenge/Assumption explanations; Opportunity/Scenario/Candidate-Content narrative text |
+| `type.role4.*` | Section variant labels, Group Headers, Opportunity Panel labels |
+| `type.role5.*` | Supporting Metadata, Evidence dates/sources, Relationship links, Summary text |
 
 ## Spacing Tokens
 
 | Token | Applies To |
 |-------|-----------|
-| `spacing.pause1` | After Conclusion, before first Reasoning Section |
-| `spacing.level1` | Between component name and explanation (Factor Name → Explanation) |
-| `spacing.level2` | Between explanation and metadata |
-| `spacing.level3` | Between items within a Reasoning list |
-| `spacing.level4` | Between Sections (already defined in Foundation) |
+| `space.pause1` | After Conclusion, before first Reasoning Section |
+| `space.level1` | Between component name and explanation (Factor Name → Explanation) |
+| `space.level2` | Between explanation and metadata |
+| `space.level3` | Between items within a Reasoning list |
+| `space.level4` | Between Sections (already defined in Foundation) |
 
 ## Semantic Color Tokens
 
