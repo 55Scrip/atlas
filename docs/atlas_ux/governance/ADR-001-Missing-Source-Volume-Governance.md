@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposed
+Accepted
+
+**Ratification Note (2026-08-01, per the Atlas UX Architecture Governance Phase 0 Closure task):** This ADR's status is corrected from Proposed to Accepted. This correction resolves a pre-existing mismatch between this ADR's own formal status and its actual downstream reliance: `ADR-002-Critical-UX-Architecture-Resolutions.md`, `ADR-003-Recommendation-Identity-and-Terminology-Resolution.md`, and `ADR-004-Scenario-Analysis-Comparison-and-Sequence-Authority-Resolution.md` — and, subsequently, `UX-000-Atlas-UX-Doctrine.md` itself — already relied on this ADR's own governance rules as binding before this ratification occurred. The substantive decision recorded below is unchanged by this ratification; no Decision Driver, Considered Option, Decision, Governance Rule, Consequence, Future Work item, Applicability statement, or Open Question is altered. This ratification does not retroactively fabricate authority for any period before this date, and does not erase or rewrite the fact that this ADR carried Proposed status from its own original adoption (per the Working Tree Verification below) until this correction — that historical period remains part of the record, exactly as this ADR's own Governance Rules already require of every other document's history. This ADR remains bounded to documentary-source and missing-source governance, per its own Applicability section, unchanged; ratification does not broaden its scope. This ADR does not, by virtue of this ratification, obtain any authority to amend `UX-000-Atlas-UX-Doctrine.md` through the ordinary ADR mechanism — any future amendment to that Doctrine remains governed exclusively by its own `UXD-R-007` and `UXD-R-110`, unaffected by this or any other ADR's own status.
 
 ## Context
 
@@ -115,5 +117,15 @@ This ADR does not supersede any previous ADR. No prior ADR of this kind exists i
 **Files modified:** none. No UX source document under `docs/atlas_ux/*.md` was changed. No review document under `docs/atlas_ux/reviews/` was changed.
 **Staged files:** none.
 **Untracked paths:** `docs/atlas_ux/governance/` (new) and `docs/atlas_ux/reviews/` (pre-existing, unchanged).
+
+No commit was made.
+
+## Working Tree Verification (Ratification)
+
+**Branch:** main
+**HEAD at time of this ratification:** `91d71fef21dba401d6e9f11195c5a030cb485a23` — unchanged throughout this task.
+**Files modified:** `docs/atlas_ux/governance/ADR-001-Missing-Source-Volume-Governance.md` (this document — Status header and this Ratification Note added; all other content unchanged).
+**Files created:** none.
+**Staged files:** none.
 
 No commit was made.
