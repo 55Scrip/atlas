@@ -115,6 +115,14 @@ class JudgmentService:
             raise JudgmentNotFoundError(f"No Judgment found with id {judgment_id}")
         return judgment
 
+    def list_all(self) -> list[Judgment]:
+        return self._judgments.list_all()
+
+    def delete(self, judgment_id: JudgmentId) -> None:
+        if self._judgments.get(judgment_id) is None:
+            raise JudgmentNotFoundError(f"No Judgment found with id {judgment_id}")
+        self._judgments.delete(judgment_id)
+
     def _verify_subject(self, *, case_id: CaseId, subject: TypedDomainObjectReference) -> None:
         if subject.target_type not in _CURRENTLY_CAPTURE_ENABLED_SUBJECT_TARGET_TYPES:
             raise TargetTypeUnavailableError(

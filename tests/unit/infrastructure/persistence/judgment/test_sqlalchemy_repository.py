@@ -1,6 +1,7 @@
 """Aggregate persistence tests for Judgment: create, persist, read,
 equals original.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -75,9 +76,7 @@ class TestRead:
     def test_get_returns_none_for_unknown_id(self, repository):
         assert repository.get(JudgmentId()) is None
 
-    def test_duplicate_subject_references_across_separate_records_are_permitted(
-        self, repository
-    ):
+    def test_duplicate_subject_references_across_separate_records_are_permitted(self, repository):
         subject = TypedDomainObjectReference(
             target_type=DomainObjectType.JUDGMENT, target_id=uuid.uuid4()
         )
@@ -111,10 +110,50 @@ class TestEqualsOriginal:
             assert reloaded.subject.target_type is member
 
 
-class TestInsertOnly:
-    def test_repository_exposes_no_update_or_delete_method(self, repository):
+class TestReadAll:
+    def test_list_all_is_empty_initially(self, repository):
+        assert repository.list_all() == []
+
+    def test_list_all_returns_every_recorded_judgment(self, repository):
+        first = _new_judgment()
+        second = _new_judgment()
+        repository.add(first)
+        repository.add(second)
+        assert {judgment.id for judgment in repository.list_all()} == {first.id, second.id}
+
+
+class TestDelete:
+    def test_delete_removes_the_record(self, repository):
+        judgment = _new_judgment()
+        repository.add(judgment)
+        repository.delete(judgment.id)
+        assert repository.get(judgment.id) is None
+
+    def test_delete_removes_only_the_targeted_record(self, repository):
+        first = _new_judgment()
+        second = _new_judgment()
+        repository.add(first)
+        repository.add(second)
+        repository.delete(first.id)
+        assert repository.get(first.id) is None
+        assert repository.get(second.id) is not None
+
+    def test_delete_is_idempotent_for_an_unknown_id(self, repository):
+        repository.delete(JudgmentId())
+
+    def test_delete_then_reload_reflects_the_deletion_in_list_all(self, repository):
+        judgment = _new_judgment()
+        repository.add(judgment)
+        repository.delete(judgment.id)
+        assert judgment.id not in {j.id for j in repository.list_all()}
+
+
+class TestInsertAndDeleteOnly:
+    def test_repository_exposes_no_update_method(self, repository):
         assert not hasattr(repository, "update")
-        assert not hasattr(repository, "delete")
+
+    def test_repository_exposes_a_delete_method(self, repository):
+        assert hasattr(repository, "delete")
 
 
 class TestSchemaAndConstraints:

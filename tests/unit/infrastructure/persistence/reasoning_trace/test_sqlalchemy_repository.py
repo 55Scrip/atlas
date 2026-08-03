@@ -51,7 +51,11 @@ def _new_trace(**overrides) -> ReasoningTrace:
     defaults = dict(
         case_id=CaseId(),
         supports=frozenset(
-            {TypedDomainObjectReference(target_type=DomainObjectType.OBSERVATION, target_id=uuid.uuid4())}
+            {
+                TypedDomainObjectReference(
+                    target_type=DomainObjectType.OBSERVATION, target_id=uuid.uuid4()
+                )
+            }
         ),
     )
     defaults.update(overrides)
@@ -150,10 +154,68 @@ class TestEqualsOriginal:
         assert reloaded.recorded_at == original.recorded_at
 
 
-class TestInsertOnly:
-    def test_repository_exposes_no_update_or_delete_method(self, repository):
+class TestReadAll:
+    def test_list_all_is_empty_initially(self, repository):
+        assert repository.list_all() == []
+
+    def test_list_all_returns_every_recorded_trace(self, repository):
+        first = _new_trace()
+        second = _new_trace()
+        repository.add(first)
+        repository.add(second)
+        assert {trace.id for trace in repository.list_all()} == {first.id, second.id}
+
+
+class TestDelete:
+    def test_delete_removes_the_parent_row(self, repository):
+        trace = _new_trace()
+        repository.add(trace)
+        repository.delete(trace.id)
+        assert repository.get(trace.id) is None
+
+    def test_delete_removes_the_support_rows(self, repository, engine):
+        from sqlalchemy import select
+
+        trace = _new_trace()
+        repository.add(trace)
+        repository.delete(trace.id)
+        with engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    select(reasoning_trace_supports_table).where(
+                        reasoning_trace_supports_table.c.reasoning_trace_id == str(trace.id)
+                    )
+                )
+                .mappings()
+                .all()
+            )
+        assert rows == []
+
+    def test_delete_removes_only_the_targeted_trace(self, repository):
+        first = _new_trace()
+        second = _new_trace()
+        repository.add(first)
+        repository.add(second)
+        repository.delete(first.id)
+        assert repository.get(first.id) is None
+        assert repository.get(second.id) is not None
+
+    def test_delete_is_idempotent_for_an_unknown_id(self, repository):
+        repository.delete(ReasoningTraceId())
+
+    def test_delete_then_reload_reflects_the_deletion_in_list_all(self, repository):
+        trace = _new_trace()
+        repository.add(trace)
+        repository.delete(trace.id)
+        assert trace.id not in {t.id for t in repository.list_all()}
+
+
+class TestInsertAndDeleteOnly:
+    def test_repository_exposes_no_update_method(self, repository):
         assert not hasattr(repository, "update")
-        assert not hasattr(repository, "delete")
+
+    def test_repository_exposes_a_delete_method(self, repository):
+        assert hasattr(repository, "delete")
 
 
 class TestAtomicParentAndSupportInsertion:
@@ -243,9 +305,7 @@ class TestAtomicParentAndSupportInsertion:
 
 
 class TestCorruptPersistedState:
-    def test_a_parent_row_with_zero_support_rows_raises_on_reconstruction(
-        self, repository, engine
-    ):
+    def test_a_parent_row_with_zero_support_rows_raises_on_reconstruction(self, repository, engine):
         # This state can only arise from direct database manipulation
         # outside this repository's own add(), which is atomic and
         # always inserts at least one support row.

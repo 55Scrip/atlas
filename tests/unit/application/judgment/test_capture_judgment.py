@@ -543,6 +543,35 @@ class TestRetrieveById:
             service.get(JudgmentId())
 
 
+class TestListAll:
+    def test_returns_every_captured_judgment(self, service):
+        case_id = uuid.uuid4()
+        first = service.capture(
+            CaptureJudgmentRequest(case_id=case_id, characterization="first characterization")
+        )
+        second = service.capture(
+            CaptureJudgmentRequest(case_id=case_id, characterization="second characterization")
+        )
+        assert {judgment.id for judgment in service.list_all()} == {first.id, second.id}
+
+    def test_empty_initially(self, service):
+        assert service.list_all() == []
+
+
+class TestDelete:
+    def test_delete_removes_the_judgment(self, service):
+        captured = service.capture(
+            CaptureJudgmentRequest(case_id=uuid.uuid4(), characterization="settled")
+        )
+        service.delete(captured.id)
+        with pytest.raises(JudgmentNotFoundError):
+            service.get(captured.id)
+
+    def test_delete_unknown_judgment_is_rejected(self, service):
+        with pytest.raises(JudgmentNotFoundError):
+            service.delete(JudgmentId())
+
+
 class TestCharacterizationRemainsRequired:
     def test_rejects_blank_characterization_even_with_no_subject(self, service):
         from atlas.core.domain.judgment.exceptions import MissingCharacterizationError

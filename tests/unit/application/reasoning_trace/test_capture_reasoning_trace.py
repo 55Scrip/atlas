@@ -297,9 +297,7 @@ class TestPriorAcceptance:
                 CaptureReasoningTraceRequest(
                     case_id=uuid.uuid4(),
                     supports=[
-                        TypedDomainObjectReference(
-                            target_type=target_type, target_id=uuid.uuid4()
-                        )
+                        TypedDomainObjectReference(target_type=target_type, target_id=uuid.uuid4())
                     ],
                 )
             )
@@ -416,9 +414,7 @@ class TestMultipleSupportsAcrossDifferentTypes:
                 target_type=DomainObjectType.JUDGMENT, target_id=judgment_id
             ),
         ]
-        captured = service.capture(
-            CaptureReasoningTraceRequest(case_id=case_id, supports=supports)
-        )
+        captured = service.capture(CaptureReasoningTraceRequest(case_id=case_id, supports=supports))
         assert captured.supports == frozenset(supports)
 
 
@@ -566,7 +562,12 @@ class TestEmptySupportCollectionRejectedBeforeAnyLookup:
             service.capture(CaptureReasoningTraceRequest(case_id=uuid.uuid4(), supports=[]))
 
     def test_no_repository_lookup_occurs_for_an_empty_collection(
-        self, observation_repository, knowledge_reference_repository, judgment_repository, decision_repository, outcome_repository
+        self,
+        observation_repository,
+        knowledge_reference_repository,
+        judgment_repository,
+        decision_repository,
+        outcome_repository,
     ):
         class _CountingRepository:
             def __init__(self):
@@ -663,6 +664,64 @@ class TestRetrieveById:
     def test_unknown_reasoning_trace_is_rejected(self, service):
         with pytest.raises(ReasoningTraceNotFoundError):
             service.get(ReasoningTraceId())
+
+
+class TestListAll:
+    def test_returns_every_captured_trace(self, service, observation_repository, repository):
+        case_id = uuid.uuid4()
+        observation_id = _seed_target(
+            DomainObjectType.OBSERVATION,
+            observation_repository=observation_repository,
+            knowledge_reference_repository=None,
+            judgment_repository=None,
+            decision_repository=None,
+            outcome_repository=None,
+            reasoning_trace_repository=repository,
+            case_id=case_id,
+        )
+        support = [
+            TypedDomainObjectReference(
+                target_type=DomainObjectType.OBSERVATION, target_id=observation_id
+            )
+        ]
+        first = service.capture(CaptureReasoningTraceRequest(case_id=case_id, supports=support))
+        second = service.capture(CaptureReasoningTraceRequest(case_id=case_id, supports=support))
+        assert {trace.id for trace in service.list_all()} == {first.id, second.id}
+
+    def test_empty_initially(self, service):
+        assert service.list_all() == []
+
+
+class TestDelete:
+    def test_delete_removes_the_trace(self, service, observation_repository, repository):
+        case_id = uuid.uuid4()
+        observation_id = _seed_target(
+            DomainObjectType.OBSERVATION,
+            observation_repository=observation_repository,
+            knowledge_reference_repository=None,
+            judgment_repository=None,
+            decision_repository=None,
+            outcome_repository=None,
+            reasoning_trace_repository=repository,
+            case_id=case_id,
+        )
+        captured = service.capture(
+            CaptureReasoningTraceRequest(
+                case_id=case_id,
+                supports=[
+                    TypedDomainObjectReference(
+                        target_type=DomainObjectType.OBSERVATION, target_id=observation_id
+                    )
+                ],
+            )
+        )
+        service.delete(captured.id)
+        with pytest.raises(ReasoningTraceNotFoundError):
+            service.get(captured.id)
+
+    def test_delete_unknown_trace_is_rejected(self, service):
+        with pytest.raises(ReasoningTraceNotFoundError):
+            service.delete(ReasoningTraceId())
 
 
 class TestServiceDependsOnAllSixRepositories:

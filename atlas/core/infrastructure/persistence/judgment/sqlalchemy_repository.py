@@ -6,7 +6,11 @@ subject references across separate Judgments are permitted (OE-002
 §5.4 states no restriction against it), and content-identical
 Judgments remain distinct by identity (Judgment-Implementation-Design.md
 Section 13).
+
+Atlas Alpha, Judgment Sprint 1: `list_all()` and `delete()` are new (see
+`atlas/core/domain/judgment/repository.py`'s own docstring for why).
 """
+
 from __future__ import annotations
 
 import uuid
@@ -14,7 +18,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import insert, select
+from sqlalchemy import delete, insert, select
 from sqlalchemy.engine import Engine
 
 from atlas.core.domain.case.value_objects import CaseId
@@ -37,14 +41,25 @@ class SqlAlchemyJudgmentRepository:
         with self._engine.connect() as connection:
             row = (
                 connection.execute(
-                    select(judgments_table).where(
-                        judgments_table.c.judgment_id == str(judgment_id)
-                    )
+                    select(judgments_table).where(judgments_table.c.judgment_id == str(judgment_id))
                 )
                 .mappings()
                 .first()
             )
         return _to_judgment(row) if row is not None else None
+
+    def list_all(self) -> list[Judgment]:
+        with self._engine.connect() as connection:
+            rows = connection.execute(select(judgments_table)).mappings().all()
+        judgments = [_to_judgment(row) for row in rows]
+        judgments.sort(key=lambda judgment: (judgment.recorded_at, str(judgment.id)))
+        return judgments
+
+    def delete(self, judgment_id: JudgmentId) -> None:
+        with self._engine.begin() as connection:
+            connection.execute(
+                delete(judgments_table).where(judgments_table.c.judgment_id == str(judgment_id))
+            )
 
 
 def _to_row(judgment: Judgment) -> dict[str, Any]:

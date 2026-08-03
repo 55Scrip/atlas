@@ -113,6 +113,16 @@ class ReasoningTraceService:
             )
         return reasoning_trace
 
+    def list_all(self) -> list[ReasoningTrace]:
+        return self._reasoning_traces.list_all()
+
+    def delete(self, reasoning_trace_id: ReasoningTraceId) -> None:
+        if self._reasoning_traces.get(reasoning_trace_id) is None:
+            raise ReasoningTraceNotFoundError(
+                f"No Reasoning Trace found with id {reasoning_trace_id}"
+            )
+        self._reasoning_traces.delete(reasoning_trace_id)
+
     def _verify_support(self, *, case_id: CaseId, support: TypedDomainObjectReference) -> None:
         target_type = support.target_type
         target_id = support.target_id

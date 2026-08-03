@@ -461,3 +461,44 @@ class TestGetJudgment:
     def test_rejects_malformed_id(self, client):
         response = client.get("/judgments/not-a-uuid")
         assert response.status_code == 422
+
+
+class TestListJudgments:
+    def test_returns_every_recorded_judgment(self, client):
+        case_id = uuid.uuid4()
+        first = _create(client, case_id, "first characterization").json()
+        second = _create(client, case_id, "second characterization").json()
+
+        response = client.get("/judgments")
+
+        assert response.status_code == 200
+        ids = {judgment["judgmentId"] for judgment in response.json()}
+        assert ids == {first["judgmentId"], second["judgmentId"]}
+
+    def test_returns_empty_list_initially(self, client):
+        response = client.get("/judgments")
+        assert response.status_code == 200
+        assert response.json() == []
+
+
+class TestDeleteJudgment:
+    def test_delete_returns_204(self, client):
+        created = _create(client, uuid.uuid4(), "settled").json()
+
+        response = client.delete(f"/judgments/{created['judgmentId']}")
+
+        assert response.status_code == 204
+
+    def test_deleted_judgment_is_gone_on_reload(self, client):
+        created = _create(client, uuid.uuid4(), "settled").json()
+
+        client.delete(f"/judgments/{created['judgmentId']}")
+
+        assert client.get(f"/judgments/{created['judgmentId']}").status_code == 404
+        assert created["judgmentId"] not in {
+            judgment["judgmentId"] for judgment in client.get("/judgments").json()
+        }
+
+    def test_delete_unknown_id_returns_404(self, client):
+        response = client.delete(f"/judgments/{uuid.uuid4()}")
+        assert response.status_code == 404

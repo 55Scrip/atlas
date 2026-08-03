@@ -17,7 +17,14 @@ occurs, reconstruction raises `EmptySupportError` from the entity's own
 `frozenset` — a loud failure on tampered or corrupted data, consistent
 with this codebase's general stance of trusting its own transactional
 invariants.
+
+Atlas Alpha, Reasoning Trace Sprint 1: `list_all()` and `delete()` are
+new (see `atlas/core/domain/reasoning_trace/repository.py`'s own
+docstring for why). `delete()` removes the child support rows before
+the parent row, in the same transaction, so no orphaned support row can
+ever be observed by a reader even momentarily.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -25,7 +32,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import insert, select
+from sqlalchemy import delete, insert, select
 from sqlalchemy.engine import Engine
 
 from atlas.core.domain.case.value_objects import CaseId
@@ -77,6 +84,39 @@ class SqlAlchemyReasoningTraceRepository:
                 .all()
             )
         return _to_reasoning_trace(parent_row, support_rows)
+
+    def list_all(self) -> list[ReasoningTrace]:
+        with self._engine.connect() as connection:
+            parent_rows = connection.execute(select(reasoning_traces_table)).mappings().all()
+            support_rows = (
+                connection.execute(select(reasoning_trace_supports_table)).mappings().all()
+            )
+
+        supports_by_trace_id: dict[str, list[Mapping[str, Any]]] = {}
+        for row in support_rows:
+            supports_by_trace_id.setdefault(row["reasoning_trace_id"], []).append(row)
+
+        traces = [
+            _to_reasoning_trace(
+                parent_row, supports_by_trace_id.get(parent_row["reasoning_trace_id"], [])
+            )
+            for parent_row in parent_rows
+        ]
+        traces.sort(key=lambda trace: (trace.recorded_at, str(trace.id)))
+        return traces
+
+    def delete(self, reasoning_trace_id: ReasoningTraceId) -> None:
+        with self._engine.begin() as connection:
+            connection.execute(
+                delete(reasoning_trace_supports_table).where(
+                    reasoning_trace_supports_table.c.reasoning_trace_id == str(reasoning_trace_id)
+                )
+            )
+            connection.execute(
+                delete(reasoning_traces_table).where(
+                    reasoning_traces_table.c.reasoning_trace_id == str(reasoning_trace_id)
+                )
+            )
 
 
 def _to_parent_row(reasoning_trace: ReasoningTrace) -> dict[str, Any]:

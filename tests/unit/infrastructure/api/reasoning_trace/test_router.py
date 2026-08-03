@@ -150,8 +150,8 @@ def context(
     app = create_app()
     app.dependency_overrides[get_reasoning_trace_repository] = lambda: repository
     app.dependency_overrides[get_observation_repository] = lambda: observation_repository
-    app.dependency_overrides[get_knowledge_reference_repository] = (
-        lambda: knowledge_reference_repository
+    app.dependency_overrides[get_knowledge_reference_repository] = lambda: (
+        knowledge_reference_repository
     )
     app.dependency_overrides[get_judgment_repository] = lambda: judgment_repository
     app.dependency_overrides[get_decision_repository] = lambda: decision_repository
@@ -345,16 +345,12 @@ class TestCreateReasoningTrace:
             "/reasoning-traces",
             json={
                 "case_id": str(case_id),
-                "supports": [
-                    {"target_type": "Observation", "target_id": str(observation_id)}
-                ],
+                "supports": [{"target_type": "Observation", "target_id": str(observation_id)}],
             },
         )
         assert response.status_code == 201
 
-    def test_persists_the_trace_so_it_can_be_read_back(
-        self, context, observation_repository
-    ):
+    def test_persists_the_trace_so_it_can_be_read_back(self, context, observation_repository):
         client, repository = context
         case_id = uuid.uuid4()
         observation_id = _seed_target(
@@ -468,6 +464,82 @@ class TestGetReasoningTrace:
     def test_rejects_malformed_id(self, client):
         response = client.get("/reasoning-traces/not-a-uuid")
         assert response.status_code == 422
+
+
+class TestListReasoningTraces:
+    def test_returns_every_recorded_trace(self, context, observation_repository):
+        client, repository = context
+        case_id = uuid.uuid4()
+        observation_id = _seed_target(
+            "Observation",
+            observation_repository=observation_repository,
+            knowledge_reference_repository=None,
+            judgment_repository=None,
+            decision_repository=None,
+            outcome_repository=None,
+            reasoning_trace_repository=repository,
+            case_id=case_id,
+        )
+        first = _create(client, case_id, [("Observation", observation_id)]).json()
+        second = _create(client, case_id, [("Observation", observation_id)]).json()
+
+        response = client.get("/reasoning-traces")
+
+        assert response.status_code == 200
+        ids = {trace["reasoningTraceId"] for trace in response.json()}
+        assert ids == {first["reasoningTraceId"], second["reasoningTraceId"]}
+
+    def test_returns_empty_list_initially(self, client):
+        response = client.get("/reasoning-traces")
+        assert response.status_code == 200
+        assert response.json() == []
+
+
+class TestDeleteReasoningTrace:
+    def test_delete_returns_204(self, context, observation_repository):
+        client, repository = context
+        case_id = uuid.uuid4()
+        observation_id = _seed_target(
+            "Observation",
+            observation_repository=observation_repository,
+            knowledge_reference_repository=None,
+            judgment_repository=None,
+            decision_repository=None,
+            outcome_repository=None,
+            reasoning_trace_repository=repository,
+            case_id=case_id,
+        )
+        created = _create(client, case_id, [("Observation", observation_id)]).json()
+
+        response = client.delete(f"/reasoning-traces/{created['reasoningTraceId']}")
+
+        assert response.status_code == 204
+
+    def test_deleted_trace_is_gone_on_reload(self, context, observation_repository):
+        client, repository = context
+        case_id = uuid.uuid4()
+        observation_id = _seed_target(
+            "Observation",
+            observation_repository=observation_repository,
+            knowledge_reference_repository=None,
+            judgment_repository=None,
+            decision_repository=None,
+            outcome_repository=None,
+            reasoning_trace_repository=repository,
+            case_id=case_id,
+        )
+        created = _create(client, case_id, [("Observation", observation_id)]).json()
+
+        client.delete(f"/reasoning-traces/{created['reasoningTraceId']}")
+
+        assert client.get(f"/reasoning-traces/{created['reasoningTraceId']}").status_code == 404
+        assert created["reasoningTraceId"] not in {
+            trace["reasoningTraceId"] for trace in client.get("/reasoning-traces").json()
+        }
+
+    def test_delete_unknown_id_returns_404(self, client):
+        response = client.delete(f"/reasoning-traces/{uuid.uuid4()}")
+        assert response.status_code == 404
 
 
 class TestAppMounting:
