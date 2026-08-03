@@ -8,6 +8,7 @@ real Decisions through CaptureDecisionService and the two real Pattern
 Recognition strategies (ATLAS-005/005B) to prove a three-Pattern chain
 is achievable in practice, not just with test doubles.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -46,6 +47,10 @@ from atlas.core.infrastructure.persistence.learning.sqlalchemy_repository import
     SqlAlchemyLearningRepository,
 )
 from atlas.core.infrastructure.persistence.learning.table import create_learning_table
+from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
+    SqlAlchemyObservationRepository,
+)
+from atlas.core.infrastructure.persistence.observation.table import create_observation_table
 from atlas.core.infrastructure.persistence.outcome.sqlalchemy_repository import (
     SqlAlchemyOutcomeRepository,
 )
@@ -84,9 +89,7 @@ class TestIsolatedPatterns:
         assert strategy.recognize((pattern,)) == ()
 
     def test_two_patterns_sharing_no_decision_yield_no_signature(self, strategy):
-        pattern_a = _fake_pattern(
-            "same_subject_and_type", [_new_decision_id(), _new_decision_id()]
-        )
+        pattern_a = _fake_pattern("same_subject_and_type", [_new_decision_id(), _new_decision_id()])
         pattern_b = _fake_pattern("same_confidence", [_new_decision_id(), _new_decision_id()])
         assert strategy.recognize((pattern_a, pattern_b)) == ()
 
@@ -203,9 +206,7 @@ class TestDeterministicOrdering:
 
 
 class TestDescriptionPlaysNoRoleInMembership:
-    def test_overlapping_decision_ids_group_together_despite_unrelated_descriptions(
-        self, strategy
-    ):
+    def test_overlapping_decision_ids_group_together_despite_unrelated_descriptions(self, strategy):
         shared = _new_decision_id()
         pattern_a = _fake_pattern(
             "s", [shared, _new_decision_id()], description="Totally unrelated text."
@@ -252,6 +253,7 @@ class TestTraceability:
 
 # ── End-to-end tests with real Decisions and real Pattern strategies ────────
 
+
 @pytest.fixture
 def engine():
     eng = create_engine(
@@ -261,6 +263,7 @@ def engine():
         connect_args={"check_same_thread": False},
     )
     create_decision_table(eng)
+    create_observation_table(eng)
     create_outcome_table(eng)
     create_evaluation_table(eng)
     create_learning_table(eng)
@@ -302,7 +305,9 @@ def strategy_signature_query(pattern_recognition_query):
 
 
 def _make_decision(decision_repository, decided_at, subject, decision_type, confidence):
-    service = CaptureDecisionService(decision_repository)
+    service = CaptureDecisionService(
+        decision_repository, SqlAlchemyObservationRepository(decision_repository._engine)
+    )
     return service.capture(
         CaptureDecisionRequest(
             case_id=uuid.uuid4(),

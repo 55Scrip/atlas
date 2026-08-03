@@ -7,6 +7,7 @@ domain. Per ADR-004, the wire format is camelCase (`CamelModel`); Python
 attribute names below stay snake_case, matching the domain and every other
 internal layer.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -30,6 +31,7 @@ class CreateDecisionRequest(CamelModel):
     confidence: int
     decided_at: datetime | None = None
     source: str = "Manual"
+    observation_id: uuid.UUID | None = None
 
 
 class DecisionSummary(CamelModel):
@@ -43,6 +45,7 @@ class DecisionSummary(CamelModel):
     decided_at: datetime
     recorded_at: datetime
     source: str
+    observation_id: uuid.UUID | None = None
 
     @classmethod
     def from_domain(cls, decision: Decision) -> DecisionSummary:
@@ -57,6 +60,9 @@ class DecisionSummary(CamelModel):
             decided_at=decision.decided_at,
             recorded_at=decision.recorded_at,
             source=decision.source.value,
+            observation_id=(
+                decision.observation_id.value if decision.observation_id is not None else None
+            ),
         )
 
 

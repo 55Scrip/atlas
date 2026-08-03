@@ -170,7 +170,7 @@ def services(engine):
     observation_service = CaptureObservationService(observation_repository)
     hypothesis_service = HypothesisService(hypothesis_repository)
     evidence_service = EvidenceService(observation_repository, evidence_repository)
-    decision_service = CaptureDecisionService(decision_repository)
+    decision_service = CaptureDecisionService(decision_repository, observation_repository)
 
     return {
         "question": QuestionService(question_repository),

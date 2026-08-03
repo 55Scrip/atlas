@@ -4,6 +4,7 @@ POST /decisions        - register a new Decision
 GET  /decisions        - list every recorded Decision
 GET  /decisions/{id}   - read a single Decision
 """
+
 from __future__ import annotations
 
 import uuid
@@ -44,6 +45,7 @@ def create_decision(
             decided_at=payload.decided_at,
             subject=payload.subject,
             source=payload.source,
+            observation_id=payload.observation_id,
         )
     )
     return DecisionCreatedResponse.from_domain(decision)

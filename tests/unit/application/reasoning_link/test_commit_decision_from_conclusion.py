@@ -1,4 +1,5 @@
 """Tests for CommitDecisionFromConclusionService (ATLAS-001 Core Loop, step 7 of 10)."""
+
 from __future__ import annotations
 
 import uuid
@@ -26,6 +27,10 @@ from atlas.core.infrastructure.persistence.decision.sqlalchemy_repository import
     SqlAlchemyDecisionRepository,
 )
 from atlas.core.infrastructure.persistence.decision.table import create_decision_table
+from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
+    SqlAlchemyObservationRepository,
+)
+from atlas.core.infrastructure.persistence.observation.table import create_observation_table
 from atlas.core.infrastructure.persistence.reasoning_link.sqlalchemy_repository import (
     SqlAlchemyConclusionDecisionLinkRepository,
 )
@@ -47,6 +52,7 @@ def engine():
     )
     create_conclusion_table(eng)
     create_decision_table(eng)
+    create_observation_table(eng)
     create_reasoning_link_tables(eng)
     return eng
 
@@ -63,7 +69,9 @@ def link_repository(engine):
 
 @pytest.fixture
 def service(engine, conclusion_repository, link_repository):
-    decision_service = CaptureDecisionService(SqlAlchemyDecisionRepository(engine))
+    decision_service = CaptureDecisionService(
+        SqlAlchemyDecisionRepository(engine), SqlAlchemyObservationRepository(engine)
+    )
     return CommitDecisionFromConclusionService(
         conclusion_repository, decision_service, link_repository
     )
@@ -102,9 +110,7 @@ class TestCommitDecisionFromConclusion:
         assert result.link.conclusion_id == existing_conclusion.id
         assert result.link.decision_id == result.decision.id
 
-    def test_propagates_exactly_the_requests_case_id_unchanged(
-        self, service, existing_conclusion
-    ):
+    def test_propagates_exactly_the_requests_case_id_unchanged(self, service, existing_conclusion):
         request = _request(existing_conclusion.id)
         result = service.commit(request)
         assert result.decision.case_id.value == request.case_id
@@ -121,9 +127,7 @@ class TestCommitDecisionFromConclusion:
         after = conclusion_repository.list_all()
         assert before == after
 
-    def test_link_is_persisted_and_queryable(
-        self, service, link_repository, existing_conclusion
-    ):
+    def test_link_is_persisted_and_queryable(self, service, link_repository, existing_conclusion):
         result = service.commit(_request(existing_conclusion.id))
         links = link_repository.list_by_conclusion_id(existing_conclusion.id)
         assert [link.link_id for link in links] == [result.link.link_id]

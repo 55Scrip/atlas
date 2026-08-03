@@ -3,7 +3,21 @@
 Decision is the smallest meaningful learning unit in Atlas: a single
 investment decision, preserved exactly as it was reasoned at the time it was
 made. There is no update. A changed opinion is a new Decision.
+
+Atlas Alpha, Decision Sprint 1: `observation_id` is new — an optional
+anchor to the Observation this Decision was recorded from, mirroring
+Evidence's own `observation_id` addition in Evidence Sprint 1. Decision
+predates the DO-IMP-00X typed-polymorphic-reference series and has no
+existing field capable of expressing this relationship (`subject` is a
+free-text ticker/company descriptor, not a reference), so a plain,
+optional `ObservationId` is added directly rather than fabricating
+meaning onto an existing field. It is optional, not required: every
+existing Decision (and every future Decision not recorded from within
+an Observation's own workspace section) remains fully valid with no
+Observation at all, exactly as the Decision Workspace's existing
+"Recent Decisions" Dashboard consumer already expects.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -21,6 +35,7 @@ from atlas.core.domain.decision.value_objects import (
     Subject,
     UserId,
 )
+from atlas.core.domain.observation.value_objects import ObservationId
 
 _Clock = Callable[[], datetime]
 
@@ -60,6 +75,7 @@ class Decision:
     decided_at: datetime
     recorded_at: datetime
     source: DecisionSource = DecisionSource.MANUAL
+    observation_id: ObservationId | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "decided_at", _validated_decided_at(self.decided_at))
@@ -76,6 +92,7 @@ class Decision:
         confidence: Confidence,
         decided_at: datetime | None = None,
         source: DecisionSource = DecisionSource.MANUAL,
+        observation_id: ObservationId | None = None,
         clock: _Clock = _utc_now,
     ) -> Decision:
         """Capture a brand-new Decision.
@@ -83,6 +100,11 @@ class Decision:
         This is the only path that assigns identity and RecordedAt: identity
         is always fresh, and RecordedAt is always "now" from Atlas's point of
         view, regardless of when the investor says the decision happened.
+
+        Whether `observation_id` (when present) refers to an already-
+        existing, same-Case Observation is an application-layer concern,
+        verified before this classmethod is called — see
+        `atlas/core/application/decision/capture_decision.py`.
         """
         now = clock()
         return cls(
@@ -96,4 +118,5 @@ class Decision:
             decided_at=decided_at if decided_at is not None else now,
             recorded_at=now,
             source=source,
+            observation_id=observation_id,
         )

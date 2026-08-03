@@ -1,4 +1,5 @@
 """Domain errors for the Decision aggregate (API-001 Decision Capture)."""
+
 from __future__ import annotations
 
 
@@ -8,6 +9,21 @@ class DecisionError(Exception):
 
 class DecisionValidationError(DecisionError):
     """Raised when a Decision or one of its value objects fails an invariant."""
+
+
+class ObservationNotFoundError(DecisionValidationError):
+    """Raised when a Decision's optional `observation_id` (Decision Sprint 1)
+    does not refer to an existing Observation. Mirrors Evidence's own
+    identically-named exception for the same relationship.
+    """
+
+
+class CrossCaseObservationError(DecisionValidationError):
+    """Raised when a Decision's optional `observation_id` refers to an
+    Observation belonging to a different Case than the Decision itself
+    (INV-004-style same-Case requirement, mirroring the established
+    Knowledge Reference/Reasoning Trace/Judgment pattern).
+    """
 
 
 class MissingReasonError(DecisionValidationError):

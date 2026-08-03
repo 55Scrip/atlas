@@ -139,6 +139,58 @@ type JudgmentCreateStatus =
   | { kind: "validation-error"; message: string }
   | { kind: "api-error"; message: string };
 
+interface DecisionRecord {
+  id: string;
+  caseId: string;
+  userId: string;
+  decisionType: string;
+  subject: string;
+  reason: string;
+  confidence: number;
+  decidedAt: string;
+  recordedAt: string;
+  source: string;
+  observationId: string | null;
+}
+
+type DecisionListStatus =
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "ready" };
+
+type DecisionCreateStatus =
+  | { kind: "idle" }
+  | { kind: "creating" }
+  | { kind: "submitting" }
+  | { kind: "success"; decision: DecisionRecord }
+  | { kind: "validation-error"; message: string }
+  | { kind: "api-error"; message: string };
+
+interface DecisionFormInput {
+  decisionType: "BUY" | "SELL" | "HOLD" | "WATCH" | "PASS";
+  subject: string;
+  reason: string;
+  confidence: string;
+}
+
+const EMPTY_DECISION_FORM: DecisionFormInput = {
+  decisionType: "BUY",
+  subject: "",
+  reason: "",
+  confidence: "50",
+};
+
+/**
+ * Atlas Alpha has no login/session/identity system anywhere in this
+ * frontend. The real backend's `Decision.user_id` is required, but per
+ * the governing (unimplemented) Decision-Implementation-Design.md, it
+ * "has no future semantic role" and is retained only as legacy
+ * compatibility metadata — never shown to the investor. This fixed,
+ * documented placeholder is used until Atlas Alpha has a real identity
+ * system; it is not real user data, and no authentication is added.
+ */
+const ALPHA_PLACEHOLDER_USER_ID = "00000000-0000-0000-0000-000000000001";
+
 /**
  * Decision Workspace Shell (Sprint 1, Commit 9) — structural layout only.
  *
@@ -301,6 +353,54 @@ type JudgmentCreateStatus =
  * authorization after a stop-and-ask escalation, following the same
  * precedent and decision already made for Reasoning Trace; see
  * `atlas/core/domain/judgment/repository.py` for the full rationale.
+ *
+ * Decision Sprint 1: rendered as its own section directly beneath
+ * Judgment, the final sibling under each Observation:
+ *
+ *   Observation
+ *     Evidence
+ *     Knowledge References
+ *     Reasoning Trace
+ *     Judgment
+ *     Decision
+ *
+ * Decision is architecturally different from every section above it:
+ * it predates the DO-IMP-00X typed-polymorphic-reference series
+ * entirely (its own older "API-001 Decision Capture" shape) and, before
+ * this sprint, had no field capable of expressing "this Decision was
+ * recorded from this Observation" at all — `subject` is a free-text
+ * ticker/company descriptor (e.g. "NVIDIA"), not a reference. This
+ * sprint added a new, optional `observationId` to the real domain model
+ * (schema + entity + application-layer existence/same-Case check),
+ * mirroring Evidence's own `observationId` addition in Evidence Sprint
+ * 1 — a genuine backend extension, not a UI-side reinterpretation of an
+ * existing field. `GET /decisions` (list) already existed before this
+ * sprint and is already consumed read-only by the Dashboard's own
+ * "Recent Decisions" section; this sprint adds creation only.
+ *
+ * Decision has no delete capability, anywhere, and never has — unlike
+ * Evidence/Knowledge Reference/Reasoning Trace/Judgment, this was never
+ * escalated or extended, since Decision's own docstring states plainly:
+ * "There is no update. A changed opinion is a new Decision." The
+ * Decision section below therefore renders no Delete control at all —
+ * an intentional absence, not an oversight, truthfully reflecting
+ * permanence rather than inventing an edit/delete affordance the real
+ * backend does not support.
+ *
+ * Required fields, exposed as real user input because atlas/core's own
+ * `CaptureDecisionRequest` genuinely requires each of them (none is
+ * invented): `decisionType` (BUY/SELL/HOLD/WATCH/PASS — a real,
+ * required semantic choice, exposed exactly like Evidence's own
+ * Direction field), `subject` (free text — what the decision is about),
+ * `reason` (free text — the investment case at decision time),
+ * `confidence` (0-100, required by the real backend; exposed purely
+ * because the backend will reject a capture without it, not as a
+ * scoring/coaching feature — this sprint does not implement Conviction
+ * or Confidence as a product concept, it exposes the one field the real
+ * `CaptureDecisionRequest` will not accept a capture without). `userId`
+ * is also required by the real backend but is never shown to the
+ * investor — see `ALPHA_PLACEHOLDER_USER_ID` above. `observationId` is
+ * auto-set to this section's own Observation, never user-selectable.
  */
 export function DecisionWorkspacePage() {
   const { caseId } = useParams<{ caseId?: string }>();
@@ -358,6 +458,15 @@ export function DecisionWorkspacePage() {
   const [judgmentDeleteStatus, setJudgmentDeleteStatus] = useState<
     Record<string, "idle" | "deleting" | "error">
   >({});
+
+  const [allDecisions, setAllDecisions] = useState<DecisionRecord[]>([]);
+  const [decisionListStatus, setDecisionListStatus] = useState<DecisionListStatus>({
+    kind: "loading",
+  });
+  const [decisionCreateStatus, setDecisionCreateStatus] = useState<
+    Record<string, DecisionCreateStatus>
+  >({});
+  const [decisionForm, setDecisionForm] = useState<Record<string, DecisionFormInput>>({});
 
   useEffect(() => {
     if (!caseId) return;
@@ -516,6 +625,34 @@ export function DecisionWorkspacePage() {
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setJudgmentListStatus({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      });
+
+    return () => controller.abort();
+  }, [caseId]);
+
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setDecisionListStatus({ kind: "loading" });
+
+    fetch("/api/decisions", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        return response.json() as Promise<DecisionRecord[]>;
+      })
+      .then((records) => {
+        setAllDecisions(records);
+        setDecisionListStatus({ kind: "ready" });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setDecisionListStatus({
           kind: "error",
           message: error instanceof Error ? error.message : "Unknown error",
         });
@@ -795,6 +932,61 @@ export function DecisionWorkspacePage() {
       });
   }
 
+  function submitDecision(observationId: string) {
+    if (!caseId) return;
+    const form = decisionForm[observationId] ?? EMPTY_DECISION_FORM;
+    const confidence = Number.parseInt(form.confidence, 10);
+    setDecisionCreateStatus((current) => ({
+      ...current,
+      [observationId]: { kind: "submitting" },
+    }));
+
+    fetch("/api/decisions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        caseId,
+        userId: ALPHA_PLACEHOLDER_USER_ID,
+        decisionType: form.decisionType,
+        subject: form.subject,
+        reason: form.reason,
+        confidence,
+        observationId,
+      }),
+    })
+      .then(async (response) => {
+        if (response.status === 400 || response.status === 422 || response.status === 404) {
+          const body = (await response.json()) as { detail?: string };
+          setDecisionCreateStatus((current) => ({
+            ...current,
+            [observationId]: {
+              kind: response.status === 404 ? "api-error" : "validation-error",
+              message: body.detail ?? "Invalid input.",
+            },
+          }));
+          return;
+        }
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        const decision = (await response.json()) as DecisionRecord;
+        setAllDecisions((current) => [...current, decision]);
+        setDecisionCreateStatus((current) => ({
+          ...current,
+          [observationId]: { kind: "success", decision },
+        }));
+      })
+      .catch((error: unknown) => {
+        setDecisionCreateStatus((current) => ({
+          ...current,
+          [observationId]: {
+            kind: "api-error",
+            message: error instanceof Error ? error.message : "Unknown error",
+          },
+        }));
+      });
+  }
+
   function submitObservation() {
     if (!caseId) return;
     setCreateStatus({ kind: "submitting" });
@@ -948,6 +1140,14 @@ export function DecisionWorkspacePage() {
                       const thisJudgmentCreateStatus: JudgmentCreateStatus =
                         judgmentCreateStatus[observation.observationId] ?? { kind: "idle" };
                       const thisJudgmentForm = judgmentForm[observation.observationId] ?? "";
+
+                      const decisionsForObservation = allDecisions.filter(
+                        (decision) => decision.observationId === observation.observationId,
+                      );
+                      const thisDecisionCreateStatus: DecisionCreateStatus =
+                        decisionCreateStatus[observation.observationId] ?? { kind: "idle" };
+                      const thisDecisionForm: DecisionFormInput =
+                        decisionForm[observation.observationId] ?? EMPTY_DECISION_FORM;
 
                       return (
                         <div key={observation.observationId}>
@@ -1576,6 +1776,215 @@ export function DecisionWorkspacePage() {
                                       }));
                                     }}
                                     disabled={thisJudgmentCreateStatus.kind === "submitting"}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </Stack>
+                            )}
+                          </Stack>
+
+                          <Stack gap="inter-section">
+                            <Heading level={4}>Decision</Heading>
+
+                            {decisionListStatus.kind === "loading" && (
+                              <Text role="status" aria-live="polite">
+                                Loading decision…
+                              </Text>
+                            )}
+                            {decisionListStatus.kind === "error" && (
+                              <Text color="tertiary" role="alert">
+                                Could not load decision: {decisionListStatus.message}
+                              </Text>
+                            )}
+                            {decisionListStatus.kind === "ready" &&
+                              decisionsForObservation.length === 0 && (
+                                <Text color="secondary">No decision recorded yet.</Text>
+                              )}
+                            {decisionListStatus.kind === "ready" &&
+                              decisionsForObservation.length > 0 && (
+                                <Stack gap="inter-section">
+                                  {decisionsForObservation.map((decision) => (
+                                    <div key={decision.id}>
+                                      <Text>
+                                        {decision.decisionType} — {decision.subject}
+                                      </Text>
+                                      <Text color="secondary" as="p">
+                                        {decision.reason}
+                                      </Text>
+                                      <Text color="tertiary" as="p">
+                                        Confidence: {decision.confidence}
+                                      </Text>
+                                      <Text color="tertiary" as="p">
+                                        {decision.decidedAt}
+                                      </Text>
+                                    </div>
+                                  ))}
+                                </Stack>
+                              )}
+
+                            <Divider tone="hairline" />
+
+                            {thisDecisionCreateStatus.kind === "idle" && (
+                              <Button
+                                variant="tertiary"
+                                onClick={() =>
+                                  setDecisionCreateStatus((current) => ({
+                                    ...current,
+                                    [observation.observationId]: { kind: "creating" },
+                                  }))
+                                }
+                              >
+                                + Record Decision
+                              </Button>
+                            )}
+
+                            {thisDecisionCreateStatus.kind === "success" && (
+                              <Stack gap="inter-section">
+                                <Text>
+                                  Decision recorded: {thisDecisionCreateStatus.decision.decisionType}{" "}
+                                  — {thisDecisionCreateStatus.decision.subject}
+                                </Text>
+                                <Button
+                                  variant="tertiary"
+                                  onClick={() => {
+                                    setDecisionForm((current) => ({
+                                      ...current,
+                                      [observation.observationId]: EMPTY_DECISION_FORM,
+                                    }));
+                                    setDecisionCreateStatus((current) => ({
+                                      ...current,
+                                      [observation.observationId]: { kind: "creating" },
+                                    }));
+                                  }}
+                                >
+                                  Add another
+                                </Button>
+                              </Stack>
+                            )}
+
+                            {(thisDecisionCreateStatus.kind === "creating" ||
+                              thisDecisionCreateStatus.kind === "submitting" ||
+                              thisDecisionCreateStatus.kind === "validation-error" ||
+                              thisDecisionCreateStatus.kind === "api-error") && (
+                              <Stack gap="inter-section">
+                                <Text as="label">
+                                  Decision Type
+                                  <br />
+                                  <select
+                                    value={thisDecisionForm.decisionType}
+                                    onChange={(event) =>
+                                      setDecisionForm((current) => ({
+                                        ...current,
+                                        [observation.observationId]: {
+                                          ...thisDecisionForm,
+                                          decisionType: event.target.value as
+                                            | "BUY"
+                                            | "SELL"
+                                            | "HOLD"
+                                            | "WATCH"
+                                            | "PASS",
+                                        },
+                                      }))
+                                    }
+                                    disabled={thisDecisionCreateStatus.kind === "submitting"}
+                                  >
+                                    <option value="BUY">Buy</option>
+                                    <option value="SELL">Sell</option>
+                                    <option value="HOLD">Hold</option>
+                                    <option value="WATCH">Watch</option>
+                                    <option value="PASS">Pass</option>
+                                  </select>
+                                </Text>
+                                <Text as="label">
+                                  Subject
+                                  <br />
+                                  <input
+                                    value={thisDecisionForm.subject}
+                                    onChange={(event) =>
+                                      setDecisionForm((current) => ({
+                                        ...current,
+                                        [observation.observationId]: {
+                                          ...thisDecisionForm,
+                                          subject: event.target.value,
+                                        },
+                                      }))
+                                    }
+                                    disabled={thisDecisionCreateStatus.kind === "submitting"}
+                                  />
+                                </Text>
+                                <Text as="label">
+                                  Reason
+                                  <br />
+                                  <textarea
+                                    value={thisDecisionForm.reason}
+                                    onChange={(event) =>
+                                      setDecisionForm((current) => ({
+                                        ...current,
+                                        [observation.observationId]: {
+                                          ...thisDecisionForm,
+                                          reason: event.target.value,
+                                        },
+                                      }))
+                                    }
+                                    disabled={thisDecisionCreateStatus.kind === "submitting"}
+                                  />
+                                </Text>
+                                <Text as="label">
+                                  Confidence (0-100)
+                                  <br />
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    value={thisDecisionForm.confidence}
+                                    onChange={(event) =>
+                                      setDecisionForm((current) => ({
+                                        ...current,
+                                        [observation.observationId]: {
+                                          ...thisDecisionForm,
+                                          confidence: event.target.value,
+                                        },
+                                      }))
+                                    }
+                                    disabled={thisDecisionCreateStatus.kind === "submitting"}
+                                  />
+                                </Text>
+
+                                {thisDecisionCreateStatus.kind === "validation-error" && (
+                                  <Text color="tertiary" role="alert">
+                                    {thisDecisionCreateStatus.message}
+                                  </Text>
+                                )}
+                                {thisDecisionCreateStatus.kind === "api-error" && (
+                                  <Text color="tertiary" role="alert">
+                                    Could not record this decision: {thisDecisionCreateStatus.message}
+                                  </Text>
+                                )}
+
+                                <div>
+                                  <Button
+                                    variant="primary"
+                                    onClick={() => submitDecision(observation.observationId)}
+                                    disabled={thisDecisionCreateStatus.kind === "submitting"}
+                                  >
+                                    {thisDecisionCreateStatus.kind === "submitting"
+                                      ? "Submitting…"
+                                      : "Submit"}
+                                  </Button>{" "}
+                                  <Button
+                                    variant="tertiary"
+                                    onClick={() => {
+                                      setDecisionForm((current) => ({
+                                        ...current,
+                                        [observation.observationId]: EMPTY_DECISION_FORM,
+                                      }));
+                                      setDecisionCreateStatus((current) => ({
+                                        ...current,
+                                        [observation.observationId]: { kind: "idle" },
+                                      }));
+                                    }}
+                                    disabled={thisDecisionCreateStatus.kind === "submitting"}
                                   >
                                     Cancel
                                   </Button>

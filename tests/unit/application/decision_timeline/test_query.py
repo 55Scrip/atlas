@@ -38,6 +38,10 @@ from atlas.core.infrastructure.persistence.learning.sqlalchemy_repository import
     SqlAlchemyLearningRepository,
 )
 from atlas.core.infrastructure.persistence.learning.table import create_learning_table
+from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
+    SqlAlchemyObservationRepository,
+)
+from atlas.core.infrastructure.persistence.observation.table import create_observation_table
 from atlas.core.infrastructure.persistence.outcome.sqlalchemy_repository import (
     SqlAlchemyOutcomeRepository,
 )
@@ -55,6 +59,7 @@ def engine():
         connect_args={"check_same_thread": False},
     )
     create_decision_table(eng)
+    create_observation_table(eng)
     create_outcome_table(eng)
     create_evaluation_table(eng)
     create_learning_table(eng)
@@ -89,7 +94,9 @@ def query(decision_repository, outcome_repository, evaluation_repository, learni
 
 
 def _make_decision(decision_repository, decided_at, subject="NVIDIA"):
-    service = CaptureDecisionService(decision_repository)
+    service = CaptureDecisionService(
+        decision_repository, SqlAlchemyObservationRepository(decision_repository._engine)
+    )
     return service.capture(
         CaptureDecisionRequest(
             case_id=uuid.uuid4(),

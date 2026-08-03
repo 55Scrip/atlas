@@ -4,6 +4,7 @@ Implements the append-only contract literally: `add` is the only write
 operation, and it is always an INSERT. There is no update method to call by
 accident.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -25,6 +26,7 @@ from atlas.core.domain.decision.value_objects import (
     Subject,
     UserId,
 )
+from atlas.core.domain.observation.value_objects import ObservationId
 from atlas.core.infrastructure.persistence.decision.table import decisions_table
 
 
@@ -38,16 +40,22 @@ class SqlAlchemyDecisionRepository:
 
     def get(self, decision_id: DecisionId) -> Decision | None:
         with self._engine.connect() as connection:
-            row = connection.execute(
-                select(decisions_table).where(decisions_table.c.id == str(decision_id))
-            ).mappings().first()
+            row = (
+                connection.execute(
+                    select(decisions_table).where(decisions_table.c.id == str(decision_id))
+                )
+                .mappings()
+                .first()
+            )
         return _to_decision(row) if row is not None else None
 
     def list_all(self) -> list[Decision]:
         with self._engine.connect() as connection:
-            rows = connection.execute(
-                select(decisions_table).order_by(decisions_table.c.recorded_at)
-            ).mappings().all()
+            rows = (
+                connection.execute(select(decisions_table).order_by(decisions_table.c.recorded_at))
+                .mappings()
+                .all()
+            )
         return [_to_decision(row) for row in rows]
 
 
@@ -63,6 +71,9 @@ def _to_row(decision: Decision) -> dict[str, Any]:
         "decided_at": decision.decided_at.isoformat(),
         "recorded_at": decision.recorded_at.isoformat(),
         "source": decision.source.value,
+        "observation_id": str(decision.observation_id)
+        if decision.observation_id is not None
+        else None,
     }
 
 
@@ -78,4 +89,7 @@ def _to_decision(row: Mapping[str, Any]) -> Decision:
         decided_at=datetime.fromisoformat(row["decided_at"]),
         recorded_at=datetime.fromisoformat(row["recorded_at"]),
         source=DecisionSource(row["source"]),
+        observation_id=ObservationId(uuid.UUID(row["observation_id"]))
+        if row.get("observation_id") is not None
+        else None,
     )

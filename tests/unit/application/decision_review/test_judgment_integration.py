@@ -9,6 +9,7 @@ Outcome, and composition wiring. Uses the same in-memory-SQLite fixture
 idiom already established by test_orchestrator.py and
 test_reasoning_trace_integration.py — never the real on-disk database.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -41,6 +42,9 @@ from atlas.core.infrastructure.persistence.evaluation.sqlalchemy_repository impo
 from atlas.core.infrastructure.persistence.evaluation.table import evaluations_table
 from atlas.core.infrastructure.persistence.judgment.table import judgments_table
 from atlas.core.infrastructure.persistence.learning.table import learnings_table
+from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
+    SqlAlchemyObservationRepository,
+)
 from atlas.core.infrastructure.persistence.outcome.sqlalchemy_repository import (
     SqlAlchemyOutcomeRepository,
 )
@@ -68,7 +72,9 @@ def orchestrator(engine):
 
 @pytest.fixture
 def existing_decision(engine):
-    service = CaptureDecisionService(SqlAlchemyDecisionRepository(engine))
+    service = CaptureDecisionService(
+        SqlAlchemyDecisionRepository(engine), SqlAlchemyObservationRepository(engine)
+    )
     return service.capture(
         CaptureDecisionRequest(
             case_id=uuid.uuid4(),
@@ -97,9 +103,7 @@ def _run_full_review(orchestrator, evaluation_statement="The decision proved cor
     session = orchestrator.select(numbered, "1")
     orchestrator.respond(session, "Revenue growth accelerated as expected.")
     orchestrator.respond(session, evaluation_statement)
-    turn = orchestrator.respond(
-        session, "Weigh capex guidance more heavily than headline growth."
-    )
+    turn = orchestrator.respond(session, "Weigh capex guidance more heavily than headline growth.")
     return session, turn
 
 
@@ -148,9 +152,7 @@ class TestSuccessfulSemanticMapping:
         self, orchestrator, engine, existing_decision
     ):
         session, _ = _run_full_review(orchestrator)
-        evaluation = SqlAlchemyEvaluationRepository(engine).get(
-            EvaluationId(session.evaluation_id)
-        )
+        evaluation = SqlAlchemyEvaluationRepository(engine).get(EvaluationId(session.evaluation_id))
         rows = _judgment_rows(engine)
         judgment_recorded_at = rows[0][5]
         assert judgment_recorded_at != evaluation.evaluated_at.isoformat()
@@ -165,17 +167,13 @@ class TestSuccessfulSemanticMapping:
 
 
 class TestOrdering:
-    def test_no_judgment_before_evaluation_success(
-        self, orchestrator, engine, existing_decision
-    ):
+    def test_no_judgment_before_evaluation_success(self, orchestrator, engine, existing_decision):
         numbered = orchestrator.list_decisions()
         session = orchestrator.select(numbered, "1")
         orchestrator.respond(session, "Revenue growth accelerated as expected.")
         assert _judgment_rows(engine) == []
 
-    def test_no_judgment_before_learning_success(
-        self, orchestrator, engine, existing_decision
-    ):
+    def test_no_judgment_before_learning_success(self, orchestrator, engine, existing_decision):
         numbered = orchestrator.list_decisions()
         session = orchestrator.select(numbered, "1")
         orchestrator.respond(session, "Revenue growth accelerated as expected.")

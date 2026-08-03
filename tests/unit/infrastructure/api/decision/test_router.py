@@ -5,6 +5,7 @@ use `userId`/`decisionType` etc. `TestBackwardCompatibleSnakeCaseInput`
 explicitly covers the one place the old snake_case format still works:
 request bodies, via `populate_by_name`.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -14,28 +15,63 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+from atlas.core.domain.case.value_objects import CaseId
+from atlas.core.domain.observation.entity import Observation
+from atlas.core.domain.observation.value_objects import Statement, Subject
 from atlas.core.infrastructure.api.app import create_app
-from atlas.core.infrastructure.api.decision.dependencies import get_decision_repository
+from atlas.core.infrastructure.api.decision.dependencies import (
+    _get_observation_repository,
+    get_decision_repository,
+)
 from atlas.core.infrastructure.persistence.decision.sqlalchemy_repository import (
     SqlAlchemyDecisionRepository,
 )
 from atlas.core.infrastructure.persistence.decision.table import create_decision_table
+from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
+    SqlAlchemyObservationRepository,
+)
+from atlas.core.infrastructure.persistence.observation.table import create_observation_table
 
 
 @pytest.fixture
-def client():
-    engine = create_engine(
+def engine():
+    eng = create_engine(
         "sqlite:///:memory:",
         future=True,
         poolclass=StaticPool,
         connect_args={"check_same_thread": False},
     )
-    create_decision_table(engine)
+    create_decision_table(eng)
+    create_observation_table(eng)
+    return eng
+
+
+@pytest.fixture
+def observation_repository(engine):
+    return SqlAlchemyObservationRepository(engine)
+
+
+@pytest.fixture
+def client(engine, observation_repository):
     repository = SqlAlchemyDecisionRepository(engine)
 
     app = create_app()
     app.dependency_overrides[get_decision_repository] = lambda: repository
+    app.dependency_overrides[_get_observation_repository] = lambda: observation_repository
     return TestClient(app)
+
+
+def _seed_observation(observation_repository, *, case_id: uuid.UUID) -> uuid.UUID:
+    from datetime import datetime, timezone
+
+    observation = Observation.capture(
+        case_id=CaseId(case_id),
+        subject=Subject("Semiconductor sector"),
+        statement=Statement("Capex guidance raised."),
+        observed_at=datetime.now(timezone.utc),
+    )
+    observation_repository.add(observation)
+    return observation.id.value
 
 
 def _valid_payload(**overrides) -> dict:
@@ -87,6 +123,56 @@ class TestCreateDecision:
         fetched = client.get(f"/decisions/{created['id']}")
         assert fetched.status_code == 200
         assert fetched.json()["id"] == created["id"]
+
+
+class TestCreateDecisionWithObservationAnchor:
+    def test_returns_201_with_no_observation_id(self, client):
+        response = client.post("/decisions", json=_valid_payload())
+        assert response.status_code == 201
+        assert response.json()["observationId"] is None
+
+    def test_returns_201_when_anchored_to_an_existing_same_case_observation(
+        self, client, observation_repository
+    ):
+        case_id = uuid.uuid4()
+        observation_id = _seed_observation(observation_repository, case_id=case_id)
+
+        response = client.post(
+            "/decisions",
+            json=_valid_payload(caseId=str(case_id), observationId=str(observation_id)),
+        )
+
+        assert response.status_code == 201
+        assert response.json()["observationId"] == str(observation_id)
+
+    def test_rejects_a_nonexistent_observation_id(self, client):
+        response = client.post("/decisions", json=_valid_payload(observationId=str(uuid.uuid4())))
+        assert response.status_code == 422
+
+    def test_rejects_an_observation_from_a_different_case(self, client, observation_repository):
+        other_case_id = uuid.uuid4()
+        observation_id = _seed_observation(observation_repository, case_id=other_case_id)
+
+        response = client.post(
+            "/decisions",
+            json=_valid_payload(caseId=str(uuid.uuid4()), observationId=str(observation_id)),
+        )
+
+        assert response.status_code == 422
+
+    def test_persists_the_observation_anchor_so_it_can_be_read_back(
+        self, client, observation_repository
+    ):
+        case_id = uuid.uuid4()
+        observation_id = _seed_observation(observation_repository, case_id=case_id)
+
+        created = client.post(
+            "/decisions",
+            json=_valid_payload(caseId=str(case_id), observationId=str(observation_id)),
+        ).json()
+        fetched = client.get(f"/decisions/{created['id']}")
+
+        assert fetched.json()["observationId"] == str(observation_id)
 
 
 class TestBackwardCompatibleSnakeCaseInput:

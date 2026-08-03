@@ -1,4 +1,5 @@
 """Aggregate persistence tests for Evidence: create, persist, read, equals original."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -229,6 +230,7 @@ class TestObservationAnchorAndNoOtherCoupling:
             "decided_at",
             "recorded_at",
             "source",
+            "observation_id",
         }
         assert set(decision_contexts_table.columns.keys()) == {
             "context_id",

@@ -7,6 +7,7 @@ case (Decision succeeds, Reflection Response write fails), read
 isolation from every other capability's own composition root, and
 unchanged Core Loop progression/captured fields throughout.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -47,6 +48,9 @@ from atlas.core.domain.decision.value_objects import DecisionId
 from atlas.core.infrastructure.persistence.decision.sqlalchemy_repository import (
     SqlAlchemyDecisionRepository,
 )
+from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
+    SqlAlchemyObservationRepository,
+)
 
 _T0 = datetime(2026, 7, 17, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -79,7 +83,7 @@ def engine():
 
 def _seed_two_matching_decisions(engine):
     repository = SqlAlchemyDecisionRepository(engine)
-    service = CaptureDecisionService(repository)
+    service = CaptureDecisionService(repository, SqlAlchemyObservationRepository(engine))
     for confidence in (90, 70):
         service.capture(
             CaptureDecisionRequest(
@@ -132,7 +136,9 @@ class TestExplicitPreservationChoice:
         capture_service = build_capture_reflection_response_service(engine)
 
         session, _ = _run_full_conversation(
-            engine, coach_response="This feels similar to before.", preservation_choice="yes",
+            engine,
+            coach_response="This feels similar to before.",
+            preservation_choice="yes",
             capture_service=capture_service,
         )
 
@@ -154,7 +160,9 @@ class TestExplicitPreservationChoice:
         capture_service = build_capture_reflection_response_service(engine)
 
         _run_full_conversation(
-            engine, coach_response="This feels similar to before.", preservation_choice="no",
+            engine,
+            coach_response="This feels similar to before.",
+            preservation_choice="no",
             capture_service=capture_service,
         )
 

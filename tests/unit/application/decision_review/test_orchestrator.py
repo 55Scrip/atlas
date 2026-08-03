@@ -1,4 +1,5 @@
 """Unit tests for DecisionReviewOrchestrator (ATLAS-003)."""
+
 from __future__ import annotations
 
 import uuid
@@ -20,6 +21,9 @@ from atlas.core.application.decision_review.composition import (
 from atlas.core.application.decision_review.session import DecisionReviewStep
 from atlas.core.infrastructure.persistence.decision.sqlalchemy_repository import (
     SqlAlchemyDecisionRepository,
+)
+from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
+    SqlAlchemyObservationRepository,
 )
 
 _DECIDED_AT = datetime(2026, 7, 13, 12, 0, 0, tzinfo=timezone.utc)
@@ -44,7 +48,9 @@ def orchestrator(engine):
 
 @pytest.fixture
 def existing_decision(engine):
-    service = CaptureDecisionService(SqlAlchemyDecisionRepository(engine))
+    service = CaptureDecisionService(
+        SqlAlchemyDecisionRepository(engine), SqlAlchemyObservationRepository(engine)
+    )
     return service.capture(
         CaptureDecisionRequest(
             case_id=uuid.uuid4(),

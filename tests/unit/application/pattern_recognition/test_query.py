@@ -5,6 +5,7 @@ built on real SQLite-backed repositories — proving Pattern Recognition
 is independently testable and depends only on DecisionTimeline, never on
 a repository or Engine directly.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -34,6 +35,10 @@ from atlas.core.infrastructure.persistence.learning.sqlalchemy_repository import
     SqlAlchemyLearningRepository,
 )
 from atlas.core.infrastructure.persistence.learning.table import create_learning_table
+from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
+    SqlAlchemyObservationRepository,
+)
+from atlas.core.infrastructure.persistence.observation.table import create_observation_table
 from atlas.core.infrastructure.persistence.outcome.sqlalchemy_repository import (
     SqlAlchemyOutcomeRepository,
 )
@@ -52,6 +57,7 @@ def engine():
         connect_args={"check_same_thread": False},
     )
     create_decision_table(eng)
+    create_observation_table(eng)
     create_outcome_table(eng)
     create_evaluation_table(eng)
     create_learning_table(eng)
@@ -80,7 +86,9 @@ def query(decision_timeline_query):
 
 
 def _make_decision(decision_repository, decided_at, subject="NVIDIA", decision_type="BUY"):
-    service = CaptureDecisionService(decision_repository)
+    service = CaptureDecisionService(
+        decision_repository, SqlAlchemyObservationRepository(decision_repository._engine)
+    )
     return service.capture(
         CaptureDecisionRequest(
             case_id=uuid.uuid4(),
@@ -118,9 +126,7 @@ class TestNoRecurrence:
 
 
 class TestSameSubjectAndTypeRecurrence:
-    def test_two_matching_decisions_yield_one_recognized_pattern(
-        self, decision_repository, query
-    ):
+    def test_two_matching_decisions_yield_one_recognized_pattern(self, decision_repository, query):
         first = _make_decision(decision_repository, _T0, subject="NVIDIA", decision_type="BUY")
         second = _make_decision(decision_repository, _T0, subject="NVIDIA", decision_type="BUY")
 

@@ -32,6 +32,7 @@ is invoked by `build_conversation_orchestrator`, which now requires an
 already-resolved `case_id` and performs no Case resolution of its own —
 the orchestrator gains no `CaseService`/`CaseRepository` dependency.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -171,9 +172,7 @@ def resolve_existing_case(engine: Engine, case_id: uuid.UUID) -> uuid.UUID | Non
     return case.id.value
 
 
-def build_conversation_orchestrator(
-    engine: Engine, case_id: uuid.UUID
-) -> ConversationOrchestrator:
+def build_conversation_orchestrator(engine: Engine, case_id: uuid.UUID) -> ConversationOrchestrator:
     investor_id = resolve_investor_identity(engine)
 
     question_repository = SqlAlchemyQuestionRepository(engine)
@@ -196,7 +195,7 @@ def build_conversation_orchestrator(
     observation_service = CaptureObservationService(observation_repository)
     hypothesis_service = HypothesisService(hypothesis_repository)
     evidence_service = EvidenceService(observation_repository, evidence_repository)
-    decision_service = CaptureDecisionService(decision_repository)
+    decision_service = CaptureDecisionService(decision_repository, observation_repository)
     reasoning_trace_service = ReasoningTraceService(
         reasoning_trace_repository,
         observation_repository,

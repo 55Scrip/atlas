@@ -4,7 +4,12 @@ This bounded context owns its own MetaData rather than registering on the
 legacy `atlas.database.connection.Base` used by the company/financials
 tables — Decision Capture's schema lifecycle should not be coupled to an
 unrelated domain's.
+
+Atlas Alpha, Decision Sprint 1: `observation_id` is new, nullable,
+indexed — no foreign key, matching the codebase-wide no-FK convention
+already established for every other cross-aggregate reference.
 """
+
 from __future__ import annotations
 
 from sqlalchemy import Column, Integer, MetaData, String, Table
@@ -27,6 +32,7 @@ decisions_table = Table(
     Column("decided_at", String, nullable=False),
     Column("recorded_at", String, nullable=False),
     Column("source", String, nullable=False),
+    Column("observation_id", String, nullable=True, index=True),
 )
 
 

@@ -1,4 +1,5 @@
 """Aggregate persistence tests: create, persist, read, equals original."""
+
 from __future__ import annotations
 
 import uuid
@@ -18,6 +19,7 @@ from atlas.core.domain.decision.value_objects import (
     Subject,
     UserId,
 )
+from atlas.core.domain.observation.value_objects import ObservationId
 from atlas.core.infrastructure.persistence.decision.sqlalchemy_repository import (
     SqlAlchemyDecisionRepository,
 )
@@ -102,6 +104,21 @@ class TestEqualsOriginal:
         assert reloaded.subject == Subject("MSFT")
 
 
+class TestObservationAnchor:
+    def test_decision_with_no_observation_id_round_trips_as_none(self, repository):
+        original = _new_decision()
+        repository.add(original)
+        reloaded = repository.get(original.id)
+        assert reloaded.observation_id is None
+
+    def test_decision_with_an_observation_id_round_trips(self, repository):
+        observation_id = ObservationId(uuid.uuid4())
+        original = _new_decision(observation_id=observation_id)
+        repository.add(original)
+        reloaded = repository.get(original.id)
+        assert reloaded.observation_id == observation_id
+
+
 class TestCaseOwnership:
     def test_same_reason_in_different_cases_is_permitted(self, repository):
         first = _new_decision()
@@ -109,9 +126,7 @@ class TestCaseOwnership:
         repository.add(first)
         repository.add(second)
         assert first.case_id != second.case_id
-        assert repository.get(first.id).investment_case == repository.get(
-            second.id
-        ).investment_case
+        assert repository.get(first.id).investment_case == repository.get(second.id).investment_case
 
     def test_duplicate_reason_in_one_case_is_permitted(self, repository):
         case_id = CaseId()

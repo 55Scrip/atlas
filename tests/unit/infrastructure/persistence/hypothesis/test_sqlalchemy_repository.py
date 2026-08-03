@@ -1,4 +1,5 @@
 """Aggregate persistence tests for Hypothesis: create, persist, read, equals original."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -32,8 +33,7 @@ def repository():
 def _new_hypothesis(**overrides) -> Hypothesis:
     defaults = dict(
         statement=Statement(
-            "Demand for AI infrastructure may be accelerating faster than the "
-            "market expects."
+            "Demand for AI infrastructure may be accelerating faster than the market expects."
         ),
         formulated_at=_FORMULATED_AT,
         note="Revisit after the next reporting cycle.",
@@ -100,12 +100,8 @@ class TestRead:
     def test_tie_breaks_by_recorded_at_then_hypothesis_id(self, repository):
         same_formulated_at = datetime(2026, 2, 1, tzinfo=timezone.utc)
         same_recorded_at = datetime(2026, 2, 2, tzinfo=timezone.utc)
-        first = _new_hypothesis(
-            formulated_at=same_formulated_at, clock=lambda: same_recorded_at
-        )
-        second = _new_hypothesis(
-            formulated_at=same_formulated_at, clock=lambda: same_recorded_at
-        )
+        first = _new_hypothesis(formulated_at=same_formulated_at, clock=lambda: same_recorded_at)
+        second = _new_hypothesis(formulated_at=same_formulated_at, clock=lambda: same_recorded_at)
         repository.add(second)
         repository.add(first)
 
@@ -179,6 +175,7 @@ class TestNoForeignKeysOrCoupling:
             "decided_at",
             "recorded_at",
             "source",
+            "observation_id",
         }
         assert set(decision_contexts_table.columns.keys()) == {
             "context_id",

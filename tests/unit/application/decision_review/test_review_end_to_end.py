@@ -6,6 +6,7 @@ triple, and explicitly verifies the documented limitation: an
 interrupted review leaves an orphaned Outcome with no Evaluation or
 Learning, and ATLAS-003 does not detect, resume, or repair that.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -36,6 +37,9 @@ from atlas.core.infrastructure.persistence.evaluation.sqlalchemy_repository impo
 from atlas.core.infrastructure.persistence.learning.sqlalchemy_repository import (
     SqlAlchemyLearningRepository,
 )
+from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
+    SqlAlchemyObservationRepository,
+)
 from atlas.core.infrastructure.persistence.outcome.sqlalchemy_repository import (
     SqlAlchemyOutcomeRepository,
 )
@@ -62,7 +66,9 @@ def orchestrator(engine):
 
 @pytest.fixture
 def existing_decision(engine):
-    service = CaptureDecisionService(SqlAlchemyDecisionRepository(engine))
+    service = CaptureDecisionService(
+        SqlAlchemyDecisionRepository(engine), SqlAlchemyObservationRepository(engine)
+    )
     return service.capture(
         CaptureDecisionRequest(
             case_id=uuid.uuid4(),

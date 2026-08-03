@@ -107,6 +107,7 @@ class TestNoForeignKeysOrCoupling:
             "decided_at",
             "recorded_at",
             "source",
+            "observation_id",
         }
         assert set(outcomes_table.columns.keys()) == {
             "outcome_id",

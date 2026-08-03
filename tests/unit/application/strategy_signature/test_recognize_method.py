@@ -5,6 +5,7 @@ authoritative tuple of RecognizedPattern run Strategy Signature
 Recognition without triggering a second Pattern Recognition pass.
 build() must delegate through it with unchanged observable behavior.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -40,6 +41,10 @@ from atlas.core.infrastructure.persistence.learning.sqlalchemy_repository import
     SqlAlchemyLearningRepository,
 )
 from atlas.core.infrastructure.persistence.learning.table import create_learning_table
+from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
+    SqlAlchemyObservationRepository,
+)
+from atlas.core.infrastructure.persistence.observation.table import create_observation_table
 from atlas.core.infrastructure.persistence.outcome.sqlalchemy_repository import (
     SqlAlchemyOutcomeRepository,
 )
@@ -58,6 +63,7 @@ def engine():
         connect_args={"check_same_thread": False},
     )
     create_decision_table(eng)
+    create_observation_table(eng)
     create_outcome_table(eng)
     create_evaluation_table(eng)
     create_learning_table(eng)
@@ -91,7 +97,9 @@ def pattern_recognition_query(decision_timeline_query):
 
 
 def _make_decision(decision_repository, decided_at, subject, decision_type, confidence):
-    service = CaptureDecisionService(decision_repository)
+    service = CaptureDecisionService(
+        decision_repository, SqlAlchemyObservationRepository(decision_repository._engine)
+    )
     return service.capture(
         CaptureDecisionRequest(
             case_id=uuid.uuid4(),
@@ -129,9 +137,7 @@ class TestRecognizeNeverCallsPatternRecognitionBuild:
     def test_recognize_does_not_invoke_the_pattern_recognition_query(self):
         class RaisingPatternRecognitionQuery:
             def build(self):
-                raise AssertionError(
-                    "recognize() must not call PatternRecognitionQuery.build()"
-                )
+                raise AssertionError("recognize() must not call PatternRecognitionQuery.build()")
 
         strategy_signature_query = StrategySignatureRecognitionQuery(
             RaisingPatternRecognitionQuery(),

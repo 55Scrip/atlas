@@ -11,6 +11,7 @@ fake input_fn standing in for the ephemeral response opportunity, to
 confirm it fires only at the documented moment, prints the expected
 content, and never lets the ephemeral input reach the orchestrator.
 """
+
 from __future__ import annotations
 
 import io
@@ -37,6 +38,9 @@ from atlas.core.application.decision_reflection.composition import (
 )
 from atlas.core.infrastructure.persistence.decision.sqlalchemy_repository import (
     SqlAlchemyDecisionRepository,
+)
+from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
+    SqlAlchemyObservationRepository,
 )
 
 _T0 = datetime(2026, 7, 15, 12, 0, 0, tzinfo=timezone.utc)
@@ -117,7 +121,9 @@ class TestProgressionUnaffectedByReflectionAndCoach:
         # Now seed two prior matching Decisions so the third, identical
         # conversation script has a genuine Pattern to be reflected on.
         decision_repository = SqlAlchemyDecisionRepository(engine)
-        service = CaptureDecisionService(decision_repository)
+        service = CaptureDecisionService(
+            decision_repository, SqlAlchemyObservationRepository(engine)
+        )
         for confidence in (90, 70):
             service.capture(
                 CaptureDecisionRequest(

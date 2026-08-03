@@ -6,6 +6,7 @@ pattern. Includes the concrete cross-strategy overlap proof required by
 ATLAS-005B-P: a single Decision belonging to both a same_subject_and_type
 Pattern and a same_confidence Pattern simultaneously.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -38,6 +39,10 @@ from atlas.core.infrastructure.persistence.learning.sqlalchemy_repository import
     SqlAlchemyLearningRepository,
 )
 from atlas.core.infrastructure.persistence.learning.table import create_learning_table
+from atlas.core.infrastructure.persistence.observation.sqlalchemy_repository import (
+    SqlAlchemyObservationRepository,
+)
+from atlas.core.infrastructure.persistence.observation.table import create_observation_table
 from atlas.core.infrastructure.persistence.outcome.sqlalchemy_repository import (
     SqlAlchemyOutcomeRepository,
 )
@@ -56,6 +61,7 @@ def engine():
         connect_args={"check_same_thread": False},
     )
     create_decision_table(eng)
+    create_observation_table(eng)
     create_outcome_table(eng)
     create_evaluation_table(eng)
     create_learning_table(eng)
@@ -95,7 +101,9 @@ def combined_query(decision_timeline_query):
 def _make_decision(
     decision_repository, decided_at, subject="NVIDIA", decision_type="BUY", confidence=80
 ):
-    service = CaptureDecisionService(decision_repository)
+    service = CaptureDecisionService(
+        decision_repository, SqlAlchemyObservationRepository(decision_repository._engine)
+    )
     return service.capture(
         CaptureDecisionRequest(
             case_id=uuid.uuid4(),
@@ -168,9 +176,7 @@ class TestCrossStrategyOverlap:
         )
         # A third, unrelated-subject decision sharing the shared Decision's
         # confidence value (same_confidence recurrence).
-        _make_decision(
-            decision_repository, _T0, subject="AMD", decision_type="SELL", confidence=90
-        )
+        _make_decision(decision_repository, _T0, subject="AMD", decision_type="SELL", confidence=90)
 
         results = combined_query.build()
 
