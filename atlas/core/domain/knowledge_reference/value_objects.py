@@ -1,4 +1,5 @@
 """Value objects for the Knowledge Reference aggregate (DO-IMP-003)."""
+
 from __future__ import annotations
 
 import uuid

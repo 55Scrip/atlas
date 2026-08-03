@@ -20,6 +20,7 @@ Knowledge Reference is not root-eligible (OE-002 §5.2, INV-012): since
 its target is always required, this is structurally guaranteed by
 construction — there is no code path that omits it.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

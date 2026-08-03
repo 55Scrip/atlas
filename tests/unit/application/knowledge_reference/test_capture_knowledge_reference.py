@@ -531,6 +531,69 @@ class TestRetrieveById:
             service.get(KnowledgeReferenceId())
 
 
+class TestListAll:
+    """Atlas Alpha, Knowledge Reference Sprint 1 — mirrors Evidence's
+    own identical `list_all`/`delete` additions in Evidence Sprint 1."""
+
+    def test_empty_when_nothing_captured(self, service):
+        assert service.list_all() == []
+
+    def test_returns_every_captured_reference(self, service, repository):
+        case_id = uuid.uuid4()
+        seed = _seed(repository, case_id=case_id)
+        first = service.capture(
+            CaptureKnowledgeReferenceRequest(
+                case_id=case_id,
+                target_type=DomainObjectType.KNOWLEDGE_REFERENCE,
+                target_id=seed.id.value,
+            )
+        )
+        second = service.capture(
+            CaptureKnowledgeReferenceRequest(
+                case_id=case_id,
+                target_type=DomainObjectType.KNOWLEDGE_REFERENCE,
+                target_id=seed.id.value,
+            )
+        )
+        ids = {k.id for k in service.list_all()}
+        # `_seed` itself inserts a real Knowledge Reference directly, so
+        # list_all() reflects three records total, not two.
+        assert ids == {seed.id, first.id, second.id}
+
+
+class TestDelete:
+    def test_deletes_an_existing_reference(self, service, repository):
+        case_id = uuid.uuid4()
+        seed = _seed(repository, case_id=case_id)
+        captured = service.capture(
+            CaptureKnowledgeReferenceRequest(
+                case_id=case_id,
+                target_type=DomainObjectType.KNOWLEDGE_REFERENCE,
+                target_id=seed.id.value,
+            )
+        )
+        service.delete(captured.id)
+        with pytest.raises(KnowledgeReferenceNotFoundError):
+            service.get(captured.id)
+
+    def test_deleted_reference_is_absent_from_list_all(self, service, repository):
+        case_id = uuid.uuid4()
+        seed = _seed(repository, case_id=case_id)
+        captured = service.capture(
+            CaptureKnowledgeReferenceRequest(
+                case_id=case_id,
+                target_type=DomainObjectType.KNOWLEDGE_REFERENCE,
+                target_id=seed.id.value,
+            )
+        )
+        service.delete(captured.id)
+        assert captured.id not in [k.id for k in service.list_all()]
+
+    def test_deleting_an_unknown_id_is_rejected(self, service):
+        with pytest.raises(KnowledgeReferenceNotFoundError):
+            service.delete(KnowledgeReferenceId())
+
+
 class TestServiceDependencyExpansion:
     """Deliberately reverses the single-repository "dependency
     simplification" locked in by

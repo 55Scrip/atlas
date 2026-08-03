@@ -1,10 +1,16 @@
 """SQLAlchemy-backed KnowledgeReferenceRepository.
 
-`add` is the only write operation and is always an INSERT. No foreign
+`add` is the only insert operation and is always an INSERT. No foreign
 keys, no uniqueness constraint beyond the primary key — duplicate
 targets across separate Knowledge References are permitted (OE-002
 §5.2 states no restriction against it).
+
+Atlas Alpha, Knowledge Reference Sprint 1: `list_all` and `delete` are
+new, mirroring Evidence's own identical additions in Evidence Sprint 1.
+`delete` is a plain DELETE by primary key, idempotent (deleting an
+already-absent id affects zero rows without error).
 """
+
 from __future__ import annotations
 
 import uuid
@@ -12,7 +18,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import insert, select
+from sqlalchemy import delete, insert, select
 from sqlalchemy.engine import Engine
 
 from atlas.core.domain.case.value_objects import CaseId
@@ -48,6 +54,30 @@ class SqlAlchemyKnowledgeReferenceRepository:
                 .first()
             )
         return _to_knowledge_reference(row) if row is not None else None
+
+    def list_all(self) -> list[KnowledgeReference]:
+        with self._engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    select(knowledge_references_table).order_by(
+                        knowledge_references_table.c.recorded_at
+                    )
+                )
+                .mappings()
+                .all()
+            )
+        records = [_to_knowledge_reference(row) for row in rows]
+        records.sort(key=lambda k: (k.recorded_at, k.id.value))
+        return records
+
+    def delete(self, knowledge_reference_id: KnowledgeReferenceId) -> None:
+        with self._engine.begin() as connection:
+            connection.execute(
+                delete(knowledge_references_table).where(
+                    knowledge_references_table.c.knowledge_reference_id
+                    == str(knowledge_reference_id)
+                )
+            )
 
 
 def _to_row(knowledge_reference: KnowledgeReference) -> dict[str, Any]:

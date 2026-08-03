@@ -403,3 +403,65 @@ class TestGetKnowledgeReference:
     def test_rejects_malformed_id(self, client):
         response = client.get("/knowledge-references/not-a-uuid")
         assert response.status_code == 422
+
+
+class TestListKnowledgeReferences:
+    """Atlas Alpha, Knowledge Reference Sprint 1 — mirrors Evidence's own
+    identical list/delete endpoint additions in Evidence Sprint 1."""
+
+    def test_returns_empty_list_when_nothing_recorded(self, client):
+        response = client.get("/knowledge-references")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_returns_every_recorded_reference(self, context):
+        client, _ = context
+        case_id = uuid.uuid4()
+        seed = _seed(context, case_id=case_id)
+        first = _create(client, case_id, "KnowledgeReference", seed.id.value).json()
+        second = _create(client, case_id, "KnowledgeReference", seed.id.value).json()
+
+        response = client.get("/knowledge-references")
+
+        assert response.status_code == 200
+        ids = {k["knowledgeReferenceId"] for k in response.json()}
+        # `_seed` itself inserts a real Knowledge Reference directly, so
+        # the list reflects three records total, not two.
+        assert ids == {
+            str(seed.id.value),
+            first["knowledgeReferenceId"],
+            second["knowledgeReferenceId"],
+        }
+
+
+class TestDeleteKnowledgeReference:
+    def test_returns_204_and_removes_the_record(self, context):
+        client, _ = context
+        case_id = uuid.uuid4()
+        seed = _seed(context, case_id=case_id)
+        created = _create(client, case_id, "KnowledgeReference", seed.id.value).json()
+
+        response = client.delete(f"/knowledge-references/{created['knowledgeReferenceId']}")
+
+        assert response.status_code == 204
+        assert (
+            client.get(f"/knowledge-references/{created['knowledgeReferenceId']}").status_code
+            == 404
+        )
+
+    def test_returns_404_for_unknown_id(self, client):
+        response = client.delete(f"/knowledge-references/{uuid.uuid4()}")
+        assert response.status_code == 404
+
+    def test_deleted_reference_no_longer_appears_in_list(self, context):
+        client, _ = context
+        case_id = uuid.uuid4()
+        seed = _seed(context, case_id=case_id)
+        created = _create(client, case_id, "KnowledgeReference", seed.id.value).json()
+
+        client.delete(f"/knowledge-references/{created['knowledgeReferenceId']}")
+
+        remaining_ids = [
+            k["knowledgeReferenceId"] for k in client.get("/knowledge-references").json()
+        ]
+        assert created["knowledgeReferenceId"] not in remaining_ids

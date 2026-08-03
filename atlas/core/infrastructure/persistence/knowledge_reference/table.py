@@ -9,6 +9,7 @@ Domain-Object-Implementation-Reconciliation-Plan.md, Section 13). The
 `DomainObjectType`'s own values — the single source of truth — rather
 than a hand-duplicated literal list, so the two can never drift apart.
 """
+
 from __future__ import annotations
 
 from sqlalchemy import CheckConstraint, Column, MetaData, String, Table
@@ -30,9 +31,7 @@ knowledge_references_table = Table(
     Column("target_id", String, nullable=False, index=True),
     Column("recorded_at", String, nullable=False),
     CheckConstraint(
-        "target_type IN ({})".format(
-            ", ".join(f"'{value}'" for value in _ADOPTED_TARGET_TYPES)
-        ),
+        "target_type IN ({})".format(", ".join(f"'{value}'" for value in _ADOPTED_TARGET_TYPES)),
         name="ck_knowledge_references_target_type_adopted",
     ),
 )

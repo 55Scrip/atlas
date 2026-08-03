@@ -1,9 +1,12 @@
 """Repository interface for the Knowledge Reference aggregate.
 
-Insert-only: no update, no delete, matching every other aggregate in
-this codebase. No `list_all`: nothing within DO-IMP-003's approved
-scope needs to enumerate every Knowledge Reference yet.
+Atlas Alpha, Knowledge Reference Sprint 1: `list_all` and `delete` are
+new — required by this sprint's own workflow (displaying a Case's
+Knowledge References, and removing one), mirroring the identical
+additions already made to Evidence's own repository in Evidence Sprint
+1. `update` remains unsupported, matching every other aggregate.
 """
+
 from __future__ import annotations
 
 from typing import Protocol
@@ -19,4 +22,20 @@ class KnowledgeReferenceRepository(Protocol):
 
     def get(self, knowledge_reference_id: KnowledgeReferenceId) -> KnowledgeReference | None:
         """Return a single Knowledge Reference by id, or None if it does not exist."""
+        ...
+
+    def list_all(self) -> list[KnowledgeReference]:
+        """Return every Knowledge Reference ever captured, in chronological
+        order: recorded_at ascending, then knowledge_reference_id as a
+        deterministic final tie-breaker.
+        """
+        ...
+
+    def delete(self, knowledge_reference_id: KnowledgeReferenceId) -> None:
+        """Remove a Knowledge Reference by id. Idempotent: deleting an id
+        that does not exist (already deleted, or never existed) is not an
+        error at this layer — existence is the application service's
+        concern (see `KnowledgeReferenceService.delete`), the same
+        division of responsibility already used for `get`.
+        """
         ...

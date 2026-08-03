@@ -18,6 +18,7 @@ service is ever reached) falls through to FastAPI's default 422, the
 same accepted asymmetry already documented for every other module in
 this codebase.
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI, Request

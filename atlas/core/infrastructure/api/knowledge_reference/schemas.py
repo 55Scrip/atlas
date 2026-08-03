@@ -7,6 +7,7 @@ as flat fields — this is that schema's own stated purpose: letting each
 owning Domain Object's API embed it without reinventing camelCase
 target-reference serialization.
 """
+
 from __future__ import annotations
 
 import uuid

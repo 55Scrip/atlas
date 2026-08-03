@@ -96,10 +96,56 @@ class TestEqualsOriginal:
             assert reloaded.target.target_type is member
 
 
-class TestInsertOnly:
-    def test_repository_exposes_no_update_or_delete_method(self, repository):
+class TestReadAll:
+    def test_list_all_is_empty_initially(self, repository):
+        assert repository.list_all() == []
+
+    def test_list_all_returns_every_recorded_reference(self, repository):
+        first = _new_kr()
+        second = _new_kr()
+        repository.add(first)
+        repository.add(second)
+        ids = {k.id for k in repository.list_all()}
+        assert ids == {first.id, second.id}
+
+
+class TestDelete:
+    def test_delete_removes_the_record(self, repository):
+        kr = _new_kr()
+        repository.add(kr)
+        repository.delete(kr.id)
+        assert repository.get(kr.id) is None
+
+    def test_delete_removes_only_the_targeted_record(self, repository):
+        keep = _new_kr()
+        remove = _new_kr()
+        repository.add(keep)
+        repository.add(remove)
+        repository.delete(remove.id)
+        assert repository.get(keep.id) == keep
+        assert [k.id for k in repository.list_all()] == [keep.id]
+
+    def test_delete_is_idempotent_for_an_unknown_id(self, repository):
+        repository.delete(KnowledgeReferenceId())  # must not raise
+
+    def test_delete_then_reload_reflects_the_deletion_in_list_all(self, repository):
+        kr = _new_kr()
+        repository.add(kr)
+        repository.delete(kr.id)
+        assert repository.list_all() == []
+
+
+class TestInsertAndDeleteOnly:
+    """Atlas Alpha, Knowledge Reference Sprint 1: `delete` is now
+    supported (mirroring Evidence's own identical addition in Evidence
+    Sprint 1); `update` remains unsupported, matching every other
+    aggregate."""
+
+    def test_repository_exposes_no_update_method(self, repository):
         assert not hasattr(repository, "update")
-        assert not hasattr(repository, "delete")
+
+    def test_repository_exposes_a_delete_method(self, repository):
+        assert hasattr(repository, "delete")
 
 
 class TestSchemaAndConstraints:

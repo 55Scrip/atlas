@@ -119,6 +119,16 @@ class KnowledgeReferenceService:
             )
         return knowledge_reference
 
+    def list_all(self) -> list[KnowledgeReference]:
+        return self._knowledge_references.list_all()
+
+    def delete(self, knowledge_reference_id: KnowledgeReferenceId) -> None:
+        if self._knowledge_references.get(knowledge_reference_id) is None:
+            raise KnowledgeReferenceNotFoundError(
+                f"No Knowledge Reference found with id {knowledge_reference_id}"
+            )
+        self._knowledge_references.delete(knowledge_reference_id)
+
     def _verify_target(
         self, *, case_id: CaseId, target_type: DomainObjectType, target_id: uuid.UUID
     ) -> None:

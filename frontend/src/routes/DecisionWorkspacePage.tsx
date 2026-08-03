@@ -63,6 +63,31 @@ interface EvidenceFormInput {
 
 const EMPTY_EVIDENCE_FORM: EvidenceFormInput = { summary: "", source: "", direction: "SUPPORTS" };
 
+interface KnowledgeReferenceTarget {
+  targetType: string;
+  targetId: string;
+}
+
+interface KnowledgeReferenceRecord {
+  knowledgeReferenceId: string;
+  caseId: string;
+  target: KnowledgeReferenceTarget;
+  recordedAt: string;
+}
+
+type KnowledgeReferenceListStatus =
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "ready" };
+
+type KnowledgeReferenceCreateStatus =
+  | { kind: "idle" }
+  | { kind: "creating" }
+  | { kind: "submitting" }
+  | { kind: "success"; knowledgeReference: KnowledgeReferenceRecord }
+  | { kind: "validation-error"; message: string }
+  | { kind: "api-error"; message: string };
+
 /**
  * Decision Workspace Shell (Sprint 1, Commit 9) — structural layout only.
  *
@@ -137,6 +162,34 @@ const EMPTY_EVIDENCE_FORM: EvidenceFormInput = { summary: "", source: "", direct
  * fabricated; only Summary, Source, and Direction are collected.
  * `observedAt` is set to the real submission instant, the same pattern
  * already used for Observation.
+ *
+ * Knowledge Reference Sprint 1: Knowledge References belong to the
+ * Observation, not to an individual Evidence entry — Evidence is not,
+ * and cannot become, a valid Knowledge Reference target. atlas/core's
+ * `DomainObjectType` is a closed, doctrinally-governed six-member enum
+ * (Observation, Knowledge Reference, Reasoning Trace, Judgment,
+ * Decision, Outcome); its own docstring explicitly names "Evidence" as
+ * a term that must never be coerced into it, and a dedicated repository
+ * governance document (`Domain-Object-Type-Set-Discrepancy-
+ * Investigation.md`) documents the formal process required to ever
+ * change that set — not something available at this layer. Knowledge
+ * References are therefore rendered as their own section, a sibling to
+ * Evidence under each Observation, never nested inside an Evidence
+ * entry or described as belonging to one:
+ *
+ *   Observation
+ *     Evidence
+ *       Evidence item 1
+ *     Knowledge References
+ *       Knowledge Reference 1
+ *
+ * Creation has no free-text fields at all: the real backend's
+ * `CreateKnowledgeReferenceRequest` needs only `caseId` and a `target`
+ * (`targetType`/`targetId`), and both are already fully determined by
+ * context — `targetType` is always `"Observation"`, `targetId` is
+ * always the Observation this section belongs to. There is nothing to
+ * type, so "Create" is a confirm step, not a form, per this sprint's
+ * own "do not invent fields the backend doesn't require" instruction.
  */
 export function DecisionWorkspacePage() {
   const { caseId } = useParams<{ caseId?: string }>();
@@ -157,6 +210,18 @@ export function DecisionWorkspacePage() {
   >({});
   const [evidenceForm, setEvidenceForm] = useState<Record<string, EvidenceFormInput>>({});
   const [evidenceDeleteStatus, setEvidenceDeleteStatus] = useState<
+    Record<string, "idle" | "deleting" | "error">
+  >({});
+
+  const [allKnowledgeReferences, setAllKnowledgeReferences] = useState<KnowledgeReferenceRecord[]>(
+    [],
+  );
+  const [knowledgeReferenceListStatus, setKnowledgeReferenceListStatus] =
+    useState<KnowledgeReferenceListStatus>({ kind: "loading" });
+  const [knowledgeReferenceCreateStatus, setKnowledgeReferenceCreateStatus] = useState<
+    Record<string, KnowledgeReferenceCreateStatus>
+  >({});
+  const [knowledgeReferenceDeleteStatus, setKnowledgeReferenceDeleteStatus] = useState<
     Record<string, "idle" | "deleting" | "error">
   >({});
 
@@ -241,6 +306,34 @@ export function DecisionWorkspacePage() {
     return () => controller.abort();
   }, [caseId]);
 
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setKnowledgeReferenceListStatus({ kind: "loading" });
+
+    fetch("/api/knowledge-references", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        return response.json() as Promise<KnowledgeReferenceRecord[]>;
+      })
+      .then((records) => {
+        setAllKnowledgeReferences(records);
+        setKnowledgeReferenceListStatus({ kind: "ready" });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setKnowledgeReferenceListStatus({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      });
+
+    return () => controller.abort();
+  }, [caseId]);
+
   function submitEvidence(observationId: string) {
     const form = evidenceForm[observationId] ?? EMPTY_EVIDENCE_FORM;
     setEvidenceCreateStatus((current) => ({ ...current, [observationId]: { kind: "submitting" } }));
@@ -302,6 +395,81 @@ export function DecisionWorkspacePage() {
       })
       .catch(() => {
         setEvidenceDeleteStatus((current) => ({ ...current, [evidenceId]: "error" }));
+      });
+  }
+
+  function submitKnowledgeReference(observationId: string) {
+    if (!caseId) return;
+    setKnowledgeReferenceCreateStatus((current) => ({
+      ...current,
+      [observationId]: { kind: "submitting" },
+    }));
+
+    fetch("/api/knowledge-references", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        caseId,
+        target: { targetType: "Observation", targetId: observationId },
+      }),
+    })
+      .then(async (response) => {
+        if (response.status === 400 || response.status === 404) {
+          const body = (await response.json()) as { detail?: string };
+          setKnowledgeReferenceCreateStatus((current) => ({
+            ...current,
+            [observationId]: {
+              kind: response.status === 400 ? "validation-error" : "api-error",
+              message: body.detail ?? "Invalid input.",
+            },
+          }));
+          return;
+        }
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        const knowledgeReference = (await response.json()) as KnowledgeReferenceRecord;
+        setAllKnowledgeReferences((current) => [...current, knowledgeReference]);
+        setKnowledgeReferenceCreateStatus((current) => ({
+          ...current,
+          [observationId]: { kind: "success", knowledgeReference },
+        }));
+      })
+      .catch((error: unknown) => {
+        setKnowledgeReferenceCreateStatus((current) => ({
+          ...current,
+          [observationId]: {
+            kind: "api-error",
+            message: error instanceof Error ? error.message : "Unknown error",
+          },
+        }));
+      });
+  }
+
+  function deleteKnowledgeReference(knowledgeReferenceId: string) {
+    setKnowledgeReferenceDeleteStatus((current) => ({
+      ...current,
+      [knowledgeReferenceId]: "deleting",
+    }));
+
+    fetch(`/api/knowledge-references/${knowledgeReferenceId}`, { method: "DELETE" })
+      .then((response) => {
+        if (!response.ok && response.status !== 404) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        setAllKnowledgeReferences((current) =>
+          current.filter((k) => k.knowledgeReferenceId !== knowledgeReferenceId),
+        );
+        setKnowledgeReferenceDeleteStatus((current) => ({
+          ...current,
+          [knowledgeReferenceId]: "idle",
+        }));
+      })
+      .catch(() => {
+        setKnowledgeReferenceDeleteStatus((current) => ({
+          ...current,
+          [knowledgeReferenceId]: "error",
+        }));
       });
   }
 
@@ -428,6 +596,16 @@ export function DecisionWorkspacePage() {
                       ] ?? { kind: "idle" };
                       const thisForm: EvidenceFormInput =
                         evidenceForm[observation.observationId] ?? EMPTY_EVIDENCE_FORM;
+
+                      const knowledgeReferencesForObservation = allKnowledgeReferences.filter(
+                        (k) =>
+                          k.target.targetType === "Observation" &&
+                          k.target.targetId === observation.observationId,
+                      );
+                      const thisKnowledgeReferenceCreateStatus: KnowledgeReferenceCreateStatus =
+                        knowledgeReferenceCreateStatus[observation.observationId] ?? {
+                          kind: "idle",
+                        };
 
                       return (
                         <div key={observation.observationId}>
@@ -620,6 +798,155 @@ export function DecisionWorkspacePage() {
                                       }));
                                     }}
                                     disabled={thisCreateStatus.kind === "submitting"}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </Stack>
+                            )}
+                          </Stack>
+
+                          <Stack gap="inter-section">
+                            <Heading level={4}>Knowledge References</Heading>
+
+                            {knowledgeReferenceListStatus.kind === "loading" && (
+                              <Text role="status" aria-live="polite">
+                                Loading knowledge references…
+                              </Text>
+                            )}
+                            {knowledgeReferenceListStatus.kind === "error" && (
+                              <Text color="tertiary" role="alert">
+                                Could not load knowledge references:{" "}
+                                {knowledgeReferenceListStatus.message}
+                              </Text>
+                            )}
+                            {knowledgeReferenceListStatus.kind === "ready" &&
+                              knowledgeReferencesForObservation.length === 0 && (
+                                <Text color="secondary">No knowledge references recorded yet.</Text>
+                              )}
+                            {knowledgeReferenceListStatus.kind === "ready" &&
+                              knowledgeReferencesForObservation.length > 0 && (
+                                <Stack gap="inter-section">
+                                  {knowledgeReferencesForObservation.map((knowledgeReference) => (
+                                    <div key={knowledgeReference.knowledgeReferenceId}>
+                                      <Text>
+                                        Knowledge Reference {knowledgeReference.knowledgeReferenceId}
+                                      </Text>
+                                      <Text color="tertiary" as="p">
+                                        {knowledgeReference.recordedAt}
+                                      </Text>
+                                      <Button
+                                        variant="tertiary"
+                                        onClick={() =>
+                                          deleteKnowledgeReference(
+                                            knowledgeReference.knowledgeReferenceId,
+                                          )
+                                        }
+                                        disabled={
+                                          knowledgeReferenceDeleteStatus[
+                                            knowledgeReference.knowledgeReferenceId
+                                          ] === "deleting"
+                                        }
+                                      >
+                                        {knowledgeReferenceDeleteStatus[
+                                          knowledgeReference.knowledgeReferenceId
+                                        ] === "deleting"
+                                          ? "Deleting…"
+                                          : "Delete"}
+                                      </Button>
+                                      {knowledgeReferenceDeleteStatus[
+                                        knowledgeReference.knowledgeReferenceId
+                                      ] === "error" && (
+                                        <Text color="tertiary" role="alert">
+                                          Could not delete this knowledge reference.
+                                        </Text>
+                                      )}
+                                    </div>
+                                  ))}
+                                </Stack>
+                              )}
+
+                            <Divider tone="hairline" />
+
+                            {thisKnowledgeReferenceCreateStatus.kind === "idle" && (
+                              <Button
+                                variant="tertiary"
+                                onClick={() =>
+                                  setKnowledgeReferenceCreateStatus((current) => ({
+                                    ...current,
+                                    [observation.observationId]: { kind: "creating" },
+                                  }))
+                                }
+                              >
+                                + Add Knowledge Reference
+                              </Button>
+                            )}
+
+                            {thisKnowledgeReferenceCreateStatus.kind === "success" && (
+                              <Stack gap="inter-section">
+                                <Text>
+                                  Knowledge reference recorded:{" "}
+                                  {
+                                    thisKnowledgeReferenceCreateStatus.knowledgeReference
+                                      .knowledgeReferenceId
+                                  }
+                                </Text>
+                                <Button
+                                  variant="tertiary"
+                                  onClick={() =>
+                                    setKnowledgeReferenceCreateStatus((current) => ({
+                                      ...current,
+                                      [observation.observationId]: { kind: "creating" },
+                                    }))
+                                  }
+                                >
+                                  Add another
+                                </Button>
+                              </Stack>
+                            )}
+
+                            {(thisKnowledgeReferenceCreateStatus.kind === "creating" ||
+                              thisKnowledgeReferenceCreateStatus.kind === "submitting" ||
+                              thisKnowledgeReferenceCreateStatus.kind === "validation-error" ||
+                              thisKnowledgeReferenceCreateStatus.kind === "api-error") && (
+                              <Stack gap="inter-section">
+                                <Text color="secondary">
+                                  Record a Knowledge Reference for this Observation.
+                                </Text>
+
+                                {thisKnowledgeReferenceCreateStatus.kind === "validation-error" && (
+                                  <Text color="tertiary" role="alert">
+                                    {thisKnowledgeReferenceCreateStatus.message}
+                                  </Text>
+                                )}
+                                {thisKnowledgeReferenceCreateStatus.kind === "api-error" && (
+                                  <Text color="tertiary" role="alert">
+                                    Could not record this knowledge reference:{" "}
+                                    {thisKnowledgeReferenceCreateStatus.message}
+                                  </Text>
+                                )}
+
+                                <div>
+                                  <Button
+                                    variant="primary"
+                                    onClick={() =>
+                                      submitKnowledgeReference(observation.observationId)
+                                    }
+                                    disabled={thisKnowledgeReferenceCreateStatus.kind === "submitting"}
+                                  >
+                                    {thisKnowledgeReferenceCreateStatus.kind === "submitting"
+                                      ? "Submitting…"
+                                      : "Submit"}
+                                  </Button>{" "}
+                                  <Button
+                                    variant="tertiary"
+                                    onClick={() =>
+                                      setKnowledgeReferenceCreateStatus((current) => ({
+                                        ...current,
+                                        [observation.observationId]: { kind: "idle" },
+                                      }))
+                                    }
+                                    disabled={thisKnowledgeReferenceCreateStatus.kind === "submitting"}
                                   >
                                     Cancel
                                   </Button>
