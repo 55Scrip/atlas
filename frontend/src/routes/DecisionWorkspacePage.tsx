@@ -12,6 +12,101 @@ type CaseStatus =
   | { kind: "error"; message: string }
   | { kind: "loaded"; case: CaseSummary };
 
+/**
+ * Shared shape for every "fetch the full list, scoped to this Case"
+ * status (Observation, Evidence, Knowledge Reference, Reasoning Trace,
+ * Judgment, Decision, Outcome all used seven byte-identical copies of
+ * this same three-variant union before Integration Sprint 1 — collapsed
+ * into one type here; no behavior changes, since all seven copies were
+ * already structurally identical).
+ */
+type ListStatus =
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "ready" };
+
+/**
+ * Fetches the full, case-scoped list for one domain object type and
+ * mirrors it into local state — the one fetch shape every section on
+ * this page shares (Observation, Evidence, Knowledge Reference,
+ * Reasoning Trace, Judgment, Decision, Outcome). Before Integration
+ * Sprint 1, each section repeated this same effect body inline; this
+ * hook replaces all seven copies with one, with no change in behavior:
+ * same AbortController-per-effect cleanup, same loading/ready/error
+ * transitions, same "ignore AbortError" catch.
+ */
+function useApiList<T>(
+  url: string,
+  caseId: string | undefined,
+  setRecords: (records: T[]) => void,
+  setStatus: (status: ListStatus) => void,
+) {
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setStatus({ kind: "loading" });
+
+    fetch(url, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        return response.json() as Promise<T[]>;
+      })
+      .then((records) => {
+        setRecords(records);
+        setStatus({ kind: "ready" });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setStatus({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      });
+
+    return () => controller.abort();
+  }, [url, caseId, setRecords, setStatus]);
+}
+
+/**
+ * Deletes one record by id and mirrors the removal into local state —
+ * the one delete shape every deletable section on this page shares
+ * (Evidence, Knowledge Reference, Reasoning Trace, Judgment; Decision
+ * and Outcome have no delete capability at all, per their own governing
+ * design, so neither calls this). Before Integration Sprint 1, each
+ * section repeated this same function body inline; this helper replaces
+ * all four copies with one, with no change in behavior: same
+ * deleting/idle/error transitions, same "404 counts as already gone"
+ * tolerance.
+ */
+function deleteRecord<T>(
+  url: string,
+  id: string,
+  matchesId: (record: T) => boolean,
+  setRecords: (updater: (current: T[]) => T[]) => void,
+  setDeleteStatus: (
+    updater: (
+      current: Record<string, "idle" | "deleting" | "error">,
+    ) => Record<string, "idle" | "deleting" | "error">,
+  ) => void,
+) {
+  setDeleteStatus((current) => ({ ...current, [id]: "deleting" }));
+
+  fetch(url, { method: "DELETE" })
+    .then((response) => {
+      if (!response.ok && response.status !== 404) {
+        throw new Error(`Backend responded with ${response.status}`);
+      }
+      setRecords((current) => current.filter((record) => !matchesId(record)));
+      setDeleteStatus((current) => ({ ...current, [id]: "idle" }));
+    })
+    .catch(() => {
+      setDeleteStatus((current) => ({ ...current, [id]: "error" }));
+    });
+}
+
 interface ObservationRecord {
   observationId: string;
   caseId: string;
@@ -19,11 +114,6 @@ interface ObservationRecord {
   statement: string;
   observedAt: string;
 }
-
-type ObservationListStatus =
-  | { kind: "loading" }
-  | { kind: "error"; message: string }
-  | { kind: "ready" };
 
 type ObservationCreateStatus =
   | { kind: "idle" }
@@ -41,11 +131,6 @@ interface EvidenceRecord {
   source: string | null;
   observedAt: string;
 }
-
-type EvidenceListStatus =
-  | { kind: "loading" }
-  | { kind: "error"; message: string }
-  | { kind: "ready" };
 
 type EvidenceCreateStatus =
   | { kind: "idle" }
@@ -75,11 +160,6 @@ interface KnowledgeReferenceRecord {
   recordedAt: string;
 }
 
-type KnowledgeReferenceListStatus =
-  | { kind: "loading" }
-  | { kind: "error"; message: string }
-  | { kind: "ready" };
-
 type KnowledgeReferenceCreateStatus =
   | { kind: "idle" }
   | { kind: "creating" }
@@ -99,11 +179,6 @@ interface ReasoningTraceRecord {
   supports: ReasoningTraceSupport[];
   recordedAt: string;
 }
-
-type ReasoningTraceListStatus =
-  | { kind: "loading" }
-  | { kind: "error"; message: string }
-  | { kind: "ready" };
 
 type ReasoningTraceCreateStatus =
   | { kind: "idle" }
@@ -126,11 +201,6 @@ interface JudgmentRecord {
   recordedAt: string;
 }
 
-type JudgmentListStatus =
-  | { kind: "loading" }
-  | { kind: "error"; message: string }
-  | { kind: "ready" };
-
 type JudgmentCreateStatus =
   | { kind: "idle" }
   | { kind: "creating" }
@@ -152,11 +222,6 @@ interface DecisionRecord {
   source: string;
   observationId: string | null;
 }
-
-type DecisionListStatus =
-  | { kind: "loading" }
-  | { kind: "error"; message: string }
-  | { kind: "ready" };
 
 type DecisionCreateStatus =
   | { kind: "idle" }
@@ -190,6 +255,32 @@ const EMPTY_DECISION_FORM: DecisionFormInput = {
  * system; it is not real user data, and no authentication is added.
  */
 const ALPHA_PLACEHOLDER_USER_ID = "00000000-0000-0000-0000-000000000001";
+
+interface OutcomeRecord {
+  id: string;
+  caseId: string;
+  decisionId: string;
+  statement: string;
+  note: string | null;
+  occurredAt: string;
+  recordedAt: string;
+}
+
+type OutcomeCreateStatus =
+  | { kind: "idle" }
+  | { kind: "creating" }
+  | { kind: "submitting" }
+  | { kind: "success"; outcome: OutcomeRecord }
+  | { kind: "validation-error"; message: string }
+  | { kind: "api-error"; message: string };
+
+interface OutcomeFormInput {
+  decisionId: string;
+  statement: string;
+  note: string;
+}
+
+const EMPTY_OUTCOME_FORM: OutcomeFormInput = { decisionId: "", statement: "", note: "" };
 
 /**
  * Decision Workspace Shell (Sprint 1, Commit 9) — structural layout only.
@@ -401,19 +492,76 @@ const ALPHA_PLACEHOLDER_USER_ID = "00000000-0000-0000-0000-000000000001";
  * is also required by the real backend but is never shown to the
  * investor — see `ALPHA_PLACEHOLDER_USER_ID` above. `observationId` is
  * auto-set to this section's own Observation, never user-selectable.
+ *
+ * Outcome Sprint 1: rendered as its own section directly beneath
+ * Decision, the final sibling under each Observation:
+ *
+ *   Observation
+ *     Evidence
+ *     Knowledge References
+ *     Reasoning Trace
+ *     Judgment
+ *     Decision
+ *     Outcome
+ *
+ * atlas/core's Outcome had no REST API of any kind before this sprint
+ * (`docs/atlas_domain_object_architecture/Outcome-Implementation-
+ * Design.md` Section 42: "no atlas/core/infrastructure/api/outcome/
+ * directory exists"). The real, existing domain/application/persistence
+ * layers needed no change — `case_id` is already correctly derived
+ * from the referenced Decision (Package R4, already implemented before
+ * this sprint), and `list_all()` already existed — so this sprint adds
+ * only the missing REST surface (POST/GET/GET-by-id), following exactly
+ * the same shape as Decision's own API, Outcome's closest architectural
+ * sibling.
+ *
+ * Outcome has no Observation-anchor field of its own, and none is
+ * added — its one real, required relationship is `decisionId`, a
+ * reference to an existing Decision. Since this sprint's own Decision
+ * section already anchors each Decision to its Observation via
+ * `observationId`, Outcome is scoped per-Observation transitively,
+ * through the Decisions already recorded there — no fabricated
+ * Outcome-to-Observation relationship is introduced. Concretely: this
+ * section first finds every Decision recorded for this Observation,
+ * then shows every Outcome whose `decisionId` matches one of them.
+ *
+ * If no Decision has been recorded for this Observation yet, there is
+ * nothing a real Outcome could reference (`decisionId` is mandatory,
+ * non-nullable, and must name an already-accepted Decision) — the
+ * section says so truthfully instead of offering a non-functional
+ * "+ Record Outcome" control. If exactly one Decision exists, it is
+ * used automatically (there is no genuine choice to make). If more than
+ * one Decision has been recorded for this Observation, the real backend
+ * requires the investor to say which Decision this Outcome is of — a
+ * genuine semantic choice, exposed as a required selector rather than
+ * silently defaulted to e.g. the most recent one.
+ *
+ * Required fields: `statement` (free text — what actually happened) is
+ * the one field atlas/core's own `CaptureOutcomeRequest` requires
+ * beyond the Decision reference; `note` is optional context, exposed
+ * because the real backend already accepts it, not invented. Multiple
+ * Outcomes per Decision are permitted (atlas/core's own docstring:
+ * "A Decision may accrue more than one Outcome entry over time"),
+ * matching every prior section's own multi-item list.
+ *
+ * Outcome has no delete capability, anywhere: `OutcomeRepository`
+ * exposes only `add`/`get`/`list_all`/`list_by_decision_id`, and the
+ * governing design document states "Delete: forbidden." No Delete
+ * control renders below, for the identical reason already established
+ * for Decision — an intentional, truthful absence, not an oversight.
  */
 export function DecisionWorkspacePage() {
   const { caseId } = useParams<{ caseId?: string }>();
   const [status, setStatus] = useState<CaseStatus>({ kind: "loading" });
 
   const [observations, setObservations] = useState<ObservationRecord[]>([]);
-  const [listStatus, setListStatus] = useState<ObservationListStatus>({ kind: "loading" });
+  const [listStatus, setListStatus] = useState<ListStatus>({ kind: "loading" });
   const [createStatus, setCreateStatus] = useState<ObservationCreateStatus>({ kind: "idle" });
   const [subjectInput, setSubjectInput] = useState("");
   const [statementInput, setStatementInput] = useState("");
 
   const [allEvidence, setAllEvidence] = useState<EvidenceRecord[]>([]);
-  const [evidenceListStatus, setEvidenceListStatus] = useState<EvidenceListStatus>({
+  const [evidenceListStatus, setEvidenceListStatus] = useState<ListStatus>({
     kind: "loading",
   });
   const [evidenceCreateStatus, setEvidenceCreateStatus] = useState<
@@ -427,8 +575,9 @@ export function DecisionWorkspacePage() {
   const [allKnowledgeReferences, setAllKnowledgeReferences] = useState<KnowledgeReferenceRecord[]>(
     [],
   );
-  const [knowledgeReferenceListStatus, setKnowledgeReferenceListStatus] =
-    useState<KnowledgeReferenceListStatus>({ kind: "loading" });
+  const [knowledgeReferenceListStatus, setKnowledgeReferenceListStatus] = useState<ListStatus>({
+    kind: "loading",
+  });
   const [knowledgeReferenceCreateStatus, setKnowledgeReferenceCreateStatus] = useState<
     Record<string, KnowledgeReferenceCreateStatus>
   >({});
@@ -437,9 +586,9 @@ export function DecisionWorkspacePage() {
   >({});
 
   const [allReasoningTraces, setAllReasoningTraces] = useState<ReasoningTraceRecord[]>([]);
-  const [reasoningTraceListStatus, setReasoningTraceListStatus] = useState<ReasoningTraceListStatus>(
-    { kind: "loading" },
-  );
+  const [reasoningTraceListStatus, setReasoningTraceListStatus] = useState<ListStatus>({
+    kind: "loading",
+  });
   const [reasoningTraceCreateStatus, setReasoningTraceCreateStatus] = useState<
     Record<string, ReasoningTraceCreateStatus>
   >({});
@@ -448,7 +597,7 @@ export function DecisionWorkspacePage() {
   >({});
 
   const [allJudgments, setAllJudgments] = useState<JudgmentRecord[]>([]);
-  const [judgmentListStatus, setJudgmentListStatus] = useState<JudgmentListStatus>({
+  const [judgmentListStatus, setJudgmentListStatus] = useState<ListStatus>({
     kind: "loading",
   });
   const [judgmentCreateStatus, setJudgmentCreateStatus] = useState<
@@ -460,13 +609,22 @@ export function DecisionWorkspacePage() {
   >({});
 
   const [allDecisions, setAllDecisions] = useState<DecisionRecord[]>([]);
-  const [decisionListStatus, setDecisionListStatus] = useState<DecisionListStatus>({
+  const [decisionListStatus, setDecisionListStatus] = useState<ListStatus>({
     kind: "loading",
   });
   const [decisionCreateStatus, setDecisionCreateStatus] = useState<
     Record<string, DecisionCreateStatus>
   >({});
   const [decisionForm, setDecisionForm] = useState<Record<string, DecisionFormInput>>({});
+
+  const [allOutcomes, setAllOutcomes] = useState<OutcomeRecord[]>([]);
+  const [outcomeListStatus, setOutcomeListStatus] = useState<ListStatus>({
+    kind: "loading",
+  });
+  const [outcomeCreateStatus, setOutcomeCreateStatus] = useState<
+    Record<string, OutcomeCreateStatus>
+  >({});
+  const [outcomeForm, setOutcomeForm] = useState<Record<string, OutcomeFormInput>>({});
 
   useEffect(() => {
     if (!caseId) return;
@@ -521,145 +679,22 @@ export function DecisionWorkspacePage() {
     return () => controller.abort();
   }, [caseId]);
 
-  useEffect(() => {
-    if (!caseId) return;
-
-    const controller = new AbortController();
-    setEvidenceListStatus({ kind: "loading" });
-
-    fetch("/api/evidence", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        return response.json() as Promise<EvidenceRecord[]>;
-      })
-      .then((records) => {
-        setAllEvidence(records);
-        setEvidenceListStatus({ kind: "ready" });
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setEvidenceListStatus({
-          kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
-        });
-      });
-
-    return () => controller.abort();
-  }, [caseId]);
-
-  useEffect(() => {
-    if (!caseId) return;
-
-    const controller = new AbortController();
-    setKnowledgeReferenceListStatus({ kind: "loading" });
-
-    fetch("/api/knowledge-references", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        return response.json() as Promise<KnowledgeReferenceRecord[]>;
-      })
-      .then((records) => {
-        setAllKnowledgeReferences(records);
-        setKnowledgeReferenceListStatus({ kind: "ready" });
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setKnowledgeReferenceListStatus({
-          kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
-        });
-      });
-
-    return () => controller.abort();
-  }, [caseId]);
-
-  useEffect(() => {
-    if (!caseId) return;
-
-    const controller = new AbortController();
-    setReasoningTraceListStatus({ kind: "loading" });
-
-    fetch("/api/reasoning-traces", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        return response.json() as Promise<ReasoningTraceRecord[]>;
-      })
-      .then((records) => {
-        setAllReasoningTraces(records);
-        setReasoningTraceListStatus({ kind: "ready" });
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setReasoningTraceListStatus({
-          kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
-        });
-      });
-
-    return () => controller.abort();
-  }, [caseId]);
-
-  useEffect(() => {
-    if (!caseId) return;
-
-    const controller = new AbortController();
-    setJudgmentListStatus({ kind: "loading" });
-
-    fetch("/api/judgments", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        return response.json() as Promise<JudgmentRecord[]>;
-      })
-      .then((records) => {
-        setAllJudgments(records);
-        setJudgmentListStatus({ kind: "ready" });
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setJudgmentListStatus({
-          kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
-        });
-      });
-
-    return () => controller.abort();
-  }, [caseId]);
-
-  useEffect(() => {
-    if (!caseId) return;
-
-    const controller = new AbortController();
-    setDecisionListStatus({ kind: "loading" });
-
-    fetch("/api/decisions", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        return response.json() as Promise<DecisionRecord[]>;
-      })
-      .then((records) => {
-        setAllDecisions(records);
-        setDecisionListStatus({ kind: "ready" });
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setDecisionListStatus({
-          kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
-        });
-      });
-
-    return () => controller.abort();
-  }, [caseId]);
+  useApiList<EvidenceRecord>("/api/evidence", caseId, setAllEvidence, setEvidenceListStatus);
+  useApiList<KnowledgeReferenceRecord>(
+    "/api/knowledge-references",
+    caseId,
+    setAllKnowledgeReferences,
+    setKnowledgeReferenceListStatus,
+  );
+  useApiList<ReasoningTraceRecord>(
+    "/api/reasoning-traces",
+    caseId,
+    setAllReasoningTraces,
+    setReasoningTraceListStatus,
+  );
+  useApiList<JudgmentRecord>("/api/judgments", caseId, setAllJudgments, setJudgmentListStatus);
+  useApiList<DecisionRecord>("/api/decisions", caseId, setAllDecisions, setDecisionListStatus);
+  useApiList<OutcomeRecord>("/api/outcomes", caseId, setAllOutcomes, setOutcomeListStatus);
 
   function submitEvidence(observationId: string) {
     const form = evidenceForm[observationId] ?? EMPTY_EVIDENCE_FORM;
@@ -710,19 +745,13 @@ export function DecisionWorkspacePage() {
   }
 
   function deleteEvidence(evidenceId: string) {
-    setEvidenceDeleteStatus((current) => ({ ...current, [evidenceId]: "deleting" }));
-
-    fetch(`/api/evidence/${evidenceId}`, { method: "DELETE" })
-      .then((response) => {
-        if (!response.ok && response.status !== 404) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        setAllEvidence((current) => current.filter((e) => e.evidenceId !== evidenceId));
-        setEvidenceDeleteStatus((current) => ({ ...current, [evidenceId]: "idle" }));
-      })
-      .catch(() => {
-        setEvidenceDeleteStatus((current) => ({ ...current, [evidenceId]: "error" }));
-      });
+    deleteRecord<EvidenceRecord>(
+      `/api/evidence/${evidenceId}`,
+      evidenceId,
+      (e) => e.evidenceId === evidenceId,
+      setAllEvidence,
+      setEvidenceDeleteStatus,
+    );
   }
 
   function submitKnowledgeReference(observationId: string) {
@@ -774,30 +803,13 @@ export function DecisionWorkspacePage() {
   }
 
   function deleteKnowledgeReference(knowledgeReferenceId: string) {
-    setKnowledgeReferenceDeleteStatus((current) => ({
-      ...current,
-      [knowledgeReferenceId]: "deleting",
-    }));
-
-    fetch(`/api/knowledge-references/${knowledgeReferenceId}`, { method: "DELETE" })
-      .then((response) => {
-        if (!response.ok && response.status !== 404) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        setAllKnowledgeReferences((current) =>
-          current.filter((k) => k.knowledgeReferenceId !== knowledgeReferenceId),
-        );
-        setKnowledgeReferenceDeleteStatus((current) => ({
-          ...current,
-          [knowledgeReferenceId]: "idle",
-        }));
-      })
-      .catch(() => {
-        setKnowledgeReferenceDeleteStatus((current) => ({
-          ...current,
-          [knowledgeReferenceId]: "error",
-        }));
-      });
+    deleteRecord<KnowledgeReferenceRecord>(
+      `/api/knowledge-references/${knowledgeReferenceId}`,
+      knowledgeReferenceId,
+      (k) => k.knowledgeReferenceId === knowledgeReferenceId,
+      setAllKnowledgeReferences,
+      setKnowledgeReferenceDeleteStatus,
+    );
   }
 
   function submitReasoningTrace(observationId: string) {
@@ -849,21 +861,13 @@ export function DecisionWorkspacePage() {
   }
 
   function deleteReasoningTrace(reasoningTraceId: string) {
-    setReasoningTraceDeleteStatus((current) => ({ ...current, [reasoningTraceId]: "deleting" }));
-
-    fetch(`/api/reasoning-traces/${reasoningTraceId}`, { method: "DELETE" })
-      .then((response) => {
-        if (!response.ok && response.status !== 404) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        setAllReasoningTraces((current) =>
-          current.filter((r) => r.reasoningTraceId !== reasoningTraceId),
-        );
-        setReasoningTraceDeleteStatus((current) => ({ ...current, [reasoningTraceId]: "idle" }));
-      })
-      .catch(() => {
-        setReasoningTraceDeleteStatus((current) => ({ ...current, [reasoningTraceId]: "error" }));
-      });
+    deleteRecord<ReasoningTraceRecord>(
+      `/api/reasoning-traces/${reasoningTraceId}`,
+      reasoningTraceId,
+      (r) => r.reasoningTraceId === reasoningTraceId,
+      setAllReasoningTraces,
+      setReasoningTraceDeleteStatus,
+    );
   }
 
   function submitJudgment(observationId: string) {
@@ -917,19 +921,13 @@ export function DecisionWorkspacePage() {
   }
 
   function deleteJudgment(judgmentId: string) {
-    setJudgmentDeleteStatus((current) => ({ ...current, [judgmentId]: "deleting" }));
-
-    fetch(`/api/judgments/${judgmentId}`, { method: "DELETE" })
-      .then((response) => {
-        if (!response.ok && response.status !== 404) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        setAllJudgments((current) => current.filter((j) => j.judgmentId !== judgmentId));
-        setJudgmentDeleteStatus((current) => ({ ...current, [judgmentId]: "idle" }));
-      })
-      .catch(() => {
-        setJudgmentDeleteStatus((current) => ({ ...current, [judgmentId]: "error" }));
-      });
+    deleteRecord<JudgmentRecord>(
+      `/api/judgments/${judgmentId}`,
+      judgmentId,
+      (j) => j.judgmentId === judgmentId,
+      setAllJudgments,
+      setJudgmentDeleteStatus,
+    );
   }
 
   function submitDecision(observationId: string) {
@@ -978,6 +976,56 @@ export function DecisionWorkspacePage() {
       })
       .catch((error: unknown) => {
         setDecisionCreateStatus((current) => ({
+          ...current,
+          [observationId]: {
+            kind: "api-error",
+            message: error instanceof Error ? error.message : "Unknown error",
+          },
+        }));
+      });
+  }
+
+  function submitOutcome(observationId: string) {
+    const form = outcomeForm[observationId] ?? EMPTY_OUTCOME_FORM;
+    setOutcomeCreateStatus((current) => ({
+      ...current,
+      [observationId]: { kind: "submitting" },
+    }));
+
+    fetch("/api/outcomes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        decisionId: form.decisionId,
+        statement: form.statement,
+        occurredAt: new Date().toISOString(),
+        note: form.note || null,
+      }),
+    })
+      .then(async (response) => {
+        if (response.status === 400 || response.status === 404) {
+          const body = (await response.json()) as { detail?: string };
+          setOutcomeCreateStatus((current) => ({
+            ...current,
+            [observationId]: {
+              kind: response.status === 400 ? "validation-error" : "api-error",
+              message: body.detail ?? "Invalid input.",
+            },
+          }));
+          return;
+        }
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        const outcome = (await response.json()) as OutcomeRecord;
+        setAllOutcomes((current) => [...current, outcome]);
+        setOutcomeCreateStatus((current) => ({
+          ...current,
+          [observationId]: { kind: "success", outcome },
+        }));
+      })
+      .catch((error: unknown) => {
+        setOutcomeCreateStatus((current) => ({
           ...current,
           [observationId]: {
             kind: "api-error",
@@ -1148,6 +1196,24 @@ export function DecisionWorkspacePage() {
                         decisionCreateStatus[observation.observationId] ?? { kind: "idle" };
                       const thisDecisionForm: DecisionFormInput =
                         decisionForm[observation.observationId] ?? EMPTY_DECISION_FORM;
+
+                      const decisionIdsForObservation = new Set(
+                        decisionsForObservation.map((decision) => decision.id),
+                      );
+                      const outcomesForObservation = allOutcomes.filter((outcome) =>
+                        decisionIdsForObservation.has(outcome.decisionId),
+                      );
+                      const thisOutcomeCreateStatus: OutcomeCreateStatus =
+                        outcomeCreateStatus[observation.observationId] ?? { kind: "idle" };
+                      const thisOutcomeForm: OutcomeFormInput = outcomeForm[
+                        observation.observationId
+                      ] ?? {
+                        ...EMPTY_OUTCOME_FORM,
+                        decisionId:
+                          decisionsForObservation.length === 1
+                            ? decisionsForObservation[0]?.id ?? ""
+                            : "",
+                      };
 
                       return (
                         <div key={observation.observationId}>
@@ -1985,6 +2051,211 @@ export function DecisionWorkspacePage() {
                                       }));
                                     }}
                                     disabled={thisDecisionCreateStatus.kind === "submitting"}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </Stack>
+                            )}
+                          </Stack>
+
+                          <Stack gap="inter-section">
+                            <Heading level={4}>Outcome</Heading>
+
+                            {outcomeListStatus.kind === "loading" && (
+                              <Text role="status" aria-live="polite">
+                                Loading outcome…
+                              </Text>
+                            )}
+                            {outcomeListStatus.kind === "error" && (
+                              <Text color="tertiary" role="alert">
+                                Could not load outcome: {outcomeListStatus.message}
+                              </Text>
+                            )}
+                            {outcomeListStatus.kind === "ready" &&
+                              outcomesForObservation.length === 0 && (
+                                <Text color="secondary">No outcome recorded yet.</Text>
+                              )}
+                            {outcomeListStatus.kind === "ready" &&
+                              outcomesForObservation.length > 0 && (
+                                <Stack gap="inter-section">
+                                  {outcomesForObservation.map((outcome) => (
+                                    <div key={outcome.id}>
+                                      <Text>{outcome.statement}</Text>
+                                      {outcome.note && (
+                                        <Text color="secondary" as="p">
+                                          {outcome.note}
+                                        </Text>
+                                      )}
+                                      <Text color="tertiary" as="p">
+                                        {outcome.occurredAt}
+                                      </Text>
+                                    </div>
+                                  ))}
+                                </Stack>
+                              )}
+
+                            <Divider tone="hairline" />
+
+                            {decisionsForObservation.length === 0 && (
+                              <Text color="secondary">
+                                No decision recorded yet — record a Decision first.
+                              </Text>
+                            )}
+
+                            {decisionsForObservation.length > 0 &&
+                              thisOutcomeCreateStatus.kind === "idle" && (
+                                <Button
+                                  variant="tertiary"
+                                  onClick={() =>
+                                    setOutcomeCreateStatus((current) => ({
+                                      ...current,
+                                      [observation.observationId]: { kind: "creating" },
+                                    }))
+                                  }
+                                >
+                                  + Record Outcome
+                                </Button>
+                              )}
+
+                            {thisOutcomeCreateStatus.kind === "success" && (
+                              <Stack gap="inter-section">
+                                <Text>
+                                  Outcome recorded: {thisOutcomeCreateStatus.outcome.statement}
+                                </Text>
+                                <Button
+                                  variant="tertiary"
+                                  onClick={() => {
+                                    setOutcomeForm((current) => ({
+                                      ...current,
+                                      [observation.observationId]: {
+                                        ...EMPTY_OUTCOME_FORM,
+                                        decisionId:
+                                          decisionsForObservation.length === 1
+                                            ? decisionsForObservation[0]?.id ?? ""
+                                            : "",
+                                      },
+                                    }));
+                                    setOutcomeCreateStatus((current) => ({
+                                      ...current,
+                                      [observation.observationId]: { kind: "creating" },
+                                    }));
+                                  }}
+                                >
+                                  Add another
+                                </Button>
+                              </Stack>
+                            )}
+
+                            {(thisOutcomeCreateStatus.kind === "creating" ||
+                              thisOutcomeCreateStatus.kind === "submitting" ||
+                              thisOutcomeCreateStatus.kind === "validation-error" ||
+                              thisOutcomeCreateStatus.kind === "api-error") && (
+                              <Stack gap="inter-section">
+                                {decisionsForObservation.length > 1 && (
+                                  <Text as="label">
+                                    Decision
+                                    <br />
+                                    <select
+                                      value={thisOutcomeForm.decisionId}
+                                      onChange={(event) =>
+                                        setOutcomeForm((current) => ({
+                                          ...current,
+                                          [observation.observationId]: {
+                                            ...thisOutcomeForm,
+                                            decisionId: event.target.value,
+                                          },
+                                        }))
+                                      }
+                                      disabled={thisOutcomeCreateStatus.kind === "submitting"}
+                                    >
+                                      <option value="">Select a decision…</option>
+                                      {decisionsForObservation.map((decision) => (
+                                        <option key={decision.id} value={decision.id}>
+                                          {decision.decisionType} — {decision.subject}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </Text>
+                                )}
+                                <Text as="label">
+                                  Statement
+                                  <br />
+                                  <textarea
+                                    value={thisOutcomeForm.statement}
+                                    onChange={(event) =>
+                                      setOutcomeForm((current) => ({
+                                        ...current,
+                                        [observation.observationId]: {
+                                          ...thisOutcomeForm,
+                                          statement: event.target.value,
+                                        },
+                                      }))
+                                    }
+                                    disabled={thisOutcomeCreateStatus.kind === "submitting"}
+                                  />
+                                </Text>
+                                <Text as="label">
+                                  Note (optional)
+                                  <br />
+                                  <textarea
+                                    value={thisOutcomeForm.note}
+                                    onChange={(event) =>
+                                      setOutcomeForm((current) => ({
+                                        ...current,
+                                        [observation.observationId]: {
+                                          ...thisOutcomeForm,
+                                          note: event.target.value,
+                                        },
+                                      }))
+                                    }
+                                    disabled={thisOutcomeCreateStatus.kind === "submitting"}
+                                  />
+                                </Text>
+
+                                {thisOutcomeCreateStatus.kind === "validation-error" && (
+                                  <Text color="tertiary" role="alert">
+                                    {thisOutcomeCreateStatus.message}
+                                  </Text>
+                                )}
+                                {thisOutcomeCreateStatus.kind === "api-error" && (
+                                  <Text color="tertiary" role="alert">
+                                    Could not record this outcome: {thisOutcomeCreateStatus.message}
+                                  </Text>
+                                )}
+
+                                <div>
+                                  <Button
+                                    variant="primary"
+                                    onClick={() => submitOutcome(observation.observationId)}
+                                    disabled={
+                                      thisOutcomeCreateStatus.kind === "submitting" ||
+                                      !thisOutcomeForm.decisionId
+                                    }
+                                  >
+                                    {thisOutcomeCreateStatus.kind === "submitting"
+                                      ? "Submitting…"
+                                      : "Submit"}
+                                  </Button>{" "}
+                                  <Button
+                                    variant="tertiary"
+                                    onClick={() => {
+                                      setOutcomeForm((current) => ({
+                                        ...current,
+                                        [observation.observationId]: {
+                                          ...EMPTY_OUTCOME_FORM,
+                                          decisionId:
+                                            decisionsForObservation.length === 1
+                                              ? decisionsForObservation[0]?.id ?? ""
+                                              : "",
+                                        },
+                                      }));
+                                      setOutcomeCreateStatus((current) => ({
+                                        ...current,
+                                        [observation.observationId]: { kind: "idle" },
+                                      }));
+                                    }}
+                                    disabled={thisOutcomeCreateStatus.kind === "submitting"}
                                   >
                                     Cancel
                                   </Button>

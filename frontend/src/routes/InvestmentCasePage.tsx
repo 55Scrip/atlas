@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
+import { Container, Divider, Heading, Link, Stack, Surface, Text } from "../foundation";
 
 interface CaseSummary {
   caseId: string;
@@ -37,6 +37,14 @@ type CaseStatus =
  * requested, so nothing is fetched. Error state: a real fetch failure
  * (e.g. the real 404 atlas/core's own CaseNotFoundError produces for an
  * unknown id). Both routes below render this same component.
+ *
+ * Integration Sprint 1: added the one missing link in the Dashboard ->
+ * Investment Case -> Decision Workspace chain — this page previously had
+ * no way to reach the Decision Workspace at all, even though that page
+ * is where every real workflow for this Case (Observation, Evidence,
+ * ... Outcome) already lives. Placed in "Primary Workspace," since that
+ * is the reserved home for this Case's own real content and the
+ * Decision Workspace is, today, that content. No other behavior changes.
  */
 export function InvestmentCasePage() {
   const { caseId } = useParams<{ caseId?: string }>();
@@ -107,9 +115,13 @@ export function InvestmentCasePage() {
         <Surface tier="primary">
           <Stack gap="inter-section">
             <Heading level={2}>Primary Workspace</Heading>
-            <Text color="secondary">
-              Reserved for this Investment Case's primary content in a future commit.
-            </Text>
+            {caseId ? (
+              <Link href={`/decision-workspace/${caseId}`}>Go to Decision Workspace →</Link>
+            ) : (
+              <Text color="secondary">
+                Reserved for this Investment Case's primary content in a future commit.
+              </Text>
+            )}
           </Stack>
         </Surface>
 
