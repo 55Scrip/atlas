@@ -5,6 +5,7 @@
 **Governs:** The authority, hierarchy, and lifecycle of Atlas's own documentation. Nothing else.
 **Subordinate to:** `ATLAS_CONSTITUTION.md` only.
 **Created:** 2026-08-02, on the basis of the completed Atlas Architecture Authority Report investigation (a read-only audit of the full documentation tree, referenced throughout Section 8).
+**Refreshed:** 2026-08-03, per the completed Product Architecture Reconciliation and APS Expansion (`APP-001` amended to v0.4; `APS-006` through `APS-009` added). See §2, §3.4, §8.2, §8.7.4, and §9 for what changed. The remainder of this document otherwise reflects the original 2026-08-02 investigation and has not been re-verified beyond the specific findings named as refreshed.
 
 This document does not define Atlas. It defines how Atlas's documentation defines Atlas.
 
@@ -64,8 +65,9 @@ Reasoning Foundations  (ontology only)
         │
         ▼
 Product Architecture
-  (docs/atlas_product_architecture/APP-000 "Draft v0.4", APP-001 "Draft v0.3",
-   APS-001–005, all "Draft")
+  (docs/atlas_product_architecture/APP-000 "Draft v0.4", APP-001 "Draft v0.4",
+   APS-001–009, all "Draft" — the single, integrated Product Architecture lineage;
+   see §8.2 and §8.7.4)
         │
         ▼
 UX Architecture
@@ -143,8 +145,8 @@ Each documentation family is defined here in full, using the schema commissioned
 ### 3.4 Product Architecture
 
 - **Purpose:** Translate settled Core concepts into named Product Concepts a Product author can build feature specifications against.
-- **Authority:** Draft throughout (APP-000 v0.4, APP-001 v0.3, APS-001–005 v0.1–v0.2). Untracked in git as of this document's writing.
-- **Scope:** Product philosophy, principles, responsibilities, and the accepted/rejected Product Concept taxonomy (Investor, Decision, Reasoning, Evidence, Investor Judgment, Learning, Attention, Uncertainty, Decision Quality, Decision Context, Outcome, Pattern Recognition).
+- **Authority:** Draft throughout (APP-000 v0.4, APP-001 v0.4, APS-001–009 v0.1–v0.2). Untracked in git as of this document's writing.
+- **Scope:** Product philosophy, principles, responsibilities, and the accepted/rejected Product Concept taxonomy (Investor, Decision, Reasoning, Evidence, Investor Judgment, Learning, Attention, Uncertainty, Decision Quality, Decision Context, Outcome, Pattern Recognition, and, as of `APP-001` v0.4, Investment Case); and the deferred product-surface specifications built on that taxonomy (Portfolio, Watchlist, Daily Brief, Discover — `APS-006` through `APS-009`).
 - **Explicit Non-Scope:** By APP-000's own stated rule — no workflows, screens, workspaces, interaction design, visual design, implementation, architecture, data models, AI models/algorithms, or roadmap/release sequencing.
 - **Dependencies:** Core Doctrine, Domain Object Architecture, Reasoning Foundations.
 - **Required Inputs:** A candidate concept, tested against APP-001's own Architectural Rules and cross-checked for Core correspondence.
@@ -296,7 +298,7 @@ This section records, without resolving, the findings of the completed Atlas Arc
 
 ### 8.2 Current draft tracks
 
-- **Atlas Product Architecture** — `APP-000` (Draft v0.4), `APP-001` (Draft v0.3), `APS-001` through `APS-005` (all Draft, v0.1–v0.2). The entire track is currently **untracked in git** — no commit history exists for it to audit. The five APS documents were produced within a sixteen-second window of each other, which the Architecture Authority Report notes is inconsistent with the staged, dependency-respecting drafting process `APP-001` itself recommends; in particular, `APS-004` (Learning) was finalized before `APS-005` (Outcome) despite `APP-001`'s own stated position that Learning depends on Outcome existing first.
+- **Atlas Product Architecture** — `APP-000` (Draft v0.4), `APP-001` (Draft v0.4, amended from v0.3 to accept Investment Case and to formally defer Portfolio, Watchlist, Daily Brief, and Discover to dedicated subordinate specifications — §3.13, §4, §9), `APS-001` through `APS-009` (all Draft, v0.1–v0.2). The entire track is currently **untracked in git** — no commit history exists for it to audit. The original five APS documents (`APS-001`–`005`) were produced within a sixteen-second window of each other, which the Architecture Authority Report notes is inconsistent with the staged, dependency-respecting drafting process `APP-001` itself recommends; in particular, `APS-004` (Learning) was finalized before `APS-005` (Outcome) despite `APP-001`'s own stated position that Learning depends on Outcome existing first. The four subsequently added specifications (`APS-006` Portfolio, `APS-007` Watchlist, `APS-008` Daily Brief, `APS-009` Discover) were produced in the dependency order `APP-001` §9 itself states (items 7 through 10), correcting this pattern rather than repeating it. This is now the single, integrated Product Architecture lineage — no competing or parallel Product-layer account of Investment Case, Portfolio, Watchlist, Daily Brief, or Discover exists anywhere else in this repository.
 - **UX Architecture below the Doctrine** — `UX-012` and `UX-013A–G` are active and, as of this writing, carry uncommitted working-tree modifications (the result of this session's own in-progress Token Architecture and component-specification work).
 
 ### 8.3 Current historical documents
@@ -329,7 +331,7 @@ These are recorded, per this task's own explicit instruction, without resolution
 1. **The relationship between Product Architecture and UX Architecture.** `APP-001` states, in its own words, across all five of its APS documents in sequence: *"The relationship between `docs/atlas_product_architecture/` and `docs/atlas_ux/` is undetermined... a real, unresolved governance question... it remains open until a dedicated governance task resolves it,"* and explicitly gates any specification touching AI-originated content presentation on that resolution occurring first. `UX-000-Atlas-UX-Doctrine.md`, dated one day later, declares itself subordinate to Product Architecture as settled fact and proceeds to govern AI-originated content presentation directly (its own Sections 10–11), without citing, engaging, or discharging `APP-001`'s stated gate.
 2. **The relationship between the Atlas Core track and Product Architecture / UX Architecture.** No document in either direction — Core-track or Product/UX-track — has ever referenced the other. `UX-000` nonetheless cites "the Atlas Core Architecture Doctrine, OE-002, and OE-004" by name as authorities it is subordinate to; those documents do not reciprocate or acknowledge UX-000's existence.
 3. **The status of `docs/AtlasAlphaExperienceSpecification.md`.** Self-labeled Canonical, untouched since 2026-07-08, its own binding "input-first, not dashboard-first" principle now substantively contradicted by `UX-012`'s fully specified Dashboard Workspace, with no Supersession Notice on record for either document with respect to the other.
-4. **Whether "Investment Case" and "Commitment" are, or should become, Atlas concepts.** Neither term is currently defined as a settled concept in any of the four tracks. `UX-012` explicitly defers "Investment Case" pending future Product Architecture treatment. `UX-013C` explicitly states that "Commitment" is distinct from, and not equivalent to, "Decision" — the term the UX and Core tracks actually use. Any future work using either term should be understood as introducing a new candidate concept, not as citing an existing one.
+4. **RESOLVED in part, 2026-08-03 — Investment Case is now a settled Product Architecture concept**, per `APP-001` v0.4 §3.13: the confirmed, 1:1 product-facing name for Core's own `Case` (`OE-002` §3.1), distinct from, and enclosing, Decision Context. This is exactly the "future Investment Case / Portfolio Product Architecture treatment" `UX-012` itself named as a precondition; the Product-layer question is closed. `UX-012`'s own text has not itself been updated to cite this resolution — that is a UX-track document, and editing it remains outside this governance layer's own authority, per Section 1.1. **Whether "Commitment" is, or should become, an Atlas concept remains unresolved**, unaffected by the above: `UX-013C` still states that "Commitment" is distinct from, and not equivalent to, "Decision" — the term the UX and Core tracks actually use — and this specific cross-track question was not addressed by the Product Architecture Reconciliation. Any future work using "Commitment" as a formal, cross-track term should still be understood as introducing a new candidate concept, not as citing an existing one.
 
 ---
 
@@ -345,13 +347,13 @@ This section states which documentation implementation should currently follow, 
 
 **Advisory only — not yet safe to build against without qualification:**
 
-- `docs/atlas_product_architecture/` in its entirety — every document in it is Draft, several of its own internal sequencing commitments were not honored (Section 8.2), and it is untracked in git.
+- `docs/atlas_product_architecture/` in its entirety — every document in it remains Draft status, unchanged by the recent reconciliation and expansion work; several of the original track's own internal sequencing commitments were not honored (Section 8.2), and the whole track remains untracked in git. The track is now internally coherent and complete as a single lineage for Investment Case, Portfolio, Watchlist, Daily Brief, and Discover (§8.7.4), but "internally coherent" and "safe to build against" remain different claims — Draft status alone still governs what implementation may rely on, per the status discipline Section 6 states.
 - Any UX Architecture content that presents AI-originated content, or that depends on the Product↔UX relationship being settled (Section 8.7.1) — `APP-001`'s own stated gate on this category has not been satisfied.
 - `docs/AtlasAlphaExperienceSpecification.md` — advisory as a record of a considered, once-binding product direction, but in direct, undocumented tension with the currently-active `UX-012` Dashboard specification; implementation should not silently pick a side.
 
 **Requiring future governance resolution before being treated as settled:**
 
-- Whether "Investment Case" and "Commitment" become real Atlas concepts, and if so, what they mean and how they relate to the existing "Case" (Core) and "Decision" (Core, Product, and UX) vocabulary already in use.
+- **RESOLVED for Investment Case** — per §8.7.4, above: Investment Case is now a settled Product Architecture concept, 1:1 with Core's own `Case`, distinct from Decision Context. **Whether "Commitment" becomes a real Atlas concept remains unresolved**, and if so, what it means and how it relates to the existing "Case" (Core) and "Decision" (Core, Product, and UX) vocabulary already in use.
 - The Product↔UX and Core↔Product/UX relationship questions in full (Section 8.7.1, 8.7.2).
 - The formal status of `AtlasAlphaExperienceSpecification.md` relative to the current Dashboard-based UX direction (Section 8.7.3).
 
