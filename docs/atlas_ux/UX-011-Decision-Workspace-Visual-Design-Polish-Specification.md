@@ -16,6 +16,8 @@ This notice does not claim the corrected wording existed in this document's orig
 
 This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, above. The other "modification indicator" occurrence in this document (the "User-modified Atlas content" passage in Section 9, describing a field the user has genuinely edited) was reviewed as part of this same correction and confirmed to already describe genuine editing, not Accept alone — it is unaffected and unchanged. All content outside this one area is unchanged.
 
+**Terminology Notice (Atlas UX Governance Resolution Sprint, 2026-08-03):** Per the completed ATLAS UX CORRESPONDENCE INVESTIGATION, which found this document's two "Daily Briefing" references and `APS-008`'s formal "Daily Brief" to name the same product surface at every point tested, with no contextual difference, "Daily Briefing" is corrected to "Daily Brief" at both occurrences (the Atlas reminder note's quoted UI copy; the Final Decision Card reusable-component embedding list). This is a naming correction only; no visual treatment, hierarchy, or component behavior is changed.
+
 ⸻
 
 Visual Design Philosophy
@@ -437,7 +439,7 @@ The primary trigger statement renders in secondary body text. Its label (the tri
 The linked monitoring conditions:
 When a review trigger is linked to a monitoring condition in Section 9, a small "Linked to monitoring: [condition name]" note appears in metadata scale below the trigger detail. This is a cross-reference, not a primary statement. Its scale reflects that.
 
-The Atlas reminder note ("Atlas will surface this decision in your Daily Briefing..."):
+The Atlas reminder note ("Atlas will surface this decision in your Daily Brief..."):
 Tertiary text scale. Quiet. It is a description of future system behavior, not a primary element of the decision. It should be readable but invisible unless the user is looking for it.
 
 ⸻
@@ -841,7 +843,7 @@ Cross-workspace consistency:
 — A shared section anatomy: the relationship between section labels, content, dividers, and spacing must follow the same rules across all Workspaces
 
 Reusable components:
-— The Final Decision Card as a component: its states (draft, live-updating, completed, historical), its data model, and its behavior when embedded in Atlas Memory, Daily Briefing, and future Workspace surfaces
+— The Final Decision Card as a component: its states (draft, live-updating, completed, historical), its data model, and its behavior when embedded in Atlas Memory, Daily Brief, and future Workspace surfaces
 — The Challenge Item component: its three visual states, its acknowledgment control, and its behavioral context variant
 — The Assumption Row component: its status variants, its expand/collapse behavior, its links to monitoring conditions
 — The Atlas Suggestion Panel: its form factor on desktop, tablet, and mobile; its accept/dismiss/partial-accept states

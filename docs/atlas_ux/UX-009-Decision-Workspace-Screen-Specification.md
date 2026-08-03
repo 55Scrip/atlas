@@ -13,6 +13,8 @@ Defers to: UX-009A — Decision Workspace Wireframe Specification
 
 This notice does not claim any of the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at each corrected passage. All content outside these three areas is unchanged.
 
+**Terminology Notice (Atlas UX Governance Resolution Sprint, 2026-08-03):** Per the completed ATLAS UX CORRESPONDENCE INVESTIGATION, which found this document's four "Daily Briefing" references and `APS-008`'s formal "Daily Brief" to name the same product surface at every point tested, with no contextual difference, "Daily Briefing" is corrected to "Daily Brief" at each of the four occurrences (Entry Points; Save as Draft; Completion Effects; the Screen-Level Decisions summary). This is a naming correction only; no entry point, interaction, save behavior, or completion effect described at any of the four passages is changed.
+
 ⸻
 
 Purpose of This Document
@@ -33,7 +35,7 @@ From the Investment Workspace — when an individual investment decision is requ
 
 From the Portfolio Workspace — when a portfolio-level decision is required. The Portfolio Workspace surfaces the Decision Workspace when unresolved allocation decisions remain open at the end of a portfolio review.
 
-From the Dashboard — when a flagged item has an unresolved decision state. The Daily Briefing may surface a prompt: "The LVMH decision recorded last month is due for review."
+From the Dashboard — when a flagged item has an unresolved decision state. The Daily Brief may surface a prompt: "The LVMH decision recorded last month is due for review."
 
 From a prior decision record — when a recorded decision reaches a defined review condition, Atlas may re-enter the Decision Workspace in review mode, presenting the original decision alongside current conditions.
 
@@ -417,7 +419,7 @@ After recording:
 
 Secondary actions:
 
-Save as Draft — preserves the Workspace in its current state without committing to the record. Drafts are surfaced in the Daily Briefing as unresolved decisions. Available at any time from the footer.
+Save as Draft — preserves the Workspace in its current state without committing to the record. Drafts are surfaced in the Daily Brief as unresolved decisions. Available at any time from the footer.
 
 Return to Workspace — closes the Decision Workspace and returns to the originating Workspace without recording or saving. The user is prompted once: "Exit without saving?" No data is lost unless the user confirms exit.
 
@@ -574,7 +576,7 @@ When the user selects Record Decision:
 — The record is linked to the originating Investment Workspace or Portfolio Workspace
 — Monitoring conditions from Section 9 are registered as active Atlas observations
 — Review conditions from Section 11 are scheduled
-— The decision appears in the Daily Briefing history
+— The decision appears in the Daily Brief history
 — The implementation status becomes trackable from the decision record
 — A quiet confirmation is displayed: "Decision recorded — [date] · [investment name or portfolio scope]"
 
@@ -719,7 +721,7 @@ What UX-009 Establishes
 
 The following screen-level decisions are now fixed:
 
-— Entry points: the Decision Workspace is entered from the Investment Workspace, Portfolio Workspace, Daily Briefing, or directly from a prior decision record. It inherits context from the originating surface.
+— Entry points: the Decision Workspace is entered from the Investment Workspace, Portfolio Workspace, Daily Brief, or directly from a prior decision record. It inherits context from the originating surface.
 
 — Surface structure: a focused overlay above the originating Workspace, consistent with the existing Atlas overlay pattern, with a fixed header, fixed footer, and internally scrolling body.
 

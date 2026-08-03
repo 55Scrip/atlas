@@ -7,6 +7,8 @@ Depends on: UX-000 — The Atlas Experience
 
 **Correction Notice (Phase 6A, governed by the Atlas UX Source Correction Plan's own Section 3 documentary-truthfulness principles and Section 18 bullet 13 — 2026-07-28):** This document's `Depends on` line previously cited `UX-006 — Portfolio Workspace Philosophy` as a settled governing source. `UX-006` does not exist anywhere in the committed repository. This document's own Decision Workspace philosophy is self-contained and does not require UX-006's content to be understood. `UX-006` is unavailable and cannot serve as current governing authority. This repository cannot verify whether UX-006 historically influenced this document — that question is neither confirmed nor denied by this correction. Prior text: "Depends on: UX-000 — The Atlas Experience, UX-006 — Portfolio Workspace Philosophy". `UX-000` remains an accurate, existing dependency and is unaffected.
 
+**Terminology Notice (Atlas UX Governance Resolution Sprint, 2026-08-03):** Per the completed ATLAS UX CORRESPONDENCE INVESTIGATION, which found this document's "Daily Briefings" reference and `APS-008`'s formal "Daily Brief" to name the same product surface at every point tested, with no contextual difference, "Daily Briefings" is corrected to "Daily Brief" in the list below (previously: "Daily Briefings — to surface decisions that may need implementation or revisiting"). This is a naming correction only; the described relationship (recorded decisions feeding forward into that surface) is unchanged.
+
 ⸻
 
 Executive Definition
@@ -97,7 +99,7 @@ The resulting recorded decision feeds forward into:
 
 * future Investment Workspace reviews — as context against which to measure change
 * future Portfolio Workspace reviews — as the established rationale for each position and allocation
-* Daily Briefings — to surface decisions that may need implementation or revisiting
+* Daily Brief — to surface decisions that may need implementation or revisiting
 * thesis monitoring — to track whether the conditions underlying the decision still hold
 * assumption tracking — to record which beliefs were held at the time
 * portfolio evolution — to show how decisions shaped the portfolio as a system

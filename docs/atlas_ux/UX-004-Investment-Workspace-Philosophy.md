@@ -1,6 +1,12 @@
 Atlas UX-004 — Investment Workspace Philosophy
 
 Status: Product Philosophy
+Depends on:
+- UX-000 — Atlas UX Doctrine
+- APP-001 §3.13 — Investment Case
+
+**Authority Citation Notice (Atlas UX Governance Resolution Sprint, 2026-08-03):** This document previously named no governing authority — it carried no `Depends on` line of any kind. Per the completed ATLAS UX CORRESPONDENCE INVESTIGATION (2026-08-03), which found this document's own extensive "Investment Case" usage (e.g. Sections 1, 4, 6, 9, 15, 20) COMPATIBLE with, and re-derivable from, `APP-001` §3.13's now-formal Investment Case definition, this document is brought into the same authority-citation discipline every other Atlas UX specification observes. This notice adds a governing-authority citation only. It changes no philosophy, principle, heuristic, or behavioral content stated in Sections 1 through 30 or the Final Statement below; all of that content is unchanged.
+
 Purpose: Define the role, meaning, boundaries, and intended experience of the Atlas Investment Workspace before specifying its interface or implementation.
 
 ⸻

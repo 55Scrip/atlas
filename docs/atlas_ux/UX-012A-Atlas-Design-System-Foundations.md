@@ -18,13 +18,15 @@ This notice does not claim the corrected wording existed in this document's orig
 
 This notice does not claim the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at each corrected passage below. All content outside these two areas is unchanged.
 
+**Terminology Notice (Atlas UX Governance Resolution Sprint, 2026-08-03):** Per the completed ATLAS UX CORRESPONDENCE INVESTIGATION, which found this document's "Daily Briefing" reference and `APS-008`'s formal "Daily Brief" to name the same product surface, with no contextual difference, "Daily Briefing" is corrected to "Daily Brief" in Section 1's list of Atlas surfaces (previously: "the Daily Briefing, the Investment Workspace, the Portfolio Workspace, or the Decision Workspace"). This is a naming correction only; the surrounding governing-language statement is unchanged.
+
 ⸻
 
 1. The Atlas Design System Defined
 
 The Atlas Design System is not a UI kit, a component library, a visual theme, or a style guide. Those things may eventually be produced as outputs of the system, but they are not the system itself.
 
-The Atlas Design System is the governing language for how Atlas thinks, communicates, and behaves. It is the set of decisions that ensures Atlas always reasons in the same way regardless of which surface the user is currently using — the Daily Briefing, the Investment Workspace, the Portfolio Workspace, or the Decision Workspace.
+The Atlas Design System is the governing language for how Atlas thinks, communicates, and behaves. It is the set of decisions that ensures Atlas always reasons in the same way regardless of which surface the user is currently using — the Daily Brief, the Investment Workspace, the Portfolio Workspace, or the Decision Workspace.
 
 It governs five things:
 

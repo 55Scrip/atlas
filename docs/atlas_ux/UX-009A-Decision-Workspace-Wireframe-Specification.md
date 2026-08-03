@@ -13,6 +13,8 @@ Defers to: UX-010 — Decision Workspace Visual Design
 
 This notice does not claim any of the corrected wording existed in this document's original, historical version — the prior wording is preserved verbatim, in quotation, at each corrected passage. All content outside these three areas is unchanged.
 
+**Terminology Notice (Atlas UX Governance Resolution Sprint, 2026-08-03):** Per the completed ATLAS UX CORRESPONDENCE INVESTIGATION, which found this document's three "Daily Briefing" references and `APS-008`'s formal "Daily Brief" to name the same product surface at every point tested, with no contextual difference, "Daily Briefing" is corrected to "Daily Brief" at each of the three occurrences (the Atlas reminder note; the post-recording card destinations; the Save as Draft description). This is a naming correction only; no reminder behavior, recording effect, or draft behavior described at any of the three passages is changed.
+
 ⸻
 
 Overall Layout
@@ -544,7 +546,7 @@ Review depth note:
   — Pre-populated by Atlas when a natural review focus is identifiable. User-editable.
 
 Atlas reminder behavior:
-  — A small informational note: "Atlas will surface this decision in your Daily Briefing when the review condition is reached."
+  — A small informational note: "Atlas will surface this decision in your Daily Brief when the review condition is reached."
   — For invalidation-triggered reviews: "Atlas will monitor the conditions you defined and surface this decision when any of them changes."
 
 Interaction ownership: All fields collaborative. Atlas proposes, user confirms. Locked after recording.
@@ -603,7 +605,7 @@ Flagged items:
 
 Interaction ownership: Atlas-assembled from user inputs. Read-only. All fields lock after recording.
 
-After recording: this card becomes the permanent decision record shown in Atlas Memory, in Investment Workspace reviews, in Portfolio Workspace reviews, and in the Daily Briefing.
+After recording: this card becomes the permanent decision record shown in Atlas Memory, in Investment Workspace reviews, in Portfolio Workspace reviews, and in the Daily Brief.
 
 ⸻
 
@@ -636,7 +638,7 @@ Unavailable state: *(Corrected per ADR-002/C-06: this state was previously named
 — The explanation updates as requirements are met. When all requirements are met, it disappears and the button becomes available. Activating the action while unavailable does not record the decision — it moves focus to the first unmet required field and re-announces the explanation there.
 
 Secondary actions (always available):
-— Save as Draft: saves the current state to Atlas as an in-progress decision. Available at any time. Drafts appear in the Daily Briefing as unresolved.
+— Save as Draft: saves the current state to Atlas as an in-progress decision. Available at any time. Drafts appear in the Daily Brief as unresolved.
 — Return to Workspace: closes the Decision Workspace and returns to the originating Workspace. If an unsaved draft exists, prompts: "Exit without saving? Your progress will be lost." Two options: "Save draft and exit" / "Exit without saving."
 
 Completion behavior — after selecting Record Decision:

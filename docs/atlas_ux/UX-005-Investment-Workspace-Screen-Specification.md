@@ -3,8 +3,12 @@ Version: 1.0
 Status: Implementation Specification
 Depends on:
 • UX-004 – Investment Workspace Philosophy
+• UX-000 – Atlas UX Doctrine
+• APP-001 §3.13 – Investment Case
 
 **Correction Notice (Phase 6B, governed by the Atlas UX Source Correction Plan's own Section 3 documentary-truthfulness principles and Section 18 bullet 13 — 2026-07-29):** This document's `Depends on` list previously cited `UX-003 — The Atlas Working Session` as a settled governing source. `UX-003` does not exist anywhere in the committed repository. This document's own screen specification (Sections 1 onward) is self-contained and does not require UX-003's content to be understood or implemented. `UX-003` is unavailable and cannot serve as current governing authority. This repository cannot verify whether UX-003 historically existed or influenced this document — that question is neither confirmed nor denied by this correction; the unsupported active attribution is removed without deciding it. Prior text: "• UX-003 – The Atlas Working Session". This correction does not reconstruct UX-003, does not claim it ever existed, and does not schedule its future authorship. `UX-004 — Investment Workspace Philosophy` remains an accurate, existing dependency and is unaffected.
+
+**Authority Citation Notice (Atlas UX Governance Resolution Sprint, 2026-08-03):** This document previously cited only `UX-004` as a governing dependency. Per the completed ATLAS UX CORRESPONDENCE INVESTIGATION, which found this document's own "Investment Case" usage (e.g. Sections 1, 3, 5, 12, 17) COMPATIBLE with, and re-derivable from, `APP-001` §3.13's now-formal Investment Case definition, two governing-authority citations are added: `UX-000 — Atlas UX Doctrine` and `APP-001 §3.13 — Investment Case`. This notice adds citations only. It changes no layout, hierarchy, interaction, component behavior, responsive rule, accessibility requirement, or acceptance criterion stated in Sections 1 through 27 or the Final Principle below; all of that content is unchanged.
 
 Purpose
 
@@ -138,6 +142,8 @@ Starter Position Supported
 Last reviewed
 
 Today
+
+**Disambiguation note (per UXD-R-096 and the Atlas UX Governance Resolution Sprint, 2026-08-03, following the ATLAS UX CORRESPONDENCE INVESTIGATION):** "Watchlist Case" above is a Case Type value describing an already-open Investment Case whose current Decision Context concerns whether to initiate a position — the Case shown in this example (Danaher) already has an open Investment Workspace, per Section 1. It is distinct from Product Architecture's Watchlist Entry (`APS-007`), which is a lighter-weight, pre-Investment-Case record of intentional tracking that has not (yet) become an Investment Case at all. The two constructs share the word "Watchlist" but not a referent; this note removes that ambiguity without changing the Case Type value, its example, or any behavior described in this section.
 
 The header remains visible while scrolling.
 
@@ -684,6 +690,8 @@ Critical
 Archived
 
 Watchlist
+
+(Watchlist — this Workspace state denotes the same Case Type as Section 4's "Watchlist Case," not Product Architecture's Watchlist Entry (`APS-007`); see Section 4's disambiguation note. *(Cross-reference added per UXD-R-096 and the Atlas UX Governance Resolution Sprint, 2026-08-03.)*)
 
 Owned Holding
 
