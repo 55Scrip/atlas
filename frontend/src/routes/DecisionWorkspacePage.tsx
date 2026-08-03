@@ -33,6 +33,36 @@ type ObservationCreateStatus =
   | { kind: "validation-error"; message: string }
   | { kind: "api-error"; message: string };
 
+interface EvidenceRecord {
+  evidenceId: string;
+  observationId: string;
+  statement: string;
+  direction: string;
+  source: string | null;
+  observedAt: string;
+}
+
+type EvidenceListStatus =
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "ready" };
+
+type EvidenceCreateStatus =
+  | { kind: "idle" }
+  | { kind: "creating" }
+  | { kind: "submitting" }
+  | { kind: "success"; evidence: EvidenceRecord }
+  | { kind: "validation-error"; message: string }
+  | { kind: "api-error"; message: string };
+
+interface EvidenceFormInput {
+  summary: string;
+  source: string;
+  direction: "SUPPORTS" | "CHALLENGES";
+}
+
+const EMPTY_EVIDENCE_FORM: EvidenceFormInput = { summary: "", source: "", direction: "SUPPORTS" };
+
 /**
  * Decision Workspace Shell (Sprint 1, Commit 9) — structural layout only.
  *
@@ -88,6 +118,25 @@ type ObservationCreateStatus =
  * Empty state: no `caseId` in the route. Error state: a real fetch
  * failure (the real 404 atlas/core's own CaseNotFoundError produces for
  * an unknown id). Both routes below render this same component.
+ *
+ * Evidence Sprint 1: each Observation now exposes its own Evidence
+ * section directly beneath it — Evidence belongs to exactly one
+ * Observation (atlas/core, Evidence Sprint 1 backend investigation:
+ * Evidence gained a real `observationId` anchor, following the exact
+ * precedent Interpretation already established for the identical
+ * relationship). `GET /evidence` (like `GET /observations`) has no
+ * server-side filter, so the full list is fetched once and narrowed
+ * client-side per Observation by exact `observationId` match — the
+ * same required-scoping pattern, not the excluded "Filtering" feature.
+ *
+ * Field mapping note: the real backend requires `statement` (mapped to
+ * the "Summary" label below) and `direction` (SUPPORTS/CHALLENGES — a
+ * real, required field with no natural default, so it is a genuine
+ * user-facing control here, not silently defaulted) and accepts an
+ * optional `source`. There is no backend "Title" field — none is
+ * fabricated; only Summary, Source, and Direction are collected.
+ * `observedAt` is set to the real submission instant, the same pattern
+ * already used for Observation.
  */
 export function DecisionWorkspacePage() {
   const { caseId } = useParams<{ caseId?: string }>();
@@ -98,6 +147,18 @@ export function DecisionWorkspacePage() {
   const [createStatus, setCreateStatus] = useState<ObservationCreateStatus>({ kind: "idle" });
   const [subjectInput, setSubjectInput] = useState("");
   const [statementInput, setStatementInput] = useState("");
+
+  const [allEvidence, setAllEvidence] = useState<EvidenceRecord[]>([]);
+  const [evidenceListStatus, setEvidenceListStatus] = useState<EvidenceListStatus>({
+    kind: "loading",
+  });
+  const [evidenceCreateStatus, setEvidenceCreateStatus] = useState<
+    Record<string, EvidenceCreateStatus>
+  >({});
+  const [evidenceForm, setEvidenceForm] = useState<Record<string, EvidenceFormInput>>({});
+  const [evidenceDeleteStatus, setEvidenceDeleteStatus] = useState<
+    Record<string, "idle" | "deleting" | "error">
+  >({});
 
   useEffect(() => {
     if (!caseId) return;
@@ -151,6 +212,98 @@ export function DecisionWorkspacePage() {
 
     return () => controller.abort();
   }, [caseId]);
+
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setEvidenceListStatus({ kind: "loading" });
+
+    fetch("/api/evidence", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        return response.json() as Promise<EvidenceRecord[]>;
+      })
+      .then((records) => {
+        setAllEvidence(records);
+        setEvidenceListStatus({ kind: "ready" });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setEvidenceListStatus({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      });
+
+    return () => controller.abort();
+  }, [caseId]);
+
+  function submitEvidence(observationId: string) {
+    const form = evidenceForm[observationId] ?? EMPTY_EVIDENCE_FORM;
+    setEvidenceCreateStatus((current) => ({ ...current, [observationId]: { kind: "submitting" } }));
+
+    fetch("/api/evidence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        observationId,
+        statement: form.summary,
+        direction: form.direction,
+        source: form.source || null,
+        observedAt: new Date().toISOString(),
+      }),
+    })
+      .then(async (response) => {
+        if (response.status === 400 || response.status === 404) {
+          const body = (await response.json()) as { detail?: string };
+          setEvidenceCreateStatus((current) => ({
+            ...current,
+            [observationId]: {
+              kind: response.status === 400 ? "validation-error" : "api-error",
+              message: body.detail ?? "Invalid input.",
+            },
+          }));
+          return;
+        }
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        const evidence = (await response.json()) as EvidenceRecord;
+        setAllEvidence((current) => [...current, evidence]);
+        setEvidenceCreateStatus((current) => ({
+          ...current,
+          [observationId]: { kind: "success", evidence },
+        }));
+      })
+      .catch((error: unknown) => {
+        setEvidenceCreateStatus((current) => ({
+          ...current,
+          [observationId]: {
+            kind: "api-error",
+            message: error instanceof Error ? error.message : "Unknown error",
+          },
+        }));
+      });
+  }
+
+  function deleteEvidence(evidenceId: string) {
+    setEvidenceDeleteStatus((current) => ({ ...current, [evidenceId]: "deleting" }));
+
+    fetch(`/api/evidence/${evidenceId}`, { method: "DELETE" })
+      .then((response) => {
+        if (!response.ok && response.status !== 404) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        setAllEvidence((current) => current.filter((e) => e.evidenceId !== evidenceId));
+        setEvidenceDeleteStatus((current) => ({ ...current, [evidenceId]: "idle" }));
+      })
+      .catch(() => {
+        setEvidenceDeleteStatus((current) => ({ ...current, [evidenceId]: "error" }));
+      });
+  }
 
   function submitObservation() {
     if (!caseId) return;
@@ -266,17 +419,217 @@ export function DecisionWorkspacePage() {
                 )}
                 {listStatus.kind === "ready" && observations.length > 0 && (
                   <Stack gap="inter-section">
-                    {observations.map((observation) => (
-                      <div key={observation.observationId}>
-                        <Text>{observation.subject}</Text>
-                        <Text color="secondary" as="p">
-                          {observation.statement}
-                        </Text>
-                        <Text color="tertiary" as="p">
-                          {observation.observedAt}
-                        </Text>
-                      </div>
-                    ))}
+                    {observations.map((observation) => {
+                      const evidenceForObservation = allEvidence.filter(
+                        (e) => e.observationId === observation.observationId,
+                      );
+                      const thisCreateStatus: EvidenceCreateStatus = evidenceCreateStatus[
+                        observation.observationId
+                      ] ?? { kind: "idle" };
+                      const thisForm: EvidenceFormInput =
+                        evidenceForm[observation.observationId] ?? EMPTY_EVIDENCE_FORM;
+
+                      return (
+                        <div key={observation.observationId}>
+                          <Text>{observation.subject}</Text>
+                          <Text color="secondary" as="p">
+                            {observation.statement}
+                          </Text>
+                          <Text color="tertiary" as="p">
+                            {observation.observedAt}
+                          </Text>
+
+                          <Stack gap="inter-section">
+                            <Heading level={4}>Evidence</Heading>
+
+                            {evidenceListStatus.kind === "loading" && (
+                              <Text role="status" aria-live="polite">
+                                Loading evidence…
+                              </Text>
+                            )}
+                            {evidenceListStatus.kind === "error" && (
+                              <Text color="tertiary" role="alert">
+                                Could not load evidence: {evidenceListStatus.message}
+                              </Text>
+                            )}
+                            {evidenceListStatus.kind === "ready" &&
+                              evidenceForObservation.length === 0 && (
+                                <Text color="secondary">No evidence recorded yet.</Text>
+                              )}
+                            {evidenceListStatus.kind === "ready" &&
+                              evidenceForObservation.length > 0 && (
+                                <Stack gap="inter-section">
+                                  {evidenceForObservation.map((evidence) => (
+                                    <div key={evidence.evidenceId}>
+                                      <Text>{evidence.statement}</Text>
+                                      <Text color="secondary" as="p">
+                                        {evidence.direction}
+                                        {evidence.source ? ` — ${evidence.source}` : ""}
+                                      </Text>
+                                      <Button
+                                        variant="tertiary"
+                                        onClick={() => deleteEvidence(evidence.evidenceId)}
+                                        disabled={
+                                          evidenceDeleteStatus[evidence.evidenceId] === "deleting"
+                                        }
+                                      >
+                                        {evidenceDeleteStatus[evidence.evidenceId] === "deleting"
+                                          ? "Deleting…"
+                                          : "Delete"}
+                                      </Button>
+                                      {evidenceDeleteStatus[evidence.evidenceId] === "error" && (
+                                        <Text color="tertiary" role="alert">
+                                          Could not delete this evidence.
+                                        </Text>
+                                      )}
+                                    </div>
+                                  ))}
+                                </Stack>
+                              )}
+
+                            <Divider tone="hairline" />
+
+                            {thisCreateStatus.kind === "idle" && (
+                              <Button
+                                variant="tertiary"
+                                onClick={() =>
+                                  setEvidenceCreateStatus((current) => ({
+                                    ...current,
+                                    [observation.observationId]: { kind: "creating" },
+                                  }))
+                                }
+                              >
+                                + Add Evidence
+                              </Button>
+                            )}
+
+                            {thisCreateStatus.kind === "success" && (
+                              <Stack gap="inter-section">
+                                <Text>
+                                  Evidence recorded: {thisCreateStatus.evidence.statement}
+                                </Text>
+                                <Button
+                                  variant="tertiary"
+                                  onClick={() => {
+                                    setEvidenceForm((current) => ({
+                                      ...current,
+                                      [observation.observationId]: EMPTY_EVIDENCE_FORM,
+                                    }));
+                                    setEvidenceCreateStatus((current) => ({
+                                      ...current,
+                                      [observation.observationId]: { kind: "creating" },
+                                    }));
+                                  }}
+                                >
+                                  Add another
+                                </Button>
+                              </Stack>
+                            )}
+
+                            {(thisCreateStatus.kind === "creating" ||
+                              thisCreateStatus.kind === "submitting" ||
+                              thisCreateStatus.kind === "validation-error" ||
+                              thisCreateStatus.kind === "api-error") && (
+                              <Stack gap="inter-section">
+                                <Text as="label">
+                                  Summary
+                                  <br />
+                                  <input
+                                    value={thisForm.summary}
+                                    onChange={(event) =>
+                                      setEvidenceForm((current) => ({
+                                        ...current,
+                                        [observation.observationId]: {
+                                          ...thisForm,
+                                          summary: event.target.value,
+                                        },
+                                      }))
+                                    }
+                                    disabled={thisCreateStatus.kind === "submitting"}
+                                  />
+                                </Text>
+                                <Text as="label">
+                                  Source
+                                  <br />
+                                  <input
+                                    value={thisForm.source}
+                                    onChange={(event) =>
+                                      setEvidenceForm((current) => ({
+                                        ...current,
+                                        [observation.observationId]: {
+                                          ...thisForm,
+                                          source: event.target.value,
+                                        },
+                                      }))
+                                    }
+                                    disabled={thisCreateStatus.kind === "submitting"}
+                                  />
+                                </Text>
+                                <Text as="label">
+                                  Direction
+                                  <br />
+                                  <select
+                                    value={thisForm.direction}
+                                    onChange={(event) =>
+                                      setEvidenceForm((current) => ({
+                                        ...current,
+                                        [observation.observationId]: {
+                                          ...thisForm,
+                                          direction: event.target.value as "SUPPORTS" | "CHALLENGES",
+                                        },
+                                      }))
+                                    }
+                                    disabled={thisCreateStatus.kind === "submitting"}
+                                  >
+                                    <option value="SUPPORTS">Supports</option>
+                                    <option value="CHALLENGES">Challenges</option>
+                                  </select>
+                                </Text>
+
+                                {thisCreateStatus.kind === "validation-error" && (
+                                  <Text color="tertiary" role="alert">
+                                    {thisCreateStatus.message}
+                                  </Text>
+                                )}
+                                {thisCreateStatus.kind === "api-error" && (
+                                  <Text color="tertiary" role="alert">
+                                    Could not record this evidence: {thisCreateStatus.message}
+                                  </Text>
+                                )}
+
+                                <div>
+                                  <Button
+                                    variant="primary"
+                                    onClick={() => submitEvidence(observation.observationId)}
+                                    disabled={thisCreateStatus.kind === "submitting"}
+                                  >
+                                    {thisCreateStatus.kind === "submitting"
+                                      ? "Submitting…"
+                                      : "Submit"}
+                                  </Button>{" "}
+                                  <Button
+                                    variant="tertiary"
+                                    onClick={() => {
+                                      setEvidenceForm((current) => ({
+                                        ...current,
+                                        [observation.observationId]: EMPTY_EVIDENCE_FORM,
+                                      }));
+                                      setEvidenceCreateStatus((current) => ({
+                                        ...current,
+                                        [observation.observationId]: { kind: "idle" },
+                                      }));
+                                    }}
+                                    disabled={thisCreateStatus.kind === "submitting"}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </Stack>
+                            )}
+                          </Stack>
+                        </div>
+                      );
+                    })}
                   </Stack>
                 )}
 

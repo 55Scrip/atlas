@@ -9,12 +9,14 @@ from sqlalchemy.pool import StaticPool
 
 from atlas.core.domain.evidence.entity import Evidence
 from atlas.core.domain.evidence.value_objects import Direction, EvidenceId, Statement
+from atlas.core.domain.observation.value_objects import ObservationId
 from atlas.core.infrastructure.persistence.evidence.sqlalchemy_repository import (
     SqlAlchemyEvidenceRepository,
 )
 from atlas.core.infrastructure.persistence.evidence.table import create_evidence_table
 
 _OBSERVED_AT = datetime(2026, 7, 13, 9, 15, 0, tzinfo=timezone(timedelta(hours=2)))
+_OBSERVATION_ID = ObservationId()
 
 
 @pytest.fixture
@@ -31,6 +33,7 @@ def repository():
 
 def _new_evidence(**overrides) -> Evidence:
     defaults = dict(
+        observation_id=_OBSERVATION_ID,
         statement=Statement(
             "Order intake increased by 24 percent and management raised "
             "full-year guidance for the second consecutive quarter."
@@ -118,6 +121,7 @@ class TestEqualsOriginal:
         reloaded = repository.get(original.id)
 
         assert reloaded == original
+        assert reloaded.observation_id == original.observation_id
         assert reloaded.statement == original.statement
         assert reloaded.direction == original.direction
         assert reloaded.source == original.source
@@ -148,19 +152,52 @@ class TestEqualsOriginal:
         assert reloaded.recorded_at.utcoffset() == timedelta(0)
 
 
-class TestInsertOnly:
-    def test_repository_exposes_no_update_or_delete_method(self, repository):
+class TestInsertAndDeleteOnly:
+    """Atlas Alpha, Evidence Sprint 1: `delete` is now supported (the first
+    delete capability in this codebase's persistence layer); `update`
+    remains unsupported, matching every other aggregate."""
+
+    def test_repository_exposes_no_update_method(self, repository):
         assert not hasattr(repository, "update")
-        assert not hasattr(repository, "delete")
+
+    def test_repository_exposes_a_delete_method(self, repository):
+        assert hasattr(repository, "delete")
 
 
-class TestNoForeignKeysOrCoupling:
-    def test_evidence_table_has_no_columns_referencing_another_aggregate(self, repository):
+class TestDelete:
+    def test_delete_removes_the_record(self, repository):
+        evidence = _new_evidence()
+        repository.add(evidence)
+        repository.delete(evidence.id)
+        assert repository.get(evidence.id) is None
+
+    def test_delete_removes_only_the_targeted_record(self, repository):
+        keep = _new_evidence()
+        remove = _new_evidence()
+        repository.add(keep)
+        repository.add(remove)
+        repository.delete(remove.id)
+        assert repository.get(keep.id) == keep
+        assert [e.id for e in repository.list_all()] == [keep.id]
+
+    def test_delete_is_idempotent_for_an_unknown_id(self, repository):
+        repository.delete(EvidenceId())  # must not raise
+
+    def test_delete_then_reload_reflects_the_deletion_in_list_all(self, repository):
+        evidence = _new_evidence()
+        repository.add(evidence)
+        repository.delete(evidence.id)
+        assert repository.list_all() == []
+
+
+class TestObservationAnchorAndNoOtherCoupling:
+    def test_evidence_table_has_exactly_the_expected_columns(self, repository):
         from atlas.core.infrastructure.persistence.evidence.table import evidence_table
 
         column_names = set(evidence_table.columns.keys())
         assert column_names == {
             "evidence_id",
+            "observation_id",
             "statement",
             "direction",
             "source",
@@ -168,6 +205,8 @@ class TestNoForeignKeysOrCoupling:
             "observed_at",
             "recorded_at",
         }
+        # observation_id is a plain indexed column (Interpretation's own
+        # established convention), never a SQL ForeignKey.
         assert evidence_table.foreign_keys == set()
         assert evidence_table.name == "evidence"
 

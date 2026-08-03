@@ -186,6 +186,7 @@ class ConversationOrchestrator:
             result = self._capture_evidence_service.capture(
                 CaptureEvidenceFromHypothesisRequest(
                     hypothesis_id=session.hypothesis_id,
+                    observation_id=session.observation_id,
                     statement=statement,
                     direction=direction,
                     observed_at=_now(),

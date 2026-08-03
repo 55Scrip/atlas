@@ -195,7 +195,7 @@ def build_conversation_orchestrator(
 
     observation_service = CaptureObservationService(observation_repository)
     hypothesis_service = HypothesisService(hypothesis_repository)
-    evidence_service = EvidenceService(evidence_repository)
+    evidence_service = EvidenceService(observation_repository, evidence_repository)
     decision_service = CaptureDecisionService(decision_repository)
     reasoning_trace_service = ReasoningTraceService(
         reasoning_trace_repository,

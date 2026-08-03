@@ -4,9 +4,17 @@ Evidence is a time-bound record of information the investor considered
 supportive of or challenging to a line of reasoning. It does not represent
 objective truth: Atlas preserves that the investor regarded this
 information as evidence, not that the information proves or disproves
-anything. It is immutable, and introduces no relationship to Hypothesis,
-Observation, Decision, or DecisionContext: this aggregate is deliberately
-standalone, the same as Observation (API-003) and Hypothesis (API-004).
+anything. It is immutable.
+
+Atlas Alpha, Evidence Sprint 1: Evidence is now anchored to the
+Observation it was captured against — it mandatorily carries that
+Observation's id — the same shape `Interpretation` (ATLAS-001 Core Loop)
+already established for the identical relationship. Evidence still
+introduces no relationship to Hypothesis, Decision, or DecisionContext;
+only the Observation anchor is new. Case membership is not stored here —
+it is derived transitively through the referenced Observation, which is
+itself the aggregate that carries `case_id`, matching Interpretation's
+own precedent of not duplicating a derivable field.
 
 A note on naming: `atlas.domains.decision.models.Evidence` and the
 `atlas.evidence` package already use the word "Evidence" for an unrelated,
@@ -22,6 +30,7 @@ from datetime import datetime, timezone
 
 from atlas.core.domain.evidence.exceptions import InvalidObservedAtError
 from atlas.core.domain.evidence.value_objects import Direction, EvidenceId, Statement
+from atlas.core.domain.observation.value_objects import ObservationId
 
 _Clock = Callable[[], datetime]
 
@@ -54,15 +63,17 @@ def _normalize_blank(value: str | None) -> str | None:
 class Evidence:
     """A single, immutable record of investor-assessed evidence.
 
-    Valid only if it carries an id, a statement, a direction (SUPPORTS or
-    CHALLENGES), the moment the information was observed, and the moment
-    Atlas recorded it. Source and note are optional context: blank values
-    normalize to None rather than being rejected or stored as empty
-    strings. A correction is represented by capturing a new Evidence
-    record, never by mutating this one.
+    Valid only if it carries an id, the Observation it was captured
+    against, a statement, a direction (SUPPORTS or CHALLENGES), the
+    moment the information was observed, and the moment Atlas recorded
+    it. Source and note are optional context: blank values normalize to
+    None rather than being rejected or stored as empty strings. A
+    correction is represented by capturing a new Evidence record, never
+    by mutating this one.
     """
 
     id: EvidenceId
+    observation_id: ObservationId
     statement: Statement
     direction: Direction
     observed_at: datetime
@@ -79,6 +90,7 @@ class Evidence:
     def capture(
         cls,
         *,
+        observation_id: ObservationId,
         statement: Statement,
         direction: Direction | str,
         observed_at: datetime,
@@ -86,7 +98,7 @@ class Evidence:
         note: str | None = None,
         clock: _Clock = _utc_now,
     ) -> Evidence:
-        """Capture a brand-new Evidence record.
+        """Capture a brand-new Evidence record against an existing Observation.
 
         This is the only path that assigns identity and RecordedAt.
         ObservedAt is preserved exactly as given, offset and all — the
@@ -94,11 +106,15 @@ class Evidence:
         `Hypothesis.formulated_at`: it is the investor's own account of
         when the information became known or relevant, not a value Atlas
         is free to renormalise. RecordedAt is always Atlas's own UTC
-        clock.
+        clock. This classmethod does not verify the Observation exists —
+        that existence check is an application-service concern (see
+        `EvidenceService.capture`), the same division of responsibility
+        `Interpretation.capture` already established.
         """
         now = clock()
         return cls(
             id=EvidenceId(),
+            observation_id=observation_id,
             statement=statement,
             direction=Direction.coerce(direction),
             observed_at=observed_at,

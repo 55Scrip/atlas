@@ -20,6 +20,7 @@ from atlas.core.domain.conclusion.value_objects import ConclusionId
 from atlas.core.domain.evidence.entity import Evidence
 from atlas.core.domain.evidence.exceptions import EvidenceNotFoundError
 from atlas.core.domain.evidence.value_objects import Direction, EvidenceId, Statement
+from atlas.core.domain.observation.value_objects import ObservationId
 from atlas.core.infrastructure.persistence.conclusion.sqlalchemy_repository import (
     SqlAlchemyConclusionRepository,
 )
@@ -59,6 +60,7 @@ def service(engine, evidence_repository):
 @pytest.fixture
 def existing_evidence(evidence_repository):
     evidence = Evidence.capture(
+        observation_id=ObservationId(),
         statement=Statement("Order intake increased by 24 percent."),
         direction=Direction.SUPPORTS,
         observed_at=_OBSERVED_AT,

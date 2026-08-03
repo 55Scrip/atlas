@@ -11,7 +11,11 @@ from __future__ import annotations
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from atlas.core.domain.evidence.exceptions import EvidenceNotFoundError, EvidenceValidationError
+from atlas.core.domain.evidence.exceptions import (
+    EvidenceNotFoundError,
+    EvidenceValidationError,
+    ObservationNotFoundError,
+)
 
 
 def register_error_handlers(app: FastAPI) -> None:
@@ -23,4 +27,10 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(EvidenceNotFoundError)
     async def _handle_not_found(request: Request, exc: EvidenceNotFoundError) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(ObservationNotFoundError)
+    async def _handle_observation_not_found(
+        request: Request, exc: ObservationNotFoundError
+    ) -> JSONResponse:
         return JSONResponse(status_code=404, content={"detail": str(exc)})

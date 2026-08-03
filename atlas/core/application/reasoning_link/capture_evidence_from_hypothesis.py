@@ -6,6 +6,18 @@ existing HypothesisNotFoundError, not a duplicate), then reuses the
 existing, unmodified EvidenceService to construct the Evidence, and
 records the HypothesisEvidenceLink atomically. Never writes to
 HypothesisRepository or modifies Evidence's own construction path.
+
+Atlas Alpha, Evidence Sprint 1: Evidence now mandatorily anchors to an
+Observation (see atlas.core.application.evidence.capture_evidence). This
+Core Loop step has no way to derive one from a Hypothesis alone —
+Hypothesis is "a freestanding, unanchored belief" (see
+atlas.core.domain.interpretation.entity's own module docstring) and does
+not itself carry a reference back to the Observation/Interpretation it
+may have originated from. The caller must therefore supply the
+originating Observation's id directly, exactly as
+`test_core_loop_end_to_end.py` already can (it has the real Observation
+from step 2 in scope by the time this step runs). This is a required,
+genuine caller-supplied value, not a fabricated one.
 """
 from __future__ import annotations
 
@@ -28,6 +40,7 @@ from atlas.core.domain.reasoning_link.repository import HypothesisEvidenceLinkRe
 @dataclass(frozen=True)
 class CaptureEvidenceFromHypothesisRequest:
     hypothesis_id: uuid.UUID
+    observation_id: uuid.UUID
     statement: str
     direction: str
     observed_at: datetime
@@ -62,6 +75,7 @@ class CaptureEvidenceFromHypothesisService:
 
         evidence = self._evidence_service.capture(
             CaptureEvidenceRequest(
+                observation_id=request.observation_id,
                 statement=request.statement,
                 direction=request.direction,
                 observed_at=request.observed_at,

@@ -169,7 +169,7 @@ def services(engine):
 
     observation_service = CaptureObservationService(observation_repository)
     hypothesis_service = HypothesisService(hypothesis_repository)
-    evidence_service = EvidenceService(evidence_repository)
+    evidence_service = EvidenceService(observation_repository, evidence_repository)
     decision_service = CaptureDecisionService(decision_repository)
 
     return {
@@ -250,6 +250,7 @@ class TestCompleteReasoningCycle:
         evidence_result = services["capture_evidence"].capture(
             CaptureEvidenceFromHypothesisRequest(
                 hypothesis_id=hypothesis.id.value,
+                observation_id=observation.id.value,
                 statement="Order intake increased by 24 percent.",
                 direction="SUPPORTS",
                 observed_at=_T0 + timedelta(hours=4),
@@ -385,6 +386,7 @@ class TestNegativeCasesNothingIsWrittenOnFailure:
             services["capture_evidence"].capture(
                 CaptureEvidenceFromHypothesisRequest(
                     hypothesis_id=HypothesisId().value,
+                    observation_id=uuid.uuid4(),
                     statement="Order intake increased by 24 percent.",
                     direction="SUPPORTS",
                     observed_at=_T0,

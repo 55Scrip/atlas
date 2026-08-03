@@ -14,6 +14,7 @@ from atlas.core.infrastructure.api.serialization import CamelModel
 
 
 class CreateEvidenceRequest(CamelModel):
+    observation_id: uuid.UUID
     statement: str
     direction: str
     observed_at: datetime
@@ -23,6 +24,7 @@ class CreateEvidenceRequest(CamelModel):
 
 class EvidenceResponse(CamelModel):
     evidence_id: uuid.UUID
+    observation_id: uuid.UUID
     statement: str
     direction: str
     source: str | None
@@ -34,6 +36,7 @@ class EvidenceResponse(CamelModel):
     def from_domain(cls, evidence: Evidence) -> EvidenceResponse:
         return cls(
             evidence_id=evidence.id.value,
+            observation_id=evidence.observation_id.value,
             statement=evidence.statement.value,
             direction=evidence.direction.value,
             source=evidence.source,

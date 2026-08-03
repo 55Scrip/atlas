@@ -28,3 +28,17 @@ class EvidenceNotFoundError(EvidenceError):
     Deliberately not an EvidenceValidationError: this is a missing
     reference, not a malformed value, and maps to 404 rather than 400.
     """
+
+
+class ObservationNotFoundError(EvidenceError):
+    """Raised when Evidence is captured against an Observation that does
+    not exist.
+
+    Defined here, not imported from Observation (API-003 has no
+    NotFoundError of its own) — the same situation DecisionContext
+    (API-002) was in with respect to Decision, and the same placement
+    convention: the referencing aggregate's own exceptions module, not
+    the referenced one's. Deliberately not an EvidenceValidationError:
+    this is a missing reference, not a malformed value, and maps to 404
+    rather than 400.
+    """
