@@ -427,6 +427,133 @@ class TestApplyConfirmedTradeValidation:
                 )
             )
 
+    def test_raises_for_a_buy_that_costs_more_than_available_cash(self, trade_service_factory):
+        # Independent verification regression: absolute mode previously
+        # floored the deficit at zero and let the holding absorb the
+        # full trade cost anyway, fabricating portfolio value.
+        outcome = _make_outcome()
+        trade_service = trade_service_factory(_FakeOutcomeRepository([outcome]))
+        trade_service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(ImportHoldingInput(ticker="NVDA", weight_percent=67, value_absolute=200),),
+                cash_weight_percent=33,
+                cash_value_absolute=100,
+            )
+        )
+        with pytest.raises(AlphaPortfolioValidationError):
+            trade_service.apply_confirmed_trade(
+                ApplyTradeRequest(
+                    outcome_id=str(outcome.id.value),
+                    decision_id=str(outcome.decision_id.value),
+                    security="NVDA",
+                    transaction_type=TransactionType.BUY,
+                    quantity=10,
+                    execution_price=100,  # costs 1000, only 100 cash available
+                    executed_at=_NOW,
+                )
+            )
+        # The rejected trade must not have been logged.
+        assert trade_service.list_trade_log() == []
+
+    def test_accepts_a_buy_that_exactly_matches_available_cash(self, trade_service_factory):
+        outcome = _make_outcome()
+        trade_service = trade_service_factory(_FakeOutcomeRepository([outcome]))
+        trade_service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(ImportHoldingInput(ticker="NVDA", weight_percent=50, value_absolute=500),),
+                cash_weight_percent=50,
+                cash_value_absolute=500,
+            )
+        )
+        state = trade_service.apply_confirmed_trade(
+            ApplyTradeRequest(
+                outcome_id=str(outcome.id.value),
+                decision_id=str(outcome.decision_id.value),
+                security="NVDA",
+                transaction_type=TransactionType.BUY,
+                quantity=5,
+                execution_price=100,  # costs exactly 500
+                executed_at=_NOW,
+            )
+        )
+        assert state.cash_value_absolute == 0
+        assert state.holdings[0].value_absolute == 1000
+
+    def test_raises_for_a_sell_that_exceeds_the_holdings_current_value(self, trade_service_factory):
+        # Independent verification regression: absolute mode previously
+        # floored the holding at zero and credited cash with the full
+        # proceeds anyway, fabricating portfolio value.
+        outcome = _make_outcome()
+        trade_service = trade_service_factory(_FakeOutcomeRepository([outcome]))
+        trade_service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(ImportHoldingInput(ticker="NVDA", weight_percent=33, value_absolute=50),),
+                cash_weight_percent=67,
+                cash_value_absolute=100,
+            )
+        )
+        with pytest.raises(AlphaPortfolioValidationError):
+            trade_service.apply_confirmed_trade(
+                ApplyTradeRequest(
+                    outcome_id=str(outcome.id.value),
+                    decision_id=str(outcome.decision_id.value),
+                    security="NVDA",
+                    transaction_type=TransactionType.SELL,
+                    quantity=10,
+                    execution_price=100,  # proceeds 1000, holding only worth 50
+                    executed_at=_NOW,
+                )
+            )
+        assert trade_service.list_trade_log() == []
+
+    def test_accepts_a_sell_that_exactly_matches_the_holdings_current_value(
+        self, trade_service_factory
+    ):
+        outcome = _make_outcome()
+        trade_service = trade_service_factory(_FakeOutcomeRepository([outcome]))
+        trade_service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(ImportHoldingInput(ticker="NVDA", weight_percent=50, value_absolute=500),),
+                cash_weight_percent=50,
+                cash_value_absolute=500,
+            )
+        )
+        state = trade_service.apply_confirmed_trade(
+            ApplyTradeRequest(
+                outcome_id=str(outcome.id.value),
+                decision_id=str(outcome.decision_id.value),
+                security="NVDA",
+                transaction_type=TransactionType.SELL,
+                quantity=5,
+                execution_price=100,  # proceeds exactly 500
+                executed_at=_NOW,
+            )
+        )
+        assert state.holdings[0].value_absolute == 0
+        assert state.cash_value_absolute == 1000
+
+    def test_percentage_only_mode_has_no_cash_sufficiency_check(self, trade_service_factory):
+        # No real dollar figures exist to validate against in Mode B, so
+        # a BUY that would be "unaffordable" in absolute terms is simply
+        # recorded as awaiting reconciliation, not rejected.
+        outcome = _make_outcome()
+        trade_service = trade_service_factory(_FakeOutcomeRepository([outcome]))
+        trade_service.import_portfolio(
+            ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="NVDA", weight_percent=60),))
+        )
+        state = trade_service.apply_confirmed_trade(
+            ApplyTradeRequest(
+                outcome_id=str(outcome.id.value),
+                decision_id=str(outcome.decision_id.value),
+                security="NVDA",
+                transaction_type=TransactionType.BUY,
+                quantity=1000,
+                execution_price=1000,
+                executed_at=_NOW,
+            )
+        )
+        assert state.holdings[0].reconciliation_status == ReconciliationStatus.AWAITING_RECONCILIATION
+
     def test_never_calls_add_on_the_outcome_repository(self, trade_service_factory):
         outcome = _make_outcome()
         fake_outcome_repository = _FakeOutcomeRepository([outcome])
@@ -666,6 +793,95 @@ class TestReconcileUpdateHolding:
             service.reconcile_update_holding(
                 UpdateHoldingWeightRequest(ticker="NVDA", weight_percent=50)
             )
+
+
+class TestTradeAppliedAfterPortfolioReplacement:
+    """Edge case: a trade recorded for a ticker that a subsequent
+    'replace entire allocation' removed."""
+
+    def test_buy_for_a_ticker_removed_by_replace_creates_a_fresh_holding(
+        self, trade_service_factory
+    ):
+        outcome = _make_outcome()
+        trade_service = trade_service_factory(_FakeOutcomeRepository([outcome]))
+        trade_service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(
+                    ImportHoldingInput(ticker="NVDA", weight_percent=50),
+                    ImportHoldingInput(ticker="AMD", weight_percent=50),
+                ),
+            )
+        )
+        # Replace drops AMD entirely.
+        trade_service.reconcile_replace_allocation(
+            ReplaceAllocationRequest(holdings=(ImportHoldingInput(ticker="NVDA", weight_percent=100),))
+        )
+
+        state = trade_service.apply_confirmed_trade(
+            ApplyTradeRequest(
+                outcome_id=str(outcome.id.value),
+                decision_id=str(outcome.decision_id.value),
+                security="AMD",
+                transaction_type=TransactionType.BUY,
+                quantity=1,
+                execution_price=50,
+                executed_at=_NOW,
+            )
+        )
+        tickers = {h.ticker for h in state.holdings}
+        assert tickers == {"NVDA", "AMD"}
+
+    def test_sell_for_a_ticker_removed_by_replace_is_rejected(self, trade_service_factory):
+        outcome = _make_outcome()
+        trade_service = trade_service_factory(_FakeOutcomeRepository([outcome]))
+        trade_service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(
+                    ImportHoldingInput(ticker="NVDA", weight_percent=50),
+                    ImportHoldingInput(ticker="AMD", weight_percent=50),
+                ),
+            )
+        )
+        trade_service.reconcile_replace_allocation(
+            ReplaceAllocationRequest(holdings=(ImportHoldingInput(ticker="NVDA", weight_percent=100),))
+        )
+
+        with pytest.raises(AlphaPortfolioValidationError):
+            trade_service.apply_confirmed_trade(
+                ApplyTradeRequest(
+                    outcome_id=str(outcome.id.value),
+                    decision_id=str(outcome.decision_id.value),
+                    security="AMD",
+                    transaction_type=TransactionType.SELL,
+                    quantity=1,
+                    execution_price=50,
+                    executed_at=_NOW,
+                )
+            )
+
+    def test_replace_preserves_case_link_and_trade_still_applies_to_it(self, trade_service_factory):
+        outcome = _make_outcome()
+        trade_service = trade_service_factory(_FakeOutcomeRepository([outcome]))
+        trade_service.import_portfolio(
+            ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="NVDA", weight_percent=100),))
+        )
+        trade_service.link_case_to_holding("NVDA", "case-1")
+        trade_service.reconcile_replace_allocation(
+            ReplaceAllocationRequest(holdings=(ImportHoldingInput(ticker="NVDA", weight_percent=80),))
+        )
+
+        state = trade_service.apply_confirmed_trade(
+            ApplyTradeRequest(
+                outcome_id=str(outcome.id.value),
+                decision_id=str(outcome.decision_id.value),
+                security="NVDA",
+                transaction_type=TransactionType.BUY,
+                quantity=1,
+                execution_price=50,
+                executed_at=_NOW,
+            )
+        )
+        assert state.holdings[0].case_id == "case-1"
 
 
 class TestReconcileReplaceAllocation:

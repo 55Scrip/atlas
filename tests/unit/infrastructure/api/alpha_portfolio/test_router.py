@@ -489,6 +489,69 @@ class TestApplyTrade:
         assert holding["reconciliationStatus"] == "UPDATED"
         assert body["awaitingReconciliation"] is False
 
+    def test_rejects_a_buy_costing_more_than_available_cash(self, client):
+        # Independent verification regression.
+        client.post(
+            "/alpha-portfolio/import",
+            json={
+                "holdings": [{"ticker": "NVDA", "weightPercent": 67, "valueAbsolute": 200}],
+                "cashWeightPercent": 33,
+                "cashValueAbsolute": 100,
+            },
+        )
+        decision = _record_decision(client)
+        outcome = _record_outcome(client, decision)
+
+        response = client.post(
+            "/alpha-portfolio/apply-trade",
+            json={
+                "outcomeId": outcome["id"],
+                "decisionId": decision["id"],
+                "security": "NVDA",
+                "transactionType": "BUY",
+                "quantity": 10,
+                "executionPrice": 100,
+                "executedAt": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        assert response.status_code == 400
+
+        unchanged = client.get("/alpha-portfolio").json()
+        assert unchanged["holdings"][0]["valueAbsolute"] == 200
+        assert unchanged["cashValueAbsolute"] == 100
+        assert client.get("/alpha-portfolio/trade-log").json() == []
+
+    def test_rejects_a_sell_exceeding_the_holdings_current_value(self, client):
+        # Independent verification regression.
+        client.post(
+            "/alpha-portfolio/import",
+            json={
+                "holdings": [{"ticker": "NVDA", "weightPercent": 33, "valueAbsolute": 50}],
+                "cashWeightPercent": 67,
+                "cashValueAbsolute": 100,
+            },
+        )
+        decision = _record_decision(client)
+        outcome = _record_outcome(client, decision)
+
+        response = client.post(
+            "/alpha-portfolio/apply-trade",
+            json={
+                "outcomeId": outcome["id"],
+                "decisionId": decision["id"],
+                "security": "NVDA",
+                "transactionType": "SELL",
+                "quantity": 10,
+                "executionPrice": 100,
+                "executedAt": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        assert response.status_code == 400
+
+        unchanged = client.get("/alpha-portfolio").json()
+        assert unchanged["holdings"][0]["valueAbsolute"] == 50
+        assert unchanged["cashValueAbsolute"] == 100
+
     def test_percentage_mode_marks_awaiting_reconciliation(self, client):
         client.post(
             "/alpha-portfolio/import",

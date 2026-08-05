@@ -419,6 +419,33 @@ class AlphaPortfolioService:
                 f"Cannot record a SELL for {trade_entry.security}: no existing holding found."
             )
 
+        # Absolute-value mode only: reject a trade that is inconsistent
+        # with the real dollar figures already known. Without this, a
+        # BUY costing more than available cash (or a SELL realizing more
+        # than the position's own current value) previously floored the
+        # deficit side at zero and let the other side absorb the full
+        # trade amount regardless -- silently fabricating portfolio
+        # value rather than reporting the inconsistency. Percentage-only
+        # mode has no real dollar figures to validate against, so no
+        # equivalent check applies there.
+        if state.has_absolute_values:
+            trade_value = trade_entry.quantity * trade_entry.execution_price
+            fees = trade_entry.fees or 0.0
+            if trade_entry.transaction_type == TransactionType.BUY:
+                available_cash = state.cash_value_absolute or 0.0
+                if trade_value + fees > available_cash + _ALLOCATION_TOLERANCE:
+                    raise AlphaPortfolioValidationError(
+                        f"Cannot record this BUY: cost ({trade_value + fees}) exceeds "
+                        f"available cash ({available_cash})."
+                    )
+            else:
+                current_value = (existing.value_absolute if existing else 0.0) or 0.0
+                if trade_value > current_value + _ALLOCATION_TOLERANCE:
+                    raise AlphaPortfolioValidationError(
+                        f"Cannot record this SELL: proceeds ({trade_value}) exceed the "
+                        f"holding's current value ({current_value})."
+                    )
+
         self._trade_log_store.add(trade_entry)
 
         if state.has_absolute_values:
