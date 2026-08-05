@@ -26,6 +26,14 @@ class TestAlphaHolding:
         with pytest.raises(ValueError):
             AlphaHolding(ticker="NVDA", weight_percent=-1)
 
+    def test_rejects_weight_above_100(self):
+        with pytest.raises(ValueError):
+            AlphaHolding(ticker="NVDA", weight_percent=100.1)
+
+    def test_accepts_weight_of_exactly_100(self):
+        holding = AlphaHolding(ticker="NVDA", weight_percent=100)
+        assert holding.weight_percent == 100
+
     def test_rejects_negative_value_absolute(self):
         with pytest.raises(ValueError):
             AlphaHolding(ticker="NVDA", weight_percent=10, value_absolute=-5)
@@ -33,6 +41,14 @@ class TestAlphaHolding:
     def test_value_absolute_is_optional(self):
         holding = AlphaHolding(ticker="NVDA", weight_percent=10)
         assert holding.value_absolute is None
+
+    def test_case_id_defaults_to_none(self):
+        holding = AlphaHolding(ticker="NVDA", weight_percent=10)
+        assert holding.case_id is None
+
+    def test_case_id_is_preserved_when_given(self):
+        holding = AlphaHolding(ticker="NVDA", weight_percent=10, case_id="case-1")
+        assert holding.case_id == "case-1"
 
 
 class TestAlphaPortfolioStateHasAbsoluteValues:

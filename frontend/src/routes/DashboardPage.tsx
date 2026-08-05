@@ -13,6 +13,31 @@ type DecisionsStatus =
   | { kind: "error"; message: string }
   | { kind: "loaded"; decisions: DecisionSummary[] };
 
+interface OutcomeSummary {
+  id: string;
+  statement: string;
+  occurredAt: string;
+}
+
+type OutcomesStatus =
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "loaded"; outcomes: OutcomeSummary[] };
+
+interface TradeLogSummary {
+  outcomeId: string;
+  security: string;
+  transactionType: string;
+  quantity: number;
+  executionPrice: number;
+  executedAt: string;
+}
+
+type TradeLogStatus =
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "loaded"; trades: TradeLogSummary[] };
+
 interface PortfolioSummaryView {
   exists: boolean;
   numberOfHoldings: number;
@@ -37,8 +62,13 @@ type PortfolioStatus =
  * Alpha Sprint 1A: "Portfolio Status" is wired to a concise summary
  * (whether an Alpha portfolio exists, its holding count, cash %) and a
  * link to `/portfolio` — deliberately minimal, per this sprint's own
- * scope clarification. No trade history, Outcome history, Daily Brief,
- * Discover, or Watchlist section is added here.
+ * scope clarification.
+ *
+ * Alpha Sprint 1B: "Recent Decisions" is joined by two further History
+ * sections -- Outcomes and Trade Executions -- both read-only lists
+ * matching the identical loading/error/empty/list pattern Decisions
+ * already established. No redesign: three small, consistent sections,
+ * not a unified timeline.
  *
  * Single-column layout, no secondary sidebar: UX-012A's own Layout
  * foundations state this directly — "no persistent side panels" and
@@ -56,6 +86,8 @@ type PortfolioStatus =
 export function DashboardPage() {
   const [decisionsStatus, setDecisionsStatus] = useState<DecisionsStatus>({ kind: "loading" });
   const [portfolioStatus, setPortfolioStatus] = useState<PortfolioStatus>({ kind: "loading" });
+  const [outcomesStatus, setOutcomesStatus] = useState<OutcomesStatus>({ kind: "loading" });
+  const [tradeLogStatus, setTradeLogStatus] = useState<TradeLogStatus>({ kind: "loading" });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -93,6 +125,50 @@ export function DashboardPage() {
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setPortfolioStatus({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch("/api/outcomes", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        return response.json() as Promise<OutcomeSummary[]>;
+      })
+      .then((outcomes) => setOutcomesStatus({ kind: "loaded", outcomes }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setOutcomesStatus({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch("/api/alpha-portfolio/trade-log", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        return response.json() as Promise<TradeLogSummary[]>;
+      })
+      .then((trades) => setTradeLogStatus({ kind: "loaded", trades }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setTradeLogStatus({
           kind: "error",
           message: error instanceof Error ? error.message : "Unknown error",
         });
@@ -171,6 +247,75 @@ export function DashboardPage() {
                     <Text>{decision.subject}</Text>
                     <Text color="secondary" as="p">
                       {decision.recordedAt}
+                    </Text>
+                  </div>
+                ))}
+              </Stack>
+            )}
+          </Stack>
+        </Surface>
+
+        <Divider />
+
+        <Surface tier="primary">
+          <Stack gap="inter-section">
+            <Heading level={2}>Outcomes</Heading>
+            {outcomesStatus.kind === "loading" && (
+              <Text role="status" aria-live="polite">
+                Loading…
+              </Text>
+            )}
+            {outcomesStatus.kind === "error" && (
+              <Text color="tertiary" role="alert">
+                Could not load outcomes: {outcomesStatus.message}
+              </Text>
+            )}
+            {outcomesStatus.kind === "loaded" && outcomesStatus.outcomes.length === 0 && (
+              <Text color="secondary">No outcomes recorded yet.</Text>
+            )}
+            {outcomesStatus.kind === "loaded" && outcomesStatus.outcomes.length > 0 && (
+              <Stack gap="inter-section">
+                {outcomesStatus.outcomes.map((outcome) => (
+                  <div key={outcome.id}>
+                    <Text>{outcome.statement}</Text>
+                    <Text color="secondary" as="p">
+                      {outcome.occurredAt}
+                    </Text>
+                  </div>
+                ))}
+              </Stack>
+            )}
+          </Stack>
+        </Surface>
+
+        <Divider />
+
+        <Surface tier="primary">
+          <Stack gap="inter-section">
+            <Heading level={2}>Trade Executions</Heading>
+            {tradeLogStatus.kind === "loading" && (
+              <Text role="status" aria-live="polite">
+                Loading…
+              </Text>
+            )}
+            {tradeLogStatus.kind === "error" && (
+              <Text color="tertiary" role="alert">
+                Could not load trade executions: {tradeLogStatus.message}
+              </Text>
+            )}
+            {tradeLogStatus.kind === "loaded" && tradeLogStatus.trades.length === 0 && (
+              <Text color="secondary">No trades recorded yet.</Text>
+            )}
+            {tradeLogStatus.kind === "loaded" && tradeLogStatus.trades.length > 0 && (
+              <Stack gap="inter-section">
+                {tradeLogStatus.trades.map((trade) => (
+                  <div key={trade.outcomeId}>
+                    <Text>
+                      {trade.transactionType} {trade.quantity} {trade.security} @{" "}
+                      {trade.executionPrice}
+                    </Text>
+                    <Text color="secondary" as="p">
+                      {trade.executedAt}
                     </Text>
                   </div>
                 ))}

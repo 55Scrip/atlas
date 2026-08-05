@@ -53,26 +53,65 @@ export function WelcomePage() {
   }
 
   function submitImport() {
-    const holdings = rows
-      .filter((row) => row.ticker.trim() !== "")
-      .map((row) => ({
-        ticker: row.ticker.trim(),
-        weightPercent: Number.parseFloat(row.weightPercent),
-        valueAbsolute:
-          row.valueAbsolute.trim() === "" ? null : Number.parseFloat(row.valueAbsolute),
-      }));
+    const rawRows = rows.filter((row) => row.ticker.trim() !== "");
 
-    if (holdings.length === 0) {
+    if (rawRows.length === 0) {
       setImportStatus({ kind: "validation-error", message: "Enter at least one holding." });
       return;
     }
-    if (holdings.some((holding) => Number.isNaN(holding.weightPercent))) {
+
+    for (const row of rawRows) {
+      if (Number.isNaN(Number.parseFloat(row.weightPercent))) {
+        setImportStatus({
+          kind: "validation-error",
+          message: "Every holding needs a percentage.",
+        });
+        return;
+      }
+      if (row.valueAbsolute.trim() !== "" && Number.isNaN(Number.parseFloat(row.valueAbsolute))) {
+        setImportStatus({
+          kind: "validation-error",
+          message: `"${row.valueAbsolute}" is not a valid value for ${row.ticker.trim()}.`,
+        });
+        return;
+      }
+    }
+
+    const normalizedTickers = rawRows.map((row) => row.ticker.trim().toUpperCase());
+    const duplicateTickers = [
+      ...new Set(
+        normalizedTickers.filter((ticker, index) => normalizedTickers.indexOf(ticker) !== index),
+      ),
+    ];
+    if (duplicateTickers.length > 0) {
       setImportStatus({
         kind: "validation-error",
-        message: "Every holding needs a percentage.",
+        message: `Duplicate ticker(s): ${duplicateTickers.join(", ")}.`,
       });
       return;
     }
+
+    if (cashWeightPercent.trim() !== "" && Number.isNaN(Number.parseFloat(cashWeightPercent))) {
+      setImportStatus({ kind: "validation-error", message: `"${cashWeightPercent}" is not a valid cash percentage.` });
+      return;
+    }
+    if (cashValueAbsolute.trim() !== "" && Number.isNaN(Number.parseFloat(cashValueAbsolute))) {
+      setImportStatus({ kind: "validation-error", message: `"${cashValueAbsolute}" is not a valid cash value.` });
+      return;
+    }
+    if ((cashWeightPercent.trim() !== "") !== (cashValueAbsolute.trim() !== "")) {
+      setImportStatus({
+        kind: "validation-error",
+        message: "Enter both cash % and cash value, or leave both blank.",
+      });
+      return;
+    }
+
+    const holdings = rawRows.map((row) => ({
+      ticker: row.ticker.trim(),
+      weightPercent: Number.parseFloat(row.weightPercent),
+      valueAbsolute: row.valueAbsolute.trim() === "" ? null : Number.parseFloat(row.valueAbsolute),
+    }));
 
     setImportStatus({ kind: "submitting" });
     fetch("/api/alpha-portfolio/import", {

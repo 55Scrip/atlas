@@ -15,6 +15,7 @@ ATLAS_ROOT = REPO_ROOT / "atlas"
 DOMAINS_DIR = ATLAS_ROOT / "domains"
 CAPABILITIES_DIR = ATLAS_ROOT / "capabilities"
 CORE_DIR = ATLAS_ROOT / "core"
+ALPHA_DIR = ATLAS_ROOT / "alpha"
 
 FORBIDDEN_EDGE_PATTERNS = (
     "atlas edge",
@@ -83,6 +84,28 @@ def test_core_does_not_import_atlas_alpha() -> None:
                 violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
 
     assert not violations, "atlas/core importing atlas/alpha:\n" + "\n".join(violations)
+
+
+def test_alpha_does_not_write_to_outcome() -> None:
+    """Alpha Sprint 1B: "The Alpha layer may reference Outcome. Outcome
+    must never reference Alpha." `atlas/alpha` is authorized to read
+    Outcome (via `OutcomeRepository.get` and `OutcomeId`, both plain
+    interfaces/value objects with no write behavior) but must never
+    import Outcome's own write path -- its entity constructor or its
+    application-layer capture service -- since doing so would let Alpha
+    originate or mutate a Core object. Forbidding those two specific
+    imports enforces this directly rather than relying on convention."""
+    forbidden_prefixes = (
+        "atlas.core.application.outcome",
+        "atlas.core.domain.outcome.entity",
+    )
+    violations = []
+    for path in _python_files(ALPHA_DIR):
+        for module in _imported_modules(path):
+            if module.startswith(forbidden_prefixes):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "atlas/alpha writing to Outcome:\n" + "\n".join(violations)
 
 
 def test_capabilities_do_not_import_providers_or_call_network_directly() -> None:

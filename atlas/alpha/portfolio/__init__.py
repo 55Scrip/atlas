@@ -22,13 +22,22 @@ portfolio representation by calling the existing, unmodified
 `atlas.domains.portfolio.calculations` engine (`projection.py`). It
 originates no Core Domain Object and mutates nothing in `atlas/core/`.
 
-Sprint 1A scope only (Alpha Sprint 1, Phase 4 revised plan, Decision 3):
-establishing state via manual existing-portfolio entry or the
-from-scratch path, and reading the derived view. No trade recording, no
-`AlphaTradeLogEntry`, no reconciliation — that is Sprint 1B, added only
-after Sprint 1A is independently verified.
+Sprint 1A: establishing state via manual existing-portfolio entry or the
+from-scratch path, reading the derived view, and linking a holding to
+its Investment Case.
+
+Sprint 1B adds `AlphaTradeLogEntry` (`trade_log_table.py`,
+`trade_log_store.py`) and portfolio reconciliation. Recording a
+confirmed external trade *reads* the existing, immutable Core Outcome
+by id via `OutcomeRepository` -- the one authorized direction this
+sprint states explicitly: "The Alpha layer may reference Outcome.
+Outcome must never reference Alpha." No Core object is ever written to,
+modified, or originated by this module; `Outcome`'s own entity,
+persistence, API schemas, and application service remain byte-for-byte
+unchanged.
 
 See `tests/test_architecture_boundaries.py::test_core_does_not_import_atlas_alpha`
-for the enforced half of this boundary, and `tests/unit/alpha/portfolio/`
-for tests asserting this module's own restraint.
+and `::test_alpha_does_not_write_to_outcome` for the enforced halves of
+this boundary, and `tests/unit/alpha/portfolio/` for tests asserting
+this module's own restraint.
 """

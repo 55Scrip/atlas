@@ -2,40 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button, Container, Divider, Heading, Link, Stack, Surface, Text } from "../foundation";
 
-/**
- * Investment Case (Alpha Sprint 1A) — merges the former Investment Case
- * shell (Sprint 1, Commit 8) and Decision Workspace (Sprint 1, Commits
- * 9-11+) into the one shared Investment Case implementation Alpha Sprint
- * 1 requires ("Use one shared Investment Case implementation. Do not
- * create a separate Decision Workspace."). The `/decision-workspace/*`
- * routes are removed; every real workflow that used to live there
- * (Observation, Evidence, Knowledge Reference, Reasoning Trace,
- * Judgment, Decision, Outcome) now lives here, unchanged in behavior.
- *
- * TERMINOLOGY, corrected: the former docstring here read "Investment
- * Case... not yet a settled Atlas concept," citing the pre-reconciliation
- * state of Architecture-Governance.md and Atlas-Alpha-Baseline-v1.0.md.
- * That is now stale. As of this session's own Product Architecture
- * Reconciliation (commit 963b008), `APP-001` v0.4 §3.13 settles
- * "Investment Case" as the confirmed, 1:1 product-facing name for
- * atlas/core's own `Case` (`OE-002` §3.1), distinct from, and enclosing,
- * Decision Context — see `Architecture-Governance.md` §8.7.4 and
- * `Atlas-Alpha-Baseline-v1.0.md` §4/§6. `UX-012`'s own text has not
- * itself been updated to cite this resolution (a separate, UX-track
- * document edit, outside this sprint's scope) — but the Product-layer
- * question this page previously deferred on is closed.
- *
- * This page still does not adopt UX-012 §15's separately-defined
- * "Investment Workspace" reasoning sequence (Current Conclusion,
- * Supporting Factors, Challenges, ...), and does not fabricate any
- * Investment Case content with no backend model yet (Atlas assessment,
- * thesis, risks, conviction, valuation context, monitoring conditions —
- * per Alpha Sprint 1 Phase 4, "do not fabricate the full designed
- * Investment Case content that has no backend model yet"). It renders
- * exactly the real backend concepts that exist: Case, and every Core
- * Loop object already implemented beneath it.
- */
-
 interface CaseSummary {
   caseId: string;
   recordedAt: string;
@@ -312,10 +278,84 @@ interface OutcomeFormInput {
   decisionId: string;
   statement: string;
   note: string;
+  isExternalTrade: boolean;
+  security: string;
+  transactionType: "BUY" | "SELL";
+  quantity: string;
+  executionPrice: string;
+  fees: string;
+  executedAt: string;
 }
 
-const EMPTY_OUTCOME_FORM: OutcomeFormInput = { decisionId: "", statement: "", note: "" };
+const EMPTY_OUTCOME_FORM: OutcomeFormInput = {
+  decisionId: "",
+  statement: "",
+  note: "",
+  isExternalTrade: false,
+  security: "",
+  transactionType: "BUY",
+  quantity: "",
+  executionPrice: "",
+  fees: "",
+  executedAt: "",
+};
 
+/**
+ * Alpha Sprint 1B: after Outcome is recorded exactly as today (unchanged
+ * request/response shape -- Outcome itself is never modified), an
+ * "external trade" toggle on the same form additionally calls
+ * `POST /alpha-portfolio/apply-trade` with the newly-created Outcome's
+ * own id, entirely as a follow-on step. Keyed by observationId, the
+ * same pattern every other section on this page already uses.
+ */
+type TradeApplyStatus =
+  | { kind: "idle" }
+  | { kind: "applying" }
+  | { kind: "updated" }
+  | { kind: "awaiting-reconciliation" }
+  | { kind: "error"; message: string };
+
+/**
+ * Investment Case (Alpha Sprint 1A) — merges the former Investment Case
+ * shell (Sprint 1, Commit 8) and Decision Workspace (Sprint 1, Commits
+ * 9-11+) into the one shared Investment Case implementation Alpha Sprint
+ * 1 requires ("Use one shared Investment Case implementation. Do not
+ * create a separate Decision Workspace."). The `/decision-workspace/*`
+ * routes are removed; every real workflow that used to live there
+ * (Observation, Evidence, Knowledge Reference, Reasoning Trace,
+ * Judgment, Decision, Outcome) now lives here, unchanged in behavior.
+ *
+ * TERMINOLOGY, corrected: the former docstring here read "Investment
+ * Case... not yet a settled Atlas concept," citing the pre-reconciliation
+ * state of Architecture-Governance.md and Atlas-Alpha-Baseline-v1.0.md.
+ * That is now stale. As of this session's own Product Architecture
+ * Reconciliation (commit 963b008), `APP-001` v0.4 §3.13 settles
+ * "Investment Case" as the confirmed, 1:1 product-facing name for
+ * atlas/core's own `Case` (`OE-002` §3.1), distinct from, and enclosing,
+ * Decision Context — see `Architecture-Governance.md` §8.7.4 and
+ * `Atlas-Alpha-Baseline-v1.0.md` §4/§6. `UX-012`'s own text has not
+ * itself been updated to cite this resolution (a separate, UX-track
+ * document edit, outside this sprint's scope) — but the Product-layer
+ * question this page previously deferred on is closed.
+ *
+ * This page still does not adopt UX-012 §15's separately-defined
+ * "Investment Workspace" reasoning sequence (Current Conclusion,
+ * Supporting Factors, Challenges, ...), and does not fabricate any
+ * Investment Case content with no backend model yet (Atlas assessment,
+ * thesis, risks, conviction, valuation context, monitoring conditions —
+ * per Alpha Sprint 1 Phase 4, "do not fabricate the full designed
+ * Investment Case content that has no backend model yet"). It renders
+ * exactly the real backend concepts that exist: Case, and every Core
+ * Loop object already implemented beneath it.
+ *
+ * Foundation Patch: reopening this page for the same Case (via
+ * Portfolio's now-idempotent "Open Investment Case" link, or a direct
+ * URL) fetches this Case's real Observations, Evidence, Knowledge
+ * References, Reasoning Traces, Judgments, Decisions, and Outcomes from
+ * the unmodified Core API exactly as before — nothing here changed to
+ * make that true; it was already true, and now Portfolio reliably sends
+ * the investor back to the same `caseId` instead of a fresh one.
+ */
 export function InvestmentCasePage() {
   const { caseId } = useParams<{ caseId?: string }>();
   const [status, setStatus] = useState<CaseStatus>({ kind: "loading" });
@@ -391,6 +431,7 @@ export function InvestmentCasePage() {
     Record<string, OutcomeCreateStatus>
   >({});
   const [outcomeForm, setOutcomeForm] = useState<Record<string, OutcomeFormInput>>({});
+  const [tradeApplyStatus, setTradeApplyStatus] = useState<Record<string, TradeApplyStatus>>({});
 
   useEffect(() => {
     if (!caseId) return;
@@ -751,8 +792,77 @@ export function InvestmentCasePage() {
       });
   }
 
+  function applyTrade(observationId: string, form: OutcomeFormInput, outcome: OutcomeRecord) {
+    setTradeApplyStatus((current) => ({ ...current, [observationId]: { kind: "applying" } }));
+
+    fetch("/api/alpha-portfolio/apply-trade", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        outcomeId: outcome.id,
+        decisionId: form.decisionId,
+        security: form.security,
+        transactionType: form.transactionType,
+        quantity: Number.parseFloat(form.quantity),
+        executionPrice: Number.parseFloat(form.executionPrice),
+        executedAt: form.executedAt || new Date().toISOString(),
+        fees: form.fees.trim() === "" ? null : Number.parseFloat(form.fees),
+      }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const body = (await response.json().catch(() => ({}))) as { detail?: string };
+          setTradeApplyStatus((current) => ({
+            ...current,
+            [observationId]: {
+              kind: "error",
+              message: body.detail ?? `Backend responded with ${response.status}`,
+            },
+          }));
+          return;
+        }
+        const view = (await response.json()) as { awaitingReconciliation: boolean };
+        setTradeApplyStatus((current) => ({
+          ...current,
+          [observationId]: {
+            kind: view.awaitingReconciliation ? "awaiting-reconciliation" : "updated",
+          },
+        }));
+      })
+      .catch((error: unknown) => {
+        setTradeApplyStatus((current) => ({
+          ...current,
+          [observationId]: {
+            kind: "error",
+            message: error instanceof Error ? error.message : "Unknown error",
+          },
+        }));
+      });
+  }
+
   function submitOutcome(observationId: string) {
     const form = outcomeForm[observationId] ?? EMPTY_OUTCOME_FORM;
+
+    if (form.isExternalTrade) {
+      const quantity = Number.parseFloat(form.quantity);
+      const executionPrice = Number.parseFloat(form.executionPrice);
+      if (
+        form.security.trim() === "" ||
+        Number.isNaN(quantity) ||
+        Number.isNaN(executionPrice) ||
+        (form.fees.trim() !== "" && Number.isNaN(Number.parseFloat(form.fees)))
+      ) {
+        setOutcomeCreateStatus((current) => ({
+          ...current,
+          [observationId]: {
+            kind: "validation-error",
+            message: "Security, quantity, and execution price are required for a trade.",
+          },
+        }));
+        return;
+      }
+    }
+
     setOutcomeCreateStatus((current) => ({
       ...current,
       [observationId]: { kind: "submitting" },
@@ -789,6 +899,9 @@ export function InvestmentCasePage() {
           ...current,
           [observationId]: { kind: "success", outcome },
         }));
+        if (form.isExternalTrade) {
+          applyTrade(observationId, form, outcome);
+        }
       })
       .catch((error: unknown) => {
         setOutcomeCreateStatus((current) => ({
@@ -977,6 +1090,8 @@ export function InvestmentCasePage() {
                             ? decisionsForObservation[0]?.id ?? ""
                             : "",
                       };
+                      const thisTradeApplyStatus: TradeApplyStatus =
+                        tradeApplyStatus[observation.observationId] ?? { kind: "idle" };
 
                       return (
                         <div key={observation.observationId}>
@@ -1886,6 +2001,26 @@ export function InvestmentCasePage() {
                                 <Text>
                                   Outcome recorded: {thisOutcomeCreateStatus.outcome.statement}
                                 </Text>
+                                {thisTradeApplyStatus.kind === "applying" && (
+                                  <Text role="status" aria-live="polite">
+                                    Updating portfolio…
+                                  </Text>
+                                )}
+                                {thisTradeApplyStatus.kind === "updated" && (
+                                  <Text color="secondary">Portfolio updated automatically.</Text>
+                                )}
+                                {thisTradeApplyStatus.kind === "awaiting-reconciliation" && (
+                                  <Text color="tertiary">
+                                    Trade recorded. Allocation requires reconciliation on the
+                                    Portfolio page.
+                                  </Text>
+                                )}
+                                {thisTradeApplyStatus.kind === "error" && (
+                                  <Text color="tertiary" role="alert">
+                                    Outcome was recorded, but the portfolio could not be updated:{" "}
+                                    {thisTradeApplyStatus.message}
+                                  </Text>
+                                )}
                                 <Button
                                   variant="tertiary"
                                   onClick={() => {
@@ -1975,6 +2110,139 @@ export function InvestmentCasePage() {
                                     disabled={thisOutcomeCreateStatus.kind === "submitting"}
                                   />
                                 </Text>
+
+                                <Text as="label">
+                                  <input
+                                    type="checkbox"
+                                    checked={thisOutcomeForm.isExternalTrade}
+                                    onChange={(event) =>
+                                      setOutcomeForm((current) => ({
+                                        ...current,
+                                        [observation.observationId]: {
+                                          ...thisOutcomeForm,
+                                          isExternalTrade: event.target.checked,
+                                        },
+                                      }))
+                                    }
+                                    disabled={thisOutcomeCreateStatus.kind === "submitting"}
+                                  />{" "}
+                                  This was an external trade — record the execution
+                                </Text>
+
+                                {thisOutcomeForm.isExternalTrade && (
+                                  <Stack gap="inter-section">
+                                    <Text as="label">
+                                      Security
+                                      <br />
+                                      <input
+                                        value={thisOutcomeForm.security}
+                                        onChange={(event) =>
+                                          setOutcomeForm((current) => ({
+                                            ...current,
+                                            [observation.observationId]: {
+                                              ...thisOutcomeForm,
+                                              security: event.target.value,
+                                            },
+                                          }))
+                                        }
+                                        disabled={thisOutcomeCreateStatus.kind === "submitting"}
+                                      />
+                                    </Text>
+                                    <Text as="label">
+                                      Type
+                                      <br />
+                                      <select
+                                        value={thisOutcomeForm.transactionType}
+                                        onChange={(event) =>
+                                          setOutcomeForm((current) => ({
+                                            ...current,
+                                            [observation.observationId]: {
+                                              ...thisOutcomeForm,
+                                              transactionType: event.target.value as
+                                                | "BUY"
+                                                | "SELL",
+                                            },
+                                          }))
+                                        }
+                                        disabled={thisOutcomeCreateStatus.kind === "submitting"}
+                                      >
+                                        <option value="BUY">Buy</option>
+                                        <option value="SELL">Sell</option>
+                                      </select>
+                                    </Text>
+                                    <Text as="label">
+                                      Quantity
+                                      <br />
+                                      <input
+                                        value={thisOutcomeForm.quantity}
+                                        onChange={(event) =>
+                                          setOutcomeForm((current) => ({
+                                            ...current,
+                                            [observation.observationId]: {
+                                              ...thisOutcomeForm,
+                                              quantity: event.target.value,
+                                            },
+                                          }))
+                                        }
+                                        disabled={thisOutcomeCreateStatus.kind === "submitting"}
+                                      />
+                                    </Text>
+                                    <Text as="label">
+                                      Execution price
+                                      <br />
+                                      <input
+                                        value={thisOutcomeForm.executionPrice}
+                                        onChange={(event) =>
+                                          setOutcomeForm((current) => ({
+                                            ...current,
+                                            [observation.observationId]: {
+                                              ...thisOutcomeForm,
+                                              executionPrice: event.target.value,
+                                            },
+                                          }))
+                                        }
+                                        disabled={thisOutcomeCreateStatus.kind === "submitting"}
+                                      />
+                                    </Text>
+                                    <Text as="label">
+                                      Fees (optional)
+                                      <br />
+                                      <input
+                                        value={thisOutcomeForm.fees}
+                                        onChange={(event) =>
+                                          setOutcomeForm((current) => ({
+                                            ...current,
+                                            [observation.observationId]: {
+                                              ...thisOutcomeForm,
+                                              fees: event.target.value,
+                                            },
+                                          }))
+                                        }
+                                        disabled={thisOutcomeCreateStatus.kind === "submitting"}
+                                      />
+                                    </Text>
+                                    <Text as="label">
+                                      Executed date (optional — defaults to now)
+                                      <br />
+                                      <input
+                                        type="datetime-local"
+                                        value={thisOutcomeForm.executedAt}
+                                        onChange={(event) =>
+                                          setOutcomeForm((current) => ({
+                                            ...current,
+                                            [observation.observationId]: {
+                                              ...thisOutcomeForm,
+                                              executedAt: event.target.value
+                                                ? new Date(event.target.value).toISOString()
+                                                : "",
+                                            },
+                                          }))
+                                        }
+                                        disabled={thisOutcomeCreateStatus.kind === "submitting"}
+                                      />
+                                    </Text>
+                                  </Stack>
+                                )}
 
                                 {thisOutcomeCreateStatus.kind === "validation-error" && (
                                   <Text color="tertiary" role="alert">

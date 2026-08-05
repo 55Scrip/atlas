@@ -6,7 +6,10 @@ a modification to it.
 """
 from __future__ import annotations
 
-from atlas.alpha.portfolio.models import AlphaPortfolioState
+from datetime import datetime
+from typing import Literal
+
+from atlas.alpha.portfolio.models import AlphaPortfolioState, AlphaTradeLogEntry
 from atlas.core.infrastructure.api.serialization import CamelModel
 from atlas.domains.portfolio.models import PortfolioSummary
 
@@ -34,6 +37,60 @@ class HoldingView(CamelModel):
     ticker: str
     weight_percent: float
     value_absolute: float | None = None
+    case_id: str | None = None
+    reconciliation_status: str = "NONE"
+
+
+class LinkCaseRequestBody(CamelModel):
+    candidate_case_id: str
+
+
+class CaseLinkResponse(CamelModel):
+    case_id: str
+
+
+class ApplyTradeRequestBody(CamelModel):
+    outcome_id: str
+    decision_id: str
+    security: str
+    transaction_type: Literal["BUY", "SELL"]
+    quantity: float
+    execution_price: float
+    executed_at: datetime
+    fees: float | None = None
+
+
+class ReconcileRequestBody(CamelModel):
+    mode: Literal["UPDATE_HOLDING_WEIGHT", "REPLACE_ALLOCATION"]
+    ticker: str | None = None
+    weight_percent: float | None = None
+    holdings: list[ImportHoldingRequest] | None = None
+    cash_weight_percent: float | None = None
+    cash_value_absolute: float | None = None
+
+
+class TradeLogEntryView(CamelModel):
+    outcome_id: str
+    decision_id: str
+    security: str
+    transaction_type: str
+    quantity: float
+    execution_price: float
+    fees: float | None = None
+    executed_at: datetime
+
+    @classmethod
+    def from_domain(cls, entry: AlphaTradeLogEntry) -> "TradeLogEntryView":
+        return cls(
+            outcome_id=entry.outcome_id,
+            decision_id=entry.decision_id,
+            security=entry.security,
+            transaction_type=entry.transaction_type.value,
+            quantity=entry.quantity,
+            execution_price=entry.execution_price,
+            fees=entry.fees,
+            executed_at=entry.executed_at,
+        )
 
 
 class PortfolioView(CamelModel):
@@ -48,6 +105,7 @@ class PortfolioView(CamelModel):
     concentration_level: str | None = None
     objective: str | None = None
     horizon: str | None = None
+    awaiting_reconciliation: bool = False
 
     @classmethod
     def empty(cls) -> "PortfolioView":
@@ -64,6 +122,8 @@ class PortfolioView(CamelModel):
                     ticker=holding.ticker,
                     weight_percent=holding.weight_percent,
                     value_absolute=holding.value_absolute,
+                    case_id=holding.case_id,
+                    reconciliation_status=holding.reconciliation_status.value,
                 )
                 for holding in state.holdings
             ],
@@ -82,4 +142,8 @@ class PortfolioView(CamelModel):
             concentration_level=summary.concentration.level.value,
             objective=state.objective,
             horizon=state.horizon,
+            awaiting_reconciliation=any(
+                holding.reconciliation_status.value == "AWAITING_RECONCILIATION"
+                for holding in state.holdings
+            ),
         )

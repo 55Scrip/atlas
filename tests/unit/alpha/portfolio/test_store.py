@@ -7,7 +7,13 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
-from atlas.alpha.portfolio.models import AlphaHolding, AlphaPortfolioState, AlphaPreferences, EntryMode
+from atlas.alpha.portfolio.models import (
+    AlphaHolding,
+    AlphaPortfolioState,
+    AlphaPreferences,
+    EntryMode,
+    ReconciliationStatus,
+)
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.table import create_alpha_portfolio_state_table
 
@@ -76,3 +82,50 @@ class TestAlphaPortfolioStore:
         store.replace(state)
         fetched = store.get()
         assert fetched.holdings == ()
+
+    def test_holding_case_id_round_trips(self, store):
+        state = AlphaPortfolioState(
+            established_at=_NOW, updated_at=_NOW, entry_mode=EntryMode.IMPORTED,
+            holdings=(AlphaHolding(ticker="NVDA", weight_percent=100, case_id="case-1"),),
+        )
+        store.replace(state)
+        fetched = store.get()
+        assert fetched.holdings[0].case_id == "case-1"
+
+    def test_holding_case_id_defaults_to_none_when_absent(self, store):
+        state = AlphaPortfolioState(
+            established_at=_NOW, updated_at=_NOW, entry_mode=EntryMode.IMPORTED,
+            holdings=(AlphaHolding(ticker="NVDA", weight_percent=100),),
+        )
+        store.replace(state)
+        fetched = store.get()
+        assert fetched.holdings[0].case_id is None
+
+    def test_holding_reconciliation_status_round_trips(self, store):
+        # Regression: a trade-applied holding's reconciliation status was
+        # correctly set in-memory but silently lost on the next read,
+        # because the JSON blob never carried it -- found during Alpha
+        # Sprint 1B manual verification, not by the unit tests that only
+        # checked an endpoint's direct in-memory response.
+        state = AlphaPortfolioState(
+            established_at=_NOW, updated_at=_NOW, entry_mode=EntryMode.IMPORTED,
+            holdings=(
+                AlphaHolding(
+                    ticker="NVDA",
+                    weight_percent=100,
+                    reconciliation_status=ReconciliationStatus.UPDATED,
+                ),
+            ),
+        )
+        store.replace(state)
+        fetched = store.get()
+        assert fetched.holdings[0].reconciliation_status == ReconciliationStatus.UPDATED
+
+    def test_holding_reconciliation_status_defaults_to_none_when_absent(self, store):
+        state = AlphaPortfolioState(
+            established_at=_NOW, updated_at=_NOW, entry_mode=EntryMode.IMPORTED,
+            holdings=(AlphaHolding(ticker="NVDA", weight_percent=100),),
+        )
+        store.replace(state)
+        fetched = store.get()
+        assert fetched.holdings[0].reconciliation_status == ReconciliationStatus.NONE

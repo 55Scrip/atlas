@@ -20,6 +20,7 @@ from atlas.alpha.portfolio.models import (
     AlphaPortfolioState,
     AlphaPreferences,
     EntryMode,
+    ReconciliationStatus,
 )
 from atlas.alpha.portfolio.table import alpha_portfolio_state_table
 
@@ -65,6 +66,8 @@ def _to_row(state: AlphaPortfolioState) -> dict[str, Any]:
                     "ticker": holding.ticker,
                     "weightPercent": holding.weight_percent,
                     "valueAbsolute": holding.value_absolute,
+                    "caseId": holding.case_id,
+                    "reconciliationStatus": holding.reconciliation_status.value,
                 }
                 for holding in state.holdings
             ]
@@ -83,6 +86,10 @@ def _to_state(row: Mapping[str, Any]) -> AlphaPortfolioState:
             ticker=item["ticker"],
             weight_percent=item["weightPercent"],
             value_absolute=item.get("valueAbsolute"),
+            case_id=item.get("caseId"),
+            reconciliation_status=ReconciliationStatus(
+                item.get("reconciliationStatus", ReconciliationStatus.NONE.value)
+            ),
         )
         for item in json.loads(row["holdings_json"])
     )
