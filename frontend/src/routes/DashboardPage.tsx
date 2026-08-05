@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import { Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
 
 interface DecisionSummary {
@@ -12,16 +13,32 @@ type DecisionsStatus =
   | { kind: "error"; message: string }
   | { kind: "loaded"; decisions: DecisionSummary[] };
 
+interface PortfolioSummaryView {
+  exists: boolean;
+  numberOfHoldings: number;
+  cashWeightPercent: number | null;
+}
+
+type PortfolioStatus =
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "loaded"; view: PortfolioSummaryView };
+
 /**
  * Dashboard Shell (Sprint 1, Commit 6) — structural layout only.
  *
  * Section set is UX-012 §14's own five "Required areas" for the
  * Dashboard, verbatim: Portfolio status summary, Active Monitoring
  * Conditions, Recent Decisions summary, Signals list, Navigation to all
- * active Workspaces. Everything except Recent Decisions is a labeled
- * placeholder — none of those five areas' actual product logic exists
- * yet (Portfolio, Monitoring, Signals, and every Workspace are explicitly
- * out of scope for this commit).
+ * active Workspaces. Everything except Recent Decisions and Portfolio
+ * Status is a labeled placeholder — Monitoring, Signals, and Workspaces
+ * remain explicitly out of scope.
+ *
+ * Alpha Sprint 1A: "Portfolio Status" is wired to a concise summary
+ * (whether an Alpha portfolio exists, its holding count, cash %) and a
+ * link to `/portfolio` — deliberately minimal, per this sprint's own
+ * scope clarification. No trade history, Outcome history, Daily Brief,
+ * Discover, or Watchlist section is added here.
  *
  * Single-column layout, no secondary sidebar: UX-012A's own Layout
  * foundations state this directly — "no persistent side panels" and
@@ -38,6 +55,7 @@ type DecisionsStatus =
  */
 export function DashboardPage() {
   const [decisionsStatus, setDecisionsStatus] = useState<DecisionsStatus>({ kind: "loading" });
+  const [portfolioStatus, setPortfolioStatus] = useState<PortfolioStatus>({ kind: "loading" });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -61,6 +79,28 @@ export function DashboardPage() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch("/api/alpha-portfolio", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        return response.json() as Promise<PortfolioSummaryView>;
+      })
+      .then((view) => setPortfolioStatus({ kind: "loaded", view }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setPortfolioStatus({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      });
+
+    return () => controller.abort();
+  }, []);
+
   return (
     <Container>
       <Stack gap="inter-section">
@@ -71,7 +111,29 @@ export function DashboardPage() {
         <Surface tier="primary">
           <Stack gap="inter-section">
             <Heading level={2}>Portfolio Status</Heading>
-            <Text color="secondary">Not yet implemented.</Text>
+            {portfolioStatus.kind === "loading" && (
+              <Text role="status" aria-live="polite">
+                Loading…
+              </Text>
+            )}
+            {portfolioStatus.kind === "error" && (
+              <Text color="tertiary" role="alert">
+                Could not load portfolio status: {portfolioStatus.message}
+              </Text>
+            )}
+            {portfolioStatus.kind === "loaded" && !portfolioStatus.view.exists && (
+              <Text color="secondary">No portfolio established yet.</Text>
+            )}
+            {portfolioStatus.kind === "loaded" && portfolioStatus.view.exists && (
+              <Text color="secondary">
+                {portfolioStatus.view.numberOfHoldings} holding
+                {portfolioStatus.view.numberOfHoldings === 1 ? "" : "s"}
+                {portfolioStatus.view.cashWeightPercent !== null
+                  ? ` — ${portfolioStatus.view.cashWeightPercent}% cash`
+                  : ""}
+              </Text>
+            )}
+            <RouterLink to="/portfolio">Go to Portfolio →</RouterLink>
           </Stack>
         </Surface>
 

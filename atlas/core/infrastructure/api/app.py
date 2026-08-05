@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from atlas.alpha.portfolio.api.router import router as alpha_portfolio_router
 from atlas.core.infrastructure.api.case.errors import (
     register_error_handlers as register_case_error_handlers,
 )
@@ -57,6 +58,12 @@ from atlas.core.infrastructure.api.reasoning_trace.router import router as reaso
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Atlas Core API")
+    # Atlas Alpha, Sprint 1A: the one deliberate Core/Alpha composition
+    # point. The router itself is authored and owned in `atlas/alpha/`,
+    # not `atlas/core/` — this process serves both Core and provisional
+    # Alpha routes, but `atlas/core/` never imports from `atlas/alpha/`
+    # (enforced by tests/test_architecture_boundaries.py).
+    app.include_router(alpha_portfolio_router)
     app.include_router(case_router)
     app.include_router(decision_router)
     app.include_router(decision_context_router)

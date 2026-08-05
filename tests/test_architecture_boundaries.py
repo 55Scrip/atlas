@@ -14,6 +14,7 @@ ATLAS_ROOT = REPO_ROOT / "atlas"
 
 DOMAINS_DIR = ATLAS_ROOT / "domains"
 CAPABILITIES_DIR = ATLAS_ROOT / "capabilities"
+CORE_DIR = ATLAS_ROOT / "core"
 
 FORBIDDEN_EDGE_PATTERNS = (
     "atlas edge",
@@ -65,6 +66,23 @@ def test_domains_do_not_import_capabilities_or_providers_or_legacy() -> None:
                 violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
 
     assert not violations, "Domain layer boundary violations:\n" + "\n".join(violations)
+
+
+def test_core_does_not_import_atlas_alpha() -> None:
+    """Alpha Sprint 1A: `atlas/alpha/` is explicitly provisional Alpha
+    application state (see atlas/alpha/portfolio/__init__.py) and MAY
+    read from `atlas/core/`, but `atlas/core/` MUST NOT depend on it in
+    return -- that is the one direction the Alpha Sprint 1 Phase 4 plan
+    (Decision A) authorizes. `atlas/core/infrastructure/api/app.py`'s own
+    one composition-point import of the Alpha portfolio router is the
+    sole, deliberate exception, called out in its own module comment."""
+    violations = []
+    for path in _python_files(CORE_DIR):
+        for module in _imported_modules(path):
+            if module.startswith("atlas.alpha") and "infrastructure/api/app.py" not in str(path):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "atlas/core importing atlas/alpha:\n" + "\n".join(violations)
 
 
 def test_capabilities_do_not_import_providers_or_call_network_directly() -> None:
