@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import { DashboardPage } from "./routes/DashboardPage";
+import { HistoryPage } from "./routes/HistoryPage";
 import { IndexRoute } from "./routes/IndexRoute";
 import { InvestmentCasePage } from "./routes/InvestmentCasePage";
 import { PlatformStatusPage } from "./routes/PlatformStatusPage";
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="welcome" element={<WelcomePage />} />
         <Route path="portfolio" element={<PortfolioPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="history" element={<HistoryPage />} />
         <Route path="investment-case" element={<InvestmentCasePage />} />
         <Route path="investment-case/:caseId" element={<InvestmentCasePage />} />
         <Route path="platform-status" element={<PlatformStatusPage />} />

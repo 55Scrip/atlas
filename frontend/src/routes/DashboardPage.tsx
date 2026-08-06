@@ -2,60 +2,59 @@ import { useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
+import {
+  deriveActivity,
+  deriveOutstandingWork,
+  sortActivity,
+  type DecisionRecord,
+  type HoldingLite,
+  type OutcomeRecord,
+  type OutstandingWorkItem,
+  type TradeLogEntry,
+} from "../activity/deriveActivity";
 
 /**
  * `transactionType` is an internal enum value (`TransactionType.BUY` /
  * `.SELL`, `atlas/alpha/portfolio/models.py`) read verbatim off the API
  * response — the value itself stays English, per the localization
  * architecture. This maps it to the same translated word the Investment
- * Case's own Buy/Sell control already uses, so the trade log reads
- * naturally in either language rather than mixing "Köp 10 AAPL".
+ * Case's own Buy/Sell control already uses, so activity reads naturally
+ * in either language rather than mixing "Köp 10 AAPL".
  */
-const TRANSACTION_TYPE_KEY: Record<string, TranslationKey> = {
+const DECISION_TYPE_KEY: Record<string, TranslationKey> = {
   BUY: "investmentCase.decision.typeBuy",
   SELL: "investmentCase.decision.typeSell",
+  HOLD: "investmentCase.decision.typeHold",
+  WATCH: "investmentCase.decision.typeWatch",
+  PASS: "investmentCase.decision.typePass",
 };
 
-interface DecisionSummary {
-  id: string;
-  subject: string;
-  recordedAt: string;
-}
+const OUTSTANDING_WORK_LABEL_KEY: Record<OutstandingWorkItem["kind"], TranslationKey> = {
+  "outcome-missing": "dashboard.needsAttention.outcomeMissing",
+  "trade-missing": "dashboard.needsAttention.tradeMissing",
+  "reconciliation-needed": "dashboard.needsAttention.reconciliationNeeded",
+};
 
 type DecisionsStatus =
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "loaded"; decisions: DecisionSummary[] };
-
-interface OutcomeSummary {
-  id: string;
-  statement: string;
-  occurredAt: string;
-}
+  | { kind: "loaded"; decisions: DecisionRecord[] };
 
 type OutcomesStatus =
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "loaded"; outcomes: OutcomeSummary[] };
-
-interface TradeLogSummary {
-  outcomeId: string;
-  security: string;
-  transactionType: string;
-  quantity: number;
-  executionPrice: number;
-  executedAt: string;
-}
+  | { kind: "loaded"; outcomes: OutcomeRecord[] };
 
 type TradeLogStatus =
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "loaded"; trades: TradeLogSummary[] };
+  | { kind: "loaded"; trades: TradeLogEntry[] };
 
 interface PortfolioSummaryView {
   exists: boolean;
   numberOfHoldings: number;
   cashWeightPercent: number | null;
+  holdings: HoldingLite[];
 }
 
 type PortfolioStatus =
@@ -63,39 +62,27 @@ type PortfolioStatus =
   | { kind: "error"; message: string }
   | { kind: "loaded"; view: PortfolioSummaryView };
 
+const RECENT_ACTIVITY_LIMIT = 10;
+const CONTINUE_WORKING_LIMIT = 5;
+
 /**
- * Dashboard Shell (Sprint 1, Commit 6) — structural layout only.
+ * Dashboard (Sprint 1 shell; Alpha Sprint 1A Portfolio Status; Sprint 4
+ * Decision Continuity & History).
  *
- * Section set is UX-012 §14's own five "Required areas" for the
- * Dashboard, verbatim: Portfolio status summary, Active Monitoring
- * Conditions, Recent Decisions summary, Signals list, Navigation to all
- * active Workspaces. Everything except Recent Decisions and Portfolio
- * Status is a labeled placeholder — Monitoring, Signals, and Workspaces
- * remain explicitly out of scope.
- *
- * Alpha Sprint 1A: "Portfolio Status" is wired to a concise summary
- * (whether an Alpha portfolio exists, its holding count, cash %) and a
- * link to `/portfolio` — deliberately minimal, per this sprint's own
- * scope clarification.
- *
- * Alpha Sprint 1B: "Recent Decisions" is joined by two further History
- * sections -- Outcomes and Trade Executions -- both read-only lists
- * matching the identical loading/error/empty/list pattern Decisions
- * already established. No redesign: three small, consistent sections,
- * not a unified timeline.
- *
- * Single-column layout, no secondary sidebar: UX-012A's own Layout
- * foundations state this directly — "no persistent side panels" and
- * "full-width only for Dashboard signals." There is no UX-012 §14
- * structural text describing a primary/sidebar split for the Dashboard
- * either, so none is built.
- *
- * Responsive layout: a single-column vertical Stack requires no
- * breakpoint to adapt — it reflows correctly at any viewport width by
- * construction. No breakpoint token exists anywhere in the token system
- * (Commits 3/4 found none in the governing corpus), so none is invented
- * here; there is also no multi-column arrangement in this shell that
- * would need one.
+ * Sprint 4 replaces the former "Active Monitoring Conditions" and
+ * "Signals" placeholders (both permanently "Not yet implemented" —
+ * neither capability exists) and the three separate raw Recent
+ * Decisions/Outcomes/Trade Executions lists with three real,
+ * operational sections built on the shared `deriveActivity`/
+ * `deriveOutstandingWork` derivations (`../activity/deriveActivity.ts`)
+ * — the exact same data History and the Investment Case Timeline read,
+ * cross-referenced here instead of fabricated: Needs Attention
+ * (deterministic outstanding-work checks, no scoring), Recent Activity
+ * (the unified Decision/Outcome/Trade feed, newest first), and Continue
+ * Working (the most recently active Cases, linking back in with
+ * `state: { origin: "dashboard" }` so Investment Case can honestly say
+ * how it was reached). "Portfolio Status" is unchanged from Alpha
+ * Sprint 1A. No AI, no prioritization, no placeholder content remains.
  */
 export function DashboardPage() {
   const { t } = useTranslation();
@@ -112,7 +99,7 @@ export function DashboardPage() {
         if (!response.ok) {
           throw new Error(`Backend responded with ${response.status}`);
         }
-        return response.json() as Promise<DecisionSummary[]>;
+        return response.json() as Promise<DecisionRecord[]>;
       })
       .then((decisions) => setDecisionsStatus({ kind: "loaded", decisions }))
       .catch((error: unknown) => {
@@ -156,7 +143,7 @@ export function DashboardPage() {
         if (!response.ok) {
           throw new Error(`Backend responded with ${response.status}`);
         }
-        return response.json() as Promise<OutcomeSummary[]>;
+        return response.json() as Promise<OutcomeRecord[]>;
       })
       .then((outcomes) => setOutcomesStatus({ kind: "loaded", outcomes }))
       .catch((error: unknown) => {
@@ -178,7 +165,7 @@ export function DashboardPage() {
         if (!response.ok) {
           throw new Error(`Backend responded with ${response.status}`);
         }
-        return response.json() as Promise<TradeLogSummary[]>;
+        return response.json() as Promise<TradeLogEntry[]>;
       })
       .then((trades) => setTradeLogStatus({ kind: "loaded", trades }))
       .catch((error: unknown) => {
@@ -191,6 +178,44 @@ export function DashboardPage() {
 
     return () => controller.abort();
   }, []);
+
+  const allLoaded =
+    decisionsStatus.kind === "loaded" &&
+    outcomesStatus.kind === "loaded" &&
+    tradeLogStatus.kind === "loaded" &&
+    portfolioStatus.kind === "loaded";
+
+  const holdings = portfolioStatus.kind === "loaded" ? portfolioStatus.view.holdings : [];
+
+  const outstandingWork = allLoaded
+    ? deriveOutstandingWork(
+        decisionsStatus.decisions,
+        outcomesStatus.outcomes,
+        tradeLogStatus.trades,
+        holdings,
+      )
+    : [];
+
+  const recentActivity = allLoaded
+    ? sortActivity(
+        deriveActivity(decisionsStatus.decisions, outcomesStatus.outcomes, tradeLogStatus.trades, holdings),
+        "newest",
+      ).slice(0, RECENT_ACTIVITY_LIMIT)
+    : [];
+
+  const continueWorking: { caseId: string; security: string; date: string }[] = [];
+  if (allLoaded) {
+    const seen = new Set<string>();
+    for (const event of sortActivity(
+      deriveActivity(decisionsStatus.decisions, outcomesStatus.outcomes, tradeLogStatus.trades, holdings),
+      "newest",
+    )) {
+      if (!event.caseId || seen.has(event.caseId)) continue;
+      seen.add(event.caseId);
+      continueWorking.push({ caseId: event.caseId, security: event.security, date: event.date });
+      if (continueWorking.length >= CONTINUE_WORKING_LIMIT) break;
+    }
+  }
 
   return (
     <Container>
@@ -239,8 +264,34 @@ export function DashboardPage() {
 
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={2}>{t("dashboard.monitoring.heading")}</Heading>
-            <Text color="secondary">{t("dashboard.notYetImplemented")}</Text>
+            <Heading level={2}>{t("dashboard.needsAttention.heading")}</Heading>
+            {!allLoaded && (
+              <Text role="status" aria-live="polite">
+                {t("common.loading")}
+              </Text>
+            )}
+            {allLoaded && outstandingWork.length === 0 && (
+              <Text color="secondary">{t("dashboard.needsAttention.empty")}</Text>
+            )}
+            {allLoaded && outstandingWork.length > 0 && (
+              <Stack gap="inter-section">
+                {outstandingWork.map((item) =>
+                  item.caseId ? (
+                    <RouterLink
+                      key={item.id}
+                      to={`/investment-case/${item.caseId}`}
+                      state={{ origin: "dashboard" }}
+                    >
+                      {t(OUTSTANDING_WORK_LABEL_KEY[item.kind], { security: item.security })}
+                    </RouterLink>
+                  ) : (
+                    <Text key={item.id} color="tertiary">
+                      {t(OUTSTANDING_WORK_LABEL_KEY[item.kind], { security: item.security })}
+                    </Text>
+                  ),
+                )}
+              </Stack>
+            )}
           </Stack>
         </Surface>
 
@@ -248,27 +299,39 @@ export function DashboardPage() {
 
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={2}>{t("dashboard.recentDecisions.heading")}</Heading>
-            {decisionsStatus.kind === "loading" && (
+            <Heading level={2}>{t("dashboard.recentActivity.heading")}</Heading>
+            {!allLoaded && (
               <Text role="status" aria-live="polite">
                 {t("common.loading")}
               </Text>
             )}
-            {decisionsStatus.kind === "error" && (
-              <Text color="tertiary" role="alert">
-                {t("dashboard.recentDecisions.loadError", { message: decisionsStatus.message })}
-              </Text>
+            {allLoaded && recentActivity.length === 0 && (
+              <Text color="secondary">{t("dashboard.recentActivity.empty")}</Text>
             )}
-            {decisionsStatus.kind === "loaded" && decisionsStatus.decisions.length === 0 && (
-              <Text color="secondary">{t("dashboard.recentDecisions.empty")}</Text>
-            )}
-            {decisionsStatus.kind === "loaded" && decisionsStatus.decisions.length > 0 && (
+            {allLoaded && recentActivity.length > 0 && (
               <Stack gap="inter-section">
-                {decisionsStatus.decisions.map((decision) => (
-                  <div key={decision.id}>
-                    <Text>{decision.subject}</Text>
+                {recentActivity.map((event) => (
+                  <div key={event.id}>
+                    {event.caseId ? (
+                      <RouterLink
+                        to={`/investment-case/${event.caseId}`}
+                        state={{ origin: "dashboard" }}
+                      >
+                        {event.security}
+                      </RouterLink>
+                    ) : (
+                      <Text>{event.security}</Text>
+                    )}
                     <Text color="secondary" as="p">
-                      {decision.recordedAt}
+                      {event.decisionType &&
+                        (DECISION_TYPE_KEY[event.decisionType]
+                          ? t(DECISION_TYPE_KEY[event.decisionType]!)
+                          : event.decisionType)}
+                      {" — "}
+                      {event.summary}
+                    </Text>
+                    <Text color="tertiary" as="p">
+                      {event.date}
                     </Text>
                   </div>
                 ))}
@@ -281,88 +344,28 @@ export function DashboardPage() {
 
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={2}>{t("dashboard.outcomes.heading")}</Heading>
-            {outcomesStatus.kind === "loading" && (
+            <Heading level={2}>{t("dashboard.continueWorking.heading")}</Heading>
+            {!allLoaded && (
               <Text role="status" aria-live="polite">
                 {t("common.loading")}
               </Text>
             )}
-            {outcomesStatus.kind === "error" && (
-              <Text color="tertiary" role="alert">
-                {t("dashboard.outcomes.loadError", { message: outcomesStatus.message })}
-              </Text>
+            {allLoaded && continueWorking.length === 0 && (
+              <Text color="secondary">{t("dashboard.continueWorking.empty")}</Text>
             )}
-            {outcomesStatus.kind === "loaded" && outcomesStatus.outcomes.length === 0 && (
-              <Text color="secondary">{t("dashboard.outcomes.empty")}</Text>
-            )}
-            {outcomesStatus.kind === "loaded" && outcomesStatus.outcomes.length > 0 && (
+            {allLoaded && continueWorking.length > 0 && (
               <Stack gap="inter-section">
-                {outcomesStatus.outcomes.map((outcome) => (
-                  <div key={outcome.id}>
-                    <Text>{outcome.statement}</Text>
-                    <Text color="secondary" as="p">
-                      {outcome.occurredAt}
-                    </Text>
-                  </div>
+                {continueWorking.map((item) => (
+                  <RouterLink
+                    key={item.caseId}
+                    to={`/investment-case/${item.caseId}`}
+                    state={{ origin: "dashboard" }}
+                  >
+                    {item.security}
+                  </RouterLink>
                 ))}
               </Stack>
             )}
-          </Stack>
-        </Surface>
-
-        <Divider />
-
-        <Surface tier="primary">
-          <Stack gap="inter-section">
-            <Heading level={2}>{t("dashboard.tradeExecutions.heading")}</Heading>
-            {tradeLogStatus.kind === "loading" && (
-              <Text role="status" aria-live="polite">
-                {t("common.loading")}
-              </Text>
-            )}
-            {tradeLogStatus.kind === "error" && (
-              <Text color="tertiary" role="alert">
-                {t("dashboard.tradeExecutions.loadError", { message: tradeLogStatus.message })}
-              </Text>
-            )}
-            {tradeLogStatus.kind === "loaded" && tradeLogStatus.trades.length === 0 && (
-              <Text color="secondary">{t("dashboard.tradeExecutions.empty")}</Text>
-            )}
-            {tradeLogStatus.kind === "loaded" && tradeLogStatus.trades.length > 0 && (
-              <Stack gap="inter-section">
-                {tradeLogStatus.trades.map((trade) => (
-                  <div key={trade.outcomeId}>
-                    <Text>
-                      {TRANSACTION_TYPE_KEY[trade.transactionType]
-                        ? t(TRANSACTION_TYPE_KEY[trade.transactionType]!)
-                        : trade.transactionType}{" "}
-                      {trade.quantity} {trade.security} @ {trade.executionPrice}
-                    </Text>
-                    <Text color="secondary" as="p">
-                      {trade.executedAt}
-                    </Text>
-                  </div>
-                ))}
-              </Stack>
-            )}
-          </Stack>
-        </Surface>
-
-        <Divider />
-
-        <Surface tier="primary">
-          <Stack gap="inter-section">
-            <Heading level={2}>{t("dashboard.signals.heading")}</Heading>
-            <Text color="secondary">{t("dashboard.notYetImplemented")}</Text>
-          </Stack>
-        </Surface>
-
-        <Divider />
-
-        <Surface tier="primary">
-          <Stack gap="inter-section">
-            <Heading level={2}>{t("dashboard.workspaces.heading")}</Heading>
-            <Text color="secondary">{t("dashboard.workspaces.empty")}</Text>
           </Stack>
         </Surface>
       </Stack>
