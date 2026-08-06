@@ -1,6 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { Button, Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
+import { useTranslation, type TranslationKey } from "../i18n";
+
+/**
+ * `concentrationLevel` is an internal enum value (`ConcentrationLevel.LOW`
+ * etc., `atlas/domains/portfolio/models.py`, serialized as its raw
+ * `.value` — "Low", "Moderate", "Elevated", "High") — the value itself
+ * stays English on the wire, per the localization architecture. This
+ * maps it to a translated word only where it's displayed.
+ */
+const CONCENTRATION_LEVEL_KEY: Record<string, TranslationKey> = {
+  Low: "portfolio.concentrationLevel.low",
+  Moderate: "portfolio.concentrationLevel.moderate",
+  Elevated: "portfolio.concentrationLevel.elevated",
+  High: "portfolio.concentrationLevel.high",
+};
 
 interface HoldingView {
   ticker: string;
@@ -63,6 +78,7 @@ const UNALLOCATED_TOLERANCE = 0.01;
  * with no linked Case yet creates one and records the association.
  */
 export function PortfolioPage() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<Status>({ kind: "loading" });
   const [caseCreateStatus, setCaseCreateStatus] = useState<Record<string, CaseCreateStatus>>({});
   const [reconcileWeightInputs, setReconcileWeightInputs] = useState<Record<string, string>>({});
@@ -89,7 +105,7 @@ export function PortfolioPage() {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
         });
       });
 
@@ -135,7 +151,7 @@ export function PortfolioPage() {
           ...current,
           [ticker]: {
             kind: "error",
-            message: error instanceof Error ? error.message : "Unknown error",
+            message: error instanceof Error ? error.message : t("common.unknownError"),
           },
         }));
       });
@@ -147,7 +163,7 @@ export function PortfolioPage() {
     if (raw.trim() === "" || Number.isNaN(weightPercent)) {
       setReconcileStatus((current) => ({
         ...current,
-        [ticker]: { kind: "error", message: "Enter a valid percentage." },
+        [ticker]: { kind: "error", message: t("portfolio.holdings.errors.invalidPercentage") },
       }));
       return;
     }
@@ -163,7 +179,7 @@ export function PortfolioPage() {
           const body = (await response.json()) as { detail?: string };
           setReconcileStatus((current) => ({
             ...current,
-            [ticker]: { kind: "error", message: body.detail ?? "Invalid input." },
+            [ticker]: { kind: "error", message: body.detail ?? t("common.invalidInput") },
           }));
           return;
         }
@@ -179,7 +195,7 @@ export function PortfolioPage() {
           ...current,
           [ticker]: {
             kind: "error",
-            message: error instanceof Error ? error.message : "Unknown error",
+            message: error instanceof Error ? error.message : t("common.unknownError"),
           },
         }));
       });
@@ -221,7 +237,10 @@ export function PortfolioPage() {
       }));
 
     if (holdings.length === 0 || holdings.some((h) => Number.isNaN(h.weightPercent))) {
-      setReplaceStatus({ kind: "error", message: "Every holding needs a valid percentage." });
+      setReplaceStatus({
+        kind: "error",
+        message: t("portfolio.replaceForm.errors.invalidPercentage"),
+      });
       return;
     }
 
@@ -241,7 +260,7 @@ export function PortfolioPage() {
       .then(async (response) => {
         if (response.status === 400 || response.status === 404) {
           const body = (await response.json()) as { detail?: string };
-          setReplaceStatus({ kind: "error", message: body.detail ?? "Invalid input." });
+          setReplaceStatus({ kind: "error", message: body.detail ?? t("common.invalidInput") });
           return;
         }
         if (!response.ok) {
@@ -255,7 +274,7 @@ export function PortfolioPage() {
       .catch((error: unknown) => {
         setReplaceStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
         });
       });
   }
@@ -270,24 +289,24 @@ export function PortfolioPage() {
   return (
     <Container>
       <Stack gap="inter-section">
-        <Heading level={1}>Portfolio</Heading>
+        <Heading level={1}>{t("portfolio.title")}</Heading>
 
         {status.kind === "loading" && (
           <Text role="status" aria-live="polite">
-            Loading…
+            {t("common.loading")}
           </Text>
         )}
         {status.kind === "error" && (
           <Text color="tertiary" role="alert">
-            Could not load your portfolio: {status.message}
+            {t("portfolio.loadError", { message: status.message })}
           </Text>
         )}
 
         {status.kind === "loaded" && !status.view.exists && (
           <Surface tier="primary">
             <Stack gap="inter-section">
-              <Text>No portfolio has been established yet.</Text>
-              <RouterLink to="/welcome">Set up your portfolio</RouterLink>
+              <Text>{t("portfolio.notEstablished")}</Text>
+              <RouterLink to="/welcome">{t("portfolio.setupLink")}</RouterLink>
             </Stack>
           </Surface>
         )}
@@ -295,17 +314,21 @@ export function PortfolioPage() {
         {status.kind === "loaded" && status.view.exists && status.view.holdings.length === 0 && (
           <Surface tier="primary">
             <Stack gap="inter-section">
-              <Text>Your portfolio is empty.</Text>
-              {status.view.objective && <Text color="secondary">Objective: {status.view.objective}</Text>}
-              {status.view.horizon && <Text color="secondary">Horizon: {status.view.horizon}</Text>}
-              <Text color="secondary">
-                There is nothing to show here yet — Atlas does not fabricate holdings or
-                opportunities. As you open Investment Cases and record decisions, they will
-                appear here.
-              </Text>
+              <Text>{t("portfolio.empty.title")}</Text>
+              {status.view.objective && (
+                <Text color="secondary">
+                  {t("portfolio.empty.objective", { value: status.view.objective })}
+                </Text>
+              )}
+              {status.view.horizon && (
+                <Text color="secondary">
+                  {t("portfolio.empty.horizon", { value: status.view.horizon })}
+                </Text>
+              )}
+              <Text color="secondary">{t("portfolio.empty.explanation")}</Text>
               <div>
                 <Button variant="tertiary" onClick={() => openInvestmentCase("__new__", null)}>
-                  Open a new Investment Case
+                  {t("portfolio.openNewCase")}
                 </Button>
               </div>
             </Stack>
@@ -318,17 +341,13 @@ export function PortfolioPage() {
               <Surface tier="primary">
                 <Stack gap="inter-section">
                   <Text color="tertiary" role="status">
-                    Trade recorded. Allocation requires reconciliation.
+                    {t("portfolio.awaitingBanner.title")}
                   </Text>
-                  <Text color="secondary">
-                    One or more holdings were traded while Atlas only knew percentages, so their
-                    allocation was left untouched rather than invented. Update the affected
-                    holding below, or replace the entire allocation.
-                  </Text>
+                  <Text color="secondary">{t("portfolio.awaitingBanner.body")}</Text>
                   {!showReplaceForm && (
                     <div>
                       <Button variant="tertiary" onClick={openReplaceForm}>
-                        Replace entire allocation
+                        {t("portfolio.replaceAllocationButton")}
                       </Button>
                     </div>
                   )}
@@ -339,11 +358,11 @@ export function PortfolioPage() {
             {showReplaceForm && (
               <Surface tier="primary">
                 <Stack gap="inter-section">
-                  <Heading level={2}>Replace entire allocation</Heading>
+                  <Heading level={2}>{t("portfolio.replaceForm.heading")}</Heading>
                   {replaceRows.map((row, index) => (
                     <Stack key={index} gap="inter-section">
                       <Text as="label">
-                        Ticker
+                        {t("form.ticker")}
                         <br />
                         <input
                           value={row.ticker}
@@ -351,7 +370,7 @@ export function PortfolioPage() {
                         />
                       </Text>
                       <Text as="label">
-                        Weight %
+                        {t("form.weightPercent")}
                         <br />
                         <input
                           value={row.weightPercent}
@@ -361,7 +380,7 @@ export function PortfolioPage() {
                         />
                       </Text>
                       <Text as="label">
-                        Value (optional)
+                        {t("form.valueOptional")}
                         <br />
                         <input
                           value={row.valueAbsolute}
@@ -374,7 +393,7 @@ export function PortfolioPage() {
                     </Stack>
                   ))}
                   <Text as="label">
-                    Cash %
+                    {t("form.cashPercent")}
                     <br />
                     <input
                       value={replaceCashWeight}
@@ -382,7 +401,7 @@ export function PortfolioPage() {
                     />
                   </Text>
                   <Text as="label">
-                    Cash value (optional)
+                    {t("form.cashValueOptional")}
                     <br />
                     <input
                       value={replaceCashValue}
@@ -400,10 +419,12 @@ export function PortfolioPage() {
                       onClick={submitReplaceAllocation}
                       disabled={replaceStatus.kind === "submitting"}
                     >
-                      {replaceStatus.kind === "submitting" ? "Saving…" : "Save allocation"}
+                      {replaceStatus.kind === "submitting"
+                        ? t("common.saving")
+                        : t("portfolio.replaceForm.saveButton")}
                     </Button>{" "}
                     <Button variant="tertiary" onClick={() => setShowReplaceForm(false)}>
-                      Cancel
+                      {t("common.cancel")}
                     </Button>
                   </div>
                 </Stack>
@@ -412,14 +433,14 @@ export function PortfolioPage() {
 
             <Surface tier="primary">
               <Stack gap="inter-section">
-                <Heading level={2}>Holdings</Heading>
+                <Heading level={2}>{t("portfolio.holdings.heading")}</Heading>
                 {!status.view.hasAbsoluteValues && (
-                  <Text color="secondary">
-                    Showing percentages only — no absolute portfolio value was entered.
-                  </Text>
+                  <Text color="secondary">{t("portfolio.holdings.percentOnly")}</Text>
                 )}
                 {status.view.hasAbsoluteValues && status.view.totalValue !== null && (
-                  <Text color="secondary">Total value: {status.view.totalValue}</Text>
+                  <Text color="secondary">
+                    {t("portfolio.holdings.totalValue", { value: status.view.totalValue })}
+                  </Text>
                 )}
 
                 {status.view.holdings.map((holding) => {
@@ -437,16 +458,16 @@ export function PortfolioPage() {
                       </Text>
                       {holding.reconciliationStatus === "UPDATED" && (
                         <Text color="secondary" as="p">
-                          Updated automatically
+                          {t("portfolio.holdings.updatedAutomatically")}
                         </Text>
                       )}
                       {holding.reconciliationStatus === "AWAITING_RECONCILIATION" && (
                         <Stack gap="inter-section">
                           <Text color="tertiary" as="p">
-                            Awaiting reconciliation
+                            {t("portfolio.holdings.awaitingReconciliation")}
                           </Text>
                           <Text as="label">
-                            New weight %
+                            {t("portfolio.holdings.newWeightLabel")}
                             <br />
                             <input
                               value={reconcileWeightInputs[holding.ticker] ?? ""}
@@ -464,8 +485,8 @@ export function PortfolioPage() {
                             disabled={thisReconcileStatus.kind === "submitting"}
                           >
                             {thisReconcileStatus.kind === "submitting"
-                              ? "Updating…"
-                              : "Update this holding"}
+                              ? t("portfolio.holdings.updating")
+                              : t("portfolio.holdings.updateButton")}
                           </Button>
                           {thisReconcileStatus.kind === "error" && (
                             <Text color="tertiary" role="alert">
@@ -480,12 +501,12 @@ export function PortfolioPage() {
                         disabled={thisCaseCreateStatus.kind === "creating"}
                       >
                         {thisCaseCreateStatus.kind === "creating"
-                          ? "Opening…"
-                          : "Open Investment Case"}
+                          ? t("portfolio.holdings.opening")
+                          : t("portfolio.holdings.openCaseButton")}
                       </Button>
                       {thisCaseCreateStatus.kind === "error" && (
                         <Text color="tertiary" role="alert">
-                          Could not open an Investment Case.
+                          {t("portfolio.holdings.openCaseError")}
                         </Text>
                       )}
                       <Divider tone="hairline" />
@@ -495,7 +516,7 @@ export function PortfolioPage() {
 
                 {status.view.cashWeightPercent !== null && (
                   <Text color="secondary">
-                    Cash: {status.view.cashWeightPercent}%
+                    {t("portfolio.cashLabel", { percent: status.view.cashWeightPercent })}
                     {status.view.cashValueAbsolute !== null
                       ? ` — ${status.view.cashValueAbsolute}`
                       : ""}
@@ -503,18 +524,24 @@ export function PortfolioPage() {
                 )}
                 {unallocatedPercent !== null && unallocatedPercent > UNALLOCATED_TOLERANCE && (
                   <Text color="secondary">
-                    Unallocated: {Math.round(unallocatedPercent * 100) / 100}% — this portfolio
-                    does not yet account for 100% of holdings; Atlas does not invent the
-                    remainder.
+                    {t("portfolio.unallocated", {
+                      percent: Math.round(unallocatedPercent * 100) / 100,
+                    })}
                   </Text>
                 )}
                 {status.view.concentrationLevel && (
-                  <Text color="secondary">Concentration: {status.view.concentrationLevel}</Text>
+                  <Text color="secondary">
+                    {t("portfolio.concentration", {
+                      value: CONCENTRATION_LEVEL_KEY[status.view.concentrationLevel]
+                        ? t(CONCENTRATION_LEVEL_KEY[status.view.concentrationLevel]!)
+                        : status.view.concentrationLevel,
+                    })}
+                  </Text>
                 )}
 
                 <div>
                   <Button variant="tertiary" onClick={() => openInvestmentCase("__new__", null)}>
-                    Open a new Investment Case
+                    {t("portfolio.openNewCase")}
                   </Button>
                 </div>
               </Stack>

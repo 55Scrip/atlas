@@ -1,6 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
+import { useTranslation, type TranslationKey } from "../i18n";
+
+/**
+ * `transactionType` is an internal enum value (`TransactionType.BUY` /
+ * `.SELL`, `atlas/alpha/portfolio/models.py`) read verbatim off the API
+ * response — the value itself stays English, per the localization
+ * architecture. This maps it to the same translated word the Investment
+ * Case's own Buy/Sell control already uses, so the trade log reads
+ * naturally in either language rather than mixing "Köp 10 AAPL".
+ */
+const TRANSACTION_TYPE_KEY: Record<string, TranslationKey> = {
+  BUY: "investmentCase.decision.typeBuy",
+  SELL: "investmentCase.decision.typeSell",
+};
 
 interface DecisionSummary {
   id: string;
@@ -84,6 +98,7 @@ type PortfolioStatus =
  * would need one.
  */
 export function DashboardPage() {
+  const { t } = useTranslation();
   const [decisionsStatus, setDecisionsStatus] = useState<DecisionsStatus>({ kind: "loading" });
   const [portfolioStatus, setPortfolioStatus] = useState<PortfolioStatus>({ kind: "loading" });
   const [outcomesStatus, setOutcomesStatus] = useState<OutcomesStatus>({ kind: "loading" });
@@ -104,7 +119,7 @@ export function DashboardPage() {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setDecisionsStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
         });
       });
 
@@ -126,7 +141,7 @@ export function DashboardPage() {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setPortfolioStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
         });
       });
 
@@ -148,7 +163,7 @@ export function DashboardPage() {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setOutcomesStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
         });
       });
 
@@ -170,7 +185,7 @@ export function DashboardPage() {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setTradeLogStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
         });
       });
 
@@ -180,36 +195,43 @@ export function DashboardPage() {
   return (
     <Container>
       <Stack gap="inter-section">
-        <Heading level={1}>Dashboard</Heading>
+        <Heading level={1}>{t("dashboard.title")}</Heading>
 
         <Divider />
 
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={2}>Portfolio Status</Heading>
+            <Heading level={2}>{t("dashboard.portfolioStatus.heading")}</Heading>
             {portfolioStatus.kind === "loading" && (
               <Text role="status" aria-live="polite">
-                Loading…
+                {t("common.loading")}
               </Text>
             )}
             {portfolioStatus.kind === "error" && (
               <Text color="tertiary" role="alert">
-                Could not load portfolio status: {portfolioStatus.message}
+                {t("dashboard.portfolioStatus.loadError", { message: portfolioStatus.message })}
               </Text>
             )}
             {portfolioStatus.kind === "loaded" && !portfolioStatus.view.exists && (
-              <Text color="secondary">No portfolio established yet.</Text>
+              <Text color="secondary">{t("dashboard.portfolioStatus.notEstablished")}</Text>
             )}
             {portfolioStatus.kind === "loaded" && portfolioStatus.view.exists && (
               <Text color="secondary">
-                {portfolioStatus.view.numberOfHoldings} holding
-                {portfolioStatus.view.numberOfHoldings === 1 ? "" : "s"}
+                {t("dashboard.portfolioStatus.summary", {
+                  count: portfolioStatus.view.numberOfHoldings,
+                  holdingWord:
+                    portfolioStatus.view.numberOfHoldings === 1
+                      ? t("dashboard.portfolioStatus.holdingSingular")
+                      : t("dashboard.portfolioStatus.holdingPlural"),
+                })}
                 {portfolioStatus.view.cashWeightPercent !== null
-                  ? ` — ${portfolioStatus.view.cashWeightPercent}% cash`
+                  ? t("dashboard.portfolioStatus.cashSuffix", {
+                      percent: portfolioStatus.view.cashWeightPercent,
+                    })
                   : ""}
               </Text>
             )}
-            <RouterLink to="/portfolio">Go to Portfolio →</RouterLink>
+            <RouterLink to="/portfolio">{t("dashboard.portfolioStatus.goToPortfolio")}</RouterLink>
           </Stack>
         </Surface>
 
@@ -217,8 +239,8 @@ export function DashboardPage() {
 
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={2}>Active Monitoring Conditions</Heading>
-            <Text color="secondary">Not yet implemented.</Text>
+            <Heading level={2}>{t("dashboard.monitoring.heading")}</Heading>
+            <Text color="secondary">{t("dashboard.notYetImplemented")}</Text>
           </Stack>
         </Surface>
 
@@ -226,19 +248,19 @@ export function DashboardPage() {
 
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={2}>Recent Decisions</Heading>
+            <Heading level={2}>{t("dashboard.recentDecisions.heading")}</Heading>
             {decisionsStatus.kind === "loading" && (
               <Text role="status" aria-live="polite">
-                Loading…
+                {t("common.loading")}
               </Text>
             )}
             {decisionsStatus.kind === "error" && (
               <Text color="tertiary" role="alert">
-                Could not load recent decisions: {decisionsStatus.message}
+                {t("dashboard.recentDecisions.loadError", { message: decisionsStatus.message })}
               </Text>
             )}
             {decisionsStatus.kind === "loaded" && decisionsStatus.decisions.length === 0 && (
-              <Text color="secondary">No decisions recorded yet.</Text>
+              <Text color="secondary">{t("dashboard.recentDecisions.empty")}</Text>
             )}
             {decisionsStatus.kind === "loaded" && decisionsStatus.decisions.length > 0 && (
               <Stack gap="inter-section">
@@ -259,19 +281,19 @@ export function DashboardPage() {
 
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={2}>Outcomes</Heading>
+            <Heading level={2}>{t("dashboard.outcomes.heading")}</Heading>
             {outcomesStatus.kind === "loading" && (
               <Text role="status" aria-live="polite">
-                Loading…
+                {t("common.loading")}
               </Text>
             )}
             {outcomesStatus.kind === "error" && (
               <Text color="tertiary" role="alert">
-                Could not load outcomes: {outcomesStatus.message}
+                {t("dashboard.outcomes.loadError", { message: outcomesStatus.message })}
               </Text>
             )}
             {outcomesStatus.kind === "loaded" && outcomesStatus.outcomes.length === 0 && (
-              <Text color="secondary">No outcomes recorded yet.</Text>
+              <Text color="secondary">{t("dashboard.outcomes.empty")}</Text>
             )}
             {outcomesStatus.kind === "loaded" && outcomesStatus.outcomes.length > 0 && (
               <Stack gap="inter-section">
@@ -292,27 +314,29 @@ export function DashboardPage() {
 
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={2}>Trade Executions</Heading>
+            <Heading level={2}>{t("dashboard.tradeExecutions.heading")}</Heading>
             {tradeLogStatus.kind === "loading" && (
               <Text role="status" aria-live="polite">
-                Loading…
+                {t("common.loading")}
               </Text>
             )}
             {tradeLogStatus.kind === "error" && (
               <Text color="tertiary" role="alert">
-                Could not load trade executions: {tradeLogStatus.message}
+                {t("dashboard.tradeExecutions.loadError", { message: tradeLogStatus.message })}
               </Text>
             )}
             {tradeLogStatus.kind === "loaded" && tradeLogStatus.trades.length === 0 && (
-              <Text color="secondary">No trades recorded yet.</Text>
+              <Text color="secondary">{t("dashboard.tradeExecutions.empty")}</Text>
             )}
             {tradeLogStatus.kind === "loaded" && tradeLogStatus.trades.length > 0 && (
               <Stack gap="inter-section">
                 {tradeLogStatus.trades.map((trade) => (
                   <div key={trade.outcomeId}>
                     <Text>
-                      {trade.transactionType} {trade.quantity} {trade.security} @{" "}
-                      {trade.executionPrice}
+                      {TRANSACTION_TYPE_KEY[trade.transactionType]
+                        ? t(TRANSACTION_TYPE_KEY[trade.transactionType]!)
+                        : trade.transactionType}{" "}
+                      {trade.quantity} {trade.security} @ {trade.executionPrice}
                     </Text>
                     <Text color="secondary" as="p">
                       {trade.executedAt}
@@ -328,8 +352,8 @@ export function DashboardPage() {
 
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={2}>Signals</Heading>
-            <Text color="secondary">Not yet implemented.</Text>
+            <Heading level={2}>{t("dashboard.signals.heading")}</Heading>
+            <Text color="secondary">{t("dashboard.notYetImplemented")}</Text>
           </Stack>
         </Surface>
 
@@ -337,8 +361,8 @@ export function DashboardPage() {
 
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={2}>Workspaces</Heading>
-            <Text color="secondary">No active Workspaces yet.</Text>
+            <Heading level={2}>{t("dashboard.workspaces.heading")}</Heading>
+            <Text color="secondary">{t("dashboard.workspaces.empty")}</Text>
           </Stack>
         </Surface>
       </Stack>

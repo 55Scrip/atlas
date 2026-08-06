@@ -1,8 +1,12 @@
+import { useTranslation } from "../i18n";
+
 export function NotFoundPage() {
+  const { t } = useTranslation();
+
   return (
     <main>
-      <h1>Page not found</h1>
-      <p>There is no route at this address.</p>
+      <h1>{t("shell.notFound.title")}</h1>
+      <p>{t("shell.notFound.body")}</p>
     </main>
   );
 }

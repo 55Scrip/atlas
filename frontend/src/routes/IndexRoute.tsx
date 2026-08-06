@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Text } from "../foundation";
+import { useTranslation } from "../i18n";
 
 type Status =
   | { kind: "loading" }
@@ -15,6 +16,7 @@ type Status =
  * product screen and now lives at `/platform-status`.
  */
 export function IndexRoute() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<Status>({ kind: "loading" });
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export function IndexRoute() {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
         });
       });
 
@@ -42,7 +44,7 @@ export function IndexRoute() {
   if (status.kind === "loading") {
     return (
       <Text role="status" aria-live="polite">
-        Loading…
+        {t("common.loading")}
       </Text>
     );
   }
@@ -50,7 +52,7 @@ export function IndexRoute() {
   if (status.kind === "error") {
     return (
       <Text color="tertiary" role="alert">
-        Could not reach Atlas: {status.message}
+        {t("indexRoute.error", { message: status.message })}
       </Text>
     );
   }

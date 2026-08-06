@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
+import { useTranslation } from "../i18n";
 
 type Step = "choice" | "import" | "scratch";
 
@@ -27,6 +28,7 @@ type SubmitStatus =
  */
 export function WelcomePage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [step, setStep] = useState<Step>("choice");
 
   const [rows, setRows] = useState<HoldingRow[]>([{ ...EMPTY_ROW }]);
@@ -56,7 +58,7 @@ export function WelcomePage() {
     const rawRows = rows.filter((row) => row.ticker.trim() !== "");
 
     if (rawRows.length === 0) {
-      setImportStatus({ kind: "validation-error", message: "Enter at least one holding." });
+      setImportStatus({ kind: "validation-error", message: t("welcome.import.errors.noHoldings") });
       return;
     }
 
@@ -64,14 +66,17 @@ export function WelcomePage() {
       if (Number.isNaN(Number.parseFloat(row.weightPercent))) {
         setImportStatus({
           kind: "validation-error",
-          message: "Every holding needs a percentage.",
+          message: t("welcome.import.errors.missingPercentage"),
         });
         return;
       }
       if (row.valueAbsolute.trim() !== "" && Number.isNaN(Number.parseFloat(row.valueAbsolute))) {
         setImportStatus({
           kind: "validation-error",
-          message: `"${row.valueAbsolute}" is not a valid value for ${row.ticker.trim()}.`,
+          message: t("welcome.import.errors.invalidValueFor", {
+            value: row.valueAbsolute,
+            ticker: row.ticker.trim(),
+          }),
         });
         return;
       }
@@ -86,23 +91,31 @@ export function WelcomePage() {
     if (duplicateTickers.length > 0) {
       setImportStatus({
         kind: "validation-error",
-        message: `Duplicate ticker(s): ${duplicateTickers.join(", ")}.`,
+        message: t("welcome.import.errors.duplicateTickers", {
+          tickers: duplicateTickers.join(", "),
+        }),
       });
       return;
     }
 
     if (cashWeightPercent.trim() !== "" && Number.isNaN(Number.parseFloat(cashWeightPercent))) {
-      setImportStatus({ kind: "validation-error", message: `"${cashWeightPercent}" is not a valid cash percentage.` });
+      setImportStatus({
+        kind: "validation-error",
+        message: t("welcome.import.errors.invalidCashPercent", { value: cashWeightPercent }),
+      });
       return;
     }
     if (cashValueAbsolute.trim() !== "" && Number.isNaN(Number.parseFloat(cashValueAbsolute))) {
-      setImportStatus({ kind: "validation-error", message: `"${cashValueAbsolute}" is not a valid cash value.` });
+      setImportStatus({
+        kind: "validation-error",
+        message: t("welcome.import.errors.invalidCashValue", { value: cashValueAbsolute }),
+      });
       return;
     }
     if ((cashWeightPercent.trim() !== "") !== (cashValueAbsolute.trim() !== "")) {
       setImportStatus({
         kind: "validation-error",
-        message: "Enter both cash % and cash value, or leave both blank.",
+        message: t("welcome.import.errors.cashBothOrNeither"),
       });
       return;
     }
@@ -129,7 +142,10 @@ export function WelcomePage() {
       .then(async (response) => {
         if (response.status === 400) {
           const body = (await response.json()) as { detail?: string };
-          setImportStatus({ kind: "validation-error", message: body.detail ?? "Invalid input." });
+          setImportStatus({
+            kind: "validation-error",
+            message: body.detail ?? t("common.invalidInput"),
+          });
           return;
         }
         if (!response.ok) {
@@ -140,7 +156,7 @@ export function WelcomePage() {
       .catch((error: unknown) => {
         setImportStatus({
           kind: "api-error",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
         });
       });
   }
@@ -149,7 +165,7 @@ export function WelcomePage() {
     if (objective.trim() === "" || horizon.trim() === "") {
       setScratchStatus({
         kind: "validation-error",
-        message: "Objective and horizon are both required.",
+        message: t("welcome.scratch.errors.required"),
       });
       return;
     }
@@ -169,7 +185,7 @@ export function WelcomePage() {
           const body = (await response.json()) as { detail?: string };
           setScratchStatus({
             kind: "validation-error",
-            message: body.detail ?? "Invalid input.",
+            message: body.detail ?? t("common.invalidInput"),
           });
           return;
         }
@@ -181,7 +197,7 @@ export function WelcomePage() {
       .catch((error: unknown) => {
         setScratchStatus({
           kind: "api-error",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
         });
       });
   }
@@ -189,18 +205,18 @@ export function WelcomePage() {
   return (
     <Container>
       <Stack gap="inter-section">
-        <Heading level={1}>Welcome to Atlas</Heading>
+        <Heading level={1}>{t("welcome.title")}</Heading>
 
         {step === "choice" && (
           <Surface tier="primary">
             <Stack gap="inter-section">
-              <Text>How would you like to begin?</Text>
+              <Text>{t("welcome.choice.prompt")}</Text>
               <div>
                 <Button variant="primary" onClick={() => setStep("import")}>
-                  I have an existing portfolio
+                  {t("welcome.choice.haveExisting")}
                 </Button>{" "}
                 <Button variant="tertiary" onClick={() => setStep("scratch")}>
-                  Start from scratch
+                  {t("welcome.choice.startFromScratch")}
                 </Button>
               </div>
             </Stack>
@@ -210,15 +226,13 @@ export function WelcomePage() {
         {step === "import" && (
           <Surface tier="primary">
             <Stack gap="inter-section">
-              <Heading level={2}>Your existing portfolio</Heading>
-              <Text color="secondary">
-                Enter each holding as a percentage of your portfolio. Exact values are optional.
-              </Text>
+              <Heading level={2}>{t("welcome.import.heading")}</Heading>
+              <Text color="secondary">{t("welcome.import.instructions")}</Text>
 
               {rows.map((row, index) => (
                 <Stack key={index} gap="inter-section">
                   <Text as="label">
-                    Ticker
+                    {t("form.ticker")}
                     <br />
                     <input
                       value={row.ticker}
@@ -226,7 +240,7 @@ export function WelcomePage() {
                     />
                   </Text>
                   <Text as="label">
-                    Weight %
+                    {t("form.weightPercent")}
                     <br />
                     <input
                       value={row.weightPercent}
@@ -236,7 +250,7 @@ export function WelcomePage() {
                     />
                   </Text>
                   <Text as="label">
-                    Value (optional)
+                    {t("form.valueOptional")}
                     <br />
                     <input
                       value={row.valueAbsolute}
@@ -247,7 +261,7 @@ export function WelcomePage() {
                   </Text>
                   {rows.length > 1 && (
                     <Button variant="tertiary" onClick={() => removeRow(index)}>
-                      Remove
+                      {t("form.removeButton")}
                     </Button>
                   )}
                   <Divider tone="hairline" />
@@ -256,12 +270,12 @@ export function WelcomePage() {
 
               <div>
                 <Button variant="tertiary" onClick={addRow}>
-                  + Add holding
+                  {t("welcome.import.addHoldingButton")}
                 </Button>
               </div>
 
               <Text as="label">
-                Cash %
+                {t("form.cashPercent")}
                 <br />
                 <input
                   value={cashWeightPercent}
@@ -269,7 +283,7 @@ export function WelcomePage() {
                 />
               </Text>
               <Text as="label">
-                Cash value (optional)
+                {t("form.cashValueOptional")}
                 <br />
                 <input
                   value={cashValueAbsolute}
@@ -278,7 +292,7 @@ export function WelcomePage() {
               </Text>
 
               <Text as="label">
-                Preferences (optional)
+                {t("form.preferencesOptional")}
                 <br />
                 <textarea
                   value={importPreferences}
@@ -293,7 +307,7 @@ export function WelcomePage() {
               )}
               {importStatus.kind === "api-error" && (
                 <Text color="tertiary" role="alert">
-                  Could not save this portfolio: {importStatus.message}
+                  {t("welcome.import.errors.saveFailed", { message: importStatus.message })}
                 </Text>
               )}
 
@@ -303,10 +317,10 @@ export function WelcomePage() {
                   onClick={submitImport}
                   disabled={importStatus.kind === "submitting"}
                 >
-                  {importStatus.kind === "submitting" ? "Saving…" : "Continue to Portfolio"}
+                  {importStatus.kind === "submitting" ? t("common.saving") : t("welcome.continueButton")}
                 </Button>{" "}
                 <Button variant="tertiary" onClick={() => setStep("choice")}>
-                  Back
+                  {t("welcome.backButton")}
                 </Button>
               </div>
             </Stack>
@@ -316,19 +330,19 @@ export function WelcomePage() {
         {step === "scratch" && (
           <Surface tier="primary">
             <Stack gap="inter-section">
-              <Heading level={2}>Starting from scratch</Heading>
+              <Heading level={2}>{t("welcome.scratch.heading")}</Heading>
               <Text as="label">
-                Investment objective
+                {t("welcome.scratch.objectiveLabel")}
                 <br />
                 <input value={objective} onChange={(event) => setObjective(event.target.value)} />
               </Text>
               <Text as="label">
-                Investment horizon
+                {t("welcome.scratch.horizonLabel")}
                 <br />
                 <input value={horizon} onChange={(event) => setHorizon(event.target.value)} />
               </Text>
               <Text as="label">
-                Preferences (optional)
+                {t("form.preferencesOptional")}
                 <br />
                 <textarea
                   value={scratchPreferences}
@@ -343,7 +357,7 @@ export function WelcomePage() {
               )}
               {scratchStatus.kind === "api-error" && (
                 <Text color="tertiary" role="alert">
-                  Could not save: {scratchStatus.message}
+                  {t("welcome.scratch.errors.saveFailed", { message: scratchStatus.message })}
                 </Text>
               )}
 
@@ -353,10 +367,10 @@ export function WelcomePage() {
                   onClick={submitScratch}
                   disabled={scratchStatus.kind === "submitting"}
                 >
-                  {scratchStatus.kind === "submitting" ? "Saving…" : "Continue to Portfolio"}
+                  {scratchStatus.kind === "submitting" ? t("common.saving") : t("welcome.continueButton")}
                 </Button>{" "}
                 <Button variant="tertiary" onClick={() => setStep("choice")}>
-                  Back
+                  {t("welcome.backButton")}
                 </Button>
               </div>
             </Stack>

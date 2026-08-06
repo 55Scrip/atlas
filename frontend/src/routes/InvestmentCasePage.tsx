@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button, Container, Divider, Heading, Link, Stack, Surface, Text } from "../foundation";
+import { useTranslation, type TranslationKey } from "../i18n";
 
 interface CaseSummary {
   caseId: string;
@@ -40,6 +41,7 @@ function useApiList<T>(
   caseId: string | undefined,
   setRecords: (records: T[]) => void,
   setStatus: (status: ListStatus) => void,
+  unknownErrorMessage: string,
 ) {
   useEffect(() => {
     if (!caseId) return;
@@ -62,12 +64,12 @@ function useApiList<T>(
         if (error instanceof DOMException && error.name === "AbortError") return;
         setStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : unknownErrorMessage,
         });
       });
 
     return () => controller.abort();
-  }, [url, caseId, setRecords, setStatus]);
+  }, [url, caseId, setRecords, setStatus, unknownErrorMessage]);
 }
 
 /**
@@ -246,6 +248,20 @@ const EMPTY_DECISION_FORM: DecisionFormInput = {
 };
 
 /**
+ * `decisionType` / `transactionType` are internal enum values, read and
+ * sent verbatim to preserve the English-only domain vocabulary (per the
+ * localization architecture) — this maps them to translated words only
+ * where they're displayed or chosen, never in the request/response body.
+ */
+const DECISION_TYPE_KEY: Record<string, TranslationKey> = {
+  BUY: "investmentCase.decision.typeBuy",
+  SELL: "investmentCase.decision.typeSell",
+  HOLD: "investmentCase.decision.typeHold",
+  WATCH: "investmentCase.decision.typeWatch",
+  PASS: "investmentCase.decision.typePass",
+};
+
+/**
  * Atlas Alpha has no login/session/identity system anywhere in this
  * frontend. The real backend's `Decision.user_id` is required, but per
  * the governing (unimplemented) Decision-Implementation-Design.md, it
@@ -357,6 +373,7 @@ type TradeApplyStatus =
  * the investor back to the same `caseId` instead of a fresh one.
  */
 export function InvestmentCasePage() {
+  const { t } = useTranslation();
   const { caseId } = useParams<{ caseId?: string }>();
   const [status, setStatus] = useState<CaseStatus>({ kind: "loading" });
 
@@ -451,7 +468,7 @@ export function InvestmentCasePage() {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
         });
       });
 
@@ -479,29 +496,56 @@ export function InvestmentCasePage() {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setListStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
         });
       });
 
     return () => controller.abort();
   }, [caseId]);
 
-  useApiList<EvidenceRecord>("/api/evidence", caseId, setAllEvidence, setEvidenceListStatus);
+  const unknownErrorMessage = t("common.unknownError");
+  useApiList<EvidenceRecord>(
+    "/api/evidence",
+    caseId,
+    setAllEvidence,
+    setEvidenceListStatus,
+    unknownErrorMessage,
+  );
   useApiList<KnowledgeReferenceRecord>(
     "/api/knowledge-references",
     caseId,
     setAllKnowledgeReferences,
     setKnowledgeReferenceListStatus,
+    unknownErrorMessage,
   );
   useApiList<ReasoningTraceRecord>(
     "/api/reasoning-traces",
     caseId,
     setAllReasoningTraces,
     setReasoningTraceListStatus,
+    unknownErrorMessage,
   );
-  useApiList<JudgmentRecord>("/api/judgments", caseId, setAllJudgments, setJudgmentListStatus);
-  useApiList<DecisionRecord>("/api/decisions", caseId, setAllDecisions, setDecisionListStatus);
-  useApiList<OutcomeRecord>("/api/outcomes", caseId, setAllOutcomes, setOutcomeListStatus);
+  useApiList<JudgmentRecord>(
+    "/api/judgments",
+    caseId,
+    setAllJudgments,
+    setJudgmentListStatus,
+    unknownErrorMessage,
+  );
+  useApiList<DecisionRecord>(
+    "/api/decisions",
+    caseId,
+    setAllDecisions,
+    setDecisionListStatus,
+    unknownErrorMessage,
+  );
+  useApiList<OutcomeRecord>(
+    "/api/outcomes",
+    caseId,
+    setAllOutcomes,
+    setOutcomeListStatus,
+    unknownErrorMessage,
+  );
 
   function submitEvidence(observationId: string) {
     const form = evidenceForm[observationId] ?? EMPTY_EVIDENCE_FORM;
@@ -525,7 +569,7 @@ export function InvestmentCasePage() {
             ...current,
             [observationId]: {
               kind: response.status === 400 ? "validation-error" : "api-error",
-              message: body.detail ?? "Invalid input.",
+              message: body.detail ?? t("common.invalidInput"),
             },
           }));
           return;
@@ -545,7 +589,7 @@ export function InvestmentCasePage() {
           ...current,
           [observationId]: {
             kind: "api-error",
-            message: error instanceof Error ? error.message : "Unknown error",
+            message: error instanceof Error ? error.message : t("common.unknownError"),
           },
         }));
       });
@@ -583,7 +627,7 @@ export function InvestmentCasePage() {
             ...current,
             [observationId]: {
               kind: response.status === 400 ? "validation-error" : "api-error",
-              message: body.detail ?? "Invalid input.",
+              message: body.detail ?? t("common.invalidInput"),
             },
           }));
           return;
@@ -603,7 +647,7 @@ export function InvestmentCasePage() {
           ...current,
           [observationId]: {
             kind: "api-error",
-            message: error instanceof Error ? error.message : "Unknown error",
+            message: error instanceof Error ? error.message : t("common.unknownError"),
           },
         }));
       });
@@ -641,7 +685,7 @@ export function InvestmentCasePage() {
             ...current,
             [observationId]: {
               kind: response.status === 400 ? "validation-error" : "api-error",
-              message: body.detail ?? "Invalid input.",
+              message: body.detail ?? t("common.invalidInput"),
             },
           }));
           return;
@@ -661,7 +705,7 @@ export function InvestmentCasePage() {
           ...current,
           [observationId]: {
             kind: "api-error",
-            message: error instanceof Error ? error.message : "Unknown error",
+            message: error instanceof Error ? error.message : t("common.unknownError"),
           },
         }));
       });
@@ -701,7 +745,7 @@ export function InvestmentCasePage() {
             ...current,
             [observationId]: {
               kind: response.status === 400 ? "validation-error" : "api-error",
-              message: body.detail ?? "Invalid input.",
+              message: body.detail ?? t("common.invalidInput"),
             },
           }));
           return;
@@ -721,7 +765,7 @@ export function InvestmentCasePage() {
           ...current,
           [observationId]: {
             kind: "api-error",
-            message: error instanceof Error ? error.message : "Unknown error",
+            message: error instanceof Error ? error.message : t("common.unknownError"),
           },
         }));
       });
@@ -766,7 +810,7 @@ export function InvestmentCasePage() {
             ...current,
             [observationId]: {
               kind: response.status === 404 ? "api-error" : "validation-error",
-              message: body.detail ?? "Invalid input.",
+              message: body.detail ?? t("common.invalidInput"),
             },
           }));
           return;
@@ -786,7 +830,7 @@ export function InvestmentCasePage() {
           ...current,
           [observationId]: {
             kind: "api-error",
-            message: error instanceof Error ? error.message : "Unknown error",
+            message: error instanceof Error ? error.message : t("common.unknownError"),
           },
         }));
       });
@@ -834,7 +878,7 @@ export function InvestmentCasePage() {
           ...current,
           [observationId]: {
             kind: "error",
-            message: error instanceof Error ? error.message : "Unknown error",
+            message: error instanceof Error ? error.message : t("common.unknownError"),
           },
         }));
       });
@@ -856,7 +900,7 @@ export function InvestmentCasePage() {
           ...current,
           [observationId]: {
             kind: "validation-error",
-            message: "Security, quantity, and execution price are required for a trade.",
+            message: t("investmentCase.outcome.validation.tradeRequiredFields"),
           },
         }));
         return;
@@ -885,7 +929,7 @@ export function InvestmentCasePage() {
             ...current,
             [observationId]: {
               kind: response.status === 400 ? "validation-error" : "api-error",
-              message: body.detail ?? "Invalid input.",
+              message: body.detail ?? t("common.invalidInput"),
             },
           }));
           return;
@@ -908,7 +952,7 @@ export function InvestmentCasePage() {
           ...current,
           [observationId]: {
             kind: "api-error",
-            message: error instanceof Error ? error.message : "Unknown error",
+            message: error instanceof Error ? error.message : t("common.unknownError"),
           },
         }));
       });
@@ -931,7 +975,7 @@ export function InvestmentCasePage() {
       .then(async (response) => {
         if (response.status === 400) {
           const body = (await response.json()) as { detail?: string };
-          setCreateStatus({ kind: "validation-error", message: body.detail ?? "Invalid input." });
+          setCreateStatus({ kind: "validation-error", message: body.detail ?? t("common.invalidInput") });
           return;
         }
         if (!response.ok) {
@@ -944,7 +988,7 @@ export function InvestmentCasePage() {
       .catch((error: unknown) => {
         setCreateStatus({
           kind: "api-error",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
         });
       });
   }
@@ -958,21 +1002,21 @@ export function InvestmentCasePage() {
             Decision Workspace headers (Alpha Sprint 1A). */}
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={1}>Investment Case</Heading>
-            <Link href="/portfolio">← Return to Portfolio</Link>
-            {!caseId && <Text color="secondary">No case selected.</Text>}
+            <Heading level={1}>{t("investmentCase.heading")}</Heading>
+            <Link href="/portfolio">{t("investmentCase.returnToPortfolio")}</Link>
+            {!caseId && <Text color="secondary">{t("investmentCase.noCaseSelected")}</Text>}
             {caseId && status.kind === "loading" && (
               <Text role="status" aria-live="polite">
-                Loading…
+                {t("common.loading")}
               </Text>
             )}
             {caseId && status.kind === "error" && (
               <Text color="tertiary" role="alert">
-                Could not load this case: {status.message}
+                {t("investmentCase.loadError", { message: status.message })}
               </Text>
             )}
             {caseId && status.kind === "loaded" && (
-              <Text>Subject: Case {status.case.caseId}</Text>
+              <Text>{t("investmentCase.subject", { caseId: status.case.caseId })}</Text>
             )}
           </Stack>
         </Surface>
@@ -986,11 +1030,8 @@ export function InvestmentCasePage() {
             editable content, so this is a placeholder only. */}
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={2}>Status</Heading>
-            <Text color="secondary">
-              Reserved for draft, historical, and monitoring status indicators in a future
-              commit.
-            </Text>
+            <Heading level={2}>{t("investmentCase.status.heading")}</Heading>
+            <Text color="secondary">{t("investmentCase.status.placeholder")}</Text>
           </Stack>
         </Surface>
 
@@ -1002,26 +1043,26 @@ export function InvestmentCasePage() {
             out of scope. */}
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={2}>Primary Work Area</Heading>
+            <Heading level={2}>{t("investmentCase.primaryWorkArea.heading")}</Heading>
 
-            {!caseId && <Text color="secondary">No case selected.</Text>}
+            {!caseId && <Text color="secondary">{t("investmentCase.noCaseSelected")}</Text>}
 
             {caseId && (
               <Stack gap="inter-section">
-                <Heading level={3}>Observations</Heading>
+                <Heading level={3}>{t("investmentCase.observations.heading")}</Heading>
 
                 {listStatus.kind === "loading" && (
                   <Text role="status" aria-live="polite">
-                    Loading observations…
+                    {t("investmentCase.observations.loading")}
                   </Text>
                 )}
                 {listStatus.kind === "error" && (
                   <Text color="tertiary" role="alert">
-                    Could not load observations: {listStatus.message}
+                    {t("investmentCase.observations.loadError", { message: listStatus.message })}
                   </Text>
                 )}
                 {listStatus.kind === "ready" && observations.length === 0 && (
-                  <Text color="secondary">No observations recorded yet.</Text>
+                  <Text color="secondary">{t("investmentCase.observations.empty")}</Text>
                 )}
                 {listStatus.kind === "ready" && observations.length > 0 && (
                   <Stack gap="inter-section">
@@ -1104,21 +1145,23 @@ export function InvestmentCasePage() {
                           </Text>
 
                           <Stack gap="inter-section">
-                            <Heading level={4}>Evidence</Heading>
+                            <Heading level={4}>{t("investmentCase.evidence.heading")}</Heading>
 
                             {evidenceListStatus.kind === "loading" && (
                               <Text role="status" aria-live="polite">
-                                Loading evidence…
+                                {t("investmentCase.evidence.loading")}
                               </Text>
                             )}
                             {evidenceListStatus.kind === "error" && (
                               <Text color="tertiary" role="alert">
-                                Could not load evidence: {evidenceListStatus.message}
+                                {t("investmentCase.evidence.loadError", {
+                                  message: evidenceListStatus.message,
+                                })}
                               </Text>
                             )}
                             {evidenceListStatus.kind === "ready" &&
                               evidenceForObservation.length === 0 && (
-                                <Text color="secondary">No evidence recorded yet.</Text>
+                                <Text color="secondary">{t("investmentCase.evidence.empty")}</Text>
                               )}
                             {evidenceListStatus.kind === "ready" &&
                               evidenceForObservation.length > 0 && (
@@ -1127,7 +1170,9 @@ export function InvestmentCasePage() {
                                     <div key={evidence.evidenceId}>
                                       <Text>{evidence.statement}</Text>
                                       <Text color="secondary" as="p">
-                                        {evidence.direction}
+                                        {evidence.direction === "SUPPORTS"
+                                          ? t("investmentCase.evidence.directionSupports")
+                                          : t("investmentCase.evidence.directionChallenges")}
                                         {evidence.source ? ` — ${evidence.source}` : ""}
                                       </Text>
                                       <Button
@@ -1138,12 +1183,12 @@ export function InvestmentCasePage() {
                                         }
                                       >
                                         {evidenceDeleteStatus[evidence.evidenceId] === "deleting"
-                                          ? "Deleting…"
-                                          : "Delete"}
+                                          ? t("common.deleting")
+                                          : t("common.delete")}
                                       </Button>
                                       {evidenceDeleteStatus[evidence.evidenceId] === "error" && (
                                         <Text color="tertiary" role="alert">
-                                          Could not delete this evidence.
+                                          {t("investmentCase.evidence.deleteError")}
                                         </Text>
                                       )}
                                     </div>
@@ -1163,14 +1208,16 @@ export function InvestmentCasePage() {
                                   }))
                                 }
                               >
-                                + Add Evidence
+                                {t("investmentCase.evidence.addButton")}
                               </Button>
                             )}
 
                             {thisCreateStatus.kind === "success" && (
                               <Stack gap="inter-section">
                                 <Text>
-                                  Evidence recorded: {thisCreateStatus.evidence.statement}
+                                  {t("investmentCase.evidence.recorded", {
+                                    statement: thisCreateStatus.evidence.statement,
+                                  })}
                                 </Text>
                                 <Button
                                   variant="tertiary"
@@ -1185,7 +1232,7 @@ export function InvestmentCasePage() {
                                     }));
                                   }}
                                 >
-                                  Add another
+                                  {t("common.addAnother")}
                                 </Button>
                               </Stack>
                             )}
@@ -1196,7 +1243,7 @@ export function InvestmentCasePage() {
                               thisCreateStatus.kind === "api-error") && (
                               <Stack gap="inter-section">
                                 <Text as="label">
-                                  Summary
+                                  {t("investmentCase.evidence.summaryLabel")}
                                   <br />
                                   <input
                                     value={thisForm.summary}
@@ -1213,7 +1260,7 @@ export function InvestmentCasePage() {
                                   />
                                 </Text>
                                 <Text as="label">
-                                  Source
+                                  {t("investmentCase.evidence.sourceLabel")}
                                   <br />
                                   <input
                                     value={thisForm.source}
@@ -1230,7 +1277,7 @@ export function InvestmentCasePage() {
                                   />
                                 </Text>
                                 <Text as="label">
-                                  Direction
+                                  {t("investmentCase.evidence.directionLabel")}
                                   <br />
                                   <select
                                     value={thisForm.direction}
@@ -1245,8 +1292,12 @@ export function InvestmentCasePage() {
                                     }
                                     disabled={thisCreateStatus.kind === "submitting"}
                                   >
-                                    <option value="SUPPORTS">Supports</option>
-                                    <option value="CHALLENGES">Challenges</option>
+                                    <option value="SUPPORTS">
+                                      {t("investmentCase.evidence.directionSupports")}
+                                    </option>
+                                    <option value="CHALLENGES">
+                                      {t("investmentCase.evidence.directionChallenges")}
+                                    </option>
                                   </select>
                                 </Text>
 
@@ -1257,7 +1308,9 @@ export function InvestmentCasePage() {
                                 )}
                                 {thisCreateStatus.kind === "api-error" && (
                                   <Text color="tertiary" role="alert">
-                                    Could not record this evidence: {thisCreateStatus.message}
+                                    {t("investmentCase.evidence.recordError", {
+                                      message: thisCreateStatus.message,
+                                    })}
                                   </Text>
                                 )}
 
@@ -1268,8 +1321,8 @@ export function InvestmentCasePage() {
                                     disabled={thisCreateStatus.kind === "submitting"}
                                   >
                                     {thisCreateStatus.kind === "submitting"
-                                      ? "Submitting…"
-                                      : "Submit"}
+                                      ? t("common.submitting")
+                                      : t("common.submit")}
                                   </Button>{" "}
                                   <Button
                                     variant="tertiary"
@@ -1285,7 +1338,7 @@ export function InvestmentCasePage() {
                                     }}
                                     disabled={thisCreateStatus.kind === "submitting"}
                                   >
-                                    Cancel
+                                    {t("common.cancel")}
                                   </Button>
                                 </div>
                               </Stack>
@@ -1293,22 +1346,27 @@ export function InvestmentCasePage() {
                           </Stack>
 
                           <Stack gap="inter-section">
-                            <Heading level={4}>Knowledge References</Heading>
+                            <Heading level={4}>
+                              {t("investmentCase.knowledgeReference.heading")}
+                            </Heading>
 
                             {knowledgeReferenceListStatus.kind === "loading" && (
                               <Text role="status" aria-live="polite">
-                                Loading knowledge references…
+                                {t("investmentCase.knowledgeReference.loading")}
                               </Text>
                             )}
                             {knowledgeReferenceListStatus.kind === "error" && (
                               <Text color="tertiary" role="alert">
-                                Could not load knowledge references:{" "}
-                                {knowledgeReferenceListStatus.message}
+                                {t("investmentCase.knowledgeReference.loadError", {
+                                  message: knowledgeReferenceListStatus.message,
+                                })}
                               </Text>
                             )}
                             {knowledgeReferenceListStatus.kind === "ready" &&
                               knowledgeReferencesForObservation.length === 0 && (
-                                <Text color="secondary">No knowledge references recorded yet.</Text>
+                                <Text color="secondary">
+                                  {t("investmentCase.knowledgeReference.empty")}
+                                </Text>
                               )}
                             {knowledgeReferenceListStatus.kind === "ready" &&
                               knowledgeReferencesForObservation.length > 0 && (
@@ -1316,7 +1374,9 @@ export function InvestmentCasePage() {
                                   {knowledgeReferencesForObservation.map((knowledgeReference) => (
                                     <div key={knowledgeReference.knowledgeReferenceId}>
                                       <Text>
-                                        Knowledge Reference {knowledgeReference.knowledgeReferenceId}
+                                        {t("investmentCase.knowledgeReference.itemLabel", {
+                                          id: knowledgeReference.knowledgeReferenceId,
+                                        })}
                                       </Text>
                                       <Text color="tertiary" as="p">
                                         {knowledgeReference.recordedAt}
@@ -1337,14 +1397,14 @@ export function InvestmentCasePage() {
                                         {knowledgeReferenceDeleteStatus[
                                           knowledgeReference.knowledgeReferenceId
                                         ] === "deleting"
-                                          ? "Deleting…"
-                                          : "Delete"}
+                                          ? t("common.deleting")
+                                          : t("common.delete")}
                                       </Button>
                                       {knowledgeReferenceDeleteStatus[
                                         knowledgeReference.knowledgeReferenceId
                                       ] === "error" && (
                                         <Text color="tertiary" role="alert">
-                                          Could not delete this knowledge reference.
+                                          {t("investmentCase.knowledgeReference.deleteError")}
                                         </Text>
                                       )}
                                     </div>
@@ -1364,18 +1424,17 @@ export function InvestmentCasePage() {
                                   }))
                                 }
                               >
-                                + Add Knowledge Reference
+                                {t("investmentCase.knowledgeReference.addButton")}
                               </Button>
                             )}
 
                             {thisKnowledgeReferenceCreateStatus.kind === "success" && (
                               <Stack gap="inter-section">
                                 <Text>
-                                  Knowledge reference recorded:{" "}
-                                  {
-                                    thisKnowledgeReferenceCreateStatus.knowledgeReference
-                                      .knowledgeReferenceId
-                                  }
+                                  {t("investmentCase.knowledgeReference.recorded", {
+                                    id: thisKnowledgeReferenceCreateStatus.knowledgeReference
+                                      .knowledgeReferenceId,
+                                  })}
                                 </Text>
                                 <Button
                                   variant="tertiary"
@@ -1386,7 +1445,7 @@ export function InvestmentCasePage() {
                                     }))
                                   }
                                 >
-                                  Add another
+                                  {t("common.addAnother")}
                                 </Button>
                               </Stack>
                             )}
@@ -1397,7 +1456,7 @@ export function InvestmentCasePage() {
                               thisKnowledgeReferenceCreateStatus.kind === "api-error") && (
                               <Stack gap="inter-section">
                                 <Text color="secondary">
-                                  Record a Knowledge Reference for this Observation.
+                                  {t("investmentCase.knowledgeReference.prompt")}
                                 </Text>
 
                                 {thisKnowledgeReferenceCreateStatus.kind === "validation-error" && (
@@ -1407,8 +1466,9 @@ export function InvestmentCasePage() {
                                 )}
                                 {thisKnowledgeReferenceCreateStatus.kind === "api-error" && (
                                   <Text color="tertiary" role="alert">
-                                    Could not record this knowledge reference:{" "}
-                                    {thisKnowledgeReferenceCreateStatus.message}
+                                    {t("investmentCase.knowledgeReference.recordError", {
+                                      message: thisKnowledgeReferenceCreateStatus.message,
+                                    })}
                                   </Text>
                                 )}
 
@@ -1421,8 +1481,8 @@ export function InvestmentCasePage() {
                                     disabled={thisKnowledgeReferenceCreateStatus.kind === "submitting"}
                                   >
                                     {thisKnowledgeReferenceCreateStatus.kind === "submitting"
-                                      ? "Submitting…"
-                                      : "Submit"}
+                                      ? t("common.submitting")
+                                      : t("common.submit")}
                                   </Button>{" "}
                                   <Button
                                     variant="tertiary"
@@ -1434,7 +1494,7 @@ export function InvestmentCasePage() {
                                     }
                                     disabled={thisKnowledgeReferenceCreateStatus.kind === "submitting"}
                                   >
-                                    Cancel
+                                    {t("common.cancel")}
                                   </Button>
                                 </div>
                               </Stack>
@@ -1442,28 +1502,36 @@ export function InvestmentCasePage() {
                           </Stack>
 
                           <Stack gap="inter-section">
-                            <Heading level={4}>Reasoning Trace</Heading>
+                            <Heading level={4}>{t("investmentCase.reasoningTrace.heading")}</Heading>
 
                             {reasoningTraceListStatus.kind === "loading" && (
                               <Text role="status" aria-live="polite">
-                                Loading reasoning trace…
+                                {t("investmentCase.reasoningTrace.loading")}
                               </Text>
                             )}
                             {reasoningTraceListStatus.kind === "error" && (
                               <Text color="tertiary" role="alert">
-                                Could not load reasoning trace: {reasoningTraceListStatus.message}
+                                {t("investmentCase.reasoningTrace.loadError", {
+                                  message: reasoningTraceListStatus.message,
+                                })}
                               </Text>
                             )}
                             {reasoningTraceListStatus.kind === "ready" &&
                               reasoningTracesForObservation.length === 0 && (
-                                <Text color="secondary">No reasoning trace recorded yet.</Text>
+                                <Text color="secondary">
+                                  {t("investmentCase.reasoningTrace.empty")}
+                                </Text>
                               )}
                             {reasoningTraceListStatus.kind === "ready" &&
                               reasoningTracesForObservation.length > 0 && (
                                 <Stack gap="inter-section">
                                   {reasoningTracesForObservation.map((reasoningTrace) => (
                                     <div key={reasoningTrace.reasoningTraceId}>
-                                      <Text>Reasoning Trace {reasoningTrace.reasoningTraceId}</Text>
+                                      <Text>
+                                        {t("investmentCase.reasoningTrace.itemLabel", {
+                                          id: reasoningTrace.reasoningTraceId,
+                                        })}
+                                      </Text>
                                       <Text color="tertiary" as="p">
                                         {reasoningTrace.recordedAt}
                                       </Text>
@@ -1481,14 +1549,14 @@ export function InvestmentCasePage() {
                                         {reasoningTraceDeleteStatus[
                                           reasoningTrace.reasoningTraceId
                                         ] === "deleting"
-                                          ? "Deleting…"
-                                          : "Delete"}
+                                          ? t("common.deleting")
+                                          : t("common.delete")}
                                       </Button>
                                       {reasoningTraceDeleteStatus[
                                         reasoningTrace.reasoningTraceId
                                       ] === "error" && (
                                         <Text color="tertiary" role="alert">
-                                          Could not delete this reasoning trace.
+                                          {t("investmentCase.reasoningTrace.deleteError")}
                                         </Text>
                                       )}
                                     </div>
@@ -1508,15 +1576,17 @@ export function InvestmentCasePage() {
                                   }))
                                 }
                               >
-                                + Create Reasoning Trace
+                                {t("investmentCase.reasoningTrace.addButton")}
                               </Button>
                             )}
 
                             {thisReasoningTraceCreateStatus.kind === "success" && (
                               <Stack gap="inter-section">
                                 <Text>
-                                  Reasoning trace recorded:{" "}
-                                  {thisReasoningTraceCreateStatus.reasoningTrace.reasoningTraceId}
+                                  {t("investmentCase.reasoningTrace.recorded", {
+                                    id: thisReasoningTraceCreateStatus.reasoningTrace
+                                      .reasoningTraceId,
+                                  })}
                                 </Text>
                                 <Button
                                   variant="tertiary"
@@ -1527,7 +1597,7 @@ export function InvestmentCasePage() {
                                     }))
                                   }
                                 >
-                                  Add another
+                                  {t("common.addAnother")}
                                 </Button>
                               </Stack>
                             )}
@@ -1538,7 +1608,7 @@ export function InvestmentCasePage() {
                               thisReasoningTraceCreateStatus.kind === "api-error") && (
                               <Stack gap="inter-section">
                                 <Text color="secondary">
-                                  Record a Reasoning Trace supported by this Observation.
+                                  {t("investmentCase.reasoningTrace.prompt")}
                                 </Text>
 
                                 {thisReasoningTraceCreateStatus.kind === "validation-error" && (
@@ -1548,8 +1618,9 @@ export function InvestmentCasePage() {
                                 )}
                                 {thisReasoningTraceCreateStatus.kind === "api-error" && (
                                   <Text color="tertiary" role="alert">
-                                    Could not record this reasoning trace:{" "}
-                                    {thisReasoningTraceCreateStatus.message}
+                                    {t("investmentCase.reasoningTrace.recordError", {
+                                      message: thisReasoningTraceCreateStatus.message,
+                                    })}
                                   </Text>
                                 )}
 
@@ -1560,8 +1631,8 @@ export function InvestmentCasePage() {
                                     disabled={thisReasoningTraceCreateStatus.kind === "submitting"}
                                   >
                                     {thisReasoningTraceCreateStatus.kind === "submitting"
-                                      ? "Submitting…"
-                                      : "Submit"}
+                                      ? t("common.submitting")
+                                      : t("common.submit")}
                                   </Button>{" "}
                                   <Button
                                     variant="tertiary"
@@ -1573,7 +1644,7 @@ export function InvestmentCasePage() {
                                     }
                                     disabled={thisReasoningTraceCreateStatus.kind === "submitting"}
                                   >
-                                    Cancel
+                                    {t("common.cancel")}
                                   </Button>
                                 </div>
                               </Stack>
@@ -1581,21 +1652,23 @@ export function InvestmentCasePage() {
                           </Stack>
 
                           <Stack gap="inter-section">
-                            <Heading level={4}>Judgment</Heading>
+                            <Heading level={4}>{t("investmentCase.judgment.heading")}</Heading>
 
                             {judgmentListStatus.kind === "loading" && (
                               <Text role="status" aria-live="polite">
-                                Loading judgment…
+                                {t("investmentCase.judgment.loading")}
                               </Text>
                             )}
                             {judgmentListStatus.kind === "error" && (
                               <Text color="tertiary" role="alert">
-                                Could not load judgment: {judgmentListStatus.message}
+                                {t("investmentCase.judgment.loadError", {
+                                  message: judgmentListStatus.message,
+                                })}
                               </Text>
                             )}
                             {judgmentListStatus.kind === "ready" &&
                               judgmentsForObservation.length === 0 && (
-                                <Text color="secondary">No judgment recorded yet.</Text>
+                                <Text color="secondary">{t("investmentCase.judgment.empty")}</Text>
                               )}
                             {judgmentListStatus.kind === "ready" &&
                               judgmentsForObservation.length > 0 && (
@@ -1614,12 +1687,12 @@ export function InvestmentCasePage() {
                                         }
                                       >
                                         {judgmentDeleteStatus[judgment.judgmentId] === "deleting"
-                                          ? "Deleting…"
-                                          : "Delete"}
+                                          ? t("common.deleting")
+                                          : t("common.delete")}
                                       </Button>
                                       {judgmentDeleteStatus[judgment.judgmentId] === "error" && (
                                         <Text color="tertiary" role="alert">
-                                          Could not delete this judgment.
+                                          {t("investmentCase.judgment.deleteError")}
                                         </Text>
                                       )}
                                     </div>
@@ -1639,14 +1712,17 @@ export function InvestmentCasePage() {
                                   }))
                                 }
                               >
-                                + Create Judgment
+                                {t("investmentCase.judgment.addButton")}
                               </Button>
                             )}
 
                             {thisJudgmentCreateStatus.kind === "success" && (
                               <Stack gap="inter-section">
                                 <Text>
-                                  Judgment recorded: {thisJudgmentCreateStatus.judgment.characterization}
+                                  {t("investmentCase.judgment.recorded", {
+                                    characterization:
+                                      thisJudgmentCreateStatus.judgment.characterization,
+                                  })}
                                 </Text>
                                 <Button
                                   variant="tertiary"
@@ -1661,7 +1737,7 @@ export function InvestmentCasePage() {
                                     }));
                                   }}
                                 >
-                                  Add another
+                                  {t("common.addAnother")}
                                 </Button>
                               </Stack>
                             )}
@@ -1672,7 +1748,7 @@ export function InvestmentCasePage() {
                               thisJudgmentCreateStatus.kind === "api-error") && (
                               <Stack gap="inter-section">
                                 <Text as="label">
-                                  Characterization
+                                  {t("investmentCase.judgment.characterizationLabel")}
                                   <br />
                                   <textarea
                                     value={thisJudgmentForm}
@@ -1693,7 +1769,9 @@ export function InvestmentCasePage() {
                                 )}
                                 {thisJudgmentCreateStatus.kind === "api-error" && (
                                   <Text color="tertiary" role="alert">
-                                    Could not record this judgment: {thisJudgmentCreateStatus.message}
+                                    {t("investmentCase.judgment.recordError", {
+                                      message: thisJudgmentCreateStatus.message,
+                                    })}
                                   </Text>
                                 )}
 
@@ -1704,8 +1782,8 @@ export function InvestmentCasePage() {
                                     disabled={thisJudgmentCreateStatus.kind === "submitting"}
                                   >
                                     {thisJudgmentCreateStatus.kind === "submitting"
-                                      ? "Submitting…"
-                                      : "Submit"}
+                                      ? t("common.submitting")
+                                      : t("common.submit")}
                                   </Button>{" "}
                                   <Button
                                     variant="tertiary"
@@ -1721,7 +1799,7 @@ export function InvestmentCasePage() {
                                     }}
                                     disabled={thisJudgmentCreateStatus.kind === "submitting"}
                                   >
-                                    Cancel
+                                    {t("common.cancel")}
                                   </Button>
                                 </div>
                               </Stack>
@@ -1729,21 +1807,23 @@ export function InvestmentCasePage() {
                           </Stack>
 
                           <Stack gap="inter-section">
-                            <Heading level={4}>Decision</Heading>
+                            <Heading level={4}>{t("investmentCase.decision.heading")}</Heading>
 
                             {decisionListStatus.kind === "loading" && (
                               <Text role="status" aria-live="polite">
-                                Loading decision…
+                                {t("investmentCase.decision.loading")}
                               </Text>
                             )}
                             {decisionListStatus.kind === "error" && (
                               <Text color="tertiary" role="alert">
-                                Could not load decision: {decisionListStatus.message}
+                                {t("investmentCase.decision.loadError", {
+                                  message: decisionListStatus.message,
+                                })}
                               </Text>
                             )}
                             {decisionListStatus.kind === "ready" &&
                               decisionsForObservation.length === 0 && (
-                                <Text color="secondary">No decision recorded yet.</Text>
+                                <Text color="secondary">{t("investmentCase.decision.empty")}</Text>
                               )}
                             {decisionListStatus.kind === "ready" &&
                               decisionsForObservation.length > 0 && (
@@ -1751,13 +1831,18 @@ export function InvestmentCasePage() {
                                   {decisionsForObservation.map((decision) => (
                                     <div key={decision.id}>
                                       <Text>
-                                        {decision.decisionType} — {decision.subject}
+                                        {DECISION_TYPE_KEY[decision.decisionType]
+                                          ? t(DECISION_TYPE_KEY[decision.decisionType]!)
+                                          : decision.decisionType}{" "}
+                                        — {decision.subject}
                                       </Text>
                                       <Text color="secondary" as="p">
                                         {decision.reason}
                                       </Text>
                                       <Text color="tertiary" as="p">
-                                        Confidence: {decision.confidence}
+                                        {t("investmentCase.decision.confidencePrefix", {
+                                          value: decision.confidence,
+                                        })}
                                       </Text>
                                       <Text color="tertiary" as="p">
                                         {decision.decidedAt}
@@ -1779,15 +1864,25 @@ export function InvestmentCasePage() {
                                   }))
                                 }
                               >
-                                + Record Decision
+                                {t("investmentCase.decision.addButton")}
                               </Button>
                             )}
 
                             {thisDecisionCreateStatus.kind === "success" && (
                               <Stack gap="inter-section">
                                 <Text>
-                                  Decision recorded: {thisDecisionCreateStatus.decision.decisionType}{" "}
-                                  — {thisDecisionCreateStatus.decision.subject}
+                                  {t("investmentCase.decision.recorded", {
+                                    decisionType: DECISION_TYPE_KEY[
+                                      thisDecisionCreateStatus.decision.decisionType
+                                    ]
+                                      ? t(
+                                          DECISION_TYPE_KEY[
+                                            thisDecisionCreateStatus.decision.decisionType
+                                          ]!,
+                                        )
+                                      : thisDecisionCreateStatus.decision.decisionType,
+                                    subject: thisDecisionCreateStatus.decision.subject,
+                                  })}
                                 </Text>
                                 <Button
                                   variant="tertiary"
@@ -1802,7 +1897,7 @@ export function InvestmentCasePage() {
                                     }));
                                   }}
                                 >
-                                  Add another
+                                  {t("common.addAnother")}
                                 </Button>
                               </Stack>
                             )}
@@ -1813,7 +1908,7 @@ export function InvestmentCasePage() {
                               thisDecisionCreateStatus.kind === "api-error") && (
                               <Stack gap="inter-section">
                                 <Text as="label">
-                                  Decision Type
+                                  {t("investmentCase.decision.typeLabel")}
                                   <br />
                                   <select
                                     value={thisDecisionForm.decisionType}
@@ -1833,15 +1928,17 @@ export function InvestmentCasePage() {
                                     }
                                     disabled={thisDecisionCreateStatus.kind === "submitting"}
                                   >
-                                    <option value="BUY">Buy</option>
-                                    <option value="SELL">Sell</option>
-                                    <option value="HOLD">Hold</option>
-                                    <option value="WATCH">Watch</option>
-                                    <option value="PASS">Pass</option>
+                                    <option value="BUY">{t("investmentCase.decision.typeBuy")}</option>
+                                    <option value="SELL">{t("investmentCase.decision.typeSell")}</option>
+                                    <option value="HOLD">{t("investmentCase.decision.typeHold")}</option>
+                                    <option value="WATCH">
+                                      {t("investmentCase.decision.typeWatch")}
+                                    </option>
+                                    <option value="PASS">{t("investmentCase.decision.typePass")}</option>
                                   </select>
                                 </Text>
                                 <Text as="label">
-                                  Subject
+                                  {t("investmentCase.decision.subjectLabel")}
                                   <br />
                                   <input
                                     value={thisDecisionForm.subject}
@@ -1858,7 +1955,7 @@ export function InvestmentCasePage() {
                                   />
                                 </Text>
                                 <Text as="label">
-                                  Reason
+                                  {t("investmentCase.decision.reasonLabel")}
                                   <br />
                                   <textarea
                                     value={thisDecisionForm.reason}
@@ -1875,7 +1972,7 @@ export function InvestmentCasePage() {
                                   />
                                 </Text>
                                 <Text as="label">
-                                  Confidence (0-100)
+                                  {t("investmentCase.decision.confidenceLabel")}
                                   <br />
                                   <input
                                     type="number"
@@ -1902,7 +1999,9 @@ export function InvestmentCasePage() {
                                 )}
                                 {thisDecisionCreateStatus.kind === "api-error" && (
                                   <Text color="tertiary" role="alert">
-                                    Could not record this decision: {thisDecisionCreateStatus.message}
+                                    {t("investmentCase.decision.recordError", {
+                                      message: thisDecisionCreateStatus.message,
+                                    })}
                                   </Text>
                                 )}
 
@@ -1913,8 +2012,8 @@ export function InvestmentCasePage() {
                                     disabled={thisDecisionCreateStatus.kind === "submitting"}
                                   >
                                     {thisDecisionCreateStatus.kind === "submitting"
-                                      ? "Submitting…"
-                                      : "Submit"}
+                                      ? t("common.submitting")
+                                      : t("common.submit")}
                                   </Button>{" "}
                                   <Button
                                     variant="tertiary"
@@ -1930,7 +2029,7 @@ export function InvestmentCasePage() {
                                     }}
                                     disabled={thisDecisionCreateStatus.kind === "submitting"}
                                   >
-                                    Cancel
+                                    {t("common.cancel")}
                                   </Button>
                                 </div>
                               </Stack>
@@ -1938,21 +2037,23 @@ export function InvestmentCasePage() {
                           </Stack>
 
                           <Stack gap="inter-section">
-                            <Heading level={4}>Outcome</Heading>
+                            <Heading level={4}>{t("investmentCase.outcome.heading")}</Heading>
 
                             {outcomeListStatus.kind === "loading" && (
                               <Text role="status" aria-live="polite">
-                                Loading outcome…
+                                {t("investmentCase.outcome.loading")}
                               </Text>
                             )}
                             {outcomeListStatus.kind === "error" && (
                               <Text color="tertiary" role="alert">
-                                Could not load outcome: {outcomeListStatus.message}
+                                {t("investmentCase.outcome.loadError", {
+                                  message: outcomeListStatus.message,
+                                })}
                               </Text>
                             )}
                             {outcomeListStatus.kind === "ready" &&
                               outcomesForObservation.length === 0 && (
-                                <Text color="secondary">No outcome recorded yet.</Text>
+                                <Text color="secondary">{t("investmentCase.outcome.empty")}</Text>
                               )}
                             {outcomeListStatus.kind === "ready" &&
                               outcomesForObservation.length > 0 && (
@@ -1977,7 +2078,7 @@ export function InvestmentCasePage() {
 
                             {decisionsForObservation.length === 0 && (
                               <Text color="secondary">
-                                No decision recorded yet — record a Decision first.
+                                {t("investmentCase.outcome.needsDecisionFirst")}
                               </Text>
                             )}
 
@@ -1992,33 +2093,37 @@ export function InvestmentCasePage() {
                                     }))
                                   }
                                 >
-                                  + Record Outcome
+                                  {t("investmentCase.outcome.addButton")}
                                 </Button>
                               )}
 
                             {thisOutcomeCreateStatus.kind === "success" && (
                               <Stack gap="inter-section">
                                 <Text>
-                                  Outcome recorded: {thisOutcomeCreateStatus.outcome.statement}
+                                  {t("investmentCase.outcome.recorded", {
+                                    statement: thisOutcomeCreateStatus.outcome.statement,
+                                  })}
                                 </Text>
                                 {thisTradeApplyStatus.kind === "applying" && (
                                   <Text role="status" aria-live="polite">
-                                    Updating portfolio…
+                                    {t("investmentCase.outcome.updatingPortfolio")}
                                   </Text>
                                 )}
                                 {thisTradeApplyStatus.kind === "updated" && (
-                                  <Text color="secondary">Portfolio updated automatically.</Text>
+                                  <Text color="secondary">
+                                    {t("investmentCase.outcome.updatedAutomatically")}
+                                  </Text>
                                 )}
                                 {thisTradeApplyStatus.kind === "awaiting-reconciliation" && (
                                   <Text color="tertiary">
-                                    Trade recorded. Allocation requires reconciliation on the
-                                    Portfolio page.
+                                    {t("investmentCase.outcome.awaitingReconciliation")}
                                   </Text>
                                 )}
                                 {thisTradeApplyStatus.kind === "error" && (
                                   <Text color="tertiary" role="alert">
-                                    Outcome was recorded, but the portfolio could not be updated:{" "}
-                                    {thisTradeApplyStatus.message}
+                                    {t("investmentCase.outcome.applyTradeError", {
+                                      message: thisTradeApplyStatus.message,
+                                    })}
                                   </Text>
                                 )}
                                 <Button
@@ -2040,7 +2145,7 @@ export function InvestmentCasePage() {
                                     }));
                                   }}
                                 >
-                                  Add another
+                                  {t("common.addAnother")}
                                 </Button>
                               </Stack>
                             )}
@@ -2052,7 +2157,7 @@ export function InvestmentCasePage() {
                               <Stack gap="inter-section">
                                 {decisionsForObservation.length > 1 && (
                                   <Text as="label">
-                                    Decision
+                                    {t("investmentCase.outcome.decisionLabel")}
                                     <br />
                                     <select
                                       value={thisOutcomeForm.decisionId}
@@ -2067,17 +2172,22 @@ export function InvestmentCasePage() {
                                       }
                                       disabled={thisOutcomeCreateStatus.kind === "submitting"}
                                     >
-                                      <option value="">Select a decision…</option>
+                                      <option value="">
+                                        {t("investmentCase.outcome.decisionPlaceholder")}
+                                      </option>
                                       {decisionsForObservation.map((decision) => (
                                         <option key={decision.id} value={decision.id}>
-                                          {decision.decisionType} — {decision.subject}
+                                          {DECISION_TYPE_KEY[decision.decisionType]
+                                            ? t(DECISION_TYPE_KEY[decision.decisionType]!)
+                                            : decision.decisionType}{" "}
+                                          — {decision.subject}
                                         </option>
                                       ))}
                                     </select>
                                   </Text>
                                 )}
                                 <Text as="label">
-                                  Statement
+                                  {t("investmentCase.outcome.statementLabel")}
                                   <br />
                                   <textarea
                                     value={thisOutcomeForm.statement}
@@ -2094,7 +2204,7 @@ export function InvestmentCasePage() {
                                   />
                                 </Text>
                                 <Text as="label">
-                                  Note (optional)
+                                  {t("investmentCase.outcome.noteLabel")}
                                   <br />
                                   <textarea
                                     value={thisOutcomeForm.note}
@@ -2126,13 +2236,13 @@ export function InvestmentCasePage() {
                                     }
                                     disabled={thisOutcomeCreateStatus.kind === "submitting"}
                                   />{" "}
-                                  This was an external trade — record the execution
+                                  {t("investmentCase.outcome.externalTradeCheckbox")}
                                 </Text>
 
                                 {thisOutcomeForm.isExternalTrade && (
                                   <Stack gap="inter-section">
                                     <Text as="label">
-                                      Security
+                                      {t("investmentCase.outcome.securityLabel")}
                                       <br />
                                       <input
                                         value={thisOutcomeForm.security}
@@ -2149,7 +2259,7 @@ export function InvestmentCasePage() {
                                       />
                                     </Text>
                                     <Text as="label">
-                                      Type
+                                      {t("investmentCase.outcome.typeLabel")}
                                       <br />
                                       <select
                                         value={thisOutcomeForm.transactionType}
@@ -2166,12 +2276,16 @@ export function InvestmentCasePage() {
                                         }
                                         disabled={thisOutcomeCreateStatus.kind === "submitting"}
                                       >
-                                        <option value="BUY">Buy</option>
-                                        <option value="SELL">Sell</option>
+                                        <option value="BUY">
+                                          {t("investmentCase.decision.typeBuy")}
+                                        </option>
+                                        <option value="SELL">
+                                          {t("investmentCase.decision.typeSell")}
+                                        </option>
                                       </select>
                                     </Text>
                                     <Text as="label">
-                                      Quantity
+                                      {t("investmentCase.outcome.quantityLabel")}
                                       <br />
                                       <input
                                         value={thisOutcomeForm.quantity}
@@ -2188,7 +2302,7 @@ export function InvestmentCasePage() {
                                       />
                                     </Text>
                                     <Text as="label">
-                                      Execution price
+                                      {t("investmentCase.outcome.executionPriceLabel")}
                                       <br />
                                       <input
                                         value={thisOutcomeForm.executionPrice}
@@ -2205,7 +2319,7 @@ export function InvestmentCasePage() {
                                       />
                                     </Text>
                                     <Text as="label">
-                                      Fees (optional)
+                                      {t("investmentCase.outcome.feesLabel")}
                                       <br />
                                       <input
                                         value={thisOutcomeForm.fees}
@@ -2222,7 +2336,7 @@ export function InvestmentCasePage() {
                                       />
                                     </Text>
                                     <Text as="label">
-                                      Executed date (optional — defaults to now)
+                                      {t("investmentCase.outcome.executedAtLabel")}
                                       <br />
                                       <input
                                         type="datetime-local"
@@ -2251,7 +2365,9 @@ export function InvestmentCasePage() {
                                 )}
                                 {thisOutcomeCreateStatus.kind === "api-error" && (
                                   <Text color="tertiary" role="alert">
-                                    Could not record this outcome: {thisOutcomeCreateStatus.message}
+                                    {t("investmentCase.outcome.recordError", {
+                                      message: thisOutcomeCreateStatus.message,
+                                    })}
                                   </Text>
                                 )}
 
@@ -2265,8 +2381,8 @@ export function InvestmentCasePage() {
                                     }
                                   >
                                     {thisOutcomeCreateStatus.kind === "submitting"
-                                      ? "Submitting…"
-                                      : "Submit"}
+                                      ? t("common.submitting")
+                                      : t("common.submit")}
                                   </Button>{" "}
                                   <Button
                                     variant="tertiary"
@@ -2288,7 +2404,7 @@ export function InvestmentCasePage() {
                                     }}
                                     disabled={thisOutcomeCreateStatus.kind === "submitting"}
                                   >
-                                    Cancel
+                                    {t("common.cancel")}
                                   </Button>
                                 </div>
                               </Stack>
@@ -2307,13 +2423,17 @@ export function InvestmentCasePage() {
                     variant="tertiary"
                     onClick={() => setCreateStatus({ kind: "creating" })}
                   >
-                    Add Observation
+                    {t("investmentCase.observations.addButton")}
                   </Button>
                 )}
 
                 {createStatus.kind === "success" && (
                   <Stack gap="inter-section">
-                    <Text>Observation recorded: {createStatus.observation.subject}</Text>
+                    <Text>
+                      {t("investmentCase.observations.recorded", {
+                        subject: createStatus.observation.subject,
+                      })}
+                    </Text>
                     <Button
                       variant="tertiary"
                       onClick={() => {
@@ -2322,7 +2442,7 @@ export function InvestmentCasePage() {
                         setCreateStatus({ kind: "creating" });
                       }}
                     >
-                      Add another
+                      {t("common.addAnother")}
                     </Button>
                   </Stack>
                 )}
@@ -2333,7 +2453,7 @@ export function InvestmentCasePage() {
                   createStatus.kind === "api-error") && (
                   <Stack gap="inter-section">
                     <Text as="label">
-                      Subject
+                      {t("investmentCase.observations.subjectLabel")}
                       <br />
                       <input
                         value={subjectInput}
@@ -2342,7 +2462,7 @@ export function InvestmentCasePage() {
                       />
                     </Text>
                     <Text as="label">
-                      Statement
+                      {t("investmentCase.observations.statementLabel")}
                       <br />
                       <textarea
                         value={statementInput}
@@ -2358,7 +2478,9 @@ export function InvestmentCasePage() {
                     )}
                     {createStatus.kind === "api-error" && (
                       <Text color="tertiary" role="alert">
-                        Could not record this observation: {createStatus.message}
+                        {t("investmentCase.observations.recordError", {
+                          message: createStatus.message,
+                        })}
                       </Text>
                     )}
 
@@ -2368,7 +2490,9 @@ export function InvestmentCasePage() {
                         onClick={submitObservation}
                         disabled={createStatus.kind === "submitting"}
                       >
-                        {createStatus.kind === "submitting" ? "Submitting…" : "Submit"}
+                        {createStatus.kind === "submitting"
+                          ? t("common.submitting")
+                          : t("common.submit")}
                       </Button>{" "}
                       <Button
                         variant="tertiary"
@@ -2379,7 +2503,7 @@ export function InvestmentCasePage() {
                         }}
                         disabled={createStatus.kind === "submitting"}
                       >
-                        Cancel
+                        {t("common.cancel")}
                       </Button>
                     </div>
                   </Stack>
@@ -2397,10 +2521,8 @@ export function InvestmentCasePage() {
             is implemented here. */}
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <Heading level={2}>Timeline</Heading>
-            <Text color="secondary">
-              Reserved for this Decision's own Decision Timeline in a future commit.
-            </Text>
+            <Heading level={2}>{t("investmentCase.timeline.heading")}</Heading>
+            <Text color="secondary">{t("investmentCase.timeline.placeholder")}</Text>
           </Stack>
         </Surface>
 
@@ -2408,7 +2530,7 @@ export function InvestmentCasePage() {
 
         {/* Footer — UX-012B §20's Workspace Frame "footer" required element. */}
         <Surface tier="primary">
-          <Heading level={2}>Footer</Heading>
+          <Heading level={2}>{t("investmentCase.footer.heading")}</Heading>
         </Surface>
       </Stack>
     </Container>

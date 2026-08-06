@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "../i18n";
 
 /**
  * Application navigation region.
@@ -10,9 +11,12 @@ import { Link } from "react-router-dom";
  * page content.
  */
 export function Navigation() {
+  const { t } = useTranslation();
+
   return (
-    <nav aria-label="Primary">
-      <Link to="/dashboard">Dashboard</Link> <Link to="/portfolio">Portfolio</Link>
+    <nav aria-label={t("shell.nav.ariaLabel")}>
+      <Link to="/dashboard">{t("shell.nav.dashboard")}</Link>{" "}
+      <Link to="/portfolio">{t("shell.nav.portfolio")}</Link>
     </nav>
   );
 }
