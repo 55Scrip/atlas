@@ -268,6 +268,167 @@ export const en = {
   "investmentCase.outcome.recordError": "Could not record this outcome: {{message}}",
   "investmentCase.outcome.validation.tradeRequiredFields":
     "Security, quantity, and execution price are required for a trade.",
+
+  // ---------- investment case v2: header ----------
+  "investmentCase.header.inPortfolio": "In your portfolio",
+  "investmentCase.header.notLinked": "Not yet linked to a portfolio holding",
+  "investmentCase.header.currentAllocation": "Current allocation: {{percent}}%",
+  "investmentCase.header.caseIdLabel": "Case ID: {{caseId}}",
+  "investmentCase.header.untitled": "Investment Case",
+
+  // ---------- investment case v2: Atlas Assessment ----------
+  "investmentCase.assessment.heading": "Atlas Assessment",
+  "investmentCase.assessment.notLinkedYet":
+    "This case is not yet linked to a portfolio holding. Atlas has no company or portfolio state to assess.",
+  "investmentCase.assessment.noAnalysisYet":
+    "Atlas has not yet completed enough analysis to recommend a portfolio change.",
+  "investmentCase.assessment.heldNoAssessment":
+    "This position is currently recorded in your portfolio. No Atlas-generated company assessment is available yet.",
+  "investmentCase.assessment.decisionRecorded": "A decision has been recorded for this case.",
+  "investmentCase.assessment.outcomeRecorded":
+    "A completed external transaction has been recorded.",
+  "investmentCase.assessment.explanation":
+    "Atlas does not yet generate company-specific analysis (valuation, conviction, business quality). What you see below reflects only your recorded portfolio state and decision history.",
+
+  // ---------- investment case v2: why now ----------
+  "investmentCase.whyNow.heading": "Why now?",
+  "investmentCase.whyNow.awaitingReconciliation": "Allocation awaiting reconciliation",
+  "investmentCase.whyNow.decisionRecorded": "A decision has been recorded",
+  "investmentCase.whyNow.outcomeRecorded": "An outcome has been recorded",
+  "investmentCase.whyNow.none": "No specific trigger is currently available.",
+
+  // ---------- investment case v2: key decision info cards ----------
+  "investmentCase.cards.currentAllocation": "Current allocation",
+  "investmentCase.cards.cashAllocation": "Cash allocation",
+  "investmentCase.cards.portfolioMode": "Portfolio mode",
+  "investmentCase.cards.portfolioModePercentOnly": "Percentage only",
+  "investmentCase.cards.portfolioModeAbsolute": "Absolute values available",
+  "investmentCase.cards.decisionStatus": "Decision status",
+  "investmentCase.cards.outcomeStatus": "Outcome status",
+  "investmentCase.cards.recordedValue": "Recorded",
+  "investmentCase.cards.notRecordedValue": "Not yet recorded",
+  "investmentCase.cards.reconciliationStatus": "Reconciliation status",
+  "investmentCase.cards.lastActivity": "Last recorded activity",
+  "investmentCase.cards.supportingRecords": "Supporting records",
+
+  // ---------- investment case v2: portfolio impact ----------
+  "investmentCase.portfolioImpact.heading": "Portfolio impact",
+  "investmentCase.portfolioImpact.notHeld": "This company is not currently held in your portfolio.",
+  "investmentCase.portfolioImpact.percentOnlyNote":
+    "Portfolio impact can only be expressed in percentages — no absolute portfolio value has been entered.",
+  "investmentCase.portfolioImpact.awaitingReconciliation":
+    "The latest trade against this holding requires reconciliation on the Portfolio page.",
+
+  // ---------- investment case v2: what Atlas knows ----------
+  "investmentCase.whatAtlasKnows.heading": "What Atlas knows",
+  "investmentCase.whatAtlasKnows.observationsCount": "Recorded observations: {{count}}",
+  "investmentCase.whatAtlasKnows.evidenceCount": "Supporting evidence: {{count}}",
+  "investmentCase.whatAtlasKnows.judgmentAvailable": "Recorded judgment: available",
+  "investmentCase.whatAtlasKnows.judgmentNotAvailable": "Recorded judgment: not available",
+  "investmentCase.whatAtlasKnows.decisionLabel": "Investor decision: {{type}}",
+  "investmentCase.whatAtlasKnows.decisionNone": "Investor decision: not yet recorded",
+  "investmentCase.whatAtlasKnows.outcomeYes": "Outcome: recorded",
+  "investmentCase.whatAtlasKnows.outcomeNone": "Outcome: not recorded",
+  "investmentCase.whatAtlasKnows.latestObservation": "Latest recorded observation",
+
+  // ---------- investment case v2: what remains uncertain ----------
+  "investmentCase.uncertain.heading": "What remains uncertain",
+  "investmentCase.uncertain.noValuation": "No valuation analysis is currently available.",
+  "investmentCase.uncertain.noMarketData":
+    "Atlas has not yet received market data for this company.",
+  "investmentCase.uncertain.noEvidence": "No company-specific evidence has been recorded.",
+  "investmentCase.uncertain.percentOnly": "Portfolio impact can only be expressed in percentages.",
+  "investmentCase.uncertain.awaitingReconciliation":
+    "The latest allocation requires reconciliation.",
+
+  // ---------- investment case v2: more details ----------
+  "investmentCase.moreDetails.heading": "More details",
+  "investmentCase.moreDetails.subheading": "Underlying record",
+
+  // ---------- investment case v2: decision actions ----------
+  "investmentCase.actions.heading": "What would you like to do?",
+  "investmentCase.actions.addToPosition": "Add to Position",
+  "investmentCase.actions.trimPosition": "Trim Position",
+  "investmentCase.actions.removePosition": "Remove Position",
+  "investmentCase.actions.leaveAsIs": "Leave as is",
+  "investmentCase.actions.notLinkedNote":
+    "Decision actions become available once this case is linked to a portfolio holding.",
+  "investmentCase.actions.deferredWatchlist": "Watchlist actions are not yet available in Alpha.",
+  "investmentCase.actions.deferredDiscovery": "Discovery actions are not yet available in Alpha.",
+  "investmentCase.actions.reasonLabel": "Reason",
+  "investmentCase.actions.confidenceLabel": "Your confidence (0-100)",
+  "investmentCase.actions.submit": "Record decision",
+  "investmentCase.actions.decisionRecordedNote":
+    "Decision recorded. Atlas never executes trades — report the completed transaction below once it happens externally, or close this if nothing has happened yet.",
+  "investmentCase.actions.leaveAsIsRecordedNote": "Recorded — no portfolio change.",
+  "investmentCase.actions.reportTransaction": "Report completed transaction",
+  "investmentCase.actions.close": "Close",
+  "investmentCase.actions.recordError": "Could not record this decision: {{message}}",
+
+  // ---------- investment case v2: continuity footer ----------
+  "investmentCase.continuity.line1":
+    "Atlas will use recorded portfolio changes and case history in future reviews.",
+  "investmentCase.continuity.line2":
+    "Report completed purchases or sales to keep the current portfolio state accurate.",
+
+  // ---------- sprint 4: navigation ----------
+  "shell.nav.history": "History",
+
+  // ---------- sprint 4: relative time ----------
+  "relativeTime.today": "today",
+  "relativeTime.oneDayAgo": "1 day ago",
+  "relativeTime.daysAgo": "{{count}} days ago",
+  "relativeTime.oneWeekAgo": "1 week ago",
+  "relativeTime.weeksAgo": "{{count}} weeks ago",
+  "relativeTime.oneMonthAgo": "1 month ago",
+  "relativeTime.monthsAgo": "{{count}} months ago",
+
+  // ---------- sprint 4: history page ----------
+  "history.title": "History",
+  "history.loadError": "Could not load history: {{message}}",
+  "history.empty": "No activity recorded yet.",
+  "history.noneMatchFilter": "No activity matches this filter.",
+  "history.filter.all": "All",
+  "history.filter.open": "Open",
+  "history.filter.completed": "Completed",
+  "history.sort.newest": "Newest first",
+  "history.sort.oldest": "Oldest first",
+  "history.status.open": "Open",
+  "history.status.completed": "Completed",
+  "history.row.kindDecision": "Decision recorded",
+  "history.row.kindOutcome": "Outcome reported",
+  "history.row.kindTrade": "Trade executed",
+
+  // ---------- sprint 4: dashboard sections ----------
+  "dashboard.needsAttention.heading": "Needs Attention",
+  "dashboard.needsAttention.empty": "Nothing needs your attention right now.",
+  "dashboard.needsAttention.outcomeMissing": "{{security}}: outcome not yet reported",
+  "dashboard.needsAttention.tradeMissing": "{{security}}: trade not yet reported",
+  "dashboard.needsAttention.reconciliationNeeded": "{{security}}: allocation awaiting reconciliation",
+  "dashboard.recentActivity.heading": "Recent Activity",
+  "dashboard.recentActivity.empty": "No activity recorded yet.",
+  "dashboard.continueWorking.heading": "Continue Working",
+  "dashboard.continueWorking.empty": "No recent case activity yet.",
+
+  // ---------- sprint 4: investment case last activity / timeline / outstanding work ----------
+  "investmentCase.lastActivity.heading": "Last activity",
+  "investmentCase.lastActivity.noneYet": "No activity recorded for this case yet.",
+  "investmentCase.lastActivity.lastDecision": "Last decision: {{type}} recorded {{relativeTime}}.",
+  "investmentCase.lastActivity.lastOutcome": "Last outcome: reported {{relativeTime}}.",
+  "investmentCase.lastActivity.lastTrade": "Last trade: {{type}} {{detail}}, {{relativeTime}}.",
+  "investmentCase.lastActivity.reconciliationOk": "Portfolio allocation is up to date.",
+  "investmentCase.lastActivity.reconciliationNeeded": "Allocation is awaiting reconciliation.",
+  "investmentCase.timeline.empty": "No timeline events yet.",
+  "investmentCase.timeline.currentStatus": "Current status",
+  "investmentCase.outstandingWork.heading": "Outstanding work",
+  "investmentCase.outstandingWork.none": "Nothing outstanding for this case.",
+  "investmentCase.outstandingWork.outcomeMissing": "Outcome not yet reported.",
+  "investmentCase.outstandingWork.tradeMissing": "Trade not yet reported.",
+
+  // ---------- sprint 4: navigation continuity (origin badges) ----------
+  "investmentCase.origin.dashboard": "Opened from Dashboard",
+  "investmentCase.origin.portfolio": "Opened from Portfolio",
+  "investmentCase.origin.history": "Returned from History",
 } as const;
 
 export type TranslationKey = keyof typeof en;

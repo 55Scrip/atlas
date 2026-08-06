@@ -437,6 +437,44 @@ class TestApplyTrade:
         )
         assert response.status_code == 400
 
+    def test_decision_and_outcome_require_no_observation(self, client):
+        """Investment Case v2's decision-action UI ("Add to Position",
+        "Trim Position", "Remove Position") records a Decision directly
+        against a Case and later an Outcome against that Decision, with
+        no Observation ever created first --
+        `Decision.observation_id` is optional
+        (`atlas/core/domain/decision/entity.py`) and `Outcome` has no
+        Observation dependency at all (`atlas/core/domain/outcome/
+        entity.py`). Every trade-flow test in this class already
+        exercises that exact path via `_record_decision`/
+        `_record_outcome` (neither ever sends `observationId`); this
+        test makes the invariant explicit and named rather than an
+        incidental side effect, and confirms the full chain -- Decision
+        with no Observation, through Outcome, through apply-trade --
+        still updates the portfolio."""
+        client.post(
+            "/alpha-portfolio/import",
+            json={"holdings": [{"ticker": "NVDA", "weightPercent": 60, "valueAbsolute": 600}]},
+        )
+        decision = _record_decision(client)
+        assert decision["observationId"] is None
+
+        outcome = _record_outcome(client, decision)
+
+        response = client.post(
+            "/alpha-portfolio/apply-trade",
+            json={
+                "outcomeId": outcome["id"],
+                "decisionId": decision["id"],
+                "security": "NVDA",
+                "transactionType": "BUY",
+                "quantity": 1,
+                "executionPrice": 100,
+                "executedAt": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        assert response.status_code == 200
+
     def test_rejects_a_second_apply_for_the_same_outcome(self, client):
         client.post(
             "/alpha-portfolio/import",

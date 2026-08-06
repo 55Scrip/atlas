@@ -268,4 +268,162 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.outcome.recordError": "Kunde inte registrera utfallet: {{message}}",
   "investmentCase.outcome.validation.tradeRequiredFields":
     "Värdepapper, antal och avslutspris krävs för en affär.",
+
+  // ---------- investment case v2: header ----------
+  "investmentCase.header.inPortfolio": "I din portfölj",
+  "investmentCase.header.notLinked": "Inte kopplat till ett portföljinnehav ännu",
+  "investmentCase.header.currentAllocation": "Nuvarande andel: {{percent}}%",
+  "investmentCase.header.caseIdLabel": "Case-id: {{caseId}}",
+  "investmentCase.header.untitled": "Investeringscase",
+
+  // ---------- investment case v2: Atlas Assessment ----------
+  "investmentCase.assessment.heading": "Atlas bedömning",
+  "investmentCase.assessment.notLinkedYet":
+    "Det här caset är inte kopplat till ett portföljinnehav ännu. Atlas har inget bolag eller portföljläge att bedöma.",
+  "investmentCase.assessment.noAnalysisYet":
+    "Atlas har ännu inte gjort tillräcklig analys för att rekommendera en portföljförändring.",
+  "investmentCase.assessment.heldNoAssessment":
+    "Den här positionen finns för närvarande registrerad i din portfölj. Ingen Atlas-genererad bolagsbedömning finns tillgänglig ännu.",
+  "investmentCase.assessment.decisionRecorded": "Ett beslut har registrerats för det här caset.",
+  "investmentCase.assessment.outcomeRecorded": "En genomförd extern affär har registrerats.",
+  "investmentCase.assessment.explanation":
+    "Atlas genererar ännu inte bolagsspecifik analys (värdering, övertygelse, bolagskvalitet). Det du ser nedan speglar endast ditt registrerade portföljläge och din beslutshistorik.",
+
+  // ---------- investment case v2: why now ----------
+  "investmentCase.whyNow.heading": "Varför nu?",
+  "investmentCase.whyNow.awaitingReconciliation": "Fördelningen väntar på avstämning",
+  "investmentCase.whyNow.decisionRecorded": "Ett beslut har registrerats",
+  "investmentCase.whyNow.outcomeRecorded": "Ett utfall har registrerats",
+  "investmentCase.whyNow.none": "Ingen specifik anledning är tillgänglig just nu.",
+
+  // ---------- investment case v2: key decision info cards ----------
+  "investmentCase.cards.currentAllocation": "Nuvarande andel",
+  "investmentCase.cards.cashAllocation": "Kontantandel",
+  "investmentCase.cards.portfolioMode": "Portföljläge",
+  "investmentCase.cards.portfolioModePercentOnly": "Endast procent",
+  "investmentCase.cards.portfolioModeAbsolute": "Absoluta värden tillgängliga",
+  "investmentCase.cards.decisionStatus": "Beslutsstatus",
+  "investmentCase.cards.outcomeStatus": "Utfallsstatus",
+  "investmentCase.cards.recordedValue": "Registrerat",
+  "investmentCase.cards.notRecordedValue": "Inte registrerat ännu",
+  "investmentCase.cards.reconciliationStatus": "Avstämningsstatus",
+  "investmentCase.cards.lastActivity": "Senast registrerad aktivitet",
+  "investmentCase.cards.supportingRecords": "Underliggande poster",
+
+  // ---------- investment case v2: portfolio impact ----------
+  "investmentCase.portfolioImpact.heading": "Påverkan på portföljen",
+  "investmentCase.portfolioImpact.notHeld": "Det här bolaget finns inte i din portfölj för närvarande.",
+  "investmentCase.portfolioImpact.percentOnlyNote":
+    "Påverkan på portföljen kan bara uttryckas i procent — inget totalt portföljvärde har angetts.",
+  "investmentCase.portfolioImpact.awaitingReconciliation":
+    "Den senaste affären mot det här innehavet behöver stämmas av på portföljsidan.",
+
+  // ---------- investment case v2: what Atlas knows ----------
+  "investmentCase.whatAtlasKnows.heading": "Det här vet Atlas",
+  "investmentCase.whatAtlasKnows.observationsCount": "Registrerade observationer: {{count}}",
+  "investmentCase.whatAtlasKnows.evidenceCount": "Stödjande belägg: {{count}}",
+  "investmentCase.whatAtlasKnows.judgmentAvailable": "Registrerad bedömning: finns",
+  "investmentCase.whatAtlasKnows.judgmentNotAvailable": "Registrerad bedömning: finns inte",
+  "investmentCase.whatAtlasKnows.decisionLabel": "Investerarens beslut: {{type}}",
+  "investmentCase.whatAtlasKnows.decisionNone": "Investerarens beslut: inte registrerat ännu",
+  "investmentCase.whatAtlasKnows.outcomeYes": "Utfall: registrerat",
+  "investmentCase.whatAtlasKnows.outcomeNone": "Utfall: inte registrerat",
+  "investmentCase.whatAtlasKnows.latestObservation": "Senast registrerade observation",
+
+  // ---------- investment case v2: what remains uncertain ----------
+  "investmentCase.uncertain.heading": "Det här är fortfarande osäkert",
+  "investmentCase.uncertain.noValuation": "Ingen värderingsanalys finns tillgänglig just nu.",
+  "investmentCase.uncertain.noMarketData": "Atlas har ännu inte fått marknadsdata för det här bolaget.",
+  "investmentCase.uncertain.noEvidence": "Inga bolagsspecifika belägg har registrerats.",
+  "investmentCase.uncertain.percentOnly": "Påverkan på portföljen kan bara uttryckas i procent.",
+  "investmentCase.uncertain.awaitingReconciliation": "Den senaste fördelningen behöver stämmas av.",
+
+  // ---------- investment case v2: more details ----------
+  "investmentCase.moreDetails.heading": "Mer information",
+  "investmentCase.moreDetails.subheading": "Underliggande dokumentation",
+
+  // ---------- investment case v2: decision actions ----------
+  "investmentCase.actions.heading": "Vad vill du göra?",
+  "investmentCase.actions.addToPosition": "Öka position",
+  "investmentCase.actions.trimPosition": "Minska position",
+  "investmentCase.actions.removePosition": "Avveckla position",
+  "investmentCase.actions.leaveAsIs": "Lämna oförändrad",
+  "investmentCase.actions.notLinkedNote":
+    "Beslutsåtgärder blir tillgängliga när det här caset kopplas till ett portföljinnehav.",
+  "investmentCase.actions.deferredWatchlist": "Bevakningslista-åtgärder är inte tillgängliga i Alpha ännu.",
+  "investmentCase.actions.deferredDiscovery": "Upptäck-åtgärder är inte tillgängliga i Alpha ännu.",
+  "investmentCase.actions.reasonLabel": "Motivering",
+  "investmentCase.actions.confidenceLabel": "Din säkerhet (0–100)",
+  "investmentCase.actions.submit": "Registrera beslut",
+  "investmentCase.actions.decisionRecordedNote":
+    "Beslut registrerat. Atlas genomför aldrig affärer själv — rapportera den genomförda affären nedan när den har skett externt, eller stäng det här om inget har hänt än.",
+  "investmentCase.actions.leaveAsIsRecordedNote": "Registrerat — ingen förändring av portföljen.",
+  "investmentCase.actions.reportTransaction": "Rapportera genomförd affär",
+  "investmentCase.actions.close": "Stäng",
+  "investmentCase.actions.recordError": "Kunde inte registrera beslutet: {{message}}",
+
+  // ---------- investment case v2: continuity footer ----------
+  "investmentCase.continuity.line1":
+    "Atlas använder registrerade portföljförändringar och casehistorik i framtida genomgångar.",
+  "investmentCase.continuity.line2":
+    "Rapportera genomförda köp eller försäljningar för att hålla portföljens nuvarande läge korrekt.",
+
+  // ---------- sprint 4: navigation ----------
+  "shell.nav.history": "Historik",
+
+  // ---------- sprint 4: relative time ----------
+  "relativeTime.today": "idag",
+  "relativeTime.oneDayAgo": "1 dag sedan",
+  "relativeTime.daysAgo": "{{count}} dagar sedan",
+  "relativeTime.oneWeekAgo": "1 vecka sedan",
+  "relativeTime.weeksAgo": "{{count}} veckor sedan",
+  "relativeTime.oneMonthAgo": "1 månad sedan",
+  "relativeTime.monthsAgo": "{{count}} månader sedan",
+
+  // ---------- sprint 4: history page ----------
+  "history.title": "Historik",
+  "history.loadError": "Kunde inte läsa in historiken: {{message}}",
+  "history.empty": "Ingen aktivitet registrerad ännu.",
+  "history.noneMatchFilter": "Ingen aktivitet matchar det här filtret.",
+  "history.filter.all": "Alla",
+  "history.filter.open": "Öppna",
+  "history.filter.completed": "Avslutade",
+  "history.sort.newest": "Nyast först",
+  "history.sort.oldest": "Äldst först",
+  "history.status.open": "Öppen",
+  "history.status.completed": "Avslutad",
+  "history.row.kindDecision": "Beslut registrerat",
+  "history.row.kindOutcome": "Utfall rapporterat",
+  "history.row.kindTrade": "Affär genomförd",
+
+  // ---------- sprint 4: dashboard sections ----------
+  "dashboard.needsAttention.heading": "Kräver uppmärksamhet",
+  "dashboard.needsAttention.empty": "Inget kräver din uppmärksamhet just nu.",
+  "dashboard.needsAttention.outcomeMissing": "{{security}}: utfall inte rapporterat ännu",
+  "dashboard.needsAttention.tradeMissing": "{{security}}: affär inte rapporterad ännu",
+  "dashboard.needsAttention.reconciliationNeeded": "{{security}}: fördelningen väntar på avstämning",
+  "dashboard.recentActivity.heading": "Senaste aktivitet",
+  "dashboard.recentActivity.empty": "Ingen aktivitet registrerad ännu.",
+  "dashboard.continueWorking.heading": "Fortsätt arbeta",
+  "dashboard.continueWorking.empty": "Ingen nyligen aktivitet i något case ännu.",
+
+  // ---------- sprint 4: investment case last activity / timeline / outstanding work ----------
+  "investmentCase.lastActivity.heading": "Senaste aktivitet",
+  "investmentCase.lastActivity.noneYet": "Ingen aktivitet registrerad för det här caset ännu.",
+  "investmentCase.lastActivity.lastDecision": "Senaste beslut: {{type}} registrerat {{relativeTime}}.",
+  "investmentCase.lastActivity.lastOutcome": "Senaste utfall: rapporterat {{relativeTime}}.",
+  "investmentCase.lastActivity.lastTrade": "Senaste affär: {{type}} {{detail}}, {{relativeTime}}.",
+  "investmentCase.lastActivity.reconciliationOk": "Portföljfördelningen är uppdaterad.",
+  "investmentCase.lastActivity.reconciliationNeeded": "Fördelningen väntar på avstämning.",
+  "investmentCase.timeline.empty": "Inga tidslinjehändelser ännu.",
+  "investmentCase.timeline.currentStatus": "Aktuell status",
+  "investmentCase.outstandingWork.heading": "Återstående att göra",
+  "investmentCase.outstandingWork.none": "Inget återstår för det här caset.",
+  "investmentCase.outstandingWork.outcomeMissing": "Utfall inte rapporterat ännu.",
+  "investmentCase.outstandingWork.tradeMissing": "Affär inte rapporterad ännu.",
+
+  // ---------- sprint 4: navigation continuity (origin badges) ----------
+  "investmentCase.origin.dashboard": "Öppnat från översikten",
+  "investmentCase.origin.portfolio": "Öppnat från portföljen",
+  "investmentCase.origin.history": "Återvänt från historiken",
 };

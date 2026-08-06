@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { Button, Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 
@@ -79,6 +79,7 @@ const UNALLOCATED_TOLERANCE = 0.01;
  */
 export function PortfolioPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<Status>({ kind: "loading" });
   const [caseCreateStatus, setCaseCreateStatus] = useState<Record<string, CaseCreateStatus>>({});
   const [reconcileWeightInputs, setReconcileWeightInputs] = useState<Record<string, string>>({});
@@ -114,7 +115,7 @@ export function PortfolioPage() {
 
   function openInvestmentCase(ticker: string, existingCaseId: string | null) {
     if (existingCaseId) {
-      window.location.assign(`/investment-case/${existingCaseId}`);
+      navigate(`/investment-case/${existingCaseId}`, { state: { origin: "portfolio" } });
       return;
     }
 
@@ -128,7 +129,7 @@ export function PortfolioPage() {
       })
       .then((created) => {
         if (ticker === "__new__") {
-          window.location.assign(`/investment-case/${created.caseId}`);
+          navigate(`/investment-case/${created.caseId}`, { state: { origin: "portfolio" } });
           return;
         }
         return fetch(`/api/alpha-portfolio/holdings/${encodeURIComponent(ticker)}/case-link`, {
@@ -143,7 +144,7 @@ export function PortfolioPage() {
             return linkResponse.json() as Promise<{ caseId: string }>;
           })
           .then((linked) => {
-            window.location.assign(`/investment-case/${linked.caseId}`);
+            navigate(`/investment-case/${linked.caseId}`, { state: { origin: "portfolio" } });
           });
       })
       .catch((error: unknown) => {
