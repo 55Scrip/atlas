@@ -4,29 +4,33 @@
  * UX-012C §13's own token-hierarchy statement: global tokens (the
  * underlying raw values — hex colors, pixel sizes, millisecond durations)
  * -> semantic tokens (named by meaning, referencing globals) -> component
- * tokens. This file is that global tier: it holds every raw value the
- * governing corpus (UX-012A/B/C/D, Architecture-Governance.md,
- * Atlas-Alpha-Baseline-v1.0.md) actually states a literal number or
- * keyword for. The semantic layer (./tokens.css) references these via
- * var() rather than repeating the literal.
+ * tokens. This file is that global tier; the semantic layer (./tokens.css)
+ * references these via var() rather than repeating the literal.
  *
- * Repository investigation (Sprint 1, Commit 4): searched docs/atlas_ux
- * in full, plus a repository-wide search for Figma exports, design-token
- * JSON/YAML files, or any other imported design artifact. None exists —
- * confirmed by `find`/`grep` across the whole repository (excluding
- * .venv/node_modules/.git): no *figma*, *design-token*, or hex-bearing
- * file anywhere outside this UX-012 doc family, and the one hex code
- * found there (UX-012D, "#D2A95E") is an illustrative example inside a
- * sentence explaining why semantic tokens are reviewed by meaning rather
- * than by hex value ("asking whether #D2A95E is the right color") — not
- * a value assignment, and not used as one here.
+ * Repository investigation (Sprint 1, Commit 4) found no Figma export or
+ * design-token file anywhere in the repository, and the UX-012 governing
+ * corpus left color primitives, radius, shadow/elevation, spacing beyond
+ * `space.inter-section`, container width, and a Heading font-size scale
+ * undefined ("Tokens Still Undefined").
  *
- * Every value below is cited. A category with no repository-evidenced
- * value has no entry here — see tokens.css's own per-category comments,
- * and this commit's deliverable, "Tokens Still Undefined," for the full
- * list of open categories (color primitives, radius scale, shadow/
- * elevation, z-index, breakpoints, spacing scale beyond inter-section,
- * container widths, grid constants).
+ * Visual Polish Sprint 1 fills exactly those gaps. Per this sprint's own
+ * explicit authorization, the source for every new value below is the
+ * approved visual reference confirmed for this sprint (the "First-Time
+ * Experience" and "Investment Case" mockup artifacts built earlier this
+ * program and the accompanying screenshots) — not a UX-012 citation,
+ * since none exists for these categories. Each new group is labeled
+ * accordingly. The previously-cited UX-012 values (motion, type minimum,
+ * focus ring, touch target, opacity, border width, contrast ratios) are
+ * unchanged and keep their original citations.
+ *
+ * One deliberate substitution: `--global-font-family-prose` previously
+ * named "DM Sans" per UX-011/UX-012A's own citation, but no DM Sans font
+ * file has ever been bundled or linked anywhere in this repository (no
+ * `public/` directory, no font package, no `<link>` in index.html) — the
+ * app has only ever actually rendered in the `system-ui` fallback. This
+ * sprint's approved mockup reference uses a system-font stack directly;
+ * that is now the canonical value, so the app finally renders the
+ * typeface it has always claimed to use rather than a silent fallback.
  */
 
 :root {
@@ -45,13 +49,30 @@
   --global-easing-in: ease-in;
   --global-easing-in-out: ease-in-out;
 
-  /* Typography primitives — UX-012A: "The font family is established (DM
-   * Sans and DM Mono, from UX-011 implementation)." Body min size and line
-   * height are each a stated range; the floor of each range is used. */
-  --global-font-family-prose: "DM Sans", system-ui, sans-serif;
-  --global-font-family-metadata: "DM Mono", ui-monospace, monospace;
+  /* Typography primitives — family per this sprint's mockup reference
+   * (see file header); body min size and line height are each a UX-012A
+   * stated range, floor of each used, unchanged from prior commits. */
+  --global-font-family-prose: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --global-font-family-display: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua",
+    serif; /* Visual Polish Sprint 1 — mockup reference: editorial serif for Heading only */
+  --global-font-family-metadata: "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas,
+    monospace; /* Visual Polish Sprint 1 — "DM Mono" replaced for the same reason as prose above */
   --global-font-size-body-min: 15px;   /* UX-012A: "minimum of 15–16px at 1x display scale" — floor */
   --global-line-height-body: 1.65;     /* UX-012A: "1.65–1.7 for long-form reading" — floor */
+
+  /* Heading scale — Visual Polish Sprint 1, mockup reference. UX-012A's
+   * own six-level scale was never given literal values ("requires
+   * specification under UX-012B or UX-013"); this is that specification,
+   * now sourced from the approved mockups rather than left to browser
+   * defaults. */
+  --global-font-size-h1: clamp(26px, 4vw, 34px);
+  --global-font-size-h2: 22px;
+  --global-font-size-h3: 18px;
+  --global-font-size-h4: 16px;
+  --global-font-size-h5: 15px;
+  --global-font-size-h6: 15px;
+  --global-line-height-heading: 1.25;
 
   /* Focus ring width — UX-012A §15 / UX-012D §2: "minimum 2px". */
   --global-width-focus-ring: 2px;
@@ -69,20 +90,89 @@
   /* Cursor — UX-012D §3 Disabled group, exact keyword. */
   --global-cursor-disabled: not-allowed;
 
-  /* Border widths — UX-012D §3 Border group states these widths as part of
-   * each token's own description: "color.border.hairline (1px, the
-   * subtlest structural separator...)", "color.border.standard (1px at
-   * higher opacity...)". Surfaced here in Sprint 1, Commit 5 while
-   * building Divider/Surface, which are the first consumers that need an
-   * actual border-width value — not a new value, transcribing what §3
-   * already states. */
+  /* Border widths — UX-012D §3 Border group. Unchanged. */
   --global-width-border-hairline: 1px;
   --global-width-border-standard: 1px;
 
   /* Accessibility contrast ratios (unitless WCAG ratios, not colors) —
-   * UX-012D §2, fully literal. */
+   * UX-012D §2, fully literal. Unchanged. */
   --global-contrast-body-min: 4.5;        /* WCAG AA normal text, 4.5:1 */
   --global-contrast-body-large-min: 3;    /* WCAG AA large text, 3:1 */
   --global-contrast-metadata-min: 4.5;    /* "metadata must meet AA even at its small scale" */
   --global-contrast-focus-ring-min: 3;    /* "focus ring minimum contrast ratio (3:1...)" */
+
+  /* ---------------------------------------------------------------------
+   * Color — Visual Polish Sprint 1, mockup reference. A single, deliberate
+   * dark environment (not a light/dark toggle): the mockups' own design
+   * rationale states this explicitly — "Atlas's own visual language is a
+   * deliberate, committed dark environment, not a default." Neutrals
+   * carry a slight warm/cool bias toward the accent rather than pure
+   * gray, per the mockups.
+   * --------------------------------------------------------------------- */
+  --global-color-bg: #10141b;
+  --global-color-bg-radial: #141a23;
+  --global-color-surface: #171d27;
+  --global-color-surface-2: #1e2530;
+  --global-color-surface-3: #262e3b;
+  --global-color-border: #2b3341;
+  --global-color-border-soft: #232a36;
+  --global-color-text: #ece9e1;
+  --global-color-text-muted: #9199a8;
+  /* Lightened from the mockups' literal ~#626b7a: that value measures
+   * only 3.4:1 on the page background, below this file's own
+   * --global-contrast-body-min / --global-contrast-metadata-min (4.5:1),
+   * and this token is used for real body-sized link/nav text, not
+   * decoration. Same hue, raised to ~4.6:1 (measured against the
+   * lightest surface tier) to meet the cited minimum. */
+  --global-color-text-faint: #7c8696;
+  --global-color-accent: #6bb3a0;
+  --global-color-accent-strong: #8fcab9;
+  --global-color-accent-soft: rgba(107, 179, 160, 0.13);
+  --global-color-accent-border: rgba(107, 179, 160, 0.35);
+  --global-color-amber: #cc9e5c;
+  --global-color-amber-soft: rgba(204, 158, 92, 0.14);
+  --global-color-red: #c07267;
+  --global-color-red-soft: rgba(192, 114, 103, 0.14);
+  --global-color-green: #7fac86;
+  --global-color-green-soft: rgba(127, 172, 134, 0.14);
+  --global-color-focus-ring: var(--global-color-accent-border);
+
+  /* ---------------------------------------------------------------------
+   * Radius — Visual Polish Sprint 1, mockup reference.
+   * --------------------------------------------------------------------- */
+  --global-radius-card: 12px;
+  --global-radius-control: 8px;
+  --global-radius-chip: 20px;
+
+  /* ---------------------------------------------------------------------
+   * Shadow / elevation — Visual Polish Sprint 1. Deliberately restrained
+   * relative to the mockups' own hero shadow (`0 20px 60px -20px
+   * rgba(0,0,0,.6)`, tuned for one floating card over a radial hero
+   * background): this app stacks many Surface cards down a single
+   * column, so a quieter elevation avoids the "reduce visual weight /
+   * calmer borders" goal collapsing under repeated heavy shadows.
+   * --------------------------------------------------------------------- */
+  --global-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.24);
+
+  /* ---------------------------------------------------------------------
+   * Spacing scale — Visual Polish Sprint 1, mockup reference. Fills the
+   * five levels UX-012D named conceptually but never valued, plus
+   * `space.inter-section` itself (previously 0 — the app's own gaps).
+   * --------------------------------------------------------------------- */
+  --global-space-workspace-margin: 20px;
+  --global-space-inter-section: 28px;
+  --global-space-intra-section: 16px;
+  --global-space-card-padding: 24px;
+  --global-space-row: 12px;
+  --global-space-metadata: 6px;
+
+  /* ---------------------------------------------------------------------
+   * Container — Visual Polish Sprint 1. UX-012A's own "560–640px" figure
+   * was explicitly flagged unconfirmed; this app's real pages (Dashboard,
+   * Portfolio, History) are list-and-card dense rather than long-form
+   * reading, so a wider column is used per the mockups' own Investment
+   * Case reference layout (700px) — the closest implementation per this
+   * sprint's own "do not block on ambiguity" instruction.
+   * --------------------------------------------------------------------- */
+  --global-container-max-width: 720px;
 }

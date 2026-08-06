@@ -4,4 +4,8 @@
   font-size: var(--type-body-min-size);
   line-height: var(--type-body-line-height);
   color: var(--color-text-tertiary);
+  transition: color var(--motion-duration-brief) var(--motion-easing-out);
+}
+.link:hover {
+  color: var(--color-text-secondary);
 }

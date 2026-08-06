@@ -5,12 +5,34 @@
   justify-content: center;
   min-height: var(--accessibility-touch-target-min);
   min-width: var(--accessibility-touch-target-min);
+  padding: 0 var(--space-intra-section);
+  border-radius: var(--radius-control);
   font-family: var(--type-family-prose);
   font-size: var(--type-body-min-size);
   line-height: var(--type-body-line-height);
+  font-weight: 500;
   background: none;
   cursor: pointer;
   box-sizing: border-box;
+  transition: border-color var(--motion-duration-brief) var(--motion-easing-out),
+    background var(--motion-duration-brief) var(--motion-easing-out);
+}
+
+/* Visual Polish Sprint 1 — see Button.tsx's own comment: an accent-tinted
+   outline for Primary Action, still an outline (never a filled bright
+   button, per UX-012B), never a departure from the cited color mapping. */
+.primary {
+  border: var(--width-border-standard) solid var(--global-color-accent-border);
+}
+.primary:hover:not(:disabled) {
+  background: var(--global-color-accent-soft);
+}
+
+.tertiary {
+  border: none;
+}
+.tertiary:hover:not(:disabled) {
+  background: var(--surface-elevated);
 }
 
 /* UX-012B: Primary Action Disabled state — "rendered at 40–45% opacity,

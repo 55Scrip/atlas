@@ -33,17 +33,19 @@ export const borderToken = {
 export type BorderToken = keyof typeof borderToken;
 
 /**
- * `space.inter-section` is the only canonical spacing token in UX-012D
- * (its own §4 naming-convention worked example) — the other five
- * conceptually-named levels (workspace margins, intra-section, card
- * padding, row spacing, metadata spacing) have never been given a literal
- * token identifier, per UX-012D §4's own rule that a conceptual
- * description does not authorize an inferred token. This map therefore
- * has exactly one entry; it is not a stand-in for a full spacing scale.
- * Its value currently resolves to 0 (frontend/src/tokens/tokens.css) —
- * no numeric value for it exists anywhere in the governing corpus.
+ * UX-012D §2 names six conceptual spacing levels; Visual Polish Sprint 1
+ * (frontend/src/tokens/global.css) gives all six a value, sourced from
+ * this sprint's approved mockup reference rather than a UX-012 citation
+ * (none exists). `"inter-section"` remains the only one with its own
+ * UX-012D naming-convention worked example (§4); the rest are named to
+ * match UX-012D §2's own conceptual labels.
  */
 export const spaceToken = {
+  "workspace-margin": "var(--space-workspace-margin)",
   "inter-section": "var(--space-inter-section)",
+  "intra-section": "var(--space-intra-section)",
+  "card-padding": "var(--space-card-padding)",
+  row: "var(--space-row)",
+  metadata: "var(--space-metadata)",
 } as const;
 export type SpaceToken = keyof typeof spaceToken;

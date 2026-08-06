@@ -1,0 +1,28 @@
+/* Visual Polish Sprint 1 — shell chrome styling only, no structural or
+   behavioral change. Mirrors Foundation's own Link treatment
+   (frontend/src/foundation/interaction/Link.module.css) since Navigation
+   uses react-router's own Link (client-side routing), not the Foundation
+   component, and so can't compose that stylesheet directly. */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-intra-section);
+  padding: var(--space-row) var(--space-workspace-margin);
+  border-bottom: var(--width-border-hairline) solid var(--color-border-hairline);
+}
+
+.link {
+  font-family: var(--type-family-prose);
+  font-size: var(--type-body-min-size);
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  transition: color var(--motion-duration-brief) var(--motion-easing-out);
+}
+.link:hover {
+  color: var(--color-text-secondary);
+}
+.link:focus-visible {
+  outline: var(--width-focus-ring) solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}

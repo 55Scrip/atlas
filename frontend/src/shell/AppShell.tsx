@@ -7,10 +7,10 @@ import { Navigation } from "./Navigation";
 
 export function AppShell() {
   return (
-    <div>
+    <div style={{ minHeight: "100vh" }}>
       <Header />
       <Navigation />
-      <main>
+      <main style={{ padding: "var(--space-inter-section) 0" }}>
         <ErrorBoundary>
           <Suspense fallback={<LoadingBoundary />}>
             <Outlet />
