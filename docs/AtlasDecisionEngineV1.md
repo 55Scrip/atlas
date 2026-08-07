@@ -4,6 +4,15 @@
 **Status:** DEFINED — architecture specification. No runtime implementation.
 **Connects:** [docs/InvestmentReviewPipelineV1.md](InvestmentReviewPipelineV1.md), [docs/EvidenceAssemblyV1.md](EvidenceAssemblyV1.md), [docs/EvidenceQualityReviewV1.md](EvidenceQualityReviewV1.md), [docs/AssumptionReviewV1.md](AssumptionReviewV1.md), [docs/RiskReviewV1.md](RiskReviewV1.md), [docs/ValueScenarioReview.md](ValueScenarioReview.md), [docs/AtlasDecisionJournal.md](AtlasDecisionJournal.md)
 
+> **Superseded (partial), Atlas Phase 3.** This document's "Recommendations
+> never generated" stance (below) is formally superseded by
+> [docs/ATLAS_DECISION_ENGINE_DOCTRINE.md](ATLAS_DECISION_ENGINE_DOCTRINE.md)
+> §8 and [docs/atlas_decision_engine/DE-001-Recommendation-Framework.md](atlas_decision_engine/DE-001-Recommendation-Framework.md),
+> which define an explainable Atlas Recommendation framework. The rest of
+> this document (the evidence-quality pipeline and its stages) is not
+> superseded and remains informative background. Preserved here as
+> historical record, not deleted.
+
 ---
 
 ## Purpose

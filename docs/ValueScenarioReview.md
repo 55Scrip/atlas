@@ -6,6 +6,13 @@
 **Data model:** [docs/ValueScenarioDataModel.md](ValueScenarioDataModel.md) (Sprint 275)
 **Schema implementation:** `atlas/value_scenario/schema.py` (Sprint 276)
 
+> **Absorbed, Atlas Phase 3.** This document's Valuation Philosophy principle
+> (below — ranges, not single-point targets; structured judgment, not
+> certainty) is carried forward, credited, and formally adopted by
+> [docs/ATLAS_DECISION_ENGINE_DOCTRINE.md](ATLAS_DECISION_ENGINE_DOCTRINE.md)
+> §5. Not superseded — this document is not contradicted, only absorbed into
+> the current governing doctrine. Preserved here as historical record.
+
 ---
 
 ## Purpose

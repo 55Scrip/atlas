@@ -1,5 +1,14 @@
 # Decision Engine Foundation
 
+> **Superseded (partial), Atlas Phase 3.** This document's "not a
+> recommendation engine" stance (below) is formally superseded by
+> [docs/ATLAS_DECISION_ENGINE_DOCTRINE.md](ATLAS_DECISION_ENGINE_DOCTRINE.md)
+> §8 and [docs/atlas_decision_engine/DE-001-Recommendation-Framework.md](atlas_decision_engine/DE-001-Recommendation-Framework.md),
+> which define an explainable Atlas Recommendation framework. The rest of
+> this document (the `DecisionCard`/`Confidence` architecture below) is not
+> superseded and remains informative background. Preserved here as
+> historical record, not deleted.
+
 Sprint 38 introduces the Atlas Decision domain.
 
 This is not a recommendation engine. It does not produce trade actions,

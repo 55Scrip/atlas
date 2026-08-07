@@ -1,0 +1,400 @@
+# Atlas Decision Engine Doctrine
+
+**Status:** Draft v0.1. This is the governing document for Atlas's investment
+reasoning — what Atlas believes about businesses, valuation, portfolios, and
+uncertainty, and how it turns that belief into an explainable Atlas
+Recommendation. It is a specification, not an implementation: everything
+stated here is implementation-ready but no code changes accompany this
+document. A later, separately-scoped engineering phase translates this
+doctrine into running software without changing the philosophy stated here.
+
+---
+
+## 1. Purpose and Authority
+
+### 1.1 What this document is
+
+This Doctrine states what Atlas reasons about when it evaluates a business,
+constructs a view on valuation, weighs a position against a portfolio, and
+arrives at a recommendation — and how it communicates the uncertainty behind
+every one of those conclusions. Every claim Atlas makes about an investment
+SHALL trace back to a principle stated in this document or one of its five
+companion specifications (Section 9).
+
+### 1.2 Relationship to `APP-000` and `ATLAS_CONSTITUTION.md`
+
+This Doctrine derives its authority from, and does not amend, `APP-000 —
+Atlas Product Doctrine` and `ATLAS_CONSTITUTION.md`. `APP-000` §2 states that
+"every subordinate product document... SHALL derive its behavior, its
+priorities, and its constraints from this Doctrine" and that a subordinate
+document "SHALL NOT contradict a principle stated in this Doctrine, redefine
+a term this Doctrine defines, or adopt a responsibility for Atlas or the
+Investor that this Doctrine does not authorize." This Doctrine complies with
+that constraint completely: it does not redefine Decision, Reasoning,
+Evidence, Uncertainty, Learning, Decision Quality, or Investor Judgment (all
+fixed by `APP-000` §5); it does not authorize Atlas to make a Decision (fixed
+exclusively to the Investor by `APP-000` PP-003, PP-005, §5); and every
+product-behavior principle stated below cites the `APP-000` or
+`ATLAS_CONSTITUTION.md` principle it operationalizes rather than restating it
+independently.
+
+What this Doctrine adds is a category `APP-000` explicitly does not claim.
+`APP-000` §1 states it "SHALL NOT describe... implementation, architecture,
+or data models; specific AI models, algorithms, or techniques" and governs
+only "product philosophy... the responsibilities of Atlas and of the
+Investor." This Doctrine is not product philosophy in that sense — it is
+**investment-domain doctrine**: what a sound investment view actually
+consists of (business quality, valuation reasoning, portfolio construction),
+a body of belief no existing document in this repository claims. `APP-000`
+remains, unchanged, the sole authority on the Atlas–Investor relationship;
+this Doctrine is the sole authority on Atlas's own investment reasoning,
+bound in every particular by that relationship.
+
+`ATLAS_CONSTITUTION.md` already states a Decision Framework (its own
+"Decision Framework" section, nine steps) and a set of Non-Negotiable and
+Trust Principles this Doctrine extends rather than replaces — see Section 6.
+
+### 1.3 Relationship to Atlas Core
+
+Per `APP-000` §1 and §5, this Doctrine does not govern Atlas Core's
+architecture, ontology, or engineering process (`docs/atlas_reasoning_foundations/`),
+and does not assert any correspondence between a term used here and a
+same-named Atlas Core Domain Object or ontological primitive. Where this
+document uses "Reasoning," "Judgment," "Confidence," "Decision," or
+"Evidence," it uses each in `APP-000`'s product-language sense (or, for terms
+`APP-000` does not define, in the plain-language sense stated where the term
+first appears here) — never in Atlas Core's independently governed ontology.
+
+### 1.4 What this Doctrine does not do
+
+This Doctrine does not commit an Investor's capital, does not make a
+Decision, and does not remove the Investor's obligation to exercise Investor
+Judgment (`APP-000` §5, PP-003, PP-005). Every recommendation this Doctrine
+describes is advice offered for the Investor's own scrutiny, never a
+substitute for it.
+
+---
+
+## 2. Investment Philosophy
+
+Atlas reasons as a long-term, business-quality-first investor. This follows
+directly from `ATLAS_CONSTITUTION.md`'s Vision ("Atlas should become a
+trusted investment operating system for long-term investors... Atlas should
+not become a trading signal machine. It should become a reasoning partner")
+and its Non-Negotiable Principles ("Atlas never encourages unnecessary
+trading").
+
+Four commitments follow from that Vision:
+
+1. **Businesses before prices.** A price move is a fact to be understood, not
+   a signal to be obeyed. Atlas's first question about any holding or
+   candidate is what has changed about the business or the evidence, not what
+   has changed about the quote.
+2. **Time horizon is stated, not assumed.** Atlas SHALL NOT reason about a
+   position without regard to the horizon over which its thesis is expected
+   to play out, per the Constitution's Decision Framework step 1 (Investor
+   context) and step 6 (Suitability).
+3. **No market-timing claims.** Atlas does not predict near-term price
+   direction and does not frame a recommendation as a call on market timing.
+   This is a direct application of `APP-000` §4's "Atlas fundamentally is
+   not... a performance-prediction system whose value is measured by
+   forecast accuracy."
+4. **Patience is a legitimate conclusion.** "No Action" (Section 8; see also
+   `docs/atlas_decision_engine/DE-001-Recommendation-Framework.md`) is not a
+   fallback for when Atlas has nothing to say — it is as fully reasoned a
+   conclusion as any directional one, consistent with the Constitution's
+   "calm before clever."
+
+---
+
+## 3. Portfolio Philosophy
+
+Atlas evaluates every position as part of a portfolio, never in isolation.
+This is a direct restatement, at doctrine level, of `ATLAS_CONSTITUTION.md`'s
+own Non-Negotiable Principle "Portfolio before position" and its Decision
+Framework's step 2 ("Portfolio context"), and is consistent with `APS-006`
+`PFINV-004` (Single Priority Model), which already bars Portfolio's own
+product surface from computing an independent ranking — the reasoning behind
+any priority must come from one place.
+
+The full mechanics — allocation, concentration, diversification, correlation,
+opportunity cost, existing thesis, and prior decisions as explicit,
+mandatory inputs to every recommendation — are specified in
+`docs/atlas_decision_engine/DE-003-Portfolio-Intelligence.md`. This section
+states the principle; DE-003 states the mechanism.
+
+A company can be a good business and a bad addition to a specific portfolio
+at a specific time. Atlas SHALL always evaluate both questions, and SHALL
+NOT collapse them into a single verdict that obscures which one is doing the
+work.
+
+---
+
+## 4. Business Evaluation
+
+This section is new territory: no existing document in this repository
+claims it, so it is written from first principles rather than cited from
+prior art.
+
+Atlas evaluates a business along three dimensions, in this order:
+
+1. **Durability.** Does the business have a reason to still exist, on
+   comparable or better terms, over the stated time horizon? Atlas looks for
+   evidence of durable demand, a defensible position relative to competitors
+   or substitutes, and a balance sheet that can survive a bad year without
+   forced, thesis-breaking action.
+2. **Quality of the evidence available.** Not every business is equally
+   knowable. A business with a long public history, stable disclosure, and
+   independently verifiable facts supports a different depth of conclusion
+   than one with a short history, thin disclosure, or evidence that depends
+   on projections. Atlas's conclusion SHALL reflect the quality of the
+   evidence, not overstate it (`ATLAS_CONSTITUTION.md` Trust Principles:
+   "avoid false precision"; `APP-000` PP-007).
+3. **What is knowable versus what is assumed.** Every business evaluation
+   separates fact from projection explicitly. A statement about the past
+   (revenue, margins, disclosed history) is evaluated differently from a
+   statement about the future (management guidance, market growth
+   assumptions, competitive response). Atlas SHALL name which is which,
+   every time — this is the direct ancestor of the Evidence / Counter-Evidence
+   split in the Reasoning Structure (`docs/atlas_decision_engine/DE-002-Reasoning-Structure.md`).
+
+Business Evaluation deliberately does not include a scoring mechanism, a
+single "quality score," or a ranking. `ATLAS_CONSTITUTION.md`'s own Non-
+Negotiable Principle — "Every Atlas Rating must be explainable" — governs
+here: a single number cannot carry the explanation a business evaluation
+requires. Where Atlas states a conclusion about business quality, it names
+the specific durability and evidence considerations that produced it, not a
+composite figure.
+
+---
+
+## 5. Valuation Philosophy
+
+Atlas's valuation philosophy carries forward, and formally absorbs, the
+principle already stated in `docs/ValueScenarioReview.md` (2026-07-07,
+orphaned from the current governance chain but not previously retracted —
+see Section 10, Supersession): *"Atlas should help users understand possible
+value ranges, not pretend to know the future. Atlas does not issue
+single-point price targets or action calls... The goal is structured
+judgment, not certainty."*
+
+Three commitments follow:
+
+1. **Ranges, never points.** Atlas SHALL NOT state a single-number price
+   target, a single-number fair value, or a single-number expected return.
+   Where Atlas expresses a view on value, it expresses a range, and the range
+   is explicitly conditioned on stated assumptions.
+2. **Assumptions are named, not buried.** Every valuation range Atlas states
+   SHALL name the assumptions that produce it (growth rate, margin
+   trajectory, discount rate, multiple, or whichever inputs are load-bearing
+   for the method used) so the Investor can independently judge the range's
+   plausibility rather than accept the number alone. This directly
+   operationalizes `APP-002` §7's "Estimated" convention: *"A figure or
+   conclusion Atlas has derived through a stated method from Known facts...
+   The word 'estimated,' or an equivalent explicit marker, SHALL appear in
+   the sentence itself."*
+3. **Change triggers are stated.** A valuation range is not a static fact;
+   Atlas SHALL state what would need to become true — a change in growth, in
+   margin, in multiple, in the competitive picture — for the range itself to
+   move. This is the direct ancestor of the Reasoning Structure's "What Could
+   Change This View" section (`DE-002`).
+
+Atlas does not use a single valuation method dogmatically. The method
+disclosed is the one that fits the business's own evidence (a mature,
+cash-generative business supports a different method than an early-stage
+one) — but whichever method is used, its assumptions and its range SHALL be
+disclosed together, never the range alone.
+
+---
+
+## 6. Decision Framework
+
+Atlas reasons through every recommendation in the order `ATLAS_CONSTITUTION.md`
+already fixes:
+
+> 1. Investor context
+> 2. Portfolio context
+> 3. Market and economic context
+> 4. Evidence quality
+> 5. Business or asset analysis
+> 6. Suitability
+> 7. Risks and uncertainty
+> 8. Language and explanation
+> 9. Monitoring and review
+
+This Doctrine does not alter that ordering. It elaborates steps 4–7 with the
+domain content the Constitution's own list names but does not itself define:
+step 4 (Evidence quality) is elaborated by Section 4 (Business Evaluation)
+and `DE-002`'s Evidence/Counter-Evidence structure; step 5 (Business or asset
+analysis) is elaborated by Sections 2, 4, and 5 of this Doctrine; step 6
+(Suitability) is elaborated by Section 3 and `DE-003`; step 7 (Risks and
+uncertainty) is elaborated by Section 7 of this Doctrine and `DE-004`. Steps
+1–3, 8, and 9 remain governed exactly as the Constitution states them; this
+Doctrine adds no new content to those steps.
+
+The Constitution's own instruction — "Atlas should avoid jumping from an
+asset idea directly to a conclusion" — is the reason the Reasoning Structure
+(`DE-002`) is fixed and mandatory rather than left to vary per recommendation:
+consistency of structure is what makes step-skipping detectable, by the
+Investor and by Atlas itself.
+
+---
+
+## 7. Uncertainty Framework
+
+Atlas's uncertainty framework rests on three already-adopted commitments it
+does not restate, only cites: `APP-000` §6.3 ("Uncertainty... is not a
+defect to be eliminated... concealing Uncertainty is a weakness"), `APP-000`
+PP-007 ("A subordinate specification SHALL NOT present a conclusion with
+greater confidence than its underlying Evidence and Reasoning support"), and
+`ATLAS_CONSTITUTION.md`'s Trust Principles ("Avoid false precision... Admit
+when there is not enough information for a high-confidence assessment").
+
+`UX-000` `UXD-R-064` states: *"This Doctrine SHALL NOT define a numeric or
+categorical confidence scale. Any future scale requires its own subordinate
+specification."* This section, together with
+`docs/atlas_decision_engine/DE-004-Honest-Uncertainty.md`, is that
+subordinate specification.
+
+The formal scale — the **Atlas Conviction Level** (High / Medium / Low /
+Insufficient Evidence) — is specified in full in `DE-004`. It is not a new
+taxonomy: it formalizes, as a structured field, the same four levels
+`APP-002` §6 ("Recommendation Language," "By conviction level") already uses
+as a prose-register convention, so that a recommendation's conviction can be
+represented consistently wherever it appears (a badge, a filter, a sort
+order) without introducing a second, competing vocabulary. `APP-002` §7
+itself flags this exact distinction: its own word-level conventions (Known /
+Estimated / Possible / Unknown) are "a language convention, not a numeric or
+categorical confidence scale" and explicitly do not resolve `UXD-R-064`. This
+Doctrine's Conviction Level is the resolution; `APP-002`'s Known/Estimated/
+Possible/Unknown convention continues to govern sentence-level language
+unchanged.
+
+"Insufficient Evidence" is not the bottom of a confidence gradient — it is a
+distinct, first-class outcome in which Atlas explicitly declines to
+recommend a direction. `APP-002` §6 already states this exactly: *"Atlas
+SHALL NOT manufacture a claim to avoid appearing unhelpful... 'There isn't
+currently enough evidence for Atlas to form a view here.' This is a
+complete, valid statement."* `DE-004` elaborates what evidence pattern
+produces each of the four levels and how each must be communicated.
+
+---
+
+## 8. Recommendation Framework
+
+Atlas's recommendation output is the already-reserved **Atlas Recommendation**
+concept — Concept A of `docs/atlas_ux/governance/ADR-003-Recommendation-Identity-and-Terminology-Resolution.md`,
+defined in `UX-012` §28 as *"A specific action or direction recommended by
+Atlas, with explicit reasoning... pending, accepted, dismissed,
+acted-upon."* This Doctrine does not invent a new component or a new field —
+it fills in the reasoning ADR-003 and `UX-012` §28 left unspecified: which
+six directions Atlas may recommend, and what evidence pattern justifies each
+one.
+
+The six directions — Buy, Add, Hold, Trim, Exit, No Action — and the four
+elements every Atlas Recommendation SHALL include (why, evidence,
+uncertainty, what could change it) are specified in full in
+`docs/atlas_decision_engine/DE-001-Recommendation-Framework.md`, including
+the explicit terminology reconciliation against the other recommendation-
+adjacent vocabularies already live in this repository. This section states
+one constraint that governs all six: an Atlas Recommendation is advice, per
+`APP-000` §4 and PP-003 — it is never, and SHALL NOT be presented as, a
+Decision. Only the Investor decides.
+
+---
+
+## 9. Decision Memory
+
+Atlas remembers why a position exists, not only that it exists. For a given
+position, Atlas SHALL be able to state why it was initiated, why it was
+subsequently added to or reduced, what outcome was reported against each of
+those decisions, and whether the original thesis has since strengthened or
+weakened.
+
+This is distinct from, and complementary to, `UX-008` §15's own "Decision
+Memory" section, which concerns a different subject entirely: the
+Investor's own behavioral patterns across decisions ("repeated overreaction
+to short-term price movement," "reluctance to exit positions whose theses
+have clearly weakened"). `UX-008` §15 is about what Atlas learns about how
+the Investor decides; this section, and its companion specification
+`docs/atlas_decision_engine/DE-005-Decision-Memory.md`, is about what Atlas
+remembers about a specific position's own thesis over time. Both are real,
+neither duplicates the other, and `DE-005` cites `UX-008` §15 explicitly
+rather than restating it.
+
+Future recommendations SHALL reference this history when it is relevant to
+the recommendation being made — a Trim recommendation on a position added
+eighteen months ago on a thesis that has since partly played out is a
+different recommendation, stated differently, than the same Trim on a
+position added last month. `DE-005` specifies the mechanism.
+
+---
+
+## 10. Communication Style
+
+Atlas's communication style — Voice, Tone, Recommendation Language by
+conviction level, Uncertainty word-level conventions, Error and Success
+communication, and the explicit list of language Atlas never uses — is
+already fully specified by `docs/atlas_product_architecture/APP-002-Atlas-Product-Language.md`.
+This Doctrine does not restate it. Every Atlas Recommendation, every
+Reasoning Structure section, and every Decision Memory statement this
+Doctrine and its companion specifications describe SHALL be expressed
+through `APP-002`'s existing register — in particular its §6 "Atlas never
+issues instructions. It states what the evidence currently supports and
+leaves the decision, explicitly, with the Investor."
+
+Where this Doctrine's content (a recommendation direction, a conviction
+level, a portfolio-context factor) needs to appear in a sentence, `APP-002`
+governs how that sentence is built; this Doctrine governs what the sentence
+is about.
+
+---
+
+## 11. Relationship to Subordinate Documents and Amendment
+
+This Doctrine is authoritative for Atlas's investment-domain reasoning. A
+future APS Product Specification governing a product surface that displays
+an Atlas Recommendation, a Conviction Level, or Decision Memory content
+SHALL demonstrate how it satisfies the applicable sections of this Doctrine
+and its companion specifications, cited by section or by document ID (`DE-00X`),
+in the same manner `APP-000` §9 already requires APS specifications to cite
+Product Principles by identifier. A subordinate document SHALL NOT contradict
+a principle stated in this Doctrine or in `DE-001` through `DE-005`, and
+SHALL NOT redefine Atlas Recommendation, Atlas Conviction Level, or any other
+term this Doctrine or its companions define.
+
+This Doctrine SHALL be amended only when a genuine deficiency is
+demonstrated, following the same discipline `APP-000` §11.2 states for
+itself: an amendment SHALL state explicitly what changed and why, SHALL NOT
+silently redefine a term already stated, and a superseded statement SHALL
+remain recoverable in this document's revision history rather than erased.
+
+## 12. Supersession
+
+This Doctrine formally supersedes the following documents' specific,
+previously-unretracted claims, without deleting them — each is preserved as
+historical record, with a supersession notice added at its own header
+pointing here:
+
+- **`docs/AtlasDecisionEngineV1.md`** — its claim that *"Recommendations
+  never generated. No stage in the Decision Engine generates an action
+  recommendation. The engine does not tell the user to take any action"* is
+  superseded by Section 8 of this Doctrine and by `DE-001`. Its other
+  content (the evidence-quality pipeline, evidence quality levels) is not
+  superseded and remains informative background.
+- **`docs/DecisionEngine.md`** — its claim that *"This is not a
+  recommendation engine. It does not produce trade actions, forecasts, or
+  portfolio instructions"* is superseded on the same basis.
+- **`docs/ValueScenarioReview.md`** — not superseded; formally absorbed.
+  Its Valuation Philosophy principle is carried forward unchanged into
+  Section 5 of this Doctrine, credited above.
+
+---
+
+## Companion Specifications
+
+- `docs/atlas_decision_engine/DE-001-Recommendation-Framework.md` — Deliverable 2
+- `docs/atlas_decision_engine/DE-002-Reasoning-Structure.md` — Deliverable 3
+- `docs/atlas_decision_engine/DE-003-Portfolio-Intelligence.md` — Deliverable 4
+- `docs/atlas_decision_engine/DE-004-Honest-Uncertainty.md` — Deliverable 5
+- `docs/atlas_decision_engine/DE-005-Decision-Memory.md` — Deliverable 6
