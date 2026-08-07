@@ -118,6 +118,7 @@ export const sv: Record<TranslationKey, string> = {
   "dashboard.portfolioStatus.heading": "Portföljstatus",
   "dashboard.portfolioStatus.loadError": "Kunde inte läsa in portföljstatus: {{message}}",
   "dashboard.portfolioStatus.notEstablished": "Ingen portfölj skapad ännu.",
+  "dashboard.portfolioStatus.setupCta": "Skapa portfölj →",
   "dashboard.portfolioStatus.holdingSingular": "innehav",
   "dashboard.portfolioStatus.holdingPlural": "innehav",
   "dashboard.portfolioStatus.summary": "{{count}} {{holdingWord}}",
@@ -140,7 +141,9 @@ export const sv: Record<TranslationKey, string> = {
 
   // ---------- investment case: shell ----------
   "investmentCase.heading": "Investeringscase",
-  "investmentCase.returnToPortfolio": "← Tillbaka till portföljen",
+  "investmentCase.returnTo.dashboard": "← Tillbaka till Översikt",
+  "investmentCase.returnTo.history": "← Tillbaka till Historik",
+  "investmentCase.returnTo.portfolio": "← Tillbaka till Portfölj",
   "investmentCase.noCaseSelected": "Inget case valt.",
   "investmentCase.loadError": "Kunde inte läsa in caset: {{message}}",
   "investmentCase.subject": "Ämne: Case {{caseId}}",
@@ -361,6 +364,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.actions.leaveAsIsRecordedNote": "Registrerat — ingen förändring av portföljen.",
   "investmentCase.actions.reportTransaction": "Rapportera genomförd affär",
   "investmentCase.actions.close": "Stäng",
+  "investmentCase.actions.openHistory": "Öppna Historik →",
   "investmentCase.actions.recordError": "Kunde inte registrera beslutet: {{message}}",
 
   // ---------- investment case v2: continuity footer ----------
@@ -384,7 +388,8 @@ export const sv: Record<TranslationKey, string> = {
   // ---------- sprint 4: history page ----------
   "history.title": "Historik",
   "history.loadError": "Kunde inte läsa in historiken: {{message}}",
-  "history.empty": "Ingen aktivitet registrerad ännu.",
+  "history.empty": "Historiken börjar efter ditt första investeringsbeslut.",
+  "history.empty.portfolioLink": "Öppna Portfölj →",
   "history.noneMatchFilter": "Ingen aktivitet matchar det här filtret.",
   "history.filter.all": "Alla",
   "history.filter.open": "Öppna",
@@ -407,6 +412,7 @@ export const sv: Record<TranslationKey, string> = {
   "dashboard.recentActivity.empty": "Ingen aktivitet registrerad ännu.",
   "dashboard.continueWorking.heading": "Fortsätt arbeta",
   "dashboard.continueWorking.empty": "Ingen nyligen aktivitet i något case ännu.",
+  "dashboard.viewHistoryLink": "Visa historik →",
 
   // ---------- sprint 4: investment case last activity / timeline / outstanding work ----------
   "investmentCase.lastActivity.heading": "Senaste aktivitet",

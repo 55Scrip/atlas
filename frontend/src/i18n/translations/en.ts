@@ -119,6 +119,7 @@ export const en = {
   "dashboard.portfolioStatus.heading": "Portfolio Status",
   "dashboard.portfolioStatus.loadError": "Could not load portfolio status: {{message}}",
   "dashboard.portfolioStatus.notEstablished": "No portfolio established yet.",
+  "dashboard.portfolioStatus.setupCta": "Set up portfolio →",
   "dashboard.portfolioStatus.holdingSingular": "holding",
   "dashboard.portfolioStatus.holdingPlural": "holdings",
   "dashboard.portfolioStatus.summary": "{{count}} {{holdingWord}}",
@@ -141,7 +142,9 @@ export const en = {
 
   // ---------- investment case: shell ----------
   "investmentCase.heading": "Investment Case",
-  "investmentCase.returnToPortfolio": "← Return to Portfolio",
+  "investmentCase.returnTo.dashboard": "← Back to Dashboard",
+  "investmentCase.returnTo.history": "← Back to History",
+  "investmentCase.returnTo.portfolio": "← Back to Portfolio",
   "investmentCase.noCaseSelected": "No case selected.",
   "investmentCase.loadError": "Could not load this case: {{message}}",
   "investmentCase.subject": "Subject: Case {{caseId}}",
@@ -364,6 +367,7 @@ export const en = {
   "investmentCase.actions.leaveAsIsRecordedNote": "Recorded — no portfolio change.",
   "investmentCase.actions.reportTransaction": "Report completed transaction",
   "investmentCase.actions.close": "Close",
+  "investmentCase.actions.openHistory": "Open History →",
   "investmentCase.actions.recordError": "Could not record this decision: {{message}}",
 
   // ---------- investment case v2: continuity footer ----------
@@ -387,7 +391,8 @@ export const en = {
   // ---------- sprint 4: history page ----------
   "history.title": "History",
   "history.loadError": "Could not load history: {{message}}",
-  "history.empty": "No activity recorded yet.",
+  "history.empty": "History begins after your first investment decision.",
+  "history.empty.portfolioLink": "Open Portfolio →",
   "history.noneMatchFilter": "No activity matches this filter.",
   "history.filter.all": "All",
   "history.filter.open": "Open",
@@ -410,6 +415,7 @@ export const en = {
   "dashboard.recentActivity.empty": "No activity recorded yet.",
   "dashboard.continueWorking.heading": "Continue Working",
   "dashboard.continueWorking.empty": "No recent case activity yet.",
+  "dashboard.viewHistoryLink": "View History →",
 
   // ---------- sprint 4: investment case last activity / timeline / outstanding work ----------
   "investmentCase.lastActivity.heading": "Last activity",

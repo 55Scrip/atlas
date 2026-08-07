@@ -468,6 +468,25 @@ export function InvestmentCasePage() {
         : origin === "history"
           ? "investmentCase.origin.history"
           : null;
+
+  /**
+   * Origin-aware return (Sprint 8 audit fix): the badge above already
+   * names which of the three real entry points sent the investor here
+   * — this reuses that same `origin` value so the return link actually
+   * goes back there, instead of always landing on Portfolio regardless
+   * of where the investor came from. A missing or unrecognized origin
+   * (a brand-new Case, or a direct URL) still falls back to Portfolio,
+   * the one origin with nothing more specific to return to.
+   */
+  const returnTo: string =
+    origin === "dashboard" ? "/dashboard" : origin === "history" ? "/history" : "/portfolio";
+  const returnLabelKey: TranslationKey =
+    origin === "dashboard"
+      ? "investmentCase.returnTo.dashboard"
+      : origin === "history"
+        ? "investmentCase.returnTo.history"
+        : "investmentCase.returnTo.portfolio";
+
   const [status, setStatus] = useState<CaseStatus>({ kind: "loading" });
 
   const [observations, setObservations] = useState<ObservationRecord[]>([]);
@@ -1318,7 +1337,7 @@ export function InvestmentCasePage() {
             no identity of its own (`atlas/core/domain/case/entity.py`). */}
         <Surface tier="primary">
           <Stack gap="inter-section">
-            <RouterLink to="/portfolio">{t("investmentCase.returnToPortfolio")}</RouterLink>
+            <RouterLink to={returnTo}>{t(returnLabelKey)}</RouterLink>
             {originLabelKey && <Text color="tertiary">{t(originLabelKey)}</Text>}
             <Heading level={1}>
               {linkedHolding ? linkedHolding.ticker : t("investmentCase.header.untitled")}
@@ -3603,7 +3622,28 @@ export function InvestmentCasePage() {
                       </>
                     )}
 
+                    {/* Decision-completion continuation (Sprint 8 audit
+                        fix #5): a bare "Close" left the investor with no
+                        stated next step right after finishing the one
+                        thing this page exists for. The origin-aware
+                        return link (same computed value as the header's
+                        own return link) is always offered; "Open
+                        History" is added only once a trade has actually
+                        been reported, since that's the moment the full
+                        Decision → Outcome → Trade loop completes and
+                        seeing it reflected in the permanent record
+                        becomes the natural next step. Close remains, for
+                        an investor who wants to take another action on
+                        this same Case without leaving the page. */}
                     <div>
+                      {reportOutcomeStatus.kind === "success" && (
+                        <>
+                          <RouterLink to="/history">
+                            {t("investmentCase.actions.openHistory")}
+                          </RouterLink>{" "}
+                        </>
+                      )}
+                      <RouterLink to={returnTo}>{t(returnLabelKey)}</RouterLink>{" "}
                       <Button variant="tertiary" onClick={closeAction}>
                         {t("investmentCase.actions.close")}
                       </Button>

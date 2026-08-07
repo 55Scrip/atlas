@@ -238,7 +238,10 @@ export function DashboardPage() {
               </Text>
             )}
             {portfolioStatus.kind === "loaded" && !portfolioStatus.view.exists && (
-              <Text color="secondary">{t("dashboard.portfolioStatus.notEstablished")}</Text>
+              <Stack gap="inter-section">
+                <Text color="secondary">{t("dashboard.portfolioStatus.notEstablished")}</Text>
+                <RouterLink to="/welcome">{t("dashboard.portfolioStatus.setupCta")}</RouterLink>
+              </Stack>
             )}
             {portfolioStatus.kind === "loaded" && portfolioStatus.view.exists && (
               <Text color="secondary">
@@ -337,6 +340,7 @@ export function DashboardPage() {
                 ))}
               </Stack>
             )}
+            {allLoaded && <RouterLink to="/history">{t("dashboard.viewHistoryLink")}</RouterLink>}
           </Stack>
         </Surface>
 
@@ -365,6 +369,9 @@ export function DashboardPage() {
                   </RouterLink>
                 ))}
               </Stack>
+            )}
+            {allLoaded && continueWorking.length > 0 && (
+              <RouterLink to="/history">{t("dashboard.viewHistoryLink")}</RouterLink>
             )}
           </Stack>
         </Surface>

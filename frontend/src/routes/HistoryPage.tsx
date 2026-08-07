@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { Button, Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
@@ -259,7 +259,12 @@ export function HistoryPage() {
 
             <Surface tier="primary">
               <Stack gap="inter-section">
-                {events.length === 0 && <Text color="secondary">{t("history.empty")}</Text>}
+                {events.length === 0 && (
+                  <Stack gap="inter-section">
+                    <Text color="secondary">{t("history.empty")}</Text>
+                    <RouterLink to="/portfolio">{t("history.empty.portfolioLink")}</RouterLink>
+                  </Stack>
+                )}
                 {events.length > 0 && sorted.length === 0 && (
                   <Text color="secondary">{t("history.noneMatchFilter")}</Text>
                 )}
