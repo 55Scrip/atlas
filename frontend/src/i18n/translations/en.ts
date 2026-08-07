@@ -146,6 +146,7 @@ export const en = {
   "investmentCase.returnTo.history": "← Back to History",
   "investmentCase.returnTo.portfolio": "← Back to Portfolio",
   "investmentCase.returnTo.dailyBrief": "← Back to Daily Brief",
+  "investmentCase.returnTo.discovery": "← Back to Discovery",
   "investmentCase.noCaseSelected": "No case selected.",
   "investmentCase.loadError": "Could not load this case: {{message}}",
   "investmentCase.subject": "Subject: Case {{caseId}}",
@@ -382,6 +383,7 @@ export const en = {
 
   // ---------- daily brief implementation sprint 1: navigation ----------
   "shell.nav.dailyBrief": "Daily Brief",
+  "shell.nav.discovery": "Discovery",
 
   // ---------- sprint 4: relative time ----------
   "relativeTime.today": "today",
@@ -441,6 +443,7 @@ export const en = {
   "investmentCase.origin.portfolio": "Opened from Portfolio",
   "investmentCase.origin.history": "Returned from History",
   "investmentCase.origin.dailyBrief": "Opened from Daily Brief",
+  "investmentCase.origin.discovery": "Opened from Discovery",
 
   // ---------- daily brief implementation sprint 1 ----------
   "dailyBrief.title": "Daily Brief",
@@ -455,6 +458,34 @@ export const en = {
     "Atlas continues monitoring your recorded portfolio decisions and investment cases.",
   "dailyBrief.footer.reminder":
     "Keep Atlas updated when your portfolio changes so future reviews remain accurate.",
+
+  // ---------- discovery v1 implementation sprint ----------
+  "discovery.title": "Discovery",
+  "discovery.prompt.heading": "How can I help you?",
+  "discovery.prompt.supporting":
+    "Ask about companies, sectors, market events, your portfolio or any investment idea.",
+  "discovery.info.ariaLabel": "More information",
+  "discovery.info.body":
+    "Here you can discuss anything from a specific quarterly report or company to broader market trends, macroeconomics and portfolio strategy.",
+  "discovery.info.learnMore": "Learn more about how Atlas Discovery works →",
+  "discovery.portfolioContext.available": "Your portfolio is available as context for future Discovery analysis.",
+  "discovery.input.placeholder": "Ask Atlas anything about investing…",
+  "discovery.input.submit": "Send",
+  "discovery.suggestions.aiStocks": "Are AI stocks attractive after the recent decline?",
+  "discovery.suggestions.compare": "Compare two companies",
+  "discovery.suggestions.strengthenPortfolio": "What would strengthen my portfolio?",
+  "discovery.suggestions.reviewIdea": "Review an investment idea",
+  "discovery.suggestions.marketTrend": "Help me think through a market trend",
+  "discovery.response.bounded":
+    "Discovery's live analysis engine is not connected in this Alpha yet. You can still open or create an Investment Case for a company you want to review.",
+  "discovery.reviewCompany.heading": "Review a company",
+  "discovery.reviewCompany.createCase": "Create Investment Case →",
+  "discovery.reviewCompany.openCase": "Open Investment Case →",
+  "discovery.reviewCompany.notInPortfolio":
+    "{{ticker}} is not in your current portfolio yet. Atlas cannot create a linked Investment Case for a company you don't hold.",
+  "discovery.reviewCompany.error": "Could not create the Investment Case: {{message}}",
+  "discovery.opportunities.heading": "Opportunities",
+  "discovery.opportunities.notYet": "Atlas has not generated any market opportunities in this Alpha yet.",
 } as const;
 
 export type TranslationKey = keyof typeof en;

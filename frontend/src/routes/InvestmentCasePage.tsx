@@ -469,7 +469,9 @@ export function InvestmentCasePage() {
           ? "investmentCase.origin.history"
           : origin === "daily-brief"
             ? "investmentCase.origin.dailyBrief"
-            : null;
+            : origin === "discovery"
+              ? "investmentCase.origin.discovery"
+              : null;
 
   /**
    * Origin-aware return (Sprint 8 audit fix): the badge above already
@@ -487,7 +489,9 @@ export function InvestmentCasePage() {
         ? "/history"
         : origin === "daily-brief"
           ? "/daily-brief"
-          : "/portfolio";
+          : origin === "discovery"
+            ? "/discovery"
+            : "/portfolio";
   const returnLabelKey: TranslationKey =
     origin === "dashboard"
       ? "investmentCase.returnTo.dashboard"
@@ -495,7 +499,9 @@ export function InvestmentCasePage() {
         ? "investmentCase.returnTo.history"
         : origin === "daily-brief"
           ? "investmentCase.returnTo.dailyBrief"
-          : "investmentCase.returnTo.portfolio";
+          : origin === "discovery"
+            ? "investmentCase.returnTo.discovery"
+            : "investmentCase.returnTo.portfolio";
 
   const [status, setStatus] = useState<CaseStatus>({ kind: "loading" });
 

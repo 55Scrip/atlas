@@ -21,6 +21,9 @@ export function Navigation() {
       <Link to="/daily-brief" className={styles.link}>
         {t("shell.nav.dailyBrief")}
       </Link>
+      <Link to="/discovery" className={styles.link}>
+        {t("shell.nav.discovery")}
+      </Link>
       <Link to="/dashboard" className={styles.link}>
         {t("shell.nav.dashboard")}
       </Link>

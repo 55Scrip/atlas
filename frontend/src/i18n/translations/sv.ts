@@ -145,6 +145,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.returnTo.history": "← Tillbaka till Historik",
   "investmentCase.returnTo.portfolio": "← Tillbaka till Portfölj",
   "investmentCase.returnTo.dailyBrief": "← Tillbaka till Dagens genomgång",
+  "investmentCase.returnTo.discovery": "← Tillbaka till Discovery",
   "investmentCase.noCaseSelected": "Inget case valt.",
   "investmentCase.loadError": "Kunde inte läsa in caset: {{message}}",
   "investmentCase.subject": "Ämne: Case {{caseId}}",
@@ -379,6 +380,7 @@ export const sv: Record<TranslationKey, string> = {
 
   // ---------- daily brief implementation sprint 1: navigation ----------
   "shell.nav.dailyBrief": "Dagens genomgång",
+  "shell.nav.discovery": "Discovery",
 
   // ---------- sprint 4: relative time ----------
   "relativeTime.today": "idag",
@@ -438,6 +440,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.origin.portfolio": "Öppnat från portföljen",
   "investmentCase.origin.history": "Återvänt från historiken",
   "investmentCase.origin.dailyBrief": "Öppnad från Dagens genomgång",
+  "investmentCase.origin.discovery": "Öppnad från Discovery",
 
   // ---------- daily brief implementation sprint 1 ----------
   "dailyBrief.title": "Dagens genomgång",
@@ -452,4 +455,32 @@ export const sv: Record<TranslationKey, string> = {
     "Atlas fortsätter övervaka dina registrerade portföljbeslut och investeringscase.",
   "dailyBrief.footer.reminder":
     "Håll Atlas uppdaterad när din portfölj förändras så att framtida genomgångar förblir korrekta.",
+
+  // ---------- discovery v1 implementation sprint ----------
+  "discovery.title": "Discovery",
+  "discovery.prompt.heading": "Hur kan jag hjälpa dig?",
+  "discovery.prompt.supporting":
+    "Fråga om bolag, branscher, marknadshändelser, din portfölj eller vilken investeringsidé som helst.",
+  "discovery.info.ariaLabel": "Mer information",
+  "discovery.info.body":
+    "Här kan du diskutera allt från en specifik kvartalsrapport eller ett enskilt bolag till bredare marknadstrender, makroekonomi och portföljstrategi.",
+  "discovery.info.learnMore": "Läs mer om hur Atlas Discovery fungerar →",
+  "discovery.portfolioContext.available": "Din portfölj är tillgänglig som kontext för framtida Discovery-analys.",
+  "discovery.input.placeholder": "Fråga Atlas vad som helst om investeringar…",
+  "discovery.input.submit": "Skicka",
+  "discovery.suggestions.aiStocks": "Är AI-aktier attraktiva efter den senaste nedgången?",
+  "discovery.suggestions.compare": "Jämför två bolag",
+  "discovery.suggestions.strengthenPortfolio": "Vad skulle stärka min portfölj?",
+  "discovery.suggestions.reviewIdea": "Granska en investeringsidé",
+  "discovery.suggestions.marketTrend": "Hjälp mig tänka igenom en marknadstrend",
+  "discovery.response.bounded":
+    "Discoverys analysmotor är inte ansluten i den här Alpha-versionen än. Du kan fortfarande öppna eller skapa ett investeringscase för ett bolag du vill granska.",
+  "discovery.reviewCompany.heading": "Granska ett bolag",
+  "discovery.reviewCompany.createCase": "Skapa investeringscase →",
+  "discovery.reviewCompany.openCase": "Öppna investeringscase →",
+  "discovery.reviewCompany.notInPortfolio":
+    "{{ticker}} finns inte i din nuvarande portfölj än. Atlas kan inte skapa ett länkat investeringscase för ett bolag du inte äger.",
+  "discovery.reviewCompany.error": "Kunde inte skapa investeringscaset: {{message}}",
+  "discovery.opportunities.heading": "Möjligheter",
+  "discovery.opportunities.notYet": "Atlas har inte genererat några marknadsmöjligheter i den här Alpha-versionen än.",
 };
