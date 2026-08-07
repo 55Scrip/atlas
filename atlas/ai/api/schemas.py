@@ -22,6 +22,19 @@ class DiscoveryChatRequest(CamelModel):
     language: Literal["sv", "en"]
 
 
+class ToolResultBody(CamelModel):
+    """The one tool result shape this sprint supports — always the
+    router's own deterministic finding, never model-authored text. The
+    frontend renders `outcome` through its own translated copy, never
+    through anything the model wrote."""
+
+    tool: Literal["create_or_open_investment_case"]
+    outcome: Literal["opened", "created", "unresolved", "failed"]
+    ticker: str
+    case_id: str | None = None
+
+
 class DiscoveryChatResponse(CamelModel):
     message: str | None
-    mode: Literal["generated", "not_configured", "provider_error"]
+    mode: Literal["generated", "not_configured", "provider_error", "tool_call"]
+    tool_result: ToolResultBody | None = None

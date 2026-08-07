@@ -111,10 +111,41 @@ export function DiscoveryPage() {
         if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
         return response.json() as Promise<{
           message: string | null;
-          mode: "generated" | "not_configured" | "provider_error";
+          mode: "generated" | "not_configured" | "provider_error" | "tool_call";
+          toolResult: {
+            tool: "create_or_open_investment_case";
+            outcome: "opened" | "created" | "unresolved" | "failed";
+            ticker: string;
+            caseId: string | null;
+          } | null;
         }>;
       })
       .then((body) => {
+        if (body.mode === "tool_call" && body.toolResult) {
+          const { outcome, ticker, caseId } = body.toolResult;
+          // The rendered text is always Atlas's own deterministic,
+          // translated copy driven by the real backend outcome — never
+          // anything the model wrote — so a claim of success can never
+          // appear here unless the tool actually succeeded.
+          const replyText =
+            outcome === "opened"
+              ? t("discovery.tool.caseOpened", { ticker })
+              : outcome === "created"
+                ? t("discovery.tool.caseCreated", { ticker })
+                : outcome === "unresolved"
+                  ? t("discovery.tool.tickerUnresolved", { ticker })
+                  : t("discovery.tool.caseFailed", { ticker });
+          setMessages((current) => [
+            ...current,
+            { id: `msg-${nextMessageId++}`, role: "atlas", text: replyText },
+          ]);
+          setSendStatus({ kind: "idle" });
+          if ((outcome === "opened" || outcome === "created") && caseId) {
+            navigate(`/investment-case/${caseId}`, { state: { origin: "discovery" } });
+          }
+          return;
+        }
+
         const replyText =
           body.mode === "generated" && body.message
             ? body.message

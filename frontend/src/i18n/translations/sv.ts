@@ -487,4 +487,10 @@ export const sv: Record<TranslationKey, string> = {
   "discovery.reviewCompany.error": "Kunde inte skapa investeringscaset: {{message}}",
   "discovery.opportunities.heading": "Möjligheter",
   "discovery.opportunities.notYet": "Atlas har inte genererat några marknadsmöjligheter i den här Alpha-versionen än.",
+  "discovery.tool.caseOpened": "Öppnar ditt befintliga investeringscase för {{ticker}}.",
+  "discovery.tool.caseCreated": "Skapar och öppnar ett investeringscase för {{ticker}}.",
+  "discovery.tool.tickerUnresolved":
+    "{{ticker}} finns inte i din nuvarande portfölj, så Atlas kan inte öppna ett länkat investeringscase för det än. Du kan bekräfta exakt ticker, eller använda \"Granska ett bolag\" nedan när det finns i din portfölj.",
+  "discovery.tool.caseFailed":
+    "Atlas kunde inte skapa investeringscaset för {{ticker}} just nu. Du kan försöka igen, eller använda \"Granska ett bolag\" nedan.",
 };

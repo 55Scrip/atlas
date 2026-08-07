@@ -8,9 +8,13 @@ from __future__ import annotations
 import pytest
 
 from atlas.ai.discovery_chat import (
+    CREATE_OR_OPEN_INVESTMENT_CASE_TOOL,
     ChatMessage,
     HoldingContextInput,
     PortfolioContextInput,
+    ProviderReply,
+    ToolCallRequest,
+    _strip_leaked_reasoning,
     build_system_prompt,
     render_portfolio_context,
     run_discovery_chat,
@@ -25,15 +29,30 @@ class FakeProvider:
         self.received_system_prompt: str | None = None
         self.received_messages: tuple[ChatMessage, ...] | None = None
 
-    def complete(self, *, system_prompt: str, messages: tuple[ChatMessage, ...]) -> str:
+    def complete(self, *, system_prompt: str, messages: tuple[ChatMessage, ...]) -> ProviderReply:
         self.received_system_prompt = system_prompt
         self.received_messages = messages
-        return self.reply
+        return ProviderReply(text=self.reply)
 
 
 class RaisingProvider:
-    def complete(self, *, system_prompt: str, messages: tuple[ChatMessage, ...]) -> str:
+    def complete(self, *, system_prompt: str, messages: tuple[ChatMessage, ...]) -> ProviderReply:
         raise RuntimeError("provider unavailable")
+
+
+class ToolCallingFakeProvider:
+    """Simulates the provider deciding to call a tool instead of (or
+    alongside) returning text."""
+
+    def __init__(self, tool_name: str, ticker: str, text: str | None = None) -> None:
+        self.tool_name = tool_name
+        self.ticker = ticker
+        self.text = text
+
+    def complete(self, *, system_prompt: str, messages: tuple[ChatMessage, ...]) -> ProviderReply:
+        return ProviderReply(
+            text=self.text, tool_call=ToolCallRequest(tool_name=self.tool_name, ticker=self.ticker)
+        )
 
 
 ONE_MESSAGE = (ChatMessage(role="user", content="How should I think about higher interest rates?"),)
@@ -84,16 +103,16 @@ class TestSessionHistoryOrder:
 class TestLanguage:
     def test_swedish_system_prompt_names_swedish(self):
         prompt = build_system_prompt("sv", None)
-        assert "Respond in Swedish" in prompt
+        assert "in Swedish" in prompt
 
     def test_english_system_prompt_names_english(self):
         prompt = build_system_prompt("en", None)
-        assert "Respond in English" in prompt
+        assert "in English" in prompt
 
     def test_language_reaches_the_provider_via_system_prompt(self):
         provider = FakeProvider()
         run_discovery_chat(messages=ONE_MESSAGE, language="sv", portfolio=None, provider=provider)
-        assert "Respond in Swedish" in provider.received_system_prompt
+        assert "in Swedish" in provider.received_system_prompt
 
 
 class TestPortfolioContext:
@@ -169,3 +188,166 @@ class TestSystemInstructionsRequireChallenge:
     def test_instructions_forbid_claiming_live_data_access(self):
         prompt = build_system_prompt("en", None)
         assert "current prices" in prompt.lower() or "today's news" in prompt.lower()
+
+
+class TestSystemInstructionsForbidVisibleReasoning:
+    """Regression coverage for the leak this sprint fixes: a live
+    response once began with "Internal reasoning (English):" followed
+    by hidden reasoning before the real Swedish answer. The prompt
+    itself must never invite that structure."""
+
+    def test_prompt_no_longer_tells_the_model_reasoning_stays_in_english(self):
+        prompt = build_system_prompt("sv", None)
+        assert "internal reasoning stays in" not in prompt.lower()
+
+    def test_prompt_explicitly_forbids_labeled_reasoning_sections(self):
+        prompt = build_system_prompt("en", None)
+        lowered = prompt.lower()
+        assert "chain of thought" in lowered
+        assert "never write out your reasoning" in lowered or "think" in lowered
+
+    def test_prompt_never_itself_contains_the_leaked_phrase_as_an_instruction_to_emit_it(self):
+        # The prompt is allowed to *name* the forbidden phrase so it can
+        # forbid it; it must never instruct the model to produce it.
+        prompt = build_system_prompt("sv", None)
+        assert "internal reasoning stays in english" not in prompt.lower()
+
+
+class LeakingFakeProvider:
+    """Simulates the exact defect observed live: a labeled reasoning
+    block ahead of the real answer, in the wrong language."""
+
+    def __init__(self, leaked_reasoning: str, real_answer: str) -> None:
+        self.leaked_reasoning = leaked_reasoning
+        self.real_answer = real_answer
+
+    def complete(self, *, system_prompt: str, messages: tuple[ChatMessage, ...]) -> ProviderReply:
+        return ProviderReply(text=f"{self.leaked_reasoning}\n\n{self.real_answer}")
+
+
+class TestBackendNeverReturnsLeakedReasoningVerbatim:
+    """`_strip_leaked_reasoning` is the narrow backend safety net —
+    defense in depth behind the prompt fix, not a replacement for it.
+    Each test uses one of the exact forbidden markers the sprint names."""
+
+    def test_internal_reasoning_marker_is_removed_end_to_end(self):
+        provider = LeakingFakeProvider(
+            leaked_reasoning="Internal reasoning: the investor is asking about AI valuations.",
+            real_answer="AI-aktier har fallit, men det är inte tillräckligt för att göra dem attraktiva på egen hand.",
+        )
+        outcome = run_discovery_chat(messages=ONE_MESSAGE, language="sv", portfolio=None, provider=provider)
+        raw = f"{provider.leaked_reasoning}\n\n{provider.real_answer}"
+        assert outcome.message != raw
+        assert "internal reasoning" not in outcome.message.lower()
+        assert "AI-aktier har fallit" in outcome.message
+
+    def test_chain_of_thought_marker_is_removed(self):
+        provider = LeakingFakeProvider(
+            leaked_reasoning="Chain of thought: first consider valuation, then sentiment.",
+            real_answer="Here is my actual answer to your question.",
+        )
+        outcome = run_discovery_chat(messages=ONE_MESSAGE, language="en", portfolio=None, provider=provider)
+        assert "chain of thought" not in outcome.message.lower()
+        assert outcome.message == "Here is my actual answer to your question."
+
+    def test_thinking_tag_marker_is_removed(self):
+        provider = LeakingFakeProvider(
+            leaked_reasoning="<thinking>\nWeighing the investor's concentration risk.\n</thinking>",
+            real_answer="Given your concentration, I would be cautious about adding more of the same sector.",
+        )
+        outcome = run_discovery_chat(messages=ONE_MESSAGE, language="en", portfolio=None, provider=provider)
+        assert "<thinking>" not in outcome.message.lower()
+        assert "Given your concentration" in outcome.message
+
+    def test_system_prompt_marker_is_removed(self):
+        provider = LeakingFakeProvider(
+            leaked_reasoning="System prompt: you are Atlas, an investment decision partner.",
+            real_answer="Let's look at the actual question you asked.",
+        )
+        outcome = run_discovery_chat(messages=ONE_MESSAGE, language="en", portfolio=None, provider=provider)
+        assert "system prompt" not in outcome.message.lower()
+        assert outcome.message == "Let's look at the actual question you asked."
+
+    def test_clean_response_with_no_marker_passes_through_unchanged(self):
+        provider = FakeProvider(reply="A perfectly ordinary, clean answer with no leak markers.")
+        outcome = run_discovery_chat(messages=ONE_MESSAGE, language="en", portfolio=None, provider=provider)
+        assert outcome.message == "A perfectly ordinary, clean answer with no leak markers."
+
+
+class TestSafetyNetDoesNotDestroyLegitimateContent:
+    """The sprint explicitly warns against an aggressive sanitizer.
+    Ordinary investment prose legitimately uses the words "reasoning"
+    and "thinking" in sentences — only an exact leak-shaped line prefix
+    may ever trigger stripping."""
+
+    def test_sentence_containing_the_word_reasoning_is_untouched(self):
+        text = "My reasoning here is that concentration risk matters more than headline valuation."
+        assert _strip_leaked_reasoning(text) == text
+
+    def test_sentence_containing_thinking_about_is_untouched(self):
+        text = "Thinking about your portfolio's concentration, I would look at diversifying first."
+        assert _strip_leaked_reasoning(text) == text
+
+    def test_multi_paragraph_legitimate_answer_is_fully_preserved(self):
+        text = (
+            "The recent decline could improve the setup, but price weakness alone isn't "
+            "enough to make the group attractive.\n\n"
+            "Given your current portfolio, adding another semiconductor position would "
+            "increase concentration."
+        )
+        assert _strip_leaked_reasoning(text) == text
+
+    def test_no_marker_present_returns_input_unchanged(self):
+        text = "Here is a considered, multi-sentence answer with no reasoning label at all."
+        assert _strip_leaked_reasoning(text) is text or _strip_leaked_reasoning(text) == text
+
+
+class TestToolAwareness:
+    def test_prompt_mentions_the_tool_and_when_to_prefer_it(self):
+        prompt = build_system_prompt("en", None)
+        assert CREATE_OR_OPEN_INVESTMENT_CASE_TOOL in prompt
+
+    def test_prompt_instructs_confirming_uncertain_tickers_rather_than_guessing(self):
+        prompt = build_system_prompt("en", None)
+        assert "confirm" in prompt.lower()
+
+    def test_prompt_forbids_claiming_a_case_was_opened_in_its_own_words(self):
+        prompt = build_system_prompt("en", None)
+        assert "only the tool result determines what actually happened" in prompt.lower()
+
+
+class TestToolCallDetection:
+    """`run_discovery_chat` only *detects* and validates a tool call —
+    it never resolves a ticker or touches the Case API itself (this
+    module never imports `atlas.alpha`); that is the router's job."""
+
+    def test_supported_tool_call_is_passed_through_as_tool_call_requested(self):
+        provider = ToolCallingFakeProvider(tool_name=CREATE_OR_OPEN_INVESTMENT_CASE_TOOL, ticker="META")
+        outcome = run_discovery_chat(messages=ONE_MESSAGE, language="en", portfolio=None, provider=provider)
+        assert outcome.mode == "tool_call_requested"
+        assert outcome.message is None
+        assert outcome.tool_call_request == ToolCallRequest(
+            tool_name=CREATE_OR_OPEN_INVESTMENT_CASE_TOOL, ticker="META"
+        )
+
+    def test_ticker_reaches_the_outcome_verbatim(self):
+        provider = ToolCallingFakeProvider(tool_name=CREATE_OR_OPEN_INVESTMENT_CASE_TOOL, ticker="tsm")
+        outcome = run_discovery_chat(messages=ONE_MESSAGE, language="en", portfolio=None, provider=provider)
+        assert outcome.tool_call_request.ticker == "tsm"
+
+    def test_unrecognized_tool_name_is_refused_never_executed(self):
+        """No arbitrary tool execution: a tool name outside the strict
+        allowlist is refused as a provider error, never passed through
+        as something the router might act on."""
+        provider = ToolCallingFakeProvider(tool_name="delete_portfolio", ticker="META")
+        outcome = run_discovery_chat(messages=ONE_MESSAGE, language="en", portfolio=None, provider=provider)
+        assert outcome.mode == "provider_error"
+        assert outcome.tool_call_request is None
+        assert outcome.message is None
+
+    def test_normal_question_with_no_tool_call_behaves_exactly_as_before(self):
+        provider = FakeProvider(reply="A considered answer with no tool involved.")
+        outcome = run_discovery_chat(messages=ONE_MESSAGE, language="en", portfolio=None, provider=provider)
+        assert outcome.mode == "generated"
+        assert outcome.tool_call_request is None
+        assert outcome.message == "A considered answer with no tool involved."

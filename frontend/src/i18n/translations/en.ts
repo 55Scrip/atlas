@@ -490,6 +490,12 @@ export const en = {
   "discovery.reviewCompany.error": "Could not create the Investment Case: {{message}}",
   "discovery.opportunities.heading": "Opportunities",
   "discovery.opportunities.notYet": "Atlas has not generated any market opportunities in this Alpha yet.",
+  "discovery.tool.caseOpened": "Opening your existing Investment Case for {{ticker}}.",
+  "discovery.tool.caseCreated": "Creating and opening an Investment Case for {{ticker}}.",
+  "discovery.tool.tickerUnresolved":
+    "{{ticker}} isn't in your current portfolio, so Atlas can't open a linked Investment Case for it yet. You can confirm the exact ticker, or use \"Review a company\" below once it's in your portfolio.",
+  "discovery.tool.caseFailed":
+    "Atlas couldn't create the Investment Case for {{ticker}} just now. You can try again, or use \"Review a company\" below.",
 } as const;
 
 export type TranslationKey = keyof typeof en;
