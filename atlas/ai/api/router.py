@@ -36,6 +36,7 @@ from fastapi import APIRouter, Depends
 from atlas.ai.api.dependencies import get_discovery_provider
 from atlas.ai.api.schemas import DiscoveryChatRequest, DiscoveryChatResponse, ToolResultBody
 from atlas.ai.discovery_chat import (
+    CaseContextInput,
     ChatMessage,
     ConsiderContextInput,
     ConversationProvider,
@@ -45,6 +46,9 @@ from atlas.ai.discovery_chat import (
     RiskSignalContextInput,
     run_discovery_chat,
 )
+from atlas.alpha.case_intelligence.api.dependencies import get_case_intelligence_service
+from atlas.alpha.case_intelligence.models import CaseIntelligenceReport
+from atlas.alpha.case_intelligence.service import CaseIntelligenceService
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_service
 from atlas.alpha.portfolio.api.schemas import HoldingView, PortfolioView
 from atlas.alpha.portfolio.projection import derive_portfolio_view
@@ -58,14 +62,38 @@ from atlas.core.infrastructure.api.case.dependencies import get_case_service
 router = APIRouter(prefix="/discovery", tags=["discovery"])
 
 
+def _case_context(report: CaseIntelligenceReport | None) -> CaseContextInput | None:
+    """ATLAS-017: Discovery consumes the exact same `CaseIntelligenceReport`
+    the Investment Case page's own API route returns -- never a second
+    reconstruction. `None` when no `caseId` was resolved on the request,
+    or the Case itself does not exist."""
+    if report is None:
+        return None
+    return CaseContextInput(
+        ticker=report.current_view.ticker,
+        held=report.current_view.held,
+        current_thesis_reason=report.current_thesis.latest_decision_reason,
+        confidence=report.confidence.value,
+        is_stale=report.review_status.is_stale,
+        missing_evidence_kinds=tuple(gap.kind.value for gap in report.missing_evidence),
+        key_risks=tuple(risk.kind.value for risk in report.key_risks),
+        consider_kinds=tuple(item.kind.value for item in report.consider_items),
+    )
+
+
 def _portfolio_context(
-    view: PortfolioView, intelligence: PortfolioIntelligenceReport | None
+    view: PortfolioView,
+    intelligence: PortfolioIntelligenceReport | None,
+    case_context: CaseContextInput | None,
 ) -> PortfolioContextInput | None:
     """ATLAS-016: Discovery consumes the same Key Findings/Consider/Risk
     Signals the Portfolio page shows (`intelligence`), rather than
     reconstructing any of its own -- both are built from the identical
-    `PortfolioIntelligenceService.build_report()` call."""
-    if not view.exists or len(view.holdings) == 0:
+    `PortfolioIntelligenceService.build_report()` call. ATLAS-017 adds
+    `case_context` the same way. `case_context` alone (a brand-new,
+    unheld Investment Case) is enough to return real content even when
+    the portfolio itself is empty."""
+    if (not view.exists or len(view.holdings) == 0) and case_context is None:
         return None
     return PortfolioContextInput(
         holdings=tuple(
@@ -92,6 +120,7 @@ def _portfolio_context(
             RiskSignalContextInput(kind=s.kind.value, ticker=s.ticker)
             for s in (intelligence.risk_signals if intelligence else ())
         ),
+        case_context=case_context,
     )
 
 
@@ -141,6 +170,7 @@ def post_discovery_chat(
     service: AlphaPortfolioService = Depends(get_alpha_portfolio_service),
     case_service: CaseService = Depends(get_case_service),
     intelligence_service: PortfolioIntelligenceService = Depends(get_portfolio_intelligence_service),
+    case_intelligence_service: CaseIntelligenceService = Depends(get_case_intelligence_service),
     provider: ConversationProvider | None = Depends(get_discovery_provider),
 ) -> DiscoveryChatResponse:
     state = service.get_state()
@@ -150,11 +180,12 @@ def post_discovery_chat(
         else PortfolioView.empty()
     )
     intelligence_report = intelligence_service.build_report()
+    case_report = case_intelligence_service.build_report(body.case_id) if body.case_id else None
 
     outcome = run_discovery_chat(
         messages=tuple(ChatMessage(role=m.role, content=m.content) for m in body.messages),
         language=body.language,
-        portfolio=_portfolio_context(portfolio_view, intelligence_report),
+        portfolio=_portfolio_context(portfolio_view, intelligence_report, _case_context(case_report)),
         provider=provider,
     )
 

@@ -38,7 +38,6 @@ already reflects.
 """
 from __future__ import annotations
 
-import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
 
@@ -57,9 +56,19 @@ from atlas.alpha.portfolio_intelligence.models import (
     RiskSignal,
     RiskSignalKind,
 )
+from atlas.alpha.portfolio_intelligence.pipeline_bridge import (
+    coverage_for,
+    evidence_gap_count,
+    run_decision_engine_for_case,
+)
+from atlas.alpha.portfolio_intelligence.thresholds import (
+    ELEVATED_CONCENTRATION_WEIGHT_PERCENT,
+    HIGH_CONCENTRATION_WEIGHT_PERCENT,
+    PENDING_WORKFLOW_CATEGORIES as _PENDING_WORKFLOW_CATEGORIES,
+    UNALLOCATED_TOLERANCE_PERCENT,
+)
 from atlas.alpha.portfolio_status.models import AttentionCategory, PortfolioStatusReport
 from atlas.alpha.portfolio_status.service import PortfolioStatusService
-from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.decision.repository import DecisionRepository
 from atlas.core.domain.evidence.entity import Evidence
@@ -67,35 +76,7 @@ from atlas.core.domain.evidence.repository import EvidenceRepository
 from atlas.core.domain.observation.entity import Observation
 from atlas.core.domain.observation.repository import ObservationRepository
 from atlas.core.domain.outcome.repository import OutcomeRepository
-from atlas.decision_engine.contracts import (
-    DecisionEngineInput,
-    DecisionEngineOutput,
-    EvidenceCoverageLevel,
-    PortfolioHoldingContext,
-    ReconciliationState,
-    TradeLogEntry,
-)
-from atlas.decision_engine.pipeline import run_pipeline
-
-# Reused directly from `atlas.domains.portfolio.calculations.concentration_level`
-# -- not new numbers. `_HIGH` mirrors that function's `>= 0.35` branch,
-# `_ELEVATED` its `>= 0.25` branch, both expressed on the 0-100 scale
-# `AlphaHolding.weight_percent` already uses.
-_HIGH_CONCENTRATION_WEIGHT_PERCENT = 35.0
-_ELEVATED_CONCENTRATION_WEIGHT_PERCENT = 25.0
-
-# Matches `frontend/src/routes/PortfolioPage.tsx`'s own
-# `UNALLOCATED_TOLERANCE` -- the same threshold already used to decide
-# whether to show an "Unallocated: X%" line, not a new number.
-_UNALLOCATED_TOLERANCE_PERCENT = 0.01
-
-_PENDING_WORKFLOW_CATEGORIES = frozenset(
-    {
-        AttentionCategory.DECISION_WITHOUT_OUTCOME,
-        AttentionCategory.OUTCOME_WITHOUT_EXECUTION,
-        AttentionCategory.OBSERVATION_WITHOUT_DECISION,
-    }
-)
+from atlas.decision_engine.contracts import DecisionEngineOutput, EvidenceCoverageLevel
 
 
 def _utc_now() -> datetime:
@@ -204,33 +185,17 @@ class PortfolioIntelligenceService:
                 for observation in case_observations
                 for item in evidence_by_observation_id.get(observation.id, ())
             )
-            trade_log = tuple(
-                TradeLogEntry(
-                    security=trade.security,
-                    transaction_type=trade.transaction_type.value,
-                    quantity=trade.quantity,
-                    execution_price=trade.execution_price,
-                    executed_at=trade.executed_at,
-                )
-                for trade in trades_by_security.get(holding.ticker, ())
-            )
 
-            engine_input = DecisionEngineInput(
-                case_id=CaseId(value=uuid.UUID(holding.case_id)),
-                evaluated_at=evaluated_at,
+            outputs[holding.ticker] = run_decision_engine_for_case(
+                holding.case_id,
+                holding=holding,
                 decisions=tuple(decisions_by_case.get(holding.case_id, ())),
-                outcomes=tuple(outcomes_by_case.get(holding.case_id, ())),
                 observations=case_observations,
                 evidence=case_evidence,
-                portfolio_holding=PortfolioHoldingContext(
-                    ticker=holding.ticker,
-                    weight_percent=holding.weight_percent,
-                    value_absolute=holding.value_absolute,
-                    reconciliation_status=ReconciliationState(holding.reconciliation_status.value),
-                ),
-                trade_log=trade_log,
+                outcomes=tuple(outcomes_by_case.get(holding.case_id, ())),
+                trade_log_entries=tuple(trades_by_security.get(holding.ticker, ())),
+                evaluated_at=evaluated_at,
             )
-            outputs[holding.ticker] = run_pipeline(engine_input, generated_at=evaluated_at)
 
         return outputs
 
@@ -240,9 +205,9 @@ class PortfolioIntelligenceService:
         self, ticker: str, pipeline_outputs: dict[str, DecisionEngineOutput]
     ) -> EvidenceCoverageLevel:
         output = pipeline_outputs.get(ticker)
-        if output is None or output.business_evaluation.evidence_quality is None:
+        if output is None:
             return EvidenceCoverageLevel.NOT_APPLICABLE
-        return output.business_evaluation.evidence_quality.coverage
+        return coverage_for(output)
 
     def _evidence_gap_count(
         self, ticker: str, pipeline_outputs: dict[str, DecisionEngineOutput]
@@ -255,9 +220,9 @@ class PortfolioIntelligenceService:
         case-wide `NO_EVIDENCE_RECORDED` gap -- `coverage` alone would
         silently miss that real finding."""
         output = pipeline_outputs.get(ticker)
-        if output is None or output.business_evaluation.evidence_quality is None:
+        if output is None:
             return 0
-        return len(output.business_evaluation.evidence_quality.evidence_gaps)
+        return evidence_gap_count(output)
 
     def _build_key_findings(
         self,
@@ -291,7 +256,7 @@ class PortfolioIntelligenceService:
         if (
             summary is not None
             and summary.unallocated_percent is not None
-            and summary.unallocated_percent > _UNALLOCATED_TOLERANCE_PERCENT
+            and summary.unallocated_percent > UNALLOCATED_TOLERANCE_PERCENT
         ):
             findings.append(KeyFinding(kind=KeyFindingKind.LARGE_UNALLOCATED, count=0, tickers=()))
 
@@ -413,7 +378,7 @@ class PortfolioIntelligenceService:
                 )
 
         for holding in state.holdings:
-            if holding.weight_percent >= _ELEVATED_CONCENTRATION_WEIGHT_PERCENT:
+            if holding.weight_percent >= ELEVATED_CONCENTRATION_WEIGHT_PERCENT:
                 items.append(
                     ConsiderItem(
                         kind=ConsiderKind.REVIEW_CONCENTRATION,
@@ -469,7 +434,7 @@ class PortfolioIntelligenceService:
                 )
 
         for holding in state.holdings:
-            if holding.weight_percent >= _HIGH_CONCENTRATION_WEIGHT_PERCENT:
+            if holding.weight_percent >= HIGH_CONCENTRATION_WEIGHT_PERCENT:
                 signals.append(
                     RiskSignal(
                         kind=RiskSignalKind.HIGH_CONCENTRATION,

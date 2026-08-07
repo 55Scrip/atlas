@@ -10,6 +10,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from atlas.ai.api.router import router as discovery_chat_router
+from atlas.alpha.case_intelligence.api.router import router as case_intelligence_router
 from atlas.alpha.portfolio.api.router import router as alpha_portfolio_router
 from atlas.alpha.portfolio_intelligence.api.router import router as portfolio_intelligence_router
 from atlas.alpha.portfolio_status.api.router import router as portfolio_status_router
@@ -77,6 +78,14 @@ def create_app() -> FastAPI:
     # `atlas/alpha/portfolio_intelligence/`, the first live caller of the
     # canonical `atlas.decision_engine.pipeline`.
     app.include_router(portfolio_intelligence_router)
+    # ATLAS-017: the Case Intelligence report is a fourth, sibling
+    # composition point -- authored and owned in
+    # `atlas/alpha/case_intelligence/`, running the same canonical
+    # `atlas.decision_engine.pipeline` for a single Case instead of the
+    # whole portfolio (via the shared
+    # `atlas.alpha.portfolio_intelligence.pipeline_bridge` both modules
+    # call).
+    app.include_router(case_intelligence_router)
     # Discovery Intelligence v1: same pattern, one level removed — the
     # discovery-chat router is authored and owned in `atlas/ai/`, and is
     # itself `atlas/ai/`'s own one deliberate composition point with

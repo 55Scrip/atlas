@@ -468,6 +468,69 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.continuity.line2":
     "Rapportera genomförda köp eller försäljningar för att hålla portföljens nuvarande läge korrekt.",
 
+  // ---------- investment case: case intelligence (ATLAS-017) ----------
+  "investmentCase.intelligence.confidence.heading": "Tillförlitlighet",
+  "investmentCase.intelligence.confidence.explanation":
+    "Hur väl underbyggd den nuvarande förståelsen är — inte en förutsägelse om framtida avkastning.",
+  "investmentCase.intelligence.conviction.heading": "Övertygelse",
+  "investmentCase.intelligence.conviction.available": "Tillgänglig.",
+  "investmentCase.intelligence.conviction.unavailable":
+    "Inte tillgänglig — Atlas beräknar inte ett övertygelsevärde.",
+
+  "investmentCase.intelligence.evidence.heading": "Belägg",
+  "investmentCase.intelligence.evidence.supportingCount": "Stödjande belägg: {{count}}",
+  "investmentCase.intelligence.evidence.challengingCount": "Motstridiga belägg: {{count}}",
+  "investmentCase.intelligence.evidence.contradictingHeading": "Motstridiga belägg, per observation:",
+  "investmentCase.intelligence.evidence.contradictingItem": "{{status}} ({{count}} motstridiga)",
+
+  "investmentCase.intelligence.epistemicStatus.supported": "styrkt",
+  "investmentCase.intelligence.epistemicStatus.challenged": "ifrågasatt",
+  "investmentCase.intelligence.epistemicStatus.contradicted": "motstridig",
+  "investmentCase.intelligence.epistemicStatus.assumed": "antagen (inga belägg än)",
+
+  "investmentCase.intelligence.keyRisks.heading": "Viktiga risker",
+  "investmentCase.intelligence.keyRisks.empty": "Inga viktiga risker identifierade just nu.",
+  "investmentCase.intelligence.keyRisks.contradictingEvidence": "Belägg motsäger den nuvarande tesen.",
+  "investmentCase.intelligence.keyRisks.highConcentration": "Hög koncentration i detta innehav.",
+  "investmentCase.intelligence.keyRisks.awaitingReconciliation": "Väntar på avstämning efter en affär.",
+
+  "investmentCase.intelligence.missingEvidence.heading": "Saknade belägg",
+  "investmentCase.intelligence.missingEvidence.empty": "Inga belägg­luckor upptäckta.",
+  "investmentCase.intelligence.missingEvidence.noEvidenceRecorded":
+    "Inga belägg registrerade för detta investeringscase.",
+  "investmentCase.intelligence.missingEvidence.observationWithoutEvidence":
+    "En observation saknar länkade belägg.",
+  "investmentCase.intelligence.missingEvidence.decisionWithoutLinkedObservation":
+    "Ett beslut saknar länkad observation.",
+
+  "investmentCase.intelligence.openQuestions.heading": "Öppna frågor",
+  "investmentCase.intelligence.openQuestions.noEvidenceRecordedForCase":
+    "Vilka belägg stödjer eller ifrågasätter denna tes?",
+  "investmentCase.intelligence.openQuestions.observationWithoutEvidence":
+    "Har denna observation stödjande eller ifrågasättande belägg?",
+  "investmentCase.intelligence.openQuestions.decisionWithoutLinkedObservation":
+    "Vilken observation föranledde detta beslut?",
+  "investmentCase.intelligence.openQuestions.businessDurabilityNotAssessable":
+    "Atlas saknar affärsfaktadata för att bedöma uthållighet.",
+  "investmentCase.intelligence.openQuestions.valuationThesisNotDocumented":
+    "Ingen värderingstes har dokumenterats.",
+  "investmentCase.intelligence.openQuestions.portfolioFactorNotAssessable":
+    "En portföljövergripande faktor är inte bedömbar än.",
+
+  "investmentCase.intelligence.portfolioContext.heading": "Portföljkontext",
+  "investmentCase.intelligence.portfolioContext.notHeld": "Inte för närvarande ett portföljinnehav.",
+  "investmentCase.intelligence.portfolioContext.noFacts": "Inga anmärkningsvärda portföljfakta just nu.",
+  "investmentCase.intelligence.portfolioContext.largestHolding": "Detta är portföljens största position.",
+  "investmentCase.intelligence.portfolioContext.recentlyIncreased": "Senast ökad.",
+  "investmentCase.intelligence.portfolioContext.recentlyTrimmed": "Senast minskad.",
+  "investmentCase.intelligence.portfolioContext.highConcentration": "Hög koncentration i portföljen.",
+  "investmentCase.intelligence.portfolioContext.pendingWorkflow": "Väntande arbetsposter för detta case.",
+  "investmentCase.intelligence.portfolioContext.evidenceIncomplete": "Belägg­täckningen är ofullständig.",
+
+  "investmentCase.intelligence.observationTimeline.heading": "Observationstidslinje",
+  "investmentCase.intelligence.observationTimeline.empty": "Inga observationer registrerade än.",
+  "investmentCase.intelligence.observationTimeline.evidenceCount": "{{count}} belägg­post(er)",
+
   // ---------- sprint 4: navigation ----------
   "shell.nav.history": "Historik",
 

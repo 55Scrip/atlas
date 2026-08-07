@@ -96,13 +96,36 @@ class RiskSignalContextInput:
 
 
 @dataclass(frozen=True)
+class CaseContextInput:
+    """Mirrors a slice of `atlas.alpha.case_intelligence.models
+    .CaseIntelligenceReport` (ATLAS-017) without importing it — same
+    boundary technique as `HoldingContextInput` above. Populated only
+    when the router resolves a specific `caseId` on the request; the
+    same `CaseIntelligenceService.build_report()` call the Investment
+    Case page's own API route makes, never a second reconstruction.
+    `key_risks`/`missing_evidence_kinds`/`consider_kinds` are the raw
+    English kind values, same "translated only at display time"
+    convention every other kind value in this module already uses."""
+
+    ticker: str | None
+    held: bool
+    current_thesis_reason: str | None
+    confidence: str
+    is_stale: bool
+    missing_evidence_kinds: tuple[str, ...]
+    key_risks: tuple[str, ...]
+    consider_kinds: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class PortfolioContextInput:
     """Only real, currently-recorded Alpha state and Portfolio
     Intelligence facts — never a forecast, never a fabricated
     fundamental. `None` fields are omitted from the rendered context
-    rather than padded. `key_findings`/`consider_items`/`risk_signals`
-    default to `()` so existing callers/tests that only construct the
-    original holdings-only shape keep working unchanged."""
+    rather than padded. `key_findings`/`consider_items`/`risk_signals`/
+    `case_context` default to empty/`None` so existing callers/tests
+    that only construct the original holdings-only shape keep working
+    unchanged."""
 
     holdings: tuple[HoldingContextInput, ...]
     cash_weight_percent: float | None
@@ -111,6 +134,7 @@ class PortfolioContextInput:
     key_findings: tuple[KeyFindingContextInput, ...] = ()
     consider_items: tuple[ConsiderContextInput, ...] = ()
     risk_signals: tuple[RiskSignalContextInput, ...] = ()
+    case_context: CaseContextInput | None = None
 
 
 @dataclass(frozen=True)
@@ -226,6 +250,29 @@ _RISK_SIGNAL_LABELS: dict[str, str] = {
     "awaiting_reconciliation": "awaiting reconciliation",
     "stale_review": "not reviewed recently",
 }
+#: ATLAS-017's `KeyRiskKind` (`atlas.alpha.case_intelligence.models`) --
+#: a distinct, smaller taxonomy from `_RISK_SIGNAL_LABELS` above (one
+#: Case's own risks, not a portfolio-wide signal), so kept as its own
+#: dict rather than merged.
+_KEY_RISK_LABELS: dict[str, str] = {
+    "contradicting_evidence": "evidence that contradicts the current thesis",
+    "high_concentration": "high concentration in this position",
+    "awaiting_reconciliation": "awaiting reconciliation after a trade",
+}
+#: ATLAS-017's `EvidenceGapKind` (`atlas.decision_engine.contracts`).
+_MISSING_EVIDENCE_LABELS: dict[str, str] = {
+    "no_evidence_recorded": "no evidence recorded for this Investment Case",
+    "observation_without_evidence": "an Observation with no linked evidence",
+    "decision_without_linked_observation": "a Decision with no linked Observation",
+}
+#: `EvidenceCoverageLevel` (`atlas.decision_engine.contracts`), reused
+#: verbatim as Confidence -- see `CaseContextInput`'s own docstring.
+_CONFIDENCE_LABELS: dict[str, str] = {
+    "not_applicable": "insufficient evidence to assess",
+    "none": "no evidence recorded",
+    "partial": "partial evidence",
+    "full": "full evidence coverage",
+}
 
 
 def _readable(labels: dict[str, str], kind: str) -> str:
@@ -251,8 +298,11 @@ def build_system_prompt(language: Language, portfolio_context: str | None) -> st
 def render_portfolio_context(portfolio: PortfolioContextInput | None) -> str | None:
     """Plain-text summary of only what is actually recorded. Returns
     `None` (never an empty or padded block) when there is nothing real
-    to report."""
-    if portfolio is None or len(portfolio.holdings) == 0:
+    to report. A `case_context` can be real even with zero portfolio
+    holdings (a brand-new Investment Case not yet linked to any
+    holding), so this only short-circuits to `None` when *both* are
+    absent."""
+    if portfolio is None or (len(portfolio.holdings) == 0 and portfolio.case_context is None):
         return None
 
     lines: list[str] = []
@@ -264,10 +314,11 @@ def render_portfolio_context(portfolio: PortfolioContextInput | None) -> str | N
         )
     if portfolio.cash_weight_percent is not None:
         lines.append(f"- Cash: {portfolio.cash_weight_percent}%")
-    lines.append(
-        "- Values are "
-        + ("absolute currency amounts and percentages." if portfolio.has_absolute_values else "percentage-only; no absolute portfolio value has been entered.")
-    )
+    if portfolio.holdings:
+        lines.append(
+            "- Values are "
+            + ("absolute currency amounts and percentages." if portfolio.has_absolute_values else "percentage-only; no absolute portfolio value has been entered.")
+        )
     if portfolio.concentration_level is not None:
         lines.append(f"- Concentration level: {portfolio.concentration_level}")
 
@@ -281,6 +332,26 @@ def render_portfolio_context(portfolio: PortfolioContextInput | None) -> str | N
         )
     for signal in portfolio.risk_signals:
         lines.append(f"- Portfolio Intelligence risk signal for {signal.ticker}: {_readable(_RISK_SIGNAL_LABELS, signal.kind)}")
+
+    case = portfolio.case_context
+    if case is not None:
+        subject = case.ticker if case.ticker is not None else "this Investment Case"
+        lines.append(f"- The investor is discussing {subject} specifically, from its own Investment Case:")
+        if not case.held:
+            lines.append(f"  - {subject} is not currently a portfolio holding.")
+        if case.current_thesis_reason is not None:
+            lines.append(f"  - Current thesis (the investor's own words): \"{case.current_thesis_reason}\"")
+        lines.append(f"  - Evidence coverage: {_readable(_CONFIDENCE_LABELS, case.confidence)}")
+        if case.is_stale:
+            lines.append("  - This Investment Case has not been reviewed in a long time.")
+        for kind in case.missing_evidence_kinds:
+            lines.append(f"  - Missing evidence: {_readable(_MISSING_EVIDENCE_LABELS, kind)}")
+        for kind in case.key_risks:
+            lines.append(f"  - Key risk: {_readable(_KEY_RISK_LABELS, kind)}")
+        for kind in case.consider_kinds:
+            lines.append(
+                f"  - Review suggestion: {_readable(_CONSIDER_LABELS, kind)} (not a recommendation to buy or sell)"
+            )
 
     return "\n".join(lines)
 

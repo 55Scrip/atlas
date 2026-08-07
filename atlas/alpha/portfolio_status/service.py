@@ -40,8 +40,11 @@ from atlas.core.domain.outcome.repository import OutcomeRepository
 # no timestamp query surface; see the module docstring in
 # `atlas/core/domain/case/repository.py`, which deliberately has no
 # `list_all` -- this reuses data already read for the other checks
-# rather than expanding that boundary).
-_VERY_OLD_CASE_THRESHOLD_DAYS = 90
+# rather than expanding that boundary). Public (no leading underscore)
+# since ATLAS-017's `atlas.alpha.case_intelligence` imports this exact
+# constant for its own Review Status section, rather than re-deriving a
+# second staleness number.
+VERY_OLD_CASE_THRESHOLD_DAYS = 90
 
 # A ticker that already passed Portfolio Import's client-side resolution
 # is always uppercase letters/digits, optionally with a "." or "-"
@@ -170,7 +173,7 @@ class PortfolioStatusService:
             if activity_timestamps:
                 earliest = min(activity_timestamps)
                 age_days = (now - earliest).days
-                if age_days >= _VERY_OLD_CASE_THRESHOLD_DAYS:
+                if age_days >= VERY_OLD_CASE_THRESHOLD_DAYS:
                     attention_items.append(
                         AttentionItem(
                             ticker=holding.ticker,

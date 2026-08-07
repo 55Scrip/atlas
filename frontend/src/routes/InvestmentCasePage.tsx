@@ -442,6 +442,159 @@ type TradeApplyStatus =
   | { kind: "error"; message: string };
 
 /**
+ * ATLAS-017 Case Intelligence -- a presentation layer over the
+ * canonical Decision Engine, never a second reasoning engine. Every
+ * field here comes straight from `GET /api/cases/{caseId}/intelligence`
+ * (`atlas/alpha/case_intelligence/service.py`); this page computes
+ * nothing of its own beyond translating enum values and formatting
+ * dates, the same "keep domain logic outside the UI" discipline
+ * `PortfolioIntelligenceCards` (`PortfolioPage.tsx`) already follows.
+ * Every `kind`/`status`/`coverage`/`reason` value is raw English on the
+ * wire, translated only at display time.
+ */
+type EvidenceCoverageLevel = "not_applicable" | "none" | "partial" | "full";
+
+interface ObservationEvidenceClassificationView {
+  observationId: string;
+  status: "supported" | "challenged" | "contradicted" | "assumed";
+  supportingEvidenceCount: number;
+  challengingEvidenceCount: number;
+}
+
+interface EvidenceQualityFindingsView {
+  totalEvidenceCount: number;
+  supportingEvidenceCount: number;
+  challengingEvidenceCount: number;
+  coverage: EvidenceCoverageLevel;
+  observationClassifications: ObservationEvidenceClassificationView[];
+}
+
+interface EvidenceSummaryView {
+  observationClassifications: ObservationEvidenceClassificationView[];
+}
+
+interface EvidenceGapView {
+  kind: "no_evidence_recorded" | "observation_without_evidence" | "decision_without_linked_observation";
+  reference: string | null;
+}
+
+type OpenQuestionKind =
+  | "no_evidence_recorded_for_case"
+  | "observation_without_evidence"
+  | "decision_without_linked_observation"
+  | "business_durability_not_assessable"
+  | "valuation_thesis_not_documented"
+  | "portfolio_factor_not_assessable";
+
+interface OpenQuestionView {
+  kind: OpenQuestionKind;
+  reference: string | null;
+}
+
+type KeyRiskKind = "contradicting_evidence" | "high_concentration" | "awaiting_reconciliation";
+
+interface KeyRiskItemView {
+  kind: KeyRiskKind;
+  reference: string | null;
+}
+
+interface DecisionHistoryEntryView {
+  decisionId: string;
+  decisionType: string;
+  reason: string;
+  investorConfidence: number;
+  decidedAt: string;
+  outcomeId: string | null;
+  outcomeStatement: string | null;
+  outcomeOccurredAt: string | null;
+}
+
+interface ObservationTimelineEntryView {
+  observationId: string;
+  subject: string;
+  statement: string;
+  observedAt: string;
+  evidenceCount: number;
+  epistemicStatus: string | null;
+}
+
+type CasePortfolioContextFact =
+  | "largest_holding"
+  | "recently_increased"
+  | "recently_trimmed"
+  | "high_concentration"
+  | "pending_workflow"
+  | "evidence_incomplete";
+
+interface CasePortfolioContextView {
+  held: boolean;
+  facts: CasePortfolioContextFact[];
+  weightPercent: number | null;
+  concentrationLevel: string | null;
+  mostRecentTradeTransactionType: string | null;
+  mostRecentTradeAt: string | null;
+}
+
+interface StatusUnavailableView {
+  available: boolean;
+  reason: string | null;
+}
+
+type CaseConsiderKind =
+  | "open_investment_case"
+  | "gather_evidence"
+  | "review_thesis"
+  | "update_case"
+  | "review_concentration";
+
+interface CaseConsiderItemView {
+  kind: CaseConsiderKind;
+  ticker: string;
+  caseId: string | null;
+  confidence: EvidenceCoverageLevel;
+  relatedHoldings: string[];
+  evidenceGapCount: number | null;
+  ageDays: number | null;
+  weightPercent: number | null;
+  pendingItemCount: number | null;
+}
+
+interface CaseIntelligenceView {
+  caseId: string;
+  currentView: {
+    ticker: string | null;
+    held: boolean;
+    weightPercent: number | null;
+    valueAbsolute: number | null;
+    reconciliationStatus: string | null;
+  };
+  currentThesis: {
+    latestDecisionReason: string | null;
+    latestDecisionType: string | null;
+    latestObservationStatement: string | null;
+  };
+  evidenceQuality: EvidenceQualityFindingsView | null;
+  supportingEvidence: EvidenceSummaryView | null;
+  contradictingEvidence: EvidenceSummaryView | null;
+  missingEvidence: EvidenceGapView[];
+  openQuestions: OpenQuestionView[];
+  keyRisks: KeyRiskItemView[];
+  decisionHistory: DecisionHistoryEntryView[];
+  observationTimeline: ObservationTimelineEntryView[];
+  portfolioContext: CasePortfolioContextView;
+  portfolioFit: StatusUnavailableView;
+  conviction: StatusUnavailableView;
+  confidence: EvidenceCoverageLevel;
+  reviewStatus: { isStale: boolean; ageDays: number | null };
+  considerItems: CaseConsiderItemView[];
+}
+
+type CaseIntelligenceFetchStatus =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "loaded"; report: CaseIntelligenceView };
+
+/**
  * Investment Case (Alpha Sprint 1A) — merges the former Investment Case
  * shell (Sprint 1, Commit 8) and Decision Workspace (Sprint 1, Commits
  * 9-11+) into the one shared Investment Case implementation Alpha Sprint
@@ -610,6 +763,9 @@ export function InvestmentCasePage() {
   });
   const [tradeLogStatus, setTradeLogStatus] = useState<TradeLogFetchStatus>({ kind: "loading" });
   const [pendingAction, setPendingAction] = useState<PositionAction | null>(null);
+  const [caseIntelligence, setCaseIntelligence] = useState<CaseIntelligenceFetchStatus>({
+    kind: "loading",
+  });
 
   useEffect(() => {
     if (!caseId) return;
@@ -631,6 +787,28 @@ export function InvestmentCasePage() {
           kind: "error",
           message: error instanceof Error ? error.message : t("common.unknownError"),
         });
+      });
+
+    return () => controller.abort();
+  }, [caseId]);
+
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setCaseIntelligence({ kind: "loading" });
+
+    fetch(`/api/cases/${caseId}/intelligence`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        return response.json() as Promise<CaseIntelligenceView>;
+      })
+      .then((report) => setCaseIntelligence({ kind: "loaded", report }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setCaseIntelligence({ kind: "error" });
       });
 
     return () => controller.abort();
@@ -1681,6 +1859,19 @@ export function InvestmentCasePage() {
                 )}
               </Stack>
             </Surface>
+
+            <Divider />
+
+            {/* ATLAS-017 Case Intelligence -- Evidence, Key Risks,
+                Confidence/Conviction, Missing Evidence, Open Questions,
+                Portfolio Context, Consider, and Observation Timeline, all
+                sourced from `GET /api/cases/{caseId}/intelligence`.
+                Rendered only once loaded; a fetch failure never blocks
+                the rest of the page (same independent-fetch pattern as
+                `alphaPortfolioStatus`). */}
+            {caseIntelligence.kind === "loaded" && (
+              <CaseIntelligenceSections report={caseIntelligence.report} t={t} />
+            )}
 
             <Divider />
 
@@ -3746,5 +3937,249 @@ export function InvestmentCasePage() {
         )}
       </Stack>
     </Container>
+  );
+}
+
+const CONFIDENCE_KEY: Record<EvidenceCoverageLevel, TranslationKey> = {
+  not_applicable: "portfolio.intelligence.confidence.not_applicable",
+  none: "portfolio.intelligence.confidence.none",
+  partial: "portfolio.intelligence.confidence.partial",
+  full: "portfolio.intelligence.confidence.full",
+};
+
+const EPISTEMIC_STATUS_KEY: Record<string, TranslationKey> = {
+  supported: "investmentCase.intelligence.epistemicStatus.supported",
+  challenged: "investmentCase.intelligence.epistemicStatus.challenged",
+  contradicted: "investmentCase.intelligence.epistemicStatus.contradicted",
+  assumed: "investmentCase.intelligence.epistemicStatus.assumed",
+};
+
+const KEY_RISK_KEY: Record<KeyRiskKind, TranslationKey> = {
+  contradicting_evidence: "investmentCase.intelligence.keyRisks.contradictingEvidence",
+  high_concentration: "investmentCase.intelligence.keyRisks.highConcentration",
+  awaiting_reconciliation: "investmentCase.intelligence.keyRisks.awaitingReconciliation",
+};
+
+const MISSING_EVIDENCE_KEY: Record<EvidenceGapView["kind"], TranslationKey> = {
+  no_evidence_recorded: "investmentCase.intelligence.missingEvidence.noEvidenceRecorded",
+  observation_without_evidence: "investmentCase.intelligence.missingEvidence.observationWithoutEvidence",
+  decision_without_linked_observation:
+    "investmentCase.intelligence.missingEvidence.decisionWithoutLinkedObservation",
+};
+
+const OPEN_QUESTION_KEY: Record<OpenQuestionKind, TranslationKey> = {
+  no_evidence_recorded_for_case: "investmentCase.intelligence.openQuestions.noEvidenceRecordedForCase",
+  observation_without_evidence: "investmentCase.intelligence.openQuestions.observationWithoutEvidence",
+  decision_without_linked_observation:
+    "investmentCase.intelligence.openQuestions.decisionWithoutLinkedObservation",
+  business_durability_not_assessable: "investmentCase.intelligence.openQuestions.businessDurabilityNotAssessable",
+  valuation_thesis_not_documented: "investmentCase.intelligence.openQuestions.valuationThesisNotDocumented",
+  portfolio_factor_not_assessable: "investmentCase.intelligence.openQuestions.portfolioFactorNotAssessable",
+};
+
+const PORTFOLIO_CONTEXT_FACT_KEY: Record<CasePortfolioContextFact, TranslationKey> = {
+  largest_holding: "investmentCase.intelligence.portfolioContext.largestHolding",
+  recently_increased: "investmentCase.intelligence.portfolioContext.recentlyIncreased",
+  recently_trimmed: "investmentCase.intelligence.portfolioContext.recentlyTrimmed",
+  high_concentration: "investmentCase.intelligence.portfolioContext.highConcentration",
+  pending_workflow: "investmentCase.intelligence.portfolioContext.pendingWorkflow",
+  evidence_incomplete: "investmentCase.intelligence.portfolioContext.evidenceIncomplete",
+};
+
+const CASE_CONSIDER_TITLE_KEY: Record<CaseConsiderKind, TranslationKey> = {
+  open_investment_case: "portfolio.intelligence.consider.open_investment_case.title",
+  gather_evidence: "portfolio.intelligence.consider.gather_evidence.title",
+  review_thesis: "portfolio.intelligence.consider.review_thesis.title",
+  update_case: "portfolio.intelligence.consider.update_case.title",
+  review_concentration: "portfolio.intelligence.consider.review_concentration.title",
+};
+
+const CASE_CONSIDER_REASON_KEY: Record<CaseConsiderKind, TranslationKey> = {
+  open_investment_case: "portfolio.intelligence.consider.open_investment_case.reason",
+  gather_evidence: "portfolio.intelligence.consider.gather_evidence.reason",
+  review_thesis: "portfolio.intelligence.consider.review_thesis.reason",
+  update_case: "portfolio.intelligence.consider.update_case.reason",
+  review_concentration: "portfolio.intelligence.consider.review_concentration.reason",
+};
+
+/**
+ * ATLAS-017 Case Intelligence sections -- Confidence/Conviction,
+ * Evidence (Supporting/Contradicting), Key Risks, Missing Evidence,
+ * Open Questions, Portfolio Context, Consider, and Observation Timeline.
+ * Every value comes straight from `CaseIntelligenceView`; this component
+ * computes nothing of its own -- the domain logic lives entirely in
+ * `atlas/alpha/case_intelligence/service.py`. Reuses the `portfolio.
+ * intelligence.confidence.*`/`portfolio.intelligence.consider.*.title`/
+ * `.reason` translation keys verbatim (ATLAS-016): the same categorical
+ * confidence scale and the same five Consider kinds, just scoped to one
+ * Case here instead of the whole portfolio.
+ */
+function CaseIntelligenceSections({
+  report,
+  t,
+}: {
+  report: CaseIntelligenceView;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const evidenceQuality = report.evidenceQuality;
+
+  return (
+    <Stack gap="inter-section">
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("investmentCase.intelligence.confidence.heading")}</Heading>
+          <Text>{t(CONFIDENCE_KEY[report.confidence])}</Text>
+          <Text color="secondary" as="p">
+            {t("investmentCase.intelligence.confidence.explanation")}
+          </Text>
+          <Heading level={3}>{t("investmentCase.intelligence.conviction.heading")}</Heading>
+          <Text color="secondary">
+            {report.conviction.available
+              ? t("investmentCase.intelligence.conviction.available")
+              : t("investmentCase.intelligence.conviction.unavailable")}
+          </Text>
+        </Stack>
+      </Surface>
+
+      {evidenceQuality && (
+        <Surface tier="primary">
+          <Stack gap="intra-section">
+            <Heading level={2}>{t("investmentCase.intelligence.evidence.heading")}</Heading>
+            <Text color="secondary" as="p">
+              {t("investmentCase.intelligence.evidence.supportingCount", {
+                count: evidenceQuality.supportingEvidenceCount,
+              })}
+            </Text>
+            <Text color="secondary" as="p">
+              {t("investmentCase.intelligence.evidence.challengingCount", {
+                count: evidenceQuality.challengingEvidenceCount,
+              })}
+            </Text>
+            {report.contradictingEvidence &&
+              report.contradictingEvidence.observationClassifications.length > 0 && (
+                <Stack gap="intra-section">
+                  <Text color="tertiary">{t("investmentCase.intelligence.evidence.contradictingHeading")}</Text>
+                  {report.contradictingEvidence.observationClassifications.map((classification) => (
+                    <Text key={classification.observationId} color="tertiary" as="p">
+                      {t("investmentCase.intelligence.evidence.contradictingItem", {
+                        status: EPISTEMIC_STATUS_KEY[classification.status]
+                          ? t(EPISTEMIC_STATUS_KEY[classification.status]!)
+                          : classification.status,
+                        count: classification.challengingEvidenceCount,
+                      })}
+                    </Text>
+                  ))}
+                </Stack>
+              )}
+          </Stack>
+        </Surface>
+      )}
+
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("investmentCase.intelligence.keyRisks.heading")}</Heading>
+          {report.keyRisks.length === 0 && (
+            <Text color="secondary">{t("investmentCase.intelligence.keyRisks.empty")}</Text>
+          )}
+          {report.keyRisks.map((risk, index) => (
+            <Text key={index} color="tertiary" as="p">
+              {t(KEY_RISK_KEY[risk.kind])}
+            </Text>
+          ))}
+        </Stack>
+      </Surface>
+
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("investmentCase.intelligence.missingEvidence.heading")}</Heading>
+          {report.missingEvidence.length === 0 && (
+            <Text color="secondary">{t("investmentCase.intelligence.missingEvidence.empty")}</Text>
+          )}
+          {report.missingEvidence.map((gap, index) => (
+            <Text key={index} color="secondary" as="p">
+              {t(MISSING_EVIDENCE_KEY[gap.kind])}
+            </Text>
+          ))}
+          {report.openQuestions.length > 0 && (
+            <Stack gap="intra-section">
+              <Text color="secondary">{t("investmentCase.intelligence.openQuestions.heading")}</Text>
+              {report.openQuestions.map((question, index) => (
+                <Text key={index} color="secondary" as="p">
+                  {t(OPEN_QUESTION_KEY[question.kind])}
+                </Text>
+              ))}
+            </Stack>
+          )}
+        </Stack>
+      </Surface>
+
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("investmentCase.intelligence.portfolioContext.heading")}</Heading>
+          {!report.portfolioContext.held && (
+            <Text color="secondary">{t("investmentCase.intelligence.portfolioContext.notHeld")}</Text>
+          )}
+          {report.portfolioContext.held && report.portfolioContext.facts.length === 0 && (
+            <Text color="secondary">{t("investmentCase.intelligence.portfolioContext.noFacts")}</Text>
+          )}
+          {report.portfolioContext.facts.map((fact) => (
+            <Text key={fact} color="secondary" as="p">
+              {t(PORTFOLIO_CONTEXT_FACT_KEY[fact])}
+            </Text>
+          ))}
+        </Stack>
+      </Surface>
+
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("portfolio.intelligence.consider.heading")}</Heading>
+          <Text color="tertiary" as="p">
+            {t("portfolio.intelligence.consider.disclaimer")}
+          </Text>
+          {report.considerItems.length === 0 && (
+            <Text color="secondary">{t("portfolio.intelligence.consider.empty")}</Text>
+          )}
+          {report.considerItems.map((item, index) => (
+            <Stack key={index} gap="intra-section">
+              <Text as="p">{t(CASE_CONSIDER_TITLE_KEY[item.kind])}</Text>
+              <Text color="secondary" as="p">
+                {t(CASE_CONSIDER_REASON_KEY[item.kind], {
+                  ticker: item.ticker,
+                  count: item.evidenceGapCount ?? item.pendingItemCount ?? 0,
+                  days: item.ageDays ?? 0,
+                  weight: item.weightPercent ?? 0,
+                })}
+              </Text>
+            </Stack>
+          ))}
+        </Stack>
+      </Surface>
+
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("investmentCase.intelligence.observationTimeline.heading")}</Heading>
+          {report.observationTimeline.length === 0 && (
+            <Text color="secondary">{t("investmentCase.intelligence.observationTimeline.empty")}</Text>
+          )}
+          {report.observationTimeline.map((entry) => (
+            <div key={entry.observationId}>
+              <Text as="p">{entry.statement}</Text>
+              <Text color="secondary" as="p">
+                {t("investmentCase.intelligence.observationTimeline.evidenceCount", {
+                  count: entry.evidenceCount,
+                })}
+                {entry.epistemicStatus && EPISTEMIC_STATUS_KEY[entry.epistemicStatus]
+                  ? ` — ${t(EPISTEMIC_STATUS_KEY[entry.epistemicStatus]!)}`
+                  : ""}
+              </Text>
+              <Text color="tertiary" as="p">
+                {entry.observedAt}
+              </Text>
+              <Divider tone="hairline" />
+            </div>
+          ))}
+        </Stack>
+      </Surface>
+    </Stack>
   );
 }

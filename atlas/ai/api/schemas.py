@@ -20,6 +20,13 @@ class ChatMessageBody(CamelModel):
 class DiscoveryChatRequest(CamelModel):
     messages: list[ChatMessageBody]
     language: Literal["sv", "en"]
+    # ATLAS-017: when the investor is discussing one specific Investment
+    # Case (e.g. arrived here via a "Discuss in Discovery" link from that
+    # Case's own page), the router resolves this into the exact same
+    # `CaseIntelligenceReport` the Investment Case page shows -- never a
+    # second reconstruction. Optional and additive: existing callers that
+    # never send it are unaffected.
+    case_id: str | None = None
 
 
 class ToolResultBody(CamelModel):

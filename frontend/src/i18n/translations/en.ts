@@ -471,6 +471,69 @@ export const en = {
   "investmentCase.continuity.line2":
     "Report completed purchases or sales to keep the current portfolio state accurate.",
 
+  // ---------- investment case: case intelligence (ATLAS-017) ----------
+  "investmentCase.intelligence.confidence.heading": "Confidence",
+  "investmentCase.intelligence.confidence.explanation":
+    "How well supported the current understanding is — not a prediction of future returns.",
+  "investmentCase.intelligence.conviction.heading": "Conviction",
+  "investmentCase.intelligence.conviction.available": "Available.",
+  "investmentCase.intelligence.conviction.unavailable":
+    "Unavailable — Atlas does not compute a conviction score.",
+
+  "investmentCase.intelligence.evidence.heading": "Evidence",
+  "investmentCase.intelligence.evidence.supportingCount": "Supporting evidence: {{count}}",
+  "investmentCase.intelligence.evidence.challengingCount": "Contradicting evidence: {{count}}",
+  "investmentCase.intelligence.evidence.contradictingHeading": "Contradicting evidence, by observation:",
+  "investmentCase.intelligence.evidence.contradictingItem": "{{status}} ({{count}} contradicting)",
+
+  "investmentCase.intelligence.epistemicStatus.supported": "supported",
+  "investmentCase.intelligence.epistemicStatus.challenged": "challenged",
+  "investmentCase.intelligence.epistemicStatus.contradicted": "contradicted",
+  "investmentCase.intelligence.epistemicStatus.assumed": "assumed (no evidence yet)",
+
+  "investmentCase.intelligence.keyRisks.heading": "Key Risks",
+  "investmentCase.intelligence.keyRisks.empty": "No key risks identified right now.",
+  "investmentCase.intelligence.keyRisks.contradictingEvidence": "Evidence contradicts the current thesis.",
+  "investmentCase.intelligence.keyRisks.highConcentration": "High concentration in this position.",
+  "investmentCase.intelligence.keyRisks.awaitingReconciliation": "Awaiting reconciliation after a trade.",
+
+  "investmentCase.intelligence.missingEvidence.heading": "Missing Evidence",
+  "investmentCase.intelligence.missingEvidence.empty": "No evidence gaps detected.",
+  "investmentCase.intelligence.missingEvidence.noEvidenceRecorded":
+    "No evidence recorded for this Investment Case.",
+  "investmentCase.intelligence.missingEvidence.observationWithoutEvidence":
+    "An Observation has no linked evidence.",
+  "investmentCase.intelligence.missingEvidence.decisionWithoutLinkedObservation":
+    "A Decision has no linked Observation.",
+
+  "investmentCase.intelligence.openQuestions.heading": "Open questions",
+  "investmentCase.intelligence.openQuestions.noEvidenceRecordedForCase":
+    "What evidence supports or challenges this thesis?",
+  "investmentCase.intelligence.openQuestions.observationWithoutEvidence":
+    "Does this observation have supporting or challenging evidence?",
+  "investmentCase.intelligence.openQuestions.decisionWithoutLinkedObservation":
+    "What observation prompted this decision?",
+  "investmentCase.intelligence.openQuestions.businessDurabilityNotAssessable":
+    "Atlas has no business-fact data to assess durability from.",
+  "investmentCase.intelligence.openQuestions.valuationThesisNotDocumented":
+    "No valuation thesis has been documented.",
+  "investmentCase.intelligence.openQuestions.portfolioFactorNotAssessable":
+    "A portfolio-wide factor is not yet assessable.",
+
+  "investmentCase.intelligence.portfolioContext.heading": "Portfolio Context",
+  "investmentCase.intelligence.portfolioContext.notHeld": "Not currently a portfolio holding.",
+  "investmentCase.intelligence.portfolioContext.noFacts": "No notable portfolio-context facts right now.",
+  "investmentCase.intelligence.portfolioContext.largestHolding": "This is the portfolio's largest position.",
+  "investmentCase.intelligence.portfolioContext.recentlyIncreased": "Most recently increased.",
+  "investmentCase.intelligence.portfolioContext.recentlyTrimmed": "Most recently trimmed.",
+  "investmentCase.intelligence.portfolioContext.highConcentration": "High concentration in the portfolio.",
+  "investmentCase.intelligence.portfolioContext.pendingWorkflow": "Pending workflow items for this case.",
+  "investmentCase.intelligence.portfolioContext.evidenceIncomplete": "Evidence coverage is incomplete.",
+
+  "investmentCase.intelligence.observationTimeline.heading": "Observation Timeline",
+  "investmentCase.intelligence.observationTimeline.empty": "No observations recorded yet.",
+  "investmentCase.intelligence.observationTimeline.evidenceCount": "{{count}} evidence item(s)",
+
   // ---------- sprint 4: navigation ----------
   "shell.nav.history": "History",
 
