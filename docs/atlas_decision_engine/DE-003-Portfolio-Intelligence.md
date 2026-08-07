@@ -22,6 +22,16 @@ Portfolio's own product surface continues to read, not compute, any
 resulting priority, exactly as `PFINV-004` and `PFINV-003` ("No Deep
 Reasoning Ownership") already require.
 
+**Terminology.** Three related but distinct terms appear across this
+doctrine set: **Portfolio Philosophy** (`Doctrine` §3) is the principle that
+a position is never evaluated in isolation. **Portfolio Intelligence** (this
+document) is the concrete mechanism that principle requires — the seven
+factors below. **Portfolio Context** (`DE-002` §2.4) is the structural
+section, within a single Atlas Recommendation, where whichever of these
+seven factors are relevant get applied. None restates the others; each
+names a different layer — principle, mechanism, and application point,
+respectively.
+
 ## 2. Grounding in What Is Already Implemented
 
 Two of the seven factors already have a live, deterministic data model this
@@ -95,11 +105,12 @@ opportunity cost as a distinct factor.
 ### Existing Thesis
 
 For a position already held, what the original or most recently updated
-thesis actually claimed, and whether the recommendation being reasoned
-toward is consistent with, or a revision of, that thesis. Sourced from
-Decision Memory (`DE-005`) — this factor is where `DE-003` and `DE-005`
-meet: Portfolio Intelligence asks whether the thesis still holds; Decision
-Memory is where that thesis and its history are actually recorded.
+Investment Thesis (`DE-005` §1) actually claimed, and whether the
+recommendation being reasoned toward is consistent with, or a revision of,
+that thesis. Sourced from Decision Memory (`DE-005`) — this factor is where
+`DE-003` and `DE-005` meet: Portfolio Intelligence asks whether the thesis
+still holds; Decision Memory is where that thesis and its history are
+actually recorded.
 
 ### Previous Decisions
 

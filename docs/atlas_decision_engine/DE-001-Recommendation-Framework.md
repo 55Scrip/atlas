@@ -140,39 +140,67 @@ business problem, or vice versa.
 this specific decision point, and says so rather than defaulting to Hold.
 
 **Evidence pattern.** Distinct from Hold: No Action applies where there is
-no established position and no active decision context requiring a view
-right now (for example, a Watchlist entry with genuinely nothing new to
-report) — as opposed to Hold, which is an active, evidence-based statement
-about an existing position. Where the evidence is not merely quiet but
-genuinely insufficient to support any of the five directions above, Atlas
-states that directly as Insufficient Evidence (`DE-004`) rather than
-defaulting to No Action to appear to have completed the analysis.
+no established position and no active decision context (`APP-001` §3.10,
+Decision Context) requiring a view right now — for example, a Watchlist
+entry (`APS-007`) with genuinely nothing new to report — as opposed to Hold,
+which is an active, evidence-based statement about an existing position. No
+Action is itself a fully evidenced direction, exactly like the other five;
+it is not a stand-in for insufficient evidence. Where the evidence does not
+support No Action or any other direction, Atlas issues Recommendation
+Withheld instead of a direction — see below.
+
+### Recommendation Withheld (Not a Seventh Direction)
+
+An Atlas Recommendation states "exactly one of six directions" (above) —
+Recommendation Withheld is not a seventh. It is what Atlas issues *instead
+of* selecting one of the six, where the available evidence does not support
+even a Low-conviction case for any of them. Defined in full in `DE-004` §4
+(its home specification) and structurally specified in `DE-002` §4. In this
+state:
+
+- No recommendation direction is selected — not Buy, Add, Hold, Trim, Exit,
+  or No Action.
+- Atlas states, specifically, why the available evidence is insufficient.
+- Atlas states what evidence or clarification would allow it to form a
+  view.
+- Atlas MAY still describe the Current Situation and Portfolio Context
+  (`DE-002` §2.1, §2.4).
+- Atlas SHALL NOT default to Hold or No Action to avoid appearing
+  unhelpful — per `APP-002` §6's own instruction that Atlas "SHALL NOT
+  manufacture a claim to avoid appearing unhelpful."
 
 ## 3. Required Explainability Elements
 
 Per `ATLAS_CONSTITUTION.md`'s Non-Negotiable Principle "Every Atlas Rating
-must be explainable," every Atlas Recommendation, regardless of direction,
-SHALL include all four of the following. These four elements are not new
-invention — they are this specification's application of the Reasoning
-Structure (`DE-002`) to the specific case of a recommendation:
+must be explainable," every Atlas Recommendation SHALL include all four of
+the following. **`DE-002`'s seven-part Reasoning Structure is the canonical
+implementation structure; this list is a summary checklist derived from it,
+not an independent or competing requirement.** Each element maps to a
+specific `DE-002` section:
 
-1. **Why** — the specific conclusion from Business Evaluation, Valuation
-   Philosophy, and Portfolio Intelligence that the direction follows from.
-   Never a bare label ("undervalued," "too concentrated") without the
-   reasoning behind it.
-2. **Based on what evidence** — the Evidence (`DE-002` §Evidence) that
+1. **Why** (`DE-002` §2.5, Direction) — the specific conclusion from
+   Business Evaluation, Valuation Philosophy, and Portfolio Intelligence
+   that the direction follows from. Never a bare label ("undervalued," "too
+   concentrated") without the reasoning behind it.
+2. **Based on what evidence** (`DE-002` §2.2, Evidence) — the Evidence that
    supports the Why, each item with its source and quality, per `APP-002`
    §7's Known/Estimated/Possible/Unknown conventions.
-3. **With what uncertainty** — the Atlas Conviction Level (`DE-004`) and the
-   specific reason for it: what is well-established versus what remains
-   genuinely open.
-4. **What could change the conclusion** — the specific evidence, event, or
-   threshold that would cause Atlas to revise the recommendation, per
-   `ATLAS_CONSTITUTION.md`'s Trust Principle "Explain what could change
-   Atlas' view."
+3. **With what uncertainty** (`DE-002` §2.6, Conviction) — the Atlas
+   Conviction Level (`DE-004`) and the specific reason for it: what is
+   well-established versus what remains genuinely open.
+4. **What could change the conclusion** (`DE-002` §2.7, What Could Change
+   This View) — the specific evidence, event, or threshold that would cause
+   Atlas to revise the recommendation, per `ATLAS_CONSTITUTION.md`'s Trust
+   Principle "Explain what could change Atlas' view."
 
-A recommendation missing any of the four is incomplete and SHALL NOT be
-presented as though it were a finished Atlas Recommendation.
+This checklist intentionally covers four of `DE-002`'s seven sections — the
+four that state an explainable *claim*. The remaining three (`DE-002` §2.1
+Current Situation, §2.3 Counter-Evidence, §2.4 Portfolio Context) are
+equally mandatory under `DE-002`, but are context and process sections
+rather than claims requiring their own explainability check. Satisfying
+`DE-002` in full, not just this checklist, is what makes a recommendation
+complete; a recommendation missing any of the four items above is
+incomplete and SHALL NOT be presented as though it were finished.
 
 ## 4. Relationship to `APP-002` Recommendation Language
 
@@ -184,3 +212,26 @@ suggests this position may be worth initiating"; "Hold" becomes "No change
 to the current position is currently supported by the evidence." This
 specification names the direction Atlas has concluded; `APP-002` governs how
 that conclusion is written as a sentence to the Investor.
+
+## 5. Rationale for Direction Labels (Governance Note)
+
+The six directions use trade-flavored verbs (Buy, Trim, Exit) rather than
+more neutrally advisory phrasing (for example, Increase, Decrease,
+Maintain). This is a deliberate choice, reviewed against `APP-000` PP-003's
+own test — whether a Decision "is reasonably perceived by the Investor to
+have been made, by Atlas rather than by the Investor" — and adopted for
+two reasons: the verbs are already the Investor's own vocabulary for
+capital-allocation actions (matching the live, Investor-authored
+`BUY/SELL/HOLD/WATCH/PASS` field this specification's Section 1 already
+reconciles against), and every appearance of a direction is mandatorily
+wrapped in `APP-002` §6's evidence-attributed register ("Current evidence
+suggests this position may be worth initiating," never "Buy this stock"),
+which this specification's Section 4 requires without exception.
+
+This mitigates, but does not eliminate, the labeling risk PP-003 names.
+**Governance note:** if a future implementation phase finds Investors
+perceiving a stated direction as an instruction rather than advice —
+despite the required register — this label choice, not the underlying
+evidence-pattern definitions in Section 2, is the first thing that should
+be revisited. That revisit is a future governance action; this remediation
+pass records the trade-off rather than resolving it further.

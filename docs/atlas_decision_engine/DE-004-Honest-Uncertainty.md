@@ -41,12 +41,13 @@ collision of this exact kind (`ADR-003`, for "Recommendation"). The word
 "conviction" is not a new coinage either: it is drawn directly from `APP-002`
 §6's own existing section title, "By conviction level."
 
-## 3. The Four Levels
+## 3. The Three Levels
 
-The Atlas Conviction Level formalizes, as a structured field, the same four
-levels `APP-002` §6 already uses as prose-register categories. This
-specification does not introduce new labels — it gives existing labels a
-consistent, structured status so a recommendation's conviction can be
+The Atlas Conviction Level formalizes, as a structured field, three of the
+four levels `APP-002` §6 already uses as prose-register categories (the
+fourth, "Insufficient evidence," is not a Conviction Level — see Section 4).
+This specification does not introduce new labels — it gives existing labels
+a consistent, structured status so a recommendation's conviction can be
 represented the same way everywhere it appears (a badge, a filter, a sort
 order), not only within a sentence.
 
@@ -85,10 +86,27 @@ while keeping a confident shape — *"The available evidence is limited. What
 exists points toward [tentative claim], but this should be treated as a
 starting point for further review, not a settled view."*
 
-### Insufficient Evidence
+## 4. Recommendation Withheld
 
-**Evidence pattern.** The evidence available does not support any of the
-six directions in `DE-001` §2 — not even a low-conviction one.
+Where the evidence available does not support High, Medium, or Low
+conviction for any of `DE-001` §2's six directions — not even a
+Low-conviction case — Atlas issues **Recommendation Withheld** instead of a
+Conviction Level and a direction. This is not the bottom of the Conviction
+scale; it precedes the scale entirely, because there is no conclusion for a
+Conviction Level to qualify.
+
+**Required content**, per `Doctrine` §7 and `DE-002` §4:
+
+- No recommendation direction is selected — not Buy, Add, Hold, Trim, Exit,
+  or No Action.
+- Atlas states, specifically, why the available evidence is insufficient —
+  which of `DE-002`'s Evidence (§2.2) or Counter-Evidence (§2.3) content is
+  missing, contested, or too thin to support a conclusion.
+- Atlas states what evidence or clarification would allow it to form a
+  view.
+- Atlas MAY still state Current Situation (`DE-002` §2.1) and Portfolio
+  Context (`DE-002` §2.4).
+- Atlas SHALL NOT default to Hold or No Action.
 
 **Communication.** Per `APP-002` §6: *"There isn't currently enough evidence
 for Atlas to form a view here."* This is a complete, valid Atlas
@@ -96,12 +114,12 @@ Recommendation outcome in its own right, not an error state and not a
 placeholder awaiting more information — per `ATLAS_CONSTITUTION.md`'s Trust
 Principle, *"Admit when there is not enough information for a high-confidence
 assessment,"* and `APP-002` §6's own explicit instruction: *"Atlas SHALL NOT
-manufacture a claim to avoid appearing unhelpful."* Insufficient Evidence
-SHALL NOT be silently rounded up to Low.
+manufacture a claim to avoid appearing unhelpful."* Recommendation Withheld
+SHALL NOT be silently rounded up to a Low-conviction direction.
 
-## 4. Categorical, Not Numeric — Why
+## 5. Categorical, Not Numeric — Why
 
-This specification defines a four-value categorical scale, not a numeric
+This specification defines a three-value categorical scale, not a numeric
 score (a percentage, a 1–10 rating). This is a deliberate choice, not an
 omission, for two independently sufficient reasons already stated elsewhere
 in this repository's doctrine:
@@ -114,10 +132,10 @@ in this repository's doctrine:
    conclusion with greater confidence than its underlying Evidence and
    Reasoning support."** A bare number invites exactly this — treating the
    number itself as the evidence, rather than as a compressed pointer back
-   to it. Each of the four categories above is instead defined by, and
+   to it. Each of the three categories above is instead defined by, and
    always accompanied by, the specific evidence pattern that produced it.
 
-## 5. Relationship to Recommendation Direction
+## 6. Relationship to Recommendation Direction and Recommendation Withheld
 
 The Atlas Conviction Level is independent of the recommendation direction
 (`DE-001` §2) — a High-conviction Hold and a Low-conviction Buy are both
@@ -126,3 +144,7 @@ evidence supports the conclusion reached; direction states what the
 conclusion is. The two SHALL always be stated together (`DE-002` §2.6) and
 SHALL NOT be collapsed into a single combined signal that obscures which one
 a reader is looking at.
+
+Recommendation Withheld (Section 4) is not a point on this relationship —
+it replaces both the direction and the Conviction Level together, rather
+than pairing with either.

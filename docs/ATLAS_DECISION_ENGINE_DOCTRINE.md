@@ -8,6 +8,15 @@ stated here is implementation-ready but no code changes accompany this
 document. A later, separately-scoped engineering phase translates this
 doctrine into running software without changing the philosophy stated here.
 
+**Governance Status:** This Doctrine has not yet been formally adopted by
+`APP-000`. It is a candidate specification, developed and internally
+reviewed, pending a future `APP-000` acknowledgment or ADR that would
+formally recognize its authority within the Atlas Product Architecture.
+Until that governance action occurs, no subordinate document is obligated to
+cite this Doctrine, and this Doctrine imposes no citation requirement on any
+subordinate document (see Section 11). This note is itself a flag for that
+future governance action, not a substitute for it.
+
 ---
 
 ## 1. Purpose and Authority
@@ -19,7 +28,7 @@ constructs a view on valuation, weighs a position against a portfolio, and
 arrives at a recommendation — and how it communicates the uncertainty behind
 every one of those conclusions. Every claim Atlas makes about an investment
 SHALL trace back to a principle stated in this document or one of its five
-companion specifications (Section 9).
+companion specifications (Section 13).
 
 ### 1.2 Relationship to `APP-000` and `ATLAS_CONSTITUTION.md`
 
@@ -46,9 +55,14 @@ Investor." This Doctrine is not product philosophy in that sense — it is
 **investment-domain doctrine**: what a sound investment view actually
 consists of (business quality, valuation reasoning, portfolio construction),
 a body of belief no existing document in this repository claims. `APP-000`
-remains, unchanged, the sole authority on the Atlas–Investor relationship;
-this Doctrine is the sole authority on Atlas's own investment reasoning,
-bound in every particular by that relationship.
+remains, unchanged, authoritative for the Atlas–Investor relationship. This
+Doctrine does not claim authority independent of `APP-000` — it
+operationalizes `APP-000` within one domain `APP-000` does not itself
+address (investment-domain content), remains subordinate to `APP-000` and
+`ATLAS_CONSTITUTION.md` in every respect, and cannot override, redefine, or
+expand any responsibility either document assigns to Atlas or the Investor.
+See the Governance Status note above and Section 11 for how — and whether
+yet — this Doctrine may be cited by other documents.
 
 `ATLAS_CONSTITUTION.md` already states a Decision Framework (its own
 "Decision Framework" section, nine steps) and a set of Non-Negotiable and
@@ -64,6 +78,17 @@ document uses "Reasoning," "Judgment," "Confidence," "Decision," or
 "Evidence," it uses each in `APP-000`'s product-language sense (or, for terms
 `APP-000` does not define, in the plain-language sense stated where the term
 first appears here) — never in Atlas Core's independently governed ontology.
+
+A specific, known instance of this boundary: the product-level Investment
+Case (`APP-001` §3.13, a 1:1 name for Atlas Core's own `Case`) is distinct
+from a separate, already-implemented Core value object,
+`Decision.investment_case` (`atlas/core/domain/decision/value_objects.py`),
+which wraps a Decision's own `reason` field. This Doctrine and its companion
+specifications use "Investment Case" exclusively in the product-level,
+`APP-001` §3.13 sense; where a companion specification's grounding in
+`deriveActivity.ts` or another implementation file touches the `reason`
+field, it refers to `Decision.investment_case`'s own content, not renaming
+it or claiming authority over it.
 
 ### 1.4 What this Doctrine does not do
 
@@ -93,7 +118,7 @@ Four commitments follow from that Vision:
 2. **Time horizon is stated, not assumed.** Atlas SHALL NOT reason about a
    position without regard to the horizon over which its thesis is expected
    to play out, per the Constitution's Decision Framework step 1 (Investor
-   context) and step 6 (Suitability).
+   context).
 3. **No market-timing claims.** Atlas does not predict near-term price
    direction and does not frame a recommendation as a call on market timing.
    This is a direct application of `APP-000` §4's "Atlas fundamentally is
@@ -104,6 +129,17 @@ Four commitments follow from that Vision:
    fallback for when Atlas has nothing to say — it is as fully reasoned a
    conclusion as any directional one, consistent with the Constitution's
    "calm before clever."
+
+**Suitability (Constitution Decision Framework step 6) is owned by this
+section.** Suitability asks whether a specific business, at a specific
+valuation and time horizon, fits this specific Investor — a different
+question from whether the portfolio as a whole is well-constructed, which is
+Portfolio Context (Section 3 and `DE-003`, step 2). This section's four
+commitments, together with the Constitution's Product Philosophy ("separate
+short-term liquidity from investment capital and make capital safety a
+permanent part of portfolio reasoning") and its Non-Negotiable Principle
+"Suitability before optimization," are Suitability's full elaboration in
+this Doctrine. No other section restates or duplicates it.
 
 ---
 
@@ -166,6 +202,16 @@ requires. Where Atlas states a conclusion about business quality, it names
 the specific durability and evidence considerations that produced it, not a
 composite figure.
 
+**A Business Evaluation conclusion "changes" or "reverses"** — language used
+in `DE-001` §2's Exit criterion — when the specific Durability judgment
+(dimension 1, above) that supported an earlier recommendation no longer
+holds against current Evidence. This is not a scored transition between
+two composite values (Business Evaluation has none, by design, above); it
+is a plain, named comparison: which specific durability claim no longer
+holds, and what Evidence (`DE-002` §2.2) or Counter-Evidence (`DE-002` §2.3)
+now contradicts it. A conclusion that was never stated cannot be said to
+have reversed — only a previously named durability claim can.
+
 ---
 
 ## 5. Valuation Philosophy
@@ -227,10 +273,12 @@ domain content the Constitution's own list names but does not itself define:
 step 4 (Evidence quality) is elaborated by Section 4 (Business Evaluation)
 and `DE-002`'s Evidence/Counter-Evidence structure; step 5 (Business or asset
 analysis) is elaborated by Sections 2, 4, and 5 of this Doctrine; step 6
-(Suitability) is elaborated by Section 3 and `DE-003`; step 7 (Risks and
-uncertainty) is elaborated by Section 7 of this Doctrine and `DE-004`. Steps
-1–3, 8, and 9 remain governed exactly as the Constitution states them; this
-Doctrine adds no new content to those steps.
+(Suitability) is elaborated by Section 2 (see Section 2's own explicit
+ownership statement) — distinct from step 2 (Portfolio context), which
+Section 3 and `DE-003` elaborate; step 7 (Risks and uncertainty) is
+elaborated by Section 7 of this Doctrine and `DE-004`. Steps 1–3, 8, and 9
+remain governed exactly as the Constitution states them; this Doctrine adds
+no new content to those steps.
 
 The Constitution's own instruction — "Atlas should avoid jumping from an
 asset idea directly to a conclusion" — is the reason the Reasoning Structure
@@ -256,27 +304,31 @@ specification."* This section, together with
 `docs/atlas_decision_engine/DE-004-Honest-Uncertainty.md`, is that
 subordinate specification.
 
-The formal scale — the **Atlas Conviction Level** (High / Medium / Low /
-Insufficient Evidence) — is specified in full in `DE-004`. It is not a new
-taxonomy: it formalizes, as a structured field, the same four levels
-`APP-002` §6 ("Recommendation Language," "By conviction level") already uses
-as a prose-register convention, so that a recommendation's conviction can be
-represented consistently wherever it appears (a badge, a filter, a sort
-order) without introducing a second, competing vocabulary. `APP-002` §7
-itself flags this exact distinction: its own word-level conventions (Known /
-Estimated / Possible / Unknown) are "a language convention, not a numeric or
-categorical confidence scale" and explicitly do not resolve `UXD-R-064`. This
-Doctrine's Conviction Level is the resolution; `APP-002`'s Known/Estimated/
-Possible/Unknown convention continues to govern sentence-level language
-unchanged.
+The formal scale — the **Atlas Conviction Level** (High / Medium / Low) — is
+specified in full in `DE-004`. It is not a new taxonomy: it formalizes, as a
+structured field, three of the four levels `APP-002` §6 ("Recommendation
+Language," "By conviction level") already uses as a prose-register
+convention, so that a recommendation's conviction can be represented
+consistently wherever it appears (a badge, a filter, a sort order) without
+introducing a second, competing vocabulary. `APP-002` §7 itself flags this
+exact distinction: its own word-level conventions (Known / Estimated /
+Possible / Unknown) are "a language convention, not a numeric or categorical
+confidence scale" and explicitly do not resolve `UXD-R-064`. This Doctrine's
+Conviction Level is the resolution; `APP-002`'s Known/Estimated/Possible/
+Unknown convention continues to govern sentence-level language unchanged.
 
-"Insufficient Evidence" is not the bottom of a confidence gradient — it is a
-distinct, first-class outcome in which Atlas explicitly declines to
-recommend a direction. `APP-002` §6 already states this exactly: *"Atlas
-SHALL NOT manufacture a claim to avoid appearing unhelpful... 'There isn't
-currently enough evidence for Atlas to form a view here.' This is a
-complete, valid statement."* `DE-004` elaborates what evidence pattern
-produces each of the four levels and how each must be communicated.
+`APP-002` §6's fourth level, "Insufficient evidence," is not a Conviction
+Level in this Doctrine — it is not the bottom of a confidence gradient.
+Where the evidence does not support High, Medium, or Low conviction on any
+of the six directions (`DE-001` §2), Atlas issues a distinct, first-class
+outcome, **Recommendation Withheld**, in place of a direction and a
+conviction level entirely — specified in full in `DE-004` §4 and
+structurally in `DE-002` §4. Recommendation Withheld precedes the Conviction
+Level scale; it is never combined with one, and it SHALL NOT be recorded as,
+or default to, Hold or No Action. `APP-002` §6 already states the language
+this requires: *"Atlas SHALL NOT manufacture a claim to avoid appearing
+unhelpful... 'There isn't currently enough evidence for Atlas to form a view
+here.' This is a complete, valid statement."*
 
 ---
 
@@ -301,6 +353,13 @@ one constraint that governs all six: an Atlas Recommendation is advice, per
 `APP-000` §4 and PP-003 — it is never, and SHALL NOT be presented as, a
 Decision. Only the Investor decides.
 
+Where the evidence does not support any of the six, Atlas issues
+Recommendation Withheld instead (Section 7; `DE-001` §2; `DE-004` §4) — not
+a seventh direction, and never defaulted to Hold or No Action. The choice of
+trade-flavored labels (Buy, Trim, Exit) for advisory output, rather than
+more neutral verbs, is a deliberate, reviewed trade-off — see `DE-001` §5
+for the rationale and its governance note.
+
 ---
 
 ## 9. Decision Memory
@@ -312,15 +371,9 @@ those decisions, and whether the original thesis has since strengthened or
 weakened.
 
 This is distinct from, and complementary to, `UX-008` §15's own "Decision
-Memory" section, which concerns a different subject entirely: the
-Investor's own behavioral patterns across decisions ("repeated overreaction
-to short-term price movement," "reluctance to exit positions whose theses
-have clearly weakened"). `UX-008` §15 is about what Atlas learns about how
-the Investor decides; this section, and its companion specification
-`docs/atlas_decision_engine/DE-005-Decision-Memory.md`, is about what Atlas
-remembers about a specific position's own thesis over time. Both are real,
-neither duplicates the other, and `DE-005` cites `UX-008` §15 explicitly
-rather than restating it.
+Memory" section — the Investor's own behavioral patterns across decisions,
+not a specific position's thesis. Full disambiguation and the formal
+definition of Investment Thesis are in `DE-005` §1–§2.
 
 Future recommendations SHALL reference this history when it is relevant to
 the recommendation being made — a Trim recommendation on a position added
@@ -352,16 +405,29 @@ is about.
 
 ## 11. Relationship to Subordinate Documents and Amendment
 
-This Doctrine is authoritative for Atlas's investment-domain reasoning. A
-future APS Product Specification governing a product surface that displays
-an Atlas Recommendation, a Conviction Level, or Decision Memory content
-SHALL demonstrate how it satisfies the applicable sections of this Doctrine
-and its companion specifications, cited by section or by document ID (`DE-00X`),
-in the same manner `APP-000` §9 already requires APS specifications to cite
-Product Principles by identifier. A subordinate document SHALL NOT contradict
-a principle stated in this Doctrine or in `DE-001` through `DE-005`, and
-SHALL NOT redefine Atlas Recommendation, Atlas Conviction Level, or any other
-term this Doctrine or its companions define.
+This Doctrine operationalizes `APP-000` within the investment-reasoning
+domain; it does not hold authority independent of `APP-000`, and it does
+not, by itself, impose a citation obligation on any other document. A future
+APS Product Specification governing a product surface that displays an
+Atlas Recommendation, a Conviction Level, or Decision Memory content MAY
+cite the applicable sections of this Doctrine and its companion
+specifications, by section or by document ID (`DE-00X`), once this Doctrine
+has been formally adopted through the project's existing governance process
+(see the Governance Status note above). Prior to that adoption, this
+Doctrine functions as a reference a subordinate document may draw on
+voluntarily, not as a mandatory citation source in the manner `APP-000` §9
+establishes for Product Principles. A subordinate document that does cite
+this Doctrine SHALL NOT contradict a principle stated in it or in `DE-001`
+through `DE-005`, and SHALL NOT redefine Atlas Recommendation, Atlas
+Conviction Level, or any other term this Doctrine or its companions define —
+the same non-contradiction discipline `APP-000` §2 already requires of every
+subordinate document, applied here by extension rather than by new grant.
+
+**Recommended next governance action (not performed by this remediation
+pass):** a formal `APP-000` acknowledgment or a dedicated ADR, following the
+precedent `ADR-005` already set for resolving an authority-boundary question
+of this kind, to determine whether and how this Doctrine's authority should
+be formally recognized.
 
 This Doctrine SHALL be amended only when a genuine deficiency is
 demonstrated, following the same discipline `APP-000` §11.2 states for
@@ -391,10 +457,28 @@ pointing here:
 
 ---
 
-## Companion Specifications
+## 13. Companion Specifications and Dependency Map
 
 - `docs/atlas_decision_engine/DE-001-Recommendation-Framework.md` — Deliverable 2
 - `docs/atlas_decision_engine/DE-002-Reasoning-Structure.md` — Deliverable 3
 - `docs/atlas_decision_engine/DE-003-Portfolio-Intelligence.md` — Deliverable 4
 - `docs/atlas_decision_engine/DE-004-Honest-Uncertainty.md` — Deliverable 5
 - `docs/atlas_decision_engine/DE-005-Decision-Memory.md` — Deliverable 6
+
+**Dependency map.** `DE-002` (Reasoning Structure) is canonical and
+structural — it is the one place a future implementation reads to know the
+shape of an Atlas Recommendation. The other four companions supply the
+*content* that fills specific `DE-002` sections; none of them is
+structurally canonical in its own right:
+
+| Companion | Supplies content for | Depended on by |
+|---|---|---|
+| `DE-001` Recommendation Framework | `DE-002` §2.5 (Direction) — the six directions and Recommendation Withheld | `DE-002`, `DE-003`, `DE-004` |
+| `DE-002` Reasoning Structure | *(canonical structure — depends on nothing below it)* | `DE-001`, `DE-003`, `DE-004`, `DE-005` |
+| `DE-003` Portfolio Intelligence | `DE-002` §2.4 (Portfolio Context) | `DE-001`, `DE-002` |
+| `DE-004` Honest Uncertainty | `DE-002` §2.6 (Conviction) and `DE-002` §4 (Recommendation Withheld) | `DE-001`, `DE-002` |
+| `DE-005` Decision Memory | `DE-002` §2.1 (Current Situation) and §2.3 (Counter-Evidence) history | `DE-001`, `DE-003` |
+
+All five, and this Doctrine, ground out in `APP-000` and
+`ATLAS_CONSTITUTION.md` — none depends on another companion for its own
+basic authority, only for specific content.

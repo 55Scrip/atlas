@@ -21,19 +21,25 @@ conclusion. Portfolio before position. Risk before return."* Sections 2–7
 below name exactly where each of those four principles lands in the
 structure.
 
+This structure is canonical: any summary, checklist, or shorter derived view
+of recommendation completeness — including `DE-001` §3's four-element
+checklist — is a view onto this structure, not an independent or competing
+requirement.
+
 ## 2. The Seven Sections
 
 ### 2.1 Current Situation
 
 **Purpose.** States the position (or absence of one) as it actually stands
 today: whether the Investor holds the position, since when, at what
-allocation, and what the position's own Decision Memory (`DE-005`) shows
-about its history.
+allocation, and what the position's own Decision Memory and Investment
+Thesis (`DE-005` §1) show about its history.
 
 **Required content.** A factual summary — no interpretation, no conclusion.
 Sourced from the Investment Case's own recorded state (the product-level
 Investment Case, `APP-001` §3.13 — a confirmed, 1:1 name for Atlas Core's own
-`Case`) together with current portfolio holding data.
+`Case`, and distinct from `Decision.investment_case`; see `Doctrine` §1.3
+for the disambiguation) together with current portfolio holding data.
 
 **Prohibited content.** Any forward-looking claim, any conclusion, any
 recommendation direction. This section answers "where do things stand,"
@@ -78,7 +84,9 @@ never populated for the appearance of completeness.
 Investor's specific portfolio. Operationalizes "Portfolio before position"
 and is the direct application point of `DE-003-Portfolio-Intelligence.md`'s
 seven factors (allocation, concentration, diversification, correlation,
-opportunity cost, existing thesis, previous decisions).
+opportunity cost, existing thesis, previous decisions) — see `DE-003` §1 for
+how Portfolio Philosophy, Portfolio Intelligence, and Portfolio Context
+relate.
 
 **Required content.** The specific Portfolio Intelligence factors that bear
 on this recommendation — not all seven restated by rote every time, but
@@ -88,29 +96,37 @@ whichever ones actually inform the direction being reasoned toward, per
 **Prohibited content.** A recommendation reasoned as though the position
 existed in isolation from the rest of the portfolio.
 
-### 2.5 Recommendation
+### 2.5 Direction
 
 **Purpose.** States the direction — Buy, Add, Hold, Trim, Exit, or No Action
 (`DE-001` §2) — and the Why element `DE-001` §3 requires: the specific
-conclusion the preceding four sections support.
+conclusion the preceding four sections support. Named "Direction," not
+"Recommendation," to avoid reusing the name of the artifact this section is
+one part of (the Atlas Recommendation as a whole) or of `DE-001`'s
+Recommendation Framework.
 
 **Required content.** Exactly one direction, stated in `APP-002` §6's
 evidence-attributed register, with an explicit link back to the specific
 Evidence, Counter-Evidence, and Portfolio Context items that produced it.
+Where no direction can be supported at all, this section is not populated
+with a weak or default direction — see Section 4, Recommendation Withheld.
 
 **Prohibited content.** A direction that does not follow traceably from
-Sections 2.2–2.4. A recommendation is not permitted to introduce a
-justification here that was not already established above it.
+Sections 2.2–2.4. This section is not permitted to introduce a
+justification that was not already established above it.
 
 ### 2.6 Conviction
 
-**Purpose.** States the Atlas Conviction Level (`DE-004`: High, Medium, Low,
-or Insufficient Evidence) and the specific reason for it — the `DE-001` §3
-"with what uncertainty" element.
+**Purpose.** States the Atlas Conviction Level (`DE-004`: High, Medium, or
+Low) and the specific reason for it — the `DE-001` §3 "with what
+uncertainty" element. Where no direction is stated (Section 4,
+Recommendation Withheld), this section does not apply — Recommendation
+Withheld precedes the Conviction Level scale rather than occupying its
+bottom.
 
 **Required content.** The level, and the specific evidentiary basis for
 that level (what is well-established, what remains genuinely open), per
-`DE-004` §2.
+`DE-004` §3.
 
 **Prohibited content.** A conviction level unsupported by, or in excess of,
 the Evidence and Counter-Evidence actually presented above it — the direct
@@ -142,3 +158,27 @@ expand, or visually de-emphasize a section for a specific context (per
 the underlying reasoning or omit a section's content entirely without
 disclosing the omission — an empty Counter-Evidence section states plainly
 that none was found (Section 2.3); it is never simply absent.
+
+## 4. Recommendation Withheld — Structural Exception
+
+Where Atlas cannot support any of the six directions (`DE-001` §2) at even
+Low conviction, Atlas issues Recommendation Withheld (`DE-004` §4) instead
+of the structure in Section 2. Recommendation Withheld is not a degraded
+version of the seven-part structure — it replaces Sections 2.5 (Direction)
+and 2.6 (Conviction) entirely:
+
+- **Current Situation** (§2.1) and **Portfolio Context** (§2.4) MAY still be
+  stated, where they help the Investor understand what Atlas does and does
+  not yet know.
+- **Evidence** (§2.2) and **Counter-Evidence** (§2.3) are replaced by a
+  direct statement of why the available evidence is insufficient and what
+  would resolve that insufficiency, per `DE-004` §4.
+- **Direction** (§2.5) is omitted entirely — no direction is selected, and
+  Recommendation Withheld SHALL NOT be recorded as, defaulted to, or
+  displayed as Hold or No Action.
+- **Conviction** (§2.6) is omitted entirely — Recommendation Withheld is not
+  a value of the Conviction scale; it precedes the scale.
+- **What Could Change This View** (§2.7) is replaced by the same "what
+  would resolve this" statement Recommendation Withheld already requires —
+  the two are the same content under Recommendation Withheld and are not
+  stated twice.

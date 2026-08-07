@@ -5,7 +5,25 @@
 that Doctrine and to `APP-000`. Documentation only — no code accompanies this
 specification.
 
-## 1. Scope: Distinct from `UX-008` §15
+## 1. Definition: Investment Thesis
+
+**Investment Thesis.** The specific, named claim about a business and its
+valuation that justifies holding, adding to, reducing, or exiting a
+position — captured in the Investor's or Atlas's own words at the time a
+Decision was made, never reconstructed after the fact. In practice, a
+position's thesis is not a separately recorded object; it is the
+accumulated set of `reason` statements across that position's own Decision
+history (`DecisionRecord.reason`, Section 3), read together in order.
+
+A thesis is evaluated, not scored: it **strengthens** when Evidence and
+reported Outcomes recorded since confirm its named claims (`DE-002` §2.2
+Evidence), and **weakens** or is **invalidated** when they contradict a
+claim the thesis specifically depended on (`DE-001` §2, Exit). This
+Doctrine's own anti-false-precision commitment (`DE-004` §5) applies here
+exactly as it does to Conviction: thesis strength is stated as a plain
+comparison against named claims, never as a score.
+
+## 2. Scope: Distinct from `UX-008` §15
 
 `UX-008` §15, also titled "Decision Memory," already covers a different
 subject: the Investor's own behavioral patterns *across* decisions — *"Over
@@ -25,7 +43,7 @@ positions' worth of this specification's own content, not a substitute for
 it. This specification does not restate `UX-008` §15 and does not duplicate
 its content.
 
-## 2. Grounding in What Is Already Implemented
+## 3. Grounding in What Is Already Implemented
 
 This specification is written to be genuinely implementation-ready, so it is
 grounded in the actual Decision, Outcome, and Trade records already shipped
@@ -51,13 +69,13 @@ model:
 This specification does not propose a new data model. It states the
 doctrine that governs how this already-shipped history SHALL be used by a
 future Atlas Recommendation, and what a future implementation phase would
-still need to add (Section 4) to fully realize it.
+still need to add (Section 5) to fully realize it.
 
-## 3. What Atlas SHALL Remember, Per Position
+## 4. What Atlas SHALL Remember, Per Position
 
 For a given position (a given Investment Case with an associated portfolio
 holding), Atlas's reasoning SHALL be able to state, drawing on the records
-in Section 2:
+in Section 3:
 
 1. **Why the position was initiated** — the `reason` recorded on the
    earliest `BUY`-type Decision for the Case, together with the Evidence
@@ -68,35 +86,37 @@ in Section 2:
    for the same Case that did not fully close the position.
 4. **Reported outcomes** — every `OutcomeRecord` linked, via `decisionId`,
    to each of the Decisions above, in the order they occurred.
-5. **Whether the original thesis has strengthened or weakened** — a
-   synthesis, not a new recorded field: comparing the `reason` stated at
-   initiation against the Evidence and Outcomes recorded since, per
-   `DE-002`'s Evidence/Counter-Evidence structure. This synthesis is
-   produced fresh each time it is needed from the underlying records — it is
-   never itself stored as a separate, possibly-stale verdict.
+5. **Thesis Synthesis** — whether the original thesis (Section 1) has
+   strengthened or weakened: a synthesis, not a new recorded field,
+   comparing the `reason` stated at initiation against the Evidence and
+   Outcomes recorded since, per `DE-002`'s Evidence/Counter-Evidence
+   structure. This synthesis is produced fresh each time it is needed from
+   the underlying records — it is never itself stored as a separate,
+   possibly-stale verdict.
 
-## 4. What This Specification Does Not Yet Resolve
+## 5. What This Specification Does Not Yet Resolve
 
 Consistent with `docs/atlas_ux/governance/ADR-003-Recommendation-Identity-and-Terminology-Resolution.md`
 R-10's own practice of stating non-decisions explicitly rather than
 resolving them by implication, this specification leaves open, for a future
 implementation phase: the exact algorithm for judging "strengthened" versus
-"weakened" (a qualitative synthesis per Section 3.5, not a scored formula,
-per `DE-004` §4's same reasoning against false precision); whether thesis-
-strength synthesis is computed on demand or cached; and how far back in a
-position's history a single Atlas Recommendation SHALL draw before older
-history is summarized rather than restated in full. None of these is
-decided by implication anywhere above.
+"weakened" (a qualitative synthesis per Section 4's Thesis Synthesis item,
+not a scored formula, per `DE-004` §5's same reasoning against false
+precision); whether thesis-strength synthesis is computed on demand or
+cached; and how far back in a position's history a single Atlas
+Recommendation SHALL draw before older history is summarized rather than
+restated in full. None of these is decided by implication anywhere above.
 
-## 5. Application Rule
+## 6. Application Rule
 
 A future Atlas Recommendation (`DE-001`) for a position with prior recorded
 history SHALL reference that history when it is relevant to the direction
 being reasoned toward, per `docs/ATLAS_DECISION_ENGINE_DOCTRINE.md` §9. A
 Trim recommendation on a position added eighteen months ago, on a thesis
-Section 3's synthesis shows has partly played out, is a different
-recommendation — reasoned differently, and stated differently under
-`APP-002` §6 — than the same direction on a position added last month with
-no reported Outcomes yet. A recommendation for a position with no prior
-history simply has less of Section 3 to draw on; this specification does
+Section 4's Thesis Synthesis item shows has partly played out, is a
+different recommendation — reasoned differently, and stated differently
+under `APP-002` §6 — than the same direction on a position added last month
+with no reported Outcomes yet. A recommendation for a position with no
+prior history simply has less of Section 4 to draw on; this specification
+does
 not require history where none yet exists.
