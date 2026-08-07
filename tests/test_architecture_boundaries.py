@@ -16,6 +16,7 @@ DOMAINS_DIR = ATLAS_ROOT / "domains"
 CAPABILITIES_DIR = ATLAS_ROOT / "capabilities"
 CORE_DIR = ATLAS_ROOT / "core"
 ALPHA_DIR = ATLAS_ROOT / "alpha"
+DECISION_ENGINE_DIR = ATLAS_ROOT / "decision_engine"
 
 FORBIDDEN_EDGE_PATTERNS = (
     "atlas edge",
@@ -106,6 +107,70 @@ def test_alpha_does_not_write_to_outcome() -> None:
                 violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
 
     assert not violations, "atlas/alpha writing to Outcome:\n" + "\n".join(violations)
+
+
+def test_core_does_not_import_atlas_decision_engine() -> None:
+    """Decision Engine Implementation Sprint 1: `atlas/decision_engine/`
+    is explicitly provisional pipeline scaffolding (see
+    atlas/decision_engine/__init__.py) and MAY read from `atlas/core/`,
+    but `atlas/core/` MUST NOT depend on it in return -- the same
+    one-way relationship `test_core_does_not_import_atlas_alpha` already
+    enforces for `atlas/alpha/`, applied here to a second, structurally
+    identical sibling package. No exception is authorized for this one:
+    unlike Alpha, no composition point currently wires the Decision
+    Engine into the API at all."""
+    violations = []
+    for path in _python_files(CORE_DIR):
+        for module in _imported_modules(path):
+            if module.startswith("atlas.decision_engine"):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "atlas/core importing atlas/decision_engine:\n" + "\n".join(
+        violations
+    )
+
+
+def test_decision_engine_only_reads_core_domain_entities() -> None:
+    """Decision Engine Implementation Sprint 1: the engine's own locked
+    scope is "only one-way reading from Core" -- read-only Domain
+    entities and value objects, never a repository, an application
+    service, or infrastructure. Forbidding those imports enforces the
+    read-only boundary directly rather than relying on convention, the
+    same technique `test_alpha_does_not_write_to_outcome` already uses
+    for Alpha's own read-only relationship to Outcome. Also forbidden:
+    `atlas.alpha` (this sprint does not authorize that coupling; see
+    `ReconciliationState` in `atlas/decision_engine/contracts.py`) and
+    any legacy `atlas.decision`/`atlas.domains.decision` module (a
+    different, non-superseding "Decision" track; see
+    `docs/DecisionEngine.md`'s own supersession notice)."""
+    forbidden_prefixes = (
+        "atlas.core.application",
+        "atlas.core.infrastructure",
+        "atlas.alpha",
+        "atlas.decision.",
+        "atlas.decision_engine.decision",  # guards against a future misnamed module
+        "atlas.domains.decision",
+        "atlas.providers",
+        "atlas.cli",
+    )
+    # atlas.core.domain.<feature>.repository defines an interface only
+    # (no I/O implementation lives there), but this sprint's engine does
+    # not need even a repository interface yet -- forbid it too, so a
+    # future sprint must add this permission deliberately rather than by
+    # accident.
+    forbidden_suffixes = (".repository",)
+
+    violations = []
+    for path in _python_files(DECISION_ENGINE_DIR):
+        for module in _imported_modules(path):
+            if module.startswith(forbidden_prefixes) or module.endswith(
+                forbidden_suffixes
+            ):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "atlas/decision_engine boundary violation:\n" + "\n".join(
+        violations
+    )
 
 
 def test_capabilities_do_not_import_providers_or_call_network_directly() -> None:
