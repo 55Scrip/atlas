@@ -18,6 +18,9 @@ export function Navigation() {
 
   return (
     <nav aria-label={t("shell.nav.ariaLabel")} className={styles.nav}>
+      <Link to="/daily-brief" className={styles.link}>
+        {t("shell.nav.dailyBrief")}
+      </Link>
       <Link to="/dashboard" className={styles.link}>
         {t("shell.nav.dashboard")}
       </Link>

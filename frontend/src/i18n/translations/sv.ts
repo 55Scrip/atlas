@@ -144,6 +144,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.returnTo.dashboard": "← Tillbaka till Översikt",
   "investmentCase.returnTo.history": "← Tillbaka till Historik",
   "investmentCase.returnTo.portfolio": "← Tillbaka till Portfölj",
+  "investmentCase.returnTo.dailyBrief": "← Tillbaka till Dagens genomgång",
   "investmentCase.noCaseSelected": "Inget case valt.",
   "investmentCase.loadError": "Kunde inte läsa in caset: {{message}}",
   "investmentCase.subject": "Ämne: Case {{caseId}}",
@@ -376,6 +377,9 @@ export const sv: Record<TranslationKey, string> = {
   // ---------- sprint 4: navigation ----------
   "shell.nav.history": "Historik",
 
+  // ---------- daily brief implementation sprint 1: navigation ----------
+  "shell.nav.dailyBrief": "Dagens genomgång",
+
   // ---------- sprint 4: relative time ----------
   "relativeTime.today": "idag",
   "relativeTime.oneDayAgo": "1 dag sedan",
@@ -433,4 +437,19 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.origin.dashboard": "Öppnat från översikten",
   "investmentCase.origin.portfolio": "Öppnat från portföljen",
   "investmentCase.origin.history": "Återvänt från historiken",
+  "investmentCase.origin.dailyBrief": "Öppnad från Dagens genomgång",
+
+  // ---------- daily brief implementation sprint 1 ----------
+  "dailyBrief.title": "Dagens genomgång",
+  "dailyBrief.verdict.nothingUrgent": "Inget viktigt kräver din uppmärksamhet idag.",
+  "dailyBrief.verdict.oneItem": "En sak kräver din uppmärksamhet idag.",
+  "dailyBrief.verdict.items": "{{count}} saker kräver din uppmärksamhet idag.",
+  "dailyBrief.priority.heading": "Prioritet",
+  "dailyBrief.recentDecisions.heading": "Senaste beslut",
+  "dailyBrief.recentDecisions.empty": "Inga beslut registrerade ännu.",
+  "dailyBrief.monitoring.heading": "Övervakning",
+  "dailyBrief.monitoring.body":
+    "Atlas fortsätter övervaka dina registrerade portföljbeslut och investeringscase.",
+  "dailyBrief.footer.reminder":
+    "Håll Atlas uppdaterad när din portfölj förändras så att framtida genomgångar förblir korrekta.",
 };

@@ -145,6 +145,7 @@ export const en = {
   "investmentCase.returnTo.dashboard": "← Back to Dashboard",
   "investmentCase.returnTo.history": "← Back to History",
   "investmentCase.returnTo.portfolio": "← Back to Portfolio",
+  "investmentCase.returnTo.dailyBrief": "← Back to Daily Brief",
   "investmentCase.noCaseSelected": "No case selected.",
   "investmentCase.loadError": "Could not load this case: {{message}}",
   "investmentCase.subject": "Subject: Case {{caseId}}",
@@ -379,6 +380,9 @@ export const en = {
   // ---------- sprint 4: navigation ----------
   "shell.nav.history": "History",
 
+  // ---------- daily brief implementation sprint 1: navigation ----------
+  "shell.nav.dailyBrief": "Daily Brief",
+
   // ---------- sprint 4: relative time ----------
   "relativeTime.today": "today",
   "relativeTime.oneDayAgo": "1 day ago",
@@ -436,6 +440,21 @@ export const en = {
   "investmentCase.origin.dashboard": "Opened from Dashboard",
   "investmentCase.origin.portfolio": "Opened from Portfolio",
   "investmentCase.origin.history": "Returned from History",
+  "investmentCase.origin.dailyBrief": "Opened from Daily Brief",
+
+  // ---------- daily brief implementation sprint 1 ----------
+  "dailyBrief.title": "Daily Brief",
+  "dailyBrief.verdict.nothingUrgent": "Nothing important requires your attention today.",
+  "dailyBrief.verdict.oneItem": "One item requires your attention today.",
+  "dailyBrief.verdict.items": "{{count}} items require your attention today.",
+  "dailyBrief.priority.heading": "Priority",
+  "dailyBrief.recentDecisions.heading": "Recent Decisions",
+  "dailyBrief.recentDecisions.empty": "No decisions recorded yet.",
+  "dailyBrief.monitoring.heading": "Monitoring",
+  "dailyBrief.monitoring.body":
+    "Atlas continues monitoring your recorded portfolio decisions and investment cases.",
+  "dailyBrief.footer.reminder":
+    "Keep Atlas updated when your portfolio changes so future reviews remain accurate.",
 } as const;
 
 export type TranslationKey = keyof typeof en;
