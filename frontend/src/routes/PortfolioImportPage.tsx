@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
+import { Button, Container, Divider, Heading, Inline, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import { parsePortfolioText } from "../portfolio-import/parser";
+import { reconcileRows } from "../portfolio-import/resolution";
 import type { ImportRowErrorCode, ParseResult } from "../portfolio-import/types";
 
 type Step = "paste" | "review";
@@ -21,7 +22,7 @@ type SnapshotStatus =
 type SubmitStatus = { kind: "idle" } | { kind: "submitting" } | { kind: "error"; message: string };
 
 const ERROR_LABEL_KEY: Record<ImportRowErrorCode, TranslationKey> = {
-  "missing-ticker": "portfolioImport.error.missingTicker",
+  "missing-name": "portfolioImport.error.missingName",
   "missing-value": "portfolioImport.error.missingValue",
   "invalid-value": "portfolioImport.error.invalidValue",
   "non-positive-value": "portfolioImport.error.nonPositiveValue",
@@ -30,40 +31,33 @@ const ERROR_LABEL_KEY: Record<ImportRowErrorCode, TranslationKey> = {
 };
 
 /**
- * Portfolio Import v1.
+ * Portfolio Import v1.1.
  *
- * Input → Parse → Validate → Preview → Confirm → Persist. The raw
- * pasted text never reaches the backend directly — only
- * `ParseResult.validHoldings`, and only after the investor has seen
- * every row (valid or not) and confirmed. Confirmation is disabled
- * while any parse error remains (`parseResult.errorCount > 0`).
+ * Input → Parse → Resolve (dictionary or manual confirmation) → Preview
+ * → Confirm → Persist. The raw pasted text never reaches the backend
+ * directly — only `ReconcileResult.readyHoldings`, and only once every
+ * row the investor pasted either resolved to a ticker automatically or
+ * was manually confirmed, with no parse errors and no duplicate
+ * tickers remaining (`reconcileRows`'s `canImport`).
  *
- * Data-model decision, made after reading `atlas/alpha/portfolio/`
- * directly rather than from memory: `AlphaHolding` has only
- * `weight_percent` (required) and `value_absolute` (optional) — no
- * `quantity`/`shares` field exists anywhere in the backend. So the
- * parsed numeric column is always labelled "Weight %", never
- * "Shares" — the smallest honest representation, per this sprint's
- * own explicit fallback guidance, rather than inventing a quantity
- * concept the backend cannot truthfully persist.
+ * v1 only accepted a literal ticker in the first column. v1.1 also
+ * accepts a company name — resolved deterministically via the
+ * maintained dictionary in `portfolio-import/companyTickerMap.ts`, or
+ * left unresolved for the investor to type a ticker in themselves.
+ * There is no fuzzy matching anywhere in this path: a name either
+ * matches the dictionary exactly, already has the shape of a ticker
+ * (preserving plain-ticker pasting from v1), or is shown as "needs
+ * confirmation" until a human resolves it.
  *
- * Replace vs merge: when a portfolio already exists, this reuses
- * `POST /alpha-portfolio/reconcile` (`mode: REPLACE_ALLOCATION`) —
- * the one existing service method that already preserves `case_id`
- * for any ticker still present after the replace
- * (`AlphaPortfolioService.reconcile_replace_allocation`, verified by
- * direct code read). `POST /alpha-portfolio/import` is used only for
- * a brand-new portfolio, where there is no existing `case_id` to
- * preserve. No backend code was changed for this sprint — both
- * endpoints, and the case-preservation behavior, already existed.
+ * Data-model decision, unchanged from v1 (verified again directly
+ * against `atlas/alpha/portfolio/` before this sprint): `AlphaHolding`
+ * has only `weight_percent` (required) and `value_absolute` (optional)
+ * — no `quantity`/`shares` field exists anywhere in the backend. The
+ * parsed numeric column is always labelled "Weight %".
  *
- * Cash is never invented: for a fresh import there is none to carry
- * forward (matches "never infer cash"); for a replace, the investor's
- * already-recorded cash figures are passed through unchanged rather
- * than silently cleared, since the pasted text never mentions cash at
- * all and clearing a real, previously-entered figure as a side effect
- * of importing holdings would itself be a kind of fabrication (an
- * uninitiated, unintended change).
+ * Replace vs merge, cash handling, and the fresh-import vs
+ * reconcile-replace endpoint routing are all unchanged from v1 — no
+ * backend code was touched for this sprint.
  */
 export function PortfolioImportPage() {
   const { t } = useTranslation();
@@ -72,6 +66,7 @@ export function PortfolioImportPage() {
   const [step, setStep] = useState<Step>("paste");
   const [rawText, setRawText] = useState("");
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+  const [manualTickers, setManualTickers] = useState<Record<number, string>>({});
   const [snapshotStatus, setSnapshotStatus] = useState<SnapshotStatus>({ kind: "loading" });
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>({ kind: "idle" });
 
@@ -90,9 +85,15 @@ export function PortfolioImportPage() {
     return () => controller.abort();
   }, []);
 
+  const reconciled = useMemo(
+    () => (parseResult ? reconcileRows(parseResult.rows, manualTickers) : null),
+    [parseResult, manualTickers],
+  );
+
   function goToReview() {
     if (rawText.trim() === "") return;
     setParseResult(parsePortfolioText(rawText));
+    setManualTickers({});
     setSubmitStatus({ kind: "idle" });
     setStep("review");
   }
@@ -101,12 +102,16 @@ export function PortfolioImportPage() {
     setStep("paste");
   }
 
+  function setManualTicker(lineNumber: number, value: string) {
+    setManualTickers((prev) => ({ ...prev, [lineNumber]: value }));
+  }
+
   function confirmImport() {
-    if (!parseResult || parseResult.errorCount > 0 || parseResult.validHoldings.length === 0) return;
+    if (!reconciled || !reconciled.canImport) return;
     if (snapshotStatus.kind !== "loaded") return;
 
     setSubmitStatus({ kind: "submitting" });
-    const holdings = parseResult.validHoldings.map((h) => ({
+    const holdings = reconciled.readyHoldings.map((h) => ({
       ticker: h.ticker,
       weightPercent: h.weightPercent,
     }));
@@ -150,11 +155,7 @@ export function PortfolioImportPage() {
       });
   }
 
-  const canConfirm =
-    parseResult !== null &&
-    parseResult.errorCount === 0 &&
-    parseResult.validHoldings.length > 0 &&
-    snapshotStatus.kind === "loaded";
+  const canConfirm = reconciled !== null && reconciled.canImport && snapshotStatus.kind === "loaded";
 
   return (
     <Container>
@@ -187,35 +188,64 @@ export function PortfolioImportPage() {
           </Surface>
         )}
 
-        {step === "review" && parseResult && (
+        {step === "review" && reconciled && (
           <Surface tier="primary">
             <Stack gap="inter-section">
               <Heading level={2}>{t("portfolioImport.review.heading")}</Heading>
 
-              {parseResult.validHoldings.length > 0 && (
+              {reconciled.rows.filter((row) => row.errorCode === null).length > 0 && (
                 <Stack gap="inter-section">
                   <Text>
                     {t("portfolioImport.review.holdingsFound", {
-                      count: parseResult.validHoldings.length,
+                      count: reconciled.rows.filter((row) => row.errorCode === null).length,
                     })}
                   </Text>
-                  <Stack gap="inter-section">
-                    {parseResult.validHoldings.map((holding) => (
-                      <Text key={holding.ticker} color="secondary" as="p">
-                        {holding.ticker} — {holding.weightPercent}% ({t("portfolioImport.review.weightPercentLabel")})
-                      </Text>
-                    ))}
+                  <Stack gap="intra-section">
+                    {reconciled.rows
+                      .filter((row) => row.errorCode === null)
+                      .map((row) => (
+                        <Surface key={row.lineNumber} tier="elevated">
+                          <Inline gap="row" align="center" wrap>
+                            <Text as="p">{row.originalName}</Text>
+                            <Text color="secondary" as="p">
+                              {row.ticker ?? "?"}
+                            </Text>
+                            {row.ticker ? (
+                              <Text as="p" aria-label={t("portfolioImport.review.resolved")}>
+                                {"✓"}
+                              </Text>
+                            ) : (
+                              <Text color="tertiary" as="p" role="status">
+                                {t("portfolioImport.review.needsConfirmation")}
+                              </Text>
+                            )}
+                            <Text as="p">{row.weightPercent}%</Text>
+                            {!row.ticker && (
+                              <Text as="label">
+                                <input
+                                  type="text"
+                                  value={manualTickers[row.lineNumber] ?? ""}
+                                  onChange={(event) => setManualTicker(row.lineNumber, event.target.value)}
+                                  placeholder={t("portfolioImport.review.manualTickerPlaceholder")}
+                                  aria-label={t("portfolioImport.review.manualTickerPlaceholder")}
+                                  style={{ fontFamily: "monospace", width: "8ch" }}
+                                />
+                              </Text>
+                            )}
+                          </Inline>
+                        </Surface>
+                      ))}
                   </Stack>
                 </Stack>
               )}
 
-              {parseResult.errorCount > 0 && (
+              {reconciled.errorCount > 0 && (
                 <Stack gap="inter-section">
                   <Text color="tertiary" role="alert">
-                    {t("portfolioImport.review.errorsHeading", { count: parseResult.errorCount })}
+                    {t("portfolioImport.review.errorsHeading", { count: reconciled.errorCount })}
                   </Text>
                   <Stack gap="inter-section">
-                    {parseResult.rows
+                    {reconciled.rows
                       .filter((row) => row.errorCode !== null)
                       .map((row) => (
                         <Text key={row.lineNumber} color="tertiary" as="p">
@@ -231,8 +261,16 @@ export function PortfolioImportPage() {
                 </Stack>
               )}
 
-              {parseResult.validHoldings.length === 0 && parseResult.errorCount === 0 && (
+              {reconciled.rows.length === 0 && (
                 <Text color="secondary">{t("portfolioImport.review.noHoldingsFound")}</Text>
+              )}
+
+              {reconciled.needsConfirmationCount > 0 && (
+                <Text color="tertiary">
+                  {t("portfolioImport.review.confirmationRequired", {
+                    count: reconciled.needsConfirmationCount,
+                  })}
+                </Text>
               )}
 
               {snapshotStatus.kind === "loaded" && snapshotStatus.view.exists && (

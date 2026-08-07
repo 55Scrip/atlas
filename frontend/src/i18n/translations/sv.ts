@@ -494,7 +494,7 @@ export const sv: Record<TranslationKey, string> = {
   "discovery.tool.caseFailed":
     "Atlas kunde inte skapa investeringscaset för {{ticker}} just nu. Du kan försöka igen, eller använda \"Granska ett bolag\" nedan.",
 
-  // ---------- portfolio import v1 ----------
+  // ---------- portfolio import v1.1 ----------
   "portfolioImport.title": "Importera portfölj",
   "portfolioImport.paste.heading": "Importera din portfölj",
   "portfolioImport.paste.instructions": "Klistra in dina innehav nedan.",
@@ -504,13 +504,17 @@ export const sv: Record<TranslationKey, string> = {
   "portfolioImport.review.heading": "Granska portfölj",
   "portfolioImport.review.holdingsFound": "{{count}} innehav hittades",
   "portfolioImport.review.weightPercentLabel": "Vikt %",
+  "portfolioImport.review.resolved": "Bekräftad",
+  "portfolioImport.review.needsConfirmation": "Behöver bekräftas",
+  "portfolioImport.review.manualTickerPlaceholder": "Ange ticker",
+  "portfolioImport.review.confirmationRequired": "{{count}} rader behöver en ticker innan du kan importera",
   "portfolioImport.review.errorsHeading": "Kunde inte importera {{count}} rader",
   "portfolioImport.review.lineError": "Rad {{line}} — {{error}}",
   "portfolioImport.review.noHoldingsFound": "Inga innehav hittades i den inklistrade texten.",
   "portfolioImport.review.replaceWarning": "Det här ersätter de innehav som just nu visas i Atlas.",
   "portfolioImport.review.backButton": "Tillbaka och redigera",
   "portfolioImport.review.submitError": "Kunde inte importera din portfölj: {{message}}",
-  "portfolioImport.error.missingTicker": "Ticker saknas",
+  "portfolioImport.error.missingName": "Namn saknas",
   "portfolioImport.error.missingValue": "Värde saknas",
   "portfolioImport.error.invalidValue": "Värdet är inte ett tal",
   "portfolioImport.error.nonPositiveValue": "Värdet måste vara större än noll",

@@ -1,42 +1,74 @@
 import type { ImportRowErrorCode, ParsedRow, ParseResult } from "./types";
+import { resolveNameToTicker } from "./resolution";
 
 /**
- * Portfolio Import v1 — deterministic parser.
+ * Portfolio Import v1.1 — deterministic parser.
  *
  * Pure function: raw pasted text in, a structured `ParseResult` out.
  * Never touches application state, never calls the network, never
  * silently drops a malformed row — every non-blank input line becomes
- * exactly one entry in `rows`, whether it parsed cleanly or not, so
- * the review screen can always show the user precisely what happened
- * to every line they pasted.
+ * exactly one entry in `rows`, whether it parsed cleanly or not, so the
+ * review screen can always show the user precisely what happened to
+ * every line they pasted.
  *
- * Supported per-line delimiters, auto-detected independently per line
- * (comma takes priority, then semicolon, then any run of whitespace) —
- * covers "AMD 120", "AMD,120", and "AMD;120" with the same logic, no
- * per-format branching needed elsewhere.
+ * Per-line delimiters, checked in this order:
+ *  1. Tab.
+ *  2. A dash ("-", en dash "–", em dash "—") flanked by
+ *     whitespace on both sides — covers "Microsoft – 6,14%" (the
+ *     broker-copied form this sprint targets) without ever misreading
+ *     punctuation *inside* a name ("Amazon.com" has no dash at all, so
+ *     this rule never touches it).
+ *  3. Semicolon — checked before comma because comma alone is
+ *     ambiguous (it's also the decimal separator, "3,2%"), while
+ *     semicolon never is.
+ *  4. Comma.
+ *  5. Any run of whitespace — and if that produces more than two
+ *     tokens ("Meta Platforms 40"), the *last* token is the value and
+ *     everything before it, rejoined with single spaces, is the name.
+ *     That's a fixed column-parsing rule, not a guess about what the
+ *     name refers to — it only applies when no other delimiter is
+ *     present at all.
  *
- * No fuzzy matching, no company-name resolution, no LLM: a ticker is
- * whatever token appears in the first column, trimmed and
- * uppercased — nothing is looked up or guessed.
+ * The value column accepts a trailing "%" and either a decimal point or
+ * a decimal comma ("6.14", "6,14", "6.14%", "6,14%") — both are
+ * normalized to a plain float string before parsing; nothing else about
+ * the text is touched.
+ *
+ * The name column is never uppercased or altered — `originalName` is
+ * always exactly what was pasted, verbatim. Resolving it to a ticker
+ * (or leaving it unresolved for manual confirmation) is
+ * `resolveNameToTicker`'s job, not this parser's — see `resolution.ts`.
+ * No fuzzy matching, no company-name guessing, no LLM: every resolution
+ * is either an exact dictionary hit, an already-ticker-shaped token, or
+ * explicit user confirmation.
  */
 
 const NUMERIC_PATTERN = /^-?\d+(\.\d+)?$/;
+const DASH_DELIMITER_PATTERN = /\s[-–—]\s/;
 
 function splitColumns(line: string): string[] {
-  if (line.includes(",")) return line.split(",").map((part) => part.trim());
+  if (line.includes("\t")) return line.split("\t").map((part) => part.trim());
+  if (DASH_DELIMITER_PATTERN.test(line)) return line.split(DASH_DELIMITER_PATTERN).map((part) => part.trim());
+  // Semicolon is checked before comma: comma alone is ambiguous — it's
+  // also the decimal separator ("3,2%") — while semicolon never is, so
+  // a line that uses semicolon as its field delimiter must be split on
+  // it even when a decimal comma also appears later in the line.
   if (line.includes(";")) return line.split(";").map((part) => part.trim());
-  return line.trim().split(/\s+/);
+  if (line.includes(",")) return line.split(",").map((part) => part.trim());
+  const tokens = line.trim().split(/\s+/);
+  if (tokens.length <= 2) return tokens;
+  return [tokens.slice(0, -1).join(" "), tokens[tokens.length - 1] ?? ""];
+}
+
+function normalizeWeightText(raw: string): string {
+  return raw.replace(/%/g, "").trim().replace(",", ".").trim();
 }
 
 /**
  * Explicit, deterministic header recognition — an allowlist, not a
- * "second column isn't a number" heuristic. That heuristic would treat
- * any malformed first data row (e.g. "AMD abc") as a silently-skipped
- * header instead of a reported error, which this sprint's own
- * hardening pass specifically forbids. A line is a header only when
- * BOTH columns, trimmed and case-insensitively compared, exactly match
- * one of these known label sets — a genuine data row's first column is
- * never one of these words, so this never misfires on real holdings.
+ * heuristic. Unchanged from v1's own hardening pass: a line is a header
+ * only when both columns, trimmed and case-insensitively compared,
+ * exactly match one of these known label sets.
  */
 const HEADER_FIRST_COLUMN_LABELS = new Set(["ticker", "symbol"]);
 const HEADER_SECOND_COLUMN_LABELS = new Set([
@@ -78,54 +110,57 @@ export function parsePortfolioText(raw: string): ParseResult {
     rows.push(parseRow(lineNumber, trimmedLine, columns));
   });
 
-  const seenTickers = new Set<string>();
-  for (const row of rows) {
-    if (row.errorCode !== null || row.ticker === null) continue;
-    if (seenTickers.has(row.ticker)) {
-      row.errorCode = "duplicate-ticker";
-      row.weightPercent = null;
-      continue;
-    }
-    seenTickers.add(row.ticker);
-  }
-
-  const validHoldings = rows
-    .filter((row): row is ParsedRow & { ticker: string; weightPercent: number } =>
-      row.errorCode === null && row.ticker !== null && row.weightPercent !== null,
-    )
-    .map((row) => ({ ticker: row.ticker, weightPercent: row.weightPercent }));
-
-  const errorCount = rows.filter((row) => row.errorCode !== null).length;
-
-  return { rows, validHoldings, errorCount, headerDetected };
+  return { rows, headerDetected };
 }
 
 function parseRow(lineNumber: number, raw: string, columns: string[]): ParsedRow {
-  const base = { lineNumber, raw, ticker: null, weightPercent: null, errorCode: null } as ParsedRow;
+  const base = {
+    lineNumber,
+    raw,
+    originalName: null,
+    ticker: null,
+    mappingStatus: null,
+    weightPercent: null,
+    errorCode: null,
+  } as ParsedRow;
 
   if (columns.length > 2) {
     return { ...base, errorCode: "too-many-columns" as ImportRowErrorCode };
   }
   if (columns.length === 1) {
-    const ticker = (columns[0] ?? "").toUpperCase();
-    return { ...base, ticker: ticker === "" ? null : ticker, errorCode: "missing-value" as ImportRowErrorCode };
+    const name = columns[0] ?? "";
+    return { ...base, originalName: name === "" ? null : name, errorCode: "missing-value" as ImportRowErrorCode };
   }
 
-  const tickerColumn = columns[0] ?? "";
+  const nameColumn = columns[0] ?? "";
   const valueColumn = columns[1] ?? "";
-  const ticker = tickerColumn.toUpperCase();
 
-  if (ticker === "") {
-    return { ...base, errorCode: "missing-ticker" as ImportRowErrorCode };
-  }
-  if (!NUMERIC_PATTERN.test(valueColumn)) {
-    return { ...base, ticker, errorCode: "invalid-value" as ImportRowErrorCode };
+  if (nameColumn === "") {
+    return { ...base, errorCode: "missing-name" as ImportRowErrorCode };
   }
 
-  const weightPercent = Number.parseFloat(valueColumn);
+  const normalizedValue = normalizeWeightText(valueColumn);
+  if (!NUMERIC_PATTERN.test(normalizedValue)) {
+    return { ...base, originalName: nameColumn, errorCode: "invalid-value" as ImportRowErrorCode };
+  }
+
+  const weightPercent = Number.parseFloat(normalizedValue);
   if (weightPercent <= 0) {
-    return { ...base, ticker, weightPercent, errorCode: "non-positive-value" as ImportRowErrorCode };
+    return {
+      ...base,
+      originalName: nameColumn,
+      weightPercent,
+      errorCode: "non-positive-value" as ImportRowErrorCode,
+    };
   }
 
-  return { ...base, ticker, weightPercent, errorCode: null };
+  const resolution = resolveNameToTicker(nameColumn);
+  return {
+    ...base,
+    originalName: nameColumn,
+    ticker: resolution.ticker,
+    mappingStatus: resolution.mappingStatus,
+    weightPercent,
+    errorCode: null,
+  };
 }

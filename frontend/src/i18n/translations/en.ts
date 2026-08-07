@@ -497,7 +497,7 @@ export const en = {
   "discovery.tool.caseFailed":
     "Atlas couldn't create the Investment Case for {{ticker}} just now. You can try again, or use \"Review a company\" below.",
 
-  // ---------- portfolio import v1 ----------
+  // ---------- portfolio import v1.1 ----------
   "portfolioImport.title": "Import Portfolio",
   "portfolioImport.paste.heading": "Import your portfolio",
   "portfolioImport.paste.instructions": "Paste your holdings below.",
@@ -507,13 +507,17 @@ export const en = {
   "portfolioImport.review.heading": "Review Portfolio",
   "portfolioImport.review.holdingsFound": "{{count}} holdings found",
   "portfolioImport.review.weightPercentLabel": "Weight %",
+  "portfolioImport.review.resolved": "Resolved",
+  "portfolioImport.review.needsConfirmation": "Needs confirmation",
+  "portfolioImport.review.manualTickerPlaceholder": "Enter ticker",
+  "portfolioImport.review.confirmationRequired": "{{count}} rows need a ticker before you can import",
   "portfolioImport.review.errorsHeading": "Could not import {{count}} rows",
   "portfolioImport.review.lineError": "Line {{line}} — {{error}}",
   "portfolioImport.review.noHoldingsFound": "No holdings found in the pasted text.",
   "portfolioImport.review.replaceWarning": "This will replace the holdings currently shown in Atlas.",
   "portfolioImport.review.backButton": "Back to edit",
   "portfolioImport.review.submitError": "Could not import your portfolio: {{message}}",
-  "portfolioImport.error.missingTicker": "Missing ticker",
+  "portfolioImport.error.missingName": "Missing name",
   "portfolioImport.error.missingValue": "Missing value",
   "portfolioImport.error.invalidValue": "Value is not a number",
   "portfolioImport.error.nonPositiveValue": "Value must be greater than zero",
