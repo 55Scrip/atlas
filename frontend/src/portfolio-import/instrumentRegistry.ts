@@ -30,6 +30,18 @@
  *    is correct. Names left out here (e.g. Schneider Electric — no
  *    verified US/European ticker convention on record) fall through to
  *    manual confirmation rather than a guessed suffix.
+ *
+ * Registry Completion & Normalization pass: lookup runs every name
+ * (both the pasted text and each registry key) through
+ * `normalizeForLookup()` first — collapsing whitespace (including
+ * non-breaking spaces and other Unicode space variants real broker
+ * exports embed), dash variants, stray commas, and trailing
+ * abbreviation periods to one canonical form. This is punctuation/
+ * whitespace normalization only, not fuzzy matching: two names still
+ * have to normalize to the *exact same string* to match. A genuinely
+ * different name ("Taiwan Semiconductor Mfg Co" vs "Taiwan
+ * Semiconductor") still needs its own explicit `displayNames` entry —
+ * normalization never bridges a real wording difference.
  */
 
 export type InstrumentType = "equity" | "fund" | "etp" | "private" | "other";
@@ -145,7 +157,16 @@ export const INSTRUMENT_REGISTRY: readonly InstrumentRegistryEntry[] = [
     shareClass: "A",
   },
   { displayNames: ["vistra"], ticker: "VST", instrumentType: "equity", market: "NYSE" },
-  { displayNames: ["vertiv"], ticker: "VRT", instrumentType: "equity", market: "NYSE" },
+  {
+    // "Vertiv Holdings A" is a broker-export label for the same single
+    // common stock — Vertiv Holdings Co has no actual multi-class share
+    // structure on record, so this alias maps to the same VRT entry
+    // rather than implying a distinct class exists.
+    displayNames: ["vertiv", "vertiv holdings", "vertiv holdings a", "vertiv holdings co"],
+    ticker: "VRT",
+    instrumentType: "equity",
+    market: "NYSE",
+  },
   { displayNames: ["applied materials"], ticker: "AMAT", instrumentType: "equity", market: "NASDAQ" },
 
   // ---- multi-class companies: only the fully-qualified name resolves;
@@ -153,28 +174,28 @@ export const INSTRUMENT_REGISTRY: readonly InstrumentRegistryEntry[] = [
   // so it falls through to manual confirmation instead of defaulting
   // to a guessed class. ----
   {
-    displayNames: ["alphabet class a"],
+    displayNames: ["alphabet class a", "alphabet inc class a"],
     ticker: "GOOGL",
     instrumentType: "equity",
     market: "NASDAQ",
     shareClass: "A",
   },
   {
-    displayNames: ["alphabet class c"],
+    displayNames: ["alphabet class c", "alphabet inc class c"],
     ticker: "GOOG",
     instrumentType: "equity",
     market: "NASDAQ",
     shareClass: "C",
   },
   {
-    displayNames: ["berkshire hathaway class a"],
+    displayNames: ["berkshire hathaway class a", "berkshire hathaway inc class a"],
     ticker: "BRK.A",
     instrumentType: "equity",
     market: "NYSE",
     shareClass: "A",
   },
   {
-    displayNames: ["berkshire hathaway class b"],
+    displayNames: ["berkshire hathaway class b", "berkshire hathaway inc class b"],
     ticker: "BRK.B",
     instrumentType: "equity",
     market: "NYSE",
@@ -182,7 +203,12 @@ export const INSTRUMENT_REGISTRY: readonly InstrumentRegistryEntry[] = [
   },
 
   // ---- non-US primary listings represented by an unambiguous ADR ----
-  { displayNames: ["taiwan semiconductor"], ticker: "TSM", instrumentType: "equity", market: "NYSE (ADR)" },
+  {
+    displayNames: ["taiwan semiconductor", "taiwan semiconductor mfg co", "taiwan semiconductor manufacturing", "tsmc"],
+    ticker: "TSM",
+    instrumentType: "equity",
+    market: "NYSE (ADR)",
+  },
   { displayNames: ["astrazeneca"], ticker: "AZN", instrumentType: "equity", market: "NASDAQ (ADR)" },
   {
     displayNames: ["novo nordisk", "novo nordisk b"],
@@ -252,6 +278,15 @@ export const INSTRUMENT_REGISTRY: readonly InstrumentRegistryEntry[] = [
     market: "Nasdaq Stockholm",
     shareClass: "B",
   },
+  { displayNames: ["abb", "abb ltd"], ticker: "ABB", instrumentType: "equity", market: "Nasdaq Stockholm" },
+  {
+    displayNames: ["munters", "munters group", "munters group ab"],
+    ticker: "MTRS",
+    instrumentType: "equity",
+    market: "Nasdaq Stockholm",
+  },
+  { displayNames: ["castellum"], ticker: "CAST", instrumentType: "equity", market: "Nasdaq Stockholm" },
+  { displayNames: ["nordnet"], ticker: "SAVE", instrumentType: "equity", market: "Nasdaq Stockholm" },
 
   // ---- non-equity instruments: identity is known, but the current
   // Alpha backend can only persist ticker + weight and none of these
@@ -272,10 +307,45 @@ export const INSTRUMENT_REGISTRY: readonly InstrumentRegistryEntry[] = [
   { displayNames: ["spacex"], ticker: null, instrumentType: "private" },
 ];
 
+// Hyphen-minus plus every Unicode dash/minus a broker export might use
+// in place of a plain "-" inside a name (not to be confused with
+// `parser.ts`'s column-delimiter dash pattern, which stays untouched).
+const DASH_VARIANT_PATTERN = /[‐‑‒–—−]/g;
+
+/**
+ * Deterministic punctuation/whitespace normalization for registry
+ * lookups — never a matching strategy on its own. Two names still have
+ * to produce the exact same normalized string to match; this only
+ * absorbs formatting noise that shouldn't change identity:
+ *
+ * - any dash variant (en dash, em dash, minus sign, ...) -> "-"
+ * - commas treated as separators, same as a space
+ * - a trailing "." after a word (e.g. "Inc.") stripped — but never a
+ *   "." in the middle of a token ("Amazon.com", "BRK.B" stay intact,
+ *   since the character is never followed by whitespace or the string's
+ *   end there)
+ * - every run of whitespace, including non-breaking spaces and other
+ *   Unicode space separators real broker exports embed, collapsed to
+ *   one regular space (JS's `\s` already matches those Unicode
+ *   variants, not just plain space/tab)
+ * - trimmed and lowercased last, as before
+ */
+function normalizeForLookup(raw: string): string {
+  return raw
+    .replace(DASH_VARIANT_PATTERN, "-")
+    .replace(/,/g, " ")
+    .replace(/\.(?=\s|$)/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 const LOOKUP: ReadonlyMap<string, InstrumentRegistryEntry> = new Map(
-  INSTRUMENT_REGISTRY.flatMap((entry) => entry.displayNames.map((name) => [name, entry] as const)),
+  INSTRUMENT_REGISTRY.flatMap((entry) =>
+    entry.displayNames.map((name) => [normalizeForLookup(name), entry] as const),
+  ),
 );
 
 export function lookupInstrument(name: string): InstrumentRegistryEntry | null {
-  return LOOKUP.get(name.trim().toLowerCase()) ?? null;
+  return LOOKUP.get(normalizeForLookup(name)) ?? null;
 }

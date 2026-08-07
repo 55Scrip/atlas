@@ -494,7 +494,7 @@ export const sv: Record<TranslationKey, string> = {
   "discovery.tool.caseFailed":
     "Atlas kunde inte skapa investeringscaset för {{ticker}} just nu. Du kan försöka igen, eller använda \"Granska ett bolag\" nedan.",
 
-  // ---------- portfolio import v1.2 ----------
+  // ---------- portfolio import v1.4 ----------
   "portfolioImport.title": "Importera portfölj",
   "portfolioImport.paste.heading": "Importera din portfölj",
   "portfolioImport.paste.instructions": "Klistra in dina innehav nedan.",
@@ -506,6 +506,9 @@ export const sv: Record<TranslationKey, string> = {
   "portfolioImport.review.weightPercentLabel": "Vikt %",
   "portfolioImport.review.resolved": "Bekräftad",
   "portfolioImport.review.needsConfirmation": "Behöver bekräftas",
+  "portfolioImport.review.statsResolved": "{{count}} bekräftades automatiskt",
+  "portfolioImport.review.statsNeedsConfirmation": "{{count}} behöver bekräftas",
+  "portfolioImport.review.statsUnsupported": "{{count}} kända icke-aktieinstrument",
   "portfolioImport.review.recognizedUnsupported": "Känt instrument — behöver bekräftas före import",
   "portfolioImport.review.unsupportedManualWarning":
     "Om du anger en ticker importeras det här som en vanlig aktie, trots att Atlas känner igen det som: {{instrumentType}}. Fortsätt bara om det är avsiktligt.",

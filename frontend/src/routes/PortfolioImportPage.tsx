@@ -40,7 +40,7 @@ const INSTRUMENT_TYPE_LABEL_KEY: Record<InstrumentType, TranslationKey> = {
 };
 
 /**
- * Portfolio Import v1.2.
+ * Portfolio Import v1.4.
  *
  * Input → Parse → Resolve (registry, explicit ticker, or manual
  * confirmation) → Preview → Confirm → Persist. The raw pasted text
@@ -50,16 +50,21 @@ const INSTRUMENT_TYPE_LABEL_KEY: Record<InstrumentType, TranslationKey> = {
  * no parse errors and no duplicate tickers remaining
  * (`reconcileRows`'s `canImport`).
  *
- * v1.2's hardening pass: a name only auto-resolves through an exact
- * hit in the maintained registry (`portfolio-import
- * /instrumentRegistry.ts`) or by being pasted already in the all-caps
- * shape of a literal ticker ("AMD", "BRK.B") — never by a company name
- * merely *resembling* a ticker ("Volvo" is 5 letters, same shape as a
- * real ticker, but Title Case; it is never guessed at). A registry hit
- * with no ticker (a fund, ETP, or private company) surfaces as
- * "recognized instrument — needs confirmation," never a fabricated
- * stock ticker. Everything else is shown as "needs confirmation" until
- * a human resolves it. No fuzzy matching anywhere in this path.
+ * A name only auto-resolves through an exact hit in the maintained
+ * registry (`portfolio-import/instrumentRegistry.ts`, whose lookup
+ * runs both sides through deterministic punctuation/whitespace
+ * normalization — never fuzzy matching) or by being pasted already in
+ * the all-caps shape of a literal ticker ("AMD", "BRK.B") — never by a
+ * company name merely *resembling* a ticker. A registry hit with no
+ * ticker (a fund, ETP, or private company) surfaces as "recognized
+ * instrument — needs confirmation," never a fabricated stock ticker.
+ * Everything else is shown as "needs confirmation" until a human
+ * resolves it.
+ *
+ * `reviewStats` (v1.4) is purely informational — a small summary count
+ * above the holdings list. It reads the same resolved rows the list
+ * already renders and has no bearing on `canImport`; removing it would
+ * change nothing about what can be imported.
  *
  * Data-model decision, unchanged since v1 (verified again directly
  * against `atlas/alpha/portfolio/` before this sprint): `AlphaHolding`
@@ -103,6 +108,23 @@ export function PortfolioImportPage() {
     () => (parseResult ? reconcileRows(parseResult.rows, manualTickers) : null),
     [parseResult, manualTickers],
   );
+
+  /** Informational counts only — the review flow's gating logic
+   *  (`reconciled.canImport`) doesn't read this; it exists purely for
+   *  the summary line above the holdings list. */
+  const reviewStats = useMemo(() => {
+    if (!reconciled) return null;
+    let resolved = 0;
+    let needsConfirmation = 0;
+    let unsupported = 0;
+    for (const row of reconciled.rows) {
+      if (row.errorCode !== null) continue;
+      if (row.ticker !== null) resolved += 1;
+      else if (row.mappingStatus === "unsupported") unsupported += 1;
+      else needsConfirmation += 1;
+    }
+    return { resolved, needsConfirmation, unsupported };
+  }, [reconciled]);
 
   function goToReview() {
     if (rawText.trim() === "") return;
@@ -209,11 +231,35 @@ export function PortfolioImportPage() {
 
               {reconciled.rows.filter((row) => row.errorCode === null).length > 0 && (
                 <Stack gap="inter-section">
-                  <Text>
-                    {t("portfolioImport.review.holdingsFound", {
-                      count: reconciled.rows.filter((row) => row.errorCode === null).length,
-                    })}
-                  </Text>
+                  <Stack gap="metadata">
+                    <Text>
+                      {t("portfolioImport.review.holdingsFound", {
+                        count: reconciled.rows.filter((row) => row.errorCode === null).length,
+                      })}
+                    </Text>
+                    {reviewStats && (
+                      <Stack gap="metadata">
+                        {reviewStats.resolved > 0 && (
+                          <Text color="secondary" as="p">
+                            {"✓ " + t("portfolioImport.review.statsResolved", { count: reviewStats.resolved })}
+                          </Text>
+                        )}
+                        {reviewStats.needsConfirmation > 0 && (
+                          <Text color="secondary" as="p">
+                            {"? " +
+                              t("portfolioImport.review.statsNeedsConfirmation", {
+                                count: reviewStats.needsConfirmation,
+                              })}
+                          </Text>
+                        )}
+                        {reviewStats.unsupported > 0 && (
+                          <Text color="secondary" as="p">
+                            {"! " + t("portfolioImport.review.statsUnsupported", { count: reviewStats.unsupported })}
+                          </Text>
+                        )}
+                      </Stack>
+                    )}
+                  </Stack>
                   <Stack gap="intra-section">
                     {reconciled.rows
                       .filter((row) => row.errorCode === null)
