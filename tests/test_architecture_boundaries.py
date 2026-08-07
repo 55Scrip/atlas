@@ -17,6 +17,7 @@ CAPABILITIES_DIR = ATLAS_ROOT / "capabilities"
 CORE_DIR = ATLAS_ROOT / "core"
 ALPHA_DIR = ATLAS_ROOT / "alpha"
 DECISION_ENGINE_DIR = ATLAS_ROOT / "decision_engine"
+AI_DIR = ATLAS_ROOT / "ai"
 
 FORBIDDEN_EDGE_PATTERNS = (
     "atlas edge",
@@ -169,6 +170,30 @@ def test_decision_engine_only_reads_core_domain_entities() -> None:
                 violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
 
     assert not violations, "atlas/decision_engine boundary violation:\n" + "\n".join(
+        violations
+    )
+
+
+def test_ai_discovery_chat_does_not_import_atlas_alpha() -> None:
+    """Discovery Intelligence v1: `atlas/ai/discovery_chat.py` (and
+    every other file in `atlas/ai/` except its own composition point,
+    `atlas/ai/api/router.py`) MUST NOT import `atlas.alpha` -- the same
+    one-way discipline `test_core_does_not_import_atlas_alpha` and
+    `test_decision_engine_only_reads_core_domain_entities` already
+    enforce for their own provider-agnostic cores. `atlas/ai/api/router.py`
+    is `atlas/ai/`'s own single deliberate composition point with real
+    Alpha portfolio state, exempted here exactly as
+    `atlas/core/infrastructure/api/app.py` is exempted from the Core
+    equivalent of this rule."""
+    violations = []
+    for path in _python_files(AI_DIR):
+        if "ai/api/router.py" in str(path):
+            continue
+        for module in _imported_modules(path):
+            if module.startswith("atlas.alpha"):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "atlas/ai importing atlas/alpha outside its composition point:\n" + "\n".join(
         violations
     )
 

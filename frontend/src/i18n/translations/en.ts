@@ -478,6 +478,10 @@ export const en = {
   "discovery.suggestions.marketTrend": "Help me think through a market trend",
   "discovery.response.bounded":
     "Discovery's live analysis engine is not connected in this Alpha yet. You can still open or create an Investment Case for a company you want to review.",
+  "discovery.response.providerError":
+    "Atlas couldn't generate a response just now. You can try asking again.",
+  "discovery.chat.sending": "Thinking…",
+  "discovery.chat.unavailable": "Atlas couldn't be reached. Check your connection and try again.",
   "discovery.reviewCompany.heading": "Review a company",
   "discovery.reviewCompany.createCase": "Create Investment Case →",
   "discovery.reviewCompany.openCase": "Open Investment Case →",

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from atlas.ai.api.router import router as discovery_chat_router
 from atlas.alpha.portfolio.api.router import router as alpha_portfolio_router
 from atlas.core.infrastructure.api.case.errors import (
     register_error_handlers as register_case_error_handlers,
@@ -64,6 +65,13 @@ def create_app() -> FastAPI:
     # Alpha routes, but `atlas/core/` never imports from `atlas/alpha/`
     # (enforced by tests/test_architecture_boundaries.py).
     app.include_router(alpha_portfolio_router)
+    # Discovery Intelligence v1: same pattern, one level removed — the
+    # discovery-chat router is authored and owned in `atlas/ai/`, and is
+    # itself `atlas/ai/`'s own one deliberate composition point with
+    # `atlas/alpha/` (its provider-agnostic core, `discovery_chat.py`,
+    # never imports `atlas.alpha` — enforced by
+    # tests/test_architecture_boundaries.py).
+    app.include_router(discovery_chat_router)
     app.include_router(case_router)
     app.include_router(decision_router)
     app.include_router(decision_context_router)

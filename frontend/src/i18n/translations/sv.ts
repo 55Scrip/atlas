@@ -475,6 +475,10 @@ export const sv: Record<TranslationKey, string> = {
   "discovery.suggestions.marketTrend": "Hjälp mig tänka igenom en marknadstrend",
   "discovery.response.bounded":
     "Discoverys analysmotor är inte ansluten i den här Alpha-versionen än. Du kan fortfarande öppna eller skapa ett investeringscase för ett bolag du vill granska.",
+  "discovery.response.providerError":
+    "Atlas kunde inte generera ett svar just nu. Du kan försöka fråga igen.",
+  "discovery.chat.sending": "Tänker…",
+  "discovery.chat.unavailable": "Atlas kunde inte nås. Kontrollera din anslutning och försök igen.",
   "discovery.reviewCompany.heading": "Granska ett bolag",
   "discovery.reviewCompany.createCase": "Skapa investeringscase →",
   "discovery.reviewCompany.openCase": "Öppna investeringscase →",

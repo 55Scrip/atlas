@@ -40,34 +40,33 @@ type ReviewCompanyStatus =
 
 let nextMessageId = 0;
 
+type SendStatus = { kind: "idle" } | { kind: "sending" } | { kind: "unavailable" };
+
 /**
- * Discovery v1 (Implementation Sprint 1) — a truthful Alpha shell for
- * "what would you like to explore," not a screener and not a
- * conversational AI. Confirmed by direct repository investigation
- * before writing this file: no real candidate-generation service is
- * reachable via any mounted API route (`atlas/capabilities/discovery/`
- * is CLI-only and only re-merges data the caller already assembled —
- * it does no market screening), and no conversational AI backend
- * exists anywhere in this app (`atlas/ai/interfaces.py`'s
- * `DiscoveryService` is an unimplemented `Protocol` stub). This page
- * therefore never fabricates a reply to what the investor asks — every
- * submitted question gets the same honest, bounded acknowledgment, and
- * every fact this page states (portfolio existing, a ticker being a
- * real holding, a Case already being linked) is read from the same
- * `/api/alpha-portfolio` and `/api/cases` endpoints every other page
- * already uses. No new backend behavior, no new Core object — the
- * conversation itself lives only in this component's own React state
- * for the current session, per this sprint's explicit "in-memory is
- * acceptable" allowance.
+ * Discovery Intelligence v1 — the first real conversational layer.
+ * `submitQuestion` now calls the real `POST /api/discovery/chat`
+ * endpoint (`atlas/ai/api/router.py`), sending the full current
+ * session so follow-up questions carry context, and the investor's own
+ * selected UI language so Atlas replies in it. The backend itself
+ * degrades cleanly with no live provider configured — its response
+ * `mode` (`"generated" | "not_configured" | "provider_error"`) is what
+ * this page renders, never a client-side fabrication:
+ * `"not_configured"`/`"provider_error"` are rendered as an honest Atlas
+ * transcript message (still true, still calm, just not model-written);
+ * a genuine network failure (`"unavailable"`) is a distinct, small
+ * inline notice, never added to the transcript as something Atlas
+ * supposedly said. No new Core object, no direct frontend-to-provider
+ * call — this page only ever talks to Atlas's own API.
  */
 export function DiscoveryPage() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const navigate = useNavigate();
 
   const [portfolioStatus, setPortfolioStatus] = useState<PortfolioStatus>({ kind: "loading" });
   const [showInfo, setShowInfo] = useState(false);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
+  const [sendStatus, setSendStatus] = useState<SendStatus>({ kind: "idle" });
   const [reviewTicker, setReviewTicker] = useState("");
   const [reviewStatus, setReviewStatus] = useState<ReviewCompanyStatus>({ kind: "idle" });
 
@@ -88,19 +87,49 @@ export function DiscoveryPage() {
 
   function submitQuestion(text: string) {
     const trimmed = text.trim();
-    if (trimmed === "") return;
+    if (trimmed === "" || sendStatus.kind === "sending") return;
+
     const userMessage: ConversationMessage = {
       id: `msg-${nextMessageId++}`,
       role: "user",
       text: trimmed,
     };
-    const atlasReply: ConversationMessage = {
-      id: `msg-${nextMessageId++}`,
-      role: "atlas",
-      text: t("discovery.response.bounded"),
-    };
-    setMessages((current) => [...current, userMessage, atlasReply]);
+    const sessionSoFar = [...messages, userMessage];
+    setMessages(sessionSoFar);
     setInputValue("");
+    setSendStatus({ kind: "sending" });
+
+    fetch("/api/discovery/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: sessionSoFar.map((message) => ({ role: message.role, content: message.text })),
+        language,
+      }),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
+        return response.json() as Promise<{
+          message: string | null;
+          mode: "generated" | "not_configured" | "provider_error";
+        }>;
+      })
+      .then((body) => {
+        const replyText =
+          body.mode === "generated" && body.message
+            ? body.message
+            : body.mode === "provider_error"
+              ? t("discovery.response.providerError")
+              : t("discovery.response.bounded");
+        setMessages((current) => [
+          ...current,
+          { id: `msg-${nextMessageId++}`, role: "atlas", text: replyText },
+        ]);
+        setSendStatus({ kind: "idle" });
+      })
+      .catch(() => {
+        setSendStatus({ kind: "unavailable" });
+      });
   }
 
   function submitReviewCompany() {
@@ -205,6 +234,17 @@ export function DiscoveryPage() {
               </Stack>
             )}
 
+            {sendStatus.kind === "sending" && (
+              <Text color="tertiary" role="status" aria-live="polite">
+                {t("discovery.chat.sending")}
+              </Text>
+            )}
+            {sendStatus.kind === "unavailable" && (
+              <Text color="tertiary" role="alert">
+                {t("discovery.chat.unavailable")}
+              </Text>
+            )}
+
             <Text as="label">
               <textarea
                 value={inputValue}
@@ -212,17 +252,27 @@ export function DiscoveryPage() {
                 placeholder={t("discovery.input.placeholder")}
                 rows={3}
                 style={{ width: "100%" }}
+                disabled={sendStatus.kind === "sending"}
               />
             </Text>
             <div>
-              <Button variant="primary" onClick={() => submitQuestion(inputValue)}>
-                {t("discovery.input.submit")}
+              <Button
+                variant="primary"
+                onClick={() => submitQuestion(inputValue)}
+                disabled={sendStatus.kind === "sending" || inputValue.trim() === ""}
+              >
+                {sendStatus.kind === "sending" ? t("common.submitting") : t("discovery.input.submit")}
               </Button>
             </div>
 
             <div>
               {SUGGESTED_PROMPT_KEYS.map((key) => (
-                <Button key={key} variant="tertiary" onClick={() => setInputValue(t(key))}>
+                <Button
+                  key={key}
+                  variant="tertiary"
+                  onClick={() => setInputValue(t(key))}
+                  disabled={sendStatus.kind === "sending"}
+                >
                   {t(key)}
                 </Button>
               ))}
