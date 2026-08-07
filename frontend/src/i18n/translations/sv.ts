@@ -321,7 +321,8 @@ export const sv: Record<TranslationKey, string> = {
   // ---------- investment case v2: what Atlas knows ----------
   "investmentCase.whatAtlasKnows.heading": "Det här vet Atlas",
   "investmentCase.whatAtlasKnows.observationsCount": "Registrerade observationer: {{count}}",
-  "investmentCase.whatAtlasKnows.evidenceCount": "Stödjande belägg: {{count}}",
+  "investmentCase.whatAtlasKnows.supportingEvidenceCount": "Stödjande belägg: {{count}}",
+  "investmentCase.whatAtlasKnows.challengingEvidenceCount": "Belägg som talar emot: {{count}}",
   "investmentCase.whatAtlasKnows.judgmentAvailable": "Registrerad bedömning: finns",
   "investmentCase.whatAtlasKnows.judgmentNotAvailable": "Registrerad bedömning: finns inte",
   "investmentCase.whatAtlasKnows.decisionLabel": "Investerarens beslut: {{type}}",

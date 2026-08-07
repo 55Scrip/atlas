@@ -1573,10 +1573,17 @@ export function InvestmentCasePage() {
                   })}
                 </Text>
                 <Text color="secondary">
-                  {t("investmentCase.whatAtlasKnows.evidenceCount", {
-                    count: evidenceForCase.length,
+                  {t("investmentCase.whatAtlasKnows.supportingEvidenceCount", {
+                    count: evidenceForCase.filter((e) => e.direction === "SUPPORTS").length,
                   })}
                 </Text>
+                {evidenceForCase.some((e) => e.direction === "CHALLENGES") && (
+                  <Text color="secondary">
+                    {t("investmentCase.whatAtlasKnows.challengingEvidenceCount", {
+                      count: evidenceForCase.filter((e) => e.direction === "CHALLENGES").length,
+                    })}
+                  </Text>
+                )}
                 <Text color="secondary">
                   {judgmentsForCase.length > 0
                     ? t("investmentCase.whatAtlasKnows.judgmentAvailable")

@@ -322,7 +322,8 @@ export const en = {
   // ---------- investment case v2: what Atlas knows ----------
   "investmentCase.whatAtlasKnows.heading": "What Atlas knows",
   "investmentCase.whatAtlasKnows.observationsCount": "Recorded observations: {{count}}",
-  "investmentCase.whatAtlasKnows.evidenceCount": "Supporting evidence: {{count}}",
+  "investmentCase.whatAtlasKnows.supportingEvidenceCount": "Supporting evidence: {{count}}",
+  "investmentCase.whatAtlasKnows.challengingEvidenceCount": "Evidence that gives pause: {{count}}",
   "investmentCase.whatAtlasKnows.judgmentAvailable": "Recorded judgment: available",
   "investmentCase.whatAtlasKnows.judgmentNotAvailable": "Recorded judgment: not available",
   "investmentCase.whatAtlasKnows.decisionLabel": "Investor decision: {{type}}",
