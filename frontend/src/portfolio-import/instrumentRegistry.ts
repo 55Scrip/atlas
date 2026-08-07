@@ -1,34 +1,35 @@
 /**
- * Portfolio Import v1.2 — bounded, explicit instrument registry.
+ * Instrument Identity v1 — bounded, explicit instrument registry.
  *
- * Replaces v1.1's flat name -> ticker dictionary. Still deterministic,
- * still a maintained lookup, not an attempt at universal coverage or a
- * general security master — the point is identity *safety* for this one
- * import flow: every entry represents one specific, verified instrument
- * identity, not a guess.
+ * Deterministic maintained lookup, not an attempt at universal coverage
+ * or a general security master — the point is identity *safety* for
+ * this one import flow: every entry represents one specific, verified
+ * instrument identity, not a guess. `resolveInstrument()` in
+ * `resolution.ts` is the only way anything outside this file reads it —
+ * Portfolio Import never queries `INSTRUMENT_REGISTRY` directly and
+ * never needs to know market, share class, or any other metadata to
+ * decide what to import; that's carried only for the review screen's
+ * own display.
  *
- * Two safety rules this registry exists to enforce, both learned from a
- * real portfolio import (v1.2's hardening pass):
+ * Safety rules this registry exists to enforce:
  *
  * 1. A company with more than one actively-traded public share class
  *    (Alphabet, Berkshire Hathaway) has NO bare/unqualified entry here.
  *    Only the fully-qualified name ("Alphabet Class C") resolves —
  *    defaulting an unqualified name to one class would be exactly the
- *    kind of guessed suffix this sprint forbids. An investor who pastes
- *    just "Alphabet" is left to confirm which class manually.
+ *    kind of guessed suffix this registry forbids. An investor who
+ *    pastes just "Alphabet" is left to confirm which class manually.
  * 2. An instrument whose identity is known but isn't a plain listed
  *    equity (a fund, an ETP, a private company) still gets an entry —
  *    with `ticker: null` — so the review screen can say "this is a
  *    recognized fund" instead of either fabricating a stock ticker for
  *    it or treating it as a blank unknown.
- *
- * Nordic-only local listings the real portfolio contained (Volvo B,
- * Alfa Laval, Trelleborg B, Sandvik, Assa Abloy B, Atlas Copco B,
- * SEB A, Schneider Electric) are deliberately left OUT of this
- * registry rather than mapped to a guessed Nasdaq Stockholm / Euronext
- * suffix convention Atlas has never verified — they fall through to
- * manual confirmation, per this sprint's own instruction to "verify
- * each mapping... or leave it unresolved."
+ * 3. A Nasdaq Stockholm / Nasdaq Copenhagen listing is mapped only when
+ *    its ticker (including the dash + share-class suffix, e.g.
+ *    "VOLV-B") is one this registry's maintainer is genuinely confident
+ *    is correct. Names left out here (e.g. Schneider Electric — no
+ *    verified US/European ticker convention on record) fall through to
+ *    manual confirmation rather than a guessed suffix.
  */
 
 export type InstrumentType = "equity" | "fund" | "etp" | "private" | "other";
@@ -48,9 +49,19 @@ export interface InstrumentRegistryEntry {
 
 export const INSTRUMENT_REGISTRY: readonly InstrumentRegistryEntry[] = [
   // ---- unambiguous US/NASDAQ/NYSE equities, single public class ----
-  { displayNames: ["microsoft"], ticker: "MSFT", instrumentType: "equity", market: "NASDAQ" },
+  {
+    displayNames: ["microsoft", "microsoft corp", "microsoft corporation"],
+    ticker: "MSFT",
+    instrumentType: "equity",
+    market: "NASDAQ",
+  },
   { displayNames: ["apple"], ticker: "AAPL", instrumentType: "equity", market: "NASDAQ" },
-  { displayNames: ["amazon", "amazon.com"], ticker: "AMZN", instrumentType: "equity", market: "NASDAQ" },
+  {
+    displayNames: ["amazon", "amazon.com", "amazon.com inc"],
+    ticker: "AMZN",
+    instrumentType: "equity",
+    market: "NASDAQ",
+  },
   { displayNames: ["nvidia"], ticker: "NVDA", instrumentType: "equity", market: "NASDAQ" },
   { displayNames: ["tesla"], ticker: "TSLA", instrumentType: "equity", market: "NASDAQ" },
   { displayNames: ["broadcom"], ticker: "AVGO", instrumentType: "equity", market: "NASDAQ" },
@@ -127,7 +138,7 @@ export const INSTRUMENT_REGISTRY: readonly InstrumentRegistryEntry[] = [
   { displayNames: ["spotify"], ticker: "SPOT", instrumentType: "equity", market: "NYSE" },
   { displayNames: ["shopify"], ticker: "SHOP", instrumentType: "equity", market: "NYSE" },
   {
-    displayNames: ["meta platforms", "meta platforms a", "meta"],
+    displayNames: ["meta platforms", "meta platforms a", "meta platforms inc", "meta"],
     ticker: "META",
     instrumentType: "equity",
     market: "NASDAQ",
@@ -178,6 +189,67 @@ export const INSTRUMENT_REGISTRY: readonly InstrumentRegistryEntry[] = [
     ticker: "NVO",
     instrumentType: "equity",
     market: "NYSE (ADR)",
+    shareClass: "B",
+  },
+
+  // ---- Nasdaq Stockholm large caps: only names whose exact local
+  // ticker (dash + share-class suffix included) this registry's
+  // maintainer is genuinely confident is correct. Each alias set
+  // covers the plain name, the "<Name> AB <Class>" broker-export form,
+  // and — where a sprint worked example gave it explicitly — the
+  // "<Name> AB Class <Letter>" long form. ----
+  {
+    displayNames: ["investor b", "investor ab b", "investor ab class b"],
+    ticker: "INVE-B",
+    instrumentType: "equity",
+    market: "Nasdaq Stockholm",
+    shareClass: "B",
+  },
+  {
+    displayNames: ["atlas copco b", "atlas copco ab b"],
+    ticker: "ATCO-B",
+    instrumentType: "equity",
+    market: "Nasdaq Stockholm",
+    shareClass: "B",
+  },
+  {
+    displayNames: ["volvo b", "volvo ab b"],
+    ticker: "VOLV-B",
+    instrumentType: "equity",
+    market: "Nasdaq Stockholm",
+    shareClass: "B",
+  },
+  {
+    displayNames: ["assa abloy b", "assa abloy ab b"],
+    ticker: "ASSA-B",
+    instrumentType: "equity",
+    market: "Nasdaq Stockholm",
+    shareClass: "B",
+  },
+  {
+    displayNames: ["seb a", "seb ab a"],
+    ticker: "SEB-A",
+    instrumentType: "equity",
+    market: "Nasdaq Stockholm",
+    shareClass: "A",
+  },
+  {
+    displayNames: ["alfa laval"],
+    ticker: "ALFA",
+    instrumentType: "equity",
+    market: "Nasdaq Stockholm",
+  },
+  {
+    displayNames: ["sandvik"],
+    ticker: "SAND",
+    instrumentType: "equity",
+    market: "Nasdaq Stockholm",
+  },
+  {
+    displayNames: ["trelleborg b", "trelleborg ab b"],
+    ticker: "TREL-B",
+    instrumentType: "equity",
+    market: "Nasdaq Stockholm",
     shareClass: "B",
   },
 
