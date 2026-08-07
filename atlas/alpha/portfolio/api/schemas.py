@@ -53,7 +53,9 @@ class ApplyTradeRequestBody(CamelModel):
     outcome_id: str
     decision_id: str
     security: str
-    transaction_type: Literal["BUY", "SELL"]
+    # ADD behaves like BUY; EXIT removes the holding outright rather
+    # than reducing it (ATLAS-014) -- see `service.py::TransactionType`.
+    transaction_type: Literal["BUY", "SELL", "ADD", "EXIT"]
     quantity: float
     execution_price: float
     executed_at: datetime

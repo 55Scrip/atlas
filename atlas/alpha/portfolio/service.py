@@ -173,8 +173,11 @@ def _apply_trade_absolute_mode(
     state: AlphaPortfolioState, entry: AlphaTradeLogEntry, existing: AlphaHolding | None
 ) -> AlphaPortfolioState:
     """Mode A: real portfolio value is known -- update holding value,
-    cash, and recomputed allocation percentages automatically."""
-    sign = 1.0 if entry.transaction_type == TransactionType.BUY else -1.0
+    cash, and recomputed allocation percentages automatically. Only
+    ever called for BUY/ADD/SELL -- EXIT has its own dedicated path
+    (`_apply_trade_exit_mode`) since closing a position removes the
+    holding rather than adjusting its value."""
+    sign = 1.0 if entry.transaction_type in (TransactionType.BUY, TransactionType.ADD) else -1.0
     trade_value = entry.quantity * entry.execution_price
     fees = entry.fees or 0.0
 
@@ -231,6 +234,44 @@ def _apply_trade_percentage_mode(
         new_holdings = state.holdings + (new_holding,)
 
     return replace(state, holdings=new_holdings, updated_at=_utc_now())
+
+
+def _apply_trade_exit_mode(
+    state: AlphaPortfolioState, entry: AlphaTradeLogEntry
+) -> AlphaPortfolioState:
+    """EXIT (ATLAS-014): the position is fully closed -- remove the
+    holding outright rather than reduce it, in both modes. The
+    holding's Investment Case link goes with it (there is no more
+    holding to hold the association), but the Investment Case itself,
+    and every Decision and Outcome ever recorded against it, live
+    entirely in Core and are untouched by this.
+
+    Mode A additionally credits the sale proceeds to cash and
+    recomputes the remaining holdings' weights from real values, reusing
+    the same calculation engine `_apply_trade_absolute_mode` does. Mode
+    B leaves every remaining holding's percentage exactly as it was --
+    the portfolio's total will no longer sum to 100%, which is the same
+    honest "incomplete allocation" state Portfolio Import already
+    discloses, not a gap Atlas invents a number to fill.
+    """
+    remaining_holdings = tuple(h for h in state.holdings if h.ticker != entry.security)
+
+    if not state.has_absolute_values:
+        return replace(state, holdings=remaining_holdings, updated_at=_utc_now())
+
+    trade_value = entry.quantity * entry.execution_price
+    fees = entry.fees or 0.0
+    new_cash_value = max(0.0, (state.cash_value_absolute or 0.0) + trade_value - fees)
+    recomputed_holdings, recomputed_cash_weight = _recompute_weights_from_absolute_values(
+        remaining_holdings, new_cash_value
+    )
+    return replace(
+        state,
+        holdings=recomputed_holdings,
+        cash_value_absolute=new_cash_value,
+        cash_weight_percent=recomputed_cash_weight,
+        updated_at=_utc_now(),
+    )
 
 
 class AlphaPortfolioService:
@@ -350,18 +391,23 @@ class AlphaPortfolioService:
 
     def apply_confirmed_trade(self, request: ApplyTradeRequest) -> AlphaPortfolioState:
         """Record a confirmed external trade and update the provisional
-        portfolio (Alpha Sprint 1B).
+        portfolio (Alpha Sprint 1B; EXIT added by ATLAS-014).
 
         1. Verify the referenced Outcome exists (read-only Core access).
         2. Verify that Outcome belongs to the given Decision.
-        3. Write the `AlphaTradeLogEntry`.
-        4. Update the Alpha portfolio -- Mode A (absolute values known)
-           recalculates automatically; Mode B (percentages only) records
-           the trade and marks the holding as awaiting reconciliation.
+        3. Write the `AlphaTradeLogEntry` -- this is the durable,
+           append-only record of the execution (`GET /alpha-portfolio
+           /trade-log`); a future History page reads from here.
+        4. Update the Alpha portfolio: EXIT removes the holding outright
+           in both modes (`_apply_trade_exit_mode`); BUY/ADD/SELL update
+           it via Mode A (absolute values known -- recalculates
+           automatically) or Mode B (percentages only -- records the
+           trade and marks the holding as awaiting reconciliation).
 
         No Core object is read for writing, modified, or originated:
         `self._outcome_repository.get(...)` is the only Core call this
-        method makes.
+        method makes. The Decision and Outcome this trade follows from
+        are never touched -- only referenced by id.
         """
         if self._outcome_repository is None or self._trade_log_store is None:
             raise AlphaPortfolioError(
@@ -414,41 +460,48 @@ class AlphaPortfolioService:
             (holding for holding in state.holdings if holding.ticker == trade_entry.security),
             None,
         )
-        if trade_entry.transaction_type == TransactionType.SELL and existing is None:
+        if (
+            trade_entry.transaction_type in (TransactionType.SELL, TransactionType.EXIT)
+            and existing is None
+        ):
             raise AlphaPortfolioValidationError(
-                f"Cannot record a SELL for {trade_entry.security}: no existing holding found."
+                f"Cannot record a {trade_entry.transaction_type.value} for "
+                f"{trade_entry.security}: no existing holding found."
             )
 
         # Absolute-value mode only: reject a trade that is inconsistent
         # with the real dollar figures already known. Without this, a
-        # BUY costing more than available cash (or a SELL realizing more
-        # than the position's own current value) previously floored the
-        # deficit side at zero and let the other side absorb the full
-        # trade amount regardless -- silently fabricating portfolio
-        # value rather than reporting the inconsistency. Percentage-only
-        # mode has no real dollar figures to validate against, so no
-        # equivalent check applies there.
+        # BUY costing more than available cash (or a SELL/EXIT realizing
+        # more than the position's own current value) previously
+        # floored the deficit side at zero and let the other side
+        # absorb the full trade amount regardless -- silently
+        # fabricating portfolio value rather than reporting the
+        # inconsistency. Percentage-only mode has no real dollar
+        # figures to validate against, so no equivalent check applies
+        # there.
         if state.has_absolute_values:
             trade_value = trade_entry.quantity * trade_entry.execution_price
             fees = trade_entry.fees or 0.0
-            if trade_entry.transaction_type == TransactionType.BUY:
+            if trade_entry.transaction_type in (TransactionType.BUY, TransactionType.ADD):
                 available_cash = state.cash_value_absolute or 0.0
                 if trade_value + fees > available_cash + _ALLOCATION_TOLERANCE:
                     raise AlphaPortfolioValidationError(
-                        f"Cannot record this BUY: cost ({trade_value + fees}) exceeds "
-                        f"available cash ({available_cash})."
+                        f"Cannot record this {trade_entry.transaction_type.value}: cost "
+                        f"({trade_value + fees}) exceeds available cash ({available_cash})."
                     )
             else:
                 current_value = (existing.value_absolute if existing else 0.0) or 0.0
                 if trade_value > current_value + _ALLOCATION_TOLERANCE:
                     raise AlphaPortfolioValidationError(
-                        f"Cannot record this SELL: proceeds ({trade_value}) exceed the "
-                        f"holding's current value ({current_value})."
+                        f"Cannot record this {trade_entry.transaction_type.value}: proceeds "
+                        f"({trade_value}) exceed the holding's current value ({current_value})."
                     )
 
         self._trade_log_store.add(trade_entry)
 
-        if state.has_absolute_values:
+        if trade_entry.transaction_type == TransactionType.EXIT:
+            new_state = _apply_trade_exit_mode(state, trade_entry)
+        elif state.has_absolute_values:
             new_state = _apply_trade_absolute_mode(state, trade_entry, existing)
         else:
             new_state = _apply_trade_percentage_mode(state, trade_entry, existing)

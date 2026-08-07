@@ -266,6 +266,8 @@ export const sv: Record<TranslationKey, string> = {
     "Detta var en extern affär — registrera genomförandet",
   "investmentCase.outcome.securityLabel": "Värdepapper",
   "investmentCase.outcome.typeLabel": "Typ",
+  "investmentCase.outcome.transactionTypeAdd": "Lägg till",
+  "investmentCase.outcome.transactionTypeExit": "Avsluta (tar bort innehavet)",
   "investmentCase.outcome.quantityLabel": "Antal",
   "investmentCase.outcome.executionPriceLabel": "Avslutspris",
   "investmentCase.outcome.feesLabel": "Avgifter (valfritt)",

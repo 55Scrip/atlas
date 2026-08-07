@@ -36,10 +36,21 @@ class ReconciliationStatus(str, Enum):
 
 
 class TransactionType(str, Enum):
-    """The two external-execution kinds Atlas records (Atlas never trades)."""
+    """The external-execution kinds Atlas records (Atlas never trades).
+
+    `ADD` is recorded and behaves identically to `BUY` throughout this
+    module -- a separate label for "added to an existing position" with
+    no distinct math, since Alpha has no cost-basis/lot tracking to make
+    the two behave differently. `EXIT` marks a position fully closed: it
+    removes the holding from the active portfolio outright (ATLAS-014),
+    rather than reducing it the way `SELL` does -- see
+    `service.py::_apply_trade_exit_mode`.
+    """
 
     BUY = "BUY"
     SELL = "SELL"
+    ADD = "ADD"
+    EXIT = "EXIT"
 
 
 @dataclass(frozen=True)

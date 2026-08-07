@@ -266,6 +266,8 @@ export const en = {
     "This was an external trade — record the execution",
   "investmentCase.outcome.securityLabel": "Security",
   "investmentCase.outcome.typeLabel": "Type",
+  "investmentCase.outcome.transactionTypeAdd": "Add",
+  "investmentCase.outcome.transactionTypeExit": "Exit (removes the holding)",
   "investmentCase.outcome.quantityLabel": "Quantity",
   "investmentCase.outcome.executionPriceLabel": "Execution price",
   "investmentCase.outcome.feesLabel": "Fees (optional)",

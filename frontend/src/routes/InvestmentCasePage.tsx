@@ -379,7 +379,10 @@ interface OutcomeFormInput {
   note: string;
   isExternalTrade: boolean;
   security: string;
-  transactionType: "BUY" | "SELL";
+  // ADD behaves like BUY; EXIT removes the holding outright rather
+  // than reducing it (ATLAS-014) -- see `atlas/alpha/portfolio
+  // /service.py::TransactionType`.
+  transactionType: "BUY" | "SELL" | "ADD" | "EXIT";
   quantity: string;
   executionPrice: string;
   fees: string;
@@ -2990,7 +2993,9 @@ export function InvestmentCasePage() {
                                               ...thisOutcomeForm,
                                               transactionType: event.target.value as
                                                 | "BUY"
-                                                | "SELL",
+                                                | "SELL"
+                                                | "ADD"
+                                                | "EXIT",
                                             },
                                           }))
                                         }
@@ -2999,8 +3004,14 @@ export function InvestmentCasePage() {
                                         <option value="BUY">
                                           {t("investmentCase.decision.typeBuy")}
                                         </option>
+                                        <option value="ADD">
+                                          {t("investmentCase.outcome.transactionTypeAdd")}
+                                        </option>
                                         <option value="SELL">
                                           {t("investmentCase.decision.typeSell")}
+                                        </option>
+                                        <option value="EXIT">
+                                          {t("investmentCase.outcome.transactionTypeExit")}
                                         </option>
                                       </select>
                                     </Text>
@@ -3474,7 +3485,11 @@ export function InvestmentCasePage() {
                                         ...current,
                                         [reportDecisionId]: {
                                           ...reportOutcomeForm,
-                                          transactionType: event.target.value as "BUY" | "SELL",
+                                          transactionType: event.target.value as
+                                            | "BUY"
+                                            | "SELL"
+                                            | "ADD"
+                                            | "EXIT",
                                         },
                                       }))
                                     }
@@ -3483,8 +3498,14 @@ export function InvestmentCasePage() {
                                     <option value="BUY">
                                       {t("investmentCase.decision.typeBuy")}
                                     </option>
+                                    <option value="ADD">
+                                      {t("investmentCase.outcome.transactionTypeAdd")}
+                                    </option>
                                     <option value="SELL">
                                       {t("investmentCase.decision.typeSell")}
+                                    </option>
+                                    <option value="EXIT">
+                                      {t("investmentCase.outcome.transactionTypeExit")}
                                     </option>
                                   </select>
                                 </Text>
