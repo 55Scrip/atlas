@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { Button, Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
+import { Button, Container, Divider, Heading, Inline, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 
 /**
@@ -40,10 +40,86 @@ interface PortfolioView {
   awaitingReconciliation: boolean;
 }
 
+/**
+ * ATLAS-015 Portfolio Status — a workflow-completeness summary, not an
+ * analysis: every field here is a count or verbatim value already
+ * present in Alpha/Core data (see `atlas/alpha/portfolio_status
+ * /service.py`). `category`/`topCategory` are internal enum values, the
+ * same "raw English on the wire, translated only at display time"
+ * pattern `decisionType`/`transactionType` already use elsewhere.
+ */
+type AttentionCategory =
+  | "MISSING_CASE"
+  | "DECISION_WITHOUT_OUTCOME"
+  | "OUTCOME_WITHOUT_EXECUTION"
+  | "AWAITING_RECONCILIATION"
+  | "VERY_OLD_CASE"
+  | "OBSERVATION_WITHOUT_DECISION";
+
+interface PortfolioSummaryMetrics {
+  holdingsCount: number;
+  largestPositionTicker: string | null;
+  largestPositionWeightPercent: number | null;
+  numberOfInvestmentCases: number;
+  openDecisions: number;
+  pendingOutcomes: number;
+  pendingExecutions: number;
+  concentrationLevel: string | null;
+  unallocatedPercent: number | null;
+}
+
+interface AttentionItemView {
+  ticker: string;
+  category: AttentionCategory;
+  caseId: string | null;
+  ageDays: number | null;
+}
+
+interface ReviewQueueItemView {
+  ticker: string;
+  caseId: string | null;
+  reasonCount: number;
+  topCategory: AttentionCategory;
+}
+
+interface PortfolioHealthView {
+  holdingsWithCaseCount: number;
+  holdingsCount: number;
+  mostRecentDecisionAt: string | null;
+  outstandingWorkflowItems: number;
+  allocatedPercent: number | null;
+  unknownInstrumentTickers: string[];
+}
+
+interface PortfolioStatusView {
+  exists: boolean;
+  summary: PortfolioSummaryMetrics | null;
+  attentionItems: AttentionItemView[];
+  reviewQueue: ReviewQueueItemView[];
+  health: PortfolioHealthView | null;
+}
+
+const ATTENTION_CATEGORY_KEY: Record<AttentionCategory, TranslationKey> = {
+  MISSING_CASE: "portfolio.needsAttention.missingCase",
+  DECISION_WITHOUT_OUTCOME: "portfolio.needsAttention.decisionWithoutOutcome",
+  OUTCOME_WITHOUT_EXECUTION: "portfolio.needsAttention.outcomeWithoutExecution",
+  AWAITING_RECONCILIATION: "portfolio.needsAttention.awaitingReconciliation",
+  VERY_OLD_CASE: "portfolio.needsAttention.veryOldCase",
+  OBSERVATION_WITHOUT_DECISION: "portfolio.needsAttention.observationWithoutDecision",
+};
+
 type Status =
   | { kind: "loading" }
   | { kind: "error"; message: string }
   | { kind: "loaded"; view: PortfolioView };
+
+/** Fetched independently from `PortfolioView` -- a failure here never
+ *  blocks Holdings from rendering; the Intelligence cards just don't
+ *  appear (see the render logic below). */
+type PortfolioStatusFetchStatus =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "loaded"; report: PortfolioStatusView };
 
 type CaseCreateStatus =
   | { kind: "idle" }
@@ -81,6 +157,7 @@ export function PortfolioPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [status, setStatus] = useState<Status>({ kind: "loading" });
+  const [portfolioStatus, setPortfolioStatus] = useState<PortfolioStatusFetchStatus>({ kind: "loading" });
   const [caseCreateStatus, setCaseCreateStatus] = useState<Record<string, CaseCreateStatus>>({});
   const [reconcileWeightInputs, setReconcileWeightInputs] = useState<Record<string, string>>({});
   const [reconcileStatus, setReconcileStatus] = useState<Record<string, ReconcileStatus>>({});
@@ -108,6 +185,25 @@ export function PortfolioPage() {
           kind: "error",
           message: error instanceof Error ? error.message : t("common.unknownError"),
         });
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch("/api/alpha-portfolio/status", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        return response.json() as Promise<PortfolioStatusView>;
+      })
+      .then((report) => setPortfolioStatus({ kind: "loaded", report }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setPortfolioStatus({ kind: "error" });
       });
 
     return () => controller.abort();
@@ -342,6 +438,10 @@ export function PortfolioPage() {
 
         {status.kind === "loaded" && status.view.exists && status.view.holdings.length > 0 && (
           <Stack gap="inter-section">
+            {portfolioStatus.kind === "loaded" && portfolioStatus.report.exists && (
+              <PortfolioIntelligenceCards report={portfolioStatus.report} t={t} />
+            )}
+
             {status.view.awaitingReconciliation && (
               <Surface tier="primary">
                 <Stack gap="inter-section">
@@ -555,5 +655,147 @@ export function PortfolioPage() {
         )}
       </Stack>
     </Container>
+  );
+}
+
+/**
+ * ATLAS-015 Portfolio Intelligence: four compact, read-only cards above
+ * Holdings -- Portfolio Summary, Needs Attention, Review Queue,
+ * Portfolio Health. Every value comes straight from `PortfolioStatusView`
+ * (`GET /alpha-portfolio/status`); this component computes nothing of
+ * its own beyond translating enum values and formatting dates -- the
+ * domain logic lives entirely in `atlas/alpha/portfolio_status/service.py`,
+ * per this sprint's own "keep domain logic outside the UI" instruction.
+ * Holdings itself, immediately below, is untouched.
+ */
+function PortfolioIntelligenceCards({
+  report,
+  t,
+}: {
+  report: PortfolioStatusView;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const summary = report.summary;
+  const health = report.health;
+
+  return (
+    <Stack gap="inter-section">
+      {summary && (
+        <Surface tier="primary">
+          <Stack gap="intra-section">
+            <Heading level={2}>{t("portfolio.summary.heading")}</Heading>
+            <Inline gap="row" wrap>
+              <Text color="secondary" as="p">
+                {t("portfolio.summary.holdings")}: {summary.holdingsCount}
+              </Text>
+              <Text color="secondary" as="p">
+                {t("portfolio.summary.largestPosition")}:{" "}
+                {summary.largestPositionTicker
+                  ? `${summary.largestPositionTicker} (${summary.largestPositionWeightPercent}%)`
+                  : t("portfolio.summary.noLargestPosition")}
+              </Text>
+              <Text color="secondary" as="p">
+                {t("portfolio.summary.investmentCases")}: {summary.numberOfInvestmentCases}
+              </Text>
+              <Text color="secondary" as="p">
+                {t("portfolio.summary.openDecisions")}: {summary.openDecisions}
+              </Text>
+              <Text color="secondary" as="p">
+                {t("portfolio.summary.pendingOutcomes")}: {summary.pendingOutcomes}
+              </Text>
+              <Text color="secondary" as="p">
+                {t("portfolio.summary.pendingExecutions")}: {summary.pendingExecutions}
+              </Text>
+              {summary.concentrationLevel && (
+                <Text color="secondary" as="p">
+                  {t("portfolio.summary.concentration")}:{" "}
+                  {CONCENTRATION_LEVEL_KEY[summary.concentrationLevel]
+                    ? t(CONCENTRATION_LEVEL_KEY[summary.concentrationLevel]!)
+                    : summary.concentrationLevel}
+                </Text>
+              )}
+              {summary.unallocatedPercent !== null && (
+                <Text color="secondary" as="p">
+                  {t("portfolio.summary.unallocated")}: {summary.unallocatedPercent}%
+                </Text>
+              )}
+            </Inline>
+          </Stack>
+        </Surface>
+      )}
+
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("portfolio.needsAttention.heading")}</Heading>
+          {report.attentionItems.length === 0 && (
+            <Text color="secondary">{t("portfolio.needsAttention.empty")}</Text>
+          )}
+          {report.attentionItems.map((item, index) => (
+            <Text key={index} color="secondary" as="p">
+              {t(ATTENTION_CATEGORY_KEY[item.category], {
+                ticker: item.ticker,
+                days: item.ageDays ?? "",
+              })}
+            </Text>
+          ))}
+        </Stack>
+      </Surface>
+
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("portfolio.reviewQueue.heading")}</Heading>
+          {report.reviewQueue.length === 0 && (
+            <Text color="secondary">{t("portfolio.reviewQueue.empty")}</Text>
+          )}
+          {report.reviewQueue.map((item) => (
+            <Inline key={item.ticker} gap="row" align="center">
+              {item.caseId ? (
+                <RouterLink to={`/investment-case/${item.caseId}`}>
+                  {t("portfolio.reviewQueue.item", { ticker: item.ticker })}
+                </RouterLink>
+              ) : (
+                <Text>{t("portfolio.reviewQueue.item", { ticker: item.ticker })}</Text>
+              )}
+              <Text color="tertiary">
+                {t("portfolio.reviewQueue.reasonCount", { count: item.reasonCount })}
+              </Text>
+            </Inline>
+          ))}
+        </Stack>
+      </Surface>
+
+      {health && (
+        <Surface tier="primary">
+          <Stack gap="intra-section">
+            <Heading level={2}>{t("portfolio.health.heading")}</Heading>
+            <Text color="secondary" as="p">
+              {t("portfolio.health.coverage", {
+                withCase: health.holdingsWithCaseCount,
+                total: health.holdingsCount,
+              })}
+            </Text>
+            <Text color="secondary" as="p">
+              {health.mostRecentDecisionAt
+                ? t("portfolio.health.freshness", { date: health.mostRecentDecisionAt })
+                : t("portfolio.health.noDecisions")}
+            </Text>
+            <Text color="secondary" as="p">
+              {t("portfolio.health.outstandingItems")}: {health.outstandingWorkflowItems}
+            </Text>
+            {health.allocatedPercent !== null && (
+              <Text color="secondary" as="p">
+                {t("portfolio.health.completeness")}: {health.allocatedPercent}%
+              </Text>
+            )}
+            <Text color="secondary" as="p">
+              {t("portfolio.health.unknownInstruments")}:{" "}
+              {health.unknownInstrumentTickers.length > 0
+                ? health.unknownInstrumentTickers.join(", ")
+                : t("portfolio.health.noUnknownInstruments")}
+            </Text>
+          </Stack>
+        </Surface>
+      )}
+    </Stack>
   );
 }
