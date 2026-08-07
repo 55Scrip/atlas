@@ -276,15 +276,16 @@ class TestPortfolioIntelligenceResultBecomesEvaluated:
 
 
 class TestPipelineIntegration:
-    def test_reasoning_not_evaluated_pending_its_own_evaluator(self):
+    def test_reasoning_is_evaluated_with_empty_blocked_by(self):
+        """Sprint 5: Reasoning is now real too, assembling from all
+        three upstream results — `EVALUATED`, `blocked_by` empty."""
         output = run_pipeline(
             DecisionEngineInput(case_id=CASE_ID, evaluated_at=EVALUATED_AT),
             generated_at=GENERATED_AT,
         )
         assert output.portfolio_intelligence.state is EvaluationState.EVALUATED
-        assert output.reasoning.state is EvaluationState.NOT_EVALUATED
-        blocked_by_values = {b.value for b in output.reasoning.blocked_by}
-        assert blocked_by_values == {"reasoning_evaluator_not_implemented"}
+        assert output.reasoning.state is EvaluationState.EVALUATED
+        assert output.reasoning.blocked_by == ()
 
     def test_recommendation_withheld_remains_final(self):
         output = run_pipeline(
@@ -313,7 +314,8 @@ class TestPipelineIntegration:
         assert not hasattr(output.recommendation, "conviction")
         assert not hasattr(output.recommendation, "conviction_level")
 
-    def test_missing_evaluations_no_longer_names_portfolio_intelligence(self):
+    def test_missing_evaluations_is_now_empty(self):
+        """Sprint 5: all four stages are `EVALUATED`."""
         output = run_pipeline(
             DecisionEngineInput(case_id=CASE_ID, evaluated_at=EVALUATED_AT),
             generated_at=GENERATED_AT,
@@ -321,9 +323,7 @@ class TestPipelineIntegration:
         assert MissingEvaluationCategory.PORTFOLIO_INTELLIGENCE not in (
             output.recommendation.missing_evaluations
         )
-        assert set(output.recommendation.missing_evaluations) == {
-            MissingEvaluationCategory.REASONING
-        }
+        assert output.recommendation.missing_evaluations == ()
 
 
 class TestPipelineDeterminism:

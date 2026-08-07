@@ -6,11 +6,13 @@ the fixed order the Doctrine's own architectural principle states:
     Business Evaluation -> Valuation -> Portfolio Intelligence
     -> Reasoning -> Recommendation Outcome
 
-Every stage is a deterministic placeholder this sprint (Phase 4); the
-final Recommendation is always Recommendation Withheld (Phase 3). No
-stage is ever silently omitted from the output. No exception represents
-ordinary incompleteness — exceptions signal only an actual contract
-violation (Phase 5's own instruction; see
+As of Sprint 5, Business Evaluation, Valuation, Portfolio Intelligence,
+and Reasoning are all real, deterministic evaluators; Recommendation
+remains always Recommendation Withheld — a structural guarantee of
+`atlas.decision_engine.stages.recommendation`, not a byproduct of any
+stage being incomplete. No stage is ever silently omitted from the
+output. No exception represents ordinary incompleteness — exceptions
+signal only an actual contract violation (see
 `atlas.decision_engine.exceptions`).
 """
 from __future__ import annotations
@@ -42,7 +44,6 @@ def run_pipeline(
     valuation = evaluate_valuation(engine_input)
     portfolio_intelligence = evaluate_portfolio_intelligence(engine_input)
     reasoning = evaluate_reasoning(
-        engine_input,
         business_evaluation=business_evaluation,
         valuation=valuation,
         portfolio_intelligence=portfolio_intelligence,

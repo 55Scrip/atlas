@@ -647,22 +647,175 @@ class ReasoningBlockedBy(str, Enum):
 
 
 @dataclass(frozen=True)
+class ReasoningSummary:
+    """`DE-002` §2.1 Current Situation, under the Recommendation Withheld
+    structural exception (`DE-002` §4: Current Situation "MAY still be
+    stated"). A pure structural echo of each upstream stage's own
+    top-level state and coverage/linkage facts — copied, never inferred,
+    generalized, or classified. Answers only "where do things stand,"
+    per `DE-002` §2.1's own prohibition on any forward-looking claim.
+    """
+
+    business_evaluation_state: EvaluationState
+    valuation_state: EvaluationState
+    portfolio_intelligence_state: EvaluationState
+    evidence_coverage: EvidenceCoverageLevel
+    execution_price_history_coverage: ExecutionPriceHistoryCoverage
+    holding_linkage: HoldingLinkage
+
+
+@dataclass(frozen=True)
+class SupportingEvidenceSummary:
+    """`DE-002` §2.2 Evidence, under Recommendation Withheld. Every
+    `ObservationEvidenceClassification` from Business Evaluation with
+    `supporting_evidence_count > 0` — copied verbatim, never
+    reinterpreted, rescored, or newly classified. A `CONTRADICTED`
+    observation (nonzero on both sides) legitimately appears here and in
+    `ContradictionSummary` at once — both counts are simultaneously
+    true."""
+
+    observation_classifications: tuple[ObservationEvidenceClassification, ...]
+
+
+@dataclass(frozen=True)
+class ContradictionSummary:
+    """`DE-002` §2.3 Counter-Evidence, under Recommendation Withheld.
+    Every `ObservationEvidenceClassification` from Business Evaluation
+    with `challenging_evidence_count > 0` — copied verbatim, same
+    non-reinterpretation guarantee as `SupportingEvidenceSummary`."""
+
+    observation_classifications: tuple[ObservationEvidenceClassification, ...]
+
+
+@dataclass(frozen=True)
+class KnownUnknownSummary:
+    """`DE-002` §4's "why insufficient" content, assembled from every
+    explicit gap and `INSUFFICIENT_INPUT` finding already produced
+    upstream — nothing here is inferred or newly discovered by
+    Reasoning. `durability_gap`/`valuation_gap` are typed `| None` (not
+    unconditionally required) so a future sprint in which either
+    dimension becomes genuinely assessable does not require a contract
+    change here — this sprint, both are always populated, since both
+    are always `INSUFFICIENT_INPUT` (see `DurabilityFinding`,
+    `ValuationFinding`).
+    """
+
+    evidence_gaps: tuple[EvidenceGap, ...]
+    durability_gap: DurabilityFinding | None
+    valuation_gap: ValuationFinding | None
+    portfolio_factor_gaps: tuple[PortfolioDoctrineFactor, ...]
+
+
+@dataclass(frozen=True)
+class PortfolioContextSummary:
+    """`DE-002` §2.4 Portfolio Context, under Recommendation Withheld
+    ("MAY still be stated"). Wraps Portfolio Intelligence's own
+    `HoldingContextFinding` verbatim — weights, trade history, and
+    reconciliation state are never recomputed here."""
+
+    holding_context: HoldingContextFinding
+
+
+class OpenQuestionKind(str, Enum):
+    """A deterministic, template-free question directly implied by one
+    specific upstream finding or gap — never freely generated prose.
+    Each member corresponds 1:1 to a structured fact already produced
+    upstream; a future presentation layer maps `kind` to localized text
+    (e.g. `VALUATION_THESIS_NOT_DOCUMENTED` -> "No valuation thesis has
+    been documented."). This module itself never stores that prose,
+    matching this codebase's own separation of domain output from
+    presentation, already established for `StageNotImplementedReason`
+    and every other reason enum in this file.
+    """
+
+    NO_EVIDENCE_RECORDED_FOR_CASE = "no_evidence_recorded_for_case"
+    OBSERVATION_WITHOUT_EVIDENCE = "observation_without_evidence"
+    DECISION_WITHOUT_LINKED_OBSERVATION = "decision_without_linked_observation"
+    BUSINESS_DURABILITY_NOT_ASSESSABLE = "business_durability_not_assessable"
+    VALUATION_THESIS_NOT_DOCUMENTED = "valuation_thesis_not_documented"
+    PORTFOLIO_FACTOR_NOT_ASSESSABLE = "portfolio_factor_not_assessable"
+
+
+@dataclass(frozen=True)
+class OpenQuestion:
+    """One machine-readable open question. `reference` is
+    `str(ObservationId)`, `str(DecisionId)`, or a `PortfolioDoctrineFactor`
+    value, depending on `kind`; `None` for case-wide or dimension-wide
+    kinds that name no single reference."""
+
+    kind: OpenQuestionKind
+    reference: str | None = None
+
+
+@dataclass(frozen=True)
+class ReasoningFinding:
+    """`DE-002`'s Reasoning Structure, assembled under the Recommendation
+    Withheld structural exception (`DE-002` §4). Direction and Conviction
+    are permanently absent this sprint — no field for either exists on
+    this type, the same structural guarantee `RecommendationWithheld`
+    itself already makes. `what_would_change` is always `()`: per
+    explicit Sprint 5 lock, no upstream stage exposes a distinct
+    change-trigger concept, and none is derived or synthesized from
+    `known_unknowns`/`open_questions` here — it remains empty until a
+    prior stage genuinely provides one.
+    """
+
+    current_situation: ReasoningSummary
+    supporting_evidence: SupportingEvidenceSummary
+    contradicting_evidence: ContradictionSummary
+    known_unknowns: KnownUnknownSummary
+    portfolio_context: PortfolioContextSummary
+    open_questions: tuple[OpenQuestion, ...]
+    what_would_change: tuple[OpenQuestion, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.what_would_change:
+            raise DecisionEngineContractError(
+                "ReasoningFinding.what_would_change must be empty this "
+                "sprint; no upstream stage exposes a change-trigger "
+                "concept to assemble it from."
+            )
+
+
+@dataclass(frozen=True)
 class ReasoningResult:
     """`DE-002`'s seven-part Reasoning Structure output shape.
 
-    Does not simulate the seven-part structure with fabricated prose —
-    by explicit Sprint scope. States only that Reasoning has not been
-    performed, and exactly which prior stage results prevented it.
+    Sprint 1: always `NOT_EVALUATED` (no evaluator existed).
+
+    Sprint 5: the evaluator is real. Reasoning is an assembly layer, not
+    a second evaluator — it consumes only `BusinessEvaluationResult`,
+    `ValuationResult`, and `PortfolioIntelligenceResult` (never
+    `DecisionEngineInput`, never raw Observation/Evidence/Decision/
+    Outcome entities directly). `finding` is always populated with a
+    genuine, deterministic assembly of what those three stages already
+    produced — even an audit trail that is mostly "not yet assessable"
+    is a real, honest result, not a failure to evaluate — so `state` is
+    always `EVALUATED`, the same top-level semantics every prior stage
+    already established. `blocked_by` becomes permanently empty from
+    this sprint onward; the type keeps the field, and keeps enforcing
+    it for the `NOT_EVALUATED` branch, entirely for contract-shape
+    stability with Sprints 1-4 rather than because that branch is still
+    reachable.
+
+    No `direction` or `conviction` field exists anywhere in this type
+    or in `ReasoningFinding` — structurally guaranteed, mirroring
+    `RecommendationWithheld`'s own guarantee.
     """
 
     state: EvaluationState
     blocked_by: tuple[ReasoningBlockedBy, ...] = ()
+    finding: ReasoningFinding | None = None
 
     def __post_init__(self) -> None:
         if self.state is EvaluationState.NOT_EVALUATED and not self.blocked_by:
             raise DecisionEngineContractError(
                 "A NOT_EVALUATED ReasoningResult must name at least one "
                 "blocking prior stage."
+            )
+        if self.state is EvaluationState.EVALUATED and self.finding is None:
+            raise DecisionEngineContractError(
+                "An EVALUATED ReasoningResult must carry a finding."
             )
 
 
