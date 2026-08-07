@@ -292,6 +292,10 @@ export function PortfolioPage() {
       <Stack gap="inter-section">
         <Heading level={1}>{t("portfolio.title")}</Heading>
 
+        <div>
+          <RouterLink to="/portfolio/import">{t("portfolioImport.title")}</RouterLink>
+        </div>
+
         {status.kind === "loading" && (
           <Text role="status" aria-live="polite">
             {t("common.loading")}

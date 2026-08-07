@@ -6,6 +6,7 @@ import { HistoryPage } from "./routes/HistoryPage";
 import { IndexRoute } from "./routes/IndexRoute";
 import { InvestmentCasePage } from "./routes/InvestmentCasePage";
 import { PlatformStatusPage } from "./routes/PlatformStatusPage";
+import { PortfolioImportPage } from "./routes/PortfolioImportPage";
 import { PortfolioPage } from "./routes/PortfolioPage";
 import { WelcomePage } from "./routes/WelcomePage";
 import { AppShell } from "./shell/AppShell";
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="daily-brief" element={<DailyBriefPage />} />
         <Route path="discovery" element={<DiscoveryPage />} />
         <Route path="portfolio" element={<PortfolioPage />} />
+        <Route path="portfolio/import" element={<PortfolioImportPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="investment-case" element={<InvestmentCasePage />} />

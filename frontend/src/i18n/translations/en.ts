@@ -496,6 +496,29 @@ export const en = {
     "{{ticker}} isn't in your current portfolio, so Atlas can't open a linked Investment Case for it yet. You can confirm the exact ticker, or use \"Review a company\" below once it's in your portfolio.",
   "discovery.tool.caseFailed":
     "Atlas couldn't create the Investment Case for {{ticker}} just now. You can try again, or use \"Review a company\" below.",
+
+  // ---------- portfolio import v1 ----------
+  "portfolioImport.title": "Import Portfolio",
+  "portfolioImport.paste.heading": "Import your portfolio",
+  "portfolioImport.paste.instructions": "Paste your holdings below.",
+  "portfolioImport.paste.placeholder": "AMD 40\nNVDA 30\nASML 20",
+  "portfolioImport.paste.reviewNote": "You will review everything before Atlas updates your portfolio.",
+  "portfolioImport.paste.continueButton": "Review Portfolio",
+  "portfolioImport.review.heading": "Review Portfolio",
+  "portfolioImport.review.holdingsFound": "{{count}} holdings found",
+  "portfolioImport.review.weightPercentLabel": "Weight %",
+  "portfolioImport.review.errorsHeading": "Could not import {{count}} rows",
+  "portfolioImport.review.lineError": "Line {{line}} — {{error}}",
+  "portfolioImport.review.noHoldingsFound": "No holdings found in the pasted text.",
+  "portfolioImport.review.replaceWarning": "This will replace the holdings currently shown in Atlas.",
+  "portfolioImport.review.backButton": "Back to edit",
+  "portfolioImport.review.submitError": "Could not import your portfolio: {{message}}",
+  "portfolioImport.error.missingTicker": "Missing ticker",
+  "portfolioImport.error.missingValue": "Missing value",
+  "portfolioImport.error.invalidValue": "Value is not a number",
+  "portfolioImport.error.nonPositiveValue": "Value must be greater than zero",
+  "portfolioImport.error.duplicateTicker": "Duplicate ticker: {{ticker}}",
+  "portfolioImport.error.tooManyColumns": "Too many columns",
 } as const;
 
 export type TranslationKey = keyof typeof en;
