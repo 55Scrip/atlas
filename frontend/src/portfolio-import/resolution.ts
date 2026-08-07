@@ -64,6 +64,26 @@ export function resolveInstrument(name: string): ResolvedIdentity {
   return { kind: "unresolved" };
 }
 
+// ATLAS-015A: the manual-entry field applies on every keystroke (a
+// controlled input, not a submit-on-blur/Enter one), so without a
+// floor here, a person who starts typing "AAPL" and clicks "Import
+// Portfolio" after only the first character is already, silently,
+// "resolved" -- exactly how single-letter holdings ("A", "B", "C"...)
+// reached persistence during Alpha testing (root cause: this line had
+// no length check at all). Real single-character tickers do exist
+// (Visa's "V", Ford's "F"), so this can't reject on shape -- it rejects
+// on incompleteness instead: a one-character manual entry is far more
+// likely to be typing-in-progress than a deliberately confirmed
+// identity, so it's treated as not-yet-resolved (the row keeps showing
+// "needs confirmation") rather than accepted. The same "a false
+// automatic match is worse than an unresolved row" principle every
+// other resolution rule in this module already follows -- this is a
+// real, disclosed limitation (see PortfolioPage.tsx / the sprint
+// report), not a silent gap: a genuine single-letter-ticker holding
+// currently cannot be manually confirmed and stays "needs
+// confirmation" until entered with a 2-plus character form.
+const MIN_MANUAL_TICKER_LENGTH = 2;
+
 /**
  * Cross-row reconciliation: applies any manually-typed ticker
  * corrections, then (re-)runs duplicate-ticker detection across the
@@ -79,7 +99,7 @@ export function reconcileRows(rows: ParsedRow[], manualTickers: Record<number, s
   const withOverrides = rows.map((row) => {
     if (row.errorCode !== null || row.ticker !== null) return row;
     const manual = manualTickers[row.lineNumber]?.trim();
-    if (!manual) return row;
+    if (!manual || manual.length < MIN_MANUAL_TICKER_LENGTH) return row;
     return { ...row, ticker: manual.toUpperCase(), mappingStatus: "known" as const };
   });
 
