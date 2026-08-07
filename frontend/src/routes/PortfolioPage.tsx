@@ -99,6 +99,139 @@ interface PortfolioStatusView {
   health: PortfolioHealthView | null;
 }
 
+/**
+ * ATLAS-016 Portfolio Intelligence -- consumes the canonical Decision
+ * Engine pipeline plus `PortfolioStatusService` (see
+ * `atlas/alpha/portfolio_intelligence/service.py`). Every `kind` value
+ * is raw English on the wire, translated only at display time by this
+ * component -- the same `category`/`concentrationLevel` pattern already
+ * used above. Nothing here is computed in the browser.
+ */
+type KeyFindingKind =
+  | "high_concentration"
+  | "elevated_concentration"
+  | "large_unallocated"
+  | "multiple_missing_cases"
+  | "multiple_stale_cases"
+  | "multiple_evidence_gaps";
+
+type ConsiderKind =
+  | "open_investment_case"
+  | "gather_evidence"
+  | "review_thesis"
+  | "update_case"
+  | "review_concentration";
+
+type RiskSignalKind =
+  | "high_concentration"
+  | "missing_case"
+  | "missing_evidence"
+  | "awaiting_reconciliation"
+  | "stale_review";
+
+type EvidenceGapKind =
+  | "no_evidence_recorded"
+  | "observation_without_evidence"
+  | "decision_without_linked_observation";
+
+type EvidenceCoverageLevel = "not_applicable" | "none" | "partial" | "full";
+
+interface KeyFindingView {
+  kind: KeyFindingKind;
+  count: number;
+  tickers: string[];
+}
+
+interface ConsiderItemView {
+  kind: ConsiderKind;
+  ticker: string;
+  caseId: string | null;
+  confidence: EvidenceCoverageLevel;
+  relatedHoldings: string[];
+  evidenceGapCount: number | null;
+  ageDays: number | null;
+  weightPercent: number | null;
+  pendingItemCount: number | null;
+}
+
+interface RiskSignalView {
+  kind: RiskSignalKind;
+  ticker: string;
+  caseId: string | null;
+  ageDays: number | null;
+}
+
+interface MissingEvidenceItemView {
+  ticker: string;
+  caseId: string;
+  gapKind: EvidenceGapKind;
+  reference: string | null;
+}
+
+interface PortfolioFitStatusView {
+  available: boolean;
+  reason: string | null;
+}
+
+interface PortfolioIntelligenceView {
+  exists: boolean;
+  overview: PortfolioSummaryMetrics | null;
+  cashWeightPercent: number | null;
+  cashValueAbsolute: number | null;
+  keyFindings: KeyFindingView[];
+  considerItems: ConsiderItemView[];
+  riskSignals: RiskSignalView[];
+  missingEvidence: MissingEvidenceItemView[];
+  portfolioFit: PortfolioFitStatusView;
+}
+
+const CONFIDENCE_KEY: Record<EvidenceCoverageLevel, TranslationKey> = {
+  not_applicable: "portfolio.intelligence.confidence.not_applicable",
+  none: "portfolio.intelligence.confidence.none",
+  partial: "portfolio.intelligence.confidence.partial",
+  full: "portfolio.intelligence.confidence.full",
+};
+
+const KEY_FINDING_KEY: Record<KeyFindingKind, TranslationKey> = {
+  high_concentration: "portfolio.intelligence.keyFindings.high_concentration",
+  elevated_concentration: "portfolio.intelligence.keyFindings.elevated_concentration",
+  large_unallocated: "portfolio.intelligence.keyFindings.large_unallocated",
+  multiple_missing_cases: "portfolio.intelligence.keyFindings.multiple_missing_cases",
+  multiple_stale_cases: "portfolio.intelligence.keyFindings.multiple_stale_cases",
+  multiple_evidence_gaps: "portfolio.intelligence.keyFindings.multiple_evidence_gaps",
+};
+
+const CONSIDER_TITLE_KEY: Record<ConsiderKind, TranslationKey> = {
+  open_investment_case: "portfolio.intelligence.consider.open_investment_case.title",
+  gather_evidence: "portfolio.intelligence.consider.gather_evidence.title",
+  review_thesis: "portfolio.intelligence.consider.review_thesis.title",
+  update_case: "portfolio.intelligence.consider.update_case.title",
+  review_concentration: "portfolio.intelligence.consider.review_concentration.title",
+};
+
+const CONSIDER_REASON_KEY: Record<ConsiderKind, TranslationKey> = {
+  open_investment_case: "portfolio.intelligence.consider.open_investment_case.reason",
+  gather_evidence: "portfolio.intelligence.consider.gather_evidence.reason",
+  review_thesis: "portfolio.intelligence.consider.review_thesis.reason",
+  update_case: "portfolio.intelligence.consider.update_case.reason",
+  review_concentration: "portfolio.intelligence.consider.review_concentration.reason",
+};
+
+const RISK_SIGNAL_KEY: Record<RiskSignalKind, TranslationKey> = {
+  high_concentration: "portfolio.intelligence.riskSignals.high_concentration",
+  missing_case: "portfolio.intelligence.riskSignals.missing_case",
+  missing_evidence: "portfolio.intelligence.riskSignals.missing_evidence",
+  awaiting_reconciliation: "portfolio.intelligence.riskSignals.awaiting_reconciliation",
+  stale_review: "portfolio.intelligence.riskSignals.stale_review",
+};
+
+const MISSING_EVIDENCE_KEY: Record<EvidenceGapKind, TranslationKey> = {
+  no_evidence_recorded: "portfolio.intelligence.missingEvidence.no_evidence_recorded",
+  observation_without_evidence: "portfolio.intelligence.missingEvidence.observation_without_evidence",
+  decision_without_linked_observation:
+    "portfolio.intelligence.missingEvidence.decision_without_linked_observation",
+};
+
 const ATTENTION_CATEGORY_KEY: Record<AttentionCategory, TranslationKey> = {
   MISSING_CASE: "portfolio.needsAttention.missingCase",
   DECISION_WITHOUT_OUTCOME: "portfolio.needsAttention.decisionWithoutOutcome",
@@ -120,6 +253,13 @@ type PortfolioStatusFetchStatus =
   | { kind: "loading" }
   | { kind: "error" }
   | { kind: "loaded"; report: PortfolioStatusView };
+
+/** Same independent-fetch pattern as `PortfolioStatusFetchStatus` --
+ *  ATLAS-016's sections simply don't render on failure. */
+type PortfolioIntelligenceFetchStatus =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "loaded"; report: PortfolioIntelligenceView };
 
 type CaseCreateStatus =
   | { kind: "idle" }
@@ -158,6 +298,9 @@ export function PortfolioPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<Status>({ kind: "loading" });
   const [portfolioStatus, setPortfolioStatus] = useState<PortfolioStatusFetchStatus>({ kind: "loading" });
+  const [portfolioIntelligence, setPortfolioIntelligence] = useState<PortfolioIntelligenceFetchStatus>({
+    kind: "loading",
+  });
   const [caseCreateStatus, setCaseCreateStatus] = useState<Record<string, CaseCreateStatus>>({});
   const [reconcileWeightInputs, setReconcileWeightInputs] = useState<Record<string, string>>({});
   const [reconcileStatus, setReconcileStatus] = useState<Record<string, ReconcileStatus>>({});
@@ -204,6 +347,25 @@ export function PortfolioPage() {
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setPortfolioStatus({ kind: "error" });
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch("/api/alpha-portfolio/intelligence", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        return response.json() as Promise<PortfolioIntelligenceView>;
+      })
+      .then((report) => setPortfolioIntelligence({ kind: "loaded", report }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setPortfolioIntelligence({ kind: "error" });
       });
 
     return () => controller.abort();
@@ -440,6 +602,10 @@ export function PortfolioPage() {
           <Stack gap="inter-section">
             {portfolioStatus.kind === "loaded" && portfolioStatus.report.exists && (
               <PortfolioIntelligenceCards report={portfolioStatus.report} t={t} />
+            )}
+
+            {portfolioIntelligence.kind === "loaded" && portfolioIntelligence.report.exists && (
+              <PortfolioIntelligenceSections report={portfolioIntelligence.report} t={t} />
             )}
 
             {status.view.awaitingReconciliation && (
@@ -796,6 +962,120 @@ function PortfolioIntelligenceCards({
           </Stack>
         </Surface>
       )}
+    </Stack>
+  );
+}
+
+/**
+ * ATLAS-016 Portfolio Intelligence -- Key Findings, Consider, Risk
+ * Signals, Missing Evidence, Portfolio Fit. Every value comes straight
+ * from `PortfolioIntelligenceView` (`GET /alpha-portfolio/intelligence`);
+ * like `PortfolioIntelligenceCards` above, this component computes
+ * nothing of its own -- the domain logic lives entirely in
+ * `atlas/alpha/portfolio_intelligence/service.py`. "Portfolio Overview"
+ * (largest exposures, cash, concentration, unallocated) is already
+ * covered by the Portfolio Summary card above (ATLAS-015); this adds
+ * only the new sections beneath it, per this sprint's own "add
+ * intelligence sections naturally beneath Portfolio Summary" scope.
+ * Consider items are always rendered with the disclaimer that they are
+ * review suggestions, never a trade instruction.
+ */
+function PortfolioIntelligenceSections({
+  report,
+  t,
+}: {
+  report: PortfolioIntelligenceView;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  return (
+    <Stack gap="inter-section">
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("portfolio.intelligence.keyFindings.heading")}</Heading>
+          {report.keyFindings.length === 0 && (
+            <Text color="secondary">{t("portfolio.intelligence.keyFindings.empty")}</Text>
+          )}
+          {report.keyFindings.map((finding, index) => (
+            <Text key={index} color="secondary" as="p">
+              {t(KEY_FINDING_KEY[finding.kind], {
+                count: finding.count,
+                tickers: finding.tickers.join(", "),
+              })}
+            </Text>
+          ))}
+        </Stack>
+      </Surface>
+
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("portfolio.intelligence.consider.heading")}</Heading>
+          <Text color="tertiary" as="p">
+            {t("portfolio.intelligence.consider.disclaimer")}
+          </Text>
+          {report.considerItems.length === 0 && (
+            <Text color="secondary">{t("portfolio.intelligence.consider.empty")}</Text>
+          )}
+          {report.considerItems.map((item, index) => (
+            <Stack key={index} gap="intra-section">
+              <Text as="p">{t(CONSIDER_TITLE_KEY[item.kind])}</Text>
+              <Text color="secondary" as="p">
+                {t(CONSIDER_REASON_KEY[item.kind], {
+                  ticker: item.ticker,
+                  count: item.evidenceGapCount ?? item.pendingItemCount ?? 0,
+                  days: item.ageDays ?? 0,
+                  weight: item.weightPercent ?? 0,
+                })}
+              </Text>
+              <Text color="tertiary" as="p">
+                {t(CONFIDENCE_KEY[item.confidence])}
+              </Text>
+              {item.caseId && (
+                <RouterLink to={`/investment-case/${item.caseId}`}>
+                  {t("portfolio.reviewQueue.item", { ticker: item.ticker })}
+                </RouterLink>
+              )}
+              <Divider tone="hairline" />
+            </Stack>
+          ))}
+        </Stack>
+      </Surface>
+
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("portfolio.intelligence.riskSignals.heading")}</Heading>
+          {report.riskSignals.length === 0 && (
+            <Text color="secondary">{t("portfolio.intelligence.riskSignals.empty")}</Text>
+          )}
+          {report.riskSignals.map((signal, index) => (
+            <Text key={index} color="secondary" as="p">
+              {t(RISK_SIGNAL_KEY[signal.kind], { ticker: signal.ticker, days: signal.ageDays ?? 0 })}
+            </Text>
+          ))}
+        </Stack>
+      </Surface>
+
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("portfolio.intelligence.missingEvidence.heading")}</Heading>
+          {report.missingEvidence.length === 0 && (
+            <Text color="secondary">{t("portfolio.intelligence.missingEvidence.empty")}</Text>
+          )}
+          {report.missingEvidence.map((item, index) => (
+            <Text key={index} color="secondary" as="p">
+              {t(MISSING_EVIDENCE_KEY[item.gapKind], { ticker: item.ticker })}
+            </Text>
+          ))}
+        </Stack>
+      </Surface>
+
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("portfolio.intelligence.portfolioFit.heading")}</Heading>
+          {!report.portfolioFit.available && (
+            <Text color="secondary">{t("portfolio.intelligence.portfolioFit.notYetAvailable")}</Text>
+          )}
+        </Stack>
+      </Surface>
     </Stack>
   );
 }

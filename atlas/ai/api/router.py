@@ -37,22 +37,34 @@ from atlas.ai.api.dependencies import get_discovery_provider
 from atlas.ai.api.schemas import DiscoveryChatRequest, DiscoveryChatResponse, ToolResultBody
 from atlas.ai.discovery_chat import (
     ChatMessage,
+    ConsiderContextInput,
     ConversationProvider,
     HoldingContextInput,
+    KeyFindingContextInput,
     PortfolioContextInput,
+    RiskSignalContextInput,
     run_discovery_chat,
 )
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_service
 from atlas.alpha.portfolio.api.schemas import HoldingView, PortfolioView
 from atlas.alpha.portfolio.projection import derive_portfolio_view
 from atlas.alpha.portfolio.service import AlphaPortfolioService
+from atlas.alpha.portfolio_intelligence.api.dependencies import get_portfolio_intelligence_service
+from atlas.alpha.portfolio_intelligence.models import PortfolioIntelligenceReport
+from atlas.alpha.portfolio_intelligence.service import PortfolioIntelligenceService
 from atlas.core.application.case.create_case import CaseService
 from atlas.core.infrastructure.api.case.dependencies import get_case_service
 
 router = APIRouter(prefix="/discovery", tags=["discovery"])
 
 
-def _portfolio_context(view: PortfolioView) -> PortfolioContextInput | None:
+def _portfolio_context(
+    view: PortfolioView, intelligence: PortfolioIntelligenceReport | None
+) -> PortfolioContextInput | None:
+    """ATLAS-016: Discovery consumes the same Key Findings/Consider/Risk
+    Signals the Portfolio page shows (`intelligence`), rather than
+    reconstructing any of its own -- both are built from the identical
+    `PortfolioIntelligenceService.build_report()` call."""
     if not view.exists or len(view.holdings) == 0:
         return None
     return PortfolioContextInput(
@@ -68,6 +80,18 @@ def _portfolio_context(view: PortfolioView) -> PortfolioContextInput | None:
         cash_weight_percent=view.cash_weight_percent,
         has_absolute_values=view.has_absolute_values,
         concentration_level=view.concentration_level,
+        key_findings=tuple(
+            KeyFindingContextInput(kind=f.kind.value, count=f.count, tickers=f.tickers)
+            for f in (intelligence.key_findings if intelligence else ())
+        ),
+        consider_items=tuple(
+            ConsiderContextInput(kind=c.kind.value, ticker=c.ticker, confidence=c.confidence.value)
+            for c in (intelligence.consider_items if intelligence else ())
+        ),
+        risk_signals=tuple(
+            RiskSignalContextInput(kind=s.kind.value, ticker=s.ticker)
+            for s in (intelligence.risk_signals if intelligence else ())
+        ),
     )
 
 
@@ -116,6 +140,7 @@ def post_discovery_chat(
     body: DiscoveryChatRequest,
     service: AlphaPortfolioService = Depends(get_alpha_portfolio_service),
     case_service: CaseService = Depends(get_case_service),
+    intelligence_service: PortfolioIntelligenceService = Depends(get_portfolio_intelligence_service),
     provider: ConversationProvider | None = Depends(get_discovery_provider),
 ) -> DiscoveryChatResponse:
     state = service.get_state()
@@ -124,11 +149,12 @@ def post_discovery_chat(
         if state is not None
         else PortfolioView.empty()
     )
+    intelligence_report = intelligence_service.build_report()
 
     outcome = run_discovery_chat(
         messages=tuple(ChatMessage(role=m.role, content=m.content) for m in body.messages),
         language=body.language,
-        portfolio=_portfolio_context(portfolio_view),
+        portfolio=_portfolio_context(portfolio_view, intelligence_report),
         provider=provider,
     )
 

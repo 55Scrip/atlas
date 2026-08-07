@@ -65,15 +65,52 @@ class HoldingContextInput:
 
 
 @dataclass(frozen=True)
+class KeyFindingContextInput:
+    """Mirrors `atlas.alpha.portfolio_intelligence.models.KeyFinding`'s
+    own fields without importing it — same boundary technique as
+    `HoldingContextInput` above (ATLAS-016: Discovery consumes the same
+    Portfolio Intelligence facts the Portfolio page shows, rather than
+    reconstructing anything of its own)."""
+
+    kind: str
+    count: int
+    tickers: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ConsiderContextInput:
+    """Mirrors `ConsiderItem`'s own fields. Never a trade instruction —
+    see that type's own docstring."""
+
+    kind: str
+    ticker: str
+    confidence: str
+
+
+@dataclass(frozen=True)
+class RiskSignalContextInput:
+    """Mirrors `RiskSignal`'s own fields."""
+
+    kind: str
+    ticker: str
+
+
+@dataclass(frozen=True)
 class PortfolioContextInput:
-    """Only real, currently-recorded Alpha state — never a forecast,
-    never a fabricated fundamental. `None` fields are omitted from the
-    rendered context rather than padded."""
+    """Only real, currently-recorded Alpha state and Portfolio
+    Intelligence facts — never a forecast, never a fabricated
+    fundamental. `None` fields are omitted from the rendered context
+    rather than padded. `key_findings`/`consider_items`/`risk_signals`
+    default to `()` so existing callers/tests that only construct the
+    original holdings-only shape keep working unchanged."""
 
     holdings: tuple[HoldingContextInput, ...]
     cash_weight_percent: float | None
     has_absolute_values: bool
     concentration_level: str | None
+    key_findings: tuple[KeyFindingContextInput, ...] = ()
+    consider_items: tuple[ConsiderContextInput, ...] = ()
+    risk_signals: tuple[RiskSignalContextInput, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -161,6 +198,39 @@ addressed to anyone other than the investor."""
 
 _LANGUAGE_NAMES: dict[Language, str] = {"sv": "Swedish", "en": "English"}
 
+#: Plain-English labels for the closed, deterministic Portfolio
+#: Intelligence kind values (ATLAS-016) — never LLM-generated text, just
+#: a fixed lookup so the rendered context reads as prose instead of a
+#: raw enum value. `.replace("_", " ")` is the deliberate fallback for
+#: any kind not yet listed here, so a future addition degrades to a
+#: readable (if unpolished) phrase rather than breaking.
+_KEY_FINDING_LABELS: dict[str, str] = {
+    "high_concentration": "high concentration in the largest position",
+    "elevated_concentration": "elevated concentration in the largest position",
+    "large_unallocated": "a large unallocated portion of the portfolio",
+    "multiple_missing_cases": "multiple holdings with no Investment Case yet",
+    "multiple_stale_cases": "multiple Investment Cases not reviewed in a long time",
+    "multiple_evidence_gaps": "multiple holdings with evidence gaps in their Investment Case",
+}
+_CONSIDER_LABELS: dict[str, str] = {
+    "open_investment_case": "consider opening an Investment Case",
+    "gather_evidence": "consider gathering more evidence",
+    "review_thesis": "consider reviewing the thesis",
+    "update_case": "consider updating the Investment Case (pending workflow items)",
+    "review_concentration": "consider reviewing this position's size",
+}
+_RISK_SIGNAL_LABELS: dict[str, str] = {
+    "high_concentration": "high concentration",
+    "missing_case": "no Investment Case",
+    "missing_evidence": "missing evidence",
+    "awaiting_reconciliation": "awaiting reconciliation",
+    "stale_review": "not reviewed recently",
+}
+
+
+def _readable(labels: dict[str, str], kind: str) -> str:
+    return labels.get(kind, kind.replace("_", " "))
+
 
 def build_system_prompt(language: Language, portfolio_context: str | None) -> str:
     """The one place Discovery's behavioral contract (Phase 7) is
@@ -200,6 +270,18 @@ def render_portfolio_context(portfolio: PortfolioContextInput | None) -> str | N
     )
     if portfolio.concentration_level is not None:
         lines.append(f"- Concentration level: {portfolio.concentration_level}")
+
+    for finding in portfolio.key_findings:
+        tickers_part = f" ({', '.join(finding.tickers)})" if finding.tickers else ""
+        lines.append(f"- Portfolio Intelligence key finding: {_readable(_KEY_FINDING_LABELS, finding.kind)}{tickers_part}")
+    for item in portfolio.consider_items:
+        lines.append(
+            f"- Portfolio Intelligence review suggestion for {item.ticker}: "
+            f"{_readable(_CONSIDER_LABELS, item.kind)} (not a recommendation to buy or sell)"
+        )
+    for signal in portfolio.risk_signals:
+        lines.append(f"- Portfolio Intelligence risk signal for {signal.ticker}: {_readable(_RISK_SIGNAL_LABELS, signal.kind)}")
+
     return "\n".join(lines)
 
 

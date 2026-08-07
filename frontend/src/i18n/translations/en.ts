@@ -146,6 +146,65 @@ export const en = {
   "portfolio.health.unknownInstruments": "Unknown instruments",
   "portfolio.health.noUnknownInstruments": "None detected",
 
+  // ---------- portfolio intelligence (ATLAS-016) ----------
+  "portfolio.intelligence.confidence.not_applicable": "Insufficient evidence",
+  "portfolio.intelligence.confidence.none": "No evidence recorded",
+  "portfolio.intelligence.confidence.partial": "Partial evidence",
+  "portfolio.intelligence.confidence.full": "Full evidence coverage",
+
+  "portfolio.intelligence.keyFindings.heading": "Key Findings",
+  "portfolio.intelligence.keyFindings.empty": "No key findings right now.",
+  "portfolio.intelligence.keyFindings.high_concentration":
+    "High concentration in your largest position ({{tickers}})",
+  "portfolio.intelligence.keyFindings.elevated_concentration":
+    "Elevated concentration in your largest position ({{tickers}})",
+  "portfolio.intelligence.keyFindings.large_unallocated": "A meaningful part of the portfolio is unallocated",
+  "portfolio.intelligence.keyFindings.multiple_missing_cases":
+    "{{count}} holdings have no Investment Case yet ({{tickers}})",
+  "portfolio.intelligence.keyFindings.multiple_stale_cases":
+    "{{count}} Investment Cases have not been reviewed in a long time ({{tickers}})",
+  "portfolio.intelligence.keyFindings.multiple_evidence_gaps":
+    "{{count}} holdings have evidence gaps in their Investment Case ({{tickers}})",
+
+  "portfolio.intelligence.consider.heading": "Consider",
+  "portfolio.intelligence.consider.empty": "Nothing to consider right now.",
+  "portfolio.intelligence.consider.disclaimer":
+    "These are review suggestions, not investment recommendations — Atlas never tells you to buy or sell.",
+  "portfolio.intelligence.consider.open_investment_case.title": "Consider opening an Investment Case",
+  "portfolio.intelligence.consider.open_investment_case.reason": "{{ticker}} has no Investment Case yet.",
+  "portfolio.intelligence.consider.gather_evidence.title": "Consider gathering more evidence",
+  "portfolio.intelligence.consider.gather_evidence.reason":
+    "{{ticker}}'s Investment Case has {{count}} evidence gap(s).",
+  "portfolio.intelligence.consider.review_thesis.title": "Consider reviewing the thesis",
+  "portfolio.intelligence.consider.review_thesis.reason":
+    "{{ticker}}'s Investment Case is {{days}} days old.",
+  "portfolio.intelligence.consider.update_case.title": "Consider updating the Investment Case",
+  "portfolio.intelligence.consider.update_case.reason":
+    "{{ticker}} has {{count}} pending workflow item(s).",
+  "portfolio.intelligence.consider.review_concentration.title": "Consider reviewing this position's size",
+  "portfolio.intelligence.consider.review_concentration.reason":
+    "{{ticker}} is {{weight}}% of the portfolio.",
+
+  "portfolio.intelligence.riskSignals.heading": "Risk Signals",
+  "portfolio.intelligence.riskSignals.empty": "No risk signals right now.",
+  "portfolio.intelligence.riskSignals.high_concentration": "{{ticker}} — high concentration",
+  "portfolio.intelligence.riskSignals.missing_case": "{{ticker}} — no Investment Case",
+  "portfolio.intelligence.riskSignals.missing_evidence": "{{ticker}} — missing evidence",
+  "portfolio.intelligence.riskSignals.awaiting_reconciliation": "{{ticker}} — awaiting reconciliation",
+  "portfolio.intelligence.riskSignals.stale_review": "{{ticker}} — not reviewed in {{days}} days",
+
+  "portfolio.intelligence.missingEvidence.heading": "Missing Evidence",
+  "portfolio.intelligence.missingEvidence.empty": "No evidence gaps detected.",
+  "portfolio.intelligence.missingEvidence.no_evidence_recorded":
+    "{{ticker}} — no evidence recorded for this Investment Case",
+  "portfolio.intelligence.missingEvidence.observation_without_evidence":
+    "{{ticker}} — an Observation has no linked Evidence",
+  "portfolio.intelligence.missingEvidence.decision_without_linked_observation":
+    "{{ticker}} — a Decision has no linked Observation",
+
+  "portfolio.intelligence.portfolioFit.heading": "Portfolio Fit",
+  "portfolio.intelligence.portfolioFit.notYetAvailable": "Not yet available.",
+
   // ---------- dashboard ----------
   "dashboard.title": "Dashboard",
   "dashboard.portfolioStatus.heading": "Portfolio Status",

@@ -145,6 +145,65 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.health.unknownInstruments": "Okända instrument",
   "portfolio.health.noUnknownInstruments": "Inga upptäckta",
 
+  // ---------- portfolio intelligence (ATLAS-016) ----------
+  "portfolio.intelligence.confidence.not_applicable": "Otillräckligt underlag",
+  "portfolio.intelligence.confidence.none": "Inga belägg registrerade",
+  "portfolio.intelligence.confidence.partial": "Delvisa belägg",
+  "portfolio.intelligence.confidence.full": "Fullständig belägg­täckning",
+
+  "portfolio.intelligence.keyFindings.heading": "Viktiga observationer",
+  "portfolio.intelligence.keyFindings.empty": "Inga viktiga observationer just nu.",
+  "portfolio.intelligence.keyFindings.high_concentration":
+    "Hög koncentration i ditt största innehav ({{tickers}})",
+  "portfolio.intelligence.keyFindings.elevated_concentration":
+    "Förhöjd koncentration i ditt största innehav ({{tickers}})",
+  "portfolio.intelligence.keyFindings.large_unallocated": "En betydande del av portföljen är oallokerad",
+  "portfolio.intelligence.keyFindings.multiple_missing_cases":
+    "{{count}} innehav saknar fortfarande investeringscase ({{tickers}})",
+  "portfolio.intelligence.keyFindings.multiple_stale_cases":
+    "{{count}} investeringscase har inte granskats på länge ({{tickers}})",
+  "portfolio.intelligence.keyFindings.multiple_evidence_gaps":
+    "{{count}} innehav har luckor i beläggen för sitt investeringscase ({{tickers}})",
+
+  "portfolio.intelligence.consider.heading": "Att överväga",
+  "portfolio.intelligence.consider.empty": "Inget att överväga just nu.",
+  "portfolio.intelligence.consider.disclaimer":
+    "Detta är förslag på översyn, inte investeringsrekommendationer — Atlas säger aldrig åt dig att köpa eller sälja.",
+  "portfolio.intelligence.consider.open_investment_case.title": "Överväg att öppna ett investeringscase",
+  "portfolio.intelligence.consider.open_investment_case.reason": "{{ticker}} saknar fortfarande investeringscase.",
+  "portfolio.intelligence.consider.gather_evidence.title": "Överväg att samla mer belägg",
+  "portfolio.intelligence.consider.gather_evidence.reason":
+    "{{ticker}}s investeringscase har {{count}} belägg­lucka/luckor.",
+  "portfolio.intelligence.consider.review_thesis.title": "Överväg att granska tesen",
+  "portfolio.intelligence.consider.review_thesis.reason":
+    "{{ticker}}s investeringscase är {{days}} dagar gammalt.",
+  "portfolio.intelligence.consider.update_case.title": "Överväg att uppdatera investeringscaset",
+  "portfolio.intelligence.consider.update_case.reason":
+    "{{ticker}} har {{count}} väntande arbetspost(er).",
+  "portfolio.intelligence.consider.review_concentration.title": "Överväg att granska positionens storlek",
+  "portfolio.intelligence.consider.review_concentration.reason":
+    "{{ticker}} utgör {{weight}}% av portföljen.",
+
+  "portfolio.intelligence.riskSignals.heading": "Risksignaler",
+  "portfolio.intelligence.riskSignals.empty": "Inga risksignaler just nu.",
+  "portfolio.intelligence.riskSignals.high_concentration": "{{ticker}} — hög koncentration",
+  "portfolio.intelligence.riskSignals.missing_case": "{{ticker}} — saknar investeringscase",
+  "portfolio.intelligence.riskSignals.missing_evidence": "{{ticker}} — saknar belägg",
+  "portfolio.intelligence.riskSignals.awaiting_reconciliation": "{{ticker}} — väntar på avstämning",
+  "portfolio.intelligence.riskSignals.stale_review": "{{ticker}} — inte granskad på {{days}} dagar",
+
+  "portfolio.intelligence.missingEvidence.heading": "Saknade belägg",
+  "portfolio.intelligence.missingEvidence.empty": "Inga belägg­luckor upptäckta.",
+  "portfolio.intelligence.missingEvidence.no_evidence_recorded":
+    "{{ticker}} — inga belägg registrerade för detta investeringscase",
+  "portfolio.intelligence.missingEvidence.observation_without_evidence":
+    "{{ticker}} — en observation saknar länkade belägg",
+  "portfolio.intelligence.missingEvidence.decision_without_linked_observation":
+    "{{ticker}} — ett beslut saknar länkad observation",
+
+  "portfolio.intelligence.portfolioFit.heading": "Portföljanpassning",
+  "portfolio.intelligence.portfolioFit.notYetAvailable": "Inte tillgängligt än.",
+
   // ---------- dashboard ----------
   "dashboard.title": "Översikt",
   "dashboard.portfolioStatus.heading": "Portföljstatus",

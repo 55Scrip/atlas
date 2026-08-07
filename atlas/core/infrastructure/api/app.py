@@ -11,6 +11,7 @@ from fastapi import FastAPI
 
 from atlas.ai.api.router import router as discovery_chat_router
 from atlas.alpha.portfolio.api.router import router as alpha_portfolio_router
+from atlas.alpha.portfolio_intelligence.api.router import router as portfolio_intelligence_router
 from atlas.alpha.portfolio_status.api.router import router as portfolio_status_router
 from atlas.core.infrastructure.api.case.errors import (
     register_error_handlers as register_case_error_handlers,
@@ -71,6 +72,11 @@ def create_app() -> FastAPI:
     # above -- authored and owned in `atlas/alpha/portfolio_status/`,
     # never imported back by `atlas/core/` outside this file.
     app.include_router(portfolio_status_router)
+    # ATLAS-016: the Portfolio Intelligence report is a third, sibling
+    # composition point -- authored and owned in
+    # `atlas/alpha/portfolio_intelligence/`, the first live caller of the
+    # canonical `atlas.decision_engine.pipeline`.
+    app.include_router(portfolio_intelligence_router)
     # Discovery Intelligence v1: same pattern, one level removed — the
     # discovery-chat router is authored and owned in `atlas/ai/`, and is
     # itself `atlas/ai/`'s own one deliberate composition point with

@@ -10,9 +10,12 @@ import pytest
 from atlas.ai.discovery_chat import (
     CREATE_OR_OPEN_INVESTMENT_CASE_TOOL,
     ChatMessage,
+    ConsiderContextInput,
     HoldingContextInput,
+    KeyFindingContextInput,
     PortfolioContextInput,
     ProviderReply,
+    RiskSignalContextInput,
     ToolCallRequest,
     _strip_leaked_reasoning,
     build_system_prompt,
@@ -177,6 +180,91 @@ class TestPortfolioContext:
         rendered = render_portfolio_context(portfolio)
         for forbidden in ("fair value", "price target", "conviction", "valuation multiple"):
             assert forbidden not in rendered.lower()
+
+
+class TestPortfolioIntelligenceContext:
+    """ATLAS-016: Discovery renders the same Key Findings/Consider/Risk
+    Signals the Portfolio page shows -- passed in via the same
+    `PortfolioContextInput` shape, never reconstructed here."""
+
+    def test_defaults_to_empty_and_renders_nothing_extra(self):
+        portfolio = PortfolioContextInput(
+            holdings=(
+                HoldingContextInput(
+                    ticker="AMD", weight_percent=20.0, value_absolute=None, reconciliation_status="NONE"
+                ),
+            ),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert "Portfolio Intelligence" not in rendered
+
+    def test_key_finding_appears_in_rendered_context(self):
+        portfolio = PortfolioContextInput(
+            holdings=(
+                HoldingContextInput(
+                    ticker="AMD", weight_percent=40.0, value_absolute=None, reconciliation_status="NONE"
+                ),
+            ),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level="High",
+            key_findings=(KeyFindingContextInput(kind="high_concentration", count=1, tickers=("AMD",)),),
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert "high concentration" in rendered
+        assert "AMD" in rendered
+
+    def test_consider_item_never_reads_as_a_trade_instruction(self):
+        portfolio = PortfolioContextInput(
+            holdings=(
+                HoldingContextInput(
+                    ticker="AMD", weight_percent=40.0, value_absolute=None, reconciliation_status="NONE"
+                ),
+            ),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+            consider_items=(
+                ConsiderContextInput(kind="review_concentration", ticker="AMD", confidence="not_applicable"),
+            ),
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert "not a recommendation to buy or sell" in rendered
+        for forbidden in ("Sell AMD", "Buy AMD", "Trim AMD"):
+            assert forbidden not in rendered
+
+    def test_risk_signal_appears_in_rendered_context(self):
+        portfolio = PortfolioContextInput(
+            holdings=(
+                HoldingContextInput(
+                    ticker="AMD", weight_percent=40.0, value_absolute=None, reconciliation_status="NONE"
+                ),
+            ),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+            risk_signals=(RiskSignalContextInput(kind="missing_case", ticker="AMD"),),
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert "no Investment Case" in rendered
+
+    def test_unknown_kind_degrades_to_a_readable_phrase_rather_than_crashing(self):
+        portfolio = PortfolioContextInput(
+            holdings=(
+                HoldingContextInput(
+                    ticker="AMD", weight_percent=40.0, value_absolute=None, reconciliation_status="NONE"
+                ),
+            ),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+            key_findings=(KeyFindingContextInput(kind="future_unknown_kind", count=1, tickers=("AMD",)),),
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert "future unknown kind" in rendered
 
 
 class TestSystemInstructionsRequireChallenge:
