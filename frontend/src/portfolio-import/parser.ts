@@ -1,8 +1,8 @@
 import type { ImportRowErrorCode, ParsedRow, ParseResult } from "./types";
-import { resolveNameToTicker } from "./resolution";
+import { resolveInstrument } from "./resolution";
 
 /**
- * Portfolio Import v1.1 — deterministic parser.
+ * Portfolio Import v1.2 — deterministic parser.
  *
  * Pure function: raw pasted text in, a structured `ParseResult` out.
  * Never touches application state, never calls the network, never
@@ -35,12 +35,13 @@ import { resolveNameToTicker } from "./resolution";
  * the text is touched.
  *
  * The name column is never uppercased or altered — `originalName` is
- * always exactly what was pasted, verbatim. Resolving it to a ticker
- * (or leaving it unresolved for manual confirmation) is
- * `resolveNameToTicker`'s job, not this parser's — see `resolution.ts`.
- * No fuzzy matching, no company-name guessing, no LLM: every resolution
- * is either an exact dictionary hit, an already-ticker-shaped token, or
- * explicit user confirmation.
+ * always exactly what was pasted, verbatim. Resolving it to an
+ * instrument (or leaving it unresolved for manual confirmation) is
+ * `resolveInstrument`'s job, not this parser's — see `resolution.ts`
+ * and `instrumentRegistry.ts`. No fuzzy matching, no company-name
+ * guessing, no LLM: every resolution is either an exact registry hit
+ * or an explicitly all-caps, ticker-shaped token — never a short
+ * company name accepted purely because it resembles one.
  */
 
 const NUMERIC_PATTERN = /^-?\d+(\.\d+)?$/;
@@ -120,6 +121,7 @@ function parseRow(lineNumber: number, raw: string, columns: string[]): ParsedRow
     originalName: null,
     ticker: null,
     mappingStatus: null,
+    instrumentType: null,
     weightPercent: null,
     errorCode: null,
   } as ParsedRow;
@@ -154,12 +156,18 @@ function parseRow(lineNumber: number, raw: string, columns: string[]): ParsedRow
     };
   }
 
-  const resolution = resolveNameToTicker(nameColumn);
+  const resolution = resolveInstrument(nameColumn);
+  const ticker = resolution.kind === "resolved" ? resolution.ticker : null;
+  const mappingStatus =
+    resolution.kind === "resolved" ? "known" : resolution.kind === "unsupported" ? "unsupported" : "unknown";
+  const instrumentType = resolution.kind === "unresolved" ? null : resolution.instrumentType;
+
   return {
     ...base,
     originalName: nameColumn,
-    ticker: resolution.ticker,
-    mappingStatus: resolution.mappingStatus,
+    ticker,
+    mappingStatus,
+    instrumentType,
     weightPercent,
     errorCode: null,
   };

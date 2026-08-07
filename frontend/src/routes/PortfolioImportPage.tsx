@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Container, Divider, Heading, Inline, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
+import type { InstrumentType } from "../portfolio-import/instrumentRegistry";
 import { parsePortfolioText } from "../portfolio-import/parser";
 import { reconcileRows } from "../portfolio-import/resolution";
 import type { ImportRowErrorCode, ParseResult } from "../portfolio-import/types";
@@ -30,30 +31,43 @@ const ERROR_LABEL_KEY: Record<ImportRowErrorCode, TranslationKey> = {
   "too-many-columns": "portfolioImport.error.tooManyColumns",
 };
 
+const INSTRUMENT_TYPE_LABEL_KEY: Record<InstrumentType, TranslationKey> = {
+  equity: "portfolioImport.instrumentType.equity",
+  fund: "portfolioImport.instrumentType.fund",
+  etp: "portfolioImport.instrumentType.etp",
+  private: "portfolioImport.instrumentType.private",
+  other: "portfolioImport.instrumentType.other",
+};
+
 /**
- * Portfolio Import v1.1.
+ * Portfolio Import v1.2.
  *
- * Input → Parse → Resolve (dictionary or manual confirmation) → Preview
- * → Confirm → Persist. The raw pasted text never reaches the backend
- * directly — only `ReconcileResult.readyHoldings`, and only once every
- * row the investor pasted either resolved to a ticker automatically or
- * was manually confirmed, with no parse errors and no duplicate
- * tickers remaining (`reconcileRows`'s `canImport`).
+ * Input → Parse → Resolve (registry, explicit ticker, or manual
+ * confirmation) → Preview → Confirm → Persist. The raw pasted text
+ * never reaches the backend directly — only `ReconcileResult
+ * .readyHoldings`, and only once every row the investor pasted either
+ * resolved to a ticker automatically or was manually confirmed, with
+ * no parse errors and no duplicate tickers remaining
+ * (`reconcileRows`'s `canImport`).
  *
- * v1 only accepted a literal ticker in the first column. v1.1 also
- * accepts a company name — resolved deterministically via the
- * maintained dictionary in `portfolio-import/companyTickerMap.ts`, or
- * left unresolved for the investor to type a ticker in themselves.
- * There is no fuzzy matching anywhere in this path: a name either
- * matches the dictionary exactly, already has the shape of a ticker
- * (preserving plain-ticker pasting from v1), or is shown as "needs
- * confirmation" until a human resolves it.
+ * v1.2's hardening pass: a name only auto-resolves through an exact
+ * hit in the maintained registry (`portfolio-import
+ * /instrumentRegistry.ts`) or by being pasted already in the all-caps
+ * shape of a literal ticker ("AMD", "BRK.B") — never by a company name
+ * merely *resembling* a ticker ("Volvo" is 5 letters, same shape as a
+ * real ticker, but Title Case; it is never guessed at). A registry hit
+ * with no ticker (a fund, ETP, or private company) surfaces as
+ * "recognized instrument — needs confirmation," never a fabricated
+ * stock ticker. Everything else is shown as "needs confirmation" until
+ * a human resolves it. No fuzzy matching anywhere in this path.
  *
- * Data-model decision, unchanged from v1 (verified again directly
+ * Data-model decision, unchanged since v1 (verified again directly
  * against `atlas/alpha/portfolio/` before this sprint): `AlphaHolding`
  * has only `weight_percent` (required) and `value_absolute` (optional)
- * — no `quantity`/`shares` field exists anywhere in the backend. The
- * parsed numeric column is always labelled "Weight %".
+ * — no `quantity`/`shares` field exists anywhere in the backend, and
+ * nothing here can persist an instrument as anything other than a
+ * plain ticker + weight. The parsed numeric column is always labelled
+ * "Weight %".
  *
  * Replace vs merge, cash handling, and the fresh-import vs
  * reconcile-replace endpoint routing are all unchanged from v1 — no
@@ -203,38 +217,61 @@ export function PortfolioImportPage() {
                   <Stack gap="intra-section">
                     {reconciled.rows
                       .filter((row) => row.errorCode === null)
-                      .map((row) => (
+                      .map((row) => {
+                        const isUnsupported = row.ticker === null && row.mappingStatus === "unsupported";
+                        return (
                         <Surface key={row.lineNumber} tier="elevated">
-                          <Inline gap="row" align="center" wrap>
-                            <Text as="p">{row.originalName}</Text>
-                            <Text color="secondary" as="p">
-                              {row.ticker ?? "?"}
-                            </Text>
-                            {row.ticker ? (
-                              <Text as="p" aria-label={t("portfolioImport.review.resolved")}>
-                                {"✓"}
+                          <Stack gap="metadata">
+                            <Inline gap="row" align="center" wrap>
+                              <Text as="p">{row.originalName}</Text>
+                              <Text color="secondary" as="p">
+                                {row.ticker ?? "?"}
                               </Text>
-                            ) : (
-                              <Text color="tertiary" as="p" role="status">
-                                {t("portfolioImport.review.needsConfirmation")}
+                              {row.ticker ? (
+                                <Text as="p" aria-label={t("portfolioImport.review.resolved")}>
+                                  {"✓"}
+                                </Text>
+                              ) : isUnsupported ? (
+                                <Text color="tertiary" as="p" role="status">
+                                  {"! " + t("portfolioImport.review.recognizedUnsupported")}
+                                </Text>
+                              ) : (
+                                <Text color="tertiary" as="p" role="status">
+                                  {t("portfolioImport.review.needsConfirmation")}
+                                </Text>
+                              )}
+                              {isUnsupported && row.instrumentType && (
+                                <Text color="tertiary" as="p">
+                                  {t(INSTRUMENT_TYPE_LABEL_KEY[row.instrumentType])}
+                                </Text>
+                              )}
+                              <Text as="p">{row.weightPercent}%</Text>
+                              {!row.ticker && (
+                                <Text as="label">
+                                  <input
+                                    type="text"
+                                    value={manualTickers[row.lineNumber] ?? ""}
+                                    onChange={(event) => setManualTicker(row.lineNumber, event.target.value)}
+                                    placeholder={t("portfolioImport.review.manualTickerPlaceholder")}
+                                    aria-label={t("portfolioImport.review.manualTickerPlaceholder")}
+                                    style={{ fontFamily: "monospace", width: "8ch" }}
+                                  />
+                                </Text>
+                              )}
+                            </Inline>
+                            {isUnsupported && (
+                              <Text color="tertiary" as="p">
+                                {t("portfolioImport.review.unsupportedManualWarning", {
+                                  instrumentType: row.instrumentType
+                                    ? t(INSTRUMENT_TYPE_LABEL_KEY[row.instrumentType])
+                                    : "",
+                                })}
                               </Text>
                             )}
-                            <Text as="p">{row.weightPercent}%</Text>
-                            {!row.ticker && (
-                              <Text as="label">
-                                <input
-                                  type="text"
-                                  value={manualTickers[row.lineNumber] ?? ""}
-                                  onChange={(event) => setManualTicker(row.lineNumber, event.target.value)}
-                                  placeholder={t("portfolioImport.review.manualTickerPlaceholder")}
-                                  aria-label={t("portfolioImport.review.manualTickerPlaceholder")}
-                                  style={{ fontFamily: "monospace", width: "8ch" }}
-                                />
-                              </Text>
-                            )}
-                          </Inline>
+                          </Stack>
                         </Surface>
-                      ))}
+                        );
+                      })}
                   </Stack>
                 </Stack>
               )}

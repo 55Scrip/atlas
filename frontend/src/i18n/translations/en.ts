@@ -497,7 +497,7 @@ export const en = {
   "discovery.tool.caseFailed":
     "Atlas couldn't create the Investment Case for {{ticker}} just now. You can try again, or use \"Review a company\" below.",
 
-  // ---------- portfolio import v1.1 ----------
+  // ---------- portfolio import v1.2 ----------
   "portfolioImport.title": "Import Portfolio",
   "portfolioImport.paste.heading": "Import your portfolio",
   "portfolioImport.paste.instructions": "Paste your holdings below.",
@@ -509,6 +509,14 @@ export const en = {
   "portfolioImport.review.weightPercentLabel": "Weight %",
   "portfolioImport.review.resolved": "Resolved",
   "portfolioImport.review.needsConfirmation": "Needs confirmation",
+  "portfolioImport.review.recognizedUnsupported": "Recognized instrument — needs confirmation before import",
+  "portfolioImport.review.unsupportedManualWarning":
+    "Entering a ticker will import this as an ordinary equity, even though Atlas recognizes it as: {{instrumentType}}. Only continue if that's what you intend.",
+  "portfolioImport.instrumentType.equity": "Equity",
+  "portfolioImport.instrumentType.fund": "Fund",
+  "portfolioImport.instrumentType.etp": "Exchange-traded product",
+  "portfolioImport.instrumentType.private": "Private company",
+  "portfolioImport.instrumentType.other": "Other instrument",
   "portfolioImport.review.manualTickerPlaceholder": "Enter ticker",
   "portfolioImport.review.confirmationRequired": "{{count}} rows need a ticker before you can import",
   "portfolioImport.review.errorsHeading": "Could not import {{count}} rows",
