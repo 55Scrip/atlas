@@ -403,6 +403,30 @@ const EMPTY_OUTCOME_FORM: OutcomeFormInput = {
 };
 
 /**
+ * Pre-selects the transaction-type dropdown when the execution-report
+ * form first opens — the dropdown remains fully editable, this only
+ * changes the initial value. `TRIM` and `REMOVE` both record a SELL
+ * Decision (`ACTION_DECISION_TYPE`), but the execution they're actually
+ * reporting differs — TRIM reduces the holding, REMOVE closes it — so
+ * this maps from the position action itself, not from the resulting
+ * Decision type.
+ */
+const POSITION_ACTION_TRANSACTION_TYPE: Record<PositionAction, OutcomeFormInput["transactionType"]> = {
+  ADD: "ADD",
+  TRIM: "SELL",
+  REMOVE: "EXIT",
+  LEAVE_AS_IS: "BUY",
+};
+
+/** Same pre-selection for the per-Observation report form, which has no
+ *  position-action context -- only the Decision's own BUY/SELL type. */
+function defaultTransactionTypeForDecisionType(
+  decisionType: string | undefined,
+): OutcomeFormInput["transactionType"] {
+  return decisionType === "SELL" ? "SELL" : "BUY";
+}
+
+/**
  * Alpha Sprint 1B: after Outcome is recorded exactly as today (unchanged
  * request/response shape -- Outcome itself is never modified), an
  * "external trade" toggle on the same form additionally calls
@@ -1300,7 +1324,13 @@ export function InvestmentCasePage() {
     ? (outcomeCreateStatus[reportDecisionId] ?? { kind: "idle" })
     : { kind: "idle" };
   const reportOutcomeForm: OutcomeFormInput = reportDecisionId
-    ? (outcomeForm[reportDecisionId] ?? { ...EMPTY_OUTCOME_FORM, decisionId: reportDecisionId })
+    ? (outcomeForm[reportDecisionId] ?? {
+        ...EMPTY_OUTCOME_FORM,
+        decisionId: reportDecisionId,
+        transactionType: pendingAction
+          ? POSITION_ACTION_TRANSACTION_TYPE[pendingAction]
+          : EMPTY_OUTCOME_FORM.transactionType,
+      })
     : EMPTY_OUTCOME_FORM;
   const reportTradeApplyStatus: TradeApplyStatus = reportDecisionId
     ? (tradeApplyStatus[reportDecisionId] ?? { kind: "idle" })
@@ -1848,6 +1878,12 @@ export function InvestmentCasePage() {
                           decisionsForObservation.length === 1
                             ? decisionsForObservation[0]?.id ?? ""
                             : "",
+                        transactionType:
+                          decisionsForObservation.length === 1
+                            ? defaultTransactionTypeForDecisionType(
+                                decisionsForObservation[0]?.decisionType,
+                              )
+                            : EMPTY_OUTCOME_FORM.transactionType,
                       };
                       const thisTradeApplyStatus: TradeApplyStatus =
                         tradeApplyStatus[observation.observationId] ?? { kind: "idle" };
@@ -2860,6 +2896,12 @@ export function InvestmentCasePage() {
                                           decisionsForObservation.length === 1
                                             ? decisionsForObservation[0]?.id ?? ""
                                             : "",
+                                        transactionType:
+                                          decisionsForObservation.length === 1
+                                            ? defaultTransactionTypeForDecisionType(
+                                                decisionsForObservation[0]?.decisionType,
+                                              )
+                                            : EMPTY_OUTCOME_FORM.transactionType,
                                       },
                                     }));
                                     setOutcomeCreateStatus((current) => ({
