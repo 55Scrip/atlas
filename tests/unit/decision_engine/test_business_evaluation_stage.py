@@ -284,7 +284,12 @@ class TestPipelineStillEndsInRecommendationWithheld:
         assert output.business_evaluation.state is EvaluationState.EVALUATED
         assert output.recommendation.kind.value == "recommendation_withheld"
 
-    def test_reasoning_still_blocked_by_valuation_and_portfolio_intelligence(self):
+    def test_reasoning_still_not_evaluated_pending_its_own_evaluator(self):
+        """Sprint 4: Valuation and Portfolio Intelligence are now
+        `EVALUATED` too (see `test_valuation_evaluation_stage.py` and
+        `test_portfolio_intelligence_stage.py`), so no upstream stage
+        blocks Reasoning any more — it remains `NOT_EVALUATED` only
+        because its own evaluator does not exist yet."""
         observation = build_observation()
         evidence = build_evidence(observation=observation, direction=Direction.SUPPORTS)
         engine_input = DecisionEngineInput(
@@ -296,10 +301,7 @@ class TestPipelineStillEndsInRecommendationWithheld:
         output = run_pipeline(engine_input, generated_at=GENERATED_AT)
         assert output.reasoning.state is EvaluationState.NOT_EVALUATED
         blocked_by_values = {b.value for b in output.reasoning.blocked_by}
-        assert blocked_by_values == {
-            "valuation_not_evaluated",
-            "portfolio_intelligence_not_evaluated",
-        }
+        assert blocked_by_values == {"reasoning_evaluator_not_implemented"}
 
     def test_no_conviction_is_produced(self):
         output = run_pipeline(

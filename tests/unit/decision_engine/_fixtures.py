@@ -28,7 +28,12 @@ from atlas.core.domain.observation.value_objects import Statement as Observation
 from atlas.core.domain.observation.value_objects import Subject as ObservationSubject
 from atlas.core.domain.outcome.entity import Outcome
 from atlas.core.domain.outcome.value_objects import Statement as OutcomeStatement
-from atlas.decision_engine.contracts import DecisionEngineInput
+from atlas.decision_engine.contracts import (
+    DecisionEngineInput,
+    PortfolioHoldingContext,
+    ReconciliationState,
+    TradeLogEntry,
+)
 
 CASE_ID = CaseId()
 USER_ID = UserId(uuid.uuid4())
@@ -92,6 +97,38 @@ def build_evidence(
         direction=direction,
         observed_at=observed_at,
         clock=_fixed_clock(observed_at),
+    )
+
+
+def build_trade_log_entry(
+    *,
+    security: str = "ASML",
+    transaction_type: str = "BUY",
+    quantity: float = 10.0,
+    execution_price: float = 650.0,
+    executed_at: datetime = EVALUATED_AT,
+) -> TradeLogEntry:
+    return TradeLogEntry(
+        security=security,
+        transaction_type=transaction_type,
+        quantity=quantity,
+        execution_price=execution_price,
+        executed_at=executed_at,
+    )
+
+
+def build_portfolio_holding_context(
+    *,
+    ticker: str = "ASML",
+    weight_percent: float = 4.5,
+    value_absolute: float | None = 6500.0,
+    reconciliation_status: ReconciliationState = ReconciliationState.NONE,
+) -> PortfolioHoldingContext:
+    return PortfolioHoldingContext(
+        ticker=ticker,
+        weight_percent=weight_percent,
+        value_absolute=value_absolute,
+        reconciliation_status=reconciliation_status,
     )
 
 

@@ -27,14 +27,15 @@ class TestPipelineProducesACompleteOutput:
         assert output.recommendation is not None
 
     def test_every_stage_appears_in_the_result_for_populated_input_too(self):
-        """Sprint 2: Business Evaluation is now real and always
-        `EVALUATED` (a genuine, deterministic conclusion — even "no
-        evidence recorded" — is always producible); the other three
-        stages remain Sprint 1 placeholders."""
+        """Sprints 2–4 made Business Evaluation, Valuation, and Portfolio
+        Intelligence all real and always `EVALUATED` (a genuine,
+        deterministic conclusion is always producible for each, even
+        "no evidence recorded" / "no execution-price history" / "no
+        holding linked"). Only Reasoning remains a Sprint 1 placeholder."""
         output = run_pipeline(build_populated_input(), generated_at=GENERATED_AT)
         assert output.business_evaluation.state is EvaluationState.EVALUATED
-        assert output.valuation.state is EvaluationState.NOT_EVALUATED
-        assert output.portfolio_intelligence.state is EvaluationState.NOT_EVALUATED
+        assert output.valuation.state is EvaluationState.EVALUATED
+        assert output.portfolio_intelligence.state is EvaluationState.EVALUATED
         assert output.reasoning.state is EvaluationState.NOT_EVALUATED
 
     def test_output_carries_the_input_case_id_and_evaluated_at(self):
@@ -62,14 +63,12 @@ class TestNoDirectionalRecommendationIsProduced:
 
 
 class TestMissingEvaluationsAreAccurate:
-    def test_missing_evaluations_lists_the_three_remaining_placeholder_stages(self):
-        """Sprint 2: Business Evaluation is EVALUATED, so it no longer
-        appears in `missing_evaluations` — only the three stages still
-        unimplemented this sprint do."""
+    def test_missing_evaluations_lists_the_one_remaining_placeholder_stage(self):
+        """Sprint 4: Business Evaluation, Valuation, and Portfolio
+        Intelligence are all `EVALUATED`, so only Reasoning still
+        appears in `missing_evaluations`."""
         output = run_pipeline(build_minimal_input(), generated_at=GENERATED_AT)
         assert set(output.recommendation.missing_evaluations) == {
-            MissingEvaluationCategory.VALUATION,
-            MissingEvaluationCategory.PORTFOLIO_INTELLIGENCE,
             MissingEvaluationCategory.REASONING,
         }
 
@@ -80,13 +79,13 @@ class TestMissingEvaluationsAreAccurate:
 
 class TestPipelineStageExecutionOrder:
     def test_reasoning_reflects_prior_incomplete_stages(self):
-        """Sprint 2: Business Evaluation is EVALUATED, so it no longer
-        blocks Reasoning — only Valuation and Portfolio Intelligence
-        still do."""
+        """Sprint 4: Business Evaluation, Valuation, and Portfolio
+        Intelligence are all `EVALUATED`, so no upstream
+        `ReasoningBlockedBy` member fires any more — the honest reason
+        left is that Reasoning's own evaluator does not exist yet."""
         output = run_pipeline(build_minimal_input(), generated_at=GENERATED_AT)
         assert set(output.reasoning.blocked_by) == {
-            ReasoningBlockedBy.VALUATION_NOT_EVALUATED,
-            ReasoningBlockedBy.PORTFOLIO_INTELLIGENCE_NOT_EVALUATED,
+            ReasoningBlockedBy.REASONING_EVALUATOR_NOT_IMPLEMENTED,
         }
 
     def test_recommendation_derives_withheld_outcome_from_stage_states(self):

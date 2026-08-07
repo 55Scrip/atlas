@@ -339,49 +339,311 @@ class BusinessEvaluationResult:
             )
 
 
+class ValuationNotAssessableReason(str, Enum):
+    """Why substantive Valuation (`Doctrine` §5) could not be assessed."""
+
+    NO_VALUATION_DATA_IN_INPUT = "no_valuation_data_in_input"
+
+
+@dataclass(frozen=True)
+class ValuationFinding:
+    """`Doctrine` §5's substantive content: valuation thesis, named
+    assumptions, ranges, and change triggers — intrinsic value, fair
+    value, multiples, upside/downside.
+
+    Always `EvaluationState.INSUFFICIENT_INPUT` this sprint, by explicit
+    Sprint 3 lock: `DecisionEngineInput` carries no market price,
+    financial-statement, multiple, or forecast data, and — unlike
+    Business Evaluation's Observation/Evidence records — nothing in the
+    input marks any Decision, Observation, or Evidence as being *about*
+    valuation specifically, so there is no honest way to identify a
+    "valuation thesis" among the undifferentiated records even
+    structurally. Parsing free text to infer topic is explicitly
+    forbidden this sprint. Structurally guarantees this: no `cheap`,
+    `expensive`, `undervalued`, `overvalued`, `fair_value`,
+    `intrinsic_value`, `buying_range`, `target_price`,
+    `margin_of_safety`, `expected_return`, `upside`, `downside`, or
+    `valuation_score` field exists on this type at all, and
+    `__post_init__` forbids constructing it with any state other than
+    `INSUFFICIENT_INPUT`.
+    """
+
+    state: EvaluationState
+    reason: ValuationNotAssessableReason
+
+    def __post_init__(self) -> None:
+        if self.state is not EvaluationState.INSUFFICIENT_INPUT:
+            raise DecisionEngineContractError(
+                "ValuationFinding.state must be INSUFFICIENT_INPUT this "
+                "sprint; DecisionEngineInput carries no valuation-specific "
+                "data to assess substantive valuation from."
+            )
+
+
+class ExecutionPriceHistoryCoverage(str, Enum):
+    """Whether any recorded execution-price history exists for the Case
+    — a structural coverage fact, never a judgment about the price
+    level itself."""
+
+    ABSENT = "absent"
+    PRESENT = "present"
+
+
+@dataclass(frozen=True)
+class ExecutionPriceHistoryFinding:
+    """Execution-price-**history coverage** only — built entirely from
+    `DecisionEngineInput.trade_log` presence, count, and timestamps. Not
+    a valuation-quality, fair-value-history, valuation-correctness, or
+    valuation-thesis-support finding: no inference from the price level
+    itself (whether a price was high, low, good, or bad) is ever
+    performed anywhere in this type or the module that produces it.
+
+    `earliest_executed_at`/`latest_executed_at` are `None` when
+    `coverage` is `ABSENT` — there is nothing to bound.
+    """
+
+    coverage: ExecutionPriceHistoryCoverage
+    entry_count: int
+    earliest_executed_at: datetime | None = None
+    latest_executed_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        if self.coverage is ExecutionPriceHistoryCoverage.ABSENT and self.entry_count != 0:
+            raise DecisionEngineContractError(
+                "ExecutionPriceHistoryFinding: ABSENT coverage must have "
+                "entry_count == 0."
+            )
+        if self.coverage is ExecutionPriceHistoryCoverage.PRESENT and self.entry_count < 1:
+            raise DecisionEngineContractError(
+                "ExecutionPriceHistoryFinding: PRESENT coverage must have "
+                "entry_count >= 1."
+            )
+
+
 @dataclass(frozen=True)
 class ValuationResult:
     """`Doctrine` §5 (Valuation Philosophy) output shape.
 
-    Contains no fair value, price target, buying range, upside,
+    Sprint 1: always `NOT_EVALUATED` (no evaluator existed).
+
+    Sprint 3: the evaluator is real. `execution_price_history` is
+    always populated with a genuine, deterministic finding — even "no
+    execution-price history recorded" is a real, honest finding, not a
+    failure to evaluate — so `state` is always `EVALUATED`, the same
+    top-level semantics `BusinessEvaluationResult` already established:
+    a stage can be `EVALUATED` while one of its dimensions honestly
+    reports `INSUFFICIENT_INPUT`. `substantive_valuation` (Doctrine §5's
+    actual valuation content) is carried separately and is always
+    `INSUFFICIENT_INPUT` (see `ValuationFinding`).
+
+    Still contains no fair value, price target, buying range, upside,
     downside, valuation score, multiple, or DCF value — by explicit
-    Sprint scope. This sprint's placeholder evaluator always returns
-    `NOT_EVALUATED`.
+    Sprint 3 lock. `state`/`reason` retain Sprint 1's original shape
+    unchanged (additive expansion only, mirroring how Sprint 2 expanded
+    `BusinessEvaluationResult`).
     """
 
     state: EvaluationState
     reason: StageNotImplementedReason | None = None
+    substantive_valuation: ValuationFinding | None = None
+    execution_price_history: ExecutionPriceHistoryFinding | None = None
 
     def __post_init__(self) -> None:
         _require_reason_when_not_evaluated(self.state, self.reason)
+        if self.state is EvaluationState.EVALUATED and (
+            self.substantive_valuation is None or self.execution_price_history is None
+        ):
+            raise DecisionEngineContractError(
+                "An EVALUATED ValuationResult must carry both "
+                "substantive_valuation and execution_price_history findings."
+            )
+
+
+class HoldingLinkage(str, Enum):
+    """Whether a portfolio holding is linked to this Case at all."""
+
+    ABSENT = "absent"
+    PRESENT = "present"
+
+
+@dataclass(frozen=True)
+class HoldingContextFinding:
+    """Real, deterministic structural facts about the single holding
+    linked to this Case (if any) and this Case's trade history — built
+    entirely from `DecisionEngineInput.portfolio_holding` and
+    `DecisionEngineInput.trade_log`.
+
+    No field here is interpreted. `weight_percent` and `value_absolute`
+    are reported verbatim; this type never labels a weight "high,"
+    "low," "overweight," or "concentrated," and never infers risk,
+    diversification, suitability, or portfolio quality from them. That
+    is precisely the boundary between this finding (Sprint 4) and the
+    seven DE-003 factors (`PortfolioFinding`, below), which require
+    portfolio-wide data this single-holding shape cannot honestly
+    provide.
+    """
+
+    linkage: HoldingLinkage
+    ticker: str | None = None
+    weight_percent: float | None = None
+    value_absolute: float | None = None
+    reconciliation_status: ReconciliationState | None = None
+    trade_count: int = 0
+    transaction_types: tuple[str, ...] = ()
+    earliest_executed_at: datetime | None = None
+    latest_executed_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        if self.linkage is HoldingLinkage.ABSENT and (
+            self.ticker is not None
+            or self.weight_percent is not None
+            or self.value_absolute is not None
+            or self.reconciliation_status is not None
+        ):
+            raise DecisionEngineContractError(
+                "HoldingContextFinding: ABSENT linkage must not carry any "
+                "holding field."
+            )
+        if self.linkage is HoldingLinkage.PRESENT and (
+            self.ticker is None or self.weight_percent is None
+        ):
+            raise DecisionEngineContractError(
+                "HoldingContextFinding: PRESENT linkage must carry at least "
+                "ticker and weight_percent."
+            )
+        if self.trade_count == 0 and (
+            self.earliest_executed_at is not None or self.latest_executed_at is not None
+        ):
+            raise DecisionEngineContractError(
+                "HoldingContextFinding: zero trade_count must not carry "
+                "execution timestamps."
+            )
+        if self.trade_count > 0 and (
+            self.earliest_executed_at is None or self.latest_executed_at is None
+        ):
+            raise DecisionEngineContractError(
+                "HoldingContextFinding: nonzero trade_count must carry both "
+                "execution timestamp bounds."
+            )
+
+
+class PortfolioDataNotAvailableReason(str, Enum):
+    """Why the seven `DE-003` doctrine factors could not be assessed."""
+
+    NO_PORTFOLIO_WIDE_DATA_IN_INPUT = "no_portfolio_wide_data_in_input"
+
+
+class PortfolioDoctrineFactor(str, Enum):
+    """`DE-003` §3's seven factors — every one of them portfolio-wide or
+    cross-Case by its own doctrine definition (allocation and
+    concentration are portfolio totals; diversification and correlation
+    compare against sibling holdings; opportunity cost compares against
+    portfolio-wide alternatives; existing thesis and previous decisions
+    require Decision Memory's cross-Case history, `DE-005`)."""
+
+    ALLOCATION = "allocation"
+    CONCENTRATION = "concentration"
+    DIVERSIFICATION = "diversification"
+    CORRELATION = "correlation"
+    OPPORTUNITY_COST = "opportunity_cost"
+    EXISTING_THESIS = "existing_thesis"
+    PREVIOUS_DECISIONS = "previous_decisions"
+
+
+@dataclass(frozen=True)
+class PortfolioFinding:
+    """`DE-003`'s seven substantive factors, together.
+
+    Always `EvaluationState.INSUFFICIENT_INPUT` this sprint, by explicit
+    Sprint 4 lock: `DecisionEngineInput.portfolio_holding` is a single
+    optional holding, not a collection — there is no sibling-holdings,
+    sector/country/market-cap, correlation, or cross-Case data on the
+    contract at all, so none of the seven factors can be honestly
+    computed. Synthesizing a one-holding "portfolio" to force a
+    computation is explicitly forbidden — that would fabricate a
+    portfolio-wide judgment from single-holding data. Structurally
+    guarantees this: `__post_init__` forbids constructing this type with
+    any state other than `INSUFFICIENT_INPUT`, and `factors` must always
+    name all seven `PortfolioDoctrineFactor` members — never a partial
+    list — so no factor can be silently omitted from the "not yet
+    assessable" disclosure.
+    """
+
+    state: EvaluationState
+    reason: PortfolioDataNotAvailableReason
+    factors: tuple[PortfolioDoctrineFactor, ...]
+
+    def __post_init__(self) -> None:
+        if self.state is not EvaluationState.INSUFFICIENT_INPUT:
+            raise DecisionEngineContractError(
+                "PortfolioFinding.state must be INSUFFICIENT_INPUT this "
+                "sprint; DecisionEngineInput carries no portfolio-wide data "
+                "to assess the seven DE-003 factors from."
+            )
+        if set(self.factors) != set(PortfolioDoctrineFactor):
+            raise DecisionEngineContractError(
+                "PortfolioFinding.factors must name all seven "
+                "PortfolioDoctrineFactor members, never a partial list."
+            )
 
 
 @dataclass(frozen=True)
 class PortfolioIntelligenceResult:
     """`DE-003` (Portfolio Intelligence) output shape.
 
-    No concentration, diversification, correlation, suitability, or
-    portfolio-fit logic is computed this sprint — by explicit Sprint
-    scope. This sprint's placeholder evaluator always returns
-    `NOT_EVALUATED`.
+    Sprint 1: always `NOT_EVALUATED` (no evaluator existed).
+
+    Sprint 4: the evaluator is real. `holding_context` is always
+    populated with a genuine, deterministic finding — even "no holding
+    linked" is a real, honest finding, not a failure to evaluate — so
+    `state` is always `EVALUATED`, the same top-level semantics
+    `BusinessEvaluationResult` and `ValuationResult` already established:
+    a stage can be `EVALUATED` while one of its dimensions honestly
+    reports `INSUFFICIENT_INPUT`. `portfolio_factors` (all seven DE-003
+    factors) is carried separately and is always `INSUFFICIENT_INPUT`
+    (see `PortfolioFinding`).
+
+    Still contains no concentration, diversification, correlation,
+    suitability, or portfolio-fit score of any kind — by explicit
+    Sprint 4 lock. `state`/`reason` retain Sprint 1's original shape
+    unchanged (additive expansion only, mirroring Sprint 2 and 3).
     """
 
     state: EvaluationState
     reason: StageNotImplementedReason | None = None
+    holding_context: HoldingContextFinding | None = None
+    portfolio_factors: PortfolioFinding | None = None
 
     def __post_init__(self) -> None:
         _require_reason_when_not_evaluated(self.state, self.reason)
+        if self.state is EvaluationState.EVALUATED and (
+            self.holding_context is None or self.portfolio_factors is None
+        ):
+            raise DecisionEngineContractError(
+                "An EVALUATED PortfolioIntelligenceResult must carry both "
+                "holding_context and portfolio_factors findings."
+            )
 
 
 class ReasoningBlockedBy(str, Enum):
     """Which prior stage(s) prevented Reasoning from running, per
     `DE-002` §4's own dependency: Reasoning cannot proceed while
     Business Evaluation, Valuation, or Portfolio Intelligence is
-    unevaluated."""
+    unevaluated.
+
+    `REASONING_EVALUATOR_NOT_IMPLEMENTED` (Sprint 4): once all three
+    upstream stages are `EVALUATED` (true for every input, from Sprint 4
+    onward), Reasoning is no longer blocked by any of them — but its own
+    evaluator still does not exist. This member names that honestly,
+    the same way `StageNotImplementedReason.EVALUATOR_NOT_IMPLEMENTED`
+    already does for the other placeholder stages, so `ReasoningResult`
+    is never constructed as `NOT_EVALUATED` with an empty, unexplained
+    `blocked_by`."""
 
     BUSINESS_EVALUATION_NOT_EVALUATED = "business_evaluation_not_evaluated"
     VALUATION_NOT_EVALUATED = "valuation_not_evaluated"
     PORTFOLIO_INTELLIGENCE_NOT_EVALUATED = "portfolio_intelligence_not_evaluated"
+    REASONING_EVALUATOR_NOT_IMPLEMENTED = "reasoning_evaluator_not_implemented"
 
 
 @dataclass(frozen=True)

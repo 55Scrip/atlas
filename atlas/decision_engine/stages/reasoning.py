@@ -25,10 +25,20 @@ def evaluate_reasoning(
     valuation: ValuationResult,
     portfolio_intelligence: PortfolioIntelligenceResult,
 ) -> ReasoningResult:
-    """Always returns `NOT_EVALUATED` this sprint, since none of the three
-    prior stages is ever `EVALUATED` yet — but `blocked_by` is computed
-    from their real states, not hardcoded, so it stays correct once a
-    future sprint starts returning real `EVALUATED` results.
+    """Always returns `NOT_EVALUATED` this sprint — Reasoning's own
+    evaluator does not exist yet, regardless of upstream progress.
+    `blocked_by` is computed from the real upstream states passed in,
+    never hardcoded, so it stays correct as upstream stages become real.
+
+    Sprint 4: Business Evaluation, Valuation, and Portfolio Intelligence
+    are all `EVALUATED` for every input now, so none of the three
+    upstream `ReasoningBlockedBy` members ever fires any more. Rather
+    than let `blocked_by` fall silently empty — which the type's own
+    contract forbids for a `NOT_EVALUATED` result, and which would also
+    misleadingly imply nothing at all blocks Reasoning — the upstream
+    list is appended with `REASONING_EVALUATOR_NOT_IMPLEMENTED` whenever
+    it is otherwise empty: the honest reason left once no upstream stage
+    blocks it is that Reasoning's own evaluator has not been built.
     """
     del engine_input  # unused this sprint; kept for a stable, future-proof stage signature
     blocked_by: list[ReasoningBlockedBy] = []
@@ -38,6 +48,8 @@ def evaluate_reasoning(
         blocked_by.append(ReasoningBlockedBy.VALUATION_NOT_EVALUATED)
     if portfolio_intelligence.state is not EvaluationState.EVALUATED:
         blocked_by.append(ReasoningBlockedBy.PORTFOLIO_INTELLIGENCE_NOT_EVALUATED)
+    if not blocked_by:
+        blocked_by.append(ReasoningBlockedBy.REASONING_EVALUATOR_NOT_IMPLEMENTED)
 
     return ReasoningResult(
         state=EvaluationState.NOT_EVALUATED,
