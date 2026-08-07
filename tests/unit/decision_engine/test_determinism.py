@@ -19,14 +19,25 @@ class TestIdenticalInputProducesDeeplyEqualOutput:
         assert first == second
 
     def test_populated_input_is_deterministic(self):
-        """Two independently-built but field-for-field identical inputs
-        (fresh Decision/Outcome/Observation/Evidence objects each time,
-        same fixed clock) must still produce a deeply equal output —
-        this is the real test of determinism, not just re-running the
-        same Python object through the pipeline twice."""
-        first = run_pipeline(build_populated_input(), generated_at=GENERATED_AT)
-        second = run_pipeline(build_populated_input(), generated_at=GENERATED_AT)
+        """Two independently-constructed `DecisionEngineInput` objects,
+        wrapping the *same* underlying Decision/Outcome/Observation/
+        Evidence records, must produce a deeply equal output.
+
+        This deliberately does not call `build_populated_input()` twice:
+        every Core entity id is a fresh `uuid.uuid4()` by construction
+        (repo-wide convention — see `CaseId`/`DecisionId`/etc.), so two
+        separately built populated inputs would never be field-for-field
+        identical in the first place, regardless of the pipeline's own
+        determinism. `dataclasses.replace()` instead builds a second,
+        distinct `DecisionEngineInput` instance around the identical
+        underlying records, which is the actual property Phase 6 asks
+        for: same data in, same output out."""
+        engine_input = build_populated_input()
+        same_data_new_instance = dataclasses.replace(engine_input)
+        first = run_pipeline(engine_input, generated_at=GENERATED_AT)
+        second = run_pipeline(same_data_new_instance, generated_at=GENERATED_AT)
         assert first == second
+        assert engine_input is not same_data_new_instance
 
 
 class TestInputIsNotMutated:

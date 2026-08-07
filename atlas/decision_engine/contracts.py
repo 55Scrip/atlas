@@ -37,6 +37,7 @@ from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.evidence.entity import Evidence
 from atlas.core.domain.observation.entity import Observation
+from atlas.core.domain.observation.value_objects import ObservationId
 from atlas.core.domain.outcome.entity import Outcome
 from atlas.decision_engine.exceptions import DecisionEngineContractError
 
@@ -152,20 +153,190 @@ class DecisionEngineInput:
 # ---------------------------------------------------------------------------
 
 
+class DurabilityNotAssessableReason(str, Enum):
+    """Why Durability (`Doctrine` §4 dimension 1) could not be assessed."""
+
+    NO_BUSINESS_FACT_DATA_IN_INPUT = "no_business_fact_data_in_input"
+
+
+@dataclass(frozen=True)
+class DurabilityFinding:
+    """`Doctrine` §4 dimension 1 (Durability): "Does the business have a
+    reason to still exist, on comparable or better terms... a defensible
+    position relative to competitors or substitutes, and a balance sheet
+    that can survive a bad year."
+
+    Always `EvaluationState.INSUFFICIENT_INPUT` this sprint, by explicit
+    Sprint 2 lock: `DecisionEngineInput` carries only Case-scoped
+    Decision/Outcome/Observation/Evidence records — no external
+    company-fact, financial, or market data — so there is no factual
+    basis here to conclude anything about competitive position,
+    balance-sheet resilience, moat, management, or growth quality.
+    Structurally guarantees this: no `moat`, `competitive_position`,
+    `balance_sheet`, `management`, `business_quality`, or
+    `growth_quality` field exists on this type at all, and
+    `__post_init__` forbids constructing it with any state other than
+    `INSUFFICIENT_INPUT`.
+
+    Not to be confused with `atlas.core.domain.evaluation` — a distinct,
+    unrelated Core Domain Object: the Investor's own assessment of an
+    Outcome ("did it confirm or contradict what was expected, and why").
+    That Core concept is never read, modified, or referenced here.
+    """
+
+    state: EvaluationState
+    reason: DurabilityNotAssessableReason
+
+    def __post_init__(self) -> None:
+        if self.state is not EvaluationState.INSUFFICIENT_INPUT:
+            raise DecisionEngineContractError(
+                "DurabilityFinding.state must be INSUFFICIENT_INPUT this "
+                "sprint; DecisionEngineInput carries no business-fact data "
+                "to assess durability from."
+            )
+
+
+class ObservationEpistemicStatus(str, Enum):
+    """`Doctrine` §4 dimension 3 (what is knowable vs. what is assumed),
+    applied per-Observation using only structural, id-based facts
+    already present in `DecisionEngineInput` — never a semantic or
+    NLP-derived judgment about an Observation's or Evidence's own
+    statement text.
+
+    - `SUPPORTED` — at least one `Evidence` item with `direction ==
+      SUPPORTS` is linked, and none with `direction == CHALLENGES`.
+    - `CHALLENGED` — at least one `CHALLENGES` item is linked, and none
+      with `SUPPORTS`.
+    - `CONTRADICTED` — both a `SUPPORTS` and a `CHALLENGES` item are
+      linked to the same Observation — an unresolved area, per Doctrine
+      §4 dimension 3's "unresolved or contradictory areas."
+    - `ASSUMED` — no `Evidence` at all is linked to this Observation: an
+      unsubstantiated claim, per Doctrine §4 dimension 3's "claims that
+      remain assumptions."
+    """
+
+    SUPPORTED = "supported"
+    CHALLENGED = "challenged"
+    CONTRADICTED = "contradicted"
+    ASSUMED = "assumed"
+
+
+@dataclass(frozen=True)
+class ObservationEvidenceClassification:
+    """One Observation's evidence status — the atomic fact both Evidence
+    Quality (dimension 2) and Knowable-vs-Assumed (dimension 3) findings
+    below are built from."""
+
+    observation_id: ObservationId
+    status: ObservationEpistemicStatus
+    supporting_evidence_count: int
+    challenging_evidence_count: int
+
+
+class EvidenceGapKind(str, Enum):
+    """A specific, named kind of missing evidence — never a bare,
+    unrestricted string."""
+
+    NO_EVIDENCE_RECORDED = "no_evidence_recorded"
+    """Case-wide: zero Evidence items exist anywhere in this input."""
+
+    OBSERVATION_WITHOUT_EVIDENCE = "observation_without_evidence"
+    """One specific Observation (`reference`) has zero linked Evidence."""
+
+    DECISION_WITHOUT_LINKED_OBSERVATION = "decision_without_linked_observation"
+    """One specific Decision (`reference`) has no `observation_id` at
+    all, so its stated reason has no Observation to trace evidence
+    through."""
+
+
+@dataclass(frozen=True)
+class EvidenceGap:
+    """One explicit, named evidence gap (`Doctrine` §4 dimension 3:
+    "explicit evidence gaps"). `reference` is `str(ObservationId)` or
+    `str(DecisionId)` depending on `kind`; `None` for the case-wide
+    `NO_EVIDENCE_RECORDED` kind, which names no single reference."""
+
+    kind: EvidenceGapKind
+    reference: str | None = None
+
+
+class EvidenceCoverageLevel(str, Enum):
+    """How many of the Case's recorded Observations have at least one
+    linked Evidence item — a categorical bucket derived from a real
+    count comparison, never a percentage or a score."""
+
+    NOT_APPLICABLE = "not_applicable"
+    """Zero Observations are recorded in this input at all."""
+
+    NONE = "none"
+    """At least one Observation is recorded; none has any Evidence."""
+
+    PARTIAL = "partial"
+    """Some, but not all, recorded Observations have Evidence."""
+
+    FULL = "full"
+    """Every recorded Observation has at least one Evidence item."""
+
+
+@dataclass(frozen=True)
+class EvidenceQualityFindings:
+    """`Doctrine` §4 dimensions 2 (quality of the evidence available) and
+    3 (what is knowable vs. what is assumed), together — the only two of
+    the three Business Evaluation dimensions `DecisionEngineInput` can
+    honestly support this sprint (see `DurabilityFinding`).
+
+    Every field here is a direct, structural fact: a count, a
+    categorical bucket derived from a count comparison, or a
+    cross-reference between real ids already present in
+    `DecisionEngineInput`. No semantic or NLP-derived judgment about any
+    statement's content is performed anywhere in this module, and no
+    field here is a numeric score, probability, or percentage.
+    """
+
+    total_evidence_count: int
+    supporting_evidence_count: int
+    challenging_evidence_count: int
+    coverage: EvidenceCoverageLevel
+    observation_classifications: tuple[ObservationEvidenceClassification, ...]
+    evidence_gaps: tuple[EvidenceGap, ...]
+
+
 @dataclass(frozen=True)
 class BusinessEvaluationResult:
     """`Doctrine` §4 (Business Evaluation) output shape.
 
-    Contains no quality score, moat score, management score, growth
-    score, conclusion, or recommendation — by explicit Sprint scope.
-    This sprint's placeholder evaluator always returns `NOT_EVALUATED`.
+    Sprint 1: always `NOT_EVALUATED` (no evaluator existed).
+
+    Sprint 2: the evaluator is real for two of Doctrine §4's three
+    dimensions. `evidence_quality` (dimensions 2 and 3) is always
+    populated with a genuine, deterministic conclusion — even "no
+    evidence recorded" is a real, honest finding, not a failure to
+    evaluate — so `state` is always `EVALUATED` this sprint.
+    `durability` (dimension 1) is carried separately and is always
+    `INSUFFICIENT_INPUT` (see `DurabilityFinding`).
+
+    Still contains no quality score, moat score, management score,
+    growth score, business-quality verdict, or recommendation of any
+    kind — by explicit Sprint 2 lock. `state`/`reason` retain Sprint 1's
+    original shape unchanged (additive expansion only), so a future
+    input this evaluator genuinely cannot process would still have a
+    `NOT_EVALUATED` path available without a further contract change.
     """
 
     state: EvaluationState
     reason: StageNotImplementedReason | None = None
+    durability: DurabilityFinding | None = None
+    evidence_quality: EvidenceQualityFindings | None = None
 
     def __post_init__(self) -> None:
         _require_reason_when_not_evaluated(self.state, self.reason)
+        if self.state is EvaluationState.EVALUATED and (
+            self.durability is None or self.evidence_quality is None
+        ):
+            raise DecisionEngineContractError(
+                "An EVALUATED BusinessEvaluationResult must carry both "
+                "durability and evidence_quality findings."
+            )
 
 
 @dataclass(frozen=True)

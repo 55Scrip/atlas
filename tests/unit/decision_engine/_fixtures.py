@@ -64,22 +64,32 @@ def build_outcome(*, decision: Decision, occurred_at: datetime = EVALUATED_AT) -
 
 
 def build_observation(
-    *, case_id: CaseId = CASE_ID, observed_at: datetime = EVALUATED_AT
+    *,
+    case_id: CaseId = CASE_ID,
+    subject: str = "ASML",
+    statement: str = "Q2 revenue grew 12% year over year.",
+    observed_at: datetime = EVALUATED_AT,
 ) -> Observation:
     return Observation.capture(
         case_id=case_id,
-        subject=ObservationSubject("ASML"),
-        statement=ObservationStatement("Q2 revenue grew 12% year over year."),
+        subject=ObservationSubject(subject),
+        statement=ObservationStatement(statement),
         observed_at=observed_at,
         clock=_fixed_clock(observed_at),
     )
 
 
-def build_evidence(*, observation: Observation, observed_at: datetime = EVALUATED_AT) -> Evidence:
+def build_evidence(
+    *,
+    observation: Observation,
+    direction: Direction = Direction.SUPPORTS,
+    statement: str = "Reported revenue growth exceeded guidance.",
+    observed_at: datetime = EVALUATED_AT,
+) -> Evidence:
     return Evidence.capture(
         observation_id=observation.id,
-        statement=EvidenceStatement("Reported revenue growth exceeded guidance."),
-        direction=Direction.SUPPORTS,
+        statement=EvidenceStatement(statement),
+        direction=direction,
         observed_at=observed_at,
         clock=_fixed_clock(observed_at),
     )
