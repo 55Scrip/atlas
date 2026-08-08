@@ -43,7 +43,12 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from atlas.analysis_engine.business import BusinessAnalysisResult, evaluate_business_analysis
+from atlas.analysis_engine.business import (
+    BusinessAnalysisResult,
+    BusinessCategory,
+    BusinessCategoryStatus,
+    evaluate_business_analysis,
+)
 from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
 from atlas.analysis_engine.confidence import Confidence
@@ -53,6 +58,7 @@ from atlas.analysis_engine.findings import Finding, FindingKind, FindingProducer
 from atlas.analysis_engine.models import CanonicalAnalysis, Identity, RiskSection, UnavailableCapability
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
 from atlas.analysis_engine.recommendation import evaluate_recommendation_gate
+from atlas.analysis_engine.risk.contracts import RiskStatus
 from atlas.analysis_engine.risk.models import RiskAnalysisResult
 from atlas.analysis_engine.risk.pipeline import evaluate_risk
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, ValuationStatus
@@ -439,10 +445,17 @@ def assemble_analysis(
     allowed to count as conclusive, but by itself it does not raise
     Conviction (`conviction.py`'s own thresholds/logic are untouched;
     only this call site's argument changed).
-    `business_conclusive` stays hardcoded `False` -- `BusinessAnalysisResult`
-    has no single canonical "is the whole category complete" signal
-    analogous to this one method-level check, and inventing one for
-    symmetry alone is explicitly out of this sprint's scope.
+
+    **ATLAS-026 Conviction wiring**: `business_conclusive` is no longer
+    hardcoded `False`. It is `True` exactly when both of `business`'s
+    currently real evaluators -- Growth and Capital Allocation -- reach
+    a genuine categorical conclusion, per explicit confirmation (see
+    `conviction.py`'s own module docstring for the full reasoning).
+    `has_high_financial_or_valuation_risk` is new: `True` when
+    `risk_analysis` names `FINANCIAL_RISK` or `VALUATION_RISK` as
+    `RiskStatus.HIGH` -- `BUSINESS_RISK`/`THESIS_RISK` are deliberately
+    excluded to avoid double-counting signals `business_conclusive`/
+    `has_contradicting_evidence` already carry.
     """
     reasoning = decision_output.reasoning.finding
     confidence: Confidence = decision_output.business_evaluation.evidence_quality.coverage
@@ -471,6 +484,25 @@ def assemble_analysis(
         evaluated_at=generated_at,
     )
 
+    growth_finding = next(f for f in business_analysis.findings if f.kind is BusinessCategory.GROWTH)
+    capital_allocation_finding = next(
+        f for f in business_analysis.findings if f.kind is BusinessCategory.CAPITAL_ALLOCATION
+    )
+    _inconclusive_business_statuses = (
+        BusinessCategoryStatus.NOT_EVALUATED,
+        BusinessCategoryStatus.INSUFFICIENT_INPUT,
+    )
+    business_conclusive = (
+        growth_finding.status not in _inconclusive_business_statuses
+        and capital_allocation_finding.status not in _inconclusive_business_statuses
+    )
+
+    has_high_financial_or_valuation_risk = any(
+        risk_finding.status is RiskStatus.HIGH
+        for risk_finding in risk_analysis.findings
+        if risk_finding.category in (RiskCategory.FINANCIAL_RISK, RiskCategory.VALUATION_RISK)
+    )
+
     conviction_finding_id = FindingKind.CONVICTION_ASSESSED.value
     conviction = calculate_conviction(
         business_state=decision_output.business_evaluation.state,
@@ -479,7 +511,9 @@ def assemble_analysis(
         has_contradicting_evidence=bool(reasoning.contradicting_evidence.observation_classifications),
         has_open_questions=bool(reasoning.open_questions),
         is_thesis_stale=is_thesis_stale,
+        business_conclusive=business_conclusive,
         valuation_conclusive=valuation_conclusive,
+        has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
     )
 
     findings = _build_findings(

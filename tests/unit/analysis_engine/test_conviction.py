@@ -1,7 +1,8 @@
 """Decision-table coverage for `atlas.analysis_engine.conviction
-.calculate_conviction` (ATLAS-020 Phase 9) -- every branch of the
-ordered if/elif chain, exercised directly against its own inputs rather
-than through the full pipeline, so each branch is isolated."""
+.calculate_conviction` (ATLAS-020 Phase 9; extended ATLAS-026 Phase 4)
+-- every branch of the ordered if/elif chain, exercised directly
+against its own inputs rather than through the full pipeline, so each
+branch is isolated."""
 from __future__ import annotations
 
 from atlas.analysis_engine.conviction import (
@@ -59,6 +60,38 @@ class TestLowConviction:
         assert ConvictionReasonCode.EVIDENCE_COVERAGE_PARTIAL in result.reasons
 
 
+class TestHighFinancialOrValuationRiskLowersConviction:
+    """ATLAS-026 Phase 4/7: Financial Risk or Valuation Risk at HIGH
+    forces LOW, the same severity tier as contradicting evidence."""
+
+    def test_high_risk_alone_yields_low_even_with_full_coverage(self):
+        result = calculate_conviction(**{**_BASE_KWARGS, "has_high_financial_or_valuation_risk": True})
+        assert result.level is ConvictionLevel.LOW
+        assert ConvictionReasonCode.HIGH_FINANCIAL_OR_VALUATION_RISK_PRESENT in result.reasons
+
+    def test_no_high_risk_reason_is_present_when_false(self):
+        result = calculate_conviction(**_BASE_KWARGS)
+        assert ConvictionReasonCode.NO_HIGH_FINANCIAL_OR_VALUATION_RISK in result.reasons
+        assert ConvictionReasonCode.HIGH_FINANCIAL_OR_VALUATION_RISK_PRESENT not in result.reasons
+
+    def test_high_risk_together_with_contradiction_still_yields_low_not_worse(self):
+        """No tier below LOW exists for a "doubly bad" combination --
+        this is a categorical model, not an additive one."""
+        result = calculate_conviction(
+            **{**_BASE_KWARGS, "has_contradicting_evidence": True, "has_high_financial_or_valuation_risk": True}
+        )
+        assert result.level is ConvictionLevel.LOW
+
+    def test_high_risk_overrides_would_be_very_high(self):
+        result = calculate_conviction(
+            **_BASE_KWARGS,
+            business_conclusive=True,
+            valuation_conclusive=True,
+            has_high_financial_or_valuation_risk=True,
+        )
+        assert result.level is ConvictionLevel.LOW
+
+
 class TestModerateConviction:
     def test_stale_thesis_with_full_coverage_yields_moderate(self):
         result = calculate_conviction(**{**_BASE_KWARGS, "is_thesis_stale": True})
@@ -72,17 +105,15 @@ class TestModerateConviction:
 
 
 class TestHighConviction:
-    def test_full_coverage_no_contradiction_no_staleness_no_open_questions_yields_high(self):
+    def test_full_coverage_no_contradiction_no_risk_no_staleness_no_open_questions_yields_high(self):
         result = calculate_conviction(**_BASE_KWARGS)
         assert result.level is ConvictionLevel.HIGH
         assert ConvictionReasonCode.BUSINESS_OR_VALUATION_NOT_YET_CONCLUSIVE in result.reasons
 
-    def test_very_high_is_unreachable_under_todays_default_conclusiveness(self):
-        """Sprint lock: `business_conclusive`/`valuation_conclusive`
-        default `False` because Durability and substantive Valuation are
-        both structurally `INSUFFICIENT_INPUT` today -- so the best
-        conviction any real caller can honestly reach right now is
-        `HIGH`, never `VERY_HIGH`."""
+    def test_very_high_is_unreachable_with_default_conclusiveness(self):
+        """`business_conclusive`/`valuation_conclusive` default `False`
+        -- the best conviction any caller that doesn't pass them
+        explicitly can reach is `HIGH`, never `VERY_HIGH`."""
         result = calculate_conviction(**_BASE_KWARGS)
         assert result.level is not ConvictionLevel.VERY_HIGH
 
@@ -101,11 +132,12 @@ class TestVeryHighConviction:
 
 
 class TestReasonsAreFixedOrder:
-    def test_base_reasons_are_always_coverage_then_contradiction_then_staleness_then_open_questions(self):
+    def test_base_reasons_are_always_coverage_then_contradiction_then_risk_then_staleness_then_open_questions(self):
         result = calculate_conviction(**_BASE_KWARGS)
-        assert result.reasons[:4] == (
+        assert result.reasons[:5] == (
             ConvictionReasonCode.EVIDENCE_COVERAGE_FULL,
             ConvictionReasonCode.NO_CONTRADICTING_EVIDENCE,
+            ConvictionReasonCode.NO_HIGH_FINANCIAL_OR_VALUATION_RISK,
             ConvictionReasonCode.THESIS_NOT_STALE,
             ConvictionReasonCode.NO_OPEN_QUESTIONS,
         )
@@ -124,3 +156,56 @@ class TestNoNumericScore:
         assert isinstance(result.level.value, str)
         assert not hasattr(result, "score")
         assert not hasattr(result, "weight")
+
+
+class TestStaticValidation:
+    """ATLAS-026 Phase 13: prevent reintroducing weighted scoring,
+    arithmetic averaging, or undocumented magic constants into
+    `conviction.py` specifically -- complements the repository-wide
+    `test_no_scoring_patterns_anywhere_in_the_package` in
+    `tests/unit/analysis_engine/test_boundaries.py`, which already
+    covers this file as part of the whole package."""
+
+    _FORBIDDEN_PATTERNS = (
+        "score +=",
+        "score -=",
+        "weighted_score",
+        "weighted score",
+        "conviction_score",
+        "risk_score",
+        " * 0.",
+        " * 1.",
+        "sum(",
+        "/ len(",
+        "average",
+        "np.mean",
+        "statistics.mean",
+    )
+
+    def test_source_contains_no_scoring_or_averaging_patterns(self):
+        import inspect
+
+        from atlas import analysis_engine
+
+        source = inspect.getsource(analysis_engine.conviction)
+        violations = [needle for needle in self._FORBIDDEN_PATTERNS if needle in source]
+        assert not violations, f"Forbidden pattern(s) found in conviction.py: {violations}"
+
+    def test_no_numeric_literal_thresholds_in_source(self):
+        """Every real branch condition is a named enum comparison
+        (`is`, `in`, boolean flags) -- no bare numeric magic constant
+        (a percentage, a cutoff) drives any outcome."""
+        import inspect
+        import re
+
+        from atlas import analysis_engine
+
+        source = inspect.getsource(analysis_engine.conviction)
+        # Strip docstrings/comments (which legitimately discuss the
+        # concept of thresholds in prose) before scanning real code.
+        code_lines = [
+            line for line in source.splitlines() if not line.strip().startswith(("#", '"""', "'''"))
+        ]
+        code_only = "\n".join(code_lines)
+        assert not re.search(r"[<>]=?\s*\d", code_only), "Found a numeric comparison threshold in conviction.py"
+

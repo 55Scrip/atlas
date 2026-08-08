@@ -644,3 +644,234 @@ class TestValuationEngineEndToEnd:
             engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
         )
         assert first.valuation_engine == second.valuation_engine
+
+
+class TestConvictionEndToEnd:
+    """ATLAS-026: the full chain -- real Business/Valuation/Risk Analysis
+    -> `business_conclusive`/`has_high_financial_or_valuation_risk` ->
+    `calculate_conviction`, through the real top-level `assemble_analysis`
+    entry point. Prior sprints' own end-to-end tests all used
+    `run_minimal()` (zero Observations, `NOT_APPLICABLE` coverage), which
+    forces `INSUFFICIENT_EVIDENCE` before any of these new signals can
+    matter -- this class is the first to combine `FULL` coverage with
+    real financial data, the only combination that actually exercises
+    this sprint's wiring end to end."""
+
+    @staticmethod
+    def _fresh_full_coverage_input():
+        """One supporting Observation/Evidence pair -> FULL coverage, no
+        contradiction. Real Decision Engine `open_questions` (Durability/
+        substantive-Valuation/Portfolio-factor gaps) remain present
+        regardless -- those are decision_engine-level facts this sprint
+        does not touch, so every scenario below is capped at `MODERATE`
+        unless a LOW-forcing branch (contradiction, partial coverage, or
+        high Financial/Valuation Risk) fires first."""
+        from atlas.core.domain.case.value_objects import CaseId as _CaseId
+        from atlas.core.domain.evidence.value_objects import Direction as _Direction
+
+        case_id = _CaseId()
+        observation = build_observation(case_id=case_id)
+        supporting = build_evidence(observation=observation, direction=_Direction.SUPPORTS)
+        engine_input = DecisionEngineInput(
+            case_id=case_id, evaluated_at=EVALUATED_AT, observations=(observation,), evidence=(supporting,)
+        )
+        return engine_input, run_pipeline(engine_input, generated_at=GENERATED_AT)
+
+    @staticmethod
+    def _record(source_kind, period_end, identifier, **metadata):
+        from atlas.analysis_engine.business_data.models import RawBusinessDocument
+        from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
+
+        document = RawBusinessDocument(
+            identifier=identifier,
+            company="ASML",
+            source_kind=source_kind,
+            published_at=GENERATED_AT,
+            provider_id="structured_test",
+            raw_reference=f"ref://{identifier}",
+            content_hash=f"hash-{identifier}",
+            language="en",
+            period_end=period_end,
+            metadata=metadata,
+        )
+        result = ingest(document, evaluated_at=GENERATED_AT)
+        assert isinstance(result, IngestedRecord), result
+        return result.record
+
+    def test_strong_business_and_expensive_valuation_forces_low_via_valuation_risk(self):
+        """Growth STRONG + Capital Allocation STRONG (business_conclusive
+        True) would otherwise permit HIGH -- but FCF Yield EXPENSIVE ->
+        Valuation Risk HIGH forces LOW instead, proving high risk
+        overrides an otherwise strong picture rather than being averaged
+        against it."""
+        from datetime import date
+
+        from atlas.analysis_engine.conviction import ConvictionLevel, ConvictionReasonCode
+
+        engine_input, output = self._fresh_full_coverage_input()
+        records = (
+            self._record("annual_report", date(2022, 12, 31), "fy22", revenue=1000.0, free_cash_flow=200.0),
+            self._record("annual_report", date(2023, 12, 31), "fy23", revenue=1100.0, free_cash_flow=240.0),
+            self._record("annual_report", date(2024, 12, 31), "fy24", revenue=1250.0, free_cash_flow=300.0),
+            self._record("annual_report", date(2022, 12, 31), "buy22", share_buybacks=50.0),
+            self._record("annual_report", date(2023, 12, 31), "buy23", share_buybacks=60.0),
+            self._record("annual_report", date(2022, 12, 31), "iss22", share_issuance=10.0),
+            self._record("annual_report", date(2023, 12, 31), "iss23", share_issuance=10.0),
+            self._record("annual_report", date(2022, 12, 31), "rep22", debt_repayment=30.0),
+            self._record("annual_report", date(2023, 12, 31), "rep23", debt_repayment=30.0),
+            self._record("annual_report", date(2022, 12, 31), "debt22", debt_issuance=5.0),
+            self._record("annual_report", date(2023, 12, 31), "debt23", debt_issuance=5.0),
+            self._record("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
+            self._record("market_data_snapshot", date(2023, 12, 31), "m23", share_price=52.0, shares_outstanding=100.0),
+            self._record("market_data_snapshot", date(2024, 12, 31), "m24", share_price=300.0, shares_outstanding=100.0),
+        )
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
+        )
+        assert analysis.conviction.level is ConvictionLevel.LOW
+        assert ConvictionReasonCode.HIGH_FINANCIAL_OR_VALUATION_RISK_PRESENT in analysis.conviction.reasons
+        assert analysis.recommendation.conviction_gate_met is False
+
+    def test_weak_business_and_cheap_valuation_reaches_moderate_uncapped_by_business_risk(self):
+        """Growth WEAK is a real negative Business Risk signal (visible
+        on `analysis.risk_analysis`) that Conviction deliberately never
+        reads directly -- with Capital Allocation STRONG and Valuation
+        UNDERVALUED (both LOW risk), Conviction reaches the same
+        MODERATE ceiling real open_questions impose today, proving
+        Business Risk's independence from Conviction end to end."""
+        from datetime import date
+
+        from atlas.analysis_engine.contracts import RiskCategory
+        from atlas.analysis_engine.conviction import ConvictionLevel, ConvictionReasonCode
+        from atlas.analysis_engine.risk.contracts import RiskStatus
+
+        engine_input, output = self._fresh_full_coverage_input()
+        records = (
+            self._record("annual_report", date(2022, 12, 31), "fy22", revenue=1250.0, free_cash_flow=100.0),
+            self._record("annual_report", date(2023, 12, 31), "fy23", revenue=1100.0, free_cash_flow=80.0),
+            self._record("annual_report", date(2024, 12, 31), "fy24", revenue=1000.0, free_cash_flow=60.0),
+            self._record("annual_report", date(2022, 12, 31), "buy22", share_buybacks=50.0),
+            self._record("annual_report", date(2023, 12, 31), "buy23", share_buybacks=60.0),
+            self._record("annual_report", date(2022, 12, 31), "iss22", share_issuance=10.0),
+            self._record("annual_report", date(2023, 12, 31), "iss23", share_issuance=10.0),
+            self._record("annual_report", date(2022, 12, 31), "rep22", debt_repayment=30.0),
+            self._record("annual_report", date(2023, 12, 31), "rep23", debt_repayment=30.0),
+            self._record("annual_report", date(2022, 12, 31), "debt22", debt_issuance=5.0),
+            self._record("annual_report", date(2023, 12, 31), "debt23", debt_issuance=5.0),
+            self._record("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
+            self._record("market_data_snapshot", date(2023, 12, 31), "m23", share_price=40.0, shares_outstanding=100.0),
+            self._record("market_data_snapshot", date(2024, 12, 31), "m24", share_price=20.0, shares_outstanding=100.0),
+        )
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
+        )
+        business_risk = next(
+            f for f in analysis.risk_analysis.findings if f.category is RiskCategory.BUSINESS_RISK
+        )
+        assert business_risk.status is RiskStatus.HIGH
+        assert analysis.conviction.level is ConvictionLevel.MODERATE
+        assert ConvictionReasonCode.NO_HIGH_FINANCIAL_OR_VALUATION_RISK in analysis.conviction.reasons
+
+    def test_high_financial_risk_with_cheap_valuation_still_forces_low(self):
+        """Dilution (Capital Allocation WEAK) drives Financial Risk HIGH
+        even while Valuation is UNDERVALUED (cheap, LOW Valuation Risk)
+        -- proving Financial Risk alone, independent of Valuation Risk,
+        can force LOW."""
+        from datetime import date
+
+        from atlas.analysis_engine.conviction import ConvictionLevel, ConvictionReasonCode
+
+        engine_input, output = self._fresh_full_coverage_input()
+        records = (
+            self._record("annual_report", date(2022, 12, 31), "iss22", share_issuance=100.0),
+            self._record("annual_report", date(2023, 12, 31), "iss23", share_issuance=100.0),
+            self._record("annual_report", date(2022, 12, 31), "buy22", share_buybacks=10.0),
+            self._record("annual_report", date(2023, 12, 31), "fy23", free_cash_flow=100.0),
+            self._record("annual_report", date(2024, 12, 31), "fy24", free_cash_flow=110.0),
+            self._record("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
+            self._record("market_data_snapshot", date(2023, 12, 31), "m23", share_price=50.0, shares_outstanding=100.0),
+            self._record("market_data_snapshot", date(2024, 12, 31), "m24", share_price=52.0, shares_outstanding=100.0),
+        )
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
+        )
+        assert analysis.conviction.level is ConvictionLevel.LOW
+        assert ConvictionReasonCode.HIGH_FINANCIAL_OR_VALUATION_RISK_PRESENT in analysis.conviction.reasons
+
+    def test_business_and_valuation_unavailable_leaves_conviction_unaffected_by_new_wiring(self):
+        """No `business_records` at all: Growth/Capital Allocation/FCF
+        Yield all `INSUFFICIENT_INPUT` -> `business_conclusive` False --
+        missing evidence never manufactures a negative signal, it simply
+        leaves Conviction exactly where it already was before this
+        sprint's wiring existed (capped by the same real open_questions
+        every scenario in this class hits)."""
+        from atlas.analysis_engine.conviction import ConvictionLevel, ConvictionReasonCode
+
+        engine_input, output = self._fresh_full_coverage_input()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
+        )
+        assert analysis.conviction.level is ConvictionLevel.MODERATE
+        assert ConvictionReasonCode.NO_HIGH_FINANCIAL_OR_VALUATION_RISK in analysis.conviction.reasons
+
+    def test_risk_analysis_insufficient_input_never_raises_risk_flag(self):
+        """No `business_records` at all -> every Risk category with a
+        real evaluator lands on `INSUFFICIENT_INPUT` (uncertainty),
+        never `HIGH` -- missing risk evidence must never be silently
+        promoted into a Conviction-lowering signal."""
+        from atlas.analysis_engine.contracts import RiskCategory
+        from atlas.analysis_engine.conviction import ConvictionReasonCode
+        from atlas.analysis_engine.risk.contracts import RiskStatus
+
+        engine_input, output = self._fresh_full_coverage_input()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
+        )
+        for category in (RiskCategory.FINANCIAL_RISK, RiskCategory.VALUATION_RISK):
+            finding = next(f for f in analysis.risk_analysis.findings if f.category is category)
+            assert finding.status is RiskStatus.INSUFFICIENT_INPUT
+        assert ConvictionReasonCode.NO_HIGH_FINANCIAL_OR_VALUATION_RISK in analysis.conviction.reasons
+
+    def test_recommendation_gate_reflects_the_new_real_conviction(self):
+        """Recommendation's own gate logic is untouched -- it simply
+        reads whichever real `ConvictionAssessment` it is handed. LOW
+        (from high risk) must fail the MODERATE-minimum gate exactly the
+        same way a placeholder-derived LOW always did."""
+        from datetime import date
+
+        engine_input, output = self._fresh_full_coverage_input()
+        records = (
+            self._record("annual_report", date(2022, 12, 31), "iss22", share_issuance=100.0),
+            self._record("annual_report", date(2023, 12, 31), "iss23", share_issuance=100.0),
+            self._record("annual_report", date(2022, 12, 31), "buy22", share_buybacks=10.0),
+            self._record("annual_report", date(2023, 12, 31), "fy23", free_cash_flow=100.0),
+            self._record("annual_report", date(2024, 12, 31), "fy24", free_cash_flow=110.0),
+            self._record("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
+            self._record("market_data_snapshot", date(2023, 12, 31), "m23", share_price=50.0, shares_outstanding=100.0),
+            self._record("market_data_snapshot", date(2024, 12, 31), "m24", share_price=52.0, shares_outstanding=100.0),
+        )
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
+        )
+        from atlas.decision_engine.contracts import RecommendationOutcomeKind
+
+        assert analysis.recommendation.conviction_gate_met is False
+        assert analysis.recommendation.recommendation.kind is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
+
+    def test_determinism_holds_through_the_full_conviction_chain(self):
+        from datetime import date
+
+        engine_input, output = self._fresh_full_coverage_input()
+        records = (
+            self._record("annual_report", date(2022, 12, 31), "fy22", revenue=1000.0, free_cash_flow=200.0),
+            self._record("annual_report", date(2023, 12, 31), "fy23", revenue=1100.0, free_cash_flow=240.0),
+            self._record("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
+            self._record("market_data_snapshot", date(2023, 12, 31), "m23", share_price=52.0, shares_outstanding=100.0),
+        )
+        first = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
+        )
+        second = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
+        )
+        assert first.conviction == second.conviction
