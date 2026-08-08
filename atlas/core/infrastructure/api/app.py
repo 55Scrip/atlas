@@ -11,6 +11,7 @@ from fastapi import FastAPI
 
 from atlas.ai.api.router import router as discovery_chat_router
 from atlas.alpha.case_intelligence.api.router import router as case_intelligence_router
+from atlas.alpha.investment_case.api.router import router as investment_case_router
 from atlas.alpha.portfolio.api.router import router as alpha_portfolio_router
 from atlas.alpha.portfolio_cockpit.api.router import router as portfolio_cockpit_router
 from atlas.alpha.portfolio_intelligence.api.router import router as portfolio_intelligence_router
@@ -87,6 +88,14 @@ def create_app() -> FastAPI:
     # `atlas.alpha.portfolio_intelligence.pipeline_bridge` both modules
     # call).
     app.include_router(case_intelligence_router)
+    # ATLAS-029: the canonical Investment Case analysis is a sibling
+    # route under the same `/cases` prefix as `case_intelligence` above
+    # -- authored and owned in `atlas/alpha/investment_case/`, powered
+    # by `InvestmentCaseCompositionService.build` (ATLAS-027) rather
+    # than a separate `decision_engine.run_pipeline` call. Additive:
+    # `case_intelligence`'s own endpoint is untouched and still serves
+    # `discovery_context` (ATLAS-029's own documented, deliberate gap).
+    app.include_router(investment_case_router)
     # ATLAS-028: the Portfolio Cockpit report is a fifth, sibling
     # composition point -- authored and owned in
     # `atlas/alpha/portfolio_cockpit/`, composing many Cases at once via

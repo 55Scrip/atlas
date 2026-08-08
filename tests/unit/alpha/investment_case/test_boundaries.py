@@ -37,6 +37,17 @@ def _source_files() -> list[Path]:
     return [p for p in _PACKAGE_DIR.rglob("*.py") if "__pycache__" not in p.parts]
 
 
+def _composition_layer_source_files() -> list[Path]:
+    """`models.py`/`service.py` only -- the pure composition layer this
+    check is actually about. `api/` (ATLAS-029) is a legitimate FastAPI
+    wiring layer that *must* import `atlas.core.infrastructure` (every
+    other Alpha package's own `api/dependencies.py` does the same) and
+    reference `atlas.analysis_engine.conviction.ConvictionAssessment`
+    for schema typing -- neither is the evaluator-recomputation this
+    check guards against."""
+    return [p for p in _source_files() if "/api/" not in str(p)]
+
+
 def _import_lines(text: str) -> list[str]:
     return [line for line in text.splitlines() if line.strip().startswith(("import ", "from "))]
 
@@ -58,11 +69,24 @@ class TestNoForbiddenDependencies:
         duplicate Business/Valuation/Risk/Conviction" rule, checked
         structurally)."""
         violations = []
-        for path in _source_files():
+        for path in _composition_layer_source_files():
             for line in _import_lines(path.read_text(encoding="utf-8")):
                 for needle in _FORBIDDEN_IN_IMPORTS:
                     if needle in line:
                         violations.append(f"{path.name}: {line.strip()!r}")
+        assert not violations, "\n".join(violations)
+
+    def test_api_layer_never_imports_portfolio_cockpit(self):
+        """ATLAS-029: `portfolio_cockpit` already depends on
+        `investment_case` at the service layer -- this package must
+        never import back, or the two packages would form a cycle."""
+        violations = []
+        for path in _source_files():
+            if "/api/" not in str(path):
+                continue
+            for line in _import_lines(path.read_text(encoding="utf-8")):
+                if "atlas.alpha.portfolio_cockpit" in line:
+                    violations.append(f"{path.name}: {line.strip()!r}")
         assert not violations, "\n".join(violations)
 
     def test_uses_assemble_analysis(self):

@@ -22,12 +22,17 @@ class TestNoAutomaticDecisionOrRecommendation:
 
 
 class TestOneCanonicalCaseGenerationOwner:
-    def test_ensure_cases_is_only_called_from_alpha_portfolio_service(self):
-        """`ensure_cases` must have exactly one caller in production code
-        -- `AlphaPortfolioService`'s own write paths. Scans the whole
-        `atlas/alpha` tree (excluding this package's own definition and
-        tests) for any other call site, which would mean case-generation
-        logic had started spreading (Phase 20's own explicit rule)."""
+    def test_ensure_cases_is_only_called_from_the_known_allowed_set(self):
+        """`ensure_cases` must have exactly two callers in production
+        code -- `AlphaPortfolioService`'s own live write paths, and the
+        ATLAS-029 legacy-holding backfill (`atlas/alpha/portfolio
+        /backfill.py`), which reuses this exact same method rather than
+        reimplementing Case creation, per that sprint's own explicit
+        "do not create another Case generation implementation" rule.
+        Scans the whole `atlas/alpha` tree (excluding this package's own
+        definition and tests) for any other call site, which would mean
+        case-generation logic had started spreading (Phase 20's own
+        explicit rule)."""
         alpha_dir = _PACKAGE_DIR.parent
         callers = []
         for path in alpha_dir.rglob("*.py"):
@@ -36,9 +41,8 @@ class TestOneCanonicalCaseGenerationOwner:
             text = path.read_text(encoding="utf-8")
             if "ensure_cases(" in text:
                 callers.append(path)
-        assert callers == [alpha_dir / "portfolio" / "service.py"], (
-            f"Expected exactly one caller (portfolio/service.py), found: {callers}"
-        )
+        expected = {alpha_dir / "portfolio" / "service.py", alpha_dir / "portfolio" / "backfill.py"}
+        assert set(callers) == expected, f"Expected exactly {expected}, found: {callers}"
 
     def test_case_service_create_call_sites_are_the_known_allowed_set(self):
         """`case_service.create()` should only ever be called from: this
