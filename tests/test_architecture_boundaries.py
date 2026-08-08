@@ -457,3 +457,21 @@ def test_analysis_engine_never_imports_the_legacy_company_analysis_tree() -> Non
                 violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
 
     assert not violations, "atlas.analysis_engine importing legacy scoring code:\n" + "\n".join(violations)
+
+
+# ── ATLAS-024: legacy value_scenario tree stays unreachable, studied not reused ──
+
+
+def test_analysis_engine_never_imports_the_legacy_value_scenario_tree() -> None:
+    """ATLAS-024's own audit studied `atlas/value_scenario/schema.py` as
+    prior art (confirmed unreachable from the live app, same legacy
+    tree) for `atlas.analysis_engine.valuation.scenarios`'s own
+    BEAR/BASE/BULL structure -- but never imported any of it. This test
+    makes that confirmation permanent."""
+    violations = []
+    for path in _python_files(ATLAS_ROOT / "analysis_engine"):
+        for module in _imported_modules(path):
+            if module.startswith("atlas.value_scenario"):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "atlas.analysis_engine importing legacy value_scenario code:\n" + "\n".join(violations)

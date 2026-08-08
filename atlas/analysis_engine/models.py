@@ -39,6 +39,7 @@ from atlas.analysis_engine.contracts import CapabilityStatus
 from atlas.analysis_engine.conviction import ConvictionAssessment
 from atlas.analysis_engine.findings import Finding
 from atlas.analysis_engine.recommendation import RecommendationGateResult
+from atlas.analysis_engine.valuation.models import ValuationEngineResult
 from atlas.decision_engine.contracts import (
     BusinessEvaluationResult,
     EvidenceCoverageLevel,
@@ -105,8 +106,22 @@ class CanonicalAnalysis:
     # not a replacement) -----------------------------------------------
     business_analysis: BusinessAnalysisResult
 
+    # -- New in ATLAS-024, real (additive -- `valuation` above (decision_engine's,
+    # permanently locked to INSUFFICIENT_INPUT) keeps its exact prior meaning
+    # unchanged; this is a second, richer section, the same pattern
+    # business_analysis already established relative to `business`) -------
+    valuation_engine: ValuationEngineResult
+
     # -- New this sprint, honestly not yet implemented -----------------
     catalysts: UnavailableCapability
     scenario_analysis: UnavailableCapability
+    """Still `UnavailableCapability` (ATLAS-020) -- a different, broader
+    concept than `valuation_engine`'s own `SCENARIO_BEAR`/`BASE`/`BULL`
+    methods (ATLAS-024), which are a real, narrower Valuation-specific
+    structure already homed under `valuation_engine.findings`. This
+    field continues to mean "no general, cross-cutting scenario
+    capability exists at the CanonicalAnalysis level" -- unrelated to
+    whether one specific section (Valuation) has its own scenario
+    structure."""
 
     generated_at: datetime

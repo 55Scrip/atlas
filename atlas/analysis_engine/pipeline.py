@@ -45,6 +45,7 @@ from datetime import datetime
 
 from atlas.analysis_engine.business import BusinessAnalysisResult, evaluate_business_analysis
 from atlas.analysis_engine.business_data.models import BusinessRecord
+from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
 from atlas.analysis_engine.confidence import Confidence
 from atlas.analysis_engine.contracts import RiskCategory, CapabilityStatus
 from atlas.analysis_engine.conviction import calculate_conviction
@@ -52,6 +53,10 @@ from atlas.analysis_engine.findings import Finding, FindingKind, FindingProducer
 from atlas.analysis_engine.models import CanonicalAnalysis, Identity, RiskSection, UnavailableCapability
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
 from atlas.analysis_engine.recommendation import evaluate_recommendation_gate
+from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, ValuationStatus
+from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
+from atlas.analysis_engine.valuation.models import ValuationEngineResult
+from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
 from atlas.decision_engine.contracts import DecisionEngineInput, DecisionEngineOutput
 
 __all__ = ["assemble_analysis"]
@@ -353,6 +358,26 @@ def _business_category_findings(business_analysis: BusinessAnalysisResult) -> tu
     )
 
 
+def _valuation_method_findings(valuation_engine: ValuationEngineResult) -> tuple[Finding, ...]:
+    """Project each rich `ValuationFinding` (ATLAS-024) onto the
+    generic, flat `Finding` shape -- mirrors
+    `_business_category_findings` exactly. The richer type stays on
+    `CanonicalAnalysis.valuation_engine.findings`."""
+    return tuple(
+        Finding(
+            id=f"{FindingKind.VALUATION_METHOD_ASSESSED.value}:{valuation_finding.kind.value}",
+            kind=FindingKind.VALUATION_METHOD_ASSESSED,
+            severity=valuation_finding.severity,
+            details={"method": valuation_finding.kind.value, "status": valuation_finding.status.value},
+            evidence_references=valuation_finding.supporting_facts + valuation_finding.contradicting_facts,
+            confidence=valuation_finding.confidence,
+            producer=FindingProducer.VALUATION_ENGINE,
+            provenance=valuation_finding.provenance,
+        )
+        for valuation_finding in valuation_engine.findings
+    )
+
+
 def assemble_analysis(
     engine_input: DecisionEngineInput,
     decision_output: DecisionEngineOutput,
@@ -367,18 +392,47 @@ def assemble_analysis(
     randomness, matching every stage in `atlas.decision_engine` and
     every stage in this package.
 
-    `business_records` (ATLAS-022) is a passthrough straight to
-    `business.evaluate_business_analysis` -- always `()` at every real
-    call site today, same as `is_thesis_stale`'s own Alpha-supplied
-    default; a future composition layer that has run
+    `business_records` (ATLAS-022) is a passthrough both to
+    `business.evaluate_business_analysis` and, new in ATLAS-024, to
+    `valuation.pipeline.evaluate_valuation` -- always `()` at every
+    real call site today, same as `is_thesis_stale`'s own
+    Alpha-supplied default; a future composition layer that has run
     `business_data.pipeline.ingest` supplies the resulting
-    `BusinessRecord`s here.
+    `BusinessRecord`s here. A market-data snapshot is a `BusinessRecord`
+    tagged `SourceKind.MARKET_DATA_SNAPSHOT` like any other -- there is
+    no separate `valuation_records` parameter, since
+    `business_facts.extraction`/`valuation.facts.extraction` each
+    already filter the same tuple down to what they respectively need.
+
+    **ATLAS-024 Conviction wiring**: `valuation_conclusive` is no longer
+    hardcoded `False`. It is `True` exactly when
+    `ValuationMethodKind.FCF_YIELD_RELATIVE`'s own finding reaches a
+    real categorical conclusion (not `NOT_EVALUATED`/`INSUFFICIENT_INPUT`)
+    -- the smallest correct integration change: real valuation is
+    allowed to count as conclusive, but by itself it does not raise
+    Conviction (`conviction.py`'s own thresholds/logic are untouched;
+    only this call site's argument changed).
+    `business_conclusive` stays hardcoded `False` -- `BusinessAnalysisResult`
+    has no single canonical "is the whole category complete" signal
+    analogous to this one method-level check, and inventing one for
+    symmetry alone is explicitly out of this sprint's scope.
     """
     reasoning = decision_output.reasoning.finding
     confidence: Confidence = decision_output.business_evaluation.evidence_quality.coverage
 
     business_analysis = evaluate_business_analysis(
         decision_output.business_evaluation, business_records=business_records, evaluated_at=generated_at
+    )
+
+    business_facts = extract_facts_from_records(business_records, evaluated_at=generated_at)
+    market_facts = extract_valuation_facts_from_records(business_records, evaluated_at=generated_at)
+    valuation_engine = evaluate_valuation(business_facts, market_facts, evaluated_at=generated_at)
+    fcf_yield_finding = next(
+        f for f in valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE
+    )
+    valuation_conclusive = fcf_yield_finding.status not in (
+        ValuationStatus.NOT_EVALUATED,
+        ValuationStatus.INSUFFICIENT_INPUT,
     )
 
     conviction_finding_id = FindingKind.CONVICTION_ASSESSED.value
@@ -389,6 +443,7 @@ def assemble_analysis(
         has_contradicting_evidence=bool(reasoning.contradicting_evidence.observation_classifications),
         has_open_questions=bool(reasoning.open_questions),
         is_thesis_stale=is_thesis_stale,
+        valuation_conclusive=valuation_conclusive,
     )
 
     findings = _build_findings(
@@ -447,7 +502,12 @@ def assemble_analysis(
             generated_at=generated_at,
         ),
     )
-    findings = findings + (recommendation_finding,) + _business_category_findings(business_analysis)
+    findings = (
+        findings
+        + (recommendation_finding,)
+        + _business_category_findings(business_analysis)
+        + _valuation_method_findings(valuation_engine)
+    )
 
     risk_findings = tuple(finding for finding in findings if "risk_category" in finding.details)
 
@@ -463,6 +523,7 @@ def assemble_analysis(
         recommendation=recommendation,
         findings=findings,
         business_analysis=business_analysis,
+        valuation_engine=valuation_engine,
         catalysts=UnavailableCapability(reason=CapabilityStatus.NOT_YET_IMPLEMENTED),
         scenario_analysis=UnavailableCapability(reason=CapabilityStatus.NOT_YET_IMPLEMENTED),
         generated_at=generated_at,

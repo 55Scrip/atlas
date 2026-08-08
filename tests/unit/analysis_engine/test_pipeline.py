@@ -493,3 +493,128 @@ class TestGrowthAndCapitalAllocationEndToEnd:
             engine_input, output, is_thesis_stale=False, business_records=(result.record,), generated_at=GENERATED_AT
         )
         assert first.business_analysis == second.business_analysis
+
+
+class TestValuationEngineEndToEnd:
+    """ATLAS-024: the full BusinessRecord -> BusinessFact/ValuationFact
+    -> FCF Yield Evaluator -> ValuationFinding -> CanonicalAnalysis
+    chain, through the real top-level `assemble_analysis` entry point."""
+
+    @staticmethod
+    def _records():
+        from datetime import date
+
+        from atlas.analysis_engine.business_data.models import RawBusinessDocument
+        from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
+
+        def make(source_kind, period_end, identifier, **metadata):
+            document = RawBusinessDocument(
+                identifier=identifier,
+                company="ASML",
+                source_kind=source_kind,
+                published_at=GENERATED_AT,
+                provider_id="structured_test",
+                raw_reference=f"ref://{identifier}",
+                content_hash=f"hash-{identifier}",
+                language="en",
+                period_end=period_end,
+                metadata=metadata,
+            )
+            result = ingest(document, evaluated_at=GENERATED_AT)
+            assert isinstance(result, IngestedRecord)
+            return result.record
+
+        return (
+            make("annual_report", date(2022, 12, 31), "fy22", free_cash_flow=100.0),
+            make("annual_report", date(2023, 12, 31), "fy23", free_cash_flow=110.0),
+            make("annual_report", date(2024, 12, 31), "fy24", free_cash_flow=200.0),
+            make("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
+            make("market_data_snapshot", date(2023, 12, 31), "m23", share_price=52.0, shares_outstanding=100.0),
+            make("market_data_snapshot", date(2024, 12, 31), "m24", share_price=53.0, shares_outstanding=100.0),
+        )
+
+    def test_real_records_produce_a_real_undervalued_finding(self):
+        from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, ValuationStatus
+
+        engine_input, output = run_minimal()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=self._records(), generated_at=GENERATED_AT
+        )
+        fcf_yield = next(
+            f for f in analysis.valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE
+        )
+        assert fcf_yield.status is ValuationStatus.UNDERVALUED
+
+    def test_decision_engines_own_locked_valuation_field_is_untouched(self):
+        """Phase 14's own backward-compatibility requirement:
+        `CanonicalAnalysis.valuation` (decision_engine's, reused
+        verbatim) must remain exactly what it always was."""
+        from atlas.decision_engine.contracts import EvaluationState
+
+        engine_input, output = run_minimal()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=self._records(), generated_at=GENERATED_AT
+        )
+        assert analysis.valuation is output.valuation
+        assert analysis.valuation.substantive_valuation.state is EvaluationState.INSUFFICIENT_INPUT
+
+    def test_recommendation_stays_withheld_regardless_of_real_valuation(self):
+        """Phase 16: real valuation is only one input -- it can never
+        bypass the Recommendation Gate."""
+        from atlas.decision_engine.contracts import RecommendationOutcomeKind
+
+        engine_input, output = run_minimal()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=self._records(), generated_at=GENERATED_AT
+        )
+        assert analysis.recommendation.recommendation.kind is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
+
+    def test_conviction_level_is_identical_with_and_without_valuation_facts(self):
+        """Phase 15: valuation_conclusive alone cannot raise Conviction
+        while business_conclusive stays False -- confirmed directly,
+        not just asserted in prose."""
+        engine_input, output = run_minimal()
+        without = assemble_analysis(engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT)
+        with_valuation = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=self._records(), generated_at=GENERATED_AT
+        )
+        assert without.conviction.level == with_valuation.conviction.level
+
+    def test_valuation_method_assessed_findings_appear_in_the_flat_list(self):
+        from atlas.analysis_engine.findings import FindingKind
+
+        engine_input, output = run_minimal()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=self._records(), generated_at=GENERATED_AT
+        )
+        matches = [f for f in analysis.findings if f.kind is FindingKind.VALUATION_METHOD_ASSESSED]
+        assert len(matches) == 4
+
+    def test_growth_and_valuation_remain_independent(self):
+        """Business Quality/Growth and Valuation must never be forced to
+        agree -- verified end to end through CanonicalAnalysis."""
+        from atlas.analysis_engine.business import BusinessCategory
+        from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, ValuationStatus
+
+        engine_input, output = run_minimal()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=self._records(), generated_at=GENERATED_AT
+        )
+        growth = next(f for f in analysis.business_analysis.findings if f.kind is BusinessCategory.GROWTH)
+        fcf_yield = next(
+            f for f in analysis.valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE
+        )
+        # Both real, independently computed -- neither reads the other.
+        assert growth.status.value in ("weak", "moderate", "strong", "insufficient_input")
+        assert fcf_yield.status is ValuationStatus.UNDERVALUED
+
+    def test_determinism_holds_through_the_full_valuation_chain(self):
+        engine_input, output = run_minimal()
+        records = self._records()
+        first = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
+        )
+        second = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
+        )
+        assert first.valuation_engine == second.valuation_engine

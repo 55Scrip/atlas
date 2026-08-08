@@ -12,18 +12,20 @@ between them) -- `business.ExternalBusinessRecord.source_kind` now
 types directly against `SourceKind` below, so there is exactly one
 taxonomy for this concept in the repository, never two.
 
-Eleven members, not the eight named as "Examples" in this sprint's own
+Twelve members, not the eight named as "Examples" in ATLAS-022's own
 Phase 5 list -- three carried forward from `ExternalSourceKind` because
-they cover document types Phase 3 explicitly names but Phase 5's
-example list does not distinguish: `FINANCIAL_STATEMENT` (a standalone
-statement, distinct from a full `ANNUAL_REPORT`), `COMPANY_FILING`
-(Phase 3's "SEC filing," distinct from a scheduled annual/quarterly
-report), and `TRANSCRIPT` folding in Phase 3's "investor day" and
-"capital markets day" alongside earnings calls (same document shape --
-a transcribed spoken event -- not a separate category). Avoiding
-free-text classification (Phase 5's own instruction) means every real
-document type this sprint's design phases named needs a member here,
-not just the ones in the shorter example list.
+they cover document types ATLAS-022's Phase 3 explicitly names but its
+Phase 5 example list does not distinguish: `FINANCIAL_STATEMENT` (a
+standalone statement, distinct from a full `ANNUAL_REPORT`),
+`COMPANY_FILING` (ATLAS-022 Phase 3's "SEC filing," distinct from a
+scheduled annual/quarterly report), and `TRANSCRIPT` folding in
+"investor day" and "capital markets day" alongside earnings calls (same
+document shape -- a transcribed spoken event -- not a separate
+category). Avoiding free-text classification (Phase 5's own
+instruction) means every real document type named across both sprints
+needs a member here, not just the ones in the shorter example list.
+`MARKET_DATA_SNAPSHOT` (ATLAS-024) is the twelfth, added when Valuation
+needed a document type for current market data.
 """
 from __future__ import annotations
 
@@ -53,3 +55,16 @@ class SourceKind(str, Enum):
     NEWS = "news"
     MANUAL_DOCUMENT = "manual_document"
     UNKNOWN = "unknown"
+
+    MARKET_DATA_SNAPSHOT = "market_data_snapshot"
+    """ATLAS-024: a canonical record of *current market data* (share
+    price, shares outstanding) as of a point in time -- deliberately
+    still a `BusinessRecord`, ingested through the identical
+    validate/normalize/version pipeline every other document uses, not
+    a second parallel "MarketRecord" type. Phase 5's "fundamental
+    company data vs. current market data" boundary is real and
+    enforced -- but it lives in which *fact taxonomy* reads a record's
+    `metadata` (`atlas.analysis_engine.business_facts` for fundamentals,
+    `atlas.analysis_engine.valuation.facts` for this), not in a second
+    ingestion system. One canonical data layer, two disjoint fact
+    vocabularies reading from it."""

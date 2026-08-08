@@ -48,6 +48,14 @@ class FindingKind(str, Enum):
     PORTFOLIO_FACTOR_UNAVAILABLE = "portfolio_factor_unavailable"
     CONVICTION_ASSESSED = "conviction_assessed"
     RECOMMENDATION_WITHHELD = "recommendation_withheld"
+    VALUATION_METHOD_ASSESSED = "valuation_method_assessed"
+    """ATLAS-024: one per
+    `atlas.analysis_engine.valuation.contracts.ValuationMethodKind`
+    member, always four per run. Mirrors `BUSINESS_CATEGORY_ASSESSED`'s
+    own role exactly, for `ValuationFinding` -- `details` carries
+    `method` and `status`; the full `ValuationFinding` lives on
+    `CanonicalAnalysis.valuation_engine.findings`."""
+
     BUSINESS_CATEGORY_ASSESSED = "business_category_assessed"
     """ATLAS-021: one per `atlas.analysis_engine.business.BusinessCategory`
     member, always six per run. A flat, cross-cutting projection of the
@@ -90,6 +98,13 @@ class FindingProducer(str, Enum):
     verbatim for Evidence Quality and, via reuse, Durability). This
     producer is analysis_engine-native: it owns the six-category
     `BusinessFinding` taxonomy Evidence Quality alone never claimed."""
+
+    VALUATION_ENGINE = "valuation_engine"
+    """ATLAS-024: `atlas.analysis_engine.valuation` -- distinct from
+    `VALUATION` (`atlas.decision_engine`'s own stage, permanently
+    locked to `INSUFFICIENT_INPUT`). This producer is
+    analysis_engine-native: it owns the four-method `ValuationFinding`
+    taxonomy the locked stage never could."""
 
 
 @dataclass(frozen=True)
