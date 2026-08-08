@@ -66,6 +66,19 @@ class FindingKind(str, Enum):
     evidence/missing-evidence detail) lives on
     `CanonicalAnalysis.business_analysis.findings`, not here."""
 
+    RISK_CATEGORY_ASSESSED = "risk_category_assessed"
+    """ATLAS-025: one per category in
+    `atlas.analysis_engine.risk.models.EVALUATED_RISK_CATEGORIES`
+    (`BUSINESS_RISK`/`FINANCIAL_RISK`/`VALUATION_RISK`/`THESIS_RISK`),
+    always four per run. Mirrors `BUSINESS_CATEGORY_ASSESSED`'s own role
+    exactly, for `RiskFinding` -- `details` carries `risk_category` (the
+    same key `pipeline.py::_build_findings`'s own pre-existing
+    per-observation `CONTRADICTING_EVIDENCE` Findings already use, so
+    `RiskSection`'s existing `"risk_category" in details` filter picks
+    both up with zero changes to that filter) and `status`. The full
+    `RiskFinding` (with its own missing-evidence detail) lives on
+    `CanonicalAnalysis.risk_analysis.findings`, not here."""
+
 
 class FindingSeverity(str, Enum):
     """Categorical, three-level, never numeric -- matches this
@@ -105,6 +118,14 @@ class FindingProducer(str, Enum):
     locked to `INSUFFICIENT_INPUT`). This producer is
     analysis_engine-native: it owns the four-method `ValuationFinding`
     taxonomy the locked stage never could."""
+
+    RISK_ANALYSIS = "risk_analysis"
+    """ATLAS-025: `atlas.analysis_engine.risk` -- owns the
+    `RiskFinding`/`RiskCategory` taxonomy. Distinct from `REASONING`,
+    which still produces the pre-existing per-observation
+    `CONTRADICTING_EVIDENCE` Findings unchanged (see
+    `atlas.analysis_engine.risk.thesis_risk`'s own module docstring for
+    why both coexist)."""
 
 
 @dataclass(frozen=True)

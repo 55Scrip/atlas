@@ -39,6 +39,7 @@ from atlas.analysis_engine.contracts import CapabilityStatus
 from atlas.analysis_engine.conviction import ConvictionAssessment
 from atlas.analysis_engine.findings import Finding
 from atlas.analysis_engine.recommendation import RecommendationGateResult
+from atlas.analysis_engine.risk.models import RiskAnalysisResult
 from atlas.analysis_engine.valuation.models import ValuationEngineResult
 from atlas.decision_engine.contracts import (
     BusinessEvaluationResult,
@@ -73,13 +74,26 @@ class UnavailableCapability:
 
 @dataclass(frozen=True)
 class RiskSection:
-    """`findings` holds every `Finding` this sprint's pipeline could
-    honestly produce -- today, only `RiskCategory.THESIS_RISK`
-    (contradicting evidence against the recorded thesis), reused
-    directly from Reasoning's own `ContradictionSummary`. The other
-    seven categories in `atlas.analysis_engine.contracts.RiskCategory`
-    are real, named, and simply produce zero Findings until their data
-    source exists -- see that enum's own per-member docstring."""
+    """`findings` holds every generic `Finding` in `CanonicalAnalysis
+    .findings` tagged with a `risk_category` in `details` -- a filter
+    over the flat list, not a second computation (`pipeline.py`'s own
+    module docstring). ATLAS-020 populated this from exactly one source
+    (the per-observation `CONTRADICTING_EVIDENCE` Findings for
+    `THESIS_RISK`); ATLAS-025 added a second, additive source (one
+    `RISK_CATEGORY_ASSESSED` Finding per category in `atlas.
+    analysis_engine.risk.models.EVALUATED_RISK_CATEGORIES`), reusing the
+    exact same `details["risk_category"]` tag -- `RiskSection` itself,
+    and this filter, needed zero changes to pick up the new Findings.
+
+    **This is a legacy/compatibility view, not the canonical Risk
+    result.** A consumer that wants the full, structured Risk conclusion
+    -- `status`, `missing_evidence`, `confidence`, per category -- reads
+    `CanonicalAnalysis.risk_analysis` instead, the same
+    "`business`/`business_analysis`" and "`valuation`/`valuation_engine`"
+    relationship this object already establishes for its other two
+    additive sections. `RiskSection` is kept, unmodified, purely for
+    backward compatibility with any existing reader of the flat
+    `risk_category`-tagged Finding list."""
 
     findings: tuple[Finding, ...]
 
@@ -111,6 +125,12 @@ class CanonicalAnalysis:
     # unchanged; this is a second, richer section, the same pattern
     # business_analysis already established relative to `business`) -------
     valuation_engine: ValuationEngineResult
+
+    # -- New in ATLAS-025, real (additive -- `risk` above (RiskSection,
+    # ATLAS-020's flat, tag-filtered view) keeps its exact prior meaning
+    # unchanged; this is a second, richer section, the same pattern
+    # business_analysis/valuation_engine already established) ------------
+    risk_analysis: RiskAnalysisResult
 
     # -- New this sprint, honestly not yet implemented -----------------
     catalysts: UnavailableCapability

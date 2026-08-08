@@ -53,6 +53,8 @@ from atlas.analysis_engine.findings import Finding, FindingKind, FindingProducer
 from atlas.analysis_engine.models import CanonicalAnalysis, Identity, RiskSection, UnavailableCapability
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
 from atlas.analysis_engine.recommendation import evaluate_recommendation_gate
+from atlas.analysis_engine.risk.models import RiskAnalysisResult
+from atlas.analysis_engine.risk.pipeline import evaluate_risk
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, ValuationStatus
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
 from atlas.analysis_engine.valuation.models import ValuationEngineResult
@@ -378,6 +380,31 @@ def _valuation_method_findings(valuation_engine: ValuationEngineResult) -> tuple
     )
 
 
+def _risk_category_findings(risk_analysis: RiskAnalysisResult) -> tuple[Finding, ...]:
+    """Project each rich `RiskFinding` (ATLAS-025) onto the generic,
+    flat `Finding` shape -- mirrors `_business_category_findings`/
+    `_valuation_method_findings` exactly. `details["risk_category"]`
+    reuses the exact key `RiskSection`'s pre-existing filter already
+    checks (`risk_findings = tuple(f for f in findings if
+    "risk_category" in f.details)`, below), so these new Findings are
+    picked up into `RiskSection` automatically -- zero changes to that
+    filter or to `RiskSection` itself. The richer type stays on
+    `CanonicalAnalysis.risk_analysis.findings`."""
+    return tuple(
+        Finding(
+            id=f"{FindingKind.RISK_CATEGORY_ASSESSED.value}:{risk_finding.category.value}",
+            kind=FindingKind.RISK_CATEGORY_ASSESSED,
+            severity=risk_finding.severity,
+            details={"risk_category": risk_finding.category.value, "status": risk_finding.status.value},
+            evidence_references=risk_finding.supporting_facts + risk_finding.contradicting_facts,
+            confidence=risk_finding.confidence,
+            producer=FindingProducer.RISK_ANALYSIS,
+            provenance=risk_finding.provenance,
+        )
+        for risk_finding in risk_analysis.findings
+    )
+
+
 def assemble_analysis(
     engine_input: DecisionEngineInput,
     decision_output: DecisionEngineOutput,
@@ -433,6 +460,15 @@ def assemble_analysis(
     valuation_conclusive = fcf_yield_finding.status not in (
         ValuationStatus.NOT_EVALUATED,
         ValuationStatus.INSUFFICIENT_INPUT,
+    )
+
+    risk_analysis = evaluate_risk(
+        business_analysis,
+        business_facts,
+        valuation_engine,
+        reasoning.contradicting_evidence,
+        evidence_coverage=confidence,
+        evaluated_at=generated_at,
     )
 
     conviction_finding_id = FindingKind.CONVICTION_ASSESSED.value
@@ -507,6 +543,7 @@ def assemble_analysis(
         + (recommendation_finding,)
         + _business_category_findings(business_analysis)
         + _valuation_method_findings(valuation_engine)
+        + _risk_category_findings(risk_analysis)
     )
 
     risk_findings = tuple(finding for finding in findings if "risk_category" in finding.details)
@@ -524,6 +561,7 @@ def assemble_analysis(
         findings=findings,
         business_analysis=business_analysis,
         valuation_engine=valuation_engine,
+        risk_analysis=risk_analysis,
         catalysts=UnavailableCapability(reason=CapabilityStatus.NOT_YET_IMPLEMENTED),
         scenario_analysis=UnavailableCapability(reason=CapabilityStatus.NOT_YET_IMPLEMENTED),
         generated_at=generated_at,

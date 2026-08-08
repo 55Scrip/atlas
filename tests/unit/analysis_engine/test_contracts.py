@@ -1,17 +1,18 @@
-"""Tests for `atlas.analysis_engine.contracts` (ATLAS-020 Phase 8) --
-confirms the `RiskCategory` taxonomy is exactly the closed set this
-sprint designed (the sprint's own eight suggested categories plus the
-one this package adds, `THESIS_RISK`) and that `CapabilityStatus`
-stays a single-member "not yet implemented" marker, never a general
-status enum."""
+"""Tests for `atlas.analysis_engine.contracts` (ATLAS-020 Phase 8,
+extended ATLAS-025 Phase 3) -- confirms the `RiskCategory` taxonomy is
+exactly the closed set this sprint designed (the original sprint's
+eight suggested categories, plus `THESIS_RISK` (ATLAS-020) and
+`VALUATION_RISK` (ATLAS-025)) and that `CapabilityStatus` stays a
+single-member "not yet implemented" marker, never a general status
+enum."""
 from __future__ import annotations
 
 from atlas.analysis_engine.contracts import CapabilityStatus, RiskCategory
 
 
 class TestRiskCategoryTaxonomy:
-    def test_exactly_nine_members(self):
-        assert len(RiskCategory) == 9
+    def test_exactly_ten_members(self):
+        assert len(RiskCategory) == 10
 
     def test_contains_all_eight_sprint_suggested_categories(self):
         expected = {
@@ -26,8 +27,9 @@ class TestRiskCategoryTaxonomy:
         }
         assert expected.issubset({member.value for member in RiskCategory})
 
-    def test_contains_the_one_self_added_producible_category(self):
+    def test_contains_the_two_self_added_categories(self):
         assert RiskCategory.THESIS_RISK.value == "thesis_risk"
+        assert RiskCategory.VALUATION_RISK.value == "valuation_risk"
 
     def test_is_a_closed_string_enum(self):
         assert issubclass(RiskCategory, str)

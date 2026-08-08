@@ -262,12 +262,28 @@ class TestFindingsAssembly:
 
 
 class TestRiskSection:
-    def test_no_risk_findings_when_there_is_no_contradicting_evidence(self):
+    """ATLAS-025 made `RiskSection` additive: it now always carries the
+    four `RISK_CATEGORY_ASSESSED` projections (one per evaluated Risk
+    category) alongside whatever pre-existing per-observation
+    `CONTRADICTING_EVIDENCE` Findings exist -- so it is never empty,
+    unlike ATLAS-020's original "only THESIS_RISK, only when there is a
+    contradiction" behavior."""
+
+    def test_four_risk_category_assessed_findings_always_present(self):
         engine_input, output = run_populated()
         analysis = assemble_analysis(
             engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
         )
-        assert analysis.risk.findings == ()
+        categories = {f.details["risk_category"] for f in analysis.risk.findings}
+        assert categories == {"business_risk", "financial_risk", "valuation_risk", "thesis_risk"}
+
+    def test_no_per_observation_contradiction_finding_when_there_is_none(self):
+        engine_input, output = run_populated()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
+        )
+        contradiction_findings = [f for f in analysis.risk.findings if f.kind is FindingKind.CONTRADICTING_EVIDENCE]
+        assert contradiction_findings == []
 
     def test_thesis_risk_finding_appears_when_evidence_contradicts_an_observation(self):
         case_id = CaseId()
@@ -283,10 +299,20 @@ class TestRiskSection:
         analysis = assemble_analysis(
             engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
         )
-        assert len(analysis.risk.findings) == 1
-        risk_finding = analysis.risk.findings[0]
-        assert risk_finding.details["risk_category"] == "thesis_risk"
-        assert risk_finding in analysis.findings
+        # Four RISK_CATEGORY_ASSESSED (always present) + one legacy
+        # per-observation CONTRADICTING_EVIDENCE finding for this case.
+        assert len(analysis.risk.findings) == 5
+        contradiction_findings = [f for f in analysis.risk.findings if f.kind is FindingKind.CONTRADICTING_EVIDENCE]
+        assert len(contradiction_findings) == 1
+        assert contradiction_findings[0].details["risk_category"] == "thesis_risk"
+        assert contradiction_findings[0] in analysis.findings
+
+        thesis_summary = next(
+            f
+            for f in analysis.risk.findings
+            if f.kind is FindingKind.RISK_CATEGORY_ASSESSED and f.details["risk_category"] == "thesis_risk"
+        )
+        assert thesis_summary.details["status"] == "high"
 
     def test_risk_findings_are_always_a_subset_of_the_top_level_findings(self):
         case_id = CaseId()
