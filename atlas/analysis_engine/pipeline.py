@@ -65,7 +65,7 @@ from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, Valua
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
 from atlas.analysis_engine.valuation.models import ValuationEngineResult
 from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
-from atlas.decision_engine.contracts import DecisionEngineInput, DecisionEngineOutput
+from atlas.decision_engine.contracts import DecisionEngineInput, DecisionEngineOutput, OpenQuestion, OpenQuestionKind
 
 __all__ = ["assemble_analysis"]
 
@@ -411,6 +411,37 @@ def _risk_category_findings(risk_analysis: RiskAnalysisResult) -> tuple[Finding,
     )
 
 
+def _effective_open_questions(
+    open_questions: tuple[OpenQuestion, ...], *, valuation_conclusive: bool
+) -> tuple[OpenQuestion, ...]:
+    """ATLAS-027 Phase 2: `reasoning.finding.open_questions`, corrected
+    for exactly one proven-stale case -- never a wholesale filter, never
+    touched to artificially raise Conviction.
+
+    `OpenQuestionKind.VALUATION_THESIS_NOT_DOCUMENTED` is built by
+    `atlas.decision_engine.stages.reasoning` from decision_engine's own
+    `ValuationResult.substantive_valuation` -- a hardcoded constant,
+    always `INSUFFICIENT_INPUT`, structurally blind to this package's
+    own real `valuation_engine.cash_flow.evaluate_fcf_yield_relative`.
+    When that real method reaches a genuine conclusion
+    (`valuation_conclusive`), the decision_engine-level question no
+    longer describes `CanonicalAnalysis`'s true state and is omitted.
+    Every other question -- `BUSINESS_DURABILITY_NOT_ASSESSABLE`,
+    every `PORTFOLIO_FACTOR_NOT_ASSESSABLE` -- is untouched: both were
+    individually audited and confirmed genuinely, permanently
+    unresolved (see this function's own module docstring reference in
+    `models.py::CanonicalAnalysis.open_questions`), not merely
+    inconvenient for reaching a higher Conviction level.
+    """
+    if not valuation_conclusive:
+        return open_questions
+    return tuple(
+        question
+        for question in open_questions
+        if question.kind is not OpenQuestionKind.VALUATION_THESIS_NOT_DOCUMENTED
+    )
+
+
 def assemble_analysis(
     engine_input: DecisionEngineInput,
     decision_output: DecisionEngineOutput,
@@ -503,13 +534,15 @@ def assemble_analysis(
         if risk_finding.category in (RiskCategory.FINANCIAL_RISK, RiskCategory.VALUATION_RISK)
     )
 
+    open_questions = _effective_open_questions(reasoning.open_questions, valuation_conclusive=valuation_conclusive)
+
     conviction_finding_id = FindingKind.CONVICTION_ASSESSED.value
     conviction = calculate_conviction(
         business_state=decision_output.business_evaluation.state,
         valuation_state=decision_output.valuation.state,
         evidence_coverage=confidence,
         has_contradicting_evidence=bool(reasoning.contradicting_evidence.observation_classifications),
-        has_open_questions=bool(reasoning.open_questions),
+        has_open_questions=bool(open_questions),
         is_thesis_stale=is_thesis_stale,
         business_conclusive=business_conclusive,
         valuation_conclusive=valuation_conclusive,
@@ -596,6 +629,7 @@ def assemble_analysis(
         business_analysis=business_analysis,
         valuation_engine=valuation_engine,
         risk_analysis=risk_analysis,
+        open_questions=open_questions,
         catalysts=UnavailableCapability(reason=CapabilityStatus.NOT_YET_IMPLEMENTED),
         scenario_analysis=UnavailableCapability(reason=CapabilityStatus.NOT_YET_IMPLEMENTED),
         generated_at=generated_at,

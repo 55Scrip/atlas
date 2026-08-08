@@ -44,6 +44,7 @@ from atlas.analysis_engine.valuation.models import ValuationEngineResult
 from atlas.decision_engine.contracts import (
     BusinessEvaluationResult,
     EvidenceCoverageLevel,
+    OpenQuestion,
     PortfolioIntelligenceResult,
     ReasoningResult,
     ValuationResult,
@@ -131,6 +132,29 @@ class CanonicalAnalysis:
     # unchanged; this is a second, richer section, the same pattern
     # business_analysis/valuation_engine already established) ------------
     risk_analysis: RiskAnalysisResult
+
+    # -- New in ATLAS-027, real (additive -- `reasoning` above (decision_engine's
+    # own ReasoningResult, reused verbatim) keeps its exact prior open_questions
+    # tuple unchanged; this is a corrected, CanonicalAnalysis-level view) ---
+    open_questions: tuple[OpenQuestion, ...]
+    """`reasoning.finding.open_questions`, minus any question proven
+    stale by a newer `analysis_engine` capability decision_engine's own
+    locked stages cannot see. ATLAS-027 Phase 2's audit found exactly
+    one such case: `OpenQuestionKind.VALUATION_THESIS_NOT_DOCUMENTED`
+    checks decision_engine's own permanently-locked substantive
+    Valuation field, structurally blind to this package's own real
+    `valuation_engine`. When `valuation_engine`'s `FCF_YIELD_RELATIVE`
+    finding reaches a real conclusion, that specific question no longer
+    reflects `CanonicalAnalysis`'s true state and is omitted here.
+    `BUSINESS_DURABILITY_NOT_ASSESSABLE` and every
+    `PORTFOLIO_FACTOR_NOT_ASSESSABLE` entry are never removed --
+    confirmed genuinely, permanently unresolved (Durability has no data
+    source at all; the seven portfolio factors are correctly out of
+    decision_engine's/this package's own reach, an architectural
+    boundary, not staleness -- the same boundary `atlas.analysis_engine
+    .risk`'s own `PORTFOLIO_RISK` category respects). This field feeds
+    `conviction.calculate_conviction`'s own `has_open_questions` input;
+    `reasoning.finding.open_questions` itself is never mutated."""
 
     # -- New this sprint, honestly not yet implemented -----------------
     catalysts: UnavailableCapability

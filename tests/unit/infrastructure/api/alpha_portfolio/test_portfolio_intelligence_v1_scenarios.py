@@ -39,6 +39,19 @@ def _open_case(client) -> str:
     return client.post("/cases").json()["caseId"]
 
 
+def _holding_case_id(client, ticker: str) -> str:
+    """ATLAS-027: portfolio import now auto-generates and links a Case
+    for every recognized holding, so tests that need "the Case already
+    linked to this holding" read it back from the holdings list rather
+    than manually opening and linking one (that manual step is now a
+    no-op: `link_case_to_holding` is idempotent and the holding already
+    has a real, auto-created `case_id` by the time any test runs)."""
+    view = client.get("/alpha-portfolio").json()
+    holding = next(h for h in view["holdings"] if h["ticker"] == ticker)
+    assert holding["caseId"] is not None
+    return holding["caseId"]
+
+
 def _record_decision(client, *, case_id: str, subject: str, decision_type: str = "BUY", **overrides) -> dict:
     payload = {
         "caseId": case_id,
@@ -118,7 +131,17 @@ class TestOverviewReusesPortfolioStatus:
 
 
 class TestMissingCase:
-    def test_missing_case_produces_consider_risk_and_key_finding(self, client):
+    """ATLAS-027: importing a recognized holding now auto-generates and
+    links a canonical Case, so the `MISSING_CASE`/`open_investment_case`
+    signal this class used to prove is no longer reachable through a
+    normal import -- proving that obsolescence directly (Phase 26) is
+    this class's job now. The underlying detection mechanism itself
+    (`holding.case_id is None`) is unchanged and still real; it fires
+    only when Case generation genuinely could not run -- proven at the
+    service level in `tests/unit/alpha/portfolio/test_case_generation_wiring.py`.
+    """
+
+    def test_import_no_longer_produces_missing_case_or_open_investment_case(self, client):
         client.post(
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AMD", "weightPercent": 20}]},
@@ -126,15 +149,20 @@ class TestMissingCase:
         body = client.get("/alpha-portfolio/intelligence").json()
 
         considers = [c for c in body["considerItems"] if c["ticker"] == "AMD"]
-        assert any(c["kind"] == "open_investment_case" for c in considers)
-        assert all(c["confidence"] == "not_applicable" for c in considers if c["kind"] == "open_investment_case")
+        assert not any(c["kind"] == "open_investment_case" for c in considers)
 
         risks = [r for r in body["riskSignals"] if r["ticker"] == "AMD"]
-        assert any(r["kind"] == "missing_case" for r in risks)
+        assert not any(r["kind"] == "missing_case" for r in risks)
 
         findings = {f["kind"]: f for f in body["keyFindings"]}
-        assert "multiple_missing_cases" in findings
-        assert "AMD" in findings["multiple_missing_cases"]["tickers"]
+        assert "multiple_missing_cases" not in findings
+
+    def test_import_links_a_real_case_id_to_the_holding(self, client):
+        client.post(
+            "/alpha-portfolio/import",
+            json={"holdings": [{"ticker": "AMD", "weightPercent": 20}]},
+        )
+        assert _holding_case_id(client, "AMD") is not None
 
 
 class TestEvidenceGaps:
@@ -143,8 +171,7 @@ class TestEvidenceGaps:
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AMD", "weightPercent": 20}]},
         )
-        case_id = _open_case(client)
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+        case_id = _holding_case_id(client, "AMD")
         _record_decision(client, case_id=case_id, subject="AMD")
 
         body = client.get("/alpha-portfolio/intelligence").json()
@@ -163,8 +190,7 @@ class TestEvidenceGaps:
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AMD", "weightPercent": 20}]},
         )
-        case_id = _open_case(client)
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+        case_id = _holding_case_id(client, "AMD")
         observation = _record_observation(client, case_id=case_id, subject="AMD")
         _record_evidence(client, observation_id=observation["observationId"])
 
@@ -182,8 +208,7 @@ class TestStaleReview:
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AMD", "weightPercent": 20}]},
         )
-        case_id = _open_case(client)
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+        case_id = _holding_case_id(client, "AMD")
         old_timestamp = (datetime.now(timezone.utc) - timedelta(days=200)).isoformat()
         decision = _record_decision(client, case_id=case_id, subject="AMD", decidedAt=old_timestamp)
         _record_outcome(client, decision)
@@ -210,8 +235,7 @@ class TestPendingWorkflowUpdateCase:
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AMD", "weightPercent": 20}]},
         )
-        case_id = _open_case(client)
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+        case_id = _holding_case_id(client, "AMD")
         _record_decision(client, case_id=case_id, subject="AMD")
 
         body = client.get("/alpha-portfolio/intelligence").json()

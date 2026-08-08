@@ -875,3 +875,146 @@ class TestConvictionEndToEnd:
             engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
         )
         assert first.conviction == second.conviction
+
+
+class TestOpenQuestionsMigration:
+    """ATLAS-027 Phase 2/25: `CanonicalAnalysis.open_questions` corrects
+    exactly one stale question -- `VALUATION_THESIS_NOT_DOCUMENTED` --
+    when `analysis_engine`'s own real Valuation is conclusive, while
+    `reasoning.finding.open_questions` (decision_engine's own object)
+    stays completely unmutated, and every other question remains."""
+
+    @staticmethod
+    def _valuation_records():
+        from datetime import date
+
+        from atlas.analysis_engine.business_data.models import RawBusinessDocument
+        from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
+
+        def make(source_kind, period_end, identifier, **metadata):
+            document = RawBusinessDocument(
+                identifier=identifier,
+                company="ASML",
+                source_kind=source_kind,
+                published_at=GENERATED_AT,
+                provider_id="structured_test",
+                raw_reference=f"ref://{identifier}",
+                content_hash=f"hash-{identifier}",
+                language="en",
+                period_end=period_end,
+                metadata=metadata,
+            )
+            result = ingest(document, evaluated_at=GENERATED_AT)
+            assert isinstance(result, IngestedRecord), result
+            return result.record
+
+        return (
+            make("annual_report", date(2022, 12, 31), "fy22", free_cash_flow=100.0),
+            make("annual_report", date(2023, 12, 31), "fy23", free_cash_flow=110.0),
+            make("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
+            make("market_data_snapshot", date(2023, 12, 31), "m23", share_price=52.0, shares_outstanding=100.0),
+        )
+
+    def test_valuation_thesis_question_present_when_valuation_is_not_conclusive(self):
+        from atlas.decision_engine.contracts import OpenQuestionKind
+
+        engine_input, output = run_populated()
+        analysis = assemble_analysis(engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT)
+        assert any(q.kind is OpenQuestionKind.VALUATION_THESIS_NOT_DOCUMENTED for q in analysis.open_questions)
+
+    def test_valuation_thesis_question_retired_when_valuation_is_conclusive(self):
+        from atlas.decision_engine.contracts import OpenQuestionKind
+
+        engine_input, output = run_populated()
+        analysis = assemble_analysis(
+            engine_input,
+            output,
+            is_thesis_stale=False,
+            business_records=self._valuation_records(),
+            generated_at=GENERATED_AT,
+        )
+        assert not any(q.kind is OpenQuestionKind.VALUATION_THESIS_NOT_DOCUMENTED for q in analysis.open_questions)
+
+    def test_durability_question_never_retired(self):
+        """Durability is a different concept from Growth/Capital
+        Allocation -- real Business/Valuation data must never make this
+        question disappear."""
+        from atlas.decision_engine.contracts import OpenQuestionKind
+
+        engine_input, output = run_populated()
+        analysis = assemble_analysis(
+            engine_input,
+            output,
+            is_thesis_stale=False,
+            business_records=self._valuation_records(),
+            generated_at=GENERATED_AT,
+        )
+        assert any(q.kind is OpenQuestionKind.BUSINESS_DURABILITY_NOT_ASSESSABLE for q in analysis.open_questions)
+
+    def test_all_seven_portfolio_factor_questions_never_retired(self):
+        from atlas.decision_engine.contracts import OpenQuestionKind
+
+        engine_input, output = run_populated()
+        analysis = assemble_analysis(
+            engine_input,
+            output,
+            is_thesis_stale=False,
+            business_records=self._valuation_records(),
+            generated_at=GENERATED_AT,
+        )
+        matches = [q for q in analysis.open_questions if q.kind is OpenQuestionKind.PORTFOLIO_FACTOR_NOT_ASSESSABLE]
+        assert len(matches) == 7
+
+    def test_reasoning_finding_open_questions_is_never_mutated(self):
+        """The correction lives only on `CanonicalAnalysis.open_questions`
+        -- decision_engine's own `ReasoningResult` is reused verbatim,
+        never edited."""
+        engine_input, output = run_populated()
+        original = output.reasoning.finding.open_questions
+        assemble_analysis(
+            engine_input,
+            output,
+            is_thesis_stale=False,
+            business_records=self._valuation_records(),
+            generated_at=GENERATED_AT,
+        )
+        assert output.reasoning.finding.open_questions == original
+
+    def test_ceiling_is_honestly_unchanged_by_this_fix_alone(self):
+        """The brutally honest finding this sprint's own audit surfaced:
+        retiring the one genuinely stale question does not, by itself,
+        let Conviction exceed MODERATE -- Durability and the seven
+        Portfolio-factor questions remain, so `has_open_questions` stays
+        True either way."""
+        engine_input, output = run_populated()
+        without_valuation = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
+        )
+        with_valuation = assemble_analysis(
+            engine_input,
+            output,
+            is_thesis_stale=False,
+            business_records=self._valuation_records(),
+            generated_at=GENERATED_AT,
+        )
+        assert len(with_valuation.open_questions) == len(without_valuation.open_questions) - 1
+        assert with_valuation.open_questions != without_valuation.open_questions
+        assert with_valuation.conviction.level == without_valuation.conviction.level
+
+    def test_determinism(self):
+        engine_input, output = run_populated()
+        first = assemble_analysis(
+            engine_input,
+            output,
+            is_thesis_stale=False,
+            business_records=self._valuation_records(),
+            generated_at=GENERATED_AT,
+        )
+        second = assemble_analysis(
+            engine_input,
+            output,
+            is_thesis_stale=False,
+            business_records=self._valuation_records(),
+            generated_at=GENERATED_AT,
+        )
+        assert first.open_questions == second.open_questions

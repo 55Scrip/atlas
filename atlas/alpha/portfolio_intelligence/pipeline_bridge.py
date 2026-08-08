@@ -37,7 +37,7 @@ from atlas.decision_engine.contracts import (
 from atlas.decision_engine.pipeline import run_pipeline
 
 
-def run_decision_engine_for_case(
+def build_decision_engine_input(
     case_id: str,
     *,
     holding: AlphaHolding | None,
@@ -47,8 +47,15 @@ def run_decision_engine_for_case(
     outcomes: tuple,
     trade_log_entries: tuple[AlphaTradeLogEntry, ...],
     evaluated_at: datetime,
-) -> DecisionEngineOutput:
-    """Run one Decision Engine pipeline pass for one Case.
+) -> DecisionEngineInput:
+    """Assemble one `DecisionEngineInput` for one Case -- the pure
+    construction half of `run_decision_engine_for_case`, split out
+    (ATLAS-027) so a caller that needs the `DecisionEngineInput` itself
+    (`atlas.analysis_engine.pipeline.assemble_analysis` requires one,
+    per its own docstring) does not have to re-derive this assembly a
+    second time. `run_decision_engine_for_case` below is unchanged in
+    behavior and signature -- it simply calls this function, then
+    `run_pipeline`, exactly as it always did.
 
     `outcomes` is deliberately untyped (not `tuple[Outcome, ...]`):
     `atlas.alpha` is forbidden from importing
@@ -84,7 +91,7 @@ def run_decision_engine_for_case(
         if holding is not None
         else None
     )
-    engine_input = DecisionEngineInput(
+    return DecisionEngineInput(
         case_id=CaseId(value=uuid.UUID(case_id)),
         evaluated_at=evaluated_at,
         decisions=decisions,
@@ -93,6 +100,32 @@ def run_decision_engine_for_case(
         evidence=evidence,
         portfolio_holding=portfolio_holding,
         trade_log=trade_log,
+    )
+
+
+def run_decision_engine_for_case(
+    case_id: str,
+    *,
+    holding: AlphaHolding | None,
+    decisions: tuple[Decision, ...],
+    observations: tuple[Observation, ...],
+    evidence: tuple[Evidence, ...],
+    outcomes: tuple,
+    trade_log_entries: tuple[AlphaTradeLogEntry, ...],
+    evaluated_at: datetime,
+) -> DecisionEngineOutput:
+    """Run one Decision Engine pipeline pass for one Case. See
+    `build_decision_engine_input`'s own docstring for the assembly
+    rules this delegates to; unchanged in behavior since ATLAS-016."""
+    engine_input = build_decision_engine_input(
+        case_id,
+        holding=holding,
+        decisions=decisions,
+        observations=observations,
+        evidence=evidence,
+        outcomes=outcomes,
+        trade_log_entries=trade_log_entries,
+        evaluated_at=evaluated_at,
     )
     return run_pipeline(engine_input, generated_at=evaluated_at)
 

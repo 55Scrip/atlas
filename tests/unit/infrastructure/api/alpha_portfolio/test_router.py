@@ -94,7 +94,8 @@ class TestImportPortfolio:
         assert body["numberOfHoldings"] == 1
         assert body["hasAbsoluteValues"] is False
         assert body["totalValue"] is None
-        assert body["holdings"][0]["caseId"] is None
+        # ATLAS-027: import auto-generates and links a real Case.
+        assert body["holdings"][0]["caseId"] is not None
         assert body["holdings"][0]["reconciliationStatus"] == "NONE"
 
     def test_rejects_empty_holdings_with_400(self, client):
@@ -284,7 +285,14 @@ class TestFromScratch:
 class TestHoldingCaseLink:
     """Alpha Sprint 1A Foundation Patch, Defect 1: a holding must reuse
     its existing Investment Case rather than creating a new one on every
-    "Open Investment Case" click."""
+    "Open Investment Case" click.
+
+    ATLAS-027: import now auto-generates and links a real Case
+    immediately, so every scenario here starts from "the holding
+    already has a real `case_id`" rather than "no case_id yet" -- the
+    same idempotent get-or-set property is proven from that new,
+    correct starting state instead.
+    """
 
     def test_returns_404_before_a_portfolio_is_established(self, client):
         response = client.post(
@@ -302,26 +310,39 @@ class TestHoldingCaseLink:
         )
         assert response.status_code == 404
 
-    def test_first_call_persists_the_candidate_case_id(self, client):
+    def test_import_already_persisted_a_real_case_id(self, client):
         client.post(
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "NVDA", "weightPercent": 100}]},
         )
+        view = client.get("/alpha-portfolio").json()
+        assert view["holdings"][0]["caseId"] is not None
+
+    def test_case_link_ignores_the_candidate_and_returns_the_auto_created_case(self, client):
+        client.post(
+            "/alpha-portfolio/import",
+            json={"holdings": [{"ticker": "NVDA", "weightPercent": 100}]},
+        )
+        auto_case_id = client.get("/alpha-portfolio").json()["holdings"][0]["caseId"]
+
         response = client.post(
             "/alpha-portfolio/holdings/NVDA/case-link", json={"candidateCaseId": "case-1"}
         )
         assert response.status_code == 200
-        assert response.json()["caseId"] == "case-1"
+        assert response.json()["caseId"] == auto_case_id
+        assert response.json()["caseId"] != "case-1"
 
         view = client.get("/alpha-portfolio").json()
-        assert view["holdings"][0]["caseId"] == "case-1"
+        assert view["holdings"][0]["caseId"] == auto_case_id
 
-    def test_repeated_calls_reuse_the_first_case_id(self, client):
+    def test_repeated_calls_reuse_the_same_auto_created_case_id(self, client):
         client.post(
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "NVDA", "weightPercent": 100}]},
         )
-        client.post("/alpha-portfolio/holdings/NVDA/case-link", json={"candidateCaseId": "case-1"})
+        auto_case_id = client.get("/alpha-portfolio").json()["holdings"][0]["caseId"]
+
+        first = client.post("/alpha-portfolio/holdings/NVDA/case-link", json={"candidateCaseId": "case-1"})
         second = client.post(
             "/alpha-portfolio/holdings/NVDA/case-link", json={"candidateCaseId": "case-2"}
         )
@@ -329,19 +350,22 @@ class TestHoldingCaseLink:
             "/alpha-portfolio/holdings/NVDA/case-link", json={"candidateCaseId": "case-3"}
         )
 
-        assert second.json()["caseId"] == "case-1"
-        assert third.json()["caseId"] == "case-1"
+        assert first.json()["caseId"] == auto_case_id
+        assert second.json()["caseId"] == auto_case_id
+        assert third.json()["caseId"] == auto_case_id
 
     def test_ticker_lookup_is_normalization_insensitive(self, client):
         client.post(
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "NVDA", "weightPercent": 100}]},
         )
+        auto_case_id = client.get("/alpha-portfolio").json()["holdings"][0]["caseId"]
+
         response = client.post(
             "/alpha-portfolio/holdings/nvda /case-link", json={"candidateCaseId": "case-1"}
         )
         assert response.status_code == 200
-        assert response.json()["caseId"] == "case-1"
+        assert response.json()["caseId"] == auto_case_id
 
 
 class TestHoldingCaseLinkPreservesObservationVisibility:
@@ -351,13 +375,17 @@ class TestHoldingCaseLinkPreservesObservationVisibility:
     same app -- nothing here is mocked."""
 
     def test_reopening_the_reused_case_still_shows_its_observation(self, client):
+        """ATLAS-027: import already auto-created and linked NVDA's real
+        Case, so the Observation is recorded against that Case directly
+        (there is no unlinked holding left to manually "open" a Case
+        for) -- then a "reopen" click with an unrelated candidate Case
+        must still resolve back to the same, already-linked one."""
         client.post(
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "NVDA", "weightPercent": 100}]},
         )
-
-        real_case = client.post("/cases").json()
-        real_case_id = real_case["caseId"]
+        real_case_id = client.get("/alpha-portfolio").json()["holdings"][0]["caseId"]
+        assert real_case_id is not None
 
         observation = client.post(
             "/observations",
@@ -370,21 +398,15 @@ class TestHoldingCaseLinkPreservesObservationVisibility:
         )
         assert observation.status_code == 201
 
-        first_link = client.post(
-            "/alpha-portfolio/holdings/NVDA/case-link",
-            json={"candidateCaseId": real_case_id},
-        )
-        assert first_link.json()["caseId"] == real_case_id
-
-        # A second "Open Investment Case" click with a different candidate
-        # (as if the frontend had created a fresh, unlinked Case) must
-        # still resolve back to the same, already-linked real Case.
+        # A "Open Investment Case" click with a different candidate (as
+        # if the frontend had created a fresh, unlinked Case) must still
+        # resolve back to the same, already-linked real Case.
         another_case = client.post("/cases").json()
-        second_link = client.post(
+        link = client.post(
             "/alpha-portfolio/holdings/NVDA/case-link",
             json={"candidateCaseId": another_case["caseId"]},
         )
-        assert second_link.json()["caseId"] == real_case_id
+        assert link.json()["caseId"] == real_case_id
 
         all_observations = client.get("/observations").json()
         observations_for_case = [o for o in all_observations if o["caseId"] == real_case_id]

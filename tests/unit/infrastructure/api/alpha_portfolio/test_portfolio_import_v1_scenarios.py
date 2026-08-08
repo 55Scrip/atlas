@@ -42,6 +42,17 @@ def client():
     return TestClient(app)
 
 
+def _holding_case_id(client, ticker: str) -> str:
+    """ATLAS-027: portfolio import now auto-generates and links a Case
+    for every recognized holding, so tests that need "the Case already
+    linked to this holding" read it back from the holdings list rather
+    than manually opening and linking one."""
+    view = client.get("/alpha-portfolio").json()
+    holding = next(h for h in view["holdings"] if h["ticker"] == ticker)
+    assert holding["caseId"] is not None
+    return holding["caseId"]
+
+
 def _record_decision(client, *, subject: str) -> dict:
     case_id = client.post("/cases").json()["caseId"]
     response = client.post(
@@ -154,14 +165,18 @@ class TestInvestmentCaseContinuityAcrossReplacement:
     """
 
     def test_amd_keeps_its_existing_case_link_after_replacement(self, client):
+        """ATLAS-027 updates Phase 10's original worked example: import
+        now auto-generates and links AMD's and NVDA's Cases immediately
+        (no manual `case-link` needed), and META -- a brand-new holding
+        introduced by the replacement -- is *also* auto-cased by
+        `reconcile_replace_allocation` ("new holding added -> one new
+        Case"), rather than staying `caseId: None` as it did before
+        automatic generation existed."""
         client.post(
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AMD", "weightPercent": 50}, {"ticker": "NVDA", "weightPercent": 30}]},
         )
-        case_a = client.post("/cases").json()["caseId"]
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_a})
-        case_b = client.post("/cases").json()["caseId"]
-        client.post("/alpha-portfolio/holdings/NVDA/case-link", json={"candidateCaseId": case_b})
+        case_a = _holding_case_id(client, "AMD")
 
         response = client.post(
             "/alpha-portfolio/reconcile",
@@ -178,7 +193,8 @@ class TestInvestmentCaseContinuityAcrossReplacement:
         amd = next(h for h in body["holdings"] if h["ticker"] == "AMD")
         meta = next(h for h in body["holdings"] if h["ticker"] == "META")
         assert amd["caseId"] == case_a
-        assert meta["caseId"] is None
+        assert meta["caseId"] is not None
+        assert meta["caseId"] != case_a
         assert {h["ticker"] for h in body["holdings"]} == {"AMD", "META"}
 
     def test_nvdas_case_is_not_deleted_when_it_leaves_the_active_portfolio(self, client):
@@ -186,10 +202,7 @@ class TestInvestmentCaseContinuityAcrossReplacement:
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AMD", "weightPercent": 50}, {"ticker": "NVDA", "weightPercent": 30}]},
         )
-        case_a = client.post("/cases").json()["caseId"]
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_a})
-        case_b = client.post("/cases").json()["caseId"]
-        client.post("/alpha-portfolio/holdings/NVDA/case-link", json={"candidateCaseId": case_b})
+        case_b = _holding_case_id(client, "NVDA")
 
         client.post(
             "/alpha-portfolio/reconcile",
@@ -211,8 +224,7 @@ class TestInvestmentCaseContinuityAcrossReplacement:
 
     def test_re_linking_amd_after_replacement_does_not_create_a_duplicate_case(self, client):
         client.post("/alpha-portfolio/import", json={"holdings": [{"ticker": "AMD", "weightPercent": 50}]})
-        case_a = client.post("/cases").json()["caseId"]
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_a})
+        case_a = _holding_case_id(client, "AMD")
 
         client.post(
             "/alpha-portfolio/reconcile",

@@ -17,6 +17,7 @@ import uuid
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 
+from atlas.alpha.case_generation.service import CaseGenerationService
 from atlas.alpha.portfolio.exceptions import (
     AlphaHoldingNotFoundError,
     AlphaPortfolioError,
@@ -280,22 +281,61 @@ class AlphaPortfolioService:
         store: AlphaPortfolioStore,
         trade_log_store: AlphaTradeLogStore | None = None,
         outcome_repository: OutcomeRepository | None = None,
+        case_generation_service: CaseGenerationService | None = None,
     ) -> None:
         self._store = store
         self._trade_log_store = trade_log_store
         self._outcome_repository = outcome_repository
+        self._case_generation_service = case_generation_service
+
+    def _ensure_cases(self, holdings: tuple[AlphaHolding, ...]) -> tuple[AlphaHolding, ...]:
+        """ATLAS-027: every real composition root wires
+        `case_generation_service`; `None` is accepted only so callers
+        that intentionally test unrelated behavior (or don't care about
+        automatic Case existence) may construct this service without it
+        -- in that case every holding is returned exactly as given,
+        `case_id` untouched, the same behavior this method's callers had
+        before ATLAS-027 existed."""
+        if self._case_generation_service is None:
+            return holdings
+        return self._case_generation_service.ensure_cases(holdings)
 
     def import_portfolio(self, request: ImportPortfolioRequest) -> AlphaPortfolioState:
+        """Establish (or re-establish) the Alpha portfolio from an
+        existing-portfolio import.
+
+        ATLAS-027: any `case_id` already linked to a ticker in the
+        *current* state is carried forward into the freshly-built
+        holdings for that same ticker -- mirroring
+        `reconcile_replace_allocation`'s own pre-existing
+        `existing_case_ids` pattern exactly. Before this fix, import
+        always started every holding at `case_id=None`, silently
+        severing every existing Investment Case link on every
+        re-import; that was a real bug, not intended behavior (Phase 5's
+        own "re-import same portfolio -> no new Case" requirement). Every
+        holding that still lacks a `case_id` after that carry-forward
+        -- including every holding on a genuinely first import -- gets
+        one via `_ensure_cases`.
+        """
         if not request.holdings:
             raise AlphaPortfolioValidationError(
                 "An imported portfolio must include at least one holding."
             )
+        previous_state = self._store.get()
+        existing_case_ids = (
+            {holding.ticker: holding.case_id for holding in previous_state.holdings}
+            if previous_state is not None
+            else {}
+        )
         try:
             holdings = tuple(
-                AlphaHolding(
-                    ticker=item.ticker,
-                    weight_percent=item.weight_percent,
-                    value_absolute=item.value_absolute,
+                replace(
+                    AlphaHolding(
+                        ticker=item.ticker,
+                        weight_percent=item.weight_percent,
+                        value_absolute=item.value_absolute,
+                    ),
+                    case_id=existing_case_ids.get(item.ticker.strip().upper()),
                 )
                 for item in request.holdings
             )
@@ -305,6 +345,7 @@ class AlphaPortfolioService:
         _validate_holdings_and_cash(
             holdings, request.cash_weight_percent, request.cash_value_absolute
         )
+        holdings = self._ensure_cases(holdings)
 
         now = _utc_now()
         state = AlphaPortfolioState(
@@ -506,6 +547,14 @@ class AlphaPortfolioService:
         else:
             new_state = _apply_trade_percentage_mode(state, trade_entry, existing)
 
+        # ATLAS-027 Phase 5: a BUY/ADD on a ticker not previously held
+        # creates a brand-new `AlphaHolding` with `case_id=None` (see
+        # `_apply_trade_absolute_mode`/`_apply_trade_percentage_mode`'s
+        # own "else" branches) -- "new holding added -> one new Case."
+        # EXIT only ever removes holdings, so this is always a no-op for
+        # that branch; harmless and correct to apply uniformly.
+        new_state = replace(new_state, holdings=self._ensure_cases(new_state.holdings))
+
         self._store.replace(new_state)
         return new_state
 
@@ -589,6 +638,7 @@ class AlphaPortfolioService:
         _validate_holdings_and_cash(
             holdings, request.cash_weight_percent, request.cash_value_absolute
         )
+        holdings = self._ensure_cases(holdings)
 
         new_state = replace(
             state,

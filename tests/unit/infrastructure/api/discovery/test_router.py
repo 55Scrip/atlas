@@ -16,6 +16,8 @@ from sqlalchemy.pool import StaticPool
 
 from atlas.ai.api.dependencies import get_discovery_provider
 from atlas.ai.discovery_chat import CREATE_OR_OPEN_INVESTMENT_CASE_TOOL, ChatMessage, ProviderReply, ToolCallRequest
+from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_service
+from atlas.alpha.portfolio.service import AlphaPortfolioService
 from atlas.core.infrastructure.api.app import create_app
 from atlas.core.infrastructure.api.case.dependencies import get_case_service
 from atlas.core.infrastructure.api.decision.dependencies import get_decision_engine
@@ -62,9 +64,18 @@ class FailingCaseService:
 def client_factory():
     """Returns a function building a fresh `TestClient` sharing one
     in-memory engine, so each test controls its own provider override
-    without leaking into others."""
+    without leaking into others.
 
-    def _build(provider=None, case_service=None):
+    `disable_case_generation=True` builds `AlphaPortfolioService` with
+    no `CaseGenerationService` wired at all (the same "real composition
+    root omits it" scenario `AlphaPortfolioService._ensure_cases`'s own
+    docstring names) -- import then genuinely leaves every holding's
+    `case_id` at `None`, the only way left to exercise this router's own
+    pre-existing "created"/"failed" tool-execution branches, which only
+    ever fire when a holding truly has no Case yet.
+    """
+
+    def _build(provider=None, case_service=None, disable_case_generation=False):
         engine = create_engine(
             "sqlite:///:memory:",
             future=True,
@@ -77,6 +88,25 @@ def client_factory():
         app.dependency_overrides[get_discovery_provider] = lambda: provider
         if case_service is not None:
             app.dependency_overrides[get_case_service] = lambda: case_service
+        if disable_case_generation:
+
+            def _alpha_portfolio_service_without_case_generation() -> AlphaPortfolioService:
+                from atlas.alpha.portfolio.api.dependencies import (
+                    get_alpha_portfolio_store,
+                    get_alpha_trade_log_store,
+                )
+                from atlas.core.infrastructure.api.knowledge_reference.dependencies import (
+                    get_outcome_repository,
+                )
+
+                store = get_alpha_portfolio_store(engine)
+                trade_log_store = get_alpha_trade_log_store(engine)
+                outcome_repository = get_outcome_repository(engine)
+                return AlphaPortfolioService(store, trade_log_store, outcome_repository, None)
+
+            app.dependency_overrides[get_alpha_portfolio_service] = (
+                _alpha_portfolio_service_without_case_generation
+            )
         return TestClient(app)
 
     return _build
@@ -219,6 +249,8 @@ def test_session_message_history_passed_in_original_order(client_factory):
 
 
 def test_explicit_ticker_produces_a_tool_call_response(client_factory):
+    """ATLAS-027: import already auto-generated and linked META's Case,
+    so the tool correctly reports "opened" (reusing it), not "created"."""
     client = client_factory(ToolCallingFakeProvider(ticker="META"))
     client.post(
         "/alpha-portfolio/import",
@@ -235,21 +267,22 @@ def test_explicit_ticker_produces_a_tool_call_response(client_factory):
     assert body["mode"] == "tool_call"
     assert body["message"] is None
     assert body["toolResult"]["tool"] == "create_or_open_investment_case"
-    assert body["toolResult"]["outcome"] == "created"
+    assert body["toolResult"]["outcome"] == "opened"
     assert body["toolResult"]["ticker"] == "META"
     assert body["toolResult"]["caseId"] is not None
 
 
 def test_holding_already_linked_to_a_case_is_reused_not_duplicated(client_factory):
+    """ATLAS-027: import already auto-generated and linked AMD's real
+    Case -- the tool must resolve back to that one, never to a
+    separately-created orphan Case the frontend/caller might also hold."""
     client = client_factory(ToolCallingFakeProvider(ticker="AMD"))
     client.post(
         "/alpha-portfolio/import",
         json={"holdings": [{"ticker": "AMD", "weightPercent": 65.0}], "cashWeightPercent": None},
     )
-    existing_case_id = client.post("/cases").json()["caseId"]
-    client.post(
-        "/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": existing_case_id}
-    )
+    auto_case_id = client.get("/alpha-portfolio").json()["holdings"][0]["caseId"]
+    assert auto_case_id is not None
 
     response = client.post(
         "/discovery/chat",
@@ -258,15 +291,23 @@ def test_holding_already_linked_to_a_case_is_reused_not_duplicated(client_factor
 
     body = response.json()
     assert body["toolResult"]["outcome"] == "opened"
-    assert body["toolResult"]["caseId"] == existing_case_id
+    assert body["toolResult"]["caseId"] == auto_case_id
 
 
 def test_holding_without_a_case_is_created_and_linked(client_factory):
-    client = client_factory(ToolCallingFakeProvider(ticker="NVDA"))
+    """ATLAS-027: a normal import always auto-cases every holding, so
+    reaching the tool's own "created" branch now requires the one real
+    scenario that still leaves a holding case-less -- Case generation
+    was not available at import time (`disable_case_generation=True`,
+    see the fixture's own docstring) -- exactly the "genuine failure/gap"
+    condition Phase 22 says must still surface honestly rather than be
+    silently impossible to test."""
+    client = client_factory(ToolCallingFakeProvider(ticker="NVDA"), disable_case_generation=True)
     client.post(
         "/alpha-portfolio/import",
         json={"holdings": [{"ticker": "NVDA", "weightPercent": 30.0}], "cashWeightPercent": None},
     )
+    assert client.get("/alpha-portfolio").json()["holdings"][0]["caseId"] is None
 
     response = client.post(
         "/discovery/chat",
@@ -300,17 +341,31 @@ def test_unknown_ticker_asks_for_clarification_and_creates_no_case(client_factor
     assert body["toolResult"]["outcome"] == "unresolved"
     assert body["toolResult"]["caseId"] is None
 
+    # AMD's own Case (auto-created by import, ATLAS-027) is untouched --
+    # resolving the unrelated, unknown ZZZZ ticker neither creates nor
+    # disturbs it.
     portfolio = client.get("/alpha-portfolio").json()
     amd = next(h for h in portfolio["holdings"] if h["ticker"] == "AMD")
-    assert amd["caseId"] is None  # no case silently created for anything
+    assert amd["caseId"] is not None
 
 
 def test_tool_execution_failure_returns_honest_failed_outcome(client_factory):
-    client = client_factory(ToolCallingFakeProvider(ticker="META"), case_service=FailingCaseService())
+    """ATLAS-027: exercising the "failed" branch requires actually
+    reaching `case_service.create()`, which only happens for a
+    genuinely case-less holding -- see
+    `test_holding_without_a_case_is_created_and_linked`'s own docstring
+    for why `disable_case_generation=True` is the real way left to
+    construct that state."""
+    client = client_factory(
+        ToolCallingFakeProvider(ticker="META"),
+        case_service=FailingCaseService(),
+        disable_case_generation=True,
+    )
     client.post(
         "/alpha-portfolio/import",
         json={"holdings": [{"ticker": "META", "weightPercent": 20.0}], "cashWeightPercent": None},
     )
+    assert client.get("/alpha-portfolio").json()["holdings"][0]["caseId"] is None
 
     response = client.post(
         "/discovery/chat",
@@ -370,8 +425,7 @@ def test_valid_case_id_includes_case_intelligence_in_the_prompt(client_factory):
         "/alpha-portfolio/import",
         json={"holdings": [{"ticker": "AMD", "weightPercent": 20.0}], "cashWeightPercent": None},
     )
-    case_id = client.post("/cases").json()["caseId"]
-    client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+    case_id = client.get("/alpha-portfolio").json()["holdings"][0]["caseId"]
 
     client.post(
         "/discovery/chat",
@@ -442,8 +496,7 @@ def test_case_with_pending_workflow_surfaces_portfolio_context_fact(client_facto
         "/alpha-portfolio/import",
         json={"holdings": [{"ticker": "AMD", "weightPercent": 20.0}], "cashWeightPercent": None},
     )
-    case_id = client.post("/cases").json()["caseId"]
-    client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+    case_id = client.get("/alpha-portfolio").json()["holdings"][0]["caseId"]
     client.post(
         "/decisions",
         json={
@@ -483,6 +536,8 @@ def test_no_arbitrary_tool_execution_unknown_tool_name_is_refused(client_factory
     body = response.json()
     assert body["mode"] == "provider_error"
     assert body["toolResult"] is None
-    # And the portfolio is provably untouched.
+    # And the portfolio is provably untouched -- META keeps the same
+    # real Case import already auto-generated for it (ATLAS-027), never
+    # a second one and never unlinked.
     portfolio = client.get("/alpha-portfolio").json()
-    assert portfolio["holdings"][0]["caseId"] is None
+    assert portfolio["holdings"][0]["caseId"] is not None

@@ -1006,3 +1006,202 @@ class TestServiceOriginatesNoCoreObject:
             text = handle.read()
         assert "atlas.core.application.outcome" not in text
         assert "atlas.core.domain.outcome.entity" not in text
+
+
+class TestAutomaticCaseGeneration:
+    """ATLAS-027 Phase 4/5/20: `case_generation_service`, when wired,
+    ensures every recognized holding has a real, auto-created
+    Investment Case at the exact points a full holdings list is
+    persisted (import, reconcile-replace, a confirmed trade) --
+    idempotent, one Case per holding, never a second one on repeated
+    generation."""
+
+    @staticmethod
+    def _case_generation_service(engine):
+        from atlas.alpha.case_generation.service import CaseGenerationService
+        from atlas.core.application.case.create_case import CaseService
+        from atlas.core.infrastructure.persistence.case.sqlalchemy_repository import (
+            SqlAlchemyCaseRepository,
+        )
+        from atlas.core.infrastructure.persistence.case.table import create_case_table
+
+        create_case_table(engine)
+        return CaseGenerationService(CaseService(SqlAlchemyCaseRepository(engine)))
+
+    @pytest.fixture
+    def service_with_case_generation(self):
+        engine = _new_engine()
+        return AlphaPortfolioService(
+            AlphaPortfolioStore(engine),
+            AlphaTradeLogStore(engine),
+            None,
+            self._case_generation_service(engine),
+        )
+
+    def test_import_gives_every_holding_a_real_case_id(self, service_with_case_generation):
+        state = service_with_case_generation.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(
+                    ImportHoldingInput(ticker="AMD", weight_percent=30),
+                    ImportHoldingInput(ticker="NVDA", weight_percent=20),
+                )
+            )
+        )
+        assert all(h.case_id is not None for h in state.holdings)
+
+    def test_each_holding_gets_a_distinct_case(self, service_with_case_generation):
+        state = service_with_case_generation.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(
+                    ImportHoldingInput(ticker="AMD", weight_percent=30),
+                    ImportHoldingInput(ticker="NVDA", weight_percent=20),
+                )
+            )
+        )
+        case_ids = {h.case_id for h in state.holdings}
+        assert len(case_ids) == 2
+
+    def test_re_import_of_the_same_holding_does_not_create_a_new_case(self, service_with_case_generation):
+        first = service_with_case_generation.import_portfolio(
+            ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="AMD", weight_percent=30),))
+        )
+        first_case_id = first.holdings[0].case_id
+
+        second = service_with_case_generation.import_portfolio(
+            ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="AMD", weight_percent=45),))
+        )
+        assert second.holdings[0].case_id == first_case_id
+
+    def test_repeated_import_of_an_unchanged_portfolio_is_fully_idempotent(self, service_with_case_generation):
+        request = ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="AMD", weight_percent=30),))
+        first = service_with_case_generation.import_portfolio(request)
+        second = service_with_case_generation.import_portfolio(request)
+        third = service_with_case_generation.import_portfolio(request)
+        assert first.holdings[0].case_id == second.holdings[0].case_id == third.holdings[0].case_id
+
+    def test_new_holding_added_via_reimport_gets_its_own_new_case(self, service_with_case_generation):
+        first = service_with_case_generation.import_portfolio(
+            ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="AMD", weight_percent=30),))
+        )
+        amd_case_id = first.holdings[0].case_id
+
+        second = service_with_case_generation.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(
+                    ImportHoldingInput(ticker="AMD", weight_percent=30),
+                    ImportHoldingInput(ticker="NVDA", weight_percent=20),
+                )
+            )
+        )
+        amd = next(h for h in second.holdings if h.ticker == "AMD")
+        nvda = next(h for h in second.holdings if h.ticker == "NVDA")
+        assert amd.case_id == amd_case_id
+        assert nvda.case_id is not None
+        assert nvda.case_id != amd_case_id
+
+    def test_holding_removed_via_reimport_does_not_touch_its_case(self, service_with_case_generation):
+        """A removed holding's Case is never deleted -- Alpha only ever
+        held a reference on the holding row, and that row is simply
+        gone; the Case itself (and everything recorded against it) is
+        untouched, entirely in Core (Phase 7)."""
+        first = service_with_case_generation.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(
+                    ImportHoldingInput(ticker="AMD", weight_percent=30),
+                    ImportHoldingInput(ticker="NVDA", weight_percent=20),
+                )
+            )
+        )
+        nvda_case_id = next(h for h in first.holdings if h.ticker == "NVDA").case_id
+
+        second = service_with_case_generation.import_portfolio(
+            ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="AMD", weight_percent=30),))
+        )
+        assert {h.ticker for h in second.holdings} == {"AMD"}
+        # NVDA's Case still exists in Core, unaffected by leaving the
+        # active portfolio -- proven directly against the same
+        # CaseService this service used to create it.
+        from atlas.core.domain.case.value_objects import CaseId
+        import uuid
+
+        case_service = self._case_generation_service(service_with_case_generation._store._engine)._case_service
+        assert case_service.get(CaseId(value=uuid.UUID(nvda_case_id))) is not None
+
+    def test_reconcile_replace_allocation_ensures_a_case_for_a_new_holding(self, service_with_case_generation):
+        service_with_case_generation.import_portfolio(
+            ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="AMD", weight_percent=30),))
+        )
+        replaced = service_with_case_generation.reconcile_replace_allocation(
+            ReplaceAllocationRequest(
+                holdings=(
+                    ImportHoldingInput(ticker="AMD", weight_percent=30),
+                    ImportHoldingInput(ticker="META", weight_percent=20),
+                )
+            )
+        )
+        meta = next(h for h in replaced.holdings if h.ticker == "META")
+        assert meta.case_id is not None
+
+    def test_new_holding_from_a_confirmed_trade_gets_a_case(self, service_with_case_generation):
+        service_with_case_generation.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(ImportHoldingInput(ticker="AMD", weight_percent=40, value_absolute=400),),
+                cash_weight_percent=60,
+                cash_value_absolute=600,
+            )
+        )
+        outcome_repository = _FakeOutcomeRepository([_make_outcome()])
+        outcome_id = next(iter(outcome_repository._outcomes))
+        engine = service_with_case_generation._store._engine
+        service = AlphaPortfolioService(
+            service_with_case_generation._store,
+            service_with_case_generation._trade_log_store,
+            outcome_repository,
+            service_with_case_generation._case_generation_service,
+        )
+        outcome = outcome_repository._outcomes[outcome_id]
+        state = service.apply_confirmed_trade(
+            ApplyTradeRequest(
+                outcome_id=str(outcome.id.value),
+                decision_id=str(outcome.decision_id.value),
+                security="NVDA",
+                transaction_type=TransactionType.BUY,
+                quantity=1,
+                execution_price=100,
+                executed_at=_NOW,
+            )
+        )
+        nvda = next(h for h in state.holdings if h.ticker == "NVDA")
+        assert nvda.case_id is not None
+
+    def test_no_case_generation_service_leaves_case_id_none_exactly_as_before(self, service):
+        """Backward compatibility: a caller that constructs
+        `AlphaPortfolioService` without `case_generation_service` (the
+        `service` fixture, used by every pre-ATLAS-027 test in this
+        file) sees import behave exactly as it always did."""
+        state = service.import_portfolio(
+            ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="AMD", weight_percent=30),))
+        )
+        assert state.holdings[0].case_id is None
+
+    def test_case_creation_failure_propagates_rather_than_silently_leaving_no_case(self):
+        """Phase 22: an unresolved/failed Case generation must surface
+        as a real error, never a silently case-less holding pretending
+        nothing went wrong."""
+        from atlas.alpha.case_generation.service import CaseGenerationService
+
+        class _FailingCaseService:
+            def create(self):
+                raise RuntimeError("simulated Case creation failure")
+
+        engine = _new_engine()
+        service = AlphaPortfolioService(
+            AlphaPortfolioStore(engine),
+            AlphaTradeLogStore(engine),
+            None,
+            CaseGenerationService(_FailingCaseService()),
+        )
+        with pytest.raises(RuntimeError, match="simulated Case creation failure"):
+            service.import_portfolio(
+                ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="AMD", weight_percent=30),))
+            )

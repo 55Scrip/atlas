@@ -37,6 +37,17 @@ def _open_case(client) -> str:
     return client.post("/cases").json()["caseId"]
 
 
+def _holding_case_id(client, ticker: str) -> str:
+    """ATLAS-027: portfolio import now auto-generates and links a Case
+    for every recognized holding, so tests that need "the Case already
+    linked to this holding" read it back from the holdings list rather
+    than manually opening and linking one."""
+    view = client.get("/alpha-portfolio").json()
+    holding = next(h for h in view["holdings"] if h["ticker"] == ticker)
+    assert holding["caseId"] is not None
+    return holding["caseId"]
+
+
 def _record_decision(client, *, case_id: str, subject: str, decision_type: str = "BUY", **overrides) -> dict:
     payload = {
         "caseId": case_id,
@@ -115,31 +126,34 @@ class TestPortfolioSummaryPopulated:
         assert summary["largestPositionWeightPercent"] == pytest.approx(60.0, abs=0.1)
         assert summary["unallocatedPercent"] == pytest.approx(20.0, abs=0.01)
         assert summary["concentrationLevel"] is not None
-        # No cases, decisions, outcomes, or trades recorded yet.
-        assert summary["numberOfInvestmentCases"] == 0
+        # ATLAS-027: both holdings are auto-cased by import; no
+        # decisions, outcomes, or trades recorded yet.
+        assert summary["numberOfInvestmentCases"] == 2
         assert summary["openDecisions"] == 0
         assert summary["pendingOutcomes"] == 0
         assert summary["pendingExecutions"] == 0
 
 
 class TestNeedsAttentionGenerated:
-    def test_missing_case_for_a_holding_with_no_linked_case(self, client):
+    def test_import_no_longer_flags_missing_case(self, client):
+        """ATLAS-027: import auto-generates and links a Case for every
+        recognized holding, so a freshly-imported holding with no
+        further activity has zero attention items -- not MISSING_CASE."""
         client.post(
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AMD", "weightPercent": 40}]},
         )
         body = client.get("/alpha-portfolio/status").json()
         categories = {item["category"] for item in body["attentionItems"] if item["ticker"] == "AMD"}
-        assert categories == {"MISSING_CASE"}
-        assert body["summary"]["numberOfInvestmentCases"] == 0
+        assert categories == set()
+        assert body["summary"]["numberOfInvestmentCases"] == 1
 
     def test_decision_without_outcome(self, client):
         client.post(
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AMD", "weightPercent": 40}]},
         )
-        case_id = _open_case(client)
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+        case_id = _holding_case_id(client, "AMD")
         _record_decision(client, case_id=case_id, subject="AMD")
 
         body = client.get("/alpha-portfolio/status").json()
@@ -153,8 +167,7 @@ class TestNeedsAttentionGenerated:
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AMD", "weightPercent": 40}]},
         )
-        case_id = _open_case(client)
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+        case_id = _holding_case_id(client, "AMD")
         decision = _record_decision(client, case_id=case_id, subject="AMD")
         _record_outcome(client, decision)
 
@@ -177,8 +190,7 @@ class TestNeedsAttentionGenerated:
                 "cashValueAbsolute": 600,
             },
         )
-        case_id = _open_case(client)
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+        case_id = _holding_case_id(client, "AMD")
         decision = _record_decision(client, case_id=case_id, subject="AMD")
         outcome = _record_outcome(client, decision)
         _apply_trade(client, decision, outcome, security="AMD")
@@ -194,8 +206,7 @@ class TestNeedsAttentionGenerated:
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AMD", "weightPercent": 40}]},
         )
-        case_id = _open_case(client)
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+        case_id = _holding_case_id(client, "AMD")
         client.post(
             "/observations",
             json={
@@ -215,8 +226,7 @@ class TestNeedsAttentionGenerated:
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AMD", "weightPercent": 40}]},
         )
-        case_id = _open_case(client)
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+        case_id = _holding_case_id(client, "AMD")
         old_timestamp = (datetime.now(timezone.utc) - timedelta(days=200)).isoformat()
         decision = _record_decision(client, case_id=case_id, subject="AMD", decidedAt=old_timestamp)
         _record_outcome(client, decision)
@@ -232,8 +242,7 @@ class TestNeedsAttentionGenerated:
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AMD", "weightPercent": 40}]},
         )
-        case_id = _open_case(client)
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+        case_id = _holding_case_id(client, "AMD")
         decision = _record_decision(client, case_id=case_id, subject="AMD")
         outcome = _record_outcome(client, decision)
         _apply_trade(client, decision, outcome, security="AMD")  # Mode B -> AWAITING_RECONCILIATION
@@ -255,10 +264,10 @@ class TestReviewQueueGenerated:
                 ],
             },
         )
-        # AMD: case linked, one decision without outcome AND (via an
-        # observation) an observation-without-decision flag -> 2 reasons.
-        amd_case = _open_case(client)
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": amd_case})
+        # AMD: auto-cased by import, one decision without outcome AND
+        # (via an observation) an observation-without-decision flag ->
+        # 2 reasons.
+        amd_case = _holding_case_id(client, "AMD")
         _record_decision(client, case_id=amd_case, subject="AMD")
         client.post(
             "/observations",
@@ -269,7 +278,19 @@ class TestReviewQueueGenerated:
                 "observedAt": datetime.now(timezone.utc).isoformat(),
             },
         )
-        # NVDA: no case linked at all -> 1 reason (MISSING_CASE).
+        # NVDA: also auto-cased (ATLAS-027 -- MISSING_CASE can no longer
+        # happen here), but has its own observation-without-decision ->
+        # 1 reason.
+        nvda_case = _holding_case_id(client, "NVDA")
+        client.post(
+            "/observations",
+            json={
+                "caseId": nvda_case,
+                "subject": "NVDA",
+                "statement": "Unrelated note.",
+                "observedAt": datetime.now(timezone.utc).isoformat(),
+            },
+        )
 
         body = client.get("/alpha-portfolio/status").json()
         queue = body["reviewQueue"]
@@ -290,13 +311,12 @@ class TestPortfolioHealthPopulated:
                 ],
             },
         )
-        case_id = _open_case(client)
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
 
         body = client.get("/alpha-portfolio/status").json()
         health = body["health"]
         assert health["holdingsCount"] == 2
-        assert health["holdingsWithCaseCount"] == 1
+        # ATLAS-027: both holdings are auto-cased by import.
+        assert health["holdingsWithCaseCount"] == 2
         assert health["allocatedPercent"] == pytest.approx(70.0, abs=0.01)
         assert health["unknownInstrumentTickers"] == []
 

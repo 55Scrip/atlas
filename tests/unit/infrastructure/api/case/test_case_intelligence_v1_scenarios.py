@@ -93,10 +93,17 @@ def _record_evidence(client, *, observation_id: str, direction: str = "SUPPORTS"
     return response.json()
 
 
-def _link_holding(client, ticker: str, case_id: str, weight_percent: float = 20.0) -> None:
+def _link_holding(client, ticker: str, weight_percent: float = 20.0) -> str:
+    """ATLAS-027: importing `ticker` now auto-generates and links a real
+    Case immediately -- there is no separate "open a case, then link
+    it" step left to perform. Returns that auto-created `case_id` so
+    the caller records everything against the Case actually linked to
+    the holding, not an orphan."""
     client.post("/alpha-portfolio/import", json={"holdings": [{"ticker": ticker, "weightPercent": weight_percent}]})
-    response = client.post(f"/alpha-portfolio/holdings/{ticker}/case-link", json={"candidateCaseId": case_id})
-    assert response.status_code == 200, response.text
+    view = client.get("/alpha-portfolio").json()
+    holding = next(h for h in view["holdings"] if h["ticker"] == ticker)
+    assert holding["caseId"] is not None
+    return holding["caseId"]
 
 
 class TestNotFound:
@@ -129,8 +136,7 @@ class TestUnheldCase:
 
 class TestCurrentThesis:
     def test_reflects_the_investors_own_words_verbatim(self, client):
-        case_id = _open_case(client)
-        _link_holding(client, "AMD", case_id)
+        case_id = _link_holding(client, "AMD")
         observation = _record_observation(client, case_id=case_id, subject="AMD", statement="Margins expanding.")
         _record_decision(
             client, case_id=case_id, subject="AMD", reason="Durable moat and cheap valuation.",
@@ -145,8 +151,7 @@ class TestCurrentThesis:
 
 class TestEvidenceQualityAndConfidence:
     def test_confidence_reuses_evidence_coverage_verbatim(self, client):
-        case_id = _open_case(client)
-        _link_holding(client, "AMD", case_id)
+        case_id = _link_holding(client, "AMD")
         observation = _record_observation(client, case_id=case_id, subject="AMD")
         _record_evidence(client, observation_id=observation["observationId"])
 
@@ -156,8 +161,7 @@ class TestEvidenceQualityAndConfidence:
         assert body["missingEvidence"] == []
 
     def test_challenging_evidence_appears_as_contradicting_evidence_and_key_risk(self, client):
-        case_id = _open_case(client)
-        _link_holding(client, "AMD", case_id)
+        case_id = _link_holding(client, "AMD")
         observation = _record_observation(client, case_id=case_id, subject="AMD")
         _record_evidence(client, observation_id=observation["observationId"], direction="CHALLENGES")
 
@@ -169,8 +173,7 @@ class TestEvidenceQualityAndConfidence:
 
 class TestOpenQuestions:
     def test_decision_without_linked_observation_surfaces_as_open_question(self, client):
-        case_id = _open_case(client)
-        _link_holding(client, "AMD", case_id)
+        case_id = _link_holding(client, "AMD")
         _record_decision(client, case_id=case_id, subject="AMD")
 
         body = client.get(f"/cases/{case_id}/intelligence").json()
@@ -181,8 +184,7 @@ class TestOpenQuestions:
 
 class TestReviewStatusAndConsiderThesis:
     def test_very_old_case_is_stale_and_produces_review_thesis_consider(self, client):
-        case_id = _open_case(client)
-        _link_holding(client, "AMD", case_id)
+        case_id = _link_holding(client, "AMD")
         old_timestamp = (datetime.now(timezone.utc) - timedelta(days=200)).isoformat()
         decision = _record_decision(client, case_id=case_id, subject="AMD", decidedAt=old_timestamp)
         _record_outcome(client, decision)
@@ -195,8 +197,7 @@ class TestReviewStatusAndConsiderThesis:
 
 class TestDecisionHistory:
     def test_decision_joined_with_its_latest_outcome(self, client):
-        case_id = _open_case(client)
-        _link_holding(client, "AMD", case_id)
+        case_id = _link_holding(client, "AMD")
         decision = _record_decision(client, case_id=case_id, subject="AMD", reason="Initial thesis.", confidence=80)
         outcome = _record_outcome(client, decision, statement="Confirmed thesis.")
 
@@ -211,8 +212,7 @@ class TestDecisionHistory:
 
 class TestObservationTimeline:
     def test_observation_carries_its_evidence_count_and_epistemic_status(self, client):
-        case_id = _open_case(client)
-        _link_holding(client, "AMD", case_id)
+        case_id = _link_holding(client, "AMD")
         observation = _record_observation(client, case_id=case_id, subject="AMD", statement="Noted growth.")
         _record_evidence(client, observation_id=observation["observationId"])
 
@@ -226,8 +226,7 @@ class TestObservationTimeline:
 
 class TestPendingWorkflowAndUpdateCase:
     def test_decision_without_outcome_produces_update_case_consider(self, client):
-        case_id = _open_case(client)
-        _link_holding(client, "AMD", case_id)
+        case_id = _link_holding(client, "AMD")
         _record_decision(client, case_id=case_id, subject="AMD")
 
         body = client.get(f"/cases/{case_id}/intelligence").json()
@@ -239,8 +238,7 @@ class TestPendingWorkflowAndUpdateCase:
 
 class TestConcentration:
     def test_high_weight_produces_high_concentration_key_risk_and_consider(self, client):
-        case_id = _open_case(client)
-        _link_holding(client, "AMD", case_id, weight_percent=40.0)
+        case_id = _link_holding(client, "AMD", weight_percent=40.0)
 
         body = client.get(f"/cases/{case_id}/intelligence").json()
         assert any(r["kind"] == "high_concentration" for r in body["keyRisks"])
@@ -248,8 +246,7 @@ class TestConcentration:
         assert "high_concentration" in body["portfolioContext"]["facts"]
 
     def test_low_weight_produces_no_concentration_signal(self, client):
-        case_id = _open_case(client)
-        _link_holding(client, "AMD", case_id, weight_percent=10.0)
+        case_id = _link_holding(client, "AMD", weight_percent=10.0)
 
         body = client.get(f"/cases/{case_id}/intelligence").json()
         assert not any(r["kind"] == "high_concentration" for r in body["keyRisks"])
@@ -258,7 +255,6 @@ class TestConcentration:
 
 class TestPortfolioContextLargestHolding:
     def test_largest_position_is_flagged_as_largest_holding(self, client):
-        case_id = _open_case(client)
         client.post(
             "/alpha-portfolio/import",
             json={
@@ -268,7 +264,9 @@ class TestPortfolioContextLargestHolding:
                 ]
             },
         )
-        client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+        view = client.get("/alpha-portfolio").json()
+        case_id = next(h for h in view["holdings"] if h["ticker"] == "AMD")["caseId"]
+        assert case_id is not None
 
         body = client.get(f"/cases/{case_id}/intelligence").json()
         assert "largest_holding" in body["portfolioContext"]["facts"]
@@ -276,8 +274,7 @@ class TestPortfolioContextLargestHolding:
 
 class TestConvictionNeverInvented:
     def test_conviction_is_always_unavailable_regardless_of_decision_confidence(self, client):
-        case_id = _open_case(client)
-        _link_holding(client, "AMD", case_id)
+        case_id = _link_holding(client, "AMD")
         _record_decision(client, case_id=case_id, subject="AMD", confidence=99)
 
         body = client.get(f"/cases/{case_id}/intelligence").json()
@@ -289,8 +286,7 @@ class TestConvictionNeverInvented:
 
 class TestRegressionOtherEndpointsUnaffected:
     def test_case_decision_outcome_and_portfolio_status_endpoints_unaffected(self, client):
-        case_id = _open_case(client)
-        _link_holding(client, "AMD", case_id)
+        case_id = _link_holding(client, "AMD")
         decision = _record_decision(client, case_id=case_id, subject="AMD")
         _record_outcome(client, decision)
 
