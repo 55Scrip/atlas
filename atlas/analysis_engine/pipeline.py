@@ -44,6 +44,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from atlas.analysis_engine.business import BusinessAnalysisResult, evaluate_business_analysis
+from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.confidence import Confidence
 from atlas.analysis_engine.contracts import RiskCategory, CapabilityStatus
 from atlas.analysis_engine.conviction import calculate_conviction
@@ -357,6 +358,7 @@ def assemble_analysis(
     decision_output: DecisionEngineOutput,
     *,
     is_thesis_stale: bool,
+    business_records: tuple[BusinessRecord, ...] = (),
     generated_at: datetime,
 ) -> CanonicalAnalysis:
     """Assemble one `CanonicalAnalysis` from an already-computed
@@ -364,12 +366,19 @@ def assemble_analysis(
     produce a deeply equal `CanonicalAnalysis` -- no wall-clock read, no
     randomness, matching every stage in `atlas.decision_engine` and
     every stage in this package.
+
+    `business_records` (ATLAS-022) is a passthrough straight to
+    `business.evaluate_business_analysis` -- always `()` at every real
+    call site today, same as `is_thesis_stale`'s own Alpha-supplied
+    default; a future composition layer that has run
+    `business_data.pipeline.ingest` supplies the resulting
+    `BusinessRecord`s here.
     """
     reasoning = decision_output.reasoning.finding
     confidence: Confidence = decision_output.business_evaluation.evidence_quality.coverage
 
     business_analysis = evaluate_business_analysis(
-        decision_output.business_evaluation, evaluated_at=generated_at
+        decision_output.business_evaluation, business_records=business_records, evaluated_at=generated_at
     )
 
     conviction_finding_id = FindingKind.CONVICTION_ASSESSED.value

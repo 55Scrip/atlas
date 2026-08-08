@@ -12,9 +12,9 @@ from atlas.analysis_engine.business import (
     BusinessDataGapKind,
     BusinessFinding,
     ExternalBusinessRecord,
-    ExternalSourceKind,
     evaluate_business_analysis,
 )
+from atlas.analysis_engine.business_data.sources import SourceKind as DocumentSourceKind
 from atlas.analysis_engine.exceptions import AnalysisEngineContractError
 from atlas.analysis_engine.provenance import SourceKind
 from atlas.core.domain.evidence.value_objects import Direction
@@ -61,7 +61,7 @@ class TestNoFabrication:
         _, output = run_minimal()
         records = (
             ExternalBusinessRecord(
-                source_kind=ExternalSourceKind.FINANCIAL_STATEMENT,
+                source_kind=DocumentSourceKind.FINANCIAL_STATEMENT,
                 category=BusinessCategory.GROWTH,
                 direction=Direction.SUPPORTS,
                 reference="statement-1",
@@ -121,7 +121,7 @@ class TestMissingEvidenceIsFirstClass:
         _, output = run_minimal()
         records = (
             ExternalBusinessRecord(
-                source_kind=ExternalSourceKind.COMPANY_FILING,
+                source_kind=DocumentSourceKind.COMPANY_FILING,
                 category=BusinessCategory.MANAGEMENT,
                 direction=Direction.CHALLENGES,
                 reference="filing-1",
@@ -145,7 +145,7 @@ class TestExtensibility:
         _, output = run_minimal()
         records = (
             ExternalBusinessRecord(
-                source_kind=ExternalSourceKind.ANNUAL_REPORT,
+                source_kind=DocumentSourceKind.ANNUAL_REPORT,
                 category=BusinessCategory.CAPITAL_ALLOCATION,
                 direction=Direction.SUPPORTS,
                 reference="report-1",
@@ -164,7 +164,7 @@ class TestExtensibility:
         _, output = run_minimal()
         records = (
             ExternalBusinessRecord(
-                source_kind=ExternalSourceKind.NEWS_ITEM,
+                source_kind=DocumentSourceKind.NEWS,
                 category=BusinessCategory.COMPETITIVE_POSITION,
                 direction=Direction.CHALLENGES,
                 reference="news-1",
@@ -181,7 +181,7 @@ class TestExtensibility:
         _, output = run_minimal()
         records = (
             ExternalBusinessRecord(
-                source_kind=ExternalSourceKind.MACRO_INDICATOR,
+                source_kind=DocumentSourceKind.MACRO_REPORT,
                 category=BusinessCategory.BUSINESS_MODEL,
                 direction=Direction.SUPPORTS,
                 reference="macro-1",
@@ -201,19 +201,19 @@ class TestExtensibility:
         _, output = run_minimal()
         records = (
             ExternalBusinessRecord(
-                source_kind=ExternalSourceKind.QUARTERLY_REPORT,
+                source_kind=DocumentSourceKind.QUARTERLY_REPORT,
                 category=BusinessCategory.GROWTH,
                 direction=Direction.SUPPORTS,
                 reference="q1",
             ),
             ExternalBusinessRecord(
-                source_kind=ExternalSourceKind.QUARTERLY_REPORT,
+                source_kind=DocumentSourceKind.QUARTERLY_REPORT,
                 category=BusinessCategory.GROWTH,
                 direction=Direction.SUPPORTS,
                 reference="q2",
             ),
             ExternalBusinessRecord(
-                source_kind=ExternalSourceKind.EARNINGS_TRANSCRIPT,
+                source_kind=DocumentSourceKind.TRANSCRIPT,
                 category=BusinessCategory.GROWTH,
                 direction=Direction.CHALLENGES,
                 reference="t1",
@@ -233,7 +233,7 @@ class TestExtensibility:
         _, output = run_minimal()
         records = (
             ExternalBusinessRecord(
-                source_kind=ExternalSourceKind.COMPANY_FILING,
+                source_kind=DocumentSourceKind.COMPANY_FILING,
                 category=BusinessCategory.DURABILITY,
                 direction=Direction.SUPPORTS,
                 reference="filing-durability-1",
@@ -296,3 +296,50 @@ class TestDeterminism:
         ids = [f.id for f in result.findings]
         assert len(ids) == len(set(ids))
         assert all(fid.startswith("business_finding:") for fid in ids)
+
+
+class TestBusinessRecordsAwareness:
+    """ATLAS-022 Phase 9: Business Analysis becomes aware that raw
+    `business_data.models.BusinessRecord` documents exist, without
+    fabricating any per-category attribution from them."""
+
+    def test_defaults_to_no_available_records(self):
+        _, output = run_minimal()
+        result = evaluate_business_analysis(output.business_evaluation, evaluated_at=GENERATED_AT)
+        assert result.available_business_records == ()
+
+    def test_supplied_business_records_are_surfaced_by_id(self):
+        from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
+        from tests.unit.analysis_engine.business_data._fixtures import build_raw_document
+
+        _, output = run_minimal()
+        ingested = ingest(build_raw_document(), evaluated_at=GENERATED_AT)
+        assert isinstance(ingested, IngestedRecord)
+
+        result = evaluate_business_analysis(
+            output.business_evaluation,
+            business_records=(ingested.record,),
+            evaluated_at=GENERATED_AT,
+        )
+        assert result.available_business_records == (ingested.record.id,)
+
+    def test_available_business_records_never_changes_any_category_status(self):
+        """The central no-fabrication guarantee for this field: a
+        BusinessRecord carries no category attribution, so its presence
+        must never move any category off INSUFFICIENT_INPUT."""
+        from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
+        from tests.unit.analysis_engine.business_data._fixtures import build_raw_document
+
+        _, output = run_minimal()
+        ingested = ingest(build_raw_document(), evaluated_at=GENERATED_AT)
+        assert isinstance(ingested, IngestedRecord)
+
+        without_records = evaluate_business_analysis(output.business_evaluation, evaluated_at=GENERATED_AT)
+        with_records = evaluate_business_analysis(
+            output.business_evaluation,
+            business_records=(ingested.record,),
+            evaluated_at=GENERATED_AT,
+        )
+        without_statuses = {f.kind: f.status for f in without_records.findings}
+        with_statuses = {f.kind: f.status for f in with_records.findings}
+        assert without_statuses == with_statuses

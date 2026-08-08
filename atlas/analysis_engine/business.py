@@ -24,19 +24,40 @@ the identical underlying reason). `decision_engine` remains the sole
 producer of that raw signal; this module owns the six-category
 *taxonomy* it is presented through, never a second computation of it.
 
-**Designed for extensibility without a future redesign** (an explicit
-requirement of this sprint): `evaluate_business_analysis` already
-accepts `external_records` -- a typed, currently-always-empty slot for
-future financial-statement/filing/transcript/macro/news ingestion (see
-`ExternalSourceKind`, reserved and unconstructed this sprint, matching
-`atlas.analysis_engine.provenance.SourceKind.EXTERNAL_DATA_SOURCE`'s own
-"reserve the name now, construct it later" discipline). A future
-ingestion adapter only needs to populate this tuple; nothing about
-`BusinessFinding`, `BusinessAnalysisResult`, or this function's
-signature needs to change. `test_business.py::TestExtensibility` proves
-this wiring is real, not decorative, by constructing non-empty
-`external_records` and confirming coverage/evidence-reference behavior
-actually changes.
+**Designed for extensibility without a future redesign** (ATLAS-021's
+explicit requirement): `evaluate_business_analysis` accepts
+`external_records` -- a typed slot for category-attributed,
+directional evidentiary facts. A future ingestion adapter only needs
+to populate this tuple; nothing about `BusinessFinding`,
+`BusinessAnalysisResult`, or this function's signature needs to change.
+`test_business.py::TestExtensibility` proves this wiring is real, not
+decorative, by constructing non-empty `external_records` and confirming
+coverage/evidence-reference behavior actually changes.
+
+**ATLAS-022 supersession note:** `ExternalBusinessRecord.source_kind`
+previously typed against this module's own `ExternalSourceKind` --
+explicitly reserved, never constructed, "named now so a future
+ingestion adapter does not need to widen this enum." That future sprint
+was ATLAS-022: `atlas.analysis_engine.business_data.sources.SourceKind`
+is now the one canonical document-type taxonomy in the repository, and
+`ExternalSourceKind` is removed rather than kept alongside it or
+adapted through a mapping function -- per that sprint's own audit, two
+overlapping enums for the same concept would itself be the
+duplicate-ownership violation this whole package exists to prevent.
+
+**ATLAS-022 also adds `business_records`** -- `evaluate_business_analysis`
+now accepts whole, canonical `business_data.models.BusinessRecord`
+documents (not just category-attributed `ExternalBusinessRecord`
+facts), because Business Analysis should be aware that raw source
+material exists even before anything has extracted a category-specific
+claim from it. A `BusinessRecord` carries no category or direction
+(Phase 3 of ATLAS-022 forbids inventing either without reading document
+content, which this codebase still does not do) -- so its presence is
+surfaced only as an honest, case-wide count
+(`BusinessAnalysisResult.available_business_records`), never folded
+into any single category's `status` or `confidence`. Turning "an
+annual report exists" into "this supports Capital Allocation" is
+exactly the interpretation step neither this sprint nor ATLAS-022 built.
 
 **Even once `external_records` exist, `status` deliberately stays
 `INSUFFICIENT_INPUT`.** Classifying a category as `WEAK`/`MODERATE`/
@@ -55,6 +76,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 
+from atlas.analysis_engine.business_data.models import BusinessRecord
+from atlas.analysis_engine.business_data.sources import SourceKind as DocumentSourceKind
 from atlas.analysis_engine.exceptions import AnalysisEngineContractError
 from atlas.analysis_engine.findings import FindingSeverity
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
@@ -65,7 +88,6 @@ __all__ = [
     "BusinessCategory",
     "BusinessCategoryStatus",
     "BusinessDataGapKind",
-    "ExternalSourceKind",
     "ExternalBusinessRecord",
     "BusinessFinding",
     "BusinessAnalysisResult",
@@ -128,23 +150,6 @@ class BusinessDataGapKind(str, Enum):
     site); reachable only via `test_business.py`'s extensibility test."""
 
 
-class ExternalSourceKind(str, Enum):
-    """Reserved -- named now so a future ingestion adapter does not need
-    to widen this enum. No code in this sprint ever constructs an
-    `ExternalBusinessRecord`, so no member here is ever instantiated
-    yet either -- the same "reserve the name, never construct it this
-    sprint" discipline `SourceKind.EXTERNAL_DATA_SOURCE` and
-    `RecommendationOutcomeKind.DIRECTIONAL` already established."""
-
-    FINANCIAL_STATEMENT = "financial_statement"
-    ANNUAL_REPORT = "annual_report"
-    QUARTERLY_REPORT = "quarterly_report"
-    COMPANY_FILING = "company_filing"
-    EARNINGS_TRANSCRIPT = "earnings_transcript"
-    MACRO_INDICATOR = "macro_indicator"
-    NEWS_ITEM = "news_item"
-
-
 @dataclass(frozen=True)
 class ExternalBusinessRecord:
     """A single external, non-Core evidentiary record tagged to one
@@ -160,9 +165,15 @@ class ExternalBusinessRecord:
     real record -- this module never reads or interprets record
     content, only counts and directions (see module docstring on why
     that structurally cannot yield a strength verdict).
+
+    `source_kind` types against
+    `atlas.analysis_engine.business_data.sources.SourceKind` (ATLAS-022)
+    -- the one canonical document-type taxonomy in the repository; see
+    this module's own supersession note for why no second, parallel
+    enum lives here anymore.
     """
 
-    source_kind: ExternalSourceKind
+    source_kind: DocumentSourceKind
     category: BusinessCategory
     direction: Direction
     reference: str
@@ -224,10 +235,23 @@ class BusinessAnalysisResult:
     itself a real, deterministic result, the same "even an audit trail
     that is mostly 'not yet assessable' is a real conclusion" principle
     `ReasoningResult` already established.
+
+    `available_business_records` (ATLAS-022) holds the `id`s of every
+    `business_data.models.BusinessRecord` made available to this
+    evaluation -- always `()` unless a caller passes
+    `evaluate_business_analysis(..., business_records=...)`. Case-wide,
+    not per-category: a `BusinessRecord` carries no category
+    attribution (see module docstring), so this field can only ever say
+    "raw source material exists," never which of the six categories it
+    bears on. Deliberately never folded into any `BusinessFinding`'s own
+    `status` or `confidence` -- counting available documents is not
+    business judgment, the same principle `_evaluate_category` already
+    applies to `external_records`.
     """
 
     state: EvaluationState
     findings: tuple[BusinessFinding, ...]
+    available_business_records: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.state is EvaluationState.EVALUATED:
@@ -301,13 +325,14 @@ def evaluate_business_analysis(
     business_evaluation: BusinessEvaluationResult,
     *,
     external_records: tuple[ExternalBusinessRecord, ...] = (),
+    business_records: tuple[BusinessRecord, ...] = (),
     evaluated_at: datetime,
 ) -> BusinessAnalysisResult:
     """Deterministic: identical inputs always produce a deeply equal
-    `BusinessAnalysisResult`. `external_records` is always `()` at
-    every real call site in this sprint (see module docstring); it is
-    real, tested code, not a stub -- populating it is the entire
-    extension point a future ingestion sprint needs.
+    `BusinessAnalysisResult`. `external_records` and `business_records`
+    are both always `()` at every real call site today (see module
+    docstring); real, tested code, not stubs -- populating them is the
+    entire extension point future ingestion needs.
 
     Requires `business_evaluation.state is EvaluationState.EVALUATED` --
     Durability reuse depends on `business_evaluation.durability`
@@ -335,4 +360,8 @@ def evaluate_business_analysis(
         for category in BusinessCategory
     )
 
-    return BusinessAnalysisResult(state=EvaluationState.EVALUATED, findings=findings)
+    return BusinessAnalysisResult(
+        state=EvaluationState.EVALUATED,
+        findings=findings,
+        available_business_records=tuple(record.id for record in business_records),
+    )
