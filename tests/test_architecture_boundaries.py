@@ -437,3 +437,23 @@ def test_no_active_code_imports_atlas_daily_brief() -> None:
                     violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
 
     assert not violations, "Active imports of atlas.daily_brief found:\n" + "\n".join(violations)
+
+
+# ── ATLAS-023: legacy company-analysis/scoring tree stays unreachable ────────
+
+
+def test_analysis_engine_never_imports_the_legacy_company_analysis_tree() -> None:
+    """ATLAS-023's own audit found `atlas/analysis/company_analysis.py`
+    and `atlas/providers/{yahoo,base,mock}.py` still exist, still return
+    hardcoded fake scores, and are still confirmed unreachable from the
+    live app. This test makes that confirmation permanent: the real
+    `atlas.analysis_engine` package (Growth and Capital Allocation
+    included) must never import either legacy tree, ever."""
+    forbidden_prefixes = ("atlas.analysis.company_analysis", "atlas.analysis.engine", "atlas.providers")
+    violations = []
+    for path in _python_files(ATLAS_ROOT / "analysis_engine"):
+        for module in _imported_modules(path):
+            if module.startswith(forbidden_prefixes):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "atlas.analysis_engine importing legacy scoring code:\n" + "\n".join(violations)

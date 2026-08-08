@@ -335,3 +335,161 @@ class TestDeterminism:
         before = dataclasses.replace(engine_input)
         assemble_analysis(engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT)
         assert engine_input == before
+
+
+class TestGrowthAndCapitalAllocationEndToEnd:
+    """ATLAS-023: the full BusinessRecord -> BusinessFact -> Evaluator
+    -> BusinessFinding -> CanonicalAnalysis chain, through the actual
+    top-level `assemble_analysis` entry point."""
+
+    def test_real_business_records_produce_a_real_growth_finding(self):
+        from datetime import date
+
+        from atlas.analysis_engine.business import BusinessCategory
+        from atlas.analysis_engine.business_contracts import BusinessCategoryStatus
+        from atlas.analysis_engine.business_data.models import RawBusinessDocument
+        from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
+
+        engine_input, output = run_minimal()
+
+        def make_record(period_end, identifier, **metadata):
+            document = RawBusinessDocument(
+                identifier=identifier,
+                company="ASML",
+                source_kind="annual_report",
+                published_at=GENERATED_AT,
+                provider_id="structured_test",
+                raw_reference=f"ref://{identifier}",
+                content_hash=f"hash-{identifier}",
+                language="en",
+                period_end=period_end,
+                metadata=metadata,
+            )
+            result = ingest(document, evaluated_at=GENERATED_AT)
+            assert isinstance(result, IngestedRecord)
+            return result.record
+
+        records = (
+            make_record(date(2023, 12, 31), "fy2023", revenue=1000.0, free_cash_flow=200.0),
+            make_record(date(2024, 12, 31), "fy2024", revenue=1200.0, free_cash_flow=260.0),
+        )
+
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
+        )
+        growth = next(f for f in analysis.business_analysis.findings if f.kind is BusinessCategory.GROWTH)
+        assert growth.status is BusinessCategoryStatus.STRONG
+
+        # Other categories remain honestly unevaluated -- exactly the
+        # intended "mixture" architecture (Phase 10).
+        durability = next(f for f in analysis.business_analysis.findings if f.kind is BusinessCategory.DURABILITY)
+        assert durability.status is BusinessCategoryStatus.INSUFFICIENT_INPUT
+
+    def test_growth_category_assessed_finding_reflects_the_real_status_in_the_flat_list(self):
+        from datetime import date
+
+        from atlas.analysis_engine.business_data.models import RawBusinessDocument
+        from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
+
+        engine_input, output = run_minimal()
+
+        def make_record(period_end, identifier, **metadata):
+            document = RawBusinessDocument(
+                identifier=identifier,
+                company="ASML",
+                source_kind="annual_report",
+                published_at=GENERATED_AT,
+                provider_id="structured_test",
+                raw_reference=f"ref://{identifier}",
+                content_hash=f"hash-{identifier}",
+                language="en",
+                period_end=period_end,
+                metadata=metadata,
+            )
+            result = ingest(document, evaluated_at=GENERATED_AT)
+            assert isinstance(result, IngestedRecord)
+            return result.record
+
+        records = (
+            make_record(date(2023, 12, 31), "fy2023", revenue=1000.0),
+            make_record(date(2024, 12, 31), "fy2024", revenue=1100.0),
+        )
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
+        )
+        matches = [f for f in analysis.findings if f.kind is FindingKind.BUSINESS_CATEGORY_ASSESSED]
+        growth_match = next(f for f in matches if f.details["category"] == "growth")
+        assert growth_match.details["status"] == "moderate"
+
+    def test_conviction_and_recommendation_are_unchanged_by_real_growth_evaluation(self):
+        """ATLAS-023's own Phase 15 question #4: no hidden coupling --
+        Conviction/Recommendation still only read what they already
+        read (evidence coverage, contradiction, staleness), never a
+        Business Analysis category's own status."""
+        from datetime import date
+
+        from atlas.analysis_engine.business_data.models import RawBusinessDocument
+        from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
+
+        engine_input, output = run_minimal()
+
+        def make_record(period_end, identifier, **metadata):
+            document = RawBusinessDocument(
+                identifier=identifier,
+                company="ASML",
+                source_kind="annual_report",
+                published_at=GENERATED_AT,
+                provider_id="structured_test",
+                raw_reference=f"ref://{identifier}",
+                content_hash=f"hash-{identifier}",
+                language="en",
+                period_end=period_end,
+                metadata=metadata,
+            )
+            result = ingest(document, evaluated_at=GENERATED_AT)
+            assert isinstance(result, IngestedRecord)
+            return result.record
+
+        records = (
+            make_record(date(2023, 12, 31), "fy2023", revenue=1000.0, free_cash_flow=200.0),
+            make_record(date(2024, 12, 31), "fy2024", revenue=1200.0, free_cash_flow=260.0),
+        )
+
+        without_records = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
+        )
+        with_records = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
+        )
+        assert without_records.conviction == with_records.conviction
+        assert without_records.recommendation.recommendation == with_records.recommendation.recommendation
+
+    def test_determinism_holds_through_the_full_fact_extraction_chain(self):
+        from datetime import date
+
+        from atlas.analysis_engine.business_data.models import RawBusinessDocument
+        from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
+
+        engine_input, output = run_minimal()
+        document = RawBusinessDocument(
+            identifier="fy2024",
+            company="ASML",
+            source_kind="annual_report",
+            published_at=GENERATED_AT,
+            provider_id="structured_test",
+            raw_reference="ref://fy2024",
+            content_hash="hash-fy2024",
+            language="en",
+            period_end=date(2024, 12, 31),
+            metadata={"revenue": 1000.0},
+        )
+        result = ingest(document, evaluated_at=GENERATED_AT)
+        assert isinstance(result, IngestedRecord)
+
+        first = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=(result.record,), generated_at=GENERATED_AT
+        )
+        second = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=(result.record,), generated_at=GENERATED_AT
+        )
+        assert first.business_analysis == second.business_analysis

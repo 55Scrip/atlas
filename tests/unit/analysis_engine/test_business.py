@@ -2,7 +2,15 @@
 completeness of the six-category taxonomy, Durability reuse (not
 recomputation), missing-evidence honesty, and the extensibility slot
 (`external_records`) actually working end to end rather than being
-decorative."""
+decorative.
+
+ATLAS-023 note: Growth and Capital Allocation now dispatch to real
+`business_facts`-driven evaluators (`atlas.analysis_engine.growth`/
+`.capital_allocation`) and no longer read `external_records` at all --
+their own behavior is covered by `test_growth.py`/
+`test_capital_allocation.py`. Tests here that exercise the generic
+`external_records` mechanism use `BusinessCategory.MANAGEMENT` (still on
+the original, untouched path) rather than Growth/Capital Allocation."""
 from __future__ import annotations
 
 from atlas.analysis_engine.business import (
@@ -62,7 +70,7 @@ class TestNoFabrication:
         records = (
             ExternalBusinessRecord(
                 source_kind=DocumentSourceKind.FINANCIAL_STATEMENT,
-                category=BusinessCategory.GROWTH,
+                category=BusinessCategory.MANAGEMENT,
                 direction=Direction.SUPPORTS,
                 reference="statement-1",
             ),
@@ -70,8 +78,8 @@ class TestNoFabrication:
         result = evaluate_business_analysis(
             output.business_evaluation, external_records=records, evaluated_at=GENERATED_AT
         )
-        growth = next(f for f in result.findings if f.kind is BusinessCategory.GROWTH)
-        assert growth.status is BusinessCategoryStatus.INSUFFICIENT_INPUT
+        management = next(f for f in result.findings if f.kind is BusinessCategory.MANAGEMENT)
+        assert management.status is BusinessCategoryStatus.INSUFFICIENT_INPUT
 
     def test_no_numeric_score_field_exists_anywhere(self):
         _, output = run_minimal()
@@ -106,10 +114,26 @@ class TestDurabilityIsReusedNotRecomputed:
 
 class TestMissingEvidenceIsFirstClass:
     def test_every_category_names_a_real_missing_evidence_reason_by_default(self):
+        """The four categories still on the generic `external_records`
+        path all report the same default reason; Growth and Capital
+        Allocation (ATLAS-023) report their own fact-specific defaults
+        instead -- covered in full by `test_growth.py`/
+        `test_capital_allocation.py`."""
         _, output = run_minimal()
         result = evaluate_business_analysis(output.business_evaluation, evaluated_at=GENERATED_AT)
+        generic_categories = {
+            BusinessCategory.BUSINESS_MODEL,
+            BusinessCategory.COMPETITIVE_POSITION,
+            BusinessCategory.MANAGEMENT,
+            BusinessCategory.DURABILITY,
+        }
         for finding in result.findings:
-            assert finding.missing_evidence == (BusinessDataGapKind.NO_EXTERNAL_DATA_SOURCE_CONNECTED,)
+            if finding.kind in generic_categories:
+                assert finding.missing_evidence == (BusinessDataGapKind.NO_EXTERNAL_DATA_SOURCE_CONNECTED,)
+        growth = next(f for f in result.findings if f.kind is BusinessCategory.GROWTH)
+        assert growth.missing_evidence != ()
+        capital_allocation = next(f for f in result.findings if f.kind is BusinessCategory.CAPITAL_ALLOCATION)
+        assert capital_allocation.missing_evidence != ()
 
     def test_confidence_is_not_applicable_by_default(self):
         _, output = run_minimal()
@@ -132,7 +156,7 @@ class TestMissingEvidenceIsFirstClass:
         )
         management = next(f for f in result.findings if f.kind is BusinessCategory.MANAGEMENT)
         assert management.missing_evidence == (BusinessDataGapKind.EXTERNAL_DATA_NOT_YET_INTERPRETED,)
-        untouched = next(f for f in result.findings if f.kind is BusinessCategory.GROWTH)
+        untouched = next(f for f in result.findings if f.kind is BusinessCategory.COMPETITIVE_POSITION)
         assert untouched.missing_evidence == (BusinessDataGapKind.NO_EXTERNAL_DATA_SOURCE_CONNECTED,)
 
 
@@ -146,7 +170,7 @@ class TestExtensibility:
         records = (
             ExternalBusinessRecord(
                 source_kind=DocumentSourceKind.ANNUAL_REPORT,
-                category=BusinessCategory.CAPITAL_ALLOCATION,
+                category=BusinessCategory.MANAGEMENT,
                 direction=Direction.SUPPORTS,
                 reference="report-1",
             ),
@@ -154,7 +178,7 @@ class TestExtensibility:
         result = evaluate_business_analysis(
             output.business_evaluation, external_records=records, evaluated_at=GENERATED_AT
         )
-        finding = next(f for f in result.findings if f.kind is BusinessCategory.CAPITAL_ALLOCATION)
+        finding = next(f for f in result.findings if f.kind is BusinessCategory.MANAGEMENT)
         assert finding.supporting_evidence == ("report-1",)
         assert finding.contradicting_evidence == ()
         assert finding.confidence is EvidenceCoverageLevel.FULL
@@ -202,19 +226,19 @@ class TestExtensibility:
         records = (
             ExternalBusinessRecord(
                 source_kind=DocumentSourceKind.QUARTERLY_REPORT,
-                category=BusinessCategory.GROWTH,
+                category=BusinessCategory.MANAGEMENT,
                 direction=Direction.SUPPORTS,
                 reference="q1",
             ),
             ExternalBusinessRecord(
                 source_kind=DocumentSourceKind.QUARTERLY_REPORT,
-                category=BusinessCategory.GROWTH,
+                category=BusinessCategory.MANAGEMENT,
                 direction=Direction.SUPPORTS,
                 reference="q2",
             ),
             ExternalBusinessRecord(
                 source_kind=DocumentSourceKind.TRANSCRIPT,
-                category=BusinessCategory.GROWTH,
+                category=BusinessCategory.MANAGEMENT,
                 direction=Direction.CHALLENGES,
                 reference="t1",
             ),
@@ -222,7 +246,7 @@ class TestExtensibility:
         result = evaluate_business_analysis(
             output.business_evaluation, external_records=records, evaluated_at=GENERATED_AT
         )
-        finding = next(f for f in result.findings if f.kind is BusinessCategory.GROWTH)
+        finding = next(f for f in result.findings if f.kind is BusinessCategory.MANAGEMENT)
         assert set(finding.supporting_evidence) == {"q1", "q2"}
         assert finding.contradicting_evidence == ("t1",)
 

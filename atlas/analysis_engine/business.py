@@ -60,26 +60,59 @@ annual report exists" into "this supports Capital Allocation" is
 exactly the interpretation step neither this sprint nor ATLAS-022 built.
 
 **Even once `external_records` exist, `status` deliberately stays
-`INSUFFICIENT_INPUT`.** Classifying a category as `WEAK`/`MODERATE`/
+`INSUFFICIENT_INPUT`** -- for the four categories still on this path
+(Business Model, Competitive Position, Management, and Durability
+absent a reuse override). Classifying one of them as `WEAK`/`MODERATE`/
 `STRONG` requires *interpreting what a record says* -- a real evaluator
-reading and judging content, which does not exist yet even in design --
-never *how many records exist*. Turning a record count into a strength
-verdict would be exactly the fabricated heuristic this codebase's
-"no invented scoring systems, no hidden heuristics" principle forbids.
-This function proves the extensibility path works (confidence and
-evidence references genuinely change) without pretending record-counting
-is business judgment.
+reading and judging content, which does not exist yet even in design
+for these four -- never *how many records exist*. This function proves
+the extensibility path works (confidence and evidence references
+genuinely change) without pretending record-counting is business
+judgment.
+
+**ATLAS-023: Growth and Capital Allocation graduate to real
+evaluators.** `atlas.analysis_engine.growth.evaluate_growth` and
+`.capital_allocation.evaluate_capital_allocation` now produce these two
+categories' `BusinessFinding`s, reading `BusinessFact`s (extracted from
+`business_records` by `atlas.analysis_engine.business_facts`) instead
+of `external_records` -- documented, deterministic rule tables that can
+genuinely reach `WEAK`/`MODERATE`/`STRONG` from real structured facts.
+`external_records` tagged to `GROWTH`/`CAPITAL_ALLOCATION` are no
+longer read at all; this module remains the sole *owner* (it still
+assembles every `BusinessAnalysisResult` and decides which evaluator
+produces which category's Finding), it simply now delegates two of the
+six categories to their own rule-heavy modules rather than computing
+them inline -- the same "stage lives in its own file, orchestrator
+dispatches to it" pattern `atlas.decision_engine.pipeline` already
+established for its own stages.
+
+The shared vocabulary every category (and both new evaluators) uses --
+`BusinessCategory`, `BusinessCategoryStatus`, `BusinessDataGapKind`,
+`severity_for_status`, `BusinessFinding`, `BusinessAnalysisResult` --
+now lives in `atlas.analysis_engine.business_contracts`, re-exported
+here unchanged (see that module's own docstring for why: importing
+`growth.py`/`capital_allocation.py` from this file, while they import
+these shared types back, would otherwise be a circular import).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 
+from atlas.analysis_engine.business_contracts import (
+    BusinessAnalysisResult,
+    BusinessCategory,
+    BusinessCategoryStatus,
+    BusinessDataGapKind,
+    BusinessFinding,
+    severity_for_status,
+)
 from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.business_data.sources import SourceKind as DocumentSourceKind
+from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
+from atlas.analysis_engine.capital_allocation import evaluate_capital_allocation
 from atlas.analysis_engine.exceptions import AnalysisEngineContractError
-from atlas.analysis_engine.findings import FindingSeverity
+from atlas.analysis_engine.growth import evaluate_growth
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
 from atlas.core.domain.evidence.value_objects import Direction
 from atlas.decision_engine.contracts import BusinessEvaluationResult, EvaluationState, EvidenceCoverageLevel
@@ -92,62 +125,8 @@ __all__ = [
     "BusinessFinding",
     "BusinessAnalysisResult",
     "evaluate_business_analysis",
+    "severity_for_status",
 ]
-
-
-class BusinessCategory(str, Enum):
-    """A closed, six-member taxonomy -- Phase 2's explicit ownership
-    list. Every `BusinessAnalysisResult.findings` names all six, every
-    run, never a partial list (mirrors
-    `atlas.decision_engine.contracts.PortfolioFinding`'s own "always
-    name every factor" discipline)."""
-
-    BUSINESS_MODEL = "business_model"
-    COMPETITIVE_POSITION = "competitive_position"
-    MANAGEMENT = "management"
-    CAPITAL_ALLOCATION = "capital_allocation"
-    GROWTH = "growth"
-    DURABILITY = "durability"
-
-
-class BusinessCategoryStatus(str, Enum):
-    """Categorical, five levels, never numeric -- this sprint's own
-    Phase 4 list, applied verbatim. `NOT_EVALUATED` is reserved for a
-    future category this module has not yet implemented an evaluator
-    for at all; every category this sprint ships has a real evaluator
-    (see module docstring), so `NOT_EVALUATED` is never constructed
-    today -- the same "name it, don't construct it yet" pattern
-    `EvaluationState.EVALUATED`/`INSUFFICIENT_INPUT` already established
-    for `DurabilityFinding`."""
-
-    NOT_EVALUATED = "not_evaluated"
-    INSUFFICIENT_INPUT = "insufficient_input"
-    WEAK = "weak"
-    MODERATE = "moderate"
-    STRONG = "strong"
-
-
-class BusinessDataGapKind(str, Enum):
-    """Why a category could not reach a `WEAK`/`MODERATE`/`STRONG`
-    conclusion -- always a real, named reason, never a placeholder
-    guess. No separate wrapper type pairs this with a reference (unlike
-    `atlas.decision_engine.contracts.EvidenceGap`): a per-category gap
-    has nothing more specific to reference than the category itself,
-    already `BusinessFinding.kind` -- pairing would only duplicate that
-    field, so `BusinessFinding.missing_evidence` is typed
-    `tuple[BusinessDataGapKind, ...]` directly."""
-
-    NO_EXTERNAL_DATA_SOURCE_CONNECTED = "no_external_data_source_connected"
-    """No financial-statement/filing/transcript/macro/news ingestion
-    adapter is connected -- true for every category, every run, this
-    sprint."""
-
-    EXTERNAL_DATA_NOT_YET_INTERPRETED = "external_data_not_yet_interpreted"
-    """`external_records` for this category is non-empty, but no
-    evaluator exists yet that reads record *content* rather than
-    counting records -- see module docstring. Never constructed this
-    sprint (`external_records` is always empty at every real call
-    site); reachable only via `test_business.py`'s extensibility test."""
 
 
 @dataclass(frozen=True)
@@ -185,83 +164,6 @@ _ALL_CONSUMERS = (
     Consumer.DISCOVERY,
     Consumer.HISTORY,
 )
-
-
-def _severity_for_status(status: BusinessCategoryStatus) -> FindingSeverity:
-    """Deterministic, mechanical mapping -- severity describes how much
-    attention a gap deserves, never a business-quality judgment (the
-    same distinction `findings.py`'s own `FindingSeverity` docstring
-    already draws)."""
-    if status in (BusinessCategoryStatus.NOT_EVALUATED, BusinessCategoryStatus.INSUFFICIENT_INPUT):
-        return FindingSeverity.ATTENTION
-    if status is BusinessCategoryStatus.WEAK:
-        return FindingSeverity.MATERIAL
-    return FindingSeverity.INFO
-
-
-@dataclass(frozen=True)
-class BusinessFinding:
-    """One category's structured, canonical conclusion.
-
-    No free-text `conclusion` field exists here, despite this sprint's
-    own suggested structure naming one -- the same deliberate departure
-    `atlas.analysis_engine.findings.Finding` already documents and this
-    module repeats for consistency: `status` (a closed enum) *is* the
-    conclusion; any elaboration belongs in `supporting_evidence`/
-    `contradicting_evidence`/`missing_evidence`, all structured, never
-    prose. `updated_at` is always the caller-supplied evaluation
-    timestamp, never a wall-clock read.
-    """
-
-    id: str
-    kind: BusinessCategory
-    status: BusinessCategoryStatus
-    severity: FindingSeverity
-    supporting_evidence: tuple[str, ...]
-    contradicting_evidence: tuple[str, ...]
-    missing_evidence: tuple[BusinessDataGapKind, ...]
-    confidence: EvidenceCoverageLevel
-    provenance: Provenance
-    updated_at: datetime
-
-
-@dataclass(frozen=True)
-class BusinessAnalysisResult:
-    """The stage-level wrapper -- mirrors
-    `atlas.decision_engine.contracts.BusinessEvaluationResult`'s own
-    `state` tier: whether the *stage* ran, kept separate from each
-    category's own `BusinessCategoryStatus`. Always `EVALUATED` this
-    sprint -- assembling six honest `INSUFFICIENT_INPUT` conclusions is
-    itself a real, deterministic result, the same "even an audit trail
-    that is mostly 'not yet assessable' is a real conclusion" principle
-    `ReasoningResult` already established.
-
-    `available_business_records` (ATLAS-022) holds the `id`s of every
-    `business_data.models.BusinessRecord` made available to this
-    evaluation -- always `()` unless a caller passes
-    `evaluate_business_analysis(..., business_records=...)`. Case-wide,
-    not per-category: a `BusinessRecord` carries no category
-    attribution (see module docstring), so this field can only ever say
-    "raw source material exists," never which of the six categories it
-    bears on. Deliberately never folded into any `BusinessFinding`'s own
-    `status` or `confidence` -- counting available documents is not
-    business judgment, the same principle `_evaluate_category` already
-    applies to `external_records`.
-    """
-
-    state: EvaluationState
-    findings: tuple[BusinessFinding, ...]
-    available_business_records: tuple[str, ...] = ()
-
-    def __post_init__(self) -> None:
-        if self.state is EvaluationState.EVALUATED:
-            categories = {finding.kind for finding in self.findings}
-            if categories != set(BusinessCategory):
-                raise AnalysisEngineContractError(
-                    "An EVALUATED BusinessAnalysisResult must carry a "
-                    "BusinessFinding for every BusinessCategory member, "
-                    "never a partial list."
-                )
 
 
 def _evaluate_category(
@@ -304,7 +206,7 @@ def _evaluate_category(
         id=f"business_finding:{category.value}",
         kind=category,
         status=status,
-        severity=_severity_for_status(status),
+        severity=severity_for_status(status),
         supporting_evidence=supporting,
         contradicting_evidence=contradicting,
         missing_evidence=missing_evidence,
@@ -351,8 +253,23 @@ def evaluate_business_analysis(
     for record in external_records:
         records_by_category[record.category].append(record)
 
+    # ATLAS-023: Growth and Capital Allocation read BusinessFacts, not
+    # ExternalBusinessRecord -- extracted once, from the current head of
+    # every document lineage the caller supplied, and handed to both
+    # evaluators (both may draw from the same fact, e.g. a future
+    # Valuation stage reusing REVENUE the identical way Growth already
+    # does; see business_facts/__init__.py).
+    facts = extract_facts_from_records(business_records, evaluated_at=evaluated_at)
+
+    dispatch = {
+        BusinessCategory.GROWTH: lambda: evaluate_growth(facts, evaluated_at=evaluated_at),
+        BusinessCategory.CAPITAL_ALLOCATION: lambda: evaluate_capital_allocation(facts, evaluated_at=evaluated_at),
+    }
+
     findings = tuple(
-        _evaluate_category(
+        dispatch[category]()
+        if category in dispatch
+        else _evaluate_category(
             category,
             records=tuple(records_by_category[category]),
             evaluated_at=evaluated_at,

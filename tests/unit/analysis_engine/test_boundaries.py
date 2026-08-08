@@ -73,6 +73,36 @@ class TestNoForbiddenDependencies:
             "pipeline.py",
             "lifecycle.py",
             "business.py",
+            "business_contracts.py",
+            "growth.py",
+            "capital_allocation.py",
             "exceptions.py",
         ):
             assert expected in names, f"{expected} missing from atlas/analysis_engine/"
+
+
+class TestNoLegacyScoringPatterns:
+    """ATLAS-023's own explicit rule: `score += X`, weighted scores, and
+    hardcoded fixed-point systems (the exact pattern
+    `atlas/analysis/company_analysis.py`'s legacy placeholder engine
+    uses) are rejected outright anywhere in this package -- checked
+    directly rather than trusted by convention."""
+
+    _FORBIDDEN_SCORING_PATTERNS = (
+        "score +=",
+        "score -=",
+        "weighted_score",
+        "weighted score",
+        "quality_score",
+        "risk_score",
+        "valuation_score",
+    )
+
+    def test_no_scoring_patterns_anywhere_in_the_package(self):
+        violations: list[str] = []
+        for path in _source_files():
+            text = path.read_text(encoding="utf-8")
+            for needle in self._FORBIDDEN_SCORING_PATTERNS:
+                if needle in text:
+                    violations.append(f"{path.name} contains {needle!r}")
+        assert not violations, "Legacy-style scoring pattern found:\n" + "\n".join(violations)
