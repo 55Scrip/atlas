@@ -17,6 +17,7 @@ CAPABILITIES_DIR = ATLAS_ROOT / "capabilities"
 CORE_DIR = ATLAS_ROOT / "core"
 ALPHA_DIR = ATLAS_ROOT / "alpha"
 DECISION_ENGINE_DIR = ATLAS_ROOT / "decision_engine"
+ANALYSIS_ENGINE_DIR = ATLAS_ROOT / "analysis_engine"
 AI_DIR = ATLAS_ROOT / "ai"
 
 FORBIDDEN_EDGE_PATTERNS = (
@@ -170,6 +171,60 @@ def test_decision_engine_only_reads_core_domain_entities() -> None:
                 violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
 
     assert not violations, "atlas/decision_engine boundary violation:\n" + "\n".join(
+        violations
+    )
+
+
+def test_core_does_not_import_atlas_analysis_engine() -> None:
+    """ATLAS-020 Phase 2: `atlas/analysis_engine/` mirrors
+    `atlas/decision_engine/`'s own one-way relationship with Core (see
+    `test_core_does_not_import_atlas_decision_engine`) — it MAY read
+    from `atlas/core/`, but `atlas/core/` MUST NOT depend on it in
+    return. No composition point wires the Analysis Engine into the API
+    yet, so no exception is authorized."""
+    violations = []
+    for path in _python_files(CORE_DIR):
+        for module in _imported_modules(path):
+            if module.startswith("atlas.analysis_engine"):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "atlas/core importing atlas/analysis_engine:\n" + "\n".join(
+        violations
+    )
+
+
+def test_analysis_engine_only_reads_core_and_decision_engine() -> None:
+    """ATLAS-020 Phase 2: this sprint's own locked scope, stated in
+    `atlas/analysis_engine/__init__.py` — the package reads only
+    `atlas.core.domain` and `atlas.decision_engine`. It never imports
+    `atlas.alpha` (real Alpha portfolio/trade data stays a future
+    composition-layer concern, the same boundary
+    `test_decision_engine_only_reads_core_domain_entities` already
+    enforces for its sibling package), never `atlas.core.application`
+    or `atlas.core.infrastructure` (this package is read-only; see
+    `lifecycle.py`'s own Phase 11 verdict against building a write
+    path here), and never a bare `.repository` module (no repository
+    interface is needed yet — forbidding it now means a future sprint
+    must add that permission deliberately, not by accident, mirroring
+    the Decision Engine's own identical guard)."""
+    forbidden_prefixes = (
+        "atlas.core.application",
+        "atlas.core.infrastructure",
+        "atlas.alpha",
+        "atlas.providers",
+        "atlas.cli",
+    )
+    forbidden_suffixes = (".repository",)
+
+    violations = []
+    for path in _python_files(ANALYSIS_ENGINE_DIR):
+        for module in _imported_modules(path):
+            if module.startswith(forbidden_prefixes) or module.endswith(
+                forbidden_suffixes
+            ):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "atlas/analysis_engine boundary violation:\n" + "\n".join(
         violations
     )
 
