@@ -359,6 +359,115 @@ def test_tool_call_never_mutates_holding_weight_or_creates_a_holding(client_fact
     assert after["numberOfHoldings"] == 1
 
 
+# ── ATLAS-018: Canonical Discovery Context / Identity Resolution ────────────
+
+
+def test_valid_case_id_includes_case_intelligence_in_the_prompt(client_factory):
+    provider = RecordingFakeProvider()
+    client = client_factory(provider)
+
+    client.post(
+        "/alpha-portfolio/import",
+        json={"holdings": [{"ticker": "AMD", "weightPercent": 20.0}], "cashWeightPercent": None},
+    )
+    case_id = client.post("/cases").json()["caseId"]
+    client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+
+    client.post(
+        "/discovery/chat",
+        json={
+            "messages": [{"role": "user", "content": "Tell me about this position"}],
+            "language": "en",
+            "caseId": case_id,
+        },
+    )
+
+    assert "discussing AMD specifically" in provider.received_system_prompt
+    assert "could not confirm" not in provider.received_system_prompt
+
+
+def test_malformed_case_id_never_crashes_and_discloses_unresolved_identity(client_factory):
+    provider = RecordingFakeProvider()
+    client = client_factory(provider)
+
+    response = client.post(
+        "/discovery/chat",
+        json={
+            "messages": [{"role": "user", "content": "Tell me about this"}],
+            "language": "en",
+            "caseId": "not-a-real-uuid",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["mode"] == "generated"
+    assert "could not confirm exists" in provider.received_system_prompt
+
+
+def test_well_formed_but_nonexistent_case_id_discloses_unresolved_identity(client_factory):
+    provider = RecordingFakeProvider()
+    client = client_factory(provider)
+
+    response = client.post(
+        "/discovery/chat",
+        json={
+            "messages": [{"role": "user", "content": "Tell me about this"}],
+            "language": "en",
+            "caseId": "00000000-0000-0000-0000-000000000099",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "could not confirm exists" in provider.received_system_prompt
+
+
+def test_no_case_id_never_mentions_unresolved_identity(client_factory):
+    provider = RecordingFakeProvider()
+    client = client_factory(provider)
+
+    client.post(
+        "/discovery/chat",
+        json={"messages": [{"role": "user", "content": "General question"}], "language": "en"},
+    )
+
+    assert provider.received_system_prompt is not None
+    assert "could not confirm" not in provider.received_system_prompt
+
+
+def test_case_with_pending_workflow_surfaces_portfolio_context_fact(client_factory):
+    provider = RecordingFakeProvider()
+    client = client_factory(provider)
+
+    client.post(
+        "/alpha-portfolio/import",
+        json={"holdings": [{"ticker": "AMD", "weightPercent": 20.0}], "cashWeightPercent": None},
+    )
+    case_id = client.post("/cases").json()["caseId"]
+    client.post("/alpha-portfolio/holdings/AMD/case-link", json={"candidateCaseId": case_id})
+    client.post(
+        "/decisions",
+        json={
+            "caseId": case_id,
+            "userId": "00000000-0000-0000-0000-000000000001",
+            "decisionType": "BUY",
+            "subject": "AMD",
+            "reason": "Testing.",
+            "confidence": 70,
+        },
+    )
+
+    client.post(
+        "/discovery/chat",
+        json={
+            "messages": [{"role": "user", "content": "What's the status here?"}],
+            "language": "en",
+            "caseId": case_id,
+        },
+    )
+
+    assert "pending workflow items for this Investment Case" in provider.received_system_prompt
+
+
 def test_no_arbitrary_tool_execution_unknown_tool_name_is_refused(client_factory):
     client = client_factory(ToolCallingFakeProvider(ticker="META", tool_name="delete_portfolio"))
     client.post(

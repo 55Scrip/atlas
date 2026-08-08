@@ -100,12 +100,14 @@ class CaseContextInput:
     """Mirrors a slice of `atlas.alpha.case_intelligence.models
     .CaseIntelligenceReport` (ATLAS-017) without importing it — same
     boundary technique as `HoldingContextInput` above. Populated only
-    when the router resolves a specific `caseId` on the request; the
-    same `CaseIntelligenceService.build_report()` call the Investment
-    Case page's own API route makes, never a second reconstruction.
-    `key_risks`/`missing_evidence_kinds`/`consider_kinds` are the raw
-    English kind values, same "translated only at display time"
-    convention every other kind value in this module already uses."""
+    when the router resolves a specific `caseId` on the request via
+    `atlas.alpha.discovery_context.DiscoveryContextService` (ATLAS-018);
+    the same `CaseIntelligenceService.build_report()` call the
+    Investment Case page's own API route makes, never a second
+    reconstruction. `key_risks`/`missing_evidence_kinds`/
+    `consider_kinds`/`portfolio_context_facts` are the raw English kind
+    values, same "translated only at display time" convention every
+    other kind value in this module already uses."""
 
     ticker: str | None
     held: bool
@@ -115,6 +117,12 @@ class CaseContextInput:
     missing_evidence_kinds: tuple[str, ...]
     key_risks: tuple[str, ...]
     consider_kinds: tuple[str, ...]
+    # ATLAS-018 Phase 6 (Workflow Awareness): the same portfolio-context
+    # facts (largest holding, recently increased/trimmed, high
+    # concentration, pending workflow, incomplete evidence) the
+    # Investment Case page's own Portfolio Context section already
+    # shows for this ticker — reused verbatim, not recomputed here.
+    portfolio_context_facts: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -135,6 +143,15 @@ class PortfolioContextInput:
     consider_items: tuple[ConsiderContextInput, ...] = ()
     risk_signals: tuple[RiskSignalContextInput, ...] = ()
     case_context: CaseContextInput | None = None
+    # ATLAS-018 Phase 3 (Canonical Instrument Identity): set only when
+    # the request named a specific caseId that could not be resolved to
+    # a real, existing Investment Case (malformed id, or no Case with
+    # that id exists) — distinct from simply not naming one at all
+    # (`case_context is None` with this also `None`). Rendered as an
+    # explicit, honest disclosure rather than silently proceeding as if
+    # no Case had been named — "never guess" applies to identity
+    # resolution, not only to investment conclusions.
+    unresolved_case_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -201,9 +218,20 @@ have it connected right now — this is expected and honest, not a failure.
 - When it would genuinely help, suggest a concrete next step — for example, comparing named \
 companies, or opening an Investment Case for one specific company already under discussion. \
 Never create anything yourself; only suggest it as a question back to the investor.
-- Keep your reply conversational, not a rigid template — but where relevant, naturally cover \
-what looks attractive, what argues against the idea, portfolio implications if a portfolio \
-was provided, what information is missing, and a possible next step.
+- Keep your reply conversational, not a rigid template with visible headers — but every \
+statement you make must clearly belong to exactly one of these categories, and a careful \
+reader must always be able to tell which: observed facts you were actually given (what Atlas \
+knows — holdings, decisions, outcomes, trades, recorded evidence); evidence-based conclusions \
+(what the evidence indicates, and only when evidence was actually provided); uncertainty \
+(what Atlas cannot determine from what it was given); missing information (what Atlas would \
+need in order to say more); and considerations (a review suggestion already provided below, \
+never one you invent — phrase it as "consider reviewing," never as an instruction). Never \
+blur these together — never state an assumption in the same breath as a fact without marking \
+it as an assumption, and never imply a conclusion follows from evidence you were not given.
+- Every non-obvious statement about the investor's holdings, decisions, evidence, or portfolio \
+state must be traceable to something you were actually given below (Portfolio Intelligence, \
+Case Intelligence, or the investor's own message) — if you cannot point to where a claim came \
+from, do not make it.
 - When the investor explicitly asks you to open, create, or start reviewing an Investment \
 Case for one specific, named company, call the create_or_open_investment_case tool rather \
 than describing how to do it manually — but only when you are confident of the exact ticker \
@@ -273,6 +301,16 @@ _CONFIDENCE_LABELS: dict[str, str] = {
     "partial": "partial evidence",
     "full": "full evidence coverage",
 }
+#: ATLAS-018 Phase 6's `PortfolioContextFact`
+#: (`atlas.alpha.case_intelligence.models`).
+_PORTFOLIO_CONTEXT_FACT_LABELS: dict[str, str] = {
+    "largest_holding": "this is the portfolio's largest position",
+    "recently_increased": "most recently increased",
+    "recently_trimmed": "most recently trimmed",
+    "high_concentration": "high concentration in the portfolio",
+    "pending_workflow": "pending workflow items for this Investment Case",
+    "evidence_incomplete": "evidence coverage is incomplete",
+}
 
 
 def _readable(labels: dict[str, str], kind: str) -> str:
@@ -300,9 +338,15 @@ def render_portfolio_context(portfolio: PortfolioContextInput | None) -> str | N
     `None` (never an empty or padded block) when there is nothing real
     to report. A `case_context` can be real even with zero portfolio
     holdings (a brand-new Investment Case not yet linked to any
-    holding), so this only short-circuits to `None` when *both* are
-    absent."""
-    if portfolio is None or (len(portfolio.holdings) == 0 and portfolio.case_context is None):
+    holding), and an `unresolved_case_id` is real content even with
+    both `holdings` and `case_context` empty (a failed identity
+    resolution is itself a fact worth stating), so this only
+    short-circuits to `None` when all three are absent."""
+    if portfolio is None or (
+        len(portfolio.holdings) == 0
+        and portfolio.case_context is None
+        and portfolio.unresolved_case_id is None
+    ):
         return None
 
     lines: list[str] = []
@@ -352,6 +396,16 @@ def render_portfolio_context(portfolio: PortfolioContextInput | None) -> str | N
             lines.append(
                 f"  - Review suggestion: {_readable(_CONSIDER_LABELS, kind)} (not a recommendation to buy or sell)"
             )
+        for fact in case.portfolio_context_facts:
+            lines.append(f"  - Portfolio context: {_readable(_PORTFOLIO_CONTEXT_FACT_LABELS, fact)}")
+
+    if portfolio.unresolved_case_id is not None:
+        lines.append(
+            "- The investor's message referenced a specific Investment Case that Atlas could not "
+            "confirm exists. Do not guess which company this is or invent details about it — say "
+            "plainly that Atlas could not identify that Investment Case, and ask the investor to "
+            "name the company or ticker directly instead."
+        )
 
     return "\n".join(lines)
 

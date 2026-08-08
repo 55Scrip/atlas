@@ -9,6 +9,7 @@ import pytest
 
 from atlas.ai.discovery_chat import (
     CREATE_OR_OPEN_INVESTMENT_CASE_TOOL,
+    CaseContextInput,
     ChatMessage,
     ConsiderContextInput,
     HoldingContextInput,
@@ -267,6 +268,150 @@ class TestPortfolioIntelligenceContext:
         assert "future unknown kind" in rendered
 
 
+class TestCaseIntelligenceContext:
+    """ATLAS-017/018: Discovery renders the exact same Case Intelligence
+    facts the Investment Case page shows -- via `CaseContextInput`,
+    never reconstructed here."""
+
+    def test_current_thesis_appears_verbatim(self):
+        portfolio = PortfolioContextInput(
+            holdings=(),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+            case_context=CaseContextInput(
+                ticker="AMD",
+                held=True,
+                current_thesis_reason="Durable moat and cheap valuation.",
+                confidence="full",
+                is_stale=False,
+                missing_evidence_kinds=(),
+                key_risks=(),
+                consider_kinds=(),
+            ),
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert "Durable moat and cheap valuation." in rendered
+        assert "discussing AMD specifically" in rendered
+
+    def test_unheld_case_states_it_is_not_a_holding(self):
+        portfolio = PortfolioContextInput(
+            holdings=(),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+            case_context=CaseContextInput(
+                ticker=None,
+                held=False,
+                current_thesis_reason=None,
+                confidence="not_applicable",
+                is_stale=False,
+                missing_evidence_kinds=(),
+                key_risks=(),
+                consider_kinds=(),
+            ),
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert "not currently a portfolio holding" in rendered
+
+    def test_key_risk_and_missing_evidence_render_readable_phrases(self):
+        portfolio = PortfolioContextInput(
+            holdings=(),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+            case_context=CaseContextInput(
+                ticker="AMD",
+                held=True,
+                current_thesis_reason=None,
+                confidence="partial",
+                is_stale=False,
+                missing_evidence_kinds=("no_evidence_recorded",),
+                key_risks=("contradicting_evidence",),
+                consider_kinds=(),
+            ),
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert "no evidence recorded for this Investment Case" in rendered
+        assert "evidence that contradicts the current thesis" in rendered
+
+    def test_portfolio_context_facts_render_readable_phrases(self):
+        portfolio = PortfolioContextInput(
+            holdings=(),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+            case_context=CaseContextInput(
+                ticker="AMD",
+                held=True,
+                current_thesis_reason=None,
+                confidence="full",
+                is_stale=False,
+                missing_evidence_kinds=(),
+                key_risks=(),
+                consider_kinds=(),
+                portfolio_context_facts=("largest_holding", "pending_workflow"),
+            ),
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert "largest position" in rendered
+        assert "pending workflow items" in rendered
+
+    def test_case_context_alone_produces_content_even_with_no_holdings(self):
+        portfolio = PortfolioContextInput(
+            holdings=(),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+            case_context=CaseContextInput(
+                ticker=None,
+                held=False,
+                current_thesis_reason="Early-stage research.",
+                confidence="not_applicable",
+                is_stale=False,
+                missing_evidence_kinds=(),
+                key_risks=(),
+                consider_kinds=(),
+            ),
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert rendered is not None
+        assert "Early-stage research." in rendered
+
+
+class TestUnresolvedIdentity:
+    """ATLAS-018 Phase 3: a `caseId` that could not be resolved to a
+    real Investment Case is disclosed honestly -- never silently
+    dropped, never guessed at."""
+
+    def test_unresolved_case_id_is_disclosed_even_with_no_portfolio(self):
+        portfolio = PortfolioContextInput(
+            holdings=(),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+            unresolved_case_id="not-a-real-uuid",
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert rendered is not None
+        assert "could not confirm" in rendered
+        assert "Do not guess" in rendered
+
+    def test_no_unresolved_case_id_produces_no_disclosure(self):
+        portfolio = PortfolioContextInput(
+            holdings=(
+                HoldingContextInput(
+                    ticker="AMD", weight_percent=20.0, value_absolute=None, reconciliation_status="NONE"
+                ),
+            ),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert "could not confirm" not in rendered
+
+
 class TestSystemInstructionsRequireChallenge:
     def test_instructions_require_challenging_assumptions_not_agreement(self):
         prompt = build_system_prompt("en", None)
@@ -276,6 +421,29 @@ class TestSystemInstructionsRequireChallenge:
     def test_instructions_forbid_claiming_live_data_access(self):
         prompt = build_system_prompt("en", None)
         assert "current prices" in prompt.lower() or "today's news" in prompt.lower()
+
+
+class TestResponseGroundingCategories:
+    """ATLAS-018 Phase 7/8: every statement must belong to one of five
+    distinct categories (observed facts, evidence, uncertainty, missing
+    information, considerations), never blurred together, and every
+    non-obvious claim must be traceable to given context."""
+
+    def test_instructions_name_all_five_response_categories(self):
+        prompt = build_system_prompt("en", None).lower()
+        assert "observed facts" in prompt
+        assert "evidence" in prompt
+        assert "uncertainty" in prompt
+        assert "missing information" in prompt
+        assert "considerations" in prompt
+
+    def test_instructions_forbid_blurring_categories_together(self):
+        prompt = build_system_prompt("en", None).lower()
+        assert "never blur" in prompt or "blur" in prompt
+
+    def test_instructions_require_traceability_to_given_context(self):
+        prompt = build_system_prompt("en", None).lower()
+        assert "traceable" in prompt
 
 
 class TestSystemInstructionsForbidVisibleReasoning:

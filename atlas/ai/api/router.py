@@ -46,27 +46,25 @@ from atlas.ai.discovery_chat import (
     RiskSignalContextInput,
     run_discovery_chat,
 )
-from atlas.alpha.case_intelligence.api.dependencies import get_case_intelligence_service
-from atlas.alpha.case_intelligence.models import CaseIntelligenceReport
-from atlas.alpha.case_intelligence.service import CaseIntelligenceService
+from atlas.alpha.discovery_context.dependencies import get_discovery_context_service
+from atlas.alpha.discovery_context.models import DiscoveryContext, IdentityResolutionStatus
+from atlas.alpha.discovery_context.service import DiscoveryContextService
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_service
 from atlas.alpha.portfolio.api.schemas import HoldingView, PortfolioView
 from atlas.alpha.portfolio.projection import derive_portfolio_view
 from atlas.alpha.portfolio.service import AlphaPortfolioService
-from atlas.alpha.portfolio_intelligence.api.dependencies import get_portfolio_intelligence_service
-from atlas.alpha.portfolio_intelligence.models import PortfolioIntelligenceReport
-from atlas.alpha.portfolio_intelligence.service import PortfolioIntelligenceService
 from atlas.core.application.case.create_case import CaseService
 from atlas.core.infrastructure.api.case.dependencies import get_case_service
 
 router = APIRouter(prefix="/discovery", tags=["discovery"])
 
 
-def _case_context(report: CaseIntelligenceReport | None) -> CaseContextInput | None:
-    """ATLAS-017: Discovery consumes the exact same `CaseIntelligenceReport`
-    the Investment Case page's own API route returns -- never a second
-    reconstruction. `None` when no `caseId` was resolved on the request,
-    or the Case itself does not exist."""
+def _case_context(context: DiscoveryContext) -> CaseContextInput | None:
+    """ATLAS-017/018: Discovery consumes the exact same
+    `CaseIntelligenceReport` the Investment Case page's own API route
+    returns -- never a second reconstruction. `None` unless identity
+    resolution (`atlas.alpha.discovery_context`) actually succeeded."""
+    report = context.case
     if report is None:
         return None
     return CaseContextInput(
@@ -78,23 +76,31 @@ def _case_context(report: CaseIntelligenceReport | None) -> CaseContextInput | N
         missing_evidence_kinds=tuple(gap.kind.value for gap in report.missing_evidence),
         key_risks=tuple(risk.kind.value for risk in report.key_risks),
         consider_kinds=tuple(item.kind.value for item in report.consider_items),
+        portfolio_context_facts=tuple(fact.value for fact in report.portfolio_context.facts),
     )
 
 
-def _portfolio_context(
-    view: PortfolioView,
-    intelligence: PortfolioIntelligenceReport | None,
-    case_context: CaseContextInput | None,
-) -> PortfolioContextInput | None:
-    """ATLAS-016: Discovery consumes the same Key Findings/Consider/Risk
-    Signals the Portfolio page shows (`intelligence`), rather than
-    reconstructing any of its own -- both are built from the identical
-    `PortfolioIntelligenceService.build_report()` call. ATLAS-017 adds
-    `case_context` the same way. `case_context` alone (a brand-new,
-    unheld Investment Case) is enough to return real content even when
-    the portfolio itself is empty."""
-    if (not view.exists or len(view.holdings) == 0) and case_context is None:
+def _portfolio_context(view: PortfolioView, context: DiscoveryContext) -> PortfolioContextInput | None:
+    """ATLAS-016/017/018: raw holdings/cash come from the Alpha
+    portfolio's own state (`view`) -- primary source data, not
+    "reasoning," and `PortfolioIntelligenceReport` deliberately does not
+    re-expose it (see that type's own docstring). Every *reasoning* fact
+    -- Key Findings, Consider, Risk Signals, and Case Intelligence --
+    comes from the single canonical `DiscoveryContext`
+    (`atlas.alpha.discovery_context.DiscoveryContextService`), never
+    reconstructed here. An `UNRESOLVED` identity is real content even
+    when the portfolio itself is empty (Phase 3: never silently drop a
+    failed identity resolution)."""
+    intelligence = context.portfolio
+    case_context = _case_context(context)
+    unresolved_case_id = (
+        context.identity.case_id
+        if context.identity.status is IdentityResolutionStatus.UNRESOLVED
+        else None
+    )
+    if (not view.exists or len(view.holdings) == 0) and case_context is None and unresolved_case_id is None:
         return None
+
     return PortfolioContextInput(
         holdings=tuple(
             HoldingContextInput(
@@ -110,17 +116,17 @@ def _portfolio_context(
         concentration_level=view.concentration_level,
         key_findings=tuple(
             KeyFindingContextInput(kind=f.kind.value, count=f.count, tickers=f.tickers)
-            for f in (intelligence.key_findings if intelligence else ())
+            for f in intelligence.key_findings
         ),
         consider_items=tuple(
             ConsiderContextInput(kind=c.kind.value, ticker=c.ticker, confidence=c.confidence.value)
-            for c in (intelligence.consider_items if intelligence else ())
+            for c in intelligence.consider_items
         ),
         risk_signals=tuple(
-            RiskSignalContextInput(kind=s.kind.value, ticker=s.ticker)
-            for s in (intelligence.risk_signals if intelligence else ())
+            RiskSignalContextInput(kind=s.kind.value, ticker=s.ticker) for s in intelligence.risk_signals
         ),
         case_context=case_context,
+        unresolved_case_id=unresolved_case_id,
     )
 
 
@@ -169,8 +175,7 @@ def post_discovery_chat(
     body: DiscoveryChatRequest,
     service: AlphaPortfolioService = Depends(get_alpha_portfolio_service),
     case_service: CaseService = Depends(get_case_service),
-    intelligence_service: PortfolioIntelligenceService = Depends(get_portfolio_intelligence_service),
-    case_intelligence_service: CaseIntelligenceService = Depends(get_case_intelligence_service),
+    discovery_context_service: DiscoveryContextService = Depends(get_discovery_context_service),
     provider: ConversationProvider | None = Depends(get_discovery_provider),
 ) -> DiscoveryChatResponse:
     state = service.get_state()
@@ -179,13 +184,16 @@ def post_discovery_chat(
         if state is not None
         else PortfolioView.empty()
     )
-    intelligence_report = intelligence_service.build_report()
-    case_report = case_intelligence_service.build_report(body.case_id) if body.case_id else None
+    # ATLAS-018: the one canonical context assembly call -- Portfolio
+    # Intelligence, Case Intelligence, and deterministic identity
+    # resolution all happen inside this single service, never separately
+    # composed here.
+    context = discovery_context_service.build(body.case_id)
 
     outcome = run_discovery_chat(
         messages=tuple(ChatMessage(role=m.role, content=m.content) for m in body.messages),
         language=body.language,
-        portfolio=_portfolio_context(portfolio_view, intelligence_report, _case_context(case_report)),
+        portfolio=_portfolio_context(portfolio_view, context),
         provider=provider,
     )
 
