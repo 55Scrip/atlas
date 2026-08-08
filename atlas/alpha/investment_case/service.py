@@ -1,18 +1,20 @@
-"""`InvestmentCaseCompositionService` (ATLAS-027, Phase 9/10). See this
-package's own `__init__.py` for the full ownership rationale.
+"""`InvestmentCaseCompositionService` (ATLAS-027, Phase 9/10; batch path
+ATLAS-028, Phase 3/22). See this package's own `__init__.py` for the
+full ownership rationale.
 """
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
 
+from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComposition
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaTradeLogEntry
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.trade_log_store import AlphaTradeLogStore
-from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComposition
 from atlas.alpha.portfolio_intelligence.pipeline_bridge import build_decision_engine_input
 from atlas.alpha.portfolio_status.service import VERY_OLD_CASE_THRESHOLD_DAYS
 from atlas.analysis_engine.pipeline import assemble_analysis
+from atlas.core.domain.case.entity import Case
 from atlas.core.domain.case.repository import CaseRepository
 from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
@@ -77,6 +79,57 @@ class InvestmentCaseCompositionService:
         self._portfolio_store = portfolio_store
         self._trade_log_store = trade_log_store
 
+    def _assemble(
+        self,
+        case_id_str: str,
+        *,
+        holding: AlphaHolding | None,
+        decisions: tuple[Decision, ...],
+        observations: tuple[Observation, ...],
+        evidence: tuple,
+        outcomes: tuple,
+        trades_for_ticker: tuple[AlphaTradeLogEntry, ...],
+        evaluated_at: datetime,
+    ) -> InvestmentCaseComposition:
+        """The one per-Case assembly implementation -- both `build` and
+        `build_many` call only this. Never duplicated, never
+        re-derived: this is the sole place `build_decision_engine_input`
+        /`run_pipeline`/`assemble_analysis` are invoked for a Case
+        (ATLAS-028 Phase 3's own explicit requirement)."""
+        engine_input = build_decision_engine_input(
+            case_id_str,
+            holding=holding,
+            decisions=decisions,
+            observations=observations,
+            evidence=evidence,
+            outcomes=outcomes,
+            trade_log_entries=trades_for_ticker,
+            evaluated_at=evaluated_at,
+        )
+        decision_output = run_pipeline(engine_input, generated_at=evaluated_at)
+
+        is_thesis_stale = _is_thesis_stale(decisions, observations, evaluated_at)
+        canonical_analysis = assemble_analysis(
+            engine_input,
+            decision_output,
+            is_thesis_stale=is_thesis_stale,
+            business_records=(),
+            generated_at=evaluated_at,
+        )
+
+        return InvestmentCaseComposition(
+            case_id=case_id_str,
+            holding_context=holding,
+            canonical_analysis=canonical_analysis,
+            current_thesis=_current_thesis(decisions, observations),
+            decision_history=decisions,
+            observation_history=observations,
+            outcome_history=outcomes,
+            trade_log=trades_for_ticker,
+            is_thesis_stale=is_thesis_stale,
+            generated_at=evaluated_at,
+        )
+
     def build(self, case_id_str: str) -> InvestmentCaseComposition | None:
         """Returns `None` only when `case_id_str` does not resolve to a
         real Case -- an honest, explicit absence (Phase 22), never a
@@ -86,6 +139,13 @@ class InvestmentCaseCompositionService:
         `INSUFFICIENT_INPUT` `canonical_analysis` (Phase 10/11) -- a
         Case never needs a Decision, Observation, or Outcome recorded
         against it before this method can run.
+
+        Unbatched by design: reads each repository's own `list_all()`
+        exactly once, scoped to this single Case, then filters in
+        Python -- the same shape this method has had since ATLAS-027.
+        A caller building this for many Cases in a loop should use
+        `build_many` instead (ATLAS-028) -- see that method's own
+        docstring for why.
         """
         case = self._case_repository.get(CaseId(value=uuid.UUID(case_id_str)))
         if case is None:
@@ -101,9 +161,6 @@ class InvestmentCaseCompositionService:
         case_evidence = tuple(
             e for e in self._evidence_repository.list_all() if e.observation_id in case_observation_ids
         )
-        # Untyped (not `tuple[Outcome, ...]`): see
-        # `pipeline_bridge.build_decision_engine_input`'s own note --
-        # `atlas.alpha` may never import `atlas.core.domain.outcome.entity`.
         all_outcomes = self._outcome_repository.list_all()
         case_outcomes = tuple(o for o in all_outcomes if str(o.case_id) == case_id_str)
 
@@ -117,35 +174,104 @@ class InvestmentCaseCompositionService:
         if holding is not None:
             trades_for_ticker = tuple(t for t in all_trades if t.security == holding.ticker)
 
-        evaluated_at = _utc_now()
-        engine_input = build_decision_engine_input(
+        return self._assemble(
             case_id_str,
             holding=holding,
             decisions=case_decisions,
             observations=case_observations,
             evidence=case_evidence,
             outcomes=case_outcomes,
-            trade_log_entries=trades_for_ticker,
-            evaluated_at=evaluated_at,
-        )
-        decision_output = run_pipeline(engine_input, generated_at=evaluated_at)
-
-        canonical_analysis = assemble_analysis(
-            engine_input,
-            decision_output,
-            is_thesis_stale=_is_thesis_stale(case_decisions, case_observations, evaluated_at),
-            business_records=(),
-            generated_at=evaluated_at,
+            trades_for_ticker=trades_for_ticker,
+            evaluated_at=_utc_now(),
         )
 
-        return InvestmentCaseComposition(
-            case_id=case_id_str,
-            holding_context=holding,
-            canonical_analysis=canonical_analysis,
-            current_thesis=_current_thesis(case_decisions, case_observations),
-            decision_history=case_decisions,
-            observation_history=case_observations,
-            outcome_history=case_outcomes,
-            trade_log=trades_for_ticker,
-            generated_at=evaluated_at,
-        )
+    def build_many(self, case_ids: tuple[str, ...]) -> dict[str, InvestmentCaseComposition]:
+        """Batch counterpart to `build` (ATLAS-028, Phase 3/22/23).
+
+        Reads each of Decision/Observation/Evidence/Outcome/trade-log
+        exactly **once in total**, regardless of `len(case_ids)` --
+        never once per Case -- then groups by `case_id` in Python and
+        assembles each Case via the exact same `_assemble` `build`
+        itself uses. This is the fix for a real, measured problem: a
+        naive `[build(cid) for cid in case_ids]` loop issues four full,
+        unfiltered table scans *per Case* (confirmed by reading every
+        `list_all()` implementation directly -- none is case-scoped at
+        the SQL level), so a 25-holding portfolio would cost 100 full
+        table scans through `build`'s own unbatched path. `build_many`
+        costs exactly four scans total, no matter how many Cases are
+        requested.
+
+        Returns a dict keyed by the input `case_id` strings that
+        actually resolved to a real Case -- a `case_id` with no
+        matching Case is simply absent from the result (the same
+        honest-absence contract `build` expresses via returning `None`),
+        never a fabricated entry. Every Case is assembled from only its
+        own records -- one Case's Decisions never leak into another's
+        (`decisions_by_case`/`observations_by_case`/etc. are grouped by
+        exact `case_id` string equality, the same comparison `build`
+        itself already used).
+        """
+        if not case_ids:
+            return {}
+
+        wanted = set(case_ids)
+        cases: dict[str, Case] = {}
+        for case_id_str in case_ids:
+            case = self._case_repository.get(CaseId(value=uuid.UUID(case_id_str)))
+            if case is not None:
+                cases[case_id_str] = case
+
+        decisions_by_case: dict[str, list[Decision]] = {cid: [] for cid in cases}
+        for decision in self._decision_repository.list_all():
+            cid = str(decision.case_id)
+            if cid in decisions_by_case:
+                decisions_by_case[cid].append(decision)
+
+        observations_by_case: dict[str, list[Observation]] = {cid: [] for cid in cases}
+        observation_id_to_case: dict = {}
+        for observation in self._observation_repository.list_all():
+            cid = str(observation.case_id)
+            if cid in observations_by_case:
+                observations_by_case[cid].append(observation)
+                observation_id_to_case[observation.id] = cid
+
+        evidence_by_case: dict[str, list] = {cid: [] for cid in cases}
+        for evidence_item in self._evidence_repository.list_all():
+            cid = observation_id_to_case.get(evidence_item.observation_id)
+            if cid is not None:
+                evidence_by_case[cid].append(evidence_item)
+
+        outcomes_by_case: dict[str, list] = {cid: [] for cid in cases}
+        for outcome in self._outcome_repository.list_all():
+            cid = str(outcome.case_id)
+            if cid in outcomes_by_case:
+                outcomes_by_case[cid].append(outcome)
+
+        state = self._portfolio_store.get()
+        holdings_by_case: dict[str, AlphaHolding] = {}
+        if state is not None:
+            for holding in state.holdings:
+                if holding.case_id in wanted:
+                    holdings_by_case[holding.case_id] = holding
+
+        all_trades = self._trade_log_store.list_all()
+        trades_by_ticker: dict[str, list[AlphaTradeLogEntry]] = {}
+        for trade in all_trades:
+            trades_by_ticker.setdefault(trade.security, []).append(trade)
+
+        evaluated_at = _utc_now()
+        results: dict[str, InvestmentCaseComposition] = {}
+        for case_id_str in cases:
+            holding = holdings_by_case.get(case_id_str)
+            trades_for_ticker = tuple(trades_by_ticker.get(holding.ticker, ())) if holding is not None else ()
+            results[case_id_str] = self._assemble(
+                case_id_str,
+                holding=holding,
+                decisions=tuple(decisions_by_case[case_id_str]),
+                observations=tuple(observations_by_case[case_id_str]),
+                evidence=tuple(evidence_by_case[case_id_str]),
+                outcomes=tuple(outcomes_by_case[case_id_str]),
+                trades_for_ticker=trades_for_ticker,
+                evaluated_at=evaluated_at,
+            )
+        return results

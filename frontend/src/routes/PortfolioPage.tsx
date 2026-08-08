@@ -241,6 +241,126 @@ const ATTENTION_CATEGORY_KEY: Record<AttentionCategory, TranslationKey> = {
   OBSERVATION_WITHOUT_DECISION: "portfolio.needsAttention.observationWithoutDecision",
 };
 
+/**
+ * ATLAS-028 Portfolio Cockpit -- one canonical, portfolio-scoped per-
+ * holding analysis, projected from `CanonicalAnalysis`
+ * (`atlas/alpha/portfolio_cockpit/`). Every value below comes straight
+ * from `GET /alpha-portfolio/cockpit`; this page computes nothing of
+ * its own beyond translating enum values -- the same "no domain logic
+ * in the UI" discipline `PortfolioIntelligenceCards`/`Sections` above
+ * already follow. Portfolio Cockpit is the overview; a holding's own
+ * Investment Case (one click away via `caseId`) is the depth.
+ */
+type CockpitConvictionLevel = "very_high" | "high" | "moderate" | "low" | "insufficient_evidence";
+type CockpitValuationStatus = "not_evaluated" | "insufficient_input" | "undervalued" | "fairly_valued" | "expensive";
+type CockpitRiskCategory = "business_risk" | "financial_risk" | "valuation_risk" | "thesis_risk";
+type CockpitRiskStatus = "not_evaluated" | "insufficient_input" | "low" | "moderate" | "high";
+type CockpitBusinessStatus = "not_evaluated" | "insufficient_input" | "weak" | "moderate" | "strong";
+type CockpitReviewPriority = "none" | "standard_review" | "evidence_review" | "priority_review";
+type CockpitAttentionReason =
+  | "high_financial_risk"
+  | "high_valuation_risk"
+  | "low_conviction"
+  | "contradicting_evidence"
+  | "insufficient_evidence";
+
+interface CockpitConvictionView {
+  level: CockpitConvictionLevel;
+  reasons: string[];
+}
+
+interface CockpitValuationView {
+  status: CockpitValuationStatus;
+}
+
+interface CockpitBusinessSummaryView {
+  growth: CockpitBusinessStatus;
+  capitalAllocation: CockpitBusinessStatus;
+}
+
+interface CockpitRiskProjectionView {
+  category: CockpitRiskCategory;
+  status: CockpitRiskStatus;
+}
+
+interface CockpitAttentionView {
+  priority: CockpitReviewPriority;
+  reasons: CockpitAttentionReason[];
+}
+
+interface PortfolioCockpitHoldingView {
+  ticker: string;
+  caseId: string;
+  weightPercent: number;
+  valueAbsolute: number | null;
+  reconciliationStatus: "NONE" | "UPDATED" | "AWAITING_RECONCILIATION";
+  conviction: CockpitConvictionView;
+  valuation: CockpitValuationView;
+  business: CockpitBusinessSummaryView;
+  riskProjection: CockpitRiskProjectionView;
+  confidence: EvidenceCoverageLevel;
+  isThesisStale: boolean;
+  attention: CockpitAttentionView;
+}
+
+interface CockpitUnresolvedHoldingView {
+  ticker: string;
+  caseId: string | null;
+}
+
+interface PortfolioCockpitView {
+  exists: boolean;
+  holdings: PortfolioCockpitHoldingView[];
+  unresolvedHoldings: CockpitUnresolvedHoldingView[];
+  priorityReviewCount: number;
+}
+
+const CONVICTION_LEVEL_KEY: Record<CockpitConvictionLevel, TranslationKey> = {
+  very_high: "portfolio.cockpit.conviction.very_high",
+  high: "portfolio.cockpit.conviction.high",
+  moderate: "portfolio.cockpit.conviction.moderate",
+  low: "portfolio.cockpit.conviction.low",
+  insufficient_evidence: "portfolio.cockpit.conviction.insufficient_evidence",
+};
+
+const VALUATION_STATUS_KEY: Record<CockpitValuationStatus, TranslationKey> = {
+  not_evaluated: "portfolio.cockpit.valuation.not_evaluated",
+  insufficient_input: "portfolio.cockpit.valuation.insufficient_input",
+  undervalued: "portfolio.cockpit.valuation.undervalued",
+  fairly_valued: "portfolio.cockpit.valuation.fairly_valued",
+  expensive: "portfolio.cockpit.valuation.expensive",
+};
+
+const RISK_STATUS_KEY: Record<CockpitRiskStatus, TranslationKey> = {
+  not_evaluated: "portfolio.cockpit.risk.status.not_evaluated",
+  insufficient_input: "portfolio.cockpit.risk.status.insufficient_input",
+  low: "portfolio.cockpit.risk.status.low",
+  moderate: "portfolio.cockpit.risk.status.moderate",
+  high: "portfolio.cockpit.risk.status.high",
+};
+
+const RISK_CATEGORY_KEY: Record<CockpitRiskCategory, TranslationKey> = {
+  business_risk: "portfolio.cockpit.risk.category.business_risk",
+  financial_risk: "portfolio.cockpit.risk.category.financial_risk",
+  valuation_risk: "portfolio.cockpit.risk.category.valuation_risk",
+  thesis_risk: "portfolio.cockpit.risk.category.thesis_risk",
+};
+
+const BUSINESS_STATUS_KEY: Record<CockpitBusinessStatus, TranslationKey> = {
+  not_evaluated: "portfolio.cockpit.business.not_evaluated",
+  insufficient_input: "portfolio.cockpit.business.insufficient_input",
+  weak: "portfolio.cockpit.business.weak",
+  moderate: "portfolio.cockpit.business.moderate",
+  strong: "portfolio.cockpit.business.strong",
+};
+
+const REVIEW_PRIORITY_KEY: Record<CockpitReviewPriority, TranslationKey> = {
+  none: "portfolio.cockpit.review.none",
+  standard_review: "portfolio.cockpit.review.standard_review",
+  evidence_review: "portfolio.cockpit.review.evidence_review",
+  priority_review: "portfolio.cockpit.review.priority_review",
+};
+
 type Status =
   | { kind: "loading" }
   | { kind: "error"; message: string }
@@ -260,6 +380,14 @@ type PortfolioIntelligenceFetchStatus =
   | { kind: "loading" }
   | { kind: "error" }
   | { kind: "loaded"; report: PortfolioIntelligenceView };
+
+/** Same independent-fetch pattern -- a Cockpit fetch failure never
+ *  blocks Holdings from rendering; each row simply falls back to its
+ *  pre-Cockpit appearance (ticker/weight/reconciliation only). */
+type PortfolioCockpitFetchStatus =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "loaded"; report: PortfolioCockpitView };
 
 type CaseCreateStatus =
   | { kind: "idle" }
@@ -301,6 +429,7 @@ export function PortfolioPage() {
   const [portfolioIntelligence, setPortfolioIntelligence] = useState<PortfolioIntelligenceFetchStatus>({
     kind: "loading",
   });
+  const [cockpit, setCockpit] = useState<PortfolioCockpitFetchStatus>({ kind: "loading" });
   const [caseCreateStatus, setCaseCreateStatus] = useState<Record<string, CaseCreateStatus>>({});
   const [reconcileWeightInputs, setReconcileWeightInputs] = useState<Record<string, string>>({});
   const [reconcileStatus, setReconcileStatus] = useState<Record<string, ReconcileStatus>>({});
@@ -366,6 +495,25 @@ export function PortfolioPage() {
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setPortfolioIntelligence({ kind: "error" });
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch("/api/alpha-portfolio/cockpit", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        return response.json() as Promise<PortfolioCockpitView>;
+      })
+      .then((report) => setCockpit({ kind: "loaded", report }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setCockpit({ kind: "error" });
       });
 
     return () => controller.abort();
@@ -719,6 +867,13 @@ export function PortfolioPage() {
                     caseCreateStatus[holding.ticker] ?? { kind: "idle" };
                   const thisReconcileStatus: ReconcileStatus =
                     reconcileStatus[holding.ticker] ?? { kind: "idle" };
+                  const cockpitHolding =
+                    cockpit.kind === "loaded"
+                      ? cockpit.report.holdings.find((h) => h.ticker === holding.ticker)
+                      : undefined;
+                  const isUnresolvedInCockpit =
+                    cockpit.kind === "loaded" &&
+                    cockpit.report.unresolvedHoldings.some((h) => h.ticker === holding.ticker);
 
                   return (
                     <div key={holding.ticker}>
@@ -727,6 +882,12 @@ export function PortfolioPage() {
                         {holding.weightPercent}%
                         {holding.valueAbsolute !== null ? ` — ${holding.valueAbsolute}` : ""}
                       </Text>
+                      {cockpitHolding && <PortfolioCockpitHoldingBadges holding={cockpitHolding} t={t} />}
+                      {isUnresolvedInCockpit && (
+                        <Text color="tertiary" as="p">
+                          {t("portfolio.cockpit.unresolved")}
+                        </Text>
+                      )}
                       {holding.reconciliationStatus === "UPDATED" && (
                         <Text color="secondary" as="p">
                           {t("portfolio.holdings.updatedAutomatically")}
@@ -773,7 +934,9 @@ export function PortfolioPage() {
                       >
                         {thisCaseCreateStatus.kind === "creating"
                           ? t("portfolio.holdings.opening")
-                          : t("portfolio.holdings.openCaseButton")}
+                          : holding.caseId
+                            ? t("portfolio.cockpit.viewCaseButton")
+                            : t("portfolio.holdings.openCaseButton")}
                       </Button>
                       {thisCaseCreateStatus.kind === "error" && (
                         <Text color="tertiary" role="alert">
@@ -821,6 +984,60 @@ export function PortfolioPage() {
         )}
       </Stack>
     </Container>
+  );
+}
+
+/**
+ * ATLAS-028 Portfolio Cockpit -- one compact, scan-friendly analytical
+ * row per holding: Conviction, Valuation, Risk (highest-severity
+ * projection), Business (Growth/Capital Allocation), Evidence
+ * confidence, and Review priority. A dedicated Portfolio-page-local
+ * treatment, not a new Foundation-wide primitive (per this sprint's
+ * confirmed scope) -- built from the same "Field: value" `Inline` style
+ * `PortfolioIntelligenceCards`' Summary card already uses just below.
+ * Review priority uses `color="tertiary"` (this codebase's existing
+ * attention/alert color) whenever a holding needs more than a standard
+ * review, so it reads at a glance without a new color token.
+ */
+function PortfolioCockpitHoldingBadges({
+  holding,
+  t,
+}: {
+  holding: PortfolioCockpitHoldingView;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const needsElevatedReview =
+    holding.attention.priority === "evidence_review" || holding.attention.priority === "priority_review";
+
+  const analysisLine = [
+    `${t("portfolio.cockpit.conviction.label")}: ${t(CONVICTION_LEVEL_KEY[holding.conviction.level])}`,
+    `${t("portfolio.cockpit.valuation.label")}: ${t(VALUATION_STATUS_KEY[holding.valuation.status])}`,
+    `${t("portfolio.cockpit.risk.label")}: ${t(RISK_CATEGORY_KEY[holding.riskProjection.category])} — ${t(
+      RISK_STATUS_KEY[holding.riskProjection.status],
+    )}`,
+  ].join("   ·   ");
+
+  const businessLine = [
+    `${t("portfolio.cockpit.business.growthLabel")}: ${t(BUSINESS_STATUS_KEY[holding.business.growth])}`,
+    `${t("portfolio.cockpit.business.capitalAllocationLabel")}: ${t(
+      BUSINESS_STATUS_KEY[holding.business.capitalAllocation],
+    )}`,
+    `${t("portfolio.cockpit.evidenceLabel")}: ${t(CONFIDENCE_KEY[holding.confidence])}`,
+  ].join("   ·   ");
+
+  return (
+    <Stack gap="metadata">
+      <Text color="secondary" as="p">
+        {analysisLine}
+      </Text>
+      <Text color="secondary" as="p">
+        {businessLine}
+      </Text>
+      <Text color={needsElevatedReview ? "tertiary" : "secondary"} as="p">
+        {t("portfolio.cockpit.review.label")}: {t(REVIEW_PRIORITY_KEY[holding.attention.priority])}
+        {holding.isThesisStale ? `   ·   ${t("portfolio.cockpit.thesisStale")}` : ""}
+      </Text>
+    </Stack>
   );
 }
 

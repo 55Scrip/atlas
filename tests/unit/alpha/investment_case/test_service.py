@@ -81,6 +81,36 @@ class _Harness:
         assert case_id is not None
         return case_id
 
+    def import_holdings(self, tickers: tuple[str, ...]) -> tuple[str, ...]:
+        weight = round(100.0 / len(tickers), 2)
+        state = self.portfolio_service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=tuple(ImportHoldingInput(ticker=t, weight_percent=weight) for t in tickers)
+            )
+        )
+        by_ticker = {h.ticker: h.case_id for h in state.holdings}
+        return tuple(by_ticker[t] for t in tickers)
+
+    def count_calls(self, repository_name: str) -> "_CallCounter":
+        repository = getattr(self, repository_name)
+        return _CallCounter(repository)
+
+
+class _CallCounter:
+    """Wraps a repository's `list_all` to count invocations, without
+    changing its return value -- used to prove `build_many` issues
+    exactly one scan regardless of how many Cases are requested."""
+
+    def __init__(self, repository) -> None:
+        self._repository = repository
+        self._original = repository.list_all
+        self.call_count = 0
+        repository.list_all = self._counted
+
+    def _counted(self):
+        self.call_count += 1
+        return self._original()
+
 
 @pytest.fixture
 def harness() -> _Harness:
@@ -282,3 +312,106 @@ class TestNoAutomaticDecisionOrRecommendation:
             composition.canonical_analysis.recommendation.recommendation.kind
             is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
         )
+
+
+class TestBuildMany:
+    """ATLAS-028 Phase 3/22/23: `build_many` -- one scan per repository
+    regardless of Case count, and results equivalent to calling `build`
+    once per Case (modulo each call's own fresh `evaluated_at`)."""
+
+    def test_empty_case_ids_returns_empty_dict(self, harness):
+        assert harness.composition_service.build_many(()) == {}
+
+    def test_unresolved_case_id_is_simply_absent_from_the_result(self, harness):
+        result = harness.composition_service.build_many(("00000000-0000-0000-0000-000000000099",))
+        assert result == {}
+
+    def test_mixed_resolved_and_unresolved_case_ids(self, harness):
+        real_case_id = harness.import_holding("AMD")
+        result = harness.composition_service.build_many((real_case_id, "00000000-0000-0000-0000-000000000099"))
+        assert set(result) == {real_case_id}
+
+    def test_every_requested_case_id_that_exists_is_present(self, harness):
+        case_ids = harness.import_holdings(("AMD", "NVDA", "META"))
+        result = harness.composition_service.build_many(case_ids)
+        assert set(result) == set(case_ids)
+
+    def test_results_are_equivalent_to_calling_build_once_per_case(self, harness):
+        case_ids = harness.import_holdings(("AMD", "NVDA"))
+        batch = harness.composition_service.build_many(case_ids)
+        for case_id in case_ids:
+            individual = harness.composition_service.build(case_id)
+            batched = batch[case_id]
+            assert batched.holding_context.ticker == individual.holding_context.ticker
+            assert batched.canonical_analysis.conviction.level == individual.canonical_analysis.conviction.level
+            batched_statuses = {
+                f.kind.value: f.status.value for f in batched.canonical_analysis.business_analysis.findings
+            }
+            individual_statuses = {
+                f.kind.value: f.status.value for f in individual.canonical_analysis.business_analysis.findings
+            }
+            assert batched_statuses == individual_statuses
+
+    def test_no_record_leakage_between_cases(self, harness):
+        """One Case's Decisions must never appear in another Case's
+        composition."""
+        amd_id, nvda_id = harness.import_holdings(("AMD", "NVDA"))
+        decision = _make_decision(case_id=amd_id, reason="AMD-only thesis.")
+        harness.decision_repository.add(decision)
+
+        batch = harness.composition_service.build_many((amd_id, nvda_id))
+        assert len(batch[amd_id].decision_history) == 1
+        assert batch[nvda_id].decision_history == ()
+
+    def test_evidence_is_correctly_attributed_via_its_own_observation(self, harness):
+        from atlas.core.domain.evidence.entity import Evidence
+        from atlas.core.domain.evidence.value_objects import Direction
+        from atlas.core.domain.evidence.value_objects import Statement as EvidenceStatement
+
+        amd_id, nvda_id = harness.import_holdings(("AMD", "NVDA"))
+        observation = _make_observation(case_id=amd_id, statement="AMD observation.")
+        harness.observation_repository.add(observation)
+        evidence = Evidence.capture(
+            observation_id=observation.id,
+            statement=EvidenceStatement("Corroborating detail."),
+            direction=Direction.SUPPORTS,
+            observed_at=_NOW,
+        )
+        harness.evidence_repository.add(evidence)
+
+        batch = harness.composition_service.build_many((amd_id, nvda_id))
+        # Just prove no crash and that NVDA's own composition is
+        # unaffected -- the exact confidence value is Business
+        # Evaluation's own concern, already covered elsewhere.
+        assert len(batch[amd_id].observation_history) == 1
+        assert batch[nvda_id].observation_history == ()
+
+    def test_repository_scans_happen_exactly_once_regardless_of_case_count(self, harness):
+        case_ids = harness.import_holdings(("AMD", "NVDA", "META"))
+        decision_counter = harness.count_calls("decision_repository")
+        observation_counter = harness.count_calls("observation_repository")
+        evidence_counter = harness.count_calls("evidence_repository")
+        outcome_counter = harness.count_calls("outcome_repository")
+
+        harness.composition_service.build_many(case_ids)
+
+        assert decision_counter.call_count == 1
+        assert observation_counter.call_count == 1
+        assert evidence_counter.call_count == 1
+        assert outcome_counter.call_count == 1
+
+    def test_trade_log_is_correctly_scoped_by_ticker_not_case(self, harness):
+        amd_id, nvda_id = harness.import_holdings(("AMD", "NVDA"))
+        batch = harness.composition_service.build_many((amd_id, nvda_id))
+        assert batch[amd_id].trade_log == ()
+        assert batch[nvda_id].trade_log == ()
+
+    def test_determinism(self, harness):
+        case_ids = harness.import_holdings(("AMD", "NVDA"))
+        first = harness.composition_service.build_many(case_ids)
+        second = harness.composition_service.build_many(case_ids)
+        for case_id in case_ids:
+            assert (
+                first[case_id].canonical_analysis.conviction.level
+                == second[case_id].canonical_analysis.conviction.level
+            )

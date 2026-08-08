@@ -55,4 +55,10 @@ class InvestmentCaseComposition:
     observation_history: tuple[Observation, ...]
     outcome_history: tuple
     trade_log: tuple[AlphaTradeLogEntry, ...]
+    is_thesis_stale: bool
+    """The exact value already passed into `calculate_conviction` for
+    this Case (ATLAS-028) -- exposed here so a consumer wanting to
+    display staleness (e.g. Portfolio Cockpit) reads it directly rather
+    than recomputing the same `VERY_OLD_CASE_THRESHOLD_DAYS` rule a
+    second time."""
     generated_at: datetime
