@@ -34,6 +34,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from atlas.analysis_engine.business import BusinessAnalysisResult
 from atlas.analysis_engine.contracts import CapabilityStatus
 from atlas.analysis_engine.conviction import ConvictionAssessment
 from atlas.analysis_engine.findings import Finding
@@ -98,6 +99,11 @@ class CanonicalAnalysis:
     conviction: ConvictionAssessment
     recommendation: RecommendationGateResult
     findings: tuple[Finding, ...]
+
+    # -- New in ATLAS-021, real (additive -- `business` above keeps its
+    # exact prior meaning unchanged; this is a second, richer section,
+    # not a replacement) -----------------------------------------------
+    business_analysis: BusinessAnalysisResult
 
     # -- New this sprint, honestly not yet implemented -----------------
     catalysts: UnavailableCapability

@@ -41,6 +41,7 @@ class TestStructuralCompleteness:
         assert analysis.conviction is not None
         assert analysis.recommendation is not None
         assert analysis.findings
+        assert analysis.business_analysis is not None
         assert analysis.generated_at == GENERATED_AT
 
     def test_reused_stage_results_are_the_same_objects_not_copies(self):
@@ -66,6 +67,108 @@ class TestCatalystsAndScenarioAnalysisAreHonestlyAbsent:
         assert analysis.scenario_analysis == UnavailableCapability(
             reason=CapabilityStatus.NOT_YET_IMPLEMENTED
         )
+
+
+class TestBusinessAnalysisIntegration:
+    """ATLAS-021: `CanonicalAnalysis.business_analysis` and its flat
+    `BUSINESS_CATEGORY_ASSESSED` projection into `analysis.findings`."""
+
+    def test_business_analysis_has_all_six_categories(self):
+        from atlas.analysis_engine.business import BusinessCategory
+
+        engine_input, output = run_minimal()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
+        )
+        assert {f.kind for f in analysis.business_analysis.findings} == set(BusinessCategory)
+
+    def test_six_business_category_assessed_findings_appear_in_the_flat_list(self):
+        engine_input, output = run_minimal()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
+        )
+        matches = [f for f in analysis.findings if f.kind is FindingKind.BUSINESS_CATEGORY_ASSESSED]
+        assert len(matches) == 6
+
+    def test_projected_findings_carry_category_and_status_in_details(self):
+        engine_input, output = run_minimal()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
+        )
+        matches = [f for f in analysis.findings if f.kind is FindingKind.BUSINESS_CATEGORY_ASSESSED]
+        categories = {f.details["category"] for f in matches}
+        assert categories == {
+            "business_model",
+            "competitive_position",
+            "management",
+            "capital_allocation",
+            "growth",
+            "durability",
+        }
+        assert all(f.details["status"] == "insufficient_input" for f in matches)
+
+    def test_business_category_findings_do_not_leak_into_risk_section(self):
+        """business_category_assessed Findings carry no `risk_category`
+        key -- they must never be picked up by the risk-section filter,
+        which only matches on that key's presence."""
+        engine_input, output = run_minimal()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
+        )
+        risk_ids = {f.id for f in analysis.risk.findings}
+        business_ids = {
+            f.id for f in analysis.findings if f.kind is FindingKind.BUSINESS_CATEGORY_ASSESSED
+        }
+        assert risk_ids.isdisjoint(business_ids)
+
+    def test_existing_business_analysis_unavailable_finding_is_unaffected(self):
+        """Backward compatibility: the pre-existing decision_engine-level
+        BUSINESS_ANALYSIS_UNAVAILABLE finding (ATLAS-020) still appears
+        exactly once, unchanged, alongside the six new ones."""
+        engine_input, output = run_minimal()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
+        )
+        matches = [f for f in analysis.findings if f.kind is FindingKind.BUSINESS_ANALYSIS_UNAVAILABLE]
+        assert len(matches) == 1
+
+    def test_no_duplicated_durability_computation(self):
+        """The Durability BusinessFinding's status must match
+        decision_engine's own Durability conclusion exactly -- proving
+        reuse, not an independent second computation that could drift."""
+        from atlas.analysis_engine.business import BusinessCategory, BusinessCategoryStatus
+        from atlas.decision_engine.contracts import EvaluationState as DEState
+
+        engine_input, output = run_minimal()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
+        )
+        durability_finding = next(
+            f for f in analysis.business_analysis.findings if f.kind is BusinessCategory.DURABILITY
+        )
+        assert output.business_evaluation.durability.state is DEState.INSUFFICIENT_INPUT
+        assert durability_finding.status is BusinessCategoryStatus.INSUFFICIENT_INPUT
+
+    def test_conviction_and_recommendation_behavior_is_unchanged_by_business_analysis(self):
+        """ATLAS-021 must not alter Conviction or Recommendation Gate
+        behavior -- both are computed from the same signals as before,
+        untouched by the new business_analysis field."""
+        engine_input, output = run_minimal()
+        analysis = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
+        )
+        assert analysis.conviction.level is ConvictionLevel.INSUFFICIENT_EVIDENCE
+        assert (
+            analysis.recommendation.recommendation.kind
+            is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
+        )
+
+    def test_determinism_holds_with_business_analysis_included(self):
+        engine_input, output = run_populated()
+        first = assemble_analysis(engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT)
+        second = assemble_analysis(engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT)
+        assert first.business_analysis == second.business_analysis
+        assert first == second
 
 
 class TestNoFabrication:

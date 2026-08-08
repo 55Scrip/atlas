@@ -48,6 +48,15 @@ class FindingKind(str, Enum):
     PORTFOLIO_FACTOR_UNAVAILABLE = "portfolio_factor_unavailable"
     CONVICTION_ASSESSED = "conviction_assessed"
     RECOMMENDATION_WITHHELD = "recommendation_withheld"
+    BUSINESS_CATEGORY_ASSESSED = "business_category_assessed"
+    """ATLAS-021: one per `atlas.analysis_engine.business.BusinessCategory`
+    member, always six per run. A flat, cross-cutting projection of the
+    richer `BusinessFinding` type onto the generic `Finding` shape, for
+    consumers that only want "every Finding this run produced" without
+    caring about category-specific structure -- `details` carries
+    `category` and `status`; the full `BusinessFinding` (with its own
+    evidence/missing-evidence detail) lives on
+    `CanonicalAnalysis.business_analysis.findings`, not here."""
 
 
 class FindingSeverity(str, Enum):
@@ -75,6 +84,12 @@ class FindingProducer(str, Enum):
     REASONING = "reasoning"
     CONVICTION = "conviction"
     RECOMMENDATION_GATE = "recommendation_gate"
+    BUSINESS_ANALYSIS = "business_analysis"
+    """ATLAS-021: `atlas.analysis_engine.business` -- distinct from
+    `BUSINESS_EVALUATION` (`atlas.decision_engine`'s own stage, reused
+    verbatim for Evidence Quality and, via reuse, Durability). This
+    producer is analysis_engine-native: it owns the six-category
+    `BusinessFinding` taxonomy Evidence Quality alone never claimed."""
 
 
 @dataclass(frozen=True)

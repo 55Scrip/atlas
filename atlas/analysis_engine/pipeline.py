@@ -43,6 +43,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from atlas.analysis_engine.business import BusinessAnalysisResult, evaluate_business_analysis
 from atlas.analysis_engine.confidence import Confidence
 from atlas.analysis_engine.contracts import RiskCategory, CapabilityStatus
 from atlas.analysis_engine.conviction import calculate_conviction
@@ -326,6 +327,31 @@ def _build_findings(
     return tuple(findings)
 
 
+def _business_category_findings(business_analysis: BusinessAnalysisResult) -> tuple[Finding, ...]:
+    """Project each rich `BusinessFinding` (ATLAS-021) onto the generic,
+    flat `Finding` shape -- for consumers of `CanonicalAnalysis.findings`
+    that want "every Finding this run produced" without caring about
+    category-specific structure. The richer type, with its own
+    evidence/missing-evidence detail, stays on
+    `CanonicalAnalysis.business_analysis.findings`; this is a view, not
+    a second computation -- `provenance` is reused verbatim from the
+    `BusinessFinding` it projects, never rebuilt.
+    """
+    return tuple(
+        Finding(
+            id=f"{FindingKind.BUSINESS_CATEGORY_ASSESSED.value}:{business_finding.kind.value}",
+            kind=FindingKind.BUSINESS_CATEGORY_ASSESSED,
+            severity=business_finding.severity,
+            details={"category": business_finding.kind.value, "status": business_finding.status.value},
+            evidence_references=business_finding.supporting_evidence + business_finding.contradicting_evidence,
+            confidence=business_finding.confidence,
+            producer=FindingProducer.BUSINESS_ANALYSIS,
+            provenance=business_finding.provenance,
+        )
+        for business_finding in business_analysis.findings
+    )
+
+
 def assemble_analysis(
     engine_input: DecisionEngineInput,
     decision_output: DecisionEngineOutput,
@@ -341,6 +367,10 @@ def assemble_analysis(
     """
     reasoning = decision_output.reasoning.finding
     confidence: Confidence = decision_output.business_evaluation.evidence_quality.coverage
+
+    business_analysis = evaluate_business_analysis(
+        decision_output.business_evaluation, evaluated_at=generated_at
+    )
 
     conviction_finding_id = FindingKind.CONVICTION_ASSESSED.value
     conviction = calculate_conviction(
@@ -408,7 +438,7 @@ def assemble_analysis(
             generated_at=generated_at,
         ),
     )
-    findings = findings + (recommendation_finding,)
+    findings = findings + (recommendation_finding,) + _business_category_findings(business_analysis)
 
     risk_findings = tuple(finding for finding in findings if "risk_category" in finding.details)
 
@@ -423,6 +453,7 @@ def assemble_analysis(
         conviction=conviction,
         recommendation=recommendation,
         findings=findings,
+        business_analysis=business_analysis,
         catalysts=UnavailableCapability(reason=CapabilityStatus.NOT_YET_IMPLEMENTED),
         scenario_analysis=UnavailableCapability(reason=CapabilityStatus.NOT_YET_IMPLEMENTED),
         generated_at=generated_at,

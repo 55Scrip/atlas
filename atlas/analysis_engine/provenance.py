@@ -60,6 +60,16 @@ class UpdateTrigger(str, Enum):
     changed -- the general "derived value" case, distinct from the
     named domain-event triggers above."""
 
+    EXTERNAL_BUSINESS_DATA_INGESTED = "external_business_data_ingested"
+    """Reserved (ATLAS-021): recompute because a new financial statement,
+    filing, transcript, macro indicator, or news item was ingested for
+    this Case's holding. No code constructs a `Provenance` with this
+    trigger yet -- no ingestion adapter exists (see
+    `atlas.analysis_engine.business.ExternalSourceKind`) -- named now so
+    that future adapter does not need to widen this enum, the same
+    "reserve the name, never construct it yet" discipline
+    `SourceKind.EXTERNAL_DATA_SOURCE` already established."""
+
 
 class Consumer(str, Enum):
     """Which surface reads a given field -- generated from the

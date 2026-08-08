@@ -70,5 +70,7 @@ class TestNoForbiddenDependencies:
             "models.py",
             "pipeline.py",
             "lifecycle.py",
+            "business.py",
+            "exceptions.py",
         ):
             assert expected in names, f"{expected} missing from atlas/analysis_engine/"
