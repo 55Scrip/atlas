@@ -33,8 +33,15 @@ subordinate module needs to restate it):
   Analysis or Valuation themselves concluded.
 - **Recommendation** (`recommendation.py`, gate only) owns whether
   enough of the above is complete and strong enough to permit a
-  directional view — it decides *whether*, never *what*; no
-  `DirectionalRecommendation` type exists anywhere in this package.
+  directional view — it decides *whether*, never *what*. A
+  `ComputedDirectionalRecommendation` type now exists (DE-007
+  "Implementation Step 1"), and a Recommendation-specific Atlas
+  Conviction Level computation now exists
+  (`recommendation_conviction.py`, "Recommendation Backend Step 2") —
+  but no code in this package ever constructs a
+  `ComputedDirectionalRecommendation`, because no Direction selector
+  exists; see `recommendation.py`'s own module docstring for the exact
+  gap.
 
 Each owns its question exclusively; none recomputes another's answer,
 matching this sprint's own "one source of truth per question" mandate.
