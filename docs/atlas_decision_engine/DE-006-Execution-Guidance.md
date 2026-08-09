@@ -27,7 +27,11 @@ pending (`UX-012` §28's own pending/accepted/dismissed/acted-upon states) —
 one of its purposes is precisely to help the Investor evaluate the
 Recommendation itself, before any acceptance, dismissal, or action has
 occurred. Acceptance belongs to the Investor's own decision lifecycle, not
-to Execution Guidance's own definition — see §7 for the full relationship.
+to Execution Guidance's own definition — see §7 for the full relationship,
+and §6 for how this splits Execution Guidance's own lifecycle into a
+computed stage (before any response) and a historical stage (only after
+one), mirroring the identical split `DE-007` establishes for Recommendation
+itself.
 
 Execution Guidance is guidance: a small set of ranges, qualitative
 framings, and named assumptions, held to the same evidence-attributed,
@@ -186,38 +190,85 @@ shown on its own.
 
 ## 6. Lifecycle
 
-Execution Guidance's lifecycle reuses the state vocabulary `UX-012B`'s
-existing Monitoring Condition and Review Condition components already
-establish (Active/Triggered/Resolved/Expired; Pending/Triggered/Completed),
-rather than inventing new terms for a structurally similar situation:
+**Corrective pass note.** This section previously described a single
+lifecycle without stating when its "retained and visibly marked, not
+deleted" language actually applies — an ambiguity `DE-007`'s own review
+surfaced and explicitly deferred back here. This revision resolves it by
+stating, directly, that Execution Guidance's lifecycle divides into two
+stages, exactly mirroring the split the approved Recommendation Ontology
+Decision already establishes for Recommendation itself (`DE-007` §1, §5,
+§8): a *computed* stage, ephemeral and recomputed fresh, and a
+*historical* stage, persisted, that exists only once an Investor has
+responded. No new state is introduced by this clarification — the same
+three states this document has always named (`active`/`invalidated`/
+`withdrawn`) are unchanged; only the precondition for the latter two —
+that a persisted historical record exists at all — is now stated
+explicitly rather than assumed.
 
-- **Created** — only when a Recommendation's Direction is stated as Buy,
-  Add, Trim, or Exit (§7). Hold, No Action, and Recommendation Withheld
-  never produce Execution Guidance, because there is nothing for it to
-  guide.
-- **Updated** — when the Recommendation it depends on is re-evaluated and
-  its Direction or Conviction changes materially, or when new Valuation
-  evidence shifts the range this guidance's own valuation-sensitivity
-  statement (§2) names. Execution Guidance is re-derived, not left silently
-  stale beside an updated Recommendation.
-- **Invalidated** — when a stated validity condition (§2) is actually met —
-  for example, the current price or valuation moves outside the range the
-  guidance assumed. Invalidated guidance is retained and visibly marked,
-  not deleted, per the same immutability discipline `UX-012B`'s Historical
-  Section already establishes for locked content: an invalidated Execution
-  Guidance is itself information (it tells the Investor exactly what
-  changed), not nothing.
-- **Withdrawn** — when the Recommendation it depends on is itself withdrawn
-  or superseded (moves to Recommendation Withheld, or is superseded by a
-  later analysis run). Execution Guidance cannot outlive its Recommendation
-  (§7) — Recommendation withdrawal always withdraws its linked Execution
-  Guidance.
+### Computed Execution Guidance (pre-response — ephemeral, no persisted status)
 
-Invalidated and Withdrawn are kept as two distinct states, not one, because
-they are triggered differently and mean different things: a validity
-condition can be breached (Invalidated) while the underlying Direction is
-still fully intact (a Buy recommendation whose specific execution range
-needs refreshing is not a Buy recommendation that has stopped being true).
+While a Recommendation exists only as a `ComputedDirectionalRecommendation`
+(`DE-007` §8A) — that is, before the Investor has responded to it —
+Execution Guidance exists in exactly the same form: recomputed fresh
+alongside the Recommendation on every analysis run, for as long as the
+Direction remains Buy, Add, Trim, or Exit (Hold, No Action, and
+Recommendation Withheld never produce it — unchanged from before, and
+still true at this stage). It carries **no persisted status field, no
+`createdAt`, no `updatedAt`** — it simply is, or is not, present in the
+current computation, the same way `ComputedDirectionalRecommendation`
+itself carries no lifecycle-state field of its own (`DE-007` §5, §8A).
+
+**There is nothing at this stage that can meaningfully become
+"Invalidated," and nothing that can meaningfully be "Withdrawn."**
+Invalidation is a statement that current analysis no longer supports
+content that was previously *recorded* — and before an Investor response,
+nothing has been recorded. A Computed Execution Guidance that no longer
+clears its own validity conditions on a later request is not
+"invalidated" — it is simply absent from that later request's fresh
+computation, exactly as a Computed Directional Recommendation that no
+longer clears its gate is simply absent, not "withdrawn," from a later
+request (the identical point `DE-007` §4 already makes about
+Recommendation Withheld replacing, not superseding, an unresponded-to
+computation). Nothing is retained at this stage, because nothing was ever
+stored.
+
+### Historical Execution Guidance Snapshot (post-response — persisted, immutable)
+
+- **Created** — only in the same event that creates a
+  `HistoricalRecommendationSnapshot` (`DE-007` §5, §8B): when the Investor
+  responds (accepts or dismisses) to a Recommendation whose Direction is
+  Buy, Add, Trim, or Exit, and a Computed Execution Guidance exists at
+  that moment, its content is captured, verbatim, alongside the
+  Recommendation's own snapshot. If no Computed Execution Guidance existed
+  at response time (§5's own "no Execution Guidance issued" case), none is
+  snapshotted — there is nothing to capture.
+- **Active** — the snapshot as captured, not yet contradicted by any later
+  analysis.
+- **Invalidated** — when a *later* analysis run's fresh computation no
+  longer supports the specific validity conditions the snapshot recorded
+  (§2, §5) — for example, price or valuation has since moved outside the
+  range the snapshot assumed. The snapshot itself is retained and visibly
+  marked, not deleted, per the same immutability discipline `UX-012B`'s
+  Historical Section already establishes for locked content — language
+  that is now fully coherent, since a real persisted record exists to
+  retain and mark. **This state is reachable only for a Historical
+  Execution Guidance Snapshot** — it cannot be triggered for a merely
+  Computed Execution Guidance (above), which has nothing to be invalidated
+  relative to.
+- **Withdrawn** — when the Recommendation snapshot it depends on is itself
+  superseded (`DE-007` §5, §6: a later Investor response produces a new
+  `HistoricalRecommendationSnapshot` for the same Case). **The underlying
+  Recommendation no longer stands** — a Historical Execution Guidance
+  Snapshot cannot outlive the Recommendation snapshot it was captured
+  alongside.
+
+Invalidated and Withdrawn remain two distinct states, not one, precisely
+as before: a validity condition can be breached (Invalidated) while the
+Recommendation snapshot the Investor actually responded to is still fully
+intact — **the historical Execution Guidance still exists; current
+analysis simply no longer supports it.** Withdrawn is different in kind:
+the underlying Recommendation snapshot itself no longer stands, so nothing
+remains for the execution content to describe how to carry out.
 
 ## 7. Relationship to Recommendation
 
@@ -287,6 +338,12 @@ Portfolio Simulation (§8) is not part of this chain at any point — it is a
 separate, hypothetical "what if" concept, usable independently of whether a
 Recommendation exists at all, not a downstream step of one.
 
+Execution Guidance moves through this chain's first box in lockstep with
+the Recommendation it depends on: both exist only as current, computed
+analysis until the Investor responds, and both gain a persisted historical
+form in the same event, at the same moment, never separately (§6's full
+two-stage lifecycle).
+
 Hold, No Action, and Recommendation Withheld remain entirely outside this
 chain — they never produce Execution Guidance (§6, above), and none of the
 downstream steps changes that.
@@ -314,14 +371,21 @@ this document.
 
 ## 9. Domain Model (Fields Only — No Implementation)
 
+**Corrective pass note.** Split into two shapes below, matching §6's
+two-stage lifecycle exactly — the same split `DE-007` §8 applies to
+Recommendation itself, applied here for consistency. This is a
+clarification of when each field is meaningful, not a redesign: every
+field named in the prior single-shape version below still exists; none is
+removed, renamed, or given new semantics.
+
+### A. `ComputedExecutionGuidance` — ephemeral, not persisted
+
 ```
-ExecutionGuidance
-├── id
-├── recommendationId              — required; 1:1-or-nothing with a
-│                                    directional, actionable Recommendation (§7)
-├── status                        — "active" | "invalidated" | "withdrawn"  (§6)
-├── createdAt
-├── updatedAt
+ComputedExecutionGuidance
+├── recommendationInstanceId      — correlates to the ComputedDirectionalRecommendation
+│                                    instance it depends on (DE-007 §6) — a computed
+│                                    correlation for the duration of one request, not
+│                                    a persisted foreign key
 ├── targetAllocationRange         — { minPercent, maxPercent } | null
 ├── executionRange                — { basis: "price" | "valuation_relative",
 │                                      min, max } | null   (never single-point, §2/§5)
@@ -335,19 +399,42 @@ ExecutionGuidance
 ├── assumptions                   — string[]   ("this guidance assumes…")
 ├── validityConditions            — { condition: string }[]   ("valid while…",
 │                                    DE-002 §2.7-style, scoped to execution)
-├── atlasConvictionLevel          — "high" | "medium" | "low"   (DE-004; stated
-│                                    independently of the Recommendation's own
-│                                    Conviction Level, §5)
+└── atlasConvictionLevel          — "high" | "medium" | "low"   (DE-004; stated
+                                     independently of the Recommendation's own
+                                     Conviction Level, §5)
+```
+
+**No `status`, `id`, `createdAt`, `updatedAt`, `invalidatedReason`, or
+`withdrawnReason` field** — none of these are meaningful before a
+persisted historical record exists (§6).
+
+### B. `HistoricalExecutionGuidanceSnapshot` — persisted, created only alongside a Historical Recommendation Snapshot
+
+```
+HistoricalExecutionGuidanceSnapshot
+├── recommendationId              — references the paired HistoricalRecommendationSnapshot
+│                                    (DE-007 §8B); both are created in the same event (§6)
+├── snapshottedAt                 — when this record was written (== the paired
+│                                    HistoricalRecommendationSnapshot's own snapshot time)
+├── targetAllocationRange / executionRange / accumulationApproach /
+│   urgency / valuationSensitivity / assumptions / validityConditions /
+│   atlasConvictionLevel          — frozen copy of the ComputedExecutionGuidance
+│                                    content at the moment of capture (§6), identical
+│                                    field shapes to (A) above
+├── status                        — "active" | "invalidated" | "withdrawn"   (§6 —
+│                                    the same three values this document has always
+│                                    named; only reachable here, on this type)
 ├── invalidatedReason             — string | null
 └── withdrawnReason               — string | null
 ```
 
-Every field above is advisory content only. None is a persistence schema,
-an API contract, or an implementation commitment — per the same restraint
-`ADR-003` R-07 and `DE-001` §1 already apply to Recommendation itself, this
-specification defines Execution Guidance's content and reasoning, not its
-adoption as a Domain Object with an identifier or persistence guarantee.
-That is implementation work, explicitly out of scope here.
+Every field above, on both shapes, is advisory content only. Neither is a
+persistence schema, an API contract, or an implementation commitment — per
+the same restraint `ADR-003` R-07 and `DE-001` §1 already apply to
+Recommendation itself, this specification defines Execution Guidance's
+content and reasoning, not its adoption as a Domain Object with an
+identifier or persistence guarantee. That is implementation work,
+explicitly out of scope here, exactly as before this revision.
 
 ## 10. Future Frontend Architecture (No React Code — Architecture Only)
 
@@ -355,35 +442,53 @@ The Investment Case Recommendation Workspace design (frontend design,
 already produced, not yet implemented) specified a "Suggested Execution"
 block with no domain concept behind it, and flagged that gap explicitly.
 This specification closes that gap for that design without requiring any
-change to it:
+change to it. **Corrective pass note**: §9's two-stage split does not
+change any rendering rule below — the block's actual behavior is
+unaffected. The reconciliation is this: while a Recommendation is only
+computed (§6, pre-response), a present `ComputedExecutionGuidance` is
+rendered exactly as an "active" `HistoricalExecutionGuidanceSnapshot`
+would be — same content, same treatment — because `invalidated` and
+`withdrawn` are, by definition, unreachable before a persisted snapshot
+exists to be invalidated or withdrawn (§6). The frontend does not need a
+separate branch for "computed" versus "active": the only real branches are
+present/absent (unchanged, last bullet below) and, once a historical
+snapshot exists, the two additional post-response states:
 
 - The **Suggested Execution** block renders only when its Recommendation is
   directional, the direction is one of Buy/Add/Trim/Exit (§7 — never
-  Hold/No Action, which never have Execution Guidance), and a linked
-  `ExecutionGuidance` with `status: "active"` exists.
-- If `status: "invalidated"`, the block SHALL still render, with a visible
-  "this guidance may be stale" treatment — reusing `UX-012B`'s existing
+  Hold/No Action, which never have Execution Guidance), and Execution
+  Guidance is present — either a `ComputedExecutionGuidance` (pre-response)
+  or a `HistoricalExecutionGuidanceSnapshot` with `status: "active"`
+  (post-response, §9).
+- If a `HistoricalExecutionGuidanceSnapshot` exists with `status:
+  "invalidated"`, the block SHALL still render, with a visible "this
+  guidance may be stale" treatment — reusing `UX-012B`'s existing
   Monitoring Condition "triggered" visual pattern rather than inventing a
   new one — never disappearing silently, per §6's own disclosure
-  requirement.
-- If `status: "withdrawn"`, the block does not render — its parent
-  Recommendation no longer stands either, per §7.
-- If no `ExecutionGuidance` exists for a directional, actionable
-  Recommendation at all (the Direction is stated but execution content
-  could not be supported even at Low conviction, per §5), the block SHALL
-  NOT be silently omitted without explanation — it renders a short,
-  explicit statement that execution guidance is not currently available,
-  mirroring the same "state the gap, don't hide it" discipline
-  Recommendation Withheld itself already follows (`DE-002` §4).
+  requirement. **Unreachable pre-response** (§6, §9A) — a merely computed
+  Execution Guidance has no `status` to be `invalidated`.
+- If a `HistoricalExecutionGuidanceSnapshot` exists with `status:
+  "withdrawn"`, the block does not render — its parent Recommendation
+  snapshot no longer stands either, per §7. **Equally unreachable
+  pre-response** — for the same reason as above.
+- If no Execution Guidance exists at all for a directional, actionable
+  Recommendation (the Direction is stated but execution content could not
+  be supported even at Low conviction, per §5), the block SHALL NOT be
+  silently omitted without explanation — it renders a short, explicit
+  statement that execution guidance is not currently available, mirroring
+  the same "state the gap, don't hide it" discipline Recommendation
+  Withheld itself already follows (`DE-002` §4).
 - No new data fetch beyond the Investment Case's existing per-case analysis
-  endpoint is assumed necessary at this design stage; whether
-  `ExecutionGuidance` is embedded in that same payload or fetched
-  separately is an implementation-phase decision, not resolved here.
-- This gating depends only on `ExecutionGuidance.status` (§6) and the
+  endpoint is assumed necessary at this design stage; whether Execution
+  Guidance is embedded in that same payload or fetched separately is an
+  implementation-phase decision, not resolved here.
+- This gating depends only on whether Execution Guidance is present (and,
+  once a historical snapshot exists, its `status`, §6/§9) and the
   Recommendation's own Direction — never on whether the Investor has
   accepted, dismissed, or acted on the Recommendation (§7). The block is
   expected to be visible while the Recommendation is still `pending`
-  (`UX-012` §28), since it exists partly to help the Investor decide.
+  (`UX-012` §28) — showing a `ComputedExecutionGuidance` — since it exists
+  partly to help the Investor decide.
 
 ## 11. Rationale
 
