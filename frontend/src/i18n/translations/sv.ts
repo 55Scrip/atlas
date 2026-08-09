@@ -275,8 +275,9 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.loadError": "Kunde inte läsa in caset: {{message}}",
   "investmentCase.subject": "Ämne: Case {{caseId}}",
   "investmentCase.status.heading": "Status",
-  "investmentCase.status.placeholder":
-    "Reserverad för indikatorer för utkast, historik och bevakning i en framtida version.",
+  "investmentCase.status.healthy": "Frisk",
+  "investmentCase.status.needsReview": "Behöver granskning",
+  "investmentCase.status.highPriority": "Hög prioritet",
   "investmentCase.primaryWorkArea.heading": "Primärt arbetsområde",
   "investmentCase.timeline.heading": "Tidslinje",
   "investmentCase.timeline.placeholder":
@@ -451,6 +452,52 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.header.currentAllocation": "Nuvarande andel: {{percent}}%",
   "investmentCase.header.caseIdLabel": "Case-id: {{caseId}}",
   "investmentCase.header.untitled": "Investeringscase",
+
+  // ---------- investment case workspace v2: executive summary (Sprint 2) ----------
+  "investmentCase.executiveSummary.heading": "Sammanfattning",
+  "investmentCase.executiveSummary.assessment.conviction.very_high": "Övertygelsen är mycket hög.",
+  "investmentCase.executiveSummary.assessment.conviction.high": "Övertygelsen förblir hög.",
+  "investmentCase.executiveSummary.assessment.conviction.moderate": "Övertygelsen är måttlig.",
+  "investmentCase.executiveSummary.assessment.conviction.low": "Övertygelsen är låg.",
+  "investmentCase.executiveSummary.assessment.conviction.insufficient_evidence":
+    "Det finns ännu inte tillräckligt underlag för en övertygelsebedömning.",
+  "investmentCase.executiveSummary.assessment.valuation.undervalued": "Värderingen ser attraktiv ut.",
+  "investmentCase.executiveSummary.assessment.valuation.fairly_valued": "Värderingen ser rimlig ut.",
+  "investmentCase.executiveSummary.assessment.valuation.expensive": "Värderingen har blivit ansträngd.",
+  "investmentCase.executiveSummary.assessment.risk": "{{category}}risken är för närvarande {{status}}.",
+  "investmentCase.executiveSummary.assessment.thesisStale": "Tesen har inte granskats på länge.",
+  "investmentCase.executiveSummary.assessment.insufficientOverall":
+    "Det finns ännu inte tillräckligt underlag för en fullständig bedömning.",
+  "investmentCase.executiveSummary.priority.heading": "Nuvarande prioritet",
+  "investmentCase.executiveSummary.priority.outcomeMissing": "Komplettera saknat utfall.",
+  "investmentCase.executiveSummary.priority.reconciliationNeeded": "Granska positionen.",
+  "investmentCase.executiveSummary.priority.thesisStale": "Granska tesen.",
+  "investmentCase.executiveSummary.priority.openQuestion": "Granska beläggen.",
+  "investmentCase.executiveSummary.priority.none": "Inget behöver uppmärksamhet just nu.",
+  "investmentCase.executiveSummary.portfolioImpact.heading": "Påverkan på portföljen",
+  "investmentCase.executiveSummary.portfolioImpact.weight": "Portföljandel: {{percent}}%",
+  "investmentCase.executiveSummary.portfolioImpact.largestPosition": "Detta är din största position.",
+  "investmentCase.executiveSummary.portfolioImpact.cash": "Kontantexponering: {{percent}}%",
+  "investmentCase.executiveSummary.outstandingIssues.heading": "Utestående frågor",
+  "investmentCase.executiveSummary.outstandingIssues.missingEvidence": "Belägg saknas.",
+  "investmentCase.executiveSummary.outstandingIssues.thesisStale": "Tesen är inaktuell.",
+  "investmentCase.executiveSummary.outstandingIssues.outcomeMissing": "Utfall saknas.",
+  "investmentCase.executiveSummary.outstandingIssues.tradeMissing": "Affären är inte rapporterad än.",
+  "investmentCase.executiveSummary.outstandingIssues.reconciliationNeeded": "Behöver stämmas av.",
+  "investmentCase.executiveSummary.outstandingIssues.moreCount": "+ {{count}} fler fråga/frågor",
+  "investmentCase.executiveSummary.discuss.heading": "Diskutera detta case",
+  "investmentCase.executiveSummary.discuss.valuationVsConviction":
+    "Värderingen ser för närvarande ansträngd ut medan övertygelsen förblir {{conviction}}. Vill du diskutera om detta förändrar din tes?",
+  "investmentCase.executiveSummary.discuss.thesisStale":
+    "Den här tesen har inte granskats på länge. Vill du diskutera om något har förändrats?",
+  "investmentCase.executiveSummary.discuss.evidenceGap":
+    "Det finns luckor i beläggen för det här caset. Vill du gå igenom vad som saknas?",
+  "investmentCase.executiveSummary.discuss.outstandingWork":
+    "Det finns utestående arbete på det här caset. Vill du granska det tillsammans?",
+  "investmentCase.executiveSummary.discuss.generic": "Vill du diskutera den här positionen?",
+  "investmentCase.executiveSummary.discuss.button": "Diskutera",
+  "investmentCase.executiveSummary.discuss.askButton": "Fråga",
+  "investmentCase.executiveSummary.askPlaceholder": "Fråga Atlas vad som helst om det här caset…",
 
   // ---------- investment case v2: Atlas Assessment ----------
   "investmentCase.assessment.heading": "Atlas bedömning",

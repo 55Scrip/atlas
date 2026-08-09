@@ -1,0 +1,242 @@
+/**
+ * Investment Case Workspace v2 (Sprint 2, Phase 1): pure, side-effect-
+ * free derivations for the Investment Case's new Executive Summary --
+ * the same "cross-reference already-fetched data, compute nothing new"
+ * discipline `derivePortfolioActions.ts`/`deriveDiscussionPrompts.ts`
+ * established for Portfolio Workspace v3. Every function here reads
+ * only categorical values `GET /api/cases/{caseId}/analysis` and the
+ * existing Alpha portfolio fetch already produce -- no new backend
+ * call, no fabricated analysis.
+ *
+ * These functions decide *what* to show (which status, which grounded
+ * sentence, which single priority); the actual English/Swedish text is
+ * assembled by the caller via `t()`, the same split
+ * `derivePortfolioActions.ts` uses (it returns `PortfolioAction`
+ * objects, never translated strings) -- keeps this module pure and
+ * independently testable.
+ *
+ * **No Recommendation.** Nothing here ever selects Build/Hold/Reduce/
+ * Exit, a target position size, a target execution price, or a
+ * portfolio-impact simulation -- that model does not exist in this
+ * codebase yet (see `PortfolioPage.tsx`'s own `HoldingsTable` doc
+ * comment for the identical, already-established rationale) and is
+ * explicit, planned future work. `deriveCurrentPriority` below can only
+ * ever select a *question to look at* (evidence, thesis, position,
+ * outcome), never a directional instruction.
+ */
+
+export type ConvictionLevel = "very_high" | "high" | "moderate" | "low" | "insufficient_evidence";
+export type ValuationStatus = "not_evaluated" | "insufficient_input" | "undervalued" | "fairly_valued" | "expensive";
+export type RiskCategory = "business_risk" | "financial_risk" | "valuation_risk" | "thesis_risk";
+export type RiskStatus = "not_evaluated" | "insufficient_input" | "low" | "moderate" | "high";
+export type EvidenceCoverageLevel = "not_applicable" | "none" | "partial" | "full";
+export type OutstandingWorkKind = "outcome-missing" | "trade-missing" | "reconciliation-needed";
+
+export type CaseStatusLevel = "healthy" | "needs_review" | "high_priority";
+
+export interface RiskFindingLite {
+  category: RiskCategory;
+  status: RiskStatus;
+}
+
+const RISK_SEVERITY_RANK: Record<RiskStatus, number> = {
+  high: 3,
+  moderate: 2,
+  low: 1,
+  insufficient_input: 0,
+  not_evaluated: 0,
+};
+
+const RISK_CATEGORY_ORDER: RiskCategory[] = ["business_risk", "financial_risk", "valuation_risk", "thesis_risk"];
+
+/**
+ * The single highest-severity risk finding, mirroring the exact
+ * selection rule `atlas/alpha/portfolio_cockpit/models.py`'s own
+ * `RiskProjection` already documents server-side (HIGH > MODERATE > LOW
+ * > INSUFFICIENT_INPUT/NOT_EVALUATED, ties broken by category's own
+ * declared enum order -- deterministic, never arbitrary). Reapplied
+ * client-side here because the Investment Case `/analysis` endpoint
+ * returns the full four-category vector, not a pre-reduced projection
+ * the way Portfolio Cockpit's does.
+ */
+export function findMostSevereRisk(findings: RiskFindingLite[]): RiskFindingLite | null {
+  return findings.reduce<RiskFindingLite | null>((best, candidate) => {
+    if (best === null) return candidate;
+    const rankDiff = RISK_SEVERITY_RANK[candidate.status] - RISK_SEVERITY_RANK[best.status];
+    if (rankDiff > 0) return candidate;
+    if (rankDiff < 0) return best;
+    return RISK_CATEGORY_ORDER.indexOf(candidate.category) < RISK_CATEGORY_ORDER.indexOf(best.category)
+      ? candidate
+      : best;
+  }, null);
+}
+
+export interface CaseStatusInput {
+  hasOutstandingWork: boolean;
+  isThesisStale: boolean;
+  openQuestionCount: number;
+  evidenceGap: boolean;
+}
+
+/**
+ * One clear status word, mirroring the exact severity ordering Portfolio
+ * Workspace v3 already established for `AttentionCategory`: a case-level
+ * workflow gap (a Decision with no Outcome, an Outcome with no trade
+ * recorded, a holding awaiting reconciliation) outranks a stale thesis,
+ * an open question, or an evidence gap, which in turn outranks nothing
+ * outstanding at all. Three plain words, never a numeric score.
+ */
+export function deriveCaseStatus(input: CaseStatusInput): CaseStatusLevel {
+  if (input.hasOutstandingWork) return "high_priority";
+  if (input.isThesisStale || input.openQuestionCount > 0 || input.evidenceGap) return "needs_review";
+  return "healthy";
+}
+
+export type AssessmentPointKind = "conviction" | "valuation" | "risk" | "thesisStale" | "insufficientOverall";
+
+export interface AssessmentPoint {
+  kind: AssessmentPointKind;
+  convictionLevel?: ConvictionLevel;
+  valuationStatus?: ValuationStatus;
+  riskCategory?: RiskCategory;
+  riskStatus?: RiskStatus;
+}
+
+/**
+ * Corrective pass (compactness): 3, not 5 -- "Maximum 3 concise
+ * assessment lines in the normal case." The point-generation order
+ * below (conviction, then valuation, then risk, then thesis staleness)
+ * doubles as the priority order this cap truncates against: Conviction/
+ * Valuation/Risk are the three genuinely analytical dimensions: thesis
+ * staleness is the one most likely to get dropped when all four would
+ * otherwise apply, and dropping it here loses nothing, since it is
+ * already shown in Outstanding Issues -- never silently lost, just not
+ * duplicated in both places at once.
+ */
+const MAX_ASSESSMENT_POINTS = 3;
+
+/**
+ * At most a handful of short, grounded points -- never a synthesized
+ * conclusion the backend doesn't itself state (e.g. no "position sizing
+ * may deserve review"-style inference connecting two facts; that is a
+ * judgment call this codebase's data does not make, and would edge
+ * toward a fabricated recommendation). Each point maps 1:1 to one
+ * already-computed categorical value: Conviction is always included
+ * (it's the one axis every case has an opinion on); Valuation only when
+ * a real FCF Yield finding exists; Risk only when the single most
+ * severe category is at least Moderate (Low/no-data risk isn't worth a
+ * sentence); thesis staleness only when true. If Conviction is the only
+ * point and it's "insufficient_evidence", collapse to one honest
+ * "not enough evidence yet" sentence rather than one thin bullet.
+ */
+export function deriveAssessmentPoints(input: {
+  convictionLevel: ConvictionLevel;
+  valuationStatus: ValuationStatus | null;
+  mostSevereRisk: RiskFindingLite | null;
+  isThesisStale: boolean;
+}): AssessmentPoint[] {
+  const points: AssessmentPoint[] = [{ kind: "conviction", convictionLevel: input.convictionLevel }];
+
+  if (
+    input.valuationStatus !== null &&
+    input.valuationStatus !== "not_evaluated" &&
+    input.valuationStatus !== "insufficient_input"
+  ) {
+    points.push({ kind: "valuation", valuationStatus: input.valuationStatus });
+  }
+
+  if (input.mostSevereRisk !== null && (input.mostSevereRisk.status === "high" || input.mostSevereRisk.status === "moderate")) {
+    points.push({ kind: "risk", riskCategory: input.mostSevereRisk.category, riskStatus: input.mostSevereRisk.status });
+  }
+
+  if (input.isThesisStale) {
+    points.push({ kind: "thesisStale" });
+  }
+
+  if (points.length === 1 && input.convictionLevel === "insufficient_evidence") {
+    return [{ kind: "insufficientOverall" }];
+  }
+
+  return points.slice(0, MAX_ASSESSMENT_POINTS);
+}
+
+export type CurrentPriorityKind = "outcomeMissing" | "reconciliationNeeded" | "thesisStale" | "openQuestion" | "none";
+
+/**
+ * Exactly one item -- "the single highest-priority action," per the
+ * sprint's own instruction -- selected from already-existing facts only.
+ * Deliberately never Build/Hold/Reduce/Exit/target-size/target-price
+ * (see this module's own file-header rationale): every possible return
+ * value here names a question to go look at, not an instruction to
+ * act on the position. Priority order matches `deriveCaseStatus`'s own
+ * severity ordering (workflow gaps first, then thesis/evidence
+ * questions), with a fixed, documented tie-break among the three
+ * equally-severe workflow-gap kinds (outcome-missing and trade-missing
+ * both read as "complete the missing outcome"; reconciliation is a
+ * distinct, portfolio-facing action).
+ */
+export function deriveCurrentPriority(input: {
+  outstandingWorkKinds: OutstandingWorkKind[];
+  isThesisStale: boolean;
+  openQuestionCount: number;
+}): CurrentPriorityKind {
+  if (
+    input.outstandingWorkKinds.includes("outcome-missing") ||
+    input.outstandingWorkKinds.includes("trade-missing")
+  ) {
+    return "outcomeMissing";
+  }
+  if (input.outstandingWorkKinds.includes("reconciliation-needed")) return "reconciliationNeeded";
+  if (input.isThesisStale) return "thesisStale";
+  if (input.openQuestionCount > 0) return "openQuestion";
+  return "none";
+}
+
+export type OutstandingIssueKind = "missingEvidence" | "thesisStale" | "outcomeMissing" | "tradeMissing" | "reconciliationNeeded";
+
+/**
+ * The full bullet list (unlike `deriveCurrentPriority`, every real issue
+ * is shown, not just the top one) -- each entry a direct read of an
+ * already-computed flag, same source data as `deriveCaseStatus` and the
+ * page's own existing "Outstanding work" section further down.
+ */
+export function deriveOutstandingIssues(input: {
+  outstandingWorkKinds: OutstandingWorkKind[];
+  isThesisStale: boolean;
+  evidenceGap: boolean;
+}): OutstandingIssueKind[] {
+  const issues: OutstandingIssueKind[] = [];
+  if (input.evidenceGap) issues.push("missingEvidence");
+  if (input.isThesisStale) issues.push("thesisStale");
+  if (input.outstandingWorkKinds.includes("outcome-missing")) issues.push("outcomeMissing");
+  if (input.outstandingWorkKinds.includes("trade-missing")) issues.push("tradeMissing");
+  if (input.outstandingWorkKinds.includes("reconciliation-needed")) issues.push("reconciliationNeeded");
+  return issues;
+}
+
+export type CaseDiscussionKind = "valuationVsConviction" | "thesisStale" | "evidenceGap" | "outstandingWork" | "generic";
+
+/**
+ * "Discuss this Case" -- one proactive conversation starter, per the
+ * sprint's own singular framing ("Atlas should proactively start *one*
+ * conversation"). Phrased about the *current* state only ("valuation
+ * currently looks demanding"), never a claimed change over time
+ * ("has changed") -- this codebase does not track a valuation history
+ * delta, so claiming one changed would be fabricating a fact it doesn't
+ * have, even though the sprint's own illustrative example used that
+ * phrasing.
+ */
+export function deriveCaseDiscussionKind(input: {
+  convictionLevel: ConvictionLevel;
+  valuationStatus: ValuationStatus | null;
+  isThesisStale: boolean;
+  evidenceGap: boolean;
+  hasOutstandingWork: boolean;
+}): CaseDiscussionKind {
+  const highConviction = input.convictionLevel === "high" || input.convictionLevel === "very_high";
+  if (input.valuationStatus === "expensive" && highConviction) return "valuationVsConviction";
+  if (input.isThesisStale) return "thesisStale";
+  if (input.evidenceGap) return "evidenceGap";
+  if (input.hasOutstandingWork) return "outstandingWork";
+  return "generic";
+}

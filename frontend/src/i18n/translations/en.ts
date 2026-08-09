@@ -276,8 +276,9 @@ export const en = {
   "investmentCase.loadError": "Could not load this case: {{message}}",
   "investmentCase.subject": "Subject: Case {{caseId}}",
   "investmentCase.status.heading": "Status",
-  "investmentCase.status.placeholder":
-    "Reserved for draft, historical, and monitoring status indicators in a future commit.",
+  "investmentCase.status.healthy": "Healthy",
+  "investmentCase.status.needsReview": "Needs Review",
+  "investmentCase.status.highPriority": "High Priority",
   "investmentCase.primaryWorkArea.heading": "Primary Work Area",
   "investmentCase.timeline.heading": "Timeline",
   "investmentCase.timeline.placeholder":
@@ -451,6 +452,52 @@ export const en = {
   "investmentCase.header.currentAllocation": "Current allocation: {{percent}}%",
   "investmentCase.header.caseIdLabel": "Case ID: {{caseId}}",
   "investmentCase.header.untitled": "Investment Case",
+
+  // ---------- investment case workspace v2: executive summary (Sprint 2) ----------
+  "investmentCase.executiveSummary.heading": "Executive Summary",
+  "investmentCase.executiveSummary.assessment.conviction.very_high": "Conviction is very high.",
+  "investmentCase.executiveSummary.assessment.conviction.high": "Conviction remains high.",
+  "investmentCase.executiveSummary.assessment.conviction.moderate": "Conviction is moderate.",
+  "investmentCase.executiveSummary.assessment.conviction.low": "Conviction is low.",
+  "investmentCase.executiveSummary.assessment.conviction.insufficient_evidence":
+    "There isn't yet enough evidence for a conviction view.",
+  "investmentCase.executiveSummary.assessment.valuation.undervalued": "Valuation looks attractive.",
+  "investmentCase.executiveSummary.assessment.valuation.fairly_valued": "Valuation looks reasonable.",
+  "investmentCase.executiveSummary.assessment.valuation.expensive": "Valuation has become demanding.",
+  "investmentCase.executiveSummary.assessment.risk": "{{category}} risk is currently {{status}}.",
+  "investmentCase.executiveSummary.assessment.thesisStale": "The thesis hasn't been revisited in a while.",
+  "investmentCase.executiveSummary.assessment.insufficientOverall":
+    "There isn't enough evidence yet for a full assessment.",
+  "investmentCase.executiveSummary.priority.heading": "Current Priority",
+  "investmentCase.executiveSummary.priority.outcomeMissing": "Complete missing outcome.",
+  "investmentCase.executiveSummary.priority.reconciliationNeeded": "Review position.",
+  "investmentCase.executiveSummary.priority.thesisStale": "Review thesis.",
+  "investmentCase.executiveSummary.priority.openQuestion": "Review evidence.",
+  "investmentCase.executiveSummary.priority.none": "Nothing needs attention right now.",
+  "investmentCase.executiveSummary.portfolioImpact.heading": "Portfolio Impact",
+  "investmentCase.executiveSummary.portfolioImpact.weight": "Portfolio weight: {{percent}}%",
+  "investmentCase.executiveSummary.portfolioImpact.largestPosition": "This is your largest position.",
+  "investmentCase.executiveSummary.portfolioImpact.cash": "Cash exposure: {{percent}}%",
+  "investmentCase.executiveSummary.outstandingIssues.heading": "Outstanding Issues",
+  "investmentCase.executiveSummary.outstandingIssues.missingEvidence": "Missing evidence.",
+  "investmentCase.executiveSummary.outstandingIssues.thesisStale": "Thesis is stale.",
+  "investmentCase.executiveSummary.outstandingIssues.outcomeMissing": "Outcome missing.",
+  "investmentCase.executiveSummary.outstandingIssues.tradeMissing": "Trade not yet reported.",
+  "investmentCase.executiveSummary.outstandingIssues.reconciliationNeeded": "Needs reconciliation.",
+  "investmentCase.executiveSummary.outstandingIssues.moreCount": "+ {{count}} more issue(s)",
+  "investmentCase.executiveSummary.discuss.heading": "Discuss this Case",
+  "investmentCase.executiveSummary.discuss.valuationVsConviction":
+    "Valuation currently looks demanding while conviction remains {{conviction}}. Would you like to discuss whether this changes your thesis?",
+  "investmentCase.executiveSummary.discuss.thesisStale":
+    "This thesis hasn't been revisited in a while. Would you like to discuss whether anything has changed?",
+  "investmentCase.executiveSummary.discuss.evidenceGap":
+    "There are gaps in the evidence for this case. Want to talk through what's missing?",
+  "investmentCase.executiveSummary.discuss.outstandingWork":
+    "There's outstanding work on this case. Want to review it together?",
+  "investmentCase.executiveSummary.discuss.generic": "Would you like to discuss this position?",
+  "investmentCase.executiveSummary.discuss.button": "Discuss",
+  "investmentCase.executiveSummary.discuss.askButton": "Ask",
+  "investmentCase.executiveSummary.askPlaceholder": "Ask Atlas anything about this case…",
 
   // ---------- investment case v2: Atlas Assessment ----------
   "investmentCase.assessment.heading": "Atlas Assessment",

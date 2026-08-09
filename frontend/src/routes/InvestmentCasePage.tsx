@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link as RouterLink, useLocation, useParams } from "react-router-dom";
-import { Button, Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
+import { Button, Container, Divider, Heading, Inline, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
@@ -10,6 +10,20 @@ import {
   type HoldingLite,
   type TradeLogEntry,
 } from "../activity/deriveActivity";
+import {
+  deriveAssessmentPoints,
+  deriveCaseDiscussionKind,
+  deriveCaseStatus,
+  deriveCurrentPriority,
+  deriveOutstandingIssues,
+  findMostSevereRisk,
+  type AssessmentPoint,
+  type CaseDiscussionKind,
+  type CaseStatusLevel,
+  type CurrentPriorityKind,
+  type OutstandingIssueKind,
+  type OutstandingWorkKind,
+} from "../investmentCase/deriveExecutiveSummary";
 
 interface CaseSummary {
   caseId: string;
@@ -772,6 +786,13 @@ export function InvestmentCasePage() {
   const [investmentCaseAnalysis, setInvestmentCaseAnalysis] = useState<InvestmentCaseAnalysisFetchStatus>({
     kind: "loading",
   });
+
+  /** Executive Summary "Discuss this Case" (Investment Case Workspace v2,
+   * Sprint 2) -- UI only, same honest-placeholder pattern
+   * `PortfolioPage.tsx`'s `TodaysDiscussionsCard` already established:
+   * no conversation engine, just a pre-filled input and a static note. */
+  const [askInput, setAskInput] = useState("");
+  const [askSubmitted, setAskSubmitted] = useState(false);
 
   useEffect(() => {
     if (!caseId) return;
@@ -1561,6 +1582,30 @@ export function InvestmentCasePage() {
                 })}
               </Text>
             )}
+            {/* Status (Investment Case Workspace v2, Sprint 2) -- fills
+                the slot `investmentCase.status.heading` has reserved
+                since an early sprint ("draft, historical, and monitoring
+                status indicators in a future commit"). One plain word,
+                derived from already-computed workflow/thesis/evidence
+                gaps -- see `deriveCaseStatus`'s own doc comment. */}
+            {investmentCaseAnalysis.kind === "loaded" && (
+              <Text as="p">
+                {t("investmentCase.status.heading")}:{" "}
+                {t(
+                  CASE_STATUS_KEY[
+                    deriveCaseStatus({
+                      hasOutstandingWork: caseOutstandingWork.length > 0,
+                      isThesisStale: investmentCaseAnalysis.report.isThesisStale,
+                      openQuestionCount: investmentCaseAnalysis.report.openQuestions.length,
+                      evidenceGap:
+                        investmentCaseAnalysis.report.evidenceQuality !== null &&
+                        (investmentCaseAnalysis.report.evidenceQuality.coverage === "none" ||
+                          investmentCaseAnalysis.report.evidenceQuality.coverage === "partial"),
+                    })
+                  ],
+                )}
+              </Text>
+            )}
             {!linkedHolding && caseId && (
               <Text color="secondary">{t("investmentCase.header.notLinked")}</Text>
             )}
@@ -1585,6 +1630,30 @@ export function InvestmentCasePage() {
 
         {caseId && status.kind === "loaded" && (
           <>
+            {/* Executive Summary (Investment Case Workspace v2, Sprint 2)
+                -- the whole "understand in ~10 seconds, no scrolling"
+                section: Atlas Assessment, Current Priority, Portfolio
+                Impact, Outstanding Issues, Discuss this Case. Renders
+                only once the analysis has loaded; a fetch failure or
+                still-loading state never blocks the rest of the page
+                (same independent-fetch pattern every other section here
+                already uses). Everything from the canonical analysis
+                sections onward, below, is unchanged from before this
+                sprint. */}
+            {investmentCaseAnalysis.kind === "loaded" && (
+              <ExecutiveSummaryCard
+                analysis={investmentCaseAnalysis.report}
+                linkedHolding={linkedHolding}
+                alphaPortfolioStatus={alphaPortfolioStatus}
+                outstandingWorkKinds={caseOutstandingWork.map((item) => item.kind)}
+                askInput={askInput}
+                setAskInput={setAskInput}
+                askSubmitted={askSubmitted}
+                setAskSubmitted={setAskSubmitted}
+                t={t}
+              />
+            )}
+
             <Divider />
 
             {/* Canonical analysis header (ATLAS-029, Phase 9) -- Conviction,
@@ -3784,6 +3853,344 @@ function humanize(rawValue: string): string {
 }
 
 type Translate = (key: TranslationKey, params?: Record<string, string | number>) => string;
+
+const CASE_STATUS_KEY: Record<CaseStatusLevel, TranslationKey> = {
+  healthy: "investmentCase.status.healthy",
+  needs_review: "investmentCase.status.needsReview",
+  high_priority: "investmentCase.status.highPriority",
+};
+
+/** Reused verbatim from `PortfolioPage.tsx`'s own lookup (ATLAS-028) --
+ * same raw `ConcentrationLevel` enum value, same translation keys. */
+const CASE_CONCENTRATION_LEVEL_KEY: Record<string, TranslationKey> = {
+  Low: "portfolio.concentrationLevel.low",
+  Moderate: "portfolio.concentrationLevel.moderate",
+  Elevated: "portfolio.concentrationLevel.elevated",
+  High: "portfolio.concentrationLevel.high",
+};
+
+const ASSESSMENT_CONVICTION_KEY: Record<AnalysisConvictionLevel, TranslationKey> = {
+  very_high: "investmentCase.executiveSummary.assessment.conviction.very_high",
+  high: "investmentCase.executiveSummary.assessment.conviction.high",
+  moderate: "investmentCase.executiveSummary.assessment.conviction.moderate",
+  low: "investmentCase.executiveSummary.assessment.conviction.low",
+  insufficient_evidence: "investmentCase.executiveSummary.assessment.conviction.insufficient_evidence",
+};
+
+/** Only the three statuses `deriveAssessmentPoints` ever attaches to a
+ * "valuation" point -- `not_evaluated`/`insufficient_input` are filtered
+ * out before a point is created, so this map is deliberately narrower
+ * than the full `AnalysisValuationStatus` union. */
+const ASSESSMENT_VALUATION_KEY: Record<"undervalued" | "fairly_valued" | "expensive", TranslationKey> = {
+  undervalued: "investmentCase.executiveSummary.assessment.valuation.undervalued",
+  fairly_valued: "investmentCase.executiveSummary.assessment.valuation.fairly_valued",
+  expensive: "investmentCase.executiveSummary.assessment.valuation.expensive",
+};
+
+const CURRENT_PRIORITY_KEY: Record<CurrentPriorityKind, TranslationKey> = {
+  outcomeMissing: "investmentCase.executiveSummary.priority.outcomeMissing",
+  reconciliationNeeded: "investmentCase.executiveSummary.priority.reconciliationNeeded",
+  thesisStale: "investmentCase.executiveSummary.priority.thesisStale",
+  openQuestion: "investmentCase.executiveSummary.priority.openQuestion",
+  none: "investmentCase.executiveSummary.priority.none",
+};
+
+const OUTSTANDING_ISSUE_KEY: Record<OutstandingIssueKind, TranslationKey> = {
+  missingEvidence: "investmentCase.executiveSummary.outstandingIssues.missingEvidence",
+  thesisStale: "investmentCase.executiveSummary.outstandingIssues.thesisStale",
+  outcomeMissing: "investmentCase.executiveSummary.outstandingIssues.outcomeMissing",
+  tradeMissing: "investmentCase.executiveSummary.outstandingIssues.tradeMissing",
+  reconciliationNeeded: "investmentCase.executiveSummary.outstandingIssues.reconciliationNeeded",
+};
+
+/** Corrective pass (compactness): "Show at most 3 issues in the
+ * Executive Summary... full issue detail remains available further
+ * down the page" -- a display cap on `ExecutiveSummaryCard` only;
+ * `deriveOutstandingIssues` itself is untouched. */
+const MAX_OUTSTANDING_ISSUES_SHOWN = 3;
+
+function assessmentSentence(point: AssessmentPoint, t: Translate): string {
+  switch (point.kind) {
+    case "conviction":
+      return t(ASSESSMENT_CONVICTION_KEY[point.convictionLevel!]);
+    case "valuation":
+      return t(ASSESSMENT_VALUATION_KEY[point.valuationStatus as "undervalued" | "fairly_valued" | "expensive"]);
+    case "risk":
+      return t("investmentCase.executiveSummary.assessment.risk", {
+        category: t(RISK_CATEGORY_KEY[point.riskCategory!]),
+        status: t(RISK_STATUS_KEY[point.riskStatus!]),
+      });
+    case "thesisStale":
+      return t("investmentCase.executiveSummary.assessment.thesisStale");
+    case "insufficientOverall":
+      return t("investmentCase.executiveSummary.assessment.insufficientOverall");
+  }
+}
+
+function discussText(kind: CaseDiscussionKind, convictionLevel: AnalysisConvictionLevel, t: Translate): string {
+  switch (kind) {
+    case "valuationVsConviction":
+      return t("investmentCase.executiveSummary.discuss.valuationVsConviction", {
+        conviction: t(CONVICTION_LEVEL_KEY[convictionLevel]),
+      });
+    case "thesisStale":
+      return t("investmentCase.executiveSummary.discuss.thesisStale");
+    case "evidenceGap":
+      return t("investmentCase.executiveSummary.discuss.evidenceGap");
+    case "outstandingWork":
+      return t("investmentCase.executiveSummary.discuss.outstandingWork");
+    case "generic":
+      return t("investmentCase.executiveSummary.discuss.generic");
+  }
+}
+
+/**
+ * Executive Summary (Investment Case Workspace v2, Sprint 2) -- the new
+ * top section this sprint adds, immediately below the existing page
+ * header and above the unchanged canonical analysis sections. Every
+ * value is either read straight from `InvestmentCaseAnalysisView`/
+ * `AlphaPortfolioView` (already fetched by this page) or selected by
+ * `deriveExecutiveSummary.ts`'s pure functions from those same values --
+ * nothing here computes a new fact, and nothing here selects a
+ * directional Recommendation (see that module's own file-header
+ * rationale, and `PortfolioPage.tsx`'s identical "Priority" rationale --
+ * Current Priority here is the same kind of temporary stand-in, not a
+ * Recommendation model).
+ *
+ * **Traceability** (per this sprint's own principle): each subsection
+ * below carries a `data-trace-source` attribute naming which underlying
+ * analysis axis it came from (assessment/priority/portfolioImpact/
+ * outstandingIssues/discuss). No click handler exists yet -- this
+ * sprint doesn't implement navigation -- but a future sprint can wire
+ * "click a summary line -> jump to its supporting section" without
+ * restructuring this markup.
+ */
+function ExecutiveSummaryCard({
+  analysis,
+  linkedHolding,
+  alphaPortfolioStatus,
+  outstandingWorkKinds,
+  askInput,
+  setAskInput,
+  askSubmitted,
+  setAskSubmitted,
+  t,
+}: {
+  analysis: InvestmentCaseAnalysisView;
+  linkedHolding: AlphaHoldingView | null;
+  alphaPortfolioStatus: AlphaPortfolioStatus;
+  outstandingWorkKinds: OutstandingWorkKind[];
+  askInput: string;
+  setAskInput: (value: string) => void;
+  askSubmitted: boolean;
+  setAskSubmitted: (value: boolean) => void;
+  t: Translate;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const fcfYield = analysis.valuation.findings.find((f) => f.kind === "fcf_yield_relative") ?? null;
+  const valuationStatus = fcfYield ? fcfYield.status : null;
+  const mostSevereRisk = findMostSevereRisk(
+    analysis.risk.findings.map((f) => ({ category: f.category, status: f.status })),
+  );
+  const evidenceGap =
+    analysis.evidenceQuality !== null &&
+    (analysis.evidenceQuality.coverage === "none" || analysis.evidenceQuality.coverage === "partial");
+  const hasOutstandingWork = outstandingWorkKinds.length > 0;
+
+  const assessmentPoints = deriveAssessmentPoints({
+    convictionLevel: analysis.conviction.level,
+    valuationStatus,
+    mostSevereRisk,
+    isThesisStale: analysis.isThesisStale,
+  });
+
+  const currentPriority = deriveCurrentPriority({
+    outstandingWorkKinds,
+    isThesisStale: analysis.isThesisStale,
+    openQuestionCount: analysis.openQuestions.length,
+  });
+
+  const outstandingIssues = deriveOutstandingIssues({
+    outstandingWorkKinds,
+    isThesisStale: analysis.isThesisStale,
+    evidenceGap,
+  });
+
+  const discussionKind = deriveCaseDiscussionKind({
+    convictionLevel: analysis.conviction.level,
+    valuationStatus,
+    isThesisStale: analysis.isThesisStale,
+    evidenceGap,
+    hasOutstandingWork,
+  });
+  const discuss = discussText(discussionKind, analysis.conviction.level, t);
+
+  const holdings = alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.holdings : [];
+  const largestHolding = holdings.reduce<AlphaHoldingView | null>(
+    (max, h) => (max === null || h.weightPercent > max.weightPercent ? h : max),
+    null,
+  );
+  const isLargestPosition =
+    linkedHolding !== null && largestHolding !== null && largestHolding.ticker === linkedHolding.ticker;
+  const cashWeightPercent = alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.cashWeightPercent : null;
+  const concentrationLevel = alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.concentrationLevel : null;
+
+  function fillAsk() {
+    setAskInput(discuss);
+    setAskSubmitted(false);
+    inputRef.current?.focus();
+  }
+
+  function handleAsk() {
+    if (askInput.trim() === "") return;
+    setAskSubmitted(true);
+  }
+
+  return (
+    <Surface tier="primary">
+      <Stack gap="intra-section">
+        <Heading level={2}>{t("investmentCase.executiveSummary.heading")}</Heading>
+
+        <div data-trace-source="assessment">
+          <Stack gap="metadata">
+            <Text color="secondary" as="p">
+              {t("investmentCase.assessment.heading")}
+            </Text>
+            {assessmentPoints.map((point, index) => (
+              <Text key={index} as="p">
+                {assessmentSentence(point, t)}
+              </Text>
+            ))}
+          </Stack>
+        </div>
+
+        <Divider tone="hairline" />
+
+        <div data-trace-source="priority">
+          <Inline gap="row" align="center">
+            <Text color="secondary" as="p">
+              {t("investmentCase.executiveSummary.priority.heading")}:
+            </Text>
+            <Text as="p">{t(CURRENT_PRIORITY_KEY[currentPriority])}</Text>
+          </Inline>
+        </div>
+
+        <Divider tone="hairline" />
+
+        <div data-trace-source="portfolioImpact">
+          <Text color="secondary" as="p">
+            {t("investmentCase.executiveSummary.portfolioImpact.heading")}
+          </Text>
+          <Inline gap="row" wrap>
+            {linkedHolding && (
+              <Text as="p">
+                {t("investmentCase.executiveSummary.portfolioImpact.weight", {
+                  percent: linkedHolding.weightPercent,
+                })}
+              </Text>
+            )}
+            {/* Corrective pass (compactness): "largest position" and
+                "concentration" both describe the same concentration-
+                relevance fact -- showing both is exactly the redundant
+                portfolio metric this pass asks to avoid. Largest
+                position is the more specific, more decision-relevant of
+                the two when true; concentration is the fallback
+                context otherwise. At most one of them renders. */}
+            {isLargestPosition ? (
+              <Text as="p">{t("investmentCase.executiveSummary.portfolioImpact.largestPosition")}</Text>
+            ) : (
+              concentrationLevel && (
+                <Text as="p">
+                  {t("portfolio.concentration", {
+                    value: CASE_CONCENTRATION_LEVEL_KEY[concentrationLevel]
+                      ? t(CASE_CONCENTRATION_LEVEL_KEY[concentrationLevel]!)
+                      : concentrationLevel,
+                  })}
+                </Text>
+              )
+            )}
+            {cashWeightPercent !== null && (
+              <Text as="p">
+                {t("investmentCase.executiveSummary.portfolioImpact.cash", { percent: cashWeightPercent })}
+              </Text>
+            )}
+          </Inline>
+        </div>
+
+        {outstandingIssues.length > 0 && (
+          <>
+            <Divider tone="hairline" />
+            <div data-trace-source="outstandingIssues">
+              <Text color="secondary" as="p">
+                {t("investmentCase.executiveSummary.outstandingIssues.heading")}
+              </Text>
+              <Stack gap="metadata">
+                {/* Corrective pass (compactness): "Show at most 3 issues
+                    ... show '+ N more issues'" -- full, untruncated detail
+                    remains exactly where it already was, in the unchanged
+                    Outstanding work section further down the page; this
+                    is a display cap only, `outstandingIssues` itself is
+                    unchanged. */}
+                {outstandingIssues.slice(0, MAX_OUTSTANDING_ISSUES_SHOWN).map((issue) => (
+                  <Text key={issue} as="p">
+                    • {t(OUTSTANDING_ISSUE_KEY[issue])}
+                  </Text>
+                ))}
+                {outstandingIssues.length > MAX_OUTSTANDING_ISSUES_SHOWN && (
+                  <Text color="tertiary" as="p">
+                    {t("investmentCase.executiveSummary.outstandingIssues.moreCount", {
+                      count: outstandingIssues.length - MAX_OUTSTANDING_ISSUES_SHOWN,
+                    })}
+                  </Text>
+                )}
+              </Stack>
+            </div>
+          </>
+        )}
+
+        <Divider tone="hairline" />
+
+        <div data-trace-source="discuss">
+          <Stack gap="metadata">
+            <Text color="secondary" as="p">
+              {t("investmentCase.executiveSummary.discuss.heading")}
+            </Text>
+            <Text as="p">{discuss}</Text>
+            <div>
+              <Button variant="tertiary" onClick={fillAsk}>
+                {t("investmentCase.executiveSummary.discuss.button")}
+              </Button>
+            </div>
+            <Inline gap="row">
+              <input
+                ref={inputRef}
+                value={askInput}
+                placeholder={t("investmentCase.executiveSummary.askPlaceholder")}
+                onChange={(event) => {
+                  setAskInput(event.target.value);
+                  setAskSubmitted(false);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") handleAsk();
+                }}
+                style={{ flex: 1 }}
+              />
+              <Button variant="primary" onClick={handleAsk}>
+                {t("investmentCase.executiveSummary.discuss.askButton")}
+              </Button>
+            </Inline>
+            {askSubmitted && (
+              <Text color="tertiary" as="p">
+                {t("portfolio.discussions.comingSoonNote")}
+              </Text>
+            )}
+          </Stack>
+        </div>
+      </Stack>
+    </Surface>
+  );
+}
 
 /**
  * ATLAS-029 -- the canonical Investment Case. A pure renderer of
