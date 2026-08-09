@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { Button, Container, Divider, Heading, Inline, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
@@ -7,6 +8,7 @@ import {
   type ActionSeverity,
   type PortfolioAction,
 } from "../portfolio/derivePortfolioActions";
+import { deriveDiscussionPrompts, type DiscussionPrompt } from "../portfolio/deriveDiscussionPrompts";
 
 /**
  * `concentrationLevel` is an internal enum value (`ConcentrationLevel.LOW`
@@ -230,8 +232,16 @@ const SEVERITY_LABEL_KEY: Record<ActionSeverity, TranslationKey> = {
   medium: "portfolio.actionCenter.severity.medium",
 };
 
-const MAX_ACTIONS_PER_SEVERITY = 3;
-const MAX_KEY_FINDING_TICKERS_SHOWN = 5;
+/**
+ * Portfolio Workspace v3: lowered from 3 (ATLAS UI Sprint) to 2 per
+ * this sprint's explicit "small, actionable list" / "understand in
+ * less than ten seconds" requirement -- its own worked example shows
+ * exactly one item per severity tier. Still capped *per tier*, not with
+ * one flat cap across all three, for the same reason established
+ * previously: a portfolio with many High-priority evidence gaps must
+ * never crowd the Medium tier (e.g. portfolio allocation) out entirely.
+ */
+const MAX_ACTIONS_PER_SEVERITY = 2;
 
 /**
  * ATLAS-028 Portfolio Cockpit -- one canonical, portfolio-scoped per-
@@ -239,7 +249,7 @@ const MAX_KEY_FINDING_TICKERS_SHOWN = 5;
  * (`atlas/alpha/portfolio_cockpit/`). Every value below comes straight
  * from `GET /alpha-portfolio/cockpit`; this page computes nothing of
  * its own beyond translating enum values -- the same "no domain logic
- * in the UI" discipline `PortfolioOverview` above already follows.
+ * in the UI" discipline this whole page follows.
  * Portfolio Cockpit is the overview; a holding's own
  * Investment Case (one click away via `caseId`) is the depth.
  */
@@ -315,42 +325,26 @@ const CONVICTION_LEVEL_KEY: Record<CockpitConvictionLevel, TranslationKey> = {
   insufficient_evidence: "portfolio.cockpit.conviction.insufficient_evidence",
 };
 
-const VALUATION_STATUS_KEY: Record<CockpitValuationStatus, TranslationKey> = {
-  not_evaluated: "portfolio.cockpit.valuation.not_evaluated",
-  insufficient_input: "portfolio.cockpit.valuation.insufficient_input",
-  undervalued: "portfolio.cockpit.valuation.undervalued",
-  fairly_valued: "portfolio.cockpit.valuation.fairly_valued",
-  expensive: "portfolio.cockpit.valuation.expensive",
-};
-
-const RISK_STATUS_KEY: Record<CockpitRiskStatus, TranslationKey> = {
-  not_evaluated: "portfolio.cockpit.risk.status.not_evaluated",
-  insufficient_input: "portfolio.cockpit.risk.status.insufficient_input",
-  low: "portfolio.cockpit.risk.status.low",
-  moderate: "portfolio.cockpit.risk.status.moderate",
-  high: "portfolio.cockpit.risk.status.high",
-};
-
-const RISK_CATEGORY_KEY: Record<CockpitRiskCategory, TranslationKey> = {
-  business_risk: "portfolio.cockpit.risk.category.business_risk",
-  financial_risk: "portfolio.cockpit.risk.category.financial_risk",
-  valuation_risk: "portfolio.cockpit.risk.category.valuation_risk",
-  thesis_risk: "portfolio.cockpit.risk.category.thesis_risk",
-};
-
-const BUSINESS_STATUS_KEY: Record<CockpitBusinessStatus, TranslationKey> = {
-  not_evaluated: "portfolio.cockpit.business.not_evaluated",
-  insufficient_input: "portfolio.cockpit.business.insufficient_input",
-  weak: "portfolio.cockpit.business.weak",
-  moderate: "portfolio.cockpit.business.moderate",
-  strong: "portfolio.cockpit.business.strong",
-};
-
 const REVIEW_PRIORITY_KEY: Record<CockpitReviewPriority, TranslationKey> = {
   none: "portfolio.cockpit.review.none",
   standard_review: "portfolio.cockpit.review.standard_review",
   evidence_review: "portfolio.cockpit.review.evidence_review",
   priority_review: "portfolio.cockpit.review.priority_review",
+};
+
+/**
+ * Holdings Table (Portfolio Workspace v3) -- the same 🔴/🟠/🟡 vocabulary
+ * Today's Priorities already established, reused for row Status rather
+ * than inventing a second color language. `standard_review` and `none`
+ * both read as "nothing urgent" at a glance -- Atlas draws attention
+ * only to what actually needs it, never grades a holding as
+ * additionally "good."
+ */
+const REVIEW_PRIORITY_EMOJI: Record<CockpitReviewPriority, string> = {
+  priority_review: "🔴",
+  evidence_review: "🟠",
+  standard_review: "🟡",
+  none: "",
 };
 
 type Status =
@@ -425,12 +419,24 @@ export function PortfolioPage() {
   const [caseCreateStatus, setCaseCreateStatus] = useState<Record<string, CaseCreateStatus>>({});
   const [reconcileWeightInputs, setReconcileWeightInputs] = useState<Record<string, string>>({});
   const [reconcileStatus, setReconcileStatus] = useState<Record<string, ReconcileStatus>>({});
+  /** Holdings Table (Portfolio Workspace v3) -- at most one row's inline
+   * reconciliation form is expanded at a time ("Details on Demand"),
+   * instead of every awaiting-reconciliation holding permanently
+   * showing its own form inline as before. */
+  const [expandedReconcileTicker, setExpandedReconcileTicker] = useState<string | null>(null);
 
   const [showReplaceForm, setShowReplaceForm] = useState(false);
   const [replaceRows, setReplaceRows] = useState<ReplaceRow[]>([]);
   const [replaceCashWeight, setReplaceCashWeight] = useState("");
   const [replaceCashValue, setReplaceCashValue] = useState("");
   const [replaceStatus, setReplaceStatus] = useState<ReconcileStatus>({ kind: "idle" });
+
+  /** Today's Discussions (Portfolio Workspace v3) -- UI only, per this
+   * sprint's explicit "do not build the conversational engine yet"
+   * instruction. `askSubmitted` shows a one-time, honest placeholder
+   * note rather than a fabricated Atlas reply. */
+  const [askInput, setAskInput] = useState("");
+  const [askSubmitted, setAskSubmitted] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -740,7 +746,15 @@ export function PortfolioPage() {
 
         {status.kind === "loaded" && status.view.exists && status.view.holdings.length > 0 && (
           <Stack gap="inter-section">
-            <PortfolioOverview
+            <PortfolioSummaryBar
+              view={status.view}
+              statusReport={
+                portfolioStatus.kind === "loaded" && portfolioStatus.report.exists ? portfolioStatus.report : null
+              }
+              t={t}
+            />
+
+            <ActionCenterCard
               statusReport={
                 portfolioStatus.kind === "loaded" && portfolioStatus.report.exists ? portfolioStatus.report : null
               }
@@ -847,136 +861,36 @@ export function PortfolioPage() {
               </Surface>
             )}
 
-            <Surface tier="primary">
-              <Stack gap="inter-section">
-                <Heading level={2}>{t("portfolio.holdings.heading")}</Heading>
-                {!status.view.hasAbsoluteValues && (
-                  <Text color="secondary">{t("portfolio.holdings.percentOnly")}</Text>
-                )}
-                {status.view.hasAbsoluteValues && status.view.totalValue !== null && (
-                  <Text color="secondary">
-                    {t("portfolio.holdings.totalValue", { value: status.view.totalValue })}
-                  </Text>
-                )}
+            <HoldingsTable
+              view={status.view}
+              cockpit={cockpit}
+              unallocatedPercent={unallocatedPercent}
+              caseCreateStatus={caseCreateStatus}
+              openInvestmentCase={openInvestmentCase}
+              expandedReconcileTicker={expandedReconcileTicker}
+              setExpandedReconcileTicker={setExpandedReconcileTicker}
+              reconcileWeightInputs={reconcileWeightInputs}
+              setReconcileWeightInputs={setReconcileWeightInputs}
+              reconcileStatus={reconcileStatus}
+              submitUpdateHoldingWeight={submitUpdateHoldingWeight}
+              t={t}
+            />
 
-                {status.view.holdings.map((holding) => {
-                  const thisCaseCreateStatus: CaseCreateStatus =
-                    caseCreateStatus[holding.ticker] ?? { kind: "idle" };
-                  const thisReconcileStatus: ReconcileStatus =
-                    reconcileStatus[holding.ticker] ?? { kind: "idle" };
-                  const cockpitHolding =
-                    cockpit.kind === "loaded"
-                      ? cockpit.report.holdings.find((h) => h.ticker === holding.ticker)
-                      : undefined;
-                  const isUnresolvedInCockpit =
-                    cockpit.kind === "loaded" &&
-                    cockpit.report.unresolvedHoldings.some((h) => h.ticker === holding.ticker);
-
-                  return (
-                    <div key={holding.ticker}>
-                      <Text>{holding.ticker}</Text>
-                      <Text color="secondary" as="p">
-                        {holding.weightPercent}%
-                        {holding.valueAbsolute !== null ? ` — ${holding.valueAbsolute}` : ""}
-                      </Text>
-                      {cockpitHolding && <PortfolioCockpitHoldingBadges holding={cockpitHolding} t={t} />}
-                      {isUnresolvedInCockpit && (
-                        <Text color="tertiary" as="p">
-                          {t("portfolio.cockpit.unresolved")}
-                        </Text>
-                      )}
-                      {holding.reconciliationStatus === "UPDATED" && (
-                        <Text color="secondary" as="p">
-                          {t("portfolio.holdings.updatedAutomatically")}
-                        </Text>
-                      )}
-                      {holding.reconciliationStatus === "AWAITING_RECONCILIATION" && (
-                        <Stack gap="inter-section">
-                          <Text color="tertiary" as="p">
-                            {t("portfolio.holdings.awaitingReconciliation")}
-                          </Text>
-                          <Text as="label">
-                            {t("portfolio.holdings.newWeightLabel")}
-                            <br />
-                            <input
-                              value={reconcileWeightInputs[holding.ticker] ?? ""}
-                              onChange={(event) =>
-                                setReconcileWeightInputs((current) => ({
-                                  ...current,
-                                  [holding.ticker]: event.target.value,
-                                }))
-                              }
-                            />
-                          </Text>
-                          <Button
-                            variant="tertiary"
-                            onClick={() => submitUpdateHoldingWeight(holding.ticker)}
-                            disabled={thisReconcileStatus.kind === "submitting"}
-                          >
-                            {thisReconcileStatus.kind === "submitting"
-                              ? t("portfolio.holdings.updating")
-                              : t("portfolio.holdings.updateButton")}
-                          </Button>
-                          {thisReconcileStatus.kind === "error" && (
-                            <Text color="tertiary" role="alert">
-                              {thisReconcileStatus.message}
-                            </Text>
-                          )}
-                        </Stack>
-                      )}
-                      <Button
-                        variant="tertiary"
-                        onClick={() => openInvestmentCase(holding.ticker, holding.caseId)}
-                        disabled={thisCaseCreateStatus.kind === "creating"}
-                      >
-                        {thisCaseCreateStatus.kind === "creating"
-                          ? t("portfolio.holdings.opening")
-                          : holding.caseId
-                            ? t("portfolio.cockpit.viewCaseButton")
-                            : t("portfolio.holdings.openCaseButton")}
-                      </Button>
-                      {thisCaseCreateStatus.kind === "error" && (
-                        <Text color="tertiary" role="alert">
-                          {t("portfolio.holdings.openCaseError")}
-                        </Text>
-                      )}
-                      <Divider tone="hairline" />
-                    </div>
-                  );
-                })}
-
-                {status.view.cashWeightPercent !== null && (
-                  <Text color="secondary">
-                    {t("portfolio.cashLabel", { percent: status.view.cashWeightPercent })}
-                    {status.view.cashValueAbsolute !== null
-                      ? ` — ${status.view.cashValueAbsolute}`
-                      : ""}
-                  </Text>
-                )}
-                {unallocatedPercent !== null && unallocatedPercent > UNALLOCATED_TOLERANCE && (
-                  <Text color="secondary">
-                    {t("portfolio.unallocated", {
-                      percent: Math.round(unallocatedPercent * 100) / 100,
-                    })}
-                  </Text>
-                )}
-                {status.view.concentrationLevel && (
-                  <Text color="secondary">
-                    {t("portfolio.concentration", {
-                      value: CONCENTRATION_LEVEL_KEY[status.view.concentrationLevel]
-                        ? t(CONCENTRATION_LEVEL_KEY[status.view.concentrationLevel]!)
-                        : status.view.concentrationLevel,
-                    })}
-                  </Text>
-                )}
-
-                <div>
-                  <Button variant="tertiary" onClick={() => openInvestmentCase("__new__", null)}>
-                    {t("portfolio.openNewCase")}
-                  </Button>
-                </div>
-              </Stack>
-            </Surface>
+            <TodaysDiscussionsCard
+              statusReport={
+                portfolioStatus.kind === "loaded" && portfolioStatus.report.exists ? portfolioStatus.report : null
+              }
+              intelligenceReport={
+                portfolioIntelligence.kind === "loaded" && portfolioIntelligence.report.exists
+                  ? portfolioIntelligence.report
+                  : null
+              }
+              askInput={askInput}
+              setAskInput={setAskInput}
+              askSubmitted={askSubmitted}
+              setAskSubmitted={setAskSubmitted}
+              t={t}
+            />
           </Stack>
         )}
       </Stack>
@@ -985,176 +899,73 @@ export function PortfolioPage() {
 }
 
 /**
- * ATLAS-028 Portfolio Cockpit -- one compact, scan-friendly analytical
- * row per holding: Conviction, Valuation, Risk (highest-severity
- * projection), Business (Growth/Capital Allocation), Evidence
- * confidence, and Review priority. A dedicated Portfolio-page-local
- * treatment, not a new Foundation-wide primitive (per this sprint's
- * confirmed scope) -- built from the same "Field: value" `Inline` style
- * `PortfolioSummaryCard` already uses just below.
- * Review priority uses `color="tertiary"` (this codebase's existing
- * attention/alert color) whenever a holding needs more than a standard
- * review, so it reads at a glance without a new color token.
- */
-function PortfolioCockpitHoldingBadges({
-  holding,
-  t,
-}: {
-  holding: PortfolioCockpitHoldingView;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  const needsElevatedReview =
-    holding.attention.priority === "evidence_review" || holding.attention.priority === "priority_review";
-
-  const analysisLine = [
-    `${t("portfolio.cockpit.conviction.label")}: ${t(CONVICTION_LEVEL_KEY[holding.conviction.level])}`,
-    `${t("portfolio.cockpit.valuation.label")}: ${t(VALUATION_STATUS_KEY[holding.valuation.status])}`,
-    `${t("portfolio.cockpit.risk.label")}: ${t(RISK_CATEGORY_KEY[holding.riskProjection.category])} — ${t(
-      RISK_STATUS_KEY[holding.riskProjection.status],
-    )}`,
-  ].join("   ·   ");
-
-  const businessLine = [
-    `${t("portfolio.cockpit.business.growthLabel")}: ${t(BUSINESS_STATUS_KEY[holding.business.growth])}`,
-    `${t("portfolio.cockpit.business.capitalAllocationLabel")}: ${t(
-      BUSINESS_STATUS_KEY[holding.business.capitalAllocation],
-    )}`,
-    `${t("portfolio.cockpit.evidenceLabel")}: ${t(CONFIDENCE_KEY[holding.confidence])}`,
-  ].join("   ·   ");
-
-  return (
-    <Stack gap="metadata">
-      <Text color="secondary" as="p">
-        {analysisLine}
-      </Text>
-      <Text color="secondary" as="p">
-        {businessLine}
-      </Text>
-      <Text color={needsElevatedReview ? "tertiary" : "secondary"} as="p">
-        {t("portfolio.cockpit.review.label")}: {t(REVIEW_PRIORITY_KEY[holding.attention.priority])}
-        {holding.isThesisStale ? `   ·   ${t("portfolio.cockpit.thesisStale")}` : ""}
-      </Text>
-    </Stack>
-  );
-}
-
-/**
- * ATLAS UI Sprint (Portfolio Action Center) -- replaces the previous
- * `PortfolioIntelligenceCards`/`PortfolioIntelligenceSections` pair
- * (ATLAS-015/016) with a hierarchy led by "what should I work on
- * first?" rather than a flat sequence of independent status cards.
- * Every value still comes straight from the existing
- * `PortfolioStatusView` (`GET /alpha-portfolio/status`) and
- * `PortfolioIntelligenceView` (`GET /alpha-portfolio/intelligence`) --
- * nothing here computes a new fact; `derivePortfolioActions`
- * (`frontend/src/portfolio`) only groups and ranks facts that already
- * exist, the same "no domain logic in the UI" discipline this page has
- * followed since ATLAS-015. `statusReport`/`intelligenceReport` are
- * each independently nullable (still loading, or that one fetch
- * failed) -- Action Center renders whatever subset of its three real
- * sources is actually available rather than an all-or-nothing gate,
- * matching every other section's existing graceful-degradation
- * behavior on this page.
+ * Portfolio Summary (Portfolio Workspace v3) -- compact by design, per
+ * this sprint's explicit "very compact... no large cards" instruction:
+ * exactly the four figures the sprint's own example names (Holdings,
+ * Cash, Holdings requiring attention, Overall portfolio health), each
+ * read verbatim from data this page already fetches. "Holdings
+ * requiring attention" reuses `reviewQueue.length` -- the same already-
+ * deduplicated-per-ticker count Today's Priorities is built from, never
+ * a second count computed a different way. "Overall portfolio health"
+ * reuses the existing `PortfolioHealthMetrics.holdings_with_case_count`
+ * coverage figure rather than synthesizing a new Good/Bad score Atlas
+ * doesn't compute anywhere -- a literal, already-real fact standing in
+ * for the sprint's more general phrase. Unallocated%/Concentration (on
+ * the previous, larger summary card) move to the Holdings table below,
+ * where they sit next to the holdings they describe; Investment
+ * Cases/Open Decisions/Pending Outcomes/Pending Executions are no
+ * longer repeated here since Today's Priorities and the Holdings table
+ * now surface that same information as concrete, actionable rows
+ * instead of an abstract count.
  *
- * Order: Portfolio Summary (statistics, compact) -> Action Center
- * (action) -> Portfolio Health (health) -> Key Findings (decision
- * support, condensed) -> Review Queue (secondary browsing list) ->
- * Portfolio Fit (statistics, not yet available). This is the
- * "Action -> Decision support -> Health -> Statistics" order the
- * sprint asked for, with Portfolio Summary kept first only because it
- * is the one card every other section's own numbers refer back to.
+ * One additional, conditional line: `health.unknownInstrumentTickers`
+ * (a real, already-fetched data-quality signal -- tickers whose format
+ * looked structurally wrong at import) is not folded into any of the
+ * four figures above, since it isn't a count of holdings *needing
+ * review* so much as a warning that Atlas may have misread an
+ * instrument entirely. It renders only when that array is non-empty --
+ * compact, low-noise, no separate card -- and stays silent otherwise.
  */
-function PortfolioOverview({
+function PortfolioSummaryBar({
+  view,
   statusReport,
-  intelligenceReport,
-  openInvestmentCase,
   t,
 }: {
+  view: PortfolioView;
   statusReport: PortfolioStatusView | null;
-  intelligenceReport: PortfolioIntelligenceView | null;
-  openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  const summary = statusReport?.summary ?? null;
+  const needsAttention = statusReport?.reviewQueue.length ?? null;
   const health = statusReport?.health ?? null;
 
-  return (
-    <Stack gap="inter-section">
-      {summary && <PortfolioSummaryCard summary={summary} t={t} />}
-
-      <ActionCenterCard
-        statusReport={statusReport}
-        intelligenceReport={intelligenceReport}
-        openInvestmentCase={openInvestmentCase}
-        t={t}
-      />
-
-      {health && <PortfolioHealthCard health={health} t={t} />}
-
-      {intelligenceReport && <KeyFindingsCard findings={intelligenceReport.keyFindings} t={t} />}
-
-      {statusReport && <ReviewQueueCard reviewQueue={statusReport.reviewQueue} t={t} />}
-
-      {intelligenceReport && !intelligenceReport.portfolioFit.available && (
-        <Text color="tertiary" as="p">
-          {t("portfolio.intelligence.portfolioFit.heading")}:{" "}
-          {t("portfolio.intelligence.portfolioFit.notYetAvailable")}
-        </Text>
-      )}
-    </Stack>
-  );
-}
-
-/** Portfolio Summary -- unchanged content, kept as the one compact
- * statistics card at the very top (per the sprint's own "keep this
- * compact, one card" instruction). */
-function PortfolioSummaryCard({
-  summary,
-  t,
-}: {
-  summary: PortfolioSummaryMetrics;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
   return (
     <Surface tier="primary">
       <Stack gap="intra-section">
         <Heading level={2}>{t("portfolio.summary.heading")}</Heading>
         <Inline gap="row" wrap>
           <Text color="secondary" as="p">
-            {t("portfolio.summary.holdings")}: {summary.holdingsCount}
+            {t("portfolio.summary.holdings")}: {view.numberOfHoldings}
           </Text>
           <Text color="secondary" as="p">
-            {t("portfolio.summary.largestPosition")}:{" "}
-            {summary.largestPositionTicker
-              ? `${summary.largestPositionTicker} (${summary.largestPositionWeightPercent}%)`
-              : t("portfolio.summary.noLargestPosition")}
+            {t("portfolio.summary.cash")}:{" "}
+            {view.cashWeightPercent !== null ? `${view.cashWeightPercent}%` : t("portfolio.summary.noLargestPosition")}
           </Text>
           <Text color="secondary" as="p">
-            {t("portfolio.summary.investmentCases")}: {summary.numberOfInvestmentCases}
+            {t("portfolio.summary.needsAttention")}:{" "}
+            {needsAttention !== null ? needsAttention : t("portfolio.summary.noLargestPosition")}
           </Text>
-          <Text color="secondary" as="p">
-            {t("portfolio.summary.openDecisions")}: {summary.openDecisions}
-          </Text>
-          <Text color="secondary" as="p">
-            {t("portfolio.summary.pendingOutcomes")}: {summary.pendingOutcomes}
-          </Text>
-          <Text color="secondary" as="p">
-            {t("portfolio.summary.pendingExecutions")}: {summary.pendingExecutions}
-          </Text>
-          {summary.concentrationLevel && (
+          {health && (
             <Text color="secondary" as="p">
-              {t("portfolio.summary.concentration")}:{" "}
-              {CONCENTRATION_LEVEL_KEY[summary.concentrationLevel]
-                ? t(CONCENTRATION_LEVEL_KEY[summary.concentrationLevel]!)
-                : summary.concentrationLevel}
-            </Text>
-          )}
-          {summary.unallocatedPercent !== null && (
-            <Text color="secondary" as="p">
-              {t("portfolio.summary.unallocated")}: {summary.unallocatedPercent}%
+              {t("portfolio.summary.health")}:{" "}
+              {t("portfolio.health.coverage", { withCase: health.holdingsWithCaseCount, total: health.holdingsCount })}
             </Text>
           )}
         </Inline>
+        {health && health.unknownInstrumentTickers.length > 0 && (
+          <Text color="tertiary" as="p">
+            {t("portfolio.summary.unknownInstrumentsWarning", { count: health.unknownInstrumentTickers.length })}
+          </Text>
+        )}
       </Stack>
     </Surface>
   );
@@ -1288,161 +1099,499 @@ function ActionCenterRow({
   );
 }
 
-/** Portfolio Health -- unchanged content, unchanged position relative
- * to Action Center (immediately below it, per the sprint's own
- * hierarchy). */
-function PortfolioHealthCard({
-  health,
+/**
+ * Holdings Table (Portfolio Workspace v3) -- the dominant, primary
+ * workspace of the page, immediately following Today's Priorities per
+ * this sprint's explicit new hierarchy. Columns follow the sprint's own
+ * suggested list (Status, Ticker, Weight, Conviction, Evidence,
+ * [Priority], [Thesis]) with two deliberate, explicitly-justified
+ * substitutions for the last two:
+ *
+ * - **"Priority" instead of "Recommendation" -- TEMPORARY, not a
+ *   permanent product stance.** The backend does not yet expose a real
+ *   directional-recommendation concept (`atlas.analysis_engine
+ *   .recommendation` currently only ever returns `RecommendationWithheld`),
+ *   so labeling this column "Recommendation" today would show
+ *   `ReviewPriority` values under a name that promises something this
+ *   sprint cannot honestly deliver. This column is therefore only a
+ *   placeholder for what *currently exists* (`HoldingAttention.priority`
+ *   -- none/standard/evidence/priority review), not a statement that
+ *   Atlas should never produce recommendations. A real Recommendation
+ *   capability (e.g. Build/Hold/Reduce/Exit, target position size,
+ *   target execution price, portfolio-impact simulation) is planned
+ *   product direction for a future sprint; when that model exists, this
+ *   column should be replaced by it, not kept as "Priority" forever.
+ *   Building that capability is explicitly out of scope here.
+ * - **"Thesis" instead of "Last updated."** No per-holding timestamp is
+ *   exposed by any endpoint this page fetches (`generatedAt` on the
+ *   Cockpit report is portfolio-wide, not per row) -- fabricating one
+ *   would violate this sprint's own "reuse existing data" constraint.
+ *   `isThesisStale` is the real, already-computed per-holding freshness
+ *   signal this data actually has, so that's what's shown.
+ *
+ * Valuation/Risk/Growth/Capital Allocation (shown on the pre-v3 page)
+ * are dropped from the row, not lost: they already render in full on
+ * the Investment Case page (`investmentCase.analysis.*`), one click
+ * away -- the "Portfolio is overview, Investment Case is depth"
+ * principle this codebase has followed since ATLAS-028, and this
+ * sprint's own "Details on Demand" principle names directly.
+ *
+ * **Row click is plain route navigation, not a true overlay.** Clicking
+ * a row (or pressing Enter/Space on it) calls the same
+ * `openInvestmentCase` this page has always used -- a `navigate()` to
+ * `/investment-case/:id` with `state: { origin: "portfolio" }`, giving a
+ * "← Back to Portfolio" link on the Case page. That is real continuity
+ * (the investor can always get back), but it is NOT the same thing as
+ * Portfolio → Investment Case being a contextual overlay/workspace: a
+ * full route change unmounts this page, so scroll position, any
+ * expanded reconciliation row, and the Today's Discussions ask-input
+ * state are all lost on return. Making Investment Case open as a true
+ * overlay so that closing it restores this exact Portfolio state is
+ * explicit, planned follow-up work for a future "Investment Case
+ * Workspace" sprint -- out of scope here; routing is deliberately
+ * unchanged in this sprint.
+ */
+function HoldingsTable({
+  view,
+  cockpit,
+  unallocatedPercent,
+  caseCreateStatus,
+  openInvestmentCase,
+  expandedReconcileTicker,
+  setExpandedReconcileTicker,
+  reconcileWeightInputs,
+  setReconcileWeightInputs,
+  reconcileStatus,
+  submitUpdateHoldingWeight,
   t,
 }: {
-  health: PortfolioHealthView;
+  view: PortfolioView;
+  cockpit: PortfolioCockpitFetchStatus;
+  unallocatedPercent: number | null;
+  caseCreateStatus: Record<string, CaseCreateStatus>;
+  openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
+  expandedReconcileTicker: string | null;
+  setExpandedReconcileTicker: (ticker: string | null) => void;
+  reconcileWeightInputs: Record<string, string>;
+  setReconcileWeightInputs: (updater: (current: Record<string, string>) => Record<string, string>) => void;
+  reconcileStatus: Record<string, ReconcileStatus>;
+  submitUpdateHoldingWeight: (ticker: string) => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
+  const cellStyle: CSSProperties = {
+    padding: "var(--space-row) var(--space-metadata)",
+    textAlign: "left",
+    borderBottom: `var(--width-border-hairline) solid var(--color-border-hairline)`,
+    fontFamily: "var(--type-family-prose)",
+    fontSize: "var(--type-body-min-size)",
+  };
+  const headerCellStyle: CSSProperties = {
+    ...cellStyle,
+    color: "var(--color-text-tertiary)",
+    fontFamily: "var(--type-family-metadata)",
+    fontWeight: 500,
+    borderBottom: `var(--width-border-standard) solid var(--color-border-standard)`,
+  };
+
   return (
     <Surface tier="primary">
       <Stack gap="intra-section">
-        <Heading level={2}>{t("portfolio.health.heading")}</Heading>
-        <Text color="secondary" as="p">
-          {t("portfolio.health.coverage", {
-            withCase: health.holdingsWithCaseCount,
-            total: health.holdingsCount,
-          })}
-        </Text>
-        <Text color="secondary" as="p">
-          {health.mostRecentDecisionAt
-            ? t("portfolio.health.freshness", { date: health.mostRecentDecisionAt })
-            : t("portfolio.health.noDecisions")}
-        </Text>
-        <Text color="secondary" as="p">
-          {t("portfolio.health.outstandingItems")}: {health.outstandingWorkflowItems}
-        </Text>
-        {health.allocatedPercent !== null && (
-          <Text color="secondary" as="p">
-            {t("portfolio.health.completeness")}: {health.allocatedPercent}%
+        <Heading level={2}>{t("portfolio.holdings.heading")}</Heading>
+        {!view.hasAbsoluteValues && <Text color="secondary">{t("portfolio.holdings.percentOnly")}</Text>}
+        {view.hasAbsoluteValues && view.totalValue !== null && (
+          <Text color="secondary">{t("portfolio.holdings.totalValue", { value: view.totalValue })}</Text>
+        )}
+
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.statusHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.tickerHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.weightHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.convictionHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.evidenceHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.priorityHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.thesisHeader")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {view.holdings.map((holding) => {
+                const cockpitHolding =
+                  cockpit.kind === "loaded"
+                    ? cockpit.report.holdings.find((h) => h.ticker === holding.ticker)
+                    : undefined;
+                const isUnresolvedInCockpit =
+                  cockpit.kind === "loaded" &&
+                  cockpit.report.unresolvedHoldings.some((h) => h.ticker === holding.ticker);
+
+                return (
+                  <HoldingsTableRow
+                    key={holding.ticker}
+                    holding={holding}
+                    cockpitHolding={cockpitHolding}
+                    isUnresolvedInCockpit={isUnresolvedInCockpit}
+                    thisCaseCreateStatus={caseCreateStatus[holding.ticker] ?? { kind: "idle" }}
+                    thisReconcileStatus={reconcileStatus[holding.ticker] ?? { kind: "idle" }}
+                    openInvestmentCase={openInvestmentCase}
+                    isReconcileExpanded={expandedReconcileTicker === holding.ticker}
+                    onToggleReconcile={() =>
+                      setExpandedReconcileTicker(expandedReconcileTicker === holding.ticker ? null : holding.ticker)
+                    }
+                    reconcileWeightInput={reconcileWeightInputs[holding.ticker] ?? ""}
+                    onReconcileWeightInputChange={(value) =>
+                      setReconcileWeightInputs((current) => ({ ...current, [holding.ticker]: value }))
+                    }
+                    submitUpdateHoldingWeight={submitUpdateHoldingWeight}
+                    cellStyle={cellStyle}
+                    t={t}
+                  />
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {unallocatedPercent !== null && unallocatedPercent > UNALLOCATED_TOLERANCE && (
+          <Text color="secondary">
+            {t("portfolio.unallocated", { percent: Math.round(unallocatedPercent * 100) / 100 })}
           </Text>
         )}
-        <Text color="secondary" as="p">
-          {t("portfolio.health.unknownInstruments")}:{" "}
-          {health.unknownInstrumentTickers.length > 0
-            ? health.unknownInstrumentTickers.join(", ")
-            : t("portfolio.health.noUnknownInstruments")}
-        </Text>
+        {view.concentrationLevel && (
+          <Text color="secondary">
+            {t("portfolio.concentration", {
+              value: CONCENTRATION_LEVEL_KEY[view.concentrationLevel]
+                ? t(CONCENTRATION_LEVEL_KEY[view.concentrationLevel]!)
+                : view.concentrationLevel,
+            })}
+          </Text>
+        )}
+
+        <div>
+          <Button variant="tertiary" onClick={() => openInvestmentCase("__new__", null)}>
+            {t("portfolio.openNewCase")}
+          </Button>
+        </div>
       </Stack>
     </Surface>
   );
 }
 
 /**
- * Key Findings, condensed -- only the three aggregate/statistical
- * findings (`multiple_missing_cases`/`multiple_stale_cases`
- * /`multiple_evidence_gaps`) render here; `large_unallocated` and the
- * two concentration findings are already surfaced as real actions in
- * Action Center above when present, so repeating them here again would
- * be exactly the duplication the sprint asked to remove. Each finding
- * is one headline (a count, no ticker list inline) plus a capped,
- * expandable ticker list -- "Show 'View all' rather than printing
- * every ticker inline," per the sprint's own instruction.
+ * One dense, clickable row. `role="button"`/`tabIndex`/`onKeyDown` make
+ * the whole row a keyboard-operable navigation target (Enter/Space open
+ * the Investment Case) rather than requiring a separate visible button
+ * per row -- consistent with "the user should never feel they are
+ * leaving the Portfolio workspace" and this sprint's density goal. The
+ * inline Reconcile toggle stops event propagation so clicking it never
+ * also triggers row navigation.
  */
-function KeyFindingsCard({
-  findings,
+function HoldingsTableRow({
+  holding,
+  cockpitHolding,
+  isUnresolvedInCockpit,
+  thisCaseCreateStatus,
+  thisReconcileStatus,
+  openInvestmentCase,
+  isReconcileExpanded,
+  onToggleReconcile,
+  reconcileWeightInput,
+  onReconcileWeightInputChange,
+  submitUpdateHoldingWeight,
+  cellStyle,
   t,
 }: {
-  findings: KeyFindingView[];
+  holding: HoldingView;
+  cockpitHolding: PortfolioCockpitHoldingView | undefined;
+  isUnresolvedInCockpit: boolean;
+  thisCaseCreateStatus: CaseCreateStatus;
+  thisReconcileStatus: ReconcileStatus;
+  openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
+  isReconcileExpanded: boolean;
+  onToggleReconcile: () => void;
+  reconcileWeightInput: string;
+  onReconcileWeightInputChange: (value: string) => void;
+  submitUpdateHoldingWeight: (ticker: string) => void;
+  cellStyle: CSSProperties;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  const relevant = findings.filter(
-    (finding) =>
-      finding.kind === "multiple_missing_cases" ||
-      finding.kind === "multiple_stale_cases" ||
-      finding.kind === "multiple_evidence_gaps",
+  const isCreating = thisCaseCreateStatus.kind === "creating";
+  const isAwaitingReconciliation = holding.reconciliationStatus === "AWAITING_RECONCILIATION";
+
+  function handleRowActivate() {
+    if (isCreating) return;
+    openInvestmentCase(holding.ticker, holding.caseId);
+  }
+
+  return (
+    <>
+      <tr
+        role="button"
+        tabIndex={0}
+        aria-label={
+          holding.caseId ? t("portfolio.cockpit.viewCaseButton") : t("portfolio.holdings.openCaseButton")
+        }
+        onClick={handleRowActivate}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            handleRowActivate();
+          }
+        }}
+        style={{ cursor: isCreating ? "default" : "pointer" }}
+      >
+        <td style={cellStyle}>
+          {cockpitHolding ? (
+            <Text as="span">{REVIEW_PRIORITY_EMOJI[cockpitHolding.attention.priority]}</Text>
+          ) : (
+            <Text as="span" color="tertiary">
+              —
+            </Text>
+          )}
+        </td>
+        <td style={cellStyle}>
+          <Stack gap="metadata">
+            <Text as="span">{holding.ticker}</Text>
+            {isCreating && (
+              <Text as="span" color="tertiary">
+                {t("portfolio.holdings.opening")}
+              </Text>
+            )}
+            {holding.reconciliationStatus === "UPDATED" && (
+              <Text as="span" color="tertiary">
+                {t("portfolio.holdings.updatedAutomatically")}
+              </Text>
+            )}
+            {isUnresolvedInCockpit && (
+              <Text as="span" color="tertiary">
+                {t("portfolio.cockpit.unresolved")}
+              </Text>
+            )}
+            {thisCaseCreateStatus.kind === "error" && (
+              <Text as="span" color="tertiary">
+                {t("portfolio.holdings.openCaseError")}
+              </Text>
+            )}
+            {isAwaitingReconciliation && (
+              <div>
+                <Button
+                  variant="tertiary"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onToggleReconcile();
+                  }}
+                >
+                  {isReconcileExpanded ? t("common.cancel") : t("portfolio.holdingsTable.reconcileToggle")}
+                </Button>
+              </div>
+            )}
+          </Stack>
+        </td>
+        <td style={cellStyle}>
+          <Text as="span">
+            {holding.weightPercent}%{holding.valueAbsolute !== null ? ` — ${holding.valueAbsolute}` : ""}
+          </Text>
+        </td>
+        <td style={cellStyle}>
+          <Text as="span">
+            {cockpitHolding ? t(CONVICTION_LEVEL_KEY[cockpitHolding.conviction.level]) : "—"}
+          </Text>
+        </td>
+        <td style={cellStyle}>
+          <Text as="span">{cockpitHolding ? t(CONFIDENCE_KEY[cockpitHolding.confidence]) : "—"}</Text>
+        </td>
+        <td style={cellStyle}>
+          <Text
+            as="span"
+            color={
+              cockpitHolding &&
+              (cockpitHolding.attention.priority === "evidence_review" ||
+                cockpitHolding.attention.priority === "priority_review")
+                ? "tertiary"
+                : "primary"
+            }
+          >
+            {cockpitHolding ? t(REVIEW_PRIORITY_KEY[cockpitHolding.attention.priority]) : "—"}
+          </Text>
+        </td>
+        <td style={cellStyle}>
+          <Text as="span" color={cockpitHolding?.isThesisStale ? "tertiary" : "primary"}>
+            {cockpitHolding
+              ? cockpitHolding.isThesisStale
+                ? t("portfolio.holdingsTable.thesisStale")
+                : t("portfolio.holdingsTable.thesisFresh")
+              : "—"}
+          </Text>
+        </td>
+      </tr>
+      {isReconcileExpanded && (
+        <tr>
+          <td colSpan={7} style={cellStyle}>
+            <Stack gap="inter-section">
+              <Text color="tertiary" as="p">
+                {t("portfolio.holdings.awaitingReconciliation")}
+              </Text>
+              <Text as="label">
+                {t("portfolio.holdings.newWeightLabel")}
+                <br />
+                <input
+                  value={reconcileWeightInput}
+                  onChange={(event) => onReconcileWeightInputChange(event.target.value)}
+                />
+              </Text>
+              <div>
+                <Button
+                  variant="tertiary"
+                  onClick={() => submitUpdateHoldingWeight(holding.ticker)}
+                  disabled={thisReconcileStatus.kind === "submitting"}
+                >
+                  {thisReconcileStatus.kind === "submitting"
+                    ? t("portfolio.holdings.updating")
+                    : t("portfolio.holdings.updateButton")}
+                </Button>
+              </div>
+              {thisReconcileStatus.kind === "error" && (
+                <Text color="tertiary" role="alert">
+                  {thisReconcileStatus.message}
+                </Text>
+              )}
+            </Stack>
+          </td>
+        </tr>
+      )}
+    </>
   );
+}
+
+/**
+ * Today's Discussions (Portfolio Workspace v3) -- replaces the "empty
+ * chat" pattern with Atlas proactively naming a few real, specific
+ * things worth discussing, each derived from data already on this page
+ * via `deriveDiscussionPrompts` (never a generic or fabricated
+ * example -- see that module's own docstring). Per this sprint's
+ * explicit "do not build the conversational engine yet" instruction,
+ * "Discuss" only pre-fills the free-text input below with that prompt's
+ * question and focuses it; submitting shows one honest, static note
+ * rather than a fabricated Atlas reply.
+ */
+function TodaysDiscussionsCard({
+  statusReport,
+  intelligenceReport,
+  askInput,
+  setAskInput,
+  askSubmitted,
+  setAskSubmitted,
+  t,
+}: {
+  statusReport: PortfolioStatusView | null;
+  intelligenceReport: PortfolioIntelligenceView | null;
+  askInput: string;
+  setAskInput: (value: string) => void;
+  askSubmitted: boolean;
+  setAskSubmitted: (value: boolean) => void;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const allActions = derivePortfolioActions(
+    statusReport?.reviewQueue ?? [],
+    intelligenceReport?.missingEvidence.map((item) => ({ ticker: item.ticker, caseId: item.caseId })) ?? [],
+    intelligenceReport?.keyFindings ?? [],
+    statusReport?.summary?.unallocatedPercent ?? null,
+    statusReport?.attentionItems.map((item) => ({
+      ticker: item.ticker,
+      category: item.category,
+      ageDays: item.ageDays,
+    })) ?? [],
+  );
+
+  const prompts = deriveDiscussionPrompts(
+    statusReport?.summary?.unallocatedPercent ?? null,
+    statusReport?.summary?.concentrationLevel ?? null,
+    statusReport?.summary?.holdingsCount ?? 0,
+    intelligenceReport?.keyFindings ?? [],
+    allActions[0] ? { ticker: allActions[0].ticker } : null,
+    (key, params) => t(key as TranslationKey, params),
+  );
+
+  function fillAsk(text: string) {
+    setAskInput(text);
+    setAskSubmitted(false);
+    inputRef.current?.focus();
+  }
+
+  function handleAsk() {
+    if (askInput.trim() === "") return;
+    setAskSubmitted(true);
+  }
 
   return (
     <Surface tier="primary">
       <Stack gap="intra-section">
-        <Heading level={2}>{t("portfolio.intelligence.keyFindings.heading")}</Heading>
-        {relevant.length === 0 && <Text color="secondary">{t("portfolio.intelligence.keyFindings.empty")}</Text>}
-        {relevant.map((finding, index) => (
-          <KeyFindingRow key={index} finding={finding} t={t} />
+        <Heading level={2}>{t("portfolio.discussions.heading")}</Heading>
+        {prompts.length > 0 ? (
+          <Text color="secondary" as="p">
+            {t("portfolio.discussions.intro")}
+          </Text>
+        ) : (
+          <Text color="secondary" as="p">
+            {t("portfolio.discussions.empty")}
+          </Text>
+        )}
+        {prompts.map((prompt) => (
+          <DiscussionPromptRow key={prompt.id} prompt={prompt} onDiscuss={fillAsk} t={t} />
         ))}
+
+        <Divider tone="hairline" />
+
+        <Stack gap="metadata">
+          <Inline gap="row">
+            <input
+              ref={inputRef}
+              value={askInput}
+              placeholder={t("portfolio.discussions.askPlaceholder")}
+              onChange={(event) => {
+                setAskInput(event.target.value);
+                setAskSubmitted(false);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") handleAsk();
+              }}
+              style={{ flex: 1 }}
+            />
+            <Button variant="primary" onClick={handleAsk}>
+              {t("portfolio.discussions.askButton")}
+            </Button>
+          </Inline>
+          {askSubmitted && (
+            <Text color="tertiary" as="p">
+              {t("portfolio.discussions.comingSoonNote")}
+            </Text>
+          )}
+        </Stack>
       </Stack>
     </Surface>
   );
 }
 
-const KEY_FINDING_HEADLINE_KEY: Record<
-  "multiple_missing_cases" | "multiple_stale_cases" | "multiple_evidence_gaps",
-  TranslationKey
-> = {
-  multiple_missing_cases: "portfolio.intelligence.keyFindings.headline.multiple_missing_cases",
-  multiple_stale_cases: "portfolio.intelligence.keyFindings.headline.multiple_stale_cases",
-  multiple_evidence_gaps: "portfolio.intelligence.keyFindings.headline.multiple_evidence_gaps",
-};
-
-function KeyFindingRow({
-  finding,
+function DiscussionPromptRow({
+  prompt,
+  onDiscuss,
   t,
 }: {
-  finding: KeyFindingView;
+  prompt: DiscussionPrompt;
+  onDiscuss: (text: string) => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const headlineKey = KEY_FINDING_HEADLINE_KEY[finding.kind as keyof typeof KEY_FINDING_HEADLINE_KEY];
-  const visibleTickers = expanded ? finding.tickers : finding.tickers.slice(0, MAX_KEY_FINDING_TICKERS_SHOWN);
-  const hasMore = finding.tickers.length > MAX_KEY_FINDING_TICKERS_SHOWN;
-
   return (
     <Stack gap="metadata">
-      <Text as="p">{t(headlineKey, { count: finding.count })}</Text>
-      {finding.tickers.length > 0 && (
-        <Text color="secondary" as="p">
-          {t("portfolio.intelligence.keyFindings.affectedHoldingsLabel")}: {visibleTickers.join(", ")}
-          {!expanded && hasMore ? "…" : ""}
-        </Text>
-      )}
-      {hasMore && (
-        <div>
-          <Button variant="tertiary" onClick={() => setExpanded((current) => !current)}>
-            {expanded
-              ? t("portfolio.intelligence.keyFindings.showLess")
-              : t("portfolio.intelligence.keyFindings.viewAll")}
-          </Button>
-        </div>
-      )}
+      <Text as="p">{prompt.text}</Text>
+      <div>
+        <Button variant="tertiary" onClick={() => onDiscuss(prompt.text)}>
+          {t("portfolio.discussions.discussButton")}
+        </Button>
+      </div>
+      <Divider tone="hairline" />
     </Stack>
-  );
-}
-
-/** Review Queue -- unchanged content and behavior, kept as a secondary,
- * browsable section beneath Key Findings (per the sprint's own "keep
- * as a secondary section" instruction). Already deduplicated per
- * ticker by the backend (`ReviewQueueItem`, one row per holding with a
- * combined reason count) -- nothing to further condense here. */
-function ReviewQueueCard({
-  reviewQueue,
-  t,
-}: {
-  reviewQueue: ReviewQueueItemView[];
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("portfolio.reviewQueue.heading")}</Heading>
-        {reviewQueue.length === 0 && <Text color="secondary">{t("portfolio.reviewQueue.empty")}</Text>}
-        {reviewQueue.map((item) => (
-          <Inline key={item.ticker} gap="row" align="center">
-            {item.caseId ? (
-              <RouterLink to={`/investment-case/${item.caseId}`}>
-                {t("portfolio.reviewQueue.item", { ticker: item.ticker })}
-              </RouterLink>
-            ) : (
-              <Text>{t("portfolio.reviewQueue.item", { ticker: item.ticker })}</Text>
-            )}
-            <Text color="tertiary">{t("portfolio.reviewQueue.reasonCount", { count: item.reasonCount })}</Text>
-          </Inline>
-        ))}
-      </Stack>
-    </Surface>
   );
 }

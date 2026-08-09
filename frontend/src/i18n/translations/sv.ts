@@ -135,8 +135,6 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.cockpit.business.moderate": "Måttlig",
   "portfolio.cockpit.business.strong": "Stark",
   "portfolio.cockpit.evidenceLabel": "Underlag",
-  "portfolio.cockpit.thesisStale": "Tesen har inte granskats på länge",
-  "portfolio.cockpit.review.label": "Granskning",
   "portfolio.cockpit.review.none": "—",
   "portfolio.cockpit.review.standard_review": "Standardgranskning",
   "portfolio.cockpit.review.evidence_review": "Underlagsgranskning",
@@ -144,7 +142,6 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.cockpit.viewCaseButton": "Visa Investeringscase",
   "portfolio.cockpit.unresolved": "Investeringscase kunde inte hämtas",
 
-  "portfolio.cashLabel": "Kontanter: {{percent}}%",
   "portfolio.unallocated":
     "Ofördelat: {{percent}}% — den här portföljen täcker ännu inte 100% av innehaven; Atlas hittar inte på resten.",
   "portfolio.concentration": "Koncentration: {{value}}",
@@ -156,14 +153,12 @@ export const sv: Record<TranslationKey, string> = {
   // ---------- portfolio intelligence (ATLAS-015) ----------
   "portfolio.summary.heading": "Portföljöversikt",
   "portfolio.summary.holdings": "Innehav",
-  "portfolio.summary.largestPosition": "Största position",
   "portfolio.summary.noLargestPosition": "—",
-  "portfolio.summary.investmentCases": "Investeringscase",
-  "portfolio.summary.openDecisions": "Öppna beslut",
-  "portfolio.summary.pendingOutcomes": "Väntande utfall",
-  "portfolio.summary.pendingExecutions": "Väntande genomföranden",
-  "portfolio.summary.concentration": "Koncentration",
-  "portfolio.summary.unallocated": "Ej allokerat",
+  // ---------- portfolio summary bar (Portfolio Workspace v3) ----------
+  "portfolio.summary.cash": "Kontanter",
+  "portfolio.summary.needsAttention": "Behöver uppmärksamhet",
+  "portfolio.summary.health": "Hälsa",
+  "portfolio.summary.unknownInstrumentsWarning": "{{count}} innehav kunde inte tolkas fullt ut. Granska instrumenten.",
 
   // ---------- portfolio action center (ATLAS UI Sprint) ----------
   "portfolio.actionCenter.heading": "Dagens prioriteringar",
@@ -187,18 +182,43 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.actionCenter.reason.veryOldCase": "Investeringscaset är {{days}} dagar gammalt.",
   "portfolio.actionCenter.reason.observationWithoutDecision": "En observation saknar beslut.",
 
-  "portfolio.reviewQueue.heading": "Granskningskö",
-  "portfolio.reviewQueue.empty": "Inget köat för granskning.",
-  "portfolio.reviewQueue.item": "Granska {{ticker}}",
-  "portfolio.reviewQueue.reasonCount": "{{count}} poster",
-  "portfolio.health.heading": "Portföljhälsa",
   "portfolio.health.coverage": "{{withCase}} av {{total}} innehav har ett investeringscase",
-  "portfolio.health.freshness": "Senaste beslut: {{date}}",
-  "portfolio.health.noDecisions": "Inga beslut registrerade än",
-  "portfolio.health.outstandingItems": "Utestående arbetsposter",
-  "portfolio.health.completeness": "Portföljens fullständighet",
-  "portfolio.health.unknownInstruments": "Okända instrument",
-  "portfolio.health.noUnknownInstruments": "Inga upptäckta",
+
+  // ---------- holdings table (Portfolio Workspace v3) ----------
+  "portfolio.holdingsTable.statusHeader": "Status",
+  "portfolio.holdingsTable.tickerHeader": "Ticker",
+  "portfolio.holdingsTable.weightHeader": "Andel",
+  "portfolio.holdingsTable.convictionHeader": "Övertygelse",
+  "portfolio.holdingsTable.evidenceHeader": "Underlag",
+  "portfolio.holdingsTable.priorityHeader": "Prioritet",
+  "portfolio.holdingsTable.thesisHeader": "Tes",
+  "portfolio.holdingsTable.thesisFresh": "Aktuell",
+  "portfolio.holdingsTable.thesisStale": "Inaktuell",
+  "portfolio.holdingsTable.reconcileToggle": "Stäm av",
+
+  // ---------- today's discussions (Portfolio Workspace v3) ----------
+  "portfolio.discussions.heading": "Dagens diskussioner",
+  "portfolio.discussions.intro": "Atlas har uppmärksammat några saker värda att diskutera.",
+  "portfolio.discussions.empty": "Inget särskilt att diskutera just nu.",
+  "portfolio.discussions.discussButton": "Diskutera",
+  "portfolio.discussions.askPlaceholder": "Fråga Atlas vad som helst om din portfölj…",
+  "portfolio.discussions.askButton": "Fråga",
+  "portfolio.discussions.comingSoonNote":
+    "Samtal med Atlas är inte tillgängliga än — detta är förberett för en framtida version.",
+  "portfolio.discussions.prompt.priorityHolding":
+    "{{ticker}} är just nu ditt högst prioriterade innehav. Vill du granska det?",
+  "portfolio.discussions.prompt.diversification":
+    "Din portfölj är spridd över {{count}} innehav med låg koncentration. Skulle en koncentration mot dina mest övertygande idéer förbättra den förväntade avkastningen?",
+  "portfolio.discussions.prompt.concentration":
+    "{{ticker}} utgör en stor del av din portfölj. Skulle en minskning av positionen förbättra diversifieringen?",
+  "portfolio.discussions.prompt.unallocated":
+    "{{percent}}% av ditt kapital är för närvarande oallokerat. Var bör detta kapital placeras?",
+  "portfolio.discussions.prompt.evidenceGaps":
+    "{{count}} innehav har luckor i sina belägg. Vill du granska vad som saknas?",
+  "portfolio.discussions.prompt.staleCases":
+    "{{count}} investeringscase har inte granskats på länge. Vill du gå igenom dem?",
+  "portfolio.discussions.prompt.missingCases":
+    "{{count}} innehav saknar fortfarande ett investeringscase. Vill du starta ett?",
 
   // ---------- portfolio intelligence (ATLAS-016) ----------
   "portfolio.intelligence.confidence.not_applicable": "Otillräckligt underlag",
@@ -206,8 +226,6 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.intelligence.confidence.partial": "Delvisa belägg",
   "portfolio.intelligence.confidence.full": "Fullständig belägg­täckning",
 
-  "portfolio.intelligence.keyFindings.heading": "Viktiga observationer",
-  "portfolio.intelligence.keyFindings.empty": "Inga viktiga observationer just nu.",
   "portfolio.intelligence.keyFindings.high_concentration":
     "Hög koncentration i ditt största innehav ({{tickers}})",
   "portfolio.intelligence.keyFindings.elevated_concentration":
@@ -219,18 +237,6 @@ export const sv: Record<TranslationKey, string> = {
     "{{count}} investeringscase har inte granskats på länge ({{tickers}})",
   "portfolio.intelligence.keyFindings.multiple_evidence_gaps":
     "{{count}} innehav har luckor i beläggen för sitt investeringscase ({{tickers}})",
-  "portfolio.intelligence.keyFindings.headline.multiple_missing_cases":
-    "Inget investeringscase än för {{count}} innehav.",
-  "portfolio.intelligence.keyFindings.headline.multiple_stale_cases":
-    "Inaktuella granskningar för {{count}} innehav.",
-  "portfolio.intelligence.keyFindings.headline.multiple_evidence_gaps":
-    "Belägg­luckor upptäckta för {{count}} innehav.",
-  "portfolio.intelligence.keyFindings.affectedHoldingsLabel": "Berörda innehav",
-  "portfolio.intelligence.keyFindings.viewAll": "Visa alla",
-  "portfolio.intelligence.keyFindings.showLess": "Visa färre",
-
-  "portfolio.intelligence.portfolioFit.heading": "Portföljanpassning",
-  "portfolio.intelligence.portfolioFit.notYetAvailable": "Inte tillgängligt än.",
 
   // ---------- dashboard ----------
   "dashboard.title": "Översikt",

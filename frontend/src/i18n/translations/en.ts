@@ -136,8 +136,6 @@ export const en = {
   "portfolio.cockpit.business.moderate": "Moderate",
   "portfolio.cockpit.business.strong": "Strong",
   "portfolio.cockpit.evidenceLabel": "Evidence",
-  "portfolio.cockpit.thesisStale": "Thesis not reviewed in a long time",
-  "portfolio.cockpit.review.label": "Review",
   "portfolio.cockpit.review.none": "—",
   "portfolio.cockpit.review.standard_review": "Standard review",
   "portfolio.cockpit.review.evidence_review": "Evidence review",
@@ -145,7 +143,6 @@ export const en = {
   "portfolio.cockpit.viewCaseButton": "View Investment Case",
   "portfolio.cockpit.unresolved": "Investment Case could not be resolved",
 
-  "portfolio.cashLabel": "Cash: {{percent}}%",
   "portfolio.unallocated":
     "Unallocated: {{percent}}% — this portfolio does not yet account for 100% of holdings; Atlas does not invent the remainder.",
   "portfolio.concentration": "Concentration: {{value}}",
@@ -157,14 +154,12 @@ export const en = {
   // ---------- portfolio intelligence (ATLAS-015) ----------
   "portfolio.summary.heading": "Portfolio Summary",
   "portfolio.summary.holdings": "Holdings",
-  "portfolio.summary.largestPosition": "Largest position",
   "portfolio.summary.noLargestPosition": "—",
-  "portfolio.summary.investmentCases": "Investment Cases",
-  "portfolio.summary.openDecisions": "Open Decisions",
-  "portfolio.summary.pendingOutcomes": "Pending Outcomes",
-  "portfolio.summary.pendingExecutions": "Pending Executions",
-  "portfolio.summary.concentration": "Concentration",
-  "portfolio.summary.unallocated": "Unallocated",
+  // ---------- portfolio summary bar (Portfolio Workspace v3) ----------
+  "portfolio.summary.cash": "Cash",
+  "portfolio.summary.needsAttention": "Needs attention",
+  "portfolio.summary.health": "Health",
+  "portfolio.summary.unknownInstrumentsWarning": "{{count}} holdings could not be fully resolved. Review instruments.",
 
   // ---------- portfolio action center (ATLAS UI Sprint) ----------
   "portfolio.actionCenter.heading": "Today's Priorities",
@@ -188,18 +183,43 @@ export const en = {
   "portfolio.actionCenter.reason.veryOldCase": "Investment Case is {{days}} days old.",
   "portfolio.actionCenter.reason.observationWithoutDecision": "An Observation has no Decision.",
 
-  "portfolio.reviewQueue.heading": "Review Queue",
-  "portfolio.reviewQueue.empty": "Nothing queued for review.",
-  "portfolio.reviewQueue.item": "Review {{ticker}}",
-  "portfolio.reviewQueue.reasonCount": "{{count}} items",
-  "portfolio.health.heading": "Portfolio Health",
   "portfolio.health.coverage": "{{withCase}} of {{total}} holdings have an Investment Case",
-  "portfolio.health.freshness": "Most recent decision: {{date}}",
-  "portfolio.health.noDecisions": "No decisions recorded yet",
-  "portfolio.health.outstandingItems": "Outstanding workflow items",
-  "portfolio.health.completeness": "Portfolio completeness",
-  "portfolio.health.unknownInstruments": "Unknown instruments",
-  "portfolio.health.noUnknownInstruments": "None detected",
+
+  // ---------- holdings table (Portfolio Workspace v3) ----------
+  "portfolio.holdingsTable.statusHeader": "Status",
+  "portfolio.holdingsTable.tickerHeader": "Ticker",
+  "portfolio.holdingsTable.weightHeader": "Weight",
+  "portfolio.holdingsTable.convictionHeader": "Conviction",
+  "portfolio.holdingsTable.evidenceHeader": "Evidence",
+  "portfolio.holdingsTable.priorityHeader": "Priority",
+  "portfolio.holdingsTable.thesisHeader": "Thesis",
+  "portfolio.holdingsTable.thesisFresh": "Fresh",
+  "portfolio.holdingsTable.thesisStale": "Stale",
+  "portfolio.holdingsTable.reconcileToggle": "Reconcile",
+
+  // ---------- today's discussions (Portfolio Workspace v3) ----------
+  "portfolio.discussions.heading": "Today's Discussions",
+  "portfolio.discussions.intro": "Atlas noticed a few things worth discussing.",
+  "portfolio.discussions.empty": "Nothing notable to discuss right now.",
+  "portfolio.discussions.discussButton": "Discuss",
+  "portfolio.discussions.askPlaceholder": "Ask Atlas anything about your portfolio…",
+  "portfolio.discussions.askButton": "Ask",
+  "portfolio.discussions.comingSoonNote":
+    "Atlas conversations aren't available yet — this is ready for a future release.",
+  "portfolio.discussions.prompt.priorityHolding":
+    "{{ticker}} is currently your highest priority holding. Would you like to review it?",
+  "portfolio.discussions.prompt.diversification":
+    "Your portfolio is spread across {{count}} holdings with low concentration. Would concentrating your highest-conviction ideas improve expected upside?",
+  "portfolio.discussions.prompt.concentration":
+    "{{ticker}} makes up a large share of your portfolio. Would reducing this position improve diversification?",
+  "portfolio.discussions.prompt.unallocated":
+    "{{percent}}% of your capital is currently unallocated. Where should this capital be deployed?",
+  "portfolio.discussions.prompt.evidenceGaps":
+    "{{count}} holdings have gaps in their evidence. Want to review what's missing?",
+  "portfolio.discussions.prompt.staleCases":
+    "{{count}} Investment Cases haven't been reviewed in a long time. Want to go through them?",
+  "portfolio.discussions.prompt.missingCases":
+    "{{count}} holdings don't have an Investment Case yet. Want to start one?",
 
   // ---------- portfolio intelligence (ATLAS-016) ----------
   "portfolio.intelligence.confidence.not_applicable": "Insufficient evidence",
@@ -207,8 +227,6 @@ export const en = {
   "portfolio.intelligence.confidence.partial": "Partial evidence",
   "portfolio.intelligence.confidence.full": "Full evidence coverage",
 
-  "portfolio.intelligence.keyFindings.heading": "Key Findings",
-  "portfolio.intelligence.keyFindings.empty": "No key findings right now.",
   "portfolio.intelligence.keyFindings.high_concentration":
     "High concentration in your largest position ({{tickers}})",
   "portfolio.intelligence.keyFindings.elevated_concentration":
@@ -220,18 +238,6 @@ export const en = {
     "{{count}} Investment Cases have not been reviewed in a long time ({{tickers}})",
   "portfolio.intelligence.keyFindings.multiple_evidence_gaps":
     "{{count}} holdings have evidence gaps in their Investment Case ({{tickers}})",
-  "portfolio.intelligence.keyFindings.headline.multiple_missing_cases":
-    "No Investment Case yet across {{count}} holdings.",
-  "portfolio.intelligence.keyFindings.headline.multiple_stale_cases":
-    "Stale reviews across {{count}} holdings.",
-  "portfolio.intelligence.keyFindings.headline.multiple_evidence_gaps":
-    "Evidence gaps detected across {{count}} holdings.",
-  "portfolio.intelligence.keyFindings.affectedHoldingsLabel": "Affected holdings",
-  "portfolio.intelligence.keyFindings.viewAll": "View all",
-  "portfolio.intelligence.keyFindings.showLess": "Show less",
-
-  "portfolio.intelligence.portfolioFit.heading": "Portfolio Fit",
-  "portfolio.intelligence.portfolioFit.notYetAvailable": "Not yet available.",
 
   // ---------- dashboard ----------
   "dashboard.title": "Dashboard",
