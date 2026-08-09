@@ -360,6 +360,23 @@ trade-flavored labels (Buy, Trim, Exit) for advisory output, rather than
 more neutral verbs, is a deliberate, reviewed trade-off — see `DE-001` §5
 for the rationale and its governance note.
 
+A Recommendation states *what* the Investor might do; it does not, by
+itself, state *how* — Buy, Add, Trim, and Exit are complete and meaningful
+directions with zero execution content, per `DE-001` §3. Where execution
+content (a target allocation range, an execution price range, a staged
+versus lump-sum framing) accompanies a Recommendation, it is a distinct,
+optional, dependent concept — **Atlas Execution Guidance** — specified in
+full in `docs/atlas_decision_engine/DE-006-Execution-Guidance.md`, including
+its explicit boundary against the Investor's own Decision/Implementation
+Intent (the `BUY/SELL/HOLD/WATCH/PASS` record and Implementation Summary —
+intent, never a completed trade), against the distinct, unspecified concept
+of Actual Execution, and against the separate, unspecified concept of
+Portfolio Simulation. `DE-006` also states explicitly that Execution
+Guidance does not require the Investor to have accepted the Recommendation
+it accompanies — it may inform that acceptance decision itself. This
+Doctrine does not merge Execution Guidance into the Recommendation
+Framework above; `DE-006` states why they are kept apart.
+
 ---
 
 ## 9. Decision Memory
@@ -418,7 +435,7 @@ Doctrine functions as a reference a subordinate document may draw on
 voluntarily, not as a mandatory citation source in the manner `APP-000` §9
 establishes for Product Principles. A subordinate document that does cite
 this Doctrine SHALL NOT contradict a principle stated in it or in `DE-001`
-through `DE-005`, and SHALL NOT redefine Atlas Recommendation, Atlas
+through `DE-006`, and SHALL NOT redefine Atlas Recommendation, Atlas
 Conviction Level, or any other term this Doctrine or its companions define —
 the same non-contradiction discipline `APP-000` §2 already requires of every
 subordinate document, applied here by extension rather than by new grant.
@@ -464,21 +481,27 @@ pointing here:
 - `docs/atlas_decision_engine/DE-003-Portfolio-Intelligence.md` — Deliverable 4
 - `docs/atlas_decision_engine/DE-004-Honest-Uncertainty.md` — Deliverable 5
 - `docs/atlas_decision_engine/DE-005-Decision-Memory.md` — Deliverable 6
+- `docs/atlas_decision_engine/DE-006-Execution-Guidance.md` — gap discovered
+  during Recommendation Workspace frontend design; not one of the original
+  six deliverables
 
 **Dependency map.** `DE-002` (Reasoning Structure) is canonical and
 structural — it is the one place a future implementation reads to know the
-shape of an Atlas Recommendation. The other four companions supply the
-*content* that fills specific `DE-002` sections; none of them is
-structurally canonical in its own right:
+shape of an Atlas Recommendation. `DE-001`, `DE-003`, `DE-004`, and `DE-005`
+supply the *content* that fills specific `DE-002` sections; none of them is
+structurally canonical in its own right. `DE-006` is the one companion that
+does not fill a `DE-002` section — it is an optional, dependent extension of
+`DE-001`'s Direction, scoped to *how* rather than *what*, per `DE-006` §7:
 
 | Companion | Supplies content for | Depended on by |
 |---|---|---|
-| `DE-001` Recommendation Framework | `DE-002` §2.5 (Direction) — the six directions and Recommendation Withheld | `DE-002`, `DE-003`, `DE-004` |
+| `DE-001` Recommendation Framework | `DE-002` §2.5 (Direction) — the six directions and Recommendation Withheld | `DE-002`, `DE-003`, `DE-004`, `DE-006` |
 | `DE-002` Reasoning Structure | *(canonical structure — depends on nothing below it)* | `DE-001`, `DE-003`, `DE-004`, `DE-005` |
 | `DE-003` Portfolio Intelligence | `DE-002` §2.4 (Portfolio Context) | `DE-001`, `DE-002` |
-| `DE-004` Honest Uncertainty | `DE-002` §2.6 (Conviction) and `DE-002` §4 (Recommendation Withheld) | `DE-001`, `DE-002` |
+| `DE-004` Honest Uncertainty | `DE-002` §2.6 (Conviction) and `DE-002` §4 (Recommendation Withheld) | `DE-001`, `DE-002`, `DE-006` |
 | `DE-005` Decision Memory | `DE-002` §2.1 (Current Situation) and §2.3 (Counter-Evidence) history | `DE-001`, `DE-003` |
+| `DE-006` Execution Guidance | Extends `DE-001`'s Direction (Buy/Add/Trim/Exit only) with optional, dependent execution content; not a `DE-002` section | *(depends on `DE-001`, `DE-002` §2.7, `DE-004`; nothing depends on it)* |
 
-All five, and this Doctrine, ground out in `APP-000` and
+All six, and this Doctrine, ground out in `APP-000` and
 `ATLAS_CONSTITUTION.md` — none depends on another companion for its own
 basic authority, only for specific content.
