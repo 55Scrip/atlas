@@ -21,12 +21,26 @@ these two canonical facts -- this provider never reports (or is asked
 to report) a provider-computed market cap number directly.
 
 ATLAS-031B: live testing with a real key found the free tier rejects a
-second call made less than ~1 second after the first -- `GLOBAL_QUOTE`
-and `OVERVIEW` are spaced by an injectable delay (`_sleeper`, default
+second call made less than ~1 second after the first -- every outbound
+call is spaced by an injectable delay (`_sleeper`, default
 `time.sleep`) so production calls are genuinely paced while tests never
 actually wait. No retry, no backoff, no queue -- if Alpha Vantage still
 rate-limits after the delay, that surfaces through the existing typed
 `RateLimited` error exactly as before.
+
+**ATLAS-032 corrective: pacing is enforced at the provider-instance
+level, not hand-placed between specific call pairs.** A real refresh
+calls `fetch()` (2 requests) and then, moments later,
+`fetch_historical_snapshots()` (2 more requests) on the *same*
+provider instance -- confirmed live to violate the 1-request/second
+limit, because each method only paced its own internal calls and
+neither knew the other had just run. Every outbound call now funnels
+through `_request_json`, which calls `_pace()` first: `_pace()` tracks
+`self._last_request_at` (a monotonic timestamp) across every call this
+instance has ever made, of either public method, and sleeps only the
+*remaining* interval if less than `_inter_request_delay_seconds` has
+elapsed since the last one -- never a flat delay, and never before the
+very first request on a freshly constructed instance.
 
 **ATLAS-032: `fetch_historical_snapshots` is a second, optional
 capability on this same provider** (see `business_data.providers
@@ -93,6 +107,7 @@ _SUPPORTED_CURRENCY = "USD"
 _DEFAULT_INTER_REQUEST_DELAY_SECONDS = 1.1
 
 Sleeper = Callable[[float], None]
+Clock = Callable[[], float]
 
 
 def _api_key(explicit: str | None) -> str | None:
@@ -180,6 +195,7 @@ class AlphaVantageMarketDataProvider:
         api_key: str | None = None,
         sleeper: Sleeper | None = None,
         inter_request_delay_seconds: float = _DEFAULT_INTER_REQUEST_DELAY_SECONDS,
+        clock: Clock | None = None,
     ) -> None:
         self._fetch_json = fetch_json_fn or fetch_json
         self._explicit_api_key = api_key
@@ -191,6 +207,15 @@ class AlphaVantageMarketDataProvider:
         # an explicit fake here.
         self._sleeper = sleeper
         self._inter_request_delay_seconds = inter_request_delay_seconds
+        # ATLAS-032 corrective: `clock` follows the identical "resolved
+        # fresh at call time, never a bound default" discipline as
+        # `sleeper` -- defaults to `time.monotonic`, overridable by
+        # tests that need deterministic elapsed-time control.
+        self._clock = clock
+        # The monotonic time of this INSTANCE's most recent outbound
+        # Alpha Vantage request, across every public method -- `None`
+        # until the first request is made, so that request never sleeps.
+        self._last_request_at: float | None = None
 
     def _resolved_api_key(self) -> str:
         key = _api_key(self._explicit_api_key)
@@ -204,7 +229,7 @@ class AlphaVantageMarketDataProvider:
 
     def _global_quote(self, ticker: str, api_key: str) -> dict[str, Any]:
         url = f"{_BASE_URL}?function=GLOBAL_QUOTE&symbol={ticker}&apikey={api_key}"
-        payload = self._fetch_json(url, None)
+        payload = self._request_json(url)
         _check_for_provider_error(payload, context=f"Alpha Vantage GLOBAL_QUOTE({ticker})")
         quote = payload.get("Global Quote") if isinstance(payload, dict) else None
         if not quote:
@@ -213,13 +238,13 @@ class AlphaVantageMarketDataProvider:
 
     def _overview(self, ticker: str, api_key: str) -> dict[str, Any]:
         url = f"{_BASE_URL}?function=OVERVIEW&symbol={ticker}&apikey={api_key}"
-        payload = self._fetch_json(url, None)
+        payload = self._request_json(url)
         _check_for_provider_error(payload, context=f"Alpha Vantage OVERVIEW({ticker})")
         return payload if isinstance(payload, dict) else {}
 
     def _monthly_adjusted(self, ticker: str, api_key: str) -> dict[str, Any]:
         url = f"{_BASE_URL}?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol={ticker}&apikey={api_key}"
-        payload = self._fetch_json(url, None)
+        payload = self._request_json(url)
         _check_for_provider_error(payload, context=f"Alpha Vantage TIME_SERIES_MONTHLY_ADJUSTED({ticker})")
         series = payload.get("Monthly Adjusted Time Series") if isinstance(payload, dict) else None
         if not isinstance(series, dict):
@@ -228,13 +253,36 @@ class AlphaVantageMarketDataProvider:
             )
         return series
 
-    def _sleep(self) -> None:
-        # ATLAS-031B: the free tier rejects a second call made too soon
-        # after the first -- resolved fresh here (not a bound default)
-        # so tests can patch `time.sleep` globally instead of injecting
-        # a fake into every construction.
-        sleeper = self._sleeper if self._sleeper is not None else time.sleep
-        sleeper(self._inter_request_delay_seconds)
+    def _now(self) -> float:
+        return self._clock() if self._clock is not None else time.monotonic()
+
+    def _pace(self) -> None:
+        """(ATLAS-032 corrective) The one place inter-request spacing is
+        decided -- called by `_request_json` before every actual
+        outbound call, regardless of which public method triggered it.
+        The first request on a freshly constructed instance
+        (`_last_request_at is None`) never sleeps; every request after
+        that sleeps only the *remaining* interval if less than
+        `_inter_request_delay_seconds` has genuinely elapsed since the
+        last request this instance made -- never a flat delay
+        regardless of real elapsed time."""
+        now = self._now()
+        if self._last_request_at is not None:
+            remaining = self._inter_request_delay_seconds - (now - self._last_request_at)
+            if remaining > 0:
+                sleeper = self._sleeper if self._sleeper is not None else time.sleep
+                sleeper(remaining)
+        self._last_request_at = self._now()
+
+    def _request_json(self, url: str) -> Any:
+        """The narrowest common boundary every outbound Alpha Vantage
+        HTTP call passes through -- `_global_quote`/`_overview`/
+        `_monthly_adjusted` all call this instead of `self._fetch_json`
+        directly, so pacing is enforced across the whole instance
+        (both `fetch` and `fetch_historical_snapshots`), not hand-placed
+        between specific call pairs inside one method."""
+        self._pace()
+        return self._fetch_json(url, None)
 
     def fetch(self, *, company_identifier: str, evaluated_at: datetime) -> tuple[RawBusinessDocument, ...]:
         api_key = self._resolved_api_key()
@@ -251,8 +299,6 @@ class AlphaVantageMarketDataProvider:
             raise MalformedProviderResponse(
                 f"Alpha Vantage GLOBAL_QUOTE({ticker}) latest trading day {trading_day!r} is not ISO-8601"
             ) from None
-
-        self._sleep()  # pace GLOBAL_QUOTE -> OVERVIEW
 
         overview = self._overview(ticker, api_key)
         shares_outstanding = _numeric(overview.get("SharesOutstanding"))
@@ -313,8 +359,6 @@ class AlphaVantageMarketDataProvider:
         overview = self._overview(ticker, api_key)
         shares_outstanding = _numeric(overview.get("SharesOutstanding"))
         currency = overview.get("Currency")
-
-        self._sleep()  # pace OVERVIEW -> TIME_SERIES_MONTHLY_ADJUSTED
 
         series = self._monthly_adjusted(ticker, api_key)
         available_dates = sorted(d for d in (self._parse_series_date(key) for key in series) if d is not None)

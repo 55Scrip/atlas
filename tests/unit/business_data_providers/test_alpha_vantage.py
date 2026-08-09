@@ -46,6 +46,22 @@ def _fake_fetcher(responses: dict[str, object]):
     return fetcher
 
 
+class _FakeClock:
+    """A deterministic, controllable monotonic clock (ATLAS-032
+    corrective) -- starts at `0.0` and only advances when `advance()`
+    is called explicitly, so pacing tests can assert exact remaining-
+    interval math instead of tolerating real wall-clock jitter."""
+
+    def __init__(self) -> None:
+        self._now = 0.0
+
+    def __call__(self) -> float:
+        return self._now
+
+    def advance(self, seconds: float) -> None:
+        self._now += seconds
+
+
 class TestMissingApiKey:
     def test_missing_api_key_raises_missing_required_field(self, monkeypatch):
         monkeypatch.delenv("ALPHA_VANTAGE_API_KEY", raising=False)
@@ -338,6 +354,12 @@ class TestInterRequestDelay:
         assert call_order == ["GLOBAL_QUOTE", "SLEEP", "OVERVIEW"]
 
     def test_delay_is_invoked_exactly_once_with_the_configured_seconds(self, monkeypatch):
+        """A fixed (never-advancing) fake clock means zero real time
+        elapses between the two requests inside `fetch()`, so the
+        pacing math (`_inter_request_delay_seconds - elapsed`) must
+        sleep the exact configured delay -- proves the "remaining
+        interval" calculation degrades correctly to a flat delay when
+        elapsed time is genuinely zero."""
         monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
         fetcher = _fake_fetcher(
             {
@@ -346,7 +368,9 @@ class TestInterRequestDelay:
             }
         )
         sleep_calls: list[float] = []
-        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=sleep_calls.append, inter_request_delay_seconds=1.1)
+        provider = AlphaVantageMarketDataProvider(
+            fetcher, sleeper=sleep_calls.append, inter_request_delay_seconds=1.1, clock=_FakeClock()
+        )
         provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
         assert sleep_calls == [1.1]
 
@@ -441,6 +465,190 @@ class TestInterRequestDelay:
         with pytest.raises(CompanyNotFound) as excinfo:
             provider.fetch(company_identifier="ZZZZ", evaluated_at=_NOW)
         assert "super-secret-key-value" not in str(excinfo.value)
+
+
+class TestInstanceLevelPacing:
+    """ATLAS-032 corrective -- live testing found the real per-second
+    spacing defect was NOT within `fetch()` or `fetch_historical_snapshots()`
+    individually (both already paced their own internal calls
+    correctly), but at the *boundary* between the two: `fetch()`'s own
+    `OVERVIEW` call and `fetch_historical_snapshots()`'s own `OVERVIEW`
+    call were separated by zero sleep, because each method only paced
+    calls it made itself and neither had any awareness the other had
+    just run on the same instance. These tests exercise the invariant
+    directly -- no outbound Alpha Vantage request may begin less than
+    `_inter_request_delay_seconds` after the preceding one this
+    instance made, regardless of which public method triggered either
+    one -- rather than re-testing internals already covered elsewhere.
+    """
+
+    def test_first_request_on_a_fresh_instance_never_sleeps(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        sleep_calls: list[float] = []
+        fetcher = _fake_fetcher(
+            {
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"},
+                "TIME_SERIES_MONTHLY_ADJUSTED": {
+                    "Monthly Adjusted Time Series": {"2023-02-28": {"5. adjusted close": "40.00"}}
+                },
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=sleep_calls.append, clock=_FakeClock())
+        provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        # Two real AV requests happen here (OVERVIEW, then
+        # TIME_SERIES_MONTHLY_ADJUSTED) -- exactly one sleep should
+        # occur (before the second), proving the very first request a
+        # freshly constructed instance ever makes is never delayed.
+        assert sleep_calls == [1.1]
+
+    def test_fetch_then_fetch_historical_snapshots_paces_across_the_method_boundary(self, monkeypatch):
+        """The exact regression this corrective fix targets: calling
+        `fetch()` and then `fetch_historical_snapshots()` on the SAME
+        provider instance -- exactly how `refresh_company_data` uses
+        it, in two separate loops -- must still pace the `OVERVIEW`
+        call inside `fetch()` and the `OVERVIEW` call inside
+        `fetch_historical_snapshots()`, even though they belong to two
+        different public methods."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        call_order: list[str] = []
+
+        def fetcher(url: str, headers: dict | None) -> object:
+            if "GLOBAL_QUOTE" in url:
+                call_order.append("GLOBAL_QUOTE")
+                return {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}}
+            if "OVERVIEW" in url:
+                call_order.append("OVERVIEW")
+                return {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"}
+            call_order.append("TIME_SERIES_MONTHLY_ADJUSTED")
+            return {"Monthly Adjusted Time Series": {"2023-02-28": {"5. adjusted close": "40.00"}}}
+
+        provider = AlphaVantageMarketDataProvider(
+            fetcher, sleeper=lambda seconds: call_order.append("SLEEP"), clock=_FakeClock()
+        )
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        # Ingestion/database work happens here in the real orchestrator
+        # (refresh_company_data) between the two public-method calls --
+        # simulated here by simply calling straight through, the worst
+        # case for pacing since the fixed fake clock advances zero
+        # real time on its own.
+        provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        assert call_order == [
+            "GLOBAL_QUOTE",
+            "SLEEP",
+            "OVERVIEW",
+            "SLEEP",  # the boundary this fix adds -- absent before the corrective pass
+            "OVERVIEW",
+            "SLEEP",
+            "TIME_SERIES_MONTHLY_ADJUSTED",
+        ]
+
+    def test_consecutive_requests_inside_fetch_respect_the_minimum_interval(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        sleep_calls: list[float] = []
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"},
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(
+            fetcher, sleeper=sleep_calls.append, inter_request_delay_seconds=1.1, clock=_FakeClock()
+        )
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert sleep_calls == [1.1]
+
+    def test_consecutive_requests_inside_fetch_historical_snapshots_respect_the_minimum_interval(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        sleep_calls: list[float] = []
+        fetcher = _fake_fetcher(
+            {
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"},
+                "TIME_SERIES_MONTHLY_ADJUSTED": {
+                    "Monthly Adjusted Time Series": {"2023-02-28": {"5. adjusted close": "40.00"}}
+                },
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(
+            fetcher, sleeper=sleep_calls.append, inter_request_delay_seconds=1.1, clock=_FakeClock()
+        )
+        provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        assert sleep_calls == [1.1]
+
+    def test_only_the_remaining_interval_is_slept_when_time_has_already_elapsed(self, monkeypatch):
+        """If real (or, here, fake) time already advanced between two
+        requests, pacing must sleep only the shortfall -- never a flat
+        `_inter_request_delay_seconds` regardless of elapsed time."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        sleep_calls: list[float] = []
+        clock = _FakeClock()
+
+        def fetcher(url: str, headers: dict | None) -> object:
+            if "GLOBAL_QUOTE" in url:
+                # Simulate 0.4s of real elapsed time (e.g. genuine
+                # network latency) between the two requests inside fetch().
+                clock.advance(0.4)
+                return {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}}
+            return {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"}
+
+        provider = AlphaVantageMarketDataProvider(
+            fetcher, sleeper=sleep_calls.append, inter_request_delay_seconds=1.1, clock=clock
+        )
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert sleep_calls == [pytest.approx(0.7)]
+
+    def test_no_sleep_at_all_when_the_full_interval_has_already_elapsed(self, monkeypatch):
+        """If at least `_inter_request_delay_seconds` has already
+        genuinely passed since the last request, the next request must
+        not sleep at all."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        sleep_calls: list[float] = []
+        clock = _FakeClock()
+
+        def fetcher(url: str, headers: dict | None) -> object:
+            if "GLOBAL_QUOTE" in url:
+                clock.advance(2.0)  # far more than the 1.1s configured delay
+                return {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}}
+            return {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"}
+
+        provider = AlphaVantageMarketDataProvider(
+            fetcher, sleeper=sleep_calls.append, inter_request_delay_seconds=1.1, clock=clock
+        )
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert sleep_calls == []
+
+    def test_request_order_and_document_content_are_unaffected_by_the_pacing_change(self, monkeypatch):
+        """The pacing rewrite touches only when calls happen, never
+        what they return -- a full end-to-end fetch() +
+        fetch_historical_snapshots() pair still produces the exact
+        same document shape and values as before."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "191.55", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "14840000000"},
+                "TIME_SERIES_MONTHLY_ADJUSTED": {
+                    "Monthly Adjusted Time Series": {"2023-02-28": {"5. adjusted close": "40.00"}}
+                },
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None, clock=_FakeClock())
+        (current_doc,) = provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert current_doc.metadata["share_price"] == 191.55
+        assert current_doc.metadata["shares_outstanding"] == 14840000000.0
+        assert current_doc.metadata["currency"] == "USD"
+
+        (historical_doc,) = provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        assert historical_doc.metadata["share_price"] == 40.00
+        assert historical_doc.metadata["shares_outstanding"] == 14840000000.0
+        assert historical_doc.period_start == date_(2023, 2, 28)
 
 
 def _monthly_fetcher(series: dict[str, dict], *, overview: dict | None = None):
