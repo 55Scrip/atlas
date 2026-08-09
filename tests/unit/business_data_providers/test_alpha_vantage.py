@@ -1,8 +1,10 @@
 """Alpha Vantage market-data provider contract tests (ATLAS-031, Phase
-33). All fake -- no live network anywhere in this file.
+33; ATLAS-031B adds the inter-request delay tests). All fake -- no live
+network anywhere in this file.
 """
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 
 import pytest
@@ -18,6 +20,19 @@ from atlas.business_data_providers.errors import (
 )
 
 _NOW = datetime(2026, 8, 9, tzinfo=timezone.utc)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_sleep(monkeypatch):
+    """ATLAS-031B: `AlphaVantageMarketDataProvider` now pauses between
+    `GLOBAL_QUOTE` and `OVERVIEW` by default (`time.sleep`, resolved
+    fresh per call -- see the provider's own docstring on why). Patched
+    globally here so every test in this file stays fast without having
+    to inject a fake sleeper into each individual construction; tests
+    that specifically assert the delay's own call order/count/args
+    inject an explicit fake sleeper instead and are unaffected by this
+    patch (their own explicit sleeper always wins)."""
+    monkeypatch.setattr(time, "sleep", lambda seconds: None)
 
 
 def _fake_fetcher(responses: dict[str, object]):
@@ -297,3 +312,131 @@ class TestCurrencySafety:
         )
         facts = extract_valuation_facts(record, evaluated_at=_NOW)
         assert facts == ()
+
+
+class TestInterRequestDelay:
+    """ATLAS-031B -- live testing with a real key found Alpha Vantage's
+    free tier rejects a second call made less than ~1 second after the
+    first. These tests use an explicit fake sleeper (never the real
+    `time.sleep`, even with the autouse patch active) so the delay's
+    own call order, count, and argument can be asserted precisely."""
+
+    def test_global_quote_is_called_before_overview(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        call_order: list[str] = []
+
+        def fetcher(url: str, headers: dict | None) -> object:
+            if "GLOBAL_QUOTE" in url:
+                call_order.append("GLOBAL_QUOTE")
+                return {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}}
+            call_order.append("OVERVIEW")
+            return {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"}
+
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: call_order.append("SLEEP"))
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert call_order == ["GLOBAL_QUOTE", "SLEEP", "OVERVIEW"]
+
+    def test_delay_is_invoked_exactly_once_with_the_configured_seconds(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"},
+            }
+        )
+        sleep_calls: list[float] = []
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=sleep_calls.append, inter_request_delay_seconds=1.1)
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert sleep_calls == [1.1]
+
+    def test_default_sleeper_is_time_sleep_and_test_suite_never_actually_waits(self, monkeypatch):
+        """No explicit sleeper injected -- exercises the real default
+        path (`time.sleep`, resolved fresh at call time), relying only
+        on this file's autouse `_no_real_sleep` patch to keep it fast.
+        Elapsed wall-clock time stays far below the configured 1.1s."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"},
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        started = time.monotonic()
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert time.monotonic() - started < 1.0
+
+    def test_valid_market_data_extraction_still_works_with_the_delay_in_place(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "191.55", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "14840000000"},
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        (doc,) = provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert doc.metadata["share_price"] == 191.55
+        assert doc.metadata["shares_outstanding"] == 14840000000.0
+        assert doc.metadata["currency"] == "USD"
+
+    def test_missing_currency_behavior_unchanged_with_the_delay_in_place(self, monkeypatch):
+        """ATLAS-031A's currency-safety fix must survive unchanged."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {},
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        (doc,) = provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "share_price" not in doc.metadata
+        assert "currency" not in doc.metadata
+
+    def test_explicit_non_usd_currency_still_unsupported_with_the_delay_in_place(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "285.50", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Symbol": "VOLV-B", "Currency": "SEK"},
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        with pytest.raises(UnsupportedUnit):
+            provider.fetch(company_identifier="VOLV-B", evaluated_at=_NOW)
+
+    def test_rate_limit_on_the_second_call_still_surfaces_as_rate_limited(self, monkeypatch):
+        """A rate-limit response on OVERVIEW (the call made *after* the
+        delay) must still raise the existing typed error -- the delay
+        must never swallow or mask a provider-level failure."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Note": "Thank you for using Alpha Vantage! ... call frequency"},
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        with pytest.raises(RateLimited):
+            provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+
+    def test_api_key_never_appears_in_raw_reference(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "super-secret-key-value")
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"},
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        (doc,) = provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "super-secret-key-value" not in doc.raw_reference
+
+    def test_api_key_never_appears_in_error_text(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "super-secret-key-value")
+        fetcher = _fake_fetcher({"GLOBAL_QUOTE": {"Error Message": "Invalid API call"}})
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        with pytest.raises(CompanyNotFound) as excinfo:
+            provider.fetch(company_identifier="ZZZZ", evaluated_at=_NOW)
+        assert "super-secret-key-value" not in str(excinfo.value)

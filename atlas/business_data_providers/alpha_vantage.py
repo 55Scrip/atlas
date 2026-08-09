@@ -19,14 +19,23 @@ Phase 1 audit) picks both facts up together. Per Phase 9: Atlas
 derives `market_cap = share_price × shares_outstanding` itself from
 these two canonical facts -- this provider never reports (or is asked
 to report) a provider-computed market cap number directly.
+
+ATLAS-031B: live testing with a real key found the free tier rejects a
+second call made less than ~1 second after the first -- `GLOBAL_QUOTE`
+and `OVERVIEW` are spaced by an injectable delay (`_sleeper`, default
+`time.sleep`) so production calls are genuinely paced while tests never
+actually wait. No retry, no backoff, no queue -- if Alpha Vantage still
+rate-limits after the delay, that surfaces through the existing typed
+`RateLimited` error exactly as before.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import os
+import time
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Callable
 
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 from atlas.analysis_engine.business_data.sources import SourceKind
@@ -43,6 +52,14 @@ __all__ = ["AlphaVantageMarketDataProvider"]
 
 _BASE_URL = "https://www.alphavantage.co/query"
 _SUPPORTED_CURRENCY = "USD"
+
+#: Alpha Vantage's free tier rejects a second call made less than
+#: ~1 second after the first -- confirmed by live testing with a real
+#: key. A small safety margin above the observed limit, not a tuned or
+#: documented constant from Alpha Vantage itself.
+_DEFAULT_INTER_REQUEST_DELAY_SECONDS = 1.1
+
+Sleeper = Callable[[float], None]
 
 
 def _api_key(explicit: str | None) -> str | None:
@@ -88,9 +105,24 @@ class AlphaVantageMarketDataProvider:
     never a silent empty result.
     """
 
-    def __init__(self, fetch_json_fn: JsonFetcher | None = None, *, api_key: str | None = None) -> None:
+    def __init__(
+        self,
+        fetch_json_fn: JsonFetcher | None = None,
+        *,
+        api_key: str | None = None,
+        sleeper: Sleeper | None = None,
+        inter_request_delay_seconds: float = _DEFAULT_INTER_REQUEST_DELAY_SECONDS,
+    ) -> None:
         self._fetch_json = fetch_json_fn or fetch_json
         self._explicit_api_key = api_key
+        # `sleeper` defaults to `None`, resolved to `time.sleep` fresh at
+        # call time (never bound as a mutable default) so a test-suite
+        # -wide `monkeypatch.setattr(time, "sleep", ...)` silences every
+        # existing call site without editing each one individually --
+        # only tests asserting the delay's own call order/count inject
+        # an explicit fake here.
+        self._sleeper = sleeper
+        self._inter_request_delay_seconds = inter_request_delay_seconds
 
     def _resolved_api_key(self) -> str:
         key = _api_key(self._explicit_api_key)
@@ -132,6 +164,14 @@ class AlphaVantageMarketDataProvider:
             raise MalformedProviderResponse(
                 f"Alpha Vantage GLOBAL_QUOTE({ticker}) latest trading day {trading_day!r} is not ISO-8601"
             ) from None
+
+        # ATLAS-031B: the free tier rejects a second call made too soon
+        # after the first -- pace GLOBAL_QUOTE -> OVERVIEW by a small
+        # margin above the observed ~1-second limit. Resolved fresh
+        # here (not a bound default) so tests can patch `time.sleep`
+        # globally instead of injecting a fake into every construction.
+        sleeper = self._sleeper if self._sleeper is not None else time.sleep
+        sleeper(self._inter_request_delay_seconds)
 
         overview = self._overview(ticker, api_key)
         shares_outstanding = _numeric(overview.get("SharesOutstanding"))
