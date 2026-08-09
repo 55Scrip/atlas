@@ -164,14 +164,29 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.summary.pendingExecutions": "Väntande genomföranden",
   "portfolio.summary.concentration": "Koncentration",
   "portfolio.summary.unallocated": "Ej allokerat",
-  "portfolio.needsAttention.heading": "Behöver uppmärksamhet",
-  "portfolio.needsAttention.empty": "Inget behöver uppmärksamhet just nu.",
-  "portfolio.needsAttention.missingCase": "{{ticker}} — inget investeringscase än",
-  "portfolio.needsAttention.decisionWithoutOutcome": "{{ticker}} — ett beslut saknar rapporterat utfall",
-  "portfolio.needsAttention.outcomeWithoutExecution": "{{ticker}} — ett utfall saknar bekräftat genomförande",
-  "portfolio.needsAttention.awaitingReconciliation": "{{ticker}} — väntar på avstämning efter en affär",
-  "portfolio.needsAttention.veryOldCase": "{{ticker}} — investeringscaset är {{days}} dagar gammalt",
-  "portfolio.needsAttention.observationWithoutDecision": "{{ticker}} — en observation saknar beslut",
+
+  // ---------- portfolio action center (ATLAS UI Sprint) ----------
+  "portfolio.actionCenter.heading": "Dagens prioriteringar",
+  "portfolio.actionCenter.empty": "Inget behöver din uppmärksamhet just nu.",
+  "portfolio.actionCenter.severity.highest": "Högsta prioritet",
+  "portfolio.actionCenter.severity.high": "Hög prioritet",
+  "portfolio.actionCenter.severity.medium": "Medelhög prioritet",
+  "portfolio.actionCenter.reviewTitle": "Granska {{ticker}}",
+  "portfolio.actionCenter.completeEvidenceTitle": "Komplettera belägg för {{ticker}}",
+  "portfolio.actionCenter.concentrationTitle": "Granska koncentrationen i {{ticker}}",
+  "portfolio.actionCenter.allocationTitle": "Granska portföljens allokering",
+  "portfolio.actionCenter.evidenceReason": "Belägg saknas.",
+  "portfolio.actionCenter.allocationReason": "{{percent}}% är för närvarande oallokerat.",
+  "portfolio.actionCenter.itemCount": "{{count}} post(er)",
+  "portfolio.actionCenter.reviewButton": "Granska",
+  "portfolio.actionCenter.openCaseButton": "Öppna case",
+  "portfolio.actionCenter.reason.missingCase": "Inget investeringscase än.",
+  "portfolio.actionCenter.reason.decisionWithoutOutcome": "Beslutet saknar rapporterat utfall.",
+  "portfolio.actionCenter.reason.outcomeWithoutExecution": "Utfallet saknar bekräftat genomförande.",
+  "portfolio.actionCenter.reason.awaitingReconciliation": "Väntar på avstämning efter en affär.",
+  "portfolio.actionCenter.reason.veryOldCase": "Investeringscaset är {{days}} dagar gammalt.",
+  "portfolio.actionCenter.reason.observationWithoutDecision": "En observation saknar beslut.",
+
   "portfolio.reviewQueue.heading": "Granskningskö",
   "portfolio.reviewQueue.empty": "Inget köat för granskning.",
   "portfolio.reviewQueue.item": "Granska {{ticker}}",
@@ -204,42 +219,15 @@ export const sv: Record<TranslationKey, string> = {
     "{{count}} investeringscase har inte granskats på länge ({{tickers}})",
   "portfolio.intelligence.keyFindings.multiple_evidence_gaps":
     "{{count}} innehav har luckor i beläggen för sitt investeringscase ({{tickers}})",
-
-  "portfolio.intelligence.consider.heading": "Att överväga",
-  "portfolio.intelligence.consider.empty": "Inget att överväga just nu.",
-  "portfolio.intelligence.consider.disclaimer":
-    "Detta är förslag på översyn, inte investeringsrekommendationer — Atlas säger aldrig åt dig att köpa eller sälja.",
-  "portfolio.intelligence.consider.open_investment_case.title": "Överväg att öppna ett investeringscase",
-  "portfolio.intelligence.consider.open_investment_case.reason": "{{ticker}} saknar fortfarande investeringscase.",
-  "portfolio.intelligence.consider.gather_evidence.title": "Överväg att samla mer belägg",
-  "portfolio.intelligence.consider.gather_evidence.reason":
-    "{{ticker}}s investeringscase har {{count}} belägg­lucka/luckor.",
-  "portfolio.intelligence.consider.review_thesis.title": "Överväg att granska tesen",
-  "portfolio.intelligence.consider.review_thesis.reason":
-    "{{ticker}}s investeringscase är {{days}} dagar gammalt.",
-  "portfolio.intelligence.consider.update_case.title": "Överväg att uppdatera investeringscaset",
-  "portfolio.intelligence.consider.update_case.reason":
-    "{{ticker}} har {{count}} väntande arbetspost(er).",
-  "portfolio.intelligence.consider.review_concentration.title": "Överväg att granska positionens storlek",
-  "portfolio.intelligence.consider.review_concentration.reason":
-    "{{ticker}} utgör {{weight}}% av portföljen.",
-
-  "portfolio.intelligence.riskSignals.heading": "Risksignaler",
-  "portfolio.intelligence.riskSignals.empty": "Inga risksignaler just nu.",
-  "portfolio.intelligence.riskSignals.high_concentration": "{{ticker}} — hög koncentration",
-  "portfolio.intelligence.riskSignals.missing_case": "{{ticker}} — saknar investeringscase",
-  "portfolio.intelligence.riskSignals.missing_evidence": "{{ticker}} — saknar belägg",
-  "portfolio.intelligence.riskSignals.awaiting_reconciliation": "{{ticker}} — väntar på avstämning",
-  "portfolio.intelligence.riskSignals.stale_review": "{{ticker}} — inte granskad på {{days}} dagar",
-
-  "portfolio.intelligence.missingEvidence.heading": "Saknade belägg",
-  "portfolio.intelligence.missingEvidence.empty": "Inga belägg­luckor upptäckta.",
-  "portfolio.intelligence.missingEvidence.no_evidence_recorded":
-    "{{ticker}} — inga belägg registrerade för detta investeringscase",
-  "portfolio.intelligence.missingEvidence.observation_without_evidence":
-    "{{ticker}} — en observation saknar länkade belägg",
-  "portfolio.intelligence.missingEvidence.decision_without_linked_observation":
-    "{{ticker}} — ett beslut saknar länkad observation",
+  "portfolio.intelligence.keyFindings.headline.multiple_missing_cases":
+    "Inget investeringscase än för {{count}} innehav.",
+  "portfolio.intelligence.keyFindings.headline.multiple_stale_cases":
+    "Inaktuella granskningar för {{count}} innehav.",
+  "portfolio.intelligence.keyFindings.headline.multiple_evidence_gaps":
+    "Belägg­luckor upptäckta för {{count}} innehav.",
+  "portfolio.intelligence.keyFindings.affectedHoldingsLabel": "Berörda innehav",
+  "portfolio.intelligence.keyFindings.viewAll": "Visa alla",
+  "portfolio.intelligence.keyFindings.showLess": "Visa färre",
 
   "portfolio.intelligence.portfolioFit.heading": "Portföljanpassning",
   "portfolio.intelligence.portfolioFit.notYetAvailable": "Inte tillgängligt än.",

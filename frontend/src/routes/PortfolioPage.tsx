@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { Button, Container, Divider, Heading, Inline, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
+import {
+  derivePortfolioActions,
+  type ActionSeverity,
+  type PortfolioAction,
+} from "../portfolio/derivePortfolioActions";
 
 /**
  * `concentrationLevel` is an internal enum value (`ConcentrationLevel.LOW`
@@ -201,45 +206,32 @@ const KEY_FINDING_KEY: Record<KeyFindingKind, TranslationKey> = {
   multiple_evidence_gaps: "portfolio.intelligence.keyFindings.multiple_evidence_gaps",
 };
 
-const CONSIDER_TITLE_KEY: Record<ConsiderKind, TranslationKey> = {
-  open_investment_case: "portfolio.intelligence.consider.open_investment_case.title",
-  gather_evidence: "portfolio.intelligence.consider.gather_evidence.title",
-  review_thesis: "portfolio.intelligence.consider.review_thesis.title",
-  update_case: "portfolio.intelligence.consider.update_case.title",
-  review_concentration: "portfolio.intelligence.consider.review_concentration.title",
+/**
+ * Action Center (ATLAS UI Sprint) — ticker-free reason phrasings for
+ * `AttentionCategory` (the same backend enum `ReviewQueueItem
+ * .topCategory` already carries): Action Center's own title line
+ * already names the ticker ("Review {ticker}"), so this surface needs
+ * the reason on its own, without repeating it a second time in the
+ * same sentence.
+ */
+const ACTION_CENTER_REASON_KEY: Record<AttentionCategory, TranslationKey> = {
+  MISSING_CASE: "portfolio.actionCenter.reason.missingCase",
+  DECISION_WITHOUT_OUTCOME: "portfolio.actionCenter.reason.decisionWithoutOutcome",
+  OUTCOME_WITHOUT_EXECUTION: "portfolio.actionCenter.reason.outcomeWithoutExecution",
+  AWAITING_RECONCILIATION: "portfolio.actionCenter.reason.awaitingReconciliation",
+  VERY_OLD_CASE: "portfolio.actionCenter.reason.veryOldCase",
+  OBSERVATION_WITHOUT_DECISION: "portfolio.actionCenter.reason.observationWithoutDecision",
 };
 
-const CONSIDER_REASON_KEY: Record<ConsiderKind, TranslationKey> = {
-  open_investment_case: "portfolio.intelligence.consider.open_investment_case.reason",
-  gather_evidence: "portfolio.intelligence.consider.gather_evidence.reason",
-  review_thesis: "portfolio.intelligence.consider.review_thesis.reason",
-  update_case: "portfolio.intelligence.consider.update_case.reason",
-  review_concentration: "portfolio.intelligence.consider.review_concentration.reason",
+const SEVERITY_EMOJI: Record<ActionSeverity, string> = { highest: "🔴", high: "🟠", medium: "🟡" };
+const SEVERITY_LABEL_KEY: Record<ActionSeverity, TranslationKey> = {
+  highest: "portfolio.actionCenter.severity.highest",
+  high: "portfolio.actionCenter.severity.high",
+  medium: "portfolio.actionCenter.severity.medium",
 };
 
-const RISK_SIGNAL_KEY: Record<RiskSignalKind, TranslationKey> = {
-  high_concentration: "portfolio.intelligence.riskSignals.high_concentration",
-  missing_case: "portfolio.intelligence.riskSignals.missing_case",
-  missing_evidence: "portfolio.intelligence.riskSignals.missing_evidence",
-  awaiting_reconciliation: "portfolio.intelligence.riskSignals.awaiting_reconciliation",
-  stale_review: "portfolio.intelligence.riskSignals.stale_review",
-};
-
-const MISSING_EVIDENCE_KEY: Record<EvidenceGapKind, TranslationKey> = {
-  no_evidence_recorded: "portfolio.intelligence.missingEvidence.no_evidence_recorded",
-  observation_without_evidence: "portfolio.intelligence.missingEvidence.observation_without_evidence",
-  decision_without_linked_observation:
-    "portfolio.intelligence.missingEvidence.decision_without_linked_observation",
-};
-
-const ATTENTION_CATEGORY_KEY: Record<AttentionCategory, TranslationKey> = {
-  MISSING_CASE: "portfolio.needsAttention.missingCase",
-  DECISION_WITHOUT_OUTCOME: "portfolio.needsAttention.decisionWithoutOutcome",
-  OUTCOME_WITHOUT_EXECUTION: "portfolio.needsAttention.outcomeWithoutExecution",
-  AWAITING_RECONCILIATION: "portfolio.needsAttention.awaitingReconciliation",
-  VERY_OLD_CASE: "portfolio.needsAttention.veryOldCase",
-  OBSERVATION_WITHOUT_DECISION: "portfolio.needsAttention.observationWithoutDecision",
-};
+const MAX_ACTIONS_PER_SEVERITY = 3;
+const MAX_KEY_FINDING_TICKERS_SHOWN = 5;
 
 /**
  * ATLAS-028 Portfolio Cockpit -- one canonical, portfolio-scoped per-
@@ -247,8 +239,8 @@ const ATTENTION_CATEGORY_KEY: Record<AttentionCategory, TranslationKey> = {
  * (`atlas/alpha/portfolio_cockpit/`). Every value below comes straight
  * from `GET /alpha-portfolio/cockpit`; this page computes nothing of
  * its own beyond translating enum values -- the same "no domain logic
- * in the UI" discipline `PortfolioIntelligenceCards`/`Sections` above
- * already follow. Portfolio Cockpit is the overview; a holding's own
+ * in the UI" discipline `PortfolioOverview` above already follows.
+ * Portfolio Cockpit is the overview; a holding's own
  * Investment Case (one click away via `caseId`) is the depth.
  */
 type CockpitConvictionLevel = "very_high" | "high" | "moderate" | "low" | "insufficient_evidence";
@@ -748,13 +740,18 @@ export function PortfolioPage() {
 
         {status.kind === "loaded" && status.view.exists && status.view.holdings.length > 0 && (
           <Stack gap="inter-section">
-            {portfolioStatus.kind === "loaded" && portfolioStatus.report.exists && (
-              <PortfolioIntelligenceCards report={portfolioStatus.report} t={t} />
-            )}
-
-            {portfolioIntelligence.kind === "loaded" && portfolioIntelligence.report.exists && (
-              <PortfolioIntelligenceSections report={portfolioIntelligence.report} t={t} />
-            )}
+            <PortfolioOverview
+              statusReport={
+                portfolioStatus.kind === "loaded" && portfolioStatus.report.exists ? portfolioStatus.report : null
+              }
+              intelligenceReport={
+                portfolioIntelligence.kind === "loaded" && portfolioIntelligence.report.exists
+                  ? portfolioIntelligence.report
+                  : null
+              }
+              openInvestmentCase={openInvestmentCase}
+              t={t}
+            />
 
             {status.view.awaitingReconciliation && (
               <Surface tier="primary">
@@ -994,7 +991,7 @@ export function PortfolioPage() {
  * confidence, and Review priority. A dedicated Portfolio-page-local
  * treatment, not a new Foundation-wide primitive (per this sprint's
  * confirmed scope) -- built from the same "Field: value" `Inline` style
- * `PortfolioIntelligenceCards`' Summary card already uses just below.
+ * `PortfolioSummaryCard` already uses just below.
  * Review priority uses `color="tertiary"` (this codebase's existing
  * attention/alert color) whenever a holding needs more than a standard
  * review, so it reads at a glance without a new color token.
@@ -1042,257 +1039,410 @@ function PortfolioCockpitHoldingBadges({
 }
 
 /**
- * ATLAS-015 Portfolio Intelligence: four compact, read-only cards above
- * Holdings -- Portfolio Summary, Needs Attention, Review Queue,
- * Portfolio Health. Every value comes straight from `PortfolioStatusView`
- * (`GET /alpha-portfolio/status`); this component computes nothing of
- * its own beyond translating enum values and formatting dates -- the
- * domain logic lives entirely in `atlas/alpha/portfolio_status/service.py`,
- * per this sprint's own "keep domain logic outside the UI" instruction.
- * Holdings itself, immediately below, is untouched.
+ * ATLAS UI Sprint (Portfolio Action Center) -- replaces the previous
+ * `PortfolioIntelligenceCards`/`PortfolioIntelligenceSections` pair
+ * (ATLAS-015/016) with a hierarchy led by "what should I work on
+ * first?" rather than a flat sequence of independent status cards.
+ * Every value still comes straight from the existing
+ * `PortfolioStatusView` (`GET /alpha-portfolio/status`) and
+ * `PortfolioIntelligenceView` (`GET /alpha-portfolio/intelligence`) --
+ * nothing here computes a new fact; `derivePortfolioActions`
+ * (`frontend/src/portfolio`) only groups and ranks facts that already
+ * exist, the same "no domain logic in the UI" discipline this page has
+ * followed since ATLAS-015. `statusReport`/`intelligenceReport` are
+ * each independently nullable (still loading, or that one fetch
+ * failed) -- Action Center renders whatever subset of its three real
+ * sources is actually available rather than an all-or-nothing gate,
+ * matching every other section's existing graceful-degradation
+ * behavior on this page.
+ *
+ * Order: Portfolio Summary (statistics, compact) -> Action Center
+ * (action) -> Portfolio Health (health) -> Key Findings (decision
+ * support, condensed) -> Review Queue (secondary browsing list) ->
+ * Portfolio Fit (statistics, not yet available). This is the
+ * "Action -> Decision support -> Health -> Statistics" order the
+ * sprint asked for, with Portfolio Summary kept first only because it
+ * is the one card every other section's own numbers refer back to.
  */
-function PortfolioIntelligenceCards({
-  report,
+function PortfolioOverview({
+  statusReport,
+  intelligenceReport,
+  openInvestmentCase,
   t,
 }: {
-  report: PortfolioStatusView;
+  statusReport: PortfolioStatusView | null;
+  intelligenceReport: PortfolioIntelligenceView | null;
+  openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  const summary = report.summary;
-  const health = report.health;
+  const summary = statusReport?.summary ?? null;
+  const health = statusReport?.health ?? null;
 
   return (
     <Stack gap="inter-section">
-      {summary && (
-        <Surface tier="primary">
-          <Stack gap="intra-section">
-            <Heading level={2}>{t("portfolio.summary.heading")}</Heading>
-            <Inline gap="row" wrap>
-              <Text color="secondary" as="p">
-                {t("portfolio.summary.holdings")}: {summary.holdingsCount}
-              </Text>
-              <Text color="secondary" as="p">
-                {t("portfolio.summary.largestPosition")}:{" "}
-                {summary.largestPositionTicker
-                  ? `${summary.largestPositionTicker} (${summary.largestPositionWeightPercent}%)`
-                  : t("portfolio.summary.noLargestPosition")}
-              </Text>
-              <Text color="secondary" as="p">
-                {t("portfolio.summary.investmentCases")}: {summary.numberOfInvestmentCases}
-              </Text>
-              <Text color="secondary" as="p">
-                {t("portfolio.summary.openDecisions")}: {summary.openDecisions}
-              </Text>
-              <Text color="secondary" as="p">
-                {t("portfolio.summary.pendingOutcomes")}: {summary.pendingOutcomes}
-              </Text>
-              <Text color="secondary" as="p">
-                {t("portfolio.summary.pendingExecutions")}: {summary.pendingExecutions}
-              </Text>
-              {summary.concentrationLevel && (
-                <Text color="secondary" as="p">
-                  {t("portfolio.summary.concentration")}:{" "}
-                  {CONCENTRATION_LEVEL_KEY[summary.concentrationLevel]
-                    ? t(CONCENTRATION_LEVEL_KEY[summary.concentrationLevel]!)
-                    : summary.concentrationLevel}
-                </Text>
-              )}
-              {summary.unallocatedPercent !== null && (
-                <Text color="secondary" as="p">
-                  {t("portfolio.summary.unallocated")}: {summary.unallocatedPercent}%
-                </Text>
-              )}
-            </Inline>
-          </Stack>
-        </Surface>
-      )}
+      {summary && <PortfolioSummaryCard summary={summary} t={t} />}
 
-      <Surface tier="primary">
-        <Stack gap="intra-section">
-          <Heading level={2}>{t("portfolio.needsAttention.heading")}</Heading>
-          {report.attentionItems.length === 0 && (
-            <Text color="secondary">{t("portfolio.needsAttention.empty")}</Text>
-          )}
-          {report.attentionItems.map((item, index) => (
-            <Text key={index} color="secondary" as="p">
-              {t(ATTENTION_CATEGORY_KEY[item.category], {
-                ticker: item.ticker,
-                days: item.ageDays ?? "",
-              })}
-            </Text>
-          ))}
-        </Stack>
-      </Surface>
+      <ActionCenterCard
+        statusReport={statusReport}
+        intelligenceReport={intelligenceReport}
+        openInvestmentCase={openInvestmentCase}
+        t={t}
+      />
 
-      <Surface tier="primary">
-        <Stack gap="intra-section">
-          <Heading level={2}>{t("portfolio.reviewQueue.heading")}</Heading>
-          {report.reviewQueue.length === 0 && (
-            <Text color="secondary">{t("portfolio.reviewQueue.empty")}</Text>
-          )}
-          {report.reviewQueue.map((item) => (
-            <Inline key={item.ticker} gap="row" align="center">
-              {item.caseId ? (
-                <RouterLink to={`/investment-case/${item.caseId}`}>
-                  {t("portfolio.reviewQueue.item", { ticker: item.ticker })}
-                </RouterLink>
-              ) : (
-                <Text>{t("portfolio.reviewQueue.item", { ticker: item.ticker })}</Text>
-              )}
-              <Text color="tertiary">
-                {t("portfolio.reviewQueue.reasonCount", { count: item.reasonCount })}
-              </Text>
-            </Inline>
-          ))}
-        </Stack>
-      </Surface>
+      {health && <PortfolioHealthCard health={health} t={t} />}
 
-      {health && (
-        <Surface tier="primary">
-          <Stack gap="intra-section">
-            <Heading level={2}>{t("portfolio.health.heading")}</Heading>
-            <Text color="secondary" as="p">
-              {t("portfolio.health.coverage", {
-                withCase: health.holdingsWithCaseCount,
-                total: health.holdingsCount,
-              })}
-            </Text>
-            <Text color="secondary" as="p">
-              {health.mostRecentDecisionAt
-                ? t("portfolio.health.freshness", { date: health.mostRecentDecisionAt })
-                : t("portfolio.health.noDecisions")}
-            </Text>
-            <Text color="secondary" as="p">
-              {t("portfolio.health.outstandingItems")}: {health.outstandingWorkflowItems}
-            </Text>
-            {health.allocatedPercent !== null && (
-              <Text color="secondary" as="p">
-                {t("portfolio.health.completeness")}: {health.allocatedPercent}%
-              </Text>
-            )}
-            <Text color="secondary" as="p">
-              {t("portfolio.health.unknownInstruments")}:{" "}
-              {health.unknownInstrumentTickers.length > 0
-                ? health.unknownInstrumentTickers.join(", ")
-                : t("portfolio.health.noUnknownInstruments")}
-            </Text>
-          </Stack>
-        </Surface>
+      {intelligenceReport && <KeyFindingsCard findings={intelligenceReport.keyFindings} t={t} />}
+
+      {statusReport && <ReviewQueueCard reviewQueue={statusReport.reviewQueue} t={t} />}
+
+      {intelligenceReport && !intelligenceReport.portfolioFit.available && (
+        <Text color="tertiary" as="p">
+          {t("portfolio.intelligence.portfolioFit.heading")}:{" "}
+          {t("portfolio.intelligence.portfolioFit.notYetAvailable")}
+        </Text>
       )}
     </Stack>
   );
 }
 
-/**
- * ATLAS-016 Portfolio Intelligence -- Key Findings, Consider, Risk
- * Signals, Missing Evidence, Portfolio Fit. Every value comes straight
- * from `PortfolioIntelligenceView` (`GET /alpha-portfolio/intelligence`);
- * like `PortfolioIntelligenceCards` above, this component computes
- * nothing of its own -- the domain logic lives entirely in
- * `atlas/alpha/portfolio_intelligence/service.py`. "Portfolio Overview"
- * (largest exposures, cash, concentration, unallocated) is already
- * covered by the Portfolio Summary card above (ATLAS-015); this adds
- * only the new sections beneath it, per this sprint's own "add
- * intelligence sections naturally beneath Portfolio Summary" scope.
- * Consider items are always rendered with the disclaimer that they are
- * review suggestions, never a trade instruction.
- */
-function PortfolioIntelligenceSections({
-  report,
+/** Portfolio Summary -- unchanged content, kept as the one compact
+ * statistics card at the very top (per the sprint's own "keep this
+ * compact, one card" instruction). */
+function PortfolioSummaryCard({
+  summary,
   t,
 }: {
-  report: PortfolioIntelligenceView;
+  summary: PortfolioSummaryMetrics;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   return (
-    <Stack gap="inter-section">
-      <Surface tier="primary">
-        <Stack gap="intra-section">
-          <Heading level={2}>{t("portfolio.intelligence.keyFindings.heading")}</Heading>
-          {report.keyFindings.length === 0 && (
-            <Text color="secondary">{t("portfolio.intelligence.keyFindings.empty")}</Text>
-          )}
-          {report.keyFindings.map((finding, index) => (
-            <Text key={index} color="secondary" as="p">
-              {t(KEY_FINDING_KEY[finding.kind], {
-                count: finding.count,
-                tickers: finding.tickers.join(", "),
-              })}
-            </Text>
-          ))}
-        </Stack>
-      </Surface>
-
-      <Surface tier="primary">
-        <Stack gap="intra-section">
-          <Heading level={2}>{t("portfolio.intelligence.consider.heading")}</Heading>
-          <Text color="tertiary" as="p">
-            {t("portfolio.intelligence.consider.disclaimer")}
+    <Surface tier="primary">
+      <Stack gap="intra-section">
+        <Heading level={2}>{t("portfolio.summary.heading")}</Heading>
+        <Inline gap="row" wrap>
+          <Text color="secondary" as="p">
+            {t("portfolio.summary.holdings")}: {summary.holdingsCount}
           </Text>
-          {report.considerItems.length === 0 && (
-            <Text color="secondary">{t("portfolio.intelligence.consider.empty")}</Text>
-          )}
-          {report.considerItems.map((item, index) => (
-            <Stack key={index} gap="intra-section">
-              <Text as="p">{t(CONSIDER_TITLE_KEY[item.kind])}</Text>
-              <Text color="secondary" as="p">
-                {t(CONSIDER_REASON_KEY[item.kind], {
-                  ticker: item.ticker,
-                  count: item.evidenceGapCount ?? item.pendingItemCount ?? 0,
-                  days: item.ageDays ?? 0,
-                  weight: item.weightPercent ?? 0,
-                })}
-              </Text>
-              <Text color="tertiary" as="p">
-                {t(CONFIDENCE_KEY[item.confidence])}
-              </Text>
-              {item.caseId && (
-                <RouterLink to={`/investment-case/${item.caseId}`}>
-                  {t("portfolio.reviewQueue.item", { ticker: item.ticker })}
-                </RouterLink>
-              )}
-              <Divider tone="hairline" />
-            </Stack>
-          ))}
-        </Stack>
-      </Surface>
-
-      <Surface tier="primary">
-        <Stack gap="intra-section">
-          <Heading level={2}>{t("portfolio.intelligence.riskSignals.heading")}</Heading>
-          {report.riskSignals.length === 0 && (
-            <Text color="secondary">{t("portfolio.intelligence.riskSignals.empty")}</Text>
-          )}
-          {report.riskSignals.map((signal, index) => (
-            <Text key={index} color="secondary" as="p">
-              {t(RISK_SIGNAL_KEY[signal.kind], { ticker: signal.ticker, days: signal.ageDays ?? 0 })}
+          <Text color="secondary" as="p">
+            {t("portfolio.summary.largestPosition")}:{" "}
+            {summary.largestPositionTicker
+              ? `${summary.largestPositionTicker} (${summary.largestPositionWeightPercent}%)`
+              : t("portfolio.summary.noLargestPosition")}
+          </Text>
+          <Text color="secondary" as="p">
+            {t("portfolio.summary.investmentCases")}: {summary.numberOfInvestmentCases}
+          </Text>
+          <Text color="secondary" as="p">
+            {t("portfolio.summary.openDecisions")}: {summary.openDecisions}
+          </Text>
+          <Text color="secondary" as="p">
+            {t("portfolio.summary.pendingOutcomes")}: {summary.pendingOutcomes}
+          </Text>
+          <Text color="secondary" as="p">
+            {t("portfolio.summary.pendingExecutions")}: {summary.pendingExecutions}
+          </Text>
+          {summary.concentrationLevel && (
+            <Text color="secondary" as="p">
+              {t("portfolio.summary.concentration")}:{" "}
+              {CONCENTRATION_LEVEL_KEY[summary.concentrationLevel]
+                ? t(CONCENTRATION_LEVEL_KEY[summary.concentrationLevel]!)
+                : summary.concentrationLevel}
             </Text>
-          ))}
-        </Stack>
-      </Surface>
-
-      <Surface tier="primary">
-        <Stack gap="intra-section">
-          <Heading level={2}>{t("portfolio.intelligence.missingEvidence.heading")}</Heading>
-          {report.missingEvidence.length === 0 && (
-            <Text color="secondary">{t("portfolio.intelligence.missingEvidence.empty")}</Text>
           )}
-          {report.missingEvidence.map((item, index) => (
-            <Text key={index} color="secondary" as="p">
-              {t(MISSING_EVIDENCE_KEY[item.gapKind], { ticker: item.ticker })}
+          {summary.unallocatedPercent !== null && (
+            <Text color="secondary" as="p">
+              {t("portfolio.summary.unallocated")}: {summary.unallocatedPercent}%
             </Text>
-          ))}
-        </Stack>
-      </Surface>
-
-      <Surface tier="primary">
-        <Stack gap="intra-section">
-          <Heading level={2}>{t("portfolio.intelligence.portfolioFit.heading")}</Heading>
-          {!report.portfolioFit.available && (
-            <Text color="secondary">{t("portfolio.intelligence.portfolioFit.notYetAvailable")}</Text>
           )}
-        </Stack>
-      </Surface>
+        </Inline>
+      </Stack>
+    </Surface>
+  );
+}
+
+/**
+ * Action Center -- the page's own answer to "what should I work on
+ * first?", replacing the four previously-separate, overlapping lists
+ * (Needs Attention, Consider, Risk Signals, Missing Evidence) that
+ * could each name the same holding independently. Groups already-
+ * fetched `reviewQueue`/`missingEvidence`/`keyFindings` via
+ * `derivePortfolioActions` into a deduplicated, three-tier, capped list
+ * -- "surface only the highest-value actions," per the sprint's own
+ * rule, not everything Atlas knows.
+ */
+function ActionCenterCard({
+  statusReport,
+  intelligenceReport,
+  openInvestmentCase,
+  t,
+}: {
+  statusReport: PortfolioStatusView | null;
+  intelligenceReport: PortfolioIntelligenceView | null;
+  openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const allActions = derivePortfolioActions(
+    statusReport?.reviewQueue ?? [],
+    intelligenceReport?.missingEvidence.map((item) => ({ ticker: item.ticker, caseId: item.caseId })) ?? [],
+    intelligenceReport?.keyFindings ?? [],
+    statusReport?.summary?.unallocatedPercent ?? null,
+    statusReport?.attentionItems.map((item) => ({
+      ticker: item.ticker,
+      category: item.category,
+      ageDays: item.ageDays,
+    })) ?? [],
+  );
+
+  // Capped *per severity tier*, not with one flat cap across all of
+  // them -- a portfolio with two dozen High-priority evidence gaps
+  // would otherwise crowd out every Medium-priority (e.g. portfolio
+  // allocation) action entirely, even though both tiers are real and
+  // both are meant to stay visible per the sprint's own three-tier
+  // example.
+  const grouped: Record<ActionSeverity, PortfolioAction[]> = { highest: [], high: [], medium: [] };
+  for (const action of allActions) {
+    if (grouped[action.severity].length < MAX_ACTIONS_PER_SEVERITY) {
+      grouped[action.severity].push(action);
+    }
+  }
+  const actions = [...grouped.highest, ...grouped.high, ...grouped.medium];
+
+  return (
+    <Surface tier="primary">
+      <Stack gap="intra-section">
+        <Heading level={2}>{t("portfolio.actionCenter.heading")}</Heading>
+        {actions.length === 0 && <Text color="secondary">{t("portfolio.actionCenter.empty")}</Text>}
+        {(["highest", "high", "medium"] as const).map(
+          (severity) =>
+            grouped[severity].length > 0 && (
+              <Stack key={severity} gap="intra-section">
+                <Heading level={3}>
+                  {SEVERITY_EMOJI[severity]} {t(SEVERITY_LABEL_KEY[severity])}
+                </Heading>
+                {grouped[severity].map((action) => (
+                  <ActionCenterRow
+                    key={action.id}
+                    action={action}
+                    openInvestmentCase={openInvestmentCase}
+                    t={t}
+                  />
+                ))}
+              </Stack>
+            ),
+        )}
+      </Stack>
+    </Surface>
+  );
+}
+
+function ActionCenterRow({
+  action,
+  openInvestmentCase,
+  t,
+}: {
+  action: PortfolioAction;
+  openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  let title: string;
+  let reason: string;
+  switch (action.kind) {
+    case "workflow":
+      title = t("portfolio.actionCenter.reviewTitle", { ticker: action.ticker ?? "" });
+      reason = t(ACTION_CENTER_REASON_KEY[action.reasonCategory!], { days: action.ageDays ?? 0 });
+      break;
+    case "evidence":
+      title = t("portfolio.actionCenter.completeEvidenceTitle", { ticker: action.ticker ?? "" });
+      reason = t("portfolio.actionCenter.evidenceReason");
+      break;
+    case "concentration":
+      title = t("portfolio.actionCenter.concentrationTitle", { ticker: action.ticker ?? "" });
+      reason = t(KEY_FINDING_KEY[action.concentrationFindingKind!], { tickers: action.ticker ?? "" });
+      break;
+    case "allocation":
+      title = t("portfolio.actionCenter.allocationTitle");
+      reason = t("portfolio.actionCenter.allocationReason", { percent: action.unallocatedPercent ?? 0 });
+      break;
+  }
+
+  return (
+    <Stack gap="metadata">
+      <Text as="p">{title}</Text>
+      <Text color="secondary" as="p">
+        {reason}
+      </Text>
+      {action.itemCount > 0 && (
+        <Text color="tertiary" as="p">
+          {t("portfolio.actionCenter.itemCount", { count: action.itemCount })}
+        </Text>
+      )}
+      {action.ticker && (
+        <div>
+          <Button variant="primary" onClick={() => openInvestmentCase(action.ticker!, action.caseId)}>
+            {action.caseId ? t("portfolio.actionCenter.reviewButton") : t("portfolio.actionCenter.openCaseButton")}
+          </Button>
+        </div>
+      )}
+      <Divider tone="hairline" />
     </Stack>
+  );
+}
+
+/** Portfolio Health -- unchanged content, unchanged position relative
+ * to Action Center (immediately below it, per the sprint's own
+ * hierarchy). */
+function PortfolioHealthCard({
+  health,
+  t,
+}: {
+  health: PortfolioHealthView;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  return (
+    <Surface tier="primary">
+      <Stack gap="intra-section">
+        <Heading level={2}>{t("portfolio.health.heading")}</Heading>
+        <Text color="secondary" as="p">
+          {t("portfolio.health.coverage", {
+            withCase: health.holdingsWithCaseCount,
+            total: health.holdingsCount,
+          })}
+        </Text>
+        <Text color="secondary" as="p">
+          {health.mostRecentDecisionAt
+            ? t("portfolio.health.freshness", { date: health.mostRecentDecisionAt })
+            : t("portfolio.health.noDecisions")}
+        </Text>
+        <Text color="secondary" as="p">
+          {t("portfolio.health.outstandingItems")}: {health.outstandingWorkflowItems}
+        </Text>
+        {health.allocatedPercent !== null && (
+          <Text color="secondary" as="p">
+            {t("portfolio.health.completeness")}: {health.allocatedPercent}%
+          </Text>
+        )}
+        <Text color="secondary" as="p">
+          {t("portfolio.health.unknownInstruments")}:{" "}
+          {health.unknownInstrumentTickers.length > 0
+            ? health.unknownInstrumentTickers.join(", ")
+            : t("portfolio.health.noUnknownInstruments")}
+        </Text>
+      </Stack>
+    </Surface>
+  );
+}
+
+/**
+ * Key Findings, condensed -- only the three aggregate/statistical
+ * findings (`multiple_missing_cases`/`multiple_stale_cases`
+ * /`multiple_evidence_gaps`) render here; `large_unallocated` and the
+ * two concentration findings are already surfaced as real actions in
+ * Action Center above when present, so repeating them here again would
+ * be exactly the duplication the sprint asked to remove. Each finding
+ * is one headline (a count, no ticker list inline) plus a capped,
+ * expandable ticker list -- "Show 'View all' rather than printing
+ * every ticker inline," per the sprint's own instruction.
+ */
+function KeyFindingsCard({
+  findings,
+  t,
+}: {
+  findings: KeyFindingView[];
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const relevant = findings.filter(
+    (finding) =>
+      finding.kind === "multiple_missing_cases" ||
+      finding.kind === "multiple_stale_cases" ||
+      finding.kind === "multiple_evidence_gaps",
+  );
+
+  return (
+    <Surface tier="primary">
+      <Stack gap="intra-section">
+        <Heading level={2}>{t("portfolio.intelligence.keyFindings.heading")}</Heading>
+        {relevant.length === 0 && <Text color="secondary">{t("portfolio.intelligence.keyFindings.empty")}</Text>}
+        {relevant.map((finding, index) => (
+          <KeyFindingRow key={index} finding={finding} t={t} />
+        ))}
+      </Stack>
+    </Surface>
+  );
+}
+
+const KEY_FINDING_HEADLINE_KEY: Record<
+  "multiple_missing_cases" | "multiple_stale_cases" | "multiple_evidence_gaps",
+  TranslationKey
+> = {
+  multiple_missing_cases: "portfolio.intelligence.keyFindings.headline.multiple_missing_cases",
+  multiple_stale_cases: "portfolio.intelligence.keyFindings.headline.multiple_stale_cases",
+  multiple_evidence_gaps: "portfolio.intelligence.keyFindings.headline.multiple_evidence_gaps",
+};
+
+function KeyFindingRow({
+  finding,
+  t,
+}: {
+  finding: KeyFindingView;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const headlineKey = KEY_FINDING_HEADLINE_KEY[finding.kind as keyof typeof KEY_FINDING_HEADLINE_KEY];
+  const visibleTickers = expanded ? finding.tickers : finding.tickers.slice(0, MAX_KEY_FINDING_TICKERS_SHOWN);
+  const hasMore = finding.tickers.length > MAX_KEY_FINDING_TICKERS_SHOWN;
+
+  return (
+    <Stack gap="metadata">
+      <Text as="p">{t(headlineKey, { count: finding.count })}</Text>
+      {finding.tickers.length > 0 && (
+        <Text color="secondary" as="p">
+          {t("portfolio.intelligence.keyFindings.affectedHoldingsLabel")}: {visibleTickers.join(", ")}
+          {!expanded && hasMore ? "…" : ""}
+        </Text>
+      )}
+      {hasMore && (
+        <div>
+          <Button variant="tertiary" onClick={() => setExpanded((current) => !current)}>
+            {expanded
+              ? t("portfolio.intelligence.keyFindings.showLess")
+              : t("portfolio.intelligence.keyFindings.viewAll")}
+          </Button>
+        </div>
+      )}
+    </Stack>
+  );
+}
+
+/** Review Queue -- unchanged content and behavior, kept as a secondary,
+ * browsable section beneath Key Findings (per the sprint's own "keep
+ * as a secondary section" instruction). Already deduplicated per
+ * ticker by the backend (`ReviewQueueItem`, one row per holding with a
+ * combined reason count) -- nothing to further condense here. */
+function ReviewQueueCard({
+  reviewQueue,
+  t,
+}: {
+  reviewQueue: ReviewQueueItemView[];
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  return (
+    <Surface tier="primary">
+      <Stack gap="intra-section">
+        <Heading level={2}>{t("portfolio.reviewQueue.heading")}</Heading>
+        {reviewQueue.length === 0 && <Text color="secondary">{t("portfolio.reviewQueue.empty")}</Text>}
+        {reviewQueue.map((item) => (
+          <Inline key={item.ticker} gap="row" align="center">
+            {item.caseId ? (
+              <RouterLink to={`/investment-case/${item.caseId}`}>
+                {t("portfolio.reviewQueue.item", { ticker: item.ticker })}
+              </RouterLink>
+            ) : (
+              <Text>{t("portfolio.reviewQueue.item", { ticker: item.ticker })}</Text>
+            )}
+            <Text color="tertiary">{t("portfolio.reviewQueue.reasonCount", { count: item.reasonCount })}</Text>
+          </Inline>
+        ))}
+      </Stack>
+    </Surface>
   );
 }

@@ -165,14 +165,29 @@ export const en = {
   "portfolio.summary.pendingExecutions": "Pending Executions",
   "portfolio.summary.concentration": "Concentration",
   "portfolio.summary.unallocated": "Unallocated",
-  "portfolio.needsAttention.heading": "Needs Attention",
-  "portfolio.needsAttention.empty": "Nothing needs attention right now.",
-  "portfolio.needsAttention.missingCase": "{{ticker}} — no Investment Case yet",
-  "portfolio.needsAttention.decisionWithoutOutcome": "{{ticker}} — a Decision has no Outcome reported",
-  "portfolio.needsAttention.outcomeWithoutExecution": "{{ticker}} — an Outcome has no execution confirmed",
-  "portfolio.needsAttention.awaitingReconciliation": "{{ticker}} — awaiting reconciliation after a trade",
-  "portfolio.needsAttention.veryOldCase": "{{ticker}} — Investment Case is {{days}} days old",
-  "portfolio.needsAttention.observationWithoutDecision": "{{ticker}} — an Observation has no Decision",
+
+  // ---------- portfolio action center (ATLAS UI Sprint) ----------
+  "portfolio.actionCenter.heading": "Today's Priorities",
+  "portfolio.actionCenter.empty": "Nothing needs your attention right now.",
+  "portfolio.actionCenter.severity.highest": "Highest Priority",
+  "portfolio.actionCenter.severity.high": "High Priority",
+  "portfolio.actionCenter.severity.medium": "Medium Priority",
+  "portfolio.actionCenter.reviewTitle": "Review {{ticker}}",
+  "portfolio.actionCenter.completeEvidenceTitle": "Complete evidence for {{ticker}}",
+  "portfolio.actionCenter.concentrationTitle": "Review concentration in {{ticker}}",
+  "portfolio.actionCenter.allocationTitle": "Review portfolio allocation",
+  "portfolio.actionCenter.evidenceReason": "Missing evidence.",
+  "portfolio.actionCenter.allocationReason": "{{percent}}% currently unallocated.",
+  "portfolio.actionCenter.itemCount": "{{count}} item(s)",
+  "portfolio.actionCenter.reviewButton": "Review",
+  "portfolio.actionCenter.openCaseButton": "Open Case",
+  "portfolio.actionCenter.reason.missingCase": "No Investment Case yet.",
+  "portfolio.actionCenter.reason.decisionWithoutOutcome": "Decision has no reported outcome.",
+  "portfolio.actionCenter.reason.outcomeWithoutExecution": "Outcome has no execution confirmed.",
+  "portfolio.actionCenter.reason.awaitingReconciliation": "Awaiting reconciliation after a trade.",
+  "portfolio.actionCenter.reason.veryOldCase": "Investment Case is {{days}} days old.",
+  "portfolio.actionCenter.reason.observationWithoutDecision": "An Observation has no Decision.",
+
   "portfolio.reviewQueue.heading": "Review Queue",
   "portfolio.reviewQueue.empty": "Nothing queued for review.",
   "portfolio.reviewQueue.item": "Review {{ticker}}",
@@ -205,42 +220,15 @@ export const en = {
     "{{count}} Investment Cases have not been reviewed in a long time ({{tickers}})",
   "portfolio.intelligence.keyFindings.multiple_evidence_gaps":
     "{{count}} holdings have evidence gaps in their Investment Case ({{tickers}})",
-
-  "portfolio.intelligence.consider.heading": "Consider",
-  "portfolio.intelligence.consider.empty": "Nothing to consider right now.",
-  "portfolio.intelligence.consider.disclaimer":
-    "These are review suggestions, not investment recommendations — Atlas never tells you to buy or sell.",
-  "portfolio.intelligence.consider.open_investment_case.title": "Consider opening an Investment Case",
-  "portfolio.intelligence.consider.open_investment_case.reason": "{{ticker}} has no Investment Case yet.",
-  "portfolio.intelligence.consider.gather_evidence.title": "Consider gathering more evidence",
-  "portfolio.intelligence.consider.gather_evidence.reason":
-    "{{ticker}}'s Investment Case has {{count}} evidence gap(s).",
-  "portfolio.intelligence.consider.review_thesis.title": "Consider reviewing the thesis",
-  "portfolio.intelligence.consider.review_thesis.reason":
-    "{{ticker}}'s Investment Case is {{days}} days old.",
-  "portfolio.intelligence.consider.update_case.title": "Consider updating the Investment Case",
-  "portfolio.intelligence.consider.update_case.reason":
-    "{{ticker}} has {{count}} pending workflow item(s).",
-  "portfolio.intelligence.consider.review_concentration.title": "Consider reviewing this position's size",
-  "portfolio.intelligence.consider.review_concentration.reason":
-    "{{ticker}} is {{weight}}% of the portfolio.",
-
-  "portfolio.intelligence.riskSignals.heading": "Risk Signals",
-  "portfolio.intelligence.riskSignals.empty": "No risk signals right now.",
-  "portfolio.intelligence.riskSignals.high_concentration": "{{ticker}} — high concentration",
-  "portfolio.intelligence.riskSignals.missing_case": "{{ticker}} — no Investment Case",
-  "portfolio.intelligence.riskSignals.missing_evidence": "{{ticker}} — missing evidence",
-  "portfolio.intelligence.riskSignals.awaiting_reconciliation": "{{ticker}} — awaiting reconciliation",
-  "portfolio.intelligence.riskSignals.stale_review": "{{ticker}} — not reviewed in {{days}} days",
-
-  "portfolio.intelligence.missingEvidence.heading": "Missing Evidence",
-  "portfolio.intelligence.missingEvidence.empty": "No evidence gaps detected.",
-  "portfolio.intelligence.missingEvidence.no_evidence_recorded":
-    "{{ticker}} — no evidence recorded for this Investment Case",
-  "portfolio.intelligence.missingEvidence.observation_without_evidence":
-    "{{ticker}} — an Observation has no linked Evidence",
-  "portfolio.intelligence.missingEvidence.decision_without_linked_observation":
-    "{{ticker}} — a Decision has no linked Observation",
+  "portfolio.intelligence.keyFindings.headline.multiple_missing_cases":
+    "No Investment Case yet across {{count}} holdings.",
+  "portfolio.intelligence.keyFindings.headline.multiple_stale_cases":
+    "Stale reviews across {{count}} holdings.",
+  "portfolio.intelligence.keyFindings.headline.multiple_evidence_gaps":
+    "Evidence gaps detected across {{count}} holdings.",
+  "portfolio.intelligence.keyFindings.affectedHoldingsLabel": "Affected holdings",
+  "portfolio.intelligence.keyFindings.viewAll": "View all",
+  "portfolio.intelligence.keyFindings.showLess": "Show less",
 
   "portfolio.intelligence.portfolioFit.heading": "Portfolio Fit",
   "portfolio.intelligence.portfolioFit.notYetAvailable": "Not yet available.",
