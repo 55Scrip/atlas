@@ -377,6 +377,13 @@ it accompanies — it may inform that acceptance decision itself. This
 Doctrine does not merge Execution Guidance into the Recommendation
 Framework above; `DE-006` states why they are kept apart.
 
+Neither this Doctrine nor `DE-001`/`DE-002` specifies a Recommendation's
+own field-level shape — only its structure and behavior. That shape,
+including the previously-reserved `DirectionalRecommendation` type and the
+separation between Atlas-authored reasoning content and the Investor's own
+accept/dismiss response, is specified in full in
+`docs/atlas_decision_engine/DE-007-Recommendation-Domain-Model.md`.
+
 ---
 
 ## 9. Decision Memory
@@ -484,6 +491,9 @@ pointing here:
 - `docs/atlas_decision_engine/DE-006-Execution-Guidance.md` — gap discovered
   during Recommendation Workspace frontend design; not one of the original
   six deliverables
+- `docs/atlas_decision_engine/DE-007-Recommendation-Domain-Model.md` — gap
+  discovered during Recommendation Workspace implementation design;
+  defines the field-level shape `DE-001`/`DE-002` leave unspecified
 
 **Dependency map.** `DE-002` (Reasoning Structure) is canonical and
 structural — it is the one place a future implementation reads to know the
@@ -491,17 +501,21 @@ shape of an Atlas Recommendation. `DE-001`, `DE-003`, `DE-004`, and `DE-005`
 supply the *content* that fills specific `DE-002` sections; none of them is
 structurally canonical in its own right. `DE-006` is the one companion that
 does not fill a `DE-002` section — it is an optional, dependent extension of
-`DE-001`'s Direction, scoped to *how* rather than *what*, per `DE-006` §7:
+`DE-001`'s Direction, scoped to *how* rather than *what*, per `DE-006` §7.
+`DE-007` is the one companion that does not add doctrine content at all —
+it gives every other companion's already-specified content a field-level
+shape, per `DE-007` §1:
 
 | Companion | Supplies content for | Depended on by |
 |---|---|---|
-| `DE-001` Recommendation Framework | `DE-002` §2.5 (Direction) — the six directions and Recommendation Withheld | `DE-002`, `DE-003`, `DE-004`, `DE-006` |
-| `DE-002` Reasoning Structure | *(canonical structure — depends on nothing below it)* | `DE-001`, `DE-003`, `DE-004`, `DE-005` |
-| `DE-003` Portfolio Intelligence | `DE-002` §2.4 (Portfolio Context) | `DE-001`, `DE-002` |
-| `DE-004` Honest Uncertainty | `DE-002` §2.6 (Conviction) and `DE-002` §4 (Recommendation Withheld) | `DE-001`, `DE-002`, `DE-006` |
-| `DE-005` Decision Memory | `DE-002` §2.1 (Current Situation) and §2.3 (Counter-Evidence) history | `DE-001`, `DE-003` |
-| `DE-006` Execution Guidance | Extends `DE-001`'s Direction (Buy/Add/Trim/Exit only) with optional, dependent execution content; not a `DE-002` section | *(depends on `DE-001`, `DE-002` §2.7, `DE-004`; nothing depends on it)* |
+| `DE-001` Recommendation Framework | `DE-002` §2.5 (Direction) — the six directions and Recommendation Withheld | `DE-002`, `DE-003`, `DE-004`, `DE-006`, `DE-007` |
+| `DE-002` Reasoning Structure | *(canonical structure — depends on nothing below it)* | `DE-001`, `DE-003`, `DE-004`, `DE-005`, `DE-007` |
+| `DE-003` Portfolio Intelligence | `DE-002` §2.4 (Portfolio Context) | `DE-001`, `DE-002`, `DE-007` |
+| `DE-004` Honest Uncertainty | `DE-002` §2.6 (Conviction) and `DE-002` §4 (Recommendation Withheld) | `DE-001`, `DE-002`, `DE-006`, `DE-007` |
+| `DE-005` Decision Memory | `DE-002` §2.1 (Current Situation) and §2.3 (Counter-Evidence) history | `DE-001`, `DE-003`, `DE-007` |
+| `DE-006` Execution Guidance | Extends `DE-001`'s Direction (Buy/Add/Trim/Exit only) with optional, dependent execution content; not a `DE-002` section | *(depends on `DE-001`, `DE-002` §2.7, `DE-004`; referenced, not contained, by `DE-007`)* |
+| `DE-007` Recommendation Domain Model | Field-level shape for `DE-001`/`DE-002`'s Direction, Evidence, Counter-Evidence, Portfolio Context, and Conviction content; not new doctrine | *(depends on `DE-001` through `DE-005`; nothing depends on it)* |
 
-All six, and this Doctrine, ground out in `APP-000` and
+All seven, and this Doctrine, ground out in `APP-000` and
 `ATLAS_CONSTITUTION.md` — none depends on another companion for its own
 basic authority, only for specific content.
