@@ -534,3 +534,150 @@ def test_analysis_engine_never_imports_the_legacy_value_scenario_tree() -> None:
                 violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
 
     assert not violations, "atlas.analysis_engine importing legacy value_scenario code:\n" + "\n".join(violations)
+
+
+# ── ATLAS-031: real provider boundary -- network stays at the boundary,
+#    read-side composition never calls out, evaluators never see a provider ──
+
+
+def test_analysis_engine_never_imports_business_data_providers() -> None:
+    """The real, network-calling `atlas.business_data_providers` package
+    must never be imported anywhere under `atlas.analysis_engine` --
+    the Analysis Engine consumes already-ingested `BusinessRecord`s
+    (via `assemble_analysis(business_records=...)`), never a provider
+    directly. Mirrors the identical rule this file already enforces for
+    the legacy `atlas.providers` tree."""
+    violations = []
+    for path in _python_files(ANALYSIS_ENGINE_DIR):
+        for module in _imported_modules(path):
+            if module.startswith("atlas.business_data_providers"):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "atlas.analysis_engine importing atlas.business_data_providers:\n" + "\n".join(
+        violations
+    )
+
+
+def test_portfolio_cockpit_investment_case_discovery_never_import_business_data_providers() -> None:
+    """Portfolio Cockpit, the canonical Investment Case package, and
+    Discovery all consume `BusinessRecord`s exclusively through
+    `InvestmentCaseCompositionService` -- none of them may import the
+    real provider package directly. Only `atlas.alpha.business_data_refresh`
+    (the one explicit, operator-triggered write path) is allowed to."""
+    scoped_dirs = (
+        ALPHA_DIR / "portfolio_cockpit",
+        ALPHA_DIR / "investment_case",
+        ALPHA_DIR / "discovery_context",
+    )
+    violations = []
+    for directory in scoped_dirs:
+        for path in _python_files(directory):
+            for module in _imported_modules(path):
+                if module.startswith("atlas.business_data_providers"):
+                    violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, (
+        "Portfolio Cockpit/Investment Case/Discovery importing atlas.business_data_providers directly:\n"
+        + "\n".join(violations)
+    )
+
+
+def test_only_business_data_refresh_imports_business_data_providers() -> None:
+    """The real provider package is meant to have exactly one caller in
+    the whole application: `atlas.alpha.business_data_refresh` (Phase
+    15/17 -- the one explicit refresh use case). Any other importer
+    would mean a second, undisclosed path to a real network call."""
+    allowed_prefixes = ("atlas.alpha.business_data_refresh", "atlas.business_data_providers")
+    violations = []
+    for path in _python_files(ATLAS_ROOT):
+        if any(str(path.relative_to(REPO_ROOT)).startswith(prefix.replace(".", "/")) for prefix in allowed_prefixes):
+            continue
+        for module in _imported_modules(path):
+            if module.startswith("atlas.business_data_providers"):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "Unexpected importer of atlas.business_data_providers:\n" + "\n".join(violations)
+
+
+def test_business_data_providers_never_imports_evaluators_or_decision_engine() -> None:
+    """The real provider package must return only `RawBusinessDocument`
+    tuples -- it must never import an evaluator, the Decision Engine,
+    or the Analysis Engine's own orchestration/business-conclusion
+    modules. Provider-specific parsing stays entirely structural."""
+    #: deliberately excludes "atlas.analysis_engine.business_data" and
+    #: "atlas.analysis_engine.business_facts" -- both are legitimate,
+    #: purely structural imports a provider needs (`RawBusinessDocument`,
+    #: `SourceKind`) to construct valid input for the pipeline; neither
+    #: is an evaluator or a reasoning module.
+    forbidden_prefixes = (
+        "atlas.decision_engine",
+        "atlas.analysis_engine.growth",
+        "atlas.analysis_engine.capital_allocation",
+        "atlas.analysis_engine.valuation.cash_flow",
+        "atlas.analysis_engine.valuation.pipeline",
+        "atlas.analysis_engine.risk",
+        "atlas.analysis_engine.conviction",
+        "atlas.analysis_engine.recommendation",
+        "atlas.analysis_engine.pipeline",
+    )
+    forbidden_call_text = (
+        "calculate_conviction(",
+        "assemble_analysis(",
+        "run_pipeline(",
+        "evaluate_growth(",
+        "evaluate_business_analysis(",
+    )
+    violations = []
+    provider_dir = ATLAS_ROOT / "business_data_providers"
+    for path in _python_files(provider_dir):
+        for module in _imported_modules(path):
+            if module.startswith(forbidden_prefixes):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+        text = path.read_text(encoding="utf-8")
+        for needle in forbidden_call_text:
+            if needle in text:
+                violations.append(f"{path.relative_to(REPO_ROOT)} contains call text {needle!r}")
+
+    assert not violations, "atlas.business_data_providers reasoning leakage found:\n" + "\n".join(violations)
+
+
+def test_business_facts_and_valuation_facts_extraction_stay_provider_agnostic() -> None:
+    """Confirms the ATLAS-023/024 extraction modules were not made
+    provider-aware by this sprint -- they must still only read
+    `BusinessRecord.metadata`'s canonical keys, never import or branch
+    on `atlas.business_data_providers`."""
+    scoped_files = (
+        ANALYSIS_ENGINE_DIR / "business_facts" / "extraction.py",
+        ANALYSIS_ENGINE_DIR / "valuation" / "facts.py",
+    )
+    violations = []
+    for path in scoped_files:
+        for module in _imported_modules(path):
+            if module.startswith("atlas.business_data_providers"):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "Fact extraction became provider-aware:\n" + "\n".join(violations)
+
+
+def test_investment_case_composition_read_paths_never_import_network_libraries() -> None:
+    """`InvestmentCaseCompositionService.build`/`build_many` (and
+    Portfolio Cockpit's/Discovery's own composition modules) must stay
+    pure reads -- no `httpx`/`requests`/`urlopen` import anywhere in
+    those packages. Only `atlas.business_data_providers` (which this
+    file's own boundary tests keep isolated to
+    `atlas.alpha.business_data_refresh`) may make a real network call."""
+    scoped_dirs = (
+        ALPHA_DIR / "investment_case",
+        ALPHA_DIR / "portfolio_cockpit",
+        ALPHA_DIR / "discovery_context",
+    )
+    forbidden_anywhere = ("import httpx", "import requests", "import aiohttp", "urlopen(")
+    violations = []
+    for directory in scoped_dirs:
+        for path in _python_files(directory):
+            text = path.read_text(encoding="utf-8")
+            for needle in forbidden_anywhere:
+                if needle in text:
+                    violations.append(f"{path.relative_to(REPO_ROOT)} contains {needle!r}")
+
+    assert not violations, "Network capability found in a read-side composition package:\n" + "\n".join(violations)

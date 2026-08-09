@@ -7,12 +7,15 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
+from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComposition
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaTradeLogEntry
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.trade_log_store import AlphaTradeLogStore
 from atlas.alpha.portfolio_intelligence.pipeline_bridge import build_decision_engine_input
 from atlas.alpha.portfolio_status.service import VERY_OLD_CASE_THRESHOLD_DAYS
+from atlas.analysis_engine.business_data.models import BusinessRecord
+from atlas.analysis_engine.business_data.versioning import latest_versions
 from atlas.analysis_engine.pipeline import assemble_analysis
 from atlas.core.domain.case.entity import Case
 from atlas.core.domain.case.repository import CaseRepository
@@ -70,6 +73,7 @@ class InvestmentCaseCompositionService:
         outcome_repository: OutcomeRepository,
         portfolio_store: AlphaPortfolioStore,
         trade_log_store: AlphaTradeLogStore,
+        business_record_repository: SqlAlchemyBusinessRecordRepository,
     ) -> None:
         self._case_repository = case_repository
         self._decision_repository = decision_repository
@@ -78,6 +82,7 @@ class InvestmentCaseCompositionService:
         self._outcome_repository = outcome_repository
         self._portfolio_store = portfolio_store
         self._trade_log_store = trade_log_store
+        self._business_record_repository = business_record_repository
 
     def _assemble(
         self,
@@ -89,13 +94,23 @@ class InvestmentCaseCompositionService:
         evidence: tuple,
         outcomes: tuple,
         trades_for_ticker: tuple[AlphaTradeLogEntry, ...],
+        business_records: tuple[BusinessRecord, ...],
         evaluated_at: datetime,
     ) -> InvestmentCaseComposition:
         """The one per-Case assembly implementation -- both `build` and
         `build_many` call only this. Never duplicated, never
         re-derived: this is the sole place `build_decision_engine_input`
         /`run_pipeline`/`assemble_analysis` are invoked for a Case
-        (ATLAS-028 Phase 3's own explicit requirement)."""
+        (ATLAS-028 Phase 3's own explicit requirement).
+
+        `business_records` (ATLAS-031) must already be filtered to
+        `versioning.latest_versions` by the caller -- passing a
+        superseded and its replacement together would make
+        `extract_facts_from_records` see two different values for the
+        same `(company, kind, period)` and silently drop both as
+        "conflicting" (see that function's own docstring), which would
+        wrongly erase a real, current fact rather than correctly
+        preferring its latest version."""
         engine_input = build_decision_engine_input(
             case_id_str,
             holding=holding,
@@ -113,7 +128,7 @@ class InvestmentCaseCompositionService:
             engine_input,
             decision_output,
             is_thesis_stale=is_thesis_stale,
-            business_records=(),
+            business_records=business_records,
             generated_at=evaluated_at,
         )
 
@@ -171,8 +186,10 @@ class InvestmentCaseCompositionService:
 
         all_trades = self._trade_log_store.list_all()
         trades_for_ticker: tuple[AlphaTradeLogEntry, ...] = ()
+        business_records: tuple[BusinessRecord, ...] = ()
         if holding is not None:
             trades_for_ticker = tuple(t for t in all_trades if t.security == holding.ticker)
+            business_records = latest_versions(self._business_record_repository.get_by_company(holding.ticker))
 
         return self._assemble(
             case_id_str,
@@ -182,6 +199,7 @@ class InvestmentCaseCompositionService:
             evidence=case_evidence,
             outcomes=case_outcomes,
             trades_for_ticker=trades_for_ticker,
+            business_records=business_records,
             evaluated_at=_utc_now(),
         )
 
@@ -259,11 +277,22 @@ class InvestmentCaseCompositionService:
         for trade in all_trades:
             trades_by_ticker.setdefault(trade.security, []).append(trade)
 
+        #: one batched read, not one per Case (ATLAS-031, Phase 19 --
+        #: the exact discipline `build_many` already established for
+        #: Decision/Observation/Evidence/Outcome/trade-log). Cases with
+        #: no holding (research-only) are simply absent from
+        #: `wanted_tickers` and get `()`, honestly, below.
+        wanted_tickers = tuple({h.ticker for h in holdings_by_case.values()})
+        business_records_by_ticker = self._business_record_repository.get_by_companies(wanted_tickers)
+
         evaluated_at = _utc_now()
         results: dict[str, InvestmentCaseComposition] = {}
         for case_id_str in cases:
             holding = holdings_by_case.get(case_id_str)
             trades_for_ticker = tuple(trades_by_ticker.get(holding.ticker, ())) if holding is not None else ()
+            business_records: tuple[BusinessRecord, ...] = ()
+            if holding is not None:
+                business_records = latest_versions(business_records_by_ticker.get(holding.ticker, ()))
             results[case_id_str] = self._assemble(
                 case_id_str,
                 holding=holding,
@@ -272,6 +301,7 @@ class InvestmentCaseCompositionService:
                 evidence=tuple(evidence_by_case[case_id_str]),
                 outcomes=tuple(outcomes_by_case[case_id_str]),
                 trades_for_ticker=trades_for_ticker,
+                business_records=business_records,
                 evaluated_at=evaluated_at,
             )
         return results

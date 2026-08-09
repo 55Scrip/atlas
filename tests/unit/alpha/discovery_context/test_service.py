@@ -20,6 +20,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
+from atlas.alpha.business_data_refresh.table import create_business_record_table
 from atlas.alpha.case_generation.service import CaseGenerationService
 from atlas.alpha.discovery_context.models import IdentityResolutionStatus
 from atlas.alpha.discovery_context.service import DiscoveryContextService
@@ -57,6 +59,7 @@ def _new_engine():
     create_decision_table(engine)
     create_alpha_portfolio_state_table(engine)
     create_alpha_trade_log_table(engine)
+    create_business_record_table(engine)
     return engine
 
 
@@ -70,6 +73,7 @@ class _Harness:
         self.outcome_repository = get_outcome_repository(engine)
         self.portfolio_store = AlphaPortfolioStore(engine)
         self.trade_log_store = AlphaTradeLogStore(engine)
+        self.business_record_repository = SqlAlchemyBusinessRecordRepository(engine)
         self.case_generation_service = CaseGenerationService(self.case_service)
         self.portfolio_service = AlphaPortfolioService(
             self.portfolio_store, self.trade_log_store, None, self.case_generation_service
@@ -82,6 +86,7 @@ class _Harness:
             self.outcome_repository,
             self.portfolio_store,
             self.trade_log_store,
+            self.business_record_repository,
         )
         self.portfolio_status_service = PortfolioStatusService(
             portfolio_store=self.portfolio_store,

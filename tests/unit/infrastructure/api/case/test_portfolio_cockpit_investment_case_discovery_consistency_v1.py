@@ -21,6 +21,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.pool import StaticPool
 
+from atlas.alpha.business_data_refresh.api.dependencies import get_business_record_repository
 from atlas.alpha.discovery_context.service import DiscoveryContextService
 from atlas.alpha.investment_case.api.dependencies import get_investment_case_composition_service
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_store, get_alpha_trade_log_store
@@ -74,6 +75,7 @@ def _discovery_context_service(engine: Engine) -> DiscoveryContextService:
         outcome_repository=outcome_repository,
         portfolio_store=portfolio_store,
         trade_log_store=trade_log_store,
+        business_record_repository=get_business_record_repository(engine),
     )
     portfolio_intelligence_service = PortfolioIntelligenceService(
         portfolio_store,
