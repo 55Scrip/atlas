@@ -63,6 +63,22 @@ _MAX_ANNUAL_DAYS = 400
 #: reaches a real BusinessFactKind) -- used solely to derive
 #: `free_cash_flow` below, the one canonical key SEC has no single
 #: matching tag for.
+#:
+#: ATLAS-031A, Issue 3 -- fallback tags marked below were added after
+#: the ATLAS-031 post-sprint audit found the single-tag mappings failed
+#: for real, live-tested companies (confirmed by directly querying SEC
+#: EDGAR, not assumed): NVDA's own CapEx is tagged
+#: `PaymentsToAcquireProductiveAssets`, not `PaymentsToAcquireProperty
+#: PlantAndEquipment` (which NVDA stopped using around 2012); MSFT's
+#: debt activity is entirely commercial paper
+#: (`RepaymentsOfCommercialPaper`), not `RepaymentsOfLongTermDebt`;
+#: AMZN/NVDA/AVGO all lack `RepaymentsOfLongTermDebt` but do report the
+#: broader one-sided `RepaymentsOfDebt`; AMZN/NVDA/META's issuance is
+#: driven by employee stock plans
+#: (`StockIssuedDuringPeriodValueStockOptionsExercised`), not
+#: `ProceedsFromIssuanceOfCommonStock`. Each addition below is a
+#: same-meaning alternative tag for the identical canonical concept --
+#: never a different economic concept folded into an existing bucket.
 _CONCEPT_TAGS: dict[str, tuple[str, ...]] = {
     "revenue": (
         "Revenues",
@@ -73,12 +89,25 @@ _CONCEPT_TAGS: dict[str, tuple[str, ...]] = {
         "NetCashProvidedByUsedInOperatingActivities",
         "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations",
     ),
-    "capital_expenditure": ("PaymentsToAcquirePropertyPlantAndEquipment",),
+    "capital_expenditure": (
+        "PaymentsToAcquirePropertyPlantAndEquipment",
+        "PaymentsToAcquireProductiveAssets",  # ATLAS-031A: NVDA's real tag
+    ),
     "share_buybacks": ("PaymentsForRepurchaseOfCommonStock",),
-    "share_issuance": ("ProceedsFromIssuanceOfCommonStock",),
+    "share_issuance": (
+        "ProceedsFromIssuanceOfCommonStock",
+        "StockIssuedDuringPeriodValueStockOptionsExercised",  # ATLAS-031A: AMZN/NVDA/META
+    ),
     "dividends": ("PaymentsOfDividends", "PaymentsOfDividendsCommonStock"),
-    "debt_issuance": ("ProceedsFromIssuanceOfLongTermDebt",),
-    "debt_repayment": ("RepaymentsOfLongTermDebt",),
+    "debt_issuance": (
+        "ProceedsFromIssuanceOfLongTermDebt",
+        "ProceedsFromIssuanceOfCommercialPaper",  # ATLAS-031A: AVGO
+    ),
+    "debt_repayment": (
+        "RepaymentsOfLongTermDebt",
+        "RepaymentsOfDebt",  # ATLAS-031A: AMZN/NVDA/AVGO
+        "RepaymentsOfCommercialPaper",  # ATLAS-031A: MSFT
+    ),
 }
 
 
@@ -115,6 +144,22 @@ def _annual_entries(fact_node: dict[str, Any] | None) -> list[dict[str, Any]]:
         and isinstance(entry.get("val"), (int, float))
         and not isinstance(entry.get("val"), bool)
     ]
+
+
+def _sec_ticker_candidates(ticker: str) -> tuple[str, ...]:
+    """Provider-local normalization only (ATLAS-031A, Issue 2) -- Atlas's
+    own ticker identity is never changed by this; only the candidate
+    strings tried against SEC's own ticker map. SEC's `company_tickers
+    .json` commonly uses a hyphen where Atlas (and most retail-facing
+    data) uses a dot for multi-class tickers -- confirmed live: Atlas's
+    `BRK.B` has no entry in SEC's map, but `BRK-B` does. Tried in
+    order; the exact ticker always wins first so an already-SEC-format
+    ticker never pays for a wasted lookup or behaves differently."""
+    upper = ticker.upper()
+    candidates = [upper]
+    if "." in upper:
+        candidates.append(upper.replace(".", "-"))
+    return tuple(candidates)
 
 
 def _latest_value_per_period(entries: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, Any]]:
@@ -175,10 +220,12 @@ class SecEdgarFundamentalsProvider:
         return mapping
 
     def _resolve_cik(self, company_identifier: str) -> str:
-        cik = self._ticker_to_cik().get(company_identifier.upper())
-        if cik is None:
-            raise CompanyNotFound(f"{company_identifier!r} did not resolve to any SEC-registered filer")
-        return cik
+        mapping = self._ticker_to_cik()
+        for candidate in _sec_ticker_candidates(company_identifier):
+            cik = mapping.get(candidate)
+            if cik is not None:
+                return cik
+        raise CompanyNotFound(f"{company_identifier!r} did not resolve to any SEC-registered filer")
 
     def _companyfacts(self, cik10: str) -> dict[str, Any]:
         if cik10 in self._companyfacts_cache:
@@ -222,6 +269,23 @@ class SecEdgarFundamentalsProvider:
         for (start, end), values in sorted(periods.items()):
             operating_cash_flow = values.pop("_operating_cash_flow", None)
             capital_expenditure = values.get("capital_expenditure")
+
+            # Sign validation (ATLAS-031A, Issue 4). "Payments to
+            # Acquire..." concepts represent a cash outflow and are
+            # reported as a positive magnitude by GAAP/XBRL convention
+            # -- a negative value is a real, observed data-quality
+            # signal (a tagging error, or a genuinely different
+            # concept than intended), never something to silently
+            # subtract. The fact is dropped, not "corrected" -- FCF
+            # is then honestly left undetermined for this period
+            # rather than derived from an unvalidated value.
+            # Operating cash flow has no equivalent check: a company
+            # genuinely burning cash reports it negative, and that is
+            # a real, legitimate state, not a sign error.
+            if capital_expenditure is not None and capital_expenditure < 0:
+                values.pop("capital_expenditure", None)
+                capital_expenditure = None
+
             if operating_cash_flow is not None and capital_expenditure is not None:
                 values["free_cash_flow"] = operating_cash_flow - capital_expenditure
 

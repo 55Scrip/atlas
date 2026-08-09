@@ -112,21 +112,24 @@ class TestCurrencySafety:
 
 
 class TestPartialCoverage:
-    def test_missing_shares_outstanding_still_produces_price_only_document(self, monkeypatch):
-        """OVERVIEW momentarily unavailable/empty -- the fetch is not
-        aborted; the downstream Valuation evaluator reports its own
-        honest INSUFFICIENT_INPUT for that gap (Phase 9's own explicit
-        instruction)."""
+    def test_missing_shares_outstanding_with_confirmed_currency_still_reports_price(self, monkeypatch):
+        """Currency IS confirmed (USD) but OVERVIEW genuinely lacks
+        SharesOutstanding -- the fetch is not aborted; share_price is
+        still reported (its own denomination is known), and the
+        downstream Valuation evaluator reports its own honest
+        INSUFFICIENT_INPUT for the missing share count (Phase 9's own
+        explicit instruction)."""
         monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
         fetcher = _fake_fetcher(
             {
                 "GLOBAL_QUOTE": {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}},
-                "OVERVIEW": {},
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD"},
             }
         )
         provider = AlphaVantageMarketDataProvider(fetcher)
         (doc,) = provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
         assert doc.metadata["share_price"] == 150.00
+        assert doc.metadata["currency"] == "USD"
         assert "shares_outstanding" not in doc.metadata
 
 
@@ -181,3 +184,116 @@ class TestDocumentShape:
         doc_a = AlphaVantageMarketDataProvider(fetcher_a).fetch(company_identifier="AAPL", evaluated_at=_NOW)[0]
         doc_b = AlphaVantageMarketDataProvider(fetcher_b).fetch(company_identifier="AAPL", evaluated_at=_NOW)[0]
         assert doc_a.content_hash != doc_b.content_hash
+
+
+class TestCurrencySafety:
+    """ATLAS-031A, Issue 1 -- the post-sprint audit found (and this
+    file reproduced live) that an empty `OVERVIEW` caused the provider
+    to silently report `currency: "USD"` with no actual confirmation,
+    a real "mathematically valid, economically meaningless" risk. This
+    class proves the corrected behavior: currency is never assumed,
+    only ever confirmed."""
+
+    def test_empty_overview_produces_no_share_price_or_currency(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "285.50", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {},
+            }
+        )
+        (doc,) = AlphaVantageMarketDataProvider(fetcher).fetch(company_identifier="VOLV-B", evaluated_at=_NOW)
+        assert "share_price" not in doc.metadata
+        assert "currency" not in doc.metadata
+        assert "shares_outstanding" not in doc.metadata
+
+    def test_overview_present_but_missing_currency_field_produces_no_share_price(self, monkeypatch):
+        """OVERVIEW returns real data (e.g. a real SharesOutstanding)
+        but genuinely omits the Currency field -- still not enough to
+        assume USD."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "285.50", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Symbol": "VOLV-B", "SharesOutstanding": "2000000000"},
+            }
+        )
+        (doc,) = AlphaVantageMarketDataProvider(fetcher).fetch(company_identifier="VOLV-B", evaluated_at=_NOW)
+        assert "share_price" not in doc.metadata
+        assert "currency" not in doc.metadata
+        assert "shares_outstanding" not in doc.metadata
+
+    def test_blank_currency_string_is_treated_as_unconfirmed_not_usd(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "  "},
+            }
+        )
+        (doc,) = AlphaVantageMarketDataProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "share_price" not in doc.metadata
+        assert "currency" not in doc.metadata
+
+    def test_unknown_currency_never_silently_becomes_usd(self, monkeypatch):
+        """The exact regression this issue exists to prevent: no code
+        path may produce `metadata["currency"] == "USD"` unless a real
+        OVERVIEW response actually said so."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "99.00", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {},
+            }
+        )
+        (doc,) = AlphaVantageMarketDataProvider(fetcher).fetch(company_identifier="XYZ", evaluated_at=_NOW)
+        assert doc.metadata.get("currency") != "USD"
+        assert "currency" not in doc.metadata
+
+    def test_missing_currency_and_share_price_yields_no_valuation_fact(self, monkeypatch):
+        """End-to-end proof, not just a metadata check: run the
+        resulting document through the real, unmodified
+        `extract_valuation_facts` and confirm zero facts come out --
+        "no valuation produced," per the audit's own wording."""
+        from atlas.analysis_engine.business_data.contracts import ValidationStatus
+        from atlas.analysis_engine.business_data.models import BusinessRecord, RecordVersion
+        from atlas.analysis_engine.business_data.sources import SourceKind as DocumentSourceKind
+        from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
+        from atlas.analysis_engine.valuation.facts import extract_valuation_facts
+
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "285.50", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {},
+            }
+        )
+        (raw_doc,) = AlphaVantageMarketDataProvider(fetcher).fetch(company_identifier="VOLV-B", evaluated_at=_NOW)
+
+        record = BusinessRecord(
+            id="lineage:v1",
+            lineage_id="lineage",
+            identifier=raw_doc.identifier,
+            company=raw_doc.company,
+            document_type=DocumentSourceKind(raw_doc.source_kind),
+            published_at=raw_doc.published_at,
+            provider_id=raw_doc.provider_id,
+            source_reference=raw_doc.raw_reference,
+            content_hash=raw_doc.content_hash,
+            version=RecordVersion(version_number=1, created_at=_NOW, content_hash=raw_doc.content_hash),
+            provenance=Provenance(
+                source_kind=SourceKind.EXTERNAL_DATA_SOURCE,
+                source_references=(raw_doc.raw_reference,),
+                dependencies=(),
+                update_trigger=UpdateTrigger.EXTERNAL_BUSINESS_DATA_INGESTED,
+                consumers=(Consumer.PORTFOLIO_PAGE,),
+                computed_at=_NOW,
+            ),
+            validation_status=ValidationStatus.VALID,
+            period_start=raw_doc.period_start,
+            period_end=raw_doc.period_end,
+            language=raw_doc.language,
+            metadata=raw_doc.metadata,
+        )
+        facts = extract_valuation_facts(record, evaluated_at=_NOW)
+        assert facts == ()

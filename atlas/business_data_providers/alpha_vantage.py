@@ -135,16 +135,31 @@ class AlphaVantageMarketDataProvider:
 
         overview = self._overview(ticker, api_key)
         shares_outstanding = _numeric(overview.get("SharesOutstanding"))
-        currency = overview.get("Currency") or _SUPPORTED_CURRENCY
-        if currency != _SUPPORTED_CURRENCY:
-            raise UnsupportedUnit(
-                f"Alpha Vantage OVERVIEW({ticker}) reports currency {currency!r}; "
-                f"this provider's v1 only supports {_SUPPORTED_CURRENCY}"
-            )
+        currency = overview.get("Currency")
+        currency_confirmed = isinstance(currency, str) and currency.strip() != ""
 
-        metadata: dict[str, Any] = {"share_price": share_price, "currency": currency}
-        if shares_outstanding is not None:
-            metadata["shares_outstanding"] = shares_outstanding
+        metadata: dict[str, Any] = {}
+        if currency_confirmed:
+            if currency != _SUPPORTED_CURRENCY:
+                raise UnsupportedUnit(
+                    f"Alpha Vantage OVERVIEW({ticker}) reports currency {currency!r}; "
+                    f"this provider's v1 only supports {_SUPPORTED_CURRENCY}"
+                )
+            # Currency positively confirmed as USD -- safe to report the
+            # price (and share count, reported alongside it) together.
+            metadata["share_price"] = share_price
+            metadata["currency"] = currency
+            if shares_outstanding is not None:
+                metadata["shares_outstanding"] = shares_outstanding
+        # else: currency could not be determined (OVERVIEW empty or
+        # missing the field) -- ATLAS-031A, Issue 1. Never assume USD.
+        # share_price is deliberately omitted entirely rather than
+        # reported under a guessed currency: a price with no confirmed
+        # denomination is not a usable fact, only a fabricated one.
+        # This produces explicit missing data -- the document is still
+        # constructed and ingested, but extract_valuation_facts finds
+        # no share_price to extract, so FCF Yield honestly reports
+        # INSUFFICIENT_INPUT rather than computing a meaningless yield.
 
         content_hash = hashlib.sha256(
             json.dumps({"date": trading_day, **metadata}, sort_keys=True).encode("utf-8")

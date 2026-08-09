@@ -268,3 +268,227 @@ class TestDocumentShape:
         assert doc.metadata["currency"] == "USD"
         assert doc.metadata["sec_accession"] == "0001234567-24-000099"
         assert doc.identifier == "AAPL:FY:2023-12-31"
+
+
+class TestAlternativeConceptTags:
+    """ATLAS-031A, Issue 3 -- fallback tags added after the post-sprint
+    audit found real, live companies (NVDA, MSFT, AMZN) don't use the
+    original single mapped tag for these concepts."""
+
+    def test_capex_falls_back_to_productive_assets_tag(self):
+        """NVDA's own real tag, confirmed live during the audit --
+        PaymentsToAcquirePropertyPlantAndEquipment is absent entirely,
+        only the fallback exists."""
+        companyfacts = _companyfacts(
+            {"PaymentsToAcquireProductiveAssets": [_usd_entry(start="2023-01-01", end="2023-12-31", val=6042, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["capital_expenditure"] == 6042.0
+
+    def test_primary_capex_tag_wins_over_fallback_when_both_present(self):
+        companyfacts = _companyfacts(
+            {
+                "PaymentsToAcquirePropertyPlantAndEquipment": [_usd_entry(start="2023-01-01", end="2023-12-31", val=100, filed="2024-02-01")],
+                "PaymentsToAcquireProductiveAssets": [_usd_entry(start="2023-01-01", end="2023-12-31", val=999, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["capital_expenditure"] == 100.0
+
+    def test_debt_repayment_falls_back_to_repayments_of_debt(self):
+        """AMZN/NVDA/AVGO's real tag -- RepaymentsOfLongTermDebt absent."""
+        companyfacts = _companyfacts(
+            {"RepaymentsOfDebt": [_usd_entry(start="2023-01-01", end="2023-12-31", val=5000, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["debt_repayment"] == 5000.0
+
+    def test_debt_repayment_falls_back_to_repayments_of_commercial_paper(self):
+        """MSFT's real tag -- its debt activity is entirely commercial
+        paper, confirmed live during the audit."""
+        companyfacts = _companyfacts(
+            {"RepaymentsOfCommercialPaper": [_usd_entry(start="2023-01-01", end="2023-12-31", val=3000, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["debt_repayment"] == 3000.0
+
+    def test_debt_issuance_falls_back_to_commercial_paper_issuance(self):
+        companyfacts = _companyfacts(
+            {"ProceedsFromIssuanceOfCommercialPaper": [_usd_entry(start="2023-01-01", end="2023-12-31", val=2000, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["debt_issuance"] == 2000.0
+
+    def test_share_issuance_falls_back_to_stock_options_exercised(self):
+        """AMZN/NVDA/META's real tag -- ProceedsFromIssuanceOfCommonStock
+        absent, issuance is entirely employee-plan-driven."""
+        companyfacts = _companyfacts(
+            {
+                "StockIssuedDuringPeriodValueStockOptionsExercised": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=800, filed="2024-02-01")
+                ]
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["share_issuance"] == 800.0
+
+
+class TestTickerNormalization:
+    """ATLAS-031A, Issue 2 -- provider-local only: SEC's own ticker map
+    uses a hyphen where Atlas uses a dot for multi-class tickers. Atlas's
+    own ticker identity (RawBusinessDocument.company/identifier) must
+    never change as a result."""
+
+    _MULTI_CLASS_TICKER_MAP = {
+        "0": {"cik_str": 1067983, "ticker": "BRK-B", "title": "Berkshire Hathaway Inc"},
+        "1": {"cik_str": 1067983, "ticker": "BRK-A", "title": "Berkshire Hathaway Inc"},
+        "2": {"cik_str": 9999999, "ticker": "XYZ-C", "title": "Fake Multi-Class Co"},
+    }
+
+    def test_brk_dot_b_resolves_via_hyphen_normalization(self):
+        companyfacts = _companyfacts(
+            {"Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=100, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": self._MULTI_CLASS_TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="BRK.B", evaluated_at=_NOW)
+        assert len(docs) == 1
+
+    def test_brk_dot_a_resolves_via_hyphen_normalization(self):
+        companyfacts = _companyfacts(
+            {"Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=100, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": self._MULTI_CLASS_TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="BRK.A", evaluated_at=_NOW)
+        assert len(docs) == 1
+
+    def test_atlas_ticker_identity_is_unchanged_by_provider_normalization(self):
+        """The persisted/returned company identity stays exactly what
+        Atlas passed in (BRK.B) -- normalization never leaks past the
+        provider's own CIK-lookup boundary."""
+        companyfacts = _companyfacts(
+            {"Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=100, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": self._MULTI_CLASS_TICKER_MAP, "companyfacts": companyfacts})
+        (doc,) = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="BRK.B", evaluated_at=_NOW)
+        assert doc.company == "BRK.B"
+        assert doc.identifier == "BRK.B:FY:2023-12-31"
+
+    def test_generic_dot_to_hyphen_ticker_not_hardcoded_to_berkshire(self):
+        """Proves the normalization is generic, not a Berkshire special
+        case -- a fake ticker only present in hyphenated form resolves
+        the same way."""
+        companyfacts = _companyfacts(
+            {"Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=50, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": self._MULTI_CLASS_TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="XYZ.C", evaluated_at=_NOW)
+        assert len(docs) == 1
+
+    def test_already_correct_format_ticker_still_resolves_directly(self):
+        """An already-SEC-format ticker (no dot) must not be broken by
+        the new normalization path -- the exact candidate is always
+        tried first."""
+        companyfacts = _companyfacts(
+            {"Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=100, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": self._MULTI_CLASS_TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="BRK-B", evaluated_at=_NOW)
+        assert len(docs) == 1
+
+    def test_ticker_with_no_dot_and_no_match_still_raises_company_not_found(self):
+        fetcher = _fake_fetcher({"company_tickers.json": self._MULTI_CLASS_TICKER_MAP, "companyfacts": {}})
+        with pytest.raises(CompanyNotFound):
+            SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="NOPE", evaluated_at=_NOW)
+
+    def test_normalization_is_deterministic_across_repeated_calls(self):
+        companyfacts = _companyfacts(
+            {"Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=100, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": self._MULTI_CLASS_TICKER_MAP, "companyfacts": companyfacts})
+        provider = SecEdgarFundamentalsProvider(fetcher)
+        first = provider.fetch(company_identifier="BRK.B", evaluated_at=_NOW)
+        second = provider.fetch(company_identifier="BRK.B", evaluated_at=_NOW)
+        assert first == second
+
+
+class TestSignValidation:
+    """ATLAS-031A, Issue 4 -- negative CapEx is a real, observed
+    data-quality signal, never silently subtracted into FCF."""
+
+    def test_negative_capex_is_dropped_not_used(self):
+        companyfacts = _companyfacts(
+            {
+                "NetCashProvidedByUsedInOperatingActivities": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=100, filed="2024-02-01")
+                ],
+                "PaymentsToAcquirePropertyPlantAndEquipment": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=-30, filed="2024-02-01")
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "capital_expenditure" not in docs[0].metadata
+        assert "free_cash_flow" not in docs[0].metadata
+
+    def test_negative_capex_never_silently_inflates_fcf(self):
+        """The specific failure mode the audit warned about: OCF - (-30)
+        would silently ADD 30 instead of subtracting it. Confirm the
+        wrong value (130) is never produced."""
+        companyfacts = _companyfacts(
+            {
+                "NetCashProvidedByUsedInOperatingActivities": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=100, filed="2024-02-01")
+                ],
+                "PaymentsToAcquirePropertyPlantAndEquipment": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=-30, filed="2024-02-01")
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata.get("free_cash_flow") != 130.0
+
+    def test_negative_operating_cash_flow_is_legitimate_and_still_used(self):
+        """A cash-burning company genuinely reports negative OCF -- this
+        is a real, valid state, never rejected the way negative CapEx
+        is. FCF should still be derived (and will itself be negative)."""
+        companyfacts = _companyfacts(
+            {
+                "NetCashProvidedByUsedInOperatingActivities": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=-50, filed="2024-02-01")
+                ],
+                "PaymentsToAcquirePropertyPlantAndEquipment": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=20, filed="2024-02-01")
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["capital_expenditure"] == 20.0
+        assert docs[0].metadata["free_cash_flow"] == -70.0
+
+    def test_zero_capex_is_a_legitimate_value_not_dropped(self):
+        """Zero is a real, honest fact (no capex spend that period) --
+        distinct from a negative value, and must not be treated the
+        same way."""
+        companyfacts = _companyfacts(
+            {
+                "NetCashProvidedByUsedInOperatingActivities": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=100, filed="2024-02-01")
+                ],
+                "PaymentsToAcquirePropertyPlantAndEquipment": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=0, filed="2024-02-01")
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["capital_expenditure"] == 0.0
+        assert docs[0].metadata["free_cash_flow"] == 100.0
