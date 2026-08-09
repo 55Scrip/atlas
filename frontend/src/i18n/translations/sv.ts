@@ -304,6 +304,9 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.analysis.business.supportingLabel": "Stödjande",
   "investmentCase.analysis.business.contradictingLabel": "Motsägande",
   "investmentCase.analysis.business.missingLabel": "Saknas",
+  "investmentCase.analysis.business.portfolioContextHeading": "Portföljkontext",
+  "investmentCase.analysis.business.largestPositionLabel": "Största position: {{ticker}} ({{percent}}%)",
+  "investmentCase.analysis.business.otherCategoriesHeading": "Övriga dimensioner",
   "investmentCase.analysis.valuation.heading": "Värdering",
   "investmentCase.analysis.valuation.method.fcf_yield_relative": "FCF-avkastning (relativ)",
   "investmentCase.analysis.valuation.currentYieldLabel": "Aktuell FCF-avkastning",
@@ -315,6 +318,8 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.analysis.evidence.supportingCount": "{{count}} observation(er) med stödjande underlag",
   "investmentCase.analysis.evidence.challengingCount": "{{count}} observation(er) med motsägande underlag",
   "investmentCase.analysis.evidence.coverageLabel": "Täckning",
+  "investmentCase.analysis.evidence.qualityHeading": "Underlagets kvalitet",
+  "investmentCase.analysis.evidence.missingEvidenceHeading": "Saknat underlag",
   "investmentCase.analysis.evidence.noneRecorded": "Inget underlag registrerat för det här caset ännu.",
   "investmentCase.analysis.recommendation.heading": "Rekommendation",
   "investmentCase.analysis.recommendation.withheld": "Avstår",
@@ -620,7 +625,6 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.intelligence.keyRisks.awaitingReconciliation": "Väntar på avstämning efter en affär.",
 
   "investmentCase.intelligence.missingEvidence.heading": "Saknade belägg",
-  "investmentCase.intelligence.missingEvidence.empty": "Inga belägg­luckor upptäckta.",
   "investmentCase.intelligence.missingEvidence.noEvidenceRecorded":
     "Inga belägg registrerade för detta investeringscase.",
   "investmentCase.intelligence.missingEvidence.observationWithoutEvidence":

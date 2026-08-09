@@ -305,6 +305,9 @@ export const en = {
   "investmentCase.analysis.business.supportingLabel": "Supporting",
   "investmentCase.analysis.business.contradictingLabel": "Contradicting",
   "investmentCase.analysis.business.missingLabel": "Missing",
+  "investmentCase.analysis.business.portfolioContextHeading": "Portfolio Context",
+  "investmentCase.analysis.business.largestPositionLabel": "Largest position: {{ticker}} ({{percent}}%)",
+  "investmentCase.analysis.business.otherCategoriesHeading": "Other Dimensions",
   "investmentCase.analysis.valuation.heading": "Valuation",
   "investmentCase.analysis.valuation.method.fcf_yield_relative": "FCF Yield (Relative)",
   "investmentCase.analysis.valuation.currentYieldLabel": "Current FCF Yield",
@@ -316,6 +319,8 @@ export const en = {
   "investmentCase.analysis.evidence.supportingCount": "{{count}} Observation(s) with supporting Evidence",
   "investmentCase.analysis.evidence.challengingCount": "{{count}} Observation(s) with challenging Evidence",
   "investmentCase.analysis.evidence.coverageLabel": "Coverage",
+  "investmentCase.analysis.evidence.qualityHeading": "Evidence Quality",
+  "investmentCase.analysis.evidence.missingEvidenceHeading": "Missing Evidence",
   "investmentCase.analysis.evidence.noneRecorded": "No Evidence recorded for this Case yet.",
   "investmentCase.analysis.recommendation.heading": "Recommendation",
   "investmentCase.analysis.recommendation.withheld": "Withheld",
@@ -623,7 +628,6 @@ export const en = {
   "investmentCase.intelligence.keyRisks.awaitingReconciliation": "Awaiting reconciliation after a trade.",
 
   "investmentCase.intelligence.missingEvidence.heading": "Missing Evidence",
-  "investmentCase.intelligence.missingEvidence.empty": "No evidence gaps detected.",
   "investmentCase.intelligence.missingEvidence.noEvidenceRecorded":
     "No evidence recorded for this Investment Case.",
   "investmentCase.intelligence.missingEvidence.observationWithoutEvidence":
