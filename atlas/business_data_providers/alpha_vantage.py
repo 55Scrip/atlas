@@ -74,6 +74,18 @@ close *on or after* that date -- the earliest point the market could
 have reacted to a filing published on or before it, never an earlier
 point (which would use a price predating the filing) and never an
 arbitrary/nearest one.
+
+**ATLAS-033: the current OVERVIEW figures are fetched at most once per
+ticker per instance.** `fetch()` and `fetch_historical_snapshots()`
+both need the same two current-basis values -- `SharesOutstanding` and
+`Currency` -- and were originally each written to independently call
+`OVERVIEW` for them, wasting one full request whenever both methods
+run in the same refresh. `_current_overview` now retains only those
+two already-parsed values (never the raw payload, no expiration, no
+general response cache) keyed by ticker; whichever method runs first
+populates it, the other reuses it. Calling either method alone, or for
+a different ticker, still makes its own real `OVERVIEW` request exactly
+as before.
 """
 from __future__ import annotations
 
@@ -216,6 +228,13 @@ class AlphaVantageMarketDataProvider:
         # Alpha Vantage request, across every public method -- `None`
         # until the first request is made, so that request never sleeps.
         self._last_request_at: float | None = None
+        # ATLAS-033: the two already-parsed OVERVIEW values `fetch` and
+        # `fetch_historical_snapshots` both need, keyed by ticker so a
+        # (hypothetical) instance reused across companies never returns
+        # one company's figures for another -- never the raw payload,
+        # never given an expiry, since one instance's lifetime is
+        # already scoped to one refresh run.
+        self._overview_cache: tuple[str, float | None, Any] | None = None
 
     def _resolved_api_key(self) -> str:
         key = _api_key(self._explicit_api_key)
@@ -241,6 +260,19 @@ class AlphaVantageMarketDataProvider:
         payload = self._request_json(url)
         _check_for_provider_error(payload, context=f"Alpha Vantage OVERVIEW({ticker})")
         return payload if isinstance(payload, dict) else {}
+
+    def _current_overview(self, ticker: str, api_key: str) -> tuple[float | None, Any]:
+        """(ATLAS-033) `(shares_outstanding, currency)` -- reused from
+        this same instance's earlier `OVERVIEW` call for `ticker` if one
+        exists, instead of issuing a second, redundant request for the
+        identical current-basis figures."""
+        if self._overview_cache is not None and self._overview_cache[0] == ticker:
+            return self._overview_cache[1], self._overview_cache[2]
+        overview = self._overview(ticker, api_key)
+        shares_outstanding = _numeric(overview.get("SharesOutstanding"))
+        currency = overview.get("Currency")
+        self._overview_cache = (ticker, shares_outstanding, currency)
+        return shares_outstanding, currency
 
     def _monthly_adjusted(self, ticker: str, api_key: str) -> dict[str, Any]:
         url = f"{_BASE_URL}?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol={ticker}&apikey={api_key}"
@@ -300,9 +332,7 @@ class AlphaVantageMarketDataProvider:
                 f"Alpha Vantage GLOBAL_QUOTE({ticker}) latest trading day {trading_day!r} is not ISO-8601"
             ) from None
 
-        overview = self._overview(ticker, api_key)
-        shares_outstanding = _numeric(overview.get("SharesOutstanding"))
-        currency = overview.get("Currency")
+        shares_outstanding, currency = self._current_overview(ticker, api_key)
         # ATLAS-031A, Issue 1: currency must be positively confirmed --
         # never assumed. An unconfirmed currency (OVERVIEW empty or
         # missing the field) omits share_price/shares_outstanding/
@@ -356,9 +386,7 @@ class AlphaVantageMarketDataProvider:
         api_key = self._resolved_api_key()
         ticker = company_identifier.upper()
 
-        overview = self._overview(ticker, api_key)
-        shares_outstanding = _numeric(overview.get("SharesOutstanding"))
-        currency = overview.get("Currency")
+        shares_outstanding, currency = self._current_overview(ticker, api_key)
 
         series = self._monthly_adjusted(ticker, api_key)
         available_dates = sorted(d for d in (self._parse_series_date(key) for key in series) if d is not None)

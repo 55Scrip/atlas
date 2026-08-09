@@ -507,10 +507,12 @@ class TestInstanceLevelPacing:
         """The exact regression this corrective fix targets: calling
         `fetch()` and then `fetch_historical_snapshots()` on the SAME
         provider instance -- exactly how `refresh_company_data` uses
-        it, in two separate loops -- must still pace the `OVERVIEW`
-        call inside `fetch()` and the `OVERVIEW` call inside
-        `fetch_historical_snapshots()`, even though they belong to two
-        different public methods."""
+        it, in two separate loops -- must still pace correctly across
+        the method boundary. ATLAS-033 additionally eliminates the
+        second `OVERVIEW` call entirely (reused from `fetch()`'s own
+        already-parsed result), so the real sequence is `GLOBAL_QUOTE,
+        OVERVIEW, TIME_SERIES_MONTHLY_ADJUSTED` -- pacing still applies
+        between each *real* request, never before a reused one."""
         monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
         call_order: list[str] = []
 
@@ -540,11 +542,10 @@ class TestInstanceLevelPacing:
             "GLOBAL_QUOTE",
             "SLEEP",
             "OVERVIEW",
-            "SLEEP",  # the boundary this fix adds -- absent before the corrective pass
-            "OVERVIEW",
-            "SLEEP",
+            "SLEEP",  # still paces the next REAL request -- OVERVIEW itself is reused, not repeated
             "TIME_SERIES_MONTHLY_ADJUSTED",
         ]
+        assert call_order.count("OVERVIEW") == 1
 
     def test_consecutive_requests_inside_fetch_respect_the_minimum_interval(self, monkeypatch):
         monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
@@ -838,3 +839,113 @@ class TestHistoricalSnapshots:
             company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
         )
         assert "super-secret-key-value" not in doc.raw_reference
+
+
+class TestOverviewDeduplication:
+    """ATLAS-033 -- `fetch()` and `fetch_historical_snapshots()` on the
+    same provider instance must issue at most one real `OVERVIEW`
+    request between them, reusing the already-parsed
+    `SharesOutstanding`/`Currency` values rather than re-fetching
+    identical current-basis data."""
+
+    @staticmethod
+    def _counting_fetcher(call_counts: dict[str, int]):
+        def fetcher(url: str, headers: dict | None) -> object:
+            if "GLOBAL_QUOTE" in url:
+                call_counts["GLOBAL_QUOTE"] = call_counts.get("GLOBAL_QUOTE", 0) + 1
+                return {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}}
+            if "OVERVIEW" in url:
+                call_counts["OVERVIEW"] = call_counts.get("OVERVIEW", 0) + 1
+                return {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"}
+            call_counts["TIME_SERIES_MONTHLY_ADJUSTED"] = call_counts.get("TIME_SERIES_MONTHLY_ADJUSTED", 0) + 1
+            return {"Monthly Adjusted Time Series": {"2023-02-28": {"5. adjusted close": "40.00"}}}
+
+        return fetcher
+
+    def test_fetch_then_fetch_historical_snapshots_makes_only_one_overview_request(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        call_counts: dict[str, int] = {}
+        provider = AlphaVantageMarketDataProvider(
+            self._counting_fetcher(call_counts), sleeper=lambda seconds: None
+        )
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        assert call_counts["OVERVIEW"] == 1
+        assert call_counts["GLOBAL_QUOTE"] == 1
+        assert call_counts["TIME_SERIES_MONTHLY_ADJUSTED"] == 1
+
+    def test_fetch_historical_snapshots_called_first_still_makes_its_own_overview_request(self, monkeypatch):
+        """No prior `fetch()` on this instance -- the cache is empty,
+        so `fetch_historical_snapshots` must still make a real
+        `OVERVIEW` request itself, exactly as before this optimization."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        call_counts: dict[str, int] = {}
+        provider = AlphaVantageMarketDataProvider(
+            self._counting_fetcher(call_counts), sleeper=lambda seconds: None
+        )
+        provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        assert call_counts["OVERVIEW"] == 1
+        assert "GLOBAL_QUOTE" not in call_counts
+
+    def test_a_second_fetch_historical_snapshots_call_reuses_the_same_cached_overview(self, monkeypatch):
+        """Reuse is not a one-shot: once populated (by either method),
+        every subsequent call on this instance for the same ticker
+        keeps reusing it, never re-fetching."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        call_counts: dict[str, int] = {}
+        provider = AlphaVantageMarketDataProvider(
+            self._counting_fetcher(call_counts), sleeper=lambda seconds: None
+        )
+        provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2024, 2, 1),), evaluated_at=_NOW
+        )
+        assert call_counts["OVERVIEW"] == 1
+
+    def test_a_different_ticker_still_makes_its_own_overview_request(self, monkeypatch):
+        """The cache is ticker-scoped -- reusing AAPL's OVERVIEW data
+        for MSFT would silently report the wrong company's shares
+        outstanding and currency, so a different ticker must always
+        trigger a fresh real request."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        call_counts: dict[str, int] = {}
+        provider = AlphaVantageMarketDataProvider(
+            self._counting_fetcher(call_counts), sleeper=lambda seconds: None
+        )
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        provider.fetch_historical_snapshots(
+            company_identifier="MSFT", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        assert call_counts["OVERVIEW"] == 2
+
+    def test_historical_documents_are_byte_for_byte_identical_with_or_without_a_prior_fetch(self, monkeypatch):
+        """The optimization must be invisible to callers: the exact
+        same historical document (metadata, content_hash, identifier,
+        dates) is produced whether or not `fetch()` ran first."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+
+        def fetcher(url: str, headers: dict | None) -> object:
+            if "GLOBAL_QUOTE" in url:
+                return {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}}
+            if "OVERVIEW" in url:
+                return {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"}
+            return {"Monthly Adjusted Time Series": {"2023-02-28": {"5. adjusted close": "40.00"}}}
+
+        provider_with_prior_fetch = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        provider_with_prior_fetch.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        (doc_reused,) = provider_with_prior_fetch.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+
+        provider_standalone = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        (doc_fresh,) = provider_standalone.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+
+        assert doc_reused == doc_fresh
