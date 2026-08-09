@@ -51,6 +51,16 @@ def _sec_fetcher(url: str, headers):
 def _av_fetcher(url: str, headers):
     if "GLOBAL_QUOTE" in url:
         return {"Global Quote": {"05. price": "50.00", "07. latest trading day": "2026-08-07"}}
+    if "TIME_SERIES_MONTHLY_ADJUSTED" in url:
+        # Covers both SEC filing dates in _COMPANYFACTS (2023-02-01,
+        # 2024-02-01) so ATLAS-032's historical second pass has a real
+        # "first available close on or after" candidate for each.
+        return {
+            "Monthly Adjusted Time Series": {
+                "2023-02-28": {"4. close": "40.00", "5. adjusted close": "40.00"},
+                "2024-02-29": {"4. close": "45.00", "5. adjusted close": "45.00"},
+            }
+        }
     return {"Symbol": "TESTCO", "SharesOutstanding": "1000000", "Currency": "USD"}
 
 
@@ -77,10 +87,15 @@ class TestSwappedIntoTheSameRefreshUseCaseWithNoEvaluatorChange:
         summary = refresh_company_data("TESTCO", providers, repository)
 
         assert summary.provider_errors == ()
-        assert summary.new_records == 3  # 2 annual fundamentals periods + 1 market snapshot
+        # 2 annual fundamentals periods + 1 current market snapshot +
+        # 2 historical market snapshots (ATLAS-032, one per distinct
+        # SEC filing date in _COMPANYFACTS: 2023-02-01, 2024-02-01).
+        assert summary.new_records == 5
         records = repository.get_by_company("TESTCO")
         document_types = {r.document_type.value for r in records}
         assert document_types == {"financial_statement", "market_data_snapshot"}
+        market_records = [r for r in records if r.document_type.value == "market_data_snapshot"]
+        assert len(market_records) == 3
 
     def test_a_third_structurally_different_fake_provider_also_swaps_in_cleanly(self, monkeypatch):
         """A fake provider with yet another shape (a static in-memory

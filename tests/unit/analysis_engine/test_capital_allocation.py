@@ -33,6 +33,7 @@ def fact(kind: BusinessFactKind, value: float, period: str = "2024") -> Business
             computed_at=EVALUATED_AT,
         ),
         extracted_at=EVALUATED_AT,
+        published_at=EVALUATED_AT,
     )
 
 

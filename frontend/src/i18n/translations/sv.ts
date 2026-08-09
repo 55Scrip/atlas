@@ -311,6 +311,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.analysis.business.missingLabel": "Saknas",
   "investmentCase.analysis.valuation.heading": "Värdering",
   "investmentCase.analysis.valuation.method.fcf_yield_relative": "FCF-avkastning (relativ)",
+  "investmentCase.analysis.valuation.currentYieldLabel": "Aktuell FCF-avkastning",
   "investmentCase.analysis.valuation.scenarioHeading": "Scenarioanalys",
   "investmentCase.analysis.valuation.scenarioNote": "Inte tillgänglig ännu — framåtblickande antaganden har inte angetts.",
   "investmentCase.analysis.risk.heading": "Risk",

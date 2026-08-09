@@ -68,6 +68,13 @@ class ValuationFact:
     source_record_id: str
     provenance: Provenance
     extracted_at: datetime
+    published_at: datetime
+    """(ATLAS-032) When the source was actually made public -- inherited
+    verbatim from `BusinessRecord.published_at`. See
+    `business_facts.models.BusinessFact.published_at` for why this is
+    kept distinct from `period`: `period` is the trading/snapshot date
+    this observation is *about*; `published_at` is when it became known,
+    which is what evaluators must use to prevent look-ahead bias."""
 
 
 _METADATA_KEYS: dict[ValuationFactKind, str] = {
@@ -140,6 +147,7 @@ def extract_valuation_facts(record: BusinessRecord, *, evaluated_at: datetime) -
                     computed_at=evaluated_at,
                 ),
                 extracted_at=evaluated_at,
+                published_at=record.published_at,
             )
         )
     return tuple(facts)

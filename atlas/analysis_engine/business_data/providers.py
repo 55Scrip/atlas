@@ -19,12 +19,12 @@ confused with -- that legacy interface.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Protocol, runtime_checkable
 
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 
-__all__ = ["BusinessDataProvider", "StaticBusinessDataProvider"]
+__all__ = ["BusinessDataProvider", "HistoricalMarketDataProvider", "StaticBusinessDataProvider"]
 
 
 @runtime_checkable
@@ -39,6 +39,35 @@ class BusinessDataProvider(Protocol):
     """
 
     def fetch(self, *, company_identifier: str, evaluated_at: datetime) -> tuple[RawBusinessDocument, ...]:
+        ...
+
+
+@runtime_checkable
+class HistoricalMarketDataProvider(Protocol):
+    """(ATLAS-032) An optional, second capability a market-data
+    provider may additionally implement -- checked for at the
+    orchestration layer (`atlas.alpha.business_data_refresh.service
+    .refresh_company_data`) via `isinstance` against this
+    `runtime_checkable` Protocol, exactly the same pattern
+    `BusinessDataProvider` itself already establishes. Deliberately not
+    folded into `BusinessDataProvider.fetch` itself: fundamentals
+    providers (SEC EDGAR) have no historical-price concept at all, and
+    forcing every provider to implement a method it can never
+    meaningfully serve would be a worse interface than an optional,
+    duck-typed capability a caller can check for.
+
+    `filing_dates` names the dates a caller already knows it needs
+    historical price coverage for (typically every distinct
+    fundamental's own `published_at` date) -- the provider never
+    invents its own list of dates to fetch; the caller's own knowledge
+    of what it needs stays the caller's responsibility, keeping this
+    provider a dumb, stateless translator of "give me prices for these
+    dates" into real API calls, same as `fetch` itself.
+    """
+
+    def fetch_historical_snapshots(
+        self, *, company_identifier: str, filing_dates: tuple[date, ...], evaluated_at: datetime
+    ) -> tuple[RawBusinessDocument, ...]:
         ...
 
 

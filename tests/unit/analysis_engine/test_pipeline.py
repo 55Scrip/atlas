@@ -528,17 +528,17 @@ class TestValuationEngineEndToEnd:
 
     @staticmethod
     def _records():
-        from datetime import date
+        from datetime import date, datetime, timezone
 
         from atlas.analysis_engine.business_data.models import RawBusinessDocument
         from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
 
-        def make(source_kind, period_end, identifier, **metadata):
+        def make(source_kind, period_end, identifier, *, published_at=GENERATED_AT, **metadata):
             document = RawBusinessDocument(
                 identifier=identifier,
                 company="ASML",
                 source_kind=source_kind,
-                published_at=GENERATED_AT,
+                published_at=published_at,
                 provider_id="structured_test",
                 raw_reference=f"ref://{identifier}",
                 content_hash=f"hash-{identifier}",
@@ -550,13 +550,18 @@ class TestValuationEngineEndToEnd:
             assert isinstance(result, IngestedRecord)
             return result.record
 
+        # Fundamentals are filed ~6 weeks after their fiscal year end;
+        # market snapshots are dated after that filing -- ATLAS-032's
+        # no-look-ahead eligibility needs a real publication gap, not
+        # same-day fundamentals and market data. See
+        # valuation/test_cash_flow.py's own module docstring.
         return (
-            make("annual_report", date(2022, 12, 31), "fy22", free_cash_flow=100.0),
-            make("annual_report", date(2023, 12, 31), "fy23", free_cash_flow=110.0),
-            make("annual_report", date(2024, 12, 31), "fy24", free_cash_flow=200.0),
-            make("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
-            make("market_data_snapshot", date(2023, 12, 31), "m23", share_price=52.0, shares_outstanding=100.0),
-            make("market_data_snapshot", date(2024, 12, 31), "m24", share_price=53.0, shares_outstanding=100.0),
+            make("annual_report", date(2022, 12, 31), "fy22", published_at=datetime(2023, 2, 15, tzinfo=timezone.utc), free_cash_flow=100.0),
+            make("annual_report", date(2023, 12, 31), "fy23", published_at=datetime(2024, 2, 15, tzinfo=timezone.utc), free_cash_flow=110.0),
+            make("annual_report", date(2024, 12, 31), "fy24", published_at=datetime(2025, 2, 15, tzinfo=timezone.utc), free_cash_flow=200.0),
+            make("market_data_snapshot", date(2023, 3, 1), "m22", share_price=50.0, shares_outstanding=100.0),
+            make("market_data_snapshot", date(2024, 3, 1), "m23", share_price=52.0, shares_outstanding=100.0),
+            make("market_data_snapshot", date(2025, 3, 1), "m24", share_price=53.0, shares_outstanding=100.0),
         )
 
     def test_real_records_produce_a_real_undervalued_finding(self):
@@ -678,7 +683,7 @@ class TestConvictionEndToEnd:
         return engine_input, run_pipeline(engine_input, generated_at=GENERATED_AT)
 
     @staticmethod
-    def _record(source_kind, period_end, identifier, **metadata):
+    def _record(source_kind, period_end, identifier, *, published_at=GENERATED_AT, **metadata):
         from atlas.analysis_engine.business_data.models import RawBusinessDocument
         from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
 
@@ -686,7 +691,7 @@ class TestConvictionEndToEnd:
             identifier=identifier,
             company="ASML",
             source_kind=source_kind,
-            published_at=GENERATED_AT,
+            published_at=published_at,
             provider_id="structured_test",
             raw_reference=f"ref://{identifier}",
             content_hash=f"hash-{identifier}",
@@ -704,15 +709,39 @@ class TestConvictionEndToEnd:
         Valuation Risk HIGH forces LOW instead, proving high risk
         overrides an otherwise strong picture rather than being averaged
         against it."""
-        from datetime import date
+        from datetime import date, datetime, timezone
 
         from atlas.analysis_engine.conviction import ConvictionLevel, ConvictionReasonCode
 
         engine_input, output = self._fresh_full_coverage_input()
+        # ATLAS-032: FCF-bearing filings need a real publication date
+        # strictly before the market snapshot they should be eligible
+        # for -- see valuation/test_cash_flow.py's own module docstring.
         records = (
-            self._record("annual_report", date(2022, 12, 31), "fy22", revenue=1000.0, free_cash_flow=200.0),
-            self._record("annual_report", date(2023, 12, 31), "fy23", revenue=1100.0, free_cash_flow=240.0),
-            self._record("annual_report", date(2024, 12, 31), "fy24", revenue=1250.0, free_cash_flow=300.0),
+            self._record(
+                "annual_report",
+                date(2022, 12, 31),
+                "fy22",
+                published_at=datetime(2023, 2, 15, tzinfo=timezone.utc),
+                revenue=1000.0,
+                free_cash_flow=200.0,
+            ),
+            self._record(
+                "annual_report",
+                date(2023, 12, 31),
+                "fy23",
+                published_at=datetime(2024, 2, 15, tzinfo=timezone.utc),
+                revenue=1100.0,
+                free_cash_flow=240.0,
+            ),
+            self._record(
+                "annual_report",
+                date(2024, 12, 31),
+                "fy24",
+                published_at=datetime(2025, 2, 15, tzinfo=timezone.utc),
+                revenue=1250.0,
+                free_cash_flow=300.0,
+            ),
             self._record("annual_report", date(2022, 12, 31), "buy22", share_buybacks=50.0),
             self._record("annual_report", date(2023, 12, 31), "buy23", share_buybacks=60.0),
             self._record("annual_report", date(2022, 12, 31), "iss22", share_issuance=10.0),
@@ -721,9 +750,9 @@ class TestConvictionEndToEnd:
             self._record("annual_report", date(2023, 12, 31), "rep23", debt_repayment=30.0),
             self._record("annual_report", date(2022, 12, 31), "debt22", debt_issuance=5.0),
             self._record("annual_report", date(2023, 12, 31), "debt23", debt_issuance=5.0),
-            self._record("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
-            self._record("market_data_snapshot", date(2023, 12, 31), "m23", share_price=52.0, shares_outstanding=100.0),
-            self._record("market_data_snapshot", date(2024, 12, 31), "m24", share_price=300.0, shares_outstanding=100.0),
+            self._record("market_data_snapshot", date(2023, 3, 1), "m22", share_price=50.0, shares_outstanding=100.0),
+            self._record("market_data_snapshot", date(2024, 3, 1), "m23", share_price=52.0, shares_outstanding=100.0),
+            self._record("market_data_snapshot", date(2025, 3, 1), "m24", share_price=300.0, shares_outstanding=100.0),
         )
         analysis = assemble_analysis(
             engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
@@ -886,17 +915,17 @@ class TestOpenQuestionsMigration:
 
     @staticmethod
     def _valuation_records():
-        from datetime import date
+        from datetime import date, datetime, timezone
 
         from atlas.analysis_engine.business_data.models import RawBusinessDocument
         from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
 
-        def make(source_kind, period_end, identifier, **metadata):
+        def make(source_kind, period_end, identifier, *, published_at=GENERATED_AT, **metadata):
             document = RawBusinessDocument(
                 identifier=identifier,
                 company="ASML",
                 source_kind=source_kind,
-                published_at=GENERATED_AT,
+                published_at=published_at,
                 provider_id="structured_test",
                 raw_reference=f"ref://{identifier}",
                 content_hash=f"hash-{identifier}",
@@ -908,11 +937,14 @@ class TestOpenQuestionsMigration:
             assert isinstance(result, IngestedRecord), result
             return result.record
 
+        # See TestValuationEngineEndToEnd._records -- a real filing gap
+        # is required for ATLAS-032's no-look-ahead eligibility to pair
+        # a fundamental with a later market observation.
         return (
-            make("annual_report", date(2022, 12, 31), "fy22", free_cash_flow=100.0),
-            make("annual_report", date(2023, 12, 31), "fy23", free_cash_flow=110.0),
-            make("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
-            make("market_data_snapshot", date(2023, 12, 31), "m23", share_price=52.0, shares_outstanding=100.0),
+            make("annual_report", date(2022, 12, 31), "fy22", published_at=datetime(2023, 2, 15, tzinfo=timezone.utc), free_cash_flow=100.0),
+            make("annual_report", date(2023, 12, 31), "fy23", published_at=datetime(2024, 2, 15, tzinfo=timezone.utc), free_cash_flow=110.0),
+            make("market_data_snapshot", date(2023, 3, 1), "m22", share_price=50.0, shares_outstanding=100.0),
+            make("market_data_snapshot", date(2024, 3, 1), "m23", share_price=52.0, shares_outstanding=100.0),
         )
 
     def test_valuation_thesis_question_present_when_valuation_is_not_conclusive(self):

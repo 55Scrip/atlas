@@ -32,6 +32,7 @@ def fact(kind: BusinessFactKind, value: float, period: str) -> BusinessFact:
             computed_at=EVALUATED_AT,
         ),
         extracted_at=EVALUATED_AT,
+        published_at=EVALUATED_AT,
     )
 
 

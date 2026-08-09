@@ -77,11 +77,27 @@ class ValuationDataGapKind(str, Enum):
     yield might be computable."""
 
     STALE_MARKET_DATA = "stale_market_data"
-    """The market snapshot's period predates the most recent Free Cash
-    Flow fact's period -- comparing a price against fundamentals it
-    could not have known about is a real methodological problem, not a
-    generic freshness opinion; see `cash_flow.py`'s own docstring for
-    the exact, non-arbitrary check performed."""
+    """Reserved, not currently constructed (ATLAS-032). The original
+    ATLAS-024 check compared a market snapshot's `period` against the
+    most recent Free Cash Flow fact's `period` -- the same period-vs-
+    period confusion ATLAS-032 removed from the rest of this method, so
+    it was retired rather than reimplemented. A genuine "this market
+    snapshot is too old" signal needs a real, owned wall-clock
+    threshold, which does not exist anywhere in this codebase yet;
+    see `cash_flow.py`'s own module docstring. A future sprint that
+    defines and owns such a threshold should construct this member,
+    not invent a new one."""
+
+    NO_ELIGIBLE_FUNDAMENTALS_AS_OF_OBSERVATION = "no_eligible_fundamentals_as_of_observation"
+    """(ATLAS-032) Free Cash Flow, market price, and share count facts
+    all exist, but no Free Cash Flow fact was published on or before
+    any known market observation -- the no-look-ahead rule excluded
+    every candidate pairing rather than using a fundamental the market
+    could not yet have known about. Distinct from
+    `MISSING_FREE_CASH_FLOW_HISTORY` (no FCF fact exists at all): here
+    the data exists, it is simply not yet eligible for any observation
+    Atlas has. The case this is expected to matter for is a historical
+    market observation that predates a company's earliest known filing."""
 
     CASH_FLOW_NOT_POSITIVE = "cash_flow_not_positive"
     """The current period's Free Cash Flow is zero or negative -- a

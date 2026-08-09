@@ -117,6 +117,7 @@ class ValuationFindingView(CamelModel):
     assumptions: list[str]
     missing_evidence: list[str]
     confidence: str
+    current_yield: float | None
 
     @classmethod
     def from_domain(cls, finding: ValuationFinding) -> "ValuationFindingView":
@@ -129,6 +130,7 @@ class ValuationFindingView(CamelModel):
             assumptions=[a.value for a in finding.assumptions],
             missing_evidence=[m.value for m in finding.missing_evidence],
             confidence=finding.confidence.value,
+            current_yield=finding.current_yield,
         )
 
 

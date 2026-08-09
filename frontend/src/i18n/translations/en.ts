@@ -312,6 +312,7 @@ export const en = {
   "investmentCase.analysis.business.missingLabel": "Missing",
   "investmentCase.analysis.valuation.heading": "Valuation",
   "investmentCase.analysis.valuation.method.fcf_yield_relative": "FCF Yield (Relative)",
+  "investmentCase.analysis.valuation.currentYieldLabel": "Current FCF Yield",
   "investmentCase.analysis.valuation.scenarioHeading": "Scenario Analysis",
   "investmentCase.analysis.valuation.scenarioNote": "Not yet available — forward assumptions have not been supplied.",
   "investmentCase.analysis.risk.heading": "Risk",

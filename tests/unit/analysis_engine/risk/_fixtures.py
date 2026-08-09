@@ -53,6 +53,7 @@ def business_fact(kind: BusinessFactKind, value: float, period: str) -> Business
         source_record_id=f"record-{i}",
         provenance=_prov(),
         extracted_at=EVALUATED_AT,
+        published_at=EVALUATED_AT,
     )
 
 

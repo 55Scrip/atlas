@@ -519,6 +519,7 @@ interface ValuationFindingView {
   assumptions: string[];
   missingEvidence: string[];
   confidence: EvidenceCoverageLevel;
+  currentYield: number | null;
 }
 
 interface RiskFindingView {
@@ -3915,6 +3916,11 @@ function InvestmentCaseCanonicalSections({ analysis, t }: { analysis: Investment
                 {t("investmentCase.analysis.valuation.method.fcf_yield_relative")}:{" "}
                 {t(VALUATION_STATUS_KEY[fcfYield.status])}
               </Text>
+              {fcfYield.currentYield != null && (
+                <Text color="secondary" as="p">
+                  {t("investmentCase.analysis.valuation.currentYieldLabel")}: {(fcfYield.currentYield * 100).toFixed(2)}%
+                </Text>
+              )}
               {fcfYield.supportingFacts.length > 0 && (
                 <Text color="secondary" as="p">
                   {t("investmentCase.analysis.business.supportingLabel")}: {fcfYield.supportingFacts.join(", ")}

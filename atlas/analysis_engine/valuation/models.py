@@ -61,6 +61,16 @@ class ValuationFinding:
     confidence: EvidenceCoverageLevel
     provenance: Provenance
     evaluated_at: datetime
+    current_yield: float | None = None
+    """(ATLAS-032) The most recent market observation's own FCF yield
+    (latest eligible Free Cash Flow ÷ that observation's market cap),
+    populated whenever it is genuinely computable -- including when
+    `status` stays `INSUFFICIENT_INPUT` for lack of historical periods
+    to classify it against. Not a generic "score": one specific, named,
+    unit-explicit ratio (FCF / market cap), real and traceable via
+    `supporting_facts` whenever set, `None` when no current observation
+    exists at all. Only `FCF_YIELD_RELATIVE` ever populates this; the
+    scenario methods leave it `None`."""
 
 
 @dataclass(frozen=True)

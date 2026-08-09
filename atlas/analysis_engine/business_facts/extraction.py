@@ -121,6 +121,7 @@ def extract_facts(record: BusinessRecord, *, evaluated_at: datetime) -> tuple[Bu
                     computed_at=evaluated_at,
                 ),
                 extracted_at=evaluated_at,
+                published_at=record.published_at,
             )
         )
     return tuple(facts)

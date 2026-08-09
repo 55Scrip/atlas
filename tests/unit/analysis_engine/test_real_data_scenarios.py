@@ -27,7 +27,11 @@ from tests.unit.analysis_engine._fixtures import run_minimal
 _EVALUATED_AT = datetime(2026, 8, 9, tzinfo=timezone.utc)
 
 
-def _fundamentals_doc(*, period_end: str, revenue: float, fcf: float | None = None, buybacks: float | None = None, issuance: float | None = None, debt_issuance: float | None = None, debt_repayment: float | None = None, content_hash: str | None = None) -> RawBusinessDocument:
+def _dt(year: int, month: int, day: int) -> datetime:
+    return datetime(year, month, day, tzinfo=timezone.utc)
+
+
+def _fundamentals_doc(*, period_end: str, revenue: float, fcf: float | None = None, buybacks: float | None = None, issuance: float | None = None, debt_issuance: float | None = None, debt_repayment: float | None = None, content_hash: str | None = None, published_at: datetime | None = None) -> RawBusinessDocument:
     metadata: dict = {"revenue": revenue, "currency": "USD"}
     if fcf is not None:
         metadata["free_cash_flow"] = fcf
@@ -43,7 +47,11 @@ def _fundamentals_doc(*, period_end: str, revenue: float, fcf: float | None = No
         identifier=f"TEST:FY:{period_end}",
         company="TEST",
         source_kind="financial_statement",
-        published_at=_EVALUATED_AT,
+        # ATLAS-032: a real SEC filing date, ~6 weeks after period end
+        # by default -- callers pairing this with a market observation
+        # override this to keep the no-look-ahead eligibility rule
+        # (published_at <= observation date) satisfied.
+        published_at=published_at if published_at is not None else _EVALUATED_AT,
         provider_id="sec_edgar",
         raw_reference="https://example.test/filing",
         content_hash=content_hash or f"hash-{period_end}-{revenue}",
@@ -204,20 +212,20 @@ class TestValuationRealDataShapes:
 
     def test_current_yield_above_historical_range_is_undervalued(self):
         records = _ingest_all(
-            _fundamentals_doc(period_end="2021-12-31", revenue=100, fcf=10),
-            _fundamentals_doc(period_end="2022-12-31", revenue=100, fcf=10),
-            _market_doc(snapshot="2021-12-31", price=200, shares=100),
-            _market_doc(snapshot="2022-12-31", price=50, shares=100),
+            _fundamentals_doc(period_end="2021-12-31", revenue=100, fcf=10, published_at=_dt(2022, 2, 15)),
+            _fundamentals_doc(period_end="2022-12-31", revenue=100, fcf=10, published_at=_dt(2023, 2, 15)),
+            _market_doc(snapshot="2022-06-01", price=200, shares=100),
+            _market_doc(snapshot="2023-06-01", price=50, shares=100),
         )
         analysis = _assemble(records)
         assert self._fcf_finding(analysis).status is ValuationStatus.UNDERVALUED
 
     def test_current_yield_below_historical_range_is_expensive(self):
         records = _ingest_all(
-            _fundamentals_doc(period_end="2021-12-31", revenue=100, fcf=10),
-            _fundamentals_doc(period_end="2022-12-31", revenue=100, fcf=10),
-            _market_doc(snapshot="2021-12-31", price=50, shares=100),
-            _market_doc(snapshot="2022-12-31", price=200, shares=100),
+            _fundamentals_doc(period_end="2021-12-31", revenue=100, fcf=10, published_at=_dt(2022, 2, 15)),
+            _fundamentals_doc(period_end="2022-12-31", revenue=100, fcf=10, published_at=_dt(2023, 2, 15)),
+            _market_doc(snapshot="2022-06-01", price=50, shares=100),
+            _market_doc(snapshot="2023-06-01", price=200, shares=100),
         )
         analysis = _assemble(records)
         assert self._fcf_finding(analysis).status is ValuationStatus.EXPENSIVE
@@ -279,10 +287,10 @@ class TestRiskDerivesOnlyFromUpstreamConclusions:
 
     def test_expensive_valuation_produces_high_valuation_risk(self):
         records = _ingest_all(
-            _fundamentals_doc(period_end="2021-12-31", revenue=100, fcf=10),
-            _fundamentals_doc(period_end="2022-12-31", revenue=100, fcf=10),
-            _market_doc(snapshot="2021-12-31", price=50, shares=100),
-            _market_doc(snapshot="2022-12-31", price=200, shares=100),
+            _fundamentals_doc(period_end="2021-12-31", revenue=100, fcf=10, published_at=_dt(2022, 2, 15)),
+            _fundamentals_doc(period_end="2022-12-31", revenue=100, fcf=10, published_at=_dt(2023, 2, 15)),
+            _market_doc(snapshot="2022-06-01", price=50, shares=100),
+            _market_doc(snapshot="2023-06-01", price=200, shares=100),
         )
         analysis = _assemble(records)
         valuation_risk = next(f for f in analysis.risk_analysis.findings if f.category is RiskCategory.VALUATION_RISK)

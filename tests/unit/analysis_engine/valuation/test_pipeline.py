@@ -3,7 +3,7 @@
 three scenario findings."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, ValuationStatus
@@ -11,6 +11,14 @@ from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_r
 from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
 from atlas.decision_engine.contracts import EvaluationState
 from tests.unit.analysis_engine.valuation._fixtures import EVALUATED_AT, fundamentals_record, market_record
+
+
+def _filed(year: int, month: int = 2, day: int = 15) -> datetime:
+    """A realistic filing date -- ~6 weeks after a fiscal year end,
+    always strictly before the market observation the tests pair it
+    with. See test_cash_flow.py's own module docstring for why real
+    ISO dates and a real publication gap are used, not bare years."""
+    return datetime(year, month, day, tzinfo=timezone.utc)
 
 
 class TestStructuralCompleteness:
@@ -27,12 +35,18 @@ class TestStructuralCompleteness:
 class TestEndToEndFromRealRecords:
     def test_real_records_produce_a_real_undervalued_finding(self):
         records = (
-            fundamentals_record(period_end=date(2022, 12, 31), identifier="fy22", free_cash_flow=100.0),
-            fundamentals_record(period_end=date(2023, 12, 31), identifier="fy23", free_cash_flow=110.0),
-            fundamentals_record(period_end=date(2024, 12, 31), identifier="fy24", free_cash_flow=200.0),
-            market_record(period_end=date(2022, 12, 31), identifier="m22", share_price=50.0, shares_outstanding=100.0),
-            market_record(period_end=date(2023, 12, 31), identifier="m23", share_price=52.0, shares_outstanding=100.0),
-            market_record(period_end=date(2024, 12, 31), identifier="m24", share_price=53.0, shares_outstanding=100.0),
+            fundamentals_record(
+                period_end=date(2022, 12, 31), identifier="fy22", published_at=_filed(2023), free_cash_flow=100.0
+            ),
+            fundamentals_record(
+                period_end=date(2023, 12, 31), identifier="fy23", published_at=_filed(2024), free_cash_flow=110.0
+            ),
+            fundamentals_record(
+                period_end=date(2024, 12, 31), identifier="fy24", published_at=_filed(2025), free_cash_flow=200.0
+            ),
+            market_record(period_end=date(2023, 3, 1), identifier="m22", share_price=50.0, shares_outstanding=100.0),
+            market_record(period_end=date(2024, 3, 1), identifier="m23", share_price=52.0, shares_outstanding=100.0),
+            market_record(period_end=date(2025, 3, 1), identifier="m24", share_price=53.0, shares_outstanding=100.0),
         )
         business_facts = extract_facts_from_records(records, evaluated_at=EVALUATED_AT)
         valuation_facts = extract_valuation_facts_from_records(records, evaluated_at=EVALUATED_AT)
@@ -55,12 +69,18 @@ class TestScenarioE_StrongGrowthExpensiveValuation:
         from atlas.analysis_engine.growth import evaluate_growth
 
         records = (
-            fundamentals_record(period_end=date(2022, 12, 31), identifier="fy22", free_cash_flow=100.0),
-            fundamentals_record(period_end=date(2023, 12, 31), identifier="fy23", free_cash_flow=150.0),
-            fundamentals_record(period_end=date(2024, 12, 31), identifier="fy24", free_cash_flow=250.0),
-            market_record(period_end=date(2022, 12, 31), identifier="m22", share_price=10.0, shares_outstanding=100.0),
-            market_record(period_end=date(2023, 12, 31), identifier="m23", share_price=10.0, shares_outstanding=100.0),
-            market_record(period_end=date(2024, 12, 31), identifier="m24", share_price=90.0, shares_outstanding=100.0),
+            fundamentals_record(
+                period_end=date(2022, 12, 31), identifier="fy22", published_at=_filed(2023), free_cash_flow=100.0
+            ),
+            fundamentals_record(
+                period_end=date(2023, 12, 31), identifier="fy23", published_at=_filed(2024), free_cash_flow=150.0
+            ),
+            fundamentals_record(
+                period_end=date(2024, 12, 31), identifier="fy24", published_at=_filed(2025), free_cash_flow=250.0
+            ),
+            market_record(period_end=date(2023, 3, 1), identifier="m22", share_price=10.0, shares_outstanding=100.0),
+            market_record(period_end=date(2024, 3, 1), identifier="m23", share_price=10.0, shares_outstanding=100.0),
+            market_record(period_end=date(2025, 3, 1), identifier="m24", share_price=90.0, shares_outstanding=100.0),
         )
         business_facts = extract_facts_from_records(records, evaluated_at=EVALUATED_AT)
         valuation_facts = extract_valuation_facts_from_records(records, evaluated_at=EVALUATED_AT)
@@ -78,10 +98,14 @@ class TestScenarioE_StrongGrowthExpensiveValuation:
 class TestDeterminism:
     def test_identical_inputs_produce_a_deeply_equal_result(self):
         records = (
-            fundamentals_record(period_end=date(2023, 12, 31), identifier="fy23", free_cash_flow=100.0),
-            fundamentals_record(period_end=date(2024, 12, 31), identifier="fy24", free_cash_flow=110.0),
-            market_record(period_end=date(2023, 12, 31), identifier="m23", share_price=50.0, shares_outstanding=100.0),
-            market_record(period_end=date(2024, 12, 31), identifier="m24", share_price=52.0, shares_outstanding=100.0),
+            fundamentals_record(
+                period_end=date(2023, 12, 31), identifier="fy23", published_at=_filed(2024), free_cash_flow=100.0
+            ),
+            fundamentals_record(
+                period_end=date(2024, 12, 31), identifier="fy24", published_at=_filed(2025), free_cash_flow=110.0
+            ),
+            market_record(period_end=date(2024, 3, 1), identifier="m23", share_price=50.0, shares_outstanding=100.0),
+            market_record(period_end=date(2025, 3, 1), identifier="m24", share_price=52.0, shares_outstanding=100.0),
         )
         business_facts = extract_facts_from_records(records, evaluated_at=EVALUATED_AT)
         valuation_facts = extract_valuation_facts_from_records(records, evaluated_at=EVALUATED_AT)

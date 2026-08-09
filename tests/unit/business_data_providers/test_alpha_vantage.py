@@ -5,6 +5,7 @@ network anywhere in this file.
 from __future__ import annotations
 
 import time
+from datetime import date as date_
 from datetime import datetime, timezone
 
 import pytest
@@ -440,3 +441,192 @@ class TestInterRequestDelay:
         with pytest.raises(CompanyNotFound) as excinfo:
             provider.fetch(company_identifier="ZZZZ", evaluated_at=_NOW)
         assert "super-secret-key-value" not in str(excinfo.value)
+
+
+def _monthly_fetcher(series: dict[str, dict], *, overview: dict | None = None):
+    responses = {
+        "TIME_SERIES_MONTHLY_ADJUSTED": {"Monthly Adjusted Time Series": series},
+        "OVERVIEW": overview if overview is not None else {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"},
+    }
+    return _fake_fetcher(responses)
+
+
+class TestHistoricalSnapshots:
+    """ATLAS-032, Phase 7 -- `fetch_historical_snapshots`, the
+    split-adjusted-monthly-close, no-look-ahead sampling path."""
+
+    def test_no_filing_dates_makes_no_api_call_at_all(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+
+        def fetcher(url: str, headers):
+            raise AssertionError("no API call should happen for an empty filing_dates tuple")
+
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        docs = provider.fetch_historical_snapshots(company_identifier="AAPL", filing_dates=(), evaluated_at=_NOW)
+        assert docs == ()
+
+    def test_single_filing_date_samples_first_close_on_or_after(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _monthly_fetcher(
+            {
+                "2022-12-30": {"4. close": "30.00", "5. adjusted close": "30.00"},
+                "2023-02-28": {"4. close": "40.00", "5. adjusted close": "40.00"},
+                "2023-03-31": {"4. close": "42.00", "5. adjusted close": "42.00"},
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        (doc,) = provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 15),), evaluated_at=_NOW
+        )
+        # 2023-02-28 is the first monthly close on or after 2023-02-15
+        # -- never 2022-12-30 (before the filing) or 2023-03-31 (a
+        # later, non-nearest candidate).
+        assert doc.period_start == date_(2023, 2, 28)
+        assert doc.metadata["share_price"] == 40.00
+        assert doc.metadata["shares_outstanding"] == 1000000.0
+        assert doc.metadata["currency"] == "USD"
+        assert doc.source_kind == "market_data_snapshot"
+
+    def test_no_close_after_a_filing_date_produces_no_document_for_it(self, monkeypatch):
+        """A filing date newer than every available monthly close is
+        silently skipped -- never fabricated forward to a nearest or
+        most-recent price."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _monthly_fetcher({"2020-01-31": {"4. close": "10.00", "5. adjusted close": "10.00"}})
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        docs = provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2025, 1, 1),), evaluated_at=_NOW
+        )
+        assert docs == ()
+
+    def test_multiple_filing_dates_mapping_to_the_same_close_collapse_to_one_document(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _monthly_fetcher({"2023-02-28": {"4. close": "40.00", "5. adjusted close": "40.00"}})
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        docs = provider.fetch_historical_snapshots(
+            company_identifier="AAPL",
+            filing_dates=(date_(2023, 2, 1), date_(2023, 2, 15), date_(2023, 2, 20)),
+            evaluated_at=_NOW,
+        )
+        assert len(docs) == 1
+        assert docs[0].period_start == date_(2023, 2, 28)
+
+    def test_distinct_filing_dates_produce_distinct_sorted_documents(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _monthly_fetcher(
+            {
+                "2023-02-28": {"4. close": "40.00", "5. adjusted close": "40.00"},
+                "2024-02-29": {"4. close": "45.00", "5. adjusted close": "45.00"},
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        docs = provider.fetch_historical_snapshots(
+            company_identifier="AAPL",
+            filing_dates=(date_(2024, 2, 1), date_(2023, 2, 1)),  # deliberately out of order
+            evaluated_at=_NOW,
+        )
+        assert [d.period_start for d in docs] == [date_(2023, 2, 28), date_(2024, 2, 29)]
+
+    def test_published_at_is_the_sampled_trading_date_not_evaluated_at(self, monkeypatch):
+        """A historical close was genuinely public on its own trading
+        day -- unlike the current snapshot, this must not collapse to
+        `evaluated_at` (when Atlas happened to fetch it)."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _monthly_fetcher({"2023-02-28": {"4. close": "40.00", "5. adjusted close": "40.00"}})
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        (doc,) = provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        assert doc.published_at.date() == date_(2023, 2, 28)
+        assert doc.published_at != _NOW
+
+    def test_unconfirmed_currency_omits_price_entirely(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _monthly_fetcher(
+            {"2023-02-28": {"4. close": "40.00", "5. adjusted close": "40.00"}}, overview={}
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        (doc,) = provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        assert "share_price" not in doc.metadata
+        assert "currency" not in doc.metadata
+
+    def test_explicit_non_usd_currency_raises_unsupported_unit(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _monthly_fetcher(
+            {"2023-02-28": {"4. close": "40.00", "5. adjusted close": "40.00"}},
+            overview={"Symbol": "VOLV-B", "Currency": "SEK"},
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        with pytest.raises(UnsupportedUnit):
+            provider.fetch_historical_snapshots(
+                company_identifier="VOLV-B", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+            )
+
+    def test_missing_api_key_raises(self, monkeypatch):
+        monkeypatch.delenv("ALPHA_VANTAGE_API_KEY", raising=False)
+        provider = AlphaVantageMarketDataProvider(lambda url, headers: {}, sleeper=lambda seconds: None)
+        with pytest.raises(MissingRequiredField):
+            provider.fetch_historical_snapshots(
+                company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+            )
+
+    def test_malformed_series_response_raises(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher({"TIME_SERIES_MONTHLY_ADJUSTED": {"unexpected": "shape"}, "OVERVIEW": {}})
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        with pytest.raises(MalformedProviderResponse):
+            provider.fetch_historical_snapshots(
+                company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+            )
+
+    def test_rate_limit_on_the_monthly_call_surfaces_as_rate_limited(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "TIME_SERIES_MONTHLY_ADJUSTED": {"Note": "Thank you for using Alpha Vantage! ... call frequency"},
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD"},
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        with pytest.raises(RateLimited):
+            provider.fetch_historical_snapshots(
+                company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+            )
+
+    def test_paced_overview_then_monthly_series_in_order(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        call_order: list[str] = []
+
+        def fetcher(url: str, headers):
+            if "OVERVIEW" in url:
+                call_order.append("OVERVIEW")
+                return {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"}
+            call_order.append("TIME_SERIES_MONTHLY_ADJUSTED")
+            return {"Monthly Adjusted Time Series": {"2023-02-28": {"5. adjusted close": "40.00"}}}
+
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: call_order.append("SLEEP"))
+        provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        assert call_order == ["OVERVIEW", "SLEEP", "TIME_SERIES_MONTHLY_ADJUSTED"]
+
+    def test_no_real_wait_for_the_default_sleeper(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _monthly_fetcher({"2023-02-28": {"4. close": "40.00", "5. adjusted close": "40.00"}})
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        started = time.monotonic()
+        provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        assert time.monotonic() - started < 1.0
+
+    def test_api_key_never_appears_in_raw_reference(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "super-secret-key-value")
+        fetcher = _monthly_fetcher({"2023-02-28": {"4. close": "40.00", "5. adjusted close": "40.00"}})
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=lambda seconds: None)
+        (doc,) = provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        assert "super-secret-key-value" not in doc.raw_reference

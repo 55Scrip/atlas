@@ -29,6 +29,18 @@ supplied in a lexicographically sortable format (e.g. `"2024"`,
 package never reformats or validates that convention, since doing so
 would require assuming a calendar/fiscal-year convention no source data
 here confirms. A real, named limitation, not a silent one.
+
+**`published_at` (ATLAS-032) is when the source was actually made
+public -- the SEC filing date, the market data fetch time -- inherited
+verbatim from the source `BusinessRecord.published_at`, never derived
+from `period`.** `period` and `published_at` answer different
+questions and must never be confused: `period` is what the fact is
+*about* (a fiscal year, a trading date), `published_at` is when Atlas
+(or anyone) could first have known the value. A fiscal year's period
+end is typically weeks to months before the filing that discloses it
+actually publishes -- this field exists so evaluators can enforce "no
+look-ahead" (never pair a fact with something published before this
+fact itself was public) without conflating the two.
 """
 from __future__ import annotations
 
@@ -60,3 +72,4 @@ class BusinessFact:
     source_record_id: str
     provenance: Provenance
     extracted_at: datetime
+    published_at: datetime
