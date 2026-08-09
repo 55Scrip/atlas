@@ -60,23 +60,27 @@ router = APIRouter(prefix="/discovery", tags=["discovery"])
 
 
 def _case_context(context: DiscoveryContext) -> CaseContextInput | None:
-    """ATLAS-017/018: Discovery consumes the exact same
-    `CaseIntelligenceReport` the Investment Case page's own API route
-    returns -- never a second reconstruction. `None` unless identity
-    resolution (`atlas.alpha.discovery_context`) actually succeeded."""
-    report = context.case
-    if report is None:
+    """ATLAS-030: Discovery consumes the exact same canonical
+    `DiscoveryCaseContext` -- built from `InvestmentCaseCompositionService
+    .build()`, the same composition Portfolio Cockpit and the Investment
+    Case page's own API route consume -- never a second reconstruction.
+    `None` unless identity resolution (`atlas.alpha.discovery_context`)
+    actually succeeded."""
+    case = context.case
+    if case is None:
         return None
     return CaseContextInput(
-        ticker=report.current_view.ticker,
-        held=report.current_view.held,
-        current_thesis_reason=report.current_thesis.latest_decision_reason,
-        confidence=report.confidence.value,
-        is_stale=report.review_status.is_stale,
-        missing_evidence_kinds=tuple(gap.kind.value for gap in report.missing_evidence),
-        key_risks=tuple(risk.kind.value for risk in report.key_risks),
-        consider_kinds=tuple(item.kind.value for item in report.consider_items),
-        portfolio_context_facts=tuple(fact.value for fact in report.portfolio_context.facts),
+        ticker=case.ticker,
+        held=case.held,
+        current_thesis_reason=case.current_thesis_reason,
+        confidence=case.confidence.value,
+        conviction_level=case.conviction_level.value,
+        is_stale=case.is_stale,
+        missing_evidence_kinds=tuple(kind.value for kind in case.missing_evidence_kinds),
+        open_questions=tuple(kind.value for kind in case.open_questions),
+        key_risks=tuple(kind.value for kind in case.key_risks),
+        consider_kinds=tuple(kind.value for kind in case.consider_kinds),
+        portfolio_context_facts=tuple(fact.value for fact in case.portfolio_context_facts),
     )
 
 

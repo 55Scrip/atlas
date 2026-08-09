@@ -253,6 +253,65 @@ def test_ai_discovery_chat_does_not_import_atlas_alpha() -> None:
     )
 
 
+def test_discovery_context_does_not_import_case_intelligence() -> None:
+    """ATLAS-030: Discovery's canonical composition (`atlas/alpha
+    /discovery_context/case_projection.py`, `service.py`,
+    `dependencies.py`, `models.py`) must never depend on the legacy
+    `atlas.alpha.case_intelligence` path it was migrated off of.
+    `diff.py` is the one documented exception: `diff_case_intelligence`
+    is pre-existing dead code (no live caller anywhere in `atlas/`,
+    confirmed by this sprint's own audit) that independently type-hints
+    against the legacy report shape for its own unused function
+    signature -- harmless, and deliberately left untouched rather than
+    deleted (Phase 16's own "the safer default is to keep, not delete"
+    rule)."""
+    discovery_context_dir = ALPHA_DIR / "discovery_context"
+    violations = []
+    for path in _python_files(discovery_context_dir):
+        if path.name == "diff.py":
+            continue
+        for module in _imported_modules(path):
+            if module.startswith("atlas.alpha.case_intelligence"):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "discovery_context depending on legacy case_intelligence:\n" + "\n".join(violations)
+
+
+def test_discovery_context_never_imports_individual_evaluators() -> None:
+    """ATLAS-030 Phase 17: Discovery may consume canonical result types
+    (`CanonicalAnalysis`, `ConvictionAssessment`, ...) and composition
+    services (`InvestmentCaseCompositionService`), but must never import
+    an individual analytical evaluator or recomputation function
+    directly -- it must not become a second reasoning engine."""
+    forbidden_prefixes = (
+        "atlas.analysis_engine.growth",
+        "atlas.analysis_engine.capital_allocation",
+        "atlas.analysis_engine.business_data",
+        "atlas.analysis_engine.business_facts",
+        "atlas.analysis_engine.valuation.cash_flow",
+        "atlas.analysis_engine.risk.business_risk",
+        "atlas.analysis_engine.risk.financial_risk",
+        "atlas.analysis_engine.risk.valuation_risk",
+        "atlas.analysis_engine.risk.thesis_risk",
+        "atlas.decision_engine.pipeline",
+        "atlas.decision_engine.stages",
+    )
+    forbidden_calls = ("calculate_conviction(", "assemble_analysis(", "run_pipeline(")
+
+    discovery_context_dir = ALPHA_DIR / "discovery_context"
+    violations = []
+    for path in _python_files(discovery_context_dir):
+        text = path.read_text(encoding="utf-8")
+        for module in _imported_modules(path):
+            if module.startswith(forbidden_prefixes):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+        for call in forbidden_calls:
+            if call in text:
+                violations.append(f"{path.relative_to(REPO_ROOT)} calls {call}")
+
+    assert not violations, "discovery_context reasoning-engine leakage:\n" + "\n".join(violations)
+
+
 def test_capabilities_do_not_import_providers_or_call_network_directly() -> None:
     forbidden_prefixes = ("atlas.providers",)
     forbidden_network_modules = {"urllib", "urllib.request", "requests", "httpx"}

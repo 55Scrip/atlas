@@ -97,24 +97,36 @@ class RiskSignalContextInput:
 
 @dataclass(frozen=True)
 class CaseContextInput:
-    """Mirrors a slice of `atlas.alpha.case_intelligence.models
-    .CaseIntelligenceReport` (ATLAS-017) without importing it — same
+    """Mirrors a slice of `atlas.alpha.discovery_context.case_projection
+    .DiscoveryCaseContext` (ATLAS-030) without importing it — same
     boundary technique as `HoldingContextInput` above. Populated only
     when the router resolves a specific `caseId` on the request via
-    `atlas.alpha.discovery_context.DiscoveryContextService` (ATLAS-018);
-    the same `CaseIntelligenceService.build_report()` call the
-    Investment Case page's own API route makes, never a second
-    reconstruction. `key_risks`/`missing_evidence_kinds`/
-    `consider_kinds`/`portfolio_context_facts` are the raw English kind
-    values, same "translated only at display time" convention every
-    other kind value in this module already uses."""
+    `atlas.alpha.discovery_context.DiscoveryContextService`; that
+    context is now built from `InvestmentCaseCompositionService.build()`
+    — the same canonical composition Portfolio Cockpit and the
+    Investment Case page's own API route consume, never a second
+    reconstruction (ATLAS-030, retiring the legacy `case_intelligence`
+    path this field previously mirrored). `key_risks`/
+    `missing_evidence_kinds`/`consider_kinds`/`portfolio_context_facts`/
+    `open_questions` are the raw English kind values, same "translated
+    only at display time" convention every other kind value in this
+    module already uses.
+
+    `conviction_level` and `open_questions` are new in ATLAS-030:
+    Discovery previously never saw a real Conviction value at all (the
+    legacy path hardcoded it `unavailable`) and never saw Open Questions
+    — both are now real, canonical values Discovery can ground its
+    answers in, the same values Portfolio Cockpit and Investment Case
+    already show."""
 
     ticker: str | None
     held: bool
     current_thesis_reason: str | None
     confidence: str
+    conviction_level: str
     is_stale: bool
     missing_evidence_kinds: tuple[str, ...]
+    open_questions: tuple[str, ...]
     key_risks: tuple[str, ...]
     consider_kinds: tuple[str, ...]
     # ATLAS-018 Phase 6 (Workflow Awareness): the same portfolio-context
@@ -230,8 +242,8 @@ blur these together — never state an assumption in the same breath as a fact w
 it as an assumption, and never imply a conclusion follows from evidence you were not given.
 - Every non-obvious statement about the investor's holdings, decisions, evidence, or portfolio \
 state must be traceable to something you were actually given below (Portfolio Intelligence, \
-Case Intelligence, or the investor's own message) — if you cannot point to where a claim came \
-from, do not make it.
+the Investment Case in discussion, or the investor's own message) — if you cannot point to \
+where a claim came from, do not make it.
 - When the investor explicitly asks you to open, create, or start reviewing an Investment \
 Case for one specific, named company, call the create_or_open_investment_case tool rather \
 than describing how to do it manually — but only when you are confident of the exact ticker \
@@ -278,8 +290,8 @@ _RISK_SIGNAL_LABELS: dict[str, str] = {
     "awaiting_reconciliation": "awaiting reconciliation",
     "stale_review": "not reviewed recently",
 }
-#: ATLAS-017's `KeyRiskKind` (`atlas.alpha.case_intelligence.models`) --
-#: a distinct, smaller taxonomy from `_RISK_SIGNAL_LABELS` above (one
+#: ATLAS-030's `KeyRiskKind` (`atlas.alpha.discovery_context.case_projection`)
+#: -- a distinct, smaller taxonomy from `_RISK_SIGNAL_LABELS` above (one
 #: Case's own risks, not a portfolio-wide signal), so kept as its own
 #: dict rather than merged.
 _KEY_RISK_LABELS: dict[str, str] = {
@@ -287,11 +299,22 @@ _KEY_RISK_LABELS: dict[str, str] = {
     "high_concentration": "high concentration in this position",
     "awaiting_reconciliation": "awaiting reconciliation after a trade",
 }
-#: ATLAS-017's `EvidenceGapKind` (`atlas.decision_engine.contracts`).
+#: `EvidenceGapKind` (`atlas.decision_engine.contracts`).
 _MISSING_EVIDENCE_LABELS: dict[str, str] = {
     "no_evidence_recorded": "no evidence recorded for this Investment Case",
     "observation_without_evidence": "an Observation with no linked evidence",
     "decision_without_linked_observation": "a Decision with no linked Observation",
+}
+#: `OpenQuestionKind` (`atlas.decision_engine.contracts`) -- ATLAS-030:
+#: the corrected, canonical list (`CanonicalAnalysis.open_questions`,
+#: ATLAS-027), never the raw, uncorrected `reasoning.open_questions`.
+_OPEN_QUESTION_LABELS: dict[str, str] = {
+    "no_evidence_recorded_for_case": "no evidence has been recorded for this Investment Case",
+    "observation_without_evidence": "an Observation has no linked evidence",
+    "decision_without_linked_observation": "a Decision has no linked Observation",
+    "business_durability_not_assessable": "Atlas has no business-fact data to assess durability from",
+    "valuation_thesis_not_documented": "no valuation thesis has been documented",
+    "portfolio_factor_not_assessable": "a portfolio-wide factor is not yet assessable",
 }
 #: `EvidenceCoverageLevel` (`atlas.decision_engine.contracts`), reused
 #: verbatim as Confidence -- see `CaseContextInput`'s own docstring.
@@ -301,8 +324,19 @@ _CONFIDENCE_LABELS: dict[str, str] = {
     "partial": "partial evidence",
     "full": "full evidence coverage",
 }
+#: `ConvictionLevel` (`atlas.analysis_engine.conviction`) -- ATLAS-030:
+#: the real, canonical Conviction, never a Discovery-invented value.
+#: Distinct from Confidence above: Confidence is how well-supported the
+#: analysis is; Conviction is how strongly it supports a conclusion.
+_CONVICTION_LABELS: dict[str, str] = {
+    "very_high": "very high",
+    "high": "high",
+    "moderate": "moderate",
+    "low": "low",
+    "insufficient_evidence": "insufficient evidence to form a conviction",
+}
 #: ATLAS-018 Phase 6's `PortfolioContextFact`
-#: (`atlas.alpha.case_intelligence.models`).
+#: (`atlas.alpha.discovery_context.case_projection`).
 _PORTFOLIO_CONTEXT_FACT_LABELS: dict[str, str] = {
     "largest_holding": "this is the portfolio's largest position",
     "recently_increased": "most recently increased",
@@ -386,10 +420,20 @@ def render_portfolio_context(portfolio: PortfolioContextInput | None) -> str | N
         if case.current_thesis_reason is not None:
             lines.append(f"  - Current thesis (the investor's own words): \"{case.current_thesis_reason}\"")
         lines.append(f"  - Evidence coverage: {_readable(_CONFIDENCE_LABELS, case.confidence)}")
+        lines.append(f"  - Conviction: {_readable(_CONVICTION_LABELS, case.conviction_level)}")
         if case.is_stale:
             lines.append("  - This Investment Case has not been reviewed in a long time.")
         for kind in case.missing_evidence_kinds:
             lines.append(f"  - Missing evidence: {_readable(_MISSING_EVIDENCE_LABELS, kind)}")
+        # `open_questions` can repeat the same kind multiple times (e.g.
+        # one `portfolio_factor_not_assessable` per un-assessable
+        # factor) -- each occurrence is a real, distinct open question,
+        # but restating the identical sentence that many times adds
+        # nothing for Discovery's own purposes, so each kind is stated
+        # once here (the full, un-deduplicated list remains visible on
+        # the Investment Case page itself).
+        for kind in dict.fromkeys(case.open_questions):
+            lines.append(f"  - Open question: {_readable(_OPEN_QUESTION_LABELS, kind)}")
         for kind in case.key_risks:
             lines.append(f"  - Key risk: {_readable(_KEY_RISK_LABELS, kind)}")
         for kind in case.consider_kinds:

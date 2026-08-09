@@ -284,8 +284,10 @@ class TestCaseIntelligenceContext:
                 held=True,
                 current_thesis_reason="Durable moat and cheap valuation.",
                 confidence="full",
+                conviction_level="moderate",
                 is_stale=False,
                 missing_evidence_kinds=(),
+                open_questions=(),
                 key_risks=(),
                 consider_kinds=(),
             ),
@@ -305,8 +307,10 @@ class TestCaseIntelligenceContext:
                 held=False,
                 current_thesis_reason=None,
                 confidence="not_applicable",
+                conviction_level="insufficient_evidence",
                 is_stale=False,
                 missing_evidence_kinds=(),
+                open_questions=(),
                 key_risks=(),
                 consider_kinds=(),
             ),
@@ -325,8 +329,10 @@ class TestCaseIntelligenceContext:
                 held=True,
                 current_thesis_reason=None,
                 confidence="partial",
+                conviction_level="low",
                 is_stale=False,
                 missing_evidence_kinds=("no_evidence_recorded",),
+                open_questions=(),
                 key_risks=("contradicting_evidence",),
                 consider_kinds=(),
             ),
@@ -334,6 +340,54 @@ class TestCaseIntelligenceContext:
         rendered = render_portfolio_context(portfolio)
         assert "no evidence recorded for this Investment Case" in rendered
         assert "evidence that contradicts the current thesis" in rendered
+
+    def test_conviction_and_open_questions_render_readable_phrases(self):
+        """ATLAS-030: Discovery previously never saw a real Conviction
+        (hardcoded unavailable) or any Open Question at all."""
+        portfolio = PortfolioContextInput(
+            holdings=(),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+            case_context=CaseContextInput(
+                ticker="AMD",
+                held=True,
+                current_thesis_reason=None,
+                confidence="full",
+                conviction_level="high",
+                is_stale=False,
+                missing_evidence_kinds=(),
+                open_questions=("business_durability_not_assessable", "portfolio_factor_not_assessable"),
+                key_risks=(),
+                consider_kinds=(),
+            ),
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert "Conviction: high" in rendered
+        assert "Atlas has no business-fact data to assess durability from" in rendered
+        assert "a portfolio-wide factor is not yet assessable" in rendered
+
+    def test_repeated_open_question_kinds_are_stated_only_once(self):
+        portfolio = PortfolioContextInput(
+            holdings=(),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+            case_context=CaseContextInput(
+                ticker="AMD",
+                held=True,
+                current_thesis_reason=None,
+                confidence="full",
+                conviction_level="moderate",
+                is_stale=False,
+                missing_evidence_kinds=(),
+                open_questions=("portfolio_factor_not_assessable",) * 7,
+                key_risks=(),
+                consider_kinds=(),
+            ),
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert rendered.count("a portfolio-wide factor is not yet assessable") == 1
 
     def test_portfolio_context_facts_render_readable_phrases(self):
         portfolio = PortfolioContextInput(
@@ -346,8 +400,10 @@ class TestCaseIntelligenceContext:
                 held=True,
                 current_thesis_reason=None,
                 confidence="full",
+                conviction_level="moderate",
                 is_stale=False,
                 missing_evidence_kinds=(),
+                open_questions=(),
                 key_risks=(),
                 consider_kinds=(),
                 portfolio_context_facts=("largest_holding", "pending_workflow"),
@@ -368,8 +424,10 @@ class TestCaseIntelligenceContext:
                 held=False,
                 current_thesis_reason="Early-stage research.",
                 confidence="not_applicable",
+                conviction_level="insufficient_evidence",
                 is_stale=False,
                 missing_evidence_kinds=(),
+                open_questions=(),
                 key_risks=(),
                 consider_kinds=(),
             ),

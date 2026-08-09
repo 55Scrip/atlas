@@ -1,0 +1,184 @@
+"""ATLAS-030 Phase 19 -- cross-surface consistency: for the same Case,
+Portfolio Cockpit (`GET /alpha-portfolio/cockpit`), the canonical
+Investment Case API (`GET /cases/{case_id}/analysis`), and Discovery's
+own context (`DiscoveryContextService.build`) must all agree. All three
+are now built from the exact same `InvestmentCaseComposition` --
+Portfolio Cockpit via `build_many`, Investment Case via `build`,
+Discovery via `build` -- so any disagreement here would mean one of the
+three drifted from the real underlying analysis.
+
+Discovery has no REST endpoint of its own (`DiscoveryContextService` is
+injected directly into `/discovery/chat`, never exposed independently),
+so it is constructed directly here against the same overridden in-memory
+engine the HTTP client uses -- the same composition FastAPI's own
+`Depends` chain would otherwise assemble.
+"""
+from __future__ import annotations
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy.pool import StaticPool
+
+from atlas.alpha.discovery_context.service import DiscoveryContextService
+from atlas.alpha.investment_case.api.dependencies import get_investment_case_composition_service
+from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_store, get_alpha_trade_log_store
+from atlas.alpha.portfolio_intelligence.service import PortfolioIntelligenceService
+from atlas.alpha.portfolio_status.api.dependencies import get_portfolio_status_service
+from atlas.core.infrastructure.api.app import create_app
+from atlas.core.infrastructure.api.case.dependencies import get_case_repository
+from atlas.core.infrastructure.api.decision.dependencies import get_decision_engine, get_decision_repository
+from atlas.core.infrastructure.api.evidence.dependencies import get_evidence_repository
+from atlas.core.infrastructure.api.knowledge_reference.dependencies import get_outcome_repository
+from atlas.core.infrastructure.api.observation.dependencies import get_observation_repository
+from atlas.core.infrastructure.persistence.decision.table import create_decision_table
+
+
+@pytest.fixture
+def client():
+    engine = create_engine(
+        "sqlite:///:memory:",
+        future=True,
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
+    )
+    create_decision_table(engine)
+    app = create_app()
+    app.dependency_overrides[get_decision_engine] = lambda: engine
+    test_client = TestClient(app)
+    test_client.engine = engine  # type: ignore[attr-defined]
+    return test_client
+
+
+def _discovery_context_service(engine: Engine) -> DiscoveryContextService:
+    portfolio_store = get_alpha_portfolio_store(engine)
+    trade_log_store = get_alpha_trade_log_store(engine)
+    decision_repository = get_decision_repository(engine)
+    observation_repository = get_observation_repository(engine)
+    evidence_repository = get_evidence_repository(engine)
+    outcome_repository = get_outcome_repository(engine)
+
+    portfolio_status_service = get_portfolio_status_service(
+        portfolio_store=portfolio_store,
+        trade_log_store=trade_log_store,
+        decision_repository=decision_repository,
+        outcome_repository=outcome_repository,
+        observation_repository=observation_repository,
+    )
+    investment_case_composition_service = get_investment_case_composition_service(
+        case_repository=get_case_repository(engine),
+        decision_repository=decision_repository,
+        observation_repository=observation_repository,
+        evidence_repository=evidence_repository,
+        outcome_repository=outcome_repository,
+        portfolio_store=portfolio_store,
+        trade_log_store=trade_log_store,
+    )
+    portfolio_intelligence_service = PortfolioIntelligenceService(
+        portfolio_store,
+        trade_log_store,
+        decision_repository,
+        observation_repository,
+        evidence_repository,
+        outcome_repository,
+        portfolio_status_service,
+    )
+    return DiscoveryContextService(
+        portfolio_intelligence_service=portfolio_intelligence_service,
+        investment_case_composition_service=investment_case_composition_service,
+        portfolio_status_service=portfolio_status_service,
+    )
+
+
+def _import_portfolio(client, holdings: list[dict]) -> dict:
+    response = client.post("/alpha-portfolio/import", json={"holdings": holdings})
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+class TestConvictionAndConfidenceAgreement:
+    def test_all_three_surfaces_agree(self, client):
+        _import_portfolio(client, [{"ticker": "NVDA", "weightPercent": 100}])
+        cockpit = client.get("/alpha-portfolio/cockpit").json()
+        case_id = cockpit["holdings"][0]["caseId"]
+        investment_case = client.get(f"/cases/{case_id}/analysis").json()
+
+        discovery = _discovery_context_service(client.engine).build(case_id)
+
+        assert cockpit["holdings"][0]["conviction"]["level"] == investment_case["conviction"]["level"]
+        assert discovery.case.conviction_level.value == investment_case["conviction"]["level"]
+
+        assert cockpit["holdings"][0]["confidence"] == investment_case["confidence"]
+        assert discovery.case.confidence.value == investment_case["confidence"]
+
+
+class TestValuationAgreement:
+    def test_fcf_yield_status_matches_across_the_board(self, client):
+        _import_portfolio(client, [{"ticker": "NVDA", "weightPercent": 100}])
+        cockpit = client.get("/alpha-portfolio/cockpit").json()
+        case_id = cockpit["holdings"][0]["caseId"]
+        investment_case = client.get(f"/cases/{case_id}/analysis").json()
+        case_finding = next(f for f in investment_case["valuation"]["findings"] if f["kind"] == "fcf_yield_relative")
+
+        assert cockpit["holdings"][0]["valuation"]["status"] == case_finding["status"]
+
+
+class TestBusinessAgreement:
+    def test_growth_and_capital_allocation_match(self, client):
+        _import_portfolio(client, [{"ticker": "NVDA", "weightPercent": 100}])
+        cockpit = client.get("/alpha-portfolio/cockpit").json()
+        case_id = cockpit["holdings"][0]["caseId"]
+        investment_case = client.get(f"/cases/{case_id}/analysis").json()
+        findings_by_kind = {f["kind"]: f for f in investment_case["businessAnalysis"]["findings"]}
+
+        assert cockpit["holdings"][0]["business"]["growth"] == findings_by_kind["growth"]["status"]
+        assert (
+            cockpit["holdings"][0]["business"]["capitalAllocation"]
+            == findings_by_kind["capital_allocation"]["status"]
+        )
+
+
+class TestRiskVectorAgreement:
+    def test_investment_case_and_discoverys_underlying_composition_agree(self, client):
+        _import_portfolio(client, [{"ticker": "NVDA", "weightPercent": 100}])
+        cockpit = client.get("/alpha-portfolio/cockpit").json()
+        case_id = cockpit["holdings"][0]["caseId"]
+        investment_case = client.get(f"/cases/{case_id}/analysis").json()
+
+        service = _discovery_context_service(client.engine)
+        discovery = service.build(case_id)
+        composition = service._investment_case_composition_service.build(case_id)
+
+        case_statuses = {f["category"]: f["status"] for f in investment_case["risk"]["findings"]}
+        composition_statuses = {
+            f.category.value: f.status.value for f in composition.canonical_analysis.risk_analysis.findings
+        }
+        assert case_statuses == composition_statuses
+        assert discovery.case is not None
+
+
+class TestOpenQuestionsAgreement:
+    def test_discovery_uses_the_same_corrected_list_as_investment_case(self, client):
+        _import_portfolio(client, [{"ticker": "NVDA", "weightPercent": 100}])
+        cockpit = client.get("/alpha-portfolio/cockpit").json()
+        case_id = cockpit["holdings"][0]["caseId"]
+        investment_case = client.get(f"/cases/{case_id}/analysis").json()
+
+        discovery = _discovery_context_service(client.engine).build(case_id)
+
+        case_question_kinds = {q["kind"] for q in investment_case["openQuestions"]}
+        discovery_question_kinds = {q.value for q in discovery.case.open_questions}
+        assert discovery_question_kinds == case_question_kinds
+
+
+class TestCaseIdAgreement:
+    def test_all_three_resolve_to_the_same_case_id(self, client):
+        _import_portfolio(client, [{"ticker": "NVDA", "weightPercent": 100}])
+        cockpit = client.get("/alpha-portfolio/cockpit").json()
+        case_id = cockpit["holdings"][0]["caseId"]
+        investment_case = client.get(f"/cases/{case_id}/analysis").json()
+        discovery = _discovery_context_service(client.engine).build(case_id)
+
+        assert investment_case["caseId"] == case_id
+        assert discovery.identity.case_id == case_id

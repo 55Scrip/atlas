@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from atlas.alpha.case_intelligence.models import CaseIntelligenceReport
+from atlas.alpha.discovery_context.case_projection import DiscoveryCaseContext
 from atlas.alpha.portfolio_intelligence.models import PortfolioIntelligenceReport
 
 __all__ = ["IdentityResolutionStatus", "ResolvedIdentity", "DiscoveryContext"]
@@ -50,9 +50,8 @@ class ResolvedIdentity:
 
     `ticker` is `None` whenever `case_id` resolves to a real Case that
     has no linked Alpha holding yet (a genuine, valid state -- see
-    `atlas.alpha.case_intelligence.models.CurrentView.held`) -- distinct
-    from `UNRESOLVED`, where `case_id` itself could not be confirmed to
-    exist at all.
+    `DiscoveryCaseContext.held`) -- distinct from `UNRESOLVED`, where
+    `case_id` itself could not be confirmed to exist at all.
     """
 
     status: IdentityResolutionStatus
@@ -70,11 +69,13 @@ class DiscoveryContext:
     than wrapping in a second `Optional`. `case` is `None` whenever
     `identity.status is not IdentityResolutionStatus.RESOLVED`.
 
-    Every field is the literal return value of an existing service's
-    own `build_report()` call -- this type adds no field of its own
-    that carries computed content, only assembly.
+    ATLAS-030: `case` is now a `DiscoveryCaseContext`, built exclusively
+    from `InvestmentCaseCompositionService.build()`'s
+    `InvestmentCaseComposition` -- the same canonical composition
+    Portfolio Cockpit and the Investment Case API already consume --
+    rather than the legacy `case_intelligence.CaseIntelligenceReport`.
     """
 
     identity: ResolvedIdentity
     portfolio: PortfolioIntelligenceReport
-    case: CaseIntelligenceReport | None
+    case: DiscoveryCaseContext | None
