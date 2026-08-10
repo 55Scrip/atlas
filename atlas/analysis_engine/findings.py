@@ -79,6 +79,19 @@ class FindingKind(str, Enum):
     `RiskFinding` (with its own missing-evidence detail) lives on
     `CanonicalAnalysis.risk_analysis.findings`, not here."""
 
+    RECOMMENDATION_DIRECTION_SELECTED = "recommendation_direction_selected"
+    """"Recommendation Backend Step 3" (`DE-008` Direction Selection):
+    replaces `RECOMMENDATION_WITHHELD` as the recommendation-stage
+    Finding exactly when `atlas.analysis_engine.direction_selector
+    .select_direction` reaches a real direction and
+    `atlas.analysis_engine.recommendation.evaluate_recommendation_gate`
+    constructs a `ComputedDirectionalRecommendation` from it -- the two
+    kinds are mutually exclusive per run, never both produced. `details`
+    carries `direction` and `conviction_level`, never a `reason` (that
+    field belongs to `RECOMMENDATION_WITHHELD` only). The full
+    `ComputedDirectionalRecommendation` lives on
+    `CanonicalAnalysis.recommendation.recommendation`, not here."""
+
 
 class FindingSeverity(str, Enum):
     """Categorical, three-level, never numeric -- matches this

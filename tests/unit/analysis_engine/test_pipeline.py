@@ -862,11 +862,34 @@ class TestConvictionEndToEnd:
         assert ConvictionReasonCode.NO_HIGH_FINANCIAL_OR_VALUATION_RISK in analysis.conviction.reasons
 
     def test_recommendation_gate_reflects_the_new_real_conviction(self):
-        """Recommendation's own gate logic is untouched -- it simply
-        reads whichever real `ConvictionAssessment` it is handed. LOW
-        (from high risk) must fail the MODERATE-minimum gate exactly the
-        same way a placeholder-derived LOW always did."""
+        """The five-level `ConvictionAssessment` -> `conviction_gate_met`
+        relationship (ATLAS-020's own gate) is untouched: LOW (from high
+        risk) still fails the MODERATE-minimum threshold exactly as
+        before.
+
+        What is new, and correctly so ("Recommendation Backend Step 3"):
+        `conviction_gate_met is False` no longer implies
+        `RecommendationWithheld`. `direction_selector.select_direction`
+        and `recommendation_conviction.calculate_recommendation_conviction`
+        are gated by DE-004 §3's own, independent, three-level
+        Recommendation Conviction -- a genuinely different scale from
+        the five-level one this test's Financial Risk scenario drives to
+        LOW (see `direction_selector.py`'s and `recommendation.py`'s own
+        module docstrings for why the two gates are deliberately never
+        merged). Here, Business is real and positive (a single, real
+        `MODERATE` Growth conclusion) and Valuation reaches a real,
+        `EXPENSIVE` conclusion -- both are genuine, case-specific
+        evidence, sufficient on their own for a real `NO_ACTION`
+        (DE-008 §20's not-held table), independent of the unrelated,
+        risk-driven five-level score staying LOW."""
         from datetime import date
+
+        from atlas.analysis_engine.conviction import ConvictionLevel
+        from atlas.analysis_engine.recommendation import (
+            ComputedDirectionalRecommendation,
+            RecommendationDirection,
+        )
+        from atlas.analysis_engine.recommendation_conviction import RecommendationConvictionLevel
 
         engine_input, output = self._fresh_full_coverage_input()
         records = (
@@ -882,10 +905,17 @@ class TestConvictionEndToEnd:
         analysis = assemble_analysis(
             engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
         )
-        from atlas.decision_engine.contracts import RecommendationOutcomeKind
 
+        # The five-level gate: unaffected, still fails.
         assert analysis.recommendation.conviction_gate_met is False
-        assert analysis.recommendation.recommendation.kind is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
+        assert analysis.conviction.level is ConvictionLevel.LOW
+
+        # The Direction Selector / three-level Recommendation Conviction:
+        # independent, and reaches a real, genuine outcome regardless.
+        recommendation = analysis.recommendation.recommendation
+        assert isinstance(recommendation, ComputedDirectionalRecommendation)
+        assert recommendation.direction is RecommendationDirection.NO_ACTION
+        assert isinstance(recommendation.conviction_level, RecommendationConvictionLevel)
 
     def test_determinism_holds_through_the_full_conviction_chain(self):
         from datetime import date

@@ -1,65 +1,66 @@
-"""Recommendation Gate (ATLAS-020, Phase 10) and the Recommendation
-domain model (DE-007, "Implementation Step 1").
+"""Recommendation Gate (ATLAS-020, Phase 10; "Recommendation Backend Step
+3" wiring) and the Recommendation domain model (DE-007, "Implementation
+Step 1").
 
 Wraps `atlas.decision_engine.stages.recommendation.determine_recommendation`
--- reused verbatim, never reimplemented -- and adds the one new gate
-condition ATLAS-020 introduced: Conviction must clear a threshold.
+-- reused verbatim, never reimplemented, still the sole producer of a
+`RecommendationWithheld` instance -- and adds two things ATLAS-020/this
+sprint introduced: the `conviction_gate_met` fact (ATLAS-020's five-level
+Conviction threshold check, unchanged), and, new this sprint, an actual
+attempt to select a Direction and construct a
+`ComputedDirectionalRecommendation` from it.
 
-**`ComputedDirectionalRecommendation` is now defined** (below) -- the
-type `docs/atlas_decision_engine/DE-007-Recommendation-Domain-Model.md`
-specifies and `atlas.decision_engine.contracts
-.RecommendationOutcomeKind.DIRECTIONAL` has reserved a discriminant value
-for since Sprint 1. Defining the type is not the same as being able to
-construct one from a real analysis run: **no code anywhere in this
-package ever constructs a `ComputedDirectionalRecommendation`.**
-`evaluate_recommendation_gate` below still always returns
-`RecommendationWithheld`, for a specific, documented reason -- see that
-function's own docstring. Two genuine capability gaps block it, found
-during DE-007 "Implementation Step 1" and reported rather than papered
-over:
+**`ComputedDirectionalRecommendation` can now be constructed by real
+code.** The two capability gaps this module's docstring previously named
+are both closed:
 
-1. **No Direction selector exists.** Nothing in `atlas.decision_engine`
-   or `atlas.analysis_engine` decides *which* of `DE-001` §2's six
-   directions (Buy/Add/Hold/Trim/Exit/No Action) a given analysis
-   supports. `conviction_gate_met` (below) has always meant "Conviction
-   alone would not block a direction" -- it has never meant a direction
-   was actually selected.
-2. **No Direction selector to feed a Recommendation-specific Conviction
-   assessment into.** `ConvictionLevel` (`conviction.py`, five levels)
-   remains a different, already-real, case-wide field -- `DE-004` §3's
-   own 3-level Atlas Conviction Level (`RecommendationConvictionLevel`,
-   imported below from `recommendation_conviction.py`, "Recommendation
-   Backend Step 2") is a distinct field DE-007 §11 requires be
-   independently computed, never silently derived from the five-level
-   scale. That computation now exists
-   (`recommendation_conviction.calculate_recommendation_conviction`) --
-   but it is not yet consumed anywhere, because gap 1 (no Direction
-   selector) still blocks `ComputedDirectionalRecommendation` from ever
-   being constructed by real code. A conviction level with no direction
-   to attach it to is not a Recommendation.
+1. **Direction selector**: `atlas.analysis_engine.direction_selector
+   .select_direction` (`docs/atlas_decision_engine/DE-008-Direction-Selection.md`,
+   "Recommendation Backend Step 3") now decides *which* of `DE-001` §2's
+   six directions -- restricted to the four this codebase can honestly
+   support today (Hold/Trim/No Action, or `None` for
+   RecommendationWithheld) -- a given analysis supports. BUY and ADD
+   remain structurally unreachable (Valuation Support for Capital
+   Deployment does not exist as a computed concept anywhere in this
+   codebase); EXIT is also currently unreachable -- pre-commit review
+   found that the only candidate signal for its "thesis dependency
+   failed" trigger (ordinary Counter-Evidence) is not doctrinally
+   sufficient (`DE-004` §3 treats it as compatible with a continuing
+   direction at Medium conviction, not as grounds for a forced exit).
+   See that module's own docstring for the full reasoning on all three.
+2. **Recommendation-specific Conviction, now consumed**:
+   `recommendation_conviction.calculate_recommendation_conviction` is
+   called below whenever a Direction is selected, and its
+   `RecommendationConvictionLevel` populates the constructed
+   `ComputedDirectionalRecommendation.conviction_level` -- the two
+   Conviction scales stay exactly as independently computed as DE-007
+   §11 requires; `evaluate_recommendation_gate`'s own `conviction`
+   parameter (the five-level `ConvictionAssessment`) is untouched and
+   still only feeds `conviction_gate_met`.
 
-Inventing a Direction selector to make `ComputedDirectionalRecommendation`
-constructible would be exactly the "do not invent a decision rule"
-constraint this sprint forbids. The type exists so a future sprint that
-builds one has a doctrine-correct shape, and a real Conviction
-computation, ready to populate; this sprint stops here.
+The gate, in full:
 
-The gate, in full, once a real Direction selector and Recommendation
-Conviction computation both exist:
+    select_direction(...) returns a real RecommendationDirection
+    AND calculate_recommendation_conviction(...) returns a real assessment
+    -> ComputedDirectionalRecommendation constructed
 
-    Business Analysis EVALUATED
-    AND Valuation EVALUATED
-    AND Portfolio Intelligence EVALUATED
-    AND Reasoning EVALUATED
-    AND Conviction >= MODERATE
-    -> Directional Recommendation allowed
+    otherwise (select_direction returns None, i.e. any of DE-008 §4's
+    hard-gate conditions fail, or DE-008 itself requires
+    RecommendationWithheld for this evidence pattern)
+    -> RecommendationWithheld, via determine_recommendation, unchanged
 
-    otherwise -> RecommendationWithheld
+`select_direction` and `calculate_recommendation_conviction` share the
+identical existence-floor check (the same four `EvaluationState` fields
+plus `EvidenceCoverageLevel`) for the identical reason (`DE-008` §4), so
+in practice the two either both succeed or both return the "nothing to
+report" case together -- this module still checks both explicitly rather
+than assuming that equivalence, so a future divergence between the two
+modules would surface as `RecommendationWithheld`, never as a
+partially-populated `ComputedDirectionalRecommendation`.
 
-The first four conditions are exactly
-`atlas.decision_engine.stages.recommendation`'s own existing
-`missing_evaluations` check (reused, not duplicated). The fifth
-(`conviction_gate_met`) was ATLAS-020's addition.
+`conviction_gate_met` (the five-level, ATLAS-020 field) is unaffected by
+any of this -- it remains a separate fact computed from the `conviction`
+parameter alone, exactly as before.
 """
 from __future__ import annotations
 
@@ -67,9 +68,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 
+from atlas.analysis_engine.business_contracts import BusinessAnalysisResult, BusinessCategory
 from atlas.analysis_engine.conviction import ConvictionAssessment, ConvictionLevel
 from atlas.analysis_engine.exceptions import AnalysisEngineContractError
-from atlas.analysis_engine.recommendation_conviction import RecommendationConvictionLevel
+from atlas.analysis_engine.recommendation_conviction import (
+    RecommendationConvictionLevel,
+    calculate_recommendation_conviction,
+)
+from atlas.analysis_engine.valuation.contracts import ValuationMethodKind
+from atlas.analysis_engine.valuation.models import ValuationEngineResult
 from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.outcome.entity import Outcome
@@ -77,6 +84,9 @@ from atlas.decision_engine.contracts import (
     BusinessEvaluationResult,
     ContradictionSummary,
     DecisionEngineInput,
+    EvaluationState,
+    EvidenceCoverageLevel,
+    HoldingLinkage,
     OpenQuestion,
     PortfolioContextSummary,
     PortfolioFinding,
@@ -277,17 +287,17 @@ _CONVICTION_ORDER = (
 
 @dataclass(frozen=True)
 class RecommendationGateResult:
-    """`recommendation` is always a `RecommendationWithheld` instance
-    today -- see module docstring for the two specific capability gaps
-    (no Direction selector, no Recommendation-specific Conviction
-    computation) that keep it that way. The field's type is widened to
-    `RecommendationWithheld | ComputedDirectionalRecommendation` so
-    downstream code has a doctrine-correct shape to narrow against once
-    a future sprint closes those gaps -- this is a type-level statement
-    of intent, not a behavior change: `evaluate_recommendation_gate`
-    below never constructs the second branch.
+    """`recommendation` is `RecommendationWithheld` whenever
+    `atlas.analysis_engine.direction_selector.select_direction` returns
+    `None`, and a real `ComputedDirectionalRecommendation` exactly when
+    it returns a `RecommendationDirection` (see
+    `evaluate_recommendation_gate`'s own docstring for the full gate).
+    The field stays typed as the union it always was --
+    `RecommendationWithheld | ComputedDirectionalRecommendation` -- no
+    shape change was needed to go from "always the first branch" to
+    "either branch, for real."
 
-    This widening intentionally happens here, in `atlas.analysis_engine`,
+    This widening intentionally lives here, in `atlas.analysis_engine`,
     not on `atlas.decision_engine.contracts.DecisionEngineOutput` --
     `ComputedDirectionalRecommendation` depends on Conviction (this
     package's exclusive domain, per `__init__.py`'s own ownership
@@ -298,15 +308,63 @@ class RecommendationGateResult:
     enforces in the other direction). `DecisionEngineOutput.recommendation`
     stays exactly `RecommendationWithheld`, untouched.
 
-    `conviction_gate_met` is the one new fact ATLAS-020 added: whether
-    Conviction alone would clear the threshold, so a future sprint that
-    finally builds a real Direction selector can see immediately which
-    of its two gates (decision-engine evaluation completeness,
-    Conviction) is the blocking one, without re-deriving either."""
+    `conviction_gate_met` remains ATLAS-020's own, separate fact: whether
+    the five-level `ConvictionAssessment` alone would clear its
+    threshold. It is computed from the `conviction` parameter only, and
+    plays no role in whether `select_direction`/
+    `calculate_recommendation_conviction` produce a directional
+    result -- the two gates are independent facts, both reported."""
 
     recommendation: RecommendationWithheld | ComputedDirectionalRecommendation
     conviction_gate_met: bool
     conviction: ConvictionAssessment
+
+
+_DIRECTION_STATEMENTS: dict[RecommendationDirection, str] = {
+    RecommendationDirection.HOLD: (
+        "Current evidence, actively reviewed, does not support a change to this position."
+    ),
+    RecommendationDirection.TRIM: (
+        "Current evidence supports reducing, but not eliminating, this position."
+    ),
+    RecommendationDirection.NO_ACTION: (
+        "Current evidence does not support initiating a position in this security."
+    ),
+}
+"""One deterministic, evidence-only statement per reachable direction
+(`DE-001` §3's "Why" element). Deliberately keyed, not `.get()`-defaulted
+-- BUY/ADD/EXIT are never looked up here because `select_direction` never
+returns any of the three; a `KeyError` on any of them would be a loud
+signal that `RecommendationDirection.BUY`/`.ADD`/`.EXIT` leaked past
+`direction_selector.py`, never a case to silently paper over."""
+
+
+def _safe_holding_linkage(portfolio_intelligence: PortfolioIntelligenceResult) -> HoldingLinkage:
+    """`holding_context` is only guaranteed non-`None` once
+    `portfolio_intelligence.state is EVALUATED` (`PortfolioIntelligenceResult`'s
+    own `__post_init__`). The default returned otherwise is inert: any
+    time it would matter, `select_direction`'s own stage-1 hard gate has
+    already returned `None` (RecommendationWithheld) before this value is
+    used for anything."""
+    if portfolio_intelligence.state is not EvaluationState.EVALUATED or portfolio_intelligence.holding_context is None:
+        return HoldingLinkage.ABSENT
+    return portfolio_intelligence.holding_context.linkage
+
+
+def _safe_evidence_coverage(business_evaluation: BusinessEvaluationResult) -> EvidenceCoverageLevel:
+    """Same inertness guarantee as `_safe_holding_linkage` -- see that
+    function's own docstring."""
+    if business_evaluation.state is not EvaluationState.EVALUATED or business_evaluation.evidence_quality is None:
+        return EvidenceCoverageLevel.NOT_APPLICABLE
+    return business_evaluation.evidence_quality.coverage
+
+
+def _safe_has_contradicting_evidence(reasoning: ReasoningResult) -> bool:
+    """Same inertness guarantee as `_safe_holding_linkage` -- see that
+    function's own docstring."""
+    if reasoning.state is not EvaluationState.EVALUATED or reasoning.finding is None:
+        return False
+    return bool(reasoning.finding.contradicting_evidence.observation_classifications)
 
 
 def evaluate_recommendation_gate(
@@ -317,31 +375,115 @@ def evaluate_recommendation_gate(
     portfolio_intelligence: PortfolioIntelligenceResult,
     reasoning: ReasoningResult,
     conviction: ConvictionAssessment,
+    business_analysis: BusinessAnalysisResult,
+    valuation_engine: ValuationEngineResult,
+    has_high_financial_or_valuation_risk: bool,
+    has_open_questions: bool,
     generated_at: datetime,
+    has_portfolio_dampening: bool = False,
 ) -> RecommendationGateResult:
     """Deterministic: identical inputs always produce an identical
-    `RecommendationGateResult`. Delegates the four-stage completeness
-    check entirely to `determine_recommendation` (reused, not
-    duplicated); only the Conviction gate is computed here.
+    `RecommendationGateResult`.
 
-    Always returns a `RecommendationWithheld` in `.recommendation` --
-    per this module's own docstring, no Direction selector and no
-    Recommendation-specific Conviction computation exist yet, so
-    constructing a `ComputedDirectionalRecommendation` here would
-    require inventing both, which this sprint's own constraints
-    forbid. `RecommendationOutcomeKind.DIRECTIONAL` stays a reserved,
-    unconstructed discriminant, exactly as before."""
-    recommendation = determine_recommendation(
-        engine_input,
-        business_evaluation=business_evaluation,
-        valuation=valuation,
-        portfolio_intelligence=portfolio_intelligence,
-        reasoning=reasoning,
-        generated_at=generated_at,
-    )
+    `business_analysis`/`valuation_engine` are the richer,
+    `atlas.analysis_engine`-level results (`business.py`'s
+    `BusinessAnalysisResult`, `valuation.pipeline`'s
+    `ValuationEngineResult`) -- distinct from, and a superset of,
+    `business_evaluation`/`valuation` (the plain `decision_engine`-level
+    results this function already took). Both are required here because
+    `direction_selector.select_direction` needs Growth/Capital Allocation
+    status and `ValuationStatus`, neither of which the plain
+    `decision_engine` results carry (Sprint 2/3 locks: those two types
+    are permanently `INSUFFICIENT_INPUT` for their substantive content).
+
+    `has_portfolio_dampening` defaults `False` -- `PortfolioFinding` is
+    permanently `INSUFFICIENT_INPUT` (Sprint 4 lock), so no real
+    call site can honestly supply `True` yet; see
+    `direction_selector.py`'s own docstring.
+
+    First attempts to select a real Direction and a real
+    Recommendation-specific Conviction; falls back to the existing
+    `determine_recommendation`-produced `RecommendationWithheld`
+    whenever either is unavailable -- see this function's own module
+    docstring for the full gate and why the two are checked
+    independently rather than assumed equivalent."""
+    # Imported here, not at module level: `direction_selector` imports
+    # `RecommendationDirection` from this module, so a top-level import
+    # of `select_direction` here would be a circular import. This
+    # function-local import is the standard, minimal-footprint break --
+    # both modules are fully loaded by the time this function is ever
+    # called.
+    from atlas.analysis_engine.direction_selector import select_direction
+
     conviction_gate_met = _CONVICTION_ORDER.index(conviction.level) >= _CONVICTION_ORDER.index(
         RECOMMENDATION_GATE_MINIMUM_CONVICTION
     )
+
+    growth_finding = next(f for f in business_analysis.findings if f.kind is BusinessCategory.GROWTH)
+    capital_allocation_finding = next(
+        f for f in business_analysis.findings if f.kind is BusinessCategory.CAPITAL_ALLOCATION
+    )
+    fcf_yield_finding = next(
+        f for f in valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE
+    )
+
+    evidence_coverage = _safe_evidence_coverage(business_evaluation)
+    has_contradicting_evidence = _safe_has_contradicting_evidence(reasoning)
+
+    recommendation_conviction = calculate_recommendation_conviction(
+        business_state=business_evaluation.state,
+        valuation_state=valuation.state,
+        portfolio_intelligence_state=portfolio_intelligence.state,
+        reasoning_state=reasoning.state,
+        evidence_coverage=evidence_coverage,
+        has_contradicting_evidence=has_contradicting_evidence,
+        has_open_questions=has_open_questions,
+    )
+
+    direction = select_direction(
+        holding_linkage=_safe_holding_linkage(portfolio_intelligence),
+        business_evaluation_state=business_evaluation.state,
+        valuation_state=valuation.state,
+        portfolio_intelligence_state=portfolio_intelligence.state,
+        reasoning_state=reasoning.state,
+        evidence_coverage=evidence_coverage,
+        growth_status=growth_finding.status,
+        capital_allocation_status=capital_allocation_finding.status,
+        valuation_status=fcf_yield_finding.status,
+        has_portfolio_dampening=has_portfolio_dampening,
+        has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
+    )
+
+    recommendation: RecommendationWithheld | ComputedDirectionalRecommendation
+    if direction is not None and recommendation_conviction is not None:
+        assert reasoning.finding is not None  # guaranteed: select_direction's own hard gate requires reasoning EVALUATED for `direction` to be non-None
+        assert portfolio_intelligence.portfolio_factors is not None  # same guarantee, for portfolio_intelligence
+        recommendation = ComputedDirectionalRecommendation(
+            recommendation_instance_id=f"{engine_input.case_id}:{generated_at.isoformat()}",
+            case_id=engine_input.case_id,
+            generated_at=generated_at,
+            direction=direction,
+            direction_statement=_DIRECTION_STATEMENTS[direction],
+            conviction_level=recommendation_conviction.level,
+            conviction_reason=", ".join(reason.value for reason in recommendation_conviction.reasons),
+            reasoning=RecommendationReasoning(
+                current_situation=reasoning.finding.current_situation,
+                supporting_evidence=reasoning.finding.supporting_evidence,
+                contradicting_evidence=reasoning.finding.contradicting_evidence,
+                portfolio_context=reasoning.finding.portfolio_context,
+            ),
+            portfolio_factors=portfolio_intelligence.portfolio_factors,
+        )
+    else:
+        recommendation = determine_recommendation(
+            engine_input,
+            business_evaluation=business_evaluation,
+            valuation=valuation,
+            portfolio_intelligence=portfolio_intelligence,
+            reasoning=reasoning,
+            generated_at=generated_at,
+        )
+
     return RecommendationGateResult(
         recommendation=recommendation, conviction_gate_met=conviction_gate_met, conviction=conviction
     )

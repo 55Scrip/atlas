@@ -65,7 +65,13 @@ from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, Valua
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
 from atlas.analysis_engine.valuation.models import ValuationEngineResult
 from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
-from atlas.decision_engine.contracts import DecisionEngineInput, DecisionEngineOutput, OpenQuestion, OpenQuestionKind
+from atlas.decision_engine.contracts import (
+    DecisionEngineInput,
+    DecisionEngineOutput,
+    OpenQuestion,
+    OpenQuestionKind,
+    RecommendationWithheld,
+)
 
 __all__ = ["assemble_analysis"]
 
@@ -584,27 +590,58 @@ def assemble_analysis(
         portfolio_intelligence=decision_output.portfolio_intelligence,
         reasoning=decision_output.reasoning,
         conviction=conviction,
+        business_analysis=business_analysis,
+        valuation_engine=valuation_engine,
+        has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
+        has_open_questions=bool(open_questions),
         generated_at=generated_at,
     )
-    recommendation_finding = Finding(
-        id=FindingKind.RECOMMENDATION_WITHHELD.value,
-        kind=FindingKind.RECOMMENDATION_WITHHELD,
-        severity=FindingSeverity.INFO,
-        details={
-            "reason": recommendation.recommendation.reason.value,
-            "conviction_gate_met": recommendation.conviction_gate_met,
-        },
-        evidence_references=(),
-        confidence=confidence,
-        producer=FindingProducer.RECOMMENDATION_GATE,
-        provenance=_provenance(
-            source_kind=SourceKind.ANALYSIS_ENGINE_STAGE,
-            source_references=(),
-            dependencies=(conviction_finding_id,),
-            update_trigger=UpdateTrigger.UPSTREAM_STAGE_CHANGED,
-            generated_at=generated_at,
-        ),
-    )
+    # "Recommendation Backend Step 3": `recommendation.recommendation` is
+    # now a real union -- `RecommendationWithheld` (no `direction` field,
+    # carries `.reason`) or `ComputedDirectionalRecommendation` (carries
+    # `.direction`/`.conviction_level`, no `.reason`). The two produce
+    # different Finding kinds; never the same kind with a field read that
+    # would only be valid for the other branch.
+    if isinstance(recommendation.recommendation, RecommendationWithheld):
+        recommendation_finding = Finding(
+            id=FindingKind.RECOMMENDATION_WITHHELD.value,
+            kind=FindingKind.RECOMMENDATION_WITHHELD,
+            severity=FindingSeverity.INFO,
+            details={
+                "reason": recommendation.recommendation.reason.value,
+                "conviction_gate_met": recommendation.conviction_gate_met,
+            },
+            evidence_references=(),
+            confidence=confidence,
+            producer=FindingProducer.RECOMMENDATION_GATE,
+            provenance=_provenance(
+                source_kind=SourceKind.ANALYSIS_ENGINE_STAGE,
+                source_references=(),
+                dependencies=(conviction_finding_id,),
+                update_trigger=UpdateTrigger.UPSTREAM_STAGE_CHANGED,
+                generated_at=generated_at,
+            ),
+        )
+    else:
+        recommendation_finding = Finding(
+            id=FindingKind.RECOMMENDATION_DIRECTION_SELECTED.value,
+            kind=FindingKind.RECOMMENDATION_DIRECTION_SELECTED,
+            severity=FindingSeverity.INFO,
+            details={
+                "direction": recommendation.recommendation.direction.value,
+                "conviction_level": recommendation.recommendation.conviction_level.value,
+            },
+            evidence_references=(),
+            confidence=confidence,
+            producer=FindingProducer.RECOMMENDATION_GATE,
+            provenance=_provenance(
+                source_kind=SourceKind.ANALYSIS_ENGINE_STAGE,
+                source_references=(),
+                dependencies=(conviction_finding_id,),
+                update_trigger=UpdateTrigger.UPSTREAM_STAGE_CHANGED,
+                generated_at=generated_at,
+            ),
+        )
     findings = (
         findings
         + (recommendation_finding,)

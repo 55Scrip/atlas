@@ -288,10 +288,39 @@ class TestNoDependencyOnExecutionGuidance:
         assert "ExecutionGuidance" not in source
 
 
-class TestRecommendationWithheldRegressionUnchanged:
-    """This module is not consumed anywhere -- proves it, directly."""
+def _insufficient_business_analysis(output):
+    """Growth/Capital Allocation both `INSUFFICIENT_INPUT` -- no
+    `business_records` supplied, matching every real call site's default.
+    Mirrors `test_recommendation.py`'s own identically-named helper."""
+    from atlas.analysis_engine.business import evaluate_business_analysis
 
-    def test_evaluate_recommendation_gate_still_always_withholds(self):
+    return evaluate_business_analysis(output.business_evaluation, business_records=(), evaluated_at=GENERATED_AT)
+
+
+def _insufficient_valuation_engine():
+    from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
+    from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
+    from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
+
+    business_facts = extract_facts_from_records((), evaluated_at=GENERATED_AT)
+    market_facts = extract_valuation_facts_from_records((), evaluated_at=GENERATED_AT)
+    return evaluate_valuation(business_facts, market_facts, evaluated_at=GENERATED_AT)
+
+
+class TestRecommendationWithheldWhenBusinessInconclusive:
+    """Renamed from `TestRecommendationWithheldRegressionUnchanged`:
+    `atlas.analysis_engine.recommendation_conviction` is now consumed by
+    `evaluate_recommendation_gate` for real ("Recommendation Backend Step
+    3") -- the `test_gate_function_does_not_call_the_new_conviction_module`
+    regression guard this class previously enforced tested for the exact
+    gap this sprint closes, and has been removed rather than kept
+    failing. What remains true, and is still asserted here: these
+    specific business-inconclusive fixtures (`run_populated`/
+    `run_minimal`, no real Growth/Capital Allocation facts) still produce
+    RecommendationWithheld -- via the real Direction Selector now
+    returning `None`, not via a hardcoded gap."""
+
+    def test_still_withheld_when_business_is_inconclusive(self):
         engine_input, output = run_populated()
         conviction = ConvictionAssessment(level=ConvictionLevel.VERY_HIGH, reasons=())
         result = evaluate_recommendation_gate(
@@ -301,15 +330,13 @@ class TestRecommendationWithheldRegressionUnchanged:
             portfolio_intelligence=output.portfolio_intelligence,
             reasoning=output.reasoning,
             conviction=conviction,
+            business_analysis=_insufficient_business_analysis(output),
+            valuation_engine=_insufficient_valuation_engine(),
+            has_high_financial_or_valuation_risk=False,
+            has_open_questions=False,
             generated_at=GENERATED_AT,
         )
         assert result.recommendation.kind is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
-
-    def test_gate_function_does_not_call_the_new_conviction_module(self):
-        import atlas.analysis_engine.recommendation as recommendation_module
-
-        source = inspect.getsource(recommendation_module.evaluate_recommendation_gate)
-        assert "calculate_recommendation_conviction" not in source
 
     def test_minimal_input_also_still_withholds(self):
         engine_input, output = run_minimal()
@@ -321,6 +348,19 @@ class TestRecommendationWithheldRegressionUnchanged:
             portfolio_intelligence=output.portfolio_intelligence,
             reasoning=output.reasoning,
             conviction=conviction,
+            business_analysis=_insufficient_business_analysis(output),
+            valuation_engine=_insufficient_valuation_engine(),
+            has_high_financial_or_valuation_risk=False,
+            has_open_questions=False,
             generated_at=GENERATED_AT,
         )
         assert result.recommendation.kind is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
+
+    def test_gate_function_now_calls_the_conviction_module(self):
+        """Inverted from the pre-Step-3 regression guard: this module is
+        now genuinely consumed, and this test documents that fact rather
+        than the gap it replaces."""
+        import atlas.analysis_engine.recommendation as recommendation_module
+
+        source = inspect.getsource(recommendation_module.evaluate_recommendation_gate)
+        assert "calculate_recommendation_conviction" in source
