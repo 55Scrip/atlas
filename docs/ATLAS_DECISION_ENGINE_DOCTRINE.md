@@ -384,6 +384,16 @@ separation between Atlas-authored reasoning content and the Investor's own
 accept/dismiss response, is specified in full in
 `docs/atlas_decision_engine/DE-007-Recommendation-Domain-Model.md`.
 
+Neither `DE-001` nor `DE-002` specifies, for a given, already-evaluated
+Case, *which* of the six directions the evidence actually selects, or the
+conditions under which none of the six is honestly reachable and
+Recommendation Withheld applies instead. That decision rule — including
+the exact boundary between `ValuationStatus` (a real, historically-relative
+Valuation Evidence signal) and the distinct, assumption-based Valuation
+Support for Capital Deployment that Buy/Add require, which does not exist
+as a computed concept today — is specified in full in
+`docs/atlas_decision_engine/DE-008-Direction-Selection.md`.
+
 ---
 
 ## 9. Decision Memory
@@ -442,7 +452,7 @@ Doctrine functions as a reference a subordinate document may draw on
 voluntarily, not as a mandatory citation source in the manner `APP-000` §9
 establishes for Product Principles. A subordinate document that does cite
 this Doctrine SHALL NOT contradict a principle stated in it or in `DE-001`
-through `DE-006`, and SHALL NOT redefine Atlas Recommendation, Atlas
+through `DE-008`, and SHALL NOT redefine Atlas Recommendation, Atlas
 Conviction Level, or any other term this Doctrine or its companions define —
 the same non-contradiction discipline `APP-000` §2 already requires of every
 subordinate document, applied here by extension rather than by new grant.
@@ -494,6 +504,11 @@ pointing here:
 - `docs/atlas_decision_engine/DE-007-Recommendation-Domain-Model.md` — gap
   discovered during Recommendation Workspace implementation design;
   defines the field-level shape `DE-001`/`DE-002` leave unspecified
+- `docs/atlas_decision_engine/DE-008-Direction-Selection.md` — gap
+  discovered while specifying the Direction Selector implementation;
+  defines the decision rule `DE-001`/`DE-002` leave unspecified: which of
+  the six directions a given, already-evaluated Case's evidence actually
+  selects, and when none is honestly reachable
 
 **Dependency map.** `DE-002` (Reasoning Structure) is canonical and
 structural — it is the one place a future implementation reads to know the
@@ -504,18 +519,21 @@ does not fill a `DE-002` section — it is an optional, dependent extension of
 `DE-001`'s Direction, scoped to *how* rather than *what*, per `DE-006` §7.
 `DE-007` is the one companion that does not add doctrine content at all —
 it gives every other companion's already-specified content a field-level
-shape, per `DE-007` §1:
+shape, per `DE-007` §1. `DE-008` is the one companion that resolves `DE-001`'s
+Direction into a deterministic decision procedure — it does not redefine
+any direction's meaning, only the evidence-to-direction mapping:
 
 | Companion | Supplies content for | Depended on by |
 |---|---|---|
-| `DE-001` Recommendation Framework | `DE-002` §2.5 (Direction) — the six directions and Recommendation Withheld | `DE-002`, `DE-003`, `DE-004`, `DE-006`, `DE-007` |
-| `DE-002` Reasoning Structure | *(canonical structure — depends on nothing below it)* | `DE-001`, `DE-003`, `DE-004`, `DE-005`, `DE-007` |
-| `DE-003` Portfolio Intelligence | `DE-002` §2.4 (Portfolio Context) | `DE-001`, `DE-002`, `DE-007` |
-| `DE-004` Honest Uncertainty | `DE-002` §2.6 (Conviction) and `DE-002` §4 (Recommendation Withheld) | `DE-001`, `DE-002`, `DE-006`, `DE-007` |
+| `DE-001` Recommendation Framework | `DE-002` §2.5 (Direction) — the six directions and Recommendation Withheld | `DE-002`, `DE-003`, `DE-004`, `DE-006`, `DE-007`, `DE-008` |
+| `DE-002` Reasoning Structure | *(canonical structure — depends on nothing below it)* | `DE-001`, `DE-003`, `DE-004`, `DE-005`, `DE-007`, `DE-008` |
+| `DE-003` Portfolio Intelligence | `DE-002` §2.4 (Portfolio Context) | `DE-001`, `DE-002`, `DE-007`, `DE-008` |
+| `DE-004` Honest Uncertainty | `DE-002` §2.6 (Conviction) and `DE-002` §4 (Recommendation Withheld) | `DE-001`, `DE-002`, `DE-006`, `DE-007`, `DE-008` |
 | `DE-005` Decision Memory | `DE-002` §2.1 (Current Situation) and §2.3 (Counter-Evidence) history | `DE-001`, `DE-003`, `DE-007` |
 | `DE-006` Execution Guidance | Extends `DE-001`'s Direction (Buy/Add/Trim/Exit only) with optional, dependent execution content; not a `DE-002` section | *(depends on `DE-001`, `DE-002` §2.7, `DE-004`; referenced, not contained, by `DE-007`)* |
 | `DE-007` Recommendation Domain Model | Field-level shape for `DE-001`/`DE-002`'s Direction, Evidence, Counter-Evidence, Portfolio Context, and Conviction content; not new doctrine | *(depends on `DE-001` through `DE-005`; nothing depends on it)* |
+| `DE-008` Direction Selection | The evidence-to-direction decision procedure applying `DE-001`'s six directions and `DE-004`'s Recommendation Withheld to a specific Case; not a `DE-002` section, and not new doctrine about any direction's meaning | *(depends on `DE-001`, `DE-002`, `DE-003`, `DE-004`; referenced, not contained, by `DE-007`)* |
 
-All seven, and this Doctrine, ground out in `APP-000` and
+All eight, and this Doctrine, ground out in `APP-000` and
 `ATLAS_CONSTITUTION.md` — none depends on another companion for its own
 basic authority, only for specific content.
