@@ -66,3 +66,23 @@ class TestOneCanonicalCaseGenerationOwner:
             if "case_service.create(" in text or "case_service.create()" in text:
                 callers.append(path)
         assert set(callers) == allowed, f"Case-creation call sites changed: {sorted(callers)}"
+
+
+class TestOneCanonicalEnsureCaseIdCallerSet:
+    def test_ensure_case_id_is_only_called_from_the_known_allowed_set(self):
+        """(Investment Case Engine v1 slice) `ensure_case_id` is the
+        single-ticket primitive `ensure_cases` itself now delegates to
+        (this package's own definition) and `AlphaWatchlistService
+        .add_ticker` calls directly for its one write path. Any other
+        call site would mean Case-generation decision logic had started
+        spreading outside this package's one canonical owner."""
+        alpha_dir = _PACKAGE_DIR.parent
+        callers = []
+        for path in alpha_dir.rglob("*.py"):
+            if "__pycache__" in path.parts or path.parent == _PACKAGE_DIR:
+                continue
+            text = path.read_text(encoding="utf-8")
+            if "ensure_case_id(" in text:
+                callers.append(path)
+        expected = {alpha_dir / "watchlist" / "service.py"}
+        assert set(callers) == expected, f"Expected exactly {expected}, found: {callers}"

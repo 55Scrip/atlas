@@ -590,6 +590,41 @@ interface RecommendationStateView {
   convictionGateMet: boolean;
 }
 
+// Investment Case Engine v1 slice: descriptive company identity and raw
+// financial data, automatically populated on Watchlist/Portfolio add --
+// see atlas/alpha/investment_case/company_profile.py and
+// financial_history.py. Every field beyond ticker/asOf may be null: an
+// honest absence when the provider did not report it, never a guess.
+interface CompanyProfileView {
+  ticker: string;
+  name: string | null;
+  exchange: string | null;
+  sector: string | null;
+  industry: string | null;
+  country: string | null;
+  description: string | null;
+  asOf: string;
+}
+
+interface FinancialPeriodView {
+  periodStart: string | null;
+  periodEnd: string | null;
+  revenue: number | null;
+  freeCashFlow: number | null;
+  capitalExpenditure: number | null;
+  shareBuybacks: number | null;
+  shareIssuance: number | null;
+  dividends: number | null;
+  currency: string | null;
+}
+
+interface MarketSnapshotView {
+  asOf: string;
+  sharePrice: number | null;
+  sharesOutstanding: number | null;
+  currency: string | null;
+}
+
 interface InvestmentCaseAnalysisView {
   caseId: string;
   holdingContext: HoldingContextView;
@@ -606,6 +641,9 @@ interface InvestmentCaseAnalysisView {
   decisionHistory: DecisionHistoryEntryView[];
   observationHistory: ObservationEntryView[];
   outcomeHistory: OutcomeEntryView[];
+  companyProfile: CompanyProfileView | null;
+  financialHistory: FinancialPeriodView[];
+  marketSnapshot: MarketSnapshotView | null;
   generatedAt: string;
 }
 
@@ -4259,6 +4297,12 @@ function InvestmentCaseCanonicalSections({
 }) {
   return (
     <Stack gap="inter-section">
+      <CompanyOverviewSection
+        companyProfile={analysis.companyProfile}
+        financialHistory={analysis.financialHistory}
+        marketSnapshot={analysis.marketSnapshot}
+        t={t}
+      />
       <BusinessSection
         analysis={analysis}
         linkedHolding={linkedHolding}
@@ -4329,6 +4373,130 @@ function InvestmentCaseCanonicalSections({
  * Growth/Capital Allocation highlighted, then the remaining four
  * business categories.
  */
+/**
+ * Company Overview + Financials (Investment Case Engine v1 slice) --
+ * the automatically-populated Company Identity, Financial History, and
+ * current Market Data this sprint adds. Renders only real, already-
+ * ingested `BusinessRecord` data (see `atlas/alpha/investment_case
+ * /company_profile.py`/`financial_history.py`); a company with nothing
+ * ingested yet shows the same honest empty state doctrine already
+ * established elsewhere on this page, never a fabricated placeholder.
+ */
+function formatFinancialValue(value: number | null, currency: string | null): string {
+  if (value === null) return "—";
+  const formatted = value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  return currency ? `${formatted} ${currency}` : formatted;
+}
+
+function CompanyOverviewSection({
+  companyProfile,
+  financialHistory,
+  marketSnapshot,
+  t,
+}: {
+  companyProfile: CompanyProfileView | null;
+  financialHistory: FinancialPeriodView[];
+  marketSnapshot: MarketSnapshotView | null;
+  t: Translate;
+}) {
+  const hasAnyData = companyProfile !== null || financialHistory.length > 0 || marketSnapshot !== null;
+
+  return (
+    <Surface tier="primary">
+      <Stack gap="intra-section">
+        <Heading level={2}>{t("investmentCase.analysis.companyOverview.heading")}</Heading>
+        {!hasAnyData && (
+          <Text color="secondary">{t("investmentCase.analysis.companyOverview.empty")}</Text>
+        )}
+        {companyProfile && (
+          <Stack gap="intra-section">
+            {companyProfile.name && <Heading level={3}>{companyProfile.name}</Heading>}
+            {companyProfile.exchange && (
+              <Text as="p">
+                {t("investmentCase.analysis.companyOverview.exchangeLabel")}: {companyProfile.exchange}
+              </Text>
+            )}
+            {companyProfile.sector && (
+              <Text as="p">
+                {t("investmentCase.analysis.companyOverview.sectorLabel")}: {companyProfile.sector}
+              </Text>
+            )}
+            {companyProfile.industry && (
+              <Text as="p">
+                {t("investmentCase.analysis.companyOverview.industryLabel")}: {companyProfile.industry}
+              </Text>
+            )}
+            {companyProfile.country && (
+              <Text as="p">
+                {t("investmentCase.analysis.companyOverview.countryLabel")}: {companyProfile.country}
+              </Text>
+            )}
+            {companyProfile.description && <Text color="secondary" as="p">{companyProfile.description}</Text>}
+          </Stack>
+        )}
+
+        {(financialHistory.length > 0 || marketSnapshot) && (
+          <>
+            <Divider tone="hairline" />
+            <Heading level={3}>{t("investmentCase.analysis.financials.heading")}</Heading>
+          </>
+        )}
+
+        {financialHistory.length === 0 && !marketSnapshot && hasAnyData && (
+          <Text color="secondary">{t("investmentCase.analysis.financials.empty")}</Text>
+        )}
+
+        {financialHistory
+          .slice()
+          .reverse()
+          .map((period, index) => (
+            <Stack key={period.periodEnd ?? index} gap="intra-section">
+              {period.periodEnd && (
+                <Text as="p" color="secondary">
+                  {t("investmentCase.analysis.financials.periodLabel", { date: period.periodEnd })}
+                </Text>
+              )}
+              <Text as="p">
+                {t("investmentCase.analysis.financials.revenueLabel")}: {formatFinancialValue(period.revenue, period.currency)}
+              </Text>
+              <Text as="p">
+                {t("investmentCase.analysis.financials.freeCashFlowLabel")}:{" "}
+                {formatFinancialValue(period.freeCashFlow, period.currency)}
+              </Text>
+              <Text as="p">
+                {t("investmentCase.analysis.financials.capitalExpenditureLabel")}:{" "}
+                {formatFinancialValue(period.capitalExpenditure, period.currency)}
+              </Text>
+              <Text as="p">
+                {t("investmentCase.analysis.financials.shareBuybacksLabel")}:{" "}
+                {formatFinancialValue(period.shareBuybacks, period.currency)}
+              </Text>
+              <Text as="p">
+                {t("investmentCase.analysis.financials.dividendsLabel")}:{" "}
+                {formatFinancialValue(period.dividends, period.currency)}
+              </Text>
+              <Divider tone="hairline" />
+            </Stack>
+          ))}
+
+        {marketSnapshot && (
+          <Stack gap="intra-section">
+            <Heading level={3}>{t("investmentCase.analysis.financials.marketSnapshotHeading")}</Heading>
+            <Text as="p">
+              {t("investmentCase.analysis.financials.sharePriceLabel")}:{" "}
+              {formatFinancialValue(marketSnapshot.sharePrice, marketSnapshot.currency)}
+            </Text>
+            <Text as="p">
+              {t("investmentCase.analysis.financials.sharesOutstandingLabel")}:{" "}
+              {formatFinancialValue(marketSnapshot.sharesOutstanding, null)}
+            </Text>
+          </Stack>
+        )}
+      </Stack>
+    </Surface>
+  );
+}
+
 function BusinessSection({
   analysis,
   linkedHolding,

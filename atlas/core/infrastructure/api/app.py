@@ -16,6 +16,7 @@ from atlas.alpha.portfolio.api.router import router as alpha_portfolio_router
 from atlas.alpha.portfolio_cockpit.api.router import router as portfolio_cockpit_router
 from atlas.alpha.portfolio_intelligence.api.router import router as portfolio_intelligence_router
 from atlas.alpha.portfolio_status.api.router import router as portfolio_status_router
+from atlas.alpha.watchlist.api.router import router as alpha_watchlist_router
 from atlas.core.infrastructure.api.case.errors import (
     register_error_handlers as register_case_error_handlers,
 )
@@ -70,6 +71,13 @@ def create_app() -> FastAPI:
     # Alpha routes, but `atlas/core/` never imports from `atlas/alpha/`
     # (enforced by tests/test_architecture_boundaries.py).
     app.include_router(alpha_portfolio_router)
+    # Investment Case Engine v1 slice: Watchlist is a sibling
+    # composition point with the identical Alpha/Core boundary as
+    # Portfolio above -- authored and owned in `atlas/alpha/watchlist/`,
+    # giving Watchlist the same automatic Case-linkage and enrichment
+    # Portfolio already has, per "Watchlist and Portfolio are membership
+    # contexts around the same company knowledge."
+    app.include_router(alpha_watchlist_router)
     # ATLAS-015: the Portfolio Status report is a second, sibling
     # composition point with the same Alpha/Core boundary as the line
     # above -- authored and owned in `atlas/alpha/portfolio_status/`,

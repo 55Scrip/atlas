@@ -10,6 +10,16 @@ Sprint 1B adds external-trade application and portfolio reconciliation.
 may reference Outcome. Outcome must never reference Alpha.") -- and
 writes only to this module's own provisional store and trade log. No
 Core entity is ever constructed or modified here.
+
+Investment Case Engine v1 slice: `watchlist_store`
+(cross-context Case reuse, so a ticker already linked to a Case via
+Watchlist is reused rather than duplicated when the same ticker is
+added to Portfolio -- see `_ensure_cases`) and
+`business_record_repository`/`business_data_providers` (automatic
+enrichment for a brand-new holding, see `_trigger_enrichment`) are new,
+optional constructor parameters, following the exact `X | None = None`
+opt-in pattern `case_generation_service` already established -- every
+existing call site that omits them keeps its prior behavior unchanged.
 """
 from __future__ import annotations
 
@@ -17,6 +27,8 @@ import uuid
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 
+from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
+from atlas.alpha.business_data_refresh.service import ensure_company_enriched
 from atlas.alpha.case_generation.service import CaseGenerationService
 from atlas.alpha.portfolio.exceptions import (
     AlphaHoldingNotFoundError,
@@ -39,6 +51,8 @@ from atlas.alpha.portfolio.models import (
 from atlas.alpha.portfolio.projection import derive_portfolio_view
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.trade_log_store import AlphaTradeLogStore
+from atlas.alpha.watchlist.store import AlphaWatchlistStore
+from atlas.analysis_engine.business_data.providers import BusinessDataProvider
 from atlas.core.domain.outcome.repository import OutcomeRepository
 from atlas.core.domain.outcome.value_objects import OutcomeId
 from atlas.domains.portfolio.calculations import holding_weight
@@ -282,11 +296,28 @@ class AlphaPortfolioService:
         trade_log_store: AlphaTradeLogStore | None = None,
         outcome_repository: OutcomeRepository | None = None,
         case_generation_service: CaseGenerationService | None = None,
+        watchlist_store: AlphaWatchlistStore | None = None,
+        business_record_repository: SqlAlchemyBusinessRecordRepository | None = None,
+        business_data_providers: tuple[BusinessDataProvider, ...] | None = None,
     ) -> None:
         self._store = store
         self._trade_log_store = trade_log_store
         self._outcome_repository = outcome_repository
         self._case_generation_service = case_generation_service
+        self._watchlist_store = watchlist_store
+        self._business_record_repository = business_record_repository
+        self._business_data_providers = business_data_providers
+
+    def _known_watchlist_case_ids(self) -> dict[str, str]:
+        """(Investment Case Engine v1 slice) Watchlist's own current
+        entries, ticker -> case_id -- so a ticker already linked to a
+        Case via Watchlist is reused, never duplicated, when the same
+        ticker is added to Portfolio. Mirrors `AlphaWatchlistService
+        ._known_case_ids_by_ticker`'s identical cross-context lookup in
+        the other direction."""
+        if self._watchlist_store is None:
+            return {}
+        return {entry.ticker: entry.case_id for entry in self._watchlist_store.list_all()}
 
     def _ensure_cases(self, holdings: tuple[AlphaHolding, ...]) -> tuple[AlphaHolding, ...]:
         """ATLAS-027: every real composition root wires
@@ -298,7 +329,19 @@ class AlphaPortfolioService:
         before ATLAS-027 existed."""
         if self._case_generation_service is None:
             return holdings
-        return self._case_generation_service.ensure_cases(holdings)
+        return self._case_generation_service.ensure_cases(
+            holdings, known_case_ids_by_ticker=self._known_watchlist_case_ids()
+        )
+
+    def _trigger_enrichment(self, ticker: str) -> None:
+        """(Investment Case Engine v1 slice) Best-effort, never raises:
+        see `AlphaWatchlistService._trigger_enrichment`'s identical
+        docstring for the full rationale -- this is the same no-op-if-
+        undependency-absent, idempotent-if-already-enriched trigger,
+        reused here rather than redefined."""
+        if self._business_record_repository is None or self._business_data_providers is None:
+            return
+        ensure_company_enriched(ticker, self._business_data_providers, self._business_record_repository)
 
     def import_portfolio(self, request: ImportPortfolioRequest) -> AlphaPortfolioState:
         """Establish (or re-establish) the Alpha portfolio from an
@@ -554,6 +597,22 @@ class AlphaPortfolioService:
         # EXIT only ever removes holdings, so this is always a no-op for
         # that branch; harmless and correct to apply uniformly.
         new_state = replace(new_state, holdings=self._ensure_cases(new_state.holdings))
+
+        # Investment Case Engine v1 slice: automatic enrichment fires
+        # only for a genuinely new position (`existing is None`, i.e. a
+        # ticker not previously held) being opened (`BUY`/`ADD`) -- the
+        # realistic single-company "add to Portfolio" moment. Adding to
+        # an already-held position, a `SELL`, or an `EXIT` never
+        # triggers a fetch: the ticker either already has persisted
+        # `BusinessRecord`s (so `ensure_company_enriched` would no-op
+        # anyway) or is being reduced/closed, not newly introduced.
+        # Deliberately NOT wired into the bulk `import_portfolio`/
+        # `reconcile_replace_allocation` paths -- see the design
+        # record's Known Limitations for why a bulk, many-ticker import
+        # synchronously triggering many sequential provider calls is
+        # out of this slice's scope.
+        if existing is None and trade_entry.transaction_type in (TransactionType.BUY, TransactionType.ADD):
+            self._trigger_enrichment(trade_entry.security)
 
         self._store.replace(new_state)
         return new_state

@@ -6,9 +6,13 @@ from atlas.analysis_engine.business_data.sources import SourceKind
 
 
 class TestSourceKindIsClosed:
-    def test_exactly_twelve_members(self):
-        """ATLAS-024 added MARKET_DATA_SNAPSHOT, the twelfth member."""
-        assert len(SourceKind) == 12
+    def test_exactly_thirteen_members(self):
+        """ATLAS-024 added MARKET_DATA_SNAPSHOT (the twelfth); the
+        Investment Case Engine v1 slice added COMPANY_PROFILE (the
+        thirteenth) -- a company's descriptive identity is a distinct
+        document kind from its current market data, per that member's
+        own docstring."""
+        assert len(SourceKind) == 13
 
     def test_is_a_closed_string_enum(self):
         assert issubclass(SourceKind, str)

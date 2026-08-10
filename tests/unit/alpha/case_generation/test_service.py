@@ -147,3 +147,74 @@ class TestDeterminismOfAlreadyLinkedHoldings:
         second = service.ensure_cases(holdings)
         assert first == second
         assert case_service.create_call_count == 0
+
+
+class TestEnsureCaseId:
+    """(Investment Case Engine v1 slice) The single-ticker primitive
+    `ensure_cases` itself now delegates to, and `AlphaWatchlistService
+    .add_ticker` calls directly -- covers the cross-context reuse
+    `ensure_cases` alone never needed before this slice."""
+
+    def test_an_existing_case_id_is_returned_unchanged(self):
+        service = CaseGenerationService(_FakeCaseService())
+        result = service.ensure_case_id(current_case_id="existing", ticker="AMD")
+        assert result == "existing"
+
+    def test_no_current_case_id_and_no_known_map_creates_a_new_one(self):
+        case_service = _FakeCaseService()
+        service = CaseGenerationService(case_service)
+        result = service.ensure_case_id(current_case_id=None, ticker="AMD")
+        assert result is not None
+        assert case_service.create_call_count == 1
+
+    def test_a_ticker_present_in_the_known_map_reuses_it_without_creating(self):
+        case_service = _FakeCaseService()
+        service = CaseGenerationService(case_service)
+        result = service.ensure_case_id(
+            current_case_id=None, ticker="AMD", known_case_ids_by_ticker={"AMD": "cross-context-case"}
+        )
+        assert result == "cross-context-case"
+        assert case_service.create_call_count == 0
+
+    def test_a_ticker_absent_from_the_known_map_still_creates_a_new_one(self):
+        case_service = _FakeCaseService()
+        service = CaseGenerationService(case_service)
+        result = service.ensure_case_id(
+            current_case_id=None, ticker="NVDA", known_case_ids_by_ticker={"AMD": "some-other-case"}
+        )
+        assert result is not None
+        assert result != "some-other-case"
+        assert case_service.create_call_count == 1
+
+    def test_current_case_id_wins_even_if_the_known_map_disagrees(self):
+        """Priority order is current -> cross-context -> new; an
+        already-linked Case is never silently replaced."""
+        case_service = _FakeCaseService()
+        service = CaseGenerationService(case_service)
+        result = service.ensure_case_id(
+            current_case_id="already-linked", ticker="AMD", known_case_ids_by_ticker={"AMD": "different-case"}
+        )
+        assert result == "already-linked"
+        assert case_service.create_call_count == 0
+
+
+class TestEnsureCasesCrossContextReuse:
+    def test_a_holding_reuses_a_cross_context_case_for_its_ticker(self):
+        case_service = _FakeCaseService()
+        service = CaseGenerationService(case_service)
+        result = service.ensure_cases(
+            (_holding("AMD"),), known_case_ids_by_ticker={"AMD": "watchlist-case-id"}
+        )
+        assert result[0].case_id == "watchlist-case-id"
+        assert case_service.create_call_count == 0
+
+    def test_omitting_the_known_map_preserves_prior_ensure_cases_behavior(self):
+        """`known_case_ids_by_ticker=None` (the default, every call
+        site before this slice) must behave identically to before this
+        slice existed -- always create a new Case for a case-less
+        holding."""
+        case_service = _FakeCaseService()
+        service = CaseGenerationService(case_service)
+        result = service.ensure_cases((_holding("AMD"),))
+        assert result[0].case_id is not None
+        assert case_service.create_call_count == 1

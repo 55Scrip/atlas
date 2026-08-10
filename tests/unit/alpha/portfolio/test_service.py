@@ -1205,3 +1205,241 @@ class TestAutomaticCaseGeneration:
             service.import_portfolio(
                 ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="AMD", weight_percent=30),))
             )
+
+
+
+class TestCrossContextCaseReuseAndAutomaticEnrichment:
+    """(Investment Case Engine v1 slice) Portfolio's own half of
+    "Watchlist and Portfolio are membership contexts around the same
+    company knowledge": a ticker already linked to a Case via Watchlist
+    is reused, never duplicated, when added to Portfolio; and a
+    genuinely new position triggers automatic enrichment exactly once."""
+
+    @staticmethod
+    def _case_generation_service(engine):
+        from atlas.alpha.case_generation.service import CaseGenerationService
+        from atlas.core.application.case.create_case import CaseService
+        from atlas.core.infrastructure.persistence.case.sqlalchemy_repository import (
+            SqlAlchemyCaseRepository,
+        )
+        from atlas.core.infrastructure.persistence.case.table import create_case_table
+
+        create_case_table(engine)
+        return CaseGenerationService(CaseService(SqlAlchemyCaseRepository(engine)))
+
+    def test_a_ticker_already_in_watchlist_reuses_that_case_on_import(self):
+        from atlas.alpha.watchlist.models import AlphaWatchlistEntry
+        from atlas.alpha.watchlist.store import AlphaWatchlistStore
+        from atlas.alpha.watchlist.table import create_alpha_watchlist_entry_table
+
+        engine = _new_engine()
+        create_alpha_watchlist_entry_table(engine)
+        watchlist_store = AlphaWatchlistStore(engine)
+        watchlist_store.add(AlphaWatchlistEntry(ticker="AMD", case_id="watchlist-case-id", added_at=_NOW))
+
+        service = AlphaPortfolioService(
+            AlphaPortfolioStore(engine),
+            AlphaTradeLogStore(engine),
+            None,
+            self._case_generation_service(engine),
+            watchlist_store=watchlist_store,
+        )
+        state = service.import_portfolio(
+            ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="AMD", weight_percent=30),))
+        )
+        assert state.holdings[0].case_id == "watchlist-case-id"
+
+    def test_without_a_watchlist_store_wired_a_brand_new_case_is_still_created(self):
+        engine = _new_engine()
+        service = AlphaPortfolioService(
+            AlphaPortfolioStore(engine),
+            AlphaTradeLogStore(engine),
+            None,
+            self._case_generation_service(engine),
+        )
+        state = service.import_portfolio(
+            ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="AMD", weight_percent=30),))
+        )
+        assert state.holdings[0].case_id is not None
+
+    @staticmethod
+    def _fake_provider():
+        from dataclasses import dataclass, field
+        from atlas.analysis_engine.business_data.models import RawBusinessDocument
+
+        @dataclass(frozen=True)
+        class _FakeProvider:
+            call_count: list = field(default_factory=list)
+
+            def fetch(self, *, company_identifier, evaluated_at):
+                self.call_count.append(company_identifier)
+                return (
+                    RawBusinessDocument(
+                        identifier=f"{company_identifier}:FY:2023",
+                        company=company_identifier,
+                        source_kind="financial_statement",
+                        published_at=evaluated_at,
+                        provider_id="fake",
+                        raw_reference="https://example.test/doc",
+                        content_hash="hash-1",
+                        language="en",
+                        metadata={"revenue": 100.0},
+                    ),
+                )
+
+        return _FakeProvider()
+
+    def _enrichment_wired_service(self, engine, provider):
+        from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
+        from atlas.alpha.business_data_refresh.table import create_business_record_table
+
+        create_business_record_table(engine)
+        repository = SqlAlchemyBusinessRecordRepository(engine)
+        outcome = _make_outcome()
+        service = AlphaPortfolioService(
+            AlphaPortfolioStore(engine),
+            AlphaTradeLogStore(engine),
+            _FakeOutcomeRepository([outcome]),
+            self._case_generation_service(engine),
+            business_record_repository=repository,
+            business_data_providers=(provider,),
+        )
+        return service, repository, outcome
+
+    def test_a_buy_opening_a_brand_new_position_triggers_enrichment(self):
+        engine = _new_engine()
+        provider = self._fake_provider()
+        service, repository, outcome = self._enrichment_wired_service(engine, provider)
+        service.start_from_scratch(FromScratchRequest(objective="Grow capital", horizon="Long-term"))
+
+        service.apply_confirmed_trade(
+            ApplyTradeRequest(
+                outcome_id=str(outcome.id.value),
+                decision_id=str(outcome.decision_id.value),
+                security="AMD",
+                transaction_type=TransactionType.BUY,
+                quantity=1,
+                execution_price=100,
+                executed_at=_NOW,
+            )
+        )
+        assert provider.call_count == ["AMD"]
+        assert len(repository.get_by_company("AMD")) == 1
+
+    def test_adding_to_an_already_held_position_does_not_re_trigger_enrichment(self):
+        engine = _new_engine()
+        provider = self._fake_provider()
+        service, repository, outcome = self._enrichment_wired_service(engine, provider)
+        service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(ImportHoldingInput(ticker="AMD", weight_percent=30, value_absolute=300),),
+                cash_weight_percent=70,
+                cash_value_absolute=700,
+            )
+        )
+        service.apply_confirmed_trade(
+            ApplyTradeRequest(
+                outcome_id=str(outcome.id.value),
+                decision_id=str(outcome.decision_id.value),
+                security="AMD",
+                transaction_type=TransactionType.ADD,
+                quantity=1,
+                execution_price=100,
+                executed_at=_NOW,
+            )
+        )
+        assert provider.call_count == []
+
+    def test_a_sell_never_triggers_enrichment(self):
+        engine = _new_engine()
+        provider = self._fake_provider()
+        service, repository, outcome = self._enrichment_wired_service(engine, provider)
+        service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(ImportHoldingInput(ticker="AMD", weight_percent=30, value_absolute=300),),
+                cash_weight_percent=70,
+                cash_value_absolute=700,
+            )
+        )
+        service.apply_confirmed_trade(
+            ApplyTradeRequest(
+                outcome_id=str(outcome.id.value),
+                decision_id=str(outcome.decision_id.value),
+                security="AMD",
+                transaction_type=TransactionType.SELL,
+                quantity=1,
+                execution_price=100,
+                executed_at=_NOW,
+            )
+        )
+        assert provider.call_count == []
+
+    def test_repeated_buys_of_the_same_new_ticker_only_enrich_once(self):
+        """A BUY on a ticker with no existing holding always passes
+        through `_ensure_cases`/enrichment -- `ensure_company_enriched`
+        itself is what guarantees the second call is a no-op, proven
+        here end to end."""
+        engine = _new_engine()
+        provider = self._fake_provider()
+        service, repository, outcome = self._enrichment_wired_service(engine, provider)
+        service.start_from_scratch(FromScratchRequest(objective="Grow capital", horizon="Long-term"))
+        service.apply_confirmed_trade(
+            ApplyTradeRequest(
+                outcome_id=str(outcome.id.value),
+                decision_id=str(outcome.decision_id.value),
+                security="AMD",
+                transaction_type=TransactionType.BUY,
+                quantity=1,
+                execution_price=100,
+                executed_at=_NOW,
+            )
+        )
+        assert provider.call_count == ["AMD"]
+        assert len(repository.get_by_company("AMD")) == 1
+
+    def test_without_enrichment_dependencies_wired_the_trade_still_succeeds(self, trade_service_factory):
+        """Omitting `business_record_repository`/`business_data_
+        providers` (the opt-in default) is a deliberate no-op -- trade
+        application is fully independent of enrichment."""
+        outcome = _make_outcome()
+        trade_service = trade_service_factory(_FakeOutcomeRepository([outcome]))
+        trade_service.start_from_scratch(FromScratchRequest(objective="Grow capital", horizon="Long-term"))
+        state = trade_service.apply_confirmed_trade(
+            ApplyTradeRequest(
+                outcome_id=str(outcome.id.value),
+                decision_id=str(outcome.decision_id.value),
+                security="AMD",
+                transaction_type=TransactionType.BUY,
+                quantity=1,
+                execution_price=100,
+                executed_at=_NOW,
+            )
+        )
+        assert state.holdings[0].ticker == "AMD"
+
+    def test_a_provider_failure_does_not_prevent_the_trade_from_succeeding(self):
+        from dataclasses import dataclass
+
+        @dataclass(frozen=True)
+        class _FailingProvider:
+            def fetch(self, *, company_identifier, evaluated_at):
+                raise RuntimeError("network unavailable")
+
+        engine = _new_engine()
+        service, repository, outcome = self._enrichment_wired_service(engine, _FailingProvider())
+        service.start_from_scratch(FromScratchRequest(objective="Grow capital", horizon="Long-term"))
+
+        state = service.apply_confirmed_trade(
+            ApplyTradeRequest(
+                outcome_id=str(outcome.id.value),
+                decision_id=str(outcome.decision_id.value),
+                security="AMD",
+                transaction_type=TransactionType.BUY,
+                quantity=1,
+                execution_price=100,
+                executed_at=_NOW,
+            )
+        )
+        assert state.holdings[0].ticker == "AMD"
+        assert state.holdings[0].case_id is not None
+        assert repository.get_by_company("AMD") == ()

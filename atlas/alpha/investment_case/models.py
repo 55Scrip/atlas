@@ -6,6 +6,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from atlas.alpha.investment_case.company_profile import CompanyProfile
+from atlas.alpha.investment_case.financial_history import FinancialPeriod, MarketSnapshot
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaTradeLogEntry
 from atlas.analysis_engine.models import CanonicalAnalysis
 from atlas.core.domain.decision.entity import Decision
@@ -62,3 +64,20 @@ class InvestmentCaseComposition:
     than recomputing the same `VERY_OLD_CASE_THRESHOLD_DAYS` rule a
     second time."""
     generated_at: datetime
+    # Investment Case Engine v1 slice: placed after every pre-existing
+    # field, each with a default, so every call site built before this
+    # slice (test helpers included) keeps constructing a valid
+    # `InvestmentCaseComposition` unchanged -- an intentional,
+    # backward-compatible dataclass extension, not a reordering of
+    # anything that came before it.
+    company_profile: CompanyProfile | None = None
+    """(Investment Case Engine v1 slice) `None` only when no
+    `COMPANY_PROFILE` `BusinessRecord` has been ingested for this
+    Case's own ticker yet -- an honest absence, not a placeholder."""
+    financial_history: tuple[FinancialPeriod, ...] = ()
+    """(Investment Case Engine v1 slice) Every ingested fiscal period's
+    raw fundamentals, oldest first. Empty, never fabricated, when no
+    `FINANCIAL_STATEMENT` record exists yet."""
+    market_snapshot: MarketSnapshot | None = None
+    """(Investment Case Engine v1 slice) The most recent current-market
+    snapshot, or `None` if none has been ingested yet."""

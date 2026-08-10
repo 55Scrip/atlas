@@ -31,6 +31,23 @@ persisted. This is the one place `refresh_company_data` reads
 `known_records` for something other than duplicate detection; the
 provider itself never touches the repository or knows what a
 `BusinessRecord` is.
+
+**Investment Case Engine v1 slice: a third, identically-shaped optional
+pass for `business_data.providers.CompanyProfileProvider`.** Any
+provider that also implements it is asked, once, for this company's
+descriptive identity fields -- the same `isinstance`-checked,
+provider-agnostic pattern as the historical-market-data pass above,
+never a hardcoded provider name.
+
+**`ensure_company_enriched` is this slice's own automatic-trigger
+entrypoint**, layered on top of `refresh_company_data` rather than
+replacing it: the CLI and any future explicit "force refresh" caller
+still want `refresh_company_data`'s unconditional behavior, but the
+Watchlist/Portfolio "add a company" write paths must never re-fetch (or
+re-call rate-limited providers for) a ticker Atlas has already fetched
+at least once. The gate is a single, honest check -- "does this company
+already have at least one persisted `BusinessRecord`" -- never a
+timestamp-based expiry or a second cache this sprint does not need.
 """
 from __future__ import annotations
 
@@ -38,13 +55,17 @@ from datetime import date, datetime, timezone
 
 from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.business_data.pipeline import IngestionRejected, ingest
-from atlas.analysis_engine.business_data.providers import BusinessDataProvider, HistoricalMarketDataProvider
+from atlas.analysis_engine.business_data.providers import (
+    BusinessDataProvider,
+    CompanyProfileProvider,
+    HistoricalMarketDataProvider,
+)
 from atlas.analysis_engine.business_data.sources import SourceKind
 from atlas.analysis_engine.business_data.versioning import DuplicateRecord
 from atlas.alpha.business_data_refresh.models import ProviderFailure, RefreshSummary
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 
-__all__ = ["refresh_company_data"]
+__all__ = ["refresh_company_data", "ensure_company_enriched"]
 
 
 def _utc_now() -> datetime:
@@ -130,6 +151,19 @@ def refresh_company_data(
             continue
         _ingest_documents(historical_documents)
 
+    for provider in providers:
+        if not isinstance(provider, CompanyProfileProvider):
+            continue
+        provider_id = f"{type(provider).__name__}.fetch_company_profile"
+        try:
+            profile_documents = provider.fetch_company_profile(
+                company_identifier=ticker, evaluated_at=evaluated_at
+            )
+        except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
+            provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc)))
+            continue
+        _ingest_documents(profile_documents)
+
     return RefreshSummary(
         ticker=ticker,
         providers_attempted=tuple(provider_ids),
@@ -140,3 +174,28 @@ def refresh_company_data(
         rejected_documents=rejected_documents,
         provider_errors=tuple(provider_errors),
     )
+
+
+def ensure_company_enriched(
+    ticker: str,
+    providers: tuple[BusinessDataProvider, ...],
+    repository: SqlAlchemyBusinessRecordRepository,
+) -> RefreshSummary | None:
+    """Idempotent, automatic-trigger wrapper for the Investment Case
+    Engine v1 slice's "add a company" write paths (Watchlist/Portfolio).
+
+    Returns `None` -- no provider called at all -- if `ticker` already
+    has at least one persisted `BusinessRecord` of any kind; this is the
+    one, honest freshness check this sprint needs (never a timestamp
+    expiry, never a background refresh schedule) and is exactly what
+    keeps a repeated Watchlist/Portfolio addition of the same company
+    from ever making a second round of provider calls. A ticker with no
+    persisted records yet delegates entirely to `refresh_company_data`,
+    whose own per-provider isolation already guarantees this never
+    raises for a provider failure -- a caller on the Case-creation path
+    may call this unconditionally without risking Case creation itself
+    failing because of a transient provider outage.
+    """
+    if repository.get_by_company(ticker):
+        return None
+    return refresh_company_data(ticker, providers, repository)

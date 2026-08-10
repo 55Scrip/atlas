@@ -22,6 +22,9 @@ from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.table import create_alpha_portfolio_state_table
 from atlas.alpha.portfolio.trade_log_store import AlphaTradeLogStore
 from atlas.alpha.portfolio.trade_log_table import create_alpha_trade_log_table
+from atlas.alpha.watchlist.models import AlphaWatchlistEntry
+from atlas.alpha.watchlist.store import AlphaWatchlistStore
+from atlas.alpha.watchlist.table import create_alpha_watchlist_entry_table
 from atlas.analysis_engine.business import BusinessCategory
 from atlas.analysis_engine.risk.models import EVALUATED_RISK_CATEGORIES
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind
@@ -48,6 +51,7 @@ def _new_engine():
     create_alpha_portfolio_state_table(engine)
     create_alpha_trade_log_table(engine)
     create_business_record_table(engine)
+    create_alpha_watchlist_entry_table(engine)
     return engine
 
 
@@ -63,6 +67,7 @@ class _Harness:
         self.portfolio_store = AlphaPortfolioStore(engine)
         self.trade_log_store = AlphaTradeLogStore(engine)
         self.business_record_repository = SqlAlchemyBusinessRecordRepository(engine)
+        self.watchlist_store = AlphaWatchlistStore(engine)
         self.case_generation_service = CaseGenerationService(self.case_service)
         self.portfolio_service = AlphaPortfolioService(
             self.portfolio_store, self.trade_log_store, None, self.case_generation_service
@@ -76,7 +81,14 @@ class _Harness:
             self.portfolio_store,
             self.trade_log_store,
             self.business_record_repository,
+            watchlist_store=self.watchlist_store,
         )
+
+    def add_to_watchlist(self, ticker: str) -> str:
+        case = self.case_service.create()
+        case_id = str(case.id)
+        self.watchlist_store.add(AlphaWatchlistEntry(ticker=ticker, case_id=case_id, added_at=_NOW))
+        return case_id
 
     def import_holding(self, ticker: str, weight_percent: float = 20.0) -> str:
         state = self.portfolio_service.import_portfolio(
@@ -420,3 +432,150 @@ class TestBuildMany:
                 first[case_id].canonical_analysis.conviction.level
                 == second[case_id].canonical_analysis.conviction.level
             )
+
+
+class TestCompanyProfileFinancialHistoryAndMarketSnapshot:
+    """(Investment Case Engine v1 slice) Proves the composition service
+    surfaces already-ingested `BusinessRecord`s directly -- Company
+    Profile, Financial History, Market Snapshot -- for both a held
+    Portfolio company and a Watchlist-only one."""
+
+    @staticmethod
+    def _ingest(harness, ticker: str) -> None:
+        from atlas.alpha.business_data_refresh.service import refresh_company_data
+        from atlas.analysis_engine.business_data.models import RawBusinessDocument
+
+        documents = (
+            RawBusinessDocument(
+                identifier=f"{ticker}:profile",
+                company=ticker,
+                source_kind="company_profile",
+                published_at=_NOW,
+                provider_id="fake",
+                raw_reference="https://example.test/profile",
+                content_hash="profile-hash",
+                language="en",
+                metadata={"name": f"{ticker} Corp", "sector": "Technology"},
+            ),
+            RawBusinessDocument(
+                identifier=f"{ticker}:FY:2023",
+                company=ticker,
+                source_kind="financial_statement",
+                published_at=_NOW,
+                provider_id="fake",
+                raw_reference="https://example.test/fs",
+                content_hash="fs-hash",
+                language="en",
+                period_start=None,
+                period_end=None,
+                metadata={"revenue": 1000.0, "free_cash_flow": 200.0},
+            ),
+            RawBusinessDocument(
+                identifier=f"{ticker}:snapshot:2026-08-09",
+                company=ticker,
+                source_kind="market_data_snapshot",
+                published_at=_NOW,
+                provider_id="fake",
+                raw_reference="https://example.test/snap",
+                content_hash="snap-hash",
+                language="en",
+                metadata={"share_price": 150.0, "shares_outstanding": 1000000.0, "currency": "USD"},
+            ),
+        )
+
+        class _Provider:
+            def fetch(self, *, company_identifier, evaluated_at):
+                return tuple(d for d in documents if d.company == company_identifier)
+
+        refresh_company_data(ticker, (_Provider(),), harness.business_record_repository)
+
+    def test_a_held_company_surfaces_its_company_profile(self, harness):
+        case_id = harness.import_holding("AMD")
+        self._ingest(harness, "AMD")
+        composition = harness.composition_service.build(case_id)
+        assert composition.company_profile is not None
+        assert composition.company_profile.name == "AMD Corp"
+        assert composition.company_profile.ticker == "AMD"
+
+    def test_a_held_company_surfaces_its_financial_history(self, harness):
+        case_id = harness.import_holding("AMD")
+        self._ingest(harness, "AMD")
+        composition = harness.composition_service.build(case_id)
+        assert len(composition.financial_history) == 1
+        assert composition.financial_history[0].revenue == 1000.0
+        assert composition.financial_history[0].free_cash_flow == 200.0
+
+    def test_a_held_company_surfaces_its_market_snapshot(self, harness):
+        case_id = harness.import_holding("AMD")
+        self._ingest(harness, "AMD")
+        composition = harness.composition_service.build(case_id)
+        assert composition.market_snapshot is not None
+        assert composition.market_snapshot.share_price == 150.0
+        assert composition.market_snapshot.shares_outstanding == 1000000.0
+
+    def test_a_company_with_no_ingested_data_has_honest_absence_not_placeholders(self, harness):
+        case_id = harness.import_holding("AMD")
+        composition = harness.composition_service.build(case_id)
+        assert composition.company_profile is None
+        assert composition.financial_history == ()
+        assert composition.market_snapshot is None
+
+    def test_a_watchlist_only_company_still_surfaces_its_business_records(self, harness):
+        """The API/investment-case gap this slice closes: Watchlist
+        gets the same knowledge as Portfolio."""
+        case_id = harness.add_to_watchlist("NVDA")
+        self._ingest(harness, "NVDA")
+        composition = harness.composition_service.build(case_id)
+        assert composition.company_profile is not None
+        assert composition.company_profile.name == "NVDA Corp"
+        assert len(composition.financial_history) == 1
+        # Watchlist-only: never held as a Portfolio position.
+        assert composition.holding_context is None
+
+    def test_a_watchlist_company_that_moves_to_portfolio_keeps_the_same_business_records(self, harness):
+        """Moving Watchlist -> Portfolio must not rebuild company
+        knowledge: same Case, same already-ingested records, visible
+        either way."""
+        case_id = harness.add_to_watchlist("NVDA")
+        self._ingest(harness, "NVDA")
+
+        # Now also held in Portfolio, reusing the same Case (proven by
+        # the cross-context tests in `atlas.alpha.portfolio`'s own test
+        # suite) -- here we simply attach the holding directly with the
+        # same case_id to isolate this test's own concern.
+        from atlas.alpha.portfolio.models import AlphaHolding, AlphaPortfolioState, EntryMode
+
+        harness.portfolio_store.replace(
+            AlphaPortfolioState(
+                established_at=_NOW,
+                updated_at=_NOW,
+                entry_mode=EntryMode.IMPORTED,
+                holdings=(AlphaHolding(ticker="NVDA", weight_percent=10.0, case_id=case_id),),
+            )
+        )
+        composition = harness.composition_service.build(case_id)
+        assert composition.company_profile is not None
+        assert composition.company_profile.name == "NVDA Corp"
+        assert composition.holding_context is not None
+        assert composition.holding_context.ticker == "NVDA"
+
+    def test_without_a_watchlist_store_wired_a_watchlist_only_case_gets_no_data(self, harness):
+        """Omitting `watchlist_store` (the opt-in default) must never
+        raise -- it degrades to `build`'s exact prior behavior."""
+        from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
+
+        case_id = harness.add_to_watchlist("NVDA")
+        self._ingest(harness, "NVDA")
+        service_without_watchlist = InvestmentCaseCompositionService(
+            harness.case_repository,
+            harness.decision_repository,
+            harness.observation_repository,
+            harness.evidence_repository,
+            harness.outcome_repository,
+            harness.portfolio_store,
+            harness.trade_log_store,
+            harness.business_record_repository,
+        )
+        composition = service_without_watchlist.build(case_id)
+        assert composition.company_profile is None
+        assert composition.financial_history == ()

@@ -80,12 +80,24 @@ ticker per instance.** `fetch()` and `fetch_historical_snapshots()`
 both need the same two current-basis values -- `SharesOutstanding` and
 `Currency` -- and were originally each written to independently call
 `OVERVIEW` for them, wasting one full request whenever both methods
-run in the same refresh. `_current_overview` now retains only those
-two already-parsed values (never the raw payload, no expiration, no
+run in the same refresh. `_current_overview` now retains those
+already-parsed values (never the raw payload, no expiration, no
 general response cache) keyed by ticker; whichever method runs first
 populates it, the other reuses it. Calling either method alone, or for
 a different ticker, still makes its own real `OVERVIEW` request exactly
 as before.
+
+**Investment Case Engine v1 slice: `fetch_company_profile` reuses the
+identical cached OVERVIEW call -- no third request.** `OVERVIEW`
+already returns descriptive identity fields (`Name`, `Exchange`,
+`Sector`, `Industry`, `Country`, `Description`) alongside
+`SharesOutstanding`/`Currency`; this provider previously parsed only
+the latter two and discarded the rest. `_current_overview` now also
+retains those identity fields from the same response, and
+`fetch_company_profile` (the optional `CompanyProfileProvider`
+capability) reads them from that same cache -- whichever of `fetch`,
+`fetch_historical_snapshots`, or `fetch_company_profile` runs first for
+a ticker is the one real `OVERVIEW` request; the other two reuse it.
 """
 from __future__ import annotations
 
@@ -111,6 +123,32 @@ __all__ = ["AlphaVantageMarketDataProvider"]
 
 _BASE_URL = "https://www.alphavantage.co/query"
 _SUPPORTED_CURRENCY = "USD"
+
+#: Investment Case Engine v1 slice -- canonical `business_facts`/
+#: `CompanyProfile` metadata key -> the OVERVIEW field it comes from.
+#: Alpha Vantage reports the literal string `"None"` for a field it does
+#: not have for a given ticker (confirmed shape of the real API, not
+#: assumed) -- `_identity_fields` below treats that exactly like a
+#: blank/missing value, never as real content, so a genuinely unknown
+#: field is omitted rather than persisted as the four-character string
+#: "None".
+_IDENTITY_FIELD_MAP: dict[str, str] = {
+    "Name": "name",
+    "Exchange": "exchange",
+    "Sector": "sector",
+    "Industry": "industry",
+    "Country": "country",
+    "Description": "description",
+}
+
+
+def _identity_fields(overview: dict[str, Any]) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for source_key, metadata_key in _IDENTITY_FIELD_MAP.items():
+        value = overview.get(source_key)
+        if isinstance(value, str) and value.strip() and value.strip().lower() != "none":
+            fields[metadata_key] = value.strip()
+    return fields
 
 #: Alpha Vantage's free tier rejects a second call made less than
 #: ~1 second after the first -- confirmed by live testing with a real
@@ -228,13 +266,15 @@ class AlphaVantageMarketDataProvider:
         # Alpha Vantage request, across every public method -- `None`
         # until the first request is made, so that request never sleeps.
         self._last_request_at: float | None = None
-        # ATLAS-033: the two already-parsed OVERVIEW values `fetch` and
-        # `fetch_historical_snapshots` both need, keyed by ticker so a
-        # (hypothetical) instance reused across companies never returns
-        # one company's figures for another -- never the raw payload,
-        # never given an expiry, since one instance's lifetime is
-        # already scoped to one refresh run.
-        self._overview_cache: tuple[str, float | None, Any] | None = None
+        # ATLAS-033 (extended by the Investment Case Engine v1 slice):
+        # the already-parsed OVERVIEW values `fetch`,
+        # `fetch_historical_snapshots`, and `fetch_company_profile` all
+        # need, keyed by ticker so a (hypothetical) instance reused
+        # across companies never returns one company's figures for
+        # another -- never the raw payload, never given an expiry,
+        # since one instance's lifetime is already scoped to one
+        # refresh run.
+        self._overview_cache: tuple[str, float | None, Any, dict[str, str]] | None = None
 
     def _resolved_api_key(self) -> str:
         key = _api_key(self._explicit_api_key)
@@ -261,18 +301,23 @@ class AlphaVantageMarketDataProvider:
         _check_for_provider_error(payload, context=f"Alpha Vantage OVERVIEW({ticker})")
         return payload if isinstance(payload, dict) else {}
 
-    def _current_overview(self, ticker: str, api_key: str) -> tuple[float | None, Any]:
-        """(ATLAS-033) `(shares_outstanding, currency)` -- reused from
-        this same instance's earlier `OVERVIEW` call for `ticker` if one
-        exists, instead of issuing a second, redundant request for the
-        identical current-basis figures."""
+    def _current_overview(self, ticker: str, api_key: str) -> tuple[float | None, Any, dict[str, str]]:
+        """(ATLAS-033, extended) `(shares_outstanding, currency,
+        identity_fields)` -- reused from this same instance's earlier
+        `OVERVIEW` call for `ticker` if one exists, instead of issuing a
+        second, redundant request for the identical current-basis
+        figures. `identity_fields` is the same OVERVIEW response's
+        descriptive fields (see `_identity_fields`), added by the
+        Investment Case Engine v1 slice; callers that only need
+        `shares_outstanding`/`currency` simply ignore the third value."""
         if self._overview_cache is not None and self._overview_cache[0] == ticker:
-            return self._overview_cache[1], self._overview_cache[2]
+            return self._overview_cache[1], self._overview_cache[2], self._overview_cache[3]
         overview = self._overview(ticker, api_key)
         shares_outstanding = _numeric(overview.get("SharesOutstanding"))
         currency = overview.get("Currency")
-        self._overview_cache = (ticker, shares_outstanding, currency)
-        return shares_outstanding, currency
+        identity = _identity_fields(overview)
+        self._overview_cache = (ticker, shares_outstanding, currency, identity)
+        return shares_outstanding, currency, identity
 
     def _monthly_adjusted(self, ticker: str, api_key: str) -> dict[str, Any]:
         url = f"{_BASE_URL}?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol={ticker}&apikey={api_key}"
@@ -332,7 +377,7 @@ class AlphaVantageMarketDataProvider:
                 f"Alpha Vantage GLOBAL_QUOTE({ticker}) latest trading day {trading_day!r} is not ISO-8601"
             ) from None
 
-        shares_outstanding, currency = self._current_overview(ticker, api_key)
+        shares_outstanding, currency, _identity = self._current_overview(ticker, api_key)
         # ATLAS-031A, Issue 1: currency must be positively confirmed --
         # never assumed. An unconfirmed currency (OVERVIEW empty or
         # missing the field) omits share_price/shares_outstanding/
@@ -386,7 +431,7 @@ class AlphaVantageMarketDataProvider:
         api_key = self._resolved_api_key()
         ticker = company_identifier.upper()
 
-        shares_outstanding, currency = self._current_overview(ticker, api_key)
+        shares_outstanding, currency, _identity = self._current_overview(ticker, api_key)
 
         series = self._monthly_adjusted(ticker, api_key)
         available_dates = sorted(d for d in (self._parse_series_date(key) for key in series) if d is not None)
@@ -437,3 +482,34 @@ class AlphaVantageMarketDataProvider:
             return date.fromisoformat(key)
         except ValueError:
             return None
+
+    def fetch_company_profile(
+        self, *, company_identifier: str, evaluated_at: datetime
+    ) -> tuple[RawBusinessDocument, ...]:
+        """(Investment Case Engine v1 slice) The optional
+        `CompanyProfileProvider` capability. Reuses `_current_overview`'s
+        cache exactly like `fetch_historical_snapshots` does -- if
+        `fetch` already ran for this ticker on this instance, this makes
+        no additional request at all. Returns `()`, never a fabricated
+        document, when the OVERVIEW response carried none of the known
+        identity fields (see `_identity_fields`)."""
+        api_key = self._resolved_api_key()
+        ticker = company_identifier.upper()
+
+        _shares_outstanding, _currency, identity = self._current_overview(ticker, api_key)
+        if not identity:
+            return ()
+
+        content_hash = hashlib.sha256(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()
+        document = RawBusinessDocument(
+            identifier=f"{ticker}:profile",
+            company=ticker,
+            source_kind=SourceKind.COMPANY_PROFILE.value,
+            published_at=evaluated_at,
+            provider_id="alpha_vantage",
+            raw_reference=f"{_BASE_URL}?function=OVERVIEW&symbol={ticker}",
+            content_hash=content_hash,
+            language="en",
+            metadata=identity,
+        )
+        return (document,)

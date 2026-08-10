@@ -8,12 +8,15 @@ import uuid
 from datetime import datetime, timezone
 
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
+from atlas.alpha.investment_case.company_profile import extract_company_profile
+from atlas.alpha.investment_case.financial_history import extract_financial_history, extract_market_snapshot
 from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComposition
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaTradeLogEntry
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.trade_log_store import AlphaTradeLogStore
 from atlas.alpha.portfolio_intelligence.pipeline_bridge import build_decision_engine_input
 from atlas.alpha.portfolio_status.service import VERY_OLD_CASE_THRESHOLD_DAYS
+from atlas.alpha.watchlist.store import AlphaWatchlistStore
 from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.business_data.versioning import latest_versions
 from atlas.analysis_engine.pipeline import assemble_analysis
@@ -74,6 +77,7 @@ class InvestmentCaseCompositionService:
         portfolio_store: AlphaPortfolioStore,
         trade_log_store: AlphaTradeLogStore,
         business_record_repository: SqlAlchemyBusinessRecordRepository,
+        watchlist_store: AlphaWatchlistStore | None = None,
     ) -> None:
         self._case_repository = case_repository
         self._decision_repository = decision_repository
@@ -83,12 +87,25 @@ class InvestmentCaseCompositionService:
         self._portfolio_store = portfolio_store
         self._trade_log_store = trade_log_store
         self._business_record_repository = business_record_repository
+        # (Investment Case Engine v1 slice) Optional, `build`-only: when
+        # a Case has no Portfolio holding, `build` falls back to
+        # Watchlist to resolve this Case's own ticker, so a
+        # Watchlist-only company still gets its persisted
+        # `BusinessRecord`s (Company Profile, Financial History, Market
+        # Snapshot) surfaced -- "Watchlist should be almost as
+        # analytically complete as a Portfolio company." `None` (the
+        # default) preserves `build`'s exact prior, Portfolio-only
+        # ticker resolution. Deliberately not threaded into
+        # `build_many`: its only real consumer, Portfolio Cockpit, is a
+        # Portfolio-only surface with no Watchlist entries to resolve.
+        self._watchlist_store = watchlist_store
 
     def _assemble(
         self,
         case_id_str: str,
         *,
         holding: AlphaHolding | None,
+        ticker: str | None,
         decisions: tuple[Decision, ...],
         observations: tuple[Observation, ...],
         evidence: tuple,
@@ -132,6 +149,18 @@ class InvestmentCaseCompositionService:
             generated_at=evaluated_at,
         )
 
+        # Investment Case Engine v1 slice: a direct, unevaluated read of
+        # the same already-ingested `business_records` -- "what does
+        # Atlas actually know," alongside `canonical_analysis`'s own
+        # "what has Atlas concluded from it." `ticker` may come from a
+        # Portfolio holding or (in `build`, never `build_many`) a
+        # Watchlist entry; `extract_company_profile` only needs it to
+        # label an otherwise-empty result, since `business_records` is
+        # already scoped to this one ticker by the caller.
+        company_profile = extract_company_profile(ticker, business_records) if ticker is not None else None
+        financial_history = extract_financial_history(business_records)
+        market_snapshot = extract_market_snapshot(business_records)
+
         return InvestmentCaseComposition(
             case_id=case_id_str,
             holding_context=holding,
@@ -142,6 +171,9 @@ class InvestmentCaseCompositionService:
             outcome_history=outcomes,
             trade_log=trades_for_ticker,
             is_thesis_stale=is_thesis_stale,
+            company_profile=company_profile,
+            financial_history=financial_history,
+            market_snapshot=market_snapshot,
             generated_at=evaluated_at,
         )
 
@@ -184,16 +216,30 @@ class InvestmentCaseCompositionService:
         if state is not None:
             holding = next((h for h in state.holdings if h.case_id == case_id_str), None)
 
+        # Investment Case Engine v1 slice: a Case with no Portfolio
+        # holding may still be a Watchlist company -- fall back to
+        # Watchlist to resolve this Case's own ticker so its persisted
+        # `BusinessRecord`s (Company Profile, Financial History, Market
+        # Snapshot) are still surfaced. `holding_context` itself is
+        # deliberately NOT set from this fallback: it specifically means
+        # "held as a Portfolio position," and a Watchlist-only company
+        # is honestly not one.
+        ticker: str | None = holding.ticker if holding is not None else None
+        if ticker is None and self._watchlist_store is not None:
+            watchlist_entry = self._watchlist_store.get_by_case_id(case_id_str)
+            ticker = watchlist_entry.ticker if watchlist_entry is not None else None
+
         all_trades = self._trade_log_store.list_all()
         trades_for_ticker: tuple[AlphaTradeLogEntry, ...] = ()
         business_records: tuple[BusinessRecord, ...] = ()
-        if holding is not None:
-            trades_for_ticker = tuple(t for t in all_trades if t.security == holding.ticker)
-            business_records = latest_versions(self._business_record_repository.get_by_company(holding.ticker))
+        if ticker is not None:
+            trades_for_ticker = tuple(t for t in all_trades if t.security == ticker)
+            business_records = latest_versions(self._business_record_repository.get_by_company(ticker))
 
         return self._assemble(
             case_id_str,
             holding=holding,
+            ticker=ticker,
             decisions=case_decisions,
             observations=case_observations,
             evidence=case_evidence,
@@ -296,6 +342,7 @@ class InvestmentCaseCompositionService:
             results[case_id_str] = self._assemble(
                 case_id_str,
                 holding=holding,
+                ticker=holding.ticker if holding is not None else None,
                 decisions=tuple(decisions_by_case[case_id_str]),
                 observations=tuple(observations_by_case[case_id_str]),
                 evidence=tuple(evidence_by_case[case_id_str]),

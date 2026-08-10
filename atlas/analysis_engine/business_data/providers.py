@@ -24,7 +24,12 @@ from typing import Protocol, runtime_checkable
 
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 
-__all__ = ["BusinessDataProvider", "HistoricalMarketDataProvider", "StaticBusinessDataProvider"]
+__all__ = [
+    "BusinessDataProvider",
+    "HistoricalMarketDataProvider",
+    "CompanyProfileProvider",
+    "StaticBusinessDataProvider",
+]
 
 
 @runtime_checkable
@@ -67,6 +72,32 @@ class HistoricalMarketDataProvider(Protocol):
 
     def fetch_historical_snapshots(
         self, *, company_identifier: str, filing_dates: tuple[date, ...], evaluated_at: datetime
+    ) -> tuple[RawBusinessDocument, ...]:
+        ...
+
+
+@runtime_checkable
+class CompanyProfileProvider(Protocol):
+    """(Investment Case Engine v1 slice) An optional, second capability
+    a provider may additionally implement -- checked for at the
+    orchestration layer (`refresh_company_data`) via `isinstance`
+    against this `runtime_checkable` Protocol, the identical pattern
+    `HistoricalMarketDataProvider` already establishes. Deliberately
+    not folded into `BusinessDataProvider.fetch` itself: a fundamentals
+    provider (SEC EDGAR) has no company-identity concept to serve, and
+    a provider that already fetches identity fields as a byproduct of
+    another call it makes (e.g. Alpha Vantage's `OVERVIEW`) should be
+    free to serve this from that same, already-fetched response rather
+    than being forced to originate a second network call it doesn't
+    need.
+
+    Returns `()` (never fabricates) when no identity fields are known
+    for `company_identifier`, mirroring `BusinessDataProvider.fetch`'s
+    own honest-absence contract.
+    """
+
+    def fetch_company_profile(
+        self, *, company_identifier: str, evaluated_at: datetime
     ) -> tuple[RawBusinessDocument, ...]:
         ...
 

@@ -23,12 +23,14 @@ neither recomputes anything.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from atlas.alpha.case_intelligence.api.schemas import (
     EvidenceQualityFindingsSchema,
     OpenQuestionSchema,
 )
+from atlas.alpha.investment_case.company_profile import CompanyProfile
+from atlas.alpha.investment_case.financial_history import FinancialPeriod, MarketSnapshot
 from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComposition
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaTradeLogEntry
 from atlas.analysis_engine.business_contracts import BusinessAnalysisResult, BusinessFinding
@@ -261,6 +263,75 @@ class OutcomeEntryView(CamelModel):
         )
 
 
+class CompanyProfileView(CamelModel):
+    """(Investment Case Engine v1 slice) Descriptive company identity,
+    as currently known -- every field beyond `ticker` may be `None`."""
+
+    ticker: str
+    name: str | None
+    exchange: str | None
+    sector: str | None
+    industry: str | None
+    country: str | None
+    description: str | None
+    as_of: datetime
+
+    @classmethod
+    def from_domain(cls, profile: CompanyProfile) -> "CompanyProfileView":
+        return cls(
+            ticker=profile.ticker,
+            name=profile.name,
+            exchange=profile.exchange,
+            sector=profile.sector,
+            industry=profile.industry,
+            country=profile.country,
+            description=profile.description,
+            as_of=profile.as_of,
+        )
+
+
+class FinancialPeriodView(CamelModel):
+    period_start: date | None
+    period_end: date | None
+    revenue: float | None
+    free_cash_flow: float | None
+    capital_expenditure: float | None
+    share_buybacks: float | None
+    share_issuance: float | None
+    dividends: float | None
+    currency: str | None
+
+    @classmethod
+    def from_domain(cls, period: FinancialPeriod) -> "FinancialPeriodView":
+        return cls(
+            period_start=period.period_start,
+            period_end=period.period_end,
+            revenue=period.revenue,
+            free_cash_flow=period.free_cash_flow,
+            capital_expenditure=period.capital_expenditure,
+            share_buybacks=period.share_buybacks,
+            share_issuance=period.share_issuance,
+            dividends=period.dividends,
+            currency=period.currency,
+        )
+
+
+class MarketSnapshotView(CamelModel):
+    as_of: datetime
+    share_price: float | None
+    shares_outstanding: float | None
+    currency: str | None
+
+    @classmethod
+    def from_domain(cls, snapshot: MarketSnapshot) -> "MarketSnapshotView":
+        return cls(
+            as_of=snapshot.as_of,
+            share_price=snapshot.share_price,
+            shares_outstanding=snapshot.shares_outstanding,
+            currency=snapshot.currency,
+        )
+
+
 class TradeLogEntryView(CamelModel):
     outcome_id: str
     decision_id: str
@@ -304,6 +375,9 @@ class InvestmentCaseAnalysisView(CamelModel):
     observation_history: list[ObservationEntryView]
     outcome_history: list[OutcomeEntryView]
     trade_log: list[TradeLogEntryView]
+    company_profile: CompanyProfileView | None
+    financial_history: list[FinancialPeriodView]
+    market_snapshot: MarketSnapshotView | None
     generated_at: datetime
 
     @classmethod
@@ -330,5 +404,16 @@ class InvestmentCaseAnalysisView(CamelModel):
             observation_history=[ObservationEntryView.from_domain(o) for o in composition.observation_history],
             outcome_history=[OutcomeEntryView.from_domain(o) for o in composition.outcome_history],
             trade_log=[TradeLogEntryView.from_domain(t) for t in composition.trade_log],
+            company_profile=(
+                CompanyProfileView.from_domain(composition.company_profile)
+                if composition.company_profile is not None
+                else None
+            ),
+            financial_history=[FinancialPeriodView.from_domain(p) for p in composition.financial_history],
+            market_snapshot=(
+                MarketSnapshotView.from_domain(composition.market_snapshot)
+                if composition.market_snapshot is not None
+                else None
+            ),
             generated_at=composition.generated_at,
         )

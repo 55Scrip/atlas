@@ -39,7 +39,7 @@ class _NoOpCaseGenerationService:
     `disable_case_generation` pattern already established for the
     discovery router's own tests (ATLAS-027)."""
 
-    def ensure_cases(self, holdings):
+    def ensure_cases(self, holdings, *, known_case_ids_by_ticker=None):
         return holdings
 
 

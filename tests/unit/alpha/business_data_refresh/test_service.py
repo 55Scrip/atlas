@@ -17,7 +17,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.pool import StaticPool
 
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
-from atlas.alpha.business_data_refresh.service import refresh_company_data
+from atlas.alpha.business_data_refresh.service import ensure_company_enriched, refresh_company_data
 from atlas.alpha.business_data_refresh.table import create_business_record_table
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 
@@ -96,6 +96,45 @@ def engine() -> Engine:
 @pytest.fixture
 def repository(engine) -> SqlAlchemyBusinessRecordRepository:
     return SqlAlchemyBusinessRecordRepository(engine)
+
+
+@dataclass(frozen=True)
+class _FakeCompanyProfileProvider:
+    """(Investment Case Engine v1 slice) A `BusinessDataProvider` that
+    additionally implements `fetch_company_profile` -- structurally
+    conforms to `CompanyProfileProvider` with no import of that
+    Protocol, mirroring `_FakeHistoricalProvider`'s own duck-typing
+    proof for the historical-market-data capability."""
+
+    current_documents: tuple[RawBusinessDocument, ...] = ()
+    profile_documents: tuple[RawBusinessDocument, ...] = ()
+    profile_exception: Exception | None = None
+    profile_call_count: list = field(default_factory=list)
+
+    def fetch(self, *, company_identifier: str, evaluated_at: datetime) -> tuple[RawBusinessDocument, ...]:
+        return tuple(d for d in self.current_documents if d.company == company_identifier)
+
+    def fetch_company_profile(
+        self, *, company_identifier: str, evaluated_at: datetime
+    ) -> tuple[RawBusinessDocument, ...]:
+        self.profile_call_count.append(company_identifier)
+        if self.profile_exception is not None:
+            raise self.profile_exception
+        return tuple(d for d in self.profile_documents if d.company == company_identifier)
+
+
+def _profile_doc(*, company: str = "AAPL", name: str = "Apple Inc.", sector: str = "Technology") -> RawBusinessDocument:
+    return RawBusinessDocument(
+        identifier=f"{company}:profile",
+        company=company,
+        source_kind="company_profile",
+        published_at=_EVALUATED_AT,
+        provider_id="fake_provider",
+        raw_reference="https://example.test/profile",
+        content_hash=f"profile-hash-{name}",
+        language="en",
+        metadata={"name": name, "sector": sector},
+    )
 
 
 class TestBasicRefresh:
@@ -275,3 +314,112 @@ class TestHistoricalMarketDataCapability:
         second = refresh_company_data("AAPL", (fundamentals_provider, historical_provider), repository)
         assert second.duplicates_skipped == 2  # the fundamentals record and the historical snapshot both repeat
         assert second.new_records == 0
+
+
+class TestCompanyProfileCapability:
+    """(Investment Case Engine v1 slice) The third, optional
+    `CompanyProfileProvider` pass -- proves `refresh_company_data`
+    detects it via duck typing (never a hardcoded provider class),
+    isolates its failures distinctly from the other two passes, and
+    persists what it returns through the identical ingestion pipeline."""
+
+    def test_a_conforming_provider_gets_its_profile_ingested(self, repository):
+        provider = _FakeCompanyProfileProvider(profile_documents=(_profile_doc(),))
+        summary = refresh_company_data("AAPL", (provider,), repository)
+
+        assert summary.new_records == 1
+        records = repository.get_by_company("AAPL")
+        assert len(records) == 1
+        assert records[0].document_type.value == "company_profile"
+        assert records[0].metadata["name"] == "Apple Inc."
+
+    def test_a_non_conforming_provider_is_silently_skipped_for_this_pass(self, repository):
+        provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2023"),))
+        summary = refresh_company_data("AAPL", (provider,), repository)
+        assert summary.new_records == 1  # only the fundamentals record -- no profile pass attempted
+        assert summary.provider_errors == ()
+
+    def test_profile_failure_is_isolated_and_reported_distinctly(self, repository):
+        fundamentals_provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2023"),))
+        profile_provider = _FakeCompanyProfileProvider(profile_exception=RuntimeError("overview unavailable"))
+        summary = refresh_company_data("AAPL", (fundamentals_provider, profile_provider), repository)
+
+        assert summary.new_records == 1  # the fundamentals record still persisted
+        assert len(summary.provider_errors) == 1
+        assert summary.provider_errors[0].provider_id == "_FakeCompanyProfileProvider.fetch_company_profile"
+        assert "overview unavailable" in summary.provider_errors[0].error
+
+    def test_empty_profile_result_produces_no_record_and_no_error(self, repository):
+        """A provider that legitimately has no identity fields for this
+        company returns `()`, not an exception -- never fabricated,
+        never reported as a failure."""
+        provider = _FakeCompanyProfileProvider(profile_documents=())
+        summary = refresh_company_data("AAPL", (provider,), repository)
+        assert summary.new_records == 0
+        assert summary.provider_errors == ()
+        assert repository.get_by_company("AAPL") == ()
+
+    def test_repeated_refresh_of_the_same_profile_is_idempotent(self, repository):
+        provider = _FakeCompanyProfileProvider(profile_documents=(_profile_doc(),))
+        first = refresh_company_data("AAPL", (provider,), repository)
+        second = refresh_company_data("AAPL", (provider,), repository)
+        assert first.new_records == 1
+        assert second.new_records == 0
+        assert second.duplicates_skipped == 1
+        assert len(repository.get_by_company("AAPL")) == 1
+
+
+class TestEnsureCompanyEnriched:
+    """(Investment Case Engine v1 slice) The idempotent, automatic-
+    trigger wrapper Watchlist/Portfolio's own "add a company" write
+    paths call. Proves the one freshness gate this sprint needs: no
+    provider is ever called a second time for an already-enriched
+    ticker."""
+
+    def test_a_new_company_is_fetched_and_persisted(self, repository):
+        provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2023"),))
+        summary = ensure_company_enriched("AAPL", (provider,), repository)
+        assert summary is not None
+        assert summary.new_records == 1
+        assert len(repository.get_by_company("AAPL")) == 1
+
+    def test_an_already_enriched_company_makes_no_provider_call_at_all(self, repository):
+        provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2023"),))
+        ensure_company_enriched("AAPL", (provider,), repository)
+
+        calling_provider = _FakeProvider(exception=AssertionError("must never be called"))
+        result = ensure_company_enriched("AAPL", (calling_provider,), repository)
+        assert result is None
+        assert len(repository.get_by_company("AAPL")) == 1  # unchanged
+
+    def test_a_different_ticker_is_still_fetched_independently(self, repository):
+        provider = _FakeProvider(
+            documents=(_doc(identifier="AAPL:FY:2023", company="AAPL"), _doc(identifier="MSFT:FY:2023", company="MSFT"))
+        )
+        ensure_company_enriched("AAPL", (provider,), repository)
+        second = ensure_company_enriched("MSFT", (provider,), repository)
+        assert second is not None
+        assert second.new_records == 1
+        assert len(repository.get_by_company("MSFT")) == 1
+
+    def test_a_provider_failure_does_not_raise_and_still_returns_a_summary(self, repository):
+        provider = _FakeProvider(exception=RuntimeError("SEC EDGAR unavailable"))
+        summary = ensure_company_enriched("AAPL", (provider,), repository)
+        assert summary is not None
+        assert len(summary.provider_errors) == 1
+        assert repository.get_by_company("AAPL") == ()
+
+    def test_partial_provider_failure_still_persists_the_succeeding_provider(self, repository):
+        """Missing SEC EDGAR coverage (a non-US filer, `CompanyNotFound`
+        in the real provider) must not block Alpha Vantage's own market
+        data from being persisted -- an expected data-availability
+        condition, not a system failure."""
+        failing_fundamentals = _FakeProvider(exception=RuntimeError("CompanyNotFound: not an SEC filer"))
+        succeeding_market_data = _FakeProvider(
+            documents=(_doc(identifier="XYZ:snapshot:2026-08-09", company="XYZ", source_kind="market_data_snapshot"),)
+        )
+        summary = ensure_company_enriched("XYZ", (failing_fundamentals, succeeding_market_data), repository)
+        assert summary is not None
+        assert len(summary.provider_errors) == 1
+        assert summary.new_records == 1
+        assert len(repository.get_by_company("XYZ")) == 1

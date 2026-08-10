@@ -24,6 +24,8 @@ from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_store, get_alpha_trade_log_store
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.trade_log_store import AlphaTradeLogStore
+from atlas.alpha.watchlist.api.dependencies import get_alpha_watchlist_store
+from atlas.alpha.watchlist.store import AlphaWatchlistStore
 from atlas.core.domain.case.repository import CaseRepository
 from atlas.core.domain.decision.repository import DecisionRepository
 from atlas.core.domain.evidence.repository import EvidenceRepository
@@ -47,6 +49,7 @@ def get_investment_case_composition_service(
     portfolio_store: AlphaPortfolioStore = Depends(get_alpha_portfolio_store),
     trade_log_store: AlphaTradeLogStore = Depends(get_alpha_trade_log_store),
     business_record_repository: SqlAlchemyBusinessRecordRepository = Depends(get_business_record_repository),
+    watchlist_store: AlphaWatchlistStore = Depends(get_alpha_watchlist_store),
 ) -> InvestmentCaseCompositionService:
     return InvestmentCaseCompositionService(
         case_repository=case_repository,
@@ -57,4 +60,5 @@ def get_investment_case_composition_service(
         portfolio_store=portfolio_store,
         trade_log_store=trade_log_store,
         business_record_repository=business_record_repository,
+        watchlist_store=watchlist_store,
     )

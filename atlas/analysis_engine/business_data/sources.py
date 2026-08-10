@@ -68,3 +68,17 @@ class SourceKind(str, Enum):
     `atlas.analysis_engine.valuation.facts` for this), not in a second
     ingestion system. One canonical data layer, two disjoint fact
     vocabularies reading from it."""
+
+    COMPANY_PROFILE = "company_profile"
+    """Investment Case Engine v1 slice: a canonical record of a
+    company's own descriptive identity (name, exchange, sector,
+    industry, country, description) as currently reported by a
+    provider -- structural in the same sense every other member here
+    is: this taxonomy member says such a document exists and where it
+    came from, never what a downstream reader should conclude from it.
+    Deliberately a distinct kind from `MARKET_DATA_SNAPSHOT`: identity
+    fields describe *what the company is*, not *what it is worth right
+    now* -- conflating the two into one document type would make a
+    consumer that wants only identity (or only market data) filter by
+    field presence instead of by `document_type`, the exact ambiguity
+    this taxonomy exists to avoid."""

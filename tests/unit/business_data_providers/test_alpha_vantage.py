@@ -949,3 +949,122 @@ class TestOverviewDeduplication:
         )
 
         assert doc_reused == doc_fresh
+
+
+class TestFetchCompanyProfile:
+    """(Investment Case Engine v1 slice) `fetch_company_profile` --
+    reuses the same cached OVERVIEW response `fetch`/`fetch_historical_
+    snapshots` already use; no network call of its own is asserted
+    directly (the fetcher raises `AssertionError` on any unexpected
+    URL, so a redundant OVERVIEW request would already fail these
+    tests)."""
+
+    def test_returns_one_company_profile_document_with_identity_fields(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "OVERVIEW": {
+                    "Symbol": "AAPL",
+                    "Name": "Apple Inc.",
+                    "Exchange": "NASDAQ",
+                    "Sector": "TECHNOLOGY",
+                    "Industry": "CONSUMER ELECTRONICS",
+                    "Country": "USA",
+                    "Description": "Apple Inc. designs, manufactures, and markets smartphones.",
+                    "SharesOutstanding": "14840000000",
+                    "Currency": "USD",
+                }
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        docs = provider.fetch_company_profile(company_identifier="AAPL", evaluated_at=_NOW)
+        assert len(docs) == 1
+        (doc,) = docs
+        assert doc.source_kind == "company_profile"
+        assert doc.provider_id == "alpha_vantage"
+        assert doc.company == "AAPL"
+        assert doc.metadata["name"] == "Apple Inc."
+        assert doc.metadata["exchange"] == "NASDAQ"
+        assert doc.metadata["sector"] == "TECHNOLOGY"
+        assert doc.metadata["industry"] == "CONSUMER ELECTRONICS"
+        assert doc.metadata["country"] == "USA"
+        assert "smartphones" in doc.metadata["description"]
+
+    def test_literal_none_string_fields_are_omitted_not_stored(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {"OVERVIEW": {"Symbol": "XYZ", "Name": "Xyz Corp", "Sector": "None", "Industry": "None"}}
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        (doc,) = provider.fetch_company_profile(company_identifier="XYZ", evaluated_at=_NOW)
+        assert doc.metadata["name"] == "Xyz Corp"
+        assert "sector" not in doc.metadata
+        assert "industry" not in doc.metadata
+
+    def test_empty_overview_returns_no_documents(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher({"OVERVIEW": {}})
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        docs = provider.fetch_company_profile(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs == ()
+
+    def test_missing_api_key_raises(self, monkeypatch):
+        monkeypatch.delenv("ALPHA_VANTAGE_API_KEY", raising=False)
+        provider = AlphaVantageMarketDataProvider(_fake_fetcher({}))
+        with pytest.raises(MissingRequiredField):
+            provider.fetch_company_profile(company_identifier="AAPL", evaluated_at=_NOW)
+
+    def test_calling_fetch_then_fetch_company_profile_makes_only_one_overview_request(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        call_count = {"OVERVIEW": 0, "GLOBAL_QUOTE": 0}
+
+        def fetcher(url: str, headers) -> object:
+            if "GLOBAL_QUOTE" in url:
+                call_count["GLOBAL_QUOTE"] += 1
+                return {"Global Quote": {"05. price": "191.55", "07. latest trading day": "2026-08-07"}}
+            if "OVERVIEW" in url:
+                call_count["OVERVIEW"] += 1
+                return {"Symbol": "AAPL", "Name": "Apple Inc.", "SharesOutstanding": "100", "Currency": "USD"}
+            raise AssertionError(f"unexpected URL: {url}")
+
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        profile_docs = provider.fetch_company_profile(company_identifier="AAPL", evaluated_at=_NOW)
+
+        assert call_count["OVERVIEW"] == 1  # cached from `fetch`, never requested a second time
+        assert len(profile_docs) == 1
+        assert profile_docs[0].metadata["name"] == "Apple Inc."
+
+    def test_calling_fetch_company_profile_first_still_populates_the_shared_cache(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        call_count = {"OVERVIEW": 0, "GLOBAL_QUOTE": 0}
+
+        def fetcher(url: str, headers) -> object:
+            if "GLOBAL_QUOTE" in url:
+                call_count["GLOBAL_QUOTE"] += 1
+                return {"Global Quote": {"05. price": "191.55", "07. latest trading day": "2026-08-07"}}
+            if "OVERVIEW" in url:
+                call_count["OVERVIEW"] += 1
+                return {"Symbol": "AAPL", "Name": "Apple Inc.", "SharesOutstanding": "100", "Currency": "USD"}
+            raise AssertionError(f"unexpected URL: {url}")
+
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        provider.fetch_company_profile(company_identifier="AAPL", evaluated_at=_NOW)
+        (doc,) = provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+
+        assert call_count["OVERVIEW"] == 1
+        assert doc.metadata["shares_outstanding"] == 100.0
+
+    def test_a_different_ticker_still_makes_its_own_overview_request(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        call_count = {"OVERVIEW": 0}
+
+        def fetcher(url: str, headers) -> object:
+            call_count["OVERVIEW"] += 1
+            symbol = "AAPL" if "symbol=AAPL" in url else "MSFT"
+            return {"Symbol": symbol, "Name": f"{symbol} Inc.", "Currency": "USD"}
+
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        provider.fetch_company_profile(company_identifier="AAPL", evaluated_at=_NOW)
+        provider.fetch_company_profile(company_identifier="MSFT", evaluated_at=_NOW)
+        assert call_count["OVERVIEW"] == 2
