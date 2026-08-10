@@ -11,6 +11,7 @@ from fastapi import FastAPI
 
 from atlas.ai.api.router import router as discovery_chat_router
 from atlas.alpha.case_intelligence.api.router import router as case_intelligence_router
+from atlas.alpha.daily_brief.api.router import router as daily_brief_router
 from atlas.alpha.investment_case.api.router import router as investment_case_router
 from atlas.alpha.portfolio.api.router import router as alpha_portfolio_router
 from atlas.alpha.portfolio_cockpit.api.router import router as portfolio_cockpit_router
@@ -110,6 +111,13 @@ def create_app() -> FastAPI:
     # `InvestmentCaseCompositionService.build_many` (ATLAS-027/028)
     # rather than re-deriving any analysis itself.
     app.include_router(portfolio_cockpit_router)
+    # Daily Brief v1: a sixth, sibling composition point -- authored and
+    # owned in `atlas/alpha/daily_brief/`, a pure distribution layer over
+    # Investment Case Change Intelligence (composing every Portfolio
+    # holding's and Watchlist entry's own `InvestmentCaseComposition
+    # .change_intelligence` via `InvestmentCaseCompositionService.build`,
+    # never recomputing analysis itself).
+    app.include_router(daily_brief_router)
     # Discovery Intelligence v1: same pattern, one level removed — the
     # discovery-chat router is authored and owned in `atlas/ai/`, and is
     # itself `atlas/ai/`'s own one deliberate composition point with

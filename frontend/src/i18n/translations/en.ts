@@ -795,19 +795,10 @@ export const en = {
   "investmentCase.origin.dailyBrief": "Opened from Daily Brief",
   "investmentCase.origin.discovery": "Opened from Discovery",
 
-  // ---------- daily brief implementation sprint 1 ----------
+  // ---------- daily brief v1 (Investment Case Change Intelligence distribution) ----------
   "dailyBrief.title": "Daily Brief",
-  "dailyBrief.verdict.nothingUrgent": "Nothing important requires your attention today.",
-  "dailyBrief.verdict.oneItem": "One item requires your attention today.",
-  "dailyBrief.verdict.items": "{{count}} items require your attention today.",
-  "dailyBrief.priority.heading": "Priority",
-  "dailyBrief.recentDecisions.heading": "Recent Decisions",
-  "dailyBrief.recentDecisions.empty": "No decisions recorded yet.",
-  "dailyBrief.monitoring.heading": "Monitoring",
-  "dailyBrief.monitoring.body":
-    "Atlas continues monitoring your recorded portfolio decisions and investment cases.",
-  "dailyBrief.footer.reminder":
-    "Keep Atlas updated when your portfolio changes so future reviews remain accurate.",
+  "dailyBrief.entry.unknownCompany": "Unknown company",
+  "dailyBrief.entry.openInvestmentCase": "Open Investment Case",
 
   // ---------- discovery v1 implementation sprint ----------
   "discovery.title": "Discovery",

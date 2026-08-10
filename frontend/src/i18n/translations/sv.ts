@@ -792,19 +792,10 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.origin.dailyBrief": "Öppnad från Dagens genomgång",
   "investmentCase.origin.discovery": "Öppnad från Discovery",
 
-  // ---------- daily brief implementation sprint 1 ----------
+  // ---------- daily brief v1 (Investment Case Change Intelligence distribution) ----------
   "dailyBrief.title": "Dagens genomgång",
-  "dailyBrief.verdict.nothingUrgent": "Inget viktigt kräver din uppmärksamhet idag.",
-  "dailyBrief.verdict.oneItem": "En sak kräver din uppmärksamhet idag.",
-  "dailyBrief.verdict.items": "{{count}} saker kräver din uppmärksamhet idag.",
-  "dailyBrief.priority.heading": "Prioritet",
-  "dailyBrief.recentDecisions.heading": "Senaste beslut",
-  "dailyBrief.recentDecisions.empty": "Inga beslut registrerade ännu.",
-  "dailyBrief.monitoring.heading": "Övervakning",
-  "dailyBrief.monitoring.body":
-    "Atlas fortsätter övervaka dina registrerade portföljbeslut och investeringscase.",
-  "dailyBrief.footer.reminder":
-    "Håll Atlas uppdaterad när din portfölj förändras så att framtida genomgångar förblir korrekta.",
+  "dailyBrief.entry.unknownCompany": "Okänt företag",
+  "dailyBrief.entry.openInvestmentCase": "Öppna Investment Case",
 
   // ---------- discovery v1 implementation sprint ----------
   "discovery.title": "Discovery",

@@ -71,6 +71,9 @@ __all__ = [
     "ChangeIntelligence",
     "capture_snapshot",
     "compare_snapshots",
+    "describe_change",
+    "dimension_label",
+    "thesis_impact_sentence",
 ]
 
 #: Mirrors `investment_case_synthesis._RISK_CATEGORIES_FOR_SYNTHESIS`
@@ -608,7 +611,23 @@ _STATUS_LABEL = {
 _HIGHLIGHT_LABEL = {kind.value: kind.value.replace("_", " ") for kind in HighlightKind}
 
 
-def _describe_change(change: ChangeFinding) -> str:
+def dimension_label(dimension: str) -> str:
+    """Public accessor for `_DIMENSION_LABEL` -- reused as-is by
+    `atlas.analysis_engine.daily_brief` (Daily Brief v1) so that module
+    never re-derives its own dimension vocabulary; falls back to a
+    humanized raw value for any dimension not in the fixed table."""
+    return _DIMENSION_LABEL.get(dimension, dimension.replace("_", " "))
+
+
+def thesis_impact_sentence(thesis_impact: ThesisImpact) -> str:
+    """Public accessor for `_THESIS_IMPACT_SENTENCE` -- the exact "why
+    it matters" sentence this module already assembles into
+    `ChangeIntelligence.summary_narrative`, reused verbatim by
+    `atlas.analysis_engine.daily_brief` rather than re-derived."""
+    return _THESIS_IMPACT_SENTENCE[thesis_impact]
+
+
+def describe_change(change: ChangeFinding) -> str:
     if change.category is ChangeCategory.ANALYTICAL_COVERAGE_CHANGED:
         dimension = change.details["dimension"]
         label = _DIMENSION_LABEL.get(dimension, dimension.replace("_", " "))
@@ -664,7 +683,7 @@ _THESIS_IMPACT_SENTENCE = {
 def _summary_narrative(changes: tuple[ChangeFinding, ...], thesis_impact: ThesisImpact) -> str:
     if not changes:
         return "No material change since the previous analysis."
-    bullets = "\n".join(f"- {_describe_change(change)}" for change in changes)
+    bullets = "\n".join(f"- {describe_change(change)}" for change in changes)
     return f"Since the previous analysis:\n{bullets}\n\n{_THESIS_IMPACT_SENTENCE[thesis_impact]}"
 
 
