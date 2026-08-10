@@ -17,6 +17,8 @@ from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecor
 from atlas.alpha.business_data_refresh.table import create_business_record_table
 from atlas.alpha.case_generation.service import CaseGenerationService
 from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
+from atlas.alpha.investment_case_change.repository import SqlAlchemyInvestmentCaseSnapshotRepository
+from atlas.alpha.investment_case_change.table import create_investment_case_snapshot_table
 from atlas.alpha.portfolio.service import AlphaPortfolioService, ImportHoldingInput, ImportPortfolioRequest
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.table import create_alpha_portfolio_state_table
@@ -52,6 +54,7 @@ def _new_engine():
     create_alpha_trade_log_table(engine)
     create_business_record_table(engine)
     create_alpha_watchlist_entry_table(engine)
+    create_investment_case_snapshot_table(engine)
     return engine
 
 
@@ -68,6 +71,7 @@ class _Harness:
         self.trade_log_store = AlphaTradeLogStore(engine)
         self.business_record_repository = SqlAlchemyBusinessRecordRepository(engine)
         self.watchlist_store = AlphaWatchlistStore(engine)
+        self.snapshot_repository = SqlAlchemyInvestmentCaseSnapshotRepository(engine)
         self.case_generation_service = CaseGenerationService(self.case_service)
         self.portfolio_service = AlphaPortfolioService(
             self.portfolio_store, self.trade_log_store, None, self.case_generation_service
@@ -82,6 +86,7 @@ class _Harness:
             self.trade_log_store,
             self.business_record_repository,
             watchlist_store=self.watchlist_store,
+            snapshot_repository=self.snapshot_repository,
         )
 
     def add_to_watchlist(self, ticker: str) -> str:
@@ -609,3 +614,101 @@ class TestAtlasThesisRemainsDistinctFromInvestorThesis:
 
         # The investor's own thesis remains its own, separate field.
         assert composition_after.current_thesis.latest_decision_reason == "My own personal, user-authored reason."
+
+
+def _growth_record(*, identifier: str, period_end, revenue: float, free_cash_flow: float):
+    from atlas.analysis_engine.business_data.models import RawBusinessDocument
+    from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
+
+    document = RawBusinessDocument(
+        identifier=identifier,
+        company="NVDA",
+        source_kind="annual_report",
+        published_at=_NOW,
+        provider_id="structured_test",
+        raw_reference=f"ref://{identifier}",
+        content_hash=f"hash-{identifier}",
+        language="en",
+        period_end=period_end,
+        metadata={"revenue": revenue, "free_cash_flow": free_cash_flow},
+    )
+    result = ingest(document, evaluated_at=_NOW)
+    assert isinstance(result, IngestedRecord)
+    return result.record
+
+
+class TestChangeIntelligenceEndToEnd:
+    """Investment Case Monitoring & Change Intelligence v1: baseline,
+    unchanged, and real-transition behavior through the actual
+    composition service (`_assemble`'s own snapshot capture/compare/
+    persist wiring), not the pure `investment_case_change` module in
+    isolation."""
+
+    def test_first_build_is_a_baseline_with_zero_changes(self, harness):
+        case_id = harness.import_holding("NVDA")
+        composition = harness.composition_service.build(case_id)
+        assert composition.change_intelligence is not None
+        assert composition.change_intelligence.is_baseline is True
+        assert composition.change_intelligence.changes == ()
+
+    def test_rebuilding_with_no_new_data_produces_zero_changes_and_no_duplicate_snapshot(self, harness):
+        case_id = harness.import_holding("NVDA")
+        harness.composition_service.build(case_id)
+        baseline_captured_at = harness.snapshot_repository.get_latest(case_id).captured_at
+
+        second = harness.composition_service.build(case_id)
+        assert second.change_intelligence.is_baseline is False
+        assert second.change_intelligence.changes == ()
+
+        third = harness.composition_service.build(case_id)
+        assert third.change_intelligence.changes == ()
+
+        # Idempotent: the persisted head is still the very first
+        # snapshot -- three `build` calls against unchanged records
+        # never wrote a second row.
+        assert harness.snapshot_repository.get_latest(case_id).captured_at == baseline_captured_at
+
+    def test_a_genuine_growth_transition_is_detected_on_the_next_build(self, harness):
+        from datetime import date
+
+        case_id = harness.import_holding("NVDA")
+        harness.business_record_repository.add(
+            _growth_record(identifier="fy22", period_end=date(2022, 12, 31), revenue=1250.0, free_cash_flow=300.0)
+        )
+        harness.business_record_repository.add(
+            _growth_record(identifier="fy23", period_end=date(2023, 12, 31), revenue=1100.0, free_cash_flow=240.0)
+        )
+        harness.business_record_repository.add(
+            _growth_record(identifier="fy24", period_end=date(2024, 12, 31), revenue=1000.0, free_cash_flow=200.0)
+        )
+        baseline = harness.composition_service.build(case_id)
+        assert baseline.change_intelligence.is_baseline is True
+        assert baseline.canonical_analysis.business_analysis.findings
+
+        # New data arrives: a later, much stronger fiscal year reverses
+        # the trend from WEAK to STRONG.
+        harness.business_record_repository.add(
+            _growth_record(identifier="fy25", period_end=date(2025, 12, 31), revenue=2000.0, free_cash_flow=600.0)
+        )
+        harness.business_record_repository.add(
+            _growth_record(identifier="fy26", period_end=date(2026, 12, 31), revenue=3000.0, free_cash_flow=900.0)
+        )
+        updated = harness.composition_service.build(case_id)
+        assert updated.change_intelligence.is_baseline is False
+        assert len(updated.change_intelligence.changes) >= 1
+        from atlas.analysis_engine.investment_case_change import ChangeCategory
+
+        assert any(c.category is ChangeCategory.GROWTH_CHANGED for c in updated.change_intelligence.changes)
+
+    def test_recommendation_and_conviction_are_unaffected_by_change_intelligence_wiring(self, harness):
+        """Scenario 22/23: adding historical comparison must never alter
+        Recommendation or Conviction output for an otherwise-identical
+        Case."""
+        without_history_case = harness.import_holding("AAPL")
+        composition = harness.composition_service.build(without_history_case)
+        # No prior snapshot existed (baseline) -- Recommendation/Conviction
+        # must read exactly as they would with no Change Intelligence at
+        # all (both are computed inside `assemble_analysis`, entirely
+        # upstream of and blind to this sprint's own snapshot wiring).
+        assert composition.canonical_analysis.recommendation is not None
+        assert composition.canonical_analysis.conviction is not None

@@ -33,6 +33,8 @@ from atlas.core.domain.observation.repository import ObservationRepository
 from atlas.core.domain.outcome.repository import OutcomeRepository
 from atlas.alpha.business_data_refresh.api.dependencies import get_business_record_repository
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
+from atlas.alpha.investment_case_change.api.dependencies import get_investment_case_snapshot_repository
+from atlas.alpha.investment_case_change.repository import SqlAlchemyInvestmentCaseSnapshotRepository
 from atlas.core.infrastructure.api.case.dependencies import get_case_repository
 from atlas.core.infrastructure.api.decision.dependencies import get_decision_repository
 from atlas.core.infrastructure.api.evidence.dependencies import get_evidence_repository
@@ -50,6 +52,9 @@ def get_investment_case_composition_service(
     trade_log_store: AlphaTradeLogStore = Depends(get_alpha_trade_log_store),
     business_record_repository: SqlAlchemyBusinessRecordRepository = Depends(get_business_record_repository),
     watchlist_store: AlphaWatchlistStore = Depends(get_alpha_watchlist_store),
+    snapshot_repository: SqlAlchemyInvestmentCaseSnapshotRepository = Depends(
+        get_investment_case_snapshot_repository
+    ),
 ) -> InvestmentCaseCompositionService:
     return InvestmentCaseCompositionService(
         case_repository=case_repository,
@@ -61,4 +66,5 @@ def get_investment_case_composition_service(
         trade_log_store=trade_log_store,
         business_record_repository=business_record_repository,
         watchlist_store=watchlist_store,
+        snapshot_repository=snapshot_repository,
     )

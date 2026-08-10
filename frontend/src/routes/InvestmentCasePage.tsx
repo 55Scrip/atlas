@@ -517,6 +517,25 @@ type AnalysisOpenQuestionOrigin =
 type AnalysisRecommendationKind = "directional" | "recommendation_withheld";
 type AnalysisRecommendationReason = "engine_not_implemented" | "evidence_insufficient";
 
+// Investment Case Monitoring & Change Intelligence v1 slice.
+type AnalysisChangeCategory =
+  | "growth_changed"
+  | "capital_allocation_changed"
+  | "business_quality_changed"
+  | "business_risk_changed"
+  | "financial_risk_changed"
+  | "valuation_risk_changed"
+  | "valuation_changed"
+  | "strength_added"
+  | "strength_removed"
+  | "risk_added"
+  | "risk_removed"
+  | "open_question_added"
+  | "open_question_resolved"
+  | "analytical_coverage_changed";
+type AnalysisChangeDirection = "positive" | "negative" | "neutral";
+type AnalysisThesisImpact = "strengthened" | "weakened" | "mixed" | "unchanged";
+
 interface HoldingContextView {
   held: boolean;
   ticker: string | null;
@@ -687,6 +706,23 @@ interface AtlasThesisView {
   keyUncertaintyOrigins: string[];
 }
 
+// Investment Case Monitoring & Change Intelligence v1 slice: what
+// changed between this Case's previous and current structured
+// analytical state -- see atlas/analysis_engine/investment_case_change.py.
+// Every field is a closed enum's raw string or a real state label
+// pulled directly from the structured comparison, never free-form text
+// with no structured origin.
+interface ChangeFindingView {
+  id: string;
+  category: AnalysisChangeCategory;
+  direction: AnalysisChangeDirection;
+  previousState: string;
+  currentState: string;
+  details: Record<string, string>;
+  evidenceReferences: string[];
+  sourceFindingId: string | null;
+}
+
 interface InvestmentCaseAnalysisView {
   caseId: string;
   holdingContext: HoldingContextView;
@@ -712,6 +748,13 @@ interface InvestmentCaseAnalysisView {
   valuationContext: ValuationContextView;
   atlasThesis: AtlasThesisView;
   keyOpenQuestions: CaseOpenQuestionView[];
+  changeIntelligenceAvailable: boolean;
+  isBaselineCase: boolean;
+  latestChanges: ChangeFindingView[];
+  changeSummary: string;
+  thesisChange: AnalysisThesisImpact;
+  previousAnalysisAt: string | null;
+  currentAnalysisAt: string;
   generatedAt: string;
 }
 
@@ -4372,6 +4415,7 @@ function InvestmentCaseCanonicalSections({
         t={t}
       />
       <AtlasViewSection analysis={analysis} t={t} />
+      <WhatChangedSection analysis={analysis} t={t} />
       <BusinessSection
         analysis={analysis}
         linkedHolding={linkedHolding}
@@ -4671,6 +4715,160 @@ function AtlasViewSection({ analysis, t }: { analysis: InvestmentCaseAnalysisVie
             {t(OPEN_QUESTION_ORIGIN_KEY[question.origin])}
           </Text>
         ))}
+      </Stack>
+    </Surface>
+  );
+}
+
+const CHANGE_DIRECTION_SYMBOL: Record<AnalysisChangeDirection, string> = {
+  positive: "↑",
+  negative: "↓",
+  neutral: "•",
+};
+
+const THESIS_IMPACT_KEY: Record<AnalysisThesisImpact, TranslationKey> = {
+  strengthened: "investmentCase.whatChanged.thesisImpact.strengthened",
+  weakened: "investmentCase.whatChanged.thesisImpact.weakened",
+  mixed: "investmentCase.whatChanged.thesisImpact.mixed",
+  unchanged: "investmentCase.whatChanged.thesisImpact.unchanged",
+};
+
+/** Which dimension a change is about, in already-established page
+ * vocabulary -- reuses BUSINESS_CATEGORY_KEY/RISK_CATEGORY_KEY/the
+ * existing FCF-yield label exactly as the Business/Risk/Valuation
+ * sections above already do, never a second, parallel label set. */
+function dimensionLabel(dimension: string | undefined, t: Translate): string {
+  if (!dimension) return "";
+  if (dimension in BUSINESS_CATEGORY_KEY) {
+    return t(BUSINESS_CATEGORY_KEY[dimension as AnalysisBusinessCategory]);
+  }
+  if (dimension in RISK_CATEGORY_KEY) {
+    return t(RISK_CATEGORY_KEY[dimension as AnalysisRiskCategory]);
+  }
+  if (dimension === "fcf_yield_relative") {
+    return t("investmentCase.analysis.valuation.method.fcf_yield_relative");
+  }
+  return humanize(dimension);
+}
+
+function describeChange(change: ChangeFindingView, t: Translate): string {
+  const dimension = change.details.dimension;
+
+  if (change.category === "analytical_coverage_changed") {
+    const label = dimensionLabel(dimension, t);
+    if (change.currentState === "insufficient_input" || change.currentState === "not_evaluated") {
+      return t("investmentCase.whatChanged.change.coverageLost", { dimension: label });
+    }
+    return t("investmentCase.whatChanged.change.coverageGained", { dimension: label });
+  }
+
+  if (
+    change.category === "growth_changed" ||
+    change.category === "capital_allocation_changed" ||
+    change.category === "business_quality_changed"
+  ) {
+    const label = dimensionLabel(dimension, t);
+    const verbKey = change.direction === "positive" ? "investmentCase.whatChanged.verb.improved" : "investmentCase.whatChanged.verb.weakened";
+    const previous = t(BUSINESS_STATUS_KEY[change.previousState as AnalysisBusinessStatus]);
+    const current = t(BUSINESS_STATUS_KEY[change.currentState as AnalysisBusinessStatus]);
+    return t("investmentCase.whatChanged.change.dimensionChanged", {
+      dimension: label,
+      verb: t(verbKey),
+      previous,
+      current,
+    });
+  }
+
+  if (
+    change.category === "business_risk_changed" ||
+    change.category === "financial_risk_changed" ||
+    change.category === "valuation_risk_changed"
+  ) {
+    const label = dimensionLabel(dimension, t);
+    const verbKey = change.direction === "positive" ? "investmentCase.whatChanged.verb.decreased" : "investmentCase.whatChanged.verb.increased";
+    const previous = t(RISK_STATUS_KEY[change.previousState as AnalysisRiskStatus]);
+    const current = t(RISK_STATUS_KEY[change.currentState as AnalysisRiskStatus]);
+    return t("investmentCase.whatChanged.change.dimensionChanged", {
+      dimension: label,
+      verb: t(verbKey),
+      previous,
+      current,
+    });
+  }
+
+  if (change.category === "valuation_changed") {
+    const verbKey =
+      change.direction === "positive"
+        ? "investmentCase.whatChanged.verb.moreAttractive"
+        : "investmentCase.whatChanged.verb.lessAttractive";
+    return t("investmentCase.whatChanged.change.valuationChanged", { verb: t(verbKey) });
+  }
+
+  if (change.category === "strength_added" || change.category === "risk_added") {
+    const label = t(HIGHLIGHT_KIND_KEY[change.currentState as AnalysisHighlightKind]);
+    const key =
+      change.category === "strength_added"
+        ? "investmentCase.whatChanged.change.strengthAdded"
+        : "investmentCase.whatChanged.change.riskAdded";
+    return t(key, { label });
+  }
+
+  if (change.category === "strength_removed" || change.category === "risk_removed") {
+    const label = t(HIGHLIGHT_KIND_KEY[change.previousState as AnalysisHighlightKind]);
+    const key =
+      change.category === "strength_removed"
+        ? "investmentCase.whatChanged.change.strengthRemoved"
+        : "investmentCase.whatChanged.change.riskRemoved";
+    return t(key, { label });
+  }
+
+  if (change.category === "open_question_added") {
+    return t("investmentCase.whatChanged.change.openQuestionAdded");
+  }
+  if (change.category === "open_question_resolved") {
+    return t("investmentCase.whatChanged.change.openQuestionResolved");
+  }
+  return "";
+}
+
+/** Compact by design -- see this sprint's own "avoid another
+ * Today's-Priorities-style block" instruction. Renders nothing when the
+ * capability is unavailable (no snapshot repository wired); otherwise
+ * always exactly one of: a baseline note, "no material change," or the
+ * change list plus its Atlas Thesis impact line. */
+function WhatChangedSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
+  if (!analysis.changeIntelligenceAvailable) {
+    return null;
+  }
+
+  return (
+    <Surface tier="primary">
+      <Stack gap="intra-section">
+        <Heading level={2}>{t("investmentCase.whatChanged.heading")}</Heading>
+        {analysis.isBaselineCase && (
+          <Text color="secondary" as="p">
+            {t("investmentCase.whatChanged.baseline")}
+          </Text>
+        )}
+        {!analysis.isBaselineCase && analysis.latestChanges.length === 0 && (
+          <Text color="secondary" as="p">
+            {t("investmentCase.whatChanged.noChange")}
+          </Text>
+        )}
+        {!analysis.isBaselineCase && analysis.latestChanges.length > 0 && (
+          <Stack gap="intra-section">
+            <Text color="secondary" as="p">
+              {t("investmentCase.whatChanged.sincePrevious")}
+            </Text>
+            {analysis.latestChanges.map((change) => (
+              <Text as="p" key={change.id}>
+                {CHANGE_DIRECTION_SYMBOL[change.direction]} {describeChange(change, t)}
+              </Text>
+            ))}
+            <Divider tone="hairline" />
+            <Text as="p">{t(THESIS_IMPACT_KEY[analysis.thesisChange])}</Text>
+          </Stack>
+        )}
       </Stack>
     </Surface>
   );

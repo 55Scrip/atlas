@@ -25,6 +25,8 @@ from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecor
 from atlas.alpha.business_data_refresh.table import create_business_record_table
 from atlas.alpha.discovery_context.service import DiscoveryContextService
 from atlas.alpha.investment_case.api.dependencies import get_investment_case_composition_service
+from atlas.alpha.investment_case_change.repository import SqlAlchemyInvestmentCaseSnapshotRepository
+from atlas.alpha.investment_case_change.table import create_investment_case_snapshot_table
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_store, get_alpha_trade_log_store
 from atlas.alpha.portfolio_intelligence.service import PortfolioIntelligenceService
 from atlas.alpha.portfolio_status.api.dependencies import get_portfolio_status_service
@@ -78,6 +80,8 @@ def _discovery_context_service(engine: Engine) -> DiscoveryContextService:
     evidence_repository = get_evidence_repository(engine)
     outcome_repository = get_outcome_repository(engine)
     business_record_repository = SqlAlchemyBusinessRecordRepository(engine)
+    create_investment_case_snapshot_table(engine)
+    snapshot_repository = SqlAlchemyInvestmentCaseSnapshotRepository(engine)
 
     portfolio_status_service = get_portfolio_status_service(
         portfolio_store=portfolio_store,
@@ -95,6 +99,7 @@ def _discovery_context_service(engine: Engine) -> DiscoveryContextService:
         portfolio_store=portfolio_store,
         trade_log_store=trade_log_store,
         business_record_repository=business_record_repository,
+        snapshot_repository=snapshot_repository,
     )
     portfolio_intelligence_service = PortfolioIntelligenceService(
         portfolio_store,

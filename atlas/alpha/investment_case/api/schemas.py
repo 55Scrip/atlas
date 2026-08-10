@@ -35,6 +35,7 @@ from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComp
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaTradeLogEntry
 from atlas.analysis_engine.business_contracts import BusinessAnalysisResult, BusinessFinding
 from atlas.analysis_engine.conviction import ConvictionAssessment
+from atlas.analysis_engine.investment_case_change import ChangeFinding, ChangeIntelligence, ThesisImpact
 from atlas.analysis_engine.investment_case_synthesis import (
     AtlasThesis,
     CaseHighlight,
@@ -452,6 +453,35 @@ class AtlasThesisView(CamelModel):
         )
 
 
+class ChangeFindingView(CamelModel):
+    """One meaningful, traceable change between two analytical states --
+    see `atlas.analysis_engine.investment_case_change.ChangeFinding`'s
+    own docstring for the exact, documented condition each `category`
+    was constructed under."""
+
+    id: str
+    category: str
+    direction: str
+    previous_state: str
+    current_state: str
+    details: dict[str, str]
+    evidence_references: list[str]
+    source_finding_id: str | None
+
+    @classmethod
+    def from_domain(cls, change: ChangeFinding) -> "ChangeFindingView":
+        return cls(
+            id=change.id,
+            category=change.category.value,
+            direction=change.direction.value,
+            previous_state=change.previous_state,
+            current_state=change.current_state,
+            details=dict(change.details),
+            evidence_references=list(change.evidence_references),
+            source_finding_id=change.source_finding_id,
+        )
+
+
 class InvestmentCaseAnalysisView(CamelModel):
     """The canonical Investment Case -- one coherent object mirroring
     `InvestmentCaseComposition` plus its `CanonicalAnalysis`. Every
@@ -489,11 +519,46 @@ class InvestmentCaseAnalysisView(CamelModel):
     are curated, company-analysis-specific questions from
     `atlas.analysis_engine.investment_case_synthesis`, each traceable to
     one real analytical condition."""
+    change_intelligence_available: bool
+    """Investment Case Monitoring & Change Intelligence v1: `False` only
+    when no snapshot repository was wired for this build -- mirrors
+    `InvestmentCaseComposition.change_intelligence`'s own `None` case.
+    Every real API call site wires one, so this is `True` in practice;
+    the flag exists so a caller (frontend or test) never has to infer
+    "unavailable" from an empty `latestChanges` list, which would be
+    indistinguishable from a genuine "nothing changed" baseline."""
+    is_baseline_case: bool
+    """`True` only for a Case's first-ever recorded analysis -- there is
+    no previous structured state to compare against yet. A baseline is
+    never reported as a set of changes (see `ChangeIntelligence`'s own
+    docstring)."""
+    latest_changes: list[ChangeFindingView]
+    change_summary: str
+    thesis_change: str
+    previous_analysis_at: datetime | None
+    current_analysis_at: datetime
     generated_at: datetime
 
     @classmethod
     def from_domain(cls, composition: InvestmentCaseComposition) -> "InvestmentCaseAnalysisView":
         analysis: CanonicalAnalysis = composition.canonical_analysis
+        change_intelligence: ChangeIntelligence | None = composition.change_intelligence
+        if change_intelligence is None:
+            change_intelligence_available = False
+            is_baseline_case = False
+            latest_changes: list[ChangeFindingView] = []
+            change_summary = ""
+            thesis_change = ThesisImpact.UNCHANGED.value
+            previous_analysis_at = None
+            current_analysis_at = composition.generated_at
+        else:
+            change_intelligence_available = True
+            is_baseline_case = change_intelligence.is_baseline
+            latest_changes = [ChangeFindingView.from_domain(c) for c in change_intelligence.changes]
+            change_summary = change_intelligence.summary_narrative
+            thesis_change = change_intelligence.thesis_impact.value
+            previous_analysis_at = change_intelligence.previous_captured_at
+            current_analysis_at = change_intelligence.current_captured_at
         return cls(
             case_id=composition.case_id,
             holding_context=HoldingContextView.from_domain(composition.holding_context),
@@ -532,5 +597,12 @@ class InvestmentCaseAnalysisView(CamelModel):
             valuation_context=ValuationContextView.from_domain(analysis.synthesis.valuation_context),
             atlas_thesis=AtlasThesisView.from_domain(analysis.synthesis.atlas_thesis),
             key_open_questions=[CaseOpenQuestionView.from_domain(q) for q in analysis.synthesis.open_questions],
+            change_intelligence_available=change_intelligence_available,
+            is_baseline_case=is_baseline_case,
+            latest_changes=latest_changes,
+            change_summary=change_summary,
+            thesis_change=thesis_change,
+            previous_analysis_at=previous_analysis_at,
+            current_analysis_at=current_analysis_at,
             generated_at=composition.generated_at,
         )

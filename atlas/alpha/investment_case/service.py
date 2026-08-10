@@ -11,6 +11,7 @@ from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecor
 from atlas.alpha.investment_case.company_profile import extract_company_profile
 from atlas.alpha.investment_case.financial_history import extract_financial_history, extract_market_snapshot
 from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComposition
+from atlas.alpha.investment_case_change.repository import SqlAlchemyInvestmentCaseSnapshotRepository
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaTradeLogEntry
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.trade_log_store import AlphaTradeLogStore
@@ -19,6 +20,7 @@ from atlas.alpha.portfolio_status.service import VERY_OLD_CASE_THRESHOLD_DAYS
 from atlas.alpha.watchlist.store import AlphaWatchlistStore
 from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.business_data.versioning import latest_versions
+from atlas.analysis_engine.investment_case_change import ChangeIntelligence, capture_snapshot, compare_snapshots
 from atlas.analysis_engine.pipeline import assemble_analysis
 from atlas.core.domain.case.entity import Case
 from atlas.core.domain.case.repository import CaseRepository
@@ -78,6 +80,7 @@ class InvestmentCaseCompositionService:
         trade_log_store: AlphaTradeLogStore,
         business_record_repository: SqlAlchemyBusinessRecordRepository,
         watchlist_store: AlphaWatchlistStore | None = None,
+        snapshot_repository: SqlAlchemyInvestmentCaseSnapshotRepository | None = None,
     ) -> None:
         self._case_repository = case_repository
         self._decision_repository = decision_repository
@@ -99,6 +102,15 @@ class InvestmentCaseCompositionService:
         # `build_many`: its only real consumer, Portfolio Cockpit, is a
         # Portfolio-only surface with no Watchlist entries to resolve.
         self._watchlist_store = watchlist_store
+        # (Investment Case Monitoring & Change Intelligence v1) Optional,
+        # trailing, same backward-compatible-extension shape as
+        # `watchlist_store` above: every call site built before this
+        # sprint keeps constructing a valid service unchanged. `None`
+        # means Change Intelligence is honestly unavailable (never a
+        # silently-empty "no changes" result) -- see `_assemble`'s own
+        # comment for exactly how `None` is distinguished from a real,
+        # populated `ChangeIntelligence` at the composition layer.
+        self._snapshot_repository = snapshot_repository
 
     def _assemble(
         self,
@@ -161,6 +173,29 @@ class InvestmentCaseCompositionService:
         financial_history = extract_financial_history(business_records)
         market_snapshot = extract_market_snapshot(business_records)
 
+        # Investment Case Monitoring & Change Intelligence v1: the
+        # smallest correct integration point is exactly here -- the one
+        # place a fresh `CanonicalAnalysis` already exists, for both
+        # `build` and `build_many`. `capture_snapshot` is pure (no
+        # persistence); `self._snapshot_repository.get_latest` reads the
+        # previous structured state (if any) *before* this run's own
+        # snapshot is written, so `compare_snapshots` always sees a
+        # genuinely prior state, never the one just captured.
+        # `.add` is itself idempotent by `content_hash` (see that
+        # repository method's own docstring): calling it on every build,
+        # including a user simply reloading the page with no new source
+        # data, never creates a duplicate row or a fabricated change --
+        # "recomputed" and "changed" stay distinct. `None` (no
+        # repository wired -- every real call site wires one; only bare
+        # test construction omits it) means this capability is honestly
+        # unavailable, never a silently-empty "nothing changed" result.
+        change_intelligence: ChangeIntelligence | None = None
+        if self._snapshot_repository is not None:
+            snapshot = capture_snapshot(canonical_analysis)
+            previous_snapshot = self._snapshot_repository.get_latest(case_id_str)
+            change_intelligence = compare_snapshots(previous_snapshot, snapshot)
+            self._snapshot_repository.add(case_id_str, snapshot)
+
         return InvestmentCaseComposition(
             case_id=case_id_str,
             holding_context=holding,
@@ -174,6 +209,7 @@ class InvestmentCaseCompositionService:
             company_profile=company_profile,
             financial_history=financial_history,
             market_snapshot=market_snapshot,
+            change_intelligence=change_intelligence,
             generated_at=evaluated_at,
         )
 

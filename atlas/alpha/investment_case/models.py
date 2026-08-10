@@ -9,6 +9,7 @@ from datetime import datetime
 from atlas.alpha.investment_case.company_profile import CompanyProfile
 from atlas.alpha.investment_case.financial_history import FinancialPeriod, MarketSnapshot
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaTradeLogEntry
+from atlas.analysis_engine.investment_case_change import ChangeIntelligence
 from atlas.analysis_engine.models import CanonicalAnalysis
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.observation.entity import Observation
@@ -81,3 +82,12 @@ class InvestmentCaseComposition:
     market_snapshot: MarketSnapshot | None = None
     """(Investment Case Engine v1 slice) The most recent current-market
     snapshot, or `None` if none has been ingested yet."""
+    change_intelligence: ChangeIntelligence | None = None
+    """(Investment Case Monitoring & Change Intelligence v1) `None`
+    only when no snapshot repository was wired for this build (see
+    `InvestmentCaseCompositionService.__init__`'s own docstring) -- an
+    honest "capability unavailable," never a silently-empty "nothing
+    changed." When a repository is wired, this is always a real
+    `ChangeIntelligence`: either a baseline (`is_baseline=True`, the
+    Case's first-ever recorded analysis) or a genuine comparison against
+    the previously persisted structured state."""

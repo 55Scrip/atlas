@@ -290,6 +290,18 @@ def _strip_volatile_timestamps(body: dict) -> None:
     body.pop("generatedAt", None)
     for finding in body["businessAnalysis"]["findings"]:
         finding.pop("updatedAt", None)
+    # Investment Case Monitoring & Change Intelligence v1: these fields
+    # are *correctly* call-order-dependent -- the first GET for a Case
+    # persists a baseline snapshot, so a second, otherwise-identical GET
+    # legitimately reports `isBaselineCase=False` against that now-real
+    # previous state, not a repeat of the first call's own baseline
+    # narrative/timestamps. This helper strips exactly the fields whose
+    # divergence is this sprint's own intended behavior, not a
+    # regression -- every other field must still match byte-for-byte.
+    body.pop("isBaselineCase", None)
+    body.pop("changeSummary", None)
+    body.pop("previousAnalysisAt", None)
+    body.pop("currentAnalysisAt", None)
 
 
 class TestNoQueryParameterInfluence:
@@ -300,3 +312,66 @@ class TestNoQueryParameterInfluence:
         _strip_volatile_timestamps(plain)
         _strip_volatile_timestamps(with_bogus)
         assert plain == with_bogus
+
+
+class TestChangeIntelligenceSerialization:
+    """Investment Case Monitoring & Change Intelligence v1, scenario 19:
+    the API exposes structured change intelligence."""
+
+    def test_first_read_is_a_baseline(self, client):
+        case_id = _import_holding(client, "NVDA")
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        assert body["changeIntelligenceAvailable"] is True
+        assert body["isBaselineCase"] is True
+        assert body["latestChanges"] == []
+        assert body["previousAnalysisAt"] is None
+        assert body["currentAnalysisAt"] is not None
+        assert "baseline" in body["changeSummary"].lower()
+
+    def test_second_read_with_no_new_data_reports_no_material_change(self, client):
+        case_id = _import_holding(client, "NVDA")
+        client.get(f"/cases/{case_id}/analysis")
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        assert body["isBaselineCase"] is False
+        assert body["latestChanges"] == []
+        assert body["thesisChange"] == "unchanged"
+        assert "no material change" in body["changeSummary"].lower()
+        assert body["previousAnalysisAt"] is not None
+
+    def test_change_finding_shape_when_present(self, client):
+        """Exercises the real wire shape of one `ChangeFindingView` via
+        a genuine transition (a Case moving from unheld to held changes
+        `HOLDING_CONTEXT`-adjacent business/portfolio findings, but the
+        one deterministic, always-reproducible transition available at
+        this API layer without fabricating provider data is opening a
+        Case with no BusinessRecords at all -- both reads stay
+        `insufficient_input` on every dimension, so `latestChanges`
+        stays empty; this test instead asserts the schema itself is
+        well-formed by constructing the view directly, matching this
+        file's own "serialization" test style used for the other
+        sections above."""
+        from atlas.alpha.investment_case.api.schemas import ChangeFindingView
+        from atlas.analysis_engine.investment_case_change import ChangeCategory, ChangeDirection, ChangeFinding
+
+        domain = ChangeFinding(
+            id="growth_changed:growth",
+            category=ChangeCategory.GROWTH_CHANGED,
+            direction=ChangeDirection.NEGATIVE,
+            previous_state="strong",
+            current_state="moderate",
+            details={"dimension": "growth"},
+            evidence_references=("business_finding:growth",),
+            source_finding_id="business_finding:growth",
+        )
+        view = ChangeFindingView.from_domain(domain)
+        payload = view.model_dump(by_alias=True)
+        assert payload == {
+            "id": "growth_changed:growth",
+            "category": "growth_changed",
+            "direction": "negative",
+            "previousState": "strong",
+            "currentState": "moderate",
+            "details": {"dimension": "growth"},
+            "evidenceReferences": ["business_finding:growth"],
+            "sourceFindingId": "business_finding:growth",
+        }
