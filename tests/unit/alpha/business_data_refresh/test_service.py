@@ -423,3 +423,42 @@ class TestEnsureCompanyEnriched:
         assert len(summary.provider_errors) == 1
         assert summary.new_records == 1
         assert len(repository.get_by_company("XYZ")) == 1
+
+    def test_a_company_with_only_a_stray_market_snapshot_is_not_treated_as_enriched(self, repository):
+        """(Company Data Foundation v1) The exact "too coarse" gap this
+        sprint fixes: a company whose only persisted record is a
+        `MARKET_DATA_SNAPSHOT` (SEC failed, or the ticker is genuinely
+        unsupported) must still retry on a later call -- the old "any
+        record at all" gate would have permanently blocked this."""
+        failing_fundamentals = _FakeProvider(exception=RuntimeError("CompanyNotFound: not an SEC filer"))
+        succeeding_market_data = _FakeProvider(
+            documents=(_doc(identifier="XYZ:snapshot:2026-08-09", company="XYZ", source_kind="market_data_snapshot"),)
+        )
+        first = ensure_company_enriched("XYZ", (failing_fundamentals, succeeding_market_data), repository)
+        assert first is not None  # a real refresh happened
+
+        second = ensure_company_enriched("XYZ", (failing_fundamentals, succeeding_market_data), repository)
+        assert second is not None  # retried -- never became "enriched" from a market snapshot alone
+        assert len(second.provider_errors) == 1
+
+    def test_a_company_profile_alone_stops_further_retries(self, repository):
+        """The bounding half of the same fix: the moment either
+        provider succeeds with real identity or fundamentals, the
+        ticker becomes minimally complete and stops retrying -- this
+        never turns into an unbounded background poller."""
+        profile_provider = _FakeCompanyProfileProvider(profile_documents=(_profile_doc(company="XYZ"),))
+        ensure_company_enriched("XYZ", (profile_provider,), repository)
+        assert len(profile_provider.profile_call_count) == 1
+
+        calling_again = _FakeCompanyProfileProvider(profile_documents=(_profile_doc(company="XYZ"),))
+        result = ensure_company_enriched("XYZ", (calling_again,), repository)
+        assert result is None
+        assert len(calling_again.profile_call_count) == 0  # never called -- already minimally complete
+
+    def test_a_financial_statement_alone_stops_further_retries(self, repository):
+        provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2023", source_kind="financial_statement"),))
+        ensure_company_enriched("AAPL", (provider,), repository)
+
+        calling_again = _FakeProvider(exception=AssertionError("must never be called"))
+        result = ensure_company_enriched("AAPL", (calling_again,), repository)
+        assert result is None

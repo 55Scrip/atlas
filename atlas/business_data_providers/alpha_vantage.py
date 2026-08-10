@@ -132,6 +132,19 @@ _SUPPORTED_CURRENCY = "USD"
 #: blank/missing value, never as real content, so a genuinely unknown
 #: field is omitted rather than persisted as the four-character string
 #: "None".
+#:
+#: Company Data Foundation v1: `Currency`/`FiscalYearEnd` added --
+#: both already present in this same, already-fetched OVERVIEW
+#: response (no new request). Deliberately NOT added here: OVERVIEW's
+#: own provider-computed ratios (`PERatio`, `PEGRatio`, `EBITDA`,
+#: `ProfitMargin`, `OperatingMarginTTM`, `ReturnOnEquityTTM`, etc.) --
+#: SEC EDGAR now supplies the raw fundamentals (`net_income`,
+#: `operating_income`, `eps`) Atlas can derive an equivalent ratio from
+#: itself, deterministically and traceably, per this sprint's own
+#: "prefer fundamental raw inputs over provider-computed ratios"
+#: instruction; ingesting Alpha Vantage's own pre-computed versions
+#: alongside would be a second, silently-competing source for the same
+#: number rather than a genuinely new fact.
 _IDENTITY_FIELD_MAP: dict[str, str] = {
     "Name": "name",
     "Exchange": "exchange",
@@ -139,6 +152,8 @@ _IDENTITY_FIELD_MAP: dict[str, str] = {
     "Industry": "industry",
     "Country": "country",
     "Description": "description",
+    "Currency": "currency",
+    "FiscalYearEnd": "fiscal_year_end",
 }
 
 

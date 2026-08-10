@@ -973,6 +973,7 @@ class TestFetchCompanyProfile:
                     "Description": "Apple Inc. designs, manufactures, and markets smartphones.",
                     "SharesOutstanding": "14840000000",
                     "Currency": "USD",
+                    "FiscalYearEnd": "September",
                 }
             }
         )
@@ -989,17 +990,42 @@ class TestFetchCompanyProfile:
         assert doc.metadata["industry"] == "CONSUMER ELECTRONICS"
         assert doc.metadata["country"] == "USA"
         assert "smartphones" in doc.metadata["description"]
+        assert doc.metadata["currency"] == "USD"
+        assert doc.metadata["fiscal_year_end"] == "September"
 
     def test_literal_none_string_fields_are_omitted_not_stored(self, monkeypatch):
         monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
         fetcher = _fake_fetcher(
-            {"OVERVIEW": {"Symbol": "XYZ", "Name": "Xyz Corp", "Sector": "None", "Industry": "None"}}
+            {
+                "OVERVIEW": {
+                    "Symbol": "XYZ",
+                    "Name": "Xyz Corp",
+                    "Sector": "None",
+                    "Industry": "None",
+                    "Currency": "None",
+                    "FiscalYearEnd": "None",
+                }
+            }
         )
         provider = AlphaVantageMarketDataProvider(fetcher)
         (doc,) = provider.fetch_company_profile(company_identifier="XYZ", evaluated_at=_NOW)
         assert doc.metadata["name"] == "Xyz Corp"
         assert "sector" not in doc.metadata
         assert "industry" not in doc.metadata
+        assert "currency" not in doc.metadata
+        assert "fiscal_year_end" not in doc.metadata
+
+    def test_currency_and_fiscal_year_end_are_optional(self, monkeypatch):
+        """Company Data Foundation v1: a ticker whose OVERVIEW response
+        carries other identity fields but not these two still produces
+        a real profile document -- never blocked by their absence."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher({"OVERVIEW": {"Symbol": "XYZ", "Name": "Xyz Corp"}})
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        (doc,) = provider.fetch_company_profile(company_identifier="XYZ", evaluated_at=_NOW)
+        assert doc.metadata["name"] == "Xyz Corp"
+        assert "currency" not in doc.metadata
+        assert "fiscal_year_end" not in doc.metadata
 
     def test_empty_overview_returns_no_documents(self, monkeypatch):
         monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")

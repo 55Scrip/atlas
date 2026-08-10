@@ -32,8 +32,25 @@ def _usd_entry(*, start: str, end: str, val: float, form: str = "10-K", fp: str 
     return {"start": start, "end": end, "val": val, "form": form, "fp": fp, "filed": filed, "accn": accn}
 
 
-def _companyfacts(concepts: dict[str, list[dict]]) -> dict:
-    return {"cik": 1234567, "entityName": "Test Co", "facts": {"us-gaap": {tag: {"units": {"USD": entries}} for tag, entries in concepts.items()}}}
+def _instant_entry(*, end: str, val: float, form: str = "10-K", fp: str = "FY", filed: str, accn: str = "0001234567-24-000001") -> dict:
+    """(Company Data Foundation v1) SEC's own real shape for a
+    point-in-time (instant-context) fact -- no `start` key at all,
+    confirmed live, distinct from `_usd_entry`'s duration shape."""
+    return {"end": end, "val": val, "form": form, "fp": fp, "filed": filed, "accn": accn}
+
+
+def _companyfacts(concepts: dict[str, list[dict]], *, units: dict[str, str] | None = None) -> dict:
+    """`units` optionally maps a concept tag to its own XBRL unit key
+    (Company Data Foundation v1: `"shares"` for `CommonStockShares
+    Outstanding`, `"USD/shares"` for EPS concepts) -- every tag not
+    named there defaults to `"USD"`, matching every pre-existing test
+    in this file."""
+    units = units or {}
+    return {
+        "cik": 1234567,
+        "entityName": "Test Co",
+        "facts": {"us-gaap": {tag: {"units": {units.get(tag, "USD"): entries}} for tag, entries in concepts.items()}},
+    }
 
 
 def _fake_fetcher(responses: dict[str, object]):
@@ -492,3 +509,231 @@ class TestSignValidation:
         docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
         assert docs[0].metadata["capital_expenditure"] == 0.0
         assert docs[0].metadata["free_cash_flow"] == 100.0
+
+
+class TestIncomeStatementConcepts:
+    """Company Data Foundation v1: operating income, net income, EPS."""
+
+    def test_operating_income_persists(self):
+        companyfacts = _companyfacts(
+            {"OperatingIncomeLoss": [_usd_entry(start="2023-01-01", end="2023-12-31", val=250.0, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["operating_income"] == 250.0
+
+    def test_net_income_persists(self):
+        companyfacts = _companyfacts(
+            {"NetIncomeLoss": [_usd_entry(start="2023-01-01", end="2023-12-31", val=200.0, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["net_income"] == 200.0
+
+    def test_net_income_falls_back_to_profit_loss(self):
+        companyfacts = _companyfacts(
+            {"ProfitLoss": [_usd_entry(start="2023-01-01", end="2023-12-31", val=180.0, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["net_income"] == 180.0
+
+    def test_eps_diluted_persists_from_its_own_usd_per_shares_unit(self):
+        companyfacts = _companyfacts(
+            {"EarningsPerShareDiluted": [_usd_entry(start="2023-01-01", end="2023-12-31", val=2.5, filed="2024-02-01")]},
+            units={"EarningsPerShareDiluted": "USD/shares"},
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["eps"] == 2.5
+
+    def test_eps_falls_back_to_basic_when_diluted_is_absent(self):
+        companyfacts = _companyfacts(
+            {"EarningsPerShareBasic": [_usd_entry(start="2023-01-01", end="2023-12-31", val=2.7, filed="2024-02-01")]},
+            units={"EarningsPerShareBasic": "USD/shares"},
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["eps"] == 2.7
+
+    def test_eps_reported_under_the_wrong_unit_is_never_extracted(self):
+        """A same-named tag reported under `"USD"` instead of the real
+        `"USD/shares"` unit is a malformed/mistagged filing -- honestly
+        absent, never silently read from the wrong unit bucket."""
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "EarningsPerShareDiluted": [_usd_entry(start="2023-01-01", end="2023-12-31", val=2.5, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "eps" not in docs[0].metadata
+
+
+class TestInstantBalanceSheetConcepts:
+    """Company Data Foundation v1: cash, debt (current+noncurrent
+    policy), shares outstanding -- all point-in-time facts, merged onto
+    a fiscal period only by matching `end` date against an already
+    -discovered duration period."""
+
+    def test_cash_persists_for_the_matching_fiscal_year_end(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "CashAndCashEquivalentsAtCarryingValue": [
+                    _instant_entry(end="2023-12-31", val=900.0, filed="2024-02-01")
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["cash"] == 900.0
+
+    def test_cash_falls_back_to_the_restricted_cash_combined_concept(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents": [
+                    _instant_entry(end="2023-12-31", val=950.0, filed="2024-02-01")
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["cash"] == 950.0
+
+    def test_total_debt_is_the_sum_of_current_and_noncurrent_when_both_exist(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "LongTermDebtCurrent": [_instant_entry(end="2023-12-31", val=50.0, filed="2024-02-01")],
+                "LongTermDebtNoncurrent": [_instant_entry(end="2023-12-31", val=500.0, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["total_debt"] == 550.0
+
+    def test_total_debt_falls_back_to_the_single_robust_concept_when_the_split_is_unavailable(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "LongTermDebt": [_instant_entry(end="2023-12-31", val=600.0, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["total_debt"] == 600.0
+
+    def test_total_debt_never_double_counts_when_both_the_split_and_the_single_total_are_reported(self):
+        """The current+noncurrent sum and the single-total fallback are
+        mutually exclusive branches -- the split, when available, always
+        wins; the single total is never added on top of it."""
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "LongTermDebtCurrent": [_instant_entry(end="2023-12-31", val=50.0, filed="2024-02-01")],
+                "LongTermDebtNoncurrent": [_instant_entry(end="2023-12-31", val=500.0, filed="2024-02-01")],
+                "LongTermDebt": [_instant_entry(end="2023-12-31", val=999.0, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["total_debt"] == 550.0
+
+    def test_total_debt_current_falls_back_to_short_term_borrowings(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "ShortTermBorrowings": [_instant_entry(end="2023-12-31", val=40.0, filed="2024-02-01")],
+                "LongTermDebtNoncurrent": [_instant_entry(end="2023-12-31", val=500.0, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["total_debt"] == 540.0
+
+    def test_total_debt_absent_when_neither_split_nor_single_total_exists(self):
+        """Never fabricated from one side alone -- missing current with
+        no noncurrent and no single-total concept means total debt is
+        honestly undetermined for this period."""
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "LongTermDebtCurrent": [_instant_entry(end="2023-12-31", val=50.0, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "total_debt" not in docs[0].metadata
+
+    def test_shares_outstanding_persists_from_its_own_shares_unit(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "CommonStockSharesOutstanding": [_instant_entry(end="2023-12-31", val=1_000_000.0, filed="2024-02-01")],
+            },
+            units={"CommonStockSharesOutstanding": "shares"},
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["shares_outstanding"] == 1_000_000.0
+
+    def test_shares_outstanding_reported_under_the_wrong_unit_is_never_extracted(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "CommonStockSharesOutstanding": [_instant_entry(end="2023-12-31", val=1_000_000.0, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "shares_outstanding" not in docs[0].metadata
+
+    def test_instant_facts_never_fabricate_a_period_with_no_duration_data(self):
+        """An instant fact whose `end` date matches no fiscal period
+        discovered from duration concepts is simply dropped -- it never
+        invents a period whose own `start` date is unknown."""
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "CashAndCashEquivalentsAtCarryingValue": [
+                    _instant_entry(end="2023-12-31", val=900.0, filed="2024-02-01"),
+                    _instant_entry(end="2022-12-31", val=800.0, filed="2023-02-01"),  # no matching duration period
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert len(docs) == 1  # not two -- the 2022 instant value never became its own document
+        assert docs[0].metadata["cash"] == 900.0
+
+    def test_instant_amendment_keeps_the_most_recently_filed_value(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "CashAndCashEquivalentsAtCarryingValue": [
+                    _instant_entry(end="2023-12-31", val=900.0, filed="2024-02-01"),
+                    _instant_entry(end="2023-12-31", val=920.0, filed="2024-05-01"),
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["cash"] == 920.0
+
+    def test_quarterly_instant_entries_are_excluded(self):
+        """Instant facts still require `form == "10-K"` -- a quarterly
+        (10-Q) balance-sheet value is never picked up."""
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "CashAndCashEquivalentsAtCarryingValue": [
+                    _instant_entry(end="2023-12-31", val=900.0, form="10-Q", filed="2023-11-01")
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "cash" not in docs[0].metadata

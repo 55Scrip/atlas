@@ -160,3 +160,56 @@ class TestDeterminism:
         first = evaluate_capital_allocation(facts, evaluated_at=EVALUATED_AT)
         second = evaluate_capital_allocation(facts, evaluated_at=EVALUATED_AT)
         assert first == second
+
+
+class TestSharesOutstandingIsInformationalOnly:
+    """Company Data Foundation v1: `SHARES_OUTSTANDING` is recorded in
+    `missing_evidence` when absent, exactly like CAPEX/dividends, but
+    never drives `status` or changes `confidence`'s own two-signal
+    computation."""
+
+    def test_missing_share_count_is_recorded_when_absent(self):
+        facts = (
+            fact(BusinessFactKind.SHARE_BUYBACKS, 500),
+            fact(BusinessFactKind.SHARE_ISSUANCE, 50),
+            fact(BusinessFactKind.DEBT_REPAYMENT, 300),
+            fact(BusinessFactKind.DEBT_ISSUANCE, 100),
+        )
+        result = evaluate_capital_allocation(facts, evaluated_at=EVALUATED_AT)
+        assert BusinessDataGapKind.MISSING_SHARE_COUNT_HISTORY in result.missing_evidence
+
+    def test_share_count_presence_does_not_change_status_or_confidence(self):
+        """A real, disciplined-allocation company (STRONG, FULL
+        confidence per Scenario E) stays exactly the same whether or
+        not `SHARES_OUTSTANDING` facts happen to also be present --
+        proving share-count data is genuinely never folded into either
+        computation."""
+        base_facts = (
+            fact(BusinessFactKind.SHARE_BUYBACKS, 500),
+            fact(BusinessFactKind.SHARE_ISSUANCE, 50),
+            fact(BusinessFactKind.DEBT_REPAYMENT, 300),
+            fact(BusinessFactKind.DEBT_ISSUANCE, 100),
+        )
+        without_shares = evaluate_capital_allocation(base_facts, evaluated_at=EVALUATED_AT)
+        with_shares = evaluate_capital_allocation(
+            (*base_facts, fact(BusinessFactKind.SHARES_OUTSTANDING, 1_000_000, period="2023"),
+             fact(BusinessFactKind.SHARES_OUTSTANDING, 950_000, period="2024")),
+            evaluated_at=EVALUATED_AT,
+        )
+        assert without_shares.status is with_shares.status is BusinessCategoryStatus.STRONG
+        assert without_shares.confidence is with_shares.confidence is EvidenceCoverageLevel.FULL
+        assert BusinessDataGapKind.MISSING_SHARE_COUNT_HISTORY not in with_shares.missing_evidence
+        assert BusinessDataGapKind.MISSING_SHARE_COUNT_HISTORY in without_shares.missing_evidence
+
+    def test_share_count_alone_with_no_other_facts_is_still_insufficient_input(self):
+        """Share-count data alone never unblocks a real conclusion --
+        it is informational, not a third signal the status rule reads."""
+        facts = (
+            fact(BusinessFactKind.SHARES_OUTSTANDING, 1_000_000, period="2023"),
+            fact(BusinessFactKind.SHARES_OUTSTANDING, 950_000, period="2024"),
+        )
+        result = evaluate_capital_allocation(facts, evaluated_at=EVALUATED_AT)
+        assert result.status is BusinessCategoryStatus.INSUFFICIENT_INPUT
+        # Real facts exist (just not the ones that drive a signal) --
+        # confidence reads as NONE, not the "nothing at all" NOT_APPLICABLE.
+        assert result.confidence is EvidenceCoverageLevel.NONE

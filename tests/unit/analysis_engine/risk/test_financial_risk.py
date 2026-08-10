@@ -94,12 +94,18 @@ class TestEdgeCases:
         assert result.status is RiskStatus.LOW
 
     def test_never_invents_a_leverage_ratio(self):
+        """Company Data Foundation v1: `TOTAL_DEBT` is now a real,
+        legitimate signal input (`debt_trend_signal`, a pure
+        sign-of-consecutive-deltas comparison -- see module docstring)
+        -- so referencing the fact kind itself is no longer forbidden.
+        What remains forbidden is any actual *ratio* -- debt divided by
+        equity, EBITDA, or any other invented denominator."""
         import inspect
 
         from atlas.analysis_engine.risk import financial_risk
 
         source = inspect.getsource(financial_risk)
-        for forbidden in ("total_debt", "debt_to_equity", "leverage_ratio"):
+        for forbidden in ("debt_to_equity", "debt_to_ebitda", "leverage_ratio"):
             assert forbidden not in source
 
 
@@ -125,3 +131,84 @@ class TestDeterminism:
         first = evaluate_financial_risk(finding, facts, evaluated_at=EVALUATED_AT)
         second = evaluate_financial_risk(finding, facts, evaluated_at=EVALUATED_AT)
         assert first == second
+
+
+class TestDebtTrendSignal:
+    """Company Data Foundation v1: an escalation-only third signal --
+    can turn a result `HIGH`, and its own fact ids are always included
+    when it fires, but it never changes `confidence` (still computed
+    from exactly the original two signals) and never blocks a `LOW`
+    result from the other two."""
+
+    def test_consistently_rising_debt_escalates_to_high_even_with_no_other_signal(self):
+        finding = capital_allocation_finding(BusinessCategoryStatus.INSUFFICIENT_INPUT, confidence=EvidenceCoverageLevel.NOT_APPLICABLE)
+        facts = (
+            business_fact(BusinessFactKind.TOTAL_DEBT, 100.0, "2022"),
+            business_fact(BusinessFactKind.TOTAL_DEBT, 200.0, "2023"),
+            business_fact(BusinessFactKind.TOTAL_DEBT, 300.0, "2024"),
+        )
+        result = evaluate_financial_risk(finding, facts, evaluated_at=EVALUATED_AT)
+        assert result.status is RiskStatus.HIGH
+        # Escalation only -- confidence stays exactly what the original
+        # two (both-insufficient) signals alone would produce.
+        assert result.confidence is EvidenceCoverageLevel.NOT_APPLICABLE
+
+    def test_consistently_falling_debt_alone_does_not_unlock_low(self):
+        """A falling debt trend is real, positive information, but it
+        is not one of the two signals `confidence`/the `LOW` branch
+        reads -- with both original signals insufficient, the result
+        stays `INSUFFICIENT_INPUT`, never a fabricated `LOW`."""
+        finding = capital_allocation_finding(BusinessCategoryStatus.INSUFFICIENT_INPUT, confidence=EvidenceCoverageLevel.NOT_APPLICABLE)
+        facts = (
+            business_fact(BusinessFactKind.TOTAL_DEBT, 300.0, "2022"),
+            business_fact(BusinessFactKind.TOTAL_DEBT, 200.0, "2023"),
+            business_fact(BusinessFactKind.TOTAL_DEBT, 100.0, "2024"),
+        )
+        result = evaluate_financial_risk(finding, facts, evaluated_at=EVALUATED_AT)
+        assert result.status is RiskStatus.INSUFFICIENT_INPUT
+
+    def test_a_single_debt_period_is_insufficient_never_a_trend(self):
+        finding = capital_allocation_finding(BusinessCategoryStatus.STRONG)
+        facts = (
+            business_fact(BusinessFactKind.FREE_CASH_FLOW, 200.0, "2024"),
+            business_fact(BusinessFactKind.TOTAL_DEBT, 100.0, "2024"),
+        )
+        result = evaluate_financial_risk(finding, facts, evaluated_at=EVALUATED_AT)
+        assert result.status is RiskStatus.LOW  # unaffected -- debt trend stays insufficient
+        assert RiskDataGapKind.MISSING_DEBT_HISTORY in result.missing_evidence
+
+    def test_mixed_debt_trend_is_insufficient_not_moderate(self):
+        finding = capital_allocation_finding(BusinessCategoryStatus.STRONG)
+        facts = (
+            business_fact(BusinessFactKind.FREE_CASH_FLOW, 200.0, "2024"),
+            business_fact(BusinessFactKind.TOTAL_DEBT, 100.0, "2022"),
+            business_fact(BusinessFactKind.TOTAL_DEBT, 200.0, "2023"),
+            business_fact(BusinessFactKind.TOTAL_DEBT, 150.0, "2024"),
+        )
+        result = evaluate_financial_risk(finding, facts, evaluated_at=EVALUATED_AT)
+        assert result.status is RiskStatus.LOW  # the two real signals still win; debt trend contributes nothing
+        assert RiskDataGapKind.MISSING_DEBT_HISTORY in result.missing_evidence
+
+    def test_healthy_result_is_unaffected_when_debt_data_is_entirely_absent(self):
+        """Backward-compatible: a company with no TOTAL_DEBT facts at
+        all behaves identically to before this sprint."""
+        finding = capital_allocation_finding(BusinessCategoryStatus.STRONG)
+        facts = (business_fact(BusinessFactKind.FREE_CASH_FLOW, 200.0, "2024"),)
+        result = evaluate_financial_risk(finding, facts, evaluated_at=EVALUATED_AT)
+        assert result.status is RiskStatus.LOW
+        assert result.confidence is EvidenceCoverageLevel.FULL
+        assert RiskDataGapKind.MISSING_DEBT_HISTORY in result.missing_evidence
+
+    def test_rising_debt_fact_ids_are_included_in_supporting_facts_when_it_fires(self):
+        finding = capital_allocation_finding(BusinessCategoryStatus.STRONG)
+        facts = (
+            business_fact(BusinessFactKind.FREE_CASH_FLOW, 200.0, "2024"),
+            business_fact(BusinessFactKind.TOTAL_DEBT, 100.0, "2022"),
+            business_fact(BusinessFactKind.TOTAL_DEBT, 200.0, "2023"),
+            business_fact(BusinessFactKind.TOTAL_DEBT, 300.0, "2024"),
+        )
+        result = evaluate_financial_risk(finding, facts, evaluated_at=EVALUATED_AT)
+        assert result.status is RiskStatus.HIGH
+        debt_ids = {f.id for f in facts if f.kind is BusinessFactKind.TOTAL_DEBT}
+        assert debt_ids.issubset(set(result.supporting_facts))
+        assert debt_ids.issubset(set(result.provenance.dependencies))

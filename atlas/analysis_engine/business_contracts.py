@@ -129,6 +129,16 @@ class BusinessDataGapKind(str, Enum):
     Informational this sprint, same status as
     `MISSING_DIVIDEND_DATA`."""
 
+    MISSING_SHARE_COUNT_HISTORY = "missing_share_count_history"
+    """Capital Allocation (Company Data Foundation v1): no
+    `SHARES_OUTSTANDING` facts exist. Informational only, same status
+    as `MISSING_CAPEX_DATA`/`MISSING_DIVIDEND_DATA` -- share-count
+    movement (dilution or retirement) is surfaced for context, never
+    folded into `status`, since doing so would require an arbitrary
+    dilution-rate cutoff this sprint has no principled way to justify
+    (the same reasoning `capital_allocation.py`'s own module docstring
+    already gives for CAPEX/dividends)."""
+
 
 def severity_for_status(status: BusinessCategoryStatus) -> FindingSeverity:
     """Deterministic, mechanical mapping -- severity describes how much

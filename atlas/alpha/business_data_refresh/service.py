@@ -44,15 +44,37 @@ entrypoint**, layered on top of `refresh_company_data` rather than
 replacing it: the CLI and any future explicit "force refresh" caller
 still want `refresh_company_data`'s unconditional behavior, but the
 Watchlist/Portfolio "add a company" write paths must never re-fetch (or
-re-call rate-limited providers for) a ticker Atlas has already fetched
-at least once. The gate is a single, honest check -- "does this company
-already have at least one persisted `BusinessRecord`" -- never a
-timestamp-based expiry or a second cache this sprint does not need.
+re-call rate-limited providers for) a ticker Atlas has already
+meaningfully enriched.
+
+**Company Data Foundation v1: the gate is `assess_data_completeness
+.is_minimally_complete`, not "any record at all."** The original gate
+("does this company already have at least one persisted
+`BusinessRecord`, of any kind") was too coarse: a company whose only
+persisted record was, say, a single `MARKET_DATA_SNAPSHOT` (SEC failed
+or is unsupported for this ticker; Alpha Vantage's own profile fetch
+also failed transiently) permanently blocked every future enrichment
+attempt, even though Atlas never actually recovered any identity or
+fundamentals for it. The new gate requires real `COMPANY_PROFILE` or
+`FINANCIAL_STATEMENT` coverage -- see `completeness.py`'s own docstring
+for the exact predicate.
+
+**This still bounds retries; it does not create a background poller.**
+A ticker either provider can genuinely serve becomes minimally complete
+on its first successful refresh and never re-fetches again after that
+-- identical behavior to before for the common case. Only a ticker
+*neither* provider can ever serve (e.g. a foreign filer SEC does not
+cover, on a deployment with no Alpha Vantage key configured) keeps
+attempting a fresh `refresh_company_data` on every subsequent
+Watchlist/Portfolio add -- a real, bounded cost paid only for a company
+Atlas genuinely has nothing for yet, triggered only by an explicit user
+action, never a schedule.
 """
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
+from atlas.analysis_engine.business_data.completeness import assess_data_completeness
 from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.business_data.pipeline import IngestionRejected, ingest
 from atlas.analysis_engine.business_data.providers import (
@@ -185,17 +207,19 @@ def ensure_company_enriched(
     Engine v1 slice's "add a company" write paths (Watchlist/Portfolio).
 
     Returns `None` -- no provider called at all -- if `ticker` already
-    has at least one persisted `BusinessRecord` of any kind; this is the
-    one, honest freshness check this sprint needs (never a timestamp
-    expiry, never a background refresh schedule) and is exactly what
-    keeps a repeated Watchlist/Portfolio addition of the same company
-    from ever making a second round of provider calls. A ticker with no
-    persisted records yet delegates entirely to `refresh_company_data`,
-    whose own per-provider isolation already guarantees this never
-    raises for a provider failure -- a caller on the Case-creation path
-    may call this unconditionally without risking Case creation itself
-    failing because of a transient provider outage.
+    has enough persisted `BusinessRecord`s to be `assess_data_completeness
+    .is_minimally_complete` (Company Data Foundation v1; see this
+    module's own docstring for exactly why "any record at all" was too
+    coarse a gate). A ticker that is not yet minimally complete --
+    including one with no records at all, and one with only a stray
+    record that never established real identity or fundamentals --
+    delegates to `refresh_company_data`, whose own per-provider
+    isolation already guarantees this never raises for a provider
+    failure -- a caller on the Case-creation path may call this
+    unconditionally without risking Case creation itself failing
+    because of a transient provider outage.
     """
-    if repository.get_by_company(ticker):
+    existing = repository.get_by_company(ticker)
+    if existing and assess_data_completeness(existing).is_minimally_complete:
         return None
     return refresh_company_data(ticker, providers, repository)

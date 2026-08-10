@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { Link as RouterLink, useLocation, useParams } from "react-router-dom";
 import { Button, Container, Divider, Heading, Inline, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
@@ -614,9 +615,10 @@ interface RecommendationStateView {
   convictionGateMet: boolean;
 }
 
-// Investment Case Engine v1 slice: descriptive company identity and raw
-// financial data, automatically populated on Watchlist/Portfolio add --
-// see atlas/alpha/investment_case/company_profile.py and
+// Investment Case Engine v1 slice (extended Company Data Foundation
+// v1): descriptive company identity and raw financial data,
+// automatically populated on Watchlist/Portfolio add -- see
+// atlas/alpha/investment_case/company_profile.py and
 // financial_history.py. Every field beyond ticker/asOf may be null: an
 // honest absence when the provider did not report it, never a guess.
 interface CompanyProfileView {
@@ -628,17 +630,25 @@ interface CompanyProfileView {
   country: string | null;
   description: string | null;
   asOf: string;
+  currency: string | null;
+  fiscalYearEnd: string | null;
 }
 
 interface FinancialPeriodView {
   periodStart: string | null;
   periodEnd: string | null;
   revenue: number | null;
+  operatingIncome: number | null;
+  netIncome: number | null;
+  eps: number | null;
   freeCashFlow: number | null;
   capitalExpenditure: number | null;
   shareBuybacks: number | null;
   shareIssuance: number | null;
   dividends: number | null;
+  cash: number | null;
+  totalDebt: number | null;
+  sharesOutstanding: number | null;
   currency: string | null;
 }
 
@@ -647,6 +657,7 @@ interface MarketSnapshotView {
   sharePrice: number | null;
   sharesOutstanding: number | null;
   currency: string | null;
+  marketCap: number | null;
 }
 
 // Investment Case Intelligence v1 slice: Strengths/Risks/Growth/
@@ -4414,18 +4425,114 @@ function InvestmentCaseCanonicalSections({
  * business categories.
  */
 /**
- * Company Overview + Financials (Investment Case Engine v1 slice) --
- * the automatically-populated Company Identity, Financial History, and
- * current Market Data this sprint adds. Renders only real, already-
- * ingested `BusinessRecord` data (see `atlas/alpha/investment_case
- * /company_profile.py`/`financial_history.py`); a company with nothing
- * ingested yet shows the same honest empty state doctrine already
- * established elsewhere on this page, never a fabricated placeholder.
+ * Company Overview + Financials (Investment Case Engine v1 slice;
+ * extended Company Data Foundation v1) -- the automatically-populated
+ * Company Identity, Financial History, and current Market Data this
+ * sprint adds. Renders only real, already-ingested `BusinessRecord`
+ * data (see `atlas/alpha/investment_case/company_profile.py`/
+ * `financial_history.py`); a company with nothing ingested yet shows
+ * the same honest empty state doctrine already established elsewhere
+ * on this page, never a fabricated placeholder. A missing value is
+ * always the em-dash placeholder below, never rendered as 0 or blank
+ * (which would visually imply zero).
  */
+const MISSING_VALUE_PLACEHOLDER = "—";
+
 function formatFinancialValue(value: number | null, currency: string | null): string {
-  if (value === null) return "—";
+  if (value === null) return MISSING_VALUE_PLACEHOLDER;
   const formatted = value.toLocaleString(undefined, { maximumFractionDigits: 1 });
   return currency ? `${formatted} ${currency}` : formatted;
+}
+
+function formatShareCount(value: number | null): string {
+  if (value === null) return MISSING_VALUE_PLACEHOLDER;
+  return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+function formatEps(value: number | null, currency: string | null): string {
+  if (value === null) return MISSING_VALUE_PLACEHOLDER;
+  const formatted = value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return currency ? `${formatted} ${currency}` : formatted;
+}
+
+interface FinancialsTableRow {
+  labelKey: TranslationKey;
+  values: (period: FinancialPeriodView) => string;
+}
+
+/** One row per metric, one column per fiscal period -- a dense,
+ * analyst-file layout ("a table is acceptable and likely preferable").
+ * Every cell is a direct, unevaluated read of `FinancialPeriodView`;
+ * this table computes nothing itself. */
+function FinancialsTable({ periods, t }: { periods: FinancialPeriodView[]; t: Translate }) {
+  // Newest period first, left to right -- matches how an analyst reads
+  // a spreadsheet, and how the periods already arrive from the API
+  // (oldest first) reversed once here rather than at the API layer.
+  const newestFirst = periods.slice().reverse();
+
+  const rows: FinancialsTableRow[] = [
+    { labelKey: "investmentCase.analysis.financials.revenueLabel", values: (p) => formatFinancialValue(p.revenue, p.currency) },
+    { labelKey: "investmentCase.analysis.financials.operatingIncomeLabel", values: (p) => formatFinancialValue(p.operatingIncome, p.currency) },
+    { labelKey: "investmentCase.analysis.financials.netIncomeLabel", values: (p) => formatFinancialValue(p.netIncome, p.currency) },
+    { labelKey: "investmentCase.analysis.financials.epsLabel", values: (p) => formatEps(p.eps, p.currency) },
+    { labelKey: "investmentCase.analysis.financials.freeCashFlowLabel", values: (p) => formatFinancialValue(p.freeCashFlow, p.currency) },
+    { labelKey: "investmentCase.analysis.financials.capitalExpenditureLabel", values: (p) => formatFinancialValue(p.capitalExpenditure, p.currency) },
+    { labelKey: "investmentCase.analysis.financials.shareBuybacksLabel", values: (p) => formatFinancialValue(p.shareBuybacks, p.currency) },
+    { labelKey: "investmentCase.analysis.financials.dividendsLabel", values: (p) => formatFinancialValue(p.dividends, p.currency) },
+    { labelKey: "investmentCase.analysis.financials.cashLabel", values: (p) => formatFinancialValue(p.cash, p.currency) },
+    { labelKey: "investmentCase.analysis.financials.totalDebtLabel", values: (p) => formatFinancialValue(p.totalDebt, p.currency) },
+    { labelKey: "investmentCase.analysis.financials.sharesOutstandingLabel", values: (p) => formatShareCount(p.sharesOutstanding) },
+  ];
+
+  const cellStyle: CSSProperties = {
+    padding: "var(--space-metadata) var(--space-row)",
+    textAlign: "right",
+    fontFamily: "var(--type-family-metadata)",
+    fontVariantNumeric: "tabular-nums",
+    whiteSpace: "nowrap",
+    borderBottom: "var(--width-border-hairline) solid var(--color-border-hairline)",
+  };
+  const labelCellStyle: CSSProperties = {
+    ...cellStyle,
+    textAlign: "left",
+    fontFamily: "var(--type-family-prose)",
+    color: "var(--color-text-secondary)",
+  };
+  const headerCellStyle: CSSProperties = {
+    ...cellStyle,
+    fontFamily: "var(--type-family-prose)",
+    fontWeight: 600,
+    color: "var(--color-text-primary)",
+  };
+
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ borderCollapse: "collapse", width: "100%" }}>
+        <thead>
+          <tr>
+            <th style={{ ...headerCellStyle, textAlign: "left" }} />
+            {newestFirst.map((period, index) => (
+              <th key={period.periodEnd ?? index} style={headerCellStyle}>
+                {period.periodEnd ?? t("investmentCase.analysis.financials.unknownPeriodLabel")}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.labelKey}>
+              <td style={labelCellStyle}>{t(row.labelKey)}</td>
+              {newestFirst.map((period, index) => (
+                <td key={period.periodEnd ?? index} style={cellStyle}>
+                  {row.values(period)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function CompanyOverviewSection({
@@ -4471,6 +4578,11 @@ function CompanyOverviewSection({
                 {t("investmentCase.analysis.companyOverview.countryLabel")}: {companyProfile.country}
               </Text>
             )}
+            {companyProfile.fiscalYearEnd && (
+              <Text as="p" color="secondary">
+                {t("investmentCase.analysis.companyOverview.fiscalYearEndLabel")}: {companyProfile.fiscalYearEnd}
+              </Text>
+            )}
             {companyProfile.description && <Text color="secondary" as="p">{companyProfile.description}</Text>}
           </Stack>
         )}
@@ -4486,38 +4598,7 @@ function CompanyOverviewSection({
           <Text color="secondary">{t("investmentCase.analysis.financials.empty")}</Text>
         )}
 
-        {financialHistory
-          .slice()
-          .reverse()
-          .map((period, index) => (
-            <Stack key={period.periodEnd ?? index} gap="intra-section">
-              {period.periodEnd && (
-                <Text as="p" color="secondary">
-                  {t("investmentCase.analysis.financials.periodLabel", { date: period.periodEnd })}
-                </Text>
-              )}
-              <Text as="p">
-                {t("investmentCase.analysis.financials.revenueLabel")}: {formatFinancialValue(period.revenue, period.currency)}
-              </Text>
-              <Text as="p">
-                {t("investmentCase.analysis.financials.freeCashFlowLabel")}:{" "}
-                {formatFinancialValue(period.freeCashFlow, period.currency)}
-              </Text>
-              <Text as="p">
-                {t("investmentCase.analysis.financials.capitalExpenditureLabel")}:{" "}
-                {formatFinancialValue(period.capitalExpenditure, period.currency)}
-              </Text>
-              <Text as="p">
-                {t("investmentCase.analysis.financials.shareBuybacksLabel")}:{" "}
-                {formatFinancialValue(period.shareBuybacks, period.currency)}
-              </Text>
-              <Text as="p">
-                {t("investmentCase.analysis.financials.dividendsLabel")}:{" "}
-                {formatFinancialValue(period.dividends, period.currency)}
-              </Text>
-              <Divider tone="hairline" />
-            </Stack>
-          ))}
+        {financialHistory.length > 0 && <FinancialsTable periods={financialHistory} t={t} />}
 
         {marketSnapshot && (
           <Stack gap="intra-section">
@@ -4528,7 +4609,11 @@ function CompanyOverviewSection({
             </Text>
             <Text as="p">
               {t("investmentCase.analysis.financials.sharesOutstandingLabel")}:{" "}
-              {formatFinancialValue(marketSnapshot.sharesOutstanding, null)}
+              {formatShareCount(marketSnapshot.sharesOutstanding)}
+            </Text>
+            <Text as="p">
+              {t("investmentCase.analysis.financials.marketCapLabel")}:{" "}
+              {formatFinancialValue(marketSnapshot.marketCap, marketSnapshot.currency)}
             </Text>
           </Stack>
         )}

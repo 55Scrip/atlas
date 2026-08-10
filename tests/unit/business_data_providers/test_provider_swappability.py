@@ -89,11 +89,16 @@ class TestSwappedIntoTheSameRefreshUseCaseWithNoEvaluatorChange:
         assert summary.provider_errors == ()
         # 2 annual fundamentals periods + 1 current market snapshot +
         # 2 historical market snapshots (ATLAS-032, one per distinct
-        # SEC filing date in _COMPANYFACTS: 2023-02-01, 2024-02-01).
-        assert summary.new_records == 5
+        # SEC filing date in _COMPANYFACTS: 2023-02-01, 2024-02-01) + 1
+        # company_profile document (Company Data Foundation v1: `_av
+        # _fetcher`'s own catch-all OVERVIEW response includes
+        # `"Currency": "USD"`, itself now a real identity field --
+        # `fetch_company_profile` no longer returns `()` for a response
+        # carrying only that one field).
+        assert summary.new_records == 6
         records = repository.get_by_company("TESTCO")
         document_types = {r.document_type.value for r in records}
-        assert document_types == {"financial_statement", "market_data_snapshot"}
+        assert document_types == {"financial_statement", "market_data_snapshot", "company_profile"}
         market_records = [r for r in records if r.document_type.value == "market_data_snapshot"]
         assert len(market_records) == 3
 

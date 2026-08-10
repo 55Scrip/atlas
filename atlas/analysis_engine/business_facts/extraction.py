@@ -53,6 +53,13 @@ _METADATA_KEYS: dict[BusinessFactKind, str] = {
     BusinessFactKind.DIVIDENDS: "dividends",
     BusinessFactKind.DEBT_ISSUANCE: "debt_issuance",
     BusinessFactKind.DEBT_REPAYMENT: "debt_repayment",
+    # -- Company Data Foundation v1 --
+    BusinessFactKind.OPERATING_INCOME: "operating_income",
+    BusinessFactKind.NET_INCOME: "net_income",
+    BusinessFactKind.EPS: "eps",
+    BusinessFactKind.CASH: "cash",
+    BusinessFactKind.TOTAL_DEBT: "total_debt",
+    BusinessFactKind.SHARES_OUTSTANDING: "shares_outstanding",
 }
 
 _UNSPECIFIED_UNIT = "unspecified"

@@ -69,6 +69,14 @@ class RiskDataGapKind(str, Enum):
     or `NONE` -- there is no Evidence recorded to check for contradiction
     at all, which is a different fact from "checked, found none"."""
 
+    MISSING_DEBT_HISTORY = "missing_debt_history"
+    """Financial Risk (Company Data Foundation v1): fewer than two
+    `TOTAL_DEBT` facts across distinct periods, so the debt-trend
+    signal could not be assessed. Always informational -- see
+    `financial_risk.py`'s own module docstring for why this signal
+    never lowers `confidence` and only ever escalates `status`, never
+    the reverse."""
+
 
 def severity_for_risk_status(status: RiskStatus) -> FindingSeverity:
     """Deterministic, mechanical mapping -- severity describes how much

@@ -36,6 +36,16 @@ class CompanyProfile:
     country: str | None
     description: str | None
     as_of: datetime
+    currency: str | None = None
+    """(Company Data Foundation v1) The provider's own reported
+    reporting currency (e.g. Alpha Vantage's OVERVIEW `Currency`
+    field) -- descriptive identity, distinct from a specific financial
+    fact's own `currency` metadata key on `FinancialPeriod`/
+    `MarketSnapshot`, which always wins when both are known."""
+    fiscal_year_end: str | None = None
+    """(Company Data Foundation v1) The provider's own reported fiscal
+    year-end month (e.g. `"December"`) -- passed through exactly as
+    reported, never normalized into a date."""
 
 
 def extract_company_profile(
@@ -63,4 +73,6 @@ def extract_company_profile(
         country=metadata.get("country"),
         description=metadata.get("description"),
         as_of=latest.published_at,
+        currency=metadata.get("currency"),
+        fiscal_year_end=metadata.get("fiscal_year_end"),
     )

@@ -58,11 +58,16 @@ _DEFAULT_USER_AGENT = "Atlas Investment OS admin@atlas-investment-os.local (set 
 _MIN_ANNUAL_DAYS = 300
 _MAX_ANNUAL_DAYS = 400
 
-#: canonical `business_facts` metadata key -> candidate us-gaap tags,
-#: in priority order. `_operating_cash_flow` is internal-only (never
-#: reaches a real BusinessFactKind) -- used solely to derive
-#: `free_cash_flow` below, the one canonical key SEC has no single
-#: matching tag for.
+#: canonical `business_facts` metadata key -> (candidate us-gaap tags in
+#: priority order, the XBRL unit key those tags report under).
+#: `_operating_cash_flow` is internal-only (never reaches a real
+#: BusinessFactKind) -- used solely to derive `free_cash_flow` below,
+#: the one canonical key SEC has no single matching tag for.
+#:
+#: **Duration concepts** -- a value that accumulates *over* a fiscal
+#: year (income statement, cash flow statement). Extracted by
+#: `_annual_entries`, which requires a real `start`/`end` span of
+#: roughly a year.
 #:
 #: ATLAS-031A, Issue 3 -- fallback tags marked below were added after
 #: the ATLAS-031 post-sprint audit found the single-tag mappings failed
@@ -79,35 +84,102 @@ _MAX_ANNUAL_DAYS = 400
 #: `ProceedsFromIssuanceOfCommonStock`. Each addition below is a
 #: same-meaning alternative tag for the identical canonical concept --
 #: never a different economic concept folded into an existing bucket.
-_CONCEPT_TAGS: dict[str, tuple[str, ...]] = {
+#:
+#: Company Data Foundation v1: `operating_income`/`net_income`/`eps`
+#: added -- the three income-statement concepts the ATLAS-031 audit
+#: never pursued. `eps` reports under XBRL unit `USD/shares`, not
+#: `USD` -- the one duration concept here that is not a raw dollar
+#: amount, which is exactly why `_annual_entries` now takes an explicit
+#: `unit_key` rather than assuming `"USD"` everywhere.
+_DURATION_CONCEPT_TAGS: dict[str, tuple[tuple[str, ...], str]] = {
     "revenue": (
-        "Revenues",
-        "RevenueFromContractWithCustomerExcludingAssessedTax",
-        "RevenueFromContractWithCustomerIncludingAssessedTax",
+        (
+            "Revenues",
+            "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "RevenueFromContractWithCustomerIncludingAssessedTax",
+        ),
+        "USD",
     ),
     "_operating_cash_flow": (
-        "NetCashProvidedByUsedInOperatingActivities",
-        "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations",
+        (
+            "NetCashProvidedByUsedInOperatingActivities",
+            "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations",
+        ),
+        "USD",
     ),
+    "operating_income": (("OperatingIncomeLoss",), "USD"),
+    "net_income": (("NetIncomeLoss", "ProfitLoss"), "USD"),
+    "eps": (("EarningsPerShareDiluted", "EarningsPerShareBasic"), "USD/shares"),
     "capital_expenditure": (
-        "PaymentsToAcquirePropertyPlantAndEquipment",
-        "PaymentsToAcquireProductiveAssets",  # ATLAS-031A: NVDA's real tag
+        (
+            "PaymentsToAcquirePropertyPlantAndEquipment",
+            "PaymentsToAcquireProductiveAssets",  # ATLAS-031A: NVDA's real tag
+        ),
+        "USD",
     ),
-    "share_buybacks": ("PaymentsForRepurchaseOfCommonStock",),
+    "share_buybacks": (("PaymentsForRepurchaseOfCommonStock",), "USD"),
     "share_issuance": (
-        "ProceedsFromIssuanceOfCommonStock",
-        "StockIssuedDuringPeriodValueStockOptionsExercised",  # ATLAS-031A: AMZN/NVDA/META
+        (
+            "ProceedsFromIssuanceOfCommonStock",
+            "StockIssuedDuringPeriodValueStockOptionsExercised",  # ATLAS-031A: AMZN/NVDA/META
+        ),
+        "USD",
     ),
-    "dividends": ("PaymentsOfDividends", "PaymentsOfDividendsCommonStock"),
+    "dividends": (("PaymentsOfDividends", "PaymentsOfDividendsCommonStock"), "USD"),
     "debt_issuance": (
-        "ProceedsFromIssuanceOfLongTermDebt",
-        "ProceedsFromIssuanceOfCommercialPaper",  # ATLAS-031A: AVGO
+        (
+            "ProceedsFromIssuanceOfLongTermDebt",
+            "ProceedsFromIssuanceOfCommercialPaper",  # ATLAS-031A: AVGO
+        ),
+        "USD",
     ),
     "debt_repayment": (
-        "RepaymentsOfLongTermDebt",
-        "RepaymentsOfDebt",  # ATLAS-031A: AMZN/NVDA/AVGO
-        "RepaymentsOfCommercialPaper",  # ATLAS-031A: MSFT
+        (
+            "RepaymentsOfLongTermDebt",
+            "RepaymentsOfDebt",  # ATLAS-031A: AMZN/NVDA/AVGO
+            "RepaymentsOfCommercialPaper",  # ATLAS-031A: MSFT
+        ),
+        "USD",
     ),
+}
+
+#: **Instant concepts** (Company Data Foundation v1) -- a balance-sheet
+#: value reported *as of* one point in time, not accumulated over a
+#: year. SEC's own JSON omits the `start` key entirely for these
+#: (`_instant_entries` below relies on exactly that), so they need a
+#: distinct extraction path from `_DURATION_CONCEPT_TAGS` above. Each
+#: value is attached only to a fiscal period `_DURATION_CONCEPT_TAGS`
+#: already discovered for this company (matched by `end` date) --
+#: never used to fabricate a new period whose own `start` date is
+#: unknown; see `fetch`'s own comment at the merge point.
+#:
+#: `_debt_current`/`_debt_noncurrent`/`_debt_total_single` are
+#: internal-only (never reach a real `BusinessFactKind`) -- combined
+#: into the single canonical `total_debt` key per the documented v1
+#: debt policy: current + non-current interest-bearing debt when both
+#: are available; the single robust total-debt concept as a fallback
+#: when the split is not reported; `None` (never fabricated from one
+#: side alone) when neither is available. This never double-counts:
+#: the current+noncurrent sum and the single-total fallback are
+#: mutually exclusive branches, not summed together.
+_INSTANT_CONCEPT_TAGS: dict[str, tuple[tuple[str, ...], str]] = {
+    "cash": (
+        (
+            "CashAndCashEquivalentsAtCarryingValue",
+            "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+        ),
+        "USD",
+    ),
+    "_debt_current": (("LongTermDebtCurrent", "ShortTermBorrowings"), "USD"),
+    "_debt_noncurrent": (("LongTermDebtNoncurrent",), "USD"),
+    "_debt_total_single": (("LongTermDebt",), "USD"),
+    # `CommonStockSharesOutstanding` reports under XBRL unit "shares",
+    # never "USD" -- deliberately distinct from ValuationFactKind
+    # .SHARES_OUTSTANDING (Alpha Vantage's *current*, today-only
+    # figure): this one is a real per-fiscal-period historical count,
+    # letting Capital Allocation see genuine share-count movement
+    # (dilution or retirement) across years, not just today's snapshot.
+    "shares_outstanding": (("CommonStockSharesOutstanding",), "shares"),
 }
 
 
@@ -125,19 +197,21 @@ def _is_annual_span(start: str | None, end: str | None) -> bool:
     return _MIN_ANNUAL_DAYS <= span_days <= _MAX_ANNUAL_DAYS
 
 
-def _annual_entries(fact_node: dict[str, Any] | None) -> list[dict[str, Any]]:
-    """Every USD-unit entry for one us-gaap concept that is a real
-    10-K, full-fiscal-year ("FY") duration fact. Quarterly facts and
-    stub/transition periods are excluded on purpose: Growth's own
+def _annual_entries(fact_node: dict[str, Any] | None, *, unit_key: str = "USD") -> list[dict[str, Any]]:
+    """Every `unit_key`-unit entry for one us-gaap concept that is a
+    real 10-K, full-fiscal-year ("FY") duration fact. Quarterly facts
+    and stub/transition periods are excluded on purpose: Growth's own
     period-over-period comparison assumes consistent annual cadence,
     and mixing quarterly and annual values would misrepresent growth,
-    not just under-cover it."""
+    not just under-cover it. `unit_key` defaults to `"USD"` for every
+    dollar-denominated concept; `eps` is the one duration concept that
+    reports under `"USD/shares"` instead (Company Data Foundation v1)."""
     if not fact_node:
         return []
-    usd_entries = fact_node.get("units", {}).get("USD", [])
+    unit_entries = fact_node.get("units", {}).get(unit_key, [])
     return [
         entry
-        for entry in usd_entries
+        for entry in unit_entries
         if entry.get("form") == "10-K"
         and entry.get("fp") == "FY"
         and _is_annual_span(entry.get("start"), entry.get("end"))
@@ -176,6 +250,43 @@ def _latest_value_per_period(entries: list[dict[str, Any]]) -> dict[tuple[str, s
         if current is None or entry.get("filed", "") >= current.get("filed", ""):
             by_period[key] = entry
     return by_period
+
+
+def _instant_entries(fact_node: dict[str, Any] | None, *, unit_key: str = "USD") -> list[dict[str, Any]]:
+    """(Company Data Foundation v1) Every `unit_key`-unit entry for one
+    us-gaap concept that is a real 10-K, point-in-time ("instant")
+    fact -- a balance-sheet value as of one date, not accumulated over
+    a year. SEC's own JSON omits the `start` key entirely for an
+    instant-context fact (confirmed shape of the real API, not
+    assumed) -- `entry.get("start") is None` is exactly how this is
+    distinguished from a duration fact, which always carries both
+    `start` and `end`."""
+    if not fact_node:
+        return []
+    unit_entries = fact_node.get("units", {}).get(unit_key, [])
+    return [
+        entry
+        for entry in unit_entries
+        if entry.get("form") == "10-K"
+        and entry.get("start") is None
+        and isinstance(entry.get("val"), (int, float))
+        and not isinstance(entry.get("val"), bool)
+    ]
+
+
+def _latest_value_by_end(entries: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """The instant-fact counterpart of `_latest_value_per_period` --
+    groups by `end` date alone (an instant fact has no `start`),
+    keeping the most recently filed value for any date SEC reports
+    more than once (an amendment or restatement), for the identical
+    reason that function documents."""
+    by_end: dict[str, dict[str, Any]] = {}
+    for entry in entries:
+        key = entry["end"]
+        current = by_end.get(key)
+        if current is None or entry.get("filed", "") >= current.get("filed", ""):
+            by_end[key] = entry
+    return by_end
 
 
 class SecEdgarFundamentalsProvider:
@@ -250,10 +361,11 @@ class SecEdgarFundamentalsProvider:
         filed_by_period: dict[tuple[str, str], str] = {}
         accn_by_period: dict[tuple[str, str], str] = {}
 
-        for metadata_key, tags in _CONCEPT_TAGS.items():
+        for metadata_key, (tags, unit_key) in _DURATION_CONCEPT_TAGS.items():
             resolved: dict[tuple[str, str], dict[str, Any]] = {}
             for tag in tags:
-                for period_key, entry in _latest_value_per_period(_annual_entries(us_gaap.get(tag))).items():
+                entries = _latest_value_per_period(_annual_entries(us_gaap.get(tag), unit_key=unit_key))
+                for period_key, entry in entries.items():
                     resolved.setdefault(period_key, entry)  # first tag in priority order wins per period
             for period_key, entry in resolved.items():
                 periods.setdefault(period_key, {})[metadata_key] = float(entry["val"])
@@ -264,6 +376,22 @@ class SecEdgarFundamentalsProvider:
 
         if not periods:
             raise MissingRequiredField(f"No annual 10-K fundamentals found for {company_identifier} (CIK {cik10})")
+
+        # Company Data Foundation v1: instant (balance-sheet) concepts,
+        # keyed by their own `end` date only -- merged onto a duration
+        # period below strictly by matching that same `end` date, never
+        # used to invent a period whose `start` date only a duration
+        # concept could ever establish (see `_INSTANT_CONCEPT_TAGS`'s
+        # own docstring).
+        instant_by_end: dict[str, dict[str, float]] = {}
+        for metadata_key, (tags, unit_key) in _INSTANT_CONCEPT_TAGS.items():
+            resolved_instant: dict[str, dict[str, Any]] = {}
+            for tag in tags:
+                entries = _latest_value_by_end(_instant_entries(us_gaap.get(tag), unit_key=unit_key))
+                for end_date, entry in entries.items():
+                    resolved_instant.setdefault(end_date, entry)
+            for end_date, entry in resolved_instant.items():
+                instant_by_end.setdefault(end_date, {})[metadata_key] = float(entry["val"])
 
         documents: list[RawBusinessDocument] = []
         for (start, end), values in sorted(periods.items()):
@@ -288,6 +416,30 @@ class SecEdgarFundamentalsProvider:
 
             if operating_cash_flow is not None and capital_expenditure is not None:
                 values["free_cash_flow"] = operating_cash_flow - capital_expenditure
+
+            # Company Data Foundation v1: cash/debt/shares policy.
+            # `cash` and `shares_outstanding` pass through directly
+            # when SEC reported them for this exact fiscal year-end.
+            # `total_debt` follows the documented v1 policy: current +
+            # non-current interest-bearing debt when both are known;
+            # the single robust total-debt concept as a fallback when
+            # the split is not reported; left undetermined (never
+            # fabricated from one side alone) when neither is
+            # available.
+            period_instant = instant_by_end.get(end, {})
+            cash = period_instant.get("cash")
+            if cash is not None:
+                values["cash"] = cash
+            debt_current = period_instant.get("_debt_current")
+            debt_noncurrent = period_instant.get("_debt_noncurrent")
+            debt_total_single = period_instant.get("_debt_total_single")
+            if debt_current is not None and debt_noncurrent is not None:
+                values["total_debt"] = debt_current + debt_noncurrent
+            elif debt_total_single is not None:
+                values["total_debt"] = debt_total_single
+            shares_outstanding = period_instant.get("shares_outstanding")
+            if shares_outstanding is not None:
+                values["shares_outstanding"] = shares_outstanding
 
             filed = filed_by_period.get((start, end), end)
             try:

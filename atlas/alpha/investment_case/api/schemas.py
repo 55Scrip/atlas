@@ -273,8 +273,9 @@ class OutcomeEntryView(CamelModel):
 
 
 class CompanyProfileView(CamelModel):
-    """(Investment Case Engine v1 slice) Descriptive company identity,
-    as currently known -- every field beyond `ticker` may be `None`."""
+    """(Investment Case Engine v1 slice; extended Company Data
+    Foundation v1) Descriptive company identity, as currently known --
+    every field beyond `ticker` may be `None`."""
 
     ticker: str
     name: str | None
@@ -284,6 +285,8 @@ class CompanyProfileView(CamelModel):
     country: str | None
     description: str | None
     as_of: datetime
+    currency: str | None
+    fiscal_year_end: str | None
 
     @classmethod
     def from_domain(cls, profile: CompanyProfile) -> "CompanyProfileView":
@@ -296,6 +299,8 @@ class CompanyProfileView(CamelModel):
             country=profile.country,
             description=profile.description,
             as_of=profile.as_of,
+            currency=profile.currency,
+            fiscal_year_end=profile.fiscal_year_end,
         )
 
 
@@ -303,11 +308,17 @@ class FinancialPeriodView(CamelModel):
     period_start: date | None
     period_end: date | None
     revenue: float | None
+    operating_income: float | None
+    net_income: float | None
+    eps: float | None
     free_cash_flow: float | None
     capital_expenditure: float | None
     share_buybacks: float | None
     share_issuance: float | None
     dividends: float | None
+    cash: float | None
+    total_debt: float | None
+    shares_outstanding: float | None
     currency: str | None
 
     @classmethod
@@ -316,11 +327,17 @@ class FinancialPeriodView(CamelModel):
             period_start=period.period_start,
             period_end=period.period_end,
             revenue=period.revenue,
+            operating_income=period.operating_income,
+            net_income=period.net_income,
+            eps=period.eps,
             free_cash_flow=period.free_cash_flow,
             capital_expenditure=period.capital_expenditure,
             share_buybacks=period.share_buybacks,
             share_issuance=period.share_issuance,
             dividends=period.dividends,
+            cash=period.cash,
+            total_debt=period.total_debt,
+            shares_outstanding=period.shares_outstanding,
             currency=period.currency,
         )
 
@@ -330,6 +347,7 @@ class MarketSnapshotView(CamelModel):
     share_price: float | None
     shares_outstanding: float | None
     currency: str | None
+    market_cap: float | None
 
     @classmethod
     def from_domain(cls, snapshot: MarketSnapshot) -> "MarketSnapshotView":
@@ -338,6 +356,7 @@ class MarketSnapshotView(CamelModel):
             share_price=snapshot.share_price,
             shares_outstanding=snapshot.shares_outstanding,
             currency=snapshot.currency,
+            market_cap=snapshot.market_cap,
         )
 
 

@@ -132,3 +132,67 @@ class TestDeterminism:
     def test_identical_record_produces_a_deeply_equal_result(self):
         record = build_record(metadata={"revenue": 1000.0})
         assert extract_facts(record, evaluated_at=EVALUATED_AT) == extract_facts(record, evaluated_at=EVALUATED_AT)
+
+
+class TestCompanyDataFoundationKinds:
+    """Company Data Foundation v1: the six new fact kinds extract via
+    the identical deterministic key-lookup discipline as the original
+    eight -- no special-casing anywhere in `extract_facts` itself."""
+
+    def test_operating_income_extracts(self):
+        record = build_record(metadata={"operating_income": 250.0})
+        facts = extract_facts(record, evaluated_at=EVALUATED_AT)
+        assert facts[0].kind is BusinessFactKind.OPERATING_INCOME
+        assert facts[0].value == 250.0
+
+    def test_net_income_extracts(self):
+        record = build_record(metadata={"net_income": 200.0})
+        facts = extract_facts(record, evaluated_at=EVALUATED_AT)
+        assert facts[0].kind is BusinessFactKind.NET_INCOME
+        assert facts[0].value == 200.0
+
+    def test_eps_extracts(self):
+        record = build_record(metadata={"eps": 2.5})
+        facts = extract_facts(record, evaluated_at=EVALUATED_AT)
+        assert facts[0].kind is BusinessFactKind.EPS
+        assert facts[0].value == 2.5
+
+    def test_cash_extracts(self):
+        record = build_record(metadata={"cash": 900.0})
+        facts = extract_facts(record, evaluated_at=EVALUATED_AT)
+        assert facts[0].kind is BusinessFactKind.CASH
+        assert facts[0].value == 900.0
+
+    def test_total_debt_extracts(self):
+        record = build_record(metadata={"total_debt": 550.0})
+        facts = extract_facts(record, evaluated_at=EVALUATED_AT)
+        assert facts[0].kind is BusinessFactKind.TOTAL_DEBT
+        assert facts[0].value == 550.0
+
+    def test_shares_outstanding_extracts(self):
+        record = build_record(metadata={"shares_outstanding": 1_000_000.0})
+        facts = extract_facts(record, evaluated_at=EVALUATED_AT)
+        assert facts[0].kind is BusinessFactKind.SHARES_OUTSTANDING
+        assert facts[0].value == 1_000_000.0
+
+    def test_all_fourteen_kinds_extract_together_from_one_record(self):
+        record = build_record(
+            metadata={
+                "revenue": 1000.0,
+                "free_cash_flow": 300.0,
+                "capital_expenditure": 50.0,
+                "share_buybacks": 20.0,
+                "share_issuance": 5.0,
+                "dividends": 15.0,
+                "debt_issuance": 10.0,
+                "debt_repayment": 8.0,
+                "operating_income": 250.0,
+                "net_income": 200.0,
+                "eps": 2.5,
+                "cash": 900.0,
+                "total_debt": 550.0,
+                "shares_outstanding": 1_000_000.0,
+            }
+        )
+        facts = extract_facts(record, evaluated_at=EVALUATED_AT)
+        assert {f.kind for f in facts} == set(BusinessFactKind)

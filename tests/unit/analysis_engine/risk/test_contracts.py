@@ -27,6 +27,7 @@ class TestRiskDataGapKind:
             "missing_cash_flow_level",
             "valuation_assessment_unavailable",
             "no_evidence_to_evaluate",
+            "missing_debt_history",  # Company Data Foundation v1: financial_risk.py's own debt-trend signal
         }
         assert {member.value for member in RiskDataGapKind} == expected
 

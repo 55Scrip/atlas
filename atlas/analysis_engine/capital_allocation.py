@@ -36,12 +36,18 @@ Status, in this fixed order, first match wins:
 4. Anything else (one signal computable and positive while the other is
    `INSUFFICIENT`, or either signal `FLAT`) -> `MODERATE`.
 
-**`CAPITAL_EXPENDITURE` and `DIVIDENDS` are informational only in v1.**
-Their presence or absence is always recorded in `missing_evidence`, but
-neither drives `status` -- doing so would require an arbitrary
-payout-ratio or reinvestment-rate cutoff this sprint has no principled
-way to justify. A future sprint that wants to use them needs to derive
-and document a real rule first, not inherit one from here.
+**`CAPITAL_EXPENDITURE`, `DIVIDENDS`, and (Company Data Foundation v1)
+`SHARES_OUTSTANDING` are informational only in v1.** Their presence or
+absence is always recorded in `missing_evidence`, but none of them
+drives `status` -- doing so would require an arbitrary payout-ratio,
+reinvestment-rate, or dilution-rate cutoff this sprint has no
+principled way to justify. A future sprint that wants to use them needs
+to derive and document a real rule first, not inherit one from here.
+`SHARES_OUTSTANDING` is a real per-fiscal-period historical share count
+(SEC EDGAR) -- present here so a reader can see genuine share-count
+movement (dilution or retirement) across years alongside the two real
+signals below, without that movement silently driving the category's
+own conclusion.
 
 `confidence` reuses `EvidenceCoverageLevel` the same way `growth.py`
 does, over the two signals: `FULL` (both computable), `PARTIAL` (one
@@ -75,6 +81,7 @@ _ALL_RELEVANT_KINDS = (
     BusinessFactKind.DIVIDENDS,
     BusinessFactKind.DEBT_ISSUANCE,
     BusinessFactKind.DEBT_REPAYMENT,
+    BusinessFactKind.SHARES_OUTSTANDING,
 )
 
 _ALL_CONSUMERS = (
@@ -155,6 +162,8 @@ def evaluate_capital_allocation(facts: tuple[BusinessFact, ...], *, evaluated_at
         missing.append(BusinessDataGapKind.MISSING_CAPEX_DATA)
     if not grouped[BusinessFactKind.DIVIDENDS]:
         missing.append(BusinessDataGapKind.MISSING_DIVIDEND_DATA)
+    if not grouped[BusinessFactKind.SHARES_OUTSTANDING]:
+        missing.append(BusinessDataGapKind.MISSING_SHARE_COUNT_HISTORY)
 
     if computable_count == 0:
         status = Status.INSUFFICIENT_INPUT
