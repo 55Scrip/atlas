@@ -496,6 +496,24 @@ type AnalysisBusinessCategory =
   | "growth"
   | "durability";
 type AnalysisBusinessStatus = "not_evaluated" | "insufficient_input" | "weak" | "moderate" | "strong";
+
+// Investment Case Intelligence v1 slice.
+type AnalysisHighlightKind =
+  | "growth"
+  | "capital_allocation"
+  | "valuation"
+  | "business_risk"
+  | "financial_risk"
+  | "valuation_risk";
+type AnalysisMetricTrend = "strong_metric" | "weak_metric" | "mixed_metric";
+type AnalysisOpenQuestionOrigin =
+  | "growth_inconclusive"
+  | "growth_mixed"
+  | "capital_allocation_inconclusive"
+  | "capital_allocation_weak"
+  | "valuation_inconclusive"
+  | "valuation_expensive_versus_growth"
+  | "scenario_valuation_unavailable";
 type AnalysisRecommendationKind = "directional" | "recommendation_withheld";
 type AnalysisRecommendationReason = "engine_not_implemented" | "evidence_insufficient";
 
@@ -625,6 +643,50 @@ interface MarketSnapshotView {
   currency: string | null;
 }
 
+// Investment Case Intelligence v1 slice: Strengths/Risks/Growth/
+// Valuation Context/Atlas Thesis/Open Questions, synthesized from the
+// same structured business/valuation/risk analysis the page already
+// renders below (Business Analysis, Valuation, Risk sections) -- see
+// atlas/analysis_engine/investment_case_synthesis.py. Every value here
+// is a closed enum's raw string or a real evidence-reference id, never
+// free-form AI text with no structured origin.
+interface CaseHighlightView {
+  kind: AnalysisHighlightKind;
+  supportingFindingId: string;
+  evidenceReferences: string[];
+}
+
+interface RecentRevenueTrendView {
+  trend: AnalysisMetricTrend;
+  periodsConsidered: string[];
+  evidenceReferences: string[];
+}
+
+interface GrowthAnalysisView {
+  status: AnalysisBusinessStatus;
+  recentTrend: RecentRevenueTrendView | null;
+  evidenceReferences: string[];
+}
+
+interface ValuationContextView {
+  fcfYieldStatus: AnalysisValuationStatus;
+  currentYield: number | null;
+  scenarioAvailable: boolean;
+  evidenceReferences: string[];
+}
+
+interface CaseOpenQuestionView {
+  origin: AnalysisOpenQuestionOrigin;
+  reference: string | null;
+}
+
+interface AtlasThesisView {
+  posture: string;
+  narrative: string;
+  supportingHighlightIds: string[];
+  keyUncertaintyOrigins: string[];
+}
+
 interface InvestmentCaseAnalysisView {
   caseId: string;
   holdingContext: HoldingContextView;
@@ -644,6 +706,12 @@ interface InvestmentCaseAnalysisView {
   companyProfile: CompanyProfileView | null;
   financialHistory: FinancialPeriodView[];
   marketSnapshot: MarketSnapshotView | null;
+  strengths: CaseHighlightView[];
+  risks: CaseHighlightView[];
+  growthAnalysis: GrowthAnalysisView;
+  valuationContext: ValuationContextView;
+  atlasThesis: AtlasThesisView;
+  keyOpenQuestions: CaseOpenQuestionView[];
   generatedAt: string;
 }
 
@@ -4303,6 +4371,7 @@ function InvestmentCaseCanonicalSections({
         marketSnapshot={analysis.marketSnapshot}
         t={t}
       />
+      <AtlasViewSection analysis={analysis} t={t} />
       <BusinessSection
         analysis={analysis}
         linkedHolding={linkedHolding}
@@ -4492,6 +4561,116 @@ function CompanyOverviewSection({
             </Text>
           </Stack>
         )}
+      </Stack>
+    </Surface>
+  );
+}
+
+/**
+ * Atlas View (Investment Case Intelligence v1 slice) -- Current Case
+ * (Atlas Thesis), Strengths, Risks, Growth, Valuation, Open Questions.
+ * Every value rendered here comes directly from
+ * `analysis.strengths`/`risks`/`growthAnalysis`/`valuationContext`/
+ * `atlasThesis`/`keyOpenQuestions` -- structured fields
+ * `atlas.analysis_engine.investment_case_synthesis` already computed
+ * deterministically from the same Business/Valuation/Risk analysis the
+ * sections below this one render in full detail. This section is a
+ * concise synthesis of that same analysis, never a second, independent
+ * conclusion.
+ */
+const HIGHLIGHT_KIND_KEY: Record<AnalysisHighlightKind, TranslationKey> = {
+  growth: "investmentCase.analysis.business.category.growth",
+  capital_allocation: "investmentCase.analysis.business.category.capital_allocation",
+  valuation: "investmentCase.atlasView.highlight.valuation",
+  business_risk: "portfolio.cockpit.risk.category.business_risk",
+  financial_risk: "portfolio.cockpit.risk.category.financial_risk",
+  valuation_risk: "portfolio.cockpit.risk.category.valuation_risk",
+};
+
+const GROWTH_TREND_KEY: Record<AnalysisMetricTrend, TranslationKey> = {
+  strong_metric: "investmentCase.atlasView.growth.trend.strong_metric",
+  weak_metric: "investmentCase.atlasView.growth.trend.weak_metric",
+  mixed_metric: "investmentCase.atlasView.growth.trend.mixed_metric",
+};
+
+const OPEN_QUESTION_ORIGIN_KEY: Record<AnalysisOpenQuestionOrigin, TranslationKey> = {
+  growth_inconclusive: "investmentCase.atlasView.openQuestions.growth_inconclusive",
+  growth_mixed: "investmentCase.atlasView.openQuestions.growth_mixed",
+  capital_allocation_inconclusive: "investmentCase.atlasView.openQuestions.capital_allocation_inconclusive",
+  capital_allocation_weak: "investmentCase.atlasView.openQuestions.capital_allocation_weak",
+  valuation_inconclusive: "investmentCase.atlasView.openQuestions.valuation_inconclusive",
+  valuation_expensive_versus_growth: "investmentCase.atlasView.openQuestions.valuation_expensive_versus_growth",
+  scenario_valuation_unavailable: "investmentCase.atlasView.openQuestions.scenario_valuation_unavailable",
+};
+
+function AtlasViewSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
+  const { strengths, risks, growthAnalysis, valuationContext, atlasThesis, keyOpenQuestions } = analysis;
+
+  return (
+    <Surface tier="primary">
+      <Stack gap="intra-section">
+        <Heading level={2}>{t("investmentCase.atlasView.heading")}</Heading>
+
+        <Heading level={3}>{t("investmentCase.atlasView.thesis.heading")}</Heading>
+        <Text as="p">{atlasThesis.narrative}</Text>
+
+        <Divider tone="hairline" />
+        <Heading level={3}>{t("investmentCase.atlasView.strengths.heading")}</Heading>
+        {strengths.length === 0 && <Text color="secondary">{t("investmentCase.atlasView.strengths.empty")}</Text>}
+        {strengths.map((highlight) => (
+          <Text as="p" key={highlight.supportingFindingId}>
+            {t(HIGHLIGHT_KIND_KEY[highlight.kind])}
+          </Text>
+        ))}
+
+        <Divider tone="hairline" />
+        <Heading level={3}>{t("investmentCase.atlasView.risks.heading")}</Heading>
+        {risks.length === 0 && <Text color="secondary">{t("investmentCase.atlasView.risks.empty")}</Text>}
+        {risks.map((highlight) => (
+          <Text as="p" key={highlight.supportingFindingId}>
+            {t(HIGHLIGHT_KIND_KEY[highlight.kind])}
+          </Text>
+        ))}
+
+        <Divider tone="hairline" />
+        <Heading level={3}>{t("investmentCase.atlasView.growth.heading")}</Heading>
+        <Text as="p">
+          {t(BUSINESS_CATEGORY_KEY.growth)}: {t(BUSINESS_STATUS_KEY[growthAnalysis.status])}
+        </Text>
+        {growthAnalysis.recentTrend && (
+          <Text as="p" color="secondary">
+            {t("investmentCase.atlasView.growth.recentTrendLabel", {
+              periods: growthAnalysis.recentTrend.periodsConsidered.join(" → "),
+            })}
+            : {t(GROWTH_TREND_KEY[growthAnalysis.recentTrend.trend])}
+          </Text>
+        )}
+
+        <Divider tone="hairline" />
+        <Heading level={3}>{t("investmentCase.atlasView.valuationContext.heading")}</Heading>
+        <Text as="p">{t(VALUATION_STATUS_KEY[valuationContext.fcfYieldStatus])}</Text>
+        {valuationContext.currentYield !== null && (
+          <Text as="p" color="secondary">
+            {t("investmentCase.atlasView.valuationContext.currentYieldLabel")}:{" "}
+            {(valuationContext.currentYield * 100).toFixed(2)}%
+          </Text>
+        )}
+        {!valuationContext.scenarioAvailable && (
+          <Text as="p" color="secondary">
+            {t("investmentCase.atlasView.valuationContext.scenarioUnavailable")}
+          </Text>
+        )}
+
+        <Divider tone="hairline" />
+        <Heading level={3}>{t("investmentCase.atlasView.openQuestions.heading")}</Heading>
+        {keyOpenQuestions.length === 0 && (
+          <Text color="secondary">{t("investmentCase.atlasView.openQuestions.empty")}</Text>
+        )}
+        {keyOpenQuestions.map((question, index) => (
+          <Text as="p" key={`${question.origin}:${index}`}>
+            {t(OPEN_QUESTION_ORIGIN_KEY[question.origin])}
+          </Text>
+        ))}
       </Stack>
     </Surface>
   );

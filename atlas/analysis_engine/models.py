@@ -38,6 +38,7 @@ from atlas.analysis_engine.business import BusinessAnalysisResult
 from atlas.analysis_engine.contracts import CapabilityStatus
 from atlas.analysis_engine.conviction import ConvictionAssessment
 from atlas.analysis_engine.findings import Finding
+from atlas.analysis_engine.investment_case_synthesis import InvestmentCaseSynthesis
 from atlas.analysis_engine.recommendation import RecommendationGateResult
 from atlas.analysis_engine.risk.models import RiskAnalysisResult
 from atlas.analysis_engine.valuation.models import ValuationEngineResult
@@ -155,6 +156,18 @@ class CanonicalAnalysis:
     .risk`'s own `PORTFOLIO_RISK` category respects). This field feeds
     `conviction.calculate_conviction`'s own `has_open_questions` input;
     `reasoning.finding.open_questions` itself is never mutated."""
+
+    # -- New in Investment Case Engine v2 slice, real (additive -- every
+    # field above keeps its exact prior meaning; this is a further,
+    # synthesized view derived from business_analysis/valuation_engine/
+    # risk_analysis/conviction above, never a second computation of any
+    # of them) -------------------------------------------------------
+    synthesis: InvestmentCaseSynthesis
+    """Strengths, Risks (curated), Growth narrative, Valuation Context,
+    Open Questions, and a concise Atlas Thesis -- see
+    `atlas.analysis_engine.investment_case_synthesis`'s own module
+    docstring for the full derivation rules and why this is not a
+    second reasoning engine."""
 
     # -- New this sprint, honestly not yet implemented -----------------
     catalysts: UnavailableCapability

@@ -579,3 +579,33 @@ class TestCompanyProfileFinancialHistoryAndMarketSnapshot:
         composition = service_without_watchlist.build(case_id)
         assert composition.company_profile is None
         assert composition.financial_history == ()
+
+
+class TestAtlasThesisRemainsDistinctFromInvestorThesis:
+    """Investment Case Intelligence v1 slice, requirement 7: Atlas
+    Thesis must remain distinct from the investor's own recorded
+    thesis/Decision content -- never silently merged or cross-derived."""
+
+    def test_atlas_thesis_is_present_and_independent_of_investor_decisions(self, harness):
+        case_id = harness.import_holding("AMD")
+        composition_before = harness.composition_service.build(case_id)
+        thesis_before = composition_before.canonical_analysis.synthesis.atlas_thesis
+
+        decision = _make_decision(
+            case_id=case_id,
+            reason="My own personal, user-authored reason.",
+        )
+        harness.decision_repository.add(decision)
+
+        composition_after = harness.composition_service.build(case_id)
+        thesis_after = composition_after.canonical_analysis.synthesis.atlas_thesis
+
+        # The Atlas Thesis narrative is a pure function of business/
+        # valuation/risk analysis (empty for this Case either way) --
+        # recording a user Decision must never inject the user's own
+        # reason text into it.
+        assert "My own personal, user-authored reason" not in thesis_after.narrative
+        assert thesis_before.narrative == thesis_after.narrative
+
+        # The investor's own thesis remains its own, separate field.
+        assert composition_after.current_thesis.latest_decision_reason == "My own personal, user-authored reason."

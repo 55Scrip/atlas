@@ -35,6 +35,14 @@ from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComp
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaTradeLogEntry
 from atlas.analysis_engine.business_contracts import BusinessAnalysisResult, BusinessFinding
 from atlas.analysis_engine.conviction import ConvictionAssessment
+from atlas.analysis_engine.investment_case_synthesis import (
+    AtlasThesis,
+    CaseHighlight,
+    CaseOpenQuestion,
+    GrowthAnalysis,
+    RecentRevenueTrend,
+    ValuationContext,
+)
 from atlas.analysis_engine.models import CanonicalAnalysis
 from atlas.analysis_engine.risk.models import RiskAnalysisResult, RiskFinding
 from atlas.analysis_engine.valuation.models import ValuationEngineResult, ValuationFinding
@@ -352,6 +360,98 @@ class TradeLogEntryView(CamelModel):
         )
 
 
+class CaseHighlightView(CamelModel):
+    """One Strength or Risk -- see `atlas.analysis_engine
+    .investment_case_synthesis.CaseHighlight`'s own docstring for the
+    exact, documented condition each `kind` was constructed under."""
+
+    kind: str
+    supporting_finding_id: str
+    evidence_references: list[str]
+
+    @classmethod
+    def from_domain(cls, highlight: CaseHighlight) -> "CaseHighlightView":
+        return cls(
+            kind=highlight.kind.value,
+            supporting_finding_id=highlight.supporting_finding_id,
+            evidence_references=list(highlight.evidence_references),
+        )
+
+
+class RecentRevenueTrendView(CamelModel):
+    trend: str
+    periods_considered: list[str]
+    evidence_references: list[str]
+
+    @classmethod
+    def from_domain(cls, trend: RecentRevenueTrend) -> "RecentRevenueTrendView":
+        return cls(
+            trend=trend.trend.value,
+            periods_considered=list(trend.periods_considered),
+            evidence_references=list(trend.evidence_references),
+        )
+
+
+class GrowthAnalysisView(CamelModel):
+    status: str
+    recent_trend: RecentRevenueTrendView | None
+    evidence_references: list[str]
+
+    @classmethod
+    def from_domain(cls, growth: GrowthAnalysis) -> "GrowthAnalysisView":
+        return cls(
+            status=growth.status.value,
+            recent_trend=RecentRevenueTrendView.from_domain(growth.recent_trend) if growth.recent_trend else None,
+            evidence_references=list(growth.evidence_references),
+        )
+
+
+class ValuationContextView(CamelModel):
+    fcf_yield_status: str
+    current_yield: float | None
+    scenario_available: bool
+    evidence_references: list[str]
+
+    @classmethod
+    def from_domain(cls, context: ValuationContext) -> "ValuationContextView":
+        return cls(
+            fcf_yield_status=context.fcf_yield_status.value,
+            current_yield=context.current_yield,
+            scenario_available=context.scenario_available,
+            evidence_references=list(context.evidence_references),
+        )
+
+
+class CaseOpenQuestionView(CamelModel):
+    origin: str
+    reference: str | None
+
+    @classmethod
+    def from_domain(cls, question: CaseOpenQuestion) -> "CaseOpenQuestionView":
+        return cls(origin=question.origin.value, reference=question.reference)
+
+
+class AtlasThesisView(CamelModel):
+    """Atlas-generated, provisional -- distinct from
+    `CurrentThesisView`, the investor's own most recent words. See
+    `atlas.analysis_engine.investment_case_synthesis.AtlasThesis`'s own
+    docstring."""
+
+    posture: str
+    narrative: str
+    supporting_highlight_ids: list[str]
+    key_uncertainty_origins: list[str]
+
+    @classmethod
+    def from_domain(cls, thesis: AtlasThesis) -> "AtlasThesisView":
+        return cls(
+            posture=thesis.posture.value,
+            narrative=thesis.narrative,
+            supporting_highlight_ids=list(thesis.supporting_highlight_ids),
+            key_uncertainty_origins=[origin.value for origin in thesis.key_uncertainty_origins],
+        )
+
+
 class InvestmentCaseAnalysisView(CamelModel):
     """The canonical Investment Case -- one coherent object mirroring
     `InvestmentCaseComposition` plus its `CanonicalAnalysis`. Every
@@ -378,6 +478,17 @@ class InvestmentCaseAnalysisView(CamelModel):
     company_profile: CompanyProfileView | None
     financial_history: list[FinancialPeriodView]
     market_snapshot: MarketSnapshotView | None
+    strengths: list[CaseHighlightView]
+    risks: list[CaseHighlightView]
+    growth_analysis: GrowthAnalysisView
+    valuation_context: ValuationContextView
+    atlas_thesis: AtlasThesisView
+    key_open_questions: list[CaseOpenQuestionView]
+    """Investment Case Engine v2 slice: distinct from `open_questions`
+    above (`decision_engine`'s own case-wide gaps, unchanged) -- these
+    are curated, company-analysis-specific questions from
+    `atlas.analysis_engine.investment_case_synthesis`, each traceable to
+    one real analytical condition."""
     generated_at: datetime
 
     @classmethod
@@ -415,5 +526,11 @@ class InvestmentCaseAnalysisView(CamelModel):
                 if composition.market_snapshot is not None
                 else None
             ),
+            strengths=[CaseHighlightView.from_domain(h) for h in analysis.synthesis.strengths],
+            risks=[CaseHighlightView.from_domain(h) for h in analysis.synthesis.risks],
+            growth_analysis=GrowthAnalysisView.from_domain(analysis.synthesis.growth),
+            valuation_context=ValuationContextView.from_domain(analysis.synthesis.valuation_context),
+            atlas_thesis=AtlasThesisView.from_domain(analysis.synthesis.atlas_thesis),
+            key_open_questions=[CaseOpenQuestionView.from_domain(q) for q in analysis.synthesis.open_questions],
             generated_at=composition.generated_at,
         )

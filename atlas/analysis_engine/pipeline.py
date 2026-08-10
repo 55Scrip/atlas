@@ -55,6 +55,7 @@ from atlas.analysis_engine.confidence import Confidence
 from atlas.analysis_engine.contracts import RiskCategory, CapabilityStatus
 from atlas.analysis_engine.conviction import calculate_conviction
 from atlas.analysis_engine.findings import Finding, FindingKind, FindingProducer, FindingSeverity
+from atlas.analysis_engine.investment_case_synthesis import synthesize_investment_case
 from atlas.analysis_engine.models import CanonicalAnalysis, Identity, RiskSection, UnavailableCapability
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
 from atlas.analysis_engine.recommendation import evaluate_recommendation_gate
@@ -652,6 +653,20 @@ def assemble_analysis(
 
     risk_findings = tuple(finding for finding in findings if "risk_category" in finding.details)
 
+    # Investment Case Engine v2 slice: synthesized from the exact same
+    # already-computed `business_analysis`/`valuation_engine`/
+    # `risk_analysis`/`conviction` this function just assembled -- one
+    # source of analytical truth, never a second, independent read of
+    # `business_records` or raw provider data.
+    synthesis = synthesize_investment_case(
+        business_analysis,
+        valuation_engine,
+        risk_analysis,
+        business_facts,
+        conviction,
+        generated_at=generated_at,
+    )
+
     return CanonicalAnalysis(
         identity=Identity(case_id=str(decision_output.case_id)),
         business=decision_output.business_evaluation,
@@ -667,6 +682,7 @@ def assemble_analysis(
         valuation_engine=valuation_engine,
         risk_analysis=risk_analysis,
         open_questions=open_questions,
+        synthesis=synthesis,
         catalysts=UnavailableCapability(reason=CapabilityStatus.NOT_YET_IMPLEMENTED),
         scenario_analysis=UnavailableCapability(reason=CapabilityStatus.NOT_YET_IMPLEMENTED),
         generated_at=generated_at,

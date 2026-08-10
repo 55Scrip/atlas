@@ -62,7 +62,7 @@ from atlas.analysis_engine.business_facts.models import BusinessFact
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
 from atlas.decision_engine.contracts import EvidenceCoverageLevel
 
-__all__ = ["evaluate_growth"]
+__all__ = ["evaluate_growth", "MetricTrend", "classify_metric_trend"]
 
 _SUPPORTED_KINDS = (BusinessFactKind.REVENUE, BusinessFactKind.FREE_CASH_FLOW)
 
@@ -79,7 +79,7 @@ _ALL_CONSUMERS = (
 )
 
 
-class _MetricTrend(str, Enum):
+class MetricTrend(str, Enum):
     STRONG_METRIC = "strong_metric"
     WEAK_METRIC = "weak_metric"
     MIXED_METRIC = "mixed_metric"
@@ -95,11 +95,19 @@ def _facts_by_kind(facts: tuple[BusinessFact, ...]) -> dict[BusinessFactKind, li
     return grouped
 
 
-def _trend(kind_facts: list[BusinessFact]) -> tuple[_MetricTrend, tuple[str, ...], tuple[str, ...]]:
+def classify_metric_trend(kind_facts: list[BusinessFact]) -> tuple[MetricTrend, tuple[str, ...], tuple[str, ...]]:
     """Returns the metric's trend plus the fact ids that supported it
     (participated in a `POSITIVE` delta) and contradicted it
     (participated in a `NEGATIVE` delta) -- a fact can appear in both
-    if it is the shared endpoint of two oppositely-signed deltas."""
+    if it is the shared endpoint of two oppositely-signed deltas.
+
+    Public (Investment Case Engine v1 slice) so
+    `atlas.analysis_engine.investment_case_synthesis` can apply the
+    identical, already-documented trend rule to a shorter, "most
+    recent periods" window for narrative purposes, without a second,
+    competing trend algorithm. `kind_facts` must already be sorted by
+    `period` ascending -- this function does not sort, matching
+    `evaluate_growth`'s own pre-sorted call site."""
     supporting: set[str] = set()
     contradicting: set[str] = set()
     signs: list[int] = []
@@ -114,11 +122,11 @@ def _trend(kind_facts: list[BusinessFact]) -> tuple[_MetricTrend, tuple[str, ...
             signs.append(0)
 
     if all(sign > 0 for sign in signs):
-        trend = _MetricTrend.STRONG_METRIC
+        trend = MetricTrend.STRONG_METRIC
     elif all(sign < 0 for sign in signs):
-        trend = _MetricTrend.WEAK_METRIC
+        trend = MetricTrend.WEAK_METRIC
     else:
-        trend = _MetricTrend.MIXED_METRIC
+        trend = MetricTrend.MIXED_METRIC
 
     return trend, tuple(sorted(supporting)), tuple(sorted(contradicting))
 
@@ -142,7 +150,7 @@ def evaluate_growth(facts: tuple[BusinessFact, ...], *, evaluated_at: datetime) 
     grouped = _facts_by_kind(facts)
     any_facts_at_all = any(grouped.values())
 
-    trends: dict[BusinessFactKind, _MetricTrend] = {}
+    trends: dict[BusinessFactKind, MetricTrend] = {}
     supporting_ids: set[str] = set()
     contradicting_ids: set[str] = set()
     missing: list[BusinessDataGapKind] = []
@@ -152,7 +160,7 @@ def evaluate_growth(facts: tuple[BusinessFact, ...], *, evaluated_at: datetime) 
         if len(kind_facts) < 2:
             missing.append(_MISSING_HISTORY_REASON[kind])
             continue
-        trend, supports, contradicts = _trend(kind_facts)
+        trend, supports, contradicts = classify_metric_trend(kind_facts)
         trends[kind] = trend
         supporting_ids.update(supports)
         contradicting_ids.update(contradicts)
@@ -160,9 +168,9 @@ def evaluate_growth(facts: tuple[BusinessFact, ...], *, evaluated_at: datetime) 
     if not trends:
         status = Status.INSUFFICIENT_INPUT
         missing = [BusinessDataGapKind.INSUFFICIENT_HISTORICAL_PERIODS, *missing]
-    elif all(t is _MetricTrend.STRONG_METRIC for t in trends.values()) and set(trends) == set(_SUPPORTED_KINDS):
+    elif all(t is MetricTrend.STRONG_METRIC for t in trends.values()) and set(trends) == set(_SUPPORTED_KINDS):
         status = Status.STRONG
-    elif all(t is _MetricTrend.WEAK_METRIC for t in trends.values()):
+    elif all(t is MetricTrend.WEAK_METRIC for t in trends.values()):
         status = Status.WEAK
     else:
         status = Status.MODERATE
