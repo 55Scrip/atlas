@@ -194,7 +194,7 @@ class InvestmentCaseCompositionService:
             snapshot = capture_snapshot(canonical_analysis)
             previous_snapshot = self._snapshot_repository.get_latest(case_id_str)
             change_intelligence = compare_snapshots(previous_snapshot, snapshot)
-            self._snapshot_repository.add(case_id_str, snapshot)
+            self._snapshot_repository.add(case_id_str, snapshot, change_intelligence)
 
         return InvestmentCaseComposition(
             case_id=case_id_str,

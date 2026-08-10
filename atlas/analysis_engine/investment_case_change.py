@@ -208,14 +208,20 @@ class AnalyticalSnapshot:
     already documents for itself.
 
     `content_hash` is computed over every field below **except**
-    `current_yield`/`captured_at` -- deliberately excludes the one raw
-    numeric value this snapshot carries (current FCF yield) so a share
-    price tick that does not cross `ValuationStatus`'s own category
-    boundary never counts as "the analytical state changed" (see this
-    module's own top-level docstring and `capture_snapshot`'s own
-    comment for the full reasoning). `current_yield` is still carried on
-    the snapshot -- for display/traceability -- it is simply not part of
-    this snapshot's own comparison identity.
+    `current_yield`/`atlas_thesis_narrative`/`atlas_thesis_posture`/
+    `captured_at` -- deliberately excludes both the one raw numeric value
+    this snapshot carries (current FCF yield) and the rendered Atlas
+    Thesis text, so neither a share-price tick that does not cross
+    `ValuationStatus`'s own category boundary, nor a thesis-wording change
+    caused purely by investor-evidence/Conviction shifting (an
+    Investor-Model-side signal this module's own top-level docstring
+    already excludes from company Change Intelligence), ever counts as
+    "the analytical state changed" (see this module's own top-level
+    docstring and `capture_snapshot`'s own comment for the full
+    reasoning). Both are still carried on the snapshot -- for display/
+    traceability/History v1's own "historical thesis prose" requirement
+    -- they are simply not part of this snapshot's own comparison
+    identity.
     """
 
     business_category_states: tuple[tuple[str, str, str], ...]
@@ -231,6 +237,17 @@ class AnalyticalSnapshot:
     """Sorted `HighlightKind.value`s present in `synthesis.risks`."""
     open_question_origins: tuple[str, ...]
     """Sorted `OpenQuestionOrigin.value`s present in `synthesis.open_questions`."""
+    atlas_thesis_narrative: str | None
+    """History v1: the exact `AtlasThesis.narrative` rendered at capture
+    time -- immutable presentation history once persisted. `None` only
+    for a snapshot captured before this field existed (backward
+    compatibility; see `atlas.alpha.investment_case_change.repository`'s
+    own defensive deserialization), never a placeholder for a real,
+    unrecorded thesis."""
+    atlas_thesis_posture: str | None
+    """`AtlasThesis.posture.value` at capture time, alongside the prose
+    above -- lets a caller distinguish "no strengths or risks yet" from
+    a real strengths/risks-driven narrative without parsing text."""
     content_hash: str
     captured_at: datetime
 
@@ -303,6 +320,8 @@ def capture_snapshot(canonical_analysis: CanonicalAnalysis) -> AnalyticalSnapsho
         strength_kinds=strength_kinds,
         risk_highlight_kinds=risk_highlight_kinds,
         open_question_origins=open_question_origins,
+        atlas_thesis_narrative=canonical_analysis.synthesis.atlas_thesis.narrative,
+        atlas_thesis_posture=canonical_analysis.synthesis.atlas_thesis.posture.value,
         content_hash=content_hash,
         captured_at=canonical_analysis.generated_at,
     )

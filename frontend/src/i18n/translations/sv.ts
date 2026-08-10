@@ -758,6 +758,28 @@ export const sv: Record<TranslationKey, string> = {
   "history.row.kindOutcome": "Utfall rapporterat",
   "history.row.kindTrade": "Affär genomförd",
 
+  // ---------- History v1: analytical timeline ----------
+  "history.scope.all": "Alla",
+  "history.scope.decisions": "Beslut och affärer",
+  "history.scope.investmentCases": "Förändringar i investeringscase",
+  "history.analytical.emptyOnly": "Ingen analyshistorik ännu.",
+  "history.analytical.baseline": "Baslinje etablerad",
+  "history.analytical.baselineDescription": "Atlas skapade sitt första strukturerade investeringscase för {{company}}.",
+  "history.analytical.headline.strengthened": "Tesen stärktes",
+  "history.analytical.headline.weakened": "Tesen försvagades",
+  "history.analytical.headline.mixed": "Blandade signaler",
+  "history.analytical.headline.unchanged": "Ingen väsentlig förändring",
+  "history.analytical.viewDetails": "Visa detaljer",
+  "history.analytical.hideDetails": "Dölj detaljer",
+  "history.analytical.detail.thesisHeading": "Atlas tes vid denna tidpunkt",
+  "history.analytical.detail.noThesis": "Ingen Atlas-tes registrerad vid denna tidpunkt.",
+  "history.analytical.detail.strengthsHeading": "Styrkor",
+  "history.analytical.detail.risksHeading": "Risker",
+  "history.analytical.detail.growthHeading": "Tillväxt",
+  "history.analytical.detail.valuationHeading": "Värdering",
+  "history.analytical.detail.openQuestionsHeading": "Öppna frågor",
+  "history.analytical.detail.empty": "Inget registrerat vid denna tidpunkt.",
+
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Kräver uppmärksamhet",
   "dashboard.needsAttention.empty": "Inget kräver din uppmärksamhet just nu.",

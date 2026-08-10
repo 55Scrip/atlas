@@ -761,6 +761,32 @@ export const en = {
   "history.row.kindOutcome": "Outcome reported",
   "history.row.kindTrade": "Trade executed",
 
+  // ---------- History v1: analytical timeline ----------
+  // A read-only presentation layer over persisted Investment Case
+  // snapshots -- see atlas/analysis_engine/investment_case_history.py.
+  // Reuses investmentCase.whatChanged.*/investmentCase.atlasView.*/
+  // dailyBrief.entry.* wording directly rather than restating it.
+  "history.scope.all": "All",
+  "history.scope.decisions": "Decisions & Trades",
+  "history.scope.investmentCases": "Investment Case Changes",
+  "history.analytical.emptyOnly": "No analytical history yet.",
+  "history.analytical.baseline": "Baseline established",
+  "history.analytical.baselineDescription": "Atlas created its first structured Investment Case for {{company}}.",
+  "history.analytical.headline.strengthened": "Thesis strengthened",
+  "history.analytical.headline.weakened": "Thesis weakened",
+  "history.analytical.headline.mixed": "Mixed signals",
+  "history.analytical.headline.unchanged": "No material change",
+  "history.analytical.viewDetails": "View details",
+  "history.analytical.hideDetails": "Hide details",
+  "history.analytical.detail.thesisHeading": "Atlas Thesis at this point",
+  "history.analytical.detail.noThesis": "No Atlas Thesis recorded at this point.",
+  "history.analytical.detail.strengthsHeading": "Strengths",
+  "history.analytical.detail.risksHeading": "Risks",
+  "history.analytical.detail.growthHeading": "Growth",
+  "history.analytical.detail.valuationHeading": "Valuation",
+  "history.analytical.detail.openQuestionsHeading": "Open Questions",
+  "history.analytical.detail.empty": "None recorded at this point.",
+
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Needs Attention",
   "dashboard.needsAttention.empty": "Nothing needs your attention right now.",

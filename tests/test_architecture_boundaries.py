@@ -681,3 +681,27 @@ def test_investment_case_composition_read_paths_never_import_network_libraries()
                     violations.append(f"{path.relative_to(REPO_ROOT)} contains {needle!r}")
 
     assert not violations, "Network capability found in a read-side composition package:\n" + "\n".join(violations)
+
+
+def test_investment_case_history_never_imports_composition_or_providers() -> None:
+    """History v1 (Scenario 25/26): `atlas.alpha.investment_case_history`
+    must stay strictly read-only over already-persisted snapshots -- it
+    must never import `InvestmentCaseCompositionService` (which *would*
+    have the side effect of persisting a new snapshot via `.build`/
+    `.build_many`), and never `atlas.business_data_providers` (a real
+    network call). Opening History can only read; it can never trigger
+    the analysis this file's own composition service performs."""
+    package_dir = ALPHA_DIR / "investment_case_history"
+    #: `atlas.alpha.investment_case.service` is where
+    #: `InvestmentCaseCompositionService` (the one thing that persists a
+    #: new snapshot) is defined -- forbidding the *module* import, not
+    #: just the symbol name, since every file in this package legitimately
+    #: mentions the class name in prose explaining why it is not used.
+    forbidden_prefixes = ("atlas.business_data_providers", "atlas.alpha.investment_case.service")
+    violations = []
+    for path in _python_files(package_dir):
+        for module in _imported_modules(path):
+            if module.startswith(forbidden_prefixes):
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {module}")
+
+    assert not violations, "History v1 read-only boundary violated:\n" + "\n".join(violations)

@@ -13,6 +13,7 @@ from atlas.ai.api.router import router as discovery_chat_router
 from atlas.alpha.case_intelligence.api.router import router as case_intelligence_router
 from atlas.alpha.daily_brief.api.router import router as daily_brief_router
 from atlas.alpha.investment_case.api.router import router as investment_case_router
+from atlas.alpha.investment_case_history.api.router import router as investment_case_history_router
 from atlas.alpha.portfolio.api.router import router as alpha_portfolio_router
 from atlas.alpha.portfolio_cockpit.api.router import router as portfolio_cockpit_router
 from atlas.alpha.portfolio_intelligence.api.router import router as portfolio_intelligence_router
@@ -118,6 +119,15 @@ def create_app() -> FastAPI:
     # .change_intelligence` via `InvestmentCaseCompositionService.build`,
     # never recomputing analysis itself).
     app.include_router(daily_brief_router)
+    # History v1: a seventh, sibling composition point -- authored and
+    # owned in `atlas/alpha/investment_case_history/`, a read-only
+    # presentation layer over the exact same persisted
+    # `AnalyticalSnapshot`/`ChangeIntelligence` state Investment Case
+    # Change Intelligence and Daily Brief already read (via
+    # `SqlAlchemyInvestmentCaseSnapshotRepository.get_history`), never
+    # `InvestmentCaseCompositionService.build`/`build_many` -- opening
+    # History can never create a new snapshot.
+    app.include_router(investment_case_history_router)
     # Discovery Intelligence v1: same pattern, one level removed — the
     # discovery-chat router is authored and owned in `atlas/ai/`, and is
     # itself `atlas/ai/`'s own one deliberate composition point with

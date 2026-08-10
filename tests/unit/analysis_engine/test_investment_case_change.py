@@ -74,6 +74,8 @@ def _snapshot(
         strength_kinds=tuple(sorted(strengths)),
         risk_highlight_kinds=tuple(sorted(risk_highlights)),
         open_question_origins=tuple(sorted(open_questions)),
+        atlas_thesis_narrative="placeholder thesis narrative",
+        atlas_thesis_posture="strengths_and_risks",
         content_hash="placeholder",
         captured_at=captured_at,
     )
