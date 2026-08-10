@@ -8,6 +8,7 @@ from datetime import datetime
 
 from atlas.alpha.portfolio.models import ReconciliationStatus
 from atlas.alpha.portfolio_status.models import PortfolioSummaryMetrics
+from atlas.analysis_engine.analysis_coverage import AnalysisCoverageAssessment, AnalysisCoverageLevel
 from atlas.analysis_engine.business_contracts import BusinessCategoryStatus
 from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.conviction import ConvictionAssessment, ConvictionLevel
@@ -26,6 +27,7 @@ __all__ = [
     "PortfolioHoldingAnalysis",
     "UnresolvedHolding",
     "ConvictionLevelCount",
+    "AnalysisCoverageLevelCount",
     "ValuationStatusCount",
     "PortfolioCockpitReport",
 ]
@@ -80,6 +82,18 @@ class PortfolioHoldingAnalysis:
     value_absolute: float | None
     reconciliation_status: ReconciliationStatus
     conviction: ConvictionAssessment
+    """Investor conviction -- requires both real company analysis *and*
+    real investor-recorded evidence coverage. See `conviction.py`'s own
+    module docstring. Never the same signal as `analysis_coverage`
+    below; a holding can be `SUBSTANTIAL_COVERAGE` and
+    `insufficient_evidence` at the same time, honestly, when Atlas
+    understands the company deeply but the investor has not yet
+    recorded any Observations about it."""
+    analysis_coverage: AnalysisCoverageAssessment
+    """Atlas's own analytical coverage of the company -- purely
+    company-data-driven, never reads investor evidence (Internal Alpha
+    Fix Sprint 1, IA-003). Answers "does Atlas understand this company,"
+    independent of whether the investor has engaged with the Case yet."""
     valuation: ValuationFinding
     """The real `FCF_YIELD_RELATIVE` finding, reused verbatim -- not a
     bare status string. The other three `ValuationMethodKind` members
@@ -116,6 +130,12 @@ class ConvictionLevelCount:
 
 
 @dataclass(frozen=True)
+class AnalysisCoverageLevelCount:
+    level: AnalysisCoverageLevel
+    count: int
+
+
+@dataclass(frozen=True)
 class ValuationStatusCount:
     status: ValuationStatus
     count: int
@@ -140,6 +160,7 @@ class PortfolioCockpitReport:
     unresolved_holdings: tuple[UnresolvedHolding, ...]
     summary: PortfolioSummaryMetrics | None
     conviction_distribution: tuple[ConvictionLevelCount, ...]
+    analysis_coverage_distribution: tuple[AnalysisCoverageLevelCount, ...]
     valuation_distribution: tuple[ValuationStatusCount, ...]
     priority_review_count: int
     generated_at: datetime

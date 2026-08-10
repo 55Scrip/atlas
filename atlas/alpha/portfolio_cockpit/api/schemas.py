@@ -19,6 +19,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from atlas.alpha.portfolio_cockpit.models import (
+    AnalysisCoverageLevelCount,
     BusinessSummary,
     ConvictionLevelCount,
     HoldingAttention,
@@ -29,6 +30,7 @@ from atlas.alpha.portfolio_cockpit.models import (
     ValuationStatusCount,
 )
 from atlas.alpha.portfolio_status.api.schemas import PortfolioSummaryView
+from atlas.analysis_engine.analysis_coverage import AnalysisCoverageAssessment
 from atlas.analysis_engine.conviction import ConvictionAssessment
 from atlas.analysis_engine.risk.models import RiskFinding
 from atlas.analysis_engine.valuation.models import ValuationFinding
@@ -41,6 +43,15 @@ class ConvictionAssessmentView(CamelModel):
 
     @classmethod
     def from_domain(cls, assessment: ConvictionAssessment) -> "ConvictionAssessmentView":
+        return cls(level=assessment.level.value, reasons=[r.value for r in assessment.reasons])
+
+
+class AnalysisCoverageAssessmentView(CamelModel):
+    level: str
+    reasons: list[str]
+
+    @classmethod
+    def from_domain(cls, assessment: AnalysisCoverageAssessment) -> "AnalysisCoverageAssessmentView":
         return cls(level=assessment.level.value, reasons=[r.value for r in assessment.reasons])
 
 
@@ -126,6 +137,7 @@ class PortfolioHoldingAnalysisView(CamelModel):
     value_absolute: float | None
     reconciliation_status: str
     conviction: ConvictionAssessmentView
+    analysis_coverage: AnalysisCoverageAssessmentView
     valuation: ValuationFindingView
     business: BusinessSummaryView
     risk_projection: RiskProjectionView
@@ -143,6 +155,7 @@ class PortfolioHoldingAnalysisView(CamelModel):
             value_absolute=analysis.value_absolute,
             reconciliation_status=analysis.reconciliation_status.value,
             conviction=ConvictionAssessmentView.from_domain(analysis.conviction),
+            analysis_coverage=AnalysisCoverageAssessmentView.from_domain(analysis.analysis_coverage),
             valuation=ValuationFindingView.from_domain(analysis.valuation),
             business=BusinessSummaryView.from_domain(analysis.business),
             risk_projection=RiskProjectionView.from_domain(analysis.risk_projection),
@@ -180,12 +193,22 @@ class ValuationStatusCountView(CamelModel):
         return cls(status=entry.status.value, count=entry.count)
 
 
+class AnalysisCoverageLevelCountView(CamelModel):
+    level: str
+    count: int
+
+    @classmethod
+    def from_domain(cls, entry: AnalysisCoverageLevelCount) -> "AnalysisCoverageLevelCountView":
+        return cls(level=entry.level.value, count=entry.count)
+
+
 class PortfolioCockpitView(CamelModel):
     exists: bool
     holdings: list[PortfolioHoldingAnalysisView]
     unresolved_holdings: list[UnresolvedHoldingView]
     summary: PortfolioSummaryView | None
     conviction_distribution: list[ConvictionLevelCountView]
+    analysis_coverage_distribution: list[AnalysisCoverageLevelCountView]
     valuation_distribution: list[ValuationStatusCountView]
     priority_review_count: int
     generated_at: datetime
@@ -199,6 +222,9 @@ class PortfolioCockpitView(CamelModel):
             summary=PortfolioSummaryView.from_domain(report.summary) if report.summary else None,
             conviction_distribution=[
                 ConvictionLevelCountView.from_domain(c) for c in report.conviction_distribution
+            ],
+            analysis_coverage_distribution=[
+                AnalysisCoverageLevelCountView.from_domain(c) for c in report.analysis_coverage_distribution
             ],
             valuation_distribution=[
                 ValuationStatusCountView.from_domain(v) for v in report.valuation_distribution

@@ -34,6 +34,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from atlas.analysis_engine.analysis_coverage import AnalysisCoverageAssessment
 from atlas.analysis_engine.business import BusinessAnalysisResult
 from atlas.analysis_engine.contracts import CapabilityStatus
 from atlas.analysis_engine.conviction import ConvictionAssessment
@@ -115,6 +116,11 @@ class CanonicalAnalysis:
     risk: RiskSection
     conviction: ConvictionAssessment
     recommendation: RecommendationGateResult
+    # -- New in Internal Alpha Fix Sprint 1, real (additive -- `conviction`
+    # above keeps its exact prior meaning; this is a separate, purely
+    # company-data-driven signal -- see `analysis_coverage.py`'s own
+    # module docstring for why the two must never be merged) ------------
+    analysis_coverage: AnalysisCoverageAssessment
     findings: tuple[Finding, ...]
 
     # -- New in ATLAS-021, real (additive -- `business` above keeps its

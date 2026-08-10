@@ -81,6 +81,7 @@ class TestAfterImport:
             "valueAbsolute",
             "reconciliationStatus",
             "conviction",
+            "analysisCoverage",  # Internal Alpha Fix Sprint 1 (IA-003): separate from conviction
             "valuation",
             "business",
             "riskProjection",

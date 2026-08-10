@@ -7,15 +7,21 @@ POST /alpha-portfolio/holdings/{ticker}/case-link   - get-or-set the Investment 
 POST /alpha-portfolio/apply-trade                   - record a confirmed external trade (Sprint 1B)
 POST /alpha-portfolio/reconcile                     - reconcile allocation after a trade (Sprint 1B)
 GET  /alpha-portfolio/trade-log                     - list every recorded trade execution (Sprint 1B)
+POST /alpha-portfolio/enrich                        - bulk-enrich every current holding (Internal Alpha Fix Sprint 1)
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
+from atlas.alpha.business_data_refresh.api.dependencies import get_default_business_data_providers
+from atlas.alpha.business_data_refresh.bulk import enrich_holdings
+from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
+from atlas.alpha.business_data_refresh.table import create_business_record_table
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_service
 from atlas.alpha.portfolio.api.schemas import (
     ApplyTradeRequestBody,
     CaseLinkResponse,
+    EnrichmentScheduledView,
     FromScratchRequestBody,
     ImportPortfolioRequestBody,
     LinkCaseRequestBody,
@@ -42,8 +48,35 @@ from atlas.alpha.portfolio.service import (
     ReplaceAllocationRequest,
     UpdateHoldingWeightRequest,
 )
+from atlas.core.infrastructure.api.decision.dependencies import get_decision_engine
 
 router = APIRouter(prefix="/alpha-portfolio", tags=["alpha-portfolio"])
+
+
+def _run_bulk_enrichment_in_background(tickers: tuple[str, ...]) -> None:
+    """Runs on Starlette's background-task thread, after the HTTP
+    response has already been sent (Internal Alpha Fix Sprint 1,
+    IA-001: "Portfolio import must still complete successfully even if
+    enrichment later fails -- they are not the same transaction").
+
+    Deliberately constructs its own fresh `Engine`/repository/providers
+    rather than reusing the request-scoped ones FastAPI's `Depends()`
+    supplied to the route handler: that `Engine` (from
+    `get_decision_engine`, a plain `sqlite:///` connection with no
+    `check_same_thread=False`) is bound to the thread that created it --
+    the request-handling thread. Reusing it here, on Starlette's
+    separate background-task thread, would raise a real sqlite3
+    threading error the first time this function actually ran. A freshly
+    constructed `Engine`, created on whichever thread calls this
+    function, has no such cross-thread history and is safe.
+    """
+    if not tickers:
+        return
+    engine = get_decision_engine()
+    create_business_record_table(engine)
+    repository = SqlAlchemyBusinessRecordRepository(engine)
+    providers = get_default_business_data_providers()
+    enrich_holdings(tickers, providers, repository)
 
 
 @router.get("", response_model=PortfolioView)
@@ -59,6 +92,7 @@ def get_portfolio(
 @router.post("/import", response_model=PortfolioView, status_code=201)
 def import_portfolio(
     payload: ImportPortfolioRequestBody,
+    background_tasks: BackgroundTasks,
     service: AlphaPortfolioService = Depends(get_alpha_portfolio_service),
 ) -> PortfolioView:
     try:
@@ -79,7 +113,40 @@ def import_portfolio(
         )
     except AlphaPortfolioValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    # Internal Alpha Fix Sprint 1, IA-001: import creating Cases with no
+    # enrichment was the confirmed root cause. Scheduled *after* the
+    # state is already persisted and the response body already built --
+    # a provider outage during enrichment can never fail this import.
+    background_tasks.add_task(
+        _run_bulk_enrichment_in_background, tuple(holding.ticker for holding in state.holdings)
+    )
     return PortfolioView.from_domain(state, derive_portfolio_view(state))
+
+
+@router.post("/enrich", response_model=EnrichmentScheduledView, status_code=202)
+def enrich_portfolio(
+    background_tasks: BackgroundTasks,
+    service: AlphaPortfolioService = Depends(get_alpha_portfolio_service),
+) -> EnrichmentScheduledView:
+    """Internal Alpha Fix Sprint 1, Part 1's explicit backfill path:
+    "a clean way to enrich an already imported portfolio... without
+    deleting and re-importing it." Every current holding is scheduled
+    for the same background enrichment `import_portfolio` now triggers
+    automatically -- already-`is_minimally_complete` tickers are
+    skipped, unsupported tickers fail honestly, one ticker's failure
+    never blocks another's, exactly as `enrich_holdings` guarantees.
+    Runs in the background (not the request), so this endpoint
+    acknowledges scheduling rather than returning per-ticker outcomes;
+    re-opening Portfolio/Investment Case pages afterward is how the
+    result becomes visible, the same "import and enrichment are related
+    but separate" principle `import_portfolio` itself now follows.
+    """
+    state = service.get_state()
+    if state is None:
+        raise HTTPException(status_code=404, detail="No Alpha portfolio has been established yet.")
+    tickers = tuple(holding.ticker for holding in state.holdings)
+    background_tasks.add_task(_run_bulk_enrichment_in_background, tickers)
+    return EnrichmentScheduledView(scheduled_tickers=list(tickers))
 
 
 @router.post("/from-scratch", response_model=PortfolioView, status_code=201)

@@ -11,6 +11,7 @@ from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio_cockpit.attention import determine_attention
 from atlas.alpha.portfolio_cockpit.models import (
+    AnalysisCoverageLevelCount,
     ConvictionLevelCount,
     PortfolioCockpitReport,
     PortfolioHoldingAnalysis,
@@ -20,6 +21,7 @@ from atlas.alpha.portfolio_cockpit.models import (
 from atlas.alpha.portfolio_cockpit.projection import business_summary, risk_projection, valuation_finding
 from atlas.alpha.portfolio_status.service import PortfolioStatusService
 from atlas.alpha.portfolio_cockpit.contracts import ReviewPriority
+from atlas.analysis_engine.analysis_coverage import AnalysisCoverageLevel
 from atlas.analysis_engine.conviction import ConvictionLevel
 from atlas.analysis_engine.valuation.contracts import ValuationStatus
 
@@ -50,6 +52,7 @@ class PortfolioCockpitService:
                 unresolved_holdings=(),
                 summary=None,
                 conviction_distribution=(),
+                analysis_coverage_distribution=(),
                 valuation_distribution=(),
                 priority_review_count=0,
                 generated_at=_utc_now(),
@@ -82,6 +85,7 @@ class PortfolioCockpitService:
                     value_absolute=holding.value_absolute,
                     reconciliation_status=holding.reconciliation_status,
                     conviction=analysis.conviction,
+                    analysis_coverage=analysis.analysis_coverage,
                     valuation=valuation_finding(analysis.valuation_engine),
                     business=business_summary(analysis.business_analysis),
                     risk_projection=risk_projection(analysis.risk_analysis),
@@ -98,6 +102,7 @@ class PortfolioCockpitService:
         status_report = self._portfolio_status_service.build_report()
 
         conviction_counts = Counter(h.conviction.level for h in holdings)
+        analysis_coverage_counts = Counter(h.analysis_coverage.level for h in holdings)
         valuation_counts = Counter(h.valuation.status for h in holdings)
 
         return PortfolioCockpitReport(
@@ -107,6 +112,10 @@ class PortfolioCockpitService:
             summary=status_report.summary,
             conviction_distribution=tuple(
                 ConvictionLevelCount(level=level, count=conviction_counts[level]) for level in ConvictionLevel
+            ),
+            analysis_coverage_distribution=tuple(
+                AnalysisCoverageLevelCount(level=level, count=analysis_coverage_counts[level])
+                for level in AnalysisCoverageLevel
             ),
             valuation_distribution=tuple(
                 ValuationStatusCount(status=status, count=valuation_counts[status]) for status in ValuationStatus

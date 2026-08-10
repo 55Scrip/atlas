@@ -43,12 +43,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from atlas.analysis_engine.analysis_coverage import calculate_analysis_coverage
 from atlas.analysis_engine.business import (
     BusinessAnalysisResult,
     BusinessCategory,
     BusinessCategoryStatus,
     evaluate_business_analysis,
 )
+from atlas.analysis_engine.business_data.completeness import assess_data_completeness
 from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
 from atlas.analysis_engine.confidence import Confidence
@@ -541,6 +543,17 @@ def assemble_analysis(
         if risk_finding.category in (RiskCategory.FINANCIAL_RISK, RiskCategory.VALUATION_RISK)
     )
 
+    # Internal Alpha Fix Sprint 1, Part 2 (IA-003): a separate, purely
+    # company-data-driven signal -- deliberately never reads
+    # `confidence`/`evidence_coverage` (investor evidence), unlike
+    # `conviction` below. Reuses `business_conclusive`/
+    # `valuation_conclusive`, computed once, just above.
+    analysis_coverage = calculate_analysis_coverage(
+        has_company_data=assess_data_completeness(business_records).is_minimally_complete,
+        business_conclusive=business_conclusive,
+        valuation_conclusive=valuation_conclusive,
+    )
+
     open_questions = _effective_open_questions(reasoning.open_questions, valuation_conclusive=valuation_conclusive)
 
     conviction_finding_id = FindingKind.CONVICTION_ASSESSED.value
@@ -676,6 +689,7 @@ def assemble_analysis(
         confidence=confidence,
         risk=RiskSection(findings=risk_findings),
         conviction=conviction,
+        analysis_coverage=analysis_coverage,
         recommendation=recommendation,
         findings=findings,
         business_analysis=business_analysis,

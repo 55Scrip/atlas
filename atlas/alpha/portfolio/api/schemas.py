@@ -49,6 +49,17 @@ class CaseLinkResponse(CamelModel):
     case_id: str
 
 
+class EnrichmentScheduledView(CamelModel):
+    """Internal Alpha Fix Sprint 1 (Part 1): the response for both
+    `POST /alpha-portfolio/import`'s automatic trigger and the explicit
+    `POST /alpha-portfolio/enrich` backfill endpoint. Enrichment runs in
+    the background after this response is sent, so this view carries
+    only what was scheduled -- never a fabricated per-ticker outcome
+    the request itself has no way to know yet."""
+
+    scheduled_tickers: list[str]
+
+
 class ApplyTradeRequestBody(CamelModel):
     outcome_id: str
     decision_id: str

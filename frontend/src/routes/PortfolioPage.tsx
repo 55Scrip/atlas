@@ -254,6 +254,7 @@ const MAX_ACTIONS_PER_SEVERITY = 2;
  * Investment Case (one click away via `caseId`) is the depth.
  */
 type CockpitConvictionLevel = "very_high" | "high" | "moderate" | "low" | "insufficient_evidence";
+type CockpitAnalysisCoverageLevel = "no_coverage" | "partial_coverage" | "substantial_coverage";
 type CockpitValuationStatus = "not_evaluated" | "insufficient_input" | "undervalued" | "fairly_valued" | "expensive";
 type CockpitRiskCategory = "business_risk" | "financial_risk" | "valuation_risk" | "thesis_risk";
 type CockpitRiskStatus = "not_evaluated" | "insufficient_input" | "low" | "moderate" | "high";
@@ -268,6 +269,11 @@ type CockpitAttentionReason =
 
 interface CockpitConvictionView {
   level: CockpitConvictionLevel;
+  reasons: string[];
+}
+
+interface CockpitAnalysisCoverageView {
+  level: CockpitAnalysisCoverageLevel;
   reasons: string[];
 }
 
@@ -297,6 +303,7 @@ interface PortfolioCockpitHoldingView {
   valueAbsolute: number | null;
   reconciliationStatus: "NONE" | "UPDATED" | "AWAITING_RECONCILIATION";
   conviction: CockpitConvictionView;
+  analysisCoverage: CockpitAnalysisCoverageView;
   valuation: CockpitValuationView;
   business: CockpitBusinessSummaryView;
   riskProjection: CockpitRiskProjectionView;
@@ -323,6 +330,16 @@ const CONVICTION_LEVEL_KEY: Record<CockpitConvictionLevel, TranslationKey> = {
   moderate: "portfolio.cockpit.conviction.moderate",
   low: "portfolio.cockpit.conviction.low",
   insufficient_evidence: "portfolio.cockpit.conviction.insufficient_evidence",
+};
+
+/** Internal Alpha Fix Sprint 1 (IA-003): a separate signal from
+ * Conviction above -- purely "how much does Atlas actually know about
+ * this company," never investor evidence. Rendered as its own column,
+ * never merged into Conviction's. */
+const ANALYSIS_COVERAGE_LEVEL_KEY: Record<CockpitAnalysisCoverageLevel, TranslationKey> = {
+  no_coverage: "portfolio.cockpit.analysisCoverage.no_coverage",
+  partial_coverage: "portfolio.cockpit.analysisCoverage.partial_coverage",
+  substantial_coverage: "portfolio.cockpit.analysisCoverage.substantial_coverage",
 };
 
 const REVIEW_PRIORITY_KEY: Record<CockpitReviewPriority, TranslationKey> = {
@@ -1209,6 +1226,7 @@ function HoldingsTable({
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.statusHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.tickerHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.weightHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.analysisCoverageHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.convictionHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.evidenceHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.priorityHeader")}</th>
@@ -1394,6 +1412,11 @@ function HoldingsTableRow({
         </td>
         <td style={cellStyle}>
           <Text as="span">
+            {cockpitHolding ? t(ANALYSIS_COVERAGE_LEVEL_KEY[cockpitHolding.analysisCoverage.level]) : "—"}
+          </Text>
+        </td>
+        <td style={cellStyle}>
+          <Text as="span">
             {cockpitHolding ? t(CONVICTION_LEVEL_KEY[cockpitHolding.conviction.level]) : "—"}
           </Text>
         </td>
@@ -1426,7 +1449,7 @@ function HoldingsTableRow({
       </tr>
       {isReconcileExpanded && (
         <tr>
-          <td colSpan={7} style={cellStyle}>
+          <td colSpan={8} style={cellStyle}>
             <Stack gap="inter-section">
               <Text color="tertiary" as="p">
                 {t("portfolio.holdings.awaitingReconciliation")}
