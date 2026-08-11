@@ -29,6 +29,8 @@ from atlas.alpha.case_intelligence.api.schemas import (
     EvidenceQualityFindingsSchema,
     OpenQuestionSchema,
 )
+from atlas.alpha.decision_support import DecisionSupportView as DecisionSupportViewDomain
+from atlas.alpha.decision_support import describe_recommendation
 from atlas.alpha.investment_case.company_profile import CompanyProfile
 from atlas.alpha.investment_case.financial_history import FinancialPeriod, MarketSnapshot
 from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComposition
@@ -195,21 +197,29 @@ class ConvictionAssessmentView(CamelModel):
 
 
 class RecommendationStateView(CamelModel):
-    """Always withheld today (ATLAS-020/024) -- `reason` is the one
-    canonical, categorical explanation, never a fabricated directional
-    call. `conviction_gate_met` names the one real gate this analysis
-    checked, without restating Conviction's own level."""
+    """Migration Review §11.1/§13's header evidence-support sentence --
+    evidence-support language only, never a raw `RecommendationDirection`
+    member name (Decision Log #1). See
+    `atlas.alpha.decision_support`'s own module docstring for the full
+    presentation-layer rationale; this schema is its wire form.
 
-    kind: str
-    reason: str
+    `conviction_gate_met` names the one real gate this analysis checked
+    (`atlas.analysis_engine.recommendation.RECOMMENDATION_GATE_MINIMUM
+    _CONVICTION`), without restating Conviction's own level -- unchanged
+    from this schema's prior shape."""
+
+    level: str
+    badge_label: str
+    statement: str
     conviction_gate_met: bool
 
     @classmethod
     def from_domain(cls, gate_result) -> "RecommendationStateView":
-        recommendation = gate_result.recommendation
+        view: DecisionSupportViewDomain = describe_recommendation(gate_result)
         return cls(
-            kind=recommendation.kind.value,
-            reason=recommendation.reason.value,
+            level=view.level.value,
+            badge_label=view.badge_label,
+            statement=view.statement,
             conviction_gate_met=gate_result.conviction_gate_met,
         )
 

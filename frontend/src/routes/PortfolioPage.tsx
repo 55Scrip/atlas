@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { Button, Container, Divider, Heading, Inline, Stack, Surface, Text } from "../foundation";
+import { Button, Container, Divider, Heading, Inline, Stack, StatusBadge, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   derivePortfolioActions,
@@ -9,6 +9,19 @@ import {
   type PortfolioAction,
 } from "../portfolio/derivePortfolioActions";
 import { deriveDiscussionPrompts, type DiscussionPrompt } from "../portfolio/deriveDiscussionPrompts";
+import {
+  ANALYSIS_COVERAGE_LEVEL_KEY,
+  CONFIDENCE_KEY,
+  CONVICTION_LEVEL_KEY,
+  DECISION_SUPPORT_BADGE_KEY,
+  DECISION_SUPPORT_TONE,
+  REVIEW_PRIORITY_KEY,
+  type AnalysisCoverageLevel,
+  type ConvictionLevel,
+  type DecisionSupportLevel,
+  type EvidenceCoverageLevel,
+  type ReviewPriority,
+} from "../status/statusTone";
 
 /**
  * `concentrationLevel` is an internal enum value (`ConcentrationLevel.LOW`
@@ -141,8 +154,6 @@ type EvidenceGapKind =
   | "observation_without_evidence"
   | "decision_without_linked_observation";
 
-type EvidenceCoverageLevel = "not_applicable" | "none" | "partial" | "full";
-
 interface KeyFindingView {
   kind: KeyFindingKind;
   count: number;
@@ -192,12 +203,6 @@ interface PortfolioIntelligenceView {
   portfolioFit: PortfolioFitStatusView;
 }
 
-const CONFIDENCE_KEY: Record<EvidenceCoverageLevel, TranslationKey> = {
-  not_applicable: "portfolio.intelligence.confidence.not_applicable",
-  none: "portfolio.intelligence.confidence.none",
-  partial: "portfolio.intelligence.confidence.partial",
-  full: "portfolio.intelligence.confidence.full",
-};
 
 const KEY_FINDING_KEY: Record<KeyFindingKind, TranslationKey> = {
   high_concentration: "portfolio.intelligence.keyFindings.high_concentration",
@@ -253,13 +258,17 @@ const MAX_ACTIONS_PER_SEVERITY = 2;
  * Portfolio Cockpit is the overview; a holding's own
  * Investment Case (one click away via `caseId`) is the depth.
  */
-type CockpitConvictionLevel = "very_high" | "high" | "moderate" | "low" | "insufficient_evidence";
-type CockpitAnalysisCoverageLevel = "no_coverage" | "partial_coverage" | "substantial_coverage";
+/** `ConvictionLevel`/`AnalysisCoverageLevel`/`ReviewPriority` now live
+ * in `../status/statusTone` (Workspace Migration, Foundation
+ * extraction) -- these three local aliases keep every existing
+ * `Cockpit*` usage site in this file unchanged. */
+type CockpitConvictionLevel = ConvictionLevel;
+type CockpitAnalysisCoverageLevel = AnalysisCoverageLevel;
 type CockpitValuationStatus = "not_evaluated" | "insufficient_input" | "undervalued" | "fairly_valued" | "expensive";
 type CockpitRiskCategory = "business_risk" | "financial_risk" | "valuation_risk" | "thesis_risk";
 type CockpitRiskStatus = "not_evaluated" | "insufficient_input" | "low" | "moderate" | "high";
 type CockpitBusinessStatus = "not_evaluated" | "insufficient_input" | "weak" | "moderate" | "strong";
-type CockpitReviewPriority = "none" | "standard_review" | "evidence_review" | "priority_review";
+type CockpitReviewPriority = ReviewPriority;
 type CockpitAttentionReason =
   | "high_financial_risk"
   | "high_valuation_risk"
@@ -296,6 +305,20 @@ interface CockpitAttentionView {
   reasons: CockpitAttentionReason[];
 }
 
+/** Migration Review §11.1's Holdings-table Action column -- evidence-
+ * support language only, never a raw RecommendationDirection member
+ * name (Decision Log #1). See `atlas.alpha.decision_support`'s own
+ * module docstring (backend) for the full presentation-layer
+ * rationale; `badgeLabel`/`statement` are read only as an English-only
+ * fallback shape check -- this page owns the localized text via
+ * `DECISION_SUPPORT_BADGE_KEY`, the same convention every other
+ * categorical field on this page already follows. */
+interface CockpitDecisionSupportView {
+  level: DecisionSupportLevel;
+  badgeLabel: string;
+  statement: string;
+}
+
 interface PortfolioCockpitHoldingView {
   ticker: string;
   caseId: string;
@@ -310,6 +333,7 @@ interface PortfolioCockpitHoldingView {
   confidence: EvidenceCoverageLevel;
   isThesisStale: boolean;
   attention: CockpitAttentionView;
+  decisionSupport: CockpitDecisionSupportView;
 }
 
 interface CockpitUnresolvedHoldingView {
@@ -323,31 +347,6 @@ interface PortfolioCockpitView {
   unresolvedHoldings: CockpitUnresolvedHoldingView[];
   priorityReviewCount: number;
 }
-
-const CONVICTION_LEVEL_KEY: Record<CockpitConvictionLevel, TranslationKey> = {
-  very_high: "portfolio.cockpit.conviction.very_high",
-  high: "portfolio.cockpit.conviction.high",
-  moderate: "portfolio.cockpit.conviction.moderate",
-  low: "portfolio.cockpit.conviction.low",
-  insufficient_evidence: "portfolio.cockpit.conviction.insufficient_evidence",
-};
-
-/** Internal Alpha Fix Sprint 1 (IA-003): a separate signal from
- * Conviction above -- purely "how much does Atlas actually know about
- * this company," never investor evidence. Rendered as its own column,
- * never merged into Conviction's. */
-const ANALYSIS_COVERAGE_LEVEL_KEY: Record<CockpitAnalysisCoverageLevel, TranslationKey> = {
-  no_coverage: "portfolio.cockpit.analysisCoverage.no_coverage",
-  partial_coverage: "portfolio.cockpit.analysisCoverage.partial_coverage",
-  substantial_coverage: "portfolio.cockpit.analysisCoverage.substantial_coverage",
-};
-
-const REVIEW_PRIORITY_KEY: Record<CockpitReviewPriority, TranslationKey> = {
-  none: "portfolio.cockpit.review.none",
-  standard_review: "portfolio.cockpit.review.standard_review",
-  evidence_review: "portfolio.cockpit.review.evidence_review",
-  priority_review: "portfolio.cockpit.review.priority_review",
-};
 
 /**
  * Holdings Table (Portfolio Workspace v3) -- the same 🔴/🟠/🟡 vocabulary
@@ -1124,21 +1123,16 @@ function ActionCenterRow({
  * [Priority], [Thesis]) with two deliberate, explicitly-justified
  * substitutions for the last two:
  *
- * - **"Priority" instead of "Recommendation" -- TEMPORARY, not a
- *   permanent product stance.** The backend does not yet expose a real
- *   directional-recommendation concept (`atlas.analysis_engine
- *   .recommendation` currently only ever returns `RecommendationWithheld`),
- *   so labeling this column "Recommendation" today would show
- *   `ReviewPriority` values under a name that promises something this
- *   sprint cannot honestly deliver. This column is therefore only a
- *   placeholder for what *currently exists* (`HoldingAttention.priority`
- *   -- none/standard/evidence/priority review), not a statement that
- *   Atlas should never produce recommendations. A real Recommendation
- *   capability (e.g. Build/Hold/Reduce/Exit, target position size,
- *   target execution price, portfolio-impact simulation) is planned
- *   product direction for a future sprint; when that model exists, this
- *   column should be replaced by it, not kept as "Priority" forever.
- *   Building that capability is explicitly out of scope here.
+ * - **"Priority" stays "Priority," and a new "Action" column was added
+ *   alongside it (Workspace Migration Phase 1, Migration Review §11.1),
+ *   not a replacement.** The two answer different questions: Priority
+ *   (`HoldingAttention.priority`, none/standard/evidence/priority
+ *   review) is "how urgently should I look at this," Action
+ *   (`atlas.alpha.decision_support`'s evidence-support badge, backed by
+ *   the real `ComputedDirectionalRecommendation`/`RecommendationWithheld`
+ *   union) is "what does current evidence say about this position."
+ *   Never an imperative Buy/Add/Trim command (Decision Log #1) -- the
+ *   badge is always one of the seven `DecisionSupportLevel` states.
  * - **"Thesis" instead of "Last updated."** No per-holding timestamp is
  *   exposed by any endpoint this page fetches (`generatedAt` on the
  *   Cockpit report is portfolio-wide, not per row) -- fabricating one
@@ -1231,6 +1225,7 @@ function HoldingsTable({
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.evidenceHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.priorityHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.thesisHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.actionHeader")}</th>
               </tr>
             </thead>
             <tbody>
@@ -1445,6 +1440,18 @@ function HoldingsTableRow({
                 : t("portfolio.holdingsTable.thesisFresh")
               : "—"}
           </Text>
+        </td>
+        <td style={cellStyle}>
+          {cockpitHolding ? (
+            <StatusBadge
+              label={t(DECISION_SUPPORT_BADGE_KEY[cockpitHolding.decisionSupport.level])}
+              tone={DECISION_SUPPORT_TONE[cockpitHolding.decisionSupport.level]}
+            />
+          ) : (
+            <Text as="span" color="tertiary">
+              —
+            </Text>
+          )}
         </td>
       </tr>
       {isReconcileExpanded && (

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link as RouterLink, useLocation, useParams } from "react-router-dom";
-import { Button, Container, Divider, Heading, Inline, Stack, Surface, Text } from "../foundation";
+import { Button, Container, Divider, Heading, Inline, Stack, StatusBadge, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
@@ -11,6 +11,16 @@ import {
   type HoldingLite,
   type TradeLogEntry,
 } from "../activity/deriveActivity";
+import {
+  CONFIDENCE_KEY,
+  CONVICTION_LEVEL_KEY,
+  DECISION_SUPPORT_BADGE_KEY,
+  DECISION_SUPPORT_STATEMENT_KEY,
+  DECISION_SUPPORT_TONE,
+  type ConvictionLevel,
+  type DecisionSupportLevel,
+  type EvidenceCoverageLevel,
+} from "../status/statusTone";
 import {
   BUSINESS_CATEGORY_KEY,
   BUSINESS_STATUS_KEY,
@@ -51,6 +61,12 @@ import {
   type OutstandingIssueKind,
   type OutstandingWorkKind,
 } from "../investmentCase/deriveExecutiveSummary";
+import {
+  FinancialsTable,
+  formatFinancialValue,
+  formatShareCount,
+  type FinancialPeriodView,
+} from "../investmentCase/FinancialsTable";
 
 interface CaseSummary {
   caseId: string;
@@ -496,8 +512,6 @@ type TradeApplyStatus =
  * Cockpit's own types (ATLAS-028) -- both surfaces read the same
  * `CanonicalAnalysis`, so they must agree (Phase 47).
  */
-type EvidenceCoverageLevel = "not_applicable" | "none" | "partial" | "full";
-
 type OpenQuestionKind =
   | "no_evidence_recorded_for_case"
   | "observation_without_evidence"
@@ -511,15 +525,16 @@ interface OpenQuestionView {
   reference: string | null;
 }
 
-type AnalysisConvictionLevel = "very_high" | "high" | "moderate" | "low" | "insufficient_evidence";
+/** Now lives in `../status/statusTone` as `ConvictionLevel`
+ * (Workspace Migration, Foundation extraction); this local alias keeps
+ * every existing `AnalysisConvictionLevel` usage site unchanged. */
+type AnalysisConvictionLevel = ConvictionLevel;
 // AnalysisValuationStatus/AnalysisRiskCategory/AnalysisRiskStatus/
 // AnalysisBusinessCategory/AnalysisBusinessStatus/AnalysisHighlightKind/
 // AnalysisOpenQuestionOrigin now live in
 // "../changeIntelligence/describeChange" (imported above) -- shared
 // with History v1 rather than duplicated here.
 type AnalysisMetricTrend = "strong_metric" | "weak_metric" | "mixed_metric";
-type AnalysisRecommendationKind = "directional" | "recommendation_withheld";
-type AnalysisRecommendationReason = "engine_not_implemented" | "evidence_insufficient";
 
 // AnalysisChangeCategory/AnalysisChangeDirection/AnalysisThesisImpact
 // now live in "../changeIntelligence/describeChange" (imported above).
@@ -609,9 +624,15 @@ interface OutcomeEntryView {
   occurredAt: string;
 }
 
+/** Migration Review §11.1/§13's header evidence-support sentence --
+ * evidence-support language only, never a raw RecommendationDirection
+ * member name (Decision Log #1). See `atlas.alpha.decision_support`'s
+ * own module docstring (backend) for the full presentation-layer
+ * rationale; this type is its wire shape. */
 interface RecommendationStateView {
-  kind: AnalysisRecommendationKind;
-  reason: AnalysisRecommendationReason;
+  level: DecisionSupportLevel;
+  badgeLabel: string;
+  statement: string;
   convictionGateMet: boolean;
 }
 
@@ -632,24 +653,6 @@ interface CompanyProfileView {
   asOf: string;
   currency: string | null;
   fiscalYearEnd: string | null;
-}
-
-interface FinancialPeriodView {
-  periodStart: string | null;
-  periodEnd: string | null;
-  revenue: number | null;
-  operatingIncome: number | null;
-  netIncome: number | null;
-  eps: number | null;
-  freeCashFlow: number | null;
-  capitalExpenditure: number | null;
-  shareBuybacks: number | null;
-  shareIssuance: number | null;
-  dividends: number | null;
-  cash: number | null;
-  totalDebt: number | null;
-  sharesOutstanding: number | null;
-  currency: string | null;
 }
 
 interface MarketSnapshotView {
@@ -3905,13 +3908,6 @@ export function InvestmentCasePage() {
   );
 }
 
-const CONFIDENCE_KEY: Record<EvidenceCoverageLevel, TranslationKey> = {
-  not_applicable: "portfolio.intelligence.confidence.not_applicable",
-  none: "portfolio.intelligence.confidence.none",
-  partial: "portfolio.intelligence.confidence.partial",
-  full: "portfolio.intelligence.confidence.full",
-};
-
 const OPEN_QUESTION_KEY: Record<OpenQuestionKind, TranslationKey> = {
   no_evidence_recorded_for_case: "investmentCase.intelligence.openQuestions.noEvidenceRecordedForCase",
   observation_without_evidence: "investmentCase.intelligence.openQuestions.observationWithoutEvidence",
@@ -3922,29 +3918,19 @@ const OPEN_QUESTION_KEY: Record<OpenQuestionKind, TranslationKey> = {
   portfolio_factor_not_assessable: "investmentCase.intelligence.openQuestions.portfolioFactorNotAssessable",
 };
 
-/**
- * Reused verbatim from `PortfolioPage.tsx`'s own enum-value maps
- * (ATLAS-028) -- Portfolio Cockpit and Investment Case read the same
- * `CanonicalAnalysis`, so the Conviction/Valuation/Risk/Business
- * vocabularies must be identical (Phase 47's own cross-surface
- * consistency rule), not just similarly worded.
- */
-const CONVICTION_LEVEL_KEY: Record<AnalysisConvictionLevel, TranslationKey> = {
-  very_high: "portfolio.cockpit.conviction.very_high",
-  high: "portfolio.cockpit.conviction.high",
-  moderate: "portfolio.cockpit.conviction.moderate",
-  low: "portfolio.cockpit.conviction.low",
-  insufficient_evidence: "portfolio.cockpit.conviction.insufficient_evidence",
-};
-
+// CONFIDENCE_KEY/CONVICTION_LEVEL_KEY now live in "../status/statusTone"
+// (imported above) -- Portfolio Cockpit and Investment Case read the
+// same `CanonicalAnalysis`, so the Conviction/Confidence vocabularies
+// must be identical (Phase 47's own cross-surface consistency rule),
+// not just similarly worded.
 // VALUATION_STATUS_KEY/RISK_STATUS_KEY/RISK_CATEGORY_KEY/
 // BUSINESS_STATUS_KEY/BUSINESS_CATEGORY_KEY now live in
 // "../changeIntelligence/describeChange" (imported above).
 
-const RECOMMENDATION_REASON_KEY: Record<AnalysisRecommendationReason, TranslationKey> = {
-  engine_not_implemented: "investmentCase.analysis.recommendation.reason.engine_not_implemented",
-  evidence_insufficient: "investmentCase.analysis.recommendation.reason.evidence_insufficient",
-};
+// DECISION_SUPPORT_BADGE_KEY/DECISION_SUPPORT_STATEMENT_KEY/
+// DECISION_SUPPORT_TONE now live in "../status/statusTone" (imported
+// above) -- Workspace Migration Phase 1 evidence-support presentation
+// layer (Decision Log #1); see that module's own doc comment.
 
 // humanize/Translate now live in "../changeIntelligence/describeChange"
 // (imported above).
@@ -4435,105 +4421,11 @@ function InvestmentCaseCanonicalSections({
  * on this page, never a fabricated placeholder. A missing value is
  * always the em-dash placeholder below, never rendered as 0 or blank
  * (which would visually imply zero).
+ *
+ * `FinancialsTable` and its formatting helpers now live in
+ * `../investmentCase/FinancialsTable` (Workspace Migration, Foundation
+ * extraction), imported above.
  */
-const MISSING_VALUE_PLACEHOLDER = "—";
-
-function formatFinancialValue(value: number | null, currency: string | null): string {
-  if (value === null) return MISSING_VALUE_PLACEHOLDER;
-  const formatted = value.toLocaleString(undefined, { maximumFractionDigits: 1 });
-  return currency ? `${formatted} ${currency}` : formatted;
-}
-
-function formatShareCount(value: number | null): string {
-  if (value === null) return MISSING_VALUE_PLACEHOLDER;
-  return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
-}
-
-function formatEps(value: number | null, currency: string | null): string {
-  if (value === null) return MISSING_VALUE_PLACEHOLDER;
-  const formatted = value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return currency ? `${formatted} ${currency}` : formatted;
-}
-
-interface FinancialsTableRow {
-  labelKey: TranslationKey;
-  values: (period: FinancialPeriodView) => string;
-}
-
-/** One row per metric, one column per fiscal period -- a dense,
- * analyst-file layout ("a table is acceptable and likely preferable").
- * Every cell is a direct, unevaluated read of `FinancialPeriodView`;
- * this table computes nothing itself. */
-function FinancialsTable({ periods, t }: { periods: FinancialPeriodView[]; t: Translate }) {
-  // Newest period first, left to right -- matches how an analyst reads
-  // a spreadsheet, and how the periods already arrive from the API
-  // (oldest first) reversed once here rather than at the API layer.
-  const newestFirst = periods.slice().reverse();
-
-  const rows: FinancialsTableRow[] = [
-    { labelKey: "investmentCase.analysis.financials.revenueLabel", values: (p) => formatFinancialValue(p.revenue, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.operatingIncomeLabel", values: (p) => formatFinancialValue(p.operatingIncome, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.netIncomeLabel", values: (p) => formatFinancialValue(p.netIncome, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.epsLabel", values: (p) => formatEps(p.eps, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.freeCashFlowLabel", values: (p) => formatFinancialValue(p.freeCashFlow, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.capitalExpenditureLabel", values: (p) => formatFinancialValue(p.capitalExpenditure, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.shareBuybacksLabel", values: (p) => formatFinancialValue(p.shareBuybacks, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.dividendsLabel", values: (p) => formatFinancialValue(p.dividends, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.cashLabel", values: (p) => formatFinancialValue(p.cash, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.totalDebtLabel", values: (p) => formatFinancialValue(p.totalDebt, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.sharesOutstandingLabel", values: (p) => formatShareCount(p.sharesOutstanding) },
-  ];
-
-  const cellStyle: CSSProperties = {
-    padding: "var(--space-metadata) var(--space-row)",
-    textAlign: "right",
-    fontFamily: "var(--type-family-metadata)",
-    fontVariantNumeric: "tabular-nums",
-    whiteSpace: "nowrap",
-    borderBottom: "var(--width-border-hairline) solid var(--color-border-hairline)",
-  };
-  const labelCellStyle: CSSProperties = {
-    ...cellStyle,
-    textAlign: "left",
-    fontFamily: "var(--type-family-prose)",
-    color: "var(--color-text-secondary)",
-  };
-  const headerCellStyle: CSSProperties = {
-    ...cellStyle,
-    fontFamily: "var(--type-family-prose)",
-    fontWeight: 600,
-    color: "var(--color-text-primary)",
-  };
-
-  return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ borderCollapse: "collapse", width: "100%" }}>
-        <thead>
-          <tr>
-            <th style={{ ...headerCellStyle, textAlign: "left" }} />
-            {newestFirst.map((period, index) => (
-              <th key={period.periodEnd ?? index} style={headerCellStyle}>
-                {period.periodEnd ?? t("investmentCase.analysis.financials.unknownPeriodLabel")}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.labelKey}>
-              <td style={labelCellStyle}>{t(row.labelKey)}</td>
-              {newestFirst.map((period, index) => (
-                <td key={period.periodEnd ?? index} style={cellStyle}>
-                  {row.values(period)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
 function CompanyOverviewSection({
   companyProfile,
@@ -5126,17 +5018,20 @@ function EvidenceSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView
 
         <Divider tone="hairline" />
 
-        {/* Recommendation -- withheld, honestly, with its real reason.
-            Never inferred from Valuation/Conviction/Risk. Closes this
-            section since its withheld-reason is itself a statement
-            about evidence/analysis completeness. */}
+        {/* Decision Support (Workspace Migration Phase 1, Decision Log
+            #1) -- Atlas's own evidence-support statement, never an
+            imperative Buy/Add/Trim command. `analysis.recommendation
+            .level` is the only field this section branches on; the raw
+            backend RecommendationDirection vocabulary never reaches
+            this component at all (see `atlas.alpha.decision_support`'s
+            own module docstring). */}
         <Stack gap="intra-section">
           <Heading level={3}>{t("investmentCase.analysis.recommendation.heading")}</Heading>
-          <Text>{t("investmentCase.analysis.recommendation.withheld")}</Text>
-          <Text color="secondary" as="p">
-            {t("investmentCase.analysis.recommendation.reasonLabel")}:{" "}
-            {t(RECOMMENDATION_REASON_KEY[analysis.recommendation.reason])}
-          </Text>
+          <StatusBadge
+            label={t(DECISION_SUPPORT_BADGE_KEY[analysis.recommendation.level])}
+            tone={DECISION_SUPPORT_TONE[analysis.recommendation.level]}
+          />
+          <Text as="p">{t(DECISION_SUPPORT_STATEMENT_KEY[analysis.recommendation.level])}</Text>
         </Stack>
       </Stack>
     </Surface>

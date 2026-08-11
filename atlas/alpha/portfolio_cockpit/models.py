@@ -6,6 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from atlas.alpha.decision_support import DecisionSupportView
 from atlas.alpha.portfolio.models import ReconciliationStatus
 from atlas.alpha.portfolio_status.models import PortfolioSummaryMetrics
 from atlas.analysis_engine.analysis_coverage import AnalysisCoverageAssessment, AnalysisCoverageLevel
@@ -109,6 +110,12 @@ class PortfolioHoldingAnalysis:
     confidence: EvidenceCoverageLevel
     is_thesis_stale: bool
     attention: HoldingAttention
+    decision_support: DecisionSupportView
+    """Migration Review §11.1's Holdings-table Action column, presentation
+    layer only -- see `atlas.alpha.decision_support`'s own module
+    docstring. Reads `analysis.recommendation` (already computed by
+    `atlas.analysis_engine.pipeline.assemble_analysis`), never
+    recomputes it."""
 
 
 @dataclass(frozen=True)

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from atlas.alpha.decision_support import DecisionSupportView as DecisionSupportViewDomain
 from atlas.alpha.portfolio_cockpit.models import (
     AnalysisCoverageLevelCount,
     BusinessSummary,
@@ -130,6 +131,21 @@ class HoldingAttentionView(CamelModel):
         return cls(priority=attention.priority.value, reasons=[r.value for r in attention.reasons])
 
 
+class DecisionSupportView(CamelModel):
+    """Migration Review §11.1's Holdings-table Action column --
+    evidence-support language only, never a raw `RecommendationDirection`
+    member name. See `atlas.alpha.decision_support`'s own module
+    docstring."""
+
+    level: str
+    badge_label: str
+    statement: str
+
+    @classmethod
+    def from_domain(cls, view: DecisionSupportViewDomain) -> "DecisionSupportView":
+        return cls(level=view.level.value, badge_label=view.badge_label, statement=view.statement)
+
+
 class PortfolioHoldingAnalysisView(CamelModel):
     ticker: str
     case_id: str
@@ -145,6 +161,7 @@ class PortfolioHoldingAnalysisView(CamelModel):
     confidence: str
     is_thesis_stale: bool
     attention: HoldingAttentionView
+    decision_support: DecisionSupportView
 
     @classmethod
     def from_domain(cls, analysis: PortfolioHoldingAnalysis) -> "PortfolioHoldingAnalysisView":
@@ -163,6 +180,7 @@ class PortfolioHoldingAnalysisView(CamelModel):
             confidence=analysis.confidence.value,
             is_thesis_stale=analysis.is_thesis_stale,
             attention=HoldingAttentionView.from_domain(analysis.attention),
+            decision_support=DecisionSupportView.from_domain(analysis.decision_support),
         )
 
 

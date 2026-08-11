@@ -7,6 +7,7 @@ from __future__ import annotations
 from collections import Counter
 from datetime import datetime, timezone
 
+from atlas.alpha.decision_support import describe_recommendation
 from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio_cockpit.attention import determine_attention
@@ -93,6 +94,7 @@ class PortfolioCockpitService:
                     confidence=analysis.confidence,
                     is_thesis_stale=composition.is_thesis_stale,
                     attention=attention,
+                    decision_support=describe_recommendation(analysis.recommendation),
                 )
             )
 

@@ -89,6 +89,7 @@ class TestAfterImport:
             "confidence",
             "isThesisStale",
             "attention",
+            "decisionSupport",  # Workspace Migration Phase 1: evidence-support presentation, see atlas.alpha.decision_support
         }
         assert set(holding["conviction"]) == {"level", "reasons"}
         assert set(holding["business"]) == {"growth", "capitalAllocation"}

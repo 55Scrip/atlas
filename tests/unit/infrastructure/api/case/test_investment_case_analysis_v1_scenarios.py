@@ -128,7 +128,7 @@ class TestResearchCase:
             "durability",
         }
         assert body["conviction"]["level"] is not None
-        assert body["recommendation"]["kind"] == "recommendation_withheld"
+        assert body["recommendation"]["level"] == "insufficient_evidence"
 
 
 class TestHeldCase:
@@ -270,9 +270,16 @@ class TestRecommendationWithheld:
     def test_reports_withheld_honestly_never_a_directional_call(self, client):
         case_id = _import_holding(client, "NVDA")
         body = client.get(f"/cases/{case_id}/analysis").json()
-        assert body["recommendation"]["kind"] == "recommendation_withheld"
+        assert body["recommendation"]["level"] == "insufficient_evidence"
         assert body["recommendation"]["convictionGateMet"] is False
-        assert body["recommendation"]["reason"] is not None
+        assert body["recommendation"]["statement"] == (
+            "Current evidence is insufficient to support any portfolio action."
+        )
+        # Never a raw RecommendationDirection member name (BUY/ADD/HOLD/
+        # TRIM/EXIT/NO_ACTION) or the old kind/reason vocabulary --
+        # Decision Log #1, atlas.alpha.decision_support.
+        assert "kind" not in body["recommendation"]
+        assert "reason" not in body["recommendation"]
 
 
 class TestDeterministicShape:

@@ -14,5 +14,9 @@ export { FocusRing } from "./accessibility/FocusRing";
 
 export { Divider } from "./utility/Divider";
 export { Surface } from "./utility/Surface";
+export { StatusBadge } from "./utility/StatusBadge";
+export type { StatusTone } from "./utility/StatusBadge";
+export { AsyncSection } from "./utility/AsyncSection";
+export type { AsyncStatus } from "./utility/AsyncSection";
 
 export type { TextColorToken, SurfaceToken, BorderToken, SpaceToken } from "./tokenRefs";
