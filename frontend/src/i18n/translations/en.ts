@@ -663,6 +663,8 @@ export const en = {
   "investmentCase.moreDetails.subheading": "Underlying record",
 
   // ---------- investment case v2: decision actions ----------
+  "investmentCase.actions.recordDecisionTrigger": "Record a decision",
+  "investmentCase.actions.outcomeAwaitingNudge": "{{count}} decision(s) awaiting an outcome",
   "investmentCase.actions.heading": "What would you like to do?",
   "investmentCase.actions.addToPosition": "Add to Position",
   "investmentCase.actions.trimPosition": "Trim Position",

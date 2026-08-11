@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link as RouterLink, useLocation, useParams } from "react-router-dom";
 import { Button, Container, Divider, Heading, Inline, Stack, StatusBadge, Surface, Text } from "../foundation";
@@ -49,13 +49,11 @@ import {
 } from "../changeIntelligence/describeChange";
 import {
   deriveAssessmentPoints,
-  deriveCaseDiscussionKind,
   deriveCaseStatus,
   deriveCurrentPriority,
   deriveOutstandingIssues,
   findMostSevereRisk,
   type AssessmentPoint,
-  type CaseDiscussionKind,
   type CaseStatusLevel,
   type CurrentPriorityKind,
   type OutstandingIssueKind,
@@ -923,12 +921,14 @@ export function InvestmentCasePage() {
     kind: "loading",
   });
 
-  /** Executive Summary "Discuss this Case" (Investment Case Workspace v2,
-   * Sprint 2) -- UI only, same honest-placeholder pattern
-   * `PortfolioPage.tsx`'s `TodaysDiscussionsCard` already established:
-   * no conversation engine, just a pre-filled input and a static note. */
-  const [askInput, setAskInput] = useState("");
-  const [askSubmitted, setAskSubmitted] = useState(false);
+  /** Action Flow Tier 2 (Workspace Migration Phase 3, approved §13
+   * Option A) -- whether the inline decision-recording panel is
+   * expanded. Starts collapsed; the header's own "[Record a decision]"
+   * trigger (or the outstanding-outcome nudge) opens it. A decision
+   * already in progress or awaiting its Outcome report keeps the panel
+   * implicitly open regardless of this flag -- see the panel's own
+   * render guard below. */
+  const [isDecisionPanelExpanded, setIsDecisionPanelExpanded] = useState(false);
 
   useEffect(() => {
     if (!caseId) return;
@@ -1619,12 +1619,17 @@ export function InvestmentCasePage() {
     }));
   }
 
+  /** Also collapses Action Flow Tier 2 (Workspace Migration Phase 3) --
+   * "Cancel" during the reason/confidence form, and "Close" after a
+   * decision (and optionally its Outcome) has been recorded, both
+   * return the page to its default, panel-collapsed state. */
   function closeAction() {
     setPendingAction(null);
     setDecisionCreateStatus((current) => ({
       ...current,
       [CASE_LEVEL_DECISION_KEY]: { kind: "idle" },
     }));
+    setIsDecisionPanelExpanded(false);
   }
 
   const caseLevelDecisionStatus: DecisionCreateStatus =
@@ -1695,6 +1700,17 @@ export function InvestmentCasePage() {
         ).filter((item) => item.caseId === caseId)
       : [];
 
+  /** Header Tier 1 nudge (approved §13): the same real, already-
+   * deduplicated set Outstanding Work renders in full further down the
+   * page (progressive disclosure), just counted -- never a second
+   * computation. `reconciliation-needed` is a Portfolio-level holding
+   * concern, not a per-Case Decision awaiting its own Outcome, so it's
+   * excluded here exactly as Outstanding Work's own render already
+   * excludes it. */
+  const decisionsAwaitingOutcome = caseOutstandingWork.filter(
+    (item) => item.kind !== "reconciliation-needed",
+  );
+
   return (
     <Container>
       <Stack gap="inter-section">
@@ -1761,31 +1777,512 @@ export function InvestmentCasePage() {
                 {t("investmentCase.header.caseIdLabel", { caseId: status.case.caseId })}
               </Text>
             )}
+
+            {/* Decision Support Tier 1 (Workspace Migration Phase 3,
+                approved §13) -- Atlas's own evidence-support sentence
+                sits directly beneath the identity facts above, in
+                Atlas's own voice, never inside a button. Relocated here
+                verbatim from the former bottom-of-page Evidence section
+                (Phase 1's `atlas.alpha.decision_support`, unchanged) --
+                the same fact is never rendered twice on this page. */}
+            {investmentCaseAnalysis.kind === "loaded" && (
+              <>
+                <Divider tone="hairline" />
+                <Stack gap="metadata">
+                  <StatusBadge
+                    label={t(DECISION_SUPPORT_BADGE_KEY[investmentCaseAnalysis.report.recommendation.level])}
+                    tone={DECISION_SUPPORT_TONE[investmentCaseAnalysis.report.recommendation.level]}
+                  />
+                  <Text as="p">
+                    {t(DECISION_SUPPORT_STATEMENT_KEY[investmentCaseAnalysis.report.recommendation.level])}
+                  </Text>
+                </Stack>
+              </>
+            )}
+
+            {/* Action Flow Tier 1 trigger (approved §13 Option A) -- the
+                investor's own, clearly-separate action vocabulary,
+                distinct from Atlas's sentence above it. `[ Record a
+                decision ]` is the only entry point; the nudge reuses
+                `caseOutstandingWork`'s already-computed count (same
+                data Outstanding Work renders in full further down the
+                page, in progressive disclosure) rather than a new
+                computation. Hidden once the panel below is open, so the
+                trigger and the open panel are never both visible at
+                once. */}
+            {caseId && status.kind === "loaded" && !isDecisionPanelExpanded && (
+              <>
+                <Divider tone="hairline" />
+                {!linkedHolding && (
+                  <Text color="secondary">{t("investmentCase.actions.notLinkedNote")}</Text>
+                )}
+                {linkedHolding && (
+                  <Inline gap="row" align="center">
+                    <Button variant="primary" onClick={() => setIsDecisionPanelExpanded(true)}>
+                      {t("investmentCase.actions.recordDecisionTrigger")}
+                    </Button>
+                    {decisionsAwaitingOutcome.length > 0 && (
+                      <Button variant="tertiary" onClick={() => setIsDecisionPanelExpanded(true)}>
+                        {t("investmentCase.actions.outcomeAwaitingNudge", {
+                          count: decisionsAwaitingOutcome.length,
+                        })}
+                      </Button>
+                    )}
+                  </Inline>
+                )}
+              </>
+            )}
           </Stack>
         </Surface>
 
+        {/* Action Flow Tier 2 (approved §13 Option A) -- an inline
+            expandable panel directly beneath the header, the same
+            interaction pattern Portfolio's own single-row Reconcile
+            form already established (Workspace Migration Phase 2),
+            rather than a new pattern. Every field, handler, and
+            validation rule below is unchanged from the flow's former
+            always-visible, bottom-of-page location -- only the
+            container and its default-collapsed visibility moved. */}
+        {caseId && status.kind === "loaded" && linkedHolding && isDecisionPanelExpanded && (
+          <Surface tier="primary">
+            <Stack gap="inter-section">
+              <Heading level={2}>{t("investmentCase.actions.heading")}</Heading>
+
+              {caseLevelDecisionStatus.kind === "idle" && (
+                <div>
+                  <Button variant="primary" onClick={() => openAction("ADD")}>
+                    {t("investmentCase.actions.addToPosition")}
+                  </Button>{" "}
+                  <Button variant="tertiary" onClick={() => openAction("TRIM")}>
+                    {t("investmentCase.actions.trimPosition")}
+                  </Button>{" "}
+                  <Button variant="tertiary" onClick={() => openAction("REMOVE")}>
+                    {t("investmentCase.actions.removePosition")}
+                  </Button>{" "}
+                  <Button variant="tertiary" onClick={() => openAction("LEAVE_AS_IS")}>
+                    {t("investmentCase.actions.leaveAsIs")}
+                  </Button>{" "}
+                  <Button variant="tertiary" onClick={closeAction}>
+                    {t("common.cancel")}
+                  </Button>
+                </div>
+              )}
+
+              {pendingAction &&
+                (caseLevelDecisionStatus.kind === "creating" ||
+                  caseLevelDecisionStatus.kind === "submitting" ||
+                  caseLevelDecisionStatus.kind === "validation-error" ||
+                  caseLevelDecisionStatus.kind === "api-error") && (
+                  <Stack gap="inter-section">
+                    <Heading level={3}>{t(ACTION_LABEL_KEY[pendingAction])}</Heading>
+                    <Text as="label">
+                      {t("investmentCase.actions.reasonLabel")}
+                      <br />
+                      <textarea
+                        value={caseLevelDecisionForm.reason}
+                        onChange={(event) =>
+                          setDecisionForm((current) => ({
+                            ...current,
+                            [CASE_LEVEL_DECISION_KEY]: {
+                              ...caseLevelDecisionForm,
+                              reason: event.target.value,
+                            },
+                          }))
+                        }
+                        disabled={caseLevelDecisionStatus.kind === "submitting"}
+                      />
+                    </Text>
+                    <Text as="label">
+                      {t("investmentCase.actions.confidenceLabel")}
+                      <br />
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={caseLevelDecisionForm.confidence}
+                        onChange={(event) =>
+                          setDecisionForm((current) => ({
+                            ...current,
+                            [CASE_LEVEL_DECISION_KEY]: {
+                              ...caseLevelDecisionForm,
+                              confidence: event.target.value,
+                            },
+                          }))
+                        }
+                        disabled={caseLevelDecisionStatus.kind === "submitting"}
+                      />
+                    </Text>
+
+                    {caseLevelDecisionStatus.kind === "validation-error" && (
+                      <Text color="tertiary" role="alert">
+                        {caseLevelDecisionStatus.message}
+                      </Text>
+                    )}
+                    {caseLevelDecisionStatus.kind === "api-error" && (
+                      <Text color="tertiary" role="alert">
+                        {t("investmentCase.actions.recordError", {
+                          message: caseLevelDecisionStatus.message,
+                        })}
+                      </Text>
+                    )}
+
+                    <div>
+                      <Button
+                        variant="primary"
+                        onClick={() => submitDecision(CASE_LEVEL_DECISION_KEY)}
+                        disabled={caseLevelDecisionStatus.kind === "submitting"}
+                      >
+                        {caseLevelDecisionStatus.kind === "submitting"
+                          ? t("common.submitting")
+                          : t("investmentCase.actions.submit")}
+                      </Button>{" "}
+                      <Button
+                        variant="tertiary"
+                        onClick={closeAction}
+                        disabled={caseLevelDecisionStatus.kind === "submitting"}
+                      >
+                        {t("common.cancel")}
+                      </Button>
+                    </div>
+                  </Stack>
+                )}
+
+              {caseLevelDecisionStatus.kind === "success" && (
+                <Stack gap="inter-section">
+                  <Text>
+                    {t("investmentCase.decision.recorded", {
+                      decisionType: DECISION_TYPE_KEY[caseLevelDecisionStatus.decision.decisionType]
+                        ? t(DECISION_TYPE_KEY[caseLevelDecisionStatus.decision.decisionType]!)
+                        : caseLevelDecisionStatus.decision.decisionType,
+                      subject: caseLevelDecisionStatus.decision.subject,
+                    })}
+                  </Text>
+
+                  {pendingAction === "LEAVE_AS_IS" && (
+                    <Text color="secondary">
+                      {t("investmentCase.actions.leaveAsIsRecordedNote")}
+                    </Text>
+                  )}
+
+                  {pendingAction !== "LEAVE_AS_IS" && reportDecisionId && (
+                    <>
+                      <Text color="secondary">
+                        {t("investmentCase.actions.decisionRecordedNote")}
+                      </Text>
+
+                      {reportOutcomeStatus.kind === "idle" && (
+                        <div>
+                          <Button
+                            variant="tertiary"
+                            onClick={() =>
+                              setOutcomeCreateStatus((current) => ({
+                                ...current,
+                                [reportDecisionId]: { kind: "creating" },
+                              }))
+                            }
+                          >
+                            {t("investmentCase.actions.reportTransaction")}
+                          </Button>
+                        </div>
+                      )}
+
+                      {(reportOutcomeStatus.kind === "creating" ||
+                        reportOutcomeStatus.kind === "submitting" ||
+                        reportOutcomeStatus.kind === "validation-error" ||
+                        reportOutcomeStatus.kind === "api-error") && (
+                        <Stack gap="inter-section">
+                          <Text as="label">
+                            {t("investmentCase.outcome.statementLabel")}
+                            <br />
+                            <textarea
+                              value={reportOutcomeForm.statement}
+                              onChange={(event) =>
+                                setOutcomeForm((current) => ({
+                                  ...current,
+                                  [reportDecisionId]: {
+                                    ...reportOutcomeForm,
+                                    statement: event.target.value,
+                                  },
+                                }))
+                              }
+                              disabled={reportOutcomeStatus.kind === "submitting"}
+                            />
+                          </Text>
+                          <Text as="label">
+                            {t("investmentCase.outcome.noteLabel")}
+                            <br />
+                            <textarea
+                              value={reportOutcomeForm.note}
+                              onChange={(event) =>
+                                setOutcomeForm((current) => ({
+                                  ...current,
+                                  [reportDecisionId]: {
+                                    ...reportOutcomeForm,
+                                    note: event.target.value,
+                                  },
+                                }))
+                              }
+                              disabled={reportOutcomeStatus.kind === "submitting"}
+                            />
+                          </Text>
+
+                          <Text as="label">
+                            <input
+                              type="checkbox"
+                              checked={reportOutcomeForm.isExternalTrade}
+                              onChange={(event) =>
+                                setOutcomeForm((current) => ({
+                                  ...current,
+                                  [reportDecisionId]: {
+                                    ...reportOutcomeForm,
+                                    isExternalTrade: event.target.checked,
+                                  },
+                                }))
+                              }
+                              disabled={reportOutcomeStatus.kind === "submitting"}
+                            />{" "}
+                            {t("investmentCase.outcome.externalTradeCheckbox")}
+                          </Text>
+
+                          {reportOutcomeForm.isExternalTrade && (
+                            <Stack gap="inter-section">
+                              <Text as="label">
+                                {t("investmentCase.outcome.securityLabel")}
+                                <br />
+                                <input
+                                  value={reportOutcomeForm.security}
+                                  onChange={(event) =>
+                                    setOutcomeForm((current) => ({
+                                      ...current,
+                                      [reportDecisionId]: {
+                                        ...reportOutcomeForm,
+                                        security: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                  disabled={reportOutcomeStatus.kind === "submitting"}
+                                />
+                              </Text>
+                              <Text as="label">
+                                {t("investmentCase.outcome.typeLabel")}
+                                <br />
+                                <select
+                                  value={reportOutcomeForm.transactionType}
+                                  onChange={(event) =>
+                                    setOutcomeForm((current) => ({
+                                      ...current,
+                                      [reportDecisionId]: {
+                                        ...reportOutcomeForm,
+                                        transactionType: event.target.value as
+                                          | "BUY"
+                                          | "SELL"
+                                          | "ADD"
+                                          | "EXIT",
+                                      },
+                                    }))
+                                  }
+                                  disabled={reportOutcomeStatus.kind === "submitting"}
+                                >
+                                  <option value="BUY">
+                                    {t("investmentCase.decision.typeBuy")}
+                                  </option>
+                                  <option value="ADD">
+                                    {t("investmentCase.outcome.transactionTypeAdd")}
+                                  </option>
+                                  <option value="SELL">
+                                    {t("investmentCase.decision.typeSell")}
+                                  </option>
+                                  <option value="EXIT">
+                                    {t("investmentCase.outcome.transactionTypeExit")}
+                                  </option>
+                                </select>
+                              </Text>
+                              <Text as="label">
+                                {t("investmentCase.outcome.quantityLabel")}
+                                <br />
+                                <input
+                                  value={reportOutcomeForm.quantity}
+                                  onChange={(event) =>
+                                    setOutcomeForm((current) => ({
+                                      ...current,
+                                      [reportDecisionId]: {
+                                        ...reportOutcomeForm,
+                                        quantity: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                  disabled={reportOutcomeStatus.kind === "submitting"}
+                                />
+                              </Text>
+                              <Text as="label">
+                                {t("investmentCase.outcome.executionPriceLabel")}
+                                <br />
+                                <input
+                                  value={reportOutcomeForm.executionPrice}
+                                  onChange={(event) =>
+                                    setOutcomeForm((current) => ({
+                                      ...current,
+                                      [reportDecisionId]: {
+                                        ...reportOutcomeForm,
+                                        executionPrice: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                  disabled={reportOutcomeStatus.kind === "submitting"}
+                                />
+                              </Text>
+                              <Text as="label">
+                                {t("investmentCase.outcome.feesLabel")}
+                                <br />
+                                <input
+                                  value={reportOutcomeForm.fees}
+                                  onChange={(event) =>
+                                    setOutcomeForm((current) => ({
+                                      ...current,
+                                      [reportDecisionId]: {
+                                        ...reportOutcomeForm,
+                                        fees: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                  disabled={reportOutcomeStatus.kind === "submitting"}
+                                />
+                              </Text>
+                              <Text as="label">
+                                {t("investmentCase.outcome.executedAtLabel")}
+                                <br />
+                                <input
+                                  type="datetime-local"
+                                  value={reportOutcomeForm.executedAt}
+                                  onChange={(event) =>
+                                    setOutcomeForm((current) => ({
+                                      ...current,
+                                      [reportDecisionId]: {
+                                        ...reportOutcomeForm,
+                                        executedAt: event.target.value
+                                          ? new Date(event.target.value).toISOString()
+                                          : "",
+                                      },
+                                    }))
+                                  }
+                                  disabled={reportOutcomeStatus.kind === "submitting"}
+                                />
+                              </Text>
+                            </Stack>
+                          )}
+
+                          {reportOutcomeStatus.kind === "validation-error" && (
+                            <Text color="tertiary" role="alert">
+                              {reportOutcomeStatus.message}
+                            </Text>
+                          )}
+                          {reportOutcomeStatus.kind === "api-error" && (
+                            <Text color="tertiary" role="alert">
+                              {t("investmentCase.outcome.recordError", {
+                                message: reportOutcomeStatus.message,
+                              })}
+                            </Text>
+                          )}
+
+                          <div>
+                            <Button
+                              variant="primary"
+                              onClick={() => submitOutcome(reportDecisionId)}
+                              disabled={
+                                reportOutcomeStatus.kind === "submitting" ||
+                                !reportOutcomeForm.decisionId
+                              }
+                            >
+                              {reportOutcomeStatus.kind === "submitting"
+                                ? t("common.submitting")
+                                : t("common.submit")}
+                            </Button>{" "}
+                            <Button
+                              variant="tertiary"
+                              onClick={() =>
+                                setOutcomeCreateStatus((current) => ({
+                                  ...current,
+                                  [reportDecisionId]: { kind: "idle" },
+                                }))
+                              }
+                              disabled={reportOutcomeStatus.kind === "submitting"}
+                            >
+                              {t("common.cancel")}
+                            </Button>
+                          </div>
+                        </Stack>
+                      )}
+
+                      {reportOutcomeStatus.kind === "success" && (
+                        <Stack gap="inter-section">
+                          <Text>
+                            {t("investmentCase.outcome.recorded", {
+                              statement: reportOutcomeStatus.outcome.statement,
+                            })}
+                          </Text>
+                          {reportTradeApplyStatus.kind === "applying" && (
+                            <Text role="status" aria-live="polite">
+                              {t("investmentCase.outcome.updatingPortfolio")}
+                            </Text>
+                          )}
+                          {reportTradeApplyStatus.kind === "updated" && (
+                            <Text color="secondary">
+                              {t("investmentCase.outcome.updatedAutomatically")}
+                            </Text>
+                          )}
+                          {reportTradeApplyStatus.kind === "awaiting-reconciliation" && (
+                            <Text color="tertiary">
+                              {t("investmentCase.outcome.awaitingReconciliation")}
+                            </Text>
+                          )}
+                          {reportTradeApplyStatus.kind === "error" && (
+                            <Text color="tertiary" role="alert">
+                              {t("investmentCase.outcome.applyTradeError", {
+                                message: reportTradeApplyStatus.message,
+                              })}
+                            </Text>
+                          )}
+                        </Stack>
+                      )}
+                    </>
+                  )}
+
+                  <div>
+                    {reportOutcomeStatus.kind === "success" && (
+                      <>
+                        <RouterLink to="/history">
+                          {t("investmentCase.actions.openHistory")}
+                        </RouterLink>{" "}
+                      </>
+                    )}
+                    <RouterLink to={returnTo}>{t(returnLabelKey)}</RouterLink>{" "}
+                    <Button variant="tertiary" onClick={closeAction}>
+                      {t("investmentCase.actions.close")}
+                    </Button>
+                  </div>
+                </Stack>
+              )}
+            </Stack>
+          </Surface>
+        )}
+
         {caseId && status.kind === "loaded" && (
           <>
-            {/* Executive Summary (Investment Case Workspace v2, Sprint 2)
-                -- the whole "understand in ~10 seconds, no scrolling"
-                section: Atlas Assessment, Current Priority, Portfolio
-                Impact, Outstanding Issues, Discuss this Case. Renders
-                only once the analysis has loaded; a fetch failure or
-                still-loading state never blocks the rest of the page
-                (same independent-fetch pattern every other section here
-                already uses). Everything from the canonical analysis
-                sections onward, below, is unchanged from before this
-                sprint. */}
+            {/* Executive Summary (Investment Case Workspace v2, Sprint 2;
+                "Discuss this Case" removed in Workspace Migration Phase 3
+                -- Decision Log #2, no embedded Ask Atlas UI) -- the whole
+                "understand in ~10 seconds, no scrolling" section: Atlas
+                Assessment, Current Priority, Portfolio Impact,
+                Outstanding Issues. Renders only once the analysis has
+                loaded; a fetch failure or still-loading state never
+                blocks the rest of the page (same independent-fetch
+                pattern every other section here already uses). */}
             {investmentCaseAnalysis.kind === "loaded" && (
               <ExecutiveSummaryCard
                 analysis={investmentCaseAnalysis.report}
                 linkedHolding={linkedHolding}
                 alphaPortfolioStatus={alphaPortfolioStatus}
                 outstandingWorkKinds={caseOutstandingWork.map((item) => item.kind)}
-                askInput={askInput}
-                setAskInput={setAskInput}
-                askSubmitted={askSubmitted}
-                setAskSubmitted={setAskSubmitted}
                 t={t}
               />
             )}
@@ -1812,147 +2309,150 @@ export function InvestmentCasePage() {
 
             <Divider />
 
-            {/* Last activity (Sprint 4) — factual continuity only: the
-                most recent Decision, Outcome, and Trade this Case has,
-                each with a relative-time phrase computed from its own
-                real timestamp, plus the linked holding's current
-                reconciliation status. No AI interpretation, no
-                recommendation — see `deriveActivity`. */}
-            <Surface tier="primary">
-              <Stack gap="inter-section">
-                <Heading level={2}>{t("investmentCase.lastActivity.heading")}</Heading>
-                {!lastDecisionEvent && !lastOutcomeEvent && !lastTradeEvent && (
-                  <Text color="secondary">{t("investmentCase.lastActivity.noneYet")}</Text>
-                )}
-                {lastDecisionEvent && (
-                  <Text>
-                    {t("investmentCase.lastActivity.lastDecision", {
-                      type:
-                        lastDecisionEvent.decisionType &&
-                        DECISION_TYPE_KEY[lastDecisionEvent.decisionType]
-                          ? t(DECISION_TYPE_KEY[lastDecisionEvent.decisionType]!)
-                          : (lastDecisionEvent.decisionType ?? ""),
-                      relativeTime: formatRelativeTime(lastDecisionEvent.date, t),
-                    })}
-                  </Text>
-                )}
-                {lastOutcomeEvent && (
-                  <Text>
-                    {t("investmentCase.lastActivity.lastOutcome", {
-                      relativeTime: formatRelativeTime(lastOutcomeEvent.date, t),
-                    })}
-                  </Text>
-                )}
-                {lastTradeEvent && (
-                  <Text>
-                    {t("investmentCase.lastActivity.lastTrade", {
-                      type:
-                        lastTradeEvent.decisionType && DECISION_TYPE_KEY[lastTradeEvent.decisionType]
-                          ? t(DECISION_TYPE_KEY[lastTradeEvent.decisionType]!)
-                          : (lastTradeEvent.decisionType ?? ""),
-                      detail: lastTradeEvent.summary,
-                      relativeTime: formatRelativeTime(lastTradeEvent.date, t),
-                    })}
-                  </Text>
-                )}
-                {linkedHolding && linkedHolding.reconciliationStatus !== "NONE" && (
-                  <Text color={linkedHolding.reconciliationStatus === "AWAITING_RECONCILIATION" ? "tertiary" : "secondary"}>
-                    {linkedHolding.reconciliationStatus === "AWAITING_RECONCILIATION"
-                      ? t("investmentCase.lastActivity.reconciliationNeeded")
-                      : t("investmentCase.lastActivity.reconciliationOk")}
-                  </Text>
-                )}
-              </Stack>
-            </Surface>
-
-            <Divider />
-
-            {/* Decision Timeline (Sprint 4) — a simple, entirely
-                chronological presentation of this Case's own Decision/
-                Outcome/Trade events (`deriveActivity`, oldest first, no
-                advanced visualization), ending with the current status
-                already computed above (`assessmentStatusKey`) rather
-                than a duplicated, possibly-inconsistent summary. */}
-            <Surface tier="primary">
-              <Stack gap="inter-section">
-                <Heading level={2}>{t("investmentCase.timeline.heading")}</Heading>
-                {caseTimeline.length === 0 && (
-                  <Text color="secondary">{t("investmentCase.timeline.empty")}</Text>
-                )}
-                {caseTimeline.map((event) => (
-                  <div key={event.id}>
-                    <Text>
-                      {t(
-                        event.kind === "decision"
-                          ? "history.row.kindDecision"
-                          : event.kind === "outcome"
-                            ? "history.row.kindOutcome"
-                            : "history.row.kindTrade",
-                      )}
-                    </Text>
-                    <Text color="secondary" as="p">
-                      {event.decisionType &&
-                        (DECISION_TYPE_KEY[event.decisionType]
-                          ? t(DECISION_TYPE_KEY[event.decisionType]!)
-                          : event.decisionType)}
-                      {" — "}
-                      {event.summary}
-                    </Text>
-                    <Text color="tertiary" as="p">
-                      {event.date}
-                    </Text>
-                  </div>
-                ))}
-                {caseTimeline.length > 0 && (
-                  <div>
-                    <Text color="secondary">{t("investmentCase.timeline.currentStatus")}</Text>
-                    <Text as="p">{t(assessmentStatusKey)}</Text>
-                  </div>
-                )}
-              </Stack>
-            </Surface>
-
-            <Divider />
-
-            {/* Outstanding work (Sprint 4) — deterministic state checks
-                only (`deriveOutstandingWork`): no scoring, no AI, no
-                recommendation. Reconciliation is already covered by the
-                Last activity section above, so only the two
-                Decision/Outcome-chain checks are shown here to avoid
-                repeating the same fact twice. */}
-            <Surface tier="primary">
-              <Stack gap="inter-section">
-                <Heading level={2}>{t("investmentCase.outstandingWork.heading")}</Heading>
-                {caseOutstandingWork.filter((item) => item.kind !== "reconciliation-needed").length ===
-                  0 && <Text color="secondary">{t("investmentCase.outstandingWork.none")}</Text>}
-                {caseOutstandingWork
-                  .filter((item) => item.kind !== "reconciliation-needed")
-                  .map((item) => (
-                    <Text key={item.id} color="tertiary">
-                      {t(
-                        item.kind === "outcome-missing"
-                          ? "investmentCase.outstandingWork.outcomeMissing"
-                          : "investmentCase.outstandingWork.tradeMissing",
-                      )}
-                    </Text>
-                  ))}
-              </Stack>
-            </Surface>
-
-            <Divider />
-
             {/* More details — every existing Observation/Evidence/
                 Knowledge Reference/Reasoning Trace/Judgment/Decision/
                 Outcome record remains fully accessible for Alpha
                 inspection and debugging, exactly as before — just
                 collapsed by default and visually secondary. A native
                 <details> element needs no new state and no new
-                Foundation component. */}
+                Foundation component. Last Activity/Decision Timeline/
+                Outstanding Work (Sprint 4) joined this same progressive
+                disclosure in Workspace Migration Phase 3: all three are
+                secondary, operational continuity records that Executive
+                Summary's own Current Priority/Outstanding Issues facts
+                (capped, key-assessment view) already summarize near the
+                top of the page -- the exhaustive versions belong here,
+                not repeated always-visible further down. */}
             <Surface tier="primary">
               <details>
                 <summary>{t("investmentCase.moreDetails.heading")}</summary>
                 <Stack gap="inter-section">
                   <Text color="secondary">{t("investmentCase.moreDetails.subheading")}</Text>
+
+                  {/* Last activity (Sprint 4) — factual continuity only:
+                      the most recent Decision, Outcome, and Trade this
+                      Case has, each with a relative-time phrase computed
+                      from its own real timestamp, plus the linked
+                      holding's current reconciliation status. No AI
+                      interpretation, no recommendation — see
+                      `deriveActivity`. */}
+                  <Stack gap="inter-section">
+                    <Heading level={3}>{t("investmentCase.lastActivity.heading")}</Heading>
+                    {!lastDecisionEvent && !lastOutcomeEvent && !lastTradeEvent && (
+                      <Text color="secondary">{t("investmentCase.lastActivity.noneYet")}</Text>
+                    )}
+                    {lastDecisionEvent && (
+                      <Text>
+                        {t("investmentCase.lastActivity.lastDecision", {
+                          type:
+                            lastDecisionEvent.decisionType &&
+                            DECISION_TYPE_KEY[lastDecisionEvent.decisionType]
+                              ? t(DECISION_TYPE_KEY[lastDecisionEvent.decisionType]!)
+                              : (lastDecisionEvent.decisionType ?? ""),
+                          relativeTime: formatRelativeTime(lastDecisionEvent.date, t),
+                        })}
+                      </Text>
+                    )}
+                    {lastOutcomeEvent && (
+                      <Text>
+                        {t("investmentCase.lastActivity.lastOutcome", {
+                          relativeTime: formatRelativeTime(lastOutcomeEvent.date, t),
+                        })}
+                      </Text>
+                    )}
+                    {lastTradeEvent && (
+                      <Text>
+                        {t("investmentCase.lastActivity.lastTrade", {
+                          type:
+                            lastTradeEvent.decisionType && DECISION_TYPE_KEY[lastTradeEvent.decisionType]
+                              ? t(DECISION_TYPE_KEY[lastTradeEvent.decisionType]!)
+                              : (lastTradeEvent.decisionType ?? ""),
+                          detail: lastTradeEvent.summary,
+                          relativeTime: formatRelativeTime(lastTradeEvent.date, t),
+                        })}
+                      </Text>
+                    )}
+                    {linkedHolding && linkedHolding.reconciliationStatus !== "NONE" && (
+                      <Text color={linkedHolding.reconciliationStatus === "AWAITING_RECONCILIATION" ? "tertiary" : "secondary"}>
+                        {linkedHolding.reconciliationStatus === "AWAITING_RECONCILIATION"
+                          ? t("investmentCase.lastActivity.reconciliationNeeded")
+                          : t("investmentCase.lastActivity.reconciliationOk")}
+                      </Text>
+                    )}
+                  </Stack>
+
+                  <Divider tone="hairline" />
+
+                  {/* Decision Timeline (Sprint 4) — a simple, entirely
+                      chronological presentation of this Case's own
+                      Decision/Outcome/Trade events (`deriveActivity`,
+                      oldest first, no advanced visualization), ending
+                      with the current status already computed above
+                      (`assessmentStatusKey`) rather than a duplicated,
+                      possibly-inconsistent summary. */}
+                  <Stack gap="inter-section">
+                    <Heading level={3}>{t("investmentCase.timeline.heading")}</Heading>
+                    {caseTimeline.length === 0 && (
+                      <Text color="secondary">{t("investmentCase.timeline.empty")}</Text>
+                    )}
+                    {caseTimeline.map((event) => (
+                      <div key={event.id}>
+                        <Text>
+                          {t(
+                            event.kind === "decision"
+                              ? "history.row.kindDecision"
+                              : event.kind === "outcome"
+                                ? "history.row.kindOutcome"
+                                : "history.row.kindTrade",
+                          )}
+                        </Text>
+                        <Text color="secondary" as="p">
+                          {event.decisionType &&
+                            (DECISION_TYPE_KEY[event.decisionType]
+                              ? t(DECISION_TYPE_KEY[event.decisionType]!)
+                              : event.decisionType)}
+                          {" — "}
+                          {event.summary}
+                        </Text>
+                        <Text color="tertiary" as="p">
+                          {event.date}
+                        </Text>
+                      </div>
+                    ))}
+                    {caseTimeline.length > 0 && (
+                      <div>
+                        <Text color="secondary">{t("investmentCase.timeline.currentStatus")}</Text>
+                        <Text as="p">{t(assessmentStatusKey)}</Text>
+                      </div>
+                    )}
+                  </Stack>
+
+                  <Divider tone="hairline" />
+
+                  {/* Outstanding work (Sprint 4) — deterministic state
+                      checks only (`deriveOutstandingWork`): no scoring,
+                      no AI, no recommendation. Reconciliation is already
+                      covered by the Last activity section above, so only
+                      the two Decision/Outcome-chain checks are shown
+                      here to avoid repeating the same fact twice. */}
+                  <Stack gap="inter-section">
+                    <Heading level={3}>{t("investmentCase.outstandingWork.heading")}</Heading>
+                    {caseOutstandingWork.filter((item) => item.kind !== "reconciliation-needed").length ===
+                      0 && <Text color="secondary">{t("investmentCase.outstandingWork.none")}</Text>}
+                    {caseOutstandingWork
+                      .filter((item) => item.kind !== "reconciliation-needed")
+                      .map((item) => (
+                        <Text key={item.id} color="tertiary">
+                          {t(
+                            item.kind === "outcome-missing"
+                              ? "investmentCase.outstandingWork.outcomeMissing"
+                              : "investmentCase.outstandingWork.tradeMissing",
+                          )}
+                        </Text>
+                      ))}
+                  </Stack>
+
+                  <Divider tone="hairline" />
 
                   {caseId && (
               <Stack gap="inter-section">
@@ -3448,451 +3948,6 @@ export function InvestmentCasePage() {
 
             <Divider />
 
-            {/* Decision area — only actions truthful for this security's
-                current state. Alpha wires Portfolio holdings only;
-                Watchlist and Discovery are explicitly deferred (neither
-                exists yet in this application). "Trim" and "Remove" both
-                record a SELL Decision (see `ACTION_DECISION_TYPE`
-                above); "Leave as is" records a HOLD and never asks for a
-                transaction, since none occurred. */}
-            <Surface tier="primary">
-              <Stack gap="inter-section">
-                <Heading level={2}>{t("investmentCase.actions.heading")}</Heading>
-
-                {!linkedHolding && (
-                  <Text color="secondary">{t("investmentCase.actions.notLinkedNote")}</Text>
-                )}
-
-                {linkedHolding && caseLevelDecisionStatus.kind === "idle" && (
-                  <div>
-                    <Button variant="primary" onClick={() => openAction("ADD")}>
-                      {t("investmentCase.actions.addToPosition")}
-                    </Button>{" "}
-                    <Button variant="tertiary" onClick={() => openAction("TRIM")}>
-                      {t("investmentCase.actions.trimPosition")}
-                    </Button>{" "}
-                    <Button variant="tertiary" onClick={() => openAction("REMOVE")}>
-                      {t("investmentCase.actions.removePosition")}
-                    </Button>{" "}
-                    <Button variant="tertiary" onClick={() => openAction("LEAVE_AS_IS")}>
-                      {t("investmentCase.actions.leaveAsIs")}
-                    </Button>
-                  </div>
-                )}
-
-                {linkedHolding &&
-                  pendingAction &&
-                  (caseLevelDecisionStatus.kind === "creating" ||
-                    caseLevelDecisionStatus.kind === "submitting" ||
-                    caseLevelDecisionStatus.kind === "validation-error" ||
-                    caseLevelDecisionStatus.kind === "api-error") && (
-                    <Stack gap="inter-section">
-                      <Heading level={3}>{t(ACTION_LABEL_KEY[pendingAction])}</Heading>
-                      <Text as="label">
-                        {t("investmentCase.actions.reasonLabel")}
-                        <br />
-                        <textarea
-                          value={caseLevelDecisionForm.reason}
-                          onChange={(event) =>
-                            setDecisionForm((current) => ({
-                              ...current,
-                              [CASE_LEVEL_DECISION_KEY]: {
-                                ...caseLevelDecisionForm,
-                                reason: event.target.value,
-                              },
-                            }))
-                          }
-                          disabled={caseLevelDecisionStatus.kind === "submitting"}
-                        />
-                      </Text>
-                      <Text as="label">
-                        {t("investmentCase.actions.confidenceLabel")}
-                        <br />
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={caseLevelDecisionForm.confidence}
-                          onChange={(event) =>
-                            setDecisionForm((current) => ({
-                              ...current,
-                              [CASE_LEVEL_DECISION_KEY]: {
-                                ...caseLevelDecisionForm,
-                                confidence: event.target.value,
-                              },
-                            }))
-                          }
-                          disabled={caseLevelDecisionStatus.kind === "submitting"}
-                        />
-                      </Text>
-
-                      {caseLevelDecisionStatus.kind === "validation-error" && (
-                        <Text color="tertiary" role="alert">
-                          {caseLevelDecisionStatus.message}
-                        </Text>
-                      )}
-                      {caseLevelDecisionStatus.kind === "api-error" && (
-                        <Text color="tertiary" role="alert">
-                          {t("investmentCase.actions.recordError", {
-                            message: caseLevelDecisionStatus.message,
-                          })}
-                        </Text>
-                      )}
-
-                      <div>
-                        <Button
-                          variant="primary"
-                          onClick={() => submitDecision(CASE_LEVEL_DECISION_KEY)}
-                          disabled={caseLevelDecisionStatus.kind === "submitting"}
-                        >
-                          {caseLevelDecisionStatus.kind === "submitting"
-                            ? t("common.submitting")
-                            : t("investmentCase.actions.submit")}
-                        </Button>{" "}
-                        <Button
-                          variant="tertiary"
-                          onClick={closeAction}
-                          disabled={caseLevelDecisionStatus.kind === "submitting"}
-                        >
-                          {t("common.cancel")}
-                        </Button>
-                      </div>
-                    </Stack>
-                  )}
-
-                {linkedHolding && caseLevelDecisionStatus.kind === "success" && (
-                  <Stack gap="inter-section">
-                    <Text>
-                      {t("investmentCase.decision.recorded", {
-                        decisionType: DECISION_TYPE_KEY[caseLevelDecisionStatus.decision.decisionType]
-                          ? t(DECISION_TYPE_KEY[caseLevelDecisionStatus.decision.decisionType]!)
-                          : caseLevelDecisionStatus.decision.decisionType,
-                        subject: caseLevelDecisionStatus.decision.subject,
-                      })}
-                    </Text>
-
-                    {pendingAction === "LEAVE_AS_IS" && (
-                      <Text color="secondary">
-                        {t("investmentCase.actions.leaveAsIsRecordedNote")}
-                      </Text>
-                    )}
-
-                    {pendingAction !== "LEAVE_AS_IS" && reportDecisionId && (
-                      <>
-                        <Text color="secondary">
-                          {t("investmentCase.actions.decisionRecordedNote")}
-                        </Text>
-
-                        {reportOutcomeStatus.kind === "idle" && (
-                          <div>
-                            <Button
-                              variant="tertiary"
-                              onClick={() =>
-                                setOutcomeCreateStatus((current) => ({
-                                  ...current,
-                                  [reportDecisionId]: { kind: "creating" },
-                                }))
-                              }
-                            >
-                              {t("investmentCase.actions.reportTransaction")}
-                            </Button>
-                          </div>
-                        )}
-
-                        {(reportOutcomeStatus.kind === "creating" ||
-                          reportOutcomeStatus.kind === "submitting" ||
-                          reportOutcomeStatus.kind === "validation-error" ||
-                          reportOutcomeStatus.kind === "api-error") && (
-                          <Stack gap="inter-section">
-                            <Text as="label">
-                              {t("investmentCase.outcome.statementLabel")}
-                              <br />
-                              <textarea
-                                value={reportOutcomeForm.statement}
-                                onChange={(event) =>
-                                  setOutcomeForm((current) => ({
-                                    ...current,
-                                    [reportDecisionId]: {
-                                      ...reportOutcomeForm,
-                                      statement: event.target.value,
-                                    },
-                                  }))
-                                }
-                                disabled={reportOutcomeStatus.kind === "submitting"}
-                              />
-                            </Text>
-                            <Text as="label">
-                              {t("investmentCase.outcome.noteLabel")}
-                              <br />
-                              <textarea
-                                value={reportOutcomeForm.note}
-                                onChange={(event) =>
-                                  setOutcomeForm((current) => ({
-                                    ...current,
-                                    [reportDecisionId]: {
-                                      ...reportOutcomeForm,
-                                      note: event.target.value,
-                                    },
-                                  }))
-                                }
-                                disabled={reportOutcomeStatus.kind === "submitting"}
-                              />
-                            </Text>
-
-                            <Text as="label">
-                              <input
-                                type="checkbox"
-                                checked={reportOutcomeForm.isExternalTrade}
-                                onChange={(event) =>
-                                  setOutcomeForm((current) => ({
-                                    ...current,
-                                    [reportDecisionId]: {
-                                      ...reportOutcomeForm,
-                                      isExternalTrade: event.target.checked,
-                                    },
-                                  }))
-                                }
-                                disabled={reportOutcomeStatus.kind === "submitting"}
-                              />{" "}
-                              {t("investmentCase.outcome.externalTradeCheckbox")}
-                            </Text>
-
-                            {reportOutcomeForm.isExternalTrade && (
-                              <Stack gap="inter-section">
-                                <Text as="label">
-                                  {t("investmentCase.outcome.securityLabel")}
-                                  <br />
-                                  <input
-                                    value={reportOutcomeForm.security}
-                                    onChange={(event) =>
-                                      setOutcomeForm((current) => ({
-                                        ...current,
-                                        [reportDecisionId]: {
-                                          ...reportOutcomeForm,
-                                          security: event.target.value,
-                                        },
-                                      }))
-                                    }
-                                    disabled={reportOutcomeStatus.kind === "submitting"}
-                                  />
-                                </Text>
-                                <Text as="label">
-                                  {t("investmentCase.outcome.typeLabel")}
-                                  <br />
-                                  <select
-                                    value={reportOutcomeForm.transactionType}
-                                    onChange={(event) =>
-                                      setOutcomeForm((current) => ({
-                                        ...current,
-                                        [reportDecisionId]: {
-                                          ...reportOutcomeForm,
-                                          transactionType: event.target.value as
-                                            | "BUY"
-                                            | "SELL"
-                                            | "ADD"
-                                            | "EXIT",
-                                        },
-                                      }))
-                                    }
-                                    disabled={reportOutcomeStatus.kind === "submitting"}
-                                  >
-                                    <option value="BUY">
-                                      {t("investmentCase.decision.typeBuy")}
-                                    </option>
-                                    <option value="ADD">
-                                      {t("investmentCase.outcome.transactionTypeAdd")}
-                                    </option>
-                                    <option value="SELL">
-                                      {t("investmentCase.decision.typeSell")}
-                                    </option>
-                                    <option value="EXIT">
-                                      {t("investmentCase.outcome.transactionTypeExit")}
-                                    </option>
-                                  </select>
-                                </Text>
-                                <Text as="label">
-                                  {t("investmentCase.outcome.quantityLabel")}
-                                  <br />
-                                  <input
-                                    value={reportOutcomeForm.quantity}
-                                    onChange={(event) =>
-                                      setOutcomeForm((current) => ({
-                                        ...current,
-                                        [reportDecisionId]: {
-                                          ...reportOutcomeForm,
-                                          quantity: event.target.value,
-                                        },
-                                      }))
-                                    }
-                                    disabled={reportOutcomeStatus.kind === "submitting"}
-                                  />
-                                </Text>
-                                <Text as="label">
-                                  {t("investmentCase.outcome.executionPriceLabel")}
-                                  <br />
-                                  <input
-                                    value={reportOutcomeForm.executionPrice}
-                                    onChange={(event) =>
-                                      setOutcomeForm((current) => ({
-                                        ...current,
-                                        [reportDecisionId]: {
-                                          ...reportOutcomeForm,
-                                          executionPrice: event.target.value,
-                                        },
-                                      }))
-                                    }
-                                    disabled={reportOutcomeStatus.kind === "submitting"}
-                                  />
-                                </Text>
-                                <Text as="label">
-                                  {t("investmentCase.outcome.feesLabel")}
-                                  <br />
-                                  <input
-                                    value={reportOutcomeForm.fees}
-                                    onChange={(event) =>
-                                      setOutcomeForm((current) => ({
-                                        ...current,
-                                        [reportDecisionId]: {
-                                          ...reportOutcomeForm,
-                                          fees: event.target.value,
-                                        },
-                                      }))
-                                    }
-                                    disabled={reportOutcomeStatus.kind === "submitting"}
-                                  />
-                                </Text>
-                                <Text as="label">
-                                  {t("investmentCase.outcome.executedAtLabel")}
-                                  <br />
-                                  <input
-                                    type="datetime-local"
-                                    value={reportOutcomeForm.executedAt}
-                                    onChange={(event) =>
-                                      setOutcomeForm((current) => ({
-                                        ...current,
-                                        [reportDecisionId]: {
-                                          ...reportOutcomeForm,
-                                          executedAt: event.target.value
-                                            ? new Date(event.target.value).toISOString()
-                                            : "",
-                                        },
-                                      }))
-                                    }
-                                    disabled={reportOutcomeStatus.kind === "submitting"}
-                                  />
-                                </Text>
-                              </Stack>
-                            )}
-
-                            {reportOutcomeStatus.kind === "validation-error" && (
-                              <Text color="tertiary" role="alert">
-                                {reportOutcomeStatus.message}
-                              </Text>
-                            )}
-                            {reportOutcomeStatus.kind === "api-error" && (
-                              <Text color="tertiary" role="alert">
-                                {t("investmentCase.outcome.recordError", {
-                                  message: reportOutcomeStatus.message,
-                                })}
-                              </Text>
-                            )}
-
-                            <div>
-                              <Button
-                                variant="primary"
-                                onClick={() => submitOutcome(reportDecisionId)}
-                                disabled={
-                                  reportOutcomeStatus.kind === "submitting" ||
-                                  !reportOutcomeForm.decisionId
-                                }
-                              >
-                                {reportOutcomeStatus.kind === "submitting"
-                                  ? t("common.submitting")
-                                  : t("common.submit")}
-                              </Button>{" "}
-                              <Button
-                                variant="tertiary"
-                                onClick={() =>
-                                  setOutcomeCreateStatus((current) => ({
-                                    ...current,
-                                    [reportDecisionId]: { kind: "idle" },
-                                  }))
-                                }
-                                disabled={reportOutcomeStatus.kind === "submitting"}
-                              >
-                                {t("common.cancel")}
-                              </Button>
-                            </div>
-                          </Stack>
-                        )}
-
-                        {reportOutcomeStatus.kind === "success" && (
-                          <Stack gap="inter-section">
-                            <Text>
-                              {t("investmentCase.outcome.recorded", {
-                                statement: reportOutcomeStatus.outcome.statement,
-                              })}
-                            </Text>
-                            {reportTradeApplyStatus.kind === "applying" && (
-                              <Text role="status" aria-live="polite">
-                                {t("investmentCase.outcome.updatingPortfolio")}
-                              </Text>
-                            )}
-                            {reportTradeApplyStatus.kind === "updated" && (
-                              <Text color="secondary">
-                                {t("investmentCase.outcome.updatedAutomatically")}
-                              </Text>
-                            )}
-                            {reportTradeApplyStatus.kind === "awaiting-reconciliation" && (
-                              <Text color="tertiary">
-                                {t("investmentCase.outcome.awaitingReconciliation")}
-                              </Text>
-                            )}
-                            {reportTradeApplyStatus.kind === "error" && (
-                              <Text color="tertiary" role="alert">
-                                {t("investmentCase.outcome.applyTradeError", {
-                                  message: reportTradeApplyStatus.message,
-                                })}
-                              </Text>
-                            )}
-                          </Stack>
-                        )}
-                      </>
-                    )}
-
-                    {/* Decision-completion continuation (Sprint 8 audit
-                        fix #5): a bare "Close" left the investor with no
-                        stated next step right after finishing the one
-                        thing this page exists for. The origin-aware
-                        return link (same computed value as the header's
-                        own return link) is always offered; "Open
-                        History" is added only once a trade has actually
-                        been reported, since that's the moment the full
-                        Decision → Outcome → Trade loop completes and
-                        seeing it reflected in the permanent record
-                        becomes the natural next step. Close remains, for
-                        an investor who wants to take another action on
-                        this same Case without leaving the page. */}
-                    <div>
-                      {reportOutcomeStatus.kind === "success" && (
-                        <>
-                          <RouterLink to="/history">
-                            {t("investmentCase.actions.openHistory")}
-                          </RouterLink>{" "}
-                        </>
-                      )}
-                      <RouterLink to={returnTo}>{t(returnLabelKey)}</RouterLink>{" "}
-                      <Button variant="tertiary" onClick={closeAction}>
-                        {t("investmentCase.actions.close")}
-                      </Button>
-                    </div>
-                  </Stack>
-                )}
-              </Stack>
-            </Surface>
-
-            <Divider />
-
             {/* Continuity footer — worded so the application never claims
                 active intelligence that isn't implemented yet. */}
             <Surface tier="primary">
@@ -4008,23 +4063,6 @@ function assessmentSentence(point: AssessmentPoint, t: Translate): string {
   }
 }
 
-function discussText(kind: CaseDiscussionKind, convictionLevel: AnalysisConvictionLevel, t: Translate): string {
-  switch (kind) {
-    case "valuationVsConviction":
-      return t("investmentCase.executiveSummary.discuss.valuationVsConviction", {
-        conviction: t(CONVICTION_LEVEL_KEY[convictionLevel]),
-      });
-    case "thesisStale":
-      return t("investmentCase.executiveSummary.discuss.thesisStale");
-    case "evidenceGap":
-      return t("investmentCase.executiveSummary.discuss.evidenceGap");
-    case "outstandingWork":
-      return t("investmentCase.executiveSummary.discuss.outstandingWork");
-    case "generic":
-      return t("investmentCase.executiveSummary.discuss.generic");
-  }
-}
-
 /**
  * Executive Summary (Investment Case Workspace v2, Sprint 2) -- the new
  * top section this sprint adds, immediately below the existing page
@@ -4051,24 +4089,14 @@ function ExecutiveSummaryCard({
   linkedHolding,
   alphaPortfolioStatus,
   outstandingWorkKinds,
-  askInput,
-  setAskInput,
-  askSubmitted,
-  setAskSubmitted,
   t,
 }: {
   analysis: InvestmentCaseAnalysisView;
   linkedHolding: AlphaHoldingView | null;
   alphaPortfolioStatus: AlphaPortfolioStatus;
   outstandingWorkKinds: OutstandingWorkKind[];
-  askInput: string;
-  setAskInput: (value: string) => void;
-  askSubmitted: boolean;
-  setAskSubmitted: (value: boolean) => void;
   t: Translate;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
   const fcfYield = analysis.valuation.findings.find((f) => f.kind === "fcf_yield_relative") ?? null;
   const valuationStatus = fcfYield ? fcfYield.status : null;
   const mostSevereRisk = findMostSevereRisk(
@@ -4098,15 +4126,6 @@ function ExecutiveSummaryCard({
     evidenceGap,
   });
 
-  const discussionKind = deriveCaseDiscussionKind({
-    convictionLevel: analysis.conviction.level,
-    valuationStatus,
-    isThesisStale: analysis.isThesisStale,
-    evidenceGap,
-    hasOutstandingWork,
-  });
-  const discuss = discussText(discussionKind, analysis.conviction.level, t);
-
   const holdings = alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.holdings : [];
   const largestHolding = holdings.reduce<AlphaHoldingView | null>(
     (max, h) => (max === null || h.weightPercent > max.weightPercent ? h : max),
@@ -4116,17 +4135,6 @@ function ExecutiveSummaryCard({
     linkedHolding !== null && largestHolding !== null && largestHolding.ticker === linkedHolding.ticker;
   const cashWeightPercent = alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.cashWeightPercent : null;
   const concentrationLevel = alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.concentrationLevel : null;
-
-  function fillAsk() {
-    setAskInput(discuss);
-    setAskSubmitted(false);
-    inputRef.current?.focus();
-  }
-
-  function handleAsk() {
-    if (askInput.trim() === "") return;
-    setAskSubmitted(true);
-  }
 
   return (
     <Surface tier="primary">
@@ -4230,44 +4238,6 @@ function ExecutiveSummaryCard({
           </>
         )}
 
-        <Divider tone="hairline" />
-
-        <div data-trace-source="discuss">
-          <Stack gap="metadata">
-            <Text color="secondary" as="p">
-              {t("investmentCase.executiveSummary.discuss.heading")}
-            </Text>
-            <Text as="p">{discuss}</Text>
-            <div>
-              <Button variant="tertiary" onClick={fillAsk}>
-                {t("investmentCase.executiveSummary.discuss.button")}
-              </Button>
-            </div>
-            <Inline gap="row">
-              <input
-                ref={inputRef}
-                value={askInput}
-                placeholder={t("investmentCase.executiveSummary.askPlaceholder")}
-                onChange={(event) => {
-                  setAskInput(event.target.value);
-                  setAskSubmitted(false);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") handleAsk();
-                }}
-                style={{ flex: 1 }}
-              />
-              <Button variant="primary" onClick={handleAsk}>
-                {t("investmentCase.executiveSummary.discuss.askButton")}
-              </Button>
-            </Inline>
-            {askSubmitted && (
-              <Text color="tertiary" as="p">
-                {t("portfolio.discussions.comingSoonNote")}
-              </Text>
-            )}
-          </Stack>
-        </div>
       </Stack>
     </Surface>
   );
@@ -4308,10 +4278,11 @@ function ExecutiveSummaryCard({
  *   (moved from the former standalone "Investor Observations" card),
  *   Missing Evidence and Open Questions (`analysis.openQuestions` split
  *   by kind -- a presentational grouping over the exact same six
- *   existing `OpenQuestionKind` values, never a new domain concept),
- *   and Recommendation (moved here as the closing statement, since its
- *   withheld-reason is itself a statement about evidence/analysis
- *   completeness).
+ *   existing `OpenQuestionKind` values, never a new domain concept).
+ *   Decision Support (the evidence-support badge/statement) no longer
+ *   closes this section -- Workspace Migration Phase 3 (approved §13)
+ *   relocated it to the page header, directly beneath Atlas's other
+ *   assessment facts; it is never rendered in both places.
  *
  * The former standalone "compact header badges" card (Conviction/
  * Valuation/Evidence one-liner, added in ATLAS-029 Phase 9 before
@@ -5016,23 +4987,6 @@ function EvidenceSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView
           </>
         )}
 
-        <Divider tone="hairline" />
-
-        {/* Decision Support (Workspace Migration Phase 1, Decision Log
-            #1) -- Atlas's own evidence-support statement, never an
-            imperative Buy/Add/Trim command. `analysis.recommendation
-            .level` is the only field this section branches on; the raw
-            backend RecommendationDirection vocabulary never reaches
-            this component at all (see `atlas.alpha.decision_support`'s
-            own module docstring). */}
-        <Stack gap="intra-section">
-          <Heading level={3}>{t("investmentCase.analysis.recommendation.heading")}</Heading>
-          <StatusBadge
-            label={t(DECISION_SUPPORT_BADGE_KEY[analysis.recommendation.level])}
-            tone={DECISION_SUPPORT_TONE[analysis.recommendation.level]}
-          />
-          <Text as="p">{t(DECISION_SUPPORT_STATEMENT_KEY[analysis.recommendation.level])}</Text>
-        </Stack>
       </Stack>
     </Surface>
   );

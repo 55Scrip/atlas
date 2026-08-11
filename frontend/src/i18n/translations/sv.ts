@@ -660,6 +660,8 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.moreDetails.subheading": "Underliggande dokumentation",
 
   // ---------- investment case v2: decision actions ----------
+  "investmentCase.actions.recordDecisionTrigger": "Registrera ett beslut",
+  "investmentCase.actions.outcomeAwaitingNudge": "{{count}} beslut väntar på ett utfall",
   "investmentCase.actions.heading": "Vad vill du göra?",
   "investmentCase.actions.addToPosition": "Öka position",
   "investmentCase.actions.trimPosition": "Minska position",
