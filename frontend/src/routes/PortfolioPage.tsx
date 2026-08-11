@@ -27,6 +27,7 @@ import {
   type ReviewPriority,
 } from "../status/statusTone";
 import { RISK_STATUS_KEY, type AnalysisRiskStatus } from "../changeIntelligence/describeChange";
+import { describePortfolioAction, SEVERITY_EMOJI, SEVERITY_LABEL_KEY } from "../portfolio/describePortfolioAction";
 
 /**
  * `concentrationLevel` is an internal enum value (`ConcentrationLevel.LOW`
@@ -208,39 +209,6 @@ interface PortfolioIntelligenceView {
   portfolioFit: PortfolioFitStatusView;
 }
 
-
-const KEY_FINDING_KEY: Record<KeyFindingKind, TranslationKey> = {
-  high_concentration: "portfolio.intelligence.keyFindings.high_concentration",
-  elevated_concentration: "portfolio.intelligence.keyFindings.elevated_concentration",
-  large_unallocated: "portfolio.intelligence.keyFindings.large_unallocated",
-  multiple_missing_cases: "portfolio.intelligence.keyFindings.multiple_missing_cases",
-  multiple_stale_cases: "portfolio.intelligence.keyFindings.multiple_stale_cases",
-  multiple_evidence_gaps: "portfolio.intelligence.keyFindings.multiple_evidence_gaps",
-};
-
-/**
- * Action Center (ATLAS UI Sprint) — ticker-free reason phrasings for
- * `AttentionCategory` (the same backend enum `ReviewQueueItem
- * .topCategory` already carries): Action Center's own title line
- * already names the ticker ("Review {ticker}"), so this surface needs
- * the reason on its own, without repeating it a second time in the
- * same sentence.
- */
-const ACTION_CENTER_REASON_KEY: Record<AttentionCategory, TranslationKey> = {
-  MISSING_CASE: "portfolio.actionCenter.reason.missingCase",
-  DECISION_WITHOUT_OUTCOME: "portfolio.actionCenter.reason.decisionWithoutOutcome",
-  OUTCOME_WITHOUT_EXECUTION: "portfolio.actionCenter.reason.outcomeWithoutExecution",
-  AWAITING_RECONCILIATION: "portfolio.actionCenter.reason.awaitingReconciliation",
-  VERY_OLD_CASE: "portfolio.actionCenter.reason.veryOldCase",
-  OBSERVATION_WITHOUT_DECISION: "portfolio.actionCenter.reason.observationWithoutDecision",
-};
-
-const SEVERITY_EMOJI: Record<ActionSeverity, string> = { highest: "🔴", high: "🟠", medium: "🟡" };
-const SEVERITY_LABEL_KEY: Record<ActionSeverity, TranslationKey> = {
-  highest: "portfolio.actionCenter.severity.highest",
-  high: "portfolio.actionCenter.severity.high",
-  medium: "portfolio.actionCenter.severity.medium",
-};
 
 /**
  * Portfolio Workspace v3: lowered from 3 (ATLAS UI Sprint) to 2 per
@@ -1060,26 +1028,7 @@ function ActionCenterRow({
   openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  let title: string;
-  let reason: string;
-  switch (action.kind) {
-    case "workflow":
-      title = t("portfolio.actionCenter.reviewTitle", { ticker: action.ticker ?? "" });
-      reason = t(ACTION_CENTER_REASON_KEY[action.reasonCategory!], { days: action.ageDays ?? 0 });
-      break;
-    case "evidence":
-      title = t("portfolio.actionCenter.completeEvidenceTitle", { ticker: action.ticker ?? "" });
-      reason = t("portfolio.actionCenter.evidenceReason");
-      break;
-    case "concentration":
-      title = t("portfolio.actionCenter.concentrationTitle", { ticker: action.ticker ?? "" });
-      reason = t(KEY_FINDING_KEY[action.concentrationFindingKind!], { tickers: action.ticker ?? "" });
-      break;
-    case "allocation":
-      title = t("portfolio.actionCenter.allocationTitle");
-      reason = t("portfolio.actionCenter.allocationReason", { percent: action.unallocatedPercent ?? 0 });
-      break;
-  }
+  const { title, reason } = describePortfolioAction(action, t);
 
   return (
     <Stack gap="metadata">

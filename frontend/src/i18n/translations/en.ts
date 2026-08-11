@@ -846,10 +846,22 @@ export const en = {
   "investmentCase.origin.dailyBrief": "Opened from Daily Brief",
   "investmentCase.origin.discovery": "Opened from Discovery",
 
-  // ---------- daily brief v1 (Investment Case Change Intelligence distribution) ----------
+  // ---------- daily brief v2 (Workspace Migration Phase 4) ----------
   "dailyBrief.title": "Daily Brief",
   "dailyBrief.entry.unknownCompany": "Unknown company",
   "dailyBrief.entry.openInvestmentCase": "Open Investment Case",
+  "dailyBrief.priorities.heading": "Today's Priorities",
+  "dailyBrief.priorities.empty": "Nothing needs your attention right now.",
+  "dailyBrief.priorities.reviewButton": "Review",
+  "dailyBrief.priorities.goToPortfolioButton": "Go to Portfolio",
+  "dailyBrief.portfolioChanges.heading": "Portfolio Changes",
+  "dailyBrief.portfolioChanges.empty": "No portfolio holdings have a meaningful change to review.",
+  "dailyBrief.watchlistUpdates.heading": "Watchlist Updates",
+  "dailyBrief.watchlistUpdates.empty": "No watchlist entries have a meaningful change to review.",
+  "dailyBrief.opportunities.heading": "Opportunities",
+  "dailyBrief.opportunities.notYet": "Atlas does not yet generate market opportunities in this Alpha.",
+  "dailyBrief.upcoming.heading": "Upcoming",
+  "dailyBrief.upcoming.notYet": "Atlas does not yet track upcoming events or market context in this Alpha.",
 
   // ---------- discovery v1 implementation sprint ----------
   "discovery.title": "Discovery",

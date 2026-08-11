@@ -839,10 +839,22 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.origin.dailyBrief": "Öppnad från Dagens genomgång",
   "investmentCase.origin.discovery": "Öppnad från Discovery",
 
-  // ---------- daily brief v1 (Investment Case Change Intelligence distribution) ----------
+  // ---------- daily brief v2 (Workspace Migration Phase 4) ----------
   "dailyBrief.title": "Dagens genomgång",
   "dailyBrief.entry.unknownCompany": "Okänt företag",
   "dailyBrief.entry.openInvestmentCase": "Öppna Investment Case",
+  "dailyBrief.priorities.heading": "Dagens prioriteringar",
+  "dailyBrief.priorities.empty": "Inget behöver din uppmärksamhet just nu.",
+  "dailyBrief.priorities.reviewButton": "Granska",
+  "dailyBrief.priorities.goToPortfolioButton": "Gå till portföljen",
+  "dailyBrief.portfolioChanges.heading": "Portföljförändringar",
+  "dailyBrief.portfolioChanges.empty": "Inga portföljinnehav har någon relevant förändring att granska.",
+  "dailyBrief.watchlistUpdates.heading": "Bevakningslista – uppdateringar",
+  "dailyBrief.watchlistUpdates.empty": "Inga bevakade bolag har någon relevant förändring att granska.",
+  "dailyBrief.opportunities.heading": "Möjligheter",
+  "dailyBrief.opportunities.notYet": "Atlas genererar ännu inte några marknadsmöjligheter i den här Alpha-versionen.",
+  "dailyBrief.upcoming.heading": "Kommande",
+  "dailyBrief.upcoming.notYet": "Atlas följer ännu inte kommande händelser eller marknadskontext i den här Alpha-versionen.",
 
   // ---------- discovery v1 implementation sprint ----------
   "discovery.title": "Discovery",
