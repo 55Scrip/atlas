@@ -1,24 +1,17 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { Button, Container, Divider, Heading, Inline, Stack, StatusBadge, Surface, Text } from "../foundation";
+import { Button, Container, Divider, Heading, Inline, Link, Stack, StatusBadge, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   derivePortfolioActions,
-  type ActionSeverity,
   type PortfolioAction,
 } from "../portfolio/derivePortfolioActions";
 import {
-  ANALYSIS_COVERAGE_LEVEL_KEY,
-  ANALYSIS_COVERAGE_TONE,
-  CONFIDENCE_KEY,
-  CONFIDENCE_TONE,
   CONVICTION_LEVEL_KEY,
   CONVICTION_TONE,
   DECISION_SUPPORT_BADGE_KEY,
   DECISION_SUPPORT_TONE,
-  REVIEW_PRIORITY_KEY,
-  REVIEW_PRIORITY_TONE,
   RISK_STATUS_TONE,
   type AnalysisCoverageLevel,
   type ConvictionLevel,
@@ -27,7 +20,7 @@ import {
   type ReviewPriority,
 } from "../status/statusTone";
 import { RISK_STATUS_KEY, type AnalysisRiskStatus } from "../changeIntelligence/describeChange";
-import { describePortfolioAction, SEVERITY_EMOJI, SEVERITY_LABEL_KEY } from "../portfolio/describePortfolioAction";
+import { describePortfolioAction, SEVERITY_EMOJI } from "../portfolio/describePortfolioAction";
 
 /**
  * `concentrationLevel` is an internal enum value (`ConcentrationLevel.LOW`
@@ -192,6 +185,32 @@ interface MissingEvidenceItemView {
   reference: string | null;
 }
 
+/** Figma-fidelity rebuild -- the Key Findings panel's enum-to-copy map.
+ * `describePortfolioAction.ts`'s own concentration-action reason points
+ * at the same two `portfolio.intelligence.keyFindings.*` translation
+ * keys directly (that module can't import this route file), so both
+ * surfaces render identical concentration wording without a route-to-
+ * shared-module dependency inversion. */
+const KEY_FINDING_KEY: Record<KeyFindingKind, TranslationKey> = {
+  high_concentration: "portfolio.intelligence.keyFindings.high_concentration",
+  elevated_concentration: "portfolio.intelligence.keyFindings.elevated_concentration",
+  large_unallocated: "portfolio.intelligence.keyFindings.large_unallocated",
+  multiple_missing_cases: "portfolio.intelligence.keyFindings.multiple_missing_cases",
+  multiple_stale_cases: "portfolio.intelligence.keyFindings.multiple_stale_cases",
+  multiple_evidence_gaps: "portfolio.intelligence.keyFindings.multiple_evidence_gaps",
+};
+
+/** Figma-fidelity rebuild -- ticker-bearing reason phrasings for the
+ * Risk Signals panel, the same real `RiskSignalKind` enum
+ * `/alpha-portfolio/intelligence` already returns. */
+const RISK_SIGNAL_KEY: Record<RiskSignalKind, TranslationKey> = {
+  high_concentration: "portfolio.riskSignals.high_concentration",
+  missing_case: "portfolio.riskSignals.missing_case",
+  missing_evidence: "portfolio.riskSignals.missing_evidence",
+  awaiting_reconciliation: "portfolio.riskSignals.awaiting_reconciliation",
+  stale_review: "portfolio.riskSignals.stale_review",
+};
+
 interface PortfolioFitStatusView {
   available: boolean;
   reason: string | null;
@@ -327,21 +346,6 @@ interface PortfolioCockpitView {
   unresolvedHoldings: CockpitUnresolvedHoldingView[];
   priorityReviewCount: number;
 }
-
-/**
- * Holdings Table (Portfolio Workspace v3) -- the same 🔴/🟠/🟡 vocabulary
- * Today's Priorities already established, reused for row Status rather
- * than inventing a second color language. `standard_review` and `none`
- * both read as "nothing urgent" at a glance -- Atlas draws attention
- * only to what actually needs it, never grades a holding as
- * additionally "good."
- */
-const REVIEW_PRIORITY_EMOJI: Record<CockpitReviewPriority, string> = {
-  priority_review: "🔴",
-  evidence_review: "🟠",
-  standard_review: "🟡",
-  none: "",
-};
 
 type Status =
   | { kind: "loading" }
@@ -735,15 +739,17 @@ export function PortfolioPage() {
 
         {status.kind === "loaded" && status.view.exists && status.view.holdings.length > 0 && (
           <Stack gap="inter-section">
-            <PortfolioSummaryBar
+            <PortfolioHeaderBar
               view={status.view}
+              unallocatedPercent={unallocatedPercent}
+              cockpit={cockpit}
               statusReport={
                 portfolioStatus.kind === "loaded" && portfolioStatus.report.exists ? portfolioStatus.report : null
               }
               t={t}
             />
 
-            <ActionCenterCard
+            <PriorityStrip
               statusReport={
                 portfolioStatus.kind === "loaded" && portfolioStatus.report.exists ? portfolioStatus.report : null
               }
@@ -864,6 +870,18 @@ export function PortfolioPage() {
               submitUpdateHoldingWeight={submitUpdateHoldingWeight}
               t={t}
             />
+
+            <PortfolioIntelligencePanels
+              statusReport={
+                portfolioStatus.kind === "loaded" && portfolioStatus.report.exists ? portfolioStatus.report : null
+              }
+              intelligenceReport={
+                portfolioIntelligence.kind === "loaded" && portfolioIntelligence.report.exists
+                  ? portfolioIntelligence.report
+                  : null
+              }
+              t={t}
+            />
           </Stack>
         )}
       </Stack>
@@ -872,89 +890,84 @@ export function PortfolioPage() {
 }
 
 /**
- * Portfolio Summary (Portfolio Workspace v3) -- compact by design, per
- * this sprint's explicit "very compact... no large cards" instruction:
- * exactly the four figures the sprint's own example names (Holdings,
- * Cash, Holdings requiring attention, Overall portfolio health), each
- * read verbatim from data this page already fetches. "Holdings
- * requiring attention" reuses `reviewQueue.length` -- the same already-
- * deduplicated-per-ticker count Today's Priorities is built from, never
- * a second count computed a different way. "Overall portfolio health"
- * reuses the existing `PortfolioHealthMetrics.holdings_with_case_count`
- * coverage figure rather than synthesizing a new Good/Bad score Atlas
- * doesn't compute anywhere -- a literal, already-real fact standing in
- * for the sprint's more general phrase. Unallocated%/Concentration (on
- * the previous, larger summary card) move to the Holdings table below,
- * where they sit next to the holdings they describe; Investment
- * Cases/Open Decisions/Pending Outcomes/Pending Executions are no
- * longer repeated here since Today's Priorities and the Holdings table
- * now surface that same information as concrete, actionable rows
- * instead of an abstract count.
- *
- * One additional, conditional line: `health.unknownInstrumentTickers`
- * (a real, already-fetched data-quality signal -- tickers whose format
- * looked structurally wrong at import) is not folded into any of the
- * four figures above, since it isn't a count of holdings *needing
- * review* so much as a warning that Atlas may have misread an
- * instrument entirely. It renders only when that array is non-empty --
- * compact, low-noise, no separate card -- and stays silent otherwise.
+ * Figma-fidelity rebuild -- the header stat row directly under the page
+ * title (`atlas-portfolio-redesign`): Holdings / Cash / Unallocated /
+ * Expected Return / Action Required, no card chrome, no "Portfolio
+ * Summary" heading (the Figma screen has none). "Action Required" reads
+ * `PortfolioCockpitView.priorityReviewCount` -- an already-real,
+ * dedicated count of holdings in `priority_review` state, not a second
+ * count recomputed a different way from the priority strip's own
+ * action list. Expected Return has no real source (scenario valuation
+ * remains structurally locked -- `UnavailableCapability
+ * (NOT_YET_IMPLEMENTED)`) and renders the same literal "—" every other
+ * missing value on this page uses, never a fabricated percentage.
  */
-function PortfolioSummaryBar({
+function PortfolioHeaderBar({
   view,
+  unallocatedPercent,
+  cockpit,
   statusReport,
   t,
 }: {
   view: PortfolioView;
+  unallocatedPercent: number | null;
+  cockpit: PortfolioCockpitFetchStatus;
   statusReport: PortfolioStatusView | null;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  const needsAttention = statusReport?.reviewQueue.length ?? null;
-  const health = statusReport?.health ?? null;
+  const actionRequired = cockpit.kind === "loaded" ? cockpit.report.priorityReviewCount : null;
+  const unknownInstrumentTickers = statusReport?.health?.unknownInstrumentTickers ?? [];
 
   return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("portfolio.summary.heading")}</Heading>
-        <Inline gap="row" wrap>
-          <Text color="secondary" as="p">
-            {t("portfolio.summary.holdings")}: {view.numberOfHoldings}
-          </Text>
-          <Text color="secondary" as="p">
-            {t("portfolio.summary.cash")}:{" "}
-            {view.cashWeightPercent !== null ? `${view.cashWeightPercent}%` : t("portfolio.summary.noLargestPosition")}
-          </Text>
-          <Text color="secondary" as="p">
-            {t("portfolio.summary.needsAttention")}:{" "}
-            {needsAttention !== null ? needsAttention : t("portfolio.summary.noLargestPosition")}
-          </Text>
-          {health && (
-            <Text color="secondary" as="p">
-              {t("portfolio.summary.health")}:{" "}
-              {t("portfolio.health.coverage", { withCase: health.holdingsWithCaseCount, total: health.holdingsCount })}
-            </Text>
-          )}
-        </Inline>
-        {health && health.unknownInstrumentTickers.length > 0 && (
+    <Stack gap="metadata">
+      <Inline gap="row" wrap>
+        <Text color="secondary" as="p">
+          {view.numberOfHoldings} {t("portfolio.header.holdings")}
+        </Text>
+        <Text color="secondary" as="p">
+          {t("portfolio.header.cash")}:{" "}
+          {view.cashWeightPercent !== null ? `${view.cashWeightPercent}%` : t("portfolio.header.notAvailable")}
+        </Text>
+        <Text color="secondary" as="p">
+          {t("portfolio.header.unallocated")}:{" "}
+          {unallocatedPercent !== null
+            ? `${Math.round(unallocatedPercent * 100) / 100}%`
+            : t("portfolio.header.notAvailable")}
+        </Text>
+        <Text color="secondary" as="p">
+          {t("portfolio.header.expectedReturn")}: {t("portfolio.header.notAvailable")}
+        </Text>
+        {actionRequired !== null && actionRequired > 0 && (
           <Text color="tertiary" as="p">
-            {t("portfolio.summary.unknownInstrumentsWarning", { count: health.unknownInstrumentTickers.length })}
+            {t("portfolio.header.actionRequired", { count: actionRequired })}
           </Text>
         )}
-      </Stack>
-    </Surface>
+      </Inline>
+      {unknownInstrumentTickers.length > 0 && (
+        <Text color="tertiary" as="p">
+          {t("portfolio.summary.unknownInstrumentsWarning", { count: unknownInstrumentTickers.length })}
+        </Text>
+      )}
+    </Stack>
   );
 }
 
+const PRIORITY_STRIP_INITIAL_COUNT = 4;
+
 /**
- * Action Center -- the page's own answer to "what should I work on
- * first?", replacing the four previously-separate, overlapping lists
- * (Needs Attention, Consider, Risk Signals, Missing Evidence) that
- * could each name the same holding independently. Groups already-
- * fetched `reviewQueue`/`missingEvidence`/`keyFindings` via
- * `derivePortfolioActions` into a deduplicated, three-tier, capped list
- * -- "surface only the highest-value actions," per the sprint's own
- * rule, not everything Atlas knows.
+ * Figma-fidelity rebuild -- a single dense, wrapped line (dot + title +
+ * reason per item, line-wrap doing the separating) plus a "View all N"
+ * expand toggle, replacing the previous grouped-by-severity-tier
+ * stacked cards: the approved Figma screen shows one flat, ordered
+ * list, never three headed groups. `derivePortfolioActions` already
+ * returns actions most-severe-first, so slicing its output is the
+ * entire "which N to show" decision -- no new ranking logic. Each item
+ * with a real ticker is itself the click target (Figma shows no
+ * separate per-item button in the strip, only "View all N"); items
+ * with no ticker (the portfolio-level allocation action) render as
+ * plain text, matching Figma's own last strip item.
  */
-function ActionCenterCard({
+function PriorityStrip({
   statusReport,
   intelligenceReport,
   openInvestmentCase,
@@ -965,6 +978,8 @@ function ActionCenterCard({
   openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
+  const [expanded, setExpanded] = useState(false);
+
   const allActions = derivePortfolioActions(
     statusReport?.reviewQueue ?? [],
     intelligenceReport?.missingEvidence.map((item) => ({ ticker: item.ticker, caseId: item.caseId })) ?? [],
@@ -977,49 +992,33 @@ function ActionCenterCard({
     })) ?? [],
   );
 
-  // Capped *per severity tier*, not with one flat cap across all of
-  // them -- a portfolio with two dozen High-priority evidence gaps
-  // would otherwise crowd out every Medium-priority (e.g. portfolio
-  // allocation) action entirely, even though both tiers are real and
-  // both are meant to stay visible per the sprint's own three-tier
-  // example.
-  const grouped: Record<ActionSeverity, PortfolioAction[]> = { highest: [], high: [], medium: [] };
-  for (const action of allActions) {
-    if (grouped[action.severity].length < MAX_ACTIONS_PER_SEVERITY) {
-      grouped[action.severity].push(action);
-    }
+  if (allActions.length === 0) {
+    return <Text color="secondary">{t("portfolio.priorityStrip.empty")}</Text>;
   }
-  const actions = [...grouped.highest, ...grouped.high, ...grouped.medium];
+
+  const visible = expanded ? allActions : allActions.slice(0, PRIORITY_STRIP_INITIAL_COUNT);
+  const hiddenCount = allActions.length - visible.length;
 
   return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("portfolio.actionCenter.heading")}</Heading>
-        {actions.length === 0 && <Text color="secondary">{t("portfolio.actionCenter.empty")}</Text>}
-        {(["highest", "high", "medium"] as const).map(
-          (severity) =>
-            grouped[severity].length > 0 && (
-              <Stack key={severity} gap="intra-section">
-                <Heading level={3}>
-                  {SEVERITY_EMOJI[severity]} {t(SEVERITY_LABEL_KEY[severity])}
-                </Heading>
-                {grouped[severity].map((action) => (
-                  <ActionCenterRow
-                    key={action.id}
-                    action={action}
-                    openInvestmentCase={openInvestmentCase}
-                    t={t}
-                  />
-                ))}
-              </Stack>
-            ),
-        )}
-      </Stack>
-    </Surface>
+    <Inline gap="row" wrap>
+      {visible.map((action) => (
+        <PriorityStripItem key={action.id} action={action} openInvestmentCase={openInvestmentCase} t={t} />
+      ))}
+      {hiddenCount > 0 && (
+        <Button variant="tertiary" onClick={() => setExpanded(true)}>
+          {t("portfolio.priorityStrip.viewAll", { count: allActions.length })}
+        </Button>
+      )}
+      {expanded && allActions.length > PRIORITY_STRIP_INITIAL_COUNT && (
+        <Button variant="tertiary" onClick={() => setExpanded(false)}>
+          {t("portfolio.priorityStrip.viewFewer")}
+        </Button>
+      )}
+    </Inline>
   );
 }
 
-function ActionCenterRow({
+function PriorityStripItem({
   action,
   openInvestmentCase,
   t,
@@ -1029,76 +1028,58 @@ function ActionCenterRow({
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   const { title, reason } = describePortfolioAction(action, t);
+  const label = `${SEVERITY_EMOJI[action.severity]} ${title} — ${reason}`;
+
+  if (!action.ticker) {
+    return <Text as="span">{label}</Text>;
+  }
 
   return (
-    <Stack gap="metadata">
-      <Text as="p">{title}</Text>
-      <Text color="secondary" as="p">
-        {reason}
-      </Text>
-      {action.itemCount > 0 && (
-        <Text color="tertiary" as="p">
-          {t("portfolio.actionCenter.itemCount", { count: action.itemCount })}
-        </Text>
-      )}
-      {action.ticker && (
-        <div>
-          <Button variant="primary" onClick={() => openInvestmentCase(action.ticker!, action.caseId)}>
-            {action.caseId ? t("portfolio.actionCenter.reviewButton") : t("portfolio.actionCenter.openCaseButton")}
-          </Button>
-        </div>
-      )}
-      <Divider tone="hairline" />
-    </Stack>
+    <Link
+      href="#"
+      onClick={(event) => {
+        event.preventDefault();
+        openInvestmentCase(action.ticker!, action.caseId);
+      }}
+    >
+      {label}
+    </Link>
   );
 }
 
+/** Figma-fidelity rebuild -- rows shown before "View All Holdings"
+ * expands the table, matching the approved screen's own "Showing 15 of
+ * 25" / "View All Holdings (25)" pattern. Purely a display cap over
+ * data already fully fetched -- no second request, no backend change. */
+const HOLDINGS_PAGE_SIZE = 15;
+
 /**
- * Holdings Table (Portfolio Workspace v3) -- the dominant, primary
- * workspace of the page, immediately following Today's Priorities per
- * this sprint's explicit new hierarchy. Columns follow the sprint's own
- * suggested list (Status, Ticker, Weight, Conviction, Evidence,
- * [Priority], [Thesis]) with two deliberate, explicitly-justified
- * substitutions for the last two:
+ * Holdings Table (Figma-fidelity rebuild) -- columns now match the
+ * approved screen's real target set exactly: Ticker / Weight /
+ * Conviction / Fit / Exp. Return / Upside / Downside / Risk / Action.
+ * The previous Status/Analysis Coverage/Evidence/Priority/Thesis
+ * columns are gone, not hidden -- Analysis Coverage in particular stays
+ * reachable on the Investment Case page (its own "Evidence Quality"
+ * section), so dropping it here is a placement change, not a loss of
+ * the underlying distinction (Migration Review §9's regression note).
  *
- * - **"Priority" stays "Priority," and a new "Action" column was added
- *   alongside it (Workspace Migration Phase 1, Migration Review §11.1),
- *   not a replacement.** The two answer different questions: Priority
- *   (`HoldingAttention.priority`, none/standard/evidence/priority
- *   review) is "how urgently should I look at this," Action
- *   (`atlas.alpha.decision_support`'s evidence-support badge, backed by
- *   the real `ComputedDirectionalRecommendation`/`RecommendationWithheld`
- *   union) is "what does current evidence say about this position."
- *   Never an imperative Buy/Add/Trim command (Decision Log #1) -- the
- *   badge is always one of the seven `DecisionSupportLevel` states.
- * - **"Thesis" instead of "Last updated."** No per-holding timestamp is
- *   exposed by any endpoint this page fetches (`generatedAt` on the
- *   Cockpit report is portfolio-wide, not per row) -- fabricating one
- *   would violate this sprint's own "reuse existing data" constraint.
- *   `isThesisStale` is the real, already-computed per-holding freshness
- *   signal this data actually has, so that's what's shown.
- *
- * Valuation/Risk/Growth/Capital Allocation (shown on the pre-v3 page)
- * are dropped from the row, not lost: they already render in full on
- * the Investment Case page (`investmentCase.analysis.*`), one click
- * away -- the "Portfolio is overview, Investment Case is depth"
- * principle this codebase has followed since ATLAS-028, and this
- * sprint's own "Details on Demand" principle names directly.
+ * Fit/Exp. Return/Upside/Downside have no real source yet (scenario
+ * valuation remains `UnavailableCapability(NOT_YET_IMPLEMENTED)`) and
+ * render the literal "—" every missing value on this page already
+ * uses -- never a fabricated number. Action renders the real Decision
+ * Support badge (`atlas.alpha.decision_support`, one of seven
+ * evidence-support states) -- never the imperative HOLD/ADD/REVIEW/TRIM
+ * pill the approved screen shows; Decision Log #1's evidence-support-
+ * only language overrides that literal wording (approved exception).
  *
  * **Row click is plain route navigation, not a true overlay.** Clicking
  * a row (or pressing Enter/Space on it) calls the same
  * `openInvestmentCase` this page has always used -- a `navigate()` to
  * `/investment-case/:id` with `state: { origin: "portfolio" }`, giving a
- * "← Back to Portfolio" link on the Case page. That is real continuity
- * (the investor can always get back), but it is NOT the same thing as
- * Portfolio → Investment Case being a contextual overlay/workspace: a
- * full route change unmounts this page, so scroll position, any
- * expanded reconciliation row, and the Today's Discussions ask-input
- * state are all lost on return. Making Investment Case open as a true
- * overlay so that closing it restores this exact Portfolio state is
- * explicit, planned follow-up work for a future "Investment Case
- * Workspace" sprint -- out of scope here; routing is deliberately
- * unchanged in this sprint.
+ * "← Back to Portfolio" link on the Case page. Making Investment Case
+ * open as a true overlay so that closing it restores this exact
+ * Portfolio scroll/expansion state remains explicit, planned follow-up
+ * work for a future sprint -- out of scope here.
  */
 function HoldingsTable({
   view,
@@ -1142,6 +1123,9 @@ function HoldingsTable({
     borderBottom: `var(--width-border-standard) solid var(--color-border-standard)`,
   };
 
+  const [showAllHoldings, setShowAllHoldings] = useState(false);
+  const visibleHoldings = showAllHoldings ? view.holdings : view.holdings.slice(0, HOLDINGS_PAGE_SIZE);
+
   return (
     <Surface tier="primary">
       <Stack gap="intra-section">
@@ -1155,20 +1139,19 @@ function HoldingsTable({
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.statusHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.tickerHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.weightHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.analysisCoverageHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.convictionHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.evidenceHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.fitHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.expReturnHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.upsideHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.downsideHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.riskHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.priorityHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.thesisHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.actionHeader")}</th>
               </tr>
             </thead>
             <tbody>
-              {view.holdings.map((holding) => {
+              {visibleHoldings.map((holding) => {
                 const cockpitHolding =
                   cockpit.kind === "loaded"
                     ? cockpit.report.holdings.find((h) => h.ticker === holding.ticker)
@@ -1203,6 +1186,22 @@ function HoldingsTable({
             </tbody>
           </table>
         </div>
+
+        {view.holdings.length > HOLDINGS_PAGE_SIZE && (
+          <Inline gap="row" align="center">
+            <Text color="tertiary" as="span">
+              {t("portfolio.holdingsTable.showingCount", {
+                shown: visibleHoldings.length,
+                total: view.holdings.length,
+              })}
+            </Text>
+            <Button variant="tertiary" onClick={() => setShowAllHoldings((current) => !current)}>
+              {showAllHoldings
+                ? t("portfolio.holdingsTable.viewFewer")
+                : t("portfolio.holdingsTable.viewAll", { count: view.holdings.length })}
+            </Button>
+          </Inline>
+        )}
 
         {unallocatedPercent !== null && unallocatedPercent > UNALLOCATED_TOLERANCE && (
           <Text color="secondary">
@@ -1293,15 +1292,6 @@ function HoldingsTableRow({
         style={{ cursor: isCreating ? "default" : "pointer" }}
       >
         <td style={cellStyle}>
-          {cockpitHolding ? (
-            <Text as="span">{REVIEW_PRIORITY_EMOJI[cockpitHolding.attention.priority]}</Text>
-          ) : (
-            <Text as="span" color="tertiary">
-              —
-            </Text>
-          )}
-        </td>
-        <td style={cellStyle}>
           <Stack gap="metadata">
             <Text as="span">{holding.ticker}</Text>
             {isCreating && (
@@ -1347,18 +1337,6 @@ function HoldingsTableRow({
         <td style={cellStyle}>
           {cockpitHolding ? (
             <StatusBadge
-              label={t(ANALYSIS_COVERAGE_LEVEL_KEY[cockpitHolding.analysisCoverage.level])}
-              tone={ANALYSIS_COVERAGE_TONE[cockpitHolding.analysisCoverage.level]}
-            />
-          ) : (
-            <Text as="span" color="tertiary">
-              —
-            </Text>
-          )}
-        </td>
-        <td style={cellStyle}>
-          {cockpitHolding ? (
-            <StatusBadge
               label={t(CONVICTION_LEVEL_KEY[cockpitHolding.conviction.level])}
               tone={CONVICTION_TONE[cockpitHolding.conviction.level]}
             />
@@ -1368,17 +1346,30 @@ function HoldingsTableRow({
             </Text>
           )}
         </td>
+        {/* Fit/Exp. Return/Upside/Downside: no real per-holding source
+            exists yet (no "Portfolio Fit" categorical on any holding,
+            scenario valuation is structurally locked) -- the literal
+            "—" every other missing value on this page already uses,
+            never an invented rating or percentage. */}
         <td style={cellStyle}>
-          {cockpitHolding ? (
-            <StatusBadge
-              label={t(CONFIDENCE_KEY[cockpitHolding.confidence])}
-              tone={CONFIDENCE_TONE[cockpitHolding.confidence]}
-            />
-          ) : (
-            <Text as="span" color="tertiary">
-              —
-            </Text>
-          )}
+          <Text as="span" color="tertiary">
+            —
+          </Text>
+        </td>
+        <td style={cellStyle}>
+          <Text as="span" color="tertiary">
+            —
+          </Text>
+        </td>
+        <td style={cellStyle}>
+          <Text as="span" color="tertiary">
+            —
+          </Text>
+        </td>
+        <td style={cellStyle}>
+          <Text as="span" color="tertiary">
+            —
+          </Text>
         </td>
         <td style={cellStyle}>
           {cockpitHolding ? (
@@ -1395,27 +1386,6 @@ function HoldingsTableRow({
         <td style={cellStyle}>
           {cockpitHolding ? (
             <StatusBadge
-              label={t(REVIEW_PRIORITY_KEY[cockpitHolding.attention.priority])}
-              tone={REVIEW_PRIORITY_TONE[cockpitHolding.attention.priority]}
-            />
-          ) : (
-            <Text as="span" color="tertiary">
-              —
-            </Text>
-          )}
-        </td>
-        <td style={cellStyle}>
-          <Text as="span" color={cockpitHolding?.isThesisStale ? "tertiary" : "primary"}>
-            {cockpitHolding
-              ? cockpitHolding.isThesisStale
-                ? t("portfolio.holdingsTable.thesisStale")
-                : t("portfolio.holdingsTable.thesisFresh")
-              : "—"}
-          </Text>
-        </td>
-        <td style={cellStyle}>
-          {cockpitHolding ? (
-            <StatusBadge
               label={t(DECISION_SUPPORT_BADGE_KEY[cockpitHolding.decisionSupport.level])}
               tone={DECISION_SUPPORT_TONE[cockpitHolding.decisionSupport.level]}
             />
@@ -1428,7 +1398,7 @@ function HoldingsTableRow({
       </tr>
       {isReconcileExpanded && (
         <tr>
-          <td colSpan={8} style={cellStyle}>
+          <td colSpan={9} style={cellStyle}>
             <Stack gap="inter-section">
               <Text color="tertiary" as="p">
                 {t("portfolio.holdings.awaitingReconciliation")}
@@ -1462,6 +1432,77 @@ function HoldingsTableRow({
         </tr>
       )}
     </>
+  );
+}
+
+/**
+ * Figma-fidelity rebuild -- the honest substitute for the approved
+ * screen's "Structural Profile" / "Risk & Execution Guide" two-column
+ * block. That block's free-prose buckets (Strengths/Weaknesses/Key
+ * Drivers, Diversification/Biggest Risks/Recommended Change) imply a
+ * portfolio-level narrative-synthesis capability that does not exist --
+ * no module in this codebase generates prose judgments like "Strong
+ * tech allocation with high-conviction MSFT and AMZN positions." Per
+ * the corrected migration principle's priority order (truthful
+ * presentation first, minimal-neutral second, omission last), this
+ * renders the same two-column position and the same real underlying
+ * data (`KeyFindingView[]`/`RiskSignalView[]`/missing-evidence count,
+ * all already fetched from `/alpha-portfolio/intelligence`) as two
+ * structured, honestly-labeled lists instead -- never the fabricated
+ * prose Figma shows.
+ */
+function PortfolioIntelligencePanels({
+  statusReport,
+  intelligenceReport,
+  t,
+}: {
+  statusReport: PortfolioStatusView | null;
+  intelligenceReport: PortfolioIntelligenceView | null;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const keyFindings = intelligenceReport?.keyFindings ?? [];
+  // `missing_evidence` signals are one-per-holding and would flood this
+  // panel with a redundant "X has missing evidence" line per ticker --
+  // the aggregate `missingEvidenceCount` line below already states that
+  // fact once, honestly and completely. Only the other four kinds (each
+  // genuinely rare, never one-per-holding) render individually.
+  const riskSignals = (intelligenceReport?.riskSignals ?? []).filter((signal) => signal.kind !== "missing_evidence");
+  const missingEvidenceCount = intelligenceReport?.missingEvidence.length ?? 0;
+
+  if (!statusReport && !intelligenceReport) return null;
+
+  return (
+    <Inline gap="inter-section" wrap>
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("portfolio.keyFindingsPanel.heading")}</Heading>
+          {keyFindings.length === 0 && <Text color="secondary">{t("portfolio.keyFindingsPanel.empty")}</Text>}
+          {keyFindings.map((finding, index) => (
+            <Text as="p" key={index}>
+              {t(KEY_FINDING_KEY[finding.kind], { count: finding.count, tickers: finding.tickers.join(", ") })}
+            </Text>
+          ))}
+        </Stack>
+      </Surface>
+      <Surface tier="primary">
+        <Stack gap="intra-section">
+          <Heading level={2}>{t("portfolio.riskSignalsPanel.heading")}</Heading>
+          {riskSignals.length === 0 && missingEvidenceCount === 0 && (
+            <Text color="secondary">{t("portfolio.riskSignalsPanel.empty")}</Text>
+          )}
+          {riskSignals.map((signal, index) => (
+            <Text as="p" key={index}>
+              {t(RISK_SIGNAL_KEY[signal.kind], { ticker: signal.ticker })}
+            </Text>
+          ))}
+          {missingEvidenceCount > 0 && (
+            <Text as="p" color="secondary">
+              {t("portfolio.riskSignalsPanel.missingEvidenceCount", { count: missingEvidenceCount })}
+            </Text>
+          )}
+        </Stack>
+      </Surface>
+    </Inline>
   );
 }
 

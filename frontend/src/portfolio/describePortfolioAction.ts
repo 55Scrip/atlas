@@ -1,35 +1,32 @@
 /**
- * Workspace Migration Phase 4 (Daily Brief) — the enum-to-copy mappings
- * and title/reason text for a `PortfolioAction` (`derivePortfolioActions.ts`),
- * extracted out of `PortfolioPage.tsx`'s `ActionCenterRow` so Daily
- * Brief's "Today's Priorities" section can render the identical
- * severity labels, reason phrasings, and title copy for the same
- * underlying data — the same `statusTone.ts` "one enum-to-copy mapping,
- * not one per consuming page" discipline already applied to Conviction/
- * Risk/Analysis Coverage/Decision Support.
+ * Figma-fidelity rebuild — the enum-to-copy mappings and title/reason
+ * text for a `PortfolioAction` (`derivePortfolioActions.ts`), shared by
+ * Portfolio's dense priority strip and Daily Brief's "Today's
+ * Priorities" section so both render identical phrasing and title copy
+ * for the same underlying data — the same `statusTone.ts` "one enum-to-
+ * copy mapping, not one per consuming page" discipline already applied
+ * to Conviction/Risk/Analysis Coverage/Decision Support. No severity-
+ * tier group labels here: neither Figma screen groups actions under a
+ * "Highest/High/Medium Priority" heading, both show a flat, ordered
+ * list, so that presentation is gone rather than migrated.
  */
 import type { TranslationKey } from "../i18n";
 import type { ActionSeverity, AttentionCategory, PortfolioAction } from "./derivePortfolioActions";
 
-export const ACTION_CENTER_REASON_KEY: Record<AttentionCategory, TranslationKey> = {
-  MISSING_CASE: "portfolio.actionCenter.reason.missingCase",
-  DECISION_WITHOUT_OUTCOME: "portfolio.actionCenter.reason.decisionWithoutOutcome",
-  OUTCOME_WITHOUT_EXECUTION: "portfolio.actionCenter.reason.outcomeWithoutExecution",
-  AWAITING_RECONCILIATION: "portfolio.actionCenter.reason.awaitingReconciliation",
-  VERY_OLD_CASE: "portfolio.actionCenter.reason.veryOldCase",
-  OBSERVATION_WITHOUT_DECISION: "portfolio.actionCenter.reason.observationWithoutDecision",
+export const ACTION_REASON_KEY: Record<AttentionCategory, TranslationKey> = {
+  MISSING_CASE: "portfolio.priorityStrip.reason.missingCase",
+  DECISION_WITHOUT_OUTCOME: "portfolio.priorityStrip.reason.decisionWithoutOutcome",
+  OUTCOME_WITHOUT_EXECUTION: "portfolio.priorityStrip.reason.outcomeWithoutExecution",
+  AWAITING_RECONCILIATION: "portfolio.priorityStrip.reason.awaitingReconciliation",
+  VERY_OLD_CASE: "portfolio.priorityStrip.reason.veryOldCase",
+  OBSERVATION_WITHOUT_DECISION: "portfolio.priorityStrip.reason.observationWithoutDecision",
 };
 
 export const SEVERITY_EMOJI: Record<ActionSeverity, string> = { highest: "🔴", high: "🟠", medium: "🟡" };
-export const SEVERITY_LABEL_KEY: Record<ActionSeverity, TranslationKey> = {
-  highest: "portfolio.actionCenter.severity.highest",
-  high: "portfolio.actionCenter.severity.high",
-  medium: "portfolio.actionCenter.severity.medium",
-};
 
 /** Reuses `portfolio.intelligence.keyFindings.*` for concentration
- * findings (the same translation `PortfolioPage.tsx`'s Key Findings
- * section already uses) rather than a second copy of that text. */
+ * findings (the same translation the Key Findings panel already uses)
+ * rather than a second copy of that text. */
 const CONCENTRATION_FINDING_KEY: Record<"high_concentration" | "elevated_concentration", TranslationKey> = {
   high_concentration: "portfolio.intelligence.keyFindings.high_concentration",
   elevated_concentration: "portfolio.intelligence.keyFindings.elevated_concentration",
@@ -42,23 +39,23 @@ export function describePortfolioAction(
   switch (action.kind) {
     case "workflow":
       return {
-        title: t("portfolio.actionCenter.reviewTitle", { ticker: action.ticker ?? "" }),
-        reason: t(ACTION_CENTER_REASON_KEY[action.reasonCategory!], { days: action.ageDays ?? 0 }),
+        title: t("portfolio.priorityStrip.reviewTitle", { ticker: action.ticker ?? "" }),
+        reason: t(ACTION_REASON_KEY[action.reasonCategory!], { days: action.ageDays ?? 0 }),
       };
     case "evidence":
       return {
-        title: t("portfolio.actionCenter.completeEvidenceTitle", { ticker: action.ticker ?? "" }),
-        reason: t("portfolio.actionCenter.evidenceReason"),
+        title: t("portfolio.priorityStrip.completeEvidenceTitle", { ticker: action.ticker ?? "" }),
+        reason: t("portfolio.priorityStrip.evidenceReason"),
       };
     case "concentration":
       return {
-        title: t("portfolio.actionCenter.concentrationTitle", { ticker: action.ticker ?? "" }),
+        title: t("portfolio.priorityStrip.concentrationTitle", { ticker: action.ticker ?? "" }),
         reason: t(CONCENTRATION_FINDING_KEY[action.concentrationFindingKind!], { tickers: action.ticker ?? "" }),
       };
     case "allocation":
       return {
-        title: t("portfolio.actionCenter.allocationTitle"),
-        reason: t("portfolio.actionCenter.allocationReason", { percent: action.unallocatedPercent ?? 0 }),
+        title: t("portfolio.priorityStrip.allocationTitle"),
+        reason: t("portfolio.priorityStrip.allocationReason", { percent: action.unallocatedPercent ?? 0 }),
       };
   }
 }
