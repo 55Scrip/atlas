@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { Button, Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
+import { useNavigate } from "react-router-dom";
+import { Button, Container, Divider, Inline, Label, Link, Stack, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
+
+const ACCENT_LINK_STYLE = { color: "var(--global-color-accent)", textDecoration: "none", fontSize: "var(--type-body-min-size)" } as const;
 
 interface HoldingLite {
   ticker: string;
@@ -23,6 +25,39 @@ interface ConversationMessage {
   role: "user" | "atlas";
   text: string;
 }
+
+/** Visual Fidelity Pass -- "What Atlas Found" / "Watchlist Updates"
+ * reuse the exact same real `/api/daily-brief` Change Intelligence
+ * entries Daily Brief already renders (fetched independently, the
+ * same "each page fetches the same real endpoint for itself" pattern
+ * Portfolio/Daily Brief already use with `/api/alpha-portfolio*`) --
+ * never a second, Discovery-specific computation of the same fact.
+ * `MAX_FOUND_ENTRIES` is a display cap only, matching the approved
+ * screen's own five-item list. */
+interface DailyBriefEntryLite {
+  caseId: string;
+  ticker: string | null;
+  headline: string;
+  changeSummary: string;
+}
+interface DailyBriefViewLite {
+  entries: DailyBriefEntryLite[];
+}
+type DailyBriefFetchStatus =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "loaded"; brief: DailyBriefViewLite };
+
+interface WatchlistEntryLite {
+  ticker: string;
+  caseId: string;
+}
+type WatchlistFetchStatus =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "loaded"; entries: WatchlistEntryLite[] };
+
+const MAX_FOUND_ENTRIES = 5;
 
 const SUGGESTED_PROMPT_KEYS: TranslationKey[] = [
   "discovery.suggestions.aiStocks",
@@ -63,6 +98,8 @@ export function DiscoveryPage() {
   const navigate = useNavigate();
 
   const [portfolioStatus, setPortfolioStatus] = useState<PortfolioStatus>({ kind: "loading" });
+  const [dailyBrief, setDailyBrief] = useState<DailyBriefFetchStatus>({ kind: "loading" });
+  const [watchlist, setWatchlist] = useState<WatchlistFetchStatus>({ kind: "loading" });
   const [showInfo, setShowInfo] = useState(false);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -84,6 +121,40 @@ export function DiscoveryPage() {
       });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/daily-brief", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
+        return response.json() as Promise<DailyBriefViewLite>;
+      })
+      .then((brief) => setDailyBrief({ kind: "loaded", brief }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setDailyBrief({ kind: "error" });
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/alpha-watchlist", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
+        return response.json() as Promise<WatchlistEntryLite[]>;
+      })
+      .then((entries) => setWatchlist({ kind: "loaded", entries }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setWatchlist({ kind: "error" });
+      });
+    return () => controller.abort();
+  }, []);
+
+  function openInvestmentCase(caseId: string) {
+    navigate(`/investment-case/${caseId}`, { state: { origin: "discovery" } });
+  }
 
   function submitQuestion(text: string) {
     const trimmed = text.trim();
@@ -216,159 +287,237 @@ export function DiscoveryPage() {
       ? t("discovery.reviewCompany.openCase")
       : t("discovery.reviewCompany.createCase");
 
+  // Visual Fidelity Pass -- "What Atlas Found" / "Watchlist Updates"
+  // classify the same real `/api/daily-brief` entries Daily Brief
+  // already renders, using the exact same Portfolio-takes-precedence
+  // dedup rule Daily Brief's own module doc already establishes.
+  const portfolioCaseIds = new Set(
+    portfolioStatus.kind === "loaded"
+      ? portfolioStatus.view.holdings.flatMap((holding) => (holding.caseId ? [holding.caseId] : []))
+      : [],
+  );
+  const watchlistCaseIds = new Set(watchlist.kind === "loaded" ? watchlist.entries.map((entry) => entry.caseId) : []);
+  const briefEntries = dailyBrief.kind === "loaded" ? dailyBrief.brief.entries : [];
+  const foundEntries = briefEntries.slice(0, MAX_FOUND_ENTRIES);
+  const watchlistEntries = briefEntries.filter(
+    (entry) => !portfolioCaseIds.has(entry.caseId) && watchlistCaseIds.has(entry.caseId),
+  );
+
   return (
-    <Container>
-      <Stack gap="inter-section">
-        <Heading level={1}>{t("discovery.title")}</Heading>
+    <Container width="wide">
+      <Stack gap="intra-section">
+        <Text color="secondary">{t("discovery.workingOnBehalf")}</Text>
 
-        <Divider />
+        <Divider tone="hairline" />
 
-        {/* Primary prompt — the page's one dominant element. */}
-        <Surface tier="primary">
-          <Stack gap="inter-section">
-            <div>
-              <Heading level={2}>{t("discovery.prompt.heading")}</Heading>{" "}
-              <Button
-                variant="tertiary"
-                aria-label={t("discovery.info.ariaLabel")}
-                aria-expanded={showInfo}
-                onClick={() => setShowInfo((current) => !current)}
-              >
-                (i)
-              </Button>
-            </div>
-            <Text color="secondary">{t("discovery.prompt.supporting")}</Text>
+        {/* What Atlas Found -- real Change Intelligence entries, the
+            same data Daily Brief already surfaces (see derivation
+            above). Never a Discovery-specific recomputation. */}
+        <Stack gap="metadata">
+          <Label>{t("discovery.whatFound.heading")}</Label>
+          {dailyBrief.kind === "loaded" && foundEntries.length === 0 && (
+            <Text color="tertiary">{t("discovery.whatFound.empty")}</Text>
+          )}
+          {foundEntries.map((entry) => (
+            <DiscoveryFoundRow key={entry.caseId} entry={entry} onOpen={() => openInvestmentCase(entry.caseId)} t={t} />
+          ))}
+        </Stack>
 
-            {showInfo && (
-              <Stack gap="inter-section">
-                <Text color="secondary">{t("discovery.info.body")}</Text>
-                {/* No Discovery FAQ exists yet — rendered as inert text,
-                    matching the app's established "explicitly deferred"
-                    pattern, never a link to a page that doesn't exist. */}
-                <Text color="tertiary">{t("discovery.info.learnMore")}</Text>
-              </Stack>
-            )}
+        <Divider tone="hairline" />
 
-            {portfolioStatus.kind === "loaded" && portfolioStatus.view.exists && (
-              <Text color="tertiary">{t("discovery.portfolioContext.available")}</Text>
-            )}
+        {/* Watchlist Updates -- same entries, Watchlist-only slice. */}
+        <Stack gap="metadata">
+          <Label>{t("discovery.watchlistUpdates.heading")}</Label>
+          {dailyBrief.kind === "loaded" && watchlist.kind === "loaded" && watchlistEntries.length === 0 && (
+            <Text color="tertiary">{t("discovery.watchlistUpdates.empty")}</Text>
+          )}
+          {watchlistEntries.map((entry) => (
+            <DiscoveryFoundRow key={entry.caseId} entry={entry} onOpen={() => openInvestmentCase(entry.caseId)} t={t} />
+          ))}
+        </Stack>
 
-            <Divider tone="hairline" />
+        <Divider tone="hairline" />
 
-            {messages.length > 0 && (
-              <Stack gap="inter-section">
-                {messages.map((message) => (
-                  <Text key={message.id} color={message.role === "atlas" ? "secondary" : "primary"}>
-                    {message.text}
-                  </Text>
-                ))}
-              </Stack>
-            )}
-
-            {sendStatus.kind === "sending" && (
-              <Text color="tertiary" role="status" aria-live="polite">
-                {t("discovery.chat.sending")}
-              </Text>
-            )}
-            {sendStatus.kind === "unavailable" && (
-              <Text color="tertiary" role="alert">
-                {t("discovery.chat.unavailable")}
-              </Text>
-            )}
-
-            <Text as="label">
-              <textarea
-                value={inputValue}
-                onChange={(event) => setInputValue(event.target.value)}
-                placeholder={t("discovery.input.placeholder")}
-                rows={3}
-                style={{ width: "100%" }}
-                disabled={sendStatus.kind === "sending"}
-              />
+        {/* Ask Atlas -- Discovery's own real conversational feature
+            (`POST /api/discovery/chat`), distinct from the deprecated
+            page-local "Discuss with Atlas" placeholder boxes removed
+            from Portfolio/Investment Case (Migration Review Decision
+            Log #2): this is the page's actual purpose, not a duplicate
+            embedded panel, so it stays -- restyled flat and dense like
+            the rest of this pass, behavior unchanged. */}
+        <Stack gap="metadata">
+          <Inline gap="row" align="baseline">
+            <Text as="p" style={{ fontWeight: 700, fontSize: "var(--type-size-h4)" }}>
+              {t("discovery.prompt.heading")}
             </Text>
-            <div>
-              <Button
-                variant="primary"
-                onClick={() => submitQuestion(inputValue)}
-                disabled={sendStatus.kind === "sending" || inputValue.trim() === ""}
-              >
-                {sendStatus.kind === "sending" ? t("common.submitting") : t("discovery.input.submit")}
-              </Button>
-            </div>
+            <Button
+              variant="tertiary"
+              aria-label={t("discovery.info.ariaLabel")}
+              aria-expanded={showInfo}
+              onClick={() => setShowInfo((current) => !current)}
+            >
+              (i)
+            </Button>
+          </Inline>
 
-            <div>
-              {SUGGESTED_PROMPT_KEYS.map((key) => (
-                <Button
-                  key={key}
-                  variant="tertiary"
-                  onClick={() => setInputValue(t(key))}
-                  disabled={sendStatus.kind === "sending"}
-                >
-                  {t(key)}
-                </Button>
+          {showInfo && (
+            <Stack gap="metadata">
+              <Text color="secondary">{t("discovery.info.body")}</Text>
+              <Text color="tertiary">{t("discovery.info.learnMore")}</Text>
+            </Stack>
+          )}
+
+          {portfolioStatus.kind === "loaded" && portfolioStatus.view.exists && (
+            <Text color="tertiary">{t("discovery.portfolioContext.available")}</Text>
+          )}
+
+          {messages.length > 0 && (
+            <Stack gap="metadata">
+              {messages.map((message) => (
+                <Text key={message.id} color={message.role === "atlas" ? "secondary" : "primary"} as="p">
+                  {message.text}
+                </Text>
               ))}
-            </div>
-          </Stack>
-        </Surface>
+            </Stack>
+          )}
 
-        <Divider />
+          {sendStatus.kind === "sending" && (
+            <Text color="tertiary" role="status" aria-live="polite">
+              {t("discovery.chat.sending")}
+            </Text>
+          )}
+          {sendStatus.kind === "unavailable" && (
+            <Text color="tertiary" role="alert">
+              {t("discovery.chat.unavailable")}
+            </Text>
+          )}
 
-        {/* Review a company — the only bounded, non-conversational path
+          <Inline gap="row" align="center">
+            <input
+              value={inputValue}
+              onChange={(event) => setInputValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  submitQuestion(inputValue);
+                }
+              }}
+              placeholder={t("discovery.input.placeholder")}
+              style={{ flex: "1 1 auto" }}
+              disabled={sendStatus.kind === "sending"}
+            />
+            <Button
+              variant="primary"
+              aria-label={t("discovery.input.submit")}
+              onClick={() => submitQuestion(inputValue)}
+              disabled={sendStatus.kind === "sending" || inputValue.trim() === ""}
+            >
+              {sendStatus.kind === "sending" ? t("common.submitting") : "→"}
+            </Button>
+          </Inline>
+
+          <Inline gap="metadata" wrap>
+            {SUGGESTED_PROMPT_KEYS.map((key) => (
+              <Button
+                key={key}
+                variant="tertiary"
+                onClick={() => setInputValue(t(key))}
+                disabled={sendStatus.kind === "sending"}
+                style={{ borderRadius: "var(--radius-chip)", border: "var(--width-border-hairline) solid var(--color-border-standard)" }}
+              >
+                {t(key)}
+              </Button>
+            ))}
+          </Inline>
+        </Stack>
+
+        <Divider tone="hairline" />
+
+        {/* Review a company -- the only bounded, non-conversational path
             to a real Investment Case from this page. No entity
             recognition: the ticker is matched by exact, case-insensitive
             string equality against the investor's own real holdings,
             never parsed out of the conversation above. */}
-        <Surface tier="primary">
-          <Stack gap="inter-section">
-            <Heading level={2}>{t("discovery.reviewCompany.heading")}</Heading>
-            <Text as="label">
-              {t("form.ticker")}
-              <br />
-              <input
-                value={reviewTicker}
-                onChange={(event) => {
-                  setReviewTicker(event.target.value);
-                  setReviewStatus({ kind: "idle" });
-                }}
-              />
-            </Text>
-            {reviewStatus.kind === "not-in-portfolio" && (
-              <Stack gap="inter-section">
-                <Text color="tertiary">
-                  {t("discovery.reviewCompany.notInPortfolio", { ticker: reviewStatus.ticker })}
-                </Text>
-                <RouterLink to="/portfolio">{t("dashboard.portfolioStatus.goToPortfolio")}</RouterLink>
-              </Stack>
-            )}
-            {reviewStatus.kind === "error" && (
-              <Text color="tertiary" role="alert">
-                {t("discovery.reviewCompany.error", { message: reviewStatus.message })}
+        <Stack gap="metadata">
+          <Label>{t("discovery.reviewCompany.heading")}</Label>
+          <Inline gap="row" align="center">
+            <input
+              value={reviewTicker}
+              placeholder={t("form.ticker")}
+              onChange={(event) => {
+                setReviewTicker(event.target.value);
+                setReviewStatus({ kind: "idle" });
+              }}
+            />
+            <Button
+              variant="tertiary"
+              onClick={submitReviewCompany}
+              disabled={reviewStatus.kind === "submitting" || reviewTicker.trim() === ""}
+            >
+              {reviewStatus.kind === "submitting" ? t("common.submitting") : reviewButtonLabel}
+            </Button>
+          </Inline>
+          {reviewStatus.kind === "not-in-portfolio" && (
+            <Inline gap="row" align="baseline">
+              <Text color="tertiary">
+                {t("discovery.reviewCompany.notInPortfolio", { ticker: reviewStatus.ticker })}
               </Text>
-            )}
-            <div>
-              <Button
-                variant="tertiary"
-                onClick={submitReviewCompany}
-                disabled={reviewStatus.kind === "submitting" || reviewTicker.trim() === ""}
+              <Link
+                href="#"
+                style={ACCENT_LINK_STYLE}
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigate("/portfolio");
+                }}
               >
-                {reviewStatus.kind === "submitting" ? t("common.submitting") : reviewButtonLabel}
-              </Button>
-            </div>
-          </Stack>
-        </Surface>
-
-        <Divider />
-
-        {/* Opportunities — no candidate generator exists in this Alpha;
-            an honest, calm disclosure rather than a fabricated list or
-            a silently missing section. */}
-        <Surface tier="primary">
-          <Stack gap="inter-section">
-            <Heading level={2}>{t("discovery.opportunities.heading")}</Heading>
-            <Text color="secondary">{t("discovery.opportunities.notYet")}</Text>
-          </Stack>
-        </Surface>
+                {t("dashboard.portfolioStatus.goToPortfolio")}
+              </Link>
+            </Inline>
+          )}
+          {reviewStatus.kind === "error" && (
+            <Text color="tertiary" role="alert">
+              {t("discovery.reviewCompany.error", { message: reviewStatus.message })}
+            </Text>
+          )}
+        </Stack>
       </Stack>
     </Container>
+  );
+}
+
+/** Visual Fidelity Pass -- one dense row per real Change Intelligence
+ * entry (ticker + first change line + arrow), shared by "What Atlas
+ * Found" and "Watchlist Updates". */
+function DiscoveryFoundRow({
+  entry,
+  onOpen,
+  t,
+}: {
+  entry: DailyBriefEntryLite;
+  onOpen: () => void;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const firstChangeLine = entry.changeSummary.split("\n")[0] ?? entry.headline;
+  return (
+    <Link
+      href="#"
+      style={{ ...ACCENT_LINK_STYLE, color: "var(--color-text-primary)", display: "block" }}
+      onClick={(event) => {
+        event.preventDefault();
+        onOpen();
+      }}
+    >
+      <Inline gap="row" align="baseline" style={{ justifyContent: "space-between" }}>
+        <Text as="span">
+          <Text as="span" color="secondary">
+            {entry.ticker ?? t("dailyBrief.entry.unknownCompany")} —{" "}
+          </Text>
+          {firstChangeLine}
+        </Text>
+        <Text as="span" color="tertiary">
+          →
+        </Text>
+      </Inline>
+    </Link>
   );
 }

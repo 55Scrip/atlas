@@ -890,7 +890,12 @@ export const en = {
 
   // ---------- discovery v1 implementation sprint ----------
   "discovery.title": "Discovery",
-  "discovery.prompt.heading": "How can I help you?",
+  "discovery.workingOnBehalf": "Atlas has been working on your behalf.",
+  "discovery.whatFound.heading": "What Atlas Found",
+  "discovery.whatFound.empty": "No new analytical findings since your last visit.",
+  "discovery.watchlistUpdates.heading": "Watchlist Updates",
+  "discovery.watchlistUpdates.empty": "No watchlist entries have a meaningful change to review.",
+  "discovery.prompt.heading": "What would you like Atlas to investigate?",
   "discovery.prompt.supporting":
     "Ask about companies, sectors, market events, your portfolio or any investment idea.",
   "discovery.info.ariaLabel": "More information",

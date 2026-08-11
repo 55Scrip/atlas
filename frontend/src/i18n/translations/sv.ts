@@ -883,7 +883,12 @@ export const sv: Record<TranslationKey, string> = {
 
   // ---------- discovery v1 implementation sprint ----------
   "discovery.title": "Discovery",
-  "discovery.prompt.heading": "Hur kan jag hjälpa dig?",
+  "discovery.workingOnBehalf": "Atlas har arbetat å dina vägnar.",
+  "discovery.whatFound.heading": "Vad Atlas hittade",
+  "discovery.whatFound.empty": "Inga nya analytiska fynd sedan ditt senaste besök.",
+  "discovery.watchlistUpdates.heading": "Bevakningslista – uppdateringar",
+  "discovery.watchlistUpdates.empty": "Inga bevakade bolag har en meningsfull förändring att granska.",
+  "discovery.prompt.heading": "Vad vill du att Atlas ska undersöka?",
   "discovery.prompt.supporting":
     "Fråga om bolag, branscher, marknadshändelser, din portfölj eller vilken investeringsidé som helst.",
   "discovery.info.ariaLabel": "Mer information",
