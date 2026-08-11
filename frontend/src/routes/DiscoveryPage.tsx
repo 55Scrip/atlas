@@ -20,12 +20,6 @@ type PortfolioStatus =
   | { kind: "error" }
   | { kind: "loaded"; view: PortfolioView };
 
-interface ConversationMessage {
-  id: string;
-  role: "user" | "atlas";
-  text: string;
-}
-
 /** Visual Fidelity Pass -- "What Atlas Found" / "Watchlist Updates"
  * reuse the exact same real `/api/daily-brief` Change Intelligence
  * entries Daily Brief already renders (fetched independently, the
@@ -59,51 +53,34 @@ type WatchlistFetchStatus =
 
 const MAX_FOUND_ENTRIES = 5;
 
-const SUGGESTED_PROMPT_KEYS: TranslationKey[] = [
-  "discovery.suggestions.aiStocks",
-  "discovery.suggestions.compare",
-  "discovery.suggestions.strengthenPortfolio",
-  "discovery.suggestions.reviewIdea",
-  "discovery.suggestions.marketTrend",
-];
-
 type ReviewCompanyStatus =
   | { kind: "idle" }
   | { kind: "submitting" }
   | { kind: "not-in-portfolio"; ticker: string }
   | { kind: "error"; message: string };
 
-let nextMessageId = 0;
-
-type SendStatus = { kind: "idle" } | { kind: "sending" } | { kind: "unavailable" };
-
 /**
- * Discovery Intelligence v1 — the first real conversational layer.
- * `submitQuestion` now calls the real `POST /api/discovery/chat`
- * endpoint (`atlas/ai/api/router.py`), sending the full current
- * session so follow-up questions carry context, and the investor's own
- * selected UI language so Atlas replies in it. The backend itself
- * degrades cleanly with no live provider configured — its response
- * `mode` (`"generated" | "not_configured" | "provider_error"`) is what
- * this page renders, never a client-side fabrication:
- * `"not_configured"`/`"provider_error"` are rendered as an honest Atlas
- * transcript message (still true, still calm, just not model-written);
- * a genuine network failure (`"unavailable"`) is a distinct, small
- * inline notice, never added to the transcript as something Atlas
- * supposedly said. No new Core object, no direct frontend-to-provider
- * call — this page only ever talks to Atlas's own API.
+ * Product correction: no workspace carries its own embedded Ask Atlas
+ * / chat interface -- Atlas Companion will be the single, persistent,
+ * cross-workspace conversational layer, built later. This page never
+ * renders a chat input, transcript, send control, or suggested-prompt
+ * chips. The real `POST /api/discovery/chat` endpoint
+ * (`atlas/ai/api/router.py`) and its tool-calling logic are
+ * deliberately left untouched on the backend -- this is a frontend
+ * UI-surface removal only, preserving that capability for Atlas
+ * Companion's future implementation. Discovery itself stays a real,
+ * complete research page built from genuinely supported content: What
+ * Atlas Found / Watchlist Updates (both reuse `/api/daily-brief`) and
+ * Review a Company (bounded ticker lookup into a real Investment
+ * Case) -- no placeholder stands in for the removed chat.
  */
 export function DiscoveryPage() {
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [portfolioStatus, setPortfolioStatus] = useState<PortfolioStatus>({ kind: "loading" });
   const [dailyBrief, setDailyBrief] = useState<DailyBriefFetchStatus>({ kind: "loading" });
   const [watchlist, setWatchlist] = useState<WatchlistFetchStatus>({ kind: "loading" });
-  const [showInfo, setShowInfo] = useState(false);
-  const [messages, setMessages] = useState<ConversationMessage[]>([]);
-  const [inputValue, setInputValue] = useState("");
-  const [sendStatus, setSendStatus] = useState<SendStatus>({ kind: "idle" });
   const [reviewTicker, setReviewTicker] = useState("");
   const [reviewStatus, setReviewStatus] = useState<ReviewCompanyStatus>({ kind: "idle" });
 
@@ -154,84 +131,6 @@ export function DiscoveryPage() {
 
   function openInvestmentCase(caseId: string) {
     navigate(`/investment-case/${caseId}`, { state: { origin: "discovery" } });
-  }
-
-  function submitQuestion(text: string) {
-    const trimmed = text.trim();
-    if (trimmed === "" || sendStatus.kind === "sending") return;
-
-    const userMessage: ConversationMessage = {
-      id: `msg-${nextMessageId++}`,
-      role: "user",
-      text: trimmed,
-    };
-    const sessionSoFar = [...messages, userMessage];
-    setMessages(sessionSoFar);
-    setInputValue("");
-    setSendStatus({ kind: "sending" });
-
-    fetch("/api/discovery/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: sessionSoFar.map((message) => ({ role: message.role, content: message.text })),
-        language,
-      }),
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
-        return response.json() as Promise<{
-          message: string | null;
-          mode: "generated" | "not_configured" | "provider_error" | "tool_call";
-          toolResult: {
-            tool: "create_or_open_investment_case";
-            outcome: "opened" | "created" | "unresolved" | "failed";
-            ticker: string;
-            caseId: string | null;
-          } | null;
-        }>;
-      })
-      .then((body) => {
-        if (body.mode === "tool_call" && body.toolResult) {
-          const { outcome, ticker, caseId } = body.toolResult;
-          // The rendered text is always Atlas's own deterministic,
-          // translated copy driven by the real backend outcome — never
-          // anything the model wrote — so a claim of success can never
-          // appear here unless the tool actually succeeded.
-          const replyText =
-            outcome === "opened"
-              ? t("discovery.tool.caseOpened", { ticker })
-              : outcome === "created"
-                ? t("discovery.tool.caseCreated", { ticker })
-                : outcome === "unresolved"
-                  ? t("discovery.tool.tickerUnresolved", { ticker })
-                  : t("discovery.tool.caseFailed", { ticker });
-          setMessages((current) => [
-            ...current,
-            { id: `msg-${nextMessageId++}`, role: "atlas", text: replyText },
-          ]);
-          setSendStatus({ kind: "idle" });
-          if ((outcome === "opened" || outcome === "created") && caseId) {
-            navigate(`/investment-case/${caseId}`, { state: { origin: "discovery" } });
-          }
-          return;
-        }
-
-        const replyText =
-          body.mode === "generated" && body.message
-            ? body.message
-            : body.mode === "provider_error"
-              ? t("discovery.response.providerError")
-              : t("discovery.response.bounded");
-        setMessages((current) => [
-          ...current,
-          { id: `msg-${nextMessageId++}`, role: "atlas", text: replyText },
-        ]);
-        setSendStatus({ kind: "idle" });
-      })
-      .catch(() => {
-        setSendStatus({ kind: "unavailable" });
-      });
   }
 
   function submitReviewCompany() {
@@ -334,101 +233,6 @@ export function DiscoveryPage() {
           {watchlistEntries.map((entry) => (
             <DiscoveryFoundRow key={entry.caseId} entry={entry} onOpen={() => openInvestmentCase(entry.caseId)} t={t} />
           ))}
-        </Stack>
-
-        <Divider tone="hairline" />
-
-        {/* Ask Atlas -- Discovery's own real conversational feature
-            (`POST /api/discovery/chat`), distinct from the deprecated
-            page-local "Discuss with Atlas" placeholder boxes removed
-            from Portfolio/Investment Case (Migration Review Decision
-            Log #2): this is the page's actual purpose, not a duplicate
-            embedded panel, so it stays -- restyled flat and dense like
-            the rest of this pass, behavior unchanged. */}
-        <Stack gap="metadata">
-          <Inline gap="row" align="baseline">
-            <Text as="p" style={{ fontWeight: 700, fontSize: "var(--type-size-h4)" }}>
-              {t("discovery.prompt.heading")}
-            </Text>
-            <Button
-              variant="tertiary"
-              aria-label={t("discovery.info.ariaLabel")}
-              aria-expanded={showInfo}
-              onClick={() => setShowInfo((current) => !current)}
-            >
-              (i)
-            </Button>
-          </Inline>
-
-          {showInfo && (
-            <Stack gap="metadata">
-              <Text color="secondary">{t("discovery.info.body")}</Text>
-              <Text color="tertiary">{t("discovery.info.learnMore")}</Text>
-            </Stack>
-          )}
-
-          {portfolioStatus.kind === "loaded" && portfolioStatus.view.exists && (
-            <Text color="tertiary">{t("discovery.portfolioContext.available")}</Text>
-          )}
-
-          {messages.length > 0 && (
-            <Stack gap="metadata">
-              {messages.map((message) => (
-                <Text key={message.id} color={message.role === "atlas" ? "secondary" : "primary"} as="p">
-                  {message.text}
-                </Text>
-              ))}
-            </Stack>
-          )}
-
-          {sendStatus.kind === "sending" && (
-            <Text color="tertiary" role="status" aria-live="polite">
-              {t("discovery.chat.sending")}
-            </Text>
-          )}
-          {sendStatus.kind === "unavailable" && (
-            <Text color="tertiary" role="alert">
-              {t("discovery.chat.unavailable")}
-            </Text>
-          )}
-
-          <Inline gap="row" align="center">
-            <input
-              value={inputValue}
-              onChange={(event) => setInputValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  submitQuestion(inputValue);
-                }
-              }}
-              placeholder={t("discovery.input.placeholder")}
-              style={{ flex: "1 1 auto" }}
-              disabled={sendStatus.kind === "sending"}
-            />
-            <Button
-              variant="primary"
-              aria-label={t("discovery.input.submit")}
-              onClick={() => submitQuestion(inputValue)}
-              disabled={sendStatus.kind === "sending" || inputValue.trim() === ""}
-            >
-              {sendStatus.kind === "sending" ? t("common.submitting") : "→"}
-            </Button>
-          </Inline>
-
-          <Inline gap="metadata" wrap>
-            {SUGGESTED_PROMPT_KEYS.map((key) => (
-              <Button
-                key={key}
-                variant="tertiary"
-                onClick={() => setInputValue(t(key))}
-                disabled={sendStatus.kind === "sending"}
-                style={{ borderRadius: "var(--radius-chip)", border: "var(--width-border-hairline) solid var(--color-border-standard)" }}
-              >
-                {t(key)}
-              </Button>
-            ))}
-          </Inline>
         </Stack>
 
         <Divider tone="hairline" />
