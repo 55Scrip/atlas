@@ -21,6 +21,13 @@
 .link:hover {
   color: var(--color-text-secondary);
 }
+.active {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+.active:hover {
+  color: var(--color-text-primary);
+}
 .link:focus-visible {
   outline: var(--width-focus-ring) solid var(--color-focus-ring);
   outline-offset: 2px;

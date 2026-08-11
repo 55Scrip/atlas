@@ -1,9 +1,21 @@
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Container, Divider, Inline, Label, Link, Stack, Text } from "../foundation";
+import { Button, Container, Divider, Heading, Inline, Label, Link, Stack, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 
 const ACCENT_LINK_STYLE = { color: "var(--global-color-accent)", textDecoration: "none", fontSize: "var(--type-body-min-size)" } as const;
+
+/** Cross-Workspace Consistency Cleanup -- same uppercase small-caps
+ * workspace-label treatment Portfolio's own `PAGE_TITLE_STYLE`
+ * established, so every top-level workspace (Portfolio, Daily Brief,
+ * Discovery, History) shares one page-title visual language. */
+const PAGE_TITLE_STYLE: CSSProperties = {
+  fontFamily: "var(--type-family-prose)",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.02em",
+};
 
 interface HoldingLite {
   ticker: string;
@@ -205,6 +217,10 @@ export function DiscoveryPage() {
   return (
     <Container width="wide">
       <Stack gap="intra-section">
+        <Heading level={3} style={PAGE_TITLE_STYLE}>
+          {t("discovery.title")}
+        </Heading>
+
         <Text color="secondary">{t("discovery.workingOnBehalf")}</Text>
 
         <Divider tone="hairline" />

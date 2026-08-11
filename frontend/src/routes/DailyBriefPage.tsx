@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Container, Divider, Inline, Label, Link, Stack, Text } from "../foundation";
+import type { CSSProperties } from "react";
+import { Container, Divider, Heading, Inline, Label, Link, Stack, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import { derivePortfolioActions, type AttentionCategory, type PortfolioAction } from "../portfolio/derivePortfolioActions";
 import { describePortfolioAction, SEVERITY_EMOJI } from "../portfolio/describePortfolioAction";
@@ -8,6 +9,19 @@ import { describePortfolioAction, SEVERITY_EMOJI } from "../portfolio/describePo
 /** Visual Fidelity Pass -- matches Portfolio/Investment Case's own
  * accent link treatment. */
 const ACCENT_LINK_STYLE = { color: "var(--global-color-accent)", textDecoration: "none", fontSize: "var(--type-body-min-size)" } as const;
+
+/** Cross-Workspace Consistency Cleanup -- same uppercase small-caps
+ * workspace-label treatment Portfolio's own `PAGE_TITLE_STYLE`
+ * established, so every top-level workspace (Portfolio, Daily Brief,
+ * Discovery, History) shares one page-title visual language. Investment
+ * Case is a detail page, not a workspace, and keeps its own distinct
+ * company-name heading. */
+const PAGE_TITLE_STYLE: CSSProperties = {
+  fontFamily: "var(--type-family-prose)",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.02em",
+};
 
 interface ChangeFindingView {
   id: string;
@@ -153,7 +167,8 @@ const MAX_PRIORITIES = 3;
  * No embedded Ask Atlas UI (Decision Log #2) -- this page never had one.
  */
 export function DailyBriefPage() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const locale = language === "sv" ? "sv-SE" : "en-US";
   const navigate = useNavigate();
   const [status, setStatus] = useState<DailyBriefStatus>({ kind: "loading" });
   const [portfolioMembership, setPortfolioMembership] = useState<PortfolioMembershipStatus>({ kind: "loading" });
@@ -273,11 +288,15 @@ export function DailyBriefPage() {
   return (
     <Container width="wide">
       <Stack gap="intra-section">
+        <Heading level={3} style={PAGE_TITLE_STYLE}>
+          {t("dailyBrief.title")}
+        </Heading>
+
         <Inline gap="row" wrap style={{ justifyContent: "space-between" }}>
           <Text color="secondary">{t("dailyBrief.subtitle")}</Text>
           {status.kind === "loaded" && (
             <Text color="tertiary">
-              {t("dailyBrief.lastUpdated", { time: new Date(status.brief.generatedAt).toLocaleString() })}
+              {t("dailyBrief.lastUpdated", { time: new Date(status.brief.generatedAt).toLocaleString(locale) })}
             </Text>
           )}
         </Inline>

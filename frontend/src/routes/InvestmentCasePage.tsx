@@ -2337,12 +2337,14 @@ export function InvestmentCasePage() {
                   <div>
                     {reportOutcomeStatus.kind === "success" && (
                       <>
-                        <RouterLink to="/history">
+                        <RouterLink to="/history" style={ACCENT_LINK_STYLE}>
                           {t("investmentCase.actions.openHistory")}
                         </RouterLink>{" "}
                       </>
                     )}
-                    <RouterLink to={returnTo}>{t(returnLabelKey)}</RouterLink>{" "}
+                    <RouterLink to={returnTo} style={ACCENT_LINK_STYLE}>
+                      {t(returnLabelKey)}
+                    </RouterLink>{" "}
                     <Button variant="tertiary" onClick={closeAction}>
                       {t("investmentCase.actions.close")}
                     </Button>
@@ -2374,7 +2376,7 @@ export function InvestmentCasePage() {
               />
             )}
 
-            <Divider />
+            <Divider tone="hairline" />
 
             {/* Canonical analysis -- Business / Valuation / Risk / Evidence
                 (Investment Case Workspace v2, Sprint 2, Phase 2): the
@@ -2395,7 +2397,7 @@ export function InvestmentCasePage() {
               />
             )}
 
-            <Divider />
+            <Divider tone="hairline" />
 
             {/* Figma-fidelity rebuild -- the approved screen's own
                 bottom tab bar, replacing the previous single <details>
@@ -4142,7 +4144,7 @@ export function InvestmentCasePage() {
           </Stack>
             )}
 
-            <Divider />
+            <Divider tone="hairline" />
 
             {/* Continuity footer — worded so the application never claims
                 active intelligence that isn't implemented yet. */}

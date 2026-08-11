@@ -885,10 +885,6 @@ export const sv: Record<TranslationKey, string> = {
   "dailyBrief.portfolioChanges.empty": "Inga portföljinnehav har någon relevant förändring att granska.",
   "dailyBrief.watchlistUpdates.heading": "Bevakningslista – uppdateringar",
   "dailyBrief.watchlistUpdates.empty": "Inga bevakade bolag har någon relevant förändring att granska.",
-  "dailyBrief.opportunities.heading": "Möjligheter",
-  "dailyBrief.opportunities.notYet": "Atlas genererar ännu inte några marknadsmöjligheter i den här Alpha-versionen.",
-  "dailyBrief.upcoming.heading": "Kommande",
-  "dailyBrief.upcoming.notYet": "Atlas följer ännu inte kommande händelser eller marknadskontext i den här Alpha-versionen.",
 
   // ---------- discovery v1 implementation sprint ----------
   "discovery.title": "Discovery",
@@ -897,41 +893,12 @@ export const sv: Record<TranslationKey, string> = {
   "discovery.whatFound.empty": "Inga nya analytiska fynd sedan ditt senaste besök.",
   "discovery.watchlistUpdates.heading": "Bevakningslista – uppdateringar",
   "discovery.watchlistUpdates.empty": "Inga bevakade bolag har en meningsfull förändring att granska.",
-  "discovery.prompt.heading": "Vad vill du att Atlas ska undersöka?",
-  "discovery.prompt.supporting":
-    "Fråga om bolag, branscher, marknadshändelser, din portfölj eller vilken investeringsidé som helst.",
-  "discovery.info.ariaLabel": "Mer information",
-  "discovery.info.body":
-    "Här kan du diskutera allt från en specifik kvartalsrapport eller ett enskilt bolag till bredare marknadstrender, makroekonomi och portföljstrategi.",
-  "discovery.info.learnMore": "Läs mer om hur Atlas Discovery fungerar →",
-  "discovery.portfolioContext.available": "Din portfölj är tillgänglig som kontext för framtida Discovery-analys.",
-  "discovery.input.placeholder": "Fråga Atlas vad som helst om investeringar…",
-  "discovery.input.submit": "Skicka",
-  "discovery.suggestions.aiStocks": "Är AI-aktier attraktiva efter den senaste nedgången?",
-  "discovery.suggestions.compare": "Jämför två bolag",
-  "discovery.suggestions.strengthenPortfolio": "Vad skulle stärka min portfölj?",
-  "discovery.suggestions.reviewIdea": "Granska en investeringsidé",
-  "discovery.suggestions.marketTrend": "Hjälp mig tänka igenom en marknadstrend",
-  "discovery.response.bounded":
-    "Discoverys analysmotor är inte ansluten i den här Alpha-versionen än. Du kan fortfarande öppna eller skapa ett investeringscase för ett bolag du vill granska.",
-  "discovery.response.providerError":
-    "Atlas kunde inte generera ett svar just nu. Du kan försöka fråga igen.",
-  "discovery.chat.sending": "Tänker…",
-  "discovery.chat.unavailable": "Atlas kunde inte nås. Kontrollera din anslutning och försök igen.",
   "discovery.reviewCompany.heading": "Granska ett bolag",
   "discovery.reviewCompany.createCase": "Skapa investeringscase →",
   "discovery.reviewCompany.openCase": "Öppna investeringscase →",
   "discovery.reviewCompany.notInPortfolio":
     "{{ticker}} finns inte i din nuvarande portfölj än. Atlas kan inte skapa ett länkat investeringscase för ett bolag du inte äger.",
   "discovery.reviewCompany.error": "Kunde inte skapa investeringscaset: {{message}}",
-  "discovery.opportunities.heading": "Möjligheter",
-  "discovery.opportunities.notYet": "Atlas har inte genererat några marknadsmöjligheter i den här Alpha-versionen än.",
-  "discovery.tool.caseOpened": "Öppnar ditt befintliga investeringscase för {{ticker}}.",
-  "discovery.tool.caseCreated": "Skapar och öppnar ett investeringscase för {{ticker}}.",
-  "discovery.tool.tickerUnresolved":
-    "{{ticker}} finns inte i din nuvarande portfölj, så Atlas kan inte öppna ett länkat investeringscase för det än. Du kan bekräfta exakt ticker, eller använda \"Granska ett bolag\" nedan när det finns i din portfölj.",
-  "discovery.tool.caseFailed":
-    "Atlas kunde inte skapa investeringscaset för {{ticker}} just nu. Du kan försöka igen, eller använda \"Granska ett bolag\" nedan.",
 
   // ---------- portfolio import v1.4 ----------
   "portfolioImport.title": "Importera portfölj",

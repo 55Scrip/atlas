@@ -715,7 +715,9 @@ export function PortfolioPage() {
           <Surface tier="primary">
             <Stack gap="inter-section">
               <Text>{t("portfolio.notEstablished")}</Text>
-              <RouterLink to="/welcome">{t("portfolio.setupLink")}</RouterLink>
+              <RouterLink to="/welcome" style={ACCENT_LINK_STYLE}>
+                {t("portfolio.setupLink")}
+              </RouterLink>
             </Stack>
           </Surface>
         )}

@@ -1,6 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Divider, Inline, Label, Link, Stack, Text } from "../foundation";
+import { Container, Divider, Heading, Inline, Label, Link, Stack, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
@@ -28,6 +28,17 @@ import {
 /** Visual Fidelity Pass -- matches Portfolio/Investment Case/Daily
  * Brief/Discovery's own accent link treatment. */
 const ACCENT_LINK_STYLE = { color: "var(--global-color-accent)", textDecoration: "none", fontSize: "var(--type-body-min-size)" } as const;
+
+/** Cross-Workspace Consistency Cleanup -- same uppercase small-caps
+ * workspace-label treatment Portfolio's own `PAGE_TITLE_STYLE`
+ * established, so every top-level workspace (Portfolio, Daily Brief,
+ * Discovery, History) shares one page-title visual language. */
+const PAGE_TITLE_STYLE: CSSProperties = {
+  fontFamily: "var(--type-family-prose)",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.02em",
+};
 
 interface PortfolioViewLite {
   holdings: HoldingLite[];
@@ -107,10 +118,16 @@ const MAX_REVIEWS = 4;
 
 type Translate = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
-function formatDate(iso: string): string {
+/** Locale threaded from the app's own language toggle (`useTranslation`)
+ * rather than `undefined` -- so switching Atlas to Swedish also
+ * switches these dates, instead of silently following whatever the
+ * browser/OS happens to be set to (Cross-Workspace Consistency
+ * Cleanup; matches Investment Case's own `formatRelativeTime(date, t)`
+ * precedent). */
+function formatDate(iso: string, locale: string): string {
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return parsed.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
 /**
@@ -139,7 +156,8 @@ function formatDate(iso: string): string {
  * Timeline already renders. No embedded Ask Atlas UI.
  */
 export function HistoryPage() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const locale = language === "sv" ? "sv-SE" : "en-US";
   const navigate = useNavigate();
 
   const [decisionsStatus, setDecisionsStatus] = useState<FetchStatus<DecisionRecord[]>>({
@@ -350,6 +368,10 @@ export function HistoryPage() {
   return (
     <Container width="wide">
       <Stack gap="intra-section">
+        <Heading level={3} style={PAGE_TITLE_STYLE}>
+          {t("history.title")}
+        </Heading>
+
         {isLoading && (
           <Text role="status" aria-live="polite">
             {t("common.loading")}
@@ -385,7 +407,7 @@ export function HistoryPage() {
                       {t("history.summary", {
                         count: decisionCount,
                         companies: companyTickers.size,
-                        since: earliestDate.toLocaleDateString(undefined, { month: "long", year: "numeric" }),
+                        since: earliestDate.toLocaleDateString(locale, { month: "long", year: "numeric" }),
                       })}
                     </Text>
                     <Divider tone="hairline" />
@@ -464,6 +486,7 @@ export function HistoryPage() {
                         event={row.event}
                         onOpen={() => openEvent(row.event)}
                         t={t}
+                        locale={locale}
                       />
                     ) : (
                       <AnalyticalTimelineRow
@@ -473,6 +496,7 @@ export function HistoryPage() {
                         onToggleDetails={() => toggleDetails(row.entry.snapshotId)}
                         onOpenCase={() => openCase(row.entry.caseId)}
                         t={t}
+                        locale={locale}
                       />
                     ),
                   )}
@@ -506,6 +530,7 @@ export function HistoryPage() {
                             ticker={holdingByCaseId.get(decision.caseId)?.ticker ?? decision.subject}
                             onOpen={() => openCase(decision.caseId)}
                             t={t}
+                            locale={locale}
                           />
                         ))}
                       </Inline>
@@ -551,7 +576,17 @@ function FilterTab({ active, onClick, children }: { active: boolean; onClick: ()
  * same verb vocabulary the rest of the app already uses (Buy/Sell/
  * Hold/Watch/Pass) rather than inventing Figma's untethered
  * Added/Trimmed/Validated taxonomy. */
-function ActivityTimelineRow({ event, onOpen, t }: { event: ActivityEvent; onOpen: () => void; t: Translate }) {
+function ActivityTimelineRow({
+  event,
+  onOpen,
+  t,
+  locale,
+}: {
+  event: ActivityEvent;
+  onOpen: () => void;
+  t: Translate;
+  locale: string;
+}) {
   const verb =
     event.kind === "decision" && event.decisionType && DECISION_TYPE_KEY[event.decisionType]
       ? t(DECISION_TYPE_KEY[event.decisionType]!)
@@ -568,7 +603,7 @@ function ActivityTimelineRow({ event, onOpen, t }: { event: ActivityEvent; onOpe
       >
         <Inline gap="row" align="baseline" wrap>
           <Text color="tertiary" style={{ minWidth: "60px" }}>
-            {formatDate(event.date)}
+            {formatDate(event.date, locale)}
           </Text>
           <Text color="secondary" style={{ minWidth: "84px" }}>
             {verb}
@@ -598,12 +633,14 @@ function AnalyticalTimelineRow({
   onToggleDetails,
   onOpenCase,
   t,
+  locale,
 }: {
   entry: HistoricalAnalysisEntryView;
   expanded: boolean;
   onToggleDetails: () => void;
   onOpenCase: () => void;
   t: Translate;
+  locale: string;
 }) {
   const company = entry.ticker ?? t("dailyBrief.entry.unknownCompany");
   const verb = entry.isBaseline ? t("history.analytical.baseline") : t(HEADLINE_KEY[entry.thesisImpact]);
@@ -619,7 +656,7 @@ function AnalyticalTimelineRow({
       <Inline gap="row" align="baseline" wrap style={{ justifyContent: "space-between" }}>
         <Inline gap="row" align="baseline" wrap>
           <Text color="tertiary" style={{ minWidth: "60px" }}>
-            {formatDate(entry.capturedAt)}
+            {formatDate(entry.capturedAt, locale)}
           </Text>
           <Text color="secondary" style={{ minWidth: "84px" }}>
             {verb}
@@ -710,12 +747,14 @@ function DecisionReviewCard({
   ticker,
   onOpen,
   t,
+  locale,
 }: {
   decision: DecisionRecord;
   outcome: OutcomeRecord;
   ticker: string;
   onOpen: () => void;
   t: Translate;
+  locale: string;
 }) {
   const verb = DECISION_TYPE_KEY[decision.decisionType] ? t(DECISION_TYPE_KEY[decision.decisionType]!) : decision.decisionType;
   return (
@@ -726,7 +765,7 @@ function DecisionReviewCard({
             {ticker}
           </Text>
           <Text color="tertiary">
-            {verb} · {formatDate(decision.decidedAt)}
+            {verb} · {formatDate(decision.decidedAt, locale)}
           </Text>
         </Inline>
 

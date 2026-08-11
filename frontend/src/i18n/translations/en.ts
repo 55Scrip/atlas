@@ -892,10 +892,6 @@ export const en = {
   "dailyBrief.portfolioChanges.empty": "No portfolio holdings have a meaningful change to review.",
   "dailyBrief.watchlistUpdates.heading": "Watchlist Updates",
   "dailyBrief.watchlistUpdates.empty": "No watchlist entries have a meaningful change to review.",
-  "dailyBrief.opportunities.heading": "Opportunities",
-  "dailyBrief.opportunities.notYet": "Atlas does not yet generate market opportunities in this Alpha.",
-  "dailyBrief.upcoming.heading": "Upcoming",
-  "dailyBrief.upcoming.notYet": "Atlas does not yet track upcoming events or market context in this Alpha.",
 
   // ---------- discovery v1 implementation sprint ----------
   "discovery.title": "Discovery",
@@ -904,41 +900,12 @@ export const en = {
   "discovery.whatFound.empty": "No new analytical findings since your last visit.",
   "discovery.watchlistUpdates.heading": "Watchlist Updates",
   "discovery.watchlistUpdates.empty": "No watchlist entries have a meaningful change to review.",
-  "discovery.prompt.heading": "What would you like Atlas to investigate?",
-  "discovery.prompt.supporting":
-    "Ask about companies, sectors, market events, your portfolio or any investment idea.",
-  "discovery.info.ariaLabel": "More information",
-  "discovery.info.body":
-    "Here you can discuss anything from a specific quarterly report or company to broader market trends, macroeconomics and portfolio strategy.",
-  "discovery.info.learnMore": "Learn more about how Atlas Discovery works →",
-  "discovery.portfolioContext.available": "Your portfolio is available as context for future Discovery analysis.",
-  "discovery.input.placeholder": "Ask Atlas anything about investing…",
-  "discovery.input.submit": "Send",
-  "discovery.suggestions.aiStocks": "Are AI stocks attractive after the recent decline?",
-  "discovery.suggestions.compare": "Compare two companies",
-  "discovery.suggestions.strengthenPortfolio": "What would strengthen my portfolio?",
-  "discovery.suggestions.reviewIdea": "Review an investment idea",
-  "discovery.suggestions.marketTrend": "Help me think through a market trend",
-  "discovery.response.bounded":
-    "Discovery's live analysis engine is not connected in this Alpha yet. You can still open or create an Investment Case for a company you want to review.",
-  "discovery.response.providerError":
-    "Atlas couldn't generate a response just now. You can try asking again.",
-  "discovery.chat.sending": "Thinking…",
-  "discovery.chat.unavailable": "Atlas couldn't be reached. Check your connection and try again.",
   "discovery.reviewCompany.heading": "Review a company",
   "discovery.reviewCompany.createCase": "Create Investment Case →",
   "discovery.reviewCompany.openCase": "Open Investment Case →",
   "discovery.reviewCompany.notInPortfolio":
     "{{ticker}} is not in your current portfolio yet. Atlas cannot create a linked Investment Case for a company you don't hold.",
   "discovery.reviewCompany.error": "Could not create the Investment Case: {{message}}",
-  "discovery.opportunities.heading": "Opportunities",
-  "discovery.opportunities.notYet": "Atlas has not generated any market opportunities in this Alpha yet.",
-  "discovery.tool.caseOpened": "Opening your existing Investment Case for {{ticker}}.",
-  "discovery.tool.caseCreated": "Creating and opening an Investment Case for {{ticker}}.",
-  "discovery.tool.tickerUnresolved":
-    "{{ticker}} isn't in your current portfolio, so Atlas can't open a linked Investment Case for it yet. You can confirm the exact ticker, or use \"Review a company\" below once it's in your portfolio.",
-  "discovery.tool.caseFailed":
-    "Atlas couldn't create the Investment Case for {{ticker}} just now. You can try again, or use \"Review a company\" below.",
 
   // ---------- portfolio import v1.4 ----------
   "portfolioImport.title": "Import Portfolio",

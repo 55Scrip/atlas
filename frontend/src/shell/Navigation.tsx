@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { useTranslation } from "../i18n";
 import styles from "./Navigation.module.css";
 
@@ -8,31 +8,37 @@ import styles from "./Navigation.module.css";
  * Alpha Sprint 1A: added the Portfolio link alongside Dashboard, now
  * that Portfolio is a real product surface. Sprint 4: added History
  * alongside it. Visual Polish Sprint 1: styling only (Navigation.module.css)
- * — same links, same routes, same order. Uses react-router-dom's own Link
- * (client-side routing), not the Foundation Link component (a plain
- * anchor, with no router integration) — this is shell wiring, not page
- * content.
+ * — same links, same routes, same order. Cross-Workspace Consistency
+ * Cleanup: switched from plain `Link` to `NavLink` so the current
+ * workspace is visually indicated (matches the approved Figma
+ * reference, which always shows the active tab in primary text against
+ * the rest in tertiary gray) — still react-router-dom's own component,
+ * not the Foundation Link, since this is shell wiring, not page content.
  */
+function navLinkClassName({ isActive }: { isActive: boolean }): string {
+  return isActive ? `${styles.link!} ${styles.active!}` : styles.link!;
+}
+
 export function Navigation() {
   const { t } = useTranslation();
 
   return (
     <nav aria-label={t("shell.nav.ariaLabel")} className={styles.nav}>
-      <Link to="/daily-brief" className={styles.link}>
+      <NavLink to="/daily-brief" className={navLinkClassName}>
         {t("shell.nav.dailyBrief")}
-      </Link>
-      <Link to="/discovery" className={styles.link}>
+      </NavLink>
+      <NavLink to="/discovery" className={navLinkClassName}>
         {t("shell.nav.discovery")}
-      </Link>
-      <Link to="/dashboard" className={styles.link}>
+      </NavLink>
+      <NavLink to="/dashboard" className={navLinkClassName}>
         {t("shell.nav.dashboard")}
-      </Link>
-      <Link to="/portfolio" className={styles.link}>
+      </NavLink>
+      <NavLink to="/portfolio" className={navLinkClassName}>
         {t("shell.nav.portfolio")}
-      </Link>
-      <Link to="/history" className={styles.link}>
+      </NavLink>
+      <NavLink to="/history" className={navLinkClassName}>
         {t("shell.nav.history")}
-      </Link>
+      </NavLink>
     </nav>
   );
 }
