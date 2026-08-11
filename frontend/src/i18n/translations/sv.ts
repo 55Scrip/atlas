@@ -864,6 +864,8 @@ export const sv: Record<TranslationKey, string> = {
 
   // ---------- daily brief v2 (Workspace Migration Phase 4) ----------
   "dailyBrief.title": "Dagens genomgång",
+  "dailyBrief.subtitle": "Atlas morgongenomgång för din uppmärksamhet.",
+  "dailyBrief.lastUpdated": "Senast uppdaterad {{time}}",
   "dailyBrief.entry.unknownCompany": "Okänt företag",
   "dailyBrief.entry.openInvestmentCase": "Öppna Investment Case",
   "dailyBrief.priorities.heading": "Dagens prioriteringar",

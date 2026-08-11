@@ -1,9 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Button, Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
+import { Container, Divider, Inline, Label, Link, Stack, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import { derivePortfolioActions, type AttentionCategory, type PortfolioAction } from "../portfolio/derivePortfolioActions";
 import { describePortfolioAction, SEVERITY_EMOJI } from "../portfolio/describePortfolioAction";
+
+/** Visual Fidelity Pass -- matches Portfolio/Investment Case's own
+ * accent link treatment. */
+const ACCENT_LINK_STYLE = { color: "var(--global-color-accent)", textDecoration: "none", fontSize: "var(--type-body-min-size)" } as const;
 
 interface ChangeFindingView {
   id: string;
@@ -267,120 +271,120 @@ export function DailyBriefPage() {
   const topPriorities = allActions.slice(0, MAX_PRIORITIES);
 
   return (
-    <Container>
-      <Stack gap="inter-section">
-        <Heading level={1}>{t("dailyBrief.title")}</Heading>
+    <Container width="wide">
+      <Stack gap="intra-section">
+        <Inline gap="row" wrap style={{ justifyContent: "space-between" }}>
+          <Text color="secondary">{t("dailyBrief.subtitle")}</Text>
+          {status.kind === "loaded" && (
+            <Text color="tertiary">
+              {t("dailyBrief.lastUpdated", { time: new Date(status.brief.generatedAt).toLocaleString() })}
+            </Text>
+          )}
+        </Inline>
 
-        <Divider />
+        <Divider tone="hairline" />
 
-        {/* Orientation -- narrative-first per this sprint's requirement,
-            but the sentence itself is the same real, backend-templated
-            count sentence Daily Brief v1 always used. No fabricated
-            multi-sentence narrative paragraph (Migration Review §11.2
-            explicitly defers that -- it needs a real synthesis step that
-            does not exist yet); rendered at heading scale so it reads
-            within seconds, not as one Text line among many. */}
-        <Surface tier="primary">
-          <Stack gap="inter-section">
-            {status.kind === "loading" && (
-              <Text role="status" aria-live="polite">
-                {t("common.loading")}
-              </Text>
-            )}
-            {status.kind === "error" && <Text color="secondary">{status.message}</Text>}
-            {status.kind === "loaded" && <Heading level={2}>{status.brief.summary}</Heading>}
-          </Stack>
-        </Surface>
+        {/* Orientation -- the same real, backend-templated summary
+            sentence Daily Brief has always used (Migration Review §11.2
+            defers a fabricated multi-sentence narrative -- no real
+            synthesis step exists yet). Flowing paragraph, not a heading
+            -- Figma's own screen reads it as prose, not a titled block. */}
+        {status.kind === "loading" && (
+          <Text role="status" aria-live="polite">
+            {t("common.loading")}
+          </Text>
+        )}
+        {status.kind === "error" && <Text color="secondary">{status.message}</Text>}
+        {status.kind === "loaded" && <Text as="p">{status.brief.summary}</Text>}
 
-        <Divider />
+        <Divider tone="hairline" />
 
         {/* Today's Priorities -- reuses Portfolio's real Action Center
             derivation and copy verbatim (see module doc comment). */}
-        <Surface tier="primary">
-          <Stack gap="intra-section">
-            <Heading level={2}>{t("dailyBrief.priorities.heading")}</Heading>
-            {topPriorities.length === 0 && <Text color="secondary">{t("dailyBrief.priorities.empty")}</Text>}
-            {topPriorities.map((action) => {
-              const { title, reason } = describePortfolioAction(action, t);
-              return (
-                <Stack key={action.id} gap="metadata">
-                  <Text as="p">
-                    {SEVERITY_EMOJI[action.severity]} {title}
-                  </Text>
-                  <Text color="secondary" as="p">
-                    {reason}
-                  </Text>
-                  <div>
-                    {action.caseId ? (
-                      <Button variant="primary" onClick={() => openInvestmentCase(action.caseId!)}>
-                        {t("dailyBrief.priorities.reviewButton")}
-                      </Button>
-                    ) : (
-                      <Button variant="tertiary" onClick={() => navigate("/portfolio")}>
-                        {t("dailyBrief.priorities.goToPortfolioButton")}
-                      </Button>
-                    )}
-                  </div>
-                  <Divider tone="hairline" />
-                </Stack>
-              );
-            })}
-          </Stack>
-        </Surface>
+        <Stack gap="metadata">
+          <Label>{t("dailyBrief.priorities.heading")}</Label>
+          {topPriorities.length === 0 && <Text color="tertiary">{t("dailyBrief.priorities.empty")}</Text>}
+          {topPriorities.map((action, index) => {
+            const { title } = describePortfolioAction(action, t);
+            return (
+              <Inline key={action.id} gap="row" align="baseline" style={{ justifyContent: "space-between" }}>
+                <Text as="span">
+                  {SEVERITY_EMOJI[action.severity]} {index + 1}. {title}
+                </Text>
+                {action.caseId ? (
+                  <Link
+                    href="#"
+                    style={ACCENT_LINK_STYLE}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      openInvestmentCase(action.caseId!);
+                    }}
+                  >
+                    {t("dailyBrief.priorities.reviewButton")} →
+                  </Link>
+                ) : (
+                  <Link
+                    href="#"
+                    style={ACCENT_LINK_STYLE}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      navigate("/portfolio");
+                    }}
+                  >
+                    {t("dailyBrief.priorities.goToPortfolioButton")} →
+                  </Link>
+                )}
+              </Inline>
+            );
+          })}
+        </Stack>
 
-        <Divider />
+        <Divider tone="hairline" />
 
-        {/* Portfolio Changes -- entries.filter narrows Daily Brief v1's
-            already-real entry list to Portfolio holdings; every field
-            rendered per entry is unchanged from v1. */}
-        <Heading level={2}>{t("dailyBrief.portfolioChanges.heading")}</Heading>
-        {status.kind === "loaded" && portfolioChangeEntries.length === 0 && (
-          <Text color="secondary">{t("dailyBrief.portfolioChanges.empty")}</Text>
-        )}
-        {portfolioChangeEntries.map((entry) => (
-          <DailyBriefEntryCard key={entry.caseId} entry={entry} onOpen={() => openInvestmentCase(entry.caseId)} t={t} />
-        ))}
-
-        <Divider />
-
-        {/* Watchlist Updates -- same entry list, the complementary
-            Watchlist-only slice. */}
-        <Heading level={2}>{t("dailyBrief.watchlistUpdates.heading")}</Heading>
-        {status.kind === "loaded" && watchlistChangeEntries.length === 0 && (
-          <Text color="secondary">{t("dailyBrief.watchlistUpdates.empty")}</Text>
-        )}
-        {watchlistChangeEntries.map((entry) => (
-          <DailyBriefEntryCard key={entry.caseId} entry={entry} onOpen={() => openInvestmentCase(entry.caseId)} t={t} />
-        ))}
-
-        <Divider />
-
-        {/* Opportunities -- no candidate generator exists in this Alpha
-            (Migration Review §11.3); an honest, calm disclosure rather
-            than a fabricated list, the same pattern Discovery's own
-            Opportunities section already established. */}
-        <Surface tier="primary">
-          <Stack gap="inter-section">
-            <Heading level={2}>{t("dailyBrief.opportunities.heading")}</Heading>
-            <Text color="secondary">{t("dailyBrief.opportunities.notYet")}</Text>
-          </Stack>
-        </Surface>
-
-        {/* Upcoming -- no earnings-calendar/macro/market-context provider
-            exists in this Alpha (Migration Review §11.4); same honest
-            disclosure pattern, not a fabricated events list. */}
-        <Surface tier="primary">
-          <Stack gap="inter-section">
-            <Heading level={2}>{t("dailyBrief.upcoming.heading")}</Heading>
-            <Text color="secondary">{t("dailyBrief.upcoming.notYet")}</Text>
-          </Stack>
-        </Surface>
+        {/* Portfolio Changes | Watchlist Updates -- the approved screen's
+            own two-column pairing. `New Opportunities`/`Upcoming Events`/
+            `Market Context` have no real data source in this Alpha (no
+            candidate generator, no earnings-calendar/macro provider) --
+            per the History precedent this program already established,
+            multiple large "not yet available" blocks would make the page
+            look unfinished; they are omitted entirely rather than shown
+            as empty placeholders, leaving only genuinely real content. */}
+        <Inline gap="inter-section" wrap align="start">
+          <div style={{ flex: "1 1 380px", minWidth: 0 }}>
+            <Stack gap="metadata">
+              <Label>{t("dailyBrief.portfolioChanges.heading")}</Label>
+              {status.kind === "loaded" && portfolioChangeEntries.length === 0 && (
+                <Text color="tertiary">{t("dailyBrief.portfolioChanges.empty")}</Text>
+              )}
+              {portfolioChangeEntries.map((entry) => (
+                <DailyBriefEntryRow key={entry.caseId} entry={entry} onOpen={() => openInvestmentCase(entry.caseId)} t={t} />
+              ))}
+            </Stack>
+          </div>
+          <div style={{ flex: "1 1 380px", minWidth: 0 }}>
+            <Stack gap="metadata">
+              <Label>{t("dailyBrief.watchlistUpdates.heading")}</Label>
+              {status.kind === "loaded" && watchlistChangeEntries.length === 0 && (
+                <Text color="tertiary">{t("dailyBrief.watchlistUpdates.empty")}</Text>
+              )}
+              {watchlistChangeEntries.map((entry) => (
+                <DailyBriefEntryRow key={entry.caseId} entry={entry} onOpen={() => openInvestmentCase(entry.caseId)} t={t} />
+              ))}
+            </Stack>
+          </div>
+        </Inline>
       </Stack>
     </Container>
   );
 }
 
-function DailyBriefEntryCard({
+/** Visual Fidelity Pass -- one dense row per entry (ticker + first
+ * change line + a "Review" link into the Investment Case), replacing
+ * the former per-entry Surface card. `changeSummary`'s remaining
+ * lines and `whyItMatters` stay real, evidence-traceable content --
+ * genuinely deeper detail belongs on the Investment Case page itself
+ * (one click away via the same link), not duplicated here. */
+function DailyBriefEntryRow({
   entry,
   onOpen,
   t,
@@ -389,25 +393,25 @@ function DailyBriefEntryCard({
   onOpen: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
+  const firstChangeLine = entry.changeSummary.split("\n")[0] ?? entry.headline;
   return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={3}>{entry.ticker ?? t("dailyBrief.entry.unknownCompany")}</Heading>
-        <Text as="p">{entry.headline}</Text>
-        {entry.changeSummary.split("\n").map((line, index) => (
-          <Text as="p" color="secondary" key={index}>
-            {line}
-          </Text>
-        ))}
-        <Text as="p" color="tertiary">
-          {entry.whyItMatters}
+    <Inline gap="row" align="baseline" wrap style={{ justifyContent: "space-between" }}>
+      <Text as="span">
+        <Text as="span" color="secondary">
+          {entry.ticker ?? t("dailyBrief.entry.unknownCompany")} —{" "}
         </Text>
-        <div>
-          <Button variant="tertiary" onClick={onOpen}>
-            {t("dailyBrief.entry.openInvestmentCase")}
-          </Button>
-        </div>
-      </Stack>
-    </Surface>
+        {firstChangeLine}
+      </Text>
+      <Link
+        href="#"
+        style={ACCENT_LINK_STYLE}
+        onClick={(event) => {
+          event.preventDefault();
+          onOpen();
+        }}
+      >
+        {t("dailyBrief.entry.openInvestmentCase")} →
+      </Link>
+    </Inline>
   );
 }
