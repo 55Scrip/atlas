@@ -196,6 +196,7 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.holdingsTable.analysisCoverageHeader": "Analystäckning",
   "portfolio.holdingsTable.convictionHeader": "Övertygelse",
   "portfolio.holdingsTable.evidenceHeader": "Underlag",
+  "portfolio.holdingsTable.riskHeader": "Risk",
   "portfolio.holdingsTable.priorityHeader": "Prioritet",
   "portfolio.holdingsTable.thesisHeader": "Tes",
   "portfolio.holdingsTable.actionHeader": "Åtgärd",
@@ -203,13 +204,11 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.holdingsTable.thesisStale": "Inaktuell",
   "portfolio.holdingsTable.reconcileToggle": "Stäm av",
 
-  // ---------- today's discussions (Portfolio Workspace v3) ----------
-  "portfolio.discussions.heading": "Dagens diskussioner",
-  "portfolio.discussions.intro": "Atlas har uppmärksammat några saker värda att diskutera.",
-  "portfolio.discussions.empty": "Inget särskilt att diskutera just nu.",
-  "portfolio.discussions.discussButton": "Diskutera",
-  "portfolio.discussions.askPlaceholder": "Fråga Atlas vad som helst om din portfölj…",
-  "portfolio.discussions.askButton": "Fråga",
+  // ---------- discussion prompts (Workspace Migration Phase 2: the
+  // page-local "Today's Discussions" Ask box itself was removed --
+  // Decision Log #2 -- these remain only as `deriveDiscussionPrompts.ts`'s
+  // own real candidate input for the future Atlas Companion, plus one
+  // key still shared with Investment Case's own placeholder note) ----------
   "portfolio.discussions.comingSoonNote":
     "Samtal med Atlas är inte tillgängliga än — detta är förberett för en framtida version.",
   "portfolio.discussions.prompt.priorityHolding":

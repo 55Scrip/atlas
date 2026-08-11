@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { Button, Container, Divider, Heading, Inline, Stack, StatusBadge, Surface, Text } from "../foundation";
@@ -8,20 +8,25 @@ import {
   type ActionSeverity,
   type PortfolioAction,
 } from "../portfolio/derivePortfolioActions";
-import { deriveDiscussionPrompts, type DiscussionPrompt } from "../portfolio/deriveDiscussionPrompts";
 import {
   ANALYSIS_COVERAGE_LEVEL_KEY,
+  ANALYSIS_COVERAGE_TONE,
   CONFIDENCE_KEY,
+  CONFIDENCE_TONE,
   CONVICTION_LEVEL_KEY,
+  CONVICTION_TONE,
   DECISION_SUPPORT_BADGE_KEY,
   DECISION_SUPPORT_TONE,
   REVIEW_PRIORITY_KEY,
+  REVIEW_PRIORITY_TONE,
+  RISK_STATUS_TONE,
   type AnalysisCoverageLevel,
   type ConvictionLevel,
   type DecisionSupportLevel,
   type EvidenceCoverageLevel,
   type ReviewPriority,
 } from "../status/statusTone";
+import { RISK_STATUS_KEY, type AnalysisRiskStatus } from "../changeIntelligence/describeChange";
 
 /**
  * `concentrationLevel` is an internal enum value (`ConcentrationLevel.LOW`
@@ -260,13 +265,20 @@ const MAX_ACTIONS_PER_SEVERITY = 2;
  */
 /** `ConvictionLevel`/`AnalysisCoverageLevel`/`ReviewPriority` now live
  * in `../status/statusTone` (Workspace Migration, Foundation
- * extraction) -- these three local aliases keep every existing
- * `Cockpit*` usage site in this file unchanged. */
+ * extraction) -- these local aliases keep every existing `Cockpit*`
+ * usage site in this file unchanged. `CockpitRiskStatus` joins them in
+ * Phase 2 (Portfolio migration): the Holdings table now renders a real
+ * Risk column, reusing `AnalysisRiskStatus`'s own translation-key map
+ * (`RISK_STATUS_KEY`, `../changeIntelligence/describeChange`) verbatim
+ * rather than declaring a fourth copy of the same five-value enum --
+ * Portfolio and Investment Case must read the same Risk vocabulary,
+ * the same cross-surface consistency rule already applied to
+ * Conviction/Confidence. */
 type CockpitConvictionLevel = ConvictionLevel;
 type CockpitAnalysisCoverageLevel = AnalysisCoverageLevel;
 type CockpitValuationStatus = "not_evaluated" | "insufficient_input" | "undervalued" | "fairly_valued" | "expensive";
 type CockpitRiskCategory = "business_risk" | "financial_risk" | "valuation_risk" | "thesis_risk";
-type CockpitRiskStatus = "not_evaluated" | "insufficient_input" | "low" | "moderate" | "high";
+type CockpitRiskStatus = AnalysisRiskStatus;
 type CockpitBusinessStatus = "not_evaluated" | "insufficient_input" | "weak" | "moderate" | "strong";
 type CockpitReviewPriority = ReviewPriority;
 type CockpitAttentionReason =
@@ -446,13 +458,6 @@ export function PortfolioPage() {
   const [replaceCashWeight, setReplaceCashWeight] = useState("");
   const [replaceCashValue, setReplaceCashValue] = useState("");
   const [replaceStatus, setReplaceStatus] = useState<ReconcileStatus>({ kind: "idle" });
-
-  /** Today's Discussions (Portfolio Workspace v3) -- UI only, per this
-   * sprint's explicit "do not build the conversational engine yet"
-   * instruction. `askSubmitted` shows a one-time, honest placeholder
-   * note rather than a fabricated Atlas reply. */
-  const [askInput, setAskInput] = useState("");
-  const [askSubmitted, setAskSubmitted] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -891,22 +896,6 @@ export function PortfolioPage() {
               submitUpdateHoldingWeight={submitUpdateHoldingWeight}
               t={t}
             />
-
-            <TodaysDiscussionsCard
-              statusReport={
-                portfolioStatus.kind === "loaded" && portfolioStatus.report.exists ? portfolioStatus.report : null
-              }
-              intelligenceReport={
-                portfolioIntelligence.kind === "loaded" && portfolioIntelligence.report.exists
-                  ? portfolioIntelligence.report
-                  : null
-              }
-              askInput={askInput}
-              setAskInput={setAskInput}
-              askSubmitted={askSubmitted}
-              setAskSubmitted={setAskSubmitted}
-              t={t}
-            />
           </Stack>
         )}
       </Stack>
@@ -1223,6 +1212,7 @@ function HoldingsTable({
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.analysisCoverageHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.convictionHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.evidenceHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.riskHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.priorityHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.thesisHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.actionHeader")}</th>
@@ -1406,31 +1396,64 @@ function HoldingsTableRow({
           </Text>
         </td>
         <td style={cellStyle}>
-          <Text as="span">
-            {cockpitHolding ? t(ANALYSIS_COVERAGE_LEVEL_KEY[cockpitHolding.analysisCoverage.level]) : "—"}
-          </Text>
+          {cockpitHolding ? (
+            <StatusBadge
+              label={t(ANALYSIS_COVERAGE_LEVEL_KEY[cockpitHolding.analysisCoverage.level])}
+              tone={ANALYSIS_COVERAGE_TONE[cockpitHolding.analysisCoverage.level]}
+            />
+          ) : (
+            <Text as="span" color="tertiary">
+              —
+            </Text>
+          )}
         </td>
         <td style={cellStyle}>
-          <Text as="span">
-            {cockpitHolding ? t(CONVICTION_LEVEL_KEY[cockpitHolding.conviction.level]) : "—"}
-          </Text>
+          {cockpitHolding ? (
+            <StatusBadge
+              label={t(CONVICTION_LEVEL_KEY[cockpitHolding.conviction.level])}
+              tone={CONVICTION_TONE[cockpitHolding.conviction.level]}
+            />
+          ) : (
+            <Text as="span" color="tertiary">
+              —
+            </Text>
+          )}
         </td>
         <td style={cellStyle}>
-          <Text as="span">{cockpitHolding ? t(CONFIDENCE_KEY[cockpitHolding.confidence]) : "—"}</Text>
+          {cockpitHolding ? (
+            <StatusBadge
+              label={t(CONFIDENCE_KEY[cockpitHolding.confidence])}
+              tone={CONFIDENCE_TONE[cockpitHolding.confidence]}
+            />
+          ) : (
+            <Text as="span" color="tertiary">
+              —
+            </Text>
+          )}
         </td>
         <td style={cellStyle}>
-          <Text
-            as="span"
-            color={
-              cockpitHolding &&
-              (cockpitHolding.attention.priority === "evidence_review" ||
-                cockpitHolding.attention.priority === "priority_review")
-                ? "tertiary"
-                : "primary"
-            }
-          >
-            {cockpitHolding ? t(REVIEW_PRIORITY_KEY[cockpitHolding.attention.priority]) : "—"}
-          </Text>
+          {cockpitHolding ? (
+            <StatusBadge
+              label={t(RISK_STATUS_KEY[cockpitHolding.riskProjection.status])}
+              tone={RISK_STATUS_TONE[cockpitHolding.riskProjection.status]}
+            />
+          ) : (
+            <Text as="span" color="tertiary">
+              —
+            </Text>
+          )}
+        </td>
+        <td style={cellStyle}>
+          {cockpitHolding ? (
+            <StatusBadge
+              label={t(REVIEW_PRIORITY_KEY[cockpitHolding.attention.priority])}
+              tone={REVIEW_PRIORITY_TONE[cockpitHolding.attention.priority]}
+            />
+          ) : (
+            <Text as="span" color="tertiary">
+              —
+            </Text>
+          )}
         </td>
         <td style={cellStyle}>
           <Text as="span" color={cockpitHolding?.isThesisStale ? "tertiary" : "primary"}>
@@ -1494,134 +1517,13 @@ function HoldingsTableRow({
 }
 
 /**
- * Today's Discussions (Portfolio Workspace v3) -- replaces the "empty
- * chat" pattern with Atlas proactively naming a few real, specific
- * things worth discussing, each derived from data already on this page
- * via `deriveDiscussionPrompts` (never a generic or fabricated
- * example -- see that module's own docstring). Per this sprint's
- * explicit "do not build the conversational engine yet" instruction,
- * "Discuss" only pre-fills the free-text input below with that prompt's
- * question and focuses it; submitting shows one honest, static note
- * rather than a fabricated Atlas reply.
+ * "Today's Discussions" (the page-local Ask Atlas box, Portfolio
+ * Workspace v3) was removed in the Workspace Migration, Phase 2
+ * (Migration Review Decision Log #2 / §6 / §11.5): every page-local Ask
+ * Atlas placeholder is deprecated in favor of the future, persistent,
+ * cross-workspace Atlas Companion -- a separate, later, cross-cutting
+ * workstream, not part of any single page's migration. Removing this
+ * box (rather than reskinning it) is the explicit instruction, not an
+ * oversight; `deriveDiscussionPrompts.ts`/`DiscussionPrompt` remain on
+ * disk, unused here, as real candidate input for that future build.
  */
-function TodaysDiscussionsCard({
-  statusReport,
-  intelligenceReport,
-  askInput,
-  setAskInput,
-  askSubmitted,
-  setAskSubmitted,
-  t,
-}: {
-  statusReport: PortfolioStatusView | null;
-  intelligenceReport: PortfolioIntelligenceView | null;
-  askInput: string;
-  setAskInput: (value: string) => void;
-  askSubmitted: boolean;
-  setAskSubmitted: (value: boolean) => void;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const allActions = derivePortfolioActions(
-    statusReport?.reviewQueue ?? [],
-    intelligenceReport?.missingEvidence.map((item) => ({ ticker: item.ticker, caseId: item.caseId })) ?? [],
-    intelligenceReport?.keyFindings ?? [],
-    statusReport?.summary?.unallocatedPercent ?? null,
-    statusReport?.attentionItems.map((item) => ({
-      ticker: item.ticker,
-      category: item.category,
-      ageDays: item.ageDays,
-    })) ?? [],
-  );
-
-  const prompts = deriveDiscussionPrompts(
-    statusReport?.summary?.unallocatedPercent ?? null,
-    statusReport?.summary?.concentrationLevel ?? null,
-    statusReport?.summary?.holdingsCount ?? 0,
-    intelligenceReport?.keyFindings ?? [],
-    allActions[0] ? { ticker: allActions[0].ticker } : null,
-    (key, params) => t(key as TranslationKey, params),
-  );
-
-  function fillAsk(text: string) {
-    setAskInput(text);
-    setAskSubmitted(false);
-    inputRef.current?.focus();
-  }
-
-  function handleAsk() {
-    if (askInput.trim() === "") return;
-    setAskSubmitted(true);
-  }
-
-  return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("portfolio.discussions.heading")}</Heading>
-        {prompts.length > 0 ? (
-          <Text color="secondary" as="p">
-            {t("portfolio.discussions.intro")}
-          </Text>
-        ) : (
-          <Text color="secondary" as="p">
-            {t("portfolio.discussions.empty")}
-          </Text>
-        )}
-        {prompts.map((prompt) => (
-          <DiscussionPromptRow key={prompt.id} prompt={prompt} onDiscuss={fillAsk} t={t} />
-        ))}
-
-        <Divider tone="hairline" />
-
-        <Stack gap="metadata">
-          <Inline gap="row">
-            <input
-              ref={inputRef}
-              value={askInput}
-              placeholder={t("portfolio.discussions.askPlaceholder")}
-              onChange={(event) => {
-                setAskInput(event.target.value);
-                setAskSubmitted(false);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") handleAsk();
-              }}
-              style={{ flex: 1 }}
-            />
-            <Button variant="primary" onClick={handleAsk}>
-              {t("portfolio.discussions.askButton")}
-            </Button>
-          </Inline>
-          {askSubmitted && (
-            <Text color="tertiary" as="p">
-              {t("portfolio.discussions.comingSoonNote")}
-            </Text>
-          )}
-        </Stack>
-      </Stack>
-    </Surface>
-  );
-}
-
-function DiscussionPromptRow({
-  prompt,
-  onDiscuss,
-  t,
-}: {
-  prompt: DiscussionPrompt;
-  onDiscuss: (text: string) => void;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  return (
-    <Stack gap="metadata">
-      <Text as="p">{prompt.text}</Text>
-      <div>
-        <Button variant="tertiary" onClick={() => onDiscuss(prompt.text)}>
-          {t("portfolio.discussions.discussButton")}
-        </Button>
-      </div>
-      <Divider tone="hairline" />
-    </Stack>
-  );
-}

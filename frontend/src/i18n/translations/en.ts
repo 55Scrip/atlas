@@ -197,6 +197,7 @@ export const en = {
   "portfolio.holdingsTable.analysisCoverageHeader": "Analysis Coverage",
   "portfolio.holdingsTable.convictionHeader": "Conviction",
   "portfolio.holdingsTable.evidenceHeader": "Evidence",
+  "portfolio.holdingsTable.riskHeader": "Risk",
   "portfolio.holdingsTable.priorityHeader": "Priority",
   "portfolio.holdingsTable.thesisHeader": "Thesis",
   "portfolio.holdingsTable.actionHeader": "Action",
@@ -204,13 +205,11 @@ export const en = {
   "portfolio.holdingsTable.thesisStale": "Stale",
   "portfolio.holdingsTable.reconcileToggle": "Reconcile",
 
-  // ---------- today's discussions (Portfolio Workspace v3) ----------
-  "portfolio.discussions.heading": "Today's Discussions",
-  "portfolio.discussions.intro": "Atlas noticed a few things worth discussing.",
-  "portfolio.discussions.empty": "Nothing notable to discuss right now.",
-  "portfolio.discussions.discussButton": "Discuss",
-  "portfolio.discussions.askPlaceholder": "Ask Atlas anything about your portfolio…",
-  "portfolio.discussions.askButton": "Ask",
+  // ---------- discussion prompts (Workspace Migration Phase 2: the
+  // page-local "Today's Discussions" Ask box itself was removed --
+  // Decision Log #2 -- these remain only as `deriveDiscussionPrompts.ts`'s
+  // own real candidate input for the future Atlas Companion, plus one
+  // key still shared with Investment Case's own placeholder note) ----------
   "portfolio.discussions.comingSoonNote":
     "Atlas conversations aren't available yet — this is ready for a future release.",
   "portfolio.discussions.prompt.priorityHolding":
