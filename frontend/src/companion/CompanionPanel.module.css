@@ -1,0 +1,22 @@
+/* Atlas Companion -- the panel's only entrance motion is a brief fade,
+   using the same duration/easing tokens Navigation.module.css already
+   uses, and respecting prefers-reduced-motion like every other animated
+   surface in this app. */
+.panel {
+  animation: companionFadeIn var(--motion-duration-brief) var(--motion-easing-out);
+}
+
+@keyframes companionFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}

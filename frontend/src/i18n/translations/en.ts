@@ -877,6 +877,7 @@ export const en = {
   "investmentCase.origin.history": "Returned from History",
   "investmentCase.origin.dailyBrief": "Opened from Daily Brief",
   "investmentCase.origin.discovery": "Opened from Discovery",
+  "investmentCase.origin.companion": "Opened from Atlas Companion",
 
   // ---------- daily brief v2 (Workspace Migration Phase 4) ----------
   "dailyBrief.title": "Daily Brief",
@@ -944,6 +945,26 @@ export const en = {
   "portfolioImport.error.nonPositiveValue": "Value must be greater than zero",
   "portfolioImport.error.duplicateTicker": "Duplicate ticker: {{ticker}}",
   "portfolioImport.error.tooManyColumns": "Too many columns",
+
+  // ---------- Atlas Companion (persistent cross-workspace conversational layer) ----------
+  "companion.toggle.openLabel": "Open Atlas",
+  "companion.toggle.closeLabel": "Close Atlas",
+  "companion.panel.title": "Atlas Companion",
+  "companion.role.user": "You",
+  "companion.role.atlas": "Atlas",
+  "companion.context.discussing": "Discussing: {{subject}}",
+  "companion.context.portfolioWide": "Portfolio-wide",
+  "companion.context.changed": "Context changed: {{from}} → {{to}}",
+  "companion.input.placeholder": "Message Atlas…",
+  "companion.input.send": "Send",
+  "companion.sending": "Atlas is responding…",
+  "companion.notConfigured": "Atlas Companion isn't connected in this Alpha yet.",
+  "companion.providerError": "Atlas couldn't respond just now — try asking again.",
+  "companion.outcome.opened": "Opened the existing Investment Case for {{ticker}}.",
+  "companion.outcome.created": "Created a new Investment Case for {{ticker}}.",
+  "companion.outcome.unresolved":
+    "{{ticker}} isn't in your current portfolio, so Atlas couldn't open a linked Investment Case for it.",
+  "companion.outcome.failed": "Atlas couldn't create the Investment Case for {{ticker}} just now. Try asking again.",
 } as const;
 
 export type TranslationKey = keyof typeof en;

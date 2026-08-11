@@ -853,7 +853,9 @@ export function InvestmentCasePage() {
             ? "investmentCase.origin.dailyBrief"
             : origin === "discovery"
               ? "investmentCase.origin.discovery"
-              : null;
+              : origin === "companion"
+                ? "investmentCase.origin.companion"
+                : null;
 
   /**
    * Origin-aware return (Sprint 8 audit fix): the badge above already

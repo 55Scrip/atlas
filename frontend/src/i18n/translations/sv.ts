@@ -870,6 +870,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.origin.history": "Återvänt från historiken",
   "investmentCase.origin.dailyBrief": "Öppnad från Dagens genomgång",
   "investmentCase.origin.discovery": "Öppnad från Discovery",
+  "investmentCase.origin.companion": "Öppnad från Atlas Companion",
 
   // ---------- daily brief v2 (Workspace Migration Phase 4) ----------
   "dailyBrief.title": "Dagens genomgång",
@@ -937,4 +938,24 @@ export const sv: Record<TranslationKey, string> = {
   "portfolioImport.error.nonPositiveValue": "Värdet måste vara större än noll",
   "portfolioImport.error.duplicateTicker": "Dubblett av ticker: {{ticker}}",
   "portfolioImport.error.tooManyColumns": "För många kolumner",
+
+  // ---------- Atlas Companion (persistent cross-workspace conversational layer) ----------
+  "companion.toggle.openLabel": "Öppna Atlas",
+  "companion.toggle.closeLabel": "Stäng Atlas",
+  "companion.panel.title": "Atlas Companion",
+  "companion.role.user": "Du",
+  "companion.role.atlas": "Atlas",
+  "companion.context.discussing": "Diskuterar: {{subject}}",
+  "companion.context.portfolioWide": "Portföljövergripande",
+  "companion.context.changed": "Kontext ändrad: {{from}} → {{to}}",
+  "companion.input.placeholder": "Meddela Atlas…",
+  "companion.input.send": "Skicka",
+  "companion.sending": "Atlas svarar…",
+  "companion.notConfigured": "Atlas Companion är inte ansluten i den här Alpha-versionen än.",
+  "companion.providerError": "Atlas kunde inte svara just nu — försök fråga igen.",
+  "companion.outcome.opened": "Öppnade det befintliga investeringscaset för {{ticker}}.",
+  "companion.outcome.created": "Skapade ett nytt investeringscase för {{ticker}}.",
+  "companion.outcome.unresolved":
+    "{{ticker}} finns inte i din nuvarande portfölj, så Atlas kunde inte öppna ett länkat investeringscase för det.",
+  "companion.outcome.failed": "Atlas kunde inte skapa investeringscaset för {{ticker}} just nu. Försök igen.",
 };
