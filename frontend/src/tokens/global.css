@@ -162,6 +162,15 @@
   --global-z-companion: 100;
 
   /* ---------------------------------------------------------------------
+   * Companion reserved layout width — Alpha usability fix. Panel width
+   * (400px) + its own right offset (24px) + a breathing-room gap (24px)
+   * so workspace content never renders directly under the panel's edge.
+   * AppShell applies this as `<main>`'s right padding while Companion is
+   * expanded, rather than any per-workspace collision handling.
+   * --------------------------------------------------------------------- */
+  --global-companion-reserved-width: 448px;
+
+  /* ---------------------------------------------------------------------
    * Spacing scale — Visual Polish Sprint 1, mockup reference. Fills the
    * five levels UX-012D named conceptually but never valued, plus
    * `space.inter-section` itself (previously 0 — the app's own gaps).

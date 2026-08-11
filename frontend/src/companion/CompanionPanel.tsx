@@ -19,7 +19,14 @@ type Translate = (key: TranslationKey, params?: Record<string, string | number>)
  * (`kind: "message"` entries only, mapped to `CompanionChatMessage`).
  * Context-change and tool-result lines are transcript-display facts,
  * never conversational turns the model itself produced -- they are
- * never included in the `messages` array a future send resends. */
+ * never included in the `messages` array a future send resends.
+ *
+ * `context-change.from`/`to` are structural context keys (`"portfolio"`
+ * or a caseId) -- never pre-resolved display text. Resolving them to a
+ * ticker or the "Portfolio-wide" label happens at render time via
+ * `resolveContextLabel`, so a later language switch (or a ticker that
+ * resolves after the entry was recorded) re-renders correctly instead
+ * of freezing whatever text happened to be live at that moment. */
 type TranscriptEntry =
   | { kind: "message"; role: CompanionRole; content: string }
   | { kind: "context-change"; from: string; to: string }
@@ -30,16 +37,13 @@ interface PersistedSession {
   transcript: TranscriptEntry[];
   /** The structural context identity (`caseId`, or `"portfolio"`) that
    * accompanied the most recently *tracked* navigation -- used only to
-   * detect a real context change, never resolved text, so a ticker
-   * arriving late from the holdings fetch can never itself trigger a
-   * spurious announcement. */
+   * detect a real context change and as the "from" side of the next
+   * announcement. Never resolved text, so a ticker arriving late from
+   * the holdings fetch can never itself trigger a spurious announcement. */
   announcedKey: string | null;
-  /** The resolved display text for `announcedKey`, reused as the "from"
-   * side of the next announcement. */
-  announcedSubject: string | null;
 }
 
-const EMPTY_SESSION: PersistedSession = { transcript: [], announcedKey: null, announcedSubject: null };
+const EMPTY_SESSION: PersistedSession = { transcript: [], announcedKey: null };
 const STORAGE_KEY_SESSION = "atlas.companion.session";
 const STORAGE_KEY_EXPANDED = "atlas.companion.expanded";
 const PANEL_ID = "atlas-companion-panel";
@@ -62,7 +66,14 @@ function readPersistedSession(): PersistedSession {
   }
 }
 
-function readPersistedExpanded(): boolean {
+/** Resolves a structural context key (`"portfolio"` or a caseId) to its
+ * current display label. Called at render time -- never stored -- so it
+ * always reflects the current language and the current ticker map. */
+function resolveContextLabel(key: string, caseIdToTicker: Record<string, string>, t: Translate): string {
+  return key === "portfolio" ? t("companion.context.portfolioWide") : (caseIdToTicker[key] ?? key);
+}
+
+export function readPersistedExpanded(): boolean {
   if (typeof window === "undefined") return false;
   return window.sessionStorage.getItem(STORAGE_KEY_EXPANDED) === "true";
 }
@@ -85,13 +96,24 @@ function readPersistedExpanded(): boolean {
  * deliberately gone when the tab closes -- this is not durable,
  * cross-device Companion memory, which remains a future backend
  * capability, not something this storage choice should be mistaken for.
+ *
+ * `expanded` is a controlled prop, owned by `AppShell`, rather than
+ * local state -- `AppShell` needs to know whether Companion is expanded
+ * so it can reserve horizontal space for the panel and keep it from
+ * rendering over workspace content (see `--global-companion-reserved-width`
+ * in global.css).
  */
-export function CompanionPanel() {
+export function CompanionPanel({
+  expanded,
+  onExpandedChange,
+}: {
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+}) {
   const { t, language } = useTranslation();
   const navigate = useNavigate();
   const context = useCompanionContext();
 
-  const [expanded, setExpanded] = useState<boolean>(readPersistedExpanded);
   const [session, setSession] = useState<PersistedSession>(readPersistedSession);
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
@@ -100,7 +122,6 @@ export function CompanionPanel() {
   const [holdingsLoaded, setHoldingsLoaded] = useState(false);
 
   const announcedKeyRef = useRef<string | null>(session.announcedKey);
-  const announcedSubjectRef = useRef<string | null>(session.announcedSubject);
   const inputRef = useRef<HTMLInputElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -159,13 +180,13 @@ export function CompanionPanel() {
     if (!expanded) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setExpanded(false);
+        onExpandedChange(false);
         toggleRef.current?.focus();
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [expanded]);
+  }, [expanded, onExpandedChange]);
 
   useEffect(() => {
     if (expanded) inputRef.current?.focus();
@@ -194,29 +215,28 @@ export function CompanionPanel() {
   useEffect(() => {
     if (currentKey === null || currentKey === announcedKeyRef.current) return;
     if (context.caseId !== null && !holdingsLoaded) return;
-    // Captured *before* the refs below are mutated -- reading the ref
-    // live inside the `setSession` updater is unsafe, since React can
-    // defer invoking that updater until after this synchronous block
-    // (including the ref mutations two lines down) has already run,
+    // Captured *before* the ref below is mutated -- reading the ref live
+    // inside the `setSession` updater is unsafe, since React can defer
+    // invoking that updater until after this synchronous block
+    // (including the ref mutation two lines down) has already run,
     // which would make `from` and `to` read the same, just-updated
     // value instead of the real previous one.
-    const previousSubject = announcedSubjectRef.current;
+    const previousKey = announcedKeyRef.current;
     setSession((previous) => {
       const hasSentMessage = previous.transcript.some((entry) => entry.kind === "message");
-      const shouldAnnounce = hasSentMessage && previousSubject !== null;
+      const shouldAnnounce = hasSentMessage && previousKey !== null;
       return {
         transcript: shouldAnnounce
-          ? [...previous.transcript, { kind: "context-change", from: previousSubject!, to: currentSubject }]
+          ? [...previous.transcript, { kind: "context-change", from: previousKey!, to: currentKey }]
           : previous.transcript,
         announcedKey: currentKey,
-        announcedSubject: currentSubject,
       };
     });
     announcedKeyRef.current = currentKey;
-    announcedSubjectRef.current = currentSubject;
-    // currentSubject intentionally excluded -- only a real navigation
-    // (currentKey changing) or the holdings fetch finishing should ever
-    // trigger this effect.
+    // context.caseId intentionally excluded -- currentKey already embeds
+    // it (currentKey === context.caseId whenever caseId is non-null), so
+    // this effect only needs to re-run on a real navigation (currentKey
+    // changing) or the holdings fetch finishing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentKey, holdingsLoaded]);
 
@@ -309,7 +329,7 @@ export function CompanionPanel() {
           <div style={{ flex: 1, overflowY: "auto", padding: "var(--space-card-padding)" }}>
             <Stack gap="intra-section">
               {session.transcript.map((entry, index) => (
-                <TranscriptEntryView key={index} entry={entry} onOpenCase={openCase} t={t} />
+                <TranscriptEntryView key={index} entry={entry} onOpenCase={openCase} t={t} caseIdToTicker={caseIdToTicker} />
               ))}
               {sending && <Text color="tertiary">{t("companion.sending")}</Text>}
             </Stack>
@@ -356,7 +376,7 @@ export function CompanionPanel() {
         aria-expanded={expanded}
         aria-controls={PANEL_ID}
         aria-label={expanded ? t("companion.toggle.closeLabel") : t("companion.toggle.openLabel")}
-        onClick={() => setExpanded((current) => !current)}
+        onClick={() => onExpandedChange(!expanded)}
         style={{
           width: "48px",
           height: "48px",
@@ -381,10 +401,12 @@ function TranscriptEntryView({
   entry,
   onOpenCase,
   t,
+  caseIdToTicker,
 }: {
   entry: TranscriptEntry;
   onOpenCase: (caseId: string) => void;
   t: Translate;
+  caseIdToTicker: Record<string, string>;
 }) {
   if (entry.kind === "message") {
     return (
@@ -398,7 +420,10 @@ function TranscriptEntryView({
   if (entry.kind === "context-change") {
     return (
       <Text color="tertiary" as="p" style={{ textAlign: "center" }}>
-        {t("companion.context.changed", { from: entry.from, to: entry.to })}
+        {t("companion.context.changed", {
+          from: resolveContextLabel(entry.from, caseIdToTicker, t),
+          to: resolveContextLabel(entry.to, caseIdToTicker, t),
+        })}
       </Text>
     );
   }
