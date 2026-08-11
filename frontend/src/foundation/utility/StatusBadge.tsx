@@ -56,3 +56,29 @@ export function StatusBadge({ label, tone = "neutral", style, ...rest }: StatusB
     </span>
   );
 }
+
+/**
+ * Visual Fidelity Pass -- the approved Figma tables (Holdings Fit/Risk/
+ * Action columns) render most categorical values as plain colored text,
+ * reserving the bordered chip (`StatusBadge` above) for the one column
+ * that actually shows a chip (Conviction). Same tone set, same enum-to-
+ * tone maps in `status/statusTone.ts` -- purely a lighter rendering, no
+ * new categorical meaning.
+ */
+export function StatusText({ label, tone = "neutral", style, ...rest }: StatusBadgeProps) {
+  return (
+    <span
+      {...rest}
+      style={{
+        color: toneColor[tone],
+        fontFamily: "var(--type-family-metadata)",
+        fontSize: "var(--type-body-min-size)",
+        lineHeight: "var(--type-body-line-height)",
+        whiteSpace: "nowrap",
+        ...style,
+      }}
+    >
+      {label}
+    </span>
+  );
+}

@@ -5,6 +5,7 @@ export { Spacer } from "./layout/Spacer";
 
 export { Text } from "./typography/Text";
 export { Heading } from "./typography/Heading";
+export { Label } from "./typography/Label";
 
 export { Button } from "./interaction/Button";
 export { Link } from "./interaction/Link";
@@ -14,7 +15,7 @@ export { FocusRing } from "./accessibility/FocusRing";
 
 export { Divider } from "./utility/Divider";
 export { Surface } from "./utility/Surface";
-export { StatusBadge } from "./utility/StatusBadge";
+export { StatusBadge, StatusText } from "./utility/StatusBadge";
 export type { StatusTone } from "./utility/StatusBadge";
 export { AsyncSection } from "./utility/AsyncSection";
 export type { AsyncStatus } from "./utility/AsyncSection";

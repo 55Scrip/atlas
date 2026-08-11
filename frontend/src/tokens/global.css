@@ -175,4 +175,11 @@
    * sprint's own "do not block on ambiguity" instruction.
    * --------------------------------------------------------------------- */
   --global-container-max-width: 720px;
+  /* Visual Fidelity Pass -- Figma `atlas-investment-case-v3` /
+   * `atlas-portfolio-redesign` render as dense, wide, institutional
+   * workspaces, not editorial-column reading views. This wider ceiling
+   * is opt-in per page (`Container width="wide"`) so pages that are
+   * genuinely long-form (Welcome, Dashboard, History) keep the narrower
+   * default. */
+  --global-container-max-width-wide: 1440px;
 }

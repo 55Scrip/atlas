@@ -131,6 +131,7 @@
    * container.* — Visual Polish Sprint 1 (global.css).
    * --------------------------------------------------------------------- */
   --container-max-width: var(--global-container-max-width);
+  --container-max-width-wide: var(--global-container-max-width-wide);
 
   /* ---------------------------------------------------------------------
    * Breakpoints / z-index — still no foundation-level token name or

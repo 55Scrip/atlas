@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Link as RouterLink, useLocation, useParams } from "react-router-dom";
-import { Button, Container, Divider, Heading, Inline, Link, Stack, StatusBadge, Surface, Text } from "../foundation";
+import { Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, StatusText, Surface, Text, VisuallyHidden } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
@@ -251,6 +251,42 @@ interface EvidenceFormInput {
   summary: string;
   source: string;
   direction: "SUPPORTS" | "CHALLENGES";
+}
+
+/** Visual Fidelity Pass -- Figma's own navigation links ("Back to
+ * Portfolio", "View all financial data") render in the accent color,
+ * not the Foundation `Link`/`RouterLink` default. */
+const ACCENT_LINK_STYLE: CSSProperties = {
+  color: "var(--global-color-accent)",
+  textDecoration: "none",
+  fontSize: "var(--type-body-min-size)",
+};
+
+/** Visual Fidelity Pass -- the approved screen's bottom tab bar is
+ * plain text (active = primary color + a hairline underline, inactive
+ * = tertiary color), not a row of bordered/filled buttons. A bare
+ * `<button>` reset to look like text, not a new interaction pattern --
+ * still a real, keyboard-operable button underneath. */
+function TabLabel({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        background: "none",
+        border: "none",
+        borderBottom: active ? "2px solid var(--global-color-accent)" : "2px solid transparent",
+        padding: "0 0 var(--space-metadata) 0",
+        margin: 0,
+        cursor: "pointer",
+        fontFamily: "var(--type-family-prose)",
+        fontSize: "var(--type-body-min-size)",
+        color: active ? "var(--color-text-primary)" : "var(--color-text-tertiary)",
+      }}
+    >
+      {children}
+    </button>
+  );
 }
 
 const EMPTY_EVIDENCE_FORM: EvidenceFormInput = { summary: "", source: "", direction: "SUPPORTS" };
@@ -1739,150 +1775,152 @@ export function InvestmentCasePage() {
     (item) => item.kind !== "reconciliation-needed",
   );
 
+  const companyProfile = investmentCaseAnalysis.kind === "loaded" ? investmentCaseAnalysis.report.companyProfile : null;
+  const identityLine = companyProfile
+    ? [companyProfile.exchange, companyProfile.sector, companyProfile.industry].filter(Boolean).join(" · ")
+    : "";
+  /** Visual Fidelity Pass -- the approved screen's single compact
+   * metadata line (Valuation / Portfolio fit / Portfolio weight /
+   * Status), pipe-separated, replacing four separate paragraphs.
+   * Every value is the same real one those paragraphs already read --
+   * only the presentation is denser. */
+  const metadataLineParts: string[] =
+    investmentCaseAnalysis.kind === "loaded"
+      ? [
+          `${t("investmentCase.header.valuationLabel")}: ${t(VALUATION_STATUS_KEY[investmentCaseAnalysis.report.valuationContext.fcfYieldStatus])}`,
+          `${t("investmentCase.header.portfolioFitLabel")}: ${t("investmentCase.atlasView.notAvailable")}`,
+          linkedHolding
+            ? `${t("investmentCase.header.currentAllocation", { percent: linkedHolding.weightPercent })}`
+            : null,
+          `${t("investmentCase.status.heading")}: ${t(
+            CASE_STATUS_KEY[
+              deriveCaseStatus({
+                hasOutstandingWork: caseOutstandingWork.length > 0,
+                isThesisStale: investmentCaseAnalysis.report.isThesisStale,
+                openQuestionCount: investmentCaseAnalysis.report.openQuestions.length,
+                evidenceGap:
+                  investmentCaseAnalysis.report.evidenceQuality !== null &&
+                  (investmentCaseAnalysis.report.evidenceQuality.coverage === "none" ||
+                    investmentCaseAnalysis.report.evidenceQuality.coverage === "partial"),
+              })
+            ],
+          )}`,
+        ].filter((part): part is string => part !== null)
+      : [];
+
   return (
-    <Container>
-      <Stack gap="inter-section">
+    <Container width="wide">
+      <Stack gap="intra-section">
         {/* Header — company/security identity is the primary title; the
             Case id is secondary/technical only (never the primary
             identity). Ticker comes from the Alpha portfolio's
             holding-to-case link (`holding.caseId`) — Case itself carries
             no identity of its own (`atlas/core/domain/case/entity.py`). */}
-        <Surface tier="primary">
-          <Stack gap="inter-section">
-            <RouterLink to={returnTo}>{t(returnLabelKey)}</RouterLink>
+        <Stack gap="metadata">
+          <Inline gap="row" wrap style={{ justifyContent: "space-between" }}>
+            <RouterLink to={returnTo} style={ACCENT_LINK_STYLE}>
+              {t(returnLabelKey)}
+            </RouterLink>
             {originLabelKey && <Text color="tertiary">{t(originLabelKey)}</Text>}
-            <Heading level={1}>
+          </Inline>
+
+          <Inline gap="row" align="baseline" wrap>
+            <Heading level={1} style={{ fontWeight: 700 }}>
               {linkedHolding ? linkedHolding.ticker : t("investmentCase.header.untitled")}
             </Heading>
-            {linkedHolding && (
-              <Text color="secondary">
-                {t("investmentCase.header.inPortfolio")} ·{" "}
-                {t("investmentCase.header.currentAllocation", {
-                  percent: linkedHolding.weightPercent,
-                })}
+            {companyProfile?.name && (
+              <Text as="span" color="secondary" style={{ fontSize: "var(--type-size-h4)" }}>
+                {companyProfile.name}
               </Text>
             )}
-            {/* Figma-fidelity rebuild -- the approved screen's compact
-                header stat line (Valuation / Portfolio fit / Weight).
-                Weight is already shown just above; Valuation reads the
-                same real `valuationContext.fcfYieldStatus` the header's
-                Decision Support statement and Atlas View's own
-                Valuation dot already derive from -- never a second
-                computation. Portfolio fit has no real source anywhere
-                in this codebase (no such field exists on any per-
-                holding or per-Case analysis object) and renders the
-                same literal "—" every other missing value here uses. */}
-            {investmentCaseAnalysis.kind === "loaded" && (
-              <Inline gap="row" wrap>
-                <Text as="span" color="secondary">
-                  {t("investmentCase.header.valuationLabel")}:{" "}
-                  {t(VALUATION_STATUS_KEY[investmentCaseAnalysis.report.valuationContext.fcfYieldStatus])}
-                </Text>
-                <Text as="span" color="secondary">
-                  {t("investmentCase.header.portfolioFitLabel")}: {t("investmentCase.atlasView.notAvailable")}
+          </Inline>
+          {identityLine && (
+            <Text as="p" color="tertiary">
+              {identityLine}
+            </Text>
+          )}
+
+          {metadataLineParts.length > 0 && (
+            <Text as="p" color="secondary">
+              {metadataLineParts.join("   |   ")}
+            </Text>
+          )}
+
+          {!linkedHolding && caseId && (
+            <Text color="secondary">{t("investmentCase.header.notLinked")}</Text>
+          )}
+          {!caseId && <Text color="secondary">{t("investmentCase.noCaseSelected")}</Text>}
+          {caseId && status.kind === "loading" && (
+            <Text role="status" aria-live="polite">
+              {t("common.loading")}
+            </Text>
+          )}
+          {caseId && status.kind === "error" && (
+            <Text color="tertiary" role="alert">
+              {t("investmentCase.loadError", { message: status.message })}
+            </Text>
+          )}
+          {caseId && status.kind === "loaded" && (
+            <Text color="tertiary">
+              {t("investmentCase.header.caseIdLabel", { caseId: status.case.caseId })}
+            </Text>
+          )}
+
+          {/* Decision Support Tier 1 (Workspace Migration Phase 3,
+              approved §13) -- Atlas's own evidence-support sentence
+              sits directly beneath the identity facts above, in
+              Atlas's own voice, never inside a button. Relocated here
+              verbatim from the former bottom-of-page Evidence section
+              (Phase 1's `atlas.alpha.decision_support`, unchanged) --
+              the same fact is never rendered twice on this page. */}
+          {investmentCaseAnalysis.kind === "loaded" && (
+            <>
+              <Divider tone="hairline" />
+              <Inline gap="row" align="baseline" wrap>
+                <StatusBadge
+                  label={t(DECISION_SUPPORT_BADGE_KEY[investmentCaseAnalysis.report.recommendation.level])}
+                  tone={DECISION_SUPPORT_TONE[investmentCaseAnalysis.report.recommendation.level]}
+                />
+                <Text as="span">
+                  {t(DECISION_SUPPORT_STATEMENT_KEY[investmentCaseAnalysis.report.recommendation.level])}
                 </Text>
               </Inline>
-            )}
-            {/* Status (Investment Case Workspace v2, Sprint 2) -- fills
-                the slot `investmentCase.status.heading` has reserved
-                since an early sprint ("draft, historical, and monitoring
-                status indicators in a future commit"). One plain word,
-                derived from already-computed workflow/thesis/evidence
-                gaps -- see `deriveCaseStatus`'s own doc comment. */}
-            {investmentCaseAnalysis.kind === "loaded" && (
-              <Text as="p">
-                {t("investmentCase.status.heading")}:{" "}
-                {t(
-                  CASE_STATUS_KEY[
-                    deriveCaseStatus({
-                      hasOutstandingWork: caseOutstandingWork.length > 0,
-                      isThesisStale: investmentCaseAnalysis.report.isThesisStale,
-                      openQuestionCount: investmentCaseAnalysis.report.openQuestions.length,
-                      evidenceGap:
-                        investmentCaseAnalysis.report.evidenceQuality !== null &&
-                        (investmentCaseAnalysis.report.evidenceQuality.coverage === "none" ||
-                          investmentCaseAnalysis.report.evidenceQuality.coverage === "partial"),
-                    })
-                  ],
-                )}
-              </Text>
-            )}
-            {!linkedHolding && caseId && (
-              <Text color="secondary">{t("investmentCase.header.notLinked")}</Text>
-            )}
-            {!caseId && <Text color="secondary">{t("investmentCase.noCaseSelected")}</Text>}
-            {caseId && status.kind === "loading" && (
-              <Text role="status" aria-live="polite">
-                {t("common.loading")}
-              </Text>
-            )}
-            {caseId && status.kind === "error" && (
-              <Text color="tertiary" role="alert">
-                {t("investmentCase.loadError", { message: status.message })}
-              </Text>
-            )}
-            {caseId && status.kind === "loaded" && (
-              <Text color="tertiary">
-                {t("investmentCase.header.caseIdLabel", { caseId: status.case.caseId })}
-              </Text>
-            )}
+            </>
+          )}
 
-            {/* Decision Support Tier 1 (Workspace Migration Phase 3,
-                approved §13) -- Atlas's own evidence-support sentence
-                sits directly beneath the identity facts above, in
-                Atlas's own voice, never inside a button. Relocated here
-                verbatim from the former bottom-of-page Evidence section
-                (Phase 1's `atlas.alpha.decision_support`, unchanged) --
-                the same fact is never rendered twice on this page. */}
-            {investmentCaseAnalysis.kind === "loaded" && (
-              <>
-                <Divider tone="hairline" />
-                <Stack gap="metadata">
-                  <StatusBadge
-                    label={t(DECISION_SUPPORT_BADGE_KEY[investmentCaseAnalysis.report.recommendation.level])}
-                    tone={DECISION_SUPPORT_TONE[investmentCaseAnalysis.report.recommendation.level]}
-                  />
-                  <Text as="p">
-                    {t(DECISION_SUPPORT_STATEMENT_KEY[investmentCaseAnalysis.report.recommendation.level])}
-                  </Text>
-                </Stack>
-              </>
-            )}
-
-            {/* Action Flow Tier 1 trigger (approved §13 Option A) -- the
-                investor's own, clearly-separate action vocabulary,
-                distinct from Atlas's sentence above it. `[ Record a
-                decision ]` is the only entry point; the nudge reuses
-                `caseOutstandingWork`'s already-computed count (same
-                data Outstanding Work renders in full further down the
-                page, in progressive disclosure) rather than a new
-                computation. Hidden once the panel below is open, so the
-                trigger and the open panel are never both visible at
-                once. */}
-            {caseId && status.kind === "loaded" && !isDecisionPanelExpanded && (
-              <>
-                <Divider tone="hairline" />
-                {!linkedHolding && (
-                  <Text color="secondary">{t("investmentCase.actions.notLinkedNote")}</Text>
-                )}
-                {linkedHolding && (
-                  <Inline gap="row" align="center">
-                    <Button variant="primary" onClick={() => setIsDecisionPanelExpanded(true)}>
-                      {t("investmentCase.actions.recordDecisionTrigger")}
+          {/* Action Flow Tier 1 trigger (approved §13 Option A) -- the
+              investor's own, clearly-separate action vocabulary,
+              distinct from Atlas's sentence above it. `[ Record a
+              decision ]` is the only entry point; the nudge reuses
+              `caseOutstandingWork`'s already-computed count (same
+              data Outstanding Work renders in full further down the
+              page, in progressive disclosure) rather than a new
+              computation. Hidden once the panel below is open, so the
+              trigger and the open panel are never both visible at
+              once. */}
+          {caseId && status.kind === "loaded" && !isDecisionPanelExpanded && (
+            <>
+              <Divider tone="hairline" />
+              {!linkedHolding && (
+                <Text color="secondary">{t("investmentCase.actions.notLinkedNote")}</Text>
+              )}
+              {linkedHolding && (
+                <Inline gap="row" align="center">
+                  <Button variant="primary" onClick={() => setIsDecisionPanelExpanded(true)}>
+                    {t("investmentCase.actions.recordDecisionTrigger")}
+                  </Button>
+                  {decisionsAwaitingOutcome.length > 0 && (
+                    <Button variant="tertiary" onClick={() => setIsDecisionPanelExpanded(true)}>
+                      {t("investmentCase.actions.outcomeAwaitingNudge", {
+                        count: decisionsAwaitingOutcome.length,
+                      })}
                     </Button>
-                    {decisionsAwaitingOutcome.length > 0 && (
-                      <Button variant="tertiary" onClick={() => setIsDecisionPanelExpanded(true)}>
-                        {t("investmentCase.actions.outcomeAwaitingNudge", {
-                          count: decisionsAwaitingOutcome.length,
-                        })}
-                      </Button>
-                    )}
-                  </Inline>
-                )}
-              </>
-            )}
-          </Stack>
-        </Surface>
+                  )}
+                </Inline>
+              )}
+            </>
+          )}
+        </Stack>
 
         {/* Action Flow Tier 2 (approved §13 Option A) -- an inline
             expandable panel directly beneath the header, the same
@@ -2367,28 +2405,22 @@ export function InvestmentCasePage() {
                 never one combined disclosure. Every tab's content below
                 is unchanged from its former always-rendered-when-open
                 location -- only the container and default tab moved. */}
-            <Surface tier="primary">
-              <Inline gap="row" wrap>
-                {(
-                  [
-                    ["decisionHistory", "investmentCase.analysis.decisionHistory.heading"],
-                    ["timeline", "investmentCase.timeline.heading"],
-                    ["lastActivity", "investmentCase.lastActivity.heading"],
-                    ["outstandingWork", "investmentCase.outstandingWork.heading"],
-                    ["outcomes", "investmentCase.analysis.outcomes.heading"],
-                    ["moreDetails", "investmentCase.moreDetails.heading"],
-                  ] as [InvestmentCaseTabKey, TranslationKey][]
-                ).map(([key, labelKey]) => (
-                  <Button
-                    key={key}
-                    variant={activeTab === key ? "primary" : "tertiary"}
-                    onClick={() => setActiveTab(key)}
-                  >
-                    {t(labelKey)}
-                  </Button>
-                ))}
-              </Inline>
-            </Surface>
+            <Inline gap="inter-section" wrap>
+              {(
+                [
+                  ["decisionHistory", "investmentCase.analysis.decisionHistory.heading"],
+                  ["timeline", "investmentCase.timeline.heading"],
+                  ["lastActivity", "investmentCase.lastActivity.heading"],
+                  ["outstandingWork", "investmentCase.outstandingWork.heading"],
+                  ["outcomes", "investmentCase.analysis.outcomes.heading"],
+                  ["moreDetails", "investmentCase.moreDetails.heading"],
+                ] as [InvestmentCaseTabKey, TranslationKey][]
+              ).map(([key, labelKey]) => (
+                <TabLabel key={key} active={activeTab === key} onClick={() => setActiveTab(key)}>
+                  {t(labelKey)}
+                </TabLabel>
+              ))}
+            </Inline>
 
             {/* Decision History (Phase 26) -- kept mostly unchanged, per
                 this sprint's own instruction; moved from its former
@@ -2396,51 +2428,47 @@ export function InvestmentCasePage() {
                 into its own tab, matching the approved screen's own tab
                 bar. */}
             {activeTab === "decisionHistory" && investmentCaseAnalysis.kind === "loaded" && (
-              <Surface tier="primary">
-                <Stack gap="intra-section">
-                  <Heading level={2}>{t("investmentCase.analysis.decisionHistory.heading")}</Heading>
-                  {investmentCaseAnalysis.report.decisionHistory.length === 0 && (
-                    <Text color="secondary">{t("investmentCase.analysis.decisionHistory.empty")}</Text>
-                  )}
-                  {investmentCaseAnalysis.report.decisionHistory.map((entry) => (
-                    <Stack key={entry.decisionId} gap="intra-section">
-                      <Text as="p">
-                        {DECISION_TYPE_KEY[entry.decisionType]
-                          ? t(DECISION_TYPE_KEY[entry.decisionType]!)
-                          : entry.decisionType}
-                        {" — "}
-                        {entry.reason}
-                      </Text>
-                      <Text color="tertiary" as="p">
-                        {entry.decidedAt}
-                      </Text>
-                      <Divider tone="hairline" />
-                    </Stack>
-                  ))}
-                </Stack>
-              </Surface>
+              <Stack gap="row">
+                <Label>{t("investmentCase.analysis.decisionHistory.heading")}</Label>
+                {investmentCaseAnalysis.report.decisionHistory.length === 0 && (
+                  <StatusText label={t("investmentCase.analysis.decisionHistory.empty")} />
+                )}
+                {investmentCaseAnalysis.report.decisionHistory.map((entry) => (
+                  <Stack key={entry.decisionId} gap="metadata">
+                    <Text as="p">
+                      {DECISION_TYPE_KEY[entry.decisionType]
+                        ? t(DECISION_TYPE_KEY[entry.decisionType]!)
+                        : entry.decisionType}
+                      {" — "}
+                      {entry.reason}
+                    </Text>
+                    <Text color="tertiary" as="p">
+                      {entry.decidedAt}
+                    </Text>
+                    <Divider tone="hairline" />
+                  </Stack>
+                ))}
+              </Stack>
             )}
 
             {/* Outcomes (Phase 27) -- kept mostly unchanged, per this
                 sprint's own instruction; moved into its own tab. */}
             {activeTab === "outcomes" && investmentCaseAnalysis.kind === "loaded" && (
-              <Surface tier="primary">
-                <Stack gap="intra-section">
-                  <Heading level={2}>{t("investmentCase.analysis.outcomes.heading")}</Heading>
-                  {investmentCaseAnalysis.report.outcomeHistory.length === 0 && (
-                    <Text color="secondary">{t("investmentCase.analysis.outcomes.empty")}</Text>
-                  )}
-                  {investmentCaseAnalysis.report.outcomeHistory.map((entry) => (
-                    <Stack key={entry.outcomeId} gap="intra-section">
-                      <Text as="p">{entry.statement}</Text>
-                      <Text color="tertiary" as="p">
-                        {entry.occurredAt}
-                      </Text>
-                      <Divider tone="hairline" />
-                    </Stack>
-                  ))}
-                </Stack>
-              </Surface>
+              <Stack gap="row">
+                <Label>{t("investmentCase.analysis.outcomes.heading")}</Label>
+                {investmentCaseAnalysis.report.outcomeHistory.length === 0 && (
+                  <StatusText label={t("investmentCase.analysis.outcomes.empty")} />
+                )}
+                {investmentCaseAnalysis.report.outcomeHistory.map((entry) => (
+                  <Stack key={entry.outcomeId} gap="metadata">
+                    <Text as="p">{entry.statement}</Text>
+                    <Text color="tertiary" as="p">
+                      {entry.occurredAt}
+                    </Text>
+                    <Divider tone="hairline" />
+                  </Stack>
+                ))}
+              </Stack>
             )}
 
             {/* Last activity (Sprint 4) — factual continuity only: the
@@ -2450,12 +2478,11 @@ export function InvestmentCasePage() {
                 reconciliation status. No AI interpretation, no
                 recommendation — see `deriveActivity`. */}
             {activeTab === "lastActivity" && (
-              <Surface tier="primary">
-                <Stack gap="intra-section">
-                  <Heading level={2}>{t("investmentCase.lastActivity.heading")}</Heading>
-                  {!lastDecisionEvent && !lastOutcomeEvent && !lastTradeEvent && (
-                    <Text color="secondary">{t("investmentCase.lastActivity.noneYet")}</Text>
-                  )}
+              <Stack gap="metadata">
+                <Label>{t("investmentCase.lastActivity.heading")}</Label>
+                {!lastDecisionEvent && !lastOutcomeEvent && !lastTradeEvent && (
+                  <StatusText label={t("investmentCase.lastActivity.noneYet")} />
+                )}
                   {lastDecisionEvent && (
                     <Text>
                       {t("investmentCase.lastActivity.lastDecision", {
@@ -2494,8 +2521,7 @@ export function InvestmentCasePage() {
                         : t("investmentCase.lastActivity.reconciliationOk")}
                     </Text>
                   )}
-                </Stack>
-              </Surface>
+              </Stack>
             )}
 
             {/* Decision Timeline (Sprint 4) — a simple, entirely
@@ -2511,50 +2537,50 @@ export function InvestmentCasePage() {
                 share this one tab rather than either being fabricated
                 a Figma slot or silently dropped. */}
             {activeTab === "timeline" && (
-              <Surface tier="primary">
-                <Stack gap="intra-section">
-                  <Heading level={2}>{t("investmentCase.timeline.heading")}</Heading>
-                  {caseTimeline.length === 0 && (
-                    <Text color="secondary">{t("investmentCase.timeline.empty")}</Text>
-                  )}
-                  {caseTimeline.map((event) => (
-                    <div key={event.id}>
-                      <Text>
-                        {t(
-                          event.kind === "decision"
-                            ? "history.row.kindDecision"
-                            : event.kind === "outcome"
-                              ? "history.row.kindOutcome"
-                              : "history.row.kindTrade",
-                        )}
-                      </Text>
-                      <Text color="secondary" as="p">
-                        {event.decisionType &&
-                          (DECISION_TYPE_KEY[event.decisionType]
-                            ? t(DECISION_TYPE_KEY[event.decisionType]!)
-                            : event.decisionType)}
-                        {" — "}
-                        {event.summary}
-                      </Text>
-                      <Text color="tertiary" as="p">
-                        {event.date}
-                      </Text>
-                    </div>
-                  ))}
-                  {caseTimeline.length > 0 && (
-                    <div>
-                      <Text color="secondary">{t("investmentCase.timeline.currentStatus")}</Text>
-                      <Text as="p">{t(assessmentStatusKey)}</Text>
-                    </div>
-                  )}
-                  {investmentCaseAnalysis.kind === "loaded" && (
-                    <>
-                      <Divider tone="hairline" />
-                      <WhatChangedSection analysis={investmentCaseAnalysis.report} t={t} />
-                    </>
-                  )}
-                </Stack>
-              </Surface>
+              <Stack gap="row">
+                <Label>{t("investmentCase.timeline.heading")}</Label>
+                {caseTimeline.length === 0 && (
+                  <StatusText label={t("investmentCase.timeline.empty")} />
+                )}
+                {caseTimeline.map((event) => (
+                  <Stack key={event.id} gap="metadata">
+                    <Text>
+                      {t(
+                        event.kind === "decision"
+                          ? "history.row.kindDecision"
+                          : event.kind === "outcome"
+                            ? "history.row.kindOutcome"
+                            : "history.row.kindTrade",
+                      )}
+                    </Text>
+                    <Text color="secondary" as="p">
+                      {event.decisionType &&
+                        (DECISION_TYPE_KEY[event.decisionType]
+                          ? t(DECISION_TYPE_KEY[event.decisionType]!)
+                          : event.decisionType)}
+                      {" — "}
+                      {event.summary}
+                    </Text>
+                    <Text color="tertiary" as="p">
+                      {event.date}
+                    </Text>
+                  </Stack>
+                ))}
+                {caseTimeline.length > 0 && (
+                  <Text as="p">
+                    <Text as="span" color="secondary">
+                      {t("investmentCase.timeline.currentStatus")}:{" "}
+                    </Text>
+                    {t(assessmentStatusKey)}
+                  </Text>
+                )}
+                {investmentCaseAnalysis.kind === "loaded" && (
+                  <>
+                    <Divider tone="hairline" />
+                    <WhatChangedSection analysis={investmentCaseAnalysis.report} t={t} />
+                  </>
+                )}
+              </Stack>
             )}
 
             {/* Outstanding work (Sprint 4) — deterministic state checks
@@ -2564,24 +2590,22 @@ export function InvestmentCasePage() {
                 chain checks are shown here to avoid repeating the same
                 fact twice. */}
             {activeTab === "outstandingWork" && (
-              <Surface tier="primary">
-                <Stack gap="intra-section">
-                  <Heading level={2}>{t("investmentCase.outstandingWork.heading")}</Heading>
-                  {caseOutstandingWork.filter((item) => item.kind !== "reconciliation-needed").length ===
-                    0 && <Text color="secondary">{t("investmentCase.outstandingWork.none")}</Text>}
-                  {caseOutstandingWork
-                    .filter((item) => item.kind !== "reconciliation-needed")
-                    .map((item) => (
-                      <Text key={item.id} color="tertiary">
-                        {t(
-                          item.kind === "outcome-missing"
-                            ? "investmentCase.outstandingWork.outcomeMissing"
-                            : "investmentCase.outstandingWork.tradeMissing",
-                        )}
-                      </Text>
-                    ))}
-                </Stack>
-              </Surface>
+              <Stack gap="metadata">
+                <Label>{t("investmentCase.outstandingWork.heading")}</Label>
+                {caseOutstandingWork.filter((item) => item.kind !== "reconciliation-needed").length ===
+                  0 && <StatusText label={t("investmentCase.outstandingWork.none")} />}
+                {caseOutstandingWork
+                  .filter((item) => item.kind !== "reconciliation-needed")
+                  .map((item) => (
+                    <Text key={item.id} color="tertiary">
+                      {t(
+                        item.kind === "outcome-missing"
+                          ? "investmentCase.outstandingWork.outcomeMissing"
+                          : "investmentCase.outstandingWork.tradeMissing",
+                      )}
+                    </Text>
+                  ))}
+              </Stack>
             )}
 
             {/* More details — every existing Observation/Evidence/
@@ -2600,8 +2624,7 @@ export function InvestmentCasePage() {
                 analysis →" / "View full valuation →" links on the
                 primary view imply exactly this kind of deeper tab). */}
             {activeTab === "moreDetails" && (
-            <Surface tier="primary">
-                <Stack gap="inter-section">
+                <Stack gap="intra-section">
                   <Text color="secondary">{t("investmentCase.moreDetails.subheading")}</Text>
 
                   {investmentCaseAnalysis.kind === "loaded" && (
@@ -4117,19 +4140,16 @@ export function InvestmentCasePage() {
               </Stack>
             )}
           </Stack>
-            </Surface>
             )}
 
             <Divider />
 
             {/* Continuity footer — worded so the application never claims
                 active intelligence that isn't implemented yet. */}
-            <Surface tier="primary">
-              <Stack gap="inter-section">
-                <Text color="secondary">{t("investmentCase.continuity.line1")}</Text>
-                <Text color="secondary">{t("investmentCase.continuity.line2")}</Text>
-              </Stack>
-            </Surface>
+            <Stack gap="metadata">
+              <Text color="tertiary">{t("investmentCase.continuity.line1")}</Text>
+              <Text color="tertiary">{t("investmentCase.continuity.line2")}</Text>
+            </Stack>
           </>
         )}
       </Stack>
@@ -4310,111 +4330,101 @@ function ExecutiveSummaryCard({
   const cashWeightPercent = alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.cashWeightPercent : null;
   const concentrationLevel = alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.concentrationLevel : null;
 
+  const portfolioImpactParts: string[] = [
+    linkedHolding
+      ? t("investmentCase.executiveSummary.portfolioImpact.weight", { percent: linkedHolding.weightPercent })
+      : null,
+    // Corrective pass (compactness): "largest position" and
+    // "concentration" both describe the same concentration-relevance
+    // fact -- showing both is exactly the redundant portfolio metric
+    // this pass asks to avoid. Largest position is the more specific,
+    // more decision-relevant of the two when true; concentration is the
+    // fallback context otherwise. At most one of them renders.
+    isLargestPosition
+      ? t("investmentCase.executiveSummary.portfolioImpact.largestPosition")
+      : concentrationLevel
+        ? t("portfolio.concentration", {
+            value: CASE_CONCENTRATION_LEVEL_KEY[concentrationLevel]
+              ? t(CASE_CONCENTRATION_LEVEL_KEY[concentrationLevel]!)
+              : concentrationLevel,
+          })
+        : null,
+    cashWeightPercent !== null
+      ? t("investmentCase.executiveSummary.portfolioImpact.cash", { percent: cashWeightPercent })
+      : null,
+  ].filter((part): part is string => part !== null);
+
   return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("investmentCase.executiveSummary.heading")}</Heading>
+    <Stack gap="metadata">
+      <Label>{t("investmentCase.executiveSummary.heading")}</Label>
 
-        <div data-trace-source="assessment">
-          <Stack gap="metadata">
-            <Text color="secondary" as="p">
-              {t("investmentCase.assessment.heading")}
-            </Text>
-            {assessmentPoints.map((point, index) => (
-              <Text key={index} as="p">
-                {assessmentSentence(point, t)}
-              </Text>
-            ))}
-          </Stack>
-        </div>
+      <Text as="p" data-trace-source="assessment">
+        {assessmentPoints.map((point, index) => (
+          <span key={index}>
+            {isPositivePoint(point) ? "✅ " : "⚠️ "}
+            {assessmentSentence(point, t)}
+            {index < assessmentPoints.length - 1 ? " " : ""}
+          </span>
+        ))}
+      </Text>
 
-        <Divider tone="hairline" />
+      <div data-trace-source="priority">
+        <StatusText
+          label={`${t("investmentCase.executiveSummary.priority.heading")}: ${t(CURRENT_PRIORITY_KEY[currentPriority])}`}
+          tone="caution"
+          style={{
+            display: "inline-block",
+            padding: "2px var(--space-row)",
+            borderRadius: "var(--radius-control)",
+            border: "var(--width-border-hairline) solid var(--color-semantic-amber)",
+          }}
+        />
+      </div>
 
-        <div data-trace-source="priority">
-          <Inline gap="row" align="center">
-            <Text color="secondary" as="p">
-              {t("investmentCase.executiveSummary.priority.heading")}:
-            </Text>
-            <Text as="p">{t(CURRENT_PRIORITY_KEY[currentPriority])}</Text>
-          </Inline>
-        </div>
+      {portfolioImpactParts.length > 0 && (
+        <Text as="p" color="tertiary" data-trace-source="portfolioImpact">
+          {t("investmentCase.executiveSummary.portfolioImpact.heading")}: {portfolioImpactParts.join(" · ")}
+        </Text>
+      )}
 
-        <Divider tone="hairline" />
-
-        <div data-trace-source="portfolioImpact">
-          <Text color="secondary" as="p">
-            {t("investmentCase.executiveSummary.portfolioImpact.heading")}
-          </Text>
-          <Inline gap="row" wrap>
-            {linkedHolding && (
-              <Text as="p">
-                {t("investmentCase.executiveSummary.portfolioImpact.weight", {
-                  percent: linkedHolding.weightPercent,
-                })}
-              </Text>
-            )}
-            {/* Corrective pass (compactness): "largest position" and
-                "concentration" both describe the same concentration-
-                relevance fact -- showing both is exactly the redundant
-                portfolio metric this pass asks to avoid. Largest
-                position is the more specific, more decision-relevant of
-                the two when true; concentration is the fallback
-                context otherwise. At most one of them renders. */}
-            {isLargestPosition ? (
-              <Text as="p">{t("investmentCase.executiveSummary.portfolioImpact.largestPosition")}</Text>
-            ) : (
-              concentrationLevel && (
-                <Text as="p">
-                  {t("portfolio.concentration", {
-                    value: CASE_CONCENTRATION_LEVEL_KEY[concentrationLevel]
-                      ? t(CASE_CONCENTRATION_LEVEL_KEY[concentrationLevel]!)
-                      : concentrationLevel,
-                  })}
-                </Text>
-              )
-            )}
-            {cashWeightPercent !== null && (
-              <Text as="p">
-                {t("investmentCase.executiveSummary.portfolioImpact.cash", { percent: cashWeightPercent })}
-              </Text>
-            )}
-          </Inline>
-        </div>
-
-        {outstandingIssues.length > 0 && (
-          <>
-            <Divider tone="hairline" />
-            <div data-trace-source="outstandingIssues">
-              <Text color="secondary" as="p">
-                {t("investmentCase.executiveSummary.outstandingIssues.heading")}
-              </Text>
-              <Stack gap="metadata">
-                {/* Corrective pass (compactness): "Show at most 3 issues
-                    ... show '+ N more issues'" -- full, untruncated detail
-                    remains exactly where it already was, in the unchanged
-                    Outstanding work section further down the page; this
-                    is a display cap only, `outstandingIssues` itself is
-                    unchanged. */}
-                {outstandingIssues.slice(0, MAX_OUTSTANDING_ISSUES_SHOWN).map((issue) => (
-                  <Text key={issue} as="p">
-                    • {t(OUTSTANDING_ISSUE_KEY[issue])}
-                  </Text>
-                ))}
-                {outstandingIssues.length > MAX_OUTSTANDING_ISSUES_SHOWN && (
-                  <Text color="tertiary" as="p">
-                    {t("investmentCase.executiveSummary.outstandingIssues.moreCount", {
-                      count: outstandingIssues.length - MAX_OUTSTANDING_ISSUES_SHOWN,
-                    })}
-                  </Text>
-                )}
-              </Stack>
-            </div>
-          </>
-        )}
-
-      </Stack>
-    </Surface>
+      {outstandingIssues.length > 0 && (
+        <Text as="p" color="tertiary" data-trace-source="outstandingIssues">
+          {t("investmentCase.executiveSummary.outstandingIssues.heading")}:{" "}
+          {/* Corrective pass (compactness): "Show at most 3 issues ...
+              show '+ N more issues'" -- full, untruncated detail remains
+              exactly where it already was, in the unchanged Outstanding
+              work section further down the page; this is a display cap
+              only, `outstandingIssues` itself is unchanged. */}
+          {outstandingIssues
+            .slice(0, MAX_OUTSTANDING_ISSUES_SHOWN)
+            .map((issue) => t(OUTSTANDING_ISSUE_KEY[issue]))
+            .join(", ")}
+          {outstandingIssues.length > MAX_OUTSTANDING_ISSUES_SHOWN &&
+            ` ${t("investmentCase.executiveSummary.outstandingIssues.moreCount", {
+              count: outstandingIssues.length - MAX_OUTSTANDING_ISSUES_SHOWN,
+            })}`}
+        </Text>
+      )}
+    </Stack>
   );
+}
+
+/** Visual Fidelity Pass -- which assessment points read as a strength
+ * (✅) vs. a concern (⚠️) in the Figma-approved flowing Executive
+ * Summary paragraph. Purely a presentation classification over the
+ * same categorical value each point already carries -- never a new
+ * judgment. */
+function isPositivePoint(point: AssessmentPoint): boolean {
+  switch (point.kind) {
+    case "conviction":
+      return point.convictionLevel === "very_high" || point.convictionLevel === "high" || point.convictionLevel === "moderate";
+    case "valuation":
+      return point.valuationStatus === "undervalued";
+    case "risk":
+    case "thesisStale":
+    case "insufficientOverall":
+      return false;
+  }
 }
 
 /**
@@ -4478,31 +4488,37 @@ function InvestmentCaseCanonicalSections({
   t: Translate;
 }) {
   return (
-    <Stack gap="inter-section">
+    <Stack gap="intra-section">
       <AtlasViewSection analysis={analysis} t={t} />
+
+      <Divider tone="hairline" />
 
       {/* Financials | Valuation Scenarios -- the approved screen's own
           two-column pairing. Each child gets an even, wrapping share of
           the row (`flex: 1 1 320px`) rather than sizing to content. */}
-      <Inline gap="inter-section" wrap>
-        <div style={{ flex: "1 1 320px" }}>
+      <Inline gap="inter-section" wrap align="start">
+        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
           <FinancialsSection financialHistory={analysis.financialHistory} t={t} />
         </div>
-        <div style={{ flex: "1 1 320px" }}>
+        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
           <ValuationScenariosSection t={t} />
         </div>
       </Inline>
 
+      <Divider tone="hairline" />
+
       {/* Business Analysis | Company Overview -- the approved screen's
           other two-column pairing, distinct from the one above. */}
-      <Inline gap="inter-section" wrap>
-        <div style={{ flex: "1 1 320px" }}>
+      <Inline gap="inter-section" wrap align="start">
+        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
           <BusinessSection analysis={analysis} t={t} />
         </div>
-        <div style={{ flex: "1 1 320px" }}>
+        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
           <CompanyOverviewSection companyProfile={analysis.companyProfile} marketSnapshot={analysis.marketSnapshot} t={t} />
         </div>
       </Inline>
+
+      <Divider tone="hairline" />
 
       <EvidenceSection analysis={analysis} linkedHolding={linkedHolding} onViewMoreDetails={onViewMoreDetails} t={t} />
     </Stack>
@@ -4562,73 +4578,81 @@ function CompanyOverviewSection({
   const notAvailable = t("investmentCase.atlasView.notAvailable");
 
   return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("investmentCase.analysis.companyOverview.heading")}</Heading>
-        {!hasAnyData && (
-          <Text color="secondary">{t("investmentCase.analysis.companyOverview.empty")}</Text>
-        )}
-        {companyProfile && (
-          <Stack gap="intra-section">
-            {companyProfile.name && <Heading level={3}>{companyProfile.name}</Heading>}
+    <Stack gap="metadata">
+      <Label>{t("investmentCase.analysis.companyOverview.heading")}</Label>
+      {!hasAnyData && <StatusText label={t("investmentCase.analysis.companyOverview.empty")} />}
+      {companyProfile && (
+        <Stack gap="metadata">
+          <Inline gap="inter-section" wrap>
             <Text as="p">
-              {t("investmentCase.analysis.companyOverview.foundedLabel")}: {notAvailable}
+              <Text as="span" color="tertiary">
+                {t("investmentCase.analysis.companyOverview.foundedLabel")}:{" "}
+              </Text>
+              {notAvailable}
             </Text>
             <Text as="p">
-              {t("investmentCase.analysis.companyOverview.ceoLabel")}: {notAvailable}
+              <Text as="span" color="tertiary">
+                {t("investmentCase.analysis.companyOverview.employeesLabel")}:{" "}
+              </Text>
+              {notAvailable}
             </Text>
+          </Inline>
+          <Inline gap="inter-section" wrap>
             <Text as="p">
-              {t("investmentCase.analysis.companyOverview.employeesLabel")}: {notAvailable}
+              <Text as="span" color="tertiary">
+                {t("investmentCase.analysis.companyOverview.ceoLabel")}:{" "}
+              </Text>
+              {notAvailable}
             </Text>
-            {companyProfile.exchange && (
-              <Text as="p">
-                {t("investmentCase.analysis.companyOverview.exchangeLabel")}: {companyProfile.exchange}
-              </Text>
-            )}
-            {companyProfile.sector && (
-              <Text as="p">
-                {t("investmentCase.analysis.companyOverview.sectorLabel")}: {companyProfile.sector}
-              </Text>
-            )}
-            {companyProfile.industry && (
-              <Text as="p">
-                {t("investmentCase.analysis.companyOverview.industryLabel")}: {companyProfile.industry}
-              </Text>
-            )}
             {companyProfile.country && (
               <Text as="p">
-                {t("investmentCase.analysis.companyOverview.countryLabel")}: {companyProfile.country}
+                <Text as="span" color="tertiary">
+                  {t("investmentCase.analysis.companyOverview.countryLabel")}:{" "}
+                </Text>
+                {companyProfile.country}
               </Text>
             )}
-            {companyProfile.fiscalYearEnd && (
-              <Text as="p" color="secondary">
-                {t("investmentCase.analysis.companyOverview.fiscalYearEndLabel")}: {companyProfile.fiscalYearEnd}
-              </Text>
-            )}
-            {companyProfile.description && <Text color="secondary" as="p">{companyProfile.description}</Text>}
-          </Stack>
-        )}
+          </Inline>
+          {companyProfile.fiscalYearEnd && (
+            <Text as="p" color="tertiary">
+              {t("investmentCase.analysis.companyOverview.fiscalYearEndLabel")}: {companyProfile.fiscalYearEnd}
+            </Text>
+          )}
+          {companyProfile.description && (
+            <Text color="secondary" as="p">
+              {companyProfile.description}
+            </Text>
+          )}
+        </Stack>
+      )}
 
-        {marketSnapshot && (
-          <Stack gap="intra-section">
-            <Divider tone="hairline" />
-            <Heading level={3}>{t("investmentCase.analysis.financials.marketSnapshotHeading")}</Heading>
+      {marketSnapshot && (
+        <Stack gap="metadata">
+          <Divider tone="hairline" />
+          <Label>{t("investmentCase.analysis.financials.marketSnapshotHeading")}</Label>
+          <Inline gap="inter-section" wrap>
             <Text as="p">
-              {t("investmentCase.analysis.financials.sharePriceLabel")}:{" "}
+              <Text as="span" color="tertiary">
+                {t("investmentCase.analysis.financials.sharePriceLabel")}:{" "}
+              </Text>
               {formatFinancialValue(marketSnapshot.sharePrice, marketSnapshot.currency)}
             </Text>
             <Text as="p">
-              {t("investmentCase.analysis.financials.sharesOutstandingLabel")}:{" "}
+              <Text as="span" color="tertiary">
+                {t("investmentCase.analysis.financials.sharesOutstandingLabel")}:{" "}
+              </Text>
               {formatShareCount(marketSnapshot.sharesOutstanding)}
             </Text>
             <Text as="p">
-              {t("investmentCase.analysis.financials.marketCapLabel")}:{" "}
+              <Text as="span" color="tertiary">
+                {t("investmentCase.analysis.financials.marketCapLabel")}:{" "}
+              </Text>
               {formatFinancialValue(marketSnapshot.marketCap, marketSnapshot.currency)}
             </Text>
-          </Stack>
-        )}
-      </Stack>
-    </Surface>
+          </Inline>
+        </Stack>
+      )}
+    </Stack>
   );
 }
 
@@ -4638,15 +4662,13 @@ function CompanyOverviewSection({
  * screen's own Financials | Valuation Scenarios two-column layout). */
 function FinancialsSection({ financialHistory, t }: { financialHistory: FinancialPeriodView[]; t: Translate }) {
   return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("investmentCase.analysis.financials.heading")}</Heading>
-        {financialHistory.length === 0 && (
-          <Text color="secondary">{t("investmentCase.analysis.financials.empty")}</Text>
-        )}
-        {financialHistory.length > 0 && <FinancialsTable periods={financialHistory} t={t} />}
-      </Stack>
-    </Surface>
+    <Stack gap="metadata">
+      <Label>{t("investmentCase.analysis.financials.heading")}</Label>
+      {financialHistory.length === 0 && (
+        <StatusText label={t("investmentCase.analysis.financials.empty")} />
+      )}
+      {financialHistory.length > 0 && <FinancialsTable periods={financialHistory} t={t} />}
+    </Stack>
   );
 }
 
@@ -4664,14 +4686,10 @@ function FinancialsSection({ financialHistory, t }: { financialHistory: Financia
  */
 function ValuationScenariosSection({ t }: { t: Translate }) {
   return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("investmentCase.analysis.valuationScenarios.heading")}</Heading>
-        <Text color="secondary" as="p">
-          {t("investmentCase.analysis.valuationScenarios.notYet")}
-        </Text>
-      </Stack>
-    </Surface>
+    <Stack gap="metadata">
+      <Label>{t("investmentCase.analysis.valuationScenarios.heading")}</Label>
+      <StatusText label={t("investmentCase.analysis.valuationScenarios.notYet")} />
+    </Stack>
   );
 }
 
@@ -4800,11 +4818,10 @@ function AtlasViewSection({ analysis, t }: { analysis: InvestmentCaseAnalysisVie
   const notAvailable = t("investmentCase.atlasView.notAvailable");
 
   return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("investmentCase.atlasView.heading")}</Heading>
-        <Inline gap="inter-section" wrap>
-          <AtlasViewDimension
+    <Stack gap="metadata">
+      <Label>{t("investmentCase.atlasView.heading")}</Label>
+      <Inline gap="inter-section" wrap style={{ columnGap: "var(--space-inter-section)", rowGap: "var(--space-intra-section)" }}>
+        <AtlasViewDimension
             label={t("investmentCase.atlasView.dimension.businessStrength")}
             filled={null}
             valueLabel={notAvailable}
@@ -4839,9 +4856,8 @@ function AtlasViewSection({ analysis, t }: { analysis: InvestmentCaseAnalysisVie
             filled={null}
             valueLabel={notAvailable}
           />
-        </Inline>
-      </Stack>
-    </Surface>
+      </Inline>
+    </Stack>
   );
 }
 
@@ -4939,35 +4955,30 @@ function WhatChangedSection({ analysis, t }: { analysis: InvestmentCaseAnalysisV
   }
 
   return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("investmentCase.whatChanged.heading")}</Heading>
-        {analysis.isBaselineCase && (
+    <Stack gap="metadata">
+      <Label>{t("investmentCase.whatChanged.heading")}</Label>
+      {analysis.isBaselineCase && (
+        <StatusText label={t("investmentCase.whatChanged.baseline")} />
+      )}
+      {!analysis.isBaselineCase && analysis.latestChanges.length === 0 && (
+        <StatusText label={t("investmentCase.whatChanged.noChange")} />
+      )}
+      {!analysis.isBaselineCase && analysis.latestChanges.length > 0 && (
+        <Stack gap="metadata">
           <Text color="secondary" as="p">
-            {t("investmentCase.whatChanged.baseline")}
+            {t("investmentCase.whatChanged.sincePrevious")}
           </Text>
-        )}
-        {!analysis.isBaselineCase && analysis.latestChanges.length === 0 && (
-          <Text color="secondary" as="p">
-            {t("investmentCase.whatChanged.noChange")}
-          </Text>
-        )}
-        {!analysis.isBaselineCase && analysis.latestChanges.length > 0 && (
-          <Stack gap="intra-section">
-            <Text color="secondary" as="p">
-              {t("investmentCase.whatChanged.sincePrevious")}
+          {analysis.latestChanges.map((change) => (
+            <Text as="p" key={change.id}>
+              {CHANGE_DIRECTION_SYMBOL[change.direction]} {describeChange(change, t)}
             </Text>
-            {analysis.latestChanges.map((change) => (
-              <Text as="p" key={change.id}>
-                {CHANGE_DIRECTION_SYMBOL[change.direction]} {describeChange(change, t)}
-              </Text>
-            ))}
-            <Divider tone="hairline" />
-            <Text as="p">{t(THESIS_IMPACT_KEY[analysis.thesisChange])}</Text>
-          </Stack>
-        )}
-      </Stack>
-    </Surface>
+          ))}
+          <Text as="p" color="tertiary">
+            {t(THESIS_IMPACT_KEY[analysis.thesisChange])}
+          </Text>
+        </Stack>
+      )}
+    </Stack>
   );
 }
 
@@ -5055,12 +5066,15 @@ function BusinessSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView
 
   function renderFinding(finding: BusinessFindingView) {
     return (
-      <Stack key={finding.kind} gap="intra-section">
+      <Stack key={finding.kind} gap="metadata">
         <Text as="p">
-          {t(BUSINESS_CATEGORY_KEY[finding.kind])}: {t(BUSINESS_STATUS_KEY[finding.status])}
+          <Text as="span" color="tertiary">
+            {t(BUSINESS_CATEGORY_KEY[finding.kind])}:{" "}
+          </Text>
+          {t(BUSINESS_STATUS_KEY[finding.status])}
         </Text>
         {finding.supportingEvidence.length > 0 && (
-          <Text color="secondary" as="p">
+          <Text color="tertiary" as="p">
             {t("investmentCase.analysis.business.supportingLabel")}: {finding.supportingEvidence.join(", ")}
           </Text>
         )}
@@ -5070,35 +5084,34 @@ function BusinessSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView
           </Text>
         )}
         {finding.missingEvidence.length > 0 && (
-          <Text color="secondary" as="p">
+          <Text color="tertiary" as="p">
             {t("investmentCase.analysis.business.missingLabel")}: {finding.missingEvidence.map(humanize).join(", ")}
           </Text>
         )}
-        <Divider tone="hairline" />
       </Stack>
     );
   }
 
   return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("investmentCase.analysis.business.heading")}</Heading>
+    <Stack gap="metadata">
+      <Label>{t("investmentCase.analysis.business.heading")}</Label>
 
-        {(growth || capitalAllocation) && (
-          <Stack gap="intra-section">
-            {growth && renderFinding(growth)}
-            {capitalAllocation && renderFinding(capitalAllocation)}
-          </Stack>
-        )}
+      {(growth || capitalAllocation) && (
+        <Stack gap="row">
+          {growth && renderFinding(growth)}
+          {capitalAllocation && renderFinding(capitalAllocation)}
+        </Stack>
+      )}
 
-        {otherFindings.length > 0 && (
-          <Stack gap="intra-section">
-            <Heading level={3}>{t("investmentCase.analysis.business.otherCategoriesHeading")}</Heading>
-            {otherFindings.map(renderFinding)}
-          </Stack>
-        )}
-      </Stack>
-    </Surface>
+      {otherFindings.length > 0 && (
+        <Stack gap="row">
+          <Text as="p" color="tertiary">
+            {t("investmentCase.analysis.business.otherCategoriesHeading")}
+          </Text>
+          {otherFindings.map(renderFinding)}
+        </Stack>
+      )}
+    </Stack>
   );
 }
 
@@ -5112,42 +5125,42 @@ function ValuationDetailSection({ analysis, t }: { analysis: InvestmentCaseAnaly
   const scenarioFindings = analysis.valuation.findings.filter((f) => f.kind !== "fcf_yield_relative");
 
   return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("investmentCase.analysis.valuation.heading")}</Heading>
-        {fcfYield && (
-          <Stack gap="intra-section">
-            <Text as="p">
-              {t("investmentCase.analysis.valuation.method.fcf_yield_relative")}:{" "}
-              {t(VALUATION_STATUS_KEY[fcfYield.status])}
-            </Text>
-            {fcfYield.currentYield != null && (
-              <Text color="secondary" as="p">
-                {t("investmentCase.analysis.valuation.currentYieldLabel")}: {(fcfYield.currentYield * 100).toFixed(2)}%
-              </Text>
-            )}
-            {fcfYield.supportingFacts.length > 0 && (
-              <Text color="secondary" as="p">
-                {t("investmentCase.analysis.business.supportingLabel")}: {fcfYield.supportingFacts.join(", ")}
-              </Text>
-            )}
-            {fcfYield.missingEvidence.length > 0 && (
-              <Text color="secondary" as="p">
-                {t("investmentCase.analysis.business.missingLabel")}: {fcfYield.missingEvidence.map(humanize).join(", ")}
-              </Text>
-            )}
-          </Stack>
-        )}
-        {scenarioFindings.length > 0 && (
-          <Stack gap="intra-section">
-            <Heading level={3}>{t("investmentCase.analysis.valuation.scenarioHeading")}</Heading>
+    <Stack gap="metadata">
+      <Label>{t("investmentCase.analysis.valuation.heading")}</Label>
+      {fcfYield && (
+        <Stack gap="metadata">
+          <Text as="p">
+            {t("investmentCase.analysis.valuation.method.fcf_yield_relative")}:{" "}
+            {t(VALUATION_STATUS_KEY[fcfYield.status])}
+          </Text>
+          {fcfYield.currentYield != null && (
             <Text color="secondary" as="p">
-              {t("investmentCase.analysis.valuation.scenarioNote")}
+              {t("investmentCase.analysis.valuation.currentYieldLabel")}: {(fcfYield.currentYield * 100).toFixed(2)}%
             </Text>
-          </Stack>
-        )}
-      </Stack>
-    </Surface>
+          )}
+          {fcfYield.supportingFacts.length > 0 && (
+            <Text color="secondary" as="p">
+              {t("investmentCase.analysis.business.supportingLabel")}: {fcfYield.supportingFacts.join(", ")}
+            </Text>
+          )}
+          {fcfYield.missingEvidence.length > 0 && (
+            <Text color="secondary" as="p">
+              {t("investmentCase.analysis.business.missingLabel")}: {fcfYield.missingEvidence.map(humanize).join(", ")}
+            </Text>
+          )}
+        </Stack>
+      )}
+      {scenarioFindings.length > 0 && (
+        <Stack gap="metadata">
+          <Text as="p" color="tertiary">
+            {t("investmentCase.analysis.valuation.scenarioHeading")}
+          </Text>
+          <Text color="secondary" as="p">
+            {t("investmentCase.analysis.valuation.scenarioNote")}
+          </Text>
+        </Stack>
+      )}
+    </Stack>
   );
 }
 
@@ -5156,37 +5169,34 @@ function ValuationDetailSection({ analysis, t }: { analysis: InvestmentCaseAnaly
  * independently -- no aggregate, no hidden total. */
 function RiskSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
   return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("investmentCase.analysis.risk.heading")}</Heading>
-        <Text color="secondary" as="p">
-          {t("investmentCase.analysis.risk.subheading")}
-        </Text>
-        {analysis.risk.findings.map((finding) => (
-          <Stack key={finding.category} gap="intra-section">
-            <Text as="p">
-              {t(RISK_CATEGORY_KEY[finding.category])}: {t(RISK_STATUS_KEY[finding.status])}
+    <Stack gap="metadata">
+      <Label>{t("investmentCase.analysis.risk.heading")}</Label>
+      <Text color="tertiary" as="p">
+        {t("investmentCase.analysis.risk.subheading")}
+      </Text>
+      {analysis.risk.findings.map((finding) => (
+        <Stack key={finding.category} gap="metadata">
+          <Text as="p">
+            {t(RISK_CATEGORY_KEY[finding.category])}: {t(RISK_STATUS_KEY[finding.status])}
+          </Text>
+          {finding.supportingFacts.length > 0 && (
+            <Text color="tertiary" as="p">
+              {t("investmentCase.analysis.business.supportingLabel")}: {finding.supportingFacts.join(", ")}
             </Text>
-            {finding.supportingFacts.length > 0 && (
-              <Text color="secondary" as="p">
-                {t("investmentCase.analysis.business.supportingLabel")}: {finding.supportingFacts.join(", ")}
-              </Text>
-            )}
-            {finding.contradictingFacts.length > 0 && (
-              <Text color="tertiary" as="p">
-                {t("investmentCase.analysis.business.contradictingLabel")}: {finding.contradictingFacts.join(", ")}
-              </Text>
-            )}
-            {finding.missingEvidence.length > 0 && (
-              <Text color="secondary" as="p">
-                {t("investmentCase.analysis.business.missingLabel")}: {finding.missingEvidence.map(humanize).join(", ")}
-              </Text>
-            )}
-            <Divider tone="hairline" />
-          </Stack>
-        ))}
-      </Stack>
-    </Surface>
+          )}
+          {finding.contradictingFacts.length > 0 && (
+            <Text color="tertiary" as="p">
+              {t("investmentCase.analysis.business.contradictingLabel")}: {finding.contradictingFacts.join(", ")}
+            </Text>
+          )}
+          {finding.missingEvidence.length > 0 && (
+            <Text color="tertiary" as="p">
+              {t("investmentCase.analysis.business.missingLabel")}: {finding.missingEvidence.map(humanize).join(", ")}
+            </Text>
+          )}
+        </Stack>
+      ))}
+    </Stack>
   );
 }
 
@@ -5229,28 +5239,32 @@ function EvidenceSection({
   const latest = analysis.currentThesis.latestDecisionReason ?? analysis.currentThesis.latestObservationStatement;
 
   return (
-    <Surface tier="primary">
-      <Inline gap="inter-section" wrap>
-        <Text as="span" color="secondary">
-          {t("investmentCase.analysis.evidence.qualityHeading")}: {t(CONFIDENCE_KEY[analysis.confidence])}
-        </Text>
-        <Text as="span" color="secondary">
-          {t("investmentCase.analysis.evidence.coverageLabel")}:{" "}
-          {analysis.evidenceQuality
-            ? t(CONFIDENCE_KEY[analysis.evidenceQuality.coverage])
-            : t("investmentCase.atlasView.notAvailable")}
-        </Text>
-        <Text as="span" color="secondary">
-          {t("investmentCase.analysis.evidence.missingEvidenceHeading")}: {missingCount}
-        </Text>
-        {latest && (
+    <Stack gap="metadata">
+      <Label>{t("investmentCase.analysis.evidence.heading")}</Label>
+      <Inline gap="inter-section" wrap style={{ justifyContent: "space-between" }}>
+        <Inline gap="row" wrap>
           <Text as="span" color="secondary">
-            {t("investmentCase.analysis.evidence.latestLabel")}: {latest}
+            {t("investmentCase.analysis.evidence.qualityHeading")}: {t(CONFIDENCE_KEY[analysis.confidence])}
           </Text>
-        )}
+          <Text as="span" color="secondary">
+            {t("investmentCase.analysis.evidence.coverageLabel")}:{" "}
+            {analysis.evidenceQuality
+              ? t(CONFIDENCE_KEY[analysis.evidenceQuality.coverage])
+              : t("investmentCase.atlasView.notAvailable")}
+          </Text>
+          <Text as="span" color="secondary">
+            {t("investmentCase.analysis.evidence.missingEvidenceHeading")}: {missingCount}
+          </Text>
+          {latest && (
+            <Text as="span" color="secondary">
+              {t("investmentCase.analysis.evidence.latestLabel")}: {latest}
+            </Text>
+          )}
+        </Inline>
         {linkedHolding && (
           <Link
             href="#"
+            style={ACCENT_LINK_STYLE}
             onClick={(event) => {
               event.preventDefault();
               onViewMoreDetails();
@@ -5260,7 +5274,7 @@ function EvidenceSection({
           </Link>
         )}
       </Inline>
-    </Surface>
+    </Stack>
   );
 }
 
@@ -5280,9 +5294,8 @@ function EvidenceDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalys
   const otherOpenQuestions = analysis.openQuestions.filter((q) => !EVIDENCE_GAP_QUESTION_KINDS.includes(q.kind));
 
   return (
-    <Surface tier="primary">
       <Stack gap="intra-section">
-        <Heading level={2}>{t("investmentCase.analysis.evidence.heading")}</Heading>
+        <Label>{t("investmentCase.analysis.evidence.heading")}</Label>
 
         {/* Current Thesis -- investor-provided only; Atlas never
             fabricates a thesis narrative of its own. */}
@@ -5414,6 +5427,5 @@ function EvidenceDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalys
         )}
 
       </Stack>
-    </Surface>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { Button, Container, Divider, Heading, Inline, Link, Stack, StatusBadge, Surface, Text } from "../foundation";
+import { Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, StatusText, Surface, Text, VisuallyHidden } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   derivePortfolioActions,
@@ -391,7 +391,16 @@ interface ReplaceRow {
   valueAbsolute: string;
 }
 
-const UNALLOCATED_TOLERANCE = 0.01;
+/** Visual Fidelity Pass -- Figma's own navigation links ("Import
+ * Portfolio", "View All Holdings") render in the accent color, not the
+ * Foundation `Link` component's default tertiary gray. Scoped to this
+ * page's `RouterLink` usages only (the shared `Link`/`Link.module.css`
+ * default is left alone -- out of scope for this pass). */
+const ACCENT_LINK_STYLE: CSSProperties = {
+  color: "var(--global-color-accent)",
+  textDecoration: "none",
+  fontSize: "var(--type-body-min-size)",
+};
 
 /**
  * Portfolio (Alpha Sprint 1A, extended Alpha Sprint 1B). Shows holdings,
@@ -685,13 +694,11 @@ export function PortfolioPage() {
       : null;
 
   return (
-    <Container>
-      <Stack gap="inter-section">
-        <Heading level={1}>{t("portfolio.title")}</Heading>
-
-        <div>
-          <RouterLink to="/portfolio/import">{t("portfolioImport.title")}</RouterLink>
-        </div>
+    <Container width="wide">
+      <Stack gap="intra-section">
+        {!(status.kind === "loaded" && status.view.exists && status.view.holdings.length > 0) && (
+          <PageTitle t={t} />
+        )}
 
         {status.kind === "loading" && (
           <Text role="status" aria-live="polite">
@@ -738,7 +745,7 @@ export function PortfolioPage() {
         )}
 
         {status.kind === "loaded" && status.view.exists && status.view.holdings.length > 0 && (
-          <Stack gap="inter-section">
+          <Stack gap="intra-section">
             <PortfolioHeaderBar
               view={status.view}
               unallocatedPercent={unallocatedPercent}
@@ -889,11 +896,37 @@ export function PortfolioPage() {
   );
 }
 
+/** Visual Fidelity Pass -- compact page title, shared by every non-
+ * primary state (loading/error/not-established/empty). The primary
+ * "loaded with holdings" state instead renders its title inline with
+ * the header stat row (`PortfolioHeaderBar` below), matching Figma's
+ * single-row title+stats layout. */
+function PageTitle({ t }: { t: (key: TranslationKey) => string }) {
+  return (
+    <Inline gap="row" align="baseline" wrap>
+      <Heading level={3} style={PAGE_TITLE_STYLE}>
+        {t("portfolio.title")}
+      </Heading>
+      <RouterLink to="/portfolio/import" style={ACCENT_LINK_STYLE}>
+        {t("portfolioImport.title")}
+      </RouterLink>
+    </Inline>
+  );
+}
+
+const PAGE_TITLE_STYLE: CSSProperties = {
+  fontFamily: "var(--type-family-prose)",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.02em",
+};
+
 /**
- * Figma-fidelity rebuild -- the header stat row directly under the page
- * title (`atlas-portfolio-redesign`): Holdings / Cash / Unallocated /
- * Expected Return / Action Required, no card chrome, no "Portfolio
- * Summary" heading (the Figma screen has none). "Action Required" reads
+ * Figma-fidelity rebuild, Visual Fidelity Pass -- title and the header
+ * stat row (`atlas-portfolio-redesign`) share a single line: page title
+ * on the left, Holdings / Cash / Unallocated / Expected Return / Action
+ * Required on the right, no card chrome, no "Portfolio Summary" heading
+ * (the Figma screen has none). "Action Required" reads
  * `PortfolioCockpitView.priorityReviewCount` -- an already-real,
  * dedicated count of holdings in `priority_review` state, not a second
  * count recomputed a different way from the priority strip's own
@@ -920,28 +953,38 @@ function PortfolioHeaderBar({
 
   return (
     <Stack gap="metadata">
-      <Inline gap="row" wrap>
-        <Text color="secondary" as="p">
-          {view.numberOfHoldings} {t("portfolio.header.holdings")}
-        </Text>
-        <Text color="secondary" as="p">
-          {t("portfolio.header.cash")}:{" "}
-          {view.cashWeightPercent !== null ? `${view.cashWeightPercent}%` : t("portfolio.header.notAvailable")}
-        </Text>
-        <Text color="secondary" as="p">
-          {t("portfolio.header.unallocated")}:{" "}
-          {unallocatedPercent !== null
-            ? `${Math.round(unallocatedPercent * 100) / 100}%`
-            : t("portfolio.header.notAvailable")}
-        </Text>
-        <Text color="secondary" as="p">
-          {t("portfolio.header.expectedReturn")}: {t("portfolio.header.notAvailable")}
-        </Text>
-        {actionRequired !== null && actionRequired > 0 && (
-          <Text color="tertiary" as="p">
-            {t("portfolio.header.actionRequired", { count: actionRequired })}
+      <Inline gap="row" align="baseline" wrap style={{ justifyContent: "space-between" }}>
+        <Inline gap="row" align="baseline" wrap>
+          <Heading level={3} style={PAGE_TITLE_STYLE}>
+            {t("portfolio.title")}
+          </Heading>
+          <RouterLink to="/portfolio/import" style={ACCENT_LINK_STYLE}>
+            {t("portfolioImport.title")}
+          </RouterLink>
+        </Inline>
+        <Inline gap="row" wrap>
+          <Text color="secondary" as="span">
+            {view.numberOfHoldings} {t("portfolio.header.holdings")}
           </Text>
-        )}
+          <Text color="secondary" as="span">
+            {t("portfolio.header.cash")}:{" "}
+            {view.cashWeightPercent !== null ? `${view.cashWeightPercent}%` : t("portfolio.header.notAvailable")}
+          </Text>
+          <Text color="secondary" as="span">
+            {t("portfolio.header.unallocated")}:{" "}
+            {unallocatedPercent !== null
+              ? `${Math.round(unallocatedPercent * 100) / 100}%`
+              : t("portfolio.header.notAvailable")}
+          </Text>
+          <Text color="secondary" as="span">
+            {t("portfolio.header.expectedReturn")}: {t("portfolio.header.notAvailable")}
+          </Text>
+          {actionRequired !== null && actionRequired > 0 && (
+            <Text color="tertiary" as="span">
+              {t("portfolio.header.actionRequired", { count: actionRequired })}
+            </Text>
+          )}
+        </Inline>
       </Inline>
       {unknownInstrumentTickers.length > 0 && (
         <Text color="tertiary" as="p">
@@ -1005,14 +1048,28 @@ function PriorityStrip({
         <PriorityStripItem key={action.id} action={action} openInvestmentCase={openInvestmentCase} t={t} />
       ))}
       {hiddenCount > 0 && (
-        <Button variant="tertiary" onClick={() => setExpanded(true)}>
+        <Link
+          href="#"
+          style={{ color: "var(--global-color-accent)" }}
+          onClick={(event) => {
+            event.preventDefault();
+            setExpanded(true);
+          }}
+        >
           {t("portfolio.priorityStrip.viewAll", { count: allActions.length })}
-        </Button>
+        </Link>
       )}
       {expanded && allActions.length > PRIORITY_STRIP_INITIAL_COUNT && (
-        <Button variant="tertiary" onClick={() => setExpanded(false)}>
+        <Link
+          href="#"
+          style={{ color: "var(--global-color-accent)" }}
+          onClick={(event) => {
+            event.preventDefault();
+            setExpanded(false);
+          }}
+        >
           {t("portfolio.priorityStrip.viewFewer")}
-        </Button>
+        </Link>
       )}
     </Inline>
   );
@@ -1031,12 +1088,17 @@ function PriorityStripItem({
   const label = `${SEVERITY_EMOJI[action.severity]} ${title} — ${reason}`;
 
   if (!action.ticker) {
-    return <Text as="span">{label}</Text>;
+    return (
+      <Text as="span" color="secondary">
+        {label}
+      </Text>
+    );
   }
 
   return (
     <Link
       href="#"
+      style={{ color: "var(--color-text-secondary)", textDecoration: "none" }}
       onClick={(event) => {
         event.preventDefault();
         openInvestmentCase(action.ticker!, action.caseId);
@@ -1109,17 +1171,20 @@ function HoldingsTable({
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   const cellStyle: CSSProperties = {
-    padding: "var(--space-row) var(--space-metadata)",
+    padding: "var(--space-metadata) var(--space-row)",
     textAlign: "left",
     borderBottom: `var(--width-border-hairline) solid var(--color-border-hairline)`,
-    fontFamily: "var(--type-family-prose)",
+    fontFamily: "var(--type-family-metadata)",
+    fontVariantNumeric: "tabular-nums",
     fontSize: "var(--type-body-min-size)",
   };
   const headerCellStyle: CSSProperties = {
     ...cellStyle,
     color: "var(--color-text-tertiary)",
-    fontFamily: "var(--type-family-metadata)",
     fontWeight: 500,
+    fontSize: "11px",
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
     borderBottom: `var(--width-border-standard) solid var(--color-border-standard)`,
   };
 
@@ -1127,15 +1192,22 @@ function HoldingsTable({
   const visibleHoldings = showAllHoldings ? view.holdings : view.holdings.slice(0, HOLDINGS_PAGE_SIZE);
 
   return (
-    <Surface tier="primary">
-      <Stack gap="intra-section">
-        <Heading level={2}>{t("portfolio.holdings.heading")}</Heading>
-        {!view.hasAbsoluteValues && <Text color="secondary">{t("portfolio.holdings.percentOnly")}</Text>}
-        {view.hasAbsoluteValues && view.totalValue !== null && (
-          <Text color="secondary">{t("portfolio.holdings.totalValue", { value: view.totalValue })}</Text>
-        )}
+    <Stack gap="metadata">
+      <Heading level={2}>
+        <VisuallyHidden>{t("portfolio.holdings.heading")}</VisuallyHidden>
+      </Heading>
+      {!view.hasAbsoluteValues && (
+        <Text color="tertiary" as="p">
+          {t("portfolio.holdings.percentOnly")}
+        </Text>
+      )}
+      {view.hasAbsoluteValues && view.totalValue !== null && (
+        <Text color="tertiary" as="p">
+          {t("portfolio.holdings.totalValue", { value: view.totalValue })}
+        </Text>
+      )}
 
-        <div style={{ overflowX: "auto" }}>
+      <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
@@ -1187,44 +1259,54 @@ function HoldingsTable({
           </table>
         </div>
 
-        {view.holdings.length > HOLDINGS_PAGE_SIZE && (
-          <Inline gap="row" align="center">
-            <Text color="tertiary" as="span">
-              {t("portfolio.holdingsTable.showingCount", {
-                shown: visibleHoldings.length,
-                total: view.holdings.length,
-              })}
-            </Text>
-            <Button variant="tertiary" onClick={() => setShowAllHoldings((current) => !current)}>
+        <Inline gap="row" align="center" wrap style={{ justifyContent: "space-between" }}>
+          <Text color="tertiary" as="span">
+            {[
+              view.holdings.length > HOLDINGS_PAGE_SIZE
+                ? t("portfolio.holdingsTable.showingCount", {
+                    shown: visibleHoldings.length,
+                    total: view.holdings.length,
+                  })
+                : null,
+              view.concentrationLevel
+                ? t("portfolio.concentration", {
+                    value: CONCENTRATION_LEVEL_KEY[view.concentrationLevel]
+                      ? t(CONCENTRATION_LEVEL_KEY[view.concentrationLevel]!)
+                      : view.concentrationLevel,
+                  })
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </Text>
+          {view.holdings.length > HOLDINGS_PAGE_SIZE && (
+            <Link
+              href="#"
+              style={{ color: "var(--global-color-accent)" }}
+              onClick={(event) => {
+                event.preventDefault();
+                setShowAllHoldings((current) => !current);
+              }}
+            >
               {showAllHoldings
                 ? t("portfolio.holdingsTable.viewFewer")
                 : t("portfolio.holdingsTable.viewAll", { count: view.holdings.length })}
-            </Button>
-          </Inline>
-        )}
-
-        {unallocatedPercent !== null && unallocatedPercent > UNALLOCATED_TOLERANCE && (
-          <Text color="secondary">
-            {t("portfolio.unallocated", { percent: Math.round(unallocatedPercent * 100) / 100 })}
-          </Text>
-        )}
-        {view.concentrationLevel && (
-          <Text color="secondary">
-            {t("portfolio.concentration", {
-              value: CONCENTRATION_LEVEL_KEY[view.concentrationLevel]
-                ? t(CONCENTRATION_LEVEL_KEY[view.concentrationLevel]!)
-                : view.concentrationLevel,
-            })}
-          </Text>
-        )}
+            </Link>
+          )}
+        </Inline>
 
         <div>
-          <Button variant="tertiary" onClick={() => openInvestmentCase("__new__", null)}>
+          <Link
+            href="#"
+            onClick={(event) => {
+              event.preventDefault();
+              openInvestmentCase("__new__", null);
+            }}
+          >
             {t("portfolio.openNewCase")}
-          </Button>
+          </Link>
         </div>
-      </Stack>
-    </Surface>
+    </Stack>
   );
 }
 
@@ -1291,8 +1373,8 @@ function HoldingsTableRow({
         }}
         style={{ cursor: isCreating ? "default" : "pointer" }}
       >
-        <td style={cellStyle}>
-          <Stack gap="metadata">
+        <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)" }}>
+          <Inline gap="metadata" align="baseline" wrap>
             <Text as="span">{holding.ticker}</Text>
             {isCreating && (
               <Text as="span" color="tertiary">
@@ -1315,24 +1397,22 @@ function HoldingsTableRow({
               </Text>
             )}
             {isAwaitingReconciliation && (
-              <div>
-                <Button
-                  variant="tertiary"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onToggleReconcile();
-                  }}
-                >
-                  {isReconcileExpanded ? t("common.cancel") : t("portfolio.holdingsTable.reconcileToggle")}
-                </Button>
-              </div>
+              <Link
+                href="#"
+                style={{ color: "var(--global-color-accent)" }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  onToggleReconcile();
+                }}
+              >
+                {isReconcileExpanded ? t("common.cancel") : t("portfolio.holdingsTable.reconcileToggle")}
+              </Link>
             )}
-          </Stack>
+          </Inline>
         </td>
         <td style={cellStyle}>
-          <Text as="span">
-            {holding.weightPercent}%{holding.valueAbsolute !== null ? ` — ${holding.valueAbsolute}` : ""}
-          </Text>
+          {holding.weightPercent}%{holding.valueAbsolute !== null ? ` — ${holding.valueAbsolute}` : ""}
         </td>
         <td style={cellStyle}>
           {cockpitHolding ? (
@@ -1341,9 +1421,7 @@ function HoldingsTableRow({
               tone={CONVICTION_TONE[cockpitHolding.conviction.level]}
             />
           ) : (
-            <Text as="span" color="tertiary">
-              —
-            </Text>
+            <StatusText label="—" />
           )}
         </td>
         {/* Fit/Exp. Return/Upside/Downside: no real per-holding source
@@ -1352,47 +1430,35 @@ function HoldingsTableRow({
             "—" every other missing value on this page already uses,
             never an invented rating or percentage. */}
         <td style={cellStyle}>
-          <Text as="span" color="tertiary">
-            —
-          </Text>
+          <StatusText label="—" />
         </td>
         <td style={cellStyle}>
-          <Text as="span" color="tertiary">
-            —
-          </Text>
+          <StatusText label="—" />
         </td>
         <td style={cellStyle}>
-          <Text as="span" color="tertiary">
-            —
-          </Text>
+          <StatusText label="—" />
         </td>
         <td style={cellStyle}>
-          <Text as="span" color="tertiary">
-            —
-          </Text>
+          <StatusText label="—" />
         </td>
         <td style={cellStyle}>
           {cockpitHolding ? (
-            <StatusBadge
+            <StatusText
               label={t(RISK_STATUS_KEY[cockpitHolding.riskProjection.status])}
               tone={RISK_STATUS_TONE[cockpitHolding.riskProjection.status]}
             />
           ) : (
-            <Text as="span" color="tertiary">
-              —
-            </Text>
+            <StatusText label="—" />
           )}
         </td>
         <td style={cellStyle}>
           {cockpitHolding ? (
-            <StatusBadge
+            <StatusText
               label={t(DECISION_SUPPORT_BADGE_KEY[cockpitHolding.decisionSupport.level])}
               tone={DECISION_SUPPORT_TONE[cockpitHolding.decisionSupport.level]}
             />
           ) : (
-            <Text as="span" color="tertiary">
-              —
-            </Text>
+            <StatusText label="—" />
           )}
         </td>
       </tr>
@@ -1473,25 +1539,25 @@ function PortfolioIntelligencePanels({
 
   return (
     <Inline gap="inter-section" wrap>
-      <Surface tier="primary">
-        <Stack gap="intra-section">
-          <Heading level={2}>{t("portfolio.keyFindingsPanel.heading")}</Heading>
-          {keyFindings.length === 0 && <Text color="secondary">{t("portfolio.keyFindingsPanel.empty")}</Text>}
+      <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+        <Stack gap="metadata">
+          <Label>{t("portfolio.keyFindingsPanel.heading")}</Label>
+          {keyFindings.length === 0 && <Text color="tertiary">{t("portfolio.keyFindingsPanel.empty")}</Text>}
           {keyFindings.map((finding, index) => (
-            <Text as="p" key={index}>
+            <Text as="p" color="secondary" key={index}>
               {t(KEY_FINDING_KEY[finding.kind], { count: finding.count, tickers: finding.tickers.join(", ") })}
             </Text>
           ))}
         </Stack>
-      </Surface>
-      <Surface tier="primary">
-        <Stack gap="intra-section">
-          <Heading level={2}>{t("portfolio.riskSignalsPanel.heading")}</Heading>
+      </div>
+      <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+        <Stack gap="metadata">
+          <Label>{t("portfolio.riskSignalsPanel.heading")}</Label>
           {riskSignals.length === 0 && missingEvidenceCount === 0 && (
-            <Text color="secondary">{t("portfolio.riskSignalsPanel.empty")}</Text>
+            <Text color="tertiary">{t("portfolio.riskSignalsPanel.empty")}</Text>
           )}
           {riskSignals.map((signal, index) => (
-            <Text as="p" key={index}>
+            <Text as="p" color="secondary" key={index}>
               {t(RISK_SIGNAL_KEY[signal.kind], { ticker: signal.ticker })}
             </Text>
           ))}
@@ -1501,7 +1567,7 @@ function PortfolioIntelligencePanels({
             </Text>
           )}
         </Stack>
-      </Surface>
+      </div>
     </Inline>
   );
 }

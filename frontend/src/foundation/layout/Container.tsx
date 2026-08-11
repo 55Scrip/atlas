@@ -2,6 +2,11 @@ import type { HTMLAttributes, ReactNode } from "react";
 
 interface ContainerProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
+  /** Visual Fidelity Pass -- "wide" opts into the dense workspace ceiling
+   * (`--container-max-width-wide`) the Figma-approved Portfolio/Investment
+   * Case screens actually use; omit for the original editorial-column
+   * default every other page keeps. */
+  width?: "editorial" | "wide";
 }
 
 /**
@@ -17,13 +22,13 @@ interface ContainerProps extends HTMLAttributes<HTMLDivElement> {
  * sprint's own "do not block on ambiguity" instruction. Horizontal page
  * padding uses the same workspace-margin token the mockups use.
  */
-export function Container({ children, style, ...rest }: ContainerProps) {
+export function Container({ children, width = "editorial", style, ...rest }: ContainerProps) {
   return (
     <div
       {...rest}
       style={{
         width: "100%",
-        maxWidth: "var(--container-max-width)",
+        maxWidth: width === "wide" ? "var(--container-max-width-wide)" : "var(--container-max-width)",
         marginInline: "auto",
         paddingInline: "var(--space-workspace-margin)",
         boxSizing: "border-box",
