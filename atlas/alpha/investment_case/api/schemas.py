@@ -47,7 +47,8 @@ from atlas.analysis_engine.investment_case_synthesis import (
     ValuationContext,
 )
 from atlas.analysis_engine.models import CanonicalAnalysis
-from atlas.analysis_engine.risk.models import RiskAnalysisResult, RiskFinding
+from atlas.analysis_engine.risk.models import RiskAnalysisResult, RiskFinding, RiskProjection
+from atlas.analysis_engine.risk.projection import risk_projection
 from atlas.analysis_engine.valuation.models import ValuationEngineResult, ValuationFinding
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.observation.entity import Observation
@@ -185,6 +186,24 @@ class RiskAnalysisView(CamelModel):
     @classmethod
     def from_domain(cls, result: RiskAnalysisResult) -> "RiskAnalysisView":
         return cls(state=result.state.value, findings=[RiskFindingView.from_domain(f) for f in result.findings])
+
+
+class RiskProjectionView(CamelModel):
+    """The single highest-severity risk category, for the Atlas View
+    scorecard's one "Risk Level" dot -- the same `risk_projection()`
+    Portfolio Cockpit's own Holdings table Risk column already calls
+    (`atlas.analysis_engine.risk.projection`), never a second, divergent
+    computation. Field-for-field identical to `portfolio_cockpit.api
+    .schemas.RiskProjectionView`, independently declared per this
+    module's own no-cross-package-import convention (see this file's
+    header docstring)."""
+
+    category: str
+    status: str
+
+    @classmethod
+    def from_domain(cls, projection: RiskProjection) -> "RiskProjectionView":
+        return cls(category=projection.category.value, status=projection.status.value)
 
 
 class ConvictionAssessmentView(CamelModel):
@@ -527,6 +546,11 @@ class InvestmentCaseAnalysisView(CamelModel):
     business_analysis: BusinessAnalysisView
     valuation: ValuationEngineView
     risk: RiskAnalysisView
+    risk_projection: RiskProjectionView
+    """Figma-fidelity rebuild: Atlas View's compact "Risk Level" dot
+    needs one representative category, not the full four-category
+    vector `risk` above already carries in full -- see
+    `RiskProjectionView`'s own docstring."""
     evidence_quality: EvidenceQualityFindingsSchema | None
     open_questions: list[OpenQuestionSchema]
     recommendation: RecommendationStateView
@@ -598,6 +622,7 @@ class InvestmentCaseAnalysisView(CamelModel):
             business_analysis=BusinessAnalysisView.from_domain(analysis.business_analysis),
             valuation=ValuationEngineView.from_domain(analysis.valuation_engine),
             risk=RiskAnalysisView.from_domain(analysis.risk_analysis),
+            risk_projection=RiskProjectionView.from_domain(risk_projection(analysis.risk_analysis)),
             evidence_quality=(
                 EvidenceQualityFindingsSchema.from_domain(analysis.business.evidence_quality)
                 if analysis.business.evidence_quality

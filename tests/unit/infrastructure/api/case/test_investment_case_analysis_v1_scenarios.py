@@ -176,11 +176,31 @@ class TestRiskSerialization:
         categories = {f["category"] for f in body["risk"]["findings"]}
         assert categories == {"business_risk", "financial_risk", "valuation_risk", "thesis_risk"}
 
-    def test_never_collapsed_into_a_single_badge_unlike_portfolio_cockpit(self, client):
+    def test_full_vector_is_never_replaced_by_the_projection(self, client):
+        """Figma-fidelity rebuild (Investment Case): `riskProjection` was
+        added for Atlas View's single "Risk Level" scorecard dot -- the
+        same real `risk_projection()` Portfolio Cockpit's Holdings table
+        Risk column already calls (`atlas.analysis_engine.risk
+        .projection`), not a second, divergent computation. This test
+        used to assert `riskProjection` was entirely absent
+        ("never collapsed into a single badge unlike portfolio cockpit");
+        that stance predates the approved Figma requirement for a
+        compact Risk Level dot. What it actually protected -- that the
+        full four-category vector is never *replaced* by a collapsed
+        single badge -- still holds and is what this test now asserts
+        directly: both `risk.findings` (all four, in full) and
+        `riskProjection` (one representative category) are present
+        together, never one instead of the other."""
         case_id = _import_holding(client, "NVDA")
         body = client.get(f"/cases/{case_id}/analysis").json()
-        assert "riskProjection" not in body
         assert len(body["risk"]["findings"]) == 4
+        assert set(body["riskProjection"]) == {"category", "status"}
+        assert body["riskProjection"]["category"] in {
+            "business_risk",
+            "financial_risk",
+            "valuation_risk",
+            "thesis_risk",
+        }
 
 
 class TestConvictionAndConfidenceAreDistinct:

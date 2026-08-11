@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Link as RouterLink, useLocation, useParams } from "react-router-dom";
-import { Button, Container, Divider, Heading, Inline, Stack, StatusBadge, Surface, Text } from "../foundation";
+import { Button, Container, Divider, Heading, Inline, Link, Stack, StatusBadge, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
@@ -584,6 +584,17 @@ interface RiskFindingView {
   confidence: EvidenceCoverageLevel;
 }
 
+/** Figma-fidelity rebuild -- Atlas View's compact "Risk Level" dot
+ * needs one representative category, not the full four-category vector
+ * `risk.findings` already carries. The same real `risk_projection()`
+ * Portfolio Cockpit's Holdings table Risk column already calls
+ * (`atlas.analysis_engine.risk.projection`), reused verbatim, never a
+ * second, divergent computation. */
+interface RiskProjectionView {
+  category: AnalysisRiskCategory;
+  status: AnalysisRiskStatus;
+}
+
 interface ObservationClassificationView {
   observationId: string;
   status: string;
@@ -718,6 +729,7 @@ interface InvestmentCaseAnalysisView {
   businessAnalysis: { state: string; findings: BusinessFindingView[] };
   valuation: { state: string; findings: ValuationFindingView[] };
   risk: { state: string; findings: RiskFindingView[] };
+  riskProjection: RiskProjectionView;
   evidenceQuality: EvidenceQualityView | null;
   openQuestions: OpenQuestionView[];
   recommendation: RecommendationStateView;
@@ -929,6 +941,22 @@ export function InvestmentCasePage() {
    * implicitly open regardless of this flag -- see the panel's own
    * render guard below. */
   const [isDecisionPanelExpanded, setIsDecisionPanelExpanded] = useState(false);
+
+  /** Figma-fidelity rebuild -- the approved screen's own bottom tab bar
+   * (Decision History / Timeline / Last Activity / Outstanding Work /
+   * Outcomes / More Details), replacing the previous single `<details>`
+   * "More details" catch-all: the approved screen shows six distinct
+   * labels, not one. Every tab's content is unchanged from its former
+   * always-rendered-when-open location -- only the container (a real
+   * tab switch instead of native `<details>`) and default tab moved. */
+  type InvestmentCaseTabKey =
+    | "decisionHistory"
+    | "timeline"
+    | "lastActivity"
+    | "outstandingWork"
+    | "outcomes"
+    | "moreDetails";
+  const [activeTab, setActiveTab] = useState<InvestmentCaseTabKey>("decisionHistory");
 
   useEffect(() => {
     if (!caseId) return;
@@ -1734,6 +1762,27 @@ export function InvestmentCasePage() {
                 })}
               </Text>
             )}
+            {/* Figma-fidelity rebuild -- the approved screen's compact
+                header stat line (Valuation / Portfolio fit / Weight).
+                Weight is already shown just above; Valuation reads the
+                same real `valuationContext.fcfYieldStatus` the header's
+                Decision Support statement and Atlas View's own
+                Valuation dot already derive from -- never a second
+                computation. Portfolio fit has no real source anywhere
+                in this codebase (no such field exists on any per-
+                holding or per-Case analysis object) and renders the
+                same literal "—" every other missing value here uses. */}
+            {investmentCaseAnalysis.kind === "loaded" && (
+              <Inline gap="row" wrap>
+                <Text as="span" color="secondary">
+                  {t("investmentCase.header.valuationLabel")}:{" "}
+                  {t(VALUATION_STATUS_KEY[investmentCaseAnalysis.report.valuationContext.fcfYieldStatus])}
+                </Text>
+                <Text as="span" color="secondary">
+                  {t("investmentCase.header.portfolioFitLabel")}: {t("investmentCase.atlasView.notAvailable")}
+                </Text>
+              </Inline>
+            )}
             {/* Status (Investment Case Workspace v2, Sprint 2) -- fills
                 the slot `investmentCase.status.heading` has reserved
                 since an early sprint ("draft, historical, and monitoring
@@ -2303,154 +2352,279 @@ export function InvestmentCasePage() {
                 analysis={investmentCaseAnalysis.report}
                 linkedHolding={linkedHolding}
                 alphaPortfolioStatus={alphaPortfolioStatus}
+                onViewMoreDetails={() => setActiveTab("moreDetails")}
                 t={t}
               />
             )}
 
             <Divider />
 
-            {/* More details — every existing Observation/Evidence/
-                Knowledge Reference/Reasoning Trace/Judgment/Decision/
-                Outcome record remains fully accessible for Alpha
-                inspection and debugging, exactly as before — just
-                collapsed by default and visually secondary. A native
-                <details> element needs no new state and no new
-                Foundation component. Last Activity/Decision Timeline/
-                Outstanding Work (Sprint 4) joined this same progressive
-                disclosure in Workspace Migration Phase 3: all three are
-                secondary, operational continuity records that Executive
-                Summary's own Current Priority/Outstanding Issues facts
-                (capped, key-assessment view) already summarize near the
-                top of the page -- the exhaustive versions belong here,
-                not repeated always-visible further down. */}
+            {/* Figma-fidelity rebuild -- the approved screen's own
+                bottom tab bar, replacing the previous single <details>
+                "More details" catch-all: the approved screen shows six
+                distinct labels (Decision History / Timeline / Last
+                Activity / Outstanding Work / Outcomes / More Details),
+                never one combined disclosure. Every tab's content below
+                is unchanged from its former always-rendered-when-open
+                location -- only the container and default tab moved. */}
             <Surface tier="primary">
-              <details>
-                <summary>{t("investmentCase.moreDetails.heading")}</summary>
+              <Inline gap="row" wrap>
+                {(
+                  [
+                    ["decisionHistory", "investmentCase.analysis.decisionHistory.heading"],
+                    ["timeline", "investmentCase.timeline.heading"],
+                    ["lastActivity", "investmentCase.lastActivity.heading"],
+                    ["outstandingWork", "investmentCase.outstandingWork.heading"],
+                    ["outcomes", "investmentCase.analysis.outcomes.heading"],
+                    ["moreDetails", "investmentCase.moreDetails.heading"],
+                  ] as [InvestmentCaseTabKey, TranslationKey][]
+                ).map(([key, labelKey]) => (
+                  <Button
+                    key={key}
+                    variant={activeTab === key ? "primary" : "tertiary"}
+                    onClick={() => setActiveTab(key)}
+                  >
+                    {t(labelKey)}
+                  </Button>
+                ))}
+              </Inline>
+            </Surface>
+
+            {/* Decision History (Phase 26) -- kept mostly unchanged, per
+                this sprint's own instruction; moved from its former
+                always-visible position (`InvestmentCaseCanonicalSections`)
+                into its own tab, matching the approved screen's own tab
+                bar. */}
+            {activeTab === "decisionHistory" && investmentCaseAnalysis.kind === "loaded" && (
+              <Surface tier="primary">
+                <Stack gap="intra-section">
+                  <Heading level={2}>{t("investmentCase.analysis.decisionHistory.heading")}</Heading>
+                  {investmentCaseAnalysis.report.decisionHistory.length === 0 && (
+                    <Text color="secondary">{t("investmentCase.analysis.decisionHistory.empty")}</Text>
+                  )}
+                  {investmentCaseAnalysis.report.decisionHistory.map((entry) => (
+                    <Stack key={entry.decisionId} gap="intra-section">
+                      <Text as="p">
+                        {DECISION_TYPE_KEY[entry.decisionType]
+                          ? t(DECISION_TYPE_KEY[entry.decisionType]!)
+                          : entry.decisionType}
+                        {" — "}
+                        {entry.reason}
+                      </Text>
+                      <Text color="tertiary" as="p">
+                        {entry.decidedAt}
+                      </Text>
+                      <Divider tone="hairline" />
+                    </Stack>
+                  ))}
+                </Stack>
+              </Surface>
+            )}
+
+            {/* Outcomes (Phase 27) -- kept mostly unchanged, per this
+                sprint's own instruction; moved into its own tab. */}
+            {activeTab === "outcomes" && investmentCaseAnalysis.kind === "loaded" && (
+              <Surface tier="primary">
+                <Stack gap="intra-section">
+                  <Heading level={2}>{t("investmentCase.analysis.outcomes.heading")}</Heading>
+                  {investmentCaseAnalysis.report.outcomeHistory.length === 0 && (
+                    <Text color="secondary">{t("investmentCase.analysis.outcomes.empty")}</Text>
+                  )}
+                  {investmentCaseAnalysis.report.outcomeHistory.map((entry) => (
+                    <Stack key={entry.outcomeId} gap="intra-section">
+                      <Text as="p">{entry.statement}</Text>
+                      <Text color="tertiary" as="p">
+                        {entry.occurredAt}
+                      </Text>
+                      <Divider tone="hairline" />
+                    </Stack>
+                  ))}
+                </Stack>
+              </Surface>
+            )}
+
+            {/* Last activity (Sprint 4) — factual continuity only: the
+                most recent Decision, Outcome, and Trade this Case has,
+                each with a relative-time phrase computed from its own
+                real timestamp, plus the linked holding's current
+                reconciliation status. No AI interpretation, no
+                recommendation — see `deriveActivity`. */}
+            {activeTab === "lastActivity" && (
+              <Surface tier="primary">
+                <Stack gap="intra-section">
+                  <Heading level={2}>{t("investmentCase.lastActivity.heading")}</Heading>
+                  {!lastDecisionEvent && !lastOutcomeEvent && !lastTradeEvent && (
+                    <Text color="secondary">{t("investmentCase.lastActivity.noneYet")}</Text>
+                  )}
+                  {lastDecisionEvent && (
+                    <Text>
+                      {t("investmentCase.lastActivity.lastDecision", {
+                        type:
+                          lastDecisionEvent.decisionType &&
+                          DECISION_TYPE_KEY[lastDecisionEvent.decisionType]
+                            ? t(DECISION_TYPE_KEY[lastDecisionEvent.decisionType]!)
+                            : (lastDecisionEvent.decisionType ?? ""),
+                        relativeTime: formatRelativeTime(lastDecisionEvent.date, t),
+                      })}
+                    </Text>
+                  )}
+                  {lastOutcomeEvent && (
+                    <Text>
+                      {t("investmentCase.lastActivity.lastOutcome", {
+                        relativeTime: formatRelativeTime(lastOutcomeEvent.date, t),
+                      })}
+                    </Text>
+                  )}
+                  {lastTradeEvent && (
+                    <Text>
+                      {t("investmentCase.lastActivity.lastTrade", {
+                        type:
+                          lastTradeEvent.decisionType && DECISION_TYPE_KEY[lastTradeEvent.decisionType]
+                            ? t(DECISION_TYPE_KEY[lastTradeEvent.decisionType]!)
+                            : (lastTradeEvent.decisionType ?? ""),
+                        detail: lastTradeEvent.summary,
+                        relativeTime: formatRelativeTime(lastTradeEvent.date, t),
+                      })}
+                    </Text>
+                  )}
+                  {linkedHolding && linkedHolding.reconciliationStatus !== "NONE" && (
+                    <Text color={linkedHolding.reconciliationStatus === "AWAITING_RECONCILIATION" ? "tertiary" : "secondary"}>
+                      {linkedHolding.reconciliationStatus === "AWAITING_RECONCILIATION"
+                        ? t("investmentCase.lastActivity.reconciliationNeeded")
+                        : t("investmentCase.lastActivity.reconciliationOk")}
+                    </Text>
+                  )}
+                </Stack>
+              </Surface>
+            )}
+
+            {/* Decision Timeline (Sprint 4) — a simple, entirely
+                chronological presentation of this Case's own
+                Decision/Outcome/Trade events (`deriveActivity`, oldest
+                first, no advanced visualization), ending with the
+                current status already computed above
+                (`assessmentStatusKey`). What Changed (Investment Case
+                Change Intelligence) joins this tab -- Figma's own
+                screen shows neither a standalone "What Changed" section
+                nor a Timeline section on the primary view; both are
+                real, chronological, change-over-time content, so they
+                share this one tab rather than either being fabricated
+                a Figma slot or silently dropped. */}
+            {activeTab === "timeline" && (
+              <Surface tier="primary">
+                <Stack gap="intra-section">
+                  <Heading level={2}>{t("investmentCase.timeline.heading")}</Heading>
+                  {caseTimeline.length === 0 && (
+                    <Text color="secondary">{t("investmentCase.timeline.empty")}</Text>
+                  )}
+                  {caseTimeline.map((event) => (
+                    <div key={event.id}>
+                      <Text>
+                        {t(
+                          event.kind === "decision"
+                            ? "history.row.kindDecision"
+                            : event.kind === "outcome"
+                              ? "history.row.kindOutcome"
+                              : "history.row.kindTrade",
+                        )}
+                      </Text>
+                      <Text color="secondary" as="p">
+                        {event.decisionType &&
+                          (DECISION_TYPE_KEY[event.decisionType]
+                            ? t(DECISION_TYPE_KEY[event.decisionType]!)
+                            : event.decisionType)}
+                        {" — "}
+                        {event.summary}
+                      </Text>
+                      <Text color="tertiary" as="p">
+                        {event.date}
+                      </Text>
+                    </div>
+                  ))}
+                  {caseTimeline.length > 0 && (
+                    <div>
+                      <Text color="secondary">{t("investmentCase.timeline.currentStatus")}</Text>
+                      <Text as="p">{t(assessmentStatusKey)}</Text>
+                    </div>
+                  )}
+                  {investmentCaseAnalysis.kind === "loaded" && (
+                    <>
+                      <Divider tone="hairline" />
+                      <WhatChangedSection analysis={investmentCaseAnalysis.report} t={t} />
+                    </>
+                  )}
+                </Stack>
+              </Surface>
+            )}
+
+            {/* Outstanding work (Sprint 4) — deterministic state checks
+                only (`deriveOutstandingWork`): no scoring, no AI, no
+                recommendation. Reconciliation is already covered by the
+                Last Activity tab, so only the two Decision/Outcome-
+                chain checks are shown here to avoid repeating the same
+                fact twice. */}
+            {activeTab === "outstandingWork" && (
+              <Surface tier="primary">
+                <Stack gap="intra-section">
+                  <Heading level={2}>{t("investmentCase.outstandingWork.heading")}</Heading>
+                  {caseOutstandingWork.filter((item) => item.kind !== "reconciliation-needed").length ===
+                    0 && <Text color="secondary">{t("investmentCase.outstandingWork.none")}</Text>}
+                  {caseOutstandingWork
+                    .filter((item) => item.kind !== "reconciliation-needed")
+                    .map((item) => (
+                      <Text key={item.id} color="tertiary">
+                        {t(
+                          item.kind === "outcome-missing"
+                            ? "investmentCase.outstandingWork.outcomeMissing"
+                            : "investmentCase.outstandingWork.tradeMissing",
+                        )}
+                      </Text>
+                    ))}
+                </Stack>
+              </Surface>
+            )}
+
+            {/* More details — every existing Observation/Evidence/
+                Knowledge Reference/Reasoning Trace/Judgment record
+                remains fully accessible for Alpha inspection and
+                debugging, exactly as before -- now behind its own tab
+                instead of a `<details>` disclosure, matching the
+                approved screen's own tab bar. Also holds every real,
+                evidence-traceable analysis the approved screen's
+                primary view doesn't have a slot for: the former Atlas
+                View narrative content, the full four-category Risk
+                vector, the detailed FCF Yield valuation finding, and
+                Business Analysis's own Portfolio Context subsection --
+                none of it fabricated or unsupported, just real depth
+                one tab away rather than deleted (Figma's own "View full
+                analysis →" / "View full valuation →" links on the
+                primary view imply exactly this kind of deeper tab). */}
+            {activeTab === "moreDetails" && (
+            <Surface tier="primary">
                 <Stack gap="inter-section">
                   <Text color="secondary">{t("investmentCase.moreDetails.subheading")}</Text>
 
-                  {/* Last activity (Sprint 4) — factual continuity only:
-                      the most recent Decision, Outcome, and Trade this
-                      Case has, each with a relative-time phrase computed
-                      from its own real timestamp, plus the linked
-                      holding's current reconciliation status. No AI
-                      interpretation, no recommendation — see
-                      `deriveActivity`. */}
-                  <Stack gap="inter-section">
-                    <Heading level={3}>{t("investmentCase.lastActivity.heading")}</Heading>
-                    {!lastDecisionEvent && !lastOutcomeEvent && !lastTradeEvent && (
-                      <Text color="secondary">{t("investmentCase.lastActivity.noneYet")}</Text>
-                    )}
-                    {lastDecisionEvent && (
-                      <Text>
-                        {t("investmentCase.lastActivity.lastDecision", {
-                          type:
-                            lastDecisionEvent.decisionType &&
-                            DECISION_TYPE_KEY[lastDecisionEvent.decisionType]
-                              ? t(DECISION_TYPE_KEY[lastDecisionEvent.decisionType]!)
-                              : (lastDecisionEvent.decisionType ?? ""),
-                          relativeTime: formatRelativeTime(lastDecisionEvent.date, t),
-                        })}
-                      </Text>
-                    )}
-                    {lastOutcomeEvent && (
-                      <Text>
-                        {t("investmentCase.lastActivity.lastOutcome", {
-                          relativeTime: formatRelativeTime(lastOutcomeEvent.date, t),
-                        })}
-                      </Text>
-                    )}
-                    {lastTradeEvent && (
-                      <Text>
-                        {t("investmentCase.lastActivity.lastTrade", {
-                          type:
-                            lastTradeEvent.decisionType && DECISION_TYPE_KEY[lastTradeEvent.decisionType]
-                              ? t(DECISION_TYPE_KEY[lastTradeEvent.decisionType]!)
-                              : (lastTradeEvent.decisionType ?? ""),
-                          detail: lastTradeEvent.summary,
-                          relativeTime: formatRelativeTime(lastTradeEvent.date, t),
-                        })}
-                      </Text>
-                    )}
-                    {linkedHolding && linkedHolding.reconciliationStatus !== "NONE" && (
-                      <Text color={linkedHolding.reconciliationStatus === "AWAITING_RECONCILIATION" ? "tertiary" : "secondary"}>
-                        {linkedHolding.reconciliationStatus === "AWAITING_RECONCILIATION"
-                          ? t("investmentCase.lastActivity.reconciliationNeeded")
-                          : t("investmentCase.lastActivity.reconciliationOk")}
-                      </Text>
-                    )}
-                  </Stack>
-
-                  <Divider tone="hairline" />
-
-                  {/* Decision Timeline (Sprint 4) — a simple, entirely
-                      chronological presentation of this Case's own
-                      Decision/Outcome/Trade events (`deriveActivity`,
-                      oldest first, no advanced visualization), ending
-                      with the current status already computed above
-                      (`assessmentStatusKey`) rather than a duplicated,
-                      possibly-inconsistent summary. */}
-                  <Stack gap="inter-section">
-                    <Heading level={3}>{t("investmentCase.timeline.heading")}</Heading>
-                    {caseTimeline.length === 0 && (
-                      <Text color="secondary">{t("investmentCase.timeline.empty")}</Text>
-                    )}
-                    {caseTimeline.map((event) => (
-                      <div key={event.id}>
-                        <Text>
-                          {t(
-                            event.kind === "decision"
-                              ? "history.row.kindDecision"
-                              : event.kind === "outcome"
-                                ? "history.row.kindOutcome"
-                                : "history.row.kindTrade",
-                          )}
-                        </Text>
-                        <Text color="secondary" as="p">
-                          {event.decisionType &&
-                            (DECISION_TYPE_KEY[event.decisionType]
-                              ? t(DECISION_TYPE_KEY[event.decisionType]!)
-                              : event.decisionType)}
-                          {" — "}
-                          {event.summary}
-                        </Text>
-                        <Text color="tertiary" as="p">
-                          {event.date}
-                        </Text>
-                      </div>
-                    ))}
-                    {caseTimeline.length > 0 && (
-                      <div>
-                        <Text color="secondary">{t("investmentCase.timeline.currentStatus")}</Text>
-                        <Text as="p">{t(assessmentStatusKey)}</Text>
-                      </div>
-                    )}
-                  </Stack>
-
-                  <Divider tone="hairline" />
-
-                  {/* Outstanding work (Sprint 4) — deterministic state
-                      checks only (`deriveOutstandingWork`): no scoring,
-                      no AI, no recommendation. Reconciliation is already
-                      covered by the Last activity section above, so only
-                      the two Decision/Outcome-chain checks are shown
-                      here to avoid repeating the same fact twice. */}
-                  <Stack gap="inter-section">
-                    <Heading level={3}>{t("investmentCase.outstandingWork.heading")}</Heading>
-                    {caseOutstandingWork.filter((item) => item.kind !== "reconciliation-needed").length ===
-                      0 && <Text color="secondary">{t("investmentCase.outstandingWork.none")}</Text>}
-                    {caseOutstandingWork
-                      .filter((item) => item.kind !== "reconciliation-needed")
-                      .map((item) => (
-                        <Text key={item.id} color="tertiary">
-                          {t(
-                            item.kind === "outcome-missing"
-                              ? "investmentCase.outstandingWork.outcomeMissing"
-                              : "investmentCase.outstandingWork.tradeMissing",
-                          )}
-                        </Text>
-                      ))}
-                  </Stack>
+                  {investmentCaseAnalysis.kind === "loaded" && (
+                    <>
+                      <CaseNarrativeDetailSection analysis={investmentCaseAnalysis.report} t={t} />
+                      <Divider tone="hairline" />
+                      <RiskSection analysis={investmentCaseAnalysis.report} t={t} />
+                      <Divider tone="hairline" />
+                      <ValuationDetailSection analysis={investmentCaseAnalysis.report} t={t} />
+                      {linkedHolding && (
+                        <>
+                          <Divider tone="hairline" />
+                          <PortfolioContextDetail
+                            linkedHolding={linkedHolding}
+                            alphaPortfolioStatus={alphaPortfolioStatus}
+                            t={t}
+                          />
+                        </>
+                      )}
+                      <Divider tone="hairline" />
+                      <EvidenceDetailSection analysis={investmentCaseAnalysis.report} t={t} />
+                    </>
+                  )}
 
                   <Divider tone="hairline" />
 
@@ -3943,8 +4117,8 @@ export function InvestmentCasePage() {
               </Stack>
             )}
           </Stack>
-              </details>
             </Surface>
+            )}
 
             <Divider />
 
@@ -4294,78 +4468,43 @@ function InvestmentCaseCanonicalSections({
   analysis,
   linkedHolding,
   alphaPortfolioStatus,
+  onViewMoreDetails,
   t,
 }: {
   analysis: InvestmentCaseAnalysisView;
   linkedHolding: AlphaHoldingView | null;
   alphaPortfolioStatus: AlphaPortfolioStatus;
+  onViewMoreDetails: () => void;
   t: Translate;
 }) {
   return (
     <Stack gap="inter-section">
-      <CompanyOverviewSection
-        companyProfile={analysis.companyProfile}
-        financialHistory={analysis.financialHistory}
-        marketSnapshot={analysis.marketSnapshot}
-        t={t}
-      />
       <AtlasViewSection analysis={analysis} t={t} />
-      <WhatChangedSection analysis={analysis} t={t} />
-      <BusinessSection
-        analysis={analysis}
-        linkedHolding={linkedHolding}
-        alphaPortfolioStatus={alphaPortfolioStatus}
-        t={t}
-      />
-      <ValuationSection analysis={analysis} t={t} />
-      <RiskSection analysis={analysis} t={t} />
-      <EvidenceSection analysis={analysis} t={t} />
 
-      {/* Decision History (Phase 26) -- kept mostly unchanged, per this
-          sprint's own instruction. */}
-      <Surface tier="primary">
-        <Stack gap="intra-section">
-          <Heading level={2}>{t("investmentCase.analysis.decisionHistory.heading")}</Heading>
-          {analysis.decisionHistory.length === 0 && (
-            <Text color="secondary">{t("investmentCase.analysis.decisionHistory.empty")}</Text>
-          )}
-          {analysis.decisionHistory.map((entry) => (
-            <Stack key={entry.decisionId} gap="intra-section">
-              <Text as="p">
-                {DECISION_TYPE_KEY[entry.decisionType]
-                  ? t(DECISION_TYPE_KEY[entry.decisionType]!)
-                  : entry.decisionType}
-                {" — "}
-                {entry.reason}
-              </Text>
-              <Text color="tertiary" as="p">
-                {entry.decidedAt}
-              </Text>
-              <Divider tone="hairline" />
-            </Stack>
-          ))}
-        </Stack>
-      </Surface>
+      {/* Financials | Valuation Scenarios -- the approved screen's own
+          two-column pairing. Each child gets an even, wrapping share of
+          the row (`flex: 1 1 320px`) rather than sizing to content. */}
+      <Inline gap="inter-section" wrap>
+        <div style={{ flex: "1 1 320px" }}>
+          <FinancialsSection financialHistory={analysis.financialHistory} t={t} />
+        </div>
+        <div style={{ flex: "1 1 320px" }}>
+          <ValuationScenariosSection t={t} />
+        </div>
+      </Inline>
 
-      {/* Outcomes (Phase 27) -- kept mostly unchanged, per this sprint's
-          own instruction. */}
-      <Surface tier="primary">
-        <Stack gap="intra-section">
-          <Heading level={2}>{t("investmentCase.analysis.outcomes.heading")}</Heading>
-          {analysis.outcomeHistory.length === 0 && (
-            <Text color="secondary">{t("investmentCase.analysis.outcomes.empty")}</Text>
-          )}
-          {analysis.outcomeHistory.map((entry) => (
-            <Stack key={entry.outcomeId} gap="intra-section">
-              <Text as="p">{entry.statement}</Text>
-              <Text color="tertiary" as="p">
-                {entry.occurredAt}
-              </Text>
-              <Divider tone="hairline" />
-            </Stack>
-          ))}
-        </Stack>
-      </Surface>
+      {/* Business Analysis | Company Overview -- the approved screen's
+          other two-column pairing, distinct from the one above. */}
+      <Inline gap="inter-section" wrap>
+        <div style={{ flex: "1 1 320px" }}>
+          <BusinessSection analysis={analysis} t={t} />
+        </div>
+        <div style={{ flex: "1 1 320px" }}>
+          <CompanyOverviewSection companyProfile={analysis.companyProfile} marketSnapshot={analysis.marketSnapshot} t={t} />
+        </div>
+      </Inline>
+
+      <EvidenceSection analysis={analysis} linkedHolding={linkedHolding} onViewMoreDetails={onViewMoreDetails} t={t} />
     </Stack>
   );
 }
@@ -4398,18 +4537,29 @@ function InvestmentCaseCanonicalSections({
  * extraction), imported above.
  */
 
+/**
+ * Company Overview (Figma-fidelity rebuild) -- identity fields and
+ * current market snapshot only; Financials moved into its own
+ * `FinancialsSection`, paired with `ValuationScenariosSection`
+ * (matching the approved screen's own Financials | Valuation Scenarios
+ * two-column layout, distinct from this Company Overview | Business
+ * Analysis pairing). Founded/CEO/Employees are shown on the approved
+ * screen but have no real source anywhere in this codebase (no such
+ * fields exist on `CompanyProfileView`) -- each renders the literal
+ * "—" every other missing value on this page already uses, never a
+ * fabricated fact.
+ */
 function CompanyOverviewSection({
   companyProfile,
-  financialHistory,
   marketSnapshot,
   t,
 }: {
   companyProfile: CompanyProfileView | null;
-  financialHistory: FinancialPeriodView[];
   marketSnapshot: MarketSnapshotView | null;
   t: Translate;
 }) {
-  const hasAnyData = companyProfile !== null || financialHistory.length > 0 || marketSnapshot !== null;
+  const hasAnyData = companyProfile !== null || marketSnapshot !== null;
+  const notAvailable = t("investmentCase.atlasView.notAvailable");
 
   return (
     <Surface tier="primary">
@@ -4421,6 +4571,15 @@ function CompanyOverviewSection({
         {companyProfile && (
           <Stack gap="intra-section">
             {companyProfile.name && <Heading level={3}>{companyProfile.name}</Heading>}
+            <Text as="p">
+              {t("investmentCase.analysis.companyOverview.foundedLabel")}: {notAvailable}
+            </Text>
+            <Text as="p">
+              {t("investmentCase.analysis.companyOverview.ceoLabel")}: {notAvailable}
+            </Text>
+            <Text as="p">
+              {t("investmentCase.analysis.companyOverview.employeesLabel")}: {notAvailable}
+            </Text>
             {companyProfile.exchange && (
               <Text as="p">
                 {t("investmentCase.analysis.companyOverview.exchangeLabel")}: {companyProfile.exchange}
@@ -4450,21 +4609,9 @@ function CompanyOverviewSection({
           </Stack>
         )}
 
-        {(financialHistory.length > 0 || marketSnapshot) && (
-          <>
-            <Divider tone="hairline" />
-            <Heading level={3}>{t("investmentCase.analysis.financials.heading")}</Heading>
-          </>
-        )}
-
-        {financialHistory.length === 0 && !marketSnapshot && hasAnyData && (
-          <Text color="secondary">{t("investmentCase.analysis.financials.empty")}</Text>
-        )}
-
-        {financialHistory.length > 0 && <FinancialsTable periods={financialHistory} t={t} />}
-
         {marketSnapshot && (
           <Stack gap="intra-section">
+            <Divider tone="hairline" />
             <Heading level={3}>{t("investmentCase.analysis.financials.marketSnapshotHeading")}</Heading>
             <Text as="p">
               {t("investmentCase.analysis.financials.sharePriceLabel")}:{" "}
@@ -4480,6 +4627,49 @@ function CompanyOverviewSection({
             </Text>
           </Stack>
         )}
+      </Stack>
+    </Surface>
+  );
+}
+
+/** Financials (Figma-fidelity rebuild) -- the real per-period table,
+ * extracted out of Company Overview into its own section so it can
+ * pair with `ValuationScenariosSection` (matching the approved
+ * screen's own Financials | Valuation Scenarios two-column layout). */
+function FinancialsSection({ financialHistory, t }: { financialHistory: FinancialPeriodView[]; t: Translate }) {
+  return (
+    <Surface tier="primary">
+      <Stack gap="intra-section">
+        <Heading level={2}>{t("investmentCase.analysis.financials.heading")}</Heading>
+        {financialHistory.length === 0 && (
+          <Text color="secondary">{t("investmentCase.analysis.financials.empty")}</Text>
+        )}
+        {financialHistory.length > 0 && <FinancialsTable periods={financialHistory} t={t} />}
+      </Stack>
+    </Surface>
+  );
+}
+
+/**
+ * Valuation Scenarios (Figma-fidelity rebuild) -- the approved screen's
+ * Bull/Base/Bear fair-value table with implied return, margin of
+ * safety. Structurally locked
+ * (`UnavailableCapability(NOT_YET_IMPLEMENTED)`, Migration Review
+ * §11.1): the only real valuation method this codebase has is Current
+ * FCF Yield (shown in the header's Valuation line and Atlas View's
+ * Valuation dot, both already real). An honest, calm disclosure, the
+ * same pattern Discovery's own Opportunities section already
+ * established -- never fabricated Bull/Base/Bear assumptions, a fair
+ * value number, or a margin-of-safety percentage.
+ */
+function ValuationScenariosSection({ t }: { t: Translate }) {
+  return (
+    <Surface tier="primary">
+      <Stack gap="intra-section">
+        <Heading level={2}>{t("investmentCase.analysis.valuationScenarios.heading")}</Heading>
+        <Text color="secondary" as="p">
+          {t("investmentCase.analysis.valuationScenarios.notYet")}
+        </Text>
       </Stack>
     </Surface>
   );
@@ -4509,76 +4699,228 @@ const GROWTH_TREND_KEY: Record<AnalysisMetricTrend, TranslationKey> = {
 // OPEN_QUESTION_ORIGIN_KEY now lives in
 // "../changeIntelligence/describeChange" (imported above).
 
+/** Figma-fidelity rebuild -- Decision Log #3's "presentation only,
+ * derived from existing categorical assessments" 5-dot scorecard
+ * visual. `filled === null` renders the same literal "—" every other
+ * missing value on this page already uses, never a fabricated dot
+ * count. Solid/hollow circle characters, not an icon font or SVG --
+ * this page has no icon dependency, and the approved exception list
+ * doesn't call for adding one just for this. */
+function DotRating({ filled, total = 5 }: { filled: number | null; total?: number }) {
+  if (filled === null) {
+    return (
+      <Text as="span" color="tertiary">
+        —
+      </Text>
+    );
+  }
+  return (
+    <Text as="span" aria-hidden="true">
+      {"●".repeat(filled)}
+      {"○".repeat(Math.max(0, total - filled))}
+    </Text>
+  );
+}
+
+/** Growth and Capital Allocation share `AnalysisBusinessStatus`'s five
+ * members -- one fixed mapping for both, matching how the two
+ * categorical values already share one status vocabulary throughout
+ * this page. `insufficient_input`/`not_evaluated` intentionally have no
+ * entry: `DotRating` renders "—" for them, never an invented count. */
+const BUSINESS_STATUS_DOT_COUNT: Partial<Record<AnalysisBusinessStatus, number>> = {
+  strong: 5,
+  moderate: 3,
+  weak: 1,
+};
+
+/** More dots = cheaper (a reason to be more interested), matching
+ * `AnalysisValuationStatus`'s three real outcomes. */
+const VALUATION_STATUS_DOT_COUNT: Partial<Record<AnalysisValuationStatus, number>> = {
+  undervalued: 5,
+  fairly_valued: 3,
+  expensive: 1,
+};
+
+/** More dots = more risk -- a risk-gauge reading, the one dimension in
+ * this row where a higher dot count is a worse outcome, called out
+ * explicitly since every other dimension here inverts that ("more is
+ * better"). Matches `AnalysisRiskStatus`'s three real outcomes. */
+const RISK_STATUS_DOT_COUNT: Partial<Record<AnalysisRiskStatus, number>> = {
+  low: 1,
+  moderate: 3,
+  high: 5,
+};
+
+function AtlasViewDimension({ label, filled, valueLabel }: { label: string; filled: number | null; valueLabel: string }) {
+  return (
+    <Stack gap="metadata">
+      <Text as="span" color="tertiary">
+        {label}
+      </Text>
+      <DotRating filled={filled} />
+      <Text as="span">{valueLabel}</Text>
+    </Stack>
+  );
+}
+
+/**
+ * Atlas View (Figma-fidelity rebuild) -- the approved screen's compact
+ * 7-column scorecard row, replacing the previous stacked-list layout
+ * (Thesis narrative, Strengths/Risks lists, Growth/Valuation detail,
+ * Open Questions all moved to `CaseNarrativeDetailSection`, in the
+ * More Details tab -- Figma's own screen shows none of that content
+ * under this heading, only the dot row).
+ *
+ * Four of the seven dimensions are real or presentation-derived from
+ * real categorical assessments (never a new judgment):
+ * - **Growth**, **Capital Allocation**: `businessAnalysis.findings`
+ *   directly.
+ * - **Valuation**: `valuationContext.fcfYieldStatus`, the same field
+ *   the header's own Valuation line already reads.
+ * - **Risk Level**: `riskProjection`, the single highest-severity
+ *   category among the real four-category vector -- the same
+ *   `risk_projection()` Portfolio Cockpit's Holdings table Risk column
+ *   already calls, reused verbatim (backend, this sprint).
+ *
+ * The other three have no real source and render the literal "—"
+ * every missing value on this page already uses, never a fabricated
+ * rating:
+ * - **Business Strength**: no aggregate business-quality categorical
+ *   exists anywhere in this codebase (Growth/Capital Allocation are
+ *   each real individually; there is no single combined judgment).
+ * - **Expected Return**: scenario valuation remains structurally
+ *   locked (`UnavailableCapability(NOT_YET_IMPLEMENTED)`).
+ * - **Portfolio Fit**: no such field exists on any per-holding or
+ *   per-Case analysis object today.
+ */
 function AtlasViewSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
-  const { strengths, risks, growthAnalysis, valuationContext, atlasThesis, keyOpenQuestions } = analysis;
+  const growth = analysis.businessAnalysis.findings.find((f) => f.kind === "growth");
+  const capitalAllocation = analysis.businessAnalysis.findings.find((f) => f.kind === "capital_allocation");
+  const { valuationContext, riskProjection } = analysis;
+  const notAvailable = t("investmentCase.atlasView.notAvailable");
 
   return (
     <Surface tier="primary">
       <Stack gap="intra-section">
         <Heading level={2}>{t("investmentCase.atlasView.heading")}</Heading>
-
-        <Heading level={3}>{t("investmentCase.atlasView.thesis.heading")}</Heading>
-        <Text as="p">{atlasThesis.narrative}</Text>
-
-        <Divider tone="hairline" />
-        <Heading level={3}>{t("investmentCase.atlasView.strengths.heading")}</Heading>
-        {strengths.length === 0 && <Text color="secondary">{t("investmentCase.atlasView.strengths.empty")}</Text>}
-        {strengths.map((highlight) => (
-          <Text as="p" key={highlight.supportingFindingId}>
-            {t(HIGHLIGHT_KIND_KEY[highlight.kind])}
-          </Text>
-        ))}
-
-        <Divider tone="hairline" />
-        <Heading level={3}>{t("investmentCase.atlasView.risks.heading")}</Heading>
-        {risks.length === 0 && <Text color="secondary">{t("investmentCase.atlasView.risks.empty")}</Text>}
-        {risks.map((highlight) => (
-          <Text as="p" key={highlight.supportingFindingId}>
-            {t(HIGHLIGHT_KIND_KEY[highlight.kind])}
-          </Text>
-        ))}
-
-        <Divider tone="hairline" />
-        <Heading level={3}>{t("investmentCase.atlasView.growth.heading")}</Heading>
-        <Text as="p">
-          {t(BUSINESS_CATEGORY_KEY.growth)}: {t(BUSINESS_STATUS_KEY[growthAnalysis.status])}
-        </Text>
-        {growthAnalysis.recentTrend && (
-          <Text as="p" color="secondary">
-            {t("investmentCase.atlasView.growth.recentTrendLabel", {
-              periods: growthAnalysis.recentTrend.periodsConsidered.join(" → "),
-            })}
-            : {t(GROWTH_TREND_KEY[growthAnalysis.recentTrend.trend])}
-          </Text>
-        )}
-
-        <Divider tone="hairline" />
-        <Heading level={3}>{t("investmentCase.atlasView.valuationContext.heading")}</Heading>
-        <Text as="p">{t(VALUATION_STATUS_KEY[valuationContext.fcfYieldStatus])}</Text>
-        {valuationContext.currentYield !== null && (
-          <Text as="p" color="secondary">
-            {t("investmentCase.atlasView.valuationContext.currentYieldLabel")}:{" "}
-            {(valuationContext.currentYield * 100).toFixed(2)}%
-          </Text>
-        )}
-        {!valuationContext.scenarioAvailable && (
-          <Text as="p" color="secondary">
-            {t("investmentCase.atlasView.valuationContext.scenarioUnavailable")}
-          </Text>
-        )}
-
-        <Divider tone="hairline" />
-        <Heading level={3}>{t("investmentCase.atlasView.openQuestions.heading")}</Heading>
-        {keyOpenQuestions.length === 0 && (
-          <Text color="secondary">{t("investmentCase.atlasView.openQuestions.empty")}</Text>
-        )}
-        {keyOpenQuestions.map((question, index) => (
-          <Text as="p" key={`${question.origin}:${index}`}>
-            {t(OPEN_QUESTION_ORIGIN_KEY[question.origin])}
-          </Text>
-        ))}
+        <Inline gap="inter-section" wrap>
+          <AtlasViewDimension
+            label={t("investmentCase.atlasView.dimension.businessStrength")}
+            filled={null}
+            valueLabel={notAvailable}
+          />
+          <AtlasViewDimension
+            label={t("investmentCase.atlasView.dimension.growth")}
+            filled={growth ? (BUSINESS_STATUS_DOT_COUNT[growth.status] ?? null) : null}
+            valueLabel={growth ? t(BUSINESS_STATUS_KEY[growth.status]) : notAvailable}
+          />
+          <AtlasViewDimension
+            label={t("investmentCase.atlasView.dimension.valuation")}
+            filled={VALUATION_STATUS_DOT_COUNT[valuationContext.fcfYieldStatus] ?? null}
+            valueLabel={t(VALUATION_STATUS_KEY[valuationContext.fcfYieldStatus])}
+          />
+          <AtlasViewDimension
+            label={t("investmentCase.atlasView.dimension.riskLevel")}
+            filled={RISK_STATUS_DOT_COUNT[riskProjection.status] ?? null}
+            valueLabel={t(RISK_STATUS_KEY[riskProjection.status])}
+          />
+          <AtlasViewDimension
+            label={t("investmentCase.atlasView.dimension.capitalAllocation")}
+            filled={capitalAllocation ? (BUSINESS_STATUS_DOT_COUNT[capitalAllocation.status] ?? null) : null}
+            valueLabel={capitalAllocation ? t(BUSINESS_STATUS_KEY[capitalAllocation.status]) : notAvailable}
+          />
+          <AtlasViewDimension
+            label={t("investmentCase.atlasView.dimension.expectedReturn")}
+            filled={null}
+            valueLabel={notAvailable}
+          />
+          <AtlasViewDimension
+            label={t("investmentCase.atlasView.dimension.portfolioFit")}
+            filled={null}
+            valueLabel={notAvailable}
+          />
+        </Inline>
       </Stack>
     </Surface>
+  );
+}
+
+/**
+ * Case Analysis Detail (Figma-fidelity rebuild) -- the former Atlas
+ * View content (Thesis narrative, Strengths/Risks highlight lists,
+ * Growth/Valuation detail with recent-trend and current-yield facts,
+ * Open Questions), relocated verbatim into the More Details tab. The
+ * approved Figma screen's own "ATLAS VIEW" block shows only the dot
+ * scorecard (`AtlasViewSection` above) -- none of this content on the
+ * primary view -- but nothing here is fabricated or unsupported, so it
+ * is real, real depth one tab away, not deleted.
+ */
+function CaseNarrativeDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
+  const { strengths, risks, growthAnalysis, valuationContext, atlasThesis, keyOpenQuestions } = analysis;
+
+  return (
+    <Stack gap="intra-section">
+      <Heading level={3}>{t("investmentCase.atlasView.thesis.heading")}</Heading>
+      <Text as="p">{atlasThesis.narrative}</Text>
+
+      <Divider tone="hairline" />
+      <Heading level={3}>{t("investmentCase.atlasView.strengths.heading")}</Heading>
+      {strengths.length === 0 && <Text color="secondary">{t("investmentCase.atlasView.strengths.empty")}</Text>}
+      {strengths.map((highlight) => (
+        <Text as="p" key={highlight.supportingFindingId}>
+          {t(HIGHLIGHT_KIND_KEY[highlight.kind])}
+        </Text>
+      ))}
+
+      <Divider tone="hairline" />
+      <Heading level={3}>{t("investmentCase.atlasView.risks.heading")}</Heading>
+      {risks.length === 0 && <Text color="secondary">{t("investmentCase.atlasView.risks.empty")}</Text>}
+      {risks.map((highlight) => (
+        <Text as="p" key={highlight.supportingFindingId}>
+          {t(HIGHLIGHT_KIND_KEY[highlight.kind])}
+        </Text>
+      ))}
+
+      <Divider tone="hairline" />
+      <Heading level={3}>{t("investmentCase.atlasView.growth.heading")}</Heading>
+      <Text as="p">
+        {t(BUSINESS_CATEGORY_KEY.growth)}: {t(BUSINESS_STATUS_KEY[growthAnalysis.status])}
+      </Text>
+      {growthAnalysis.recentTrend && (
+        <Text as="p" color="secondary">
+          {t("investmentCase.atlasView.growth.recentTrendLabel", {
+            periods: growthAnalysis.recentTrend.periodsConsidered.join(" → "),
+          })}
+          : {t(GROWTH_TREND_KEY[growthAnalysis.recentTrend.trend])}
+        </Text>
+      )}
+
+      <Divider tone="hairline" />
+      <Heading level={3}>{t("investmentCase.atlasView.valuationContext.heading")}</Heading>
+      <Text as="p">{t(VALUATION_STATUS_KEY[valuationContext.fcfYieldStatus])}</Text>
+      {valuationContext.currentYield !== null && (
+        <Text as="p" color="secondary">
+          {t("investmentCase.atlasView.valuationContext.currentYieldLabel")}:{" "}
+          {(valuationContext.currentYield * 100).toFixed(2)}%
+        </Text>
+      )}
+      {!valuationContext.scenarioAvailable && (
+        <Text as="p" color="secondary">
+          {t("investmentCase.atlasView.valuationContext.scenarioUnavailable")}
+        </Text>
+      )}
+
+      <Divider tone="hairline" />
+      <Heading level={3}>{t("investmentCase.atlasView.openQuestions.heading")}</Heading>
+      {keyOpenQuestions.length === 0 && (
+        <Text color="secondary">{t("investmentCase.atlasView.openQuestions.empty")}</Text>
+      )}
+      {keyOpenQuestions.map((question, index) => (
+        <Text as="p" key={`${question.origin}:${index}`}>
+          {t(OPEN_QUESTION_ORIGIN_KEY[question.origin])}
+        </Text>
+      ))}
+    </Stack>
   );
 }
 
@@ -4629,23 +4971,25 @@ function WhatChangedSection({ analysis, t }: { analysis: InvestmentCaseAnalysisV
   );
 }
 
-function BusinessSection({
-  analysis,
+/**
+ * Portfolio Context (Figma-fidelity rebuild) -- the former Business
+ * Analysis subsection (holding weight / largest position / concentration
+ * / cash), relocated into the More Details tab. The approved screen's
+ * own compact header stat row already carries the holding's own weight
+ * ("In your portfolio · current allocation: X%"), and the rest
+ * (largest position, concentration, cash) is genuinely Portfolio-level
+ * context, not shown anywhere on the approved Investment Case screen --
+ * real data, real depth one tab away, not fabricated or deleted.
+ */
+function PortfolioContextDetail({
   linkedHolding,
   alphaPortfolioStatus,
   t,
 }: {
-  analysis: InvestmentCaseAnalysisView;
-  linkedHolding: AlphaHoldingView | null;
+  linkedHolding: AlphaHoldingView;
   alphaPortfolioStatus: AlphaPortfolioStatus;
   t: Translate;
 }) {
-  const growth = analysis.businessAnalysis.findings.find((f) => f.kind === "growth");
-  const capitalAllocation = analysis.businessAnalysis.findings.find((f) => f.kind === "capital_allocation");
-  const otherFindings = analysis.businessAnalysis.findings.filter(
-    (f) => f.kind !== "growth" && f.kind !== "capital_allocation",
-  );
-
   const holdings = alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.holdings : [];
   const largestHolding = holdings.reduce<AlphaHoldingView | null>(
     (max, h) => (max === null || h.weightPercent > max.weightPercent ? h : max),
@@ -4654,6 +4998,60 @@ function BusinessSection({
   const cashWeightPercent = alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.cashWeightPercent : null;
   const concentrationLevel =
     alphaPortfolioStatus.kind === "loaded" ? alphaPortfolioStatus.view.concentrationLevel : null;
+
+  return (
+    <Stack gap="intra-section">
+      <Heading level={3}>{t("investmentCase.analysis.business.portfolioContextHeading")}</Heading>
+      <Text as="p">
+        {t("investmentCase.executiveSummary.portfolioImpact.weight", {
+          percent: linkedHolding.weightPercent,
+        })}
+      </Text>
+      {largestHolding && (
+        <Text as="p">
+          {t("investmentCase.analysis.business.largestPositionLabel", {
+            ticker: largestHolding.ticker,
+            percent: largestHolding.weightPercent,
+          })}
+        </Text>
+      )}
+      {concentrationLevel && (
+        <Text as="p">
+          {t("portfolio.concentration", {
+            value: CASE_CONCENTRATION_LEVEL_KEY[concentrationLevel]
+              ? t(CASE_CONCENTRATION_LEVEL_KEY[concentrationLevel]!)
+              : concentrationLevel,
+          })}
+        </Text>
+      )}
+      {cashWeightPercent !== null && (
+        <Text as="p">
+          {t("investmentCase.executiveSummary.portfolioImpact.cash", { percent: cashWeightPercent })}
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
+/**
+ * Business Analysis (Figma-fidelity rebuild) -- the approved screen's
+ * own qualitative panel (Competitive Position, Moat, Key Growth
+ * Drivers, Market Expectations, Management). Growth and Capital
+ * Allocation are real, already-shipped categorical assessments;
+ * Business Model/Competitive Position/Management/Durability are the
+ * same real `businessAnalysis.findings` entries, honestly
+ * `insufficient_input` today (doctrine forbids fabricating qualitative
+ * judgment from financial statements alone) -- never invented text,
+ * the same honest state already shown before this rebuild. Portfolio
+ * Context moved to `PortfolioContextDetail` in the More Details tab
+ * (see its own docstring).
+ */
+function BusinessSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
+  const growth = analysis.businessAnalysis.findings.find((f) => f.kind === "growth");
+  const capitalAllocation = analysis.businessAnalysis.findings.find((f) => f.kind === "capital_allocation");
+  const otherFindings = analysis.businessAnalysis.findings.filter(
+    (f) => f.kind !== "growth" && f.kind !== "capital_allocation",
+  );
 
   function renderFinding(finding: BusinessFindingView) {
     return (
@@ -4686,40 +5084,6 @@ function BusinessSection({
       <Stack gap="intra-section">
         <Heading level={2}>{t("investmentCase.analysis.business.heading")}</Heading>
 
-        {linkedHolding && (
-          <Stack gap="intra-section">
-            <Heading level={3}>{t("investmentCase.analysis.business.portfolioContextHeading")}</Heading>
-            <Text as="p">
-              {t("investmentCase.executiveSummary.portfolioImpact.weight", {
-                percent: linkedHolding.weightPercent,
-              })}
-            </Text>
-            {largestHolding && (
-              <Text as="p">
-                {t("investmentCase.analysis.business.largestPositionLabel", {
-                  ticker: largestHolding.ticker,
-                  percent: largestHolding.weightPercent,
-                })}
-              </Text>
-            )}
-            {concentrationLevel && (
-              <Text as="p">
-                {t("portfolio.concentration", {
-                  value: CASE_CONCENTRATION_LEVEL_KEY[concentrationLevel]
-                    ? t(CASE_CONCENTRATION_LEVEL_KEY[concentrationLevel]!)
-                    : concentrationLevel,
-                })}
-              </Text>
-            )}
-            {cashWeightPercent !== null && (
-              <Text as="p">
-                {t("investmentCase.executiveSummary.portfolioImpact.cash", { percent: cashWeightPercent })}
-              </Text>
-            )}
-            <Divider tone="hairline" />
-          </Stack>
-        )}
-
         {(growth || capitalAllocation) && (
           <Stack gap="intra-section">
             {growth && renderFinding(growth)}
@@ -4743,7 +5107,7 @@ function BusinessSection({
  * structure. FCF Yield named explicitly; the three scenario methods
  * shown honestly as not yet available, never fabricated bear/base/bull
  * assumptions. */
-function ValuationSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
+function ValuationDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
   const fcfYield = analysis.valuation.findings.find((f) => f.kind === "fcf_yield_relative");
   const scenarioFindings = analysis.valuation.findings.filter((f) => f.kind !== "fcf_yield_relative");
 
@@ -4837,18 +5201,80 @@ const EVIDENCE_GAP_QUESTION_KINDS: OpenQuestionKind[] = [
 ];
 
 /**
- * Evidence -- "everything Atlas knows, and what it still doesn't," per
- * this sprint's own framing, in one place: Current Thesis, Conviction,
- * and Confidence (moved here from their own former top-level cards --
- * each is fundamentally a judgment about evidence quality, not a
- * Business/Valuation/Risk fact), Evidence Quality, Observations (moved
- * from the former standalone "Investor Observations" card), Missing
- * Evidence and Open Questions (`analysis.openQuestions` split by
- * `EVIDENCE_GAP_QUESTION_KINDS`), and finally Recommendation, moved
- * here as the section's closing statement since its withheld-reason is
- * itself a statement about evidence/analysis completeness.
+ * Evidence (Figma-fidelity rebuild) -- the approved screen's own
+ * compact single row: Quality / Coverage / Missing / Latest, plus a
+ * "View all evidence" link into the More Details tab (where
+ * `EvidenceDetailSection` below lives). Quality and Coverage are two
+ * distinct real fields already used elsewhere on this page
+ * (`analysis.confidence`, `analysis.evidenceQuality.coverage`) -- never
+ * a single fact split into two labels to match Figma's word count.
+ * Missing reuses the same `EVIDENCE_GAP_QUESTION_KINDS`-filtered count
+ * `EvidenceDetailSection` computes in full below. Latest reads
+ * `currentThesis.latestDecisionReason`/`latestObservationStatement` --
+ * the same real "most recent investor input" fact already used
+ * elsewhere on this page, never a fabricated activity summary.
  */
-function EvidenceSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
+function EvidenceSection({
+  analysis,
+  linkedHolding,
+  onViewMoreDetails,
+  t,
+}: {
+  analysis: InvestmentCaseAnalysisView;
+  linkedHolding: AlphaHoldingView | null;
+  onViewMoreDetails: () => void;
+  t: Translate;
+}) {
+  const missingCount = analysis.openQuestions.filter((q) => EVIDENCE_GAP_QUESTION_KINDS.includes(q.kind)).length;
+  const latest = analysis.currentThesis.latestDecisionReason ?? analysis.currentThesis.latestObservationStatement;
+
+  return (
+    <Surface tier="primary">
+      <Inline gap="inter-section" wrap>
+        <Text as="span" color="secondary">
+          {t("investmentCase.analysis.evidence.qualityHeading")}: {t(CONFIDENCE_KEY[analysis.confidence])}
+        </Text>
+        <Text as="span" color="secondary">
+          {t("investmentCase.analysis.evidence.coverageLabel")}:{" "}
+          {analysis.evidenceQuality
+            ? t(CONFIDENCE_KEY[analysis.evidenceQuality.coverage])
+            : t("investmentCase.atlasView.notAvailable")}
+        </Text>
+        <Text as="span" color="secondary">
+          {t("investmentCase.analysis.evidence.missingEvidenceHeading")}: {missingCount}
+        </Text>
+        {latest && (
+          <Text as="span" color="secondary">
+            {t("investmentCase.analysis.evidence.latestLabel")}: {latest}
+          </Text>
+        )}
+        {linkedHolding && (
+          <Link
+            href="#"
+            onClick={(event) => {
+              event.preventDefault();
+              onViewMoreDetails();
+            }}
+          >
+            {t("investmentCase.analysis.evidence.viewAll")}
+          </Link>
+        )}
+      </Inline>
+    </Surface>
+  );
+}
+
+/**
+ * Evidence Detail (Figma-fidelity rebuild) -- "everything Atlas knows,
+ * and what it still doesn't," in one place: Current Thesis, Conviction,
+ * and Confidence, Evidence Quality, Observations, Missing Evidence and
+ * Open Questions (`analysis.openQuestions` split by
+ * `EVIDENCE_GAP_QUESTION_KINDS`). Moved from the primary view into the
+ * More Details tab -- the compact `EvidenceSection` above is what the
+ * approved screen actually shows there; this is the real depth its own
+ * "View all evidence" link leads to.
+ */
+function EvidenceDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
   const hasThesis = analysis.currentThesis.latestDecisionReason || analysis.currentThesis.latestObservationStatement;
   const missingEvidenceQuestions = analysis.openQuestions.filter((q) => EVIDENCE_GAP_QUESTION_KINDS.includes(q.kind));
   const otherOpenQuestions = analysis.openQuestions.filter((q) => !EVIDENCE_GAP_QUESTION_KINDS.includes(q.kind));

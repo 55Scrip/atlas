@@ -41,7 +41,7 @@ from atlas.analysis_engine.provenance import Provenance
 from atlas.analysis_engine.risk.contracts import RiskDataGapKind, RiskStatus
 from atlas.decision_engine.contracts import EvaluationState, EvidenceCoverageLevel
 
-__all__ = ["EVALUATED_RISK_CATEGORIES", "RiskFinding", "RiskAnalysisResult"]
+__all__ = ["EVALUATED_RISK_CATEGORIES", "RiskFinding", "RiskAnalysisResult", "RiskProjection"]
 
 #: The only `RiskCategory` members ATLAS-025 builds a real evaluator for.
 #: See this module's own docstring for why the other six are absent
@@ -104,3 +104,24 @@ class RiskAnalysisResult:
                     "one RiskFinding per category in EVALUATED_RISK_CATEGORIES, "
                     "never a partial or padded-out list."
                 )
+
+
+@dataclass(frozen=True)
+class RiskProjection:
+    """The single highest-severity `RiskCategory` among
+    `EVALUATED_RISK_CATEGORIES`, for compact display only -- a
+    projection, explicitly never an aggregate score. Severity order:
+    `HIGH > MODERATE > LOW > INSUFFICIENT_INPUT`. Ties are broken by
+    `RiskCategory`'s own declared enum order (never an invented
+    priority) -- deterministic, not arbitrary.
+
+    Originally `atlas.alpha.portfolio_cockpit.models.RiskProjection`
+    (ATLAS-028 Phase 8); relocated here so `atlas.alpha.investment_case`
+    can reuse the same real projection for its own Atlas View scorecard
+    without creating a package cycle (`investment_case` cannot import
+    from `portfolio_cockpit`, which itself depends on `investment_case`
+    at the service layer) -- both Alpha packages already depend on
+    `analysis_engine`, so this is its correct shared home."""
+
+    category: RiskCategory
+    status: RiskStatus

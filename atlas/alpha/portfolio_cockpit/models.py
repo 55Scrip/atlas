@@ -11,10 +11,8 @@ from atlas.alpha.portfolio.models import ReconciliationStatus
 from atlas.alpha.portfolio_status.models import PortfolioSummaryMetrics
 from atlas.analysis_engine.analysis_coverage import AnalysisCoverageAssessment, AnalysisCoverageLevel
 from atlas.analysis_engine.business_contracts import BusinessCategoryStatus
-from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.conviction import ConvictionAssessment, ConvictionLevel
-from atlas.analysis_engine.risk.contracts import RiskStatus
-from atlas.analysis_engine.risk.models import RiskFinding
+from atlas.analysis_engine.risk.models import RiskFinding, RiskProjection
 from atlas.analysis_engine.valuation.contracts import ValuationStatus
 from atlas.analysis_engine.valuation.models import ValuationFinding
 from atlas.decision_engine.contracts import EvidenceCoverageLevel
@@ -34,17 +32,10 @@ __all__ = [
 ]
 
 
-@dataclass(frozen=True)
-class RiskProjection:
-    """The single highest-severity `RiskCategory` among
-    `EVALUATED_RISK_CATEGORIES`, for compact display only -- a
-    projection, explicitly never an aggregate score (Phase 8). Severity
-    order: `HIGH > MODERATE > LOW > INSUFFICIENT_INPUT`. Ties are broken
-    by `RiskCategory`'s own declared enum order (never an invented
-    priority) -- deterministic, not arbitrary."""
-
-    category: RiskCategory
-    status: RiskStatus
+# `RiskProjection` now lives in `atlas.analysis_engine.risk.models`
+# (imported above) -- relocated so `atlas.alpha.investment_case` can
+# reuse it too without a package cycle; re-exported here (via `__all__`)
+# so every existing import site in this package stays unchanged.
 
 
 @dataclass(frozen=True)
