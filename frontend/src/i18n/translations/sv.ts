@@ -828,6 +828,15 @@ export const sv: Record<TranslationKey, string> = {
   "history.analytical.detail.openQuestionsHeading": "Öppna frågor",
   "history.analytical.detail.empty": "Inget registrerat vid denna tidpunkt.",
 
+  // ---------- Visual Fidelity Pass: History ----------
+  "history.summary": "Du har registrerat {{count}} investeringsbeslut i {{companies}} bolag sedan {{since}}.",
+  "history.timeline.heading": "Beslutstidslinje",
+  "history.timeline.viewFull": "Visa hela tidslinjen",
+  "history.reviews.heading": "Beslutsgenomgångar",
+  "history.reviews.subheading": "Nyliga beslut värda att reflektera över",
+  "history.reviews.originalThesis": "Ursprunglig tes",
+  "history.reviews.outcome": "Utfall",
+
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Kräver uppmärksamhet",
   "dashboard.needsAttention.empty": "Inget kräver din uppmärksamhet just nu.",

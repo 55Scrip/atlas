@@ -835,6 +835,15 @@ export const en = {
   "history.analytical.detail.openQuestionsHeading": "Open Questions",
   "history.analytical.detail.empty": "None recorded at this point.",
 
+  // ---------- Visual Fidelity Pass: History ----------
+  "history.summary": "You've recorded {{count}} investment decisions across {{companies}} companies since {{since}}.",
+  "history.timeline.heading": "Decision Timeline",
+  "history.timeline.viewFull": "View full timeline",
+  "history.reviews.heading": "Decision Reviews",
+  "history.reviews.subheading": "Recent decisions worth reflecting on",
+  "history.reviews.originalThesis": "Original Thesis",
+  "history.reviews.outcome": "Outcome",
+
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Needs Attention",
   "dashboard.needsAttention.empty": "Nothing needs your attention right now.",

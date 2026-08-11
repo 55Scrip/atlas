@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { Button, Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
+import { useEffect, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
+import { Container, Divider, Inline, Label, Link, Stack, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
-  sortActivity,
   type ActivityEvent,
   type DecisionRecord,
   type HoldingLite,
@@ -14,7 +13,6 @@ import {
 import {
   BUSINESS_CATEGORY_KEY,
   BUSINESS_STATUS_KEY,
-  CHANGE_DIRECTION_SYMBOL,
   describeChange,
   HIGHLIGHT_KIND_KEY,
   OPEN_QUESTION_ORIGIN_KEY,
@@ -26,6 +24,10 @@ import {
   type AnalysisValuationStatus,
   type ChangeFindingView,
 } from "../changeIntelligence/describeChange";
+
+/** Visual Fidelity Pass -- matches Portfolio/Investment Case/Daily
+ * Brief/Discovery's own accent link treatment. */
+const ACCENT_LINK_STYLE = { color: "var(--global-color-accent)", textDecoration: "none", fontSize: "var(--type-body-min-size)" } as const;
 
 interface PortfolioViewLite {
   holdings: HoldingLite[];
@@ -99,6 +101,18 @@ type TimelineRow =
   | { kind: "activity"; date: string; event: ActivityEvent }
   | { kind: "analytical"; date: string; entry: HistoricalAnalysisEntryView };
 
+const TIMELINE_PREVIEW_COUNT = 8;
+/** Matches the approved screen's own two-up "Decision Reviews" layout. */
+const MAX_REVIEWS = 4;
+
+type Translate = (key: TranslationKey, params?: Record<string, string | number>) => string;
+
+function formatDate(iso: string): string {
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return iso;
+  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 /**
  * History (Sprint 4 investor activity + History v1 analytical
  * timeline): one chronological record combining an investor's own
@@ -112,6 +126,17 @@ type TimelineRow =
  * in the same list. No new backend endpoint was needed for the
  * investor-activity half; the analytical half reads the one new,
  * narrowly-scoped read-only endpoint History v1 introduced.
+ *
+ * Visual Fidelity Pass: flat, dense, typography-led composition
+ * (matching Portfolio/Investment Case/Daily Brief/Discovery), built
+ * only from what's real. The approved Figma concept's fabricated hero
+ * statistics, "Evidence at Decision" counts, "Atlas Recommendation"
+ * directions, editorial "Lesson" text, Learning Patterns, Strategy
+ * Evolution, and ranked Outcomes have no backing data or computation
+ * anywhere in this codebase and are omitted entirely rather than
+ * faked or shown as placeholders. "Recent Activity" is not duplicated
+ * as a separate section -- it is the same Timeline data Decision
+ * Timeline already renders. No embedded Ask Atlas UI.
  */
 export function HistoryPage() {
   const { t } = useTranslation();
@@ -138,6 +163,7 @@ export function HistoryPage() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [sortDirection, setSortDirection] = useState<SortDirection>("newest");
   const [expandedSnapshotIds, setExpandedSnapshotIds] = useState<Set<string>>(new Set());
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -235,17 +261,17 @@ export function HistoryPage() {
     | { kind: "error"; message: string }
     | undefined;
 
+  const holdings = portfolioStatus.kind === "loaded" ? portfolioStatus.data.holdings : [];
+  const holdingByCaseId = new Map(
+    holdings.filter((h): h is HoldingLite & { caseId: string } => h.caseId !== null).map((h) => [h.caseId, h]),
+  );
+
   const activityEvents =
     decisionsStatus.kind === "loaded" &&
     outcomesStatus.kind === "loaded" &&
     tradesStatus.kind === "loaded" &&
     portfolioStatus.kind === "loaded"
-      ? deriveActivity(
-          decisionsStatus.data,
-          outcomesStatus.data,
-          tradesStatus.data,
-          portfolioStatus.data.holdings,
-        )
+      ? deriveActivity(decisionsStatus.data, outcomesStatus.data, tradesStatus.data, holdings)
       : [];
   const analyticalEntries = analyticalStatus.kind === "loaded" ? analyticalStatus.data.entries : [];
 
@@ -270,6 +296,38 @@ export function HistoryPage() {
     return sortDirection === "newest" ? -delta : delta;
   });
   const noneMatchFilter = !isEmpty && sortedRows.length === 0;
+  const visibleRows = timelineExpanded ? sortedRows : sortedRows.slice(0, TIMELINE_PREVIEW_COUNT);
+  const hasMoreRows = sortedRows.length > TIMELINE_PREVIEW_COUNT;
+
+  // Real aggregate counts only -- no ratios, no attribution, no
+  // performance claims (see module doc).
+  const decisionCount = decisionsStatus.kind === "loaded" ? decisionsStatus.data.length : 0;
+  const companyTickers = new Set<string>();
+  activityEvents.forEach((event) => companyTickers.add(event.security));
+  analyticalEntries.forEach((entry) => companyTickers.add(entry.ticker ?? entry.caseId));
+  const allDates = [...activityEvents.map((e) => e.date), ...analyticalEntries.map((e) => e.capturedAt)]
+    .map((iso) => new Date(iso))
+    .filter((d) => !Number.isNaN(d.getTime()));
+  const earliestDate = allDates.length > 0 ? new Date(Math.min(...allDates.map((d) => d.getTime()))) : null;
+
+  // Decision Reviews -- the most recent decisions that have both a
+  // real recorded thesis (Decision.reason) and a real recorded
+  // outcome (Outcome.statement). A deterministic filter over existing
+  // fields, never an editorial "worth reflecting on" judgment.
+  const decisionReviews =
+    decisionsStatus.kind === "loaded" && outcomesStatus.kind === "loaded"
+      ? decisionsStatus.data
+          .map((decision) => ({
+            decision,
+            outcome: outcomesStatus.data.find((o) => o.decisionId === decision.id) ?? null,
+          }))
+          .filter(
+            (entry): entry is { decision: DecisionRecord; outcome: OutcomeRecord } =>
+              entry.outcome !== null && entry.decision.reason.trim() !== "",
+          )
+          .sort((a, b) => new Date(b.decision.decidedAt).getTime() - new Date(a.decision.decidedAt).getTime())
+          .slice(0, MAX_REVIEWS)
+      : [];
 
   function openEvent(event: ActivityEvent) {
     if (!event.caseId) return;
@@ -290,10 +348,8 @@ export function HistoryPage() {
   }
 
   return (
-    <Container>
-      <Stack gap="inter-section">
-        <Heading level={1}>{t("history.title")}</Heading>
-
+    <Container width="wide">
+      <Stack gap="intra-section">
         {isLoading && (
           <Text role="status" aria-live="polite">
             {t("common.loading")}
@@ -307,146 +363,157 @@ export function HistoryPage() {
 
         {!isLoading && !firstError && (
           <>
-            <Surface tier="primary">
-              <Stack gap="inter-section">
-                <div>
-                  <Button
-                    variant={kindFilter === "all" ? "primary" : "tertiary"}
-                    onClick={() => setKindFilter("all")}
-                  >
-                    {t("history.scope.all")}
-                  </Button>{" "}
-                  <Button
-                    variant={kindFilter === "decisions" ? "primary" : "tertiary"}
-                    onClick={() => setKindFilter("decisions")}
-                  >
-                    {t("history.scope.decisions")}
-                  </Button>{" "}
-                  <Button
-                    variant={kindFilter === "investmentCases" ? "primary" : "tertiary"}
-                    onClick={() => setKindFilter("investmentCases")}
-                  >
-                    {t("history.scope.investmentCases")}
-                  </Button>
-                </div>
-                {kindFilter !== "investmentCases" && (
+            {isEmpty ? (
+              <Stack gap="metadata">
+                <Text color="secondary">{t("history.empty")}</Text>
+                <Link
+                  href="#"
+                  style={ACCENT_LINK_STYLE}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    navigate("/portfolio");
+                  }}
+                >
+                  {t("history.empty.portfolioLink")}
+                </Link>
+              </Stack>
+            ) : (
+              <>
+                {decisionCount > 0 && earliestDate && (
                   <>
-                    <div>
-                      <Button
-                        variant={statusFilter === "all" ? "primary" : "tertiary"}
-                        onClick={() => setStatusFilter("all")}
-                      >
-                        {t("history.filter.all")}
-                      </Button>{" "}
-                      <Button
-                        variant={statusFilter === "open" ? "primary" : "tertiary"}
-                        onClick={() => setStatusFilter("open")}
-                      >
-                        {t("history.filter.open")}
-                      </Button>{" "}
-                      <Button
-                        variant={statusFilter === "completed" ? "primary" : "tertiary"}
-                        onClick={() => setStatusFilter("completed")}
-                      >
-                        {t("history.filter.completed")}
-                      </Button>
-                    </div>
-                    <div>
-                      <Button
-                        variant={typeFilter === "all" ? "primary" : "tertiary"}
-                        onClick={() => setTypeFilter("all")}
-                      >
-                        {t("history.filter.all")}
-                      </Button>{" "}
-                      <Button
-                        variant={typeFilter === "BUY" ? "primary" : "tertiary"}
-                        onClick={() => setTypeFilter("BUY")}
-                      >
-                        {t("investmentCase.decision.typeBuy")}
-                      </Button>{" "}
-                      <Button
-                        variant={typeFilter === "SELL" ? "primary" : "tertiary"}
-                        onClick={() => setTypeFilter("SELL")}
-                      >
-                        {t("investmentCase.decision.typeSell")}
-                      </Button>{" "}
-                      <Button
-                        variant={typeFilter === "HOLD" ? "primary" : "tertiary"}
-                        onClick={() => setTypeFilter("HOLD")}
-                      >
-                        {t("investmentCase.decision.typeHold")}
-                      </Button>
-                    </div>
+                    <Text as="p">
+                      {t("history.summary", {
+                        count: decisionCount,
+                        companies: companyTickers.size,
+                        since: earliestDate.toLocaleDateString(undefined, { month: "long", year: "numeric" }),
+                      })}
+                    </Text>
+                    <Divider tone="hairline" />
                   </>
                 )}
-                <div>
-                  <Button
-                    variant={sortDirection === "newest" ? "primary" : "tertiary"}
-                    onClick={() => setSortDirection("newest")}
-                  >
-                    {t("history.sort.newest")}
-                  </Button>{" "}
-                  <Button
-                    variant={sortDirection === "oldest" ? "primary" : "tertiary"}
-                    onClick={() => setSortDirection("oldest")}
-                  >
-                    {t("history.sort.oldest")}
-                  </Button>
-                </div>
-              </Stack>
-            </Surface>
 
-            <Divider />
+                <Stack gap="metadata">
+                  <Inline gap="row" wrap align="baseline" style={{ justifyContent: "space-between" }}>
+                    <Label>{t("history.timeline.heading")}</Label>
+                    <Inline gap="row" wrap>
+                      <FilterTab active={sortDirection === "newest"} onClick={() => setSortDirection("newest")}>
+                        {t("history.sort.newest")}
+                      </FilterTab>
+                      <Text color="tertiary">/</Text>
+                      <FilterTab active={sortDirection === "oldest"} onClick={() => setSortDirection("oldest")}>
+                        {t("history.sort.oldest")}
+                      </FilterTab>
+                    </Inline>
+                  </Inline>
 
-            <Surface tier="primary">
-              <Stack gap="inter-section">
-                {isEmpty && (
-                  <Stack gap="inter-section">
-                    <Text color="secondary">{t("history.empty")}</Text>
-                    <RouterLink to="/portfolio">{t("history.empty.portfolioLink")}</RouterLink>
-                  </Stack>
+                  <Inline gap="row" wrap>
+                    <FilterTab active={kindFilter === "all"} onClick={() => setKindFilter("all")}>
+                      {t("history.scope.all")}
+                    </FilterTab>
+                    <Text color="tertiary">·</Text>
+                    <FilterTab active={kindFilter === "decisions"} onClick={() => setKindFilter("decisions")}>
+                      {t("history.scope.decisions")}
+                    </FilterTab>
+                    <Text color="tertiary">·</Text>
+                    <FilterTab active={kindFilter === "investmentCases"} onClick={() => setKindFilter("investmentCases")}>
+                      {t("history.scope.investmentCases")}
+                    </FilterTab>
+                    {kindFilter !== "investmentCases" && (
+                      <>
+                        <Text color="tertiary">|</Text>
+                        <FilterTab active={statusFilter === "all"} onClick={() => setStatusFilter("all")}>
+                          {t("history.filter.all")}
+                        </FilterTab>
+                        <Text color="tertiary">·</Text>
+                        <FilterTab active={statusFilter === "open"} onClick={() => setStatusFilter("open")}>
+                          {t("history.filter.open")}
+                        </FilterTab>
+                        <Text color="tertiary">·</Text>
+                        <FilterTab active={statusFilter === "completed"} onClick={() => setStatusFilter("completed")}>
+                          {t("history.filter.completed")}
+                        </FilterTab>
+                        <Text color="tertiary">|</Text>
+                        <FilterTab active={typeFilter === "all"} onClick={() => setTypeFilter("all")}>
+                          {t("history.filter.all")}
+                        </FilterTab>
+                        <Text color="tertiary">·</Text>
+                        <FilterTab active={typeFilter === "BUY"} onClick={() => setTypeFilter("BUY")}>
+                          {t("investmentCase.decision.typeBuy")}
+                        </FilterTab>
+                        <Text color="tertiary">·</Text>
+                        <FilterTab active={typeFilter === "SELL"} onClick={() => setTypeFilter("SELL")}>
+                          {t("investmentCase.decision.typeSell")}
+                        </FilterTab>
+                        <Text color="tertiary">·</Text>
+                        <FilterTab active={typeFilter === "HOLD"} onClick={() => setTypeFilter("HOLD")}>
+                          {t("investmentCase.decision.typeHold")}
+                        </FilterTab>
+                      </>
+                    )}
+                  </Inline>
+
+                  {noneMatchFilter && <Text color="secondary">{t("history.noneMatchFilter")}</Text>}
+                  {kindFilter === "investmentCases" && analyticalEntries.length === 0 && (
+                    <Text color="secondary">{t("history.analytical.emptyOnly")}</Text>
+                  )}
+
+                  {visibleRows.map((row) =>
+                    row.kind === "activity" ? (
+                      <ActivityTimelineRow
+                        key={`activity:${row.event.id}`}
+                        event={row.event}
+                        onOpen={() => openEvent(row.event)}
+                        t={t}
+                      />
+                    ) : (
+                      <AnalyticalTimelineRow
+                        key={`analytical:${row.entry.snapshotId}`}
+                        entry={row.entry}
+                        expanded={expandedSnapshotIds.has(row.entry.snapshotId)}
+                        onToggleDetails={() => toggleDetails(row.entry.snapshotId)}
+                        onOpenCase={() => openCase(row.entry.caseId)}
+                        t={t}
+                      />
+                    ),
+                  )}
+
+                  {hasMoreRows && !timelineExpanded && (
+                    <Link
+                      href="#"
+                      style={ACCENT_LINK_STYLE}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setTimelineExpanded(true);
+                      }}
+                    >
+                      {t("history.timeline.viewFull")} →
+                    </Link>
+                  )}
+                </Stack>
+
+                {decisionReviews.length > 0 && (
+                  <>
+                    <Divider tone="hairline" />
+                    <Stack gap="metadata">
+                      <Label>{t("history.reviews.heading")}</Label>
+                      <Text color="tertiary">{t("history.reviews.subheading")}</Text>
+                      <Inline gap="inter-section" wrap align="start">
+                        {decisionReviews.map(({ decision, outcome }) => (
+                          <DecisionReviewCard
+                            key={decision.id}
+                            decision={decision}
+                            outcome={outcome}
+                            ticker={holdingByCaseId.get(decision.caseId)?.ticker ?? decision.subject}
+                            onOpen={() => openCase(decision.caseId)}
+                            t={t}
+                          />
+                        ))}
+                      </Inline>
+                    </Stack>
+                  </>
                 )}
-                {noneMatchFilter && <Text color="secondary">{t("history.noneMatchFilter")}</Text>}
-                {sortedRows.map((row) =>
-                  row.kind === "activity" ? (
-                    <div key={`activity:${row.event.id}`}>
-                      <Button variant="tertiary" onClick={() => openEvent(row.event)}>
-                        {row.event.security}
-                      </Button>
-                      <Text>{t(KIND_LABEL_KEY[row.event.kind])}</Text>
-                      <Text color="secondary" as="p">
-                        {row.event.decisionType &&
-                          (DECISION_TYPE_KEY[row.event.decisionType]
-                            ? t(DECISION_TYPE_KEY[row.event.decisionType]!)
-                            : row.event.decisionType)}
-                        {" · "}
-                        {row.event.status === "open" ? t("history.status.open") : t("history.status.completed")}
-                        {" · "}
-                        {row.event.date}
-                      </Text>
-                      {row.event.summary && (
-                        <Text color="secondary" as="p">
-                          {row.event.summary}
-                        </Text>
-                      )}
-                      <Divider tone="hairline" />
-                    </div>
-                  ) : (
-                    <AnalyticalHistoryRow
-                      key={`analytical:${row.entry.snapshotId}`}
-                      entry={row.entry}
-                      expanded={expandedSnapshotIds.has(row.entry.snapshotId)}
-                      onToggleDetails={() => toggleDetails(row.entry.snapshotId)}
-                      onOpenCase={() => openCase(row.entry.caseId)}
-                      t={t}
-                    />
-                  ),
-                )}
-                {!isEmpty && kindFilter === "investmentCases" && analyticalEntries.length === 0 && (
-                  <Text color="secondary">{t("history.analytical.emptyOnly")}</Text>
-                )}
-              </Stack>
-            </Surface>
+              </>
+            )}
           </>
         )}
       </Stack>
@@ -454,7 +521,68 @@ export function HistoryPage() {
   );
 }
 
-type Translate = (key: TranslationKey, params?: Record<string, string | number>) => string;
+/** Small text tab, bare `<button>` reset -- same idiom as Investment
+ * Case's `TabLabel`, kept page-local since neither page shares a
+ * component for it yet. */
+function FilterTab({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        background: "none",
+        border: "none",
+        padding: 0,
+        margin: 0,
+        cursor: "pointer",
+        fontFamily: "var(--type-family-metadata)",
+        fontSize: "var(--type-body-min-size)",
+        color: active ? "var(--color-text-primary)" : "var(--color-text-tertiary)",
+        textDecoration: active ? "underline" : "none",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** One investor-activity row (Decision/Outcome/Trade) -- dense,
+ * clickable, real fields only. `decisionType` is translated into the
+ * same verb vocabulary the rest of the app already uses (Buy/Sell/
+ * Hold/Watch/Pass) rather than inventing Figma's untethered
+ * Added/Trimmed/Validated taxonomy. */
+function ActivityTimelineRow({ event, onOpen, t }: { event: ActivityEvent; onOpen: () => void; t: Translate }) {
+  const verb =
+    event.kind === "decision" && event.decisionType && DECISION_TYPE_KEY[event.decisionType]
+      ? t(DECISION_TYPE_KEY[event.decisionType]!)
+      : t(KIND_LABEL_KEY[event.kind]);
+  return (
+    <Stack gap="metadata">
+      <Link
+        href="#"
+        style={{ ...ACCENT_LINK_STYLE, color: "var(--color-text-primary)", display: "block" }}
+        onClick={(clickEvent) => {
+          clickEvent.preventDefault();
+          onOpen();
+        }}
+      >
+        <Inline gap="row" align="baseline" wrap>
+          <Text color="tertiary" style={{ minWidth: "60px" }}>
+            {formatDate(event.date)}
+          </Text>
+          <Text color="secondary" style={{ minWidth: "84px" }}>
+            {verb}
+          </Text>
+          <Text as="span" style={{ fontWeight: 600 }}>
+            {event.security}
+          </Text>
+          {event.summary && <Text color="secondary">— {event.summary}</Text>}
+        </Inline>
+      </Link>
+      <Divider tone="hairline" />
+    </Stack>
+  );
+}
 
 /** One analytical timeline entry -- either a Case's baseline (its
  * first-ever recorded snapshot, never itself reported as a change) or
@@ -464,7 +592,7 @@ type Translate = (key: TranslationKey, params?: Record<string, string | number>)
  * docstring) -- nothing is recomputed, and expanding a row never
  * fetches or shows the *current* Investment Case in place of the
  * historical one. */
-function AnalyticalHistoryRow({
+function AnalyticalTimelineRow({
   entry,
   expanded,
   onToggleDetails,
@@ -478,85 +606,151 @@ function AnalyticalHistoryRow({
   t: Translate;
 }) {
   const company = entry.ticker ?? t("dailyBrief.entry.unknownCompany");
+  const verb = entry.isBaseline ? t("history.analytical.baseline") : t(HEADLINE_KEY[entry.thesisImpact]);
+  const description = entry.isBaseline
+    ? t("history.analytical.baselineDescription", { company })
+    : entry.changes[0]
+      ? describeChange(entry.changes[0], t)
+      : entry.summary;
   const growthState = entry.businessCategoryStates.find((s) => s.category === "growth");
 
   return (
-    <div>
-      <Heading level={3}>{company}</Heading>
-      {entry.isBaseline ? (
-        <>
-          <Text as="p">{t("history.analytical.baseline")}</Text>
-          <Text color="secondary" as="p">
-            {t("history.analytical.baselineDescription", { company })}
+    <Stack gap="metadata">
+      <Inline gap="row" align="baseline" wrap style={{ justifyContent: "space-between" }}>
+        <Inline gap="row" align="baseline" wrap>
+          <Text color="tertiary" style={{ minWidth: "60px" }}>
+            {formatDate(entry.capturedAt)}
           </Text>
-        </>
-      ) : (
-        <>
-          <Text as="p">{t(HEADLINE_KEY[entry.thesisImpact])}</Text>
-          {entry.changes.map((change) => (
-            <Text as="p" color="secondary" key={change.id}>
-              {CHANGE_DIRECTION_SYMBOL[change.direction]} {describeChange(change, t)}
-            </Text>
-          ))}
-        </>
-      )}
-      <Text color="tertiary" as="p">
-        {entry.capturedAt}
-      </Text>
-      <Button variant="tertiary" onClick={onToggleDetails}>
-        {expanded ? t("history.analytical.hideDetails") : t("history.analytical.viewDetails")}
-      </Button>{" "}
-      <Button variant="tertiary" onClick={onOpenCase}>
-        {t("dailyBrief.entry.openInvestmentCase")}
-      </Button>
+          <Text color="secondary" style={{ minWidth: "84px" }}>
+            {verb}
+          </Text>
+          <Text as="span" style={{ fontWeight: 600 }}>
+            {company}
+          </Text>
+          <Text color="secondary">— {description}</Text>
+        </Inline>
+        <Inline gap="row">
+          <Link
+            href="#"
+            style={ACCENT_LINK_STYLE}
+            onClick={(event) => {
+              event.preventDefault();
+              onToggleDetails();
+            }}
+          >
+            {expanded ? t("history.analytical.hideDetails") : t("history.analytical.viewDetails")}
+          </Link>
+          <Link
+            href="#"
+            style={ACCENT_LINK_STYLE}
+            onClick={(event) => {
+              event.preventDefault();
+              onOpenCase();
+            }}
+          >
+            {t("dailyBrief.entry.openInvestmentCase")} →
+          </Link>
+        </Inline>
+      </Inline>
 
       {expanded && (
-        <Stack gap="intra-section">
-          <Divider tone="hairline" />
-          <Heading level={4}>{t("history.analytical.detail.thesisHeading")}</Heading>
-          <Text as="p" color="secondary">
+        <Stack gap="metadata" style={{ paddingLeft: "var(--space-intra-section)" }}>
+          <Label>{t("history.analytical.detail.thesisHeading")}</Label>
+          <Text color="secondary" as="p">
             {entry.atlasThesisNarrative ?? t("history.analytical.detail.noThesis")}
           </Text>
 
-          <Heading level={4}>{t("history.analytical.detail.strengthsHeading")}</Heading>
-          {entry.strengths.length === 0 ? (
-            <Text color="secondary">{t("history.analytical.detail.empty")}</Text>
-          ) : (
-            entry.strengths.map((kind) => <Text as="p" key={kind}>{t(HIGHLIGHT_KIND_KEY[kind])}</Text>)
-          )}
+          <Label>{t("history.analytical.detail.strengthsHeading")}</Label>
+          <Text color="secondary" as="p">
+            {entry.strengths.length === 0
+              ? t("history.analytical.detail.empty")
+              : entry.strengths.map((kind) => t(HIGHLIGHT_KIND_KEY[kind])).join(" · ")}
+          </Text>
 
-          <Heading level={4}>{t("history.analytical.detail.risksHeading")}</Heading>
-          {entry.risks.length === 0 ? (
-            <Text color="secondary">{t("history.analytical.detail.empty")}</Text>
-          ) : (
-            entry.risks.map((kind) => <Text as="p" key={kind}>{t(HIGHLIGHT_KIND_KEY[kind])}</Text>)
-          )}
+          <Label>{t("history.analytical.detail.risksHeading")}</Label>
+          <Text color="secondary" as="p">
+            {entry.risks.length === 0
+              ? t("history.analytical.detail.empty")
+              : entry.risks.map((kind) => t(HIGHLIGHT_KIND_KEY[kind])).join(" · ")}
+          </Text>
 
-          <Heading level={4}>{t("history.analytical.detail.growthHeading")}</Heading>
-          <Text as="p" color="secondary">
+          <Label>{t("history.analytical.detail.growthHeading")}</Label>
+          <Text color="secondary" as="p">
             {growthState
               ? `${t(BUSINESS_CATEGORY_KEY.growth)}: ${t(BUSINESS_STATUS_KEY[growthState.status as AnalysisBusinessStatus])}`
               : t("history.analytical.detail.empty")}
           </Text>
 
-          <Heading level={4}>{t("history.analytical.detail.valuationHeading")}</Heading>
-          <Text as="p" color="secondary">
+          <Label>{t("history.analytical.detail.valuationHeading")}</Label>
+          <Text color="secondary" as="p">
             {t(VALUATION_STATUS_KEY[entry.valuationStatus])}
           </Text>
 
-          <Heading level={4}>{t("history.analytical.detail.openQuestionsHeading")}</Heading>
-          {entry.openQuestions.length === 0 ? (
-            <Text color="secondary">{t("history.analytical.detail.empty")}</Text>
-          ) : (
-            entry.openQuestions.map((origin) => (
-              <Text as="p" key={origin}>
-                {t(OPEN_QUESTION_ORIGIN_KEY[origin])}
-              </Text>
-            ))
-          )}
+          <Label>{t("history.analytical.detail.openQuestionsHeading")}</Label>
+          <Text color="secondary" as="p">
+            {entry.openQuestions.length === 0
+              ? t("history.analytical.detail.empty")
+              : entry.openQuestions.map((origin) => t(OPEN_QUESTION_ORIGIN_KEY[origin])).join(" · ")}
+          </Text>
         </Stack>
       )}
       <Divider tone="hairline" />
+    </Stack>
+  );
+}
+
+/** One Decision Review -- real Original Thesis (`Decision.reason`) and
+ * real recorded Outcome (`Outcome.statement`) only. No "Evidence at
+ * Decision" count, no "Atlas Recommendation" direction, no editorial
+ * "Lesson" -- none of those have a real field to read from (see module
+ * doc). */
+function DecisionReviewCard({
+  decision,
+  outcome,
+  ticker,
+  onOpen,
+  t,
+}: {
+  decision: DecisionRecord;
+  outcome: OutcomeRecord;
+  ticker: string;
+  onOpen: () => void;
+  t: Translate;
+}) {
+  const verb = DECISION_TYPE_KEY[decision.decisionType] ? t(DECISION_TYPE_KEY[decision.decisionType]!) : decision.decisionType;
+  return (
+    <div style={{ flex: "1 1 340px", minWidth: 0 }}>
+      <Stack gap="metadata">
+        <Inline gap="row" align="baseline" wrap style={{ justifyContent: "space-between" }}>
+          <Text as="span" style={{ fontWeight: 600 }}>
+            {ticker}
+          </Text>
+          <Text color="tertiary">
+            {verb} · {formatDate(decision.decidedAt)}
+          </Text>
+        </Inline>
+
+        <Label>{t("history.reviews.originalThesis")}</Label>
+        <Text color="secondary" as="p">
+          {decision.reason}
+        </Text>
+
+        <Label>{t("history.reviews.outcome")}</Label>
+        <Text color="secondary" as="p">
+          {outcome.statement}
+        </Text>
+
+        <Link
+          href="#"
+          style={ACCENT_LINK_STYLE}
+          onClick={(event) => {
+            event.preventDefault();
+            onOpen();
+          }}
+        >
+          {t("dailyBrief.entry.openInvestmentCase")} →
+        </Link>
+      </Stack>
     </div>
   );
 }
