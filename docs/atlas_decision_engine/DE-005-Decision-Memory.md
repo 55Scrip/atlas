@@ -45,6 +45,29 @@ its content.
 
 ## 3. Grounding in What Is Already Implemented
 
+**Ownership note (Alpha Freeze correction sprint, resolving Principal
+Engineer Review 2.0 finding M-3).** Decision and Outcome are two of the six
+canonical Domain Objects governed in full by `atlas/core`'s own Architecture
+Doctrine and its OE-002 (Domain Object Model), OE-004 (Domain Invariants),
+and OE-006 (Domain Acceptance Model) — that governing ontology, not this
+document, is the single authoritative home for what a Decision or an
+Outcome fundamentally *is*, per that Doctrine's own §9 ("every architectural
+fact MUST have exactly one authoritative home") and §14 ("architectural
+terms MUST NOT be interpreted by ordinary-language association where a
+normative contract exists"). This section's field lists below describe the
+frontend-facing wire shape of those same, real objects (confirmed directly:
+`DecisionHistoryEntryView.from_domain(decision: Decision)` in
+`atlas/alpha/investment_case/api/schemas.py` constructs its view from
+`atlas.core.domain.decision.entity.Decision`; the equivalent holds for
+Outcome, read-only, enforced by
+`tests/test_architecture_boundaries.py::test_alpha_does_not_write_to_outcome`)
+— never a second, independent data model. Where this section's own
+descriptions below and `atlas/core`'s governing ontology would ever appear
+to diverge, the governing ontology controls; this document's own scope is,
+and remains, only how that already-owned history SHALL be *used* by a
+future Atlas Recommendation (Section 4), not a restatement of what these
+objects are.
+
 This specification is written to be genuinely implementation-ready, so it is
 grounded in the actual Decision, Outcome, and Trade records already shipped
 (Sprint 4, "Decision Continuity & History") rather than a hypothetical data

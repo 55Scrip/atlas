@@ -145,6 +145,23 @@ export const DECISION_SUPPORT_TONE: Record<DecisionSupportLevel, StatusTone> = {
   insufficient_evidence: "neutral",
 };
 
+/** Recommendation / Decision Intelligence Sprint 1 -- mirrors the
+ * backend's `atlas.analysis_engine.recommendation_outlook_context
+ * .OutlookRecommendationRelationship` exactly (4 members). Disclosure
+ * only: this fact is never read to alter `DecisionSupportLevel`/the
+ * Recommendation copy above -- see that backend module's own docstring
+ * for the DE-012/DE-014 boundary this respects. A render-facing caller
+ * must present this as independent, correlated context next to the
+ * Recommendation, never as its cause. */
+export type OutlookRecommendationRelationship = "corroborates" | "diverges" | "mixed" | "unavailable";
+
+export const OUTLOOK_ALIGNMENT_KEY: Record<OutlookRecommendationRelationship, TranslationKey> = {
+  corroborates: "investmentCase.outlookAlignment.corroborates",
+  diverges: "investmentCase.outlookAlignment.diverges",
+  mixed: "investmentCase.outlookAlignment.mixed",
+  unavailable: "investmentCase.outlookAlignment.unavailable",
+};
+
 /** Reuses `AnalysisRiskStatus`/`AnalysisValuationStatus`/
  * `AnalysisBusinessStatus` verbatim from `changeIntelligence
  * /describeChange.ts` -- their translation keys already live there;
@@ -171,4 +188,27 @@ export const BUSINESS_STATUS_TONE: Record<AnalysisBusinessStatus, StatusTone> = 
   weak: "critical",
   insufficient_input: "neutral",
   not_evaluated: "neutral",
+};
+
+/** Alpha Freeze correction sprint (resolving Principal Engineer Review 2.0
+ * finding M-2) -- the first frontend exposure of `DE-015`'s
+ * `ValuationSupport.status`. Mirrors the backend's own
+ * `atlas.analysis_engine.valuation.support.ValuationSupportStatus`
+ * exactly (three members). Presentation-layer labels only, per `UX-021`
+ * Part 8 / `UX-022` -- the literal word "supported" is never rendered
+ * directly, since `DE-015` §6 is explicit that `SUPPORTED` is a narrow,
+ * downside-only claim, never a general valuation-attractiveness one. The
+ * Core enum itself is unchanged; only this presentation mapping is new. */
+export type ValuationSupportStatus = "supported" | "not_supported" | "insufficient_input";
+
+export const VALUATION_SUPPORT_LABEL_KEY: Record<ValuationSupportStatus, TranslationKey> = {
+  supported: "investmentCase.valuationSupport.present",
+  not_supported: "investmentCase.valuationSupport.absent",
+  insufficient_input: "investmentCase.valuationSupport.unresolved",
+};
+
+export const VALUATION_SUPPORT_TONE: Record<ValuationSupportStatus, StatusTone> = {
+  supported: "positive",
+  not_supported: "caution",
+  insufficient_input: "neutral",
 };

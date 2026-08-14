@@ -566,8 +566,40 @@ export const en = {
   "investmentCase.header.currentAllocation": "Current allocation: {{percent}}%",
   "investmentCase.header.valuationLabel": "Valuation",
   "investmentCase.header.portfolioFitLabel": "Portfolio fit",
-  "investmentCase.header.caseIdLabel": "Case ID: {{caseId}}",
   "investmentCase.header.untitled": "Investment Case",
+
+  // ---------- investment case hero (UX-020 / APP-002 / APP-003) ----------
+  "investmentCase.hero.srHeading": "Atlas's current view",
+  "investmentCase.hero.loading": "Atlas is preparing its current assessment of {{ticker}}…",
+  "investmentCase.hero.why.aligned_positive":
+    "Business fundamentals remain strong, and today's valuation doesn't stand in the way.",
+  "investmentCase.hero.why.aligned_negative":
+    "The business has weakened, and valuation offers little reason to look past that.",
+  "investmentCase.hero.why.business_strong_valuation_weak":
+    "The underlying business remains strong, though today's valuation leaves little margin of safety.",
+  "investmentCase.hero.why.business_weak_valuation_strong":
+    "Valuation looks attractive here, though the underlying business raises real questions worth resolving first.",
+  "investmentCase.hero.why.insufficient":
+    "The evidence so far is thinner than usual, so this view should be treated as a starting point rather than a settled one.",
+  "investmentCase.hero.closing.changed": "Something has changed since your last review — worth a closer look below.",
+  "investmentCase.hero.closing.none": "Nothing has changed since your last visit.",
+  "investmentCase.hero.closing.outcomeMissing":
+    "One thing worth a moment: a recorded decision here is still waiting on its outcome.",
+  "investmentCase.hero.closing.reconciliationNeeded":
+    "One thing worth a moment: this position still needs to be reconciled.",
+  "investmentCase.hero.closing.thesisStale":
+    "One thing worth a moment: the thesis here hasn't been revisited in a while.",
+  "investmentCase.hero.closing.openQuestion":
+    "One thing worth a moment: there's an open question still worth resolving.",
+  "investmentCase.hero.withheld.opening":
+    "Atlas doesn't yet have enough evidence to form a clear view on {{ticker}}.",
+  "investmentCase.hero.withheld.reason":
+    "What's available so far leaves real, unresolved questions that keep Atlas from reaching a confident conclusion either way.",
+  "investmentCase.hero.withheld.closing":
+    "There's nothing to act on today — this isn't a gap Atlas overlooked, it's an honest reflection of what's currently knowable.",
+  "investmentCase.hero.asOf": "Reflects Atlas's analysis as of {{when}}.",
+  "investmentCase.hero.riskLabel": "{{category}} risk: {{status}}",
+  "investmentCase.hero.supportingDetailsLabel": "Supporting details",
 
   // ---------- investment case workspace v2: executive summary (Sprint 2) ----------
   "investmentCase.executiveSummary.heading": "Executive Summary",
@@ -878,6 +910,199 @@ export const en = {
   "investmentCase.origin.dailyBrief": "Opened from Daily Brief",
   "investmentCase.origin.discovery": "Opened from Discovery",
   "investmentCase.origin.companion": "Opened from Atlas Companion",
+
+  // ---------- investment case figma-fidelity rebuild: key metrics / strength-concern-priority ----------
+  "investmentCase.keyMetrics.heading": "Key Metrics",
+  "investmentCase.keyMetrics.recommendationLabel": "Recommendation",
+  "investmentCase.keyMetrics.convictionLabel": "Conviction",
+  "investmentCase.keyMetrics.valuationSupportLabel": "Downside Support",
+  "investmentCase.valuationSupport.present": "Downside support present",
+  "investmentCase.valuationSupport.absent": "Downside support absent",
+  "investmentCase.valuationSupport.unresolved": "Valuation conclusion unresolved",
+  "investmentCase.keyMetrics.expectedReturnLabel": "Expected Return",
+  "investmentCase.keyMetrics.upsideDownsideLabel": "Upside / Downside",
+  "investmentCase.keyMetrics.notYetAvailable": "Not yet available",
+  "investmentCase.keyMetrics.expectedReturnCaption": "Long-term, growth-and-reversion range -- not a price target.",
+
+  // ---------- Recommendation / Decision Intelligence Sprint 1: Outlook<->Recommendation alignment ----------
+  "investmentCase.outlookAlignment.corroborates": "Atlas's independently-computed long-term Outlook also implies weak prospective returns, consistent with this recommendation.",
+  "investmentCase.outlookAlignment.diverges": "Atlas's independently-computed long-term Outlook implies stronger prospective returns than this recommendation reflects -- a genuine tension worth weighing, not a contradiction.",
+  "investmentCase.outlookAlignment.mixed": "Atlas's independently-computed long-term Outlook is mixed and does not clearly corroborate or diverge from this recommendation.",
+  "investmentCase.outlookAlignment.unavailable": "Long-term Outlook is not yet available for comparison against this recommendation.",
+
+  "investmentCase.strengthConcernPriority.strengthLabel": "Biggest Strength",
+  "investmentCase.strengthConcernPriority.concernLabel": "Biggest Concern",
+  "investmentCase.strengthConcernPriority.priorityLabel": "Current Priority",
+  "investmentCase.strengthConcernPriority.noStrength": "No strength has clear evidence support yet.",
+  "investmentCase.strengthConcernPriority.noConcern": "No concern has clear evidence support yet.",
+  "investmentCase.currentPriority.none": "Nothing is currently outstanding for this case.",
+  "investmentCase.concern.thesis_risk": "The thesis itself carries an identified risk worth watching.",
+
+  // ---------- investment case figma-fidelity rebuild: atlas outlook ----------
+  "investmentCase.outlook.heading": "Atlas Outlook",
+  "investmentCase.outlook.notYetComputed": "Not yet computed",
+  "investmentCase.outlook.shortTerm.heading": "Short-Term",
+  "investmentCase.outlook.longTerm.heading": "Long-Term",
+  "investmentCase.outlook.expectedReturnLabel": "Valuation-Implied Return Range",
+  "investmentCase.outlook.convictionLabel": "Conviction",
+  "investmentCase.outlook.bullCaseLabel": "Valuation Bull",
+  "investmentCase.outlook.baseCaseLabel": "Valuation Base",
+  "investmentCase.outlook.bearCaseLabel": "Valuation Bear",
+  "investmentCase.outlook.momentumLabel": "Momentum",
+  "investmentCase.outlook.keyDriversLabel": "Key Drivers",
+  "investmentCase.outlook.whatChangedLabel": "What Changed",
+  "investmentCase.outlook.noDrivers": "No key drivers identified yet.",
+  "investmentCase.outlook.noChanges": "Nothing has changed recently.",
+
+  // ---------- outlook intelligence sprint 1: real expected return / scenarios / momentum / drivers ----------
+  "investmentCase.outlook.returnBasisNote": "{{basis}}, over {{low}}–{{high}} months.",
+  "investmentCase.outlook.basis.cumulative": "Cumulative return",
+  "investmentCase.outlook.basis.annualized": "Annualized return",
+  "investmentCase.outlook.gap.noHistoricalValuationRange":
+    "Not enough historical valuation data to build a range yet.",
+  "investmentCase.outlook.gap.valuationNotConclusive": "No current valuation to project from yet.",
+  "investmentCase.outlook.gap.noDurableGrowthTrajectory":
+    "No real, recent, durable growth trajectory Atlas can responsibly project forward yet — never fabricated here.",
+  "investmentCase.outlook.momentum.strengthening": "Strengthening",
+  "investmentCase.outlook.momentum.stable": "Stable",
+  "investmentCase.outlook.momentum.mixed": "Mixed",
+  "investmentCase.outlook.momentum.weakening": "Weakening",
+  "investmentCase.outlook.rerangeAssumptionNote":
+    "Assumes free cash flow stays at its current level and only the market's own valuation multiple changes — not a forecast of business performance.",
+  "investmentCase.outlook.scenarioAssumptionNote": "Assumes the market re-rates to a {{targetYield}} FCF yield.",
+  "investmentCase.outlook.scenariosCaption":
+    "Valuation scenarios only — based on {{count}} historical FCF-yield observation(s), including any unusual periods.",
+  "investmentCase.outlook.growthScenariosCaption":
+    "Business-growth scenarios sharing one terminal valuation assumption — growth drawn from {{growthCount}} revenue-corroborated historical observation(s); terminal yield from {{count}} historical FCF-yield observation(s).",
+  "investmentCase.outlook.convictionCaption":
+    "Reflects case-wide Conviction, capped when this horizon's own data is insufficient — not an independently modeled Outlook Conviction.",
+  "investmentCase.outlook.driver.valuationRerating": "Valuation re-rating",
+  "investmentCase.outlook.driver.revenueTrend": "Recent revenue trend",
+  "investmentCase.outlook.driver.growth": "Growth",
+  "investmentCase.outlook.driver.capitalAllocation": "Capital allocation",
+  "investmentCase.outlook.driver.financialRisk": "Financial risk",
+  "investmentCase.outlook.driver.businessRisk": "Business risk",
+  "investmentCase.outlook.driver.valuationRisk": "Valuation risk",
+  "investmentCase.outlook.driver.fcfGrowthTrend": "Recent free cash flow trend",
+  "investmentCase.outlook.driver.debtTrend": "Debt trend",
+  "investmentCase.outlook.driver.marginTrend": "Operating margin trend",
+
+  // ---------- long-term expected return v1 ----------
+  "investmentCase.outlook.growthAssumptionNote":
+    "Assumes free cash flow compounds at {{growthRate}} annually for {{years}} years, drawn from this company's own realized history, then the market re-rates to a {{targetYield}} FCF yield — not a forecast of future business performance.",
+  "investmentCase.outlook.scenarioGrowthAssumptionNote":
+    "Assumes {{growthRate}} annual free cash flow growth and a {{targetYield}} terminal FCF yield.",
+
+  // ---------- long-term expected return calibration sprint ----------
+  "investmentCase.outlook.growthBullCaseLabel": "Business-Growth Bull",
+  "investmentCase.outlook.growthBaseCaseLabel": "Business-Growth Base",
+  "investmentCase.outlook.growthBearCaseLabel": "Business-Growth Bear",
+  "investmentCase.outlook.expectedReturnLabel.growth": "Expected Return Range",
+
+  // ---------- investment case figma-fidelity rebuild: investment argument ----------
+  "investmentCase.argument.heading": "Investment Argument",
+  "investmentCase.argument.supportsHeading": "Supports the Case",
+  "investmentCase.argument.challengesHeading": "Challenges the Case",
+  "investmentCase.argument.supportsEmpty": "Nothing has been classified as a supporting factor yet.",
+  "investmentCase.argument.challengesEmpty": "Nothing has been classified as a challenging factor yet.",
+  "investmentCase.argument.supports.growth": "Growth trends are strong enough to support the case.",
+  "investmentCase.argument.supports.capital_allocation":
+    "Capital allocation has been disciplined enough to support the case.",
+  "investmentCase.argument.supports.valuation": "Today's valuation supports the case rather than working against it.",
+  "investmentCase.argument.challenges.growth": "Weakening growth works against the case.",
+  "investmentCase.argument.challenges.capital_allocation":
+    "Capital allocation is currently working against shareholders, which works against the case.",
+  "investmentCase.argument.challenges.valuation":
+    "Today's valuation looks expensive relative to this company's own history, which works against the case.",
+  "investmentCase.argument.challenges.business_risk": "An identified business risk works against the case.",
+  "investmentCase.argument.challenges.financial_risk": "An identified financial risk works against the case.",
+  "investmentCase.argument.challenges.valuation_risk": "An identified valuation risk works against the case.",
+
+  // ---------- investment case figma-fidelity rebuild: atlas reasoning ----------
+  "investmentCase.reasoning.heading": "Atlas Reasoning",
+  "investmentCase.reasoning.growthLabel": "Growth",
+  "investmentCase.reasoning.valuationLabel": "Valuation",
+  "investmentCase.reasoning.financialHealthLabel": "Financial Health",
+  "investmentCase.reasoning.businessQualityLabel": "Business Quality",
+  "investmentCase.reasoning.notYetEvaluated": "Not yet evaluated.",
+  "investmentCase.reasoning.growth.strong": "Growth is strong and supports the case.",
+  "investmentCase.reasoning.growth.moderate": "Growth is moderate — a real but not decisive factor.",
+  "investmentCase.reasoning.growth.weak": "Growth is weak and works against the case.",
+  "investmentCase.reasoning.valuation.undervalued": "The business appears undervalued at today's price.",
+  "investmentCase.reasoning.valuation.fairly_valued": "The business appears fairly valued at today's price.",
+  "investmentCase.reasoning.valuation.expensive": "The business appears expensive at today's price.",
+  "investmentCase.reasoning.financialHealth.low":
+    "Financial risk is low — the balance sheet is not a near-term concern.",
+  "investmentCase.reasoning.financialHealth.moderate":
+    "Financial risk is moderate — worth monitoring, not yet a concern.",
+  "investmentCase.reasoning.financialHealth.high": "Financial risk is high and warrants attention.",
+  "investmentCase.reasoning.businessQuality.strong": "Business quality is strong and supports durability.",
+  "investmentCase.reasoning.businessQuality.moderate":
+    "Business quality is moderate — durability is not yet fully established.",
+  "investmentCase.reasoning.businessQuality.weak": "Business quality is weak and raises durability questions.",
+
+  // ---------- investment case figma-fidelity rebuild: company health assessment ----------
+  "investmentCase.companyHealth.heading": "Company Health Assessment",
+  "investmentCase.companyHealth.businessQualityLabel": "Business Quality",
+  "investmentCase.companyHealth.financialStrengthLabel": "Financial Strength",
+  "investmentCase.companyHealth.managementGovernanceLabel": "Management & Governance",
+  "investmentCase.companyHealth.capitalAllocationLabel": "Capital Allocation",
+  "investmentCase.companyHealth.competitivePositionLabel": "Competitive Position",
+  "investmentCase.companyHealth.expandLabel": "Show supporting evidence",
+  "investmentCase.companyHealth.supportingHeading": "Supporting evidence",
+  "investmentCase.companyHealth.contradictingHeading": "Contradicting evidence",
+  "investmentCase.companyHealth.missingHeading": "Missing evidence",
+  "investmentCase.companyHealth.noneFound": "None recorded.",
+  "investmentCase.companyHealth.notYetEvaluated": "Not yet evaluated — the evidence needed hasn't been gathered.",
+  "investmentCase.companyHealth.businessQuality.strong": "Business quality looks strong on the evidence gathered so far.",
+  "investmentCase.companyHealth.businessQuality.moderate":
+    "Business quality looks moderate on the evidence gathered so far.",
+  "investmentCase.companyHealth.businessQuality.weak": "Business quality looks weak on the evidence gathered so far.",
+  "investmentCase.companyHealth.financialStrength.low": "Financial risk is currently assessed as low.",
+  "investmentCase.companyHealth.financialStrength.moderate": "Financial risk is currently assessed as moderate.",
+  "investmentCase.companyHealth.financialStrength.high": "Financial risk is currently assessed as high.",
+  "investmentCase.companyHealth.management.strong":
+    "Management and governance look strong on the evidence gathered so far.",
+  "investmentCase.companyHealth.management.moderate":
+    "Management and governance look moderate on the evidence gathered so far.",
+  "investmentCase.companyHealth.management.weak":
+    "Management and governance look weak on the evidence gathered so far.",
+  "investmentCase.companyHealth.capitalAllocation.strong":
+    "Capital allocation looks strong on the evidence gathered so far.",
+  "investmentCase.companyHealth.capitalAllocation.moderate":
+    "Capital allocation looks moderate on the evidence gathered so far.",
+  "investmentCase.companyHealth.capitalAllocation.weak":
+    "Capital allocation looks weak on the evidence gathered so far.",
+  "investmentCase.companyHealth.competitivePosition.strong":
+    "Competitive position looks strong on the evidence gathered so far.",
+  "investmentCase.companyHealth.competitivePosition.moderate":
+    "Competitive position looks moderate on the evidence gathered so far.",
+  "investmentCase.companyHealth.competitivePosition.weak":
+    "Competitive position looks weak on the evidence gathered so far.",
+
+  // ---------- investment case figma-fidelity rebuild: interpreted financial evidence ----------
+  "investmentCase.financialEvidence.heading": "Interpreted Financial Evidence",
+  "investmentCase.financialEvidence.operatingMarginLabel": "Operating Margin",
+  "investmentCase.financialEvidence.detailedFinancialsLabel": "Detailed Financials, Sources & Methodology",
+  "investmentCase.financialEvidence.notEnoughHistory": "Not enough history to interpret yet.",
+  "investmentCase.financialEvidence.revenue.up": "Revenue is growing — demand continues to expand.",
+  "investmentCase.financialEvidence.revenue.down": "Revenue is declining — worth watching for a continued trend.",
+  "investmentCase.financialEvidence.revenue.flat": "Revenue is essentially flat versus the prior period.",
+  "investmentCase.financialEvidence.operatingMargin.up":
+    "Operating margin is expanding — the business is converting revenue into profit more efficiently.",
+  "investmentCase.financialEvidence.operatingMargin.down":
+    "Operating margin is contracting — profitability is coming under pressure.",
+  "investmentCase.financialEvidence.operatingMargin.flat":
+    "Operating margin is essentially unchanged versus the prior period.",
+  "investmentCase.financialEvidence.freeCashFlow.up":
+    "Free cash flow is growing, giving the business more room to invest, return capital, or absorb a downturn.",
+  "investmentCase.financialEvidence.freeCashFlow.down":
+    "Free cash flow is declining, reducing the business's flexibility.",
+  "investmentCase.financialEvidence.freeCashFlow.flat":
+    "Free cash flow is essentially unchanged versus the prior period.",
+  "investmentCase.financialEvidence.totalDebt.up": "Total debt is rising — worth monitoring alongside cash flow.",
+  "investmentCase.financialEvidence.totalDebt.down": "Total debt is declining, a modest positive for the balance sheet.",
+  "investmentCase.financialEvidence.totalDebt.flat": "Total debt is essentially unchanged versus the prior period.",
 
   // ---------- daily brief v2 (Workspace Migration Phase 4) ----------
   "dailyBrief.title": "Daily Brief",

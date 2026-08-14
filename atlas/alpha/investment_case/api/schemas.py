@@ -47,9 +47,20 @@ from atlas.analysis_engine.investment_case_synthesis import (
     ValuationContext,
 )
 from atlas.analysis_engine.models import CanonicalAnalysis
+from atlas.analysis_engine.outlook import (
+    ExpectedReturnRange,
+    HorizonOutlook,
+    Outlook,
+    OutlookAssumption,
+    OutlookDriver,
+    OutlookScenario,
+    derive_outlook_momentum,
+)
+from atlas.analysis_engine.recommendation_outlook_context import RecommendationOutlookContext
 from atlas.analysis_engine.risk.models import RiskAnalysisResult, RiskFinding, RiskProjection
 from atlas.analysis_engine.risk.projection import risk_projection
 from atlas.analysis_engine.valuation.models import ValuationEngineResult, ValuationFinding
+from atlas.analysis_engine.valuation.support import ValuationSupport
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.observation.entity import Observation
 from atlas.core.infrastructure.api.serialization import CamelModel
@@ -206,6 +217,30 @@ class RiskProjectionView(CamelModel):
         return cls(category=projection.category.value, status=projection.status.value)
 
 
+class ValuationSupportView(CamelModel):
+    """Alpha Freeze correction sprint (resolving Principal Engineer Review
+    2.0 finding M-2): the first exposure of `DE-015`'s `ValuationSupport`
+    to any product surface. Exposes only `status` and `gap` -- never
+    `.reasoning` verbatim (`DE-015` §18's own boundary: Recommendation
+    itself reads only `.status`; this view extends that same restraint to
+    the presentation layer, one level further, rather than relaxing it).
+    Raw enum member names (`supported`, `missing_capital_deployment_...`)
+    are sent over the wire exactly as internal identifiers already are
+    elsewhere in this schema (e.g. `risk_projection.status`) -- the
+    frontend owns translating them into the safe, narrow presentation
+    labels already specified (`UX-021`/`UX-022`: "Downside support
+    present/absent", "Valuation conclusion unresolved"), never rendering
+    the raw value or the word "supported" directly. No new computation:
+    a direct field mapping of the already-computed `ValuationSupport`."""
+
+    status: str
+    gap: str | None
+
+    @classmethod
+    def from_domain(cls, support: ValuationSupport) -> "ValuationSupportView":
+        return cls(status=support.status.value, gap=support.gap.value if support.gap else None)
+
+
 class ConvictionAssessmentView(CamelModel):
     level: str
     reasons: list[str]
@@ -213,6 +248,26 @@ class ConvictionAssessmentView(CamelModel):
     @classmethod
     def from_domain(cls, assessment: ConvictionAssessment) -> "ConvictionAssessmentView":
         return cls(level=assessment.level.value, reasons=[r.value for r in assessment.reasons])
+
+
+class RecommendationOutlookAlignmentView(CamelModel):
+    """Recommendation / Decision Intelligence Sprint 1: the one, narrow,
+    sanctioned Outlook<->Recommendation relationship
+    (`DE-012`/`DE-014`'s "sibling conclusions" boundary) -- see
+    `atlas.analysis_engine.recommendation_outlook_context`'s own module
+    docstring for the exact rule. Disclosure only: never read by, and
+    with no effect on, `level`/`badge_label`/`statement` above, which are
+    derived from `RecommendationGateResult` alone. Each value is one of
+    `"corroborates"`/`"diverges"`/`"mixed"`/`"unavailable"` -- a render
+    -facing caller must present this as independent, correlated context
+    next to the Recommendation, never as its cause."""
+
+    short_term: str
+    long_term: str
+
+    @classmethod
+    def from_domain(cls, context: RecommendationOutlookContext) -> "RecommendationOutlookAlignmentView":
+        return cls(short_term=context.short_term.value, long_term=context.long_term.value)
 
 
 class RecommendationStateView(CamelModel):
@@ -225,21 +280,26 @@ class RecommendationStateView(CamelModel):
     `conviction_gate_met` names the one real gate this analysis checked
     (`atlas.analysis_engine.recommendation.RECOMMENDATION_GATE_MINIMUM
     _CONVICTION`), without restating Conviction's own level -- unchanged
-    from this schema's prior shape."""
+    from this schema's prior shape.
+
+    `outlook_alignment` is new this sprint -- see
+    `RecommendationOutlookAlignmentView`'s own docstring."""
 
     level: str
     badge_label: str
     statement: str
     conviction_gate_met: bool
+    outlook_alignment: RecommendationOutlookAlignmentView
 
     @classmethod
-    def from_domain(cls, gate_result) -> "RecommendationStateView":
+    def from_domain(cls, gate_result, outlook_context: RecommendationOutlookContext) -> "RecommendationStateView":
         view: DecisionSupportViewDomain = describe_recommendation(gate_result)
         return cls(
             level=view.level.value,
             badge_label=view.badge_label,
             statement=view.statement,
             conviction_gate_met=gate_result.conviction_gate_met,
+            outlook_alignment=RecommendationOutlookAlignmentView.from_domain(outlook_context),
         )
 
 
@@ -530,6 +590,157 @@ class ChangeFindingView(CamelModel):
         )
 
 
+class OutlookAssumptionView(CamelModel):
+    """See `atlas.analysis_engine.outlook.OutlookAssumption`'s own
+    docstring: fully structured, fully numeric, never a free-text
+    "why" -- a caller renders language from `kind` plus these real
+    values, never from a string this API wrote. `observationCount`
+    (Semantic Hardening Pass) must be shown alongside `targetFcfYield`
+    wherever this assumption renders -- see that field's own domain
+    docstring for why. `growthRate`/`horizonYears`/
+    `growthObservationCount` (Long-Term Expected Return v1) are `null`
+    for every Short-Term assumption and always populated together for
+    Long-Term -- a frontend renders a growth-assumption line only when
+    `growthRate` is non-null, never inferring its presence from `kind`
+    alone."""
+
+    kind: str
+    current_fcf_yield: float
+    target_fcf_yield: float
+    observation_count: int
+    growth_rate: float | None
+    horizon_years: int | None
+    growth_observation_count: int | None
+
+    @classmethod
+    def from_domain(cls, assumption: OutlookAssumption) -> "OutlookAssumptionView":
+        return cls(
+            kind=assumption.kind.value,
+            current_fcf_yield=assumption.current_fcf_yield,
+            target_fcf_yield=assumption.target_fcf_yield,
+            observation_count=assumption.observation_count,
+            growth_rate=assumption.growth_rate,
+            horizon_years=assumption.horizon_years,
+            growth_observation_count=assumption.growth_observation_count,
+        )
+
+
+class ExpectedReturnRangeView(CamelModel):
+    """Part 4's own explicit requirement, wire-visible: `basis` and both
+    horizon bounds are always present alongside the range -- a frontend
+    never has to infer units or horizon."""
+
+    low_percent: float
+    high_percent: float
+    basis: str
+    horizon_months_low: int
+    horizon_months_high: int
+    assumption: OutlookAssumptionView
+
+    @classmethod
+    def from_domain(cls, expected_return: ExpectedReturnRange) -> "ExpectedReturnRangeView":
+        return cls(
+            low_percent=expected_return.low_percent,
+            high_percent=expected_return.high_percent,
+            basis=expected_return.basis.value,
+            horizon_months_low=expected_return.horizon_months_low,
+            horizon_months_high=expected_return.horizon_months_high,
+            assumption=OutlookAssumptionView.from_domain(expected_return.assumption),
+        )
+
+
+class OutlookScenarioView(CamelModel):
+    kind: str
+    return_percent: float
+    assumption: OutlookAssumptionView
+    driver: str
+
+    @classmethod
+    def from_domain(cls, scenario: OutlookScenario) -> "OutlookScenarioView":
+        return cls(
+            kind=scenario.kind.value,
+            return_percent=scenario.return_percent,
+            assumption=OutlookAssumptionView.from_domain(scenario.assumption),
+            driver=scenario.driver.value,
+        )
+
+
+class OutlookDriverView(CamelModel):
+    kind: str
+    direction: str
+    source_finding_id: str | None
+
+    @classmethod
+    def from_domain(cls, driver: OutlookDriver) -> "OutlookDriverView":
+        return cls(kind=driver.kind.value, direction=driver.direction.value, source_finding_id=driver.source_finding_id)
+
+
+class HorizonOutlookView(CamelModel):
+    """One horizon's Outlook -- `expectedReturn`/`expectedReturnGap` and
+    `scenarios`/`scenariosGap` are each mutually exclusive pairs (see
+    `HorizonOutlook.__post_init__`): a frontend checks the gap field to
+    render an honest "not yet computed" state, never infers absence from
+    an empty/null value alone."""
+
+    horizon: str
+    expected_return: ExpectedReturnRangeView | None
+    expected_return_gap: str | None
+    scenarios: list[OutlookScenarioView]
+    scenarios_gap: str | None
+    conviction: str
+    momentum: str
+    key_drivers: list[OutlookDriverView]
+
+    @classmethod
+    def from_domain(cls, horizon: HorizonOutlook, *, momentum: str) -> "HorizonOutlookView":
+        return cls(
+            horizon=horizon.horizon.value,
+            expected_return=(
+                ExpectedReturnRangeView.from_domain(horizon.expected_return)
+                if horizon.expected_return is not None
+                else None
+            ),
+            expected_return_gap=horizon.expected_return_gap.value if horizon.expected_return_gap else None,
+            scenarios=[OutlookScenarioView.from_domain(s) for s in horizon.scenarios],
+            scenarios_gap=horizon.scenarios_gap.value if horizon.scenarios_gap else None,
+            conviction=horizon.conviction.value,
+            momentum=momentum,
+            key_drivers=[OutlookDriverView.from_domain(d) for d in horizon.key_drivers],
+        )
+
+
+class OutlookView(CamelModel):
+    """Outlook Intelligence Sprint 1: real Short-Term/Long-Term Outlook,
+    replacing the Investment Case Outlook panel's former "Not yet
+    computed" placeholders wherever real data now supports them. See
+    `atlas.analysis_engine.outlook`'s own module docstring for the full
+    derivation rules, and this class's own `from_domain` for why
+    `momentum` is computed here rather than on the domain object."""
+
+    short_term: HorizonOutlookView
+    long_term: HorizonOutlookView
+
+    @classmethod
+    def from_domain(
+        cls, outlook: Outlook, *, change_intelligence: "ChangeIntelligence | None"
+    ) -> "OutlookView":
+        #: `outlook.py` itself cannot know whether this run's analytical
+        #: state is strengthening/weakening/stable -- that needs a
+        #: comparison against a previous snapshot, which only exists
+        #: once `ChangeIntelligence` has been computed one layer up (see
+        #: that module's own docstring). Computed once, shared by both
+        #: horizons -- Momentum has no horizon-specific split in this
+        #: sprint, the same honest limitation `AtlasOutlookSection`
+        #: already documents for "What Changed."
+        thesis_impact = change_intelligence.thesis_impact if change_intelligence is not None else None
+        is_baseline = change_intelligence.is_baseline if change_intelligence is not None else True
+        momentum = derive_outlook_momentum(thesis_impact, is_baseline=is_baseline).value
+        return cls(
+            short_term=HorizonOutlookView.from_domain(outlook.short_term, momentum=momentum),
+            long_term=HorizonOutlookView.from_domain(outlook.long_term, momentum=momentum),
+        )
+
+
 class InvestmentCaseAnalysisView(CamelModel):
     """The canonical Investment Case -- one coherent object mirroring
     `InvestmentCaseComposition` plus its `CanonicalAnalysis`. Every
@@ -545,6 +756,12 @@ class InvestmentCaseAnalysisView(CamelModel):
     conviction: ConvictionAssessmentView
     business_analysis: BusinessAnalysisView
     valuation: ValuationEngineView
+    valuation_support: ValuationSupportView
+    """Alpha Freeze correction sprint, resolving Principal Engineer Review
+    2.0 finding M-2 -- see `ValuationSupportView`'s own docstring. Additive
+    field; `valuation` above is unchanged and keeps its exact prior
+    meaning (`ValuationStatus`, relative-to-history), never conflated with
+    this narrower, downside-only field (`DE-015`)."""
     risk: RiskAnalysisView
     risk_projection: RiskProjectionView
     """Figma-fidelity rebuild: Atlas View's compact "Risk Level" dot
@@ -566,6 +783,10 @@ class InvestmentCaseAnalysisView(CamelModel):
     growth_analysis: GrowthAnalysisView
     valuation_context: ValuationContextView
     atlas_thesis: AtlasThesisView
+    outlook: OutlookView
+    """Outlook Intelligence Sprint 1: real Short-Term/Long-Term
+    Expected Return, Scenarios, Conviction, Momentum, and Key Drivers --
+    see `OutlookView`'s own docstring."""
     key_open_questions: list[CaseOpenQuestionView]
     """Investment Case Engine v2 slice: distinct from `open_questions`
     above (`decision_engine`'s own case-wide gaps, unchanged) -- these
@@ -621,6 +842,7 @@ class InvestmentCaseAnalysisView(CamelModel):
             conviction=ConvictionAssessmentView.from_domain(analysis.conviction),
             business_analysis=BusinessAnalysisView.from_domain(analysis.business_analysis),
             valuation=ValuationEngineView.from_domain(analysis.valuation_engine),
+            valuation_support=ValuationSupportView.from_domain(analysis.valuation_support),
             risk=RiskAnalysisView.from_domain(analysis.risk_analysis),
             risk_projection=RiskProjectionView.from_domain(risk_projection(analysis.risk_analysis)),
             evidence_quality=(
@@ -629,7 +851,9 @@ class InvestmentCaseAnalysisView(CamelModel):
                 else None
             ),
             open_questions=[OpenQuestionSchema.from_domain(q) for q in analysis.open_questions],
-            recommendation=RecommendationStateView.from_domain(analysis.recommendation),
+            recommendation=RecommendationStateView.from_domain(
+                analysis.recommendation, analysis.recommendation_outlook_context
+            ),
             decision_history=[DecisionHistoryEntryView.from_domain(d) for d in composition.decision_history],
             observation_history=[ObservationEntryView.from_domain(o) for o in composition.observation_history],
             outcome_history=[OutcomeEntryView.from_domain(o) for o in composition.outcome_history],
@@ -650,6 +874,7 @@ class InvestmentCaseAnalysisView(CamelModel):
             growth_analysis=GrowthAnalysisView.from_domain(analysis.synthesis.growth),
             valuation_context=ValuationContextView.from_domain(analysis.synthesis.valuation_context),
             atlas_thesis=AtlasThesisView.from_domain(analysis.synthesis.atlas_thesis),
+            outlook=OutlookView.from_domain(analysis.outlook, change_intelligence=change_intelligence),
             key_open_questions=[CaseOpenQuestionView.from_domain(q) for q in analysis.synthesis.open_questions],
             change_intelligence_available=change_intelligence_available,
             is_baseline_case=is_baseline_case,

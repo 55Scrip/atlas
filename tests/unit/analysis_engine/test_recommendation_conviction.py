@@ -307,6 +307,20 @@ def _insufficient_valuation_engine():
     return evaluate_valuation(business_facts, market_facts, evaluated_at=GENERATED_AT)
 
 
+def _insufficient_valuation_support():
+    """`DE-016`: `evaluate_recommendation_gate` now requires this
+    parameter -- `INSUFFICIENT_INPUT` is the correct default for every
+    call in this file, none of which is exercising the new BUY/ADD
+    wiring (that lives in `test_recommendation.py::TestBuyAddNowWired`)."""
+    from atlas.analysis_engine.valuation.support import ValuationSupport, ValuationSupportGapKind, ValuationSupportStatus
+
+    return ValuationSupport(
+        status=ValuationSupportStatus.INSUFFICIENT_INPUT,
+        reasoning="No real data supplied in this fixture.",
+        gap=ValuationSupportGapKind.INSUFFICIENT_HISTORICAL_VALUATION_DATA,
+    )
+
+
 class TestRecommendationWithheldWhenBusinessInconclusive:
     """Renamed from `TestRecommendationWithheldRegressionUnchanged`:
     `atlas.analysis_engine.recommendation_conviction` is now consumed by
@@ -332,6 +346,7 @@ class TestRecommendationWithheldWhenBusinessInconclusive:
             conviction=conviction,
             business_analysis=_insufficient_business_analysis(output),
             valuation_engine=_insufficient_valuation_engine(),
+            valuation_support=_insufficient_valuation_support(),
             has_high_financial_or_valuation_risk=False,
             has_open_questions=False,
             generated_at=GENERATED_AT,
@@ -350,6 +365,7 @@ class TestRecommendationWithheldWhenBusinessInconclusive:
             conviction=conviction,
             business_analysis=_insufficient_business_analysis(output),
             valuation_engine=_insufficient_valuation_engine(),
+            valuation_support=_insufficient_valuation_support(),
             has_high_financial_or_valuation_risk=False,
             has_open_questions=False,
             generated_at=GENERATED_AT,

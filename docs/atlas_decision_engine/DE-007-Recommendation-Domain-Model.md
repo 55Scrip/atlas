@@ -187,6 +187,22 @@ document adds nothing to it: neither `ComputedDirectionalRecommendation`
 nor `HistoricalRecommendationSnapshot` carries a field referencing the
 Investor's `BUY/SELL/HOLD/WATCH/PASS` record, in either direction.
 
+**Ownership note (Alpha Freeze correction sprint, resolving Principal
+Engineer Review 2.0 finding M-3).** "Investor Decision" above, and every
+other reference to Decision or Outcome elsewhere in this document (§2's
+Decision Memory citation, `decisionMemoryReference` in §8A/§8B), names the
+same real, canonical Domain Objects `atlas/core`'s own Architecture
+Doctrine and OE-002/OE-004/OE-006 govern in full — this document is not,
+and does not become, an alternative authority for what those objects are.
+This document's own field-level claims about `DecisionRecord`/`OutcomeRecord`
+content are the frontend-facing wire shape of those same real objects
+(`DecisionHistoryEntryView.from_domain(decision: Decision)`,
+`atlas/alpha/investment_case/api/schemas.py`, constructing directly from
+`atlas.core.domain.decision.entity.Decision`), never a second data model.
+This note changes no claim already made about Recommendation, Execution
+Guidance, or their own domain models above — it only makes explicit an
+authority relationship this document previously left uncited.
+
 **Actual Execution.** No relationship. Undefined, out of scope, exactly as
 `DE-006` §4 already states.
 

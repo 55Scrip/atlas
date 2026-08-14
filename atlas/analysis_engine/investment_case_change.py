@@ -51,14 +51,24 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Mapping
+from typing import TYPE_CHECKING, Mapping
 
 from atlas.analysis_engine.business_contracts import BusinessCategory
 from atlas.analysis_engine.business_contracts import BusinessCategoryStatus as BizStatus
 from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.investment_case_synthesis import HighlightKind, OpenQuestionOrigin
-from atlas.analysis_engine.models import CanonicalAnalysis
 from atlas.analysis_engine.risk.contracts import RiskStatus
+
+if TYPE_CHECKING:
+    # `capture_snapshot`'s own parameter type only -- `models.py` now
+    # imports `outlook.py`, which imports this module for `ThesisImpact`
+    # (Outlook Momentum's own vocabulary), so a real, module-level import
+    # here would be circular. `from __future__ import annotations` above
+    # already defers every annotation to a string, so the type checker
+    # sees this import and nothing at runtime ever needs it: this
+    # function only reads attributes off `canonical_analysis`, never
+    # constructs or isinstance-checks the type itself.
+    from atlas.analysis_engine.models import CanonicalAnalysis
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind
 from atlas.analysis_engine.valuation.contracts import ValuationStatus as ValStatus
 

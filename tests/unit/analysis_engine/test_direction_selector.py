@@ -16,6 +16,7 @@ from atlas.analysis_engine.business_contracts import BusinessCategoryStatus
 from atlas.analysis_engine.direction_selector import select_direction
 from atlas.analysis_engine.recommendation import RecommendationDirection
 from atlas.analysis_engine.valuation.contracts import ValuationStatus
+from atlas.analysis_engine.valuation.support import ValuationSupportStatus
 from atlas.decision_engine.contracts import EvaluationState, EvidenceCoverageLevel, HoldingLinkage
 
 EVALUATED = EvaluationState.EVALUATED
@@ -36,12 +37,21 @@ VALUATION_INSUFFICIENT = ValuationStatus.INSUFFICIENT_INPUT
 ABSENT = HoldingLinkage.ABSENT
 PRESENT = HoldingLinkage.PRESENT
 
+SUPPORTED = ValuationSupportStatus.SUPPORTED
+NOT_SUPPORTED = ValuationSupportStatus.NOT_SUPPORTED
+VALUATION_SUPPORT_INSUFFICIENT = ValuationSupportStatus.INSUFFICIENT_INPUT
+
 
 def _select(**overrides) -> RecommendationDirection | None:
     """Every keyword defaults to a "clear hard gate, strong business,
-    unheld, no dampening, no contradicting evidence" baseline -- each
-    test overrides only the dimension(s) it means to exercise, so a
-    failure points at exactly one changed input."""
+    unheld, no dampening, no contradicting evidence, Valuation Support
+    for Capital Deployment not established" baseline -- each test
+    overrides only the dimension(s) it means to exercise, so a failure
+    points at exactly one changed input. `valuation_support_status`
+    defaults to `INSUFFICIENT_INPUT` -- the permanent, universal state
+    every real company was in before `DE-015` was implemented -- so every
+    pre-`DE-016` test in this file keeps its exact prior meaning
+    unchanged unless it explicitly opts into `SUPPORTED`."""
     fields = dict(
         holding_linkage=ABSENT,
         business_evaluation_state=EVALUATED,
@@ -52,6 +62,7 @@ def _select(**overrides) -> RecommendationDirection | None:
         growth_status=STRONG,
         capital_allocation_status=STRONG,
         valuation_status=FAIRLY_VALUED,
+        valuation_support_status=VALUATION_SUPPORT_INSUFFICIENT,
         has_portfolio_dampening=False,
         has_high_financial_or_valuation_risk=False,
     )
@@ -214,28 +225,33 @@ class TestBusinessInconclusive:
 
 
 # ---------------------------------------------------------------------------
-# The two required RecommendationWithheld scenarios (task-specified)
+# The Valuation Support for Capital Deployment gap (DE-016: this gap is
+# now closeable -- these tests exercise the still-unmet cases, using
+# `_select`'s own INSUFFICIENT_INPUT default; `TestBuyAddReachability`
+# below exercises the now-real SUPPORTED case.)
 # ---------------------------------------------------------------------------
 
 
 class TestValuationSupportForCapitalDeploymentGap:
     def test_undervalued_good_business_no_dampening_not_held_is_withheld(self):
-        """Not held + strong business + UNDERVALUED + no dampening ->
-        RecommendationWithheld, never BUY."""
+        """Not held + strong business + UNDERVALUED + no dampening,
+        Valuation Support not established -> RecommendationWithheld,
+        never BUY."""
         result = _select(holding_linkage=ABSENT, valuation_status=UNDERVALUED)
         assert result is None
 
     def test_undervalued_good_business_no_dampening_held_is_withheld(self):
-        """Held + strong business + UNDERVALUED + no dampening ->
-        RecommendationWithheld, never ADD, and never a HOLD fallback
-        (UNDERVALUED is HOLD's own favorable extreme -- DE-008 §20)."""
+        """Held + strong business + UNDERVALUED + no dampening,
+        Valuation Support not established -> RecommendationWithheld,
+        never ADD, and never a HOLD fallback (UNDERVALUED is HOLD's own
+        favorable extreme -- DE-008 §20)."""
         result = _select(holding_linkage=PRESENT, valuation_status=UNDERVALUED)
         assert result is None
 
     def test_undervalued_not_held_with_dampening_is_no_action(self):
         """Dampening is real, independent evidence -- it rescues this
         cell from RecommendationWithheld into a genuine NO_ACTION (DE-008
-        §20's not-held table)."""
+        §20's not-held table), regardless of Valuation Support."""
         result = _select(holding_linkage=ABSENT, valuation_status=UNDERVALUED, has_portfolio_dampening=True)
         assert result is RecommendationDirection.NO_ACTION
 
@@ -257,6 +273,67 @@ class TestValuationSupportForCapitalDeploymentGap:
         historically-relative signal) -- withheld, not guessed."""
         assert _select(holding_linkage=ABSENT, valuation_status=VALUATION_NOT_EVALUATED) is None
         assert _select(holding_linkage=PRESENT, valuation_status=VALUATION_INSUFFICIENT) is None
+
+    def test_not_supported_behaves_identically_to_insufficient_input_not_held(self):
+        """DE-016 Phase 6/13: `NOT_SUPPORTED` and `INSUFFICIENT_INPUT`
+        both mean "the prerequisite is not established" -- neither
+        acquires new semantics."""
+        for status in (NOT_SUPPORTED, VALUATION_SUPPORT_INSUFFICIENT):
+            for valuation_status in (UNDERVALUED, FAIRLY_VALUED):
+                assert _select(
+                    holding_linkage=ABSENT, valuation_status=valuation_status, valuation_support_status=status
+                ) is None
+
+    def test_not_supported_behaves_identically_to_insufficient_input_held(self):
+        for status in (NOT_SUPPORTED, VALUATION_SUPPORT_INSUFFICIENT):
+            assert _select(holding_linkage=PRESENT, valuation_status=UNDERVALUED, valuation_support_status=status) is None
+
+    def test_not_supported_never_becomes_trim_where_insufficient_input_would_not(self):
+        """DE-016 Phase 13's own required negative-semantics proof:
+        NOT_SUPPORTED must not independently produce TRIM where the
+        identical INSUFFICIENT_INPUT case would not."""
+        held_fairly_valued_no_dampening = dict(holding_linkage=PRESENT, valuation_status=FAIRLY_VALUED)
+        result_not_supported = _select(**held_fairly_valued_no_dampening, valuation_support_status=NOT_SUPPORTED)
+        result_insufficient = _select(**held_fairly_valued_no_dampening, valuation_support_status=VALUATION_SUPPORT_INSUFFICIENT)
+        assert result_not_supported is RecommendationDirection.HOLD
+        assert result_not_supported is result_insufficient
+
+    def test_not_supported_never_produces_exit(self):
+        assert _select(holding_linkage=PRESENT, valuation_status=EXPENSIVE, valuation_support_status=NOT_SUPPORTED) is not RecommendationDirection.EXIT
+
+    def test_supported_never_weakens_weak_business_independently_sufficient_trim(self):
+        """DE-016 Phase 13: SUPPORTED must not weaken any existing
+        TRIM/HOLD/NO_ACTION rule that is independently sufficient --
+        WEAK Business still wins regardless."""
+        assert (
+            _select(holding_linkage=PRESENT, growth_status=WEAK, valuation_support_status=SUPPORTED)
+            is RecommendationDirection.TRIM
+        )
+        assert (
+            _select(holding_linkage=ABSENT, growth_status=WEAK, valuation_support_status=SUPPORTED)
+            is RecommendationDirection.NO_ACTION
+        )
+
+    def test_supported_never_changes_fairly_valued_held_hold_into_add(self):
+        """FAIRLY_VALUED + held + no dampening was never one of the cells
+        DE-008 §20 blocks on this prerequisite -- it already resolves via
+        HOLD's own independent criterion (DE-008 §10.2) and stays HOLD
+        even when Valuation Support is SUPPORTED, per DE-016's own
+        "only touch the currently-blocked cells" scope."""
+        assert (
+            _select(holding_linkage=PRESENT, valuation_status=FAIRLY_VALUED, valuation_support_status=SUPPORTED)
+            is RecommendationDirection.HOLD
+        )
+
+    def test_supported_never_changes_expensive_into_buy_or_add(self):
+        assert (
+            _select(holding_linkage=ABSENT, valuation_status=EXPENSIVE, valuation_support_status=SUPPORTED)
+            is RecommendationDirection.NO_ACTION
+        )
+        assert (
+            _select(holding_linkage=PRESENT, valuation_status=EXPENSIVE, valuation_support_status=SUPPORTED)
+            is RecommendationDirection.TRIM
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -320,87 +397,217 @@ class TestNoAction:
 
 
 # ---------------------------------------------------------------------------
-# BUY / ADD structural unreachability
+# EXIT: still unreachable regardless of Valuation Support (DE-016 Phase 14
+# invariant 6)
 # ---------------------------------------------------------------------------
 
+_BUSINESS_STATUSES = (BUSINESS_NOT_EVALUATED, BUSINESS_INSUFFICIENT, WEAK, MODERATE, STRONG)
+_VALUATION_STATUSES = (VALUATION_NOT_EVALUATED, VALUATION_INSUFFICIENT, UNDERVALUED, FAIRLY_VALUED, EXPENSIVE)
+_VALUATION_SUPPORT_STATUSES = (SUPPORTED, NOT_SUPPORTED, VALUATION_SUPPORT_INSUFFICIENT)
 
-class TestBuyAddUnreachable:
-    def test_buy_never_returned_for_the_most_favorable_case(self):
-        """The single most BUY-favorable input this function accepts --
-        unheld, strong business both categories, UNDERVALUED, no
-        dampening -- still SHALL NOT return BUY (DE-008 §21 invariant 1)."""
-        result = _select(holding_linkage=ABSENT, valuation_status=UNDERVALUED)
-        assert result is not RecommendationDirection.BUY
-        assert result is None
 
-    def test_add_never_returned_for_the_most_favorable_case(self):
-        result = _select(holding_linkage=PRESENT, valuation_status=UNDERVALUED)
-        assert result is not RecommendationDirection.ADD
-        assert result is None
-
-    def test_exhaustive_sweep_never_produces_buy_add_or_exit(self):
-        """Exhaustive over every categorical/boolean input this function
-        accepts (with the hard gate held open, since a closed gate
-        trivially returns None) -- BUY, ADD, and EXIT SHALL NOT appear in
-        the output for any combination, not merely the ones spot-checked
-        above."""
-        business_statuses = (
-            BUSINESS_NOT_EVALUATED,
-            BUSINESS_INSUFFICIENT,
-            WEAK,
-            MODERATE,
-            STRONG,
-        )
-        valuation_statuses = (
-            VALUATION_NOT_EVALUATED,
-            VALUATION_INSUFFICIENT,
-            UNDERVALUED,
-            FAIRLY_VALUED,
-            EXPENSIVE,
-        )
-        seen_directions = set()
-        for (
+def _full_sweep(valuation_support_status: ValuationSupportStatus) -> dict[tuple, RecommendationDirection | None]:
+    """Every categorical/boolean input this function accepts, at one
+    fixed `valuation_support_status`, with the hard gate held open (a
+    closed gate trivially returns `None`) -- keyed by the exact input
+    tuple so two sweeps can be compared cell by cell."""
+    results: dict[tuple, RecommendationDirection | None] = {}
+    for (
+        holding_linkage,
+        growth_status,
+        capital_allocation_status,
+        valuation_status,
+        has_portfolio_dampening,
+        has_high_financial_or_valuation_risk,
+    ) in itertools.product(
+        (ABSENT, PRESENT),
+        _BUSINESS_STATUSES,
+        _BUSINESS_STATUSES,
+        _VALUATION_STATUSES,
+        (False, True),
+        (False, True),
+    ):
+        key = (
             holding_linkage,
             growth_status,
             capital_allocation_status,
             valuation_status,
             has_portfolio_dampening,
             has_high_financial_or_valuation_risk,
-        ) in itertools.product(
-            (ABSENT, PRESENT),
-            business_statuses,
-            business_statuses,
-            valuation_statuses,
-            (False, True),
-            (False, True),
-        ):
-            result = select_direction(
-                holding_linkage=holding_linkage,
-                business_evaluation_state=EVALUATED,
-                valuation_state=EVALUATED,
-                portfolio_intelligence_state=EVALUATED,
-                reasoning_state=EVALUATED,
-                evidence_coverage=EvidenceCoverageLevel.FULL,
-                growth_status=growth_status,
-                capital_allocation_status=capital_allocation_status,
-                valuation_status=valuation_status,
-                has_portfolio_dampening=has_portfolio_dampening,
-                has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
-            )
-            assert result is not RecommendationDirection.BUY
-            assert result is not RecommendationDirection.ADD
-            assert result is not RecommendationDirection.EXIT
-            seen_directions.add(result)
+        )
+        results[key] = select_direction(
+            holding_linkage=holding_linkage,
+            business_evaluation_state=EVALUATED,
+            valuation_state=EVALUATED,
+            portfolio_intelligence_state=EVALUATED,
+            reasoning_state=EVALUATED,
+            evidence_coverage=EvidenceCoverageLevel.FULL,
+            growth_status=growth_status,
+            capital_allocation_status=capital_allocation_status,
+            valuation_status=valuation_status,
+            valuation_support_status=valuation_support_status,
+            has_portfolio_dampening=has_portfolio_dampening,
+            has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
+        )
+    return results
 
-        # Every other reachable outcome SHALL appear at least once across
-        # the sweep -- confirms the sweep is actually exercising the full
-        # decision procedure, not vacuously passing.
-        assert seen_directions == {
-            None,
-            RecommendationDirection.HOLD,
-            RecommendationDirection.TRIM,
-            RecommendationDirection.NO_ACTION,
-        }
+
+class TestExitNeverReachable:
+    def test_exhaustive_sweep_never_produces_exit_at_any_valuation_support_status(self):
+        """DE-008 §21 invariant 6, re-verified after DE-016: no
+        combination of inputs, at any `ValuationSupportStatus`, ever
+        produces EXIT."""
+        for valuation_support_status in _VALUATION_SUPPORT_STATUSES:
+            sweep = _full_sweep(valuation_support_status)
+            assert RecommendationDirection.EXIT not in sweep.values()
+
+
+# ---------------------------------------------------------------------------
+# BUY / ADD reachability (DE-016)
+# ---------------------------------------------------------------------------
+
+
+class TestBuyAddReachability:
+    def test_buy_reachable_for_the_most_favorable_case(self):
+        """The single most BUY-favorable input this function accepts --
+        unheld, strong business both categories, UNDERVALUED, no
+        dampening -- now returns BUY once Valuation Support for Capital
+        Deployment is SUPPORTED (DE-008 §21 invariant 1, satisfied)."""
+        result = _select(holding_linkage=ABSENT, valuation_status=UNDERVALUED, valuation_support_status=SUPPORTED)
+        assert result is RecommendationDirection.BUY
+
+    def test_add_reachable_for_the_most_favorable_case(self):
+        result = _select(holding_linkage=PRESENT, valuation_status=UNDERVALUED, valuation_support_status=SUPPORTED)
+        assert result is RecommendationDirection.ADD
+
+    def test_buy_reachable_from_fairly_valued_too(self):
+        """DE-008 §20's own note: UNDERVALUED and FAIRLY_VALUED are
+        treated identically for the not-held, capital-deployment-gated
+        cells."""
+        result = _select(holding_linkage=ABSENT, valuation_status=FAIRLY_VALUED, valuation_support_status=SUPPORTED)
+        assert result is RecommendationDirection.BUY
+
+    def test_buy_still_none_when_not_supported(self):
+        result = _select(holding_linkage=ABSENT, valuation_status=UNDERVALUED, valuation_support_status=NOT_SUPPORTED)
+        assert result is None
+
+    def test_buy_still_none_when_insufficient_input(self):
+        result = _select(
+            holding_linkage=ABSENT, valuation_status=UNDERVALUED, valuation_support_status=VALUATION_SUPPORT_INSUFFICIENT
+        )
+        assert result is None
+
+    def test_add_still_none_when_not_supported(self):
+        result = _select(holding_linkage=PRESENT, valuation_status=UNDERVALUED, valuation_support_status=NOT_SUPPORTED)
+        assert result is None
+
+    def test_business_weak_blocks_buy_even_when_supported(self):
+        assert (
+            _select(holding_linkage=ABSENT, growth_status=WEAK, valuation_status=UNDERVALUED, valuation_support_status=SUPPORTED)
+            is RecommendationDirection.NO_ACTION
+        )
+
+    def test_dampening_blocks_buy_even_when_supported(self):
+        """DE-008 §12: Portfolio/Risk dampening never manufactures a
+        positive direction -- SUPPORTED does not override it."""
+        result = _select(
+            holding_linkage=ABSENT,
+            valuation_status=UNDERVALUED,
+            valuation_support_status=SUPPORTED,
+            has_portfolio_dampening=True,
+        )
+        assert result is RecommendationDirection.NO_ACTION
+        assert result is not RecommendationDirection.BUY
+
+    def test_dampening_blocks_add_even_when_supported(self):
+        result = _select(
+            holding_linkage=PRESENT,
+            valuation_status=UNDERVALUED,
+            valuation_support_status=SUPPORTED,
+            has_high_financial_or_valuation_risk=True,
+        )
+        assert result is RecommendationDirection.TRIM
+        assert result is not RecommendationDirection.ADD
+
+    def test_hard_gate_blocks_buy_even_when_supported(self):
+        result = _select(
+            holding_linkage=ABSENT,
+            valuation_status=UNDERVALUED,
+            valuation_support_status=SUPPORTED,
+            business_evaluation_state=NOT_EVALUATED,
+        )
+        assert result is None
+
+    def test_expensive_never_produces_buy_or_add_even_when_supported(self):
+        """DE-016: not inventing a new BUY/ADD path outside the
+        already-adopted matrix -- EXPENSIVE stays TRIM/NO_ACTION."""
+        assert (
+            _select(holding_linkage=ABSENT, valuation_status=EXPENSIVE, valuation_support_status=SUPPORTED)
+            is RecommendationDirection.NO_ACTION
+        )
+        assert (
+            _select(holding_linkage=PRESENT, valuation_status=EXPENSIVE, valuation_support_status=SUPPORTED)
+            is RecommendationDirection.TRIM
+        )
+
+    def test_exhaustive_sweep_at_not_supported_never_produces_buy_add_or_exit(self):
+        """Exact re-verification of the module's pre-DE-016 guarantee,
+        now parameterized by the new input: with the prerequisite
+        unestablished, the reachable-outcome set is unchanged."""
+        sweep = _full_sweep(NOT_SUPPORTED)
+        seen = set(sweep.values())
+        assert RecommendationDirection.BUY not in seen
+        assert RecommendationDirection.ADD not in seen
+        assert RecommendationDirection.EXIT not in seen
+        assert seen == {None, RecommendationDirection.HOLD, RecommendationDirection.TRIM, RecommendationDirection.NO_ACTION}
+
+    def test_exhaustive_sweep_at_insufficient_input_is_identical_to_not_supported(self):
+        """DE-016 Phase 6's own required regression: NOT_SUPPORTED and
+        INSUFFICIENT_INPUT produce identical Direction behavior across
+        every other input, held constant."""
+        assert _full_sweep(NOT_SUPPORTED) == _full_sweep(VALUATION_SUPPORT_INSUFFICIENT)
+
+    def test_exhaustive_sweep_at_supported_differs_from_not_supported_only_at_the_two_reserved_cells(self):
+        """The strongest available proof of minimality: comparing the
+        full sweep cell by cell, `SUPPORTED` changes the outcome only at
+        exactly the cells `DE-008` §20 marks as blocked purely by this
+        prerequisite (not-held: UNDERVALUED/FAIRLY_VALUED, no dampening;
+        held: UNDERVALUED, no dampening) -- and only from `None` to
+        `BUY`/`ADD`, never anything else, anywhere else."""
+        not_supported = _full_sweep(NOT_SUPPORTED)
+        supported = _full_sweep(SUPPORTED)
+        assert set(not_supported.keys()) == set(supported.keys())
+
+        changed_cells = {key: (not_supported[key], supported[key]) for key in not_supported if not_supported[key] != supported[key]}
+
+        for key, (before, after) in changed_cells.items():
+            (
+                holding_linkage,
+                growth_status,
+                capital_allocation_status,
+                valuation_status,
+                has_portfolio_dampening,
+                has_high_financial_or_valuation_risk,
+            ) = key
+            dampening = has_portfolio_dampening or has_high_financial_or_valuation_risk
+            assert before is None, f"expected a currently-blocked cell, found {before!r} at {key}"
+            assert not dampening
+            assert valuation_status in (UNDERVALUED, FAIRLY_VALUED)
+            business_positive = growth_status in (MODERATE, STRONG) or capital_allocation_status in (MODERATE, STRONG)
+            business_weak = growth_status is WEAK or capital_allocation_status is WEAK
+            assert business_positive and not business_weak
+            if holding_linkage is ABSENT:
+                assert after is RecommendationDirection.BUY
+            else:
+                # Held: only UNDERVALUED is a reserved cell -- FAIRLY_VALUED
+                # + held was already HOLD, never in `changed_cells` at all.
+                assert valuation_status is UNDERVALUED
+                assert after is RecommendationDirection.ADD
+
+        # And the reserved cells really did change at least once each --
+        # confirms this sweep exercises the real decision procedure.
+        assert any(after is RecommendationDirection.BUY for _, after in changed_cells.values())
+        assert any(after is RecommendationDirection.ADD for _, after in changed_cells.values())
 
 
 # ---------------------------------------------------------------------------
@@ -420,7 +627,89 @@ class TestDeterministic:
             growth_status=STRONG,
             capital_allocation_status=MODERATE,
             valuation_status=EXPENSIVE,
+            valuation_support_status=VALUATION_SUPPORT_INSUFFICIENT,
             has_portfolio_dampening=False,
             has_high_financial_or_valuation_risk=True,
         )
         assert select_direction(**kwargs) == select_direction(**kwargs) == RecommendationDirection.TRIM
+
+    def test_identical_inputs_produce_identical_results_at_supported(self):
+        kwargs = dict(
+            holding_linkage=ABSENT,
+            business_evaluation_state=EVALUATED,
+            valuation_state=EVALUATED,
+            portfolio_intelligence_state=EVALUATED,
+            reasoning_state=EVALUATED,
+            evidence_coverage=EvidenceCoverageLevel.FULL,
+            growth_status=STRONG,
+            capital_allocation_status=MODERATE,
+            valuation_status=UNDERVALUED,
+            valuation_support_status=SUPPORTED,
+            has_portfolio_dampening=False,
+            has_high_financial_or_valuation_risk=False,
+        )
+        assert select_direction(**kwargs) == select_direction(**kwargs) == RecommendationDirection.BUY
+
+
+# ---------------------------------------------------------------------------
+# DE-008 §21 invariant traceability (DE-016 Phase 14) -- each test below is
+# named after, and cites, the exact invariant it re-verifies post-DE-016.
+# Every one of these is already proven, structurally or behaviorally, by a
+# test above; this class exists to make the DE-008 §21 citation explicit
+# and searchable, not to introduce new coverage.
+# ---------------------------------------------------------------------------
+
+
+class TestDe008Section21InvariantTraceability:
+    def test_invariant_1_buy_requires_business_positive_and_valuation_support_established(self):
+        assert _select(holding_linkage=ABSENT, growth_status=STRONG, valuation_status=UNDERVALUED, valuation_support_status=SUPPORTED) is RecommendationDirection.BUY
+        assert _select(holding_linkage=ABSENT, growth_status=WEAK, valuation_status=UNDERVALUED, valuation_support_status=SUPPORTED) is not RecommendationDirection.BUY
+        assert _select(holding_linkage=ABSENT, growth_status=STRONG, valuation_status=UNDERVALUED, valuation_support_status=NOT_SUPPORTED) is not RecommendationDirection.BUY
+
+    def test_invariant_2_add_requires_the_same_standard_as_buy(self):
+        assert _select(holding_linkage=PRESENT, growth_status=STRONG, valuation_status=UNDERVALUED, valuation_support_status=SUPPORTED) is RecommendationDirection.ADD
+        assert _select(holding_linkage=PRESENT, growth_status=WEAK, valuation_status=UNDERVALUED, valuation_support_status=SUPPORTED) is not RecommendationDirection.ADD
+        assert _select(holding_linkage=PRESENT, growth_status=STRONG, valuation_status=UNDERVALUED, valuation_support_status=NOT_SUPPORTED) is not RecommendationDirection.ADD
+
+    def test_invariant_6_valuation_alone_never_causes_exit(self):
+        for valuation_support_status in _VALUATION_SUPPORT_STATUSES:
+            sweep = _full_sweep(valuation_support_status)
+            assert RecommendationDirection.EXIT not in sweep.values()
+
+    def test_invariant_8_conviction_never_determines_direction(self):
+        """Structural, not merely behavioral: `select_direction` has no
+        Conviction-level parameter at all -- there is nothing for it to
+        branch on."""
+        import inspect
+        from atlas.analysis_engine.direction_selector import select_direction as fn
+
+        params = inspect.signature(fn).parameters
+        assert "conviction" not in params
+        assert "conviction_level" not in params
+
+    def test_invariant_9_portfolio_and_risk_never_independently_create_buy_or_add(self):
+        result = _select(
+            holding_linkage=ABSENT,
+            valuation_status=UNDERVALUED,
+            valuation_support_status=SUPPORTED,
+            has_portfolio_dampening=True,
+        )
+        assert result is not RecommendationDirection.BUY
+        result = _select(
+            holding_linkage=PRESENT,
+            valuation_status=UNDERVALUED,
+            valuation_support_status=SUPPORTED,
+            has_high_financial_or_valuation_risk=True,
+        )
+        assert result is not RecommendationDirection.ADD
+
+    def test_invariant_11_undervalued_is_never_equivalent_to_valuation_support_established(self):
+        """`ValuationStatus.UNDERVALUED` alone (`valuation_support_status`
+        left at its ordinary, unestablished default) never produces BUY
+        or ADD -- re-verified here at the Direction Selection layer;
+        proven independently, at the computation layer, by
+        `test_support.py::TestArchitecturalBoundary`'s direct source
+        check that `evaluate_valuation_support` never reads
+        `fcf_yield_finding.status`."""
+        assert _select(holding_linkage=ABSENT, valuation_status=UNDERVALUED) is not RecommendationDirection.BUY
+        assert _select(holding_linkage=PRESENT, valuation_status=UNDERVALUED) is not RecommendationDirection.ADD

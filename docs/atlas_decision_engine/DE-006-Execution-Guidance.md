@@ -1,6 +1,6 @@
 # DE-006 — Atlas Execution Guidance
 
-**Status:** Draft v0.1. Companion specification to
+**Status:** Draft v0.2. Companion specification to
 `docs/ATLAS_DECISION_ENGINE_DOCTRINE.md` §8 (Recommendation Framework), by
 extension. Governed by, and subordinate to, that Doctrine and to `APP-000`.
 Documentation only — no code, no frontend, no backend accompanies this
@@ -9,6 +9,41 @@ Recommendation Workspace (frontend design, not yet implemented): that design
 needed a "Suggested Execution" block with no domain concept behind it. This
 specification exists to name that concept, precisely, before anything is
 built against it.
+
+**Amendment pass note (v0.2, "DE-006 Amendment Draft" sprint).** This
+revision closes a narrow, investigated gap: an external design exploration
+("Actionable Recommendation Engine") proposed capability this document did
+not yet name — multiple qualitative ways to carry out one direction,
+explicit-constraint filtering, and bounded post-action arithmetic — and,
+separately, surfaced two wording ambiguities in the v0.1 text. Both were
+independently investigated and found to require only narrow, additive
+changes, never a redesign: no new bounded context was created, the external
+exploration's own terminology and its general-purpose "portfolio impact"
+and "entry range" computation ideas were rejected as out of scope or
+unsupported by any implemented capability, and every invariant this
+document already stated — one Guidance object per Recommendation, no
+ranking, no optimization, the two-stage lifecycle, the unidirectional
+dependency on Recommendation — is unchanged. Each amended section below
+carries its own inline note marking exactly what changed and why; §12 is
+this revision's self-review, in the same form `DE-007` §14 already
+established for exactly this purpose.
+
+**Consistency-review addendum (same v0.2, pre-merge).** A final review,
+performed before this draft's own "ready to merge" status could stand,
+tested the amendment against itself and found three further corrections
+required — not a redesign, but gaps the three-amendment structure itself
+did not yet close: (1) `targetAllocationRange`, inherited unchanged from
+v0.1, had never been tested against the same "is there a real normative
+source" standard Amendment 3's own investigation applied to "recommended
+quantity" — it fails that test identically, and is now marked unavailable,
+with the same marking cascaded into Post-Action Impact, which depends on
+it; (2) a user-facing `label` was found insufficient as the stable
+reference a future Decision Capture integration would need, so a
+non-localized `approachKey` was added — a plain field, not a new Aggregate
+or Entity; (3) explicit constraints (§2.1) were found to have no canonical
+source anywhere in this repository today, now stated directly as an
+external dependency rather than left implied. §12.1 records this pass in
+full, in the same self-review form as §12.
 
 ## 1. Definition
 
@@ -50,32 +85,230 @@ everything else Atlas states.
 
 ## 2. Responsibilities
 
-Where a Recommendation's direction is Buy, Add, Trim, or Exit (§7 states why
-Hold and No Action are excluded), Execution Guidance SHALL, when present:
+**Amendment note (v0.2).** This section's content is unchanged in kind —
+every element the v0.1 text required an Investor be able to see is still
+required. What changes is shape only: four elements that describe *how* a
+direction could be carried out (target allocation range, execution range,
+accumulation approach, urgency) move from single scalar fields into an
+**Execution Approach** — one qualitative way to carry the direction out —
+because a single direction can legitimately be carried out more than one
+reasonable way (immediately, gradually, or via a smaller initial position
+held for reassessment, among others), and forcing all of them into one
+scalar field either silently picked one or fabricated a false single
+answer. This does **not** create multiple Execution Guidance objects, does
+not rank the approaches it lists, and does not recommend one over another
+— see the invariants stated immediately below and reconfirmed in §7.
 
-- State a **target allocation range** — a minimum and maximum share of the
-  portfolio the position might reasonably move toward or away from — never a
-  single target weight.
-- State an **execution range** — a price range or a range relative to the
+Where a Recommendation's direction is Buy, Add, Trim, or Exit (§7 states why
+Hold and No Action are excluded), Execution Guidance SHALL, when present,
+carry one or more **Execution Approaches**, and, at the Guidance level (not
+per-approach — these describe the underlying Recommendation's own
+conditions, which every approach shares), the valuation-sensitivity,
+assumptions, validity-conditions, and Atlas Conviction Level content the
+v0.1 text already required:
+
+**Per Execution Approach** (`approaches`, §9 — an ordered list whose order
+carries no meaning; see the invariant below):
+
+- A short **label** identifying the approach (e.g., "immediate," "staged
+  over time," "smaller initial position, reassess later") — naming only,
+  never a ranking signal, and never itself a stable reference — see the new
+  **`approachKey`** field below.
+- A **rationale**: why this is a reasonable way to carry out the direction,
+  in the same evidence-attributed register as everything else this
+  specification requires.
+- An **`approachKey`** (new, v0.2 consistency-review correction) — a short,
+  stable, non-localized identifier for this approach entry, distinct from
+  `label`. See the note at the end of this list for why this is required.
+- A **target allocation range** — a minimum and maximum share of the
+  portfolio the position might reasonably move toward or away from under
+  this approach — never a single target weight. **Consistency-review
+  correction (v0.2):** this field is inherited unchanged from v0.1, and
+  this revision's own audit found it had never been tested against the
+  same standard Amendment 3's investigation applied to "recommended" or
+  "optimal" quantity (that investigation's Part 7). Applying that same
+  test here: describing a position's *current* allocation (`DE-003`
+  Allocation/Concentration — real, computed) and prescribing a *target*
+  allocation are different semantic claims, and no doctrine anywhere in
+  this repository — not `DE-003`'s seven factors, not `DE-001`, not
+  `DE-008` — defines a normative basis for what a position's allocation
+  *should* become. This field therefore has the same status as
+  "recommended quantity" already found to require a missing normative
+  sizing model: it is not computable today from any existing doctrine or
+  implemented Core capability. It is **not removed** from this
+  specification — a future, separately-justified sizing doctrine may yet
+  define one — but until such doctrine exists, this field SHALL be treated
+  as unavailable and SHALL NOT be populated with an approximated or
+  heuristic range. Where unavailable, it is simply absent (`null`), the
+  same honest-absence discipline already applied to `executionRange`'s
+  `valuation_relative` basis above. **This has a direct downstream
+  consequence for Post-Action Impact (§2.2): because that capability
+  brackets its arithmetic by this field's own endpoints, Post-Action
+  Impact is, for the same reason, currently unavailable wherever this
+  field is unavailable — see §2.2's own updated note.**
+- An **execution range** — a price range or a range relative to the
   Valuation section's own stated fair-value range (`Doctrine` §5) — never a
   single-point price, carrying forward `docs/ValueScenarioReview.md`'s
   already-absorbed principle (`Doctrine` §12) that Atlas does not issue
   single-point price targets, applied here to execution content
-  specifically, not only to valuation content.
-- State an **accumulation approach** as a qualitative category (staged
-  versus lump-sum) with its rationale — never a schedule, never specific
-  dates.
-- State an **urgency** framing as a qualitative category (time-sensitive
-  versus no particular urgency) with its reason — never a deadline.
-- State the **valuation sensitivity** of the guidance: which specific
-  Valuation assumptions (`Doctrine` §5, `DE-002` §2.2) it depends on, so the
-  Investor can see exactly what would make the range stale.
-- State its **assumptions** explicitly ("this guidance assumes…") and its
+  specifically, not only to valuation content. **Amendment note (v0.2):**
+  the `"valuation_relative"` basis for this range currently has **no
+  implemented Valuation capability producing a fair-value range to be
+  relative to** — neither `DE-015`'s Valuation Support (a categorical
+  `SUPPORTED`/`NOT_SUPPORTED`/`INSUFFICIENT_INPUT` status, never a numeric
+  range) nor Outlook (`DE-014`, a percentage expected-return range over
+  time, explicitly never a price target) produces one. This basis therefore
+  currently has no data source. It is not removed from this specification
+  — the master Doctrine's own Valuation Philosophy (§5) still commits Atlas
+  to expressing value as a range, and a future Valuation capability may yet
+  produce one — but until such a capability exists, this basis SHALL NOT be
+  populated with a fabricated or approximated figure. Where no such
+  capability exists, this field is simply absent (`null`), the same honest-
+  absence discipline every other field in this specification already
+  follows.
+- An **accumulation approach category** (staged versus lump-sum) — never a
+  schedule, never specific dates. A "smaller initial position, reassess
+  later" approach is modeled as `staged` with its distinguishing content
+  carried in `rationale`, not as a third enum value — this keeps the
+  category small while still letting the approach be named and explained
+  precisely.
+- An **urgency** framing as a qualitative category (time-sensitive versus no
+  particular urgency) with its reason — never a deadline.
+- **Post-Action Impact** (Amendment 3, v0.2) — see the new subsection below.
+
+**Why `approachKey` is required (v0.2 consistency-review correction).** A
+future Decision Capture integration (§9B) needs a stable way to record
+"which approach, if any, the Investor selected." A user-facing `label`
+cannot serve this purpose: it is translated per `UX-012`'s existing
+localization system (the same approach reads differently in English and
+Swedish), it may be reworded in a future copy pass without the underlying
+approach changing, nothing prevents two approaches from generating similar
+or identical label text, and a persisted historical record must not depend
+on matching mutable presentation strings to reconstruct what was actually
+shown. `approachKey` is not a new Aggregate or independent Entity — it
+carries no lifecycle, no repository, and no meaning outside the one
+Guidance object it appears in (scoped by that object's own
+`recommendationId`/`recommendationInstanceId`, exactly as `recommendationInstanceId`
+itself is "stable for the lifetime of one computed instance," `DE-007` §6,
+not a globally-durable identifier). It is the smallest addition that makes
+historical replay and guidance-versus-execution comparison (§9B) possible
+without relying on presentation text.
+
+**At the Guidance level, shared across every approach it lists** (unchanged
+from v0.1 except in name — these were never approach-specific, since they
+describe the Recommendation's own conditions, not any one way of acting on
+it):
+
+- The **valuation sensitivity** of the guidance: which specific Valuation
+  assumptions (`Doctrine` §5, `DE-002` §2.2) it depends on, so the Investor
+  can see exactly what would make it stale.
+- Its **assumptions** explicitly ("this guidance assumes…") and its
   **validity conditions** explicitly ("valid while…"), per §5 below.
-- Carry its own **Atlas Conviction Level** (`DE-004`), stated independently
-  of the Recommendation's own Conviction Level — see §5.
+- Its own **Atlas Conviction Level** (`DE-004`), stated independently of the
+  Recommendation's own Conviction Level — see §5.
+- **Explicit constraints** (Amendment 2, v0.2) — see the new subsection
+  below.
+
+**Invariant (unchanged by this amendment, restated for emphasis): exactly
+one Execution Guidance object exists per directional Recommendation.**
+`approaches` is an internal list on that one object — never a set of
+separate Execution Guidance objects, each with its own identity, its own
+lifecycle, or its own `recommendationId`. See §7.
+
+**The order of `approaches` SHALL NOT be read, presented, or treated as a
+ranking, a preference, or a recommendation of one approach over another.**
+Where a canonical order is needed for stable rendering, it SHALL be a
+neutral one (e.g., generation order or alphabetical by `label`) — never an
+order implying "Atlas's first choice."
+
+### 2.1 Explicit Constraints (Amendment 2, v0.2)
+
+Execution Guidance MAY be generated against a small set of **explicit
+constraints** — investor-stated or system-stated limits already known at
+generation time (for example, an investor-stated cap on exposure to a
+sector, or a stated no-margin rule). Where a constraint is present:
+
+- Any candidate approach that would violate a stated constraint SHALL NOT
+  appear in `approaches` at all. Constraints are a **feasibility filter
+  applied before generation completes**, not a note attached after the
+  fact and not a reason to mark an approach as inferior.
+- Constraints SHALL NOT be used to rank, score, or order the approaches
+  that remain feasible — their only effect is inclusion or exclusion.
+- Constraints SHALL NOT be inferred, estimated, or derived by any
+  computation this specification defines — only an explicitly stated
+  constraint (from the Investor or from an already-adopted system rule)
+  may exclude an approach. Introducing an inferred constraint would be
+  exactly the kind of undisclosed decision logic §3 already prohibits for
+  everything else this document governs.
+- Where a stated constraint excludes every candidate approach, Execution
+  Guidance is simply absent for that Recommendation (§6, §10) — the same
+  honest-absence outcome as when no approach clears even Low conviction
+  (§5).
+
+**No canonical source for an explicit constraint currently exists
+(consistency-review correction, v0.2).** This subsection specifies a
+legitimate *mechanism* (a feasibility filter with a stated, exclusion-only
+effect) — it does not, on its own, supply anything to filter with. Checked
+directly against the real repository: no domain object, API, or adopted
+doctrine anywhere (`DE-003`'s seven factors, the real `DecisionRecord`/
+`OutcomeRecord`/`TradeLogEntry` types, or elsewhere) lets an Investor record
+a hard constraint (a sector cap, a no-margin rule, or similar), and no
+system-stated regulatory or platform constraint source exists either.
+`DE-003`'s Allocation/Concentration data are current-state **facts**, not
+investor-settable **limits**, and SHALL NOT be treated as constraints under
+this section. Until a canonical constraint source is separately adopted,
+this subsection describes an **external dependency this specification does
+not itself satisfy**: `constraints` (§9) is always the empty list, and this
+section's exclusion mechanism, while correctly specified, has nothing to
+act on. This is not a defect in the mechanism — it is the same honest-
+absence discipline applied everywhere else in this document — and it is
+not resolved here; inventing a constraint-capture mechanism is explicitly
+out of scope for this correction.
+
+### 2.2 Post-Action Impact (Amendment 3, v0.2)
+
+Each Execution Approach MAY carry a **Post-Action Impact**: a small,
+strictly arithmetic statement of what the position's current-state facts
+(`DE-003` — Allocation, Concentration, and, where already available
+elsewhere in the Investment Case, current price and cash) would mechanically
+become **at the two endpoints of that approach's own already-disclosed
+`targetAllocationRange`** — never for any other quantity, and never for a
+single named exact quantity (`§3` already prohibits stating an exact share
+or dollar quantity; this amendment does not relax that).
+
+**Currently unavailable in practice (consistency-review correction, v0.2).**
+Because this capability's only legitimate bracket is the accompanying
+approach's own `targetAllocationRange`, and §2 now states that field has no
+implemented or doctrinal source today, Post-Action Impact is, for the same
+reason, **currently unavailable** wherever `targetAllocationRange` is
+unavailable — which, as of this revision, is everywhere. This section is
+not removed: its specification remains correct and becomes usable the
+moment a real `targetAllocationRange` source exists, exactly as designed.
+Until then, `postActionImpact` is simply absent (`null`) on every approach,
+per the same honest-absence discipline as every other unsourced field in
+this document — it SHALL NOT be approximated from any other figure (e.g.,
+current weight alone, with no target endpoint) as a workaround.
+
+Where computable, Post-Action Impact states, as ranges bracketed by the
+approach's own `targetAllocationRange` endpoints:
+
+- **Resulting position weight.**
+- **Resulting cash**, where the Investment Case's already-fetched cash
+  figure is available.
+- **Resulting concentration**, using `DE-003`'s existing
+  `Concentration`/`ConcentrationLevel` data.
+- **Resulting exposure**, where an already-computed exposure figure exists
+  elsewhere in the Investment Case.
+
+**This is arithmetic over already-known facts, never a new computation
+about the facts' meaning.** See §3 for the explicit boundary this
+capability SHALL NOT cross.
 
 ## 3. Explicit Non-Responsibilities
+
+**Amendment note (v0.2).** Three bullets below are new (marked), narrowly
+scoped to the two capabilities §2.1/§2.2 add. Every bullet already present
+in v0.1 is unchanged.
 
 Execution Guidance SHALL NOT, under any circumstance:
 
@@ -83,7 +316,10 @@ Execution Guidance SHALL NOT, under any circumstance:
 - Prepare, place, route, or transmit a broker order, or reference order
   mechanics (order type, limit/market, time-in-force).
 - State an exact price target, an exact share or dollar quantity, or an
-  exact execution date or time.
+  exact execution date or time. **(Unchanged by Amendment 3, v0.2): Post-
+  Action Impact (§2.2) computes only at the two endpoints of an approach's
+  own already-disclosed range — it does not, and this rule does not permit
+  it to, introduce a single named quantity by another route.**
 - Read, assume, or reference brokerage account state, tax lots, available
   cash beyond the portfolio weight and cash figures already surfaced
   elsewhere in the Investment Case, or any other account-specific mechanics.
@@ -94,7 +330,24 @@ Execution Guidance SHALL NOT, under any circumstance:
   producing Business/Valuation/Risk/Portfolio Intelligence content
   (`Doctrine` §§4–6), never a new computational model.
 - Compute or project a resulting portfolio state after the guidance is
-  followed. That is Portfolio Simulation's domain, not this one — see §8.
+  followed, **except** for the narrowly-scoped Post-Action Impact arithmetic
+  §2.2 defines. That narrow exception SHALL NOT be read as authorizing
+  anything broader: Post-Action Impact SHALL NOT state or imply whether a
+  resulting state is more or less desirable; SHALL NOT compute or reference
+  expected return, risk-adjusted return, or any change in diversification;
+  SHALL NOT be computed for any quantity beyond the accompanying approach's
+  own already-disclosed range endpoints; and SHALL NOT be presented as a
+  recommendation of the approach it accompanies over any other. Anything
+  beyond this narrow arithmetic remains Portfolio Simulation's domain, still
+  undefined — see §8. **(New, v0.2 — Amendment 3.)**
+- Rank, score, or otherwise recommend one Execution Approach (§2, `approaches`)
+  over another, or present their listed order as a preference — see §2's own
+  invariant. **(New, v0.2 — Amendment 1.)**
+- Infer, estimate, or derive an explicit constraint (§2.1) computationally;
+  only a constraint the Investor or an already-adopted system rule actually
+  states may exclude an approach, and its exclusion effect SHALL NOT extend
+  to ranking or scoring the approaches that remain. **(New, v0.2 —
+  Amendment 2.)**
 - Be presented, recorded, or treated as a Decision. Per `APP-000` §5 and
   `DE-001` §1, only the Investor decides; Execution Guidance is advice about
   an already-advisory Recommendation, one further step removed from
@@ -188,6 +441,35 @@ assumptions stop holding (§6, Invalidated). An execution range presented
 without its governing assumptions attached is incomplete and SHALL NOT be
 shown on its own.
 
+### 5.1 Generation Legitimacy Versus Historical Validity (Editorial clarification, v0.2)
+
+This document has always kept these two questions separate in effect,
+through §§2–3 (Responsibilities and Non-Responsibilities) on one side and
+§6 (Lifecycle) on the other, without ever naming the separation directly.
+This subsection names it, changing no behavior:
+
+- **Generation legitimacy** — whether an Execution Approach (or an entire
+  Execution Guidance) was permitted to be produced at all, given §§2–3's
+  Responsibilities/Non-Responsibilities and §2.1's explicit constraints.
+  This is checked exactly once, at the moment of computation. It is never
+  re-checked later, and a computed instance that was legitimate when
+  generated does not later become "illegitimate" — if the environment
+  moves, what happens instead is the separate question below.
+- **Historical validity** — whether Execution Guidance content the Investor
+  was already shown remains applicable **now**. This question can only be
+  asked of a persisted `HistoricalExecutionGuidanceSnapshot` (§6, §9B); it
+  has no meaning for a merely Computed Execution Guidance, which has
+  nothing persisted to compare later analysis against (§6 already states
+  this for the `Invalidated` state specifically — this subsection states it
+  as the general rule the `Invalidated` state is one instance of).
+
+**A single generic "validate" operation SHALL NOT be used for both
+questions** — doing so would obscure exactly the distinction this
+subsection exists to preserve: legitimacy is a one-time gate at generation;
+validity is a recurring check against a persisted historical fact. Any
+future implementation surface (API, service, or otherwise) that needs both
+capabilities SHALL name them distinctly.
+
 ## 6. Lifecycle
 
 **Corrective pass note.** This section previously described a single
@@ -271,6 +553,15 @@ the underlying Recommendation snapshot itself no longer stands, so nothing
 remains for the execution content to describe how to carry out.
 
 ## 7. Relationship to Recommendation
+
+**Amendment note (v0.2): this section is unchanged by Amendments 1–3.**
+§2's `approaches` list does not alter the relationship described below in
+any way — it is a list internal to the one Execution Guidance object this
+section already establishes exists per directional Recommendation, not a
+mechanism for producing more than one such object. Every statement below
+("always a 1:1-or-nothing dependent... never freestanding") continues to
+mean exactly what it meant in v0.1, applied now to an object that may
+internally list more than one way of carrying its one Recommendation out.
 
 Recommendation answers *what*; Execution Guidance answers *how, if you do
 it*. The relationship is asymmetric, and the asymmetry is load-bearing:
@@ -378,6 +669,19 @@ clarification of when each field is meaningful, not a redesign: every
 field named in the prior single-shape version below still exists; none is
 removed, renamed, or given new semantics.
 
+**Amendment note (v0.2).** Both shapes below are restructured to hold
+`approaches` (Amendment 1, §2) and `constraints` (Amendment 2, §2.1) in
+place of the four scalar execution-content fields the v0.1 shapes carried.
+No field is deleted: `targetAllocationRange`, `executionRange`,
+`accumulationApproach`, and `urgency` all still exist, now as members of
+each entry in `approaches` rather than as top-level scalars. `postActionImpact`
+(Amendment 3, §2.2) is new, nested inside each approach entry. Every other
+field — `recommendationInstanceId`/`recommendationId`, `valuationSensitivity`,
+`assumptions`, `validityConditions`, `atlasConvictionLevel`,
+`snapshottedAt`, `status`, `invalidatedReason`, `withdrawnReason` — is
+unchanged in name, meaning, and level (still Guidance-level, not
+per-approach, per §2's own reasoning for why they stay shared).
+
 ### A. `ComputedExecutionGuidance` — ephemeral, not persisted
 
 ```
@@ -386,14 +690,58 @@ ComputedExecutionGuidance
 │                                    instance it depends on (DE-007 §6) — a computed
 │                                    correlation for the duration of one request, not
 │                                    a persisted foreign key
-├── targetAllocationRange         — { minPercent, maxPercent } | null
-├── executionRange                — { basis: "price" | "valuation_relative",
-│                                      min, max } | null   (never single-point, §2/§5)
-├── accumulationApproach          — { kind: "staged" | "lump_sum",
-│                                      rationale: string } | null
-├── urgency                       — { kind: "time_sensitive" |
-│                                      "no_particular_urgency",
-│                                      reason: string } | null
+├── approaches                    — ExecutionApproach[]   (§2 — one or more; order
+│                                    carries no meaning, §2's own invariant; the same
+│                                    one ComputedExecutionGuidance object continues to
+│                                    exist per Recommendation, §7 — this is a list
+│                                    inside it, never a set of sibling objects)
+│   each ExecutionApproach:
+│   ├── approachKey                 — string   (v0.2 correction — stable, non-localized,
+│   │                                    scoped to this Guidance object only; the only
+│   │                                    legitimate reference target for a future
+│   │                                    Decision Capture integration, §2, §9B — never
+│   │                                    `label`)
+│   ├── label                       — string   (presentation only, translatable, may be
+│   │                                    reworded; naming only, never a ranking signal
+│   │                                    and never a stable reference, §2)
+│   ├── rationale                   — string
+│   ├── targetAllocationRange       — { minPercent, maxPercent } | null   (v0.2
+│   │                                    correction, §2 — no implemented or doctrinal
+│   │                                    source exists today for a normative target
+│   │                                    allocation; same status as "recommended
+│   │                                    quantity," which the prior investigation
+│   │                                    already found requires a missing sizing model
+│   │                                    — always null today)
+│   ├── executionRange              — { basis: "price" | "valuation_relative",
+│   │                                    min, max } | null   (never single-point, §2/§5;
+│   │                                    "valuation_relative" currently has no
+│   │                                    implemented data source, §2 — always null today)
+│   ├── accumulationApproach        — { kind: "staged" | "lump_sum",
+│   │                                    rationale: string } | null
+│   ├── urgency                     — { kind: "time_sensitive" |
+│   │                                    "no_particular_urgency",
+│   │                                    reason: string } | null
+│   └── postActionImpact            — { resultingWeightRange: { minPercent, maxPercent },
+│                                        resultingCashRange: { min, max } | null,
+│                                        resultingConcentrationRange: { min, max } | null,
+│                                        resultingExposureRange: { min, max } | null
+│                                      } | null   (§2.2 — bracketed only by this
+│                                        approach's own targetAllocationRange endpoints;
+│                                        null wherever the underlying DE-003 current-state
+│                                        fact is unavailable, never fabricated; currently
+│                                        always null, v0.2 correction, since its own
+│                                        bracket (targetAllocationRange, above) is
+│                                        currently always null)
+├── constraints                   — { source: "investor_stated" | "system_stated",
+│                                      description: string }[]   (§2.1 — explicit only,
+│                                      never inferred; already applied as an exclusion
+│                                      filter to `approaches` above by the time this
+│                                      object exists — this list discloses what was
+│                                      applied, it does not itself filter anything;
+│                                      v0.2 correction, §2.1 — no canonical source for
+│                                      an explicit constraint exists anywhere in this
+│                                      repository today, so this list is always empty
+│                                      until one is separately adopted)
 ├── valuationSensitivity          — string[]   (named Valuation assumptions this
 │                                    guidance depends on)
 ├── assumptions                   — string[]   ("this guidance assumes…")
@@ -406,7 +754,12 @@ ComputedExecutionGuidance
 
 **No `status`, `id`, `createdAt`, `updatedAt`, `invalidatedReason`, or
 `withdrawnReason` field** — none of these are meaningful before a
-persisted historical record exists (§6).
+persisted historical record exists (§6). **No per-approach `id` either** —
+an `ExecutionApproach` has no identity or lifecycle of its own at the
+computed stage; it is a value nested inside the one Guidance object's own
+identity (see (B) below, whose `label` field is what a future Decision
+Capture integration would reference for "which approach was chosen," never
+a minted per-approach identifier).
 
 ### B. `HistoricalExecutionGuidanceSnapshot` — persisted, created only alongside a Historical Recommendation Snapshot
 
@@ -416,14 +769,25 @@ HistoricalExecutionGuidanceSnapshot
 │                                    (DE-007 §8B); both are created in the same event (§6)
 ├── snapshottedAt                 — when this record was written (== the paired
 │                                    HistoricalRecommendationSnapshot's own snapshot time)
-├── targetAllocationRange / executionRange / accumulationApproach /
-│   urgency / valuationSensitivity / assumptions / validityConditions /
-│   atlasConvictionLevel          — frozen copy of the ComputedExecutionGuidance
+├── approaches / constraints / valuationSensitivity / assumptions /
+│   validityConditions / atlasConvictionLevel
+│                                  — frozen copy of the ComputedExecutionGuidance
 │                                    content at the moment of capture (§6), identical
-│                                    field shapes to (A) above
+│                                    shape to (A) above, including each approach's own
+│                                    `approachKey` (v0.2 correction, §2) — the stable,
+│                                    non-localized reference a future Decision Capture
+│                                    integration (not designed by this document) would
+│                                    need to record which approach, if any, the
+│                                    Investor selected. `label` is also frozen here,
+│                                    for display, but is never the reference used for
+│                                    that purpose — presentation text is not stable
+│                                    identity (§2)
 ├── status                        — "active" | "invalidated" | "withdrawn"   (§6 —
 │                                    the same three values this document has always
-│                                    named; only reachable here, on this type)
+│                                    named; only reachable here, on this type; unchanged
+│                                    granularity — status applies to the Guidance object
+│                                    as a whole, not per approach, since all approaches
+│                                    share one lifecycle, §2)
 ├── invalidatedReason             — string | null
 └── withdrawnReason               — string | null
 ```
@@ -489,6 +853,12 @@ snapshot exists, the two additional post-response states:
   expected to be visible while the Recommendation is still `pending`
   (`UX-012` §28) — showing a `ComputedExecutionGuidance` — since it exists
   partly to help the Investor decide.
+- **(New, v0.2.)** Where `approaches` (§9) contains more than one entry,
+  the block renders all of them, in a neutral, non-ranked presentation
+  (§2's own invariant) — never a single featured approach with the rest
+  demoted or hidden, and never a default selection pre-chosen on the
+  Investor's behalf. This specification does not design that layout; it
+  states only the one constraint that layout SHALL respect.
 
 ## 11. Rationale
 
@@ -514,3 +884,154 @@ Actual Execution, keeps the
 intact all the way down to the most execution-adjacent content this product
 will ever show the Investor — which is exactly where that discipline is
 hardest to hold onto, and therefore where it matters most.
+
+---
+
+## 12. Amendment Log (v0.2, "DE-006 Amendment Draft" Sprint)
+
+Performed against the sprint's own explicit requirement lists for
+Amendments 1–3, in the same self-review form `DE-007` §14 established.
+
+**Amendment 1 — multiple Execution Approaches.**
+- Exactly one Execution Guidance object per Recommendation: **preserved** —
+  §7 restates this unchanged; `approaches` is a list inside the one object,
+  confirmed by §9A's own note that an `ExecutionApproach` has no identity
+  of its own.
+- No sibling Guidance objects: **preserved** — no second identified type
+  was introduced; §9A/§9B remain exactly two shapes, matching §6's
+  pre-existing two-stage split.
+- No ranking: **preserved** — stated as an invariant in §2, restated as a
+  Non-Responsibility in §3, and applied to frontend rendering in §10.
+- No optimization: **preserved** — no scoring, weighting, or selection
+  algorithm was introduced anywhere in §2 or §9.
+- No recommendation of one approach over another: **preserved** — same
+  evidence as above; `label` is explicitly scoped to naming only.
+- Same lifecycle for all approaches: **preserved** — `status`,
+  `invalidatedReason`, `withdrawnReason` remain single fields on
+  `HistoricalExecutionGuidanceSnapshot`, applying to the object as a whole.
+- Same Recommendation for all approaches: **preserved** — `recommendationInstanceId`/
+  `recommendationId` remain single fields at the Guidance level; no
+  per-approach Recommendation reference exists.
+- Dependency direction preserved: **confirmed** — §4's five-concept table
+  and §7's unidirectional-reference rule are untouched by this amendment.
+
+**Amendment 2 — explicit constraint filtering.**
+- Constraints only remove infeasible approaches: **confirmed** — §2.1
+  states exclusion as the sole effect.
+- Constraints never rank: **confirmed** — §2.1 and §3 both state this
+  explicitly.
+- Constraints never optimize: **confirmed** — same.
+- Constraints never introduce hidden decision logic: **confirmed** — §2.1
+  restricts constraints to explicitly-stated ones only, never inferred or
+  derived, and §3 adds the matching Non-Responsibility.
+
+**Amendment 3 — mechanical post-action portfolio arithmetic.**
+- No optimization: **confirmed** — §2.2/§3 state Post-Action Impact is
+  arithmetic only.
+- No expected return: **confirmed** — explicitly excluded in §3.
+- No portfolio quality judgment: **confirmed** — §3's "SHALL NOT state or
+  imply whether a resulting state is more or less desirable."
+- No portfolio simulation: **confirmed** — §2.2/§3 scope this as a narrow,
+  named exception to the existing Portfolio Simulation boundary (§8,
+  unchanged), not an expansion of it.
+- No recommendation: **confirmed** — §3's explicit prohibition against
+  presenting it as a recommendation of the approach it accompanies.
+- Arithmetic only: **confirmed** — every figure is bracketed by the
+  accompanying approach's own already-disclosed `targetAllocationRange`
+  endpoints, sourced only from `DE-003`'s existing current-state facts;
+  never a new exact quantity (§3's existing prohibition, reconfirmed as
+  unrelaxed).
+
+**Editorial clarifications 1–2.** §5.1 (new) names the generation-legitimacy/
+historical-validity distinction directly; §2's `executionRange` discussion
+and §9A's field comment both now state plainly that the `valuation_relative`
+basis has no implemented data source today. Neither changes any prior
+behavior — both restate, in direct language, distinctions and gaps the
+v0.1 text already implied or left silent.
+
+**What this amendment does not do, confirmed against the sprint's own
+scope boundary:** no new bounded context was created; no sibling
+terminology for anything DE-006 already owns was introduced (§11's
+Terminology resolution, carried in from the prior investigation, is
+reflected throughout — "Execution Approach," never "Execution
+Alternative"); §4's five-concept non-merger rule, §7's Recommendation
+relationship, §8's Portfolio Simulation boundary, and DE-007's own domain
+model are all untouched by this revision.
+
+### 12.1 Consistency-Review Correction Pass (Same v0.2, Pre-Merge)
+
+Four checks, run against this draft before its own "ready to merge" status
+could stand — testing the amendment against itself, not reopening the
+accepted three-amendment structure.
+
+**Check 1 — `targetAllocationRange` audit.** Tested from first principles
+against the real repository, exactly as Amendment 3's own investigation
+already tested "recommended"/"optimal" quantity: does any existing
+doctrine or implemented Core capability produce a normative *target*
+allocation, as distinct from a *descriptive* current allocation? `DE-003`
+§3's Allocation and Concentration factors are real and computed
+(`atlas/domains/portfolio/models.py`), but both describe what a position
+*is*, never what it *should become* — no field, factor, or rule anywhere
+in `DE-003`, `DE-001`, or `DE-008` states a target range. **Classification:
+REQUIRES A NEW NORMATIVE SIZING MODEL** — the identical classification the
+prior investigation already gave "recommended quantity," since a target
+allocation *range* is the same claim expressed in percentage terms rather
+than share terms. **Correction applied:** §2 and §9A now mark
+`targetAllocationRange` unavailable today, with the same honest-absence
+treatment already used for `executionRange`'s `valuation_relative` basis;
+§2.2/§9A/§3 now state the cascading consequence for Post-Action Impact,
+which brackets its own arithmetic by this field's endpoints and is
+therefore likewise currently unavailable. This is a genuine, necessary
+correction, not a redesign: the field, and Post-Action Impact's dependency
+on it, remain exactly as specified — only their current computability
+changes, from assumed to explicitly absent.
+
+**Check 2 — approach identity for historical traceability.** Tested
+`label` against localization (translated per `UX-012`'s existing i18n
+system — the same approach reads differently per language), copy changes
+(future rewording would silently break any reference), duplicate labels
+(nothing prevents two approaches sharing a label), and the needs of
+historical replay and guidance-versus-execution comparison (§9B). **Finding:
+presentation text cannot legitimately serve as historical identity.**
+**Correction applied:** a new `approachKey` field — stable, non-localized,
+scoped only within its own Guidance object (no global uniqueness, no
+independent repository) — added to `ExecutionApproach` in both §9A and
+§9B, explicitly **not** a new Aggregate or Entity, matching the same
+lightweight scoped-identity pattern `DE-007` §6 already establishes for
+`recommendationInstanceId`. `label` remains presentation-only and is now
+explicitly marked as never a stable reference.
+
+**Check 3 — explicit-constraint ownership audit.** Checked directly
+against the repository (no `Constraint`/`InvestorPreference`/limit domain
+object anywhere in `atlas/` or `frontend/src/`; no doctrine text naming an
+investor-settable rule outside `DE-006` itself). Separated hard
+user-stated constraints (no source), portfolio facts (real, but
+descriptive, not exclusionary — `DE-003`), portfolio doctrine factors
+(evaluative inputs, not hard gates), regulatory constraints (unaddressed
+anywhere), inferred preferences (already correctly excluded by §2.1's own
+"never inferred" rule), and optimization targets (already correctly
+excluded). **Finding: no canonical source exists today.** **Correction
+applied:** §2.1 now states this directly as an external dependency this
+specification does not itself satisfy — `constraints` is always empty
+until a source is separately adopted; no constraint-capture mechanism was
+invented, per the review's own explicit instruction not to.
+
+**Check 4 — fabricated realism in examples.** The `DE-006.md` file itself
+contains, and has always contained, no worked company example — confirmed
+by direct inspection; this is consistent with the document's own
+established "Fields Only — No Implementation" convention (§9's own
+heading). The MSFT example given in the prior turn's chat deliverable
+(specific share counts, cash figures, and business-assumption sentences,
+none backed by a real cited Core field or fixture) was a violation of this
+document's own no-fabricated-precision discipline, committed in
+illustrative chat text, not in this document. **No correction to this file
+was required or made**, since the file was never the source of the
+violation; the corrected, symbolic-values-only example is provided
+separately, in the response accompanying this pass, not written into
+`DE-006.md` itself, consistent with the document's own convention.
+
+**Outcome:** three corrections applied (Checks 1–3), one confirmed clean
+with no file change needed (Check 4). None reopens the accepted
+three-amendment structure — each correction narrows an existing field's
+stated availability or adds a single scoped identifier; none removes,
+redesigns, or contradicts Amendments 1–3 as accepted.

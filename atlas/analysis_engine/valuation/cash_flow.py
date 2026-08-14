@@ -211,6 +211,7 @@ def evaluate_fcf_yield_relative(
 
     historical = {period: v for period, v in valid_observations.items() if period != most_recent_period}
     historical_yields = [yield_value for yield_value, _ in historical.values()]
+    historical_yields_sorted = tuple(sorted(historical_yields))
 
     if current_yield > max(historical_yields):
         status = ValuationStatus.UNDERVALUED
@@ -243,6 +244,7 @@ def evaluate_fcf_yield_relative(
         ),
         evaluated_at=evaluated_at,
         current_yield=current_yield,
+        historical_yields=historical_yields_sorted,
     )
 
 

@@ -12,14 +12,19 @@ import {
   type TradeLogEntry,
 } from "../activity/deriveActivity";
 import {
+  BUSINESS_STATUS_TONE,
   CONFIDENCE_KEY,
   CONVICTION_LEVEL_KEY,
   DECISION_SUPPORT_BADGE_KEY,
   DECISION_SUPPORT_STATEMENT_KEY,
   DECISION_SUPPORT_TONE,
+  RISK_STATUS_TONE,
+  VALUATION_STATUS_TONE,
   type ConvictionLevel,
   type DecisionSupportLevel,
   type EvidenceCoverageLevel,
+  type OutlookRecommendationRelationship,
+  type ValuationSupportStatus,
 } from "../status/statusTone";
 import {
   BUSINESS_CATEGORY_KEY,
@@ -48,14 +53,9 @@ import {
   type Translate,
 } from "../changeIntelligence/describeChange";
 import {
-  deriveAssessmentPoints,
   deriveCaseStatus,
-  deriveCurrentPriority,
   deriveOutstandingIssues,
-  findMostSevereRisk,
-  type AssessmentPoint,
   type CaseStatusLevel,
-  type CurrentPriorityKind,
   type OutstandingIssueKind,
   type OutstandingWorkKind,
 } from "../investmentCase/deriveExecutiveSummary";
@@ -65,6 +65,12 @@ import {
   formatShareCount,
   type FinancialPeriodView,
 } from "../investmentCase/FinancialsTable";
+import { HeroCard, type HeroAnalysisInput } from "../investmentCase/HeroCard";
+import { AtlasOutlookSection, type OutlookView } from "../investmentCase/AtlasOutlookSection";
+import { InvestmentArgumentSection } from "../investmentCase/InvestmentArgumentSection";
+import { AtlasReasoningSection, type AtlasReasoningInput } from "../investmentCase/AtlasReasoningSection";
+import { CompanyHealthAssessmentSection, type CompanyHealthCardInput } from "../investmentCase/CompanyHealthAssessmentSection";
+import { InterpretedFinancialEvidenceSection } from "../investmentCase/InterpretedFinancialEvidenceSection";
 
 interface CaseSummary {
   caseId: string;
@@ -674,11 +680,17 @@ interface OutcomeEntryView {
  * member name (Decision Log #1). See `atlas.alpha.decision_support`'s
  * own module docstring (backend) for the full presentation-layer
  * rationale; this type is its wire shape. */
+interface RecommendationOutlookAlignmentView {
+  shortTerm: OutlookRecommendationRelationship;
+  longTerm: OutlookRecommendationRelationship;
+}
+
 interface RecommendationStateView {
   level: DecisionSupportLevel;
   badgeLabel: string;
   statement: string;
   convictionGateMet: boolean;
+  outlookAlignment: RecommendationOutlookAlignmentView;
 }
 
 // Investment Case Engine v1 slice (extended Company Data Foundation
@@ -753,7 +765,12 @@ interface AtlasThesisView {
 }
 
 // ChangeFindingView now lives in "../changeIntelligence/describeChange"
-// (imported above) -- shared with History v1.
+// (imported above) -- shared with History v1. OutlookView (and its
+// nested Horizon/ExpectedReturn/Scenario/Driver shapes) now lives in
+// "../investmentCase/AtlasOutlookSection" (imported above), the same
+// "component exports its own wire-shape Input type, page imports it"
+// convention HeroAnalysisInput already established -- never redefined
+// here.
 
 interface InvestmentCaseAnalysisView {
   caseId: string;
@@ -764,6 +781,14 @@ interface InvestmentCaseAnalysisView {
   conviction: { level: AnalysisConvictionLevel; reasons: string[] };
   businessAnalysis: { state: string; findings: BusinessFindingView[] };
   valuation: { state: string; findings: ValuationFindingView[] };
+  /** Alpha Freeze correction sprint (Principal Engineer Review 2.0,
+   * finding M-2) -- `DE-015`'s `ValuationSupport`, additive, never
+   * conflated with `valuation` above (see backend `ValuationSupportView`'s
+   * own docstring). `status` is one of the real Core enum's three values
+   * (`supported`/`not_supported`/`insufficient_input`); the frontend
+   * renders it only through the safe presentation labels in
+   * `status/statusTone.ts`, never verbatim. */
+  valuationSupport: { status: string; gap: string | null };
   risk: { state: string; findings: RiskFindingView[] };
   riskProjection: RiskProjectionView;
   evidenceQuality: EvidenceQualityView | null;
@@ -780,6 +805,7 @@ interface InvestmentCaseAnalysisView {
   growthAnalysis: GrowthAnalysisView;
   valuationContext: ValuationContextView;
   atlasThesis: AtlasThesisView;
+  outlook: OutlookView;
   keyOpenQuestions: CaseOpenQuestionView[];
   changeIntelligenceAvailable: boolean;
   isBaselineCase: boolean;
@@ -1818,7 +1844,15 @@ export function InvestmentCasePage() {
             identity). Ticker comes from the Alpha portfolio's
             holding-to-case link (`holding.caseId`) — Case itself carries
             no identity of its own (`atlas/core/domain/case/entity.py`). */}
-        <Stack gap="metadata">
+        {/* Figma-fidelity pass: identity and the Hero narrative now read
+            as one unified card, matching the approved design's visual
+            flow -- previously two visually separate blocks (a bare
+            header, then a bordered Hero card below it). The Action Flow
+            trigger stays outside this card, unchanged in behavior, since
+            the approved design doesn't fold decision-recording UI into
+            this card either. */}
+        <Surface tier="primary">
+          <Stack gap="metadata">
           <Inline gap="row" wrap style={{ justifyContent: "space-between" }}>
             <RouterLink to={returnTo} style={ACCENT_LINK_STYLE}>
               {t(returnLabelKey)}
@@ -1826,13 +1860,23 @@ export function InvestmentCasePage() {
             {originLabelKey && <Text color="tertiary">{t(originLabelKey)}</Text>}
           </Inline>
 
+          {/* Figma-fidelity pass: company name carries the primary visual
+              weight (as the approved design shows), ticker demoted to a
+              secondary inline label beside it -- same underlying data,
+              same accessible h1, only the visual role swapped. Falls back
+              to the ticker as the primary heading when no company name has
+              loaded yet, so nothing ever renders as an empty title. */}
           <Inline gap="row" align="baseline" wrap>
             <Heading level={1} style={{ fontWeight: 700 }}>
-              {linkedHolding ? linkedHolding.ticker : t("investmentCase.header.untitled")}
+              {companyProfile?.name
+                ? companyProfile.name
+                : linkedHolding
+                  ? linkedHolding.ticker
+                  : t("investmentCase.header.untitled")}
             </Heading>
-            {companyProfile?.name && (
+            {companyProfile?.name && linkedHolding && (
               <Text as="span" color="secondary" style={{ fontSize: "var(--type-size-h4)" }}>
-                {companyProfile.name}
+                {linkedHolding.ticker}
               </Text>
             )}
           </Inline>
@@ -1854,7 +1898,9 @@ export function InvestmentCasePage() {
           {!caseId && <Text color="secondary">{t("investmentCase.noCaseSelected")}</Text>}
           {caseId && status.kind === "loading" && (
             <Text role="status" aria-live="polite">
-              {t("common.loading")}
+              {t("investmentCase.hero.loading", {
+                ticker: linkedHolding ? linkedHolding.ticker : t("investmentCase.header.untitled"),
+              })}
             </Text>
           )}
           {caseId && status.kind === "error" && (
@@ -1862,44 +1908,69 @@ export function InvestmentCasePage() {
               {t("investmentCase.loadError", { message: status.message })}
             </Text>
           )}
-          {caseId && status.kind === "loaded" && (
-            <Text color="tertiary">
-              {t("investmentCase.header.caseIdLabel", { caseId: status.case.caseId })}
-            </Text>
-          )}
 
-          {/* Decision Support Tier 1 (Workspace Migration Phase 3,
-              approved §13) -- Atlas's own evidence-support sentence
-              sits directly beneath the identity facts above, in
-              Atlas's own voice, never inside a button. Relocated here
-              verbatim from the former bottom-of-page Evidence section
-              (Phase 1's `atlas.alpha.decision_support`, unchanged) --
-              the same fact is never rendered twice on this page. */}
-          {investmentCaseAnalysis.kind === "loaded" && (
-            <>
-              <Divider tone="hairline" />
-              <Inline gap="row" align="baseline" wrap>
-                <StatusBadge
-                  label={t(DECISION_SUPPORT_BADGE_KEY[investmentCaseAnalysis.report.recommendation.level])}
-                  tone={DECISION_SUPPORT_TONE[investmentCaseAnalysis.report.recommendation.level]}
-                />
-                <Text as="span">
-                  {t(DECISION_SUPPORT_STATEMENT_KEY[investmentCaseAnalysis.report.recommendation.level])}
-                </Text>
-              </Inline>
-            </>
-          )}
+          {/* Hero (UX-020, implementing APP-002/APP-003/UX-018/UX-019) --
+              the paragraph is now the primary interface: current
+              conclusion, why, whether action is required, what could
+              change the view. Recommendation, Conviction, and Risk --
+              formerly a standalone badge here plus assessment-point
+              sentences and a priority chip inside `ExecutiveSummaryCard`
+              below -- are now one coherent narrative, with those same
+              facts appearing underneath it as a quiet supporting strip,
+              never a second, competing rendering of the same fact. */}
+          {investmentCaseAnalysis.kind === "loaded" && (() => {
+            const report = investmentCaseAnalysis.report;
+            const growth = report.businessAnalysis.findings.find((f) => f.kind === "growth");
+            const capitalAllocation = report.businessAnalysis.findings.find((f) => f.kind === "capital_allocation");
+            const longTerm = report.outlook.longTerm;
+            const longTermBull = longTerm.scenarios.find((s) => s.kind === "bull");
+            const longTermBear = longTerm.scenarios.find((s) => s.kind === "bear");
+            const heroAnalysis: HeroAnalysisInput = {
+              recommendationLevel: report.recommendation.level,
+              convictionLevel: report.conviction.level,
+              valuationSupportStatus: report.valuationSupport.status as ValuationSupportStatus,
+              growthStatus: growth ? growth.status : "not_evaluated",
+              capitalAllocationStatus: capitalAllocation ? capitalAllocation.status : "not_evaluated",
+              valuationStatus: report.valuationContext.fcfYieldStatus,
+              riskFindings: report.risk.findings.map((f) => ({ category: f.category, status: f.status })),
+              topStrengthKind: report.strengths[0]?.kind ?? null,
+              isBaselineCase: report.isBaselineCase,
+              latestChangeCount: report.latestChanges.length,
+              currentAnalysisAt: report.currentAnalysisAt,
+              longTermExpectedReturn: longTerm.expectedReturn
+                ? { lowPercent: longTerm.expectedReturn.lowPercent, highPercent: longTerm.expectedReturn.highPercent }
+                : null,
+              longTermExpectedReturnGap: longTerm.expectedReturnGap,
+              longTermBullReturnPercent: longTermBull ? longTermBull.returnPercent : null,
+              longTermBearReturnPercent: longTermBear ? longTermBear.returnPercent : null,
+              outlookAlignmentLongTerm: report.recommendation.outlookAlignment.longTerm,
+            };
+            return (
+              <HeroCard
+                ticker={linkedHolding ? linkedHolding.ticker : t("investmentCase.header.untitled")}
+                analysis={heroAnalysis}
+                outstandingWorkKinds={caseOutstandingWork.map((item) => item.kind)}
+                isThesisStale={report.isThesisStale}
+                openQuestionCount={report.openQuestions.length}
+                t={t}
+              />
+            );
+          })()}
+        </Stack>
+        </Surface>
 
-          {/* Action Flow Tier 1 trigger (approved §13 Option A) -- the
-              investor's own, clearly-separate action vocabulary,
-              distinct from Atlas's sentence above it. `[ Record a
-              decision ]` is the only entry point; the nudge reuses
-              `caseOutstandingWork`'s already-computed count (same
-              data Outstanding Work renders in full further down the
-              page, in progressive disclosure) rather than a new
-              computation. Hidden once the panel below is open, so the
-              trigger and the open panel are never both visible at
-              once. */}
+        {/* Action Flow Tier 1 trigger (approved §13 Option A) -- the
+            investor's own, clearly-separate action vocabulary, distinct
+            from Atlas's sentence in the card above. `[ Record a decision
+            ]` is the only entry point; the nudge reuses
+            `caseOutstandingWork`'s already-computed count (same data
+            Outstanding Work renders in full further down the page, in
+            progressive disclosure) rather than a new computation. Kept
+            outside the identity/Hero card (Figma-fidelity pass) -- the
+            approved design doesn't fold decision-recording UI into that
+            card either. Hidden once the panel below is open, so the
+            trigger and the open panel are never both visible at once. */}
+        <Stack gap="metadata">
           {caseId && status.kind === "loaded" && !isDecisionPanelExpanded && (
             <>
               <Divider tone="hairline" />
@@ -4203,32 +4274,6 @@ const CASE_CONCENTRATION_LEVEL_KEY: Record<string, TranslationKey> = {
   High: "portfolio.concentrationLevel.high",
 };
 
-const ASSESSMENT_CONVICTION_KEY: Record<AnalysisConvictionLevel, TranslationKey> = {
-  very_high: "investmentCase.executiveSummary.assessment.conviction.very_high",
-  high: "investmentCase.executiveSummary.assessment.conviction.high",
-  moderate: "investmentCase.executiveSummary.assessment.conviction.moderate",
-  low: "investmentCase.executiveSummary.assessment.conviction.low",
-  insufficient_evidence: "investmentCase.executiveSummary.assessment.conviction.insufficient_evidence",
-};
-
-/** Only the three statuses `deriveAssessmentPoints` ever attaches to a
- * "valuation" point -- `not_evaluated`/`insufficient_input` are filtered
- * out before a point is created, so this map is deliberately narrower
- * than the full `AnalysisValuationStatus` union. */
-const ASSESSMENT_VALUATION_KEY: Record<"undervalued" | "fairly_valued" | "expensive", TranslationKey> = {
-  undervalued: "investmentCase.executiveSummary.assessment.valuation.undervalued",
-  fairly_valued: "investmentCase.executiveSummary.assessment.valuation.fairly_valued",
-  expensive: "investmentCase.executiveSummary.assessment.valuation.expensive",
-};
-
-const CURRENT_PRIORITY_KEY: Record<CurrentPriorityKind, TranslationKey> = {
-  outcomeMissing: "investmentCase.executiveSummary.priority.outcomeMissing",
-  reconciliationNeeded: "investmentCase.executiveSummary.priority.reconciliationNeeded",
-  thesisStale: "investmentCase.executiveSummary.priority.thesisStale",
-  openQuestion: "investmentCase.executiveSummary.priority.openQuestion",
-  none: "investmentCase.executiveSummary.priority.none",
-};
-
 const OUTSTANDING_ISSUE_KEY: Record<OutstandingIssueKind, TranslationKey> = {
   missingEvidence: "investmentCase.executiveSummary.outstandingIssues.missingEvidence",
   thesisStale: "investmentCase.executiveSummary.outstandingIssues.thesisStale",
@@ -4242,24 +4287,6 @@ const OUTSTANDING_ISSUE_KEY: Record<OutstandingIssueKind, TranslationKey> = {
  * down the page" -- a display cap on `ExecutiveSummaryCard` only;
  * `deriveOutstandingIssues` itself is untouched. */
 const MAX_OUTSTANDING_ISSUES_SHOWN = 3;
-
-function assessmentSentence(point: AssessmentPoint, t: Translate): string {
-  switch (point.kind) {
-    case "conviction":
-      return t(ASSESSMENT_CONVICTION_KEY[point.convictionLevel!]);
-    case "valuation":
-      return t(ASSESSMENT_VALUATION_KEY[point.valuationStatus as "undervalued" | "fairly_valued" | "expensive"]);
-    case "risk":
-      return t("investmentCase.executiveSummary.assessment.risk", {
-        category: t(RISK_CATEGORY_KEY[point.riskCategory!]),
-        status: t(RISK_STATUS_KEY[point.riskStatus!]),
-      });
-    case "thesisStale":
-      return t("investmentCase.executiveSummary.assessment.thesisStale");
-    case "insufficientOverall":
-      return t("investmentCase.executiveSummary.assessment.insufficientOverall");
-  }
-}
 
 /**
  * Executive Summary (Investment Case Workspace v2, Sprint 2) -- the new
@@ -4295,28 +4322,16 @@ function ExecutiveSummaryCard({
   outstandingWorkKinds: OutstandingWorkKind[];
   t: Translate;
 }) {
-  const fcfYield = analysis.valuation.findings.find((f) => f.kind === "fcf_yield_relative") ?? null;
-  const valuationStatus = fcfYield ? fcfYield.status : null;
-  const mostSevereRisk = findMostSevereRisk(
-    analysis.risk.findings.map((f) => ({ category: f.category, status: f.status })),
-  );
+  // Corrective pass (UX-020 Hero implementation): the former assessment-
+  // points paragraph and priority chip that used to render here now
+  // render, as one coherent narrative, in `HeroCard` above -- the same
+  // Conviction/Valuation/Risk/thesis-staleness facts, never a second,
+  // divergent computation of them. This card keeps only the content
+  // `HeroCard` does not cover: Portfolio Impact and Outstanding Issues.
   const evidenceGap =
     analysis.evidenceQuality !== null &&
     (analysis.evidenceQuality.coverage === "none" || analysis.evidenceQuality.coverage === "partial");
   const hasOutstandingWork = outstandingWorkKinds.length > 0;
-
-  const assessmentPoints = deriveAssessmentPoints({
-    convictionLevel: analysis.conviction.level,
-    valuationStatus,
-    mostSevereRisk,
-    isThesisStale: analysis.isThesisStale,
-  });
-
-  const currentPriority = deriveCurrentPriority({
-    outstandingWorkKinds,
-    isThesisStale: analysis.isThesisStale,
-    openQuestionCount: analysis.openQuestions.length,
-  });
 
   const outstandingIssues = deriveOutstandingIssues({
     outstandingWorkKinds,
@@ -4362,29 +4377,6 @@ function ExecutiveSummaryCard({
     <Stack gap="metadata">
       <Label>{t("investmentCase.executiveSummary.heading")}</Label>
 
-      <Text as="p" data-trace-source="assessment">
-        {assessmentPoints.map((point, index) => (
-          <span key={index}>
-            {isPositivePoint(point) ? "✅ " : "⚠️ "}
-            {assessmentSentence(point, t)}
-            {index < assessmentPoints.length - 1 ? " " : ""}
-          </span>
-        ))}
-      </Text>
-
-      <div data-trace-source="priority">
-        <StatusText
-          label={`${t("investmentCase.executiveSummary.priority.heading")}: ${t(CURRENT_PRIORITY_KEY[currentPriority])}`}
-          tone="caution"
-          style={{
-            display: "inline-block",
-            padding: "2px var(--space-row)",
-            borderRadius: "var(--radius-control)",
-            border: "var(--width-border-hairline) solid var(--color-semantic-amber)",
-          }}
-        />
-      </div>
-
       {portfolioImpactParts.length > 0 && (
         <Text as="p" color="tertiary" data-trace-source="portfolioImpact">
           {t("investmentCase.executiveSummary.portfolioImpact.heading")}: {portfolioImpactParts.join(" · ")}
@@ -4413,23 +4405,6 @@ function ExecutiveSummaryCard({
   );
 }
 
-/** Visual Fidelity Pass -- which assessment points read as a strength
- * (✅) vs. a concern (⚠️) in the Figma-approved flowing Executive
- * Summary paragraph. Purely a presentation classification over the
- * same categorical value each point already carries -- never a new
- * judgment. */
-function isPositivePoint(point: AssessmentPoint): boolean {
-  switch (point.kind) {
-    case "conviction":
-      return point.convictionLevel === "very_high" || point.convictionLevel === "high" || point.convictionLevel === "moderate";
-    case "valuation":
-      return point.valuationStatus === "undervalued";
-    case "risk":
-    case "thesisStale":
-    case "insufficientOverall":
-      return false;
-  }
-}
 
 /**
  * Business / Valuation / Risk / Evidence (Investment Case Workspace v2,
@@ -4478,6 +4453,67 @@ function isPositivePoint(point: AssessmentPoint): boolean {
  * Assessment now states the same facts directly under the page header,
  * so the badges had become a duplicate of it.
  */
+/** Company Health Assessment summary sentences -- deliberately fuller
+ * and more assessment-toned than `AtlasReasoningSection`'s own terse
+ * interpretation sentences, even for the two cards (Business Quality,
+ * Financial Strength) that read from the same underlying finding as one
+ * of that section's cards. Depth differs; the underlying real status
+ * never does. `insufficient_input`/`not_evaluated` share one honest
+ * "not yet evaluated" sentence across every card, per this codebase's
+ * standing discipline against fabricating an assessment it doesn't have. */
+const NOT_YET_EVALUATED_KEY: TranslationKey = "investmentCase.companyHealth.notYetEvaluated";
+
+const BUSINESS_QUALITY_SUMMARY_KEY: Record<AnalysisBusinessStatus, TranslationKey> = {
+  strong: "investmentCase.companyHealth.businessQuality.strong",
+  moderate: "investmentCase.companyHealth.businessQuality.moderate",
+  weak: "investmentCase.companyHealth.businessQuality.weak",
+  insufficient_input: NOT_YET_EVALUATED_KEY,
+  not_evaluated: NOT_YET_EVALUATED_KEY,
+};
+
+const FINANCIAL_STRENGTH_SUMMARY_KEY: Record<AnalysisRiskStatus, TranslationKey> = {
+  low: "investmentCase.companyHealth.financialStrength.low",
+  moderate: "investmentCase.companyHealth.financialStrength.moderate",
+  high: "investmentCase.companyHealth.financialStrength.high",
+  insufficient_input: NOT_YET_EVALUATED_KEY,
+  not_evaluated: NOT_YET_EVALUATED_KEY,
+};
+
+const MANAGEMENT_SUMMARY_KEY: Record<AnalysisBusinessStatus, TranslationKey> = {
+  strong: "investmentCase.companyHealth.management.strong",
+  moderate: "investmentCase.companyHealth.management.moderate",
+  weak: "investmentCase.companyHealth.management.weak",
+  insufficient_input: NOT_YET_EVALUATED_KEY,
+  not_evaluated: NOT_YET_EVALUATED_KEY,
+};
+
+const CAPITAL_ALLOCATION_SUMMARY_KEY: Record<AnalysisBusinessStatus, TranslationKey> = {
+  strong: "investmentCase.companyHealth.capitalAllocation.strong",
+  moderate: "investmentCase.companyHealth.capitalAllocation.moderate",
+  weak: "investmentCase.companyHealth.capitalAllocation.weak",
+  insufficient_input: NOT_YET_EVALUATED_KEY,
+  not_evaluated: NOT_YET_EVALUATED_KEY,
+};
+
+const COMPETITIVE_POSITION_SUMMARY_KEY: Record<AnalysisBusinessStatus, TranslationKey> = {
+  strong: "investmentCase.companyHealth.competitivePosition.strong",
+  moderate: "investmentCase.companyHealth.competitivePosition.moderate",
+  weak: "investmentCase.companyHealth.competitivePosition.weak",
+  insufficient_input: NOT_YET_EVALUATED_KEY,
+  not_evaluated: NOT_YET_EVALUATED_KEY,
+};
+
+/**
+ * Investment Case body (Figma-fidelity rebuild): Atlas Outlook,
+ * Investment Argument, Atlas Reasoning, Company Health Assessment,
+ * Interpreted Financial Evidence -- the approved design's own named
+ * hierarchy, each a distinct block, never collapsed into one narrative
+ * card. Every status/finding read below is real and already fetched by
+ * this page; only the sentence forms and the Outlook's per-horizon
+ * scenario fields are new (the latter honestly empty -- see
+ * `AtlasOutlookSection`'s own file header and this sprint's backend-gap
+ * report).
+ */
 function InvestmentCaseCanonicalSections({
   analysis,
   linkedHolding,
@@ -4491,36 +4527,99 @@ function InvestmentCaseCanonicalSections({
   onViewMoreDetails: () => void;
   t: Translate;
 }) {
+  const findBusiness = (kind: AnalysisBusinessCategory) => analysis.businessAnalysis.findings.find((f) => f.kind === kind);
+  const findRisk = (category: AnalysisRiskCategory) => analysis.risk.findings.find((f) => f.category === category);
+
+  const growth = findBusiness("growth");
+  const capitalAllocation = findBusiness("capital_allocation");
+  const durability = findBusiness("durability");
+  const management = findBusiness("management");
+  const competitivePosition = findBusiness("competitive_position");
+  const financialRisk = findRisk("financial_risk");
+  const fcfYield = analysis.valuation.findings.find((f) => f.kind === "fcf_yield_relative");
+  const valuationStatus: AnalysisValuationStatus = fcfYield ? fcfYield.status : "not_evaluated";
+
+  const strengthKinds = analysis.strengths.map((h) => h.kind);
+  const riskKinds = analysis.risks.map((h) => h.kind);
+
+  const reasoningInput: AtlasReasoningInput = {
+    growthStatus: growth?.status ?? "not_evaluated",
+    valuationStatus,
+    financialHealthStatus: financialRisk?.status ?? "not_evaluated",
+    businessQualityStatus: durability?.status ?? "not_evaluated",
+  };
+
+  const companyHealthCards: CompanyHealthCardInput[] = [
+    {
+      labelKey: "businessQuality",
+      statusLabel: t(BUSINESS_STATUS_KEY[durability?.status ?? "not_evaluated"]),
+      tone: BUSINESS_STATUS_TONE[durability?.status ?? "not_evaluated"],
+      summary: t(BUSINESS_QUALITY_SUMMARY_KEY[durability?.status ?? "not_evaluated"]),
+      supportingEvidence: durability?.supportingEvidence ?? [],
+      contradictingEvidence: durability?.contradictingEvidence ?? [],
+      missingEvidence: durability?.missingEvidence ?? [],
+    },
+    {
+      labelKey: "financialStrength",
+      statusLabel: t(RISK_STATUS_KEY[financialRisk?.status ?? "not_evaluated"]),
+      tone: RISK_STATUS_TONE[financialRisk?.status ?? "not_evaluated"],
+      summary: t(FINANCIAL_STRENGTH_SUMMARY_KEY[financialRisk?.status ?? "not_evaluated"]),
+      supportingEvidence: financialRisk?.supportingFacts ?? [],
+      contradictingEvidence: financialRisk?.contradictingFacts ?? [],
+      missingEvidence: financialRisk?.missingEvidence ?? [],
+    },
+    {
+      labelKey: "managementGovernance",
+      statusLabel: t(BUSINESS_STATUS_KEY[management?.status ?? "not_evaluated"]),
+      tone: BUSINESS_STATUS_TONE[management?.status ?? "not_evaluated"],
+      summary: t(MANAGEMENT_SUMMARY_KEY[management?.status ?? "not_evaluated"]),
+      supportingEvidence: management?.supportingEvidence ?? [],
+      contradictingEvidence: management?.contradictingEvidence ?? [],
+      missingEvidence: management?.missingEvidence ?? [],
+    },
+    {
+      labelKey: "capitalAllocation",
+      statusLabel: t(BUSINESS_STATUS_KEY[capitalAllocation?.status ?? "not_evaluated"]),
+      tone: BUSINESS_STATUS_TONE[capitalAllocation?.status ?? "not_evaluated"],
+      summary: t(CAPITAL_ALLOCATION_SUMMARY_KEY[capitalAllocation?.status ?? "not_evaluated"]),
+      supportingEvidence: capitalAllocation?.supportingEvidence ?? [],
+      contradictingEvidence: capitalAllocation?.contradictingEvidence ?? [],
+      missingEvidence: capitalAllocation?.missingEvidence ?? [],
+    },
+    {
+      labelKey: "competitivePosition",
+      statusLabel: t(BUSINESS_STATUS_KEY[competitivePosition?.status ?? "not_evaluated"]),
+      tone: BUSINESS_STATUS_TONE[competitivePosition?.status ?? "not_evaluated"],
+      summary: t(COMPETITIVE_POSITION_SUMMARY_KEY[competitivePosition?.status ?? "not_evaluated"]),
+      supportingEvidence: competitivePosition?.supportingEvidence ?? [],
+      contradictingEvidence: competitivePosition?.contradictingEvidence ?? [],
+      missingEvidence: competitivePosition?.missingEvidence ?? [],
+    },
+  ];
+
   return (
-    <Stack gap="intra-section">
-      <AtlasViewSection analysis={analysis} t={t} />
+    <Stack gap="inter-section">
+      <AtlasOutlookSection outlook={analysis.outlook} latestChanges={analysis.latestChanges} t={t} />
 
       <Divider tone="hairline" />
 
-      {/* Financials | Valuation Scenarios -- the approved screen's own
-          two-column pairing. Each child gets an even, wrapping share of
-          the row (`flex: 1 1 320px`) rather than sizing to content. */}
-      <Inline gap="inter-section" wrap align="start">
-        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
-          <FinancialsSection financialHistory={analysis.financialHistory} t={t} />
-        </div>
-        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
-          <ValuationScenariosSection t={t} />
-        </div>
-      </Inline>
+      <InvestmentArgumentSection strengthKinds={strengthKinds} riskKinds={riskKinds} t={t} />
 
       <Divider tone="hairline" />
 
-      {/* Business Analysis | Company Overview -- the approved screen's
-          other two-column pairing, distinct from the one above. */}
-      <Inline gap="inter-section" wrap align="start">
-        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
-          <BusinessSection analysis={analysis} t={t} />
-        </div>
-        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
-          <CompanyOverviewSection companyProfile={analysis.companyProfile} marketSnapshot={analysis.marketSnapshot} t={t} />
-        </div>
-      </Inline>
+      <AtlasReasoningSection input={reasoningInput} t={t} />
+
+      <Divider tone="hairline" />
+
+      <CompanyHealthAssessmentSection cards={companyHealthCards} t={t} />
+
+      <Divider tone="hairline" />
+
+      <InterpretedFinancialEvidenceSection financialHistory={analysis.financialHistory} t={t} />
+
+      <Divider tone="hairline" />
+
+      <CompanyOverviewSection companyProfile={analysis.companyProfile} marketSnapshot={analysis.marketSnapshot} t={t} />
 
       <Divider tone="hairline" />
 
@@ -4660,210 +4759,90 @@ function CompanyOverviewSection({
   );
 }
 
-/** Financials (Figma-fidelity rebuild) -- the real per-period table,
- * extracted out of Company Overview into its own section so it can
- * pair with `ValuationScenariosSection` (matching the approved
- * screen's own Financials | Valuation Scenarios two-column layout). */
-function FinancialsSection({ financialHistory, t }: { financialHistory: FinancialPeriodView[]; t: Translate }) {
+/** The three `OpenQuestionKind` members that are specifically about
+ * missing evidence -- a presentational split of the one existing
+ * `analysis.openQuestions` list, not a new domain concept: the backend
+ * already defines exactly these six kinds. */
+const EVIDENCE_GAP_QUESTION_KINDS: OpenQuestionKind[] = [
+  "no_evidence_recorded_for_case",
+  "observation_without_evidence",
+  "decision_without_linked_observation",
+];
+
+/**
+ * Evidence (Figma-fidelity rebuild) -- the approved screen's own
+ * compact single row: Quality / Coverage / Missing / Latest, plus a
+ * "View all evidence" link into the More Details tab (where
+ * `EvidenceDetailSection` below lives). Quality and Coverage are two
+ * distinct real fields already used elsewhere on this page
+ * (`analysis.confidence`, `analysis.evidenceQuality.coverage`) -- never
+ * a single fact split into two labels to match Figma's word count.
+ * Missing reuses the same `EVIDENCE_GAP_QUESTION_KINDS`-filtered count
+ * `EvidenceDetailSection` computes in full below. Latest reads
+ * `currentThesis.latestDecisionReason`/`latestObservationStatement` --
+ * the same real "most recent investor input" fact already used
+ * elsewhere on this page, never a fabricated activity summary.
+ */
+function EvidenceSection({
+  analysis,
+  linkedHolding,
+  onViewMoreDetails,
+  t,
+}: {
+  analysis: InvestmentCaseAnalysisView;
+  linkedHolding: AlphaHoldingView | null;
+  onViewMoreDetails: () => void;
+  t: Translate;
+}) {
+  const missingCount = analysis.openQuestions.filter((q) => EVIDENCE_GAP_QUESTION_KINDS.includes(q.kind)).length;
+  const latest = analysis.currentThesis.latestDecisionReason ?? analysis.currentThesis.latestObservationStatement;
+
   return (
     <Stack gap="metadata">
-      <Label>{t("investmentCase.analysis.financials.heading")}</Label>
-      {financialHistory.length === 0 && (
-        <StatusText label={t("investmentCase.analysis.financials.empty")} />
-      )}
-      {financialHistory.length > 0 && <FinancialsTable periods={financialHistory} t={t} />}
+      <Label>{t("investmentCase.analysis.evidence.heading")}</Label>
+      <Inline gap="inter-section" wrap style={{ justifyContent: "space-between" }}>
+        <Inline gap="row" wrap>
+          <Text as="span" color="secondary">
+            {t("investmentCase.analysis.evidence.qualityHeading")}: {t(CONFIDENCE_KEY[analysis.confidence])}
+          </Text>
+          <Text as="span" color="secondary">
+            {t("investmentCase.analysis.evidence.coverageLabel")}:{" "}
+            {analysis.evidenceQuality
+              ? t(CONFIDENCE_KEY[analysis.evidenceQuality.coverage])
+              : t("investmentCase.atlasView.notAvailable")}
+          </Text>
+          <Text as="span" color="secondary">
+            {t("investmentCase.analysis.evidence.missingEvidenceHeading")}: {missingCount}
+          </Text>
+          {latest && (
+            <Text as="span" color="secondary">
+              {t("investmentCase.analysis.evidence.latestLabel")}: {latest}
+            </Text>
+          )}
+        </Inline>
+        {linkedHolding && (
+          <Link
+            href="#"
+            style={ACCENT_LINK_STYLE}
+            onClick={(event) => {
+              event.preventDefault();
+              onViewMoreDetails();
+            }}
+          >
+            {t("investmentCase.analysis.evidence.viewAll")}
+          </Link>
+        )}
+      </Inline>
     </Stack>
   );
 }
 
-/**
- * Valuation Scenarios (Figma-fidelity rebuild) -- the approved screen's
- * Bull/Base/Bear fair-value table with implied return, margin of
- * safety. Structurally locked
- * (`UnavailableCapability(NOT_YET_IMPLEMENTED)`, Migration Review
- * §11.1): the only real valuation method this codebase has is Current
- * FCF Yield (shown in the header's Valuation line and Atlas View's
- * Valuation dot, both already real). An honest, calm disclosure, the
- * same pattern Discovery's own Opportunities section already
- * established -- never fabricated Bull/Base/Bear assumptions, a fair
- * value number, or a margin-of-safety percentage.
- */
-function ValuationScenariosSection({ t }: { t: Translate }) {
-  return (
-    <Stack gap="metadata">
-      <Label>{t("investmentCase.analysis.valuationScenarios.heading")}</Label>
-      <StatusText label={t("investmentCase.analysis.valuationScenarios.notYet")} />
-    </Stack>
-  );
-}
-
-/**
- * Atlas View (Investment Case Intelligence v1 slice) -- Current Case
- * (Atlas Thesis), Strengths, Risks, Growth, Valuation, Open Questions.
- * Every value rendered here comes directly from
- * `analysis.strengths`/`risks`/`growthAnalysis`/`valuationContext`/
- * `atlasThesis`/`keyOpenQuestions` -- structured fields
- * `atlas.analysis_engine.investment_case_synthesis` already computed
- * deterministically from the same Business/Valuation/Risk analysis the
- * sections below this one render in full detail. This section is a
- * concise synthesis of that same analysis, never a second, independent
- * conclusion.
- */
-// HIGHLIGHT_KIND_KEY now lives in "../changeIntelligence/describeChange"
-// (imported above).
 
 const GROWTH_TREND_KEY: Record<AnalysisMetricTrend, TranslationKey> = {
   strong_metric: "investmentCase.atlasView.growth.trend.strong_metric",
   weak_metric: "investmentCase.atlasView.growth.trend.weak_metric",
   mixed_metric: "investmentCase.atlasView.growth.trend.mixed_metric",
 };
-
-// OPEN_QUESTION_ORIGIN_KEY now lives in
-// "../changeIntelligence/describeChange" (imported above).
-
-/** Figma-fidelity rebuild -- Decision Log #3's "presentation only,
- * derived from existing categorical assessments" 5-dot scorecard
- * visual. `filled === null` renders the same literal "—" every other
- * missing value on this page already uses, never a fabricated dot
- * count. Solid/hollow circle characters, not an icon font or SVG --
- * this page has no icon dependency, and the approved exception list
- * doesn't call for adding one just for this. */
-function DotRating({ filled, total = 5 }: { filled: number | null; total?: number }) {
-  if (filled === null) {
-    return (
-      <Text as="span" color="tertiary">
-        —
-      </Text>
-    );
-  }
-  return (
-    <Text as="span" aria-hidden="true">
-      {"●".repeat(filled)}
-      {"○".repeat(Math.max(0, total - filled))}
-    </Text>
-  );
-}
-
-/** Growth and Capital Allocation share `AnalysisBusinessStatus`'s five
- * members -- one fixed mapping for both, matching how the two
- * categorical values already share one status vocabulary throughout
- * this page. `insufficient_input`/`not_evaluated` intentionally have no
- * entry: `DotRating` renders "—" for them, never an invented count. */
-const BUSINESS_STATUS_DOT_COUNT: Partial<Record<AnalysisBusinessStatus, number>> = {
-  strong: 5,
-  moderate: 3,
-  weak: 1,
-};
-
-/** More dots = cheaper (a reason to be more interested), matching
- * `AnalysisValuationStatus`'s three real outcomes. */
-const VALUATION_STATUS_DOT_COUNT: Partial<Record<AnalysisValuationStatus, number>> = {
-  undervalued: 5,
-  fairly_valued: 3,
-  expensive: 1,
-};
-
-/** More dots = more risk -- a risk-gauge reading, the one dimension in
- * this row where a higher dot count is a worse outcome, called out
- * explicitly since every other dimension here inverts that ("more is
- * better"). Matches `AnalysisRiskStatus`'s three real outcomes. */
-const RISK_STATUS_DOT_COUNT: Partial<Record<AnalysisRiskStatus, number>> = {
-  low: 1,
-  moderate: 3,
-  high: 5,
-};
-
-function AtlasViewDimension({ label, filled, valueLabel }: { label: string; filled: number | null; valueLabel: string }) {
-  return (
-    <Stack gap="metadata">
-      <Text as="span" color="tertiary">
-        {label}
-      </Text>
-      <DotRating filled={filled} />
-      <Text as="span">{valueLabel}</Text>
-    </Stack>
-  );
-}
-
-/**
- * Atlas View (Figma-fidelity rebuild) -- the approved screen's compact
- * 7-column scorecard row, replacing the previous stacked-list layout
- * (Thesis narrative, Strengths/Risks lists, Growth/Valuation detail,
- * Open Questions all moved to `CaseNarrativeDetailSection`, in the
- * More Details tab -- Figma's own screen shows none of that content
- * under this heading, only the dot row).
- *
- * Four of the seven dimensions are real or presentation-derived from
- * real categorical assessments (never a new judgment):
- * - **Growth**, **Capital Allocation**: `businessAnalysis.findings`
- *   directly.
- * - **Valuation**: `valuationContext.fcfYieldStatus`, the same field
- *   the header's own Valuation line already reads.
- * - **Risk Level**: `riskProjection`, the single highest-severity
- *   category among the real four-category vector -- the same
- *   `risk_projection()` Portfolio Cockpit's Holdings table Risk column
- *   already calls, reused verbatim (backend, this sprint).
- *
- * The other three have no real source and render the literal "—"
- * every missing value on this page already uses, never a fabricated
- * rating:
- * - **Business Strength**: no aggregate business-quality categorical
- *   exists anywhere in this codebase (Growth/Capital Allocation are
- *   each real individually; there is no single combined judgment).
- * - **Expected Return**: scenario valuation remains structurally
- *   locked (`UnavailableCapability(NOT_YET_IMPLEMENTED)`).
- * - **Portfolio Fit**: no such field exists on any per-holding or
- *   per-Case analysis object today.
- */
-function AtlasViewSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
-  const growth = analysis.businessAnalysis.findings.find((f) => f.kind === "growth");
-  const capitalAllocation = analysis.businessAnalysis.findings.find((f) => f.kind === "capital_allocation");
-  const { valuationContext, riskProjection } = analysis;
-  const notAvailable = t("investmentCase.atlasView.notAvailable");
-
-  return (
-    <Stack gap="metadata">
-      <Label>{t("investmentCase.atlasView.heading")}</Label>
-      <Inline gap="inter-section" wrap style={{ columnGap: "var(--space-inter-section)", rowGap: "var(--space-intra-section)" }}>
-        <AtlasViewDimension
-            label={t("investmentCase.atlasView.dimension.businessStrength")}
-            filled={null}
-            valueLabel={notAvailable}
-          />
-          <AtlasViewDimension
-            label={t("investmentCase.atlasView.dimension.growth")}
-            filled={growth ? (BUSINESS_STATUS_DOT_COUNT[growth.status] ?? null) : null}
-            valueLabel={growth ? t(BUSINESS_STATUS_KEY[growth.status]) : notAvailable}
-          />
-          <AtlasViewDimension
-            label={t("investmentCase.atlasView.dimension.valuation")}
-            filled={VALUATION_STATUS_DOT_COUNT[valuationContext.fcfYieldStatus] ?? null}
-            valueLabel={t(VALUATION_STATUS_KEY[valuationContext.fcfYieldStatus])}
-          />
-          <AtlasViewDimension
-            label={t("investmentCase.atlasView.dimension.riskLevel")}
-            filled={RISK_STATUS_DOT_COUNT[riskProjection.status] ?? null}
-            valueLabel={t(RISK_STATUS_KEY[riskProjection.status])}
-          />
-          <AtlasViewDimension
-            label={t("investmentCase.atlasView.dimension.capitalAllocation")}
-            filled={capitalAllocation ? (BUSINESS_STATUS_DOT_COUNT[capitalAllocation.status] ?? null) : null}
-            valueLabel={capitalAllocation ? t(BUSINESS_STATUS_KEY[capitalAllocation.status]) : notAvailable}
-          />
-          <AtlasViewDimension
-            label={t("investmentCase.atlasView.dimension.expectedReturn")}
-            filled={null}
-            valueLabel={notAvailable}
-          />
-          <AtlasViewDimension
-            label={t("investmentCase.atlasView.dimension.portfolioFit")}
-            filled={null}
-            valueLabel={notAvailable}
-          />
-      </Inline>
-    </Stack>
-  );
-}
 
 /**
  * Case Analysis Detail (Figma-fidelity rebuild) -- the former Atlas
@@ -5200,84 +5179,6 @@ function RiskSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t:
           )}
         </Stack>
       ))}
-    </Stack>
-  );
-}
-
-/** The three `OpenQuestionKind` members that are specifically about
- * missing evidence -- a presentational split of the one existing
- * `analysis.openQuestions` list, not a new domain concept: the backend
- * already defines exactly these six kinds. */
-const EVIDENCE_GAP_QUESTION_KINDS: OpenQuestionKind[] = [
-  "no_evidence_recorded_for_case",
-  "observation_without_evidence",
-  "decision_without_linked_observation",
-];
-
-/**
- * Evidence (Figma-fidelity rebuild) -- the approved screen's own
- * compact single row: Quality / Coverage / Missing / Latest, plus a
- * "View all evidence" link into the More Details tab (where
- * `EvidenceDetailSection` below lives). Quality and Coverage are two
- * distinct real fields already used elsewhere on this page
- * (`analysis.confidence`, `analysis.evidenceQuality.coverage`) -- never
- * a single fact split into two labels to match Figma's word count.
- * Missing reuses the same `EVIDENCE_GAP_QUESTION_KINDS`-filtered count
- * `EvidenceDetailSection` computes in full below. Latest reads
- * `currentThesis.latestDecisionReason`/`latestObservationStatement` --
- * the same real "most recent investor input" fact already used
- * elsewhere on this page, never a fabricated activity summary.
- */
-function EvidenceSection({
-  analysis,
-  linkedHolding,
-  onViewMoreDetails,
-  t,
-}: {
-  analysis: InvestmentCaseAnalysisView;
-  linkedHolding: AlphaHoldingView | null;
-  onViewMoreDetails: () => void;
-  t: Translate;
-}) {
-  const missingCount = analysis.openQuestions.filter((q) => EVIDENCE_GAP_QUESTION_KINDS.includes(q.kind)).length;
-  const latest = analysis.currentThesis.latestDecisionReason ?? analysis.currentThesis.latestObservationStatement;
-
-  return (
-    <Stack gap="metadata">
-      <Label>{t("investmentCase.analysis.evidence.heading")}</Label>
-      <Inline gap="inter-section" wrap style={{ justifyContent: "space-between" }}>
-        <Inline gap="row" wrap>
-          <Text as="span" color="secondary">
-            {t("investmentCase.analysis.evidence.qualityHeading")}: {t(CONFIDENCE_KEY[analysis.confidence])}
-          </Text>
-          <Text as="span" color="secondary">
-            {t("investmentCase.analysis.evidence.coverageLabel")}:{" "}
-            {analysis.evidenceQuality
-              ? t(CONFIDENCE_KEY[analysis.evidenceQuality.coverage])
-              : t("investmentCase.atlasView.notAvailable")}
-          </Text>
-          <Text as="span" color="secondary">
-            {t("investmentCase.analysis.evidence.missingEvidenceHeading")}: {missingCount}
-          </Text>
-          {latest && (
-            <Text as="span" color="secondary">
-              {t("investmentCase.analysis.evidence.latestLabel")}: {latest}
-            </Text>
-          )}
-        </Inline>
-        {linkedHolding && (
-          <Link
-            href="#"
-            style={ACCENT_LINK_STYLE}
-            onClick={(event) => {
-              event.preventDefault();
-              onViewMoreDetails();
-            }}
-          >
-            {t("investmentCase.analysis.evidence.viewAll")}
-          </Link>
-        )}
-      </Inline>
     </Stack>
   );
 }

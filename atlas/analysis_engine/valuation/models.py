@@ -71,6 +71,23 @@ class ValuationFinding:
     `supporting_facts` whenever set, `None` when no current observation
     exists at all. Only `FCF_YIELD_RELATIVE` ever populates this; the
     scenario methods leave it `None`."""
+    historical_yields: tuple[float, ...] = ()
+    """(Outlook Intelligence Sprint 1) Every *other* valid market
+    observation's own FCF yield -- i.e. `cash_flow.py`'s own
+    `historical` dict, exposed rather than discarded after it decides
+    `UNDERVALUED`/`FAIRLY_VALUED`/`EXPENSIVE`. Populated only when the
+    relative classification itself is reachable (two or more valid
+    observations); empty otherwise, including when only `current_yield`
+    is real. This is not a new assumption or a new method -- it is the
+    exact evidence `FCF_YIELD_RELATIVE` already computes and already
+    relies on for its own real conclusion, now surfaced so
+    `atlas.analysis_engine.outlook` can derive a real re-rating range
+    (reversion toward this company's own recorded historical yields)
+    without recomputing raw facts or inventing a forward growth,
+    discount-rate, or terminal-multiple assumption (see
+    `atlas.analysis_engine.valuation.scenarios`'s own module docstring
+    for why that kind of assumption is refused). Only `FCF_YIELD_RELATIVE`
+    ever populates this; the scenario methods leave it empty."""
 
 
 @dataclass(frozen=True)

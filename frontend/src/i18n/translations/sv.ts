@@ -566,8 +566,40 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.header.currentAllocation": "Nuvarande andel: {{percent}}%",
   "investmentCase.header.valuationLabel": "Värdering",
   "investmentCase.header.portfolioFitLabel": "Portföljpassform",
-  "investmentCase.header.caseIdLabel": "Case-id: {{caseId}}",
   "investmentCase.header.untitled": "Investeringscase",
+
+  // ---------- investment case hero (UX-020 / APP-002 / APP-003) ----------
+  "investmentCase.hero.srHeading": "Atlas nuvarande syn",
+  "investmentCase.hero.loading": "Atlas förbereder sin nuvarande bedömning av {{ticker}}…",
+  "investmentCase.hero.why.aligned_positive":
+    "De grundläggande förutsättningarna förblir starka, och dagens värdering står inte i vägen.",
+  "investmentCase.hero.why.aligned_negative":
+    "Verksamheten har försvagats, och värderingen ger liten anledning att bortse från det.",
+  "investmentCase.hero.why.business_strong_valuation_weak":
+    "Den underliggande verksamheten förblir stark, även om dagens värdering lämnar liten marginal.",
+  "investmentCase.hero.why.business_weak_valuation_strong":
+    "Värderingen ser attraktiv ut här, även om den underliggande verksamheten väcker frågor som bör redas ut först.",
+  "investmentCase.hero.why.insufficient":
+    "Underlaget är hittills tunnare än vanligt, så den här bedömningen bör ses som en utgångspunkt snarare än en färdig slutsats.",
+  "investmentCase.hero.closing.changed": "Något har förändrats sedan din senaste genomgång — värt en närmare titt nedan.",
+  "investmentCase.hero.closing.none": "Inget har förändrats sedan ditt senaste besök.",
+  "investmentCase.hero.closing.outcomeMissing":
+    "En sak värd en stund: ett registrerat beslut här väntar fortfarande på sitt utfall.",
+  "investmentCase.hero.closing.reconciliationNeeded":
+    "En sak värd en stund: den här positionen behöver fortfarande stämmas av.",
+  "investmentCase.hero.closing.thesisStale":
+    "En sak värd en stund: tesen här har inte setts över på ett tag.",
+  "investmentCase.hero.closing.openQuestion":
+    "En sak värd en stund: det finns en öppen fråga som fortfarande är värd att reda ut.",
+  "investmentCase.hero.withheld.opening":
+    "Atlas har ännu inte tillräckligt underlag för att bilda en tydlig syn på {{ticker}}.",
+  "investmentCase.hero.withheld.reason":
+    "Det som finns tillgängligt hittills lämnar verkliga, olösta frågor som gör att Atlas inte kan dra en säker slutsats åt något håll.",
+  "investmentCase.hero.withheld.closing":
+    "Det finns inget att agera på idag — det här är inte en lucka Atlas har förbisett, utan en ärlig återspegling av vad som går att veta just nu.",
+  "investmentCase.hero.asOf": "Speglar Atlas analys per {{when}}.",
+  "investmentCase.hero.riskLabel": "{{category}}risk: {{status}}",
+  "investmentCase.hero.supportingDetailsLabel": "Kompletterande detaljer",
 
   // ---------- investment case workspace v2: executive summary (Sprint 2) ----------
   "investmentCase.executiveSummary.heading": "Sammanfattning",
@@ -871,6 +903,203 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.origin.dailyBrief": "Öppnad från Dagens genomgång",
   "investmentCase.origin.discovery": "Öppnad från Discovery",
   "investmentCase.origin.companion": "Öppnad från Atlas Companion",
+
+  // ---------- investment case figma-fidelity rebuild: key metrics / strength-concern-priority ----------
+  "investmentCase.keyMetrics.heading": "Nyckeltal",
+  "investmentCase.keyMetrics.recommendationLabel": "Rekommendation",
+  "investmentCase.keyMetrics.convictionLabel": "Övertygelse",
+  "investmentCase.keyMetrics.valuationSupportLabel": "Nedsidesstöd",
+  "investmentCase.valuationSupport.present": "Nedsidesstöd finns",
+  "investmentCase.valuationSupport.absent": "Nedsidesstöd saknas",
+  "investmentCase.valuationSupport.unresolved": "Värderingsslutsats ej fastställd",
+  "investmentCase.keyMetrics.expectedReturnLabel": "Förväntad avkastning",
+  "investmentCase.keyMetrics.upsideDownsideLabel": "Uppsida / nedsida",
+  "investmentCase.keyMetrics.notYetAvailable": "Inte tillgängligt ännu",
+  "investmentCase.keyMetrics.expectedReturnCaption": "Långsiktigt tillväxt- och återgångsintervall -- inte en kursmålsättning.",
+
+  // ---------- Recommendation / Decision Intelligence Sprint 1: Outlook<->rekommendation-samstämmighet ----------
+  "investmentCase.outlookAlignment.corroborates": "Atlas oberoende beräknade långsiktiga utsikter pekar också på svag förväntad avkastning, vilket överensstämmer med denna rekommendation.",
+  "investmentCase.outlookAlignment.diverges": "Atlas oberoende beräknade långsiktiga utsikter pekar på starkare förväntad avkastning än vad denna rekommendation speglar -- en verklig spänning värd att väga in, inte en motsägelse.",
+  "investmentCase.outlookAlignment.mixed": "Atlas oberoende beräknade långsiktiga utsikter är blandade och varken tydligt bekräftar eller avviker från denna rekommendation.",
+  "investmentCase.outlookAlignment.unavailable": "Långsiktiga utsikter är inte tillgängliga ännu för jämförelse med denna rekommendation.",
+
+  "investmentCase.strengthConcernPriority.strengthLabel": "Största styrka",
+  "investmentCase.strengthConcernPriority.concernLabel": "Största orosmoment",
+  "investmentCase.strengthConcernPriority.priorityLabel": "Aktuell prioritet",
+  "investmentCase.strengthConcernPriority.noStrength": "Ingen styrka har tydligt bevisstöd ännu.",
+  "investmentCase.strengthConcernPriority.noConcern": "Inget orosmoment har tydligt bevisstöd ännu.",
+  "investmentCase.currentPriority.none": "Inget är för närvarande utestående för det här caset.",
+  "investmentCase.concern.thesis_risk": "Själva tesen bär på en identifierad risk värd att bevaka.",
+
+  // ---------- investment case figma-fidelity rebuild: atlas outlook ----------
+  "investmentCase.outlook.heading": "Atlas utsikter",
+  "investmentCase.outlook.notYetComputed": "Inte beräknat ännu",
+  "investmentCase.outlook.shortTerm.heading": "Kort sikt",
+  "investmentCase.outlook.longTerm.heading": "Lång sikt",
+  "investmentCase.outlook.expectedReturnLabel": "Värderingsimplicerat avkastningsintervall",
+  "investmentCase.outlook.convictionLabel": "Övertygelse",
+  "investmentCase.outlook.bullCaseLabel": "Värdering — optimistiskt",
+  "investmentCase.outlook.baseCaseLabel": "Värdering — bas",
+  "investmentCase.outlook.bearCaseLabel": "Värdering — pessimistiskt",
+  "investmentCase.outlook.momentumLabel": "Momentum",
+  "investmentCase.outlook.keyDriversLabel": "Nyckeldrivkrafter",
+  "investmentCase.outlook.whatChangedLabel": "Vad som ändrats",
+  "investmentCase.outlook.noDrivers": "Inga nyckeldrivkrafter identifierade ännu.",
+  "investmentCase.outlook.noChanges": "Inget har ändrats nyligen.",
+
+  // ---------- outlook intelligence sprint 1: real expected return / scenarios / momentum / drivers ----------
+  "investmentCase.outlook.returnBasisNote": "{{basis}}, över {{low}}–{{high}} månader.",
+  "investmentCase.outlook.basis.cumulative": "Kumulativ avkastning",
+  "investmentCase.outlook.basis.annualized": "Årlig avkastning",
+  "investmentCase.outlook.gap.noHistoricalValuationRange":
+    "Inte tillräckligt med historisk värderingsdata för att bygga ett intervall ännu.",
+  "investmentCase.outlook.gap.valuationNotConclusive": "Ingen aktuell värdering att utgå från ännu.",
+  "investmentCase.outlook.gap.noDurableGrowthTrajectory":
+    "Ingen verklig, nyligen uppvisad, varaktig tillväxtbana som Atlas ansvarsfullt kan projicera framåt ännu — aldrig påhittat här.",
+  "investmentCase.outlook.momentum.strengthening": "Förstärks",
+  "investmentCase.outlook.momentum.stable": "Stabil",
+  "investmentCase.outlook.momentum.mixed": "Blandad",
+  "investmentCase.outlook.momentum.weakening": "Försvagas",
+  "investmentCase.outlook.rerangeAssumptionNote":
+    "Förutsätter att det fria kassaflödet ligger kvar på dagens nivå och att endast marknadens egen värderingsmultipel förändras — ingen prognos för verksamhetens utveckling.",
+  "investmentCase.outlook.scenarioAssumptionNote": "Förutsätter att marknaden omvärderar till en FCF-avkastning på {{targetYield}}.",
+  "investmentCase.outlook.scenariosCaption":
+    "Endast värderingsscenarier — baserat på {{count}} historiska FCF-avkastningsobservationer, inklusive eventuella ovanliga perioder.",
+  "investmentCase.outlook.growthScenariosCaption":
+    "Affärstillväxtscenarier som delar ett terminalvärderingsantagande — tillväxten baseras på {{growthCount}} intäktsstyrkta historiska observationer; terminalavkastningen på {{count}} historiska FCF-avkastningsobservationer.",
+  "investmentCase.outlook.convictionCaption":
+    "Speglar caset-övergripande övertygelse, begränsad när denna horisonts egna underlag är otillräckligt — ingen självständigt modellerad utsiktsövertygelse.",
+  "investmentCase.outlook.driver.valuationRerating": "Omvärdering",
+  "investmentCase.outlook.driver.revenueTrend": "Senaste intäktstrend",
+  "investmentCase.outlook.driver.growth": "Tillväxt",
+  "investmentCase.outlook.driver.capitalAllocation": "Kapitalallokering",
+  "investmentCase.outlook.driver.financialRisk": "Finansiell risk",
+  "investmentCase.outlook.driver.businessRisk": "Affärsrisk",
+  "investmentCase.outlook.driver.valuationRisk": "Värderingsrisk",
+  "investmentCase.outlook.driver.fcfGrowthTrend": "Senaste trend för fritt kassaflöde",
+  "investmentCase.outlook.driver.debtTrend": "Skuldtrend",
+  "investmentCase.outlook.driver.marginTrend": "Rörelsemarginaltrend",
+
+  // ---------- long-term expected return v1 ----------
+  "investmentCase.outlook.growthAssumptionNote":
+    "Förutsätter att det fria kassaflödet växer med {{growthRate}} årligen i {{years}} år, baserat på bolagets egen faktiska historik, och att marknaden sedan omvärderar till en FCF-avkastning på {{targetYield}} — ingen prognos för verksamhetens framtida utveckling.",
+  "investmentCase.outlook.scenarioGrowthAssumptionNote":
+    "Förutsätter {{growthRate}} årlig tillväxt i fritt kassaflöde och en terminal FCF-avkastning på {{targetYield}}.",
+
+  // ---------- long-term expected return calibration sprint ----------
+  "investmentCase.outlook.growthBullCaseLabel": "Affärstillväxt — optimistiskt",
+  "investmentCase.outlook.growthBaseCaseLabel": "Affärstillväxt — bas",
+  "investmentCase.outlook.growthBearCaseLabel": "Affärstillväxt — pessimistiskt",
+  "investmentCase.outlook.expectedReturnLabel.growth": "Förväntat avkastningsintervall",
+
+  // ---------- investment case figma-fidelity rebuild: investment argument ----------
+  "investmentCase.argument.heading": "Investeringsargument",
+  "investmentCase.argument.supportsHeading": "Talar för caset",
+  "investmentCase.argument.challengesHeading": "Talar mot caset",
+  "investmentCase.argument.supportsEmpty": "Inget har klassificerats som en stödjande faktor ännu.",
+  "investmentCase.argument.challengesEmpty": "Inget har klassificerats som en motverkande faktor ännu.",
+  "investmentCase.argument.supports.growth": "Tillväxttrenderna är starka nog för att stödja caset.",
+  "investmentCase.argument.supports.capital_allocation":
+    "Kapitalallokeringen har varit disciplinerad nog för att stödja caset.",
+  "investmentCase.argument.supports.valuation": "Dagens värdering stödjer caset snarare än att motverka det.",
+  "investmentCase.argument.challenges.growth": "Avtagande tillväxt talar mot caset.",
+  "investmentCase.argument.challenges.capital_allocation":
+    "Kapitalallokeringen arbetar för närvarande mot aktieägarna, vilket talar mot caset.",
+  "investmentCase.argument.challenges.valuation":
+    "Dagens värdering framstår som dyr i förhållande till bolagets egen historik, vilket talar mot caset.",
+  "investmentCase.argument.challenges.business_risk": "En identifierad affärsrisk talar mot caset.",
+  "investmentCase.argument.challenges.financial_risk": "En identifierad finansiell risk talar mot caset.",
+  "investmentCase.argument.challenges.valuation_risk": "En identifierad värderingsrisk talar mot caset.",
+
+  // ---------- investment case figma-fidelity rebuild: atlas reasoning ----------
+  "investmentCase.reasoning.heading": "Atlas resonemang",
+  "investmentCase.reasoning.growthLabel": "Tillväxt",
+  "investmentCase.reasoning.valuationLabel": "Värdering",
+  "investmentCase.reasoning.financialHealthLabel": "Finansiell hälsa",
+  "investmentCase.reasoning.businessQualityLabel": "Verksamhetens kvalitet",
+  "investmentCase.reasoning.notYetEvaluated": "Inte utvärderat ännu.",
+  "investmentCase.reasoning.growth.strong": "Tillväxten är stark och stödjer caset.",
+  "investmentCase.reasoning.growth.moderate": "Tillväxten är måttlig — en verklig men inte avgörande faktor.",
+  "investmentCase.reasoning.growth.weak": "Tillväxten är svag och talar mot caset.",
+  "investmentCase.reasoning.valuation.undervalued": "Verksamheten framstår som undervärderad till dagens pris.",
+  "investmentCase.reasoning.valuation.fairly_valued": "Verksamheten framstår som rimligt värderad till dagens pris.",
+  "investmentCase.reasoning.valuation.expensive": "Verksamheten framstår som dyr till dagens pris.",
+  "investmentCase.reasoning.financialHealth.low":
+    "Finansiell risk är låg — balansräkningen är inget bekymmer på kort sikt.",
+  "investmentCase.reasoning.financialHealth.moderate":
+    "Finansiell risk är måttlig — värt att bevaka, men inget bekymmer ännu.",
+  "investmentCase.reasoning.financialHealth.high": "Finansiell risk är hög och kräver uppmärksamhet.",
+  "investmentCase.reasoning.businessQuality.strong": "Verksamhetens kvalitet är stark och stödjer uthållighet.",
+  "investmentCase.reasoning.businessQuality.moderate":
+    "Verksamhetens kvalitet är måttlig — uthålligheten är inte fullt fastställd ännu.",
+  "investmentCase.reasoning.businessQuality.weak":
+    "Verksamhetens kvalitet är svag och väcker frågor om uthållighet.",
+
+  // ---------- investment case figma-fidelity rebuild: company health assessment ----------
+  "investmentCase.companyHealth.heading": "Bedömning av bolagets hälsa",
+  "investmentCase.companyHealth.businessQualityLabel": "Verksamhetens kvalitet",
+  "investmentCase.companyHealth.financialStrengthLabel": "Finansiell styrka",
+  "investmentCase.companyHealth.managementGovernanceLabel": "Ledning & styrning",
+  "investmentCase.companyHealth.capitalAllocationLabel": "Kapitalallokering",
+  "investmentCase.companyHealth.competitivePositionLabel": "Konkurrensposition",
+  "investmentCase.companyHealth.expandLabel": "Visa underliggande bevis",
+  "investmentCase.companyHealth.supportingHeading": "Stödjande bevis",
+  "investmentCase.companyHealth.contradictingHeading": "Motsägande bevis",
+  "investmentCase.companyHealth.missingHeading": "Saknade bevis",
+  "investmentCase.companyHealth.noneFound": "Inget registrerat.",
+  "investmentCase.companyHealth.notYetEvaluated": "Inte utvärderat ännu — de bevis som krävs har inte samlats in.",
+  "investmentCase.companyHealth.businessQuality.strong":
+    "Verksamhetens kvalitet ser stark ut utifrån de bevis som samlats in hittills.",
+  "investmentCase.companyHealth.businessQuality.moderate":
+    "Verksamhetens kvalitet ser måttlig ut utifrån de bevis som samlats in hittills.",
+  "investmentCase.companyHealth.businessQuality.weak":
+    "Verksamhetens kvalitet ser svag ut utifrån de bevis som samlats in hittills.",
+  "investmentCase.companyHealth.financialStrength.low": "Finansiell risk bedöms för närvarande som låg.",
+  "investmentCase.companyHealth.financialStrength.moderate": "Finansiell risk bedöms för närvarande som måttlig.",
+  "investmentCase.companyHealth.financialStrength.high": "Finansiell risk bedöms för närvarande som hög.",
+  "investmentCase.companyHealth.management.strong":
+    "Ledning och styrning ser stark ut utifrån de bevis som samlats in hittills.",
+  "investmentCase.companyHealth.management.moderate":
+    "Ledning och styrning ser måttlig ut utifrån de bevis som samlats in hittills.",
+  "investmentCase.companyHealth.management.weak":
+    "Ledning och styrning ser svag ut utifrån de bevis som samlats in hittills.",
+  "investmentCase.companyHealth.capitalAllocation.strong":
+    "Kapitalallokeringen ser stark ut utifrån de bevis som samlats in hittills.",
+  "investmentCase.companyHealth.capitalAllocation.moderate":
+    "Kapitalallokeringen ser måttlig ut utifrån de bevis som samlats in hittills.",
+  "investmentCase.companyHealth.capitalAllocation.weak":
+    "Kapitalallokeringen ser svag ut utifrån de bevis som samlats in hittills.",
+  "investmentCase.companyHealth.competitivePosition.strong":
+    "Konkurrenspositionen ser stark ut utifrån de bevis som samlats in hittills.",
+  "investmentCase.companyHealth.competitivePosition.moderate":
+    "Konkurrenspositionen ser måttlig ut utifrån de bevis som samlats in hittills.",
+  "investmentCase.companyHealth.competitivePosition.weak":
+    "Konkurrenspositionen ser svag ut utifrån de bevis som samlats in hittills.",
+
+  // ---------- investment case figma-fidelity rebuild: interpreted financial evidence ----------
+  "investmentCase.financialEvidence.heading": "Tolkad finansiell bevisning",
+  "investmentCase.financialEvidence.operatingMarginLabel": "Rörelsemarginal",
+  "investmentCase.financialEvidence.detailedFinancialsLabel": "Detaljerad finansiell data, källor & metod",
+  "investmentCase.financialEvidence.notEnoughHistory": "Inte tillräcklig historik för att tolka ännu.",
+  "investmentCase.financialEvidence.revenue.up": "Intäkterna växer — efterfrågan fortsätter att expandera.",
+  "investmentCase.financialEvidence.revenue.down": "Intäkterna minskar — värt att bevaka om trenden håller i sig.",
+  "investmentCase.financialEvidence.revenue.flat": "Intäkterna är i princip oförändrade jämfört med föregående period.",
+  "investmentCase.financialEvidence.operatingMargin.up":
+    "Rörelsemarginalen ökar — verksamheten omvandlar intäkter till vinst allt effektivare.",
+  "investmentCase.financialEvidence.operatingMargin.down":
+    "Rörelsemarginalen krymper — lönsamheten är under press.",
+  "investmentCase.financialEvidence.operatingMargin.flat":
+    "Rörelsemarginalen är i princip oförändrad jämfört med föregående period.",
+  "investmentCase.financialEvidence.freeCashFlow.up":
+    "Det fria kassaflödet växer, vilket ger verksamheten mer utrymme att investera, dela ut kapital eller möta en nedgång.",
+  "investmentCase.financialEvidence.freeCashFlow.down":
+    "Det fria kassaflödet minskar, vilket minskar verksamhetens flexibilitet.",
+  "investmentCase.financialEvidence.freeCashFlow.flat":
+    "Det fria kassaflödet är i princip oförändrat jämfört med föregående period.",
+  "investmentCase.financialEvidence.totalDebt.up": "Den totala skulden ökar — värt att bevaka tillsammans med kassaflödet.",
+  "investmentCase.financialEvidence.totalDebt.down": "Den totala skulden minskar, ett litet plus för balansräkningen.",
+  "investmentCase.financialEvidence.totalDebt.flat":
+    "Den totala skulden är i princip oförändrad jämfört med föregående period.",
 
   // ---------- daily brief v2 (Workspace Migration Phase 4) ----------
   "dailyBrief.title": "Dagens genomgång",

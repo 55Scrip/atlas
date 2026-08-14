@@ -1,41 +1,54 @@
 """Direction Selector (`docs/atlas_decision_engine/DE-008-Direction-Selection.md`;
-"Recommendation Backend Step 3").
+"Recommendation Backend Step 3"; `DE-016` "Recommendation Integration
+Design"/implementation sprint).
 
 The first executable Direction Selector -- the capability
 `atlas.analysis_engine.recommendation`'s own module docstring has named,
 since ATLAS-020, as "gap 1: no Direction selector exists." This module
-closes that gap for exactly the four outcomes this codebase can honestly
-support with real, sufficient signals today: `RecommendationDirection
-.HOLD`, `.TRIM`, `.NO_ACTION`, and `None` (RecommendationWithheld --
+now supports six outcomes: `RecommendationDirection.HOLD`, `.TRIM`,
+`.NO_ACTION`, `.BUY`, `.ADD`, and `None` (RecommendationWithheld --
 `DE-008` §1's "not a seventh direction"; `None` is the absence of a
 `RecommendationDirection`, never a fourth enum-shaped value).
 
-**`RecommendationDirection.BUY`, `.ADD`, and `.EXIT` are all structurally
-unreachable from this module.** Not by a runtime check, an exception, or
-a TODO -- there is no branch below that constructs any of the three.
-
-BUY/ADD: `DE-008` §21 invariants 1/2 block both on **Valuation Support
-for Capital Deployment**, a distinct, assumption-based conclusion
-(`DE-004` §5's scenario-based value range) that does not exist as a
-computed concept anywhere in this codebase today
-(`ValuationMethodKind.SCENARIO_BEAR/BASE/BULL` is permanently
-`INSUFFICIENT_INPUT` -- see `atlas/analysis_engine/valuation/contracts.py`).
-Inventing a substitute for it here -- a numeric threshold, an interim
-proxy, a "good enough" mapping from `ValuationStatus.UNDERVALUED` -- is
-exactly what `DE-008` §21 invariant 11 and §23's Rejected Alternatives
-forbid.
-
-EXIT: `DE-008` §1's EXIT row requires "a *specific, named* thesis
-dependency has failed, or Business Evaluation has reversed." Neither
-trigger has a real, sufficient signal in this codebase today -- see
-"On EXIT" below for the full reasoning (an earlier version of this
-module treated ordinary Counter-Evidence as sufficient; that was a
-genuine semantic error, found and corrected during pre-commit review, not
-a design choice).
-
-When any of these three capabilities is eventually built, the
-corresponding direction becomes reachable by widening this module's own
+**`RecommendationDirection.EXIT` remains structurally unreachable from
+this module.** Not by a runtime check, an exception, or a TODO -- there
+is no branch below that constructs it. `DE-008` §1's EXIT row requires
+"a *specific, named* thesis dependency has failed, or Business Evaluation
+has reversed." Neither trigger has a real, sufficient signal in this
+codebase today -- see "On EXIT" below for the full reasoning (an earlier
+version of this module treated ordinary Counter-Evidence as sufficient;
+that was a genuine semantic error, found and corrected during pre-commit
+review, not a design choice). When a real thesis-invalidation signal is
+eventually built, EXIT becomes reachable by widening this module's own
 logic, not by loosening `RecommendationDirection`'s definition.
+
+**`RecommendationDirection.BUY`/`.ADD` are now genuinely reachable.**
+`DE-008` §21 invariants 1/2 block both on **Valuation Support for Capital
+Deployment** -- a prerequisite `DE-008` itself named but left
+unspecified as a computable capability (`DE-008` §4, §24). `DE-015`
+("Atlas Valuation Support Doctrine") closed that specification gap with
+a real, computed `ValuationSupport.status`
+(`atlas.analysis_engine.valuation.support`); the `DE-016` design sprint
+proved the already-adopted `DE-008` matrix requires no amendment to
+consume it -- only wiring. Per `DE-015` §18, this module reads only the
+public `ValuationSupportStatus` enum (`SUPPORTED`/`NOT_SUPPORTED`/
+`INSUFFICIENT_INPUT`) -- never `ValuationSupport.reasoning`, `.gap`, or
+any of the private proof-path internals (scenario envelope, growth
+observations, Net-Cash proof), which stay exactly as private as `DE-015`
+requires (see `test_proof_boundary.py`).
+
+`SUPPORTED` only ever *removes one blocking condition* inside the two
+matrix cells `DE-008` §20 already marks as blocked purely by this missing
+prerequisite (not-held: `UNDERVALUED`/`FAIRLY_VALUED` + no dampening;
+held: `UNDERVALUED` + no dampening) -- it is read nowhere else in this
+function, never overrides Business `WEAK`, never overrides dampening, and
+never touches the already-independently-resolved `FAIRLY_VALUED`+held
+(`HOLD`) or `EXPENSIVE` (`TRIM`/`NO_ACTION`) cells. `NOT_SUPPORTED` and
+`INSUFFICIENT_INPUT` are deliberately not distinguished anywhere below --
+both mean "the prerequisite is not established," identical to every
+company's permanent state before `DE-015` was implemented (`DE-016`
+Part 11: `DE-008` never names `NOT_SUPPORTED` as a TRIM/EXIT trigger, so
+none is invented here).
 
 **On EXIT.** The only candidate signal this codebase computes today for
 "a thesis dependency has failed" is `ContradictionSummary
@@ -56,7 +69,8 @@ failed" -- inventing that distinction (a count threshold, a severity
 tier, a subset of `ObservationEpistemicStatus`) would itself be
 fabricated doctrine, not an application of it. Until a real,
 doctrine-grounded thesis-invalidation signal exists, EXIT stays
-reserved-but-unreachable, exactly like BUY/ADD.
+reserved-but-unreachable -- unlike BUY/ADD (see above), whose own missing
+prerequisite (`DE-015`'s `ValuationSupport`) now exists.
 
 **Pure derivation, nothing else.** `select_direction` reads only
 already-computed analysis results, passed in as plain arguments -- the
@@ -70,6 +84,11 @@ Valuation Engine, Risk, and Reasoning. This module:
 - does not compute Valuation -- `ValuationStatus` is an input, taken from
   the already-real `atlas.analysis_engine.valuation` pipeline, never
   recomputed here;
+- does not compute Valuation Support for Capital Deployment --
+  `ValuationSupportStatus` is an input, taken from the already-real
+  `atlas.analysis_engine.valuation.support.evaluate_valuation_support`,
+  never recomputed here, and only its public `status` is read (`DE-015`
+  §18) -- never `.reasoning`, `.gap`, or any private proof-path content;
 - does not compute Recommendation Conviction, and never branches on a
   Conviction *level* -- only on the same existence-floor facts
   (`EvaluationState` x4, `EvidenceCoverageLevel`)
@@ -134,6 +153,7 @@ from enum import Enum
 from atlas.analysis_engine.business_contracts import BusinessCategoryStatus
 from atlas.analysis_engine.recommendation import RecommendationDirection
 from atlas.analysis_engine.valuation.contracts import ValuationStatus
+from atlas.analysis_engine.valuation.support import ValuationSupportStatus
 from atlas.decision_engine.contracts import EvaluationState, EvidenceCoverageLevel, HoldingLinkage
 
 __all__ = ["select_direction"]
@@ -208,14 +228,23 @@ def select_direction(
     growth_status: BusinessCategoryStatus,
     capital_allocation_status: BusinessCategoryStatus,
     valuation_status: ValuationStatus,
+    valuation_support_status: ValuationSupportStatus,
     has_portfolio_dampening: bool,
     has_high_financial_or_valuation_risk: bool,
 ) -> RecommendationDirection | None:
     """Deterministic: identical inputs always produce an identical
     result (or identically `None`). Implements `DE-008` §18's
-    conflict-resolution protocol for the four reachable outcomes only --
-    see this module's own docstring for why BUY/ADD/EXIT can never be
-    constructed.
+    conflict-resolution protocol for the six reachable outcomes (`DE-016`
+    made BUY/ADD reachable; EXIT remains structurally unreachable -- see
+    this module's own docstring).
+
+    `valuation_support_status` (`DE-015`'s `ValuationSupportStatus`) is
+    read in exactly two branches below -- the two `DE-008` §20 matrix
+    cells that were `None` (RecommendationWithheld) purely because this
+    prerequisite did not exist as a computed concept. `NOT_SUPPORTED` and
+    `INSUFFICIENT_INPUT` are never distinguished from each other anywhere
+    in this function -- both leave those two cells exactly as they were
+    before `DE-015`.
 
     Returns `None` for RecommendationWithheld -- never a fourth
     `RecommendationDirection`-shaped value, matching `DE-008` §1's "not a
@@ -261,25 +290,51 @@ def select_direction(
         return None
 
     # From here: business is POSITIVE (MODERATE/STRONG, DE-008's own
-    # grouping) -- BUY/ADD's Business leg would be satisfied, but
-    # Valuation Support for Capital Deployment never is (see module
-    # docstring); nothing below ever returns BUY or ADD.
+    # grouping) -- BUY/ADD's Business leg is satisfied. Whether the
+    # Valuation Support for Capital Deployment leg is also satisfied is
+    # read below, only inside the two cells DE-008 §20 marks as blocked
+    # purely by that prerequisite.
 
     if valuation_status in _INCONCLUSIVE_VALUATION_STATUSES:
         return None
+
+    valuation_support_established = valuation_support_status is ValuationSupportStatus.SUPPORTED
 
     if holding_linkage is HoldingLinkage.PRESENT:
         # DE-008 §20 "Held" table. (No thesis-invalidation branch exists
         # to exclude here -- see stage 3's own comment above.)
         if valuation_status is ValuationStatus.UNDERVALUED:
-            return RecommendationDirection.TRIM if dampening else None
+            if dampening:
+                return RecommendationDirection.TRIM
+            # DE-008 §7/§21 invariant 2: ADD requires the same standard
+            # as BUY. UNDERVALUED + held + no dampening was blocked only
+            # by the missing prerequisite (§20's own note: this cell does
+            # not fall back to HOLD, since UNDERVALUED is HOLD's own
+            # favorable extreme) -- never touches the FAIRLY_VALUED/HOLD
+            # cell below, which was never blocked in the first place.
+            return RecommendationDirection.ADD if valuation_support_established else None
         if valuation_status is ValuationStatus.FAIRLY_VALUED:
+            # Unchanged by DE-016: FAIRLY_VALUED + held + no dampening
+            # already satisfies HOLD's own criterion directly (DE-008
+            # §10.2) and was never gated on Valuation Support for Capital
+            # Deployment -- valuation_support_status is not read here.
             return RecommendationDirection.TRIM if dampening else RecommendationDirection.HOLD
-        # ValuationStatus.EXPENSIVE
+        # ValuationStatus.EXPENSIVE -- unchanged; never reads
+        # valuation_support_status (DE-008 §21 invariant 6 by extension:
+        # a negative Valuation Evidence pole is TRIM's own,
+        # self-sufficient trigger, independent of this prerequisite).
         return RecommendationDirection.TRIM
 
     # DE-008 §20 "Not held" table.
     if valuation_status in (ValuationStatus.UNDERVALUED, ValuationStatus.FAIRLY_VALUED):
-        return RecommendationDirection.NO_ACTION if dampening else None
-    # ValuationStatus.EXPENSIVE
+        if dampening:
+            return RecommendationDirection.NO_ACTION
+        # DE-008 §21 invariant 1. Both UNDERVALUED and FAIRLY_VALUED are
+        # treated identically here, per §20's own note: neither alone
+        # constitutes Valuation Support for Capital Deployment, so
+        # neither is ranked above the other now that the prerequisite is
+        # a real, separate check.
+        return RecommendationDirection.BUY if valuation_support_established else None
+    # ValuationStatus.EXPENSIVE -- unchanged; never reads
+    # valuation_support_status.
     return RecommendationDirection.NO_ACTION

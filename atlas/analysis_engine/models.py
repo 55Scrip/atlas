@@ -40,9 +40,12 @@ from atlas.analysis_engine.contracts import CapabilityStatus
 from atlas.analysis_engine.conviction import ConvictionAssessment
 from atlas.analysis_engine.findings import Finding
 from atlas.analysis_engine.investment_case_synthesis import InvestmentCaseSynthesis
+from atlas.analysis_engine.outlook import Outlook
 from atlas.analysis_engine.recommendation import RecommendationGateResult
+from atlas.analysis_engine.recommendation_outlook_context import RecommendationOutlookContext
 from atlas.analysis_engine.risk.models import RiskAnalysisResult
 from atlas.analysis_engine.valuation.models import ValuationEngineResult
+from atlas.analysis_engine.valuation.support import ValuationSupport
 from atlas.decision_engine.contracts import (
     BusinessEvaluationResult,
     EvidenceCoverageLevel,
@@ -174,6 +177,49 @@ class CanonicalAnalysis:
     `atlas.analysis_engine.investment_case_synthesis`'s own module
     docstring for the full derivation rules and why this is not a
     second reasoning engine."""
+
+    # -- New in Outlook Intelligence Sprint 1, real (additive -- every
+    # field above keeps its exact prior meaning; a further, synthesized
+    # view derived from business_analysis/valuation_engine/risk_analysis/
+    # conviction/synthesis above, never a second computation of any of
+    # them) -------------------------------------------------------------
+    outlook: Outlook
+    """Short-Term and Long-Term Expected Return/Scenarios/Conviction/Key
+    Drivers -- see `atlas.analysis_engine.outlook`'s own module
+    docstring for the full derivation rules and why this is not a
+    forward-looking scenario-modeling engine in disguise. `momentum` on
+    both horizons is always `OutlookMomentumKind.UNAVAILABLE` here (see
+    that module's own docstring for why); a caller with a
+    `ChangeIntelligence` fills it in via `derive_outlook_momentum`."""
+
+    # -- New in Recommendation / Decision Intelligence Sprint 1, real
+    # (additive -- `recommendation` above keeps its exact prior meaning
+    # and is never read by, or fed back into, this field's own
+    # derivation; `outlook` above likewise keeps its exact prior meaning.
+    # See `recommendation_outlook_context.py`'s own module docstring for
+    # why this stays a sibling, disclosure-only fact, never a gating
+    # input to either `recommendation` or `outlook`.) -------------------
+    recommendation_outlook_context: RecommendationOutlookContext
+    """Whether the already-computed `recommendation.recommendation` and
+    the already-computed `outlook` currently corroborate or diverge, per
+    horizon -- context for the reader, never a cause of either
+    conclusion."""
+
+    # -- Valuation Support for Capital Deployment (`DE-015`), real
+    # (additive -- `valuation_engine` above keeps its exact prior
+    # meaning; this is a further, independent conclusion derived from
+    # it, never a second computation of it. `DE-016` forwards only its
+    # public `.status` into `recommendation` above (`DE-015` §18) --
+    # `.reasoning`/`.gap` and every private proof-path detail remain
+    # unread by it; see `valuation/support.py`'s own module docstring) --
+    valuation_support: ValuationSupport
+    """Whether today's market valuation supports deploying new capital --
+    a narrower, independent domain question from `valuation_engine`'s own
+    relative-to-history conclusions. Real and case-specific as of `DE-015`
+    (see `valuation/support.py`'s own module docstring); its public
+    `status` is the `DE-008` BUY/ADD "Valuation Support for Capital
+    Deployment" prerequisite, consumed by `recommendation` above via
+    `DE-016`'s wiring -- `.reasoning`/`.gap` are not."""
 
     # -- New this sprint, honestly not yet implemented -----------------
     catalysts: UnavailableCapability

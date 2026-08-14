@@ -59,8 +59,10 @@ from atlas.analysis_engine.conviction import calculate_conviction
 from atlas.analysis_engine.findings import Finding, FindingKind, FindingProducer, FindingSeverity
 from atlas.analysis_engine.investment_case_synthesis import synthesize_investment_case
 from atlas.analysis_engine.models import CanonicalAnalysis, Identity, RiskSection, UnavailableCapability
+from atlas.analysis_engine.outlook import build_outlook
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
 from atlas.analysis_engine.recommendation import evaluate_recommendation_gate
+from atlas.analysis_engine.recommendation_outlook_context import derive_recommendation_outlook_context
 from atlas.analysis_engine.risk.contracts import RiskStatus
 from atlas.analysis_engine.risk.models import RiskAnalysisResult
 from atlas.analysis_engine.risk.pipeline import evaluate_risk
@@ -68,6 +70,7 @@ from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, Valua
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
 from atlas.analysis_engine.valuation.models import ValuationEngineResult
 from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
+from atlas.analysis_engine.valuation.support import evaluate_valuation_support
 from atlas.decision_engine.contracts import (
     DecisionEngineInput,
     DecisionEngineOutput,
@@ -507,6 +510,16 @@ def assemble_analysis(
     business_facts = extract_facts_from_records(business_records, evaluated_at=generated_at)
     market_facts = extract_valuation_facts_from_records(business_records, evaluated_at=generated_at)
     valuation_engine = evaluate_valuation(business_facts, market_facts, evaluated_at=generated_at)
+    # Valuation Support for Capital Deployment (`DE-015`): an independent
+    # conclusion derived from valuation_engine plus raw business/valuation
+    # facts (never Business Analysis/Outlook/Portfolio Intelligence
+    # conclusions -- see valuation/support.py's own module docstring).
+    # `DE-016` forwards only its public `.status` into
+    # evaluate_recommendation_gate below (`DE-015` §18) -- Outlook and
+    # Portfolio Intelligence still never read it.
+    valuation_support = evaluate_valuation_support(
+        valuation_engine, business_facts, market_facts, generated_at=generated_at
+    )
     fcf_yield_finding = next(
         f for f in valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE
     )
@@ -606,6 +619,7 @@ def assemble_analysis(
         conviction=conviction,
         business_analysis=business_analysis,
         valuation_engine=valuation_engine,
+        valuation_support=valuation_support,
         has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
         has_open_questions=bool(open_questions),
         generated_at=generated_at,
@@ -680,6 +694,30 @@ def assemble_analysis(
         generated_at=generated_at,
     )
 
+    # Outlook Intelligence Sprint 1 / Long-Term Expected Return v1: from
+    # the exact same already-computed business_analysis/valuation_engine
+    # /risk_analysis/conviction/synthesis/business_facts this function
+    # just assembled -- see outlook.py's own module docstring for why
+    # momentum is left UNAVAILABLE at this layer.
+    outlook = build_outlook(
+        business_analysis=business_analysis,
+        valuation_engine=valuation_engine,
+        risk_analysis=risk_analysis,
+        conviction=conviction,
+        synthesis=synthesis,
+        business_facts=business_facts,
+        generated_at=generated_at,
+    )
+
+    # Recommendation / Decision Intelligence Sprint 1: a disclosure-only
+    # fact about the two already-computed objects immediately above --
+    # never fed back into either. See recommendation_outlook_context.py's
+    # own module docstring for the DE-012/DE-014 boundary this respects.
+    recommendation_outlook_context = derive_recommendation_outlook_context(
+        recommendation.recommendation,
+        outlook,
+    )
+
     return CanonicalAnalysis(
         identity=Identity(case_id=str(decision_output.case_id)),
         business=decision_output.business_evaluation,
@@ -697,6 +735,9 @@ def assemble_analysis(
         risk_analysis=risk_analysis,
         open_questions=open_questions,
         synthesis=synthesis,
+        outlook=outlook,
+        recommendation_outlook_context=recommendation_outlook_context,
+        valuation_support=valuation_support,
         catalysts=UnavailableCapability(reason=CapabilityStatus.NOT_YET_IMPLEMENTED),
         scenario_analysis=UnavailableCapability(reason=CapabilityStatus.NOT_YET_IMPLEMENTED),
         generated_at=generated_at,

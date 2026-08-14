@@ -16,13 +16,14 @@ are both closed:
 
 1. **Direction selector**: `atlas.analysis_engine.direction_selector
    .select_direction` (`docs/atlas_decision_engine/DE-008-Direction-Selection.md`,
-   "Recommendation Backend Step 3") now decides *which* of `DE-001` §2's
-   six directions -- restricted to the four this codebase can honestly
-   support today (Hold/Trim/No Action, or `None` for
-   RecommendationWithheld) -- a given analysis supports. BUY and ADD
-   remain structurally unreachable (Valuation Support for Capital
-   Deployment does not exist as a computed concept anywhere in this
-   codebase); EXIT is also currently unreachable -- pre-commit review
+   "Recommendation Backend Step 3"; `DE-016` "Recommendation Integration
+   Design"/implementation sprint) now decides *which* of `DE-001` §2's six
+   directions -- Hold/Trim/No Action/Buy/Add, or `None` for
+   RecommendationWithheld -- a given analysis supports. BUY and ADD are
+   reachable now that `DE-015`'s `ValuationSupport` supplies the
+   previously-missing Valuation Support for Capital Deployment
+   prerequisite (`select_direction` reads only its public `.status`,
+   `DE-015` §18); EXIT remains currently unreachable -- pre-commit review
    found that the only candidate signal for its "thesis dependency
    failed" trigger (ordinary Counter-Evidence) is not doctrinally
    sufficient (`DE-004` §3 treats it as compatible with a continuing
@@ -77,6 +78,7 @@ from atlas.analysis_engine.recommendation_conviction import (
 )
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind
 from atlas.analysis_engine.valuation.models import ValuationEngineResult
+from atlas.analysis_engine.valuation.support import ValuationSupport
 from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.outcome.entity import Outcome
@@ -321,6 +323,14 @@ class RecommendationGateResult:
 
 
 _DIRECTION_STATEMENTS: dict[RecommendationDirection, str] = {
+    RecommendationDirection.BUY: (
+        "Current evidence -- the business, the position's absence, and the valuation-support "
+        "standard -- together support initiating a position in this security."
+    ),
+    RecommendationDirection.ADD: (
+        "Current evidence -- the business, the intact thesis, and the valuation-support "
+        "standard -- together support increasing this position."
+    ),
     RecommendationDirection.HOLD: (
         "Current evidence, actively reviewed, does not support a change to this position."
     ),
@@ -332,10 +342,17 @@ _DIRECTION_STATEMENTS: dict[RecommendationDirection, str] = {
     ),
 }
 """One deterministic, evidence-only statement per reachable direction
-(`DE-001` §3's "Why" element). Deliberately keyed, not `.get()`-defaulted
--- BUY/ADD/EXIT are never looked up here because `select_direction` never
-returns any of the three; a `KeyError` on any of them would be a loud
-signal that `RecommendationDirection.BUY`/`.ADD`/`.EXIT` leaked past
+(`DE-001` §3's "Why" element). BUY/ADD's own statements deliberately name
+the full, multi-part standard ("together support") rather than crediting
+Valuation Support alone -- `DE-015` §6's own disclosure requirement
+("any presentation of a SUPPORTED conclusion SHALL disclose this
+narrower meaning, never imply the broader one") applies with full force
+the moment that status can produce a real BUY/ADD; neither statement
+names a scenario, a return figure, Net-Cash, or any other private
+proof-path content (`DE-015` §18). Deliberately keyed, not
+`.get()`-defaulted -- EXIT is never looked up here because
+`select_direction` never returns it; a `KeyError` on it would be a loud
+signal that `RecommendationDirection.EXIT` leaked past
 `direction_selector.py`, never a case to silently paper over."""
 
 
@@ -377,6 +394,7 @@ def evaluate_recommendation_gate(
     conviction: ConvictionAssessment,
     business_analysis: BusinessAnalysisResult,
     valuation_engine: ValuationEngineResult,
+    valuation_support: ValuationSupport,
     has_high_financial_or_valuation_risk: bool,
     has_open_questions: bool,
     generated_at: datetime,
@@ -395,6 +413,12 @@ def evaluate_recommendation_gate(
     status and `ValuationStatus`, neither of which the plain
     `decision_engine` results carry (Sprint 2/3 locks: those two types
     are permanently `INSUFFICIENT_INPUT` for their substantive content).
+
+    `valuation_support` (`DE-015`'s `ValuationSupport`, real as of
+    `DE-016`) is read for exactly one thing: its public `.status` field is
+    forwarded to `select_direction`, which is now the only place BUY/ADD
+    can be constructed. This function never reads `.reasoning` or `.gap`
+    (`DE-015` §18) and never branches on `valuation_support` itself.
 
     `has_portfolio_dampening` defaults `False` -- `PortfolioFinding` is
     permanently `INSUFFICIENT_INPUT` (Sprint 4 lock), so no real
@@ -450,6 +474,7 @@ def evaluate_recommendation_gate(
         growth_status=growth_finding.status,
         capital_allocation_status=capital_allocation_finding.status,
         valuation_status=fcf_yield_finding.status,
+        valuation_support_status=valuation_support.status,
         has_portfolio_dampening=has_portfolio_dampening,
         has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
     )

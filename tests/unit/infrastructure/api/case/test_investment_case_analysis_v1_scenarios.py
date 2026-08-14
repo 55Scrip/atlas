@@ -329,6 +329,15 @@ def _strip_volatile_timestamps(body: dict) -> None:
     body.pop("changeSummary", None)
     body.pop("previousAnalysisAt", None)
     body.pop("currentAnalysisAt", None)
+    # Outlook Intelligence Sprint 1: `outlook.*.momentum` derives from
+    # the identical baseline/`thesis_impact` state as `isBaselineCase`
+    # above (see `atlas.analysis_engine.outlook.derive_outlook_momentum`)
+    # -- the same real, intended first-GET-vs-second-GET divergence, one
+    # layer deeper.
+    outlook = body.get("outlook")
+    if outlook is not None:
+        outlook.get("shortTerm", {}).pop("momentum", None)
+        outlook.get("longTerm", {}).pop("momentum", None)
 
 
 class TestNoQueryParameterInfluence:

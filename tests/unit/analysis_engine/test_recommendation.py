@@ -32,6 +32,7 @@ from atlas.analysis_engine.recommendation import (
 from atlas.analysis_engine.recommendation_conviction import RecommendationConvictionLevel
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
 from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
+from atlas.analysis_engine.valuation.support import ValuationSupport, ValuationSupportGapKind, ValuationSupportStatus
 from atlas.decision_engine.contracts import (
     EvaluationState,
     HoldingLinkage,
@@ -62,6 +63,18 @@ def _insufficient_valuation_engine():
     return evaluate_valuation(business_facts, market_facts, evaluated_at=GENERATED_AT)
 
 
+def _insufficient_valuation_support() -> ValuationSupport:
+    """The permanent, universal state every real company was in before
+    `DE-015` was implemented -- the correct default for every call in
+    this file that is not specifically exercising the new `DE-016`
+    wiring (`TestBuyAddNowWired` below)."""
+    return ValuationSupport(
+        status=ValuationSupportStatus.INSUFFICIENT_INPUT,
+        reasoning="No real data supplied in this fixture.",
+        gap=ValuationSupportGapKind.INSUFFICIENT_HISTORICAL_VALUATION_DATA,
+    )
+
+
 def _call_gate(engine_input, output, *, conviction, **overrides):
     fields = dict(
         business_evaluation=output.business_evaluation,
@@ -71,6 +84,7 @@ def _call_gate(engine_input, output, *, conviction, **overrides):
         conviction=conviction,
         business_analysis=_insufficient_business_analysis(output),
         valuation_engine=_insufficient_valuation_engine(),
+        valuation_support=_insufficient_valuation_support(),
         has_high_financial_or_valuation_risk=False,
         has_open_questions=False,
         generated_at=GENERATED_AT,
@@ -196,6 +210,245 @@ def _weak_growth_business_analysis() -> "BusinessAnalysisResult":
     return BusinessAnalysisResult(state=EvaluationState.EVALUATED, findings=findings)
 
 
+def _strong_growth_business_analysis() -> "BusinessAnalysisResult":
+    """The `POSITIVE`-business mirror of `_weak_growth_business_analysis`
+    above -- both Growth and Capital Allocation `STRONG`, every other
+    category `INSUFFICIENT_INPUT` (this codebase's own permanent state
+    for the categories it does not yet evaluate substantively)."""
+    from atlas.analysis_engine.business_contracts import (
+        BusinessAnalysisResult,
+        BusinessCategory,
+        BusinessCategoryStatus,
+        BusinessFinding,
+    )
+    from atlas.analysis_engine.findings import FindingSeverity
+    from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
+    from atlas.decision_engine.contracts import EvidenceCoverageLevel
+
+    provenance = Provenance(
+        source_kind=SourceKind.ANALYSIS_ENGINE_STAGE,
+        source_references=(),
+        dependencies=(),
+        update_trigger=UpdateTrigger.EXTERNAL_BUSINESS_DATA_INGESTED,
+        consumers=(Consumer.PORTFOLIO_PAGE,),
+        computed_at=GENERATED_AT,
+    )
+    strong_categories = (BusinessCategory.GROWTH, BusinessCategory.CAPITAL_ALLOCATION)
+    findings = tuple(
+        BusinessFinding(
+            id=f"business_finding:{category.value}",
+            kind=category,
+            status=BusinessCategoryStatus.STRONG if category in strong_categories else BusinessCategoryStatus.INSUFFICIENT_INPUT,
+            severity=FindingSeverity.INFO if category in strong_categories else FindingSeverity.ATTENTION,
+            supporting_evidence=(),
+            contradicting_evidence=(),
+            missing_evidence=(),
+            confidence=EvidenceCoverageLevel.FULL,
+            provenance=provenance,
+            updated_at=GENERATED_AT,
+        )
+        for category in BusinessCategory
+    )
+    return BusinessAnalysisResult(state=EvaluationState.EVALUATED, findings=findings)
+
+
+def _supported_valuation_support() -> ValuationSupport:
+    return ValuationSupport(
+        status=ValuationSupportStatus.SUPPORTED,
+        reasoning="Test fixture: the adverse end of the range considered still avoids a nominal loss.",
+    )
+
+
+def _undervalued_valuation_engine():
+    """A real `ValuationEngineResult` whose `FCF_YIELD_RELATIVE` finding
+    is `UNDERVALUED` -- the identical real-records-through-
+    `evaluate_valuation` shape
+    `tests/unit/analysis_engine/valuation/test_support.py::_undervalued_facts`
+    already establishes, reused here (not hand-built), with every
+    `published_at` explicit and comfortably before `GENERATED_AT` --
+    `market_record`'s own default `published_at` is that module's own,
+    different `EVALUATED_AT` constant, one day after this file's
+    `GENERATED_AT`, which would otherwise exclude every market
+    observation as future-dated."""
+    from datetime import date, datetime, timezone
+
+    from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
+    from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
+    from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
+    from tests.unit.analysis_engine.valuation._fixtures import fundamentals_record, market_record
+
+    def _filed(year: int) -> "datetime":
+        return datetime(year, 2, 15, tzinfo=timezone.utc)
+
+    records = (
+        fundamentals_record(period_end=date(2022, 12, 31), identifier="rec22", published_at=_filed(2023), free_cash_flow=100.0),
+        fundamentals_record(period_end=date(2023, 12, 31), identifier="rec23", published_at=_filed(2024), free_cash_flow=110.0),
+        fundamentals_record(period_end=date(2024, 12, 31), identifier="rec24", published_at=_filed(2025), free_cash_flow=200.0),
+        market_record(period_end=date(2023, 3, 1), identifier="recm22", published_at=_filed(2023), share_price=50.0, shares_outstanding=100.0),
+        market_record(period_end=date(2024, 3, 1), identifier="recm23", published_at=_filed(2024), share_price=52.0, shares_outstanding=100.0),
+        market_record(period_end=date(2025, 3, 1), identifier="recm24", published_at=_filed(2025), share_price=53.0, shares_outstanding=100.0),
+    )
+    business_facts = extract_facts_from_records(records, evaluated_at=GENERATED_AT)
+    market_facts = extract_valuation_facts_from_records(records, evaluated_at=GENERATED_AT)
+    return evaluate_valuation(business_facts, market_facts, evaluated_at=GENERATED_AT)
+
+
+class TestBuyAddNowWired:
+    """DE-016: proves the real, end-to-end wire -- a genuinely `SUPPORTED`
+    `ValuationSupport`, passed all the way through
+    `evaluate_recommendation_gate`, actually produces BUY/ADD -- not just
+    `select_direction` in isolation (already covered by
+    `test_direction_selector.py`)."""
+
+    def _not_held_result(self):
+        from tests.unit.decision_engine._fixtures import build_populated_input
+        from atlas.decision_engine.pipeline import run_pipeline
+
+        engine_input = build_populated_input(case_id="buy-add-wiring-not-held")
+        output = run_pipeline(engine_input, generated_at=GENERATED_AT)
+        assert output.portfolio_intelligence.holding_context.linkage is HoldingLinkage.ABSENT
+        return engine_input, output
+
+    def _held_result(self):
+        from tests.unit.decision_engine._fixtures import build_populated_input
+        from atlas.decision_engine.pipeline import run_pipeline
+        import dataclasses as dc
+
+        base_input = build_populated_input(case_id="buy-add-wiring-held")
+        engine_input = dc.replace(
+            base_input, portfolio_holding=PortfolioHoldingContext(ticker="ACME", weight_percent=4.0)
+        )
+        output = run_pipeline(engine_input, generated_at=GENERATED_AT)
+        assert output.portfolio_intelligence.holding_context.linkage is HoldingLinkage.PRESENT
+        return engine_input, output
+
+    def test_supported_valuation_support_produces_a_real_buy(self):
+        engine_input, output = self._not_held_result()
+        result = evaluate_recommendation_gate(
+            engine_input,
+            business_evaluation=output.business_evaluation,
+            valuation=output.valuation,
+            portfolio_intelligence=output.portfolio_intelligence,
+            reasoning=output.reasoning,
+            conviction=_assessment(ConvictionLevel.HIGH),
+            business_analysis=_strong_growth_business_analysis(),
+            valuation_engine=_undervalued_valuation_engine(),
+            valuation_support=_supported_valuation_support(),
+            has_high_financial_or_valuation_risk=False,
+            has_open_questions=False,
+            generated_at=GENERATED_AT,
+        )
+        assert isinstance(result.recommendation, ComputedDirectionalRecommendation)
+        assert result.recommendation.direction is RecommendationDirection.BUY
+        assert result.recommendation.direction_statement.strip() != ""
+
+    def test_supported_valuation_support_produces_a_real_add(self):
+        engine_input, output = self._held_result()
+        result = evaluate_recommendation_gate(
+            engine_input,
+            business_evaluation=output.business_evaluation,
+            valuation=output.valuation,
+            portfolio_intelligence=output.portfolio_intelligence,
+            reasoning=output.reasoning,
+            conviction=_assessment(ConvictionLevel.HIGH),
+            business_analysis=_strong_growth_business_analysis(),
+            valuation_engine=_undervalued_valuation_engine(),
+            valuation_support=_supported_valuation_support(),
+            has_high_financial_or_valuation_risk=False,
+            has_open_questions=False,
+            generated_at=GENERATED_AT,
+        )
+        assert isinstance(result.recommendation, ComputedDirectionalRecommendation)
+        assert result.recommendation.direction is RecommendationDirection.ADD
+        assert result.recommendation.direction_statement.strip() != ""
+
+    def test_not_supported_valuation_support_leaves_the_same_case_withheld(self):
+        """DE-016 Phase 15 fixture C: same not-held fixture as the real
+        BUY case above, only `valuation_support` changed to
+        `NOT_SUPPORTED` -- proves the wiring, not a coincidence of the
+        fixture."""
+        engine_input, output = self._not_held_result()
+        result = evaluate_recommendation_gate(
+            engine_input,
+            business_evaluation=output.business_evaluation,
+            valuation=output.valuation,
+            portfolio_intelligence=output.portfolio_intelligence,
+            reasoning=output.reasoning,
+            conviction=_assessment(ConvictionLevel.HIGH),
+            business_analysis=_strong_growth_business_analysis(),
+            valuation_engine=_undervalued_valuation_engine(),
+            valuation_support=ValuationSupport(
+                status=ValuationSupportStatus.NOT_SUPPORTED, reasoning="Test fixture: opposite pole."
+            ),
+            has_high_financial_or_valuation_risk=False,
+            has_open_questions=False,
+            generated_at=GENERATED_AT,
+        )
+        assert result.recommendation.kind is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
+
+    def test_insufficient_input_valuation_support_leaves_the_same_buy_case_withheld(self):
+        """DE-016 Phase 15 fixture D: the real BUY fixture, only
+        `valuation_support` changed to `INSUFFICIENT_INPUT`."""
+        engine_input, output = self._not_held_result()
+        result = evaluate_recommendation_gate(
+            engine_input,
+            business_evaluation=output.business_evaluation,
+            valuation=output.valuation,
+            portfolio_intelligence=output.portfolio_intelligence,
+            reasoning=output.reasoning,
+            conviction=_assessment(ConvictionLevel.HIGH),
+            business_analysis=_strong_growth_business_analysis(),
+            valuation_engine=_undervalued_valuation_engine(),
+            valuation_support=_insufficient_valuation_support(),
+            has_high_financial_or_valuation_risk=False,
+            has_open_questions=False,
+            generated_at=GENERATED_AT,
+        )
+        assert result.recommendation.kind is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
+
+    def test_not_supported_valuation_support_leaves_the_same_add_case_withheld(self):
+        """DE-016 Phase 15 fixture E: the real ADD fixture, only
+        `valuation_support` changed to `NOT_SUPPORTED`."""
+        engine_input, output = self._held_result()
+        result = evaluate_recommendation_gate(
+            engine_input,
+            business_evaluation=output.business_evaluation,
+            valuation=output.valuation,
+            portfolio_intelligence=output.portfolio_intelligence,
+            reasoning=output.reasoning,
+            conviction=_assessment(ConvictionLevel.HIGH),
+            business_analysis=_strong_growth_business_analysis(),
+            valuation_engine=_undervalued_valuation_engine(),
+            valuation_support=ValuationSupport(
+                status=ValuationSupportStatus.NOT_SUPPORTED, reasoning="Test fixture: opposite pole."
+            ),
+            has_high_financial_or_valuation_risk=False,
+            has_open_questions=False,
+            generated_at=GENERATED_AT,
+        )
+        assert result.recommendation.kind is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
+
+    def test_insufficient_input_valuation_support_leaves_the_same_add_case_withheld(self):
+        """DE-016 Phase 15 fixture F: the real ADD fixture, only
+        `valuation_support` changed to `INSUFFICIENT_INPUT`."""
+        engine_input, output = self._held_result()
+        result = evaluate_recommendation_gate(
+            engine_input,
+            business_evaluation=output.business_evaluation,
+            valuation=output.valuation,
+            portfolio_intelligence=output.portfolio_intelligence,
+            reasoning=output.reasoning,
+            conviction=_assessment(ConvictionLevel.HIGH),
+            business_analysis=_strong_growth_business_analysis(),
+            valuation_engine=_undervalued_valuation_engine(),
+            valuation_support=_insufficient_valuation_support(),
+            has_high_financial_or_valuation_risk=False,
+            has_open_questions=False,
+            generated_at=GENERATED_AT,
+        )
+        assert result.recommendation.kind is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
+
+
 class TestDirectionSelectorNowWired:
     """"Recommendation Backend Step 3": proves `evaluate_recommendation_gate`
     genuinely constructs a `ComputedDirectionalRecommendation` when
@@ -231,6 +484,7 @@ class TestDirectionSelectorNowWired:
             conviction=_assessment(ConvictionLevel.HIGH),
             business_analysis=business_analysis,
             valuation_engine=_insufficient_valuation_engine(),
+            valuation_support=_insufficient_valuation_support(),
             has_high_financial_or_valuation_risk=False,
             has_open_questions=False,
             generated_at=GENERATED_AT,
@@ -254,6 +508,7 @@ class TestDirectionSelectorNowWired:
             conviction=_assessment(ConvictionLevel.HIGH),
             business_analysis=business_analysis,
             valuation_engine=_insufficient_valuation_engine(),
+            valuation_support=_insufficient_valuation_support(),
             has_high_financial_or_valuation_risk=False,
             has_open_questions=False,
             generated_at=GENERATED_AT,
