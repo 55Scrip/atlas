@@ -1016,6 +1016,20 @@ export function InvestmentCasePage() {
    * render guard below. */
   const [isDecisionPanelExpanded, setIsDecisionPanelExpanded] = useState(false);
 
+  /** Sprint 4 (Portfolio Evolution & Outcome Loop) fix: `reportDecisionId`
+   * previously resolved only from `caseLevelDecisionStatus`, which is
+   * local component state that resets to "idle" on every mount -- so a
+   * Decision recorded in an earlier session had no real way to reach the
+   * outcome-report form again (the "N decision(s) awaiting an outcome"
+   * nudge just reopened the "record a new decision" chooser instead).
+   * This holds the real, server-loaded Decision id extracted from an
+   * Outstanding Work item when the investor explicitly asks to report on
+   * it, so the same, unmodified `submitOutcome`/`applyTrade` machinery
+   * below (already generic over its dictionary key) can be reused. */
+  const [reportingExistingDecisionId, setReportingExistingDecisionId] = useState<string | null>(
+    null,
+  );
+
   /** The trigger button unmounts the moment the panel below opens (see
    * that panel's own comment), so without this the browser drops focus
    * to `<body>` and a keyboard/screen-reader user loses their place
@@ -1743,6 +1757,7 @@ export function InvestmentCasePage() {
       ...current,
       [CASE_LEVEL_DECISION_KEY]: { kind: "idle" },
     }));
+    setReportingExistingDecisionId(null);
     setIsDecisionPanelExpanded(false);
   }
 
@@ -1757,7 +1772,9 @@ export function InvestmentCasePage() {
   // per-Observation section does — only the dictionary key changes, from
   // an Observation id to the newly-recorded Decision's own id.
   const reportDecisionId =
-    caseLevelDecisionStatus.kind === "success" ? caseLevelDecisionStatus.decision.id : null;
+    caseLevelDecisionStatus.kind === "success"
+      ? caseLevelDecisionStatus.decision.id
+      : reportingExistingDecisionId;
   const reportOutcomeStatus: OutcomeCreateStatus = reportDecisionId
     ? (outcomeCreateStatus[reportDecisionId] ?? { kind: "idle" })
     : { kind: "idle" };
@@ -2041,7 +2058,32 @@ export function InvestmentCasePage() {
                     {t("investmentCase.actions.recordDecisionTrigger")}
                   </Button>
                   {decisionsAwaitingOutcome.length > 0 && (
-                    <Button variant="tertiary" onClick={() => setIsDecisionPanelExpanded(true)}>
+                    <Button
+                      variant="tertiary"
+                      onClick={() => {
+                        // Only an "outcome-missing" item names a real Decision id
+                        // (`outcome-missing:${decisionId}`) that the report-outcome
+                        // form below can act on -- "trade-missing" items name an
+                        // Outcome id instead, which is not a valid `decisionId` and
+                        // would make `POST /outcomes` fail. When the case's only
+                        // outstanding item is trade-missing (an Outcome already
+                        // exists; only its trade hasn't been reported), there is no
+                        // real form for that yet, so this falls back to the
+                        // original "record a new decision" panel rather than
+                        // opening a form that cannot succeed.
+                        const outcomeMissingItem = decisionsAwaitingOutcome.find(
+                          (item) => item.kind === "outcome-missing",
+                        );
+                        const firstDecisionId = outcomeMissingItem?.id.replace(
+                          "outcome-missing:",
+                          "",
+                        );
+                        if (firstDecisionId) {
+                          setReportingExistingDecisionId(firstDecisionId);
+                        }
+                        setIsDecisionPanelExpanded(true);
+                      }}
+                    >
                       {t("investmentCase.actions.outcomeAwaitingNudge", {
                         count: decisionsAwaitingOutcome.length,
                       })}
@@ -2065,10 +2107,14 @@ export function InvestmentCasePage() {
           <Surface tier="primary">
             <Stack gap="inter-section">
               <div ref={decisionPanelHeadingRef} tabIndex={-1}>
-                <Heading level={2}>{t("investmentCase.actions.heading")}</Heading>
+                <Heading level={2}>
+                  {reportingExistingDecisionId
+                    ? t("investmentCase.actions.reportTransaction")
+                    : t("investmentCase.actions.heading")}
+                </Heading>
               </div>
 
-              {caseLevelDecisionStatus.kind === "idle" && (
+              {caseLevelDecisionStatus.kind === "idle" && !reportingExistingDecisionId && (
                 <div>
                   <Button variant="primary" onClick={() => openAction("ADD")}>
                     {t("investmentCase.actions.addToPosition")}
@@ -2167,18 +2213,22 @@ export function InvestmentCasePage() {
                   </Stack>
                 )}
 
-              {caseLevelDecisionStatus.kind === "success" && (
+              {(caseLevelDecisionStatus.kind === "success" || reportingExistingDecisionId) && (
                 <Stack gap="inter-section">
-                  <Text>
-                    {t("investmentCase.decision.recorded", {
-                      decisionType: DECISION_TYPE_KEY[caseLevelDecisionStatus.decision.decisionType]
-                        ? t(DECISION_TYPE_KEY[caseLevelDecisionStatus.decision.decisionType]!)
-                        : caseLevelDecisionStatus.decision.decisionType,
-                      subject: caseLevelDecisionStatus.decision.subject,
-                    })}
-                  </Text>
+                  {caseLevelDecisionStatus.kind === "success" && (
+                    <Text>
+                      {t("investmentCase.decision.recorded", {
+                        decisionType: DECISION_TYPE_KEY[
+                          caseLevelDecisionStatus.decision.decisionType
+                        ]
+                          ? t(DECISION_TYPE_KEY[caseLevelDecisionStatus.decision.decisionType]!)
+                          : caseLevelDecisionStatus.decision.decisionType,
+                        subject: caseLevelDecisionStatus.decision.subject,
+                      })}
+                    </Text>
+                  )}
 
-                  {pendingAction === "LEAVE_AS_IS" && (
+                  {caseLevelDecisionStatus.kind === "success" && pendingAction === "LEAVE_AS_IS" && (
                     <Text color="secondary">
                       {t("investmentCase.actions.leaveAsIsRecordedNote")}
                     </Text>
