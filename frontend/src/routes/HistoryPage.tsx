@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Divider, Heading, Inline, Label, Link, Stack, Text } from "../foundation";
+import { Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
@@ -24,6 +24,12 @@ import {
   type AnalysisValuationStatus,
   type ChangeFindingView,
 } from "../changeIntelligence/describeChange";
+import {
+  buildObservedPropertiesByDecisionId,
+  type ObservedDecisionPropertiesResponse,
+  type ObservedDecisionPropertyView,
+  type ObservedPropertyScope,
+} from "../history/deriveObservedDecisionProperties";
 
 /** Visual Fidelity Pass -- matches Portfolio/Investment Case/Daily
  * Brief/Discovery's own accent link treatment. */
@@ -175,6 +181,15 @@ export function HistoryPage() {
   const [analyticalStatus, setAnalyticalStatus] = useState<FetchStatus<AnalyticalHistoryView>>({
     kind: "loading",
   });
+  // Observed Decision Properties (Sprint 14): deliberately a separate,
+  // 6th fetch kept OUT of `statuses` below. Decision Reviews must keep
+  // rendering from the five statuses above whether this one is still
+  // loading, has failed, or has loaded -- this is factual secondary
+  // context on an already-real Decision/Outcome, not a page-blocking
+  // dependency (see Sprint 14 Phase 16/17).
+  const [observedPropertiesStatus, setObservedPropertiesStatus] = useState<
+    FetchStatus<ObservedDecisionPropertiesResponse>
+  >({ kind: "loading" });
 
   const [kindFilter, setKindFilter] = useState<KindFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -273,6 +288,24 @@ export function HistoryPage() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/observed-decision-properties", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
+        return response.json() as Promise<ObservedDecisionPropertiesResponse>;
+      })
+      .then((data) => setObservedPropertiesStatus({ kind: "loaded", data }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setObservedPropertiesStatus({
+          kind: "error",
+          message: error instanceof Error ? error.message : t("common.unknownError"),
+        });
+      });
+    return () => controller.abort();
+  }, []);
+
   const statuses = [decisionsStatus, outcomesStatus, tradesStatus, portfolioStatus, analyticalStatus];
   const isLoading = statuses.some((s) => s.kind === "loading");
   const firstError = statuses.find((s) => s.kind === "error") as
@@ -327,6 +360,15 @@ export function HistoryPage() {
     .map((iso) => new Date(iso))
     .filter((d) => !Number.isNaN(d.getTime()));
   const earliestDate = allDates.length > 0 ? new Date(Math.min(...allDates.map((d) => d.getTime()))) : null;
+
+  // Observed Decision Properties (Sprint 14): a plain lookup indexed
+  // once per render from whatever has loaded so far -- empty until the
+  // 6th fetch above resolves, never blocking or altering Decision
+  // Review card selection/ordering itself.
+  const observedPropertiesByDecisionId =
+    observedPropertiesStatus.kind === "loaded"
+      ? buildObservedPropertiesByDecisionId(observedPropertiesStatus.data.properties)
+      : new Map<string, ObservedDecisionPropertyView[]>();
 
   // Decision Reviews -- the most recent decisions that have both a
   // real recorded thesis (Decision.reason) and a real recorded
@@ -528,6 +570,7 @@ export function HistoryPage() {
                             decision={decision}
                             outcome={outcome}
                             ticker={holdingByCaseId.get(decision.caseId)?.ticker ?? decision.subject}
+                            observedProperties={observedPropertiesByDecisionId.get(decision.id) ?? []}
                             onOpen={() => openCase(decision.caseId)}
                             t={t}
                             locale={locale}
@@ -741,10 +784,16 @@ function AnalyticalTimelineRow({
  * Decision" count, no "Atlas Recommendation" direction, no editorial
  * "Lesson" -- none of those have a real field to read from (see module
  * doc). */
+const SCOPE_LABEL_KEY: Record<ObservedPropertyScope, TranslationKey> = {
+  single_company: "history.reviews.observedProperties.scope.singleCompany",
+  portfolio_wide: "history.reviews.observedProperties.scope.portfolioWide",
+};
+
 function DecisionReviewCard({
   decision,
   outcome,
   ticker,
+  observedProperties,
   onOpen,
   t,
   locale,
@@ -752,6 +801,7 @@ function DecisionReviewCard({
   decision: DecisionRecord;
   outcome: OutcomeRecord;
   ticker: string;
+  observedProperties: ObservedDecisionPropertyView[];
   onOpen: () => void;
   t: Translate;
   locale: string;
@@ -789,6 +839,33 @@ function DecisionReviewCard({
         >
           {t("dailyBrief.entry.openInvestmentCase")} →
         </Link>
+
+        {observedProperties.length > 0 && (
+          <>
+            <Divider tone="hairline" />
+            <Label>{t("history.reviews.observedProperties.heading")}</Label>
+            {observedProperties.map((property) => (
+              <Stack key={property.propertyType} gap="metadata">
+                <Text color="secondary" as="p">
+                  {property.factualDescription}
+                </Text>
+                <Inline gap="row" wrap align="baseline">
+                  <StatusBadge label={t(SCOPE_LABEL_KEY[property.scope])} tone="neutral" />
+                  <Text color="tertiary">
+                    {t("history.reviews.observedProperties.dateRange", {
+                      from: formatDate(property.firstObservedAt, locale),
+                      to: formatDate(property.lastObservedAt, locale),
+                    })}
+                  </Text>
+                  {property.sampleSizeWarning && (
+                    <Text color="tertiary">{t("history.reviews.observedProperties.smallSample")}</Text>
+                  )}
+                </Inline>
+              </Stack>
+            ))}
+            <Text color="tertiary">{t("history.reviews.observedProperties.limitation")}</Text>
+          </>
+        )}
       </Stack>
     </div>
   );

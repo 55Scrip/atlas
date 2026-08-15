@@ -869,6 +869,12 @@ export const sv: Record<TranslationKey, string> = {
   "history.reviews.subheading": "Nyliga beslut värda att reflektera över",
   "history.reviews.originalThesis": "Ursprunglig tes",
   "history.reviews.outcome": "Utfall",
+  "history.reviews.observedProperties.heading": "Observerat i din beslutshistorik",
+  "history.reviews.observedProperties.scope.singleCompany": "Bolagsspecifikt",
+  "history.reviews.observedProperties.scope.portfolioWide": "Portföljövergripande",
+  "history.reviews.observedProperties.dateRange": "{{from}} – {{to}}",
+  "history.reviews.observedProperties.smallSample": "Litet registrerat urval.",
+  "history.reviews.observedProperties.limitation": "Baserat endast på registrerade beslut. Utfall och avkastning beaktas inte.",
 
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Kräver uppmärksamhet",

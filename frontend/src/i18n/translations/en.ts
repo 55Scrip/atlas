@@ -876,6 +876,12 @@ export const en = {
   "history.reviews.subheading": "Recent decisions worth reflecting on",
   "history.reviews.originalThesis": "Original Thesis",
   "history.reviews.outcome": "Outcome",
+  "history.reviews.observedProperties.heading": "Observed in your decision history",
+  "history.reviews.observedProperties.scope.singleCompany": "Company-specific",
+  "history.reviews.observedProperties.scope.portfolioWide": "Portfolio-wide",
+  "history.reviews.observedProperties.dateRange": "{{from}} – {{to}}",
+  "history.reviews.observedProperties.smallSample": "Small recorded sample.",
+  "history.reviews.observedProperties.limitation": "Based only on recorded Decisions. Outcomes and performance are not considered.",
 
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Needs Attention",
