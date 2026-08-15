@@ -146,6 +146,7 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.cockpit.review.priority_review": "Prioriterad granskning",
   "portfolio.cockpit.viewCaseButton": "Visa Investeringscase",
   "portfolio.cockpit.unresolved": "Investeringscase kunde inte hämtas",
+  "portfolio.holdingsTable.rowAriaLabel": "Visa Investeringscase för {{ticker}}",
 
   "portfolio.unallocated":
     "Ofördelat: {{percent}}% — den här portföljen täcker ännu inte 100% av innehaven; Atlas hittar inte på resten.",

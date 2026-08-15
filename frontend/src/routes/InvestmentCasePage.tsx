@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Link as RouterLink, useLocation, useParams } from "react-router-dom";
 import { Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, StatusText, Surface, Text, VisuallyHidden } from "../foundation";
@@ -1015,6 +1015,18 @@ export function InvestmentCasePage() {
    * implicitly open regardless of this flag -- see the panel's own
    * render guard below. */
   const [isDecisionPanelExpanded, setIsDecisionPanelExpanded] = useState(false);
+
+  /** The trigger button unmounts the moment the panel below opens (see
+   * that panel's own comment), so without this the browser drops focus
+   * to `<body>` and a keyboard/screen-reader user loses their place
+   * entirely. Moving focus onto the panel's own heading keeps it
+   * discoverable without changing the panel's visible layout. */
+  const decisionPanelHeadingRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isDecisionPanelExpanded) {
+      decisionPanelHeadingRef.current?.focus();
+    }
+  }, [isDecisionPanelExpanded]);
 
   /** Figma-fidelity rebuild -- the approved screen's own bottom tab bar
    * (Decision History / Timeline / Last Activity / Outstanding Work /
@@ -2052,7 +2064,9 @@ export function InvestmentCasePage() {
         {caseId && status.kind === "loaded" && linkedHolding && isDecisionPanelExpanded && (
           <Surface tier="primary">
             <Stack gap="inter-section">
-              <Heading level={2}>{t("investmentCase.actions.heading")}</Heading>
+              <div ref={decisionPanelHeadingRef} tabIndex={-1}>
+                <Heading level={2}>{t("investmentCase.actions.heading")}</Heading>
+              </div>
 
               {caseLevelDecisionStatus.kind === "idle" && (
                 <div>

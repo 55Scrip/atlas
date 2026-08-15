@@ -1363,9 +1363,7 @@ function HoldingsTableRow({
       <tr
         role="button"
         tabIndex={0}
-        aria-label={
-          holding.caseId ? t("portfolio.cockpit.viewCaseButton") : t("portfolio.holdings.openCaseButton")
-        }
+        aria-label={t("portfolio.holdingsTable.rowAriaLabel", { ticker: holding.ticker })}
         onClick={handleRowActivate}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {

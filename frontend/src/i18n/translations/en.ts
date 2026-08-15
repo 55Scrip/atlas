@@ -147,6 +147,7 @@ export const en = {
   "portfolio.cockpit.review.priority_review": "Priority review",
   "portfolio.cockpit.viewCaseButton": "View Investment Case",
   "portfolio.cockpit.unresolved": "Investment Case could not be resolved",
+  "portfolio.holdingsTable.rowAriaLabel": "View Investment Case for {{ticker}}",
 
   "portfolio.unallocated":
     "Unallocated: {{percent}}% — this portfolio does not yet account for 100% of holdings; Atlas does not invent the remainder.",
