@@ -162,6 +162,25 @@ class TestNeedsAttentionGenerated:
         assert body["summary"]["numberOfInvestmentCases"] == 1
         assert body["summary"]["openDecisions"] == 1
 
+    def test_hold_decision_never_flags_decision_without_outcome(self, client):
+        """Sprint 7 (Continuous Portfolio Intelligence): a HOLD (or WATCH/
+        PASS) Decision is never executed, so it can never gain an Outcome
+        -- flagging it as DECISION_WITHOUT_OUTCOME would be a permanent,
+        unresolvable false positive. Mirrors the same rule
+        `frontend/src/activity/deriveActivity.ts` already documents for
+        its own outcome-missing Outstanding Work item."""
+        client.post(
+            "/alpha-portfolio/import",
+            json={"holdings": [{"ticker": "AMD", "weightPercent": 40}]},
+        )
+        case_id = _holding_case_id(client, "AMD")
+        _record_decision(client, case_id=case_id, subject="AMD", decision_type="HOLD")
+
+        body = client.get("/alpha-portfolio/status").json()
+        items = [item for item in body["attentionItems"] if item["ticker"] == "AMD"]
+        assert not any(item["category"] == "DECISION_WITHOUT_OUTCOME" for item in items)
+        assert body["summary"]["openDecisions"] == 0
+
     def test_outcome_without_execution(self, client):
         client.post(
             "/alpha-portfolio/import",

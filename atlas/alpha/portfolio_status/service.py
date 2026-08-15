@@ -30,6 +30,7 @@ from atlas.alpha.portfolio_status.models import (
 )
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.decision.repository import DecisionRepository
+from atlas.core.domain.decision.value_objects import DecisionType
 from atlas.core.domain.observation.entity import Observation
 from atlas.core.domain.observation.repository import ObservationRepository
 from atlas.core.domain.outcome.repository import OutcomeRepository
@@ -130,6 +131,17 @@ class PortfolioStatusService:
             case_observations = observations_by_case.get(case_id, [])
 
             for decision in case_decisions:
+                # Only BUY/SELL decisions describe a transaction Atlas can
+                # ever expect an Outcome for -- HOLD/WATCH/PASS are never
+                # executed and so never gain one, no matter how much later
+                # this report is recomputed. Without this guard, any Case
+                # with a real HOLD decision would show a permanent, false
+                # DECISION_WITHOUT_OUTCOME item that no investor action can
+                # ever resolve. Mirrors the same, already-established rule
+                # `frontend/src/activity/deriveActivity.ts` documents for
+                # its own `outcome-missing` Outstanding Work item.
+                if decision.decision_type not in (DecisionType.BUY, DecisionType.SELL):
+                    continue
                 decision_id = str(decision.id)
                 if outcomes_by_decision_id.get(decision_id, 0) == 0:
                     attention_items.append(
