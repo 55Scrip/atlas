@@ -14,6 +14,9 @@ from atlas.alpha.case_intelligence.api.router import router as case_intelligence
 from atlas.alpha.daily_brief.api.router import router as daily_brief_router
 from atlas.alpha.investment_case.api.router import router as investment_case_router
 from atlas.alpha.investment_case_history.api.router import router as investment_case_history_router
+from atlas.alpha.observed_decision_properties.api.router import (
+    router as observed_decision_properties_router,
+)
 from atlas.alpha.portfolio.api.router import router as alpha_portfolio_router
 from atlas.alpha.portfolio_cockpit.api.router import router as portfolio_cockpit_router
 from atlas.alpha.portfolio_intelligence.api.router import router as portfolio_intelligence_router
@@ -137,6 +140,13 @@ def create_app() -> FastAPI:
     app.include_router(discovery_chat_router)
     app.include_router(case_router)
     app.include_router(decision_router)
+    # Observed Decision Properties v1 (Sprint 13): the smallest read-only
+    # projection over the real Decision repository -- authored and owned
+    # in `atlas/alpha/observed_decision_properties/`, reusing
+    # `atlas.core.application.pattern_recognition`'s existing, unmodified
+    # strategies. Never computes or serves a Strategy Signature; see that
+    # package's own `__init__.py` for the full Sprint 10-13 provenance.
+    app.include_router(observed_decision_properties_router)
     app.include_router(decision_context_router)
     app.include_router(observation_router)
     app.include_router(hypothesis_router)
