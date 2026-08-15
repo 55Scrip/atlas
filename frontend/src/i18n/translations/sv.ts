@@ -876,6 +876,19 @@ export const sv: Record<TranslationKey, string> = {
   "history.reviews.observedProperties.smallSample": "Litet registrerat urval.",
   "history.reviews.observedProperties.limitation": "Baserat endast på registrerade beslut. Utfall och avkastning beaktas inte.",
 
+  // ---------- Sprint 21: Explicit Security Confirmation ----------
+  "history.reviews.securityConfirmation.recordedAs": "Registrerat som",
+  "history.reviews.securityConfirmation.loadError": "Kunde inte läsa in värdepappersbekräftelse.",
+  "history.reviews.securityConfirmation.confirmedSelection": "Bekräftat val",
+  "history.reviews.securityConfirmation.confirmedByYou": "Bekräftat av dig.",
+  "history.reviews.securityConfirmation.findSecurity": "Hitta värdepapper",
+  "history.reviews.securityConfirmation.discoveryError": "Kunde inte söka efter detta värdepapper.",
+  "history.reviews.securityConfirmation.possibleMatch": "Möjlig träff",
+  "history.reviews.securityConfirmation.noCandidateFound": "Ingen kandidat hittades.",
+  "history.reviews.securityConfirmation.confirmThisSecurity": "Bekräfta detta värdepapper",
+  "history.reviews.securityConfirmation.notThisSecurity": "Inte detta värdepapper",
+  "history.reviews.securityConfirmation.confirmError": "Kunde inte spara din bekräftelse. Försök igen.",
+
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Kräver uppmärksamhet",
   "dashboard.needsAttention.empty": "Inget kräver din uppmärksamhet just nu.",

@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, Text } from "../foundation";
+import { Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
@@ -30,6 +30,13 @@ import {
   type ObservedDecisionPropertyView,
   type ObservedPropertyScope,
 } from "../history/deriveObservedDecisionProperties";
+import {
+  confirmSecuritySelection,
+  fetchSecurityConfirmation,
+  fetchSecurityDiscoveryCandidates,
+  type ConfirmedSecuritySelectionView,
+  type SecurityCandidateView,
+} from "../history/securityConfirmationApi";
 
 /** Visual Fidelity Pass -- matches Portfolio/Investment Case/Daily
  * Brief/Discovery's own accent link treatment. */
@@ -819,6 +826,9 @@ function DecisionReviewCard({
           </Text>
         </Inline>
 
+        <SecurityConfirmationSection decisionId={decision.id} subject={decision.subject} t={t} />
+        <Divider tone="hairline" />
+
         <Label>{t("history.reviews.originalThesis")}</Label>
         <Text color="secondary" as="p">
           {decision.reason}
@@ -868,5 +878,149 @@ function DecisionReviewCard({
         )}
       </Stack>
     </div>
+  );
+}
+
+/** Sprint 21 (Explicit Security Confirmation -- First Product Flow): the
+ * one frontend surface for Sprint 19's discovery + Sprint 20's
+ * confirmation. `subject` is rendered verbatim as `Decision.subject`
+ * (never the resolved holding ticker `DecisionReviewCard`'s own header
+ * shows) -- "Recorded as" must reflect exactly what was historically
+ * recorded, per Sprint 21's own non-negotiable ground rule that
+ * `Decision.subject` is never rewritten.
+ *
+ * State is entirely local and Decision-scoped: nothing here is shared
+ * across cards, nothing here propagates a confirmation to any sibling
+ * Decision, and "Not this security" is never a backend call -- before a
+ * confirmation exists there is nothing to revoke, only a candidate to
+ * stop looking at (Sprint 21 explicitly defers correction/revocation of
+ * an *existing* confirmation to a future sprint). */
+type SecurityConfirmationState =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "confirmed"; selection: ConfirmedSecuritySelectionView }
+  | { kind: "idle" }
+  | { kind: "discovering" }
+  | { kind: "discoveryError" }
+  | { kind: "discovered"; candidates: SecurityCandidateView[] }
+  | { kind: "confirming"; candidates: SecurityCandidateView[]; pendingTicker: string }
+  | { kind: "confirmError"; candidates: SecurityCandidateView[] };
+
+function SecurityConfirmationSection({
+  decisionId,
+  subject,
+  t,
+}: {
+  decisionId: string;
+  subject: string;
+  t: Translate;
+}) {
+  const [state, setState] = useState<SecurityConfirmationState>({ kind: "loading" });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setState({ kind: "loading" });
+    fetchSecurityConfirmation(decisionId, controller.signal)
+      .then((selection) => setState(selection ? { kind: "confirmed", selection } : { kind: "idle" }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setState({ kind: "error" });
+      });
+    return () => controller.abort();
+  }, [decisionId]);
+
+  function findSecurity() {
+    setState({ kind: "discovering" });
+    fetchSecurityDiscoveryCandidates(subject)
+      .then((candidates) => setState({ kind: "discovered", candidates }))
+      .catch(() => setState({ kind: "discoveryError" }));
+  }
+
+  function notThisSecurity(candidates: SecurityCandidateView[], ticker: string) {
+    const remaining = candidates.filter((candidate) => candidate.ticker !== ticker);
+    setState({ kind: "discovered", candidates: remaining });
+  }
+
+  function confirm(candidates: SecurityCandidateView[], candidate: SecurityCandidateView) {
+    setState({ kind: "confirming", candidates, pendingTicker: candidate.ticker });
+    confirmSecuritySelection(decisionId, candidate)
+      .then((selection) => setState({ kind: "confirmed", selection }))
+      .catch(() => setState({ kind: "confirmError", candidates }));
+  }
+
+  return (
+    <Stack gap="metadata">
+      <Label>{t("history.reviews.securityConfirmation.recordedAs")}</Label>
+      <Text as="span" style={{ fontWeight: 600 }}>
+        {subject}
+      </Text>
+
+      {state.kind === "loading" && <Text color="tertiary">{t("common.loading")}</Text>}
+      {state.kind === "error" && (
+        <Text color="tertiary" role="alert">
+          {t("history.reviews.securityConfirmation.loadError")}
+        </Text>
+      )}
+
+      {state.kind === "confirmed" && (
+        <>
+          <Label>{t("history.reviews.securityConfirmation.confirmedSelection")}</Label>
+          <Text as="span">
+            {state.selection.confirmedTicker} — {state.selection.confirmedDisplayName}
+          </Text>
+          <Text color="tertiary">{t("history.reviews.securityConfirmation.confirmedByYou")}</Text>
+        </>
+      )}
+
+      {state.kind === "idle" && (
+        <Button variant="tertiary" onClick={findSecurity}>
+          {t("history.reviews.securityConfirmation.findSecurity")}
+        </Button>
+      )}
+
+      {state.kind === "discovering" && <Text color="tertiary">{t("common.loading")}</Text>}
+      {state.kind === "discoveryError" && (
+        <Text color="tertiary" role="alert">
+          {t("history.reviews.securityConfirmation.discoveryError")}
+        </Text>
+      )}
+
+      {(state.kind === "discovered" || state.kind === "confirming" || state.kind === "confirmError") &&
+        (state.candidates.length === 0 ? (
+          <Text color="tertiary">{t("history.reviews.securityConfirmation.noCandidateFound")}</Text>
+        ) : (
+          <Stack gap="metadata">
+            {state.candidates.map((candidate) => (
+              <Stack key={candidate.ticker} gap="metadata">
+                <Label>{t("history.reviews.securityConfirmation.possibleMatch")}</Label>
+                <Text as="span">
+                  {candidate.ticker} — {candidate.displayName}
+                </Text>
+                <Inline gap="row" wrap>
+                  <Button
+                    variant="primary"
+                    disabled={state.kind === "confirming"}
+                    onClick={() => confirm(state.candidates, candidate)}
+                  >
+                    {t("history.reviews.securityConfirmation.confirmThisSecurity")}
+                  </Button>
+                  <Button
+                    variant="tertiary"
+                    disabled={state.kind === "confirming"}
+                    onClick={() => notThisSecurity(state.candidates, candidate.ticker)}
+                  >
+                    {t("history.reviews.securityConfirmation.notThisSecurity")}
+                  </Button>
+                </Inline>
+              </Stack>
+            ))}
+            {state.kind === "confirmError" && (
+              <Text color="tertiary" role="alert">
+                {t("history.reviews.securityConfirmation.confirmError")}
+              </Text>
+            )}
+          </Stack>
+        ))}
+    </Stack>
   );
 }

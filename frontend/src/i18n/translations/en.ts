@@ -883,6 +883,19 @@ export const en = {
   "history.reviews.observedProperties.smallSample": "Small recorded sample.",
   "history.reviews.observedProperties.limitation": "Based only on recorded Decisions. Outcomes and performance are not considered.",
 
+  // ---------- Sprint 21: Explicit Security Confirmation ----------
+  "history.reviews.securityConfirmation.recordedAs": "Recorded as",
+  "history.reviews.securityConfirmation.loadError": "Couldn't load security confirmation.",
+  "history.reviews.securityConfirmation.confirmedSelection": "Confirmed selection",
+  "history.reviews.securityConfirmation.confirmedByYou": "Confirmed by you.",
+  "history.reviews.securityConfirmation.findSecurity": "Find security",
+  "history.reviews.securityConfirmation.discoveryError": "Couldn't search for this security.",
+  "history.reviews.securityConfirmation.possibleMatch": "Possible match",
+  "history.reviews.securityConfirmation.noCandidateFound": "No candidate found.",
+  "history.reviews.securityConfirmation.confirmThisSecurity": "Confirm this security",
+  "history.reviews.securityConfirmation.notThisSecurity": "Not this security",
+  "history.reviews.securityConfirmation.confirmError": "Couldn't save your confirmation. Try again.",
+
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Needs Attention",
   "dashboard.needsAttention.empty": "Nothing needs your attention right now.",

@@ -25,6 +25,7 @@ from atlas.alpha.security_confirmation.api.errors import (
     register_error_handlers as register_security_confirmation_error_handlers,
 )
 from atlas.alpha.security_confirmation.api.router import router as security_confirmation_router
+from atlas.alpha.security_discovery.api.router import router as security_discovery_router
 from atlas.alpha.watchlist.api.router import router as alpha_watchlist_router
 from atlas.core.infrastructure.api.case.errors import (
     register_error_handlers as register_case_error_handlers,
@@ -159,6 +160,12 @@ def create_app() -> FastAPI:
     # X"), never Decision.subject or any other historical field. See
     # that package's own `__init__.py` for the full ontology.
     app.include_router(security_confirmation_router)
+    # Security Discovery v1 API (Sprint 21): the one read-only endpoint
+    # exposing Sprint 19's already-verified discover_security_candidates
+    # to a frontend caller. GET-only, no request body, no persistence,
+    # no candidate is ever ranked or auto-selected -- see that
+    # package's own `api/router.py` docstring.
+    app.include_router(security_discovery_router)
     app.include_router(decision_context_router)
     app.include_router(observation_router)
     app.include_router(hypothesis_router)
