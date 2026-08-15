@@ -212,3 +212,42 @@ export const VALUATION_SUPPORT_TONE: Record<ValuationSupportStatus, StatusTone> 
   not_supported: "caution",
   insufficient_input: "neutral",
 };
+
+/** Beta Recommendation Experience implementation sprint (`UX-022` §9):
+ * mirrors `atlas.analysis_engine.valuation.support.ValuationSupportGapKind`
+ * exactly (six members). Present only when `ValuationSupportStatus` is not
+ * `supported`. Copy is this frontend's own short, presentation-layer
+ * paraphrase of the real backend `.reasoning` for each kind (never that
+ * verbose internal string verbatim, per `ValuationSupportView`'s own "never
+ * `.reasoning` verbatim" rule) -- calibrated to `UX-022` Part 9's own
+ * worked example for `insufficient_historical_valuation_data`. */
+export type ValuationSupportGapKind =
+  | "missing_capital_deployment_valuation_support"
+  | "no_durable_growth_basis"
+  | "insufficient_historical_valuation_data"
+  | "scenario_envelope_inconclusive"
+  | "conflicting_valuation_proofs"
+  | "no_sufficient_valuation_proof";
+
+export const VALUATION_SUPPORT_GAP_COPY_KEY: Record<ValuationSupportGapKind, TranslationKey> = {
+  missing_capital_deployment_valuation_support: "investmentCase.valuationSupport.gap.missingCapitalDeploymentValuationSupport",
+  no_durable_growth_basis: "investmentCase.valuationSupport.gap.noDurableGrowthBasis",
+  insufficient_historical_valuation_data: "investmentCase.valuationSupport.gap.insufficientHistoricalValuationData",
+  scenario_envelope_inconclusive: "investmentCase.valuationSupport.gap.scenarioEnvelopeInconclusive",
+  conflicting_valuation_proofs: "investmentCase.valuationSupport.gap.conflictingValuationProofs",
+  no_sufficient_valuation_proof: "investmentCase.valuationSupport.gap.noSufficientValuationProof",
+};
+
+/** Beta Recommendation Experience implementation sprint (`UX-022` §4):
+ * mirrors `atlas.decision_engine.contracts.MissingEvaluationCategory`
+ * exactly (four members). Rendered as the real, per-case reason list
+ * alongside (never in place of) the existing fixed Withheld headline --
+ * see `RecommendationStateView.missing_evaluations`'s own docstring. */
+export type MissingEvaluationCategory = "business_evaluation" | "valuation" | "portfolio_intelligence" | "reasoning";
+
+export const MISSING_EVALUATION_COPY_KEY: Record<MissingEvaluationCategory, TranslationKey> = {
+  business_evaluation: "investmentCase.withheld.missing.businessEvaluation",
+  valuation: "investmentCase.withheld.missing.valuation",
+  portfolio_intelligence: "investmentCase.withheld.missing.portfolioIntelligence",
+  reasoning: "investmentCase.withheld.missing.reasoning",
+};

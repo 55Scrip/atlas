@@ -71,6 +71,67 @@ export function findMostSevereRisk(findings: RiskFindingLite[]): RiskFindingLite
   }, null);
 }
 
+export type ValuationSupportStatus = "supported" | "not_supported" | "insufficient_input";
+export type ValuationSupportGapKind =
+  | "missing_capital_deployment_valuation_support"
+  | "no_durable_growth_basis"
+  | "insufficient_historical_valuation_data"
+  | "scenario_envelope_inconclusive"
+  | "conflicting_valuation_proofs"
+  | "no_sufficient_valuation_proof";
+
+export type LimitingFactor =
+  | { kind: "valuationGap"; gap: ValuationSupportGapKind }
+  | { kind: "risk"; category: RiskCategory };
+
+/**
+ * Beta Recommendation Experience implementation sprint (`UX-022` §3/§6):
+ * the real, Core-derived "what limits this conclusion" content -- the
+ * Figma's own "Limiting Factors" card and hero "Limited by:" line, per
+ * `UX-022`'s exact data-source rule: only `RiskFinding`s tagged to the
+ * four real categories, plus `ValuationSupport.gap`, nothing else (no
+ * concentration threshold, no earnings-calendar timing claim, no
+ * fabricated taxonomy). Returns at most 2, matching the Figma card's own
+ * "1-2 items" visual structure -- may return 0, in which case the
+ * section is omitted entirely, never filled with placeholder text.
+ *
+ * Ordering: the Valuation Support gap, when present, is shown first --
+ * it is Recommendation's own most direct real "why not stronger" signal
+ * (`DE-015`) -- then the remaining slot(s) are filled with the
+ * highest-severity real Risk findings (reusing `RISK_SEVERITY_RANK`/
+ * `RISK_CATEGORY_ORDER` above, the same deterministic ordering
+ * `findMostSevereRisk` already uses), filtered to `moderate`/`high`
+ * only -- `low`/`insufficient_input`/`not_evaluated` risk is not worth a
+ * limiting-factor line, mirroring `isNoteworthyRisk` in `HeroCard.tsx`.
+ */
+export function deriveLimitingFactors(input: {
+  riskFindings: RiskFindingLite[];
+  valuationSupportStatus: ValuationSupportStatus;
+  valuationSupportGap: ValuationSupportGapKind | null;
+}): LimitingFactor[] {
+  const factors: LimitingFactor[] = [];
+
+  if (input.valuationSupportStatus !== "supported" && input.valuationSupportGap !== null) {
+    factors.push({ kind: "valuationGap", gap: input.valuationSupportGap });
+  }
+
+  const noteworthyRisks = input.riskFindings
+    .filter((f) => f.status === "high" || f.status === "moderate")
+    .slice()
+    .sort((a, b) => {
+      const rankDiff = RISK_SEVERITY_RANK[b.status] - RISK_SEVERITY_RANK[a.status];
+      if (rankDiff !== 0) return rankDiff;
+      return RISK_CATEGORY_ORDER.indexOf(a.category) - RISK_CATEGORY_ORDER.indexOf(b.category);
+    });
+
+  for (const risk of noteworthyRisks) {
+    if (factors.length >= 2) break;
+    factors.push({ kind: "risk", category: risk.category });
+  }
+
+  return factors.slice(0, 2);
+}
+
 export interface CaseStatusInput {
   hasOutstandingWork: boolean;
   isThesisStale: boolean;

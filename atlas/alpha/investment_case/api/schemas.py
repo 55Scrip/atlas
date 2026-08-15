@@ -64,6 +64,7 @@ from atlas.analysis_engine.valuation.support import ValuationSupport
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.observation.entity import Observation
 from atlas.core.infrastructure.api.serialization import CamelModel
+from atlas.decision_engine.contracts import RecommendationWithheld
 
 
 class HoldingContextView(CamelModel):
@@ -283,23 +284,45 @@ class RecommendationStateView(CamelModel):
     from this schema's prior shape.
 
     `outlook_alignment` is new this sprint -- see
-    `RecommendationOutlookAlignmentView`'s own docstring."""
+    `RecommendationOutlookAlignmentView`'s own docstring.
+
+    `missing_evaluations` (Beta Recommendation Experience implementation
+    sprint, resolving `UX-022` §4): the real
+    `RecommendationWithheld.missing_evaluations` pipeline-stage tuple,
+    passed through as raw enum values -- empty whenever `level` is not
+    `insufficient_evidence`. Additive only: `statement`/`badge_label`
+    above keep their existing single fixed sentence for this level
+    unchanged (`atlas.alpha.decision_support`'s own documented choice
+    not to branch its one statement on *why* withheld); this field lets
+    a caller show the real, per-case reason(s) *alongside* that fixed
+    sentence, never in place of it. `RecommendationWithheld.reason`
+    itself (`ENGINE_NOT_IMPLEMENTED`/`EVIDENCE_INSUFFICIENT`) is
+    deliberately not exposed here -- an internal implementation-status
+    value, not investor-facing content."""
 
     level: str
     badge_label: str
     statement: str
     conviction_gate_met: bool
     outlook_alignment: RecommendationOutlookAlignmentView
+    missing_evaluations: list[str]
 
     @classmethod
     def from_domain(cls, gate_result, outlook_context: RecommendationOutlookContext) -> "RecommendationStateView":
         view: DecisionSupportViewDomain = describe_recommendation(gate_result)
+        recommendation = gate_result.recommendation
+        missing_evaluations = (
+            [category.value for category in recommendation.missing_evaluations]
+            if isinstance(recommendation, RecommendationWithheld)
+            else []
+        )
         return cls(
             level=view.level.value,
             badge_label=view.badge_label,
             statement=view.statement,
             conviction_gate_met=gate_result.conviction_gate_met,
             outlook_alignment=RecommendationOutlookAlignmentView.from_domain(outlook_context),
+            missing_evaluations=missing_evaluations,
         )
 
 

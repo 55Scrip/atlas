@@ -23,7 +23,9 @@ import {
   type ConvictionLevel,
   type DecisionSupportLevel,
   type EvidenceCoverageLevel,
+  type MissingEvaluationCategory,
   type OutlookRecommendationRelationship,
+  type ValuationSupportGapKind,
   type ValuationSupportStatus,
 } from "../status/statusTone";
 import {
@@ -54,11 +56,15 @@ import {
 } from "../changeIntelligence/describeChange";
 import {
   deriveCaseStatus,
+  deriveLimitingFactors,
   deriveOutstandingIssues,
   type CaseStatusLevel,
+  type LimitingFactor,
   type OutstandingIssueKind,
   type OutstandingWorkKind,
 } from "../investmentCase/deriveExecutiveSummary";
+import { LimitingFactorsCard } from "../investmentCase/LimitingFactorsCard";
+import { ValuationSupportCard } from "../investmentCase/ValuationSupportCard";
 import {
   FinancialsTable,
   formatFinancialValue,
@@ -691,6 +697,10 @@ interface RecommendationStateView {
   statement: string;
   convictionGateMet: boolean;
   outlookAlignment: RecommendationOutlookAlignmentView;
+  /** Beta Recommendation Experience implementation sprint (`UX-022` §4)
+   * -- real, per-case `RecommendationWithheld.missing_evaluations`,
+   * always `[]` when `level !== "insufficient_evidence"`. */
+  missingEvaluations: MissingEvaluationCategory[];
 }
 
 // Investment Case Engine v1 slice (extended Company Data Foundation
@@ -1925,14 +1935,32 @@ export function InvestmentCasePage() {
             const longTerm = report.outlook.longTerm;
             const longTermBull = longTerm.scenarios.find((s) => s.kind === "bull");
             const longTermBear = longTerm.scenarios.find((s) => s.kind === "bear");
+            const riskFindings = report.risk.findings.map((f) => ({ category: f.category, status: f.status }));
+            const valuationSupportStatus = report.valuationSupport.status as ValuationSupportStatus;
+            const valuationSupportGap = report.valuationSupport.gap as ValuationSupportGapKind | null;
+            // `UX-022` §3/§6/§9: at most 2 real limiting factors, and
+            // whether Valuation Support is load-bearing for the
+            // Direction shown -- entry/increase directions (BUY/ADD)
+            // where Valuation Support is the supporting pillar, or any
+            // direction where it is actively not supported/unresolved
+            // (the specific reason a stronger Direction wasn't reached).
+            const limitingFactors: LimitingFactor[] = deriveLimitingFactors({
+              riskFindings,
+              valuationSupportStatus,
+              valuationSupportGap,
+            });
+            const isValuationSupportLoadBearing =
+              valuationSupportStatus !== "supported" ||
+              report.recommendation.level === "entry_supported" ||
+              report.recommendation.level === "increase_supported";
             const heroAnalysis: HeroAnalysisInput = {
               recommendationLevel: report.recommendation.level,
               convictionLevel: report.conviction.level,
-              valuationSupportStatus: report.valuationSupport.status as ValuationSupportStatus,
+              valuationSupportStatus,
               growthStatus: growth ? growth.status : "not_evaluated",
               capitalAllocationStatus: capitalAllocation ? capitalAllocation.status : "not_evaluated",
               valuationStatus: report.valuationContext.fcfYieldStatus,
-              riskFindings: report.risk.findings.map((f) => ({ category: f.category, status: f.status })),
+              riskFindings,
               topStrengthKind: report.strengths[0]?.kind ?? null,
               isBaselineCase: report.isBaselineCase,
               latestChangeCount: report.latestChanges.length,
@@ -1944,16 +1972,34 @@ export function InvestmentCasePage() {
               longTermBullReturnPercent: longTermBull ? longTermBull.returnPercent : null,
               longTermBearReturnPercent: longTermBear ? longTermBear.returnPercent : null,
               outlookAlignmentLongTerm: report.recommendation.outlookAlignment.longTerm,
+              limitingFactors,
+              missingEvaluations: report.recommendation.missingEvaluations,
+              sharePrice: report.marketSnapshot ? report.marketSnapshot.sharePrice : null,
+              currency: report.marketSnapshot ? report.marketSnapshot.currency : null,
             };
             return (
-              <HeroCard
-                ticker={linkedHolding ? linkedHolding.ticker : t("investmentCase.header.untitled")}
-                analysis={heroAnalysis}
-                outstandingWorkKinds={caseOutstandingWork.map((item) => item.kind)}
-                isThesisStale={report.isThesisStale}
-                openQuestionCount={report.openQuestions.length}
-                t={t}
-              />
+              <>
+                <HeroCard
+                  ticker={linkedHolding ? linkedHolding.ticker : t("investmentCase.header.untitled")}
+                  analysis={heroAnalysis}
+                  outstandingWorkKinds={caseOutstandingWork.map((item) => item.kind)}
+                  isThesisStale={report.isThesisStale}
+                  openQuestionCount={report.openQuestions.length}
+                  t={t}
+                />
+                {report.recommendation.level !== "insufficient_evidence" && isValuationSupportLoadBearing && (
+                  <>
+                    <Divider tone="hairline" />
+                    <ValuationSupportCard status={valuationSupportStatus} gap={valuationSupportGap} t={t} />
+                  </>
+                )}
+                {report.recommendation.level !== "insufficient_evidence" && limitingFactors.length > 0 && (
+                  <>
+                    <Divider tone="hairline" />
+                    <LimitingFactorsCard factors={limitingFactors} t={t} />
+                  </>
+                )}
+              </>
             );
           })()}
         </Stack>

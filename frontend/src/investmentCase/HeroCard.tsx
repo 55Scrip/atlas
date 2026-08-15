@@ -2,12 +2,9 @@ import type { CSSProperties, ReactNode } from "react";
 import { Divider, Heading, Inline, Label, Stack, StatusBadge, StatusText, Text, VisuallyHidden } from "../foundation";
 import type { Translate } from "../changeIntelligence/describeChange";
 import {
-  RISK_CATEGORY_KEY,
-  RISK_STATUS_KEY,
   type AnalysisBusinessStatus,
   type AnalysisHighlightKind,
   type AnalysisRiskCategory,
-  type AnalysisRiskStatus,
   type AnalysisValuationStatus,
 } from "../changeIntelligence/describeChange";
 import {
@@ -16,12 +13,14 @@ import {
   DECISION_SUPPORT_BADGE_KEY,
   DECISION_SUPPORT_STATEMENT_KEY,
   DECISION_SUPPORT_TONE,
+  MISSING_EVALUATION_COPY_KEY,
   OUTLOOK_ALIGNMENT_KEY,
-  RISK_STATUS_TONE,
+  VALUATION_SUPPORT_GAP_COPY_KEY,
   VALUATION_SUPPORT_LABEL_KEY,
   VALUATION_SUPPORT_TONE,
   type ConvictionLevel,
   type DecisionSupportLevel,
+  type MissingEvaluationCategory,
   type OutlookRecommendationRelationship,
   type ValuationSupportStatus,
 } from "../status/statusTone";
@@ -30,9 +29,11 @@ import {
   deriveCurrentPriority,
   findMostSevereRisk,
   type CurrentPriorityKind,
+  type LimitingFactor,
   type OutstandingWorkKind,
   type RiskFindingLite,
 } from "./deriveExecutiveSummary";
+import { formatFinancialValue } from "./FinancialsTable";
 import { deriveHeroHasNotableChange, deriveHeroTension, type HeroTensionKind } from "./deriveHeroNarrative";
 import { formatPercent, GAP_KEY, type OutlookGapKind } from "./AtlasOutlookSection";
 import type { TranslationKey } from "../i18n";
@@ -120,16 +121,12 @@ export const CHALLENGE_SENTENCE_KEY: Record<AnalysisHighlightKind, TranslationKe
   valuation_risk: "investmentCase.argument.challenges.valuation_risk",
 };
 
-const CONCERN_SENTENCE_KEY: Record<AnalysisRiskCategory, TranslationKey> = {
+export const CONCERN_SENTENCE_KEY: Record<AnalysisRiskCategory, TranslationKey> = {
   business_risk: "investmentCase.argument.challenges.business_risk",
   financial_risk: "investmentCase.argument.challenges.financial_risk",
   valuation_risk: "investmentCase.argument.challenges.valuation_risk",
   thesis_risk: "investmentCase.concern.thesis_risk",
 };
-
-function isNoteworthyRisk(status: AnalysisRiskStatus): boolean {
-  return status === "moderate" || status === "high";
-}
 
 export interface HeroAnalysisInput {
   recommendationLevel: DecisionSupportLevel;
@@ -163,6 +160,22 @@ export interface HeroAnalysisInput {
    * the safe presentation labels `UX-021`/`UX-022` already specified,
    * never the raw enum value. */
   valuationSupportStatus: ValuationSupportStatus;
+  /** Beta Recommendation Experience implementation sprint (`UX-022`
+   * §3/§6): the real, at-most-2 "what limits this conclusion" facts --
+   * see `deriveLimitingFactors`'s own docstring. Only the first (highest
+   * -priority) entry renders here, as the hero's compact "Limited by:"
+   * line; the full list renders in `LimitingFactorsCard` further down
+   * the page, never duplicated with different content. */
+  limitingFactors: LimitingFactor[];
+  /** Beta Recommendation Experience implementation sprint (`UX-022`
+   * §4): real, per-case Withheld reasons -- always `[]` when
+   * `recommendationLevel !== "insufficient_evidence"`. */
+  missingEvaluations: MissingEvaluationCategory[];
+  /** `MarketSnapshotView.sharePrice`/`.currency` -- real, already
+   * fetched, previously not placed in the Key Metrics row (`UX-022`'s
+   * own corrected component table: "Current Price only (real)"). */
+  sharePrice: number | null;
+  currency: string | null;
 }
 
 interface HeroCardProps {
@@ -193,6 +206,7 @@ function MetricField({ label, children }: { label: string; children: ReactNode }
 
 export function HeroCard({ ticker, analysis, outstandingWorkKinds, isThesisStale, openQuestionCount, t }: HeroCardProps) {
   const isWithheld = analysis.recommendationLevel === "insufficient_evidence";
+  const topLimitingFactor: LimitingFactor | undefined = analysis.limitingFactors[0];
 
   const priority = deriveCurrentPriority({ outstandingWorkKinds, isThesisStale, openQuestionCount });
   const hasNotableChange = deriveHeroHasNotableChange({
@@ -225,6 +239,17 @@ export function HeroCard({ ticker, analysis, outstandingWorkKinds, isThesisStale
             label={t(DECISION_SUPPORT_BADGE_KEY[analysis.recommendationLevel])}
             tone={DECISION_SUPPORT_TONE[analysis.recommendationLevel]}
           />
+          {/* `UX-022` §4: the real, per-case missing-evaluation stages --
+              alongside the fixed sentence above, never replacing it. */}
+          {analysis.missingEvaluations.length > 0 && (
+            <Stack gap="metadata">
+              {analysis.missingEvaluations.map((category) => (
+                <Text as="p" color="secondary" key={category}>
+                  {t(MISSING_EVALUATION_COPY_KEY[category])}
+                </Text>
+              ))}
+            </Stack>
+          )}
         </>
       ) : (
         <>
@@ -234,6 +259,18 @@ export function HeroCard({ ticker, analysis, outstandingWorkKinds, isThesisStale
           <Text as="p" style={HERO_SENTENCE_STYLE}>
             {t(DECISION_SUPPORT_STATEMENT_KEY[analysis.recommendationLevel])} {t(HERO_WHY_KEY[tension])}
           </Text>
+
+          {/* `UX-022` §3/§6: the single highest-priority real limiting
+              factor, compact hero placement -- the full (up to 2-item)
+              list renders separately in `LimitingFactorsCard`. */}
+          {topLimitingFactor && (
+            <Text as="p" color="secondary">
+              {t("investmentCase.hero.limitedByPrefix")}{" "}
+              {topLimitingFactor.kind === "valuationGap"
+                ? t(VALUATION_SUPPORT_GAP_COPY_KEY[topLimitingFactor.gap])
+                : t(CONCERN_SENTENCE_KEY[topLimitingFactor.category])}
+            </Text>
+          )}
 
           <Divider tone="hairline" />
 
@@ -260,7 +297,13 @@ export function HeroCard({ ticker, analysis, outstandingWorkKinds, isThesisStale
               <StatusBadge
                 label={t(VALUATION_SUPPORT_LABEL_KEY[analysis.valuationSupportStatus])}
                 tone={VALUATION_SUPPORT_TONE[analysis.valuationSupportStatus]}
+                style={{ whiteSpace: "normal" }}
               />
+            </MetricField>
+            <MetricField label={t("investmentCase.keyMetrics.currentPriceLabel")}>
+              <Text as="span" style={{ fontWeight: 600 }}>
+                {formatFinancialValue(analysis.sharePrice, analysis.currency)}
+              </Text>
             </MetricField>
             <MetricField label={t("investmentCase.keyMetrics.expectedReturnLabel")}>
               {analysis.longTermExpectedReturn ? (
@@ -337,16 +380,6 @@ export function HeroCard({ ticker, analysis, outstandingWorkKinds, isThesisStale
               </Text>
             </Stack>
           </Inline>
-
-          {mostSevereRisk && isNoteworthyRisk(mostSevereRisk.status) && (
-            <StatusText
-              label={t("investmentCase.hero.riskLabel", {
-                category: t(RISK_CATEGORY_KEY[mostSevereRisk.category]),
-                status: t(RISK_STATUS_KEY[mostSevereRisk.status]),
-              })}
-              tone={RISK_STATUS_TONE[mostSevereRisk.status]}
-            />
-          )}
         </>
       )}
 

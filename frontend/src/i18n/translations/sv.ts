@@ -907,11 +907,33 @@ export const sv: Record<TranslationKey, string> = {
   // ---------- investment case figma-fidelity rebuild: key metrics / strength-concern-priority ----------
   "investmentCase.keyMetrics.heading": "Nyckeltal",
   "investmentCase.keyMetrics.recommendationLabel": "Rekommendation",
-  "investmentCase.keyMetrics.convictionLabel": "Övertygelse",
+  "investmentCase.keyMetrics.convictionLabel": "Analysdjup",
   "investmentCase.keyMetrics.valuationSupportLabel": "Nedsidesstöd",
   "investmentCase.valuationSupport.present": "Nedsidesstöd finns",
   "investmentCase.valuationSupport.absent": "Nedsidesstöd saknas",
   "investmentCase.valuationSupport.unresolved": "Värderingsslutsats ej fastställd",
+  "investmentCase.valuationSupport.cardHeading": "Värderingsstöd",
+  "investmentCase.valuationSupport.gap.missingCapitalDeploymentValuationSupport":
+    "Atlas har ännu inte gjort den separata bedömningen om dagens pris stödjer att nytt kapital tillförs.",
+  "investmentCase.valuationSupport.gap.noDurableGrowthBasis":
+    "Det finns ännu ingen period av verklig tillväxt för Atlas att bygga ett värderingsintervall utifrån.",
+  "investmentCase.valuationSupport.gap.insufficientHistoricalValuationData":
+    "Det finns ännu inte tillräcklig prishistorik för att slutföra denna kontroll.",
+  "investmentCase.valuationSupport.gap.scenarioEnvelopeInconclusive":
+    "Värderingsintervallet innehåller både en uppgång och en nedgång, beroende på vilket scenario som används.",
+  "investmentCase.valuationSupport.gap.conflictingValuationProofs":
+    "Två verkliga värderingskontroller pekar åt olika håll, och Atlas väljer inte sida.",
+  "investmentCase.valuationSupport.gap.noSufficientValuationProof":
+    "Atlas har ännu inget tillförlitligt sätt att bedöma detta bolags värdering.",
+  "investmentCase.limitingFactors.heading": "Vad begränsar denna slutsats?",
+  "investmentCase.limitingFactors.valuationGapTitle": "Värdering",
+  "investmentCase.hero.limitedByPrefix": "Begränsas av:",
+  "investmentCase.withheld.missing.businessEvaluation": "Atlas har ännu inte slutfört sin affärsanalys för detta bolag.",
+  "investmentCase.withheld.missing.valuation": "Atlas har ännu inte slutfört en värderingsanalys för detta bolag.",
+  "investmentCase.withheld.missing.portfolioIntelligence":
+    "Atlas har ännu inte slutfört en portföljanpassningsanalys för detta bolag.",
+  "investmentCase.withheld.missing.reasoning": "Atlas har ännu inte slutfört sin resonemangssyntes för detta bolag.",
+  "investmentCase.keyMetrics.currentPriceLabel": "Aktuellt pris",
   "investmentCase.keyMetrics.expectedReturnLabel": "Förväntad avkastning",
   "investmentCase.keyMetrics.upsideDownsideLabel": "Uppsida / nedsida",
   "investmentCase.keyMetrics.notYetAvailable": "Inte tillgängligt ännu",

@@ -914,11 +914,33 @@ export const en = {
   // ---------- investment case figma-fidelity rebuild: key metrics / strength-concern-priority ----------
   "investmentCase.keyMetrics.heading": "Key Metrics",
   "investmentCase.keyMetrics.recommendationLabel": "Recommendation",
-  "investmentCase.keyMetrics.convictionLabel": "Conviction",
+  "investmentCase.keyMetrics.convictionLabel": "Analysis Depth",
   "investmentCase.keyMetrics.valuationSupportLabel": "Downside Support",
   "investmentCase.valuationSupport.present": "Downside support present",
   "investmentCase.valuationSupport.absent": "Downside support absent",
   "investmentCase.valuationSupport.unresolved": "Valuation conclusion unresolved",
+  "investmentCase.valuationSupport.cardHeading": "Valuation Support",
+  "investmentCase.valuationSupport.gap.missingCapitalDeploymentValuationSupport":
+    "Atlas hasn't yet made the separate judgment of whether today's price supports committing new capital.",
+  "investmentCase.valuationSupport.gap.noDurableGrowthBasis":
+    "There's no period of real growth yet for Atlas to build a valuation range from.",
+  "investmentCase.valuationSupport.gap.insufficientHistoricalValuationData":
+    "There isn't enough price history yet to complete this check.",
+  "investmentCase.valuationSupport.gap.scenarioEnvelopeInconclusive":
+    "The valuation range includes both a gain and a loss, depending on which scenario is used.",
+  "investmentCase.valuationSupport.gap.conflictingValuationProofs":
+    "Two real valuation checks point in different directions, and Atlas doesn't pick a side.",
+  "investmentCase.valuationSupport.gap.noSufficientValuationProof":
+    "Atlas doesn't yet have a reliable way to evaluate this company's valuation.",
+  "investmentCase.limitingFactors.heading": "What limits this conclusion?",
+  "investmentCase.limitingFactors.valuationGapTitle": "Valuation",
+  "investmentCase.hero.limitedByPrefix": "Limited by:",
+  "investmentCase.withheld.missing.businessEvaluation": "Atlas hasn't yet completed its business analysis for this company.",
+  "investmentCase.withheld.missing.valuation": "Atlas hasn't yet completed a valuation analysis for this company.",
+  "investmentCase.withheld.missing.portfolioIntelligence":
+    "Atlas hasn't yet completed a portfolio-fit analysis for this company.",
+  "investmentCase.withheld.missing.reasoning": "Atlas hasn't yet completed its reasoning synthesis for this company.",
+  "investmentCase.keyMetrics.currentPriceLabel": "Current Price",
   "investmentCase.keyMetrics.expectedReturnLabel": "Expected Return",
   "investmentCase.keyMetrics.upsideDownsideLabel": "Upside / Downside",
   "investmentCase.keyMetrics.notYetAvailable": "Not yet available",
