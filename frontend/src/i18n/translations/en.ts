@@ -895,6 +895,10 @@ export const en = {
   "history.reviews.securityConfirmation.confirmThisSecurity": "Confirm this security",
   "history.reviews.securityConfirmation.notThisSecurity": "Not this security",
   "history.reviews.securityConfirmation.confirmError": "Couldn't save your confirmation. Try again.",
+  "history.reviews.securityConfirmation.changeSelection": "Change selection",
+  "history.reviews.securityConfirmation.removeConfirmation": "Remove confirmation",
+  "history.reviews.securityConfirmation.revokeError": "Couldn't remove your confirmation. Try again.",
+  "history.reviews.securityConfirmation.changeSelectionNote": "Your previous confirmation stays in Atlas's history.",
 
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Needs Attention",

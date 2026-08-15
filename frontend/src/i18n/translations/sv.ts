@@ -888,6 +888,10 @@ export const sv: Record<TranslationKey, string> = {
   "history.reviews.securityConfirmation.confirmThisSecurity": "Bekräfta detta värdepapper",
   "history.reviews.securityConfirmation.notThisSecurity": "Inte detta värdepapper",
   "history.reviews.securityConfirmation.confirmError": "Kunde inte spara din bekräftelse. Försök igen.",
+  "history.reviews.securityConfirmation.changeSelection": "Ändra val",
+  "history.reviews.securityConfirmation.removeConfirmation": "Ta bort bekräftelse",
+  "history.reviews.securityConfirmation.revokeError": "Kunde inte ta bort din bekräftelse. Försök igen.",
+  "history.reviews.securityConfirmation.changeSelectionNote": "Din tidigare bekräftelse finns kvar i Atlas historik.",
 
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Kräver uppmärksamhet",

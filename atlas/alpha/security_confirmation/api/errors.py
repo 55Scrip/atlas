@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from atlas.alpha.security_confirmation.exceptions import (
     ConflictingConfirmationError,
     DecisionNotFoundError,
+    NoActiveConfirmationError,
     UnsupportedDiscoverySourceError,
 )
 
@@ -29,3 +30,9 @@ def register_error_handlers(app: FastAPI) -> None:
         request: Request, exc: ConflictingConfirmationError
     ) -> JSONResponse:
         return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+    @app.exception_handler(NoActiveConfirmationError)
+    async def _handle_no_active_confirmation(
+        request: Request, exc: NoActiveConfirmationError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": str(exc)})

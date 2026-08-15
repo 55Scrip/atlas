@@ -32,8 +32,10 @@ import {
 } from "../history/deriveObservedDecisionProperties";
 import {
   confirmSecuritySelection,
+  correctSecuritySelection,
   fetchSecurityConfirmation,
   fetchSecurityDiscoveryCandidates,
+  revokeSecurityConfirmation,
   type ConfirmedSecuritySelectionView,
   type SecurityCandidateView,
 } from "../history/securityConfirmationApi";
@@ -893,18 +895,31 @@ function DecisionReviewCard({
  * across cards, nothing here propagates a confirmation to any sibling
  * Decision, and "Not this security" is never a backend call -- before a
  * confirmation exists there is nothing to revoke, only a candidate to
- * stop looking at (Sprint 21 explicitly defers correction/revocation of
- * an *existing* confirmation to a future sprint). */
+ * stop looking at.
+ *
+ * Sprint 22 (Correction, Revocation & Historical Integrity) adds two
+ * explicit actions from the confirmed state: "Change selection" (runs
+ * discovery again, then calls `correctSecuritySelection` instead of
+ * `confirmSecuritySelection` -- the backend's own `correct()` requires
+ * an active confirmation and appends a revoked+confirmed event pair,
+ * never rewriting the earlier one) and "Remove confirmation" (calls
+ * `revokeSecurityConfirmation`, returning the card to the idle "Find
+ * security" state). Every discovery/confirm state below now carries a
+ * `mode: "confirm" | "correct"` so the same render branches serve both
+ * the first-confirmation flow and the change-selection flow without
+ * duplicating markup -- only which API function gets called differs. */
 type SecurityConfirmationState =
   | { kind: "loading" }
   | { kind: "error" }
   | { kind: "confirmed"; selection: ConfirmedSecuritySelectionView }
+  | { kind: "revoking"; selection: ConfirmedSecuritySelectionView }
+  | { kind: "revokeError"; selection: ConfirmedSecuritySelectionView }
   | { kind: "idle" }
-  | { kind: "discovering" }
-  | { kind: "discoveryError" }
-  | { kind: "discovered"; candidates: SecurityCandidateView[] }
-  | { kind: "confirming"; candidates: SecurityCandidateView[]; pendingTicker: string }
-  | { kind: "confirmError"; candidates: SecurityCandidateView[] };
+  | { kind: "discovering"; mode: "confirm" | "correct" }
+  | { kind: "discoveryError"; mode: "confirm" | "correct" }
+  | { kind: "discovered"; candidates: SecurityCandidateView[]; mode: "confirm" | "correct" }
+  | { kind: "confirming"; candidates: SecurityCandidateView[]; pendingTicker: string; mode: "confirm" | "correct" }
+  | { kind: "confirmError"; candidates: SecurityCandidateView[]; mode: "confirm" | "correct" };
 
 function SecurityConfirmationSection({
   decisionId,
@@ -929,23 +944,31 @@ function SecurityConfirmationSection({
     return () => controller.abort();
   }, [decisionId]);
 
-  function findSecurity() {
-    setState({ kind: "discovering" });
+  function findSecurity(mode: "confirm" | "correct") {
+    setState({ kind: "discovering", mode });
     fetchSecurityDiscoveryCandidates(subject)
-      .then((candidates) => setState({ kind: "discovered", candidates }))
-      .catch(() => setState({ kind: "discoveryError" }));
+      .then((candidates) => setState({ kind: "discovered", candidates, mode }))
+      .catch(() => setState({ kind: "discoveryError", mode }));
   }
 
-  function notThisSecurity(candidates: SecurityCandidateView[], ticker: string) {
+  function notThisSecurity(candidates: SecurityCandidateView[], ticker: string, mode: "confirm" | "correct") {
     const remaining = candidates.filter((candidate) => candidate.ticker !== ticker);
-    setState({ kind: "discovered", candidates: remaining });
+    setState({ kind: "discovered", candidates: remaining, mode });
   }
 
-  function confirm(candidates: SecurityCandidateView[], candidate: SecurityCandidateView) {
-    setState({ kind: "confirming", candidates, pendingTicker: candidate.ticker });
-    confirmSecuritySelection(decisionId, candidate)
+  function confirm(candidates: SecurityCandidateView[], candidate: SecurityCandidateView, mode: "confirm" | "correct") {
+    setState({ kind: "confirming", candidates, pendingTicker: candidate.ticker, mode });
+    const request = mode === "confirm" ? confirmSecuritySelection : correctSecuritySelection;
+    request(decisionId, candidate)
       .then((selection) => setState({ kind: "confirmed", selection }))
-      .catch(() => setState({ kind: "confirmError", candidates }));
+      .catch(() => setState({ kind: "confirmError", candidates, mode }));
+  }
+
+  function removeConfirmation(selection: ConfirmedSecuritySelectionView) {
+    setState({ kind: "revoking", selection });
+    revokeSecurityConfirmation(decisionId)
+      .then(() => setState({ kind: "idle" }))
+      .catch(() => setState({ kind: "revokeError", selection }));
   }
 
   return (
@@ -962,18 +985,39 @@ function SecurityConfirmationSection({
         </Text>
       )}
 
-      {state.kind === "confirmed" && (
+      {(state.kind === "confirmed" || state.kind === "revoking" || state.kind === "revokeError") && (
         <>
           <Label>{t("history.reviews.securityConfirmation.confirmedSelection")}</Label>
           <Text as="span">
             {state.selection.confirmedTicker} — {state.selection.confirmedDisplayName}
           </Text>
           <Text color="tertiary">{t("history.reviews.securityConfirmation.confirmedByYou")}</Text>
+          <Inline gap="row" wrap>
+            <Button
+              variant="tertiary"
+              disabled={state.kind === "revoking"}
+              onClick={() => findSecurity("correct")}
+            >
+              {t("history.reviews.securityConfirmation.changeSelection")}
+            </Button>
+            <Button
+              variant="tertiary"
+              disabled={state.kind === "revoking"}
+              onClick={() => removeConfirmation(state.selection)}
+            >
+              {t("history.reviews.securityConfirmation.removeConfirmation")}
+            </Button>
+          </Inline>
+          {state.kind === "revokeError" && (
+            <Text color="tertiary" role="alert">
+              {t("history.reviews.securityConfirmation.revokeError")}
+            </Text>
+          )}
         </>
       )}
 
       {state.kind === "idle" && (
-        <Button variant="tertiary" onClick={findSecurity}>
+        <Button variant="tertiary" onClick={() => findSecurity("confirm")}>
           {t("history.reviews.securityConfirmation.findSecurity")}
         </Button>
       )}
@@ -985,42 +1029,48 @@ function SecurityConfirmationSection({
         </Text>
       )}
 
-      {(state.kind === "discovered" || state.kind === "confirming" || state.kind === "confirmError") &&
-        (state.candidates.length === 0 ? (
-          <Text color="tertiary">{t("history.reviews.securityConfirmation.noCandidateFound")}</Text>
-        ) : (
-          <Stack gap="metadata">
-            {state.candidates.map((candidate) => (
-              <Stack key={candidate.ticker} gap="metadata">
-                <Label>{t("history.reviews.securityConfirmation.possibleMatch")}</Label>
-                <Text as="span">
-                  {candidate.ticker} — {candidate.displayName}
-                </Text>
-                <Inline gap="row" wrap>
-                  <Button
-                    variant="primary"
-                    disabled={state.kind === "confirming"}
-                    onClick={() => confirm(state.candidates, candidate)}
-                  >
-                    {t("history.reviews.securityConfirmation.confirmThisSecurity")}
-                  </Button>
-                  <Button
-                    variant="tertiary"
-                    disabled={state.kind === "confirming"}
-                    onClick={() => notThisSecurity(state.candidates, candidate.ticker)}
-                  >
-                    {t("history.reviews.securityConfirmation.notThisSecurity")}
-                  </Button>
-                </Inline>
-              </Stack>
-            ))}
-            {state.kind === "confirmError" && (
-              <Text color="tertiary" role="alert">
-                {t("history.reviews.securityConfirmation.confirmError")}
-              </Text>
-            )}
-          </Stack>
-        ))}
+      {(state.kind === "discovered" || state.kind === "confirming" || state.kind === "confirmError") && (
+        <Stack gap="metadata">
+          {state.mode === "correct" && (
+            <Text color="tertiary">{t("history.reviews.securityConfirmation.changeSelectionNote")}</Text>
+          )}
+          {state.candidates.length === 0 ? (
+            <Text color="tertiary">{t("history.reviews.securityConfirmation.noCandidateFound")}</Text>
+          ) : (
+            <Stack gap="metadata">
+              {state.candidates.map((candidate) => (
+                <Stack key={candidate.ticker} gap="metadata">
+                  <Label>{t("history.reviews.securityConfirmation.possibleMatch")}</Label>
+                  <Text as="span">
+                    {candidate.ticker} — {candidate.displayName}
+                  </Text>
+                  <Inline gap="row" wrap>
+                    <Button
+                      variant="primary"
+                      disabled={state.kind === "confirming"}
+                      onClick={() => confirm(state.candidates, candidate, state.mode)}
+                    >
+                      {t("history.reviews.securityConfirmation.confirmThisSecurity")}
+                    </Button>
+                    <Button
+                      variant="tertiary"
+                      disabled={state.kind === "confirming"}
+                      onClick={() => notThisSecurity(state.candidates, candidate.ticker, state.mode)}
+                    >
+                      {t("history.reviews.securityConfirmation.notThisSecurity")}
+                    </Button>
+                  </Inline>
+                </Stack>
+              ))}
+            </Stack>
+          )}
+          {state.kind === "confirmError" && (
+            <Text color="tertiary" role="alert">
+              {t("history.reviews.securityConfirmation.confirmError")}
+            </Text>
+          )}
+        </Stack>
+      )}
     </Stack>
   );
 }

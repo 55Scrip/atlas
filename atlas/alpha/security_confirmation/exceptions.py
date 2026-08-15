@@ -45,3 +45,17 @@ class ConflictingConfirmationError(SecurityConfirmationError):
             f"Decision {decision_id} already has a confirmed security selection "
             f"({existing_ticker!r}); refusing to silently replace it with {requested_ticker!r}."
         )
+
+
+class NoActiveConfirmationError(SecurityConfirmationError):
+    """Raised by `correct()` (Sprint 22) when a Decision has no current
+    confirmed selection to correct -- "correct" means "change an
+    existing confirmation," not "create a new one"; a caller with
+    nothing yet confirmed should use the plain confirm endpoint
+    instead. Maps to 404."""
+
+    def __init__(self, decision_id: str) -> None:
+        self.decision_id = decision_id
+        super().__init__(
+            f"Decision {decision_id} has no current confirmed security selection to correct"
+        )
