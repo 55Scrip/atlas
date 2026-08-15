@@ -279,10 +279,26 @@ const ACCENT_LINK_STYLE: CSSProperties = {
  * = tertiary color), not a row of bordered/filled buttons. A bare
  * `<button>` reset to look like text, not a new interaction pattern --
  * still a real, keyboard-operable button underneath. */
-function TabLabel({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+function TabLabel({
+  active,
+  onClick,
+  id,
+  controls,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  id: string;
+  controls: string;
+  children: ReactNode;
+}) {
   return (
     <button
       type="button"
+      role="tab"
+      id={id}
+      aria-selected={active}
+      aria-controls={controls}
       onClick={onClick}
       style={{
         background: "none",
@@ -2590,7 +2606,7 @@ export function InvestmentCasePage() {
                 never one combined disclosure. Every tab's content below
                 is unchanged from its former always-rendered-when-open
                 location -- only the container and default tab moved. */}
-            <Inline gap="inter-section" wrap>
+            <Inline gap="inter-section" wrap role="tablist">
               {(
                 [
                   ["decisionHistory", "investmentCase.analysis.decisionHistory.heading"],
@@ -2601,7 +2617,13 @@ export function InvestmentCasePage() {
                   ["moreDetails", "investmentCase.moreDetails.heading"],
                 ] as [InvestmentCaseTabKey, TranslationKey][]
               ).map(([key, labelKey]) => (
-                <TabLabel key={key} active={activeTab === key} onClick={() => setActiveTab(key)}>
+                <TabLabel
+                  key={key}
+                  active={activeTab === key}
+                  onClick={() => setActiveTab(key)}
+                  id={`investment-case-tab-${key}`}
+                  controls={`investment-case-tabpanel-${key}`}
+                >
                   {t(labelKey)}
                 </TabLabel>
               ))}
@@ -2613,7 +2635,12 @@ export function InvestmentCasePage() {
                 into its own tab, matching the approved screen's own tab
                 bar. */}
             {activeTab === "decisionHistory" && investmentCaseAnalysis.kind === "loaded" && (
-              <Stack gap="row">
+              <Stack
+                gap="row"
+                role="tabpanel"
+                id="investment-case-tabpanel-decisionHistory"
+                aria-labelledby="investment-case-tab-decisionHistory"
+              >
                 <Label>{t("investmentCase.analysis.decisionHistory.heading")}</Label>
                 {investmentCaseAnalysis.report.decisionHistory.length === 0 && (
                   <StatusText label={t("investmentCase.analysis.decisionHistory.empty")} />
@@ -2639,7 +2666,12 @@ export function InvestmentCasePage() {
             {/* Outcomes (Phase 27) -- kept mostly unchanged, per this
                 sprint's own instruction; moved into its own tab. */}
             {activeTab === "outcomes" && investmentCaseAnalysis.kind === "loaded" && (
-              <Stack gap="row">
+              <Stack
+                gap="row"
+                role="tabpanel"
+                id="investment-case-tabpanel-outcomes"
+                aria-labelledby="investment-case-tab-outcomes"
+              >
                 <Label>{t("investmentCase.analysis.outcomes.heading")}</Label>
                 {investmentCaseAnalysis.report.outcomeHistory.length === 0 && (
                   <StatusText label={t("investmentCase.analysis.outcomes.empty")} />
@@ -2663,7 +2695,12 @@ export function InvestmentCasePage() {
                 reconciliation status. No AI interpretation, no
                 recommendation — see `deriveActivity`. */}
             {activeTab === "lastActivity" && (
-              <Stack gap="metadata">
+              <Stack
+                gap="metadata"
+                role="tabpanel"
+                id="investment-case-tabpanel-lastActivity"
+                aria-labelledby="investment-case-tab-lastActivity"
+              >
                 <Label>{t("investmentCase.lastActivity.heading")}</Label>
                 {!lastDecisionEvent && !lastOutcomeEvent && !lastTradeEvent && (
                   <StatusText label={t("investmentCase.lastActivity.noneYet")} />
@@ -2722,7 +2759,12 @@ export function InvestmentCasePage() {
                 share this one tab rather than either being fabricated
                 a Figma slot or silently dropped. */}
             {activeTab === "timeline" && (
-              <Stack gap="row">
+              <Stack
+                gap="row"
+                role="tabpanel"
+                id="investment-case-tabpanel-timeline"
+                aria-labelledby="investment-case-tab-timeline"
+              >
                 <Label>{t("investmentCase.timeline.heading")}</Label>
                 {caseTimeline.length === 0 && (
                   <StatusText label={t("investmentCase.timeline.empty")} />
@@ -2775,7 +2817,12 @@ export function InvestmentCasePage() {
                 chain checks are shown here to avoid repeating the same
                 fact twice. */}
             {activeTab === "outstandingWork" && (
-              <Stack gap="metadata">
+              <Stack
+                gap="metadata"
+                role="tabpanel"
+                id="investment-case-tabpanel-outstandingWork"
+                aria-labelledby="investment-case-tab-outstandingWork"
+              >
                 <Label>{t("investmentCase.outstandingWork.heading")}</Label>
                 {caseOutstandingWork.filter((item) => item.kind !== "reconciliation-needed").length ===
                   0 && <StatusText label={t("investmentCase.outstandingWork.none")} />}
@@ -2809,7 +2856,12 @@ export function InvestmentCasePage() {
                 analysis →" / "View full valuation →" links on the
                 primary view imply exactly this kind of deeper tab). */}
             {activeTab === "moreDetails" && (
-                <Stack gap="intra-section">
+                <Stack
+                  gap="intra-section"
+                  role="tabpanel"
+                  id="investment-case-tabpanel-moreDetails"
+                  aria-labelledby="investment-case-tab-moreDetails"
+                >
                   <Text color="secondary">{t("investmentCase.moreDetails.subheading")}</Text>
 
                   {investmentCaseAnalysis.kind === "loaded" && (
