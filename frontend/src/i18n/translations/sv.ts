@@ -892,6 +892,16 @@ export const sv: Record<TranslationKey, string> = {
   "history.reviews.securityConfirmation.removeConfirmation": "Ta bort bekräftelse",
   "history.reviews.securityConfirmation.revokeError": "Kunde inte ta bort din bekräftelse. Försök igen.",
   "history.reviews.securityConfirmation.changeSelectionNote": "Din tidigare bekräftelse finns kvar i Atlas historik.",
+  "history.reviews.securityConfirmation.verificationLabel": "Extern verifiering",
+  "history.reviews.securityConfirmation.verify": "Verifiera med extern leverantör",
+  "history.reviews.securityConfirmation.verifyAgain": "Verifiera igen",
+  "history.reviews.securityConfirmation.verifying": "Verifiering pågår…",
+  "history.reviews.securityConfirmation.verifyError": "Kunde inte verifiera just nu. Försök igen.",
+  "history.reviews.securityConfirmation.verificationVerified": "Verifierad med extern leverantör",
+  "history.reviews.securityConfirmation.verificationNotVerified": "Ej bekräftad av extern leverantör",
+  "history.reviews.securityConfirmation.verificationUnavailable": "Verifiering ej tillgänglig",
+  "history.reviews.securityConfirmation.verificationAmbiguous": "Extern leverantör hittade flera möjliga träffar",
+  "history.reviews.securityConfirmation.verificationUnsupported": "Verifiering är inte tillgänglig för denna bekräftelse",
 
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Kräver uppmärksamhet",

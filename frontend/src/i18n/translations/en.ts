@@ -899,6 +899,16 @@ export const en = {
   "history.reviews.securityConfirmation.removeConfirmation": "Remove confirmation",
   "history.reviews.securityConfirmation.revokeError": "Couldn't remove your confirmation. Try again.",
   "history.reviews.securityConfirmation.changeSelectionNote": "Your previous confirmation stays in Atlas's history.",
+  "history.reviews.securityConfirmation.verificationLabel": "External verification",
+  "history.reviews.securityConfirmation.verify": "Verify with external provider",
+  "history.reviews.securityConfirmation.verifyAgain": "Verify again",
+  "history.reviews.securityConfirmation.verifying": "Verification pending…",
+  "history.reviews.securityConfirmation.verifyError": "Unable to verify right now. Try again.",
+  "history.reviews.securityConfirmation.verificationVerified": "Verified using external provider",
+  "history.reviews.securityConfirmation.verificationNotVerified": "Not confirmed by external provider",
+  "history.reviews.securityConfirmation.verificationUnavailable": "Verification unavailable",
+  "history.reviews.securityConfirmation.verificationAmbiguous": "External provider found multiple possible matches",
+  "history.reviews.securityConfirmation.verificationUnsupported": "Verification isn't available for this confirmation",
 
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Needs Attention",

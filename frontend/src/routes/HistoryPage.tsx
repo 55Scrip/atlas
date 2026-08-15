@@ -39,6 +39,12 @@ import {
   type ConfirmedSecuritySelectionView,
   type SecurityCandidateView,
 } from "../history/securityConfirmationApi";
+import {
+  fetchSecurityVerification,
+  verifySecuritySelection,
+  type SecurityIdentityEvidenceView,
+  type SecurityVerificationStatus,
+} from "../history/securityIdentityEvidenceApi";
 
 /** Visual Fidelity Pass -- matches Portfolio/Investment Case/Daily
  * Brief/Discovery's own accent link treatment. */
@@ -1013,6 +1019,7 @@ function SecurityConfirmationSection({
               {t("history.reviews.securityConfirmation.revokeError")}
             </Text>
           )}
+          {state.kind === "confirmed" && <SecurityIdentityEvidenceSection decisionId={decisionId} t={t} />}
         </>
       )}
 
@@ -1070,6 +1077,70 @@ function SecurityConfirmationSection({
             </Text>
           )}
         </Stack>
+      )}
+    </Stack>
+  );
+}
+
+type EvidenceState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "verifying" }
+  | { kind: "result"; evidence: SecurityIdentityEvidenceView }
+  | { kind: "error" };
+
+const VERIFICATION_STATUS_KEY: Record<SecurityVerificationStatus, TranslationKey> = {
+  verified: "history.reviews.securityConfirmation.verificationVerified",
+  not_verified: "history.reviews.securityConfirmation.verificationNotVerified",
+  provider_unavailable: "history.reviews.securityConfirmation.verificationUnavailable",
+  ambiguous: "history.reviews.securityConfirmation.verificationAmbiguous",
+  unsupported: "history.reviews.securityConfirmation.verificationUnsupported",
+};
+
+function SecurityIdentityEvidenceSection({ decisionId, t }: { decisionId: string; t: Translate }) {
+  const [state, setState] = useState<EvidenceState>({ kind: "loading" });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setState({ kind: "loading" });
+    fetchSecurityVerification(decisionId, controller.signal)
+      .then((evidence) => setState(evidence ? { kind: "result", evidence } : { kind: "idle" }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setState({ kind: "error" });
+      });
+    return () => controller.abort();
+  }, [decisionId]);
+
+  function verify() {
+    setState({ kind: "verifying" });
+    verifySecuritySelection(decisionId)
+      .then((evidence) => setState({ kind: "result", evidence }))
+      .catch(() => setState({ kind: "error" }));
+  }
+
+  return (
+    <Stack gap="metadata">
+      <Label>{t("history.reviews.securityConfirmation.verificationLabel")}</Label>
+      {state.kind === "loading" && <Text color="tertiary">{t("common.loading")}</Text>}
+      {state.kind === "idle" && (
+        <Button variant="tertiary" onClick={verify}>
+          {t("history.reviews.securityConfirmation.verify")}
+        </Button>
+      )}
+      {state.kind === "verifying" && <Text color="tertiary">{t("history.reviews.securityConfirmation.verifying")}</Text>}
+      {state.kind === "error" && (
+        <Text color="tertiary" role="alert">
+          {t("history.reviews.securityConfirmation.verifyError")}
+        </Text>
+      )}
+      {state.kind === "result" && (
+        <>
+          <Text as="span">{t(VERIFICATION_STATUS_KEY[state.evidence.status])}</Text>
+          <Button variant="tertiary" onClick={verify}>
+            {t("history.reviews.securityConfirmation.verifyAgain")}
+          </Button>
+        </>
       )}
     </Stack>
   );

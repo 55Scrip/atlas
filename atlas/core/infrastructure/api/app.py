@@ -26,6 +26,10 @@ from atlas.alpha.security_confirmation.api.errors import (
 )
 from atlas.alpha.security_confirmation.api.router import router as security_confirmation_router
 from atlas.alpha.security_discovery.api.router import router as security_discovery_router
+from atlas.alpha.security_identity_evidence.api.errors import (
+    register_error_handlers as register_security_identity_evidence_error_handlers,
+)
+from atlas.alpha.security_identity_evidence.api.router import router as security_identity_evidence_router
 from atlas.alpha.watchlist.api.router import router as alpha_watchlist_router
 from atlas.core.infrastructure.api.case.errors import (
     register_error_handlers as register_case_error_handlers,
@@ -166,6 +170,15 @@ def create_app() -> FastAPI:
     # no candidate is ever ranked or auto-selected -- see that
     # package's own `api/router.py` docstring.
     app.include_router(security_discovery_router)
+    # Security Identity Evidence v1 (Sprint 23): the one explicit
+    # "check external evidence" action layered over Sprint 20/22's own
+    # confirmation lifecycle -- authored and owned in
+    # `atlas/alpha/security_identity_evidence/`, never triggered
+    # automatically by confirm/correct/revoke. See that package's own
+    # `__init__.py` for the full ontology separating this from
+    # SecurityCandidate, ConfirmedSecuritySelection, and the still-
+    # unbuilt SecurityIdentity.
+    app.include_router(security_identity_evidence_router)
     app.include_router(decision_context_router)
     app.include_router(observation_router)
     app.include_router(hypothesis_router)
@@ -177,6 +190,7 @@ def create_app() -> FastAPI:
     register_case_error_handlers(app)
     register_decision_error_handlers(app)
     register_security_confirmation_error_handlers(app)
+    register_security_identity_evidence_error_handlers(app)
     register_decision_context_error_handlers(app)
     register_observation_error_handlers(app)
     register_hypothesis_error_handlers(app)
