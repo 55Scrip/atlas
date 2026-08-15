@@ -21,6 +21,10 @@ from atlas.alpha.portfolio.api.router import router as alpha_portfolio_router
 from atlas.alpha.portfolio_cockpit.api.router import router as portfolio_cockpit_router
 from atlas.alpha.portfolio_intelligence.api.router import router as portfolio_intelligence_router
 from atlas.alpha.portfolio_status.api.router import router as portfolio_status_router
+from atlas.alpha.security_confirmation.api.errors import (
+    register_error_handlers as register_security_confirmation_error_handlers,
+)
+from atlas.alpha.security_confirmation.api.router import router as security_confirmation_router
 from atlas.alpha.watchlist.api.router import router as alpha_watchlist_router
 from atlas.core.infrastructure.api.case.errors import (
     register_error_handlers as register_case_error_handlers,
@@ -147,6 +151,14 @@ def create_app() -> FastAPI:
     # strategies. Never computes or serves a Strategy Signature; see that
     # package's own `__init__.py` for the full Sprint 10-13 provenance.
     app.include_router(observed_decision_properties_router)
+    # Security Confirmation v1 (Sprint 20): the narrow, decision-scoped
+    # boundary between Sprint 19's read-only SecurityCandidate discovery
+    # and a canonical SecurityIdentity Atlas has not built. Authored and
+    # owned in `atlas/alpha/security_confirmation/` -- records only the
+    # investor's own explicit assertion ("this Decision meant ticker
+    # X"), never Decision.subject or any other historical field. See
+    # that package's own `__init__.py` for the full ontology.
+    app.include_router(security_confirmation_router)
     app.include_router(decision_context_router)
     app.include_router(observation_router)
     app.include_router(hypothesis_router)
@@ -157,6 +169,7 @@ def create_app() -> FastAPI:
     app.include_router(outcome_router)
     register_case_error_handlers(app)
     register_decision_error_handlers(app)
+    register_security_confirmation_error_handlers(app)
     register_decision_context_error_handlers(app)
     register_observation_error_handlers(app)
     register_hypothesis_error_handlers(app)
