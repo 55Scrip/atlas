@@ -148,6 +148,54 @@ class TestVerificationReadEndpoint:
         assert response.json()["status"] == "not_verified"
 
 
+class TestHistoryEndpoint:
+    """Sprint 24 -- the new read-only lifecycle-traceability endpoint."""
+
+    def test_history_empty_before_any_confirmation(self, client: TestClient) -> None:
+        decision = _record_decision(client)
+        response = client.get(f"/decisions/{decision['id']}/security-confirmation/history")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_history_reflects_confirm_verify_revoke_correct_sequence(self, client: TestClient, engine) -> None:
+        decision = _record_decision(client)
+        decision_id = decision["id"]
+        client.post(f"/decisions/{decision_id}/security-confirmation", json=_MSFT_CONFIRM_PAYLOAD)
+        _override_verification_provider(
+            client,
+            engine,
+            lambda ticker: OpenFigiMappingResult(
+                matches=(OpenFigiMatch("F1", "MSFT", "MICROSOFT CORP", "US", "Common Stock", "Equity"),)
+            ),
+        )
+        client.post(f"/decisions/{decision_id}/security-confirmation/verify")
+        client.post(f"/decisions/{decision_id}/security-confirmation/revoke")
+
+        nvda_payload = {
+            "ticker": "NVDA",
+            "displayName": "NVIDIA CORP",
+            "cik": 1045810,
+            "discoveryMethod": "ticker_exact",
+            "source": "sec_company_tickers",
+        }
+        client.post(f"/decisions/{decision_id}/security-confirmation", json=nvda_payload)
+
+        history = client.get(f"/decisions/{decision_id}/security-confirmation/history").json()
+        assert len(history) == 3  # confirmed MSFT, revoked MSFT, confirmed NVDA
+        assert history[0]["eventType"] == "confirmed"
+        assert history[0]["confirmedTicker"] == "MSFT"
+        assert len(history[0]["evidence"]) == 1
+        assert history[0]["evidence"][0]["status"] == "verified"
+
+        assert history[1]["eventType"] == "revoked"
+        assert history[1]["confirmedTicker"] == "MSFT"
+        assert history[1]["evidence"] == []  # revocation event itself was never verified
+
+        assert history[2]["eventType"] == "confirmed"
+        assert history[2]["confirmedTicker"] == "NVDA"
+        assert history[2]["evidence"] == []  # fresh confirmation, no evidence yet -- never inherits MSFT's
+
+
 class TestSiblingIsolation:
     def test_verifying_one_decision_never_affects_a_sibling(self, client: TestClient, engine) -> None:
         first = _record_decision(client)

@@ -8,6 +8,17 @@ POST /decisions/{decision_id}/security-confirmation/verify        --
 GET  /decisions/{decision_id}/security-confirmation/verification   --
     reads back the latest verification attempt for the current
     confirmation, if any.
+GET  /decisions/{decision_id}/security-confirmation/history         --
+    (Sprint 24) the full confirmation lifecycle for this Decision,
+    oldest first: every confirm/revoke event, each carrying every
+    evidence row ever gathered against *that specific* event. Purely
+    additive and read-only -- closes the traceability gap Sprint 24's
+    own investigation found (nothing could previously answer "which
+    confirmations existed, was one revoked or replaced, what did the
+    provider say about each"). Not yet surfaced in any frontend UI
+    (Sprint 24 ground rule: prefer no history disclosure yet unless
+    the product genuinely needs it) -- this is a read boundary for
+    future auditability, not a shipped feature.
 
 Nested under the same `/decisions/{decision_id}/security-confirmation`
 prefix `security_confirmation`'s own router already owns, matching
@@ -25,7 +36,10 @@ from atlas.alpha.security_identity_evidence.api.dependencies import (
     get_security_identity_evidence_repository,
     get_security_verification_service,
 )
-from atlas.alpha.security_identity_evidence.api.schemas import SecurityIdentityEvidenceView
+from atlas.alpha.security_identity_evidence.api.schemas import (
+    SecurityConfirmationHistoryEntryView,
+    SecurityIdentityEvidenceView,
+)
 from atlas.alpha.security_identity_evidence.repository import SqlAlchemySecurityIdentityEvidenceRepository
 from atlas.alpha.security_identity_evidence.service import SecurityVerificationService
 
@@ -58,3 +72,22 @@ def get_security_verification(
     if evidence is None:
         raise HTTPException(status_code=404, detail="No verification attempt recorded for this confirmation")
     return SecurityIdentityEvidenceView.from_domain(evidence)
+
+
+@router.get("/history", response_model=list[SecurityConfirmationHistoryEntryView])
+def get_security_confirmation_history(
+    decision_id: str,
+    confirmation_repository: SqlAlchemySecurityConfirmationRepository = Depends(
+        get_security_confirmation_repository
+    ),
+    evidence_repository: SqlAlchemySecurityIdentityEvidenceRepository = Depends(
+        get_security_identity_evidence_repository
+    ),
+) -> list[SecurityConfirmationHistoryEntryView]:
+    events = confirmation_repository.list_events(decision_id)
+    return [
+        SecurityConfirmationHistoryEntryView.from_domain(
+            event, evidence_repository.list_by_confirmation_id(event.id)
+        )
+        for event in events
+    ]

@@ -3,13 +3,18 @@
 `security_confirmation.repository.get_latest_event`'s own
 `ORDER BY ... DESC, id DESC LIMIT 1` idiom exactly, for the same
 deterministic-tiebreak reason documented there.
+
+`list_by_confirmation_id` (Sprint 24) mirrors
+`security_confirmation.repository.list_events`'s own read-only
+traceability addition: every verification attempt ever made against
+one confirmation event, oldest first, never just the latest.
 """
 from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Mapping
 
-from sqlalchemy import desc, insert, select
+from sqlalchemy import asc, desc, insert, select
 from sqlalchemy.engine import Engine
 
 from atlas.alpha.security_identity_evidence.models import SecurityIdentityEvidence, SecurityVerificationStatus
@@ -42,6 +47,22 @@ class SqlAlchemySecurityIdentityEvidenceRepository:
                 .first()
             )
         return _to_evidence(row) if row is not None else None
+
+    def list_by_confirmation_id(self, confirmation_id: str) -> list[SecurityIdentityEvidence]:
+        with self._engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    select(security_identity_evidence_table)
+                    .where(security_identity_evidence_table.c.confirmation_id == confirmation_id)
+                    .order_by(
+                        asc(security_identity_evidence_table.c.verified_at),
+                        asc(security_identity_evidence_table.c.id),
+                    )
+                )
+                .mappings()
+                .all()
+            )
+        return [_to_evidence(row) for row in rows]
 
 
 def _to_row(evidence: SecurityIdentityEvidence) -> dict[str, Any]:

@@ -10,12 +10,29 @@ Verification is always an explicit call to `verify()` -- nothing in
 this package, `security_confirmation`, or anywhere else calls it
 automatically (Sprint 23 ground rule 8/9/14). `confirm()`, `correct()`,
 and `revoke()` remain completely unaware this package exists.
+
+Ordering safety (Sprint 24): every `verify()` call derives its
+`verified_at` via `_next_recorded_at`, never a bare `self._clock()`
+call -- the exact same fix `security_confirmation.service` already
+applied for the identical reason (see that module's own docstring).
+`repository.get_latest` orders by `(verified_at DESC, id DESC)`, and
+`id` is an arbitrary UUID; under a real clock this rarely matters
+(microsecond resolution), but two evidence rows written "at the same
+instant" -- confirmed to happen under a fixed/injected test clock, and
+plausible under a fast real clock too -- would otherwise have their
+relative order decided by an unrelated UUID comparison, silently
+breaking "latest evidence" for repeated verification (Sprint 24 Phase
+5/6/23). `_next_recorded_at` guarantees each new evidence row's
+timestamp is always strictly after the previous one *for that specific
+`confirmation_id`* -- never across different confirmations, since
+evidence for an older, superseded confirmation must never be treated
+as more recent than it actually was.
 """
 from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from atlas.alpha.security_confirmation.repository import SqlAlchemySecurityConfirmationRepository
 from atlas.alpha.security_discovery.canonicalize import canonicalize_company_text
@@ -62,6 +79,9 @@ class SecurityVerificationService:
         if confirmation is None:
             raise NoActiveConfirmationError(decision_id)
 
+        previous = self._evidence.get_latest(confirmation.id)
+        at = self._next_recorded_at(previous)
+
         if confirmation.discovery_source not in _VERIFIABLE_DISCOVERY_SOURCES:
             evidence = self._build_evidence(
                 confirmation_id=confirmation.id,
@@ -71,6 +91,7 @@ class SecurityVerificationService:
                 verified_name=None,
                 exchange=None,
                 response_snapshot={},
+                at=at,
             )
             self._evidence.add(evidence)
             return evidence
@@ -86,6 +107,7 @@ class SecurityVerificationService:
                 verified_name=None,
                 exchange=None,
                 response_snapshot={},
+                at=at,
             )
             self._evidence.add(evidence)
             return evidence
@@ -99,6 +121,7 @@ class SecurityVerificationService:
             verified_name=match.name if match else None,
             exchange=match.exch_code if match else None,
             response_snapshot=_snapshot(result),
+            at=at,
         )
         self._evidence.add(evidence)
         return evidence
@@ -129,6 +152,7 @@ class SecurityVerificationService:
         verified_name: str | None,
         exchange: str | None,
         response_snapshot: dict,
+        at: datetime,
     ) -> SecurityIdentityEvidence:
         return SecurityIdentityEvidence(
             id=str(uuid.uuid4()),
@@ -140,8 +164,14 @@ class SecurityVerificationService:
             verified_name=verified_name,
             exchange=exchange,
             provider_response_json=json.dumps(response_snapshot, sort_keys=True),
-            verified_at=self._clock(),
+            verified_at=at,
         )
+
+    def _next_recorded_at(self, previous: SecurityIdentityEvidence | None) -> datetime:
+        now = self._clock()
+        if previous is None:
+            return now
+        return max(now, previous.verified_at + timedelta(microseconds=1))
 
 
 def _snapshot(result: OpenFigiMappingResult) -> dict:

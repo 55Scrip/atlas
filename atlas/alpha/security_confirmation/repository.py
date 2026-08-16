@@ -1,5 +1,13 @@
 """SQLAlchemy-backed store for the Security Confirmation lifecycle.
 
+`list_events` (Sprint 24) is the one read-only addition this sprint's
+lifecycle-traceability investigation found missing: before this,
+nothing could answer "which confirmations existed for this Decision,
+in what order, was one later revoked or replaced" -- only the single
+latest event was ever readable. Ordered chronologically ascending
+(oldest first, `id` as the same deterministic tiebreak `get_latest_event`
+already uses), read-only, no new table, no schema change.
+
 Sprint 22: `add` now writes one append-only `SecurityConfirmationEvent`
 row (never an UPDATE, never a DELETE -- see `models.py`'s own
 docstring). `get_latest_event` is the one read that determines
@@ -23,7 +31,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Mapping
 
-from sqlalchemy import desc, insert, select
+from sqlalchemy import asc, desc, insert, select
 from sqlalchemy.engine import Engine
 
 from atlas.alpha.security_confirmation.models import (
@@ -60,6 +68,22 @@ class SqlAlchemySecurityConfirmationRepository:
                 .first()
             )
         return _to_event(row) if row is not None else None
+
+    def list_events(self, decision_id: str) -> list[SecurityConfirmationEvent]:
+        with self._engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    select(security_confirmations_table)
+                    .where(security_confirmations_table.c.decision_id == decision_id)
+                    .order_by(
+                        asc(security_confirmations_table.c.confirmed_at),
+                        asc(security_confirmations_table.c.id),
+                    )
+                )
+                .mappings()
+                .all()
+            )
+        return [_to_event(row) for row in rows]
 
     def get_by_decision_id(self, decision_id: str) -> ConfirmedSecuritySelection | None:
         latest = self.get_latest_event(decision_id)
