@@ -1,9 +1,13 @@
 """Persistence for Atlas Alpha's provisional Watchlist state.
 
-`add` is the only write and is always an INSERT -- a Watchlist entry's
-`case_id` is set exactly once, at creation, and never changes afterward
-(see `models.AlphaWatchlistEntry`'s own docstring), so there is nothing
-to update, mirroring `business_record_table`'s own repository shape.
+`add` and `remove` are the only writes. `add` is always an INSERT -- a
+Watchlist entry's `case_id` is set exactly once, at creation, and never
+changes afterward (see `models.AlphaWatchlistEntry`'s own docstring),
+so there is nothing to update, mirroring `business_record_table`'s own
+repository shape. `remove` is a plain DELETE keyed by `ticker` (the
+table's primary key -- see `table.py`); the table has no foreign-key
+relationship to Case/Decision/Evidence/Company data, so this delete
+cannot cascade into any of it.
 """
 from __future__ import annotations
 
@@ -11,7 +15,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import insert, select
+from sqlalchemy import delete, insert, select
 from sqlalchemy.engine import Engine
 
 from atlas.alpha.watchlist.models import AlphaWatchlistEntry
@@ -25,6 +29,15 @@ class AlphaWatchlistStore:
     def add(self, entry: AlphaWatchlistEntry) -> None:
         with self._engine.begin() as connection:
             connection.execute(insert(alpha_watchlist_entry_table).values(**_to_row(entry)))
+
+    def remove(self, ticker: str) -> None:
+        normalized = ticker.strip().upper()
+        with self._engine.begin() as connection:
+            connection.execute(
+                delete(alpha_watchlist_entry_table).where(
+                    alpha_watchlist_entry_table.c.ticker == normalized
+                )
+            )
 
     def list_all(self) -> tuple[AlphaWatchlistEntry, ...]:
         with self._engine.connect() as connection:

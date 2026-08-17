@@ -22,7 +22,10 @@ from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecor
 from atlas.alpha.business_data_refresh.service import ensure_company_enriched
 from atlas.alpha.case_generation.service import CaseGenerationService
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
-from atlas.alpha.watchlist.exceptions import AlphaWatchlistValidationError
+from atlas.alpha.watchlist.exceptions import (
+    AlphaWatchlistEntryNotFoundError,
+    AlphaWatchlistValidationError,
+)
 from atlas.alpha.watchlist.models import AlphaWatchlistEntry
 from atlas.alpha.watchlist.store import AlphaWatchlistStore
 from atlas.analysis_engine.business_data.providers import BusinessDataProvider
@@ -103,6 +106,23 @@ class AlphaWatchlistService:
         self._store.add(entry)
         self._trigger_enrichment(normalized)
         return entry
+
+    def remove_ticker(self, ticker: str) -> None:
+        """Removes a ticker's Watchlist entry only -- the Watchlist
+        table has no relationship to Case/Decision/Evidence/Company
+        data (see `store.py`), so nothing else is touched. Raises
+        `AlphaWatchlistEntryNotFoundError` if the ticker is not
+        currently on the Watchlist, matching this codebase's
+        established delete-of-missing convention rather than being
+        silently idempotent (idempotence governs `add_ticker`, a
+        different operation)."""
+        normalized = ticker.strip().upper()
+        existing = self._store.get_by_ticker(normalized)
+        if existing is None:
+            raise AlphaWatchlistEntryNotFoundError(
+                f"No Watchlist entry found for ticker {normalized}"
+            )
+        self._store.remove(normalized)
 
     def list_all(self) -> tuple[AlphaWatchlistEntry, ...]:
         return self._store.list_all()

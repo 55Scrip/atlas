@@ -1395,5 +1395,11 @@ export const sv: Record<TranslationKey, string> = {
   "watchlist.table.notAvailable": "—",
   "watchlist.table.rowLoadError": "Detaljer ej tillgängliga",
   "watchlist.table.removeButton": "Ta bort",
-  "watchlist.table.removeUnavailable": "Att ta bort bolag är inte tillgängligt i denna Alpha ännu",
+  "watchlist.remove.confirmTitle": "Ta bort {{ticker}} från din bevakningslista?",
+  "watchlist.remove.confirmExplanation": "Detta tar bara bort {{ticker}} från din bevakningslista. Investeringscaset och beslutshistoriken bevaras.",
+  "watchlist.remove.confirmButton": "Bekräfta borttagning",
+  "watchlist.remove.cancelButton": "Avbryt",
+  "watchlist.remove.removingLabel": "Tar bort…",
+  "watchlist.remove.failureMessage": "Kunde inte ta bort {{ticker}}. Försök igen.",
+  "watchlist.remove.retryButton": "Försök igen",
 };

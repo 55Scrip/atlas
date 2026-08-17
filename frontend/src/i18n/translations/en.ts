@@ -1398,7 +1398,13 @@ export const en = {
   "watchlist.table.notAvailable": "—",
   "watchlist.table.rowLoadError": "Details unavailable",
   "watchlist.table.removeButton": "Remove",
-  "watchlist.table.removeUnavailable": "Removing companies isn't available in this Alpha yet",
+  "watchlist.remove.confirmTitle": "Remove {{ticker}} from your watchlist?",
+  "watchlist.remove.confirmExplanation": "This only removes {{ticker}} from your watchlist. Its Investment Case and decision history are kept.",
+  "watchlist.remove.confirmButton": "Confirm Remove",
+  "watchlist.remove.cancelButton": "Cancel",
+  "watchlist.remove.removingLabel": "Removing…",
+  "watchlist.remove.failureMessage": "Couldn't remove {{ticker}}. Try again.",
+  "watchlist.remove.retryButton": "Retry",
 } as const;
 
 export type TranslationKey = keyof typeof en;

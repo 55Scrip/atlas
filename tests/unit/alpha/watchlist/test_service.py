@@ -21,7 +21,10 @@ from atlas.alpha.case_generation.service import CaseGenerationService
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaPortfolioState, EntryMode
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.table import create_alpha_portfolio_state_table
-from atlas.alpha.watchlist.exceptions import AlphaWatchlistValidationError
+from atlas.alpha.watchlist.exceptions import (
+    AlphaWatchlistEntryNotFoundError,
+    AlphaWatchlistValidationError,
+)
 from atlas.alpha.watchlist.service import AlphaWatchlistService
 from atlas.alpha.watchlist.store import AlphaWatchlistStore
 from atlas.alpha.watchlist.table import create_alpha_watchlist_entry_table
@@ -167,6 +170,35 @@ class TestCrossContextCaseReuseWithPortfolio:
         pre-cross-context-aware behavior."""
         entry = service.add_ticker("AMD")
         assert entry.case_id is not None
+
+
+class TestRemoveTicker:
+    def test_removing_an_existing_ticker_removes_it_from_the_list(self, service):
+        service.add_ticker("AMD")
+        service.remove_ticker("AMD")
+        assert service.list_all() == ()
+
+    def test_other_tickers_remain_after_removal(self, service):
+        service.add_ticker("AMD")
+        service.add_ticker("NVDA")
+        service.remove_ticker("AMD")
+        assert {e.ticker for e in service.list_all()} == {"NVDA"}
+
+    def test_removal_is_normalized_case_insensitively(self, service):
+        service.add_ticker("AMD")
+        service.remove_ticker("amd")
+        assert service.list_all() == ()
+
+    def test_removing_a_ticker_not_on_the_watchlist_raises_not_found(self, service):
+        with pytest.raises(AlphaWatchlistEntryNotFoundError):
+            service.remove_ticker("AMD")
+
+    def test_add_remove_add_again_relists_the_ticker(self, service):
+        service.add_ticker("AMD")
+        service.remove_ticker("AMD")
+        readded = service.add_ticker("AMD")
+        assert readded.ticker == "AMD"
+        assert len(service.list_all()) == 1
 
 
 class TestAutomaticEnrichment:

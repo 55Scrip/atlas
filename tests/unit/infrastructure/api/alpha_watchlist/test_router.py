@@ -113,6 +113,120 @@ class TestAddToWatchlistCreatesCaseAndEnriches:
         assert response.status_code == 400
 
 
+class TestRemoveFromWatchlist:
+    def test_removing_an_existing_entry_returns_204(self, client):
+        client.post("/alpha-watchlist", json={"ticker": "META"})
+        response = client.delete("/alpha-watchlist/META")
+        assert response.status_code == 204
+
+    def test_removed_entry_no_longer_appears_in_list(self, client):
+        client.post("/alpha-watchlist", json={"ticker": "META"})
+        client.delete("/alpha-watchlist/META")
+        listing = client.get("/alpha-watchlist")
+        assert [e["ticker"] for e in listing.json()] == []
+
+    def test_other_entries_remain_unchanged_after_removal(self, client):
+        client.post("/alpha-watchlist", json={"ticker": "META"})
+        client.post("/alpha-watchlist", json={"ticker": "NVDA"})
+        client.delete("/alpha-watchlist/META")
+        listing = client.get("/alpha-watchlist")
+        assert [e["ticker"] for e in listing.json()] == ["NVDA"]
+
+    def test_the_case_entity_itself_remains_intact_after_removal(self, client):
+        entry = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
+        client.delete("/alpha-watchlist/META")
+        case_response = client.get(f"/cases/{entry['caseId']}")
+        assert case_response.status_code == 200, case_response.text
+        assert case_response.json()["caseId"] == entry["caseId"]
+
+    def test_company_profile_display_becomes_unavailable_after_removal_but_no_data_is_deleted(
+        self, client
+    ):
+        """Documents a real, pre-existing architectural coupling rather
+        than papering over it: `InvestmentCaseCompositionService._assemble`
+        resolves a Watchlist-only Case's ticker via
+        `watchlist_store.get_by_case_id(case_id)` (see
+        `atlas/alpha/investment_case/service.py`), since neither the
+        Case nor its persisted `BusinessRecord`s store a ticker
+        directly. Removing the Watchlist row deletes that one
+        resolution path, so `companyProfile` on `/cases/{id}/analysis`
+        becomes `None` post-removal -- not because any BusinessRecord
+        row was deleted (confirmed intact by re-adding, below), but
+        because nothing left maps this case_id back to its ticker. This
+        is the concrete, documented consequence of `/company/:ticker`
+        resolution depending solely on Watchlist/Portfolio membership,
+        called out as a known limitation rather than a bug this narrow
+        sprint should fix (see design record)."""
+        entry = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
+        analysis_before = client.get(f"/cases/{entry['caseId']}/analysis").json()
+        assert analysis_before["companyProfile"]["name"] == "Meta Platforms, Inc."
+
+        client.delete("/alpha-watchlist/META")
+        analysis_after = client.get(f"/cases/{entry['caseId']}/analysis")
+        assert analysis_after.status_code == 200, analysis_after.text
+        assert analysis_after.json()["companyProfile"] is None
+
+        # Re-adding restores ticker resolution and shows the *same*
+        # underlying BusinessRecord data was never deleted.
+        client.post("/alpha-watchlist", json={"ticker": "META"})
+        new_case_id = client.get("/alpha-watchlist").json()[0]["caseId"]
+        analysis_readded = client.get(f"/cases/{new_case_id}/analysis").json()
+        assert analysis_readded["companyProfile"]["name"] == "Meta Platforms, Inc."
+
+    def test_the_portfolio_holding_is_untouched_when_the_same_ticker_is_removed_from_watchlist(
+        self, client
+    ):
+        watchlist_entry = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
+        client.post(
+            "/alpha-portfolio/import",
+            json={"holdings": [{"ticker": "META", "weightPercent": 20.0}]},
+        )
+        client.delete("/alpha-watchlist/META")
+
+        portfolio = client.get("/alpha-portfolio").json()
+        holding = next(h for h in portfolio["holdings"] if h["ticker"] == "META")
+        assert holding["caseId"] == watchlist_entry["caseId"]
+
+        analysis = client.get(f"/cases/{watchlist_entry['caseId']}/analysis").json()
+        assert analysis["holdingContext"]["held"] is True
+
+    def test_removing_a_ticker_not_on_the_watchlist_returns_404(self, client):
+        response = client.delete("/alpha-watchlist/NOPE")
+        assert response.status_code == 404
+
+    def test_existing_add_and_list_behavior_is_unaffected(self, client):
+        first = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
+        second = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
+        assert first["caseId"] == second["caseId"]
+        assert [e["ticker"] for e in client.get("/alpha-watchlist").json()] == ["META"]
+
+    def test_add_remove_add_again_relists_the_ticker(self, client):
+        client.post("/alpha-watchlist", json={"ticker": "META"})
+        client.delete("/alpha-watchlist/META")
+        readded = client.post("/alpha-watchlist", json={"ticker": "META"})
+        assert readded.status_code == 201, readded.text
+        assert [e["ticker"] for e in client.get("/alpha-watchlist").json()] == ["META"]
+
+    def test_re_adding_a_watchlist_only_ticker_creates_a_new_case_not_the_orphaned_one(
+        self, client
+    ):
+        """Documents a real, pre-existing architectural gap rather than
+        papering over it: `CaseGenerationService.ensure_case_id` only
+        reuses a Case via Portfolio-holding cross-reference (see
+        `AlphaWatchlistService._known_case_ids_by_ticker`). A ticker
+        that was only ever on the Watchlist has no other persisted
+        record of its old `case_id` once its Watchlist row is removed,
+        so re-adding it resolves a brand-new Case. The original Case's
+        data is not deleted (proven by
+        `test_the_case_remains_fully_intact_after_removal` above) --
+        it becomes unreachable by ticker until directly re-linked,
+        which is outside this sprint's scope (see design record)."""
+        first = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
+        client.delete("/alpha-watchlist/META")
+        second = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
+        assert second["caseId"] != first["caseId"]
+
+
 class TestWatchlistToPortfolioPreservesKnowledge:
     """The Definition of Done's exact final scenario: META added to
     Watchlist, then later added to Portfolio -- no new Case, no

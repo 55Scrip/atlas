@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { CSSProperties, FormEvent } from "react";
 import { Button, Container, Heading, Inline, Stack, StatusBadge, Surface, Text } from "../foundation";
@@ -26,13 +26,13 @@ import {
  * endpoint exists; a watchlist is expected to stay small enough that
  * N parallel per-row fetches are reasonable.
  *
- * There is no remove/delete capability anywhere in the real backend
- * (`AlphaWatchlistStore`/`AlphaWatchlistService` -- grepped, only
- * `add`/`list_all`/`get_by_ticker`/`get_by_case_id` exist). Rather than
- * fabricate a fake removal, the Remove control renders disabled with an
- * honest tooltip -- the same precedent already established for
- * "Dismiss from Attention" (`HoldingAttentionPage.tsx`) and "Dismiss"
- * (`CompanyWorkspacePage.tsx`).
+ * Remove uses the real `DELETE /api/alpha-watchlist/{ticker}` endpoint
+ * (Watchlist Remove Capability sprint): a membership mutation only --
+ * it never deletes the ticker's Case, Decision history, or Company
+ * data (see `atlas/alpha/watchlist/service.py::remove_ticker`). The
+ * row is removed from the table only after the backend confirms the
+ * mutation (no optimistic hide), and the confirmation copy says so
+ * explicitly.
  *
  * The approved Figma reference frames (`watchlist-workspace`/-empty/
  * -loading/-add-flow/-remove-flow) were generated for this sprint but
@@ -69,6 +69,12 @@ type AddStatus =
   | { kind: "submitting" }
   | { kind: "success"; ticker: string }
   | { kind: "error"; reason: "validation" | "network" };
+
+type RemoveStatus =
+  | { kind: "idle" }
+  | { kind: "confirming" }
+  | { kind: "removing" }
+  | { kind: "error" };
 
 const cellStyle: CSSProperties = {
   padding: "var(--space-metadata) var(--space-row)",
@@ -182,6 +188,19 @@ export function WatchlistPage() {
       .catch(() => setAddStatus({ kind: "error", reason: "network" }));
   }
 
+  function handleTickerRemoved(ticker: string) {
+    setListStatus((current) => {
+      if (current.kind !== "loaded") return current;
+      return { kind: "loaded", entries: current.entries.filter((e) => e.ticker !== ticker) };
+    });
+    setRowStatuses((current) => {
+      if (!(ticker in current)) return current;
+      const next = { ...current };
+      delete next[ticker];
+      return next;
+    });
+  }
+
   function closeAddForm() {
     setShowAddForm(false);
     setAddStatus({ kind: "idle" });
@@ -229,6 +248,7 @@ export function WatchlistPage() {
             rowStatuses={rowStatuses}
             navigate={navigate}
             locale={locale}
+            onRemoved={handleTickerRemoved}
             t={t}
           />
         )}
@@ -367,12 +387,14 @@ function WatchlistTable({
   rowStatuses,
   navigate,
   locale,
+  onRemoved,
   t,
 }: {
   entries: WatchlistEntryView[];
   rowStatuses: Record<string, RowStatus>;
   navigate: ReturnType<typeof useNavigate>;
   locale: string;
+  onRemoved: (ticker: string) => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   return (
@@ -390,7 +412,15 @@ function WatchlistTable({
         </thead>
         <tbody>
           {entries.map((entry) => (
-            <WatchlistTableRow key={entry.ticker} entry={entry} rowStatus={rowStatuses[entry.ticker]} navigate={navigate} locale={locale} t={t} />
+            <WatchlistTableRow
+              key={entry.ticker}
+              entry={entry}
+              rowStatus={rowStatuses[entry.ticker]}
+              navigate={navigate}
+              locale={locale}
+              onRemoved={onRemoved}
+              t={t}
+            />
           ))}
         </tbody>
       </table>
@@ -403,12 +433,14 @@ function WatchlistTableRow({
   rowStatus,
   navigate,
   locale,
+  onRemoved,
   t,
 }: {
   entry: WatchlistEntryView;
   rowStatus: RowStatus | undefined;
   navigate: ReturnType<typeof useNavigate>;
   locale: string;
+  onRemoved: (ticker: string) => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   const loaded = rowStatus?.kind === "loaded" ? rowStatus.analysis : null;
@@ -417,8 +449,42 @@ function WatchlistTableRow({
   const coverage = loaded ? loaded.evidenceQuality?.coverage ?? loaded.confidence : null;
   const addedDate = new Date(entry.addedAt).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
 
+  const [removeStatus, setRemoveStatus] = useState<RemoveStatus>({ kind: "idle" });
+  const actionCellRef = useRef<HTMLTableCellElement>(null);
+  const previousRemoveStatusKind = useRef<RemoveStatus["kind"]>(removeStatus.kind);
+
+  useEffect(() => {
+    // Foundation's <Button> isn't ref-forwarding (out of scope to change
+    // here), so focus is moved via the action cell's own DOM node --
+    // skipped on initial mount (previous === current) so idle rows never
+    // steal focus on page load, only on an explicit state change (open
+    // confirm / cancel back / land on an error).
+    if (previousRemoveStatusKind.current !== removeStatus.kind) {
+      actionCellRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    }
+    previousRemoveStatusKind.current = removeStatus.kind;
+  }, [removeStatus.kind]);
+
   function handleRowActivate() {
     navigate(`/company/${encodeURIComponent(entry.ticker)}`);
+  }
+
+  function handleRemoveClick() {
+    setRemoveStatus({ kind: "confirming" });
+  }
+
+  function handleCancelRemove() {
+    setRemoveStatus({ kind: "idle" });
+  }
+
+  function handleConfirmRemove() {
+    setRemoveStatus({ kind: "removing" });
+    fetch(`/api/alpha-watchlist/${encodeURIComponent(entry.ticker)}`, { method: "DELETE" })
+      .then((r) => {
+        if (!r.ok) throw new Error(`Backend responded with ${r.status}`);
+        onRemoved(entry.ticker);
+      })
+      .catch(() => setRemoveStatus({ kind: "error" }));
   }
 
   return (
@@ -477,15 +543,55 @@ function WatchlistTableRow({
           {addedDate}
         </Text>
       </td>
-      <td style={cellStyle}>
-        <Button
-          variant="tertiary"
-          disabled
-          title={t("watchlist.table.removeUnavailable")}
-          onClick={(event) => event.stopPropagation()}
-        >
-          {t("watchlist.table.removeButton")}
-        </Button>
+      <td ref={actionCellRef} style={cellStyle} onClick={(event) => event.stopPropagation()}>
+        {removeStatus.kind === "idle" && (
+          <Button variant="tertiary" onClick={handleRemoveClick}>
+            {t("watchlist.table.removeButton")}
+          </Button>
+        )}
+        {(removeStatus.kind === "confirming" || removeStatus.kind === "removing") && (
+          <Stack gap="metadata">
+            <Text as="p" role="status" style={{ fontWeight: 600 }}>
+              {t("watchlist.remove.confirmTitle", { ticker: entry.ticker })}
+            </Text>
+            <Text as="p" color="secondary">
+              {t("watchlist.remove.confirmExplanation", { ticker: entry.ticker })}
+            </Text>
+            <Inline gap="row" wrap>
+              <Button
+                variant="tertiary"
+                onClick={handleCancelRemove}
+                disabled={removeStatus.kind === "removing"}
+              >
+                {t("watchlist.remove.cancelButton")}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleConfirmRemove}
+                disabled={removeStatus.kind === "removing"}
+              >
+                {removeStatus.kind === "removing"
+                  ? t("watchlist.remove.removingLabel")
+                  : t("watchlist.remove.confirmButton")}
+              </Button>
+            </Inline>
+          </Stack>
+        )}
+        {removeStatus.kind === "error" && (
+          <Stack gap="metadata">
+            <Text as="p" role="alert" color="tertiary">
+              {t("watchlist.remove.failureMessage", { ticker: entry.ticker })}
+            </Text>
+            <Inline gap="row" wrap>
+              <Button variant="tertiary" onClick={handleCancelRemove}>
+                {t("watchlist.remove.cancelButton")}
+              </Button>
+              <Button variant="primary" onClick={handleConfirmRemove}>
+                {t("watchlist.remove.retryButton")}
+              </Button>
+            </Inline>
+          </Stack>
+        )}
       </td>
     </tr>
   );

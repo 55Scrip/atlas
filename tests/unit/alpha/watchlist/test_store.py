@@ -59,6 +59,36 @@ class TestGetByTicker:
         assert store.get_by_ticker("amd") is not None
 
 
+class TestRemove:
+    def test_removes_an_existing_entry(self, store):
+        store.add(AlphaWatchlistEntry(ticker="AMD", case_id="case-1", added_at=_NOW))
+        store.remove("AMD")
+        assert store.get_by_ticker("AMD") is None
+
+    def test_other_entries_remain_after_removal(self, store):
+        store.add(AlphaWatchlistEntry(ticker="AMD", case_id="case-1", added_at=_NOW))
+        store.add(AlphaWatchlistEntry(ticker="NVDA", case_id="case-2", added_at=_NOW))
+        store.remove("AMD")
+        assert {e.ticker for e in store.list_all()} == {"NVDA"}
+
+    def test_removing_an_absent_ticker_is_a_no_op(self, store):
+        store.remove("AMD")
+        assert store.list_all() == ()
+
+    def test_removal_is_case_insensitive(self, store):
+        store.add(AlphaWatchlistEntry(ticker="AMD", case_id="case-1", added_at=_NOW))
+        store.remove("amd")
+        assert store.get_by_ticker("AMD") is None
+
+    def test_add_remove_add_again_recreates_the_entry(self, store):
+        store.add(AlphaWatchlistEntry(ticker="AMD", case_id="case-1", added_at=_NOW))
+        store.remove("AMD")
+        store.add(AlphaWatchlistEntry(ticker="AMD", case_id="case-1", added_at=_NOW))
+        found = store.get_by_ticker("AMD")
+        assert found is not None
+        assert found.case_id == "case-1"
+
+
 class TestGetByCaseId:
     def test_returns_none_when_absent(self, store):
         assert store.get_by_case_id("no-such-case") is None
