@@ -159,7 +159,7 @@ export const en = {
   "portfolio.cockpit.review.priority_review": "Priority review",
   "portfolio.cockpit.viewCaseButton": "View Investment Case",
   "portfolio.cockpit.unresolved": "Investment Case could not be resolved",
-  "portfolio.holdingsTable.rowAriaLabel": "View Investment Case for {{ticker}}",
+  "portfolio.holdingsTable.rowAriaLabel": "Open {{ticker}}'s workspace",
 
   "portfolio.unallocated":
     "Unallocated: {{percent}}% — this portfolio does not yet account for 100% of holdings; Atlas does not invent the remainder.",
@@ -1268,6 +1268,7 @@ export const en = {
   "discovery.reviewCompany.openCase": "Open Investment Case →",
   "discovery.reviewCompany.notInPortfolio":
     "{{ticker}} is not in your current portfolio yet. Atlas cannot create a linked Investment Case for a company you don't hold.",
+  "discovery.reviewCompany.addToWatchlist": "Add to Watchlist instead",
   "discovery.reviewCompany.error": "Could not create the Investment Case: {{message}}",
 
   // ---------- portfolio import v1.4 ----------

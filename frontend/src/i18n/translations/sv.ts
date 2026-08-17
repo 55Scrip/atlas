@@ -158,7 +158,7 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.cockpit.review.priority_review": "Prioriterad granskning",
   "portfolio.cockpit.viewCaseButton": "Visa Investeringscase",
   "portfolio.cockpit.unresolved": "Investeringscase kunde inte hämtas",
-  "portfolio.holdingsTable.rowAriaLabel": "Visa Investeringscase för {{ticker}}",
+  "portfolio.holdingsTable.rowAriaLabel": "Öppna {{ticker}}s vy",
 
   "portfolio.unallocated":
     "Ofördelat: {{percent}}% — den här portföljen täcker ännu inte 100% av innehaven; Atlas hittar inte på resten.",
@@ -1265,6 +1265,7 @@ export const sv: Record<TranslationKey, string> = {
   "discovery.reviewCompany.openCase": "Öppna investeringscase →",
   "discovery.reviewCompany.notInPortfolio":
     "{{ticker}} finns inte i din nuvarande portfölj än. Atlas kan inte skapa ett länkat investeringscase för ett bolag du inte äger.",
+  "discovery.reviewCompany.addToWatchlist": "Lägg till i bevakningslistan istället",
   "discovery.reviewCompany.error": "Kunde inte skapa investeringscaset: {{message}}",
 
   // ---------- portfolio import v1.4 ----------

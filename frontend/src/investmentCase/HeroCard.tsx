@@ -185,6 +185,7 @@ interface HeroCardProps {
   isThesisStale: boolean;
   openQuestionCount: number;
   t: Translate;
+  locale: string;
 }
 
 const HERO_SENTENCE_STYLE: CSSProperties = {
@@ -204,7 +205,7 @@ function MetricField({ label, children }: { label: string; children: ReactNode }
   );
 }
 
-export function HeroCard({ ticker, analysis, outstandingWorkKinds, isThesisStale, openQuestionCount, t }: HeroCardProps) {
+export function HeroCard({ ticker, analysis, outstandingWorkKinds, isThesisStale, openQuestionCount, t, locale }: HeroCardProps) {
   const isWithheld = analysis.recommendationLevel === "insufficient_evidence";
   const topLimitingFactor: LimitingFactor | undefined = analysis.limitingFactors[0];
 
@@ -302,7 +303,7 @@ export function HeroCard({ ticker, analysis, outstandingWorkKinds, isThesisStale
             </MetricField>
             <MetricField label={t("investmentCase.keyMetrics.currentPriceLabel")}>
               <Text as="span" style={{ fontWeight: 600 }}>
-                {formatFinancialValue(analysis.sharePrice, analysis.currency)}
+                {formatFinancialValue(analysis.sharePrice, analysis.currency, locale)}
               </Text>
             </MetricField>
             <MetricField label={t("investmentCase.keyMetrics.expectedReturnLabel")}>

@@ -260,7 +260,8 @@ const ACCENT_LINK_STYLE: CSSProperties = {
 
 export function CompanyWorkspacePage() {
   const { ticker } = useParams<{ ticker: string }>();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const locale = language === "sv" ? "sv-SE" : "en-US";
   const navigate = useNavigate();
 
   const [resolution, setResolution] = useState<ResolutionStatus>({ kind: "loading" });
@@ -415,6 +416,7 @@ export function CompanyWorkspacePage() {
                 activity={activity}
                 navigate={navigate}
                 t={t}
+                locale={locale}
               />
             )}
           </>
@@ -436,6 +438,7 @@ function CompanyWorkspaceLoaded({
   activity,
   navigate,
   t,
+  locale,
 }: {
   ticker: string;
   report: InvestmentCaseAnalysisView;
@@ -443,6 +446,7 @@ function CompanyWorkspaceLoaded({
   activity: ActivityFetchStatus;
   navigate: ReturnType<typeof useNavigate>;
   t: Translate;
+  locale: string;
 }) {
   const held = report.holdingContext.held;
   const freshness = formatRelativeTime(report.currentAnalysisAt, t);
@@ -468,7 +472,7 @@ function CompanyWorkspaceLoaded({
         <Inline gap="inter-section" wrap align="start">
           <div style={{ flex: "3 1 480px", minWidth: 0 }}>
             <Stack gap="inter-section">
-              <CurrentPicture ticker={ticker} report={report} t={t} />
+              <CurrentPicture ticker={ticker} report={report} t={t} locale={locale} />
               <Divider tone="hairline" />
               <InvestmentThesis report={report} t={t} />
               <Divider tone="hairline" />
@@ -569,7 +573,17 @@ function CompanyHeader({
   );
 }
 
-function CurrentPicture({ ticker, report, t }: { ticker: string; report: InvestmentCaseAnalysisView; t: Translate }) {
+function CurrentPicture({
+  ticker,
+  report,
+  t,
+  locale,
+}: {
+  ticker: string;
+  report: InvestmentCaseAnalysisView;
+  t: Translate;
+  locale: string;
+}) {
   const growth = report.businessAnalysis.findings.find((f) => f.kind === "growth");
   const capitalAllocation = report.businessAnalysis.findings.find((f) => f.kind === "capital_allocation");
   const longTerm = report.outlook.longTerm;
@@ -619,6 +633,7 @@ function CurrentPicture({ ticker, report, t }: { ticker: string; report: Investm
         isThesisStale={report.isThesisStale}
         openQuestionCount={report.openQuestions.length}
         t={t}
+        locale={locale}
       />
     </Stack>
   );

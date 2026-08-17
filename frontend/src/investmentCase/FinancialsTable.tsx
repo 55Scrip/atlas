@@ -33,20 +33,33 @@ export interface FinancialPeriodView {
 
 export const MISSING_VALUE_PLACEHOLDER = "—";
 
-export function formatFinancialValue(value: number | null, currency: string | null): string {
+/**
+ * Integration Sprint fix: `locale` is required, not optional -- these
+ * three formatters previously called `toLocaleString(undefined, ...)`,
+ * which defers to the browser/OS locale rather than the app's own
+ * language toggle (`useTranslation()`'s `language`). That meant a
+ * Swedish-locale machine showed comma-decimal financial figures (e.g.
+ * "313,3 USD") even with English explicitly selected in-app, and the
+ * same page could show one figure with a comma and another with a
+ * period depending on which formatter rendered it. Every call site now
+ * passes the caller's own `language === "sv" ? "sv-SE" : "en-US"`
+ * locale, the same pattern already established in HistoryPage.tsx/
+ * DailyBriefPage.tsx/WatchlistPage.tsx.
+ */
+export function formatFinancialValue(value: number | null, currency: string | null, locale: string): string {
   if (value === null) return MISSING_VALUE_PLACEHOLDER;
-  const formatted = value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  const formatted = value.toLocaleString(locale, { maximumFractionDigits: 1 });
   return currency ? `${formatted} ${currency}` : formatted;
 }
 
-export function formatShareCount(value: number | null): string {
+export function formatShareCount(value: number | null, locale: string): string {
   if (value === null) return MISSING_VALUE_PLACEHOLDER;
-  return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  return value.toLocaleString(locale, { maximumFractionDigits: 0 });
 }
 
-export function formatEps(value: number | null, currency: string | null): string {
+export function formatEps(value: number | null, currency: string | null, locale: string): string {
   if (value === null) return MISSING_VALUE_PLACEHOLDER;
-  const formatted = value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatted = value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return currency ? `${formatted} ${currency}` : formatted;
 }
 
@@ -59,24 +72,32 @@ interface FinancialsTableRow {
  * analyst-file layout ("a table is acceptable and likely preferable").
  * Every cell is a direct, unevaluated read of `FinancialPeriodView`;
  * this table computes nothing itself. */
-export function FinancialsTable({ periods, t }: { periods: FinancialPeriodView[]; t: Translate }) {
+export function FinancialsTable({
+  periods,
+  t,
+  locale,
+}: {
+  periods: FinancialPeriodView[];
+  t: Translate;
+  locale: string;
+}) {
   // Newest period first, left to right -- matches how an analyst reads
   // a spreadsheet, and how the periods already arrive from the API
   // (oldest first) reversed once here rather than at the API layer.
   const newestFirst = periods.slice().reverse();
 
   const rows: FinancialsTableRow[] = [
-    { labelKey: "investmentCase.analysis.financials.revenueLabel", values: (p) => formatFinancialValue(p.revenue, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.operatingIncomeLabel", values: (p) => formatFinancialValue(p.operatingIncome, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.netIncomeLabel", values: (p) => formatFinancialValue(p.netIncome, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.epsLabel", values: (p) => formatEps(p.eps, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.freeCashFlowLabel", values: (p) => formatFinancialValue(p.freeCashFlow, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.capitalExpenditureLabel", values: (p) => formatFinancialValue(p.capitalExpenditure, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.shareBuybacksLabel", values: (p) => formatFinancialValue(p.shareBuybacks, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.dividendsLabel", values: (p) => formatFinancialValue(p.dividends, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.cashLabel", values: (p) => formatFinancialValue(p.cash, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.totalDebtLabel", values: (p) => formatFinancialValue(p.totalDebt, p.currency) },
-    { labelKey: "investmentCase.analysis.financials.sharesOutstandingLabel", values: (p) => formatShareCount(p.sharesOutstanding) },
+    { labelKey: "investmentCase.analysis.financials.revenueLabel", values: (p) => formatFinancialValue(p.revenue, p.currency, locale) },
+    { labelKey: "investmentCase.analysis.financials.operatingIncomeLabel", values: (p) => formatFinancialValue(p.operatingIncome, p.currency, locale) },
+    { labelKey: "investmentCase.analysis.financials.netIncomeLabel", values: (p) => formatFinancialValue(p.netIncome, p.currency, locale) },
+    { labelKey: "investmentCase.analysis.financials.epsLabel", values: (p) => formatEps(p.eps, p.currency, locale) },
+    { labelKey: "investmentCase.analysis.financials.freeCashFlowLabel", values: (p) => formatFinancialValue(p.freeCashFlow, p.currency, locale) },
+    { labelKey: "investmentCase.analysis.financials.capitalExpenditureLabel", values: (p) => formatFinancialValue(p.capitalExpenditure, p.currency, locale) },
+    { labelKey: "investmentCase.analysis.financials.shareBuybacksLabel", values: (p) => formatFinancialValue(p.shareBuybacks, p.currency, locale) },
+    { labelKey: "investmentCase.analysis.financials.dividendsLabel", values: (p) => formatFinancialValue(p.dividends, p.currency, locale) },
+    { labelKey: "investmentCase.analysis.financials.cashLabel", values: (p) => formatFinancialValue(p.cash, p.currency, locale) },
+    { labelKey: "investmentCase.analysis.financials.totalDebtLabel", values: (p) => formatFinancialValue(p.totalDebt, p.currency, locale) },
+    { labelKey: "investmentCase.analysis.financials.sharesOutstandingLabel", values: (p) => formatShareCount(p.sharesOutstanding, locale) },
   ];
 
   const cellStyle: CSSProperties = {

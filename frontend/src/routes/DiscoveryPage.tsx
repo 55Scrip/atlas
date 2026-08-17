@@ -278,7 +278,7 @@ export function DiscoveryPage() {
             </Button>
           </Inline>
           {reviewStatus.kind === "not-in-portfolio" && (
-            <Inline gap="row" align="baseline">
+            <Inline gap="row" align="baseline" wrap>
               <Text color="tertiary">
                 {t("discovery.reviewCompany.notInPortfolio", { ticker: reviewStatus.ticker })}
               </Text>
@@ -291,6 +291,23 @@ export function DiscoveryPage() {
                 }}
               >
                 {t("dashboard.portfolioStatus.goToPortfolio")}
+              </Link>
+              {/* Integration Sprint fix: Discovery had no path into
+                  Watchlist at all -- a reviewed ticker not held in
+                  Portfolio only ever offered a link back to Portfolio,
+                  never to the real Add Company capability Watchlist
+                  already has. Reuses the existing /watchlist route and
+                  its real add flow verbatim; adds no new backend
+                  concept. */}
+              <Link
+                href="#"
+                style={ACCENT_LINK_STYLE}
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigate("/watchlist");
+                }}
+              >
+                {t("discovery.reviewCompany.addToWatchlist")}
               </Link>
             </Inline>
           )}

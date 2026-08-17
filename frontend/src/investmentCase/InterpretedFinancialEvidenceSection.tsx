@@ -61,19 +61,22 @@ function formatMetricValue(
   latestValue: number | null,
   latestMarginPercent: number | null,
   currency: string | null,
+  locale: string,
 ): string {
   if (key === "operatingMargin") {
     return latestMarginPercent === null ? MISSING_VALUE_PLACEHOLDER : `${latestMarginPercent.toFixed(1)}%`;
   }
-  return formatFinancialValue(latestValue, currency);
+  return formatFinancialValue(latestValue, currency, locale);
 }
 
 export function InterpretedFinancialEvidenceSection({
   financialHistory,
   t,
+  locale,
 }: {
   financialHistory: FinancialPeriodView[];
   t: Translate;
+  locale: string;
 }) {
   const rows = deriveInterpretedFinancialRows(financialHistory);
 
@@ -89,7 +92,7 @@ export function InterpretedFinancialEvidenceSection({
             </Text>
             <Text as="span" style={{ minWidth: "7rem", fontVariantNumeric: "tabular-nums" }}>
               <span aria-hidden="true">{DIRECTION_ARROW[row.direction]} </span>
-              {formatMetricValue(row.key, row.latestValue, row.latestMarginPercent, row.currency)}
+              {formatMetricValue(row.key, row.latestValue, row.latestMarginPercent, row.currency, locale)}
             </Text>
             <Text as="span" color="secondary">
               {row.direction === "unavailable"
@@ -104,7 +107,7 @@ export function InterpretedFinancialEvidenceSection({
         {financialHistory.length === 0 ? (
           <Text color="secondary">{t("investmentCase.analysis.financials.empty")}</Text>
         ) : (
-          <FinancialsTable periods={financialHistory} t={t} />
+          <FinancialsTable periods={financialHistory} t={t} locale={locale} />
         )}
       </ExpandableDetail>
     </Stack>

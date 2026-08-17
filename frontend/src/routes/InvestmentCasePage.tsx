@@ -891,7 +891,8 @@ type InvestmentCaseAnalysisFetchStatus =
  * the investor back to the same `caseId` instead of a fresh one.
  */
 export function InvestmentCasePage() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const locale = language === "sv" ? "sv-SE" : "en-US";
   const { caseId } = useParams<{ caseId?: string }>();
   const location = useLocation();
   const origin = (location.state as { origin?: string; ticker?: string } | null)?.origin ?? null;
@@ -2039,6 +2040,7 @@ export function InvestmentCasePage() {
                   isThesisStale={report.isThesisStale}
                   openQuestionCount={report.openQuestions.length}
                   t={t}
+                  locale={locale}
                 />
                 {report.recommendation.level !== "insufficient_evidence" && isValuationSupportLoadBearing && (
                   <>
@@ -2601,6 +2603,7 @@ export function InvestmentCasePage() {
                 alphaPortfolioStatus={alphaPortfolioStatus}
                 onViewMoreDetails={() => setActiveTab("moreDetails")}
                 t={t}
+                locale={locale}
               />
             )}
 
@@ -4696,12 +4699,14 @@ function InvestmentCaseCanonicalSections({
   alphaPortfolioStatus,
   onViewMoreDetails,
   t,
+  locale,
 }: {
   analysis: InvestmentCaseAnalysisView;
   linkedHolding: AlphaHoldingView | null;
   alphaPortfolioStatus: AlphaPortfolioStatus;
   onViewMoreDetails: () => void;
   t: Translate;
+  locale: string;
 }) {
   const findBusiness = (kind: AnalysisBusinessCategory) => analysis.businessAnalysis.findings.find((f) => f.kind === kind);
   const findRisk = (category: AnalysisRiskCategory) => analysis.risk.findings.find((f) => f.category === category);
@@ -4791,11 +4796,11 @@ function InvestmentCaseCanonicalSections({
 
       <Divider tone="hairline" />
 
-      <InterpretedFinancialEvidenceSection financialHistory={analysis.financialHistory} t={t} />
+      <InterpretedFinancialEvidenceSection financialHistory={analysis.financialHistory} t={t} locale={locale} />
 
       <Divider tone="hairline" />
 
-      <CompanyOverviewSection companyProfile={analysis.companyProfile} marketSnapshot={analysis.marketSnapshot} t={t} />
+      <CompanyOverviewSection companyProfile={analysis.companyProfile} marketSnapshot={analysis.marketSnapshot} t={t} locale={locale} />
 
       <Divider tone="hairline" />
 
@@ -4848,10 +4853,12 @@ function CompanyOverviewSection({
   companyProfile,
   marketSnapshot,
   t,
+  locale,
 }: {
   companyProfile: CompanyProfileView | null;
   marketSnapshot: MarketSnapshotView | null;
   t: Translate;
+  locale: string;
 }) {
   const hasAnyData = companyProfile !== null || marketSnapshot !== null;
   const notAvailable = t("investmentCase.atlasView.notAvailable");
@@ -4914,19 +4921,19 @@ function CompanyOverviewSection({
               <Text as="span" color="tertiary">
                 {t("investmentCase.analysis.financials.sharePriceLabel")}:{" "}
               </Text>
-              {formatFinancialValue(marketSnapshot.sharePrice, marketSnapshot.currency)}
+              {formatFinancialValue(marketSnapshot.sharePrice, marketSnapshot.currency, locale)}
             </Text>
             <Text as="p">
               <Text as="span" color="tertiary">
                 {t("investmentCase.analysis.financials.sharesOutstandingLabel")}:{" "}
               </Text>
-              {formatShareCount(marketSnapshot.sharesOutstanding)}
+              {formatShareCount(marketSnapshot.sharesOutstanding, locale)}
             </Text>
             <Text as="p">
               <Text as="span" color="tertiary">
                 {t("investmentCase.analysis.financials.marketCapLabel")}:{" "}
               </Text>
-              {formatFinancialValue(marketSnapshot.marketCap, marketSnapshot.currency)}
+              {formatFinancialValue(marketSnapshot.marketCap, marketSnapshot.currency, locale)}
             </Text>
           </Inline>
         </Stack>
