@@ -414,6 +414,7 @@ export function CompanyWorkspacePage() {
                 report={analysis.report}
                 cockpit={cockpit}
                 activity={activity}
+                holdingsLite={resolution.holdingsLite}
                 navigate={navigate}
                 t={t}
                 locale={locale}
@@ -436,6 +437,7 @@ function CompanyWorkspaceLoaded({
   report,
   cockpit,
   activity,
+  holdingsLite,
   navigate,
   t,
   locale,
@@ -444,6 +446,7 @@ function CompanyWorkspaceLoaded({
   report: InvestmentCaseAnalysisView;
   cockpit: CockpitHoldingLite | null;
   activity: ActivityFetchStatus;
+  holdingsLite: HoldingLite[];
   navigate: ReturnType<typeof useNavigate>;
   t: Translate;
   locale: string;
@@ -472,7 +475,14 @@ function CompanyWorkspaceLoaded({
         <Inline gap="inter-section" wrap align="start">
           <div style={{ flex: "3 1 480px", minWidth: 0 }}>
             <Stack gap="inter-section">
-              <CurrentPicture ticker={ticker} report={report} t={t} locale={locale} />
+              <CurrentPicture
+                ticker={ticker}
+                report={report}
+                activity={activity}
+                holdingsLite={holdingsLite}
+                t={t}
+                locale={locale}
+              />
               <Divider tone="hairline" />
               <InvestmentThesis report={report} t={t} />
               <Divider tone="hairline" />
@@ -490,7 +500,13 @@ function CompanyWorkspaceLoaded({
               <DecisionSupportCard report={report} onRecordDecision={openInvestmentCase} t={t} />
               <RiskCard report={report} t={t} />
               <EvidenceCoverageCard report={report} cockpit={cockpit} t={t} />
-              <RecentActivityCard caseId={report.caseId} activity={activity} openInvestmentCase={openInvestmentCase} t={t} />
+              <RecentActivityCard
+                caseId={report.caseId}
+                activity={activity}
+                holdingsLite={holdingsLite}
+                openInvestmentCase={openInvestmentCase}
+                t={t}
+              />
             </Stack>
           </div>
         </Inline>
@@ -576,14 +592,25 @@ function CompanyHeader({
 function CurrentPicture({
   ticker,
   report,
+  activity,
+  holdingsLite,
   t,
   locale,
 }: {
   ticker: string;
   report: InvestmentCaseAnalysisView;
+  activity: ActivityFetchStatus;
+  holdingsLite: HoldingLite[];
   t: Translate;
   locale: string;
 }) {
+  const outstandingWorkKinds =
+    activity.kind === "loaded"
+      ? deriveOutstandingWork(activity.decisions, activity.outcomes, activity.trades, holdingsLite)
+          .filter((item) => item.caseId === report.caseId)
+          .map((item) => item.kind)
+      : [];
+
   const growth = report.businessAnalysis.findings.find((f) => f.kind === "growth");
   const capitalAllocation = report.businessAnalysis.findings.find((f) => f.kind === "capital_allocation");
   const longTerm = report.outlook.longTerm;
@@ -629,7 +656,7 @@ function CurrentPicture({
       <HeroCard
         ticker={ticker}
         analysis={heroAnalysis}
-        outstandingWorkKinds={[]}
+        outstandingWorkKinds={outstandingWorkKinds}
         isThesisStale={report.isThesisStale}
         openQuestionCount={report.openQuestions.length}
         t={t}
@@ -833,17 +860,18 @@ const RECENT_ACTIVITY_COUNT = 4;
 function RecentActivityCard({
   caseId,
   activity,
+  holdingsLite,
   openInvestmentCase,
   t,
 }: {
   caseId: string;
   activity: ActivityFetchStatus;
+  holdingsLite: HoldingLite[];
   openInvestmentCase: () => void;
   t: Translate;
 }) {
   if (activity.kind !== "loaded") return null;
 
-  const holdingsLite: HoldingLite[] = [];
   const events: ActivityEvent[] = sortActivity(
     deriveActivity(activity.decisions, activity.outcomes, activity.trades, holdingsLite).filter(
       (event) => event.caseId === caseId,

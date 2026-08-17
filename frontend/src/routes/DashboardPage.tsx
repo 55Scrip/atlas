@@ -187,18 +187,28 @@ export function DashboardPage() {
 
   const holdings = portfolioStatus.kind === "loaded" ? portfolioStatus.view.holdings : [];
 
+  /** Decisions/outcomes/trades are fetched system-wide (every Case ever
+   * created), not scoped to the current portfolio -- so every derived
+   * list here is filtered to cases with a *current* holding before
+   * display. Without this, a Case whose holding was later removed (e.g.
+   * a past test/demo position) would keep surfacing as if it still
+   * needed the investor's attention today. */
+  const heldCaseIds = new Set(holdings.filter((h) => h.caseId !== null).map((h) => h.caseId as string));
+
   const outstandingWork = allLoaded
     ? deriveOutstandingWork(
         decisionsStatus.decisions,
         outcomesStatus.outcomes,
         tradeLogStatus.trades,
         holdings,
-      )
+      ).filter((item) => item.caseId !== null && heldCaseIds.has(item.caseId))
     : [];
 
   const recentActivity = allLoaded
     ? sortActivity(
-        deriveActivity(decisionsStatus.decisions, outcomesStatus.outcomes, tradeLogStatus.trades, holdings),
+        deriveActivity(decisionsStatus.decisions, outcomesStatus.outcomes, tradeLogStatus.trades, holdings).filter(
+          (event) => event.caseId !== null && heldCaseIds.has(event.caseId),
+        ),
         "newest",
       ).slice(0, RECENT_ACTIVITY_LIMIT)
     : [];
@@ -210,7 +220,7 @@ export function DashboardPage() {
       deriveActivity(decisionsStatus.decisions, outcomesStatus.outcomes, tradeLogStatus.trades, holdings),
       "newest",
     )) {
-      if (!event.caseId || seen.has(event.caseId)) continue;
+      if (!event.caseId || seen.has(event.caseId) || !heldCaseIds.has(event.caseId)) continue;
       seen.add(event.caseId);
       continueWorking.push({ caseId: event.caseId, security: event.security, date: event.date });
       if (continueWorking.length >= CONTINUE_WORKING_LIMIT) break;

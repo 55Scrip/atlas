@@ -1251,6 +1251,7 @@ function NeedsYourAttentionRow({
       <div
         role="button"
         tabIndex={0}
+        aria-label={t("portfolio.attention.rowAriaLabel", { ticker, reason })}
         onClick={() => navigate(`/portfolio/holding/${encodeURIComponent(ticker)}`)}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {

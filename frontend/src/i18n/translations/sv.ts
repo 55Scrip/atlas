@@ -198,6 +198,7 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.attention.reason.low_conviction": "Övertygelsen är låg utifrån tillgängliga belägg.",
   "portfolio.attention.reason.contradicting_evidence": "Registrerade belägg innehåller motsägelser.",
   "portfolio.attention.reason.insufficient_evidence": "Beläggen räcker inte för en säker bedömning.",
+  "portfolio.attention.rowAriaLabel": "Granska {{ticker}}: {{reason}}",
 
   // ---------- portfolio priority strip (Figma-fidelity rebuild) ----------
   "portfolio.priorityStrip.empty": "Inget behöver din uppmärksamhet just nu.",

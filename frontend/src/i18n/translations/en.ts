@@ -199,6 +199,7 @@ export const en = {
   "portfolio.attention.reason.low_conviction": "Conviction is low given available evidence.",
   "portfolio.attention.reason.contradicting_evidence": "Recorded evidence contains contradictions.",
   "portfolio.attention.reason.insufficient_evidence": "Evidence is insufficient for a confident assessment.",
+  "portfolio.attention.rowAriaLabel": "Review {{ticker}}: {{reason}}",
 
   // ---------- portfolio priority strip (Figma-fidelity rebuild) ----------
   "portfolio.priorityStrip.empty": "Nothing needs your attention right now.",
