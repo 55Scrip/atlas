@@ -78,6 +78,18 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.loadError": "Kunde inte läsa in din portfölj: {{message}}",
   "portfolio.notEstablished": "Ingen portfölj har skapats ännu.",
   "portfolio.setupLink": "Skapa din portfölj",
+  "portfolio.empty.eyebrow": "Kom igång",
+  "portfolio.empty.heading": "Importera din portfölj för att komma igång",
+  "portfolio.empty.subheading":
+    "Atlas granskar dina innehav, lyfter fram vad som behöver uppmärksamhet och hjälper dig tänka igenom beslut i din egen takt.",
+  "portfolio.empty.importButton": "Importera portfölj",
+  "portfolio.empty.trySample": "Prova exempelportfölj",
+  "portfolio.empty.step.verify.title": "Verifiera innehav",
+  "portfolio.empty.step.verify.body": "Bekräfta att Atlas identifierade dina innehav korrekt från din mäklarimport.",
+  "portfolio.empty.step.understand.title": "Förstå din portfölj",
+  "portfolio.empty.step.understand.body": "Se hur din portfölj är strukturerad utifrån koncentration och täckning.",
+  "portfolio.empty.step.attention.title": "Granska vad som behöver uppmärksamhet",
+  "portfolio.empty.step.attention.body": "Atlas lyfter fram innehav som kan förtjäna en närmare titt, med resonemang du kan utvärdera.",
   "portfolio.empty.title": "Din portfölj är tom.",
   "portfolio.empty.objective": "Mål: {{value}}",
   "portfolio.empty.horizon": "Horisont: {{value}}",
@@ -165,6 +177,28 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.header.notAvailable": "—",
   "portfolio.summary.unknownInstrumentsWarning": "{{count}} innehav kunde inte tolkas fullt ut. Granska instrumenten.",
 
+  // ---------- portfolio pulse (Portfolio Workspace v1) ----------
+  "portfolio.pulse.totalValueLabel": "Totalt portföljvärde",
+  "portfolio.pulse.totalValueUnavailable": "Värde ej tillgängligt",
+  "portfolio.pulse.holdingsLabel": "Innehav",
+  "portfolio.pulse.holdingsCount": "{{count}} tillgångar",
+  "portfolio.pulse.coverageLabel": "Atlas täckning",
+  "portfolio.pulse.coverageValue": "{{covered}} av {{total}} täckta",
+  "portfolio.pulse.attentionPill": "{{count}} behöver uppmärksamhet",
+
+  // ---------- needs your attention (Portfolio Workspace v1) ----------
+  "portfolio.attention.heading": "Behöver din uppmärksamhet",
+  "portfolio.attention.empty": "Inget behöver din uppmärksamhet just nu.",
+  "portfolio.attention.viewAll": "Visa alla uppmärksamhetspunkter",
+  "portfolio.attention.viewFewer": "Visa färre",
+  "portfolio.attention.reason.concentration": "Koncentration på {{percent}}% — över typisk tröskel för ett enskilt innehav.",
+  "portfolio.attention.reason.coverageExpanded": "Atlas täckning utökad till full research.",
+  "portfolio.attention.reason.high_financial_risk": "Finansiell risk är förhöjd.",
+  "portfolio.attention.reason.high_valuation_risk": "Värderingsrisk är förhöjd.",
+  "portfolio.attention.reason.low_conviction": "Övertygelsen är låg utifrån tillgängliga belägg.",
+  "portfolio.attention.reason.contradicting_evidence": "Registrerade belägg innehåller motsägelser.",
+  "portfolio.attention.reason.insufficient_evidence": "Beläggen räcker inte för en säker bedömning.",
+
   // ---------- portfolio priority strip (Figma-fidelity rebuild) ----------
   "portfolio.priorityStrip.empty": "Inget behöver din uppmärksamhet just nu.",
   "portfolio.priorityStrip.reviewTitle": "Granska {{ticker}}",
@@ -184,8 +218,12 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.priorityStrip.viewAll": "Visa alla {{count}}",
   "portfolio.priorityStrip.viewFewer": "Visa färre",
 
-  // ---------- holdings table (Figma-fidelity rebuild) ----------
+  // ---------- holdings table (Portfolio Workspace v1) ----------
   "portfolio.holdingsTable.tickerHeader": "Ticker",
+  "portfolio.holdingsTable.valueHeader": "Värde",
+  "portfolio.holdingsTable.shareHeader": "% Andel",
+  "portfolio.holdingsTable.coverageHeader": "Täckning",
+  "portfolio.holdingsTable.reviewStatusHeader": "Granskningsstatus",
   "portfolio.holdingsTable.weightHeader": "Andel",
   "portfolio.holdingsTable.convictionHeader": "Övertygelse",
   "portfolio.holdingsTable.fitHeader": "Passform",
@@ -198,6 +236,46 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.holdingsTable.showingCount": "Visar {{shown}} av {{total}}",
   "portfolio.holdingsTable.viewAll": "Visa alla innehav ({{count}})",
   "portfolio.holdingsTable.viewFewer": "Visa färre",
+  "portfolio.holdingsTable.coverage.substantial_coverage": "Täckt",
+  "portfolio.holdingsTable.coverage.partial_coverage": "Delvis",
+  "portfolio.holdingsTable.coverage.no_coverage": "Ej täckt",
+  "portfolio.holdingsTable.coverage.new": "Nytt",
+  "portfolio.holdingsTable.reviewStatus.reviewed": "Granskad",
+  "portfolio.holdingsTable.reviewStatus.needsReview": "Behöver granskas",
+  "portfolio.holdingsTable.reviewStatus.new": "Nytt",
+
+  // ---------- concentration summary + coverage sidebar (Portfolio Workspace v1) ----------
+  "portfolio.concentrationSummary.heading": "Koncentrationssammanfattning",
+  "portfolio.concentrationSummary.subheading": "De {{count}} största innehaven utgör {{percent}}% av det totala värdet.",
+  "portfolio.coverageActive.title": "Atlas täckning aktiv",
+  "portfolio.coverageActive.body": "{{covered}} av dina {{total}} unika innehav är fullt täckta.",
+  "portfolio.sectorAllocation.heading": "Sektorfördelning",
+  "portfolio.sectorAllocation.unavailable":
+    "Sektorsdata följs ännu inte för innehav — den här panelen utelämnas medvetet istället för att visa påhittade fördelningar.",
+
+  // ---------- recent activity (Portfolio Workspace v1) ----------
+  "portfolio.recentActivity.heading": "Senaste aktivitet",
+  "portfolio.recentActivity.empty": "Ingen senaste aktivitet registrerad.",
+
+  // ---------- holding attention detail (Portfolio Workspace v1) ----------
+  "portfolio.holdingDetail.breadcrumb": "Portfölj / {{ticker}}",
+  "portfolio.holdingDetail.subheading": "Fokuserad innehavsanalys",
+  "portfolio.holdingDetail.currentMarketValue": "Aktuellt marknadsvärde",
+  "portfolio.holdingDetail.portfolioWeight": "Portföljandel",
+  "portfolio.holdingDetail.attentionHeading": "Uppmärksamhet",
+  "portfolio.holdingDetail.noAttentionReasons": "Det här innehavet är för närvarande inte flaggat för uppmärksamhet.",
+  "portfolio.holdingDetail.analysisContextHeading": "Analyskontext",
+  "portfolio.holdingDetail.decisionSupportLabel": "Beslutsstöd",
+  "portfolio.holdingDetail.convictionLabel": "Övertygelse",
+  "portfolio.holdingDetail.riskFactorsLabel": "Identifierade riskfaktorer",
+  "portfolio.holdingDetail.noRiskFactors": "Inga specifika riskfaktorer identifierade.",
+  "portfolio.holdingDetail.contextNote":
+    "Portföljer med liknande koncentration överväger ofta partiell ombalansering. Din situation är unik — det här är kontext, inte en rekommendation.",
+  "portfolio.holdingDetail.backToPortfolio": "Tillbaka till portföljen",
+  "portfolio.holdingDetail.dismissButton": "Avfärda från uppmärksamhet",
+  "portfolio.holdingDetail.dismissUnavailable": "Inte tillgängligt än",
+  "portfolio.holdingDetail.recordDecisionButton": "Registrera ett beslut",
+  "portfolio.holdingDetail.notFound": "Kunde inte hitta det här innehavet i din portfölj.",
 
   // ---------- portfolio intelligence panels (Figma-fidelity rebuild) ----------
   "portfolio.keyFindingsPanel.heading": "Viktiga observationer",

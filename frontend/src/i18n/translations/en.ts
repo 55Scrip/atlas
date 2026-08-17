@@ -79,6 +79,18 @@ export const en = {
   "portfolio.loadError": "Could not load your portfolio: {{message}}",
   "portfolio.notEstablished": "No portfolio has been established yet.",
   "portfolio.setupLink": "Set up your portfolio",
+  "portfolio.empty.eyebrow": "Getting started",
+  "portfolio.empty.heading": "Import your portfolio to get started",
+  "portfolio.empty.subheading":
+    "Atlas will review your holdings, surface what needs attention, and help you think through decisions at your own pace.",
+  "portfolio.empty.importButton": "Import Portfolio",
+  "portfolio.empty.trySample": "Try with sample portfolio",
+  "portfolio.empty.step.verify.title": "Verify holdings",
+  "portfolio.empty.step.verify.body": "Confirm Atlas correctly identified your holdings from your broker import.",
+  "portfolio.empty.step.understand.title": "Understand your portfolio",
+  "portfolio.empty.step.understand.body": "See how your portfolio is structured across sectors, concentration, and coverage.",
+  "portfolio.empty.step.attention.title": "Review what needs attention",
+  "portfolio.empty.step.attention.body": "Atlas highlights holdings that may deserve a closer look, with reasoning you can evaluate.",
   "portfolio.empty.title": "Your portfolio is empty.",
   "portfolio.empty.objective": "Objective: {{value}}",
   "portfolio.empty.horizon": "Horizon: {{value}}",
@@ -166,6 +178,28 @@ export const en = {
   "portfolio.header.notAvailable": "—",
   "portfolio.summary.unknownInstrumentsWarning": "{{count}} holdings could not be fully resolved. Review instruments.",
 
+  // ---------- portfolio pulse (Portfolio Workspace v1) ----------
+  "portfolio.pulse.totalValueLabel": "Total Portfolio Value",
+  "portfolio.pulse.totalValueUnavailable": "Value not available",
+  "portfolio.pulse.holdingsLabel": "Holdings",
+  "portfolio.pulse.holdingsCount": "{{count}} assets",
+  "portfolio.pulse.coverageLabel": "Atlas Coverage",
+  "portfolio.pulse.coverageValue": "{{covered}} of {{total}} covered",
+  "portfolio.pulse.attentionPill": "{{count}} need attention",
+
+  // ---------- needs your attention (Portfolio Workspace v1) ----------
+  "portfolio.attention.heading": "Needs Your Attention",
+  "portfolio.attention.empty": "Nothing needs your attention right now.",
+  "portfolio.attention.viewAll": "View all attention items",
+  "portfolio.attention.viewFewer": "Show fewer",
+  "portfolio.attention.reason.concentration": "Concentration at {{percent}}% — above typical single-holding threshold.",
+  "portfolio.attention.reason.coverageExpanded": "Atlas coverage expanded to full research.",
+  "portfolio.attention.reason.high_financial_risk": "Financial risk is elevated.",
+  "portfolio.attention.reason.high_valuation_risk": "Valuation risk is elevated.",
+  "portfolio.attention.reason.low_conviction": "Conviction is low given available evidence.",
+  "portfolio.attention.reason.contradicting_evidence": "Recorded evidence contains contradictions.",
+  "portfolio.attention.reason.insufficient_evidence": "Evidence is insufficient for a confident assessment.",
+
   // ---------- portfolio priority strip (Figma-fidelity rebuild) ----------
   "portfolio.priorityStrip.empty": "Nothing needs your attention right now.",
   "portfolio.priorityStrip.reviewTitle": "Review {{ticker}}",
@@ -185,8 +219,12 @@ export const en = {
   "portfolio.priorityStrip.viewAll": "View all {{count}}",
   "portfolio.priorityStrip.viewFewer": "Show fewer",
 
-  // ---------- holdings table (Figma-fidelity rebuild) ----------
+  // ---------- holdings table (Portfolio Workspace v1) ----------
   "portfolio.holdingsTable.tickerHeader": "Ticker",
+  "portfolio.holdingsTable.valueHeader": "Value",
+  "portfolio.holdingsTable.shareHeader": "% Share",
+  "portfolio.holdingsTable.coverageHeader": "Coverage",
+  "portfolio.holdingsTable.reviewStatusHeader": "Review Status",
   "portfolio.holdingsTable.weightHeader": "Weight",
   "portfolio.holdingsTable.convictionHeader": "Conviction",
   "portfolio.holdingsTable.fitHeader": "Fit",
@@ -199,6 +237,46 @@ export const en = {
   "portfolio.holdingsTable.showingCount": "Showing {{shown}} of {{total}}",
   "portfolio.holdingsTable.viewAll": "View All Holdings ({{count}})",
   "portfolio.holdingsTable.viewFewer": "Show fewer",
+  "portfolio.holdingsTable.coverage.substantial_coverage": "Covered",
+  "portfolio.holdingsTable.coverage.partial_coverage": "Partial",
+  "portfolio.holdingsTable.coverage.no_coverage": "Not Covered",
+  "portfolio.holdingsTable.coverage.new": "New",
+  "portfolio.holdingsTable.reviewStatus.reviewed": "Reviewed",
+  "portfolio.holdingsTable.reviewStatus.needsReview": "Needs Review",
+  "portfolio.holdingsTable.reviewStatus.new": "New",
+
+  // ---------- concentration summary + coverage sidebar (Portfolio Workspace v1) ----------
+  "portfolio.concentrationSummary.heading": "Concentration Summary",
+  "portfolio.concentrationSummary.subheading": "Top {{count}} holdings represent {{percent}}% of total value.",
+  "portfolio.coverageActive.title": "Atlas Coverage Active",
+  "portfolio.coverageActive.body": "{{covered}} of your {{total}} unique holdings are fully covered.",
+  "portfolio.sectorAllocation.heading": "Sector Allocation",
+  "portfolio.sectorAllocation.unavailable":
+    "Sector data isn't tracked for holdings yet — this panel is intentionally omitted rather than showing invented allocations.",
+
+  // ---------- recent activity (Portfolio Workspace v1) ----------
+  "portfolio.recentActivity.heading": "Recent Activity",
+  "portfolio.recentActivity.empty": "No recent activity recorded.",
+
+  // ---------- holding attention detail (Portfolio Workspace v1) ----------
+  "portfolio.holdingDetail.breadcrumb": "Portfolio / {{ticker}}",
+  "portfolio.holdingDetail.subheading": "Focused Holding Analysis",
+  "portfolio.holdingDetail.currentMarketValue": "Current Market Value",
+  "portfolio.holdingDetail.portfolioWeight": "Portfolio Weight",
+  "portfolio.holdingDetail.attentionHeading": "Attention",
+  "portfolio.holdingDetail.noAttentionReasons": "This holding is not currently flagged for attention.",
+  "portfolio.holdingDetail.analysisContextHeading": "Analysis Context",
+  "portfolio.holdingDetail.decisionSupportLabel": "Decision Support",
+  "portfolio.holdingDetail.convictionLabel": "Conviction",
+  "portfolio.holdingDetail.riskFactorsLabel": "Risk Factors Identified",
+  "portfolio.holdingDetail.noRiskFactors": "No specific risk factors identified.",
+  "portfolio.holdingDetail.contextNote":
+    "Portfolios with similar concentration often consider partial rebalancing. Your situation is unique — this is context, not a recommendation.",
+  "portfolio.holdingDetail.backToPortfolio": "Back to Portfolio",
+  "portfolio.holdingDetail.dismissButton": "Dismiss from Attention",
+  "portfolio.holdingDetail.dismissUnavailable": "Not yet available",
+  "portfolio.holdingDetail.recordDecisionButton": "Record a Decision",
+  "portfolio.holdingDetail.notFound": "Could not find this holding in your portfolio.",
 
   // ---------- portfolio intelligence panels (Figma-fidelity rebuild) ----------
   "portfolio.keyFindingsPanel.heading": "Key Findings",

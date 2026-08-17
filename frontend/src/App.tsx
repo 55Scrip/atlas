@@ -3,6 +3,7 @@ import { DailyBriefPage } from "./routes/DailyBriefPage";
 import { DashboardPage } from "./routes/DashboardPage";
 import { DiscoveryPage } from "./routes/DiscoveryPage";
 import { HistoryPage } from "./routes/HistoryPage";
+import { HoldingAttentionPage } from "./routes/HoldingAttentionPage";
 import { IndexRoute } from "./routes/IndexRoute";
 import { InvestmentCasePage } from "./routes/InvestmentCasePage";
 import { PlatformStatusPage } from "./routes/PlatformStatusPage";
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="discovery" element={<DiscoveryPage />} />
         <Route path="portfolio" element={<PortfolioPage />} />
         <Route path="portfolio/import" element={<PortfolioImportPage />} />
+        <Route path="portfolio/holding/:ticker" element={<HoldingAttentionPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="investment-case" element={<InvestmentCasePage />} />
