@@ -1661,9 +1661,21 @@ function HoldingsTableRow({
 }) {
   const isCreating = thisCaseCreateStatus.kind === "creating";
   const isAwaitingReconciliation = holding.reconciliationStatus === "AWAITING_RECONCILIATION";
+  const navigate = useNavigate();
 
+  /** Company Workspace v1 -- Holdings rows now open the Company
+   * Workspace first (Portfolio -> Company -> Investment Case), rather
+   * than jumping straight to Investment Case as before. A holding with
+   * no Case yet still needs `openInvestmentCase`'s own create-then-open
+   * flow, since Company Workspace has nothing to resolve without a
+   * `caseId` -- only an already-cased holding routes through Company
+   * Workspace. */
   function handleRowActivate() {
     if (isCreating) return;
+    if (holding.caseId) {
+      navigate(`/company/${encodeURIComponent(holding.ticker)}`);
+      return;
+    }
     openInvestmentCase(holding.ticker, holding.caseId);
   }
 

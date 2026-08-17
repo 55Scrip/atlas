@@ -77,6 +77,7 @@ import { InvestmentArgumentSection } from "../investmentCase/InvestmentArgumentS
 import { AtlasReasoningSection, type AtlasReasoningInput } from "../investmentCase/AtlasReasoningSection";
 import { CompanyHealthAssessmentSection, type CompanyHealthCardInput } from "../investmentCase/CompanyHealthAssessmentSection";
 import { InterpretedFinancialEvidenceSection } from "../investmentCase/InterpretedFinancialEvidenceSection";
+import { WhatChangedSection } from "../investmentCase/WhatChangedSection";
 
 interface CaseSummary {
   caseId: string;
@@ -893,7 +894,8 @@ export function InvestmentCasePage() {
   const { t } = useTranslation();
   const { caseId } = useParams<{ caseId?: string }>();
   const location = useLocation();
-  const origin = (location.state as { origin?: string } | null)?.origin ?? null;
+  const origin = (location.state as { origin?: string; ticker?: string } | null)?.origin ?? null;
+  const originTicker = (location.state as { origin?: string; ticker?: string } | null)?.ticker ?? null;
   const originLabelKey: TranslationKey | null =
     origin === "dashboard"
       ? "investmentCase.origin.dashboard"
@@ -907,7 +909,9 @@ export function InvestmentCasePage() {
               ? "investmentCase.origin.discovery"
               : origin === "companion"
                 ? "investmentCase.origin.companion"
-                : null;
+                : origin === "company"
+                  ? "investmentCase.origin.company"
+                  : null;
 
   /**
    * Origin-aware return (Sprint 8 audit fix): the badge above already
@@ -927,7 +931,9 @@ export function InvestmentCasePage() {
           ? "/daily-brief"
           : origin === "discovery"
             ? "/discovery"
-            : "/portfolio";
+            : origin === "company" && originTicker
+              ? `/company/${encodeURIComponent(originTicker)}`
+              : "/portfolio";
   const returnLabelKey: TranslationKey =
     origin === "dashboard"
       ? "investmentCase.returnTo.dashboard"
@@ -937,7 +943,9 @@ export function InvestmentCasePage() {
           ? "investmentCase.returnTo.dailyBrief"
           : origin === "discovery"
             ? "investmentCase.returnTo.discovery"
-            : "investmentCase.returnTo.portfolio";
+            : origin === "company" && originTicker
+              ? "investmentCase.returnTo.company"
+              : "investmentCase.returnTo.portfolio";
 
   const [status, setStatus] = useState<CaseStatus>({ kind: "loading" });
 
@@ -2804,7 +2812,13 @@ export function InvestmentCasePage() {
                 {investmentCaseAnalysis.kind === "loaded" && (
                   <>
                     <Divider tone="hairline" />
-                    <WhatChangedSection analysis={investmentCaseAnalysis.report} t={t} />
+                    <WhatChangedSection
+                      changeIntelligenceAvailable={investmentCaseAnalysis.report.changeIntelligenceAvailable}
+                      isBaselineCase={investmentCaseAnalysis.report.isBaselineCase}
+                      latestChanges={investmentCaseAnalysis.report.latestChanges}
+                      thesisChange={investmentCaseAnalysis.report.thesisChange}
+                      t={t}
+                    />
                   </>
                 )}
               </Stack>
@@ -5089,43 +5103,6 @@ function CaseNarrativeDetailSection({ analysis, t }: { analysis: InvestmentCaseA
 // describeChange now live in "../changeIntelligence/describeChange"
 // (imported above) -- shared with History v1.
 
-/** Compact by design -- see this sprint's own "avoid another
- * Today's-Priorities-style block" instruction. Renders nothing when the
- * capability is unavailable (no snapshot repository wired); otherwise
- * always exactly one of: a baseline note, "no material change," or the
- * change list plus its Atlas Thesis impact line. */
-function WhatChangedSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
-  if (!analysis.changeIntelligenceAvailable) {
-    return null;
-  }
-
-  return (
-    <Stack gap="metadata">
-      <Label>{t("investmentCase.whatChanged.heading")}</Label>
-      {analysis.isBaselineCase && (
-        <StatusText label={t("investmentCase.whatChanged.baseline")} />
-      )}
-      {!analysis.isBaselineCase && analysis.latestChanges.length === 0 && (
-        <StatusText label={t("investmentCase.whatChanged.noChange")} />
-      )}
-      {!analysis.isBaselineCase && analysis.latestChanges.length > 0 && (
-        <Stack gap="metadata">
-          <Text color="secondary" as="p">
-            {t("investmentCase.whatChanged.sincePrevious")}
-          </Text>
-          {analysis.latestChanges.map((change) => (
-            <Text as="p" key={change.id}>
-              {CHANGE_DIRECTION_SYMBOL[change.direction]} {describeChange(change, t)}
-            </Text>
-          ))}
-          <Text as="p" color="tertiary">
-            {t(THESIS_IMPACT_KEY[analysis.thesisChange])}
-          </Text>
-        </Stack>
-      )}
-    </Stack>
-  );
-}
 
 /**
  * Portfolio Context (Figma-fidelity rebuild) -- the former Business

@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import { CompanyWorkspacePage } from "./routes/CompanyWorkspacePage";
 import { DailyBriefPage } from "./routes/DailyBriefPage";
 import { DashboardPage } from "./routes/DashboardPage";
 import { DiscoveryPage } from "./routes/DiscoveryPage";
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="portfolio" element={<PortfolioPage />} />
         <Route path="portfolio/import" element={<PortfolioImportPage />} />
         <Route path="portfolio/holding/:ticker" element={<HoldingAttentionPage />} />
+        <Route path="company/:ticker" element={<CompanyWorkspacePage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="investment-case" element={<InvestmentCasePage />} />

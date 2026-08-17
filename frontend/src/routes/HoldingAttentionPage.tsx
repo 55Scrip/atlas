@@ -148,6 +148,9 @@ function HoldingAttentionDetail({
         </Text>
         <Heading level={2}>{holding.ticker}</Heading>
         <Text color="secondary">{t("portfolio.holdingDetail.subheading")}</Text>
+        <RouterLink to={`/company/${encodeURIComponent(holding.ticker)}`}>
+          {t("portfolio.holdingDetail.openCompanyWorkspace")}
+        </RouterLink>
       </Stack>
 
       <Surface tier="primary">

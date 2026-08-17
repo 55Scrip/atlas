@@ -275,6 +275,7 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.holdingDetail.dismissButton": "Avfärda från uppmärksamhet",
   "portfolio.holdingDetail.dismissUnavailable": "Inte tillgängligt än",
   "portfolio.holdingDetail.recordDecisionButton": "Registrera ett beslut",
+  "portfolio.holdingDetail.openCompanyWorkspace": "Öppna bolagsvyn",
   "portfolio.holdingDetail.notFound": "Kunde inte hitta det här innehavet i din portfölj.",
 
   // ---------- portfolio intelligence panels (Figma-fidelity rebuild) ----------
@@ -362,6 +363,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.returnTo.portfolio": "← Tillbaka till Portfölj",
   "investmentCase.returnTo.dailyBrief": "← Tillbaka till Dagens genomgång",
   "investmentCase.returnTo.discovery": "← Tillbaka till Discovery",
+  "investmentCase.returnTo.company": "← Tillbaka till bolagsvyn",
   "investmentCase.noCaseSelected": "Inget case valt.",
   "investmentCase.loadError": "Kunde inte läsa in caset: {{message}}",
   "investmentCase.subject": "Ämne: Case {{caseId}}",
@@ -1015,6 +1017,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.origin.dailyBrief": "Öppnad från Dagens genomgång",
   "investmentCase.origin.discovery": "Öppnad från Discovery",
   "investmentCase.origin.companion": "Öppnad från Atlas Companion",
+  "investmentCase.origin.company": "Öppnad från bolagsvyn",
 
   // ---------- investment case figma-fidelity rebuild: key metrics / strength-concern-priority ----------
   "investmentCase.keyMetrics.heading": "Nyckeltal",
@@ -1321,4 +1324,43 @@ export const sv: Record<TranslationKey, string> = {
   "companion.outcome.unresolved":
     "{{ticker}} finns inte i din nuvarande portfölj, så Atlas kunde inte öppna ett länkat investeringscase för det.",
   "companion.outcome.failed": "Atlas kunde inte skapa investeringscaset för {{ticker}} just nu. Försök igen.",
+
+  // ---------- company workspace (Company Workspace v1) ----------
+  "companyWorkspace.breadcrumbPortfolio": "Portfölj",
+  "companyWorkspace.notFound": "Atlas har inte det här bolaget i din portfölj eller bevakningslista än.",
+  "companyWorkspace.loadError": "Kunde inte läsa in bolagets vy.",
+  "companyWorkspace.backToPortfolio": "← Tillbaka till portföljen",
+  "companyWorkspace.dismissButton": "Avfärda",
+  "companyWorkspace.dismissUnavailable": "Inte tillgängligt än",
+  "companyWorkspace.header.positionValue": "Positionsvärde",
+  "companyWorkspace.header.positionWeight": "Portföljandel",
+  "companyWorkspace.header.notHeld": "Innehas inte för närvarande",
+  "companyWorkspace.header.lastUpdated": "Analysen senast uppdaterad {{when}}",
+  "companyWorkspace.currentPicture.heading": "Nuläge",
+  "companyWorkspace.thesis.heading": "Investeringstes",
+  "companyWorkspace.thesis.empty": "Ingen registrerad tes för det här bolaget ännu.",
+  "companyWorkspace.thesis.viewFull": "Visa hela tesen",
+  "companyWorkspace.decisionSupport.heading": "Beslutsstöd",
+  "companyWorkspace.decisionSupport.viewFull": "Visa fullständigt beslutsstöd",
+  "companyWorkspace.decisionSupport.supportingHeading": "Stödjer den nuvarande tesen",
+  "companyWorkspace.decisionSupport.disclaimer": "Det här registrerar din avsikt — Atlas genomför eller simulerar aldrig en affär.",
+  "companyWorkspace.decisionSupport.recordButton": "Registrera ett beslut",
+  "companyWorkspace.risk.heading": "Risk",
+  "companyWorkspace.evidence.heading": "Belägg & täckning",
+  "companyWorkspace.evidence.qualityLabel": "Beläggens kvalitet",
+  "companyWorkspace.evidence.coverageLabel": "Belägg­täckning",
+  "companyWorkspace.evidence.analysisCoverageLabel": "Analystäckning",
+  "companyWorkspace.evidence.missingLabel": "Öppna frågor",
+  "companyWorkspace.evidence.viewMissing": "Visa öppna frågor",
+  "companyWorkspace.recentActivity.heading": "Senaste aktivitet",
+  "companyWorkspace.recentActivity.empty": "Ingen senaste aktivitet registrerad för det här bolaget.",
+  "companyWorkspace.notYetAnalyzed.heading": "Atlas har inte samlat in bolagsdata ännu",
+  "companyWorkspace.notYetAnalyzed.explanation":
+    "Det kan hända direkt efter att ett innehav eller en bevakning lagts till, eller om den automatiska anrikningen inte slutförts ännu.",
+  "companyWorkspace.notYetAnalyzed.knownHeading": "Vad Atlas vet hittills",
+  "companyWorkspace.notYetAnalyzed.knownTicker": "Ticker: {{ticker}}",
+  "companyWorkspace.notYetAnalyzed.knownWeight": "Portföljandel: {{percent}}%",
+  "companyWorkspace.notYetAnalyzed.missingHeading": "Vad som inte är tillgängligt än",
+  "companyWorkspace.notYetAnalyzed.missingBody": "Bolagsprofil, finansiell historik, värdering och riskanalys.",
+  "companyWorkspace.notYetAnalyzed.nextSteps": "Ladda om sidan om en liten stund för att se uppdateringar.",
 };

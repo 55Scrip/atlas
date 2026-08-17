@@ -276,6 +276,7 @@ export const en = {
   "portfolio.holdingDetail.dismissButton": "Dismiss from Attention",
   "portfolio.holdingDetail.dismissUnavailable": "Not yet available",
   "portfolio.holdingDetail.recordDecisionButton": "Record a Decision",
+  "portfolio.holdingDetail.openCompanyWorkspace": "Open Company Workspace",
   "portfolio.holdingDetail.notFound": "Could not find this holding in your portfolio.",
 
   // ---------- portfolio intelligence panels (Figma-fidelity rebuild) ----------
@@ -363,6 +364,7 @@ export const en = {
   "investmentCase.returnTo.portfolio": "← Back to Portfolio",
   "investmentCase.returnTo.dailyBrief": "← Back to Daily Brief",
   "investmentCase.returnTo.discovery": "← Back to Discovery",
+  "investmentCase.returnTo.company": "← Back to Company Workspace",
   "investmentCase.noCaseSelected": "No case selected.",
   "investmentCase.loadError": "Could not load this case: {{message}}",
   "investmentCase.subject": "Subject: Case {{caseId}}",
@@ -1022,6 +1024,7 @@ export const en = {
   "investmentCase.origin.dailyBrief": "Opened from Daily Brief",
   "investmentCase.origin.discovery": "Opened from Discovery",
   "investmentCase.origin.companion": "Opened from Atlas Companion",
+  "investmentCase.origin.company": "Opened from Company Workspace",
 
   // ---------- investment case figma-fidelity rebuild: key metrics / strength-concern-priority ----------
   "investmentCase.keyMetrics.heading": "Key Metrics",
@@ -1324,6 +1327,45 @@ export const en = {
   "companion.outcome.unresolved":
     "{{ticker}} isn't in your current portfolio, so Atlas couldn't open a linked Investment Case for it.",
   "companion.outcome.failed": "Atlas couldn't create the Investment Case for {{ticker}} just now. Try asking again.",
+
+  // ---------- company workspace (Company Workspace v1) ----------
+  "companyWorkspace.breadcrumbPortfolio": "Portfolio",
+  "companyWorkspace.notFound": "Atlas doesn't have this company in your Portfolio or Watchlist yet.",
+  "companyWorkspace.loadError": "Could not load this company's workspace.",
+  "companyWorkspace.backToPortfolio": "← Back to Portfolio",
+  "companyWorkspace.dismissButton": "Dismiss",
+  "companyWorkspace.dismissUnavailable": "Not yet available",
+  "companyWorkspace.header.positionValue": "Position value",
+  "companyWorkspace.header.positionWeight": "Portfolio weight",
+  "companyWorkspace.header.notHeld": "Not currently held",
+  "companyWorkspace.header.lastUpdated": "Analysis last updated {{when}}",
+  "companyWorkspace.currentPicture.heading": "Current Picture",
+  "companyWorkspace.thesis.heading": "Investment Thesis",
+  "companyWorkspace.thesis.empty": "No recorded thesis yet for this company.",
+  "companyWorkspace.thesis.viewFull": "View full thesis",
+  "companyWorkspace.decisionSupport.heading": "Decision Support",
+  "companyWorkspace.decisionSupport.viewFull": "View full Decision Support",
+  "companyWorkspace.decisionSupport.supportingHeading": "Supports the current thesis",
+  "companyWorkspace.decisionSupport.disclaimer": "This records your intent — Atlas never executes or simulates a trade.",
+  "companyWorkspace.decisionSupport.recordButton": "Record a Decision",
+  "companyWorkspace.risk.heading": "Risk",
+  "companyWorkspace.evidence.heading": "Evidence & Coverage",
+  "companyWorkspace.evidence.qualityLabel": "Evidence quality",
+  "companyWorkspace.evidence.coverageLabel": "Evidence coverage",
+  "companyWorkspace.evidence.analysisCoverageLabel": "Analysis coverage",
+  "companyWorkspace.evidence.missingLabel": "Open questions",
+  "companyWorkspace.evidence.viewMissing": "View open questions",
+  "companyWorkspace.recentActivity.heading": "Recent Activity",
+  "companyWorkspace.recentActivity.empty": "No recent activity recorded for this company.",
+  "companyWorkspace.notYetAnalyzed.heading": "Atlas hasn't gathered company data yet",
+  "companyWorkspace.notYetAnalyzed.explanation":
+    "This can happen right after adding a new holding or watchlist entry, or if automatic enrichment hasn't completed yet.",
+  "companyWorkspace.notYetAnalyzed.knownHeading": "What Atlas knows so far",
+  "companyWorkspace.notYetAnalyzed.knownTicker": "Ticker: {{ticker}}",
+  "companyWorkspace.notYetAnalyzed.knownWeight": "Portfolio weight: {{percent}}%",
+  "companyWorkspace.notYetAnalyzed.missingHeading": "What's not yet available",
+  "companyWorkspace.notYetAnalyzed.missingBody": "Company profile, financial history, valuation, and risk analysis.",
+  "companyWorkspace.notYetAnalyzed.nextSteps": "Reload this page in a little while to check for updates.",
 } as const;
 
 export type TranslationKey = keyof typeof en;
