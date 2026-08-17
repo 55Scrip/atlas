@@ -36,6 +36,9 @@ export function Navigation() {
       <NavLink to="/portfolio" className={navLinkClassName}>
         {t("shell.nav.portfolio")}
       </NavLink>
+      <NavLink to="/watchlist" className={navLinkClassName}>
+        {t("shell.nav.watchlist")}
+      </NavLink>
       <NavLink to="/history" className={navLinkClassName}>
         {t("shell.nav.history")}
       </NavLink>
