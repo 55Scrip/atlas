@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.service import ensure_company_enriched
 from atlas.alpha.case_generation.service import CaseGenerationService
+from atlas.alpha.case_membership import resolve_case_id_for_ticker
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.watchlist.exceptions import (
     AlphaWatchlistEntryNotFoundError,
@@ -52,20 +53,6 @@ class AlphaWatchlistService:
         self._business_record_repository = business_record_repository
         self._business_data_providers = business_data_providers
 
-    def _known_case_ids_by_ticker(self) -> dict[str, str]:
-        """Portfolio's own current holdings, ticker -> case_id --
-        "Watchlist and Portfolio are membership contexts around the
-        same company knowledge," so a ticker already linked to a Case
-        via Portfolio must reuse that exact Case when it is separately
-        added to Watchlist, never create a second one for the same
-        company."""
-        if self._portfolio_store is None:
-            return {}
-        state = self._portfolio_store.get()
-        if state is None:
-            return {}
-        return {holding.ticker: holding.case_id for holding in state.holdings if holding.case_id is not None}
-
     def _trigger_enrichment(self, ticker: str) -> None:
         """Best-effort, never raises for the caller: `ensure_company_
         enriched` already isolates every provider failure into its own
@@ -83,11 +70,19 @@ class AlphaWatchlistService:
     def add_ticker(self, ticker: str) -> AlphaWatchlistEntry:
         """Idempotent: adding an already-watchlisted ticker returns the
         existing entry completely unchanged -- no duplicate row, no
-        second Case, no repeated provider call. A genuinely new ticker
-        resolves its Case id via `CaseGenerationService.ensure_case_id`
-        (reusing a Portfolio-linked Case for the same ticker if one
-        already exists), persists the new entry, then triggers
-        automatic enrichment for it.
+        second Case, no repeated provider call.
+
+        A ticker not currently on the Watchlist resolves its Case id
+        via `case_membership.resolve_case_id_for_ticker` first --
+        reusing a Case already linked to this exact ticker through a
+        current Portfolio holding, or through this ticker's own prior
+        (since-removed) Watchlist history, so remove-then-re-add
+        restores continuity with the original Case rather than
+        creating a new one (Ticker -> Existing Case Resolution Sprint).
+        Only when no existing Case can be resolved does
+        `CaseGenerationService.ensure_case_id` create a brand-new one.
+        Persists the (re)activated entry, then triggers automatic
+        enrichment for it.
         """
         if not ticker or not ticker.strip():
             raise AlphaWatchlistValidationError("ticker must not be blank")
@@ -97,10 +92,10 @@ class AlphaWatchlistService:
         if existing is not None:
             return existing
 
+        resolved_case_id = resolve_case_id_for_ticker(normalized, self._portfolio_store, self._store)
         case_id = self._case_generation_service.ensure_case_id(
-            current_case_id=None,
+            current_case_id=resolved_case_id,
             ticker=normalized,
-            known_case_ids_by_ticker=self._known_case_ids_by_ticker(),
         )
         entry = AlphaWatchlistEntry(ticker=normalized, case_id=case_id, added_at=_utc_now())
         self._store.add(entry)
@@ -108,9 +103,12 @@ class AlphaWatchlistService:
         return entry
 
     def remove_ticker(self, ticker: str) -> None:
-        """Removes a ticker's Watchlist entry only -- the Watchlist
-        table has no relationship to Case/Decision/Evidence/Company
-        data (see `store.py`), so nothing else is touched. Raises
+        """Removes a ticker from the Watchlist only -- a soft delete
+        (see `store.py`): the row survives, so `case_membership.
+        resolve_case_id_for_ticker` can still find its `case_id` if the
+        ticker is later re-added. The Watchlist table has no
+        relationship to Case/Decision/Evidence/Company data, so nothing
+        else is touched either way. Raises
         `AlphaWatchlistEntryNotFoundError` if the ticker is not
         currently on the Watchlist, matching this codebase's
         established delete-of-missing convention rather than being
@@ -122,7 +120,7 @@ class AlphaWatchlistService:
             raise AlphaWatchlistEntryNotFoundError(
                 f"No Watchlist entry found for ticker {normalized}"
             )
-        self._store.remove(normalized)
+        self._store.remove(normalized, _utc_now())
 
     def list_all(self) -> tuple[AlphaWatchlistEntry, ...]:
         return self._store.list_all()

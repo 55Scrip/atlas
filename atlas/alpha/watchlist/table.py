@@ -27,6 +27,16 @@ alpha_watchlist_entry_table = Table(
     Column("ticker", String, primary_key=True),
     Column("case_id", String, nullable=False),
     Column("added_at", String, nullable=False),
+    # Ticker -> Existing Case Resolution Sprint: `removed_at` (nullable,
+    # added via `sync_table_schema`'s safe-add path) turns Remove into a
+    # soft delete -- NULL means "currently on the Watchlist," a
+    # timestamp means "removed, but its ticker->case_id linkage is kept"
+    # -- the same append-only, never-delete-history convention this
+    # codebase already established for `SecurityConfirmationEvent`
+    # (`"revoked"` events are never deleted either). The row's own
+    # `ticker` primary key stays the one and only identity; no new
+    # concept is introduced.
+    Column("removed_at", String, nullable=True),
 )
 
 

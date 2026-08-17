@@ -227,6 +227,27 @@ class TestDuplicateTickerValidation:
         assert response.status_code == 201
 
 
+class TestImportReusesRemovedWatchlistCase:
+    """Ticker -> Existing Case Resolution Sprint: the mirror of
+    Watchlist's own re-add fix. `AlphaPortfolioService
+    ._known_watchlist_case_ids` now includes removed Watchlist entries
+    too, so a ticker imported into Portfolio for the first time after
+    being removed from (and never re-added to) the Watchlist still
+    reuses its original Case rather than getting a second one."""
+
+    def test_import_reuses_the_case_id_of_a_removed_watchlist_entry(self, client):
+        watchlist_entry = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
+        client.delete("/alpha-watchlist/META")
+
+        imported = client.post(
+            "/alpha-portfolio/import",
+            json={"holdings": [{"ticker": "META", "weightPercent": 100}]},
+        )
+        assert imported.status_code == 201, imported.text
+        holding = imported.json()["holdings"][0]
+        assert holding["caseId"] == watchlist_entry["caseId"]
+
+
 class TestAllocationBoundsValidation:
     def test_rejects_a_single_weight_above_100(self, client):
         response = client.post(

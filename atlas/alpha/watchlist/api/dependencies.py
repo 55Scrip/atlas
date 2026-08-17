@@ -40,8 +40,8 @@ def get_alpha_portfolio_store_for_watchlist(
     """A second dependency function returning the exact same
     `AlphaPortfolioStore` shape `portfolio`'s own module already builds
     (same table, same engine) -- Watchlist reads Portfolio's holdings
-    for cross-context Case reuse (`AlphaWatchlistService
-    ._known_case_ids_by_ticker`), never writes to them. Named distinctly
+    for cross-context Case reuse (`case_membership
+    .resolve_case_id_for_ticker`), never writes to them. Named distinctly
     from `portfolio.api.dependencies.get_alpha_portfolio_store` only to
     keep each package's own dependency graph readable in FastAPI's
     dependency-injection tree, not because the underlying store differs."""

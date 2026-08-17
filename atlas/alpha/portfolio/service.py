@@ -309,15 +309,24 @@ class AlphaPortfolioService:
         self._business_data_providers = business_data_providers
 
     def _known_watchlist_case_ids(self) -> dict[str, str]:
-        """(Investment Case Engine v1 slice) Watchlist's own current
-        entries, ticker -> case_id -- so a ticker already linked to a
-        Case via Watchlist is reused, never duplicated, when the same
-        ticker is added to Portfolio. Mirrors `AlphaWatchlistService
-        ._known_case_ids_by_ticker`'s identical cross-context lookup in
-        the other direction."""
+        """(Investment Case Engine v1 slice) Watchlist's own entries,
+        ticker -> case_id -- so a ticker already linked to a Case via
+        Watchlist is reused, never duplicated, when the same ticker is
+        added to Portfolio. Mirrors `case_membership
+        .resolve_case_id_for_ticker`'s identical cross-context lookup
+        in the other direction.
+
+        Ticker -> Existing Case Resolution Sprint: deliberately
+        includes removed Watchlist entries too
+        (`list_all_including_removed`), not just current ones -- a
+        ticker imported into Portfolio for the first time after being
+        removed from the Watchlist (never re-added) must still reuse
+        its original Case rather than getting a second one, the exact
+        same continuity guarantee `resolve_case_id_for_ticker` gives
+        Watchlist's own re-add path."""
         if self._watchlist_store is None:
             return {}
-        return {entry.ticker: entry.case_id for entry in self._watchlist_store.list_all()}
+        return {entry.ticker: entry.case_id for entry in self._watchlist_store.list_all_including_removed()}
 
     def _ensure_cases(self, holdings: tuple[AlphaHolding, ...]) -> tuple[AlphaHolding, ...]:
         """ATLAS-027: every real composition root wires

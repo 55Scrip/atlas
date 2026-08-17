@@ -139,24 +139,17 @@ class TestRemoveFromWatchlist:
         assert case_response.status_code == 200, case_response.text
         assert case_response.json()["caseId"] == entry["caseId"]
 
-    def test_company_profile_display_becomes_unavailable_after_removal_but_no_data_is_deleted(
-        self, client
-    ):
-        """Documents a real, pre-existing architectural coupling rather
-        than papering over it: `InvestmentCaseCompositionService._assemble`
-        resolves a Watchlist-only Case's ticker via
-        `watchlist_store.get_by_case_id(case_id)` (see
-        `atlas/alpha/investment_case/service.py`), since neither the
-        Case nor its persisted `BusinessRecord`s store a ticker
-        directly. Removing the Watchlist row deletes that one
-        resolution path, so `companyProfile` on `/cases/{id}/analysis`
-        becomes `None` post-removal -- not because any BusinessRecord
-        row was deleted (confirmed intact by re-adding, below), but
-        because nothing left maps this case_id back to its ticker. This
-        is the concrete, documented consequence of `/company/:ticker`
-        resolution depending solely on Watchlist/Portfolio membership,
-        called out as a known limitation rather than a bug this narrow
-        sprint should fix (see design record)."""
+    def test_company_profile_display_remains_available_after_removal(self, client):
+        """Ticker -> Existing Case Resolution Sprint: previously,
+        `InvestmentCaseCompositionService._assemble`'s
+        `watchlist_store.get_by_case_id(case_id)` ticker-recovery
+        fallback (see `atlas/alpha/investment_case/service.py`) went
+        blind the moment the Watchlist row was deleted, so
+        `companyProfile` disappeared from `/cases/{id}/analysis` even
+        though the underlying `BusinessRecord`s were untouched. Removal
+        is now a soft delete (`AlphaWatchlistStore.remove`), so
+        `get_by_case_id` keeps finding the ticker and `companyProfile`
+        stays visible across removal, with no re-add required."""
         entry = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
         analysis_before = client.get(f"/cases/{entry['caseId']}/analysis").json()
         assert analysis_before["companyProfile"]["name"] == "Meta Platforms, Inc."
@@ -164,14 +157,7 @@ class TestRemoveFromWatchlist:
         client.delete("/alpha-watchlist/META")
         analysis_after = client.get(f"/cases/{entry['caseId']}/analysis")
         assert analysis_after.status_code == 200, analysis_after.text
-        assert analysis_after.json()["companyProfile"] is None
-
-        # Re-adding restores ticker resolution and shows the *same*
-        # underlying BusinessRecord data was never deleted.
-        client.post("/alpha-watchlist", json={"ticker": "META"})
-        new_case_id = client.get("/alpha-watchlist").json()[0]["caseId"]
-        analysis_readded = client.get(f"/cases/{new_case_id}/analysis").json()
-        assert analysis_readded["companyProfile"]["name"] == "Meta Platforms, Inc."
+        assert analysis_after.json()["companyProfile"]["name"] == "Meta Platforms, Inc."
 
     def test_the_portfolio_holding_is_untouched_when_the_same_ticker_is_removed_from_watchlist(
         self, client
@@ -207,24 +193,43 @@ class TestRemoveFromWatchlist:
         assert readded.status_code == 201, readded.text
         assert [e["ticker"] for e in client.get("/alpha-watchlist").json()] == ["META"]
 
-    def test_re_adding_a_watchlist_only_ticker_creates_a_new_case_not_the_orphaned_one(
-        self, client
-    ):
-        """Documents a real, pre-existing architectural gap rather than
-        papering over it: `CaseGenerationService.ensure_case_id` only
-        reuses a Case via Portfolio-holding cross-reference (see
-        `AlphaWatchlistService._known_case_ids_by_ticker`). A ticker
-        that was only ever on the Watchlist has no other persisted
-        record of its old `case_id` once its Watchlist row is removed,
-        so re-adding it resolves a brand-new Case. The original Case's
-        data is not deleted (proven by
-        `test_the_case_remains_fully_intact_after_removal` above) --
-        it becomes unreachable by ticker until directly re-linked,
-        which is outside this sprint's scope (see design record)."""
+    def test_re_adding_a_watchlist_only_ticker_reuses_the_same_case(self, client):
+        """Ticker -> Existing Case Resolution Sprint: previously,
+        `CaseGenerationService.ensure_case_id` only reused a Case via a
+        current Portfolio-holding cross-reference, so a ticker that was
+        only ever on the Watchlist got a brand-new Case on re-add,
+        orphaning its original one. `add_ticker` now resolves via
+        `case_membership.resolve_case_id_for_ticker` first, which also
+        checks this exact ticker's own prior (since-removed) Watchlist
+        entry -- so re-add restores the original `case_id`, not a new
+        one."""
         first = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
         client.delete("/alpha-watchlist/META")
         second = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
-        assert second["caseId"] != first["caseId"]
+        assert second["caseId"] == first["caseId"]
+
+    def test_decision_history_remains_linked_after_remove_and_re_add(self, client):
+        entry = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
+        case_id = entry["caseId"]
+        decision = client.post(
+            "/decisions",
+            json={
+                "caseId": case_id,
+                "userId": "00000000-0000-0000-0000-000000000001",
+                "decisionType": "HOLD",
+                "subject": "META",
+                "reason": "Steady compounder.",
+                "confidence": 70,
+            },
+        )
+        assert decision.status_code == 201, decision.text
+
+        client.delete("/alpha-watchlist/META")
+        readded = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
+        assert readded["caseId"] == case_id
+
+        analysis = client.get(f"/cases/{case_id}/analysis").json()
+        assert any(d["decisionId"] == decision.json()["id"] for d in analysis["decisionHistory"])
 
 
 class TestWatchlistToPortfolioPreservesKnowledge:
