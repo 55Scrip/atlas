@@ -54,6 +54,49 @@ export const CONVICTION_TONE: Record<ConvictionLevel, StatusTone> = {
   insufficient_evidence: "neutral",
 };
 
+/** Localization & Language Integrity Sprint: `ConvictionAssessment
+ * .reasons` (`atlas/analysis_engine/conviction.py`'s
+ * `ConvictionReasonCode`) is a real, bounded, always-populated enum --
+ * every Conviction assessment names every applicable reason code, not
+ * just the deciding one. Before this map existed, `InvestmentCasePage
+ * .tsx` rendered these raw (`humanize()`'s underscores-to-spaces
+ * fallback, e.g. "evidence coverage full"), in English only, on every
+ * single Case's "More details" tab. */
+export type ConvictionReasonCode =
+  | "upstream_stage_not_evaluated"
+  | "evidence_coverage_insufficient"
+  | "evidence_coverage_partial"
+  | "evidence_coverage_full"
+  | "contradicting_evidence_present"
+  | "no_contradicting_evidence"
+  | "thesis_stale"
+  | "thesis_not_stale"
+  | "open_questions_remain"
+  | "no_open_questions"
+  | "business_or_valuation_not_yet_conclusive"
+  | "business_and_valuation_conclusive"
+  | "high_financial_or_valuation_risk_present"
+  | "no_high_financial_or_valuation_risk";
+
+export const CONVICTION_REASON_KEY: Record<ConvictionReasonCode, TranslationKey> = {
+  upstream_stage_not_evaluated: "investmentCase.analysis.conviction.reason.upstreamStageNotEvaluated",
+  evidence_coverage_insufficient: "investmentCase.analysis.conviction.reason.evidenceCoverageInsufficient",
+  evidence_coverage_partial: "investmentCase.analysis.conviction.reason.evidenceCoveragePartial",
+  evidence_coverage_full: "investmentCase.analysis.conviction.reason.evidenceCoverageFull",
+  contradicting_evidence_present: "investmentCase.analysis.conviction.reason.contradictingEvidencePresent",
+  no_contradicting_evidence: "investmentCase.analysis.conviction.reason.noContradictingEvidence",
+  thesis_stale: "investmentCase.analysis.conviction.reason.thesisStale",
+  thesis_not_stale: "investmentCase.analysis.conviction.reason.thesisNotStale",
+  open_questions_remain: "investmentCase.analysis.conviction.reason.openQuestionsRemain",
+  no_open_questions: "investmentCase.analysis.conviction.reason.noOpenQuestions",
+  business_or_valuation_not_yet_conclusive:
+    "investmentCase.analysis.conviction.reason.businessOrValuationNotYetConclusive",
+  business_and_valuation_conclusive: "investmentCase.analysis.conviction.reason.businessAndValuationConclusive",
+  high_financial_or_valuation_risk_present:
+    "investmentCase.analysis.conviction.reason.highFinancialOrValuationRiskPresent",
+  no_high_financial_or_valuation_risk: "investmentCase.analysis.conviction.reason.noHighFinancialOrValuationRisk",
+};
+
 export const CONFIDENCE_KEY: Record<EvidenceCoverageLevel, TranslationKey> = {
   not_applicable: "portfolio.intelligence.confidence.not_applicable",
   none: "portfolio.intelligence.confidence.none",

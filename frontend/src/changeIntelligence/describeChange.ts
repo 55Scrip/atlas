@@ -248,3 +248,80 @@ export function describeChange(change: ChangeFindingView, t: Translate): string 
   }
   return "";
 }
+
+/** Localization & Language Integrity Sprint: `BusinessFinding
+ * .missingEvidence`/`ValuationFinding.missingEvidence`/`RiskFinding
+ * .missingEvidence` are each a real, bounded, closed enum
+ * (`BusinessDataGapKind`/`ValuationDataGapKind`/`RiskDataGapKind` in
+ * `atlas/analysis_engine`'s own `business_contracts.py`/`valuation
+ * /contracts.py`/`risk/contracts.py`) -- not free text. Before these
+ * three maps existed, `InvestmentCasePage.tsx` rendered every one of
+ * them through `humanize()`'s underscores-to-spaces fallback (e.g. "no
+ * external data source connected"), in English only, on every Business/
+ * Valuation/Risk finding that has a data gap -- which, given how much
+ * of the real Internal Alpha portfolio is still `insufficient_input`,
+ * fires on nearly every "Show supporting evidence" expand. */
+export type BusinessDataGapKind =
+  | "no_external_data_source_connected"
+  | "external_data_not_yet_interpreted"
+  | "insufficient_historical_periods"
+  | "missing_revenue_history"
+  | "missing_cash_flow_history"
+  | "missing_buyback_data"
+  | "missing_debt_data"
+  | "missing_dividend_data"
+  | "missing_capex_data"
+  | "missing_share_count_history";
+
+export const BUSINESS_DATA_GAP_KEY: Record<BusinessDataGapKind, TranslationKey> = {
+  no_external_data_source_connected: "investmentCase.analysis.business.gap.noExternalDataSourceConnected",
+  external_data_not_yet_interpreted: "investmentCase.analysis.business.gap.externalDataNotYetInterpreted",
+  insufficient_historical_periods: "investmentCase.analysis.business.gap.insufficientHistoricalPeriods",
+  missing_revenue_history: "investmentCase.analysis.business.gap.missingRevenueHistory",
+  missing_cash_flow_history: "investmentCase.analysis.business.gap.missingCashFlowHistory",
+  missing_buyback_data: "investmentCase.analysis.business.gap.missingBuybackData",
+  missing_debt_data: "investmentCase.analysis.business.gap.missingDebtData",
+  missing_dividend_data: "investmentCase.analysis.business.gap.missingDividendData",
+  missing_capex_data: "investmentCase.analysis.business.gap.missingCapexData",
+  missing_share_count_history: "investmentCase.analysis.business.gap.missingShareCountHistory",
+};
+
+export type ValuationDataGapKind =
+  | "missing_market_price"
+  | "missing_share_count"
+  | "missing_free_cash_flow_history"
+  | "insufficient_historical_valuation_periods"
+  | "stale_market_data"
+  | "no_eligible_fundamentals_as_of_observation"
+  | "cash_flow_not_positive"
+  | "missing_scenario_assumptions";
+
+export const VALUATION_DATA_GAP_KEY: Record<ValuationDataGapKind, TranslationKey> = {
+  missing_market_price: "investmentCase.analysis.valuation.gap.missingMarketPrice",
+  missing_share_count: "investmentCase.analysis.valuation.gap.missingShareCount",
+  missing_free_cash_flow_history: "investmentCase.analysis.valuation.gap.missingFreeCashFlowHistory",
+  insufficient_historical_valuation_periods:
+    "investmentCase.analysis.valuation.gap.insufficientHistoricalValuationPeriods",
+  stale_market_data: "investmentCase.analysis.valuation.gap.staleMarketData",
+  no_eligible_fundamentals_as_of_observation:
+    "investmentCase.analysis.valuation.gap.noEligibleFundamentalsAsOfObservation",
+  cash_flow_not_positive: "investmentCase.analysis.valuation.gap.cashFlowNotPositive",
+  missing_scenario_assumptions: "investmentCase.analysis.valuation.gap.missingScenarioAssumptions",
+};
+
+export type RiskDataGapKind =
+  | "growth_assessment_unavailable"
+  | "capital_allocation_assessment_unavailable"
+  | "missing_cash_flow_level"
+  | "valuation_assessment_unavailable"
+  | "no_evidence_to_evaluate"
+  | "missing_debt_history";
+
+export const RISK_DATA_GAP_KEY: Record<RiskDataGapKind, TranslationKey> = {
+  growth_assessment_unavailable: "investmentCase.analysis.risk.gap.growthAssessmentUnavailable",
+  capital_allocation_assessment_unavailable: "investmentCase.analysis.risk.gap.capitalAllocationAssessmentUnavailable",
+  missing_cash_flow_level: "investmentCase.analysis.risk.gap.missingCashFlowLevel",
+  valuation_assessment_unavailable: "investmentCase.analysis.risk.gap.valuationAssessmentUnavailable",
+  no_evidence_to_evaluate: "investmentCase.analysis.risk.gap.noEvidenceToEvaluate",
+  missing_debt_history: "investmentCase.analysis.risk.gap.missingDebtHistory",
+};

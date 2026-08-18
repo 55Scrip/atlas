@@ -235,6 +235,25 @@ const EVIDENCE_GAP_QUESTION_KINDS = [
   "decision_without_linked_observation",
 ];
 
+/** Localization & Language Integrity Sprint: `EVIDENCE_GAP_QUESTION_KINDS`
+ * aren't part of `AnalysisOpenQuestionOrigin` (`OPEN_QUESTION_ORIGIN_KEY`
+ * only covers that narrower enum), so every question rendered below was
+ * silently falling through to `humanize()` -- e.g. the raw
+ * "decision without linked observation" enum text, in English only,
+ * regardless of the selected language. Reuses the exact translation keys
+ * `InvestmentCasePage.tsx`'s own `OPEN_QUESTION_KEY` already defines for
+ * these same three kinds -- no new copy authored. */
+type EvidenceGapQuestionKind =
+  | "no_evidence_recorded_for_case"
+  | "observation_without_evidence"
+  | "decision_without_linked_observation";
+
+const EVIDENCE_GAP_QUESTION_KEY: Record<EvidenceGapQuestionKind, TranslationKey> = {
+  no_evidence_recorded_for_case: "investmentCase.intelligence.openQuestions.noEvidenceRecordedForCase",
+  observation_without_evidence: "investmentCase.intelligence.openQuestions.observationWithoutEvidence",
+  decision_without_linked_observation: "investmentCase.intelligence.openQuestions.decisionWithoutLinkedObservation",
+};
+
 type ResolutionStatus =
   | { kind: "loading" }
   | { kind: "error" }
@@ -841,7 +860,11 @@ function EvidenceCoverageCard({
             <Stack gap="metadata">
               {missingQuestions.map((q, index) => (
                 <Text as="p" color="secondary" key={index}>
-                  {q.kind in OPEN_QUESTION_ORIGIN_KEY ? t(OPEN_QUESTION_ORIGIN_KEY[q.kind as AnalysisOpenQuestionOrigin]) : humanize(q.kind)}
+                  {q.kind in EVIDENCE_GAP_QUESTION_KEY
+                    ? t(EVIDENCE_GAP_QUESTION_KEY[q.kind as EvidenceGapQuestionKind])
+                    : q.kind in OPEN_QUESTION_ORIGIN_KEY
+                      ? t(OPEN_QUESTION_ORIGIN_KEY[q.kind as AnalysisOpenQuestionOrigin])
+                      : humanize(q.kind)}
                 </Text>
               ))}
             </Stack>

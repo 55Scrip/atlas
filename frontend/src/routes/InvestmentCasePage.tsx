@@ -15,12 +15,14 @@ import {
   BUSINESS_STATUS_TONE,
   CONFIDENCE_KEY,
   CONVICTION_LEVEL_KEY,
+  CONVICTION_REASON_KEY,
   DECISION_SUPPORT_BADGE_KEY,
   DECISION_SUPPORT_STATEMENT_KEY,
   DECISION_SUPPORT_TONE,
   RISK_STATUS_TONE,
   VALUATION_STATUS_TONE,
   type ConvictionLevel,
+  type ConvictionReasonCode,
   type DecisionSupportLevel,
   type EvidenceCoverageLevel,
   type MissingEvaluationCategory,
@@ -30,6 +32,7 @@ import {
 } from "../status/statusTone";
 import {
   BUSINESS_CATEGORY_KEY,
+  BUSINESS_DATA_GAP_KEY,
   BUSINESS_STATUS_KEY,
   CHANGE_DIRECTION_SYMBOL,
   describeChange,
@@ -38,8 +41,10 @@ import {
   humanize,
   OPEN_QUESTION_ORIGIN_KEY,
   RISK_CATEGORY_KEY,
+  RISK_DATA_GAP_KEY,
   RISK_STATUS_KEY,
   THESIS_IMPACT_KEY,
+  VALUATION_DATA_GAP_KEY,
   VALUATION_STATUS_KEY,
   type AnalysisBusinessCategory,
   type AnalysisBusinessStatus,
@@ -51,8 +56,11 @@ import {
   type AnalysisRiskStatus,
   type AnalysisThesisImpact,
   type AnalysisValuationStatus,
+  type BusinessDataGapKind,
   type ChangeFindingView,
+  type RiskDataGapKind,
   type Translate,
+  type ValuationDataGapKind,
 } from "../changeIntelligence/describeChange";
 import {
   deriveCaseStatus,
@@ -78,6 +86,13 @@ import { AtlasReasoningSection, type AtlasReasoningInput } from "../investmentCa
 import { CompanyHealthAssessmentSection, type CompanyHealthCardInput } from "../investmentCase/CompanyHealthAssessmentSection";
 import { InterpretedFinancialEvidenceSection } from "../investmentCase/InterpretedFinancialEvidenceSection";
 import { WhatChangedSection } from "../investmentCase/WhatChangedSection";
+
+/** Renders a bounded enum value's real copy; falls back to `humanize()`
+ * only for a value the map doesn't (yet) cover, mirroring the
+ * `OPEN_QUESTION_ORIGIN_KEY` fallback pattern already used above. */
+function describeGapKind<K extends string>(value: string, map: Record<K, TranslationKey>, t: Translate): string {
+  return value in map ? t(map[value as K]) : humanize(value);
+}
 
 interface CaseSummary {
   caseId: string;
@@ -5217,7 +5232,8 @@ function BusinessSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView
         )}
         {finding.missingEvidence.length > 0 && (
           <Text color="tertiary" as="p">
-            {t("investmentCase.analysis.business.missingLabel")}: {finding.missingEvidence.map(humanize).join(", ")}
+            {t("investmentCase.analysis.business.missingLabel")}:{" "}
+            {finding.missingEvidence.map((v) => describeGapKind(v, BUSINESS_DATA_GAP_KEY, t)).join(", ")}
           </Text>
         )}
       </Stack>
@@ -5277,7 +5293,8 @@ function ValuationDetailSection({ analysis, t }: { analysis: InvestmentCaseAnaly
           )}
           {fcfYield.missingEvidence.length > 0 && (
             <Text color="secondary" as="p">
-              {t("investmentCase.analysis.business.missingLabel")}: {fcfYield.missingEvidence.map(humanize).join(", ")}
+              {t("investmentCase.analysis.business.missingLabel")}:{" "}
+              {fcfYield.missingEvidence.map((v) => describeGapKind(v, VALUATION_DATA_GAP_KEY, t)).join(", ")}
             </Text>
           )}
         </Stack>
@@ -5323,7 +5340,8 @@ function RiskSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t:
           )}
           {finding.missingEvidence.length > 0 && (
             <Text color="tertiary" as="p">
-              {t("investmentCase.analysis.business.missingLabel")}: {finding.missingEvidence.map(humanize).join(", ")}
+              {t("investmentCase.analysis.business.missingLabel")}:{" "}
+              {finding.missingEvidence.map((v) => describeGapKind(v, RISK_DATA_GAP_KEY, t)).join(", ")}
             </Text>
           )}
         </Stack>
@@ -5382,7 +5400,7 @@ function EvidenceDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalys
               <Text color="secondary">{t("investmentCase.analysis.conviction.reasonsHeading")}</Text>
               {analysis.conviction.reasons.map((reason) => (
                 <Text key={reason} color="secondary" as="p">
-                  {humanize(reason)}
+                  {describeGapKind(reason, CONVICTION_REASON_KEY, t)}
                 </Text>
               ))}
             </Stack>

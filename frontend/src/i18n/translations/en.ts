@@ -383,6 +383,24 @@ export const en = {
   // ---------- investment case: canonical analysis (ATLAS-029) ----------
   "investmentCase.analysis.conviction.heading": "Conviction",
   "investmentCase.analysis.conviction.reasonsHeading": "Why",
+  "investmentCase.analysis.conviction.reason.upstreamStageNotEvaluated": "An earlier analysis stage hasn't been evaluated yet.",
+  "investmentCase.analysis.conviction.reason.evidenceCoverageInsufficient": "Evidence coverage is insufficient.",
+  "investmentCase.analysis.conviction.reason.evidenceCoveragePartial": "Evidence coverage is partial.",
+  "investmentCase.analysis.conviction.reason.evidenceCoverageFull": "Evidence coverage is full.",
+  "investmentCase.analysis.conviction.reason.contradictingEvidencePresent": "Contradicting evidence is present.",
+  "investmentCase.analysis.conviction.reason.noContradictingEvidence": "No contradicting evidence found.",
+  "investmentCase.analysis.conviction.reason.thesisStale": "Thesis is stale.",
+  "investmentCase.analysis.conviction.reason.thesisNotStale": "Thesis is current.",
+  "investmentCase.analysis.conviction.reason.openQuestionsRemain": "Open questions remain.",
+  "investmentCase.analysis.conviction.reason.noOpenQuestions": "No open questions remain.",
+  "investmentCase.analysis.conviction.reason.businessOrValuationNotYetConclusive":
+    "Business or valuation analysis isn't conclusive yet.",
+  "investmentCase.analysis.conviction.reason.businessAndValuationConclusive":
+    "Business and valuation analysis are both conclusive.",
+  "investmentCase.analysis.conviction.reason.highFinancialOrValuationRiskPresent":
+    "A high financial or valuation risk is present.",
+  "investmentCase.analysis.conviction.reason.noHighFinancialOrValuationRisk":
+    "No high financial or valuation risk identified.",
   "investmentCase.analysis.confidence.heading": "Confidence",
   "investmentCase.analysis.confidence.explanation": "How well the recorded Observations for this Case are backed by Evidence.",
   "investmentCase.analysis.thesis.heading": "Current Thesis",
@@ -483,16 +501,48 @@ export const en = {
   "investmentCase.analysis.business.supportingLabel": "Supporting",
   "investmentCase.analysis.business.contradictingLabel": "Contradicting",
   "investmentCase.analysis.business.missingLabel": "Missing",
+  "investmentCase.analysis.business.gap.noExternalDataSourceConnected":
+    "No external data source is connected for this category.",
+  "investmentCase.analysis.business.gap.externalDataNotYetInterpreted":
+    "External data exists but hasn't been interpreted yet.",
+  "investmentCase.analysis.business.gap.insufficientHistoricalPeriods":
+    "Not enough historical periods are available to compare.",
+  "investmentCase.analysis.business.gap.missingRevenueHistory": "Revenue history is missing.",
+  "investmentCase.analysis.business.gap.missingCashFlowHistory": "Free cash flow history is missing.",
+  "investmentCase.analysis.business.gap.missingBuybackData": "Share buyback or issuance data is missing.",
+  "investmentCase.analysis.business.gap.missingDebtData": "Debt issuance or repayment data is missing.",
+  "investmentCase.analysis.business.gap.missingDividendData": "Dividend data is missing.",
+  "investmentCase.analysis.business.gap.missingCapexData": "Capital expenditure data is missing.",
+  "investmentCase.analysis.business.gap.missingShareCountHistory": "Share count history is missing.",
   "investmentCase.analysis.business.portfolioContextHeading": "Portfolio Context",
   "investmentCase.analysis.business.largestPositionLabel": "Largest position: {{ticker}} ({{percent}}%)",
   "investmentCase.analysis.business.otherCategoriesHeading": "Other Dimensions",
   "investmentCase.analysis.valuation.heading": "Valuation",
   "investmentCase.analysis.valuation.method.fcf_yield_relative": "FCF Yield (Relative)",
   "investmentCase.analysis.valuation.currentYieldLabel": "Current FCF Yield",
+  "investmentCase.analysis.valuation.gap.missingMarketPrice": "Market price is missing.",
+  "investmentCase.analysis.valuation.gap.missingShareCount": "Share count is missing.",
+  "investmentCase.analysis.valuation.gap.missingFreeCashFlowHistory": "Free cash flow history is missing.",
+  "investmentCase.analysis.valuation.gap.insufficientHistoricalValuationPeriods":
+    "Not enough historical periods are available to compute a valuation range.",
+  "investmentCase.analysis.valuation.gap.staleMarketData": "Market data may be stale.",
+  "investmentCase.analysis.valuation.gap.noEligibleFundamentalsAsOfObservation":
+    "No eligible fundamentals were available as of the market observation date.",
+  "investmentCase.analysis.valuation.gap.cashFlowNotPositive":
+    "Free cash flow is not positive, so a yield can't be computed.",
+  "investmentCase.analysis.valuation.gap.missingScenarioAssumptions":
+    "No forward assumptions have been supplied for this scenario.",
   "investmentCase.analysis.valuation.scenarioHeading": "Scenario Analysis",
   "investmentCase.analysis.valuation.scenarioNote": "Not yet available — forward assumptions have not been supplied.",
   "investmentCase.analysis.risk.heading": "Risk",
   "investmentCase.analysis.risk.subheading": "Every category shown independently — never combined into one score.",
+  "investmentCase.analysis.risk.gap.growthAssessmentUnavailable": "Growth hasn't been assessed yet.",
+  "investmentCase.analysis.risk.gap.capitalAllocationAssessmentUnavailable":
+    "Capital allocation hasn't been assessed yet.",
+  "investmentCase.analysis.risk.gap.missingCashFlowLevel": "Free cash flow data is missing.",
+  "investmentCase.analysis.risk.gap.valuationAssessmentUnavailable": "Valuation hasn't been assessed yet.",
+  "investmentCase.analysis.risk.gap.noEvidenceToEvaluate": "No evidence has been recorded to evaluate.",
+  "investmentCase.analysis.risk.gap.missingDebtHistory": "Debt history is missing.",
   "investmentCase.analysis.evidence.heading": "Evidence",
   "investmentCase.analysis.evidence.supportingCount": "{{count}} Observation(s) with supporting Evidence",
   "investmentCase.analysis.evidence.challengingCount": "{{count}} Observation(s) with challenging Evidence",
