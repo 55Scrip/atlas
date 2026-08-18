@@ -993,6 +993,36 @@ class TestFetchCompanyProfile:
         assert doc.metadata["currency"] == "USD"
         assert doc.metadata["fiscal_year_end"] == "September"
 
+    def test_asset_type_is_extracted_into_metadata(self, monkeypatch):
+        """Sprint O.1 -- `AssetType` is a real field in Alpha Vantage's
+        OVERVIEW response (confirmed via the sprint's own live
+        documentation verification), extracted the same way every other
+        identity field already is: verbatim, untranslated, under the
+        `asset_type` metadata key."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {
+                "OVERVIEW": {
+                    "Symbol": "AAPL",
+                    "Name": "Apple Inc.",
+                    "AssetType": "Common Stock",
+                    "Exchange": "NASDAQ",
+                    "Country": "USA",
+                    "Currency": "USD",
+                }
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        (doc,) = provider.fetch_company_profile(company_identifier="AAPL", evaluated_at=_NOW)
+        assert doc.metadata["asset_type"] == "Common Stock"
+
+    def test_literal_none_string_asset_type_is_omitted_not_stored(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher({"OVERVIEW": {"Symbol": "XYZ", "Name": "Xyz Corp", "AssetType": "None"}})
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        (doc,) = provider.fetch_company_profile(company_identifier="XYZ", evaluated_at=_NOW)
+        assert "asset_type" not in doc.metadata
+
     def test_literal_none_string_fields_are_omitted_not_stored(self, monkeypatch):
         monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
         fetcher = _fake_fetcher(

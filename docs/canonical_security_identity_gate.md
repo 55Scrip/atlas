@@ -243,75 +243,76 @@ through Sprint N's public API exactly as designed.
       pre-existing, unrelated `test_no_provider_imports_added` failures
       (a stale cached path unrelated to this sprint's changes).
 
-## 11. Readiness assessment (Phase 20)
+## 11. Readiness assessment (Phase 20, corrected by Sprint O.1)
 
-**Central finding — read this before assuming automatic enrichment still
-works the way it used to.**
+**This section originally stated that `AUTO_ACCEPT` was structurally
+unreachable through a single real provider candidate. That finding was
+investigated, disproven, and corrected — see §12. It is preserved here,
+corrected in place, so the reasoning stays legible rather than
+disappearing.**
 
-With the two provider adapters exactly as they exist today, unmodified:
+With the two provider adapters as they exist as of Sprint O.1:
 
-- **SEC EDGAR** (`atlas/business_data_providers/sec_edgar.py`) discards
-  the company `title` field from `company_tickers.json` when building
-  its ticker→CIK cache — it supplies **zero** identity fields to the
-  gate.
+- **SEC EDGAR** (`atlas/business_data_providers/sec_edgar.py`) still
+  discards the company `title` field from `company_tickers.json` when
+  building its ticker→CIK cache — it supplies **zero** identity fields
+  to the gate. This part of the original finding stands, unchanged.
 - **Alpha Vantage** (`atlas/business_data_providers/alpha_vantage.py`)'s
-  `_IDENTITY_FIELD_MAP` supplies name/exchange/sector/industry/country/
-  description/currency/fiscal-year-end, but **never** `security_type`
-  (there is no `AssetType` mapping).
+  `_IDENTITY_FIELD_MAP` supplies name/**asset_type**/exchange/sector/
+  industry/country/description/currency/fiscal-year-end. `AssetType` —
+  present in Alpha Vantage's real `OVERVIEW` response all along
+  (documented values: typically `"Common Stock"`, sometimes `"Preferred
+  Stock"`/`"ETF"`) — was discarded by this provider prior to Sprint O.1,
+  which is what produced Sprint O's original "never `security_type`"
+  finding. It is now extracted (§12).
 
 Confidence Engine Rule 3 requires `exchange_mic`, `country`, and
 `security_type` **all** present on a candidate to reach `HIGH`
-confidence; without all three, a single candidate tops out at `MEDIUM`
-(→ `MANUAL_CONFIRMATION`) or `LOW` (→ `LOW_CONFIDENCE`). Since only one
-of the two real providers supplies identity data at all, and that one
-provider can never supply `security_type`, **`AUTO_ACCEPT` is
-structurally unreachable for any new ticker today, through a single
-real provider candidate alone.** It becomes reachable only through Rule
-4's multi-provider-agreement tier promotion — two independent providers
-corroborating the same canonicalized company name — which requires a
-second identity source Atlas does not yet have (a future OpenFIGI,
-Twelve Data, or similar adapter).
+confidence — this rule is completely unchanged by Sprint O.1. What
+changed is only the *input*: Alpha Vantage's raw `AssetType` string is
+now translated into a real `security_type` by
+`canonical_security_gate.candidate_mapping`'s own deterministic,
+closed translation table (`_ASSET_TYPE_TRANSLATION`) before Rule 3 ever
+sees it. A single Alpha Vantage candidate for a common-stock US ticker
+— carrying `Name`/`Exchange`/`Country`/`Currency`/`AssetType`, exactly
+what `OVERVIEW` already returns — now reaches `HIGH` confidence and
+passes `_is_constructible`, **and `AUTO_ACCEPT`, alone, with no second
+corroborating provider.** Proven end-to-end, using the real
+`AlphaVantageMarketDataProvider` class (not a synthetic identity fake),
+by `tests/unit/business_data_providers/test_provider_swappability.py
+::TestSprintO1RealAlphaVantageAloneReachesAutoAccept`.
 
-**Practical consequence:** as of this sprint, the Watchlist and
-Portfolio automatic "add a ticker" enrichment paths will, for any
-brand-new company, resolve to `MANUAL_CONFIRMATION` (or occasionally
-`LOW_CONFIDENCE`/`NO_MATCH`) rather than `AUTO_ACCEPT` — meaning **no
-`BusinessRecord` is created and no enrichment happens** for a newly
-added ticker, silently, from the investor's point of view (the
-enrichment trigger has always been a fire-and-forget background call;
-this sprint makes it correctly block, but there is still no UI surface
-that tells the investor why nothing showed up, since no UI work was in
-scope). This is not a bug in this sprint's implementation — it is the
-correct, designed behavior of "never create a BusinessRecord from an
-unresolved identity" being enforced for the first time, exposing a real
-gap that already existed silently before (providers were always this
-identity-poor; nothing previously checked).
+**Practical consequence, corrected:** the Watchlist and Portfolio
+automatic "add a ticker" enrichment paths now reach `AUTO_ACCEPT` for
+any brand-new, common-stock, US-listed ticker Alpha Vantage recognizes
+— covering the large majority of the practical gap this section
+originally raised. What remains genuinely gated behind `MANUAL_
+CONFIRMATION`/`LOW_CONFIDENCE`/`NO_MATCH` is narrower than originally
+stated: a ticker Alpha Vantage's `OVERVIEW` does not recognize at all
+(zero identity fields from either provider); a ticker whose `AssetType`
+is a real-but-unenumerated category translated to `"OTHER"` combined
+with some other missing field; or a ticker SEC EDGAR and Alpha Vantage
+disagree about (still correctly `AMBIGUOUS`). There is still no UI
+surface for these residual cases — that remains real, out-of-scope work
+(§8 above, `confirm_manually`'s backend pathway is what a future UI
+would call).
 
-**What already works despite this:** any ticker whose
-`CanonicalSecurity` was already established — by a prior run, by a
-future manual-confirmation call, or by the multi-provider-agreement path
-— is reused via `find_by_ticker_and_exchange` and continues to enrich
-normally on every subsequent run. The gap is specifically the *first*
-resolution of a *brand-new* ticker under exactly the two providers this
-codebase has today.
+**What closes the remaining gap, in order of leverage:**
 
-**What closes the gap, in order of leverage:**
-
-1. A second identity-bearing provider (OpenFIGI is purpose-built for
-   this; Twelve Data's `symbol_search` was already evaluated in Sprint
-   H) — reaches `AUTO_ACCEPT` via Rule 4 without touching Alpha
-   Vantage's own field map.
-2. Extending Alpha Vantage's own `_IDENTITY_FIELD_MAP` to derive
-   `security_type` from its `OVERVIEW` response's `AssetType`-equivalent
-   field, if one exists — reaches `HIGH` confidence from a single
-   provider via Rule 3, without a second provider at all.
-3. A manual-confirmation UI surfacing `MANUAL_CONFIRMATION`/
+1. A second identity-bearing provider (OpenFIGI, Twelve Data) — still
+   valuable for tickers Alpha Vantage's own `OVERVIEW` has no record
+   of at all, and for corroboration/collision-detection generally, but
+   no longer the *only* path to `AUTO_ACCEPT` for a common-stock US
+   ticker.
+2. A manual-confirmation UI surfacing `MANUAL_CONFIRMATION`/
    `LOW_CONFIDENCE`/`AMBIGUOUS` cases — the backend pathway already
-   exists (`confirm_manually`), only the UI is missing.
+   exists (`confirm_manually`), only the UI is missing. This is now the
+   single highest-leverage remaining gap, since Sprint O.1 closed the
+   common-stock-US case that previously dominated it.
 
-None of these three is in scope for this sprint; this section exists so
-the gap is visible before it is discovered in production rather than
-after.
+Neither is in scope for this sprint; this section exists so the
+(now much narrower) remaining gap stays visible rather than being
+rediscovered in production.
 
 **Readiness for Twelve Data / multi-provider / international / IFRS /
 exchange-aware securities:** this sprint's model already carries
@@ -323,3 +324,69 @@ Data or otherwise) requires no schema change here — only a new
 support that provider; only `business_data_refresh`'s provider tuple
 composition (already provider-agnostic, proven by the swappability
 tests) needs to include it.
+
+## 12. Sprint O.1 — the correction
+
+A follow-up investigation (Sprint O.1's own brief) verified Sprint O's
+"structurally unreachable" finding from first principles rather than
+taking it as settled: it inspected Alpha Vantage's real `OVERVIEW` API
+documentation, the actual raw response shape, the provider's own field
+map, the candidate mapper, and the Confidence Engine's rules directly.
+The result: **Alpha Vantage's `OVERVIEW` endpoint already returns an
+`AssetType` field** (documented values: typically `"Common Stock"`,
+sometimes `"Preferred Stock"`/`"ETF"`) — it was present in the same,
+already-fetched response the whole time. Sprint O's own
+`_IDENTITY_FIELD_MAP` simply never read it, alongside seven other
+fields (`Name`/`Exchange`/`Sector`/`Industry`/`Country`/`Description`/
+`Currency`/`FiscalYearEnd`) it already did read from that identical
+response. The finding was accurate about the code (`_IDENTITY_FIELD_MAP`
+genuinely had no such entry) but incorrect about the conclusion drawn
+from it (that this was a limit of what the provider *could* supply,
+rather than what this codebase happened to be reading).
+
+**What changed, precisely — two additive edits, nothing else:**
+
+1. `atlas/business_data_providers/alpha_vantage.py` — `_IDENTITY_FIELD_MAP`
+   gained one entry, `"AssetType": "asset_type"`, extracting the raw
+   display string verbatim into `RawBusinessDocument.metadata`. No new
+   API call (still the same cached `OVERVIEW` response), no
+   interpretation, no translation — this provider still has no import
+   of `atlas.alpha.canonical_security*` of any kind.
+2. `atlas/alpha/canonical_security_gate/candidate_mapping.py` — a new,
+   closed, deterministic translation table (`_ASSET_TYPE_TRANSLATION`)
+   maps Alpha Vantage's raw display string to Atlas' closed
+   `SecurityType` vocabulary (`"Common Stock"` → `COMMON_STOCK`,
+   `"ETF"` → `ETF`, `"Depositary Receipt"` → `DEPOSITARY_RECEIPT`, any
+   other real-but-unlisted value → `OTHER`) — exact-string lookup only,
+   no fuzzy matching, no inference. This reads from a new metadata key,
+   `asset_type`, kept deliberately distinct from the pre-existing
+   `security_type` key: any candidate already carrying an exact,
+   canonical `security_type` (the pre-Sprint-O.1 path, still used
+   verbatim by every existing test fixture that supplies one directly)
+   continues to win outright and is never touched by this new path —
+   the two co-exist rather than one replacing the other.
+
+**What did not change, verified by an empty `git diff`:** the
+Confidence Engine (`confidence.py`), the Resolution Engine
+(`service.py`, `outcomes.py`, `comparison.py`, `provider_agreement.py`,
+`replay.py`), `CanonicalSecurityIdentityGate` (`gate.py`) itself,
+`BusinessRecord`'s model/table/repository, the `CanonicalSecurity`
+aggregate, and every Sprint J–N ontology file (`value_objects.py`,
+`exceptions.py`) — zero lines touched in any of them. `AUTO_ACCEPT` is
+reached by these two edits purely because Rule 3 now receives a real
+`security_type` input for a common-stock Alpha Vantage candidate that
+previously arrived as `None`; the rule that consumes it is exactly the
+rule Sprint N designed and Sprint O wired, unmodified.
+
+**Verified, not asserted:** `tests/unit/business_data_providers
+/test_provider_swappability.py::TestSprintO1RealAlphaVantageAloneReachesAutoAccept`
+constructs the real `AlphaVantageMarketDataProvider` class (not a
+synthetic identity fake) against a realistic fake `OVERVIEW` payload
+including `AssetType`, runs it through the real, unmodified
+`refresh_company_data` and the real `identity_gate`, and asserts
+`identity_gate_outcome == "AUTO_ACCEPT"` with every resulting
+`BusinessRecord` carrying real `CanonicalSecurity` provenance — with
+`SecEdgarFundamentalsProvider` (still zero identity fields) as the only
+other provider in play. 724 tests pass across the full combined
+regression (up from Sprint O's 712 — 12 new, 0 broken), and the narrow
+provider baseline is unchanged at 444 passed / 2 pre-existing failures.

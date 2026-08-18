@@ -249,3 +249,45 @@ class TestSwappedIntoTheSameRefreshUseCaseWithNoEvaluatorChange:
         summary = refresh_company_data("TESTCO", providers, repository, identity_gate=_identity_gate(engine))
         assert summary.provider_errors == ()
         assert summary.new_records == 4  # 2 SEC periods + 1 manual document + identity/profile
+
+
+class TestSprintO1RealAlphaVantageAloneReachesAutoAccept:
+    """Sprint O.1's own end-to-end proof: the real, unmodified-besides-
+    `AssetType`-extraction `AlphaVantageMarketDataProvider` -- no
+    synthetic `_IdentityCorroboratorProvider`, no second identity
+    source of any kind -- reaches `AUTO_ACCEPT` through
+    `refresh_company_data`'s real `identity_gate`, using only a
+    realistic `OVERVIEW` payload shape (the same fields Alpha Vantage's
+    own documentation confirms it returns, `AssetType` included)."""
+
+    def test_sec_edgar_plus_real_alpha_vantage_with_asset_type_reaches_auto_accept_alone(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        engine = _new_engine()
+        repository = SqlAlchemyBusinessRecordRepository(engine)
+
+        def _av_fetcher_with_asset_type(url: str, headers):
+            if "GLOBAL_QUOTE" in url:
+                return {"Global Quote": {"05. price": "50.00", "07. latest trading day": "2026-08-07"}}
+            if "TIME_SERIES_MONTHLY_ADJUSTED" in url:
+                return {"Monthly Adjusted Time Series": {}}
+            return {
+                "Symbol": "TESTCO",
+                "Name": "TESTCO Inc.",
+                "AssetType": "Common Stock",
+                "Exchange": "NASDAQ",
+                "Country": "USA",
+                "SharesOutstanding": "1000000",
+                "Currency": "USD",
+            }
+
+        providers: tuple[BusinessDataProvider, ...] = (
+            SecEdgarFundamentalsProvider(_sec_fetcher),
+            AlphaVantageMarketDataProvider(_av_fetcher_with_asset_type),
+        )
+        summary = refresh_company_data("TESTCO", providers, repository, identity_gate=_identity_gate(engine))
+
+        assert summary.provider_errors == ()
+        assert summary.identity_gate_outcome == "AUTO_ACCEPT"
+        records = repository.get_by_company("TESTCO")
+        assert len(records) == 4  # 2 SEC fundamentals periods + 1 market snapshot + 1 company_profile
+        assert all(r.canonical_security_id is not None for r in records)

@@ -54,6 +54,7 @@ def _profile_doc(
     country: str | None = None,
     currency: str | None = None,
     security_type: str | None = None,
+    asset_type: str | None = None,
     identifier_suffix: str = "",
 ) -> RawBusinessDocument:
     metadata: dict = {}
@@ -67,6 +68,8 @@ def _profile_doc(
         metadata["currency"] = currency
     if security_type is not None:
         metadata["security_type"] = security_type
+    if asset_type is not None:
+        metadata["asset_type"] = asset_type
     return RawBusinessDocument(
         identifier=f"{ticker}:profile{identifier_suffix}",
         company=ticker,
@@ -102,12 +105,59 @@ class TestAutoAccept:
         assert _row_count(engine) == 1
 
 
+class TestAutoAcceptFromRealAlphaVantagePayloadShape:
+    """Sprint O.1 -- the corrected finding, exercised end-to-end through
+    the real gate. Sprint O found Alpha Vantage alone could never reach
+    `HIGH` confidence because `_IDENTITY_FIELD_MAP` had no
+    `security_type`/`AssetType` entry; Sprint O.1's live-documentation
+    verification found `AssetType` was present in the real API response
+    the whole time. This test builds the document exactly the way the
+    real, now-corrected `AlphaVantageMarketDataProvider.fetch_company_
+    profile` shapes one -- `asset_type` carrying Alpha Vantage's own raw
+    display string (`"Common Stock"`), never an already-canonical
+    `security_type` -- and proves a *single* such candidate, with no
+    second corroborating provider, reaches `AUTO_ACCEPT`."""
+
+    def test_a_single_alpha_vantage_candidate_with_asset_type_reaches_auto_accept(self) -> None:
+        engine = _engine()
+        gate = _gate(engine)
+        doc = _profile_doc(
+            ticker="AAPL", provider_id="alpha_vantage", name="Apple Inc.",
+            exchange="NASDAQ", country="USA", currency="USD", asset_type="Common Stock",
+        )
+        decision = gate.evaluate(ticker="AAPL", documents=(doc,), clock=lambda: _NOW)
+
+        assert decision.allowed is True
+        assert decision.outcome == "AUTO_ACCEPT"
+        assert decision.provenance is not None
+        assert _row_count(engine) == 1
+
+    def test_no_second_provider_was_involved(self) -> None:
+        """The same scenario, phrased as an explicit negative: only one
+        `RawBusinessDocument`, from one `provider_id`, is ever passed to
+        the gate -- `evaluate()` never receives, and cannot require, a
+        second corroborating candidate for this outcome."""
+        engine = _engine()
+        gate = _gate(engine)
+        doc = _profile_doc(
+            ticker="MSFT", provider_id="alpha_vantage", name="Microsoft Corporation",
+            exchange="NASDAQ", country="USA", currency="USD", asset_type="Common Stock",
+        )
+        documents = (doc,)
+        assert len({d.provider_id for d in documents}) == 1
+
+        decision = gate.evaluate(ticker="MSFT", documents=documents, clock=lambda: _NOW)
+        assert decision.outcome == "AUTO_ACCEPT"
+
+
 class TestManualConfirmationBlocks:
-    def test_missing_security_type_caps_confidence_at_medium_and_blocks(self) -> None:
-        """The exact real-world shape: Alpha Vantage's own
-        `_IDENTITY_FIELD_MAP` never supplies `security_type` -- a
-        candidate with exchange/country/currency but no security_type
-        can never reach HIGH confidence."""
+    def test_missing_security_type_and_asset_type_caps_confidence_at_medium_and_blocks(self) -> None:
+        """A candidate with exchange/country/currency but no
+        security-type signal of any kind (neither an already-canonical
+        `security_type` nor a real `AssetType`) still cannot reach HIGH
+        confidence -- Rule 3 is unchanged by Sprint O.1; only the
+        *availability* of the input changed, not the rule that consumes
+        it."""
         engine = _engine()
         gate = _gate(engine)
         doc = _profile_doc(ticker="AAPL", provider_id="alpha_vantage", name="Apple Inc.", exchange="NASDAQ", country="USA", currency="USD")

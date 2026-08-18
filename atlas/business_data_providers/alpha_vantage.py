@@ -98,6 +98,19 @@ retains those identity fields from the same response, and
 capability) reads them from that same cache -- whichever of `fetch`,
 `fetch_historical_snapshots`, or `fetch_company_profile` runs first for
 a ticker is the one real `OVERVIEW` request; the other two reuse it.
+
+**Sprint O.1: `AssetType` is now extracted too.** OVERVIEW's response
+already carries this field (documented values: typically `"Common
+Stock"`, sometimes `"Preferred Stock"`/`"ETF"`/etc.) alongside the
+fields above -- this provider previously discarded it, which is the one
+reason a real Alpha Vantage candidate could never reach the Canonical
+Security Identity Gate's `HIGH`-confidence tier alone (see Sprint O's
+own readiness assessment). This still only *extracts* the raw display
+string into `metadata["asset_type"]`, unchanged and untranslated;
+turning it into Atlas' closed `SecurityType` vocabulary is
+`canonical_security_gate.candidate_mapping`'s job, not this provider's
+-- this file still has no `atlas.alpha.canonical_security*` import of
+any kind.
 """
 from __future__ import annotations
 
@@ -147,6 +160,7 @@ _SUPPORTED_CURRENCY = "USD"
 #: number rather than a genuinely new fact.
 _IDENTITY_FIELD_MAP: dict[str, str] = {
     "Name": "name",
+    "AssetType": "asset_type",
     "Exchange": "exchange",
     "Sector": "sector",
     "Industry": "industry",
