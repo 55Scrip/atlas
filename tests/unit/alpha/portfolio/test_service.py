@@ -1289,7 +1289,62 @@ class TestCrossContextCaseReuseAndAutomaticEnrichment:
 
         return _FakeProvider()
 
-    def _enrichment_wired_service(self, engine, provider):
+    @staticmethod
+    def _identity_provider(*tickers: str):
+        """Sprint O -- a `CompanyProfileProvider`-only fake supplying
+        exactly the identity fields the Identity Gate needs to reach
+        `AUTO_ACCEPT` (see `business_data_refresh/test_service.py`'s
+        identically-shaped helper for the full rationale)."""
+        from dataclasses import dataclass
+        from atlas.analysis_engine.business_data.models import RawBusinessDocument
+
+        @dataclass(frozen=True)
+        class _IdentityProvider:
+            tickers: tuple[str, ...]
+
+            def fetch(self, *, company_identifier, evaluated_at):
+                return ()
+
+            def fetch_company_profile(self, *, company_identifier, evaluated_at):
+                if company_identifier not in self.tickers:
+                    return ()
+                return (
+                    RawBusinessDocument(
+                        identifier=f"{company_identifier}:identity-profile",
+                        company=company_identifier,
+                        source_kind="company_profile",
+                        published_at=evaluated_at,
+                        provider_id="alpha_vantage",
+                        raw_reference="https://example.test/identity-profile",
+                        content_hash=f"identity-hash-{company_identifier}",
+                        language="en",
+                        metadata={
+                            "name": f"{company_identifier} Inc.",
+                            "exchange": "NASDAQ",
+                            "country": "USA",
+                            "currency": "USD",
+                            "security_type": "COMMON_STOCK",
+                        },
+                    ),
+                )
+
+        return _IdentityProvider(tickers=tickers)
+
+    @staticmethod
+    def _identity_gate(engine):
+        from atlas.alpha.canonical_security_gate.factory import build_identity_gate
+
+        return build_identity_gate(engine)
+
+    def _enrichment_wired_service(self, engine, provider, *, identity_gate=None, extra_providers=()):
+        """Sprint O: `identity_gate` defaults to `None` -- the same
+        no-op-if-absent behavior `business_record_repository`/
+        `business_data_providers` already had, now extended to a third
+        dependency. Tests that need real enrichment progress pass
+        `identity_gate=self._identity_gate(engine)` and an identity
+        provider via `extra_providers`; tests proving "a failing
+        provider persists nothing" deliberately omit it, so enrichment
+        stays a complete no-op exactly as before."""
         from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
         from atlas.alpha.business_data_refresh.table import create_business_record_table
 
@@ -1302,14 +1357,17 @@ class TestCrossContextCaseReuseAndAutomaticEnrichment:
             _FakeOutcomeRepository([outcome]),
             self._case_generation_service(engine),
             business_record_repository=repository,
-            business_data_providers=(provider,),
+            business_data_providers=(provider, *extra_providers),
+            identity_gate=identity_gate,
         )
         return service, repository, outcome
 
     def test_a_buy_opening_a_brand_new_position_triggers_enrichment(self):
         engine = _new_engine()
         provider = self._fake_provider()
-        service, repository, outcome = self._enrichment_wired_service(engine, provider)
+        service, repository, outcome = self._enrichment_wired_service(
+            engine, provider, identity_gate=self._identity_gate(engine), extra_providers=(self._identity_provider("AMD"),)
+        )
         service.start_from_scratch(FromScratchRequest(objective="Grow capital", horizon="Long-term"))
 
         service.apply_confirmed_trade(
@@ -1324,7 +1382,7 @@ class TestCrossContextCaseReuseAndAutomaticEnrichment:
             )
         )
         assert provider.call_count == ["AMD"]
-        assert len(repository.get_by_company("AMD")) == 1
+        assert len(repository.get_by_company("AMD")) == 2  # fundamentals + identity/profile
 
     def test_adding_to_an_already_held_position_does_not_re_trigger_enrichment(self):
         engine = _new_engine()
@@ -1381,7 +1439,9 @@ class TestCrossContextCaseReuseAndAutomaticEnrichment:
         here end to end."""
         engine = _new_engine()
         provider = self._fake_provider()
-        service, repository, outcome = self._enrichment_wired_service(engine, provider)
+        service, repository, outcome = self._enrichment_wired_service(
+            engine, provider, identity_gate=self._identity_gate(engine), extra_providers=(self._identity_provider("AMD"),)
+        )
         service.start_from_scratch(FromScratchRequest(objective="Grow capital", horizon="Long-term"))
         service.apply_confirmed_trade(
             ApplyTradeRequest(
@@ -1395,7 +1455,7 @@ class TestCrossContextCaseReuseAndAutomaticEnrichment:
             )
         )
         assert provider.call_count == ["AMD"]
-        assert len(repository.get_by_company("AMD")) == 1
+        assert len(repository.get_by_company("AMD")) == 2  # fundamentals + identity/profile
 
     def test_without_enrichment_dependencies_wired_the_trade_still_succeeds(self, trade_service_factory):
         """Omitting `business_record_repository`/`business_data_

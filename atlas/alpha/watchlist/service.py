@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.service import ensure_company_enriched
+from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.alpha.case_generation.service import CaseGenerationService
 from atlas.alpha.case_membership import resolve_case_id_for_ticker
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
@@ -46,12 +47,14 @@ class AlphaWatchlistService:
         portfolio_store: AlphaPortfolioStore | None = None,
         business_record_repository: SqlAlchemyBusinessRecordRepository | None = None,
         business_data_providers: tuple[BusinessDataProvider, ...] | None = None,
+        identity_gate: CanonicalSecurityIdentityGate | None = None,
     ) -> None:
         self._store = store
         self._case_generation_service = case_generation_service
         self._portfolio_store = portfolio_store
         self._business_record_repository = business_record_repository
         self._business_data_providers = business_data_providers
+        self._identity_gate = identity_gate
 
     def _trigger_enrichment(self, ticker: str) -> None:
         """Best-effort, never raises for the caller: `ensure_company_
@@ -60,12 +63,23 @@ class AlphaWatchlistService:
         not yet surface a per-request enrichment outcome to the caller;
         see the design record's Known Limitations) and is itself a
         no-op if this ticker already has persisted `BusinessRecord`s.
-        Genuinely does nothing, on purpose, if either dependency is
-        absent -- the deliberate no-op this class's own docstring
-        describes."""
-        if self._business_record_repository is None or self._business_data_providers is None:
+        Genuinely does nothing, on purpose, if any dependency is absent
+        -- the deliberate no-op this class's own docstring describes.
+        Sprint O: `identity_gate` joins `business_record_repository`/
+        `business_data_providers` as a third all-or-nothing dependency
+        -- there is no path where enrichment runs without it (that
+        would mean a `BusinessRecord` created without ever passing
+        through the mandatory Identity Gate)."""
+        if (
+            self._business_record_repository is None
+            or self._business_data_providers is None
+            or self._identity_gate is None
+        ):
             return
-        ensure_company_enriched(ticker, self._business_data_providers, self._business_record_repository)
+        ensure_company_enriched(
+            ticker, self._business_data_providers, self._business_record_repository,
+            identity_gate=self._identity_gate,
+        )
 
     def add_ticker(self, ticker: str) -> AlphaWatchlistEntry:
         """Idempotent: adding an already-watchlisted ticker returns the

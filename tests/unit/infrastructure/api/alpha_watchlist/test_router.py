@@ -27,7 +27,16 @@ _NOW = datetime(2026, 8, 9, tzinfo=timezone.utc)
 
 class _FakeProvider:
     """A `BusinessDataProvider` returning canned documents for whatever
-    ticker is requested -- no network call anywhere in this test file."""
+    ticker is requested -- no network call anywhere in this test file.
+
+    Sprint O: the company-profile document now comes from
+    `fetch_company_profile` (the identity-supplying capability, with
+    the additional exchange/country/currency/security_type fields the
+    Identity Gate's candidate mapper reads) rather than the main
+    `fetch()` -- `metadata["name"]`/`metadata["sector"]` are unchanged,
+    since the API surfaces those directly. `call_count` still tracks
+    only `.fetch()` calls, preserving every existing "no second round
+    of enrichment" assertion in this file exactly."""
 
     def __init__(self) -> None:
         self.call_count: list[str] = []
@@ -35,17 +44,6 @@ class _FakeProvider:
     def fetch(self, *, company_identifier: str, evaluated_at) -> tuple[RawBusinessDocument, ...]:
         self.call_count.append(company_identifier)
         return (
-            RawBusinessDocument(
-                identifier=f"{company_identifier}:profile",
-                company=company_identifier,
-                source_kind="company_profile",
-                published_at=evaluated_at,
-                provider_id="fake",
-                raw_reference="https://example.test/profile",
-                content_hash="profile-hash",
-                language="en",
-                metadata={"name": "Meta Platforms, Inc.", "sector": "Communication Services"},
-            ),
             RawBusinessDocument(
                 identifier=f"{company_identifier}:FY:2025",
                 company=company_identifier,
@@ -56,6 +54,28 @@ class _FakeProvider:
                 content_hash="fs-hash",
                 language="en",
                 metadata={"revenue": 5000.0, "free_cash_flow": 1200.0},
+            ),
+        )
+
+    def fetch_company_profile(self, *, company_identifier: str, evaluated_at) -> tuple[RawBusinessDocument, ...]:
+        return (
+            RawBusinessDocument(
+                identifier=f"{company_identifier}:profile",
+                company=company_identifier,
+                source_kind="company_profile",
+                published_at=evaluated_at,
+                provider_id="alpha_vantage",
+                raw_reference="https://example.test/profile",
+                content_hash="profile-hash",
+                language="en",
+                metadata={
+                    "name": "Meta Platforms, Inc.",
+                    "sector": "Communication Services",
+                    "exchange": "NASDAQ",
+                    "country": "USA",
+                    "currency": "USD",
+                    "security_type": "COMMON_STOCK",
+                },
             ),
         )
 

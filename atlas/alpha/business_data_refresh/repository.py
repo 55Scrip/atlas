@@ -98,6 +98,12 @@ def _to_row(record: BusinessRecord) -> dict[str, Any]:
         "period_end": record.period_end.isoformat() if record.period_end else None,
         "language": record.language,
         "metadata_json": json.dumps(dict(record.metadata), sort_keys=True),
+        "canonical_security_id": record.canonical_security_id,
+        "resolution_version": record.resolution_version,
+        "identity_resolved_at": (
+            record.identity_resolved_at.isoformat() if record.identity_resolved_at else None
+        ),
+        "provider_evidence_reference": record.provider_evidence_reference,
         "provenance_json": json.dumps(
             {
                 "source_kind": record.provenance.source_kind.value,
@@ -143,4 +149,10 @@ def _to_record(row: Mapping[str, Any]) -> BusinessRecord:
         period_end=date.fromisoformat(row["period_end"]) if row["period_end"] else None,
         language=row["language"],
         metadata=json.loads(row["metadata_json"]),
+        canonical_security_id=row.get("canonical_security_id"),
+        resolution_version=row.get("resolution_version"),
+        identity_resolved_at=(
+            datetime.fromisoformat(row["identity_resolved_at"]) if row.get("identity_resolved_at") else None
+        ),
+        provider_evidence_reference=row.get("provider_evidence_reference"),
     )

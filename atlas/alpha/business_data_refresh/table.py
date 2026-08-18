@@ -44,6 +44,13 @@ business_record_table = Table(
     Column("language", String, nullable=False),
     Column("metadata_json", String, nullable=False),
     Column("provenance_json", String, nullable=False),
+    # Sprint O Phase 8 -- identity provenance, added via `sync_table_schema`
+    # as nullable columns so every `BusinessRecord` persisted before this
+    # sprint (all four values `None`) needs no migration/backfill.
+    Column("canonical_security_id", String, nullable=True),
+    Column("resolution_version", String, nullable=True),
+    Column("identity_resolved_at", String, nullable=True),
+    Column("provider_evidence_reference", String, nullable=True),
 )
 
 

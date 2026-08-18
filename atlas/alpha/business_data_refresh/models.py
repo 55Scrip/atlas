@@ -41,6 +41,17 @@ class RefreshSummary:
     duplicates_skipped: int
     rejected_documents: int
     provider_errors: tuple[ProviderFailure, ...]
+    #: Sprint O Phase 7 -- always populated: the Identity Gate's own
+    #: resolution outcome for this run (`"AUTO_ACCEPT"`,
+    #: `"MANUAL_CONFIRMATION"`, `"LOW_CONFIDENCE"`, `"AMBIGUOUS"`,
+    #: `"NO_MATCH"`, or `"REJECT"`), so a caller can distinguish "no
+    #: BusinessRecord created because every provider failed" from "no
+    #: BusinessRecord created because the gate blocked it," never
+    #: silently conflating the two. `identity_gate_reason` is the
+    #: gate's own human-readable explanation, `None` only when the
+    #: outcome is `AUTO_ACCEPT` (nothing to explain).
+    identity_gate_outcome: str = "AUTO_ACCEPT"
+    identity_gate_reason: str | None = None
 
 
 class EnrichmentOutcome(str, Enum):

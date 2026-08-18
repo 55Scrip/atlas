@@ -49,6 +49,7 @@ from __future__ import annotations
 from atlas.alpha.business_data_refresh.models import BulkEnrichmentSummary, EnrichmentOutcome, HoldingEnrichmentResult
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.service import ensure_company_enriched
+from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.analysis_engine.business_data.providers import BusinessDataProvider
 
 __all__ = ["enrich_holdings"]
@@ -58,6 +59,8 @@ def enrich_holdings(
     tickers: tuple[str, ...],
     providers: tuple[BusinessDataProvider, ...],
     repository: SqlAlchemyBusinessRecordRepository,
+    *,
+    identity_gate: CanonicalSecurityIdentityGate,
 ) -> BulkEnrichmentSummary:
     """Deterministic given a deterministic set of provider responses:
     the only non-determinism comes from the underlying providers
@@ -73,7 +76,7 @@ def enrich_holdings(
     results: list[HoldingEnrichmentResult] = []
     for ticker in tickers:
         try:
-            summary = ensure_company_enriched(ticker, providers, repository)
+            summary = ensure_company_enriched(ticker, providers, repository, identity_gate=identity_gate)
         except Exception as exc:  # noqa: BLE001 -- one ticker's unexpected failure must never abort the batch
             results.append(HoldingEnrichmentResult(ticker=ticker, outcome=EnrichmentOutcome.FAILED, detail=str(exc)))
             continue

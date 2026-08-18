@@ -149,6 +149,23 @@ class BusinessRecord:
     period_end: date | None = None
     language: str = "unknown"
     metadata: Mapping[str, _MetadataValue] = field(default_factory=dict)
+    # Sprint O Phase 8 -- identity provenance. All four fields are
+    # `None` for any `BusinessRecord` created before Sprint O (no
+    # migration, no retroactive backfill -- Phase 9's own "existing
+    # BusinessRecords remain untouched") and for `BusinessRecord`s
+    # built in tests/paths that do not route through the Identity
+    # Gate. Once the gate is wired in
+    # (`atlas.alpha.business_data_refresh.service.refresh_company_data`),
+    # every newly-created `BusinessRecord` carries all four, since the
+    # gate only ever allows creation on `AUTO_ACCEPT`. Plain
+    # primitives, not a
+    # `canonical_security_gate.BusinessRecordIdentityProvenance` --
+    # this module never imports that package (see `pipeline.ingest`'s
+    # own signature).
+    canonical_security_id: str | None = None
+    resolution_version: str | None = None
+    identity_resolved_at: datetime | None = None
+    provider_evidence_reference: str | None = None
 
     def __post_init__(self) -> None:
         from atlas.analysis_engine.business_data.exceptions import BusinessDataContractError

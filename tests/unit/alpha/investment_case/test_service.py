@@ -448,20 +448,35 @@ class TestCompanyProfileFinancialHistoryAndMarketSnapshot:
     @staticmethod
     def _ingest(harness, ticker: str) -> None:
         from atlas.alpha.business_data_refresh.service import refresh_company_data
+        from atlas.alpha.canonical_security_gate.factory import build_identity_gate
         from atlas.analysis_engine.business_data.models import RawBusinessDocument
 
+        # Sprint O: the profile document is now returned from
+        # `fetch_company_profile` (the identity-supplying capability),
+        # with `provider_id="alpha_vantage"` and the additional
+        # exchange/country/currency/security_type fields the Identity
+        # Gate's candidate mapper reads -- `metadata["name"]` is
+        # unchanged, since the composition service reads that key
+        # directly.
+        profile_document = RawBusinessDocument(
+            identifier=f"{ticker}:profile",
+            company=ticker,
+            source_kind="company_profile",
+            published_at=_NOW,
+            provider_id="alpha_vantage",
+            raw_reference="https://example.test/profile",
+            content_hash="profile-hash",
+            language="en",
+            metadata={
+                "name": f"{ticker} Corp",
+                "sector": "Technology",
+                "exchange": "NASDAQ",
+                "country": "USA",
+                "currency": "USD",
+                "security_type": "COMMON_STOCK",
+            },
+        )
         documents = (
-            RawBusinessDocument(
-                identifier=f"{ticker}:profile",
-                company=ticker,
-                source_kind="company_profile",
-                published_at=_NOW,
-                provider_id="fake",
-                raw_reference="https://example.test/profile",
-                content_hash="profile-hash",
-                language="en",
-                metadata={"name": f"{ticker} Corp", "sector": "Technology"},
-            ),
             RawBusinessDocument(
                 identifier=f"{ticker}:FY:2023",
                 company=ticker,
@@ -492,7 +507,13 @@ class TestCompanyProfileFinancialHistoryAndMarketSnapshot:
             def fetch(self, *, company_identifier, evaluated_at):
                 return tuple(d for d in documents if d.company == company_identifier)
 
-        refresh_company_data(ticker, (_Provider(),), harness.business_record_repository)
+            def fetch_company_profile(self, *, company_identifier, evaluated_at):
+                return (profile_document,) if profile_document.company == company_identifier else ()
+
+        identity_gate = build_identity_gate(harness.engine)
+        refresh_company_data(
+            ticker, (_Provider(),), harness.business_record_repository, identity_gate=identity_gate
+        )
 
     def test_a_held_company_surfaces_its_company_profile(self, harness):
         case_id = harness.import_holding("AMD")

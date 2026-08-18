@@ -29,6 +29,7 @@ from datetime import datetime, timezone
 
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.service import ensure_company_enriched
+from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.alpha.case_generation.service import CaseGenerationService
 from atlas.alpha.portfolio.exceptions import (
     AlphaHoldingNotFoundError,
@@ -299,6 +300,7 @@ class AlphaPortfolioService:
         watchlist_store: AlphaWatchlistStore | None = None,
         business_record_repository: SqlAlchemyBusinessRecordRepository | None = None,
         business_data_providers: tuple[BusinessDataProvider, ...] | None = None,
+        identity_gate: CanonicalSecurityIdentityGate | None = None,
     ) -> None:
         self._store = store
         self._trade_log_store = trade_log_store
@@ -307,6 +309,7 @@ class AlphaPortfolioService:
         self._watchlist_store = watchlist_store
         self._business_record_repository = business_record_repository
         self._business_data_providers = business_data_providers
+        self._identity_gate = identity_gate
 
     def _known_watchlist_case_ids(self) -> dict[str, str]:
         """(Investment Case Engine v1 slice) Watchlist's own entries,
@@ -347,10 +350,18 @@ class AlphaPortfolioService:
         see `AlphaWatchlistService._trigger_enrichment`'s identical
         docstring for the full rationale -- this is the same no-op-if-
         undependency-absent, idempotent-if-already-enriched trigger,
-        reused here rather than redefined."""
-        if self._business_record_repository is None or self._business_data_providers is None:
+        reused here rather than redefined. Sprint O: `identity_gate`
+        joins the other two as a third all-or-nothing dependency."""
+        if (
+            self._business_record_repository is None
+            or self._business_data_providers is None
+            or self._identity_gate is None
+        ):
             return
-        ensure_company_enriched(ticker, self._business_data_providers, self._business_record_repository)
+        ensure_company_enriched(
+            ticker, self._business_data_providers, self._business_record_repository,
+            identity_gate=self._identity_gate,
+        )
 
     def import_portfolio(self, request: ImportPortfolioRequest) -> AlphaPortfolioState:
         """Establish (or re-establish) the Alpha portfolio from an

@@ -58,6 +58,48 @@ def _doc(*, identifier: str, company: str, revenue: float = 100.0) -> RawBusines
     )
 
 
+@dataclass(frozen=True)
+class _IdentityProvider:
+    """Sprint O -- a `CompanyProfileProvider`-only fake supplying
+    exactly the identity fields the Identity Gate needs to reach
+    `AUTO_ACCEPT` (see `business_data_refresh/test_service.py`'s
+    identically-shaped helper for the full rationale)."""
+
+    tickers: tuple[str, ...]
+
+    def fetch(self, *, company_identifier: str, evaluated_at: datetime) -> tuple[RawBusinessDocument, ...]:
+        return ()
+
+    def fetch_company_profile(
+        self, *, company_identifier: str, evaluated_at: datetime
+    ) -> tuple[RawBusinessDocument, ...]:
+        if company_identifier not in self.tickers:
+            return ()
+        return (
+            RawBusinessDocument(
+                identifier=f"{company_identifier}:identity-profile",
+                company=company_identifier,
+                source_kind="company_profile",
+                published_at=evaluated_at,
+                provider_id="alpha_vantage",
+                raw_reference="https://example.test/identity-profile",
+                content_hash=f"identity-hash-{company_identifier}",
+                language="en",
+                metadata={
+                    "name": f"{company_identifier} Inc.",
+                    "exchange": "NASDAQ",
+                    "country": "USA",
+                    "currency": "USD",
+                    "security_type": "COMMON_STOCK",
+                },
+            ),
+        )
+
+
+def _identity_provider(*tickers: str) -> _IdentityProvider:
+    return _IdentityProvider(tickers=tuple(tickers))
+
+
 @pytest.fixture
 def engine():
     engine = create_engine(
@@ -91,13 +133,13 @@ def _business_record_repository(engine) -> SqlAlchemyBusinessRecordRepository:
 class TestImportTriggersBackgroundEnrichment:
     def test_a_freshly_imported_holding_is_enriched_by_the_time_import_returns(self, client, engine, monkeypatch):
         provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2024", company="AAPL"),))
-        _set_fake_providers(monkeypatch, provider)
+        _set_fake_providers(monkeypatch, provider, _identity_provider("AAPL"))
 
         response = client.post("/alpha-portfolio/import", json={"holdings": [{"ticker": "AAPL", "weightPercent": 100.0}]})
         assert response.status_code == 201
 
         records = _business_record_repository(engine).get_by_company("AAPL")
-        assert len(records) == 1
+        assert len(records) == 2  # fundamentals + identity/profile
 
     def test_import_still_succeeds_even_when_every_provider_fails(self, client, monkeypatch):
         """IA-001's own requirement: import and enrichment are related
@@ -115,15 +157,15 @@ class TestImportTriggersBackgroundEnrichment:
                 _doc(identifier="MSFT:FY:2024", company="MSFT"),
             )
         )
-        _set_fake_providers(monkeypatch, provider)
+        _set_fake_providers(monkeypatch, provider, _identity_provider("AAPL", "MSFT"))
         response = client.post(
             "/alpha-portfolio/import",
             json={"holdings": [{"ticker": "AAPL", "weightPercent": 50.0}, {"ticker": "MSFT", "weightPercent": 50.0}]},
         )
         assert response.status_code == 201
         repository = _business_record_repository(engine)
-        assert len(repository.get_by_company("AAPL")) == 1
-        assert len(repository.get_by_company("MSFT")) == 1
+        assert len(repository.get_by_company("AAPL")) == 2  # fundamentals + identity/profile
+        assert len(repository.get_by_company("MSFT")) == 2
 
     def test_an_unsupported_ticker_fails_honestly_and_persists_nothing(self, client, engine, monkeypatch):
         _set_fake_providers(monkeypatch, _FakeProvider(documents=()))
@@ -151,11 +193,11 @@ class TestExplicitEnrichBackfillEndpoint:
         assert len(_business_record_repository(engine).get_by_company("AAPL")) == 0
 
         provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2024", company="AAPL"),))
-        _set_fake_providers(monkeypatch, provider)
+        _set_fake_providers(monkeypatch, provider, _identity_provider("AAPL"))
         enrich_response = client.post("/alpha-portfolio/enrich")
         assert enrich_response.status_code == 202
         assert enrich_response.json()["scheduledTickers"] == ["AAPL"]
-        assert len(_business_record_repository(engine).get_by_company("AAPL")) == 1
+        assert len(_business_record_repository(engine).get_by_company("AAPL")) == 2  # fundamentals + identity/profile
 
     def test_case_id_is_unchanged_by_enrichment(self, client, monkeypatch):
         """No duplicate Cases: `enrich_holdings` never touches Case
@@ -177,13 +219,13 @@ class TestExplicitEnrichBackfillEndpoint:
 
     def test_an_already_enriched_holding_is_skipped_on_a_second_enrich_call(self, client, engine, monkeypatch):
         provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2024", company="AAPL"),))
-        _set_fake_providers(monkeypatch, provider)
+        _set_fake_providers(monkeypatch, provider, _identity_provider("AAPL"))
         client.post("/alpha-portfolio/import", json={"holdings": [{"ticker": "AAPL", "weightPercent": 100.0}]})
-        assert len(_business_record_repository(engine).get_by_company("AAPL")) == 1
+        assert len(_business_record_repository(engine).get_by_company("AAPL")) == 2  # fundamentals + identity/profile
 
         calling_provider = _FakeProvider(exception=AssertionError("must never be called again"))
         _set_fake_providers(monkeypatch, calling_provider)
         response = client.post("/alpha-portfolio/enrich")
         assert response.status_code == 202
-        # No new records, no duplicates -- still exactly one.
-        assert len(_business_record_repository(engine).get_by_company("AAPL")) == 1
+        # No new records, no duplicates -- still exactly two.
+        assert len(_business_record_repository(engine).get_by_company("AAPL")) == 2

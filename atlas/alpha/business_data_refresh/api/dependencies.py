@@ -11,6 +11,8 @@ from sqlalchemy.engine import Engine
 
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.table import create_business_record_table
+from atlas.alpha.canonical_security_gate.factory import build_identity_gate
+from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.analysis_engine.business_data.providers import BusinessDataProvider
 from atlas.business_data_providers.alpha_vantage import AlphaVantageMarketDataProvider
 from atlas.business_data_providers.sec_edgar import SecEdgarFundamentalsProvider
@@ -22,6 +24,22 @@ def get_business_record_repository(
 ) -> SqlAlchemyBusinessRecordRepository:
     create_business_record_table(engine)
     return SqlAlchemyBusinessRecordRepository(engine)
+
+
+def get_canonical_security_identity_gate(
+    engine: Engine = Depends(get_decision_engine),
+) -> CanonicalSecurityIdentityGate:
+    """Sprint O -- the one production wiring point for
+    `CanonicalSecurityIdentityGate`. Same shared-engine pattern every
+    other dependency function in this module already uses (one
+    physical `atlas.db` file). Delegates entirely to
+    `canonical_security_gate.factory.build_identity_gate` rather than
+    constructing `SqlAlchemyCanonicalSecurityRepository`/
+    `SqlAlchemyResolutionRepository` here directly -- this module must
+    only ever import `canonical_security_gate`, never
+    `canonical_security`/`canonical_security_resolution` themselves
+    (see those packages' own integration-safety guard tests)."""
+    return build_identity_gate(engine)
 
 
 def get_default_business_data_providers() -> tuple[BusinessDataProvider, ...]:

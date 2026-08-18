@@ -26,6 +26,8 @@ from atlas.alpha.business_data_refresh.models import RefreshSummary
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.service import refresh_company_data
 from atlas.alpha.business_data_refresh.table import create_business_record_table
+from atlas.alpha.canonical_security_gate.factory import build_identity_gate
+from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.analysis_engine.business_data.providers import BusinessDataProvider
 from atlas.business_data_providers.alpha_vantage import AlphaVantageMarketDataProvider
 from atlas.business_data_providers.sec_edgar import SecEdgarFundamentalsProvider
@@ -37,6 +39,9 @@ __all__ = ["main"]
 def _print_summary(summary: RefreshSummary) -> None:
     print(f"Business data refresh -- {summary.ticker}")
     print(f"  Providers attempted:  {', '.join(summary.providers_attempted)}")
+    print(f"  Identity gate:        {summary.identity_gate_outcome}")
+    if summary.identity_gate_reason:
+        print(f"    - {summary.identity_gate_reason}")
     print(f"  Documents fetched:    {summary.fetched_documents}")
     print(f"  New records:          {summary.new_records}")
     print(f"  New versions:         {summary.new_versions}")
@@ -51,6 +56,7 @@ def main(
     ticker: str | None,
     engine: Engine | None = None,
     providers: tuple[BusinessDataProvider, ...] | None = None,
+    identity_gate: CanonicalSecurityIdentityGate | None = None,
 ) -> int:
     """`ticker` is a required, explicit argument -- `sys.argv` is only
     ever read at the `if __name__ == "__main__"` entry point below,
@@ -64,7 +70,11 @@ def main(
     Alpha Vantage providers -- tests pass an isolated in-memory engine
     and fake providers instead, exercising this exact function end to
     end without touching real persisted state or the network (Phase
-    32).
+    32). Sprint O: `identity_gate` defaults to a real gate built on
+    the same `engine` via `canonical_security_gate.factory
+    .build_identity_gate`, called directly exactly like `providers`'
+    own default construction above it -- there is no code path where
+    this CLI creates a `BusinessRecord` without one.
     """
     if not ticker:
         print("Usage: python -m atlas.alpha.business_data_refresh.cli TICKER")
@@ -75,7 +85,8 @@ def main(
     repository = SqlAlchemyBusinessRecordRepository(engine)
 
     providers = providers if providers is not None else (SecEdgarFundamentalsProvider(), AlphaVantageMarketDataProvider())
-    summary = refresh_company_data(ticker.upper(), providers, repository)
+    identity_gate = identity_gate if identity_gate is not None else build_identity_gate(engine)
+    summary = refresh_company_data(ticker.upper(), providers, repository, identity_gate=identity_gate)
     _print_summary(summary)
     return 1 if summary.provider_errors else 0
 

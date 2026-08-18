@@ -17,6 +17,7 @@ from atlas.alpha.business_data_refresh.api.dependencies import get_default_busin
 from atlas.alpha.business_data_refresh.bulk import enrich_holdings
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.table import create_business_record_table
+from atlas.alpha.canonical_security_gate.factory import build_identity_gate
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_service
 from atlas.alpha.portfolio.api.schemas import (
     ApplyTradeRequestBody,
@@ -76,7 +77,8 @@ def _run_bulk_enrichment_in_background(tickers: tuple[str, ...]) -> None:
     create_business_record_table(engine)
     repository = SqlAlchemyBusinessRecordRepository(engine)
     providers = get_default_business_data_providers()
-    enrich_holdings(tickers, providers, repository)
+    identity_gate = build_identity_gate(engine)
+    enrich_holdings(tickers, providers, repository, identity_gate=identity_gate)
 
 
 @router.get("", response_model=PortfolioView)

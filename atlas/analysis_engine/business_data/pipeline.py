@@ -66,6 +66,10 @@ def ingest(
     *,
     existing_records: tuple[BusinessRecord, ...] = (),
     evaluated_at: datetime,
+    canonical_security_id: str | None = None,
+    resolution_version: str | None = None,
+    identity_resolved_at: datetime | None = None,
+    provider_evidence_reference: str | None = None,
 ) -> IngestionResult:
     """Deterministic: identical `document`, `existing_records`, and
     `evaluated_at` always produce a deeply equal result. `evaluated_at`
@@ -77,6 +81,18 @@ def ingest(
     internally to the one lineage this `document` belongs to. Passing
     `()` (the default) always yields version 1 of a brand-new lineage,
     since there is nothing to compare against.
+
+    Sprint O Phase 8: the four `canonical_security_id`/
+    `resolution_version`/`identity_resolved_at`/
+    `provider_evidence_reference` keyword arguments are optional, plain
+    primitives, passed straight through onto the resulting
+    `BusinessRecord` unchanged -- this module still never imports
+    `atlas.alpha.canonical_security_gate` or anything under
+    `atlas.alpha`. The caller
+    (`atlas.alpha.business_data_refresh.service.refresh_company_data`)
+    is the one place that resolves an identity and supplies these; every
+    other/older caller omits them and gets the same `None`-filled
+    `BusinessRecord` this pipeline always produced.
     """
     failure_reasons = validate_raw_document(document)
     if failure_reasons:
@@ -124,5 +140,9 @@ def ingest(
         period_end=normalized.period_end,
         language=normalized.language,
         metadata=normalized.metadata,
+        canonical_security_id=canonical_security_id,
+        resolution_version=resolution_version,
+        identity_resolved_at=identity_resolved_at,
+        provider_evidence_reference=provider_evidence_reference,
     )
     return IngestedRecord(record=record)

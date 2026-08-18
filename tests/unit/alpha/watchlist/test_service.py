@@ -17,6 +17,8 @@ from sqlalchemy.pool import StaticPool
 
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.table import create_business_record_table
+from atlas.alpha.canonical_security_gate.factory import build_identity_gate
+from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.alpha.case_generation.service import CaseGenerationService
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaPortfolioState, EntryMode
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
@@ -79,9 +81,56 @@ def _doc(company: str) -> RawBusinessDocument:
     )
 
 
+@dataclass(frozen=True)
+class _IdentityProvider:
+    """Sprint O -- a `CompanyProfileProvider`-only fake supplying
+    exactly the identity fields the Identity Gate needs to reach
+    `AUTO_ACCEPT` (see `test_service.py`'s identically-shaped helper in
+    `business_data_refresh` for the full rationale)."""
+
+    tickers: tuple[str, ...]
+
+    def fetch(self, *, company_identifier: str, evaluated_at: datetime) -> tuple[RawBusinessDocument, ...]:
+        return ()
+
+    def fetch_company_profile(
+        self, *, company_identifier: str, evaluated_at: datetime
+    ) -> tuple[RawBusinessDocument, ...]:
+        if company_identifier not in self.tickers:
+            return ()
+        return (
+            RawBusinessDocument(
+                identifier=f"{company_identifier}:identity-profile",
+                company=company_identifier,
+                source_kind="company_profile",
+                published_at=evaluated_at,
+                provider_id="alpha_vantage",
+                raw_reference="https://example.test/identity-profile",
+                content_hash=f"identity-hash-{company_identifier}",
+                language="en",
+                metadata={
+                    "name": f"{company_identifier} Inc.",
+                    "exchange": "NASDAQ",
+                    "country": "USA",
+                    "currency": "USD",
+                    "security_type": "COMMON_STOCK",
+                },
+            ),
+        )
+
+
+def _identity_provider(*tickers: str) -> _IdentityProvider:
+    return _IdentityProvider(tickers=tuple(tickers))
+
+
 @pytest.fixture
 def engine():
     return _new_engine()
+
+
+@pytest.fixture
+def identity_gate(engine) -> CanonicalSecurityIdentityGate:
+    return build_identity_gate(engine)
 
 
 @pytest.fixture
@@ -202,26 +251,28 @@ class TestRemoveTicker:
 
 
 class TestAutomaticEnrichment:
-    def test_a_new_ticker_triggers_enrichment(self, engine, watchlist_store):
+    def test_a_new_ticker_triggers_enrichment(self, engine, watchlist_store, identity_gate):
         provider = _FakeProvider(documents=(_doc("AMD"),))
         repository = SqlAlchemyBusinessRecordRepository(engine)
         service = AlphaWatchlistService(
             watchlist_store,
             _case_generation_service(engine),
             business_record_repository=repository,
-            business_data_providers=(provider,),
+            business_data_providers=(provider, _identity_provider("AMD")),
+            identity_gate=identity_gate,
         )
         service.add_ticker("AMD")
-        assert len(repository.get_by_company("AMD")) == 1
+        assert len(repository.get_by_company("AMD")) == 2  # fundamentals + identity/profile
 
-    def test_repeated_addition_never_calls_the_provider_twice(self, engine, watchlist_store):
+    def test_repeated_addition_never_calls_the_provider_twice(self, engine, watchlist_store, identity_gate):
         provider = _FakeProvider(documents=(_doc("AMD"),))
         repository = SqlAlchemyBusinessRecordRepository(engine)
         service = AlphaWatchlistService(
             watchlist_store,
             _case_generation_service(engine),
             business_record_repository=repository,
-            business_data_providers=(provider,),
+            business_data_providers=(provider, _identity_provider("AMD")),
+            identity_gate=identity_gate,
         )
         service.add_ticker("AMD")
         service.add_ticker("AMD")
@@ -250,7 +301,7 @@ class TestAutomaticEnrichment:
         assert entry in service.list_all()
         assert repository.get_by_company("AMD") == ()
 
-    def test_partial_provider_failure_still_persists_the_succeeding_provider(self, engine, watchlist_store):
+    def test_partial_provider_failure_still_persists_the_succeeding_provider(self, engine, watchlist_store, identity_gate):
         failing = _FakeProvider(exception=RuntimeError("SEC EDGAR: not a US filer"))
         succeeding = _FakeProvider(documents=(_doc("AMD"),))
         repository = SqlAlchemyBusinessRecordRepository(engine)
@@ -258,7 +309,8 @@ class TestAutomaticEnrichment:
             watchlist_store,
             _case_generation_service(engine),
             business_record_repository=repository,
-            business_data_providers=(failing, succeeding),
+            business_data_providers=(failing, succeeding, _identity_provider("AMD")),
+            identity_gate=identity_gate,
         )
         service.add_ticker("AMD")
-        assert len(repository.get_by_company("AMD")) == 1
+        assert len(repository.get_by_company("AMD")) == 2  # succeeding fundamentals + identity/profile

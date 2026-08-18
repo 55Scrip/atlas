@@ -69,13 +69,30 @@ attempting a fresh `refresh_company_data` on every subsequent
 Watchlist/Portfolio add -- a real, bounded cost paid only for a company
 Atlas genuinely has nothing for yet, triggered only by an explicit user
 action, never a schedule.
+
+**Sprint O: the Canonical Security Identity Gate is now mandatory.**
+`identity_gate` is a required keyword-only argument -- there is no
+optional/bypass path at this layer, matching the brief's own "no
+fallback, no provider retry" instruction. Every `CompanyProfileProvider`
+this ticker's `providers` include is asked for its identity data
+*first*, before any fundamentals/market-data document is fetched;
+`identity_gate.evaluate()` runs exactly once against whatever identity
+candidates that produces, and only an `AUTO_ACCEPT` decision lets this
+function proceed to fetch and ingest anything else at all. Every other
+outcome (`MANUAL_CONFIRMATION`/`LOW_CONFIDENCE`/`AMBIGUOUS`/`NO_MATCH`/
+`REJECT`) short-circuits the whole run -- SEC EDGAR's fundamentals call
+is never even made -- and is reported via
+`RefreshSummary.identity_gate_outcome`/`identity_gate_reason`, never
+raised or silently swallowed. Every `BusinessRecord` this function
+ingests within one allowed run (the profile document included) carries
+the identical `CanonicalSecurity` provenance the gate returned.
 """
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
 from atlas.analysis_engine.business_data.completeness import assess_data_completeness
-from atlas.analysis_engine.business_data.models import BusinessRecord
+from atlas.analysis_engine.business_data.models import BusinessRecord, RawBusinessDocument
 from atlas.analysis_engine.business_data.pipeline import IngestionRejected, ingest
 from atlas.analysis_engine.business_data.providers import (
     BusinessDataProvider,
@@ -86,6 +103,8 @@ from atlas.analysis_engine.business_data.sources import SourceKind
 from atlas.analysis_engine.business_data.versioning import DuplicateRecord
 from atlas.alpha.business_data_refresh.models import ProviderFailure, RefreshSummary
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
+from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
+from atlas.alpha.canonical_security_gate.provenance import BusinessRecordIdentityProvenance
 
 __all__ = ["refresh_company_data", "ensure_company_enriched"]
 
@@ -105,6 +124,8 @@ def refresh_company_data(
     ticker: str,
     providers: tuple[BusinessDataProvider, ...],
     repository: SqlAlchemyBusinessRecordRepository,
+    *,
+    identity_gate: CanonicalSecurityIdentityGate,
 ) -> RefreshSummary:
     """One `evaluated_at` timestamp for the whole run (every document
     from every provider is fetched "as of now" together, not at
@@ -116,6 +137,14 @@ def refresh_company_data(
     without a redundant round trip (each period is its own lineage, so
     this matters for read efficiency, not correctness, but it is the
     cheap thing to do regardless).
+
+    Sprint O: `CompanyProfileProvider.fetch_company_profile()` now runs
+    *first*, for every provider that implements it, before any other
+    fetch -- its documents are the only source of identity candidates
+    `identity_gate.evaluate()` can see. If the gate does not return
+    `allowed=True`, this function returns immediately: no fundamentals
+    call, no historical-snapshot call, no `BusinessRecord` of any kind
+    is created for this run. See this module's own docstring for why.
     """
     evaluated_at = _utc_now()
     known_records: list[BusinessRecord] = list(repository.get_by_company(ticker))
@@ -127,12 +156,21 @@ def refresh_company_data(
     duplicates_skipped = 0
     rejected_documents = 0
     provider_errors: list[ProviderFailure] = []
+    identity: BusinessRecordIdentityProvenance | None = None
 
     def _ingest_documents(documents: tuple) -> None:
         nonlocal fetched_documents, new_records, new_versions, duplicates_skipped, rejected_documents
         for document in documents:
             fetched_documents += 1
-            result = ingest(document, existing_records=tuple(known_records), evaluated_at=evaluated_at)
+            result = ingest(
+                document,
+                existing_records=tuple(known_records),
+                evaluated_at=evaluated_at,
+                canonical_security_id=identity.canonical_security_id if identity is not None else None,
+                resolution_version=identity.resolution_version if identity is not None else None,
+                identity_resolved_at=identity.resolved_at if identity is not None else None,
+                provider_evidence_reference=identity.provider_evidence_reference if identity is not None else None,
+            )
             if isinstance(result, IngestionRejected):
                 rejected_documents += 1
                 continue
@@ -146,6 +184,39 @@ def refresh_company_data(
                 new_records += 1
             else:
                 new_versions += 1
+
+    profile_documents: list[RawBusinessDocument] = []
+    for provider in providers:
+        if not isinstance(provider, CompanyProfileProvider):
+            continue
+        provider_id = f"{type(provider).__name__}.fetch_company_profile"
+        provider_ids.append(provider_id)
+        try:
+            fetched = provider.fetch_company_profile(company_identifier=ticker, evaluated_at=evaluated_at)
+        except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
+            provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc)))
+            continue
+        profile_documents.extend(fetched)
+
+    decision = identity_gate.evaluate(
+        ticker=ticker, documents=tuple(profile_documents), clock=lambda: evaluated_at
+    )
+    if not decision.allowed:
+        return RefreshSummary(
+            ticker=ticker,
+            providers_attempted=tuple(provider_ids),
+            fetched_documents=0,
+            new_records=0,
+            new_versions=0,
+            duplicates_skipped=0,
+            rejected_documents=0,
+            provider_errors=tuple(provider_errors),
+            identity_gate_outcome=decision.outcome,
+            identity_gate_reason=decision.reason,
+        )
+
+    identity = decision.provenance
+    _ingest_documents(tuple(profile_documents))
 
     for provider in providers:
         provider_id = type(provider).__name__
@@ -173,19 +244,6 @@ def refresh_company_data(
             continue
         _ingest_documents(historical_documents)
 
-    for provider in providers:
-        if not isinstance(provider, CompanyProfileProvider):
-            continue
-        provider_id = f"{type(provider).__name__}.fetch_company_profile"
-        try:
-            profile_documents = provider.fetch_company_profile(
-                company_identifier=ticker, evaluated_at=evaluated_at
-            )
-        except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
-            provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc)))
-            continue
-        _ingest_documents(profile_documents)
-
     return RefreshSummary(
         ticker=ticker,
         providers_attempted=tuple(provider_ids),
@@ -195,6 +253,8 @@ def refresh_company_data(
         duplicates_skipped=duplicates_skipped,
         rejected_documents=rejected_documents,
         provider_errors=tuple(provider_errors),
+        identity_gate_outcome=decision.outcome,
+        identity_gate_reason=None,
     )
 
 
@@ -202,6 +262,8 @@ def ensure_company_enriched(
     ticker: str,
     providers: tuple[BusinessDataProvider, ...],
     repository: SqlAlchemyBusinessRecordRepository,
+    *,
+    identity_gate: CanonicalSecurityIdentityGate,
 ) -> RefreshSummary | None:
     """Idempotent, automatic-trigger wrapper for the Investment Case
     Engine v1 slice's "add a company" write paths (Watchlist/Portfolio).
@@ -222,4 +284,4 @@ def ensure_company_enriched(
     existing = repository.get_by_company(ticker)
     if existing and assess_data_completeness(existing).is_minimally_complete:
         return None
-    return refresh_company_data(ticker, providers, repository)
+    return refresh_company_data(ticker, providers, repository, identity_gate=identity_gate)
