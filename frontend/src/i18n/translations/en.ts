@@ -873,42 +873,6 @@ export const en = {
   "investmentCase.actions.openHistory": "Open History →",
   "investmentCase.actions.recordError": "Could not record this decision: {{message}}",
 
-  // ---------- investment case v2: Decision Workspace v1 (UX-009) ----------
-  "investmentCase.decisionWorkspace.notAvailableYet": "Not yet available in this version of Atlas.",
-  "investmentCase.decisionWorkspace.section1.title": "Current conclusion",
-  "investmentCase.decisionWorkspace.section1.confidenceLabel": "Confidence",
-  "investmentCase.decisionWorkspace.section1.sourceLabel": "As of",
-  "investmentCase.decisionWorkspace.section2.title": "Why a decision is required",
-  "investmentCase.decisionWorkspace.section2.userInitiated": "You opened this workspace directly.",
-  "investmentCase.decisionWorkspace.section4.title": "Decision rationale — Atlas's supporting view",
-  "investmentCase.decisionWorkspace.section5.title": "Supporting factors",
-  "investmentCase.decisionWorkspace.section6.title": "Challenges",
-  "investmentCase.decisionWorkspace.section6.behavioralContextGap":
-    "Atlas does not yet detect behavioral context (recent price moves, holding duration) for this decision.",
-  "investmentCase.decisionWorkspace.section6.acknowledgmentGap":
-    "Challenge acknowledgment is not yet preserved in the permanent decision record in this version of Atlas.",
-  "investmentCase.decisionWorkspace.section7.title": "Opportunity cost",
-  "investmentCase.decisionWorkspace.section7.alternativesGap":
-    "Atlas does not yet compare this decision against alternative uses of capital.",
-  "investmentCase.decisionWorkspace.section8.title": "Portfolio consequences",
-  "investmentCase.decisionWorkspace.section8.consequencesGap":
-    "Atlas does not yet project this decision's portfolio-level consequences.",
-  "investmentCase.decisionWorkspace.section8.consequencesGapWithWeight":
-    "This position is currently {{weight}}% of your portfolio. Atlas does not yet project what this decision would change that to.",
-  "investmentCase.decisionWorkspace.section9.title": "Assumptions, monitoring and invalidation",
-  "investmentCase.decisionWorkspace.section9.monitoringGap":
-    "Atlas does not yet register monitoring conditions after a decision is recorded.",
-  "investmentCase.decisionWorkspace.section9.invalidationGap":
-    "Atlas does not yet track invalidation conditions for recorded decisions.",
-  "investmentCase.decisionWorkspace.section10.title": "Implementation plan",
-  "investmentCase.decisionWorkspace.section10.typeGap":
-    "Atlas does not yet capture an implementation type (immediate, gradual, conditional, deferred) separately from the decision itself.",
-  "investmentCase.decisionWorkspace.section10.tradeNote":
-    "Once you report a completed transaction below, its details become part of this decision's record.",
-  "investmentCase.decisionWorkspace.section11.title": "Review plan",
-  "investmentCase.decisionWorkspace.section11.reviewPlanGap":
-    "Atlas does not yet schedule a review trigger for recorded decisions.",
-
   // ---------- investment case v2: continuity footer ----------
   "investmentCase.continuity.line1":
     "Atlas will use recorded portfolio changes and case history in future reviews.",
