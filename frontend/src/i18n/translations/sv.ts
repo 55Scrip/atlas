@@ -1034,8 +1034,8 @@ export const sv: Record<TranslationKey, string> = {
   "history.reviews.securityConfirmation.verificationUnsupported": "Verifiering är inte tillgänglig för denna bekräftelse",
 
   // ---------- sprint 4: dashboard sections ----------
-  "dashboard.needsAttention.heading": "Kräver uppmärksamhet",
-  "dashboard.needsAttention.empty": "Inget kräver din uppmärksamhet just nu.",
+  "dashboard.needsAttention.heading": "Återstående att göra",
+  "dashboard.needsAttention.empty": "Inget återstår just nu.",
   "dashboard.needsAttention.outcomeMissing": "{{security}}: utfall inte rapporterat ännu",
   "dashboard.needsAttention.tradeMissing": "{{security}}: affär inte rapporterad ännu",
   "dashboard.needsAttention.reconciliationNeeded": "{{security}}: fördelningen väntar på avstämning",

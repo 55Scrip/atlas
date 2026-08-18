@@ -1043,8 +1043,8 @@ export const en = {
   "history.reviews.securityConfirmation.verificationUnsupported": "Verification isn't available for this confirmation",
 
   // ---------- sprint 4: dashboard sections ----------
-  "dashboard.needsAttention.heading": "Needs Attention",
-  "dashboard.needsAttention.empty": "Nothing needs your attention right now.",
+  "dashboard.needsAttention.heading": "Outstanding Work",
+  "dashboard.needsAttention.empty": "No outstanding work right now.",
   "dashboard.needsAttention.outcomeMissing": "{{security}}: outcome not yet reported",
   "dashboard.needsAttention.tradeMissing": "{{security}}: trade not yet reported",
   "dashboard.needsAttention.reconciliationNeeded": "{{security}}: allocation awaiting reconciliation",
