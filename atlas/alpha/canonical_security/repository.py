@@ -184,6 +184,129 @@ class SqlAlchemyCanonicalSecurityRepository:
                 return None
             return self._assemble(connection, root_row)
 
+    def find_active(self) -> tuple[CanonicalSecurity, ...]:
+        """Sprint N Phase 14. Every `CanonicalSecurity` currently in
+        `ACTIVE` status -- forward-looking infrastructure: nothing in
+        Sprint N's own shadow-mode resolution service ever produces
+        `ACTIVE` (it stops at `CANONICAL`, per Sprint N Phase 16's own
+        boundary), so this method has no real callers yet, but the
+        Resolution Service is explicitly meant to become the identity
+        gate in a later sprint, at which point this becomes load-
+        bearing."""
+        with self._engine.connect() as connection:
+            root_rows = (
+                connection.execute(
+                    select(canonical_securities_table).where(
+                        canonical_securities_table.c.resolution_status == "ACTIVE"
+                    )
+                )
+                .mappings()
+                .all()
+            )
+            return tuple(self._assemble(connection, row) for row in root_rows)
+
+    def find_by_provider_id(self, provider_name: str, provider_security_id: str) -> CanonicalSecurity | None:
+        """Sprint N Phase 14. Distinct from `find_by_provider_mapping`:
+        this looks up by the provider's own stable internal identifier
+        (e.g. SEC's CIK, a future Twelve Data instrument id) rather than
+        by the ticker string that provider happened to report -- the
+        two can legitimately diverge (a provider's internal id for a
+        security stays constant across a ticker change; the ticker
+        string does not)."""
+        with self._engine.connect() as connection:
+            mapping_row = (
+                connection.execute(
+                    select(canonical_security_provider_mappings_table.c.canonical_security_id)
+                    .where(canonical_security_provider_mappings_table.c.provider_name == provider_name)
+                    .where(canonical_security_provider_mappings_table.c.provider_security_id == provider_security_id)
+                )
+                .mappings()
+                .first()
+            )
+            if mapping_row is None:
+                return None
+            root_row = (
+                connection.execute(
+                    select(canonical_securities_table).where(
+                        canonical_securities_table.c.id == mapping_row["canonical_security_id"]
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            if root_row is None:
+                return None
+            return self._assemble(connection, root_row)
+
+    def find_by_figi(self, figi: str) -> CanonicalSecurity | None:
+        """Sprint N Phase 14 convenience wrapper over `find_by_identifier`."""
+        return self.find_by_identifier("FIGI", figi)
+
+    def find_by_isin(self, isin: str) -> CanonicalSecurity | None:
+        """Sprint N Phase 14 convenience wrapper over `find_by_identifier`."""
+        return self.find_by_identifier("ISIN", isin)
+
+    def find_by_listing(self, ticker: str, exchange_mic: str, relationship: str) -> CanonicalSecurity | None:
+        """Sprint N Phase 14. Exact `ListingRef` match -- ticker,
+        exchange, *and* relationship all agreeing, distinguishing this
+        from `find_by_ticker_and_exchange` (below), which ignores
+        `relationship` and would match either a native listing or an
+        ADR sharing the same ticker/exchange pair (a rarer case, but not
+        impossible)."""
+        with self._engine.connect() as connection:
+            listing_row = (
+                connection.execute(
+                    select(canonical_security_listings_table.c.canonical_security_id)
+                    .where(canonical_security_listings_table.c.ticker == ticker)
+                    .where(canonical_security_listings_table.c.exchange_mic == exchange_mic)
+                    .where(canonical_security_listings_table.c.relationship == relationship)
+                )
+                .mappings()
+                .first()
+            )
+            if listing_row is None:
+                return None
+            root_row = (
+                connection.execute(
+                    select(canonical_securities_table).where(
+                        canonical_securities_table.c.id == listing_row["canonical_security_id"]
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            if root_row is None:
+                return None
+            return self._assemble(connection, root_row)
+
+    def find_by_ticker_and_exchange(self, ticker: str, exchange_mic: str) -> CanonicalSecurity | None:
+        """Sprint N Phase 14. Same as `find_by_listing` but without the
+        `relationship` filter -- see that method's own docstring."""
+        with self._engine.connect() as connection:
+            listing_row = (
+                connection.execute(
+                    select(canonical_security_listings_table.c.canonical_security_id)
+                    .where(canonical_security_listings_table.c.ticker == ticker)
+                    .where(canonical_security_listings_table.c.exchange_mic == exchange_mic)
+                )
+                .mappings()
+                .first()
+            )
+            if listing_row is None:
+                return None
+            root_row = (
+                connection.execute(
+                    select(canonical_securities_table).where(
+                        canonical_securities_table.c.id == listing_row["canonical_security_id"]
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            if root_row is None:
+                return None
+            return self._assemble(connection, root_row)
+
     def _assemble(self, connection: Any, root_row: Mapping[str, Any]) -> CanonicalSecurity:
         security_id = root_row["id"]
         listing_rows = (
