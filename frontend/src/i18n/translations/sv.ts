@@ -868,6 +868,42 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.actions.openHistory": "Öppna Historik →",
   "investmentCase.actions.recordError": "Kunde inte registrera beslutet: {{message}}",
 
+  // ---------- investment case v2: Decision Workspace v1 (UX-009) ----------
+  "investmentCase.decisionWorkspace.notAvailableYet": "Inte tillgängligt i den här versionen av Atlas ännu.",
+  "investmentCase.decisionWorkspace.section1.title": "Nuvarande slutsats",
+  "investmentCase.decisionWorkspace.section1.confidenceLabel": "Tillförlitlighet",
+  "investmentCase.decisionWorkspace.section1.sourceLabel": "Per den",
+  "investmentCase.decisionWorkspace.section2.title": "Varför ett beslut krävs",
+  "investmentCase.decisionWorkspace.section2.userInitiated": "Du öppnade denna arbetsyta själv.",
+  "investmentCase.decisionWorkspace.section4.title": "Beslutsunderlag — Atlas stödjande syn",
+  "investmentCase.decisionWorkspace.section5.title": "Stödjande faktorer",
+  "investmentCase.decisionWorkspace.section6.title": "Utmaningar",
+  "investmentCase.decisionWorkspace.section6.behavioralContextGap":
+    "Atlas identifierar ännu inte beteendemässig kontext (senaste prisrörelser, innehavstid) för detta beslut.",
+  "investmentCase.decisionWorkspace.section6.acknowledgmentGap":
+    "Bekräftelse av utmaningar sparas ännu inte i det permanenta beslutsunderlaget i den här versionen av Atlas.",
+  "investmentCase.decisionWorkspace.section7.title": "Alternativkostnad",
+  "investmentCase.decisionWorkspace.section7.alternativesGap":
+    "Atlas jämför ännu inte detta beslut med alternativa sätt att använda kapitalet.",
+  "investmentCase.decisionWorkspace.section8.title": "Konsekvenser för portföljen",
+  "investmentCase.decisionWorkspace.section8.consequencesGap":
+    "Atlas beräknar ännu inte detta besluts konsekvenser för portföljen.",
+  "investmentCase.decisionWorkspace.section8.consequencesGapWithWeight":
+    "Denna position utgör just nu {{weight}}% av din portfölj. Atlas beräknar ännu inte vad detta beslut skulle ändra det till.",
+  "investmentCase.decisionWorkspace.section9.title": "Antaganden, uppföljning och ogiltigförklaring",
+  "investmentCase.decisionWorkspace.section9.monitoringGap":
+    "Atlas registrerar ännu inte uppföljningsvillkor efter att ett beslut registrerats.",
+  "investmentCase.decisionWorkspace.section9.invalidationGap":
+    "Atlas följer ännu inte upp ogiltigförklaringsvillkor för registrerade beslut.",
+  "investmentCase.decisionWorkspace.section10.title": "Genomförandeplan",
+  "investmentCase.decisionWorkspace.section10.typeGap":
+    "Atlas fångar ännu inte en genomförandetyp (omedelbar, gradvis, villkorad, uppskjuten) separat från själva beslutet.",
+  "investmentCase.decisionWorkspace.section10.tradeNote":
+    "När du rapporterar en genomförd affär nedan blir dess detaljer en del av detta besluts underlag.",
+  "investmentCase.decisionWorkspace.section11.title": "Uppföljningsplan",
+  "investmentCase.decisionWorkspace.section11.reviewPlanGap":
+    "Atlas schemalägger ännu inte en uppföljningspunkt för registrerade beslut.",
+
   // ---------- investment case v2: continuity footer ----------
   "investmentCase.continuity.line1":
     "Atlas använder registrerade portföljförändringar och casehistorik i framtida genomgångar.",

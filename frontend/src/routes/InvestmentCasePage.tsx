@@ -86,6 +86,8 @@ import { AtlasReasoningSection, type AtlasReasoningInput } from "../investmentCa
 import { CompanyHealthAssessmentSection, type CompanyHealthCardInput } from "../investmentCase/CompanyHealthAssessmentSection";
 import { InterpretedFinancialEvidenceSection } from "../investmentCase/InterpretedFinancialEvidenceSection";
 import { WhatChangedSection } from "../investmentCase/WhatChangedSection";
+import { buildDecisionWorkspaceSections } from "../investmentCase/deriveDecisionWorkspace";
+import { DecisionWorkspaceSections } from "../investmentCase/DecisionWorkspaceSections";
 
 /** Renders a bounded enum value's real copy; falls back to `humanize()`
  * only for a value the map doesn't (yet) cover, mirroring the
@@ -2154,6 +2156,41 @@ export function InvestmentCasePage() {
                     : t("investmentCase.actions.heading")}
                 </Heading>
               </div>
+
+              {/* Decision Workspace v1 (UX-009 Sections 1,2,4-11) --
+                  the reasoning walkthrough shown before the investor
+                  picks an action, immediately below (UX-009 Section 3
+                  onward). Only rendered pre-decision, for a fresh
+                  "record a new decision" entry -- not while reporting
+                  an already-recorded Decision's Outcome/trade, which
+                  is a separate, later step in the same flow (§13.1's
+                  own load-bearing ordering, unchanged). Every section's
+                  content is built once from `analysis`, already fetched
+                  for this page; no new request. */}
+              {!reportingExistingDecisionId &&
+                caseLevelDecisionStatus.kind !== "success" &&
+                investmentCaseAnalysis.kind === "loaded" && (
+                  <DecisionWorkspaceSections
+                    sections={buildDecisionWorkspaceSections(
+                      {
+                        atlasThesis: investmentCaseAnalysis.report.atlasThesis,
+                        conviction: investmentCaseAnalysis.report.conviction,
+                        recommendation: investmentCaseAnalysis.report.recommendation,
+                        currentAnalysisAt: investmentCaseAnalysis.report.currentAnalysisAt,
+                        strengthKinds: investmentCaseAnalysis.report.strengths.map((h) => h.kind),
+                        riskKinds: investmentCaseAnalysis.report.risks.map((h) => h.kind),
+                        riskFindings: investmentCaseAnalysis.report.risk.findings,
+                        valuationAssumptions: investmentCaseAnalysis.report.valuation.findings.flatMap(
+                          (f) => f.assumptions,
+                        ),
+                        keyOpenQuestions: investmentCaseAnalysis.report.keyOpenQuestions,
+                        holdingWeightPercent: investmentCaseAnalysis.report.holdingContext.weightPercent,
+                      },
+                      t,
+                    )}
+                    t={t}
+                  />
+                )}
 
               {caseLevelDecisionStatus.kind === "idle" && !reportingExistingDecisionId && (
                 <div>
