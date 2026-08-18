@@ -1296,6 +1296,9 @@ export const en = {
   // ---------- daily brief v2 (Workspace Migration Phase 4) ----------
   "dailyBrief.title": "Daily Brief",
   "dailyBrief.subtitle": "Atlas morning brief for your attention.",
+  "dailyBrief.summary.empty": "No material analytical changes since your previous review.",
+  "dailyBrief.summary.countOne": "1 company has a meaningful analytical change to review.",
+  "dailyBrief.summary.countOther": "{{count}} companies have meaningful analytical changes to review.",
   "dailyBrief.lastUpdated": "Last updated {{time}}",
   "dailyBrief.entry.unknownCompany": "Unknown company",
   "dailyBrief.entry.openInvestmentCase": "Open Investment Case",

@@ -303,18 +303,27 @@ export function DailyBriefPage() {
 
         <Divider tone="hairline" />
 
-        {/* Orientation -- the same real, backend-templated summary
-            sentence Daily Brief has always used (Migration Review §11.2
-            defers a fabricated multi-sentence narrative -- no real
-            synthesis step exists yet). Flowing paragraph, not a heading
-            -- Figma's own screen reads it as prose, not a titled block. */}
+        {/* Orientation -- derived client-side from the real entry count
+            (Migration Review §11.2 defers a fabricated multi-sentence
+            narrative -- no real synthesis step exists yet) so it goes
+            through `t()` instead of the backend's English-only templated
+            `summary` string. Flowing paragraph, not a heading -- Figma's
+            own screen reads it as prose, not a titled block. */}
         {status.kind === "loading" && (
           <Text role="status" aria-live="polite">
             {t("common.loading")}
           </Text>
         )}
         {status.kind === "error" && <Text color="secondary">{status.message}</Text>}
-        {status.kind === "loaded" && <Text as="p">{status.brief.summary}</Text>}
+        {status.kind === "loaded" && (
+          <Text as="p">
+            {status.brief.entries.length === 0
+              ? t("dailyBrief.summary.empty")
+              : status.brief.entries.length === 1
+                ? t("dailyBrief.summary.countOne")
+                : t("dailyBrief.summary.countOther", { count: status.brief.entries.length })}
+          </Text>
+        )}
 
         <Divider tone="hairline" />
 
