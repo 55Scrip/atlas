@@ -5056,12 +5056,16 @@ const GROWTH_TREND_KEY: Record<AnalysisMetricTrend, TranslationKey> = {
  * is real, real depth one tab away, not deleted.
  */
 function CaseNarrativeDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
-  const { strengths, risks, growthAnalysis, valuationContext, atlasThesis, keyOpenQuestions } = analysis;
+  const { strengths, risks, growthAnalysis, valuationContext, keyOpenQuestions } = analysis;
 
   return (
     <Stack gap="intra-section">
+      {/* `analysis.atlasThesis.narrative` (backend `investment_case_synthesis.py`)
+          is deliberately not rendered here -- it's an English-only prose
+          sentence with no Swedish counterpart, and every fact it states is
+          already shown, fully localized, in the Strengths/Risks/Growth/
+          Valuation/Open Questions detail directly below. */}
       <Heading level={3}>{t("investmentCase.atlasView.thesis.heading")}</Heading>
-      <Text as="p">{atlasThesis.narrative}</Text>
 
       <Divider tone="hairline" />
       <Heading level={3}>{t("investmentCase.atlasView.strengths.heading")}</Heading>
