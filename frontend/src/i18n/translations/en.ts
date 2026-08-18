@@ -1065,7 +1065,7 @@ export const en = {
   "investmentCase.timeline.empty": "No timeline events yet.",
   "investmentCase.timeline.currentStatus": "Current status",
   "investmentCase.outstandingWork.heading": "Outstanding work",
-  "investmentCase.outstandingWork.none": "Nothing outstanding for this case.",
+  "investmentCase.outstandingWork.none": "No outcome or trade reporting outstanding for this case.",
   "investmentCase.outstandingWork.outcomeMissing": "Outcome not yet reported.",
   "investmentCase.outstandingWork.tradeMissing": "Trade not yet reported.",
 

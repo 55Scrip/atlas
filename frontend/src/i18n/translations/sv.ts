@@ -1056,7 +1056,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.timeline.empty": "Inga tidslinjehändelser ännu.",
   "investmentCase.timeline.currentStatus": "Aktuell status",
   "investmentCase.outstandingWork.heading": "Återstående att göra",
-  "investmentCase.outstandingWork.none": "Inget återstår för det här caset.",
+  "investmentCase.outstandingWork.none": "Inget utfall eller affär väntar på rapportering för det här caset.",
   "investmentCase.outstandingWork.outcomeMissing": "Utfall inte rapporterat ännu.",
   "investmentCase.outstandingWork.tradeMissing": "Affär inte rapporterad ännu.",
 
