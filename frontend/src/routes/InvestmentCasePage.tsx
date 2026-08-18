@@ -4954,16 +4954,25 @@ const EVIDENCE_GAP_QUESTION_KINDS: OpenQuestionKind[] = [
 
 /**
  * Evidence (Figma-fidelity rebuild) -- the approved screen's own
- * compact single row: Quality / Coverage / Missing / Latest, plus a
- * "View all evidence" link into the More Details tab (where
- * `EvidenceDetailSection` below lives). Quality and Coverage are two
- * distinct real fields already used elsewhere on this page
- * (`analysis.confidence`, `analysis.evidenceQuality.coverage`) -- never
- * a single fact split into two labels to match Figma's word count.
- * Missing reuses the same `EVIDENCE_GAP_QUESTION_KINDS`-filtered count
- * `EvidenceDetailSection` computes in full below. Latest reads
- * `currentThesis.latestDecisionReason`/`latestObservationStatement` --
- * the same real "most recent investor input" fact already used
+ * compact single row: Coverage / Missing / Latest, plus a "View all
+ * evidence" link into the More Details tab (where `EvidenceDetailSection`
+ * below lives).
+ *
+ * UX Refinement Sprint (F-04) correction: this row previously showed
+ * both `analysis.confidence` (as "Quality") and
+ * `analysis.evidenceQuality.coverage` (as "Coverage") side by side, on
+ * the assumption below that they were "two distinct real fields." They
+ * are not -- traced to source in `atlas/analysis_engine/pipeline.py`'s
+ * `assemble_analysis`: `confidence = decision_output.business_evaluation
+ * .evidence_quality.coverage`, and `CanonicalAnalysis.business` is
+ * `decision_output.business_evaluation` verbatim, so `analysis.confidence`
+ * IS `analysis.evidenceQuality.coverage`, always, by construction --
+ * exactly the "single fact split into two labels" this comment
+ * previously claimed did not apply here. Now shown once, under
+ * "Coverage." Missing reuses the same `EVIDENCE_GAP_QUESTION_KINDS`-
+ * filtered count `EvidenceDetailSection` computes in full below. Latest
+ * reads `currentThesis.latestDecisionReason`/`latestObservationStatement`
+ * -- the same real "most recent investor input" fact already used
  * elsewhere on this page, never a fabricated activity summary.
  */
 function EvidenceSection({
@@ -4986,13 +4995,7 @@ function EvidenceSection({
       <Inline gap="inter-section" wrap style={{ justifyContent: "space-between" }}>
         <Inline gap="row" wrap>
           <Text as="span" color="secondary">
-            {t("investmentCase.analysis.evidence.qualityHeading")}: {t(CONFIDENCE_KEY[analysis.confidence])}
-          </Text>
-          <Text as="span" color="secondary">
-            {t("investmentCase.analysis.evidence.coverageLabel")}:{" "}
-            {analysis.evidenceQuality
-              ? t(CONFIDENCE_KEY[analysis.evidenceQuality.coverage])
-              : t("investmentCase.atlasView.notAvailable")}
+            {t("investmentCase.analysis.evidence.coverageLabel")}: {t(CONFIDENCE_KEY[analysis.confidence])}
           </Text>
           <Text as="span" color="secondary">
             {t("investmentCase.analysis.evidence.missingEvidenceHeading")}: {missingCount}
@@ -5399,9 +5402,14 @@ function EvidenceDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalys
 
         <Divider tone="hairline" />
 
-        {/* Evidence Quality -- case-wide Observation/Evidence coverage,
-            distinct from each finding's own supporting/contradicting
-            facts already shown inline in Business/Valuation/Risk above. */}
+        {/* Evidence Quality -- the Observation/Evidence composition behind
+            the Confidence level shown above (never restated here -- see
+            UX Refinement Sprint F-04: `analysis.confidence` and
+            `analysis.evidenceQuality.coverage` are the same value by
+            construction, see `assemble_analysis` in
+            `atlas/analysis_engine/pipeline.py`), distinct from each
+            finding's own supporting/contradicting facts already shown
+            inline in Business/Valuation/Risk above. */}
         <Stack gap="intra-section">
           <Heading level={3}>{t("investmentCase.analysis.evidence.qualityHeading")}</Heading>
           {!analysis.evidenceQuality && (
@@ -5409,9 +5417,6 @@ function EvidenceDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalys
           )}
           {analysis.evidenceQuality && (
             <Stack gap="intra-section">
-              <Text as="p">
-                {t("investmentCase.analysis.evidence.coverageLabel")}: {t(CONFIDENCE_KEY[analysis.evidenceQuality.coverage])}
-              </Text>
               <Text color="secondary" as="p">
                 {t("investmentCase.analysis.evidence.supportingCount", {
                   count: analysis.evidenceQuality.supportingEvidenceCount,

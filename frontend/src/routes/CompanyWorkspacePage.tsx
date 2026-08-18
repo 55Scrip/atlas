@@ -818,15 +818,12 @@ function EvidenceCoverageCard({
         <Label>{t("companyWorkspace.evidence.heading")}</Label>
         <Inline gap="row" wrap>
           <Text as="span" color="secondary">
-            {t("companyWorkspace.evidence.qualityLabel")}: {t(CONFIDENCE_KEY[report.confidence])}
+            {t("companyWorkspace.evidence.coverageLabel")}: {t(CONFIDENCE_KEY[report.confidence])}
           </Text>
         </Inline>
-        <Inline gap="row" wrap>
-          <Text as="span" color="secondary">
-            {t("companyWorkspace.evidence.coverageLabel")}:{" "}
-            {report.evidenceQuality ? t(CONFIDENCE_KEY[report.evidenceQuality.coverage]) : t("investmentCase.atlasView.notAvailable")}
-          </Text>
-        </Inline>
+        <Text as="p" color="tertiary">
+          {t("investmentCase.analysis.confidence.explanation")}
+        </Text>
         {cockpit && (
           <Inline gap="row" wrap>
             <Text as="span" color="secondary">

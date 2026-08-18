@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, Link as RouterLink } from "react-router-dom";
+import { useLocation, useNavigate, useParams, Link as RouterLink } from "react-router-dom";
 import { Button, Container, Heading, Inline, Label, Stack, StatusText, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
@@ -9,6 +9,8 @@ import {
   type ConvictionLevel,
   type DecisionSupportLevel,
 } from "../status/statusTone";
+import type { PortfolioAction } from "../portfolio/derivePortfolioActions";
+import { describePortfolioAction } from "../portfolio/describePortfolioAction";
 
 /** Portfolio Workspace v1 -- the per-holding "attention detail" screen
  * matching the approved `portfolio-attention-expanded` /
@@ -73,6 +75,15 @@ export function HoldingAttentionPage() {
   const { ticker } = useParams<{ ticker: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  /** UX Refinement Sprint (F-03): the `PortfolioAction` that put this
+   * ticker into "Needs Your Attention", passed through route state by
+   * `NeedsYourAttentionRow` -- the actual reason the user was sent here,
+   * as opposed to this page's own narrower cockpit-derived risk-narrative
+   * reasons below (a genuinely different, real backend vocabulary; see
+   * `derivePortfolioActions.ts`'s own module docstring). Absent on a
+   * direct URL visit/refresh, in which case nothing is guessed. */
+  const originatingAction = (location.state as { action?: PortfolioAction } | null)?.action;
   const [status, setStatus] = useState<Status>({ kind: "loading" });
 
   useEffect(() => {
@@ -115,7 +126,12 @@ export function HoldingAttentionPage() {
           </Stack>
         )}
         {status.kind === "loaded" && (
-          <HoldingAttentionDetail holding={status.holding} navigate={navigate} t={t} />
+          <HoldingAttentionDetail
+            holding={status.holding}
+            originatingAction={originatingAction}
+            navigate={navigate}
+            t={t}
+          />
         )}
       </Stack>
     </Container>
@@ -124,10 +140,12 @@ export function HoldingAttentionPage() {
 
 function HoldingAttentionDetail({
   holding,
+  originatingAction,
   navigate,
   t,
 }: {
   holding: CockpitHoldingDetail;
+  originatingAction: PortfolioAction | undefined;
   navigate: ReturnType<typeof useNavigate>;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
@@ -139,6 +157,12 @@ function HoldingAttentionDetail({
   for (const reason of holding.attention.reasons) {
     attentionLines.push(t(ATTENTION_REASON_KEY[reason]));
   }
+
+  /** UX Refinement Sprint (F-03): the exact reason that put this ticker
+   * into Portfolio's "Needs Your Attention" -- reuses `describePortfolioAction`
+   * verbatim (no new derivation) so this text can never drift from what
+   * the investor already read on Portfolio. */
+  const originatingReason = originatingAction ? describePortfolioAction(originatingAction, t).reason : null;
 
   return (
     <Stack gap="inter-section">
@@ -152,6 +176,15 @@ function HoldingAttentionDetail({
           {t("portfolio.holdingDetail.openCompanyWorkspace")}
         </RouterLink>
       </Stack>
+
+      {originatingReason && (
+        <Surface tier="primary" bordered>
+          <Stack gap="metadata">
+            <Label>{t("portfolio.holdingDetail.whyAttentionHeading")}</Label>
+            <Text as="p">{originatingReason}</Text>
+          </Stack>
+        </Surface>
+      )}
 
       <Surface tier="primary">
         <Inline gap="inter-section" wrap style={{ justifyContent: "space-between" }}>

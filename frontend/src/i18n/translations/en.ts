@@ -262,6 +262,7 @@ export const en = {
   // ---------- holding attention detail (Portfolio Workspace v1) ----------
   "portfolio.holdingDetail.breadcrumb": "Portfolio / {{ticker}}",
   "portfolio.holdingDetail.subheading": "Focused Holding Analysis",
+  "portfolio.holdingDetail.whyAttentionHeading": "Why this needs your attention",
   "portfolio.holdingDetail.currentMarketValue": "Current Market Value",
   "portfolio.holdingDetail.portfolioWeight": "Portfolio Weight",
   "portfolio.holdingDetail.attentionHeading": "Attention",
@@ -1352,7 +1353,6 @@ export const en = {
   "companyWorkspace.decisionSupport.recordButton": "Record a Decision",
   "companyWorkspace.risk.heading": "Risk",
   "companyWorkspace.evidence.heading": "Evidence & Coverage",
-  "companyWorkspace.evidence.qualityLabel": "Evidence quality",
   "companyWorkspace.evidence.coverageLabel": "Evidence coverage",
   "companyWorkspace.evidence.analysisCoverageLabel": "Analysis coverage",
   "companyWorkspace.evidence.missingLabel": "Open questions",

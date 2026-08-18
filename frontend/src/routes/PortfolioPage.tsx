@@ -1252,11 +1252,11 @@ function NeedsYourAttentionRow({
         role="button"
         tabIndex={0}
         aria-label={t("portfolio.attention.rowAriaLabel", { ticker, reason })}
-        onClick={() => navigate(`/portfolio/holding/${encodeURIComponent(ticker)}`)}
+        onClick={() => navigate(`/portfolio/holding/${encodeURIComponent(ticker)}`, { state: { action } })}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            navigate(`/portfolio/holding/${encodeURIComponent(ticker)}`);
+            navigate(`/portfolio/holding/${encodeURIComponent(ticker)}`, { state: { action } });
           }
         }}
       >

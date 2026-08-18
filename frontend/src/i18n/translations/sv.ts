@@ -261,6 +261,7 @@ export const sv: Record<TranslationKey, string> = {
   // ---------- holding attention detail (Portfolio Workspace v1) ----------
   "portfolio.holdingDetail.breadcrumb": "Portfölj / {{ticker}}",
   "portfolio.holdingDetail.subheading": "Fokuserad innehavsanalys",
+  "portfolio.holdingDetail.whyAttentionHeading": "Varför detta behöver din uppmärksamhet",
   "portfolio.holdingDetail.currentMarketValue": "Aktuellt marknadsvärde",
   "portfolio.holdingDetail.portfolioWeight": "Portföljandel",
   "portfolio.holdingDetail.attentionHeading": "Uppmärksamhet",
@@ -1349,7 +1350,6 @@ export const sv: Record<TranslationKey, string> = {
   "companyWorkspace.decisionSupport.recordButton": "Registrera ett beslut",
   "companyWorkspace.risk.heading": "Risk",
   "companyWorkspace.evidence.heading": "Belägg & täckning",
-  "companyWorkspace.evidence.qualityLabel": "Beläggens kvalitet",
   "companyWorkspace.evidence.coverageLabel": "Belägg­täckning",
   "companyWorkspace.evidence.analysisCoverageLabel": "Analystäckning",
   "companyWorkspace.evidence.missingLabel": "Öppna frågor",
