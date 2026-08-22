@@ -29,14 +29,128 @@ from atlas.alpha.case_intelligence.api.schemas import (
     EvidenceQualityFindingsSchema,
     OpenQuestionSchema,
 )
+from atlas.alpha.coverage import CoverageAssessment, DimensionCoverage
+from atlas.alpha.coverage import assess_coverage as _assess_coverage
+from atlas.alpha.coverage.models import ConfidenceReason
+from atlas.alpha.knowledge_coverage.models import InvestmentCaseKnowledgeCoverage, KnowledgeDomainCoverage
 from atlas.alpha.decision_support import DecisionSupportView as DecisionSupportViewDomain
 from atlas.alpha.decision_support import describe_recommendation
+from atlas.alpha.investment_case.business_quality_intelligence import (
+    BusinessConsistency,
+    BusinessDurability,
+    BusinessEfficiency,
+    BusinessEvolution,
+    BusinessQualityFinding,
+    BusinessQualityKnowledge,
+    BusinessStability,
+    GrowthDurabilitySummary,
+    HistoricalDisruption,
+)
+from atlas.alpha.investment_case.capital_allocation_intelligence import (
+    CapitalAllocationHistory,
+    CapitalAllocationPeriod,
+    CapitalAllocationTrendObservation,
+    ManagementCapitalAllocationKnowledge,
+    assess_buyback_consistency,
+    assess_dividend_continuity,
+    assess_management_capital_allocation,
+    compute_capital_allocation_trends,
+)
+from atlas.alpha.investment_case.financial_quality_intelligence import (
+    CapitalEfficiencyKnowledge,
+    CapitalEfficiencyObservation,
+    CashConversionKnowledge,
+    CashConversionObservation,
+    FinancialDurabilityKnowledge,
+    FinancialQualityKnowledge,
+    MarginDurability,
+    MarginReversal,
+    ProfitabilityDurability,
+    WorkingCapitalIntelligence,
+    WorkingCapitalObservation,
+)
 from atlas.alpha.investment_case.company_profile import CompanyProfile
+from atlas.alpha.investment_case.earnings_call import (
+    CommentaryCategoryChange,
+    EarningsCallChangeIntelligence,
+    EarningsCallKnowledge,
+    EarningsCallTranscript,
+    ManagementStatement,
+    compute_change_intelligence,
+)
 from atlas.alpha.investment_case.financial_history import FinancialPeriod, MarketSnapshot
+from atlas.alpha.investment_case.financial_statement_intelligence import (
+    BalanceSheetPeriod,
+    CashFlowStatementPeriod,
+    FinancialHealthKnowledge,
+    FinancialStatementHistory,
+    FinancialTrendObservation,
+    IncomeStatementPeriod,
+    assess_financial_health,
+    compute_cash_flow_consistency,
+    compute_trend_intelligence,
+)
+from atlas.alpha.investment_case.growth_intelligence import (
+    GrowthDurability,
+    GrowthKnowledge,
+    GrowthObservation,
+    GrowthTrendKnowledge,
+    SegmentGrowthInformation,
+)
+from atlas.alpha.investment_case.historical_valuation import (
+    HistoricalValuationKnowledge,
+    ValuationDeviation,
+    ValuationMetricHistory,
+    ValuationObservation,
+)
+from atlas.alpha.investment_case.management_credibility_intelligence import (
+    CommunicationConsistency,
+    CredibilityFinding,
+    GuidanceReliabilityKnowledge,
+    ManagementCommitment,
+    ManagementCredibilityKnowledge,
+)
+from atlas.alpha.investment_case.management_guidance_intelligence import (
+    ExplicitTarget,
+    ExplicitTargetRange,
+    GuidanceItem,
+    GuidanceReliabilitySummary,
+    ManagementGuidanceKnowledge,
+)
+from atlas.alpha.investment_case.executive_change_intelligence import (
+    ExecutiveChangeKnowledge,
+    ExecutiveIdentity,
+    LeadershipChangeEvent,
+    LeadershipChangeFinding,
+    SuccessionRelationship,
+)
+from atlas.alpha.investment_case.executive_track_record_intelligence import (
+    ExecutiveTenureRecord,
+    ExecutiveTrackRecordKnowledge,
+    TenureContext,
+    TenureGuidanceHistory,
+    TenureTimeline,
+    TrackRecordFinding,
+)
+from atlas.alpha.investment_case.incentive_intelligence import (
+    CashIncentive,
+    CompensationDisclosureFiling,
+    DilutionEvent,
+    EquityIncentive,
+    ExecutiveIncentiveProgram,
+    IncentiveChangeFinding,
+    IncentiveKnowledge,
+    IncentiveStructure,
+    IncentiveTimelineEvent,
+    OwnershipAlignment,
+    PerformanceIncentive,
+)
 from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComposition
+from atlas.alpha.investment_case.regulatory_filings import RegulatoryFiling
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaTradeLogEntry
 from atlas.analysis_engine.business_contracts import BusinessAnalysisResult, BusinessFinding
 from atlas.analysis_engine.conviction import ConvictionAssessment
+from atlas.analysis_engine.evidence_resolution import AnyFact, AnyFinding, resolve_evidence_references
 from atlas.analysis_engine.investment_case_change import ChangeFinding, ChangeIntelligence, ThesisImpact
 from atlas.analysis_engine.investment_case_synthesis import (
     AtlasThesis,
@@ -65,6 +179,43 @@ from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.observation.entity import Observation
 from atlas.core.infrastructure.api.serialization import CamelModel
 from atlas.decision_engine.contracts import RecommendationWithheld
+
+
+class _EvidenceResolverContext:
+    """Product Sprint 14 (Evidence & Explanation Quality): a thin,
+    schema-layer-only carrier for the three lookup maps
+    `resolve_evidence_references` needs, so `BusinessFindingView`/
+    `ValuationFindingView`/`RiskFindingView.from_domain` each take one
+    optional keyword argument instead of three. Never constructed by
+    any test that doesn't care about resolution -- every `from_domain`
+    defaults to `_EMPTY_EVIDENCE_RESOLVER_CONTEXT`, which resolves
+    nothing (every reference falls back to itself, the exact prior
+    behavior), so no existing call site anywhere in this codebase's
+    test suite needs to change."""
+
+    __slots__ = ("facts_by_id", "findings_by_id", "observations_by_id")
+
+    def __init__(
+        self,
+        *,
+        facts_by_id: dict[str, AnyFact],
+        findings_by_id: dict[str, AnyFinding],
+        observations_by_id: dict[str, Observation],
+    ) -> None:
+        self.facts_by_id = facts_by_id
+        self.findings_by_id = findings_by_id
+        self.observations_by_id = observations_by_id
+
+    def resolve(self, references: tuple[str, ...]) -> tuple[str, ...]:
+        return resolve_evidence_references(
+            references,
+            facts_by_id=self.facts_by_id,
+            findings_by_id=self.findings_by_id,
+            observations_by_id=self.observations_by_id,
+        )
+
+
+_EMPTY_EVIDENCE_RESOLVER_CONTEXT = _EvidenceResolverContext(facts_by_id={}, findings_by_id={}, observations_by_id={})
 
 
 class HoldingContextView(CamelModel):
@@ -112,13 +263,19 @@ class BusinessFindingView(CamelModel):
     updated_at: datetime
 
     @classmethod
-    def from_domain(cls, finding: BusinessFinding) -> "BusinessFindingView":
+    def from_domain(
+        cls,
+        finding: BusinessFinding,
+        *,
+        resolver: "_EvidenceResolverContext | None" = None,
+    ) -> "BusinessFindingView":
+        resolver = resolver or _EMPTY_EVIDENCE_RESOLVER_CONTEXT
         return cls(
             kind=finding.kind.value,
             status=finding.status.value,
             severity=finding.severity.value,
-            supporting_evidence=list(finding.supporting_evidence),
-            contradicting_evidence=list(finding.contradicting_evidence),
+            supporting_evidence=list(resolver.resolve(finding.supporting_evidence)),
+            contradicting_evidence=list(resolver.resolve(finding.contradicting_evidence)),
             missing_evidence=[m.value for m in finding.missing_evidence],
             confidence=finding.confidence.value,
             updated_at=finding.updated_at,
@@ -130,8 +287,16 @@ class BusinessAnalysisView(CamelModel):
     findings: list[BusinessFindingView]
 
     @classmethod
-    def from_domain(cls, result: BusinessAnalysisResult) -> "BusinessAnalysisView":
-        return cls(state=result.state.value, findings=[BusinessFindingView.from_domain(f) for f in result.findings])
+    def from_domain(
+        cls,
+        result: BusinessAnalysisResult,
+        *,
+        resolver: "_EvidenceResolverContext | None" = None,
+    ) -> "BusinessAnalysisView":
+        return cls(
+            state=result.state.value,
+            findings=[BusinessFindingView.from_domain(f, resolver=resolver) for f in result.findings],
+        )
 
 
 class ValuationFindingView(CamelModel):
@@ -146,13 +311,19 @@ class ValuationFindingView(CamelModel):
     current_yield: float | None
 
     @classmethod
-    def from_domain(cls, finding: ValuationFinding) -> "ValuationFindingView":
+    def from_domain(
+        cls,
+        finding: ValuationFinding,
+        *,
+        resolver: "_EvidenceResolverContext | None" = None,
+    ) -> "ValuationFindingView":
+        resolver = resolver or _EMPTY_EVIDENCE_RESOLVER_CONTEXT
         return cls(
             kind=finding.kind.value,
             status=finding.status.value,
             severity=finding.severity.value,
-            supporting_facts=list(finding.supporting_facts),
-            contradicting_facts=list(finding.contradicting_facts),
+            supporting_facts=list(resolver.resolve(finding.supporting_facts)),
+            contradicting_facts=list(resolver.resolve(finding.contradicting_facts)),
             assumptions=[a.value for a in finding.assumptions],
             missing_evidence=[m.value for m in finding.missing_evidence],
             confidence=finding.confidence.value,
@@ -165,8 +336,16 @@ class ValuationEngineView(CamelModel):
     findings: list[ValuationFindingView]
 
     @classmethod
-    def from_domain(cls, result: ValuationEngineResult) -> "ValuationEngineView":
-        return cls(state=result.state.value, findings=[ValuationFindingView.from_domain(f) for f in result.findings])
+    def from_domain(
+        cls,
+        result: ValuationEngineResult,
+        *,
+        resolver: "_EvidenceResolverContext | None" = None,
+    ) -> "ValuationEngineView":
+        return cls(
+            state=result.state.value,
+            findings=[ValuationFindingView.from_domain(f, resolver=resolver) for f in result.findings],
+        )
 
 
 class RiskFindingView(CamelModel):
@@ -179,13 +358,19 @@ class RiskFindingView(CamelModel):
     confidence: str
 
     @classmethod
-    def from_domain(cls, finding: RiskFinding) -> "RiskFindingView":
+    def from_domain(
+        cls,
+        finding: RiskFinding,
+        *,
+        resolver: "_EvidenceResolverContext | None" = None,
+    ) -> "RiskFindingView":
+        resolver = resolver or _EMPTY_EVIDENCE_RESOLVER_CONTEXT
         return cls(
             category=finding.category.value,
             status=finding.status.value,
             severity=finding.severity.value,
-            supporting_facts=list(finding.supporting_facts),
-            contradicting_facts=list(finding.contradicting_facts),
+            supporting_facts=list(resolver.resolve(finding.supporting_facts)),
+            contradicting_facts=list(resolver.resolve(finding.contradicting_facts)),
             missing_evidence=[m.value for m in finding.missing_evidence],
             confidence=finding.confidence.value,
         )
@@ -196,8 +381,16 @@ class RiskAnalysisView(CamelModel):
     findings: list[RiskFindingView]
 
     @classmethod
-    def from_domain(cls, result: RiskAnalysisResult) -> "RiskAnalysisView":
-        return cls(state=result.state.value, findings=[RiskFindingView.from_domain(f) for f in result.findings])
+    def from_domain(
+        cls,
+        result: RiskAnalysisResult,
+        *,
+        resolver: "_EvidenceResolverContext | None" = None,
+    ) -> "RiskAnalysisView":
+        return cls(
+            state=result.state.value,
+            findings=[RiskFindingView.from_domain(f, resolver=resolver) for f in result.findings],
+        )
 
 
 class RiskProjectionView(CamelModel):
@@ -249,6 +442,128 @@ class ConvictionAssessmentView(CamelModel):
     @classmethod
     def from_domain(cls, assessment: ConvictionAssessment) -> "ConvictionAssessmentView":
         return cls(level=assessment.level.value, reasons=[r.value for r in assessment.reasons])
+
+
+class DimensionCoverageView(CamelModel):
+    """Atlas Intelligence Sprint 1 (Data Coverage & Confidence Engine).
+    One real analysis dimension's coverage -- see
+    `atlas.alpha.coverage.models.DimensionCoverage`'s own docstring."""
+
+    dimension: str
+    level: str
+    reasoning: list[str]
+
+    @classmethod
+    def from_domain(cls, coverage: DimensionCoverage) -> "DimensionCoverageView":
+        return cls(dimension=coverage.dimension, level=coverage.level.value, reasoning=list(coverage.reasoning))
+
+
+class KnowledgeDomainCoverageView(CamelModel):
+    """Automatic Investment Case Builder Foundation. One knowledge
+    domain's current state -- see `atlas.alpha.knowledge_coverage
+    .models.KnowledgeDomainCoverage`'s own docstring."""
+
+    domain: str
+    group: str
+    level: str
+    freshness: str
+    dominance: str
+    missing_reasons: list[str]
+
+    @classmethod
+    def from_domain(cls, coverage: KnowledgeDomainCoverage) -> "KnowledgeDomainCoverageView":
+        return cls(
+            domain=coverage.domain.value,
+            group=coverage.group.value,
+            level=coverage.level.value,
+            freshness=coverage.freshness.value,
+            dominance=coverage.dominance.value,
+            missing_reasons=[r.value for r in coverage.missing_reasons],
+        )
+
+
+class InvestmentCaseKnowledgeCoverageView(CamelModel):
+    """Automatic Investment Case Builder Foundation. The whole-Case
+    knowledge-completeness picture -- see `atlas.alpha.knowledge_coverage
+    .models.InvestmentCaseKnowledgeCoverage`'s own docstring for why the
+    backend domain object itself carries no percentage field.
+    `coveragePercent` is computed here, once, at the serialization
+    boundary, always alongside the real counts it was derived from
+    (`availableCount`/`applicableCount`) -- never a black-box score."""
+
+    domains: list[KnowledgeDomainCoverageView]
+    available_count: int
+    partially_available_count: int
+    applicable_count: int
+    total_domain_count: int
+    not_applicable_count: int
+    missing_domains: list[str]
+    not_applicable_domains: list[str]
+    coverage_percent: int
+    """`round(available_count / applicable_count * 100)`, `0` when
+    `applicable_count` is `0` (no domain has a real extractor wired --
+    cannot happen today, since `COMPANY_PROFILE`/`FINANCIAL_HISTORY`/
+    `VALUATION` are always applicable, but guarded honestly rather than
+    dividing by zero)."""
+
+    @classmethod
+    def from_domain(cls, coverage: InvestmentCaseKnowledgeCoverage) -> "InvestmentCaseKnowledgeCoverageView":
+        coverage_percent = (
+            round(coverage.available_count / coverage.applicable_count * 100) if coverage.applicable_count > 0 else 0
+        )
+        return cls(
+            domains=[KnowledgeDomainCoverageView.from_domain(d) for d in coverage.domains],
+            available_count=coverage.available_count,
+            partially_available_count=coverage.partially_available_count,
+            applicable_count=coverage.applicable_count,
+            total_domain_count=coverage.total_domain_count,
+            not_applicable_count=coverage.not_applicable_count,
+            missing_domains=[d.value for d in coverage.missing_domains],
+            not_applicable_domains=[d.value for d in coverage.not_applicable_domains],
+            coverage_percent=coverage_percent,
+        )
+
+
+class ConfidenceReasonView(CamelModel):
+    """Atlas Intelligence Sprint 1. Mirrors `atlas.alpha.coverage.models
+    .ConfidenceReasonCode` exactly -- a closed reason code plus whatever
+    real count it names, never a pre-written sentence (matching
+    `ConvictionAssessmentView.reasons`'s own "frontend owns the
+    sentence" convention)."""
+
+    code: str
+    count: int | None
+    total: int | None
+
+    @classmethod
+    def from_domain(cls, reason: "ConfidenceReason") -> "ConfidenceReasonView":
+        return cls(code=reason.code.value, count=reason.count, total=reason.total)
+
+
+class CoverageAssessmentView(CamelModel):
+    """Atlas Intelligence Sprint 1. Every field is read straight off an
+    already-computed `CoverageAssessment` -- see
+    `atlas.alpha.coverage.engine.assess_coverage`'s own module
+    docstring for the full derivation and why this is never a second
+    analysis computation."""
+
+    dimensions: list[DimensionCoverageView]
+    overall_coverage: str
+    overall_confidence: str
+    missing_dimensions: list[str]
+    not_applicable_dimensions: list[str]
+    reasoning: list[ConfidenceReasonView]
+
+    @classmethod
+    def from_domain(cls, assessment: CoverageAssessment) -> "CoverageAssessmentView":
+        return cls(
+            dimensions=[DimensionCoverageView.from_domain(d) for d in assessment.dimensions],
+            overall_coverage=assessment.overall_coverage.value,
+            overall_confidence=assessment.overall_confidence.value,
+            missing_dimensions=list(assessment.missing_dimensions),
+            not_applicable_dimensions=list(assessment.not_applicable_dimensions),
+            reasoning=[ConfidenceReasonView.from_domain(r) for r in assessment.reasoning],
+        )
 
 
 class RecommendationOutlookAlignmentView(CamelModel):
@@ -413,6 +728,1401 @@ class CompanyProfileView(CamelModel):
             as_of=profile.as_of,
             currency=profile.currency,
             fiscal_year_end=profile.fiscal_year_end,
+        )
+
+
+class RegulatoryFilingView(CamelModel):
+    """(Automatic Knowledge Ingestion Framework, Foundation Provider)
+    One real SEC filing's own identity -- its existence and metadata,
+    never its content."""
+
+    form_type: str
+    filed_at: datetime
+    accession_number: str
+    filing_url: str
+    period_of_report: date | None
+
+    @classmethod
+    def from_domain(cls, filing: RegulatoryFiling) -> "RegulatoryFilingView":
+        return cls(
+            form_type=filing.form_type,
+            filed_at=filing.filed_at,
+            accession_number=filing.accession_number,
+            filing_url=filing.filing_url,
+            period_of_report=filing.period_of_report,
+        )
+
+
+class ValuationObservationView(CamelModel):
+    period_end: date
+    value: float
+
+    @classmethod
+    def from_domain(cls, observation: ValuationObservation) -> "ValuationObservationView":
+        return cls(period_end=observation.period_end, value=observation.value)
+
+
+class ValuationDeviationView(CamelModel):
+    period_end: date
+    value: float
+    deviation_from_average: float
+
+    @classmethod
+    def from_domain(cls, deviation: ValuationDeviation) -> "ValuationDeviationView":
+        return cls(
+            period_end=deviation.period_end, value=deviation.value, deviation_from_average=deviation.deviation_from_average
+        )
+
+
+class ValuationMetricHistoryView(CamelModel):
+    """(Capability Expansion Sprint 1: Historical Valuation
+    Intelligence) Structured knowledge, never an opinion -- see
+    `historical_valuation.py`'s own module docstring. Every field here
+    is explainable: what is known (`observations`, `coverage_period_*`),
+    where it stands relative to the company's own history
+    (`current_percentile`, `position_in_range`, `trend`, `stability`),
+    and what remains missing (`missing_periods`, `data_quality`)."""
+
+    metric: str
+    current_value: float | None
+    current_period_end: date | None
+    observations: list[ValuationObservationView]
+    historical_average: float | None
+    historical_median: float | None
+    historical_minimum: float | None
+    historical_maximum: float | None
+    current_percentile: float | None
+    position_in_range: str
+    trend: str
+    stability: str
+    significant_deviations: list[ValuationDeviationView]
+    coverage_period_start: date | None
+    coverage_period_end: date | None
+    missing_periods: list[date]
+    data_quality: str
+
+    @classmethod
+    def from_domain(cls, metric: ValuationMetricHistory) -> "ValuationMetricHistoryView":
+        return cls(
+            metric=metric.metric.value,
+            current_value=metric.current_value,
+            current_period_end=metric.current_period_end,
+            observations=[ValuationObservationView.from_domain(o) for o in metric.observations],
+            historical_average=metric.historical_average,
+            historical_median=metric.historical_median,
+            historical_minimum=metric.historical_minimum,
+            historical_maximum=metric.historical_maximum,
+            current_percentile=metric.current_percentile,
+            position_in_range=metric.position_in_range.value,
+            trend=metric.trend.value,
+            stability=metric.stability.value,
+            significant_deviations=[ValuationDeviationView.from_domain(d) for d in metric.significant_deviations],
+            coverage_period_start=metric.coverage_period_start,
+            coverage_period_end=metric.coverage_period_end,
+            missing_periods=list(metric.missing_periods),
+            data_quality=metric.data_quality.value,
+        )
+
+
+class HistoricalValuationView(CamelModel):
+    metrics: list[ValuationMetricHistoryView]
+
+    @classmethod
+    def from_domain(cls, knowledge: HistoricalValuationKnowledge) -> "HistoricalValuationView":
+        return cls(metrics=[ValuationMetricHistoryView.from_domain(m) for m in knowledge.metrics])
+
+
+class ManagementStatementView(CamelModel):
+    """(Capability Expansion Sprint 2: Earnings Call Intelligence)
+    `content` is always the verbatim transcript quote -- `categories`/
+    `confidence` are the only things this pipeline adds. Traceable to
+    its own transcript by nesting inside `EarningsCallTranscriptView`,
+    never a floating, unattributed statement."""
+
+    speaker: str
+    title: str | None
+    content: str
+    categories: list[str]
+    confidence: float | None
+
+    @classmethod
+    def from_domain(cls, statement: ManagementStatement) -> "ManagementStatementView":
+        return cls(
+            speaker=statement.speaker,
+            title=statement.title,
+            content=statement.content,
+            categories=[c.value for c in statement.categories],
+            confidence=statement.confidence,
+        )
+
+
+class EarningsCallTranscriptView(CamelModel):
+    quarter: str
+    fiscal_date_ending: date | None
+    published_at: date
+    statements: list[ManagementStatementView]
+
+    @classmethod
+    def from_domain(cls, transcript: EarningsCallTranscript) -> "EarningsCallTranscriptView":
+        return cls(
+            quarter=transcript.quarter,
+            fiscal_date_ending=transcript.fiscal_date_ending,
+            published_at=transcript.published_at,
+            statements=[ManagementStatementView.from_domain(s) for s in transcript.statements],
+        )
+
+
+class CommentaryCategoryChangeView(CamelModel):
+    category: str
+    previous_statement_count: int
+    current_statement_count: int
+    previous_average_confidence: float | None
+    current_average_confidence: float | None
+    emphasis_change: str
+    sentiment_trend: str
+
+    @classmethod
+    def from_domain(cls, change: CommentaryCategoryChange) -> "CommentaryCategoryChangeView":
+        return cls(
+            category=change.category.value,
+            previous_statement_count=change.previous_statement_count,
+            current_statement_count=change.current_statement_count,
+            previous_average_confidence=change.previous_average_confidence,
+            current_average_confidence=change.current_average_confidence,
+            emphasis_change=change.emphasis_change.value,
+            sentiment_trend=change.sentiment_trend.value,
+        )
+
+
+class EarningsCallChangeIntelligenceView(CamelModel):
+    previous_quarter: str | None
+    current_quarter: str | None
+    category_changes: list[CommentaryCategoryChangeView]
+
+    @classmethod
+    def from_domain(cls, change: EarningsCallChangeIntelligence) -> "EarningsCallChangeIntelligenceView":
+        return cls(
+            previous_quarter=change.previous_quarter,
+            current_quarter=change.current_quarter,
+            category_changes=[CommentaryCategoryChangeView.from_domain(c) for c in change.category_changes],
+        )
+
+
+class EarningsCallView(CamelModel):
+    """(Capability Expansion Sprint 2) `change_intelligence` is derived
+    here, once, from `transcripts` -- the identical "a cheap, pure,
+    additional derived view computed at the presentation boundary"
+    precedent `CoverageAssessment`/`RecommendationStateView` already
+    establish in this same module, never a second persisted field."""
+
+    transcripts: list[EarningsCallTranscriptView]
+    change_intelligence: EarningsCallChangeIntelligenceView
+
+    @classmethod
+    def from_domain(cls, knowledge: EarningsCallKnowledge) -> "EarningsCallView":
+        return cls(
+            transcripts=[EarningsCallTranscriptView.from_domain(t) for t in knowledge.transcripts],
+            change_intelligence=EarningsCallChangeIntelligenceView.from_domain(compute_change_intelligence(knowledge)),
+        )
+
+
+class IncomeStatementPeriodView(CamelModel):
+    period_end: date
+    revenue: float | None
+    gross_profit: float | None
+    operating_income: float | None
+    ebitda: float | None
+    net_income: float | None
+    eps: float | None
+    gross_margin: float | None
+    operating_margin: float | None
+    net_margin: float | None
+    currency: str | None
+    accounting_basis: str | None
+    source_reference: str | None
+
+    @classmethod
+    def from_domain(cls, period: IncomeStatementPeriod) -> "IncomeStatementPeriodView":
+        return cls(
+            period_end=period.period_end, revenue=period.revenue, gross_profit=period.gross_profit,
+            operating_income=period.operating_income, ebitda=period.ebitda, net_income=period.net_income,
+            eps=period.eps, gross_margin=period.gross_margin, operating_margin=period.operating_margin,
+            net_margin=period.net_margin, currency=period.currency, accounting_basis=period.accounting_basis,
+            source_reference=period.source_reference,
+        )
+
+
+class BalanceSheetPeriodView(CamelModel):
+    period_end: date
+    cash: float | None
+    total_debt: float | None
+    equity: float | None
+    current_assets: float | None
+    current_liabilities: float | None
+    working_capital: float | None
+    total_assets: float | None
+    tangible_assets: float | None
+    intangible_assets: float | None
+    currency: str | None
+    accounting_basis: str | None
+    source_reference: str | None
+
+    @classmethod
+    def from_domain(cls, period: BalanceSheetPeriod) -> "BalanceSheetPeriodView":
+        return cls(
+            period_end=period.period_end, cash=period.cash, total_debt=period.total_debt, equity=period.equity,
+            current_assets=period.current_assets, current_liabilities=period.current_liabilities,
+            working_capital=period.working_capital, total_assets=period.total_assets,
+            tangible_assets=period.tangible_assets, intangible_assets=period.intangible_assets,
+            currency=period.currency, accounting_basis=period.accounting_basis,
+            source_reference=period.source_reference,
+        )
+
+
+class CashFlowStatementPeriodView(CamelModel):
+    period_end: date
+    operating_cash_flow: float | None
+    investing_cash_flow: float | None
+    financing_cash_flow: float | None
+    free_cash_flow: float | None
+    capital_expenditure: float | None
+    currency: str | None
+    accounting_basis: str | None
+    source_reference: str | None
+
+    @classmethod
+    def from_domain(cls, period: CashFlowStatementPeriod) -> "CashFlowStatementPeriodView":
+        return cls(
+            period_end=period.period_end, operating_cash_flow=period.operating_cash_flow,
+            investing_cash_flow=period.investing_cash_flow, financing_cash_flow=period.financing_cash_flow,
+            free_cash_flow=period.free_cash_flow, capital_expenditure=period.capital_expenditure,
+            currency=period.currency, accounting_basis=period.accounting_basis,
+            source_reference=period.source_reference,
+        )
+
+
+class FinancialTrendObservationView(CamelModel):
+    metric: str
+    direction: str
+    periods_considered: int
+
+    @classmethod
+    def from_domain(cls, observation: FinancialTrendObservation) -> "FinancialTrendObservationView":
+        return cls(
+            metric=observation.metric.value, direction=observation.direction.value,
+            periods_considered=observation.periods_considered,
+        )
+
+
+class FinancialHealthView(CamelModel):
+    """(Capability Expansion Sprint 3) Every tier here is a real,
+    disclosed, single-ratio-based categorical bucket -- never combined
+    into one composite score. See `financial_statement_intelligence.py`'s
+    own module docstring."""
+
+    liquidity: str
+    solvency: str
+    profitability: str
+    cash_generation: str
+    capital_efficiency: str
+    balance_sheet_strength: str
+    earnings_durability: str
+    financial_flexibility: str
+
+    @classmethod
+    def from_domain(cls, health: FinancialHealthKnowledge) -> "FinancialHealthView":
+        return cls(
+            liquidity=health.liquidity.value, solvency=health.solvency.value,
+            profitability=health.profitability.value, cash_generation=health.cash_generation.value,
+            capital_efficiency=health.capital_efficiency.value,
+            balance_sheet_strength=health.balance_sheet_strength.value,
+            earnings_durability=health.earnings_durability.value,
+            financial_flexibility=health.financial_flexibility.value,
+        )
+
+
+class FinancialStatementIntelligenceView(CamelModel):
+    """(Capability Expansion Sprint 3) `trends`/`cash_flow_consistency`/
+    `financial_health` are derived here, once, from `history` -- the
+    identical presentation-boundary-derivation precedent `EarningsCallView
+    .change_intelligence` already establishes above."""
+
+    income_statements: list[IncomeStatementPeriodView]
+    balance_sheets: list[BalanceSheetPeriodView]
+    cash_flow_statements: list[CashFlowStatementPeriodView]
+    trends: list[FinancialTrendObservationView]
+    cash_flow_consistency: str
+    financial_health: FinancialHealthView
+
+    @classmethod
+    def from_domain(cls, history: FinancialStatementHistory) -> "FinancialStatementIntelligenceView":
+        return cls(
+            income_statements=[IncomeStatementPeriodView.from_domain(p) for p in history.income_statements],
+            balance_sheets=[BalanceSheetPeriodView.from_domain(p) for p in history.balance_sheets],
+            cash_flow_statements=[CashFlowStatementPeriodView.from_domain(p) for p in history.cash_flow_statements],
+            trends=[FinancialTrendObservationView.from_domain(o) for o in compute_trend_intelligence(history)],
+            cash_flow_consistency=compute_cash_flow_consistency(history).value,
+            financial_health=FinancialHealthView.from_domain(assess_financial_health(history)),
+        )
+
+
+class CapitalAllocationPeriodView(CamelModel):
+    period_end: date
+    capital_expenditure: float | None
+    maintenance_capex: float | None
+    growth_capex: float | None
+    dividends: float | None
+    share_buybacks: float | None
+    treasury_shares_acquired: float | None
+    share_issuance: float | None
+    shares_outstanding: float | None
+    debt_issuance: float | None
+    debt_repayment: float | None
+    total_debt: float | None
+    acquisitions: float | None
+    disposals: float | None
+    investment_activity: float | None
+    currency: str | None
+    accounting_basis: str | None
+    source_reference: str | None
+
+    @classmethod
+    def from_domain(cls, period: CapitalAllocationPeriod) -> "CapitalAllocationPeriodView":
+        return cls(
+            period_end=period.period_end, capital_expenditure=period.capital_expenditure,
+            maintenance_capex=period.maintenance_capex, growth_capex=period.growth_capex,
+            dividends=period.dividends, share_buybacks=period.share_buybacks,
+            treasury_shares_acquired=period.treasury_shares_acquired, share_issuance=period.share_issuance,
+            shares_outstanding=period.shares_outstanding, debt_issuance=period.debt_issuance,
+            debt_repayment=period.debt_repayment, total_debt=period.total_debt, acquisitions=period.acquisitions,
+            disposals=period.disposals, investment_activity=period.investment_activity, currency=period.currency,
+            accounting_basis=period.accounting_basis, source_reference=period.source_reference,
+        )
+
+
+class CapitalAllocationTrendObservationView(CamelModel):
+    metric: str
+    direction: str
+    periods_considered: int
+
+    @classmethod
+    def from_domain(cls, observation: CapitalAllocationTrendObservation) -> "CapitalAllocationTrendObservationView":
+        return cls(
+            metric=observation.metric.value, direction=observation.direction.value,
+            periods_considered=observation.periods_considered,
+        )
+
+
+class ManagementCapitalAllocationView(CamelModel):
+    """(Capability Expansion Sprint 4) Every field here is one real,
+    disclosed, single-signal classification -- never combined into a
+    management score. See `capital_allocation_intelligence.py`'s own
+    module docstring."""
+
+    reinvestment_discipline: str
+    shareholder_return_policy: str
+    financing_strategy: str
+    acquisition_behavior: str
+    debt_discipline: str
+    capital_allocation_consistency: str
+
+    @classmethod
+    def from_domain(cls, knowledge: ManagementCapitalAllocationKnowledge) -> "ManagementCapitalAllocationView":
+        return cls(
+            reinvestment_discipline=knowledge.reinvestment_discipline.value,
+            shareholder_return_policy=knowledge.shareholder_return_policy.value,
+            financing_strategy=knowledge.financing_strategy.value,
+            acquisition_behavior=knowledge.acquisition_behavior.value,
+            debt_discipline=knowledge.debt_discipline.value,
+            capital_allocation_consistency=knowledge.capital_allocation_consistency.value,
+        )
+
+
+class CapitalAllocationIntelligenceView(CamelModel):
+    """(Capability Expansion Sprint 4) `trends`/`dividend_continuity`/
+    `buyback_consistency`/`management` are all derived here, once, from
+    `history` -- the identical presentation-boundary-derivation
+    precedent `FinancialStatementIntelligenceView` already establishes."""
+
+    periods: list[CapitalAllocationPeriodView]
+    trends: list[CapitalAllocationTrendObservationView]
+    dividend_continuity: str
+    buyback_consistency: str
+    management: ManagementCapitalAllocationView
+
+    @classmethod
+    def from_domain(cls, history: CapitalAllocationHistory) -> "CapitalAllocationIntelligenceView":
+        return cls(
+            periods=[CapitalAllocationPeriodView.from_domain(p) for p in history.periods],
+            trends=[CapitalAllocationTrendObservationView.from_domain(o) for o in compute_capital_allocation_trends(history)],
+            dividend_continuity=assess_dividend_continuity(history).value,
+            buyback_consistency=assess_buyback_consistency(history).value,
+            management=ManagementCapitalAllocationView.from_domain(assess_management_capital_allocation(history)),
+        )
+
+
+class CashConversionObservationView(CamelModel):
+    period_end: date
+    ocf_to_net_income: float | None
+    fcf_to_net_income: float | None
+    fcf_to_operating_income: float | None
+
+    @classmethod
+    def from_domain(cls, observation: CashConversionObservation) -> "CashConversionObservationView":
+        return cls(
+            period_end=observation.period_end, ocf_to_net_income=observation.ocf_to_net_income,
+            fcf_to_net_income=observation.fcf_to_net_income, fcf_to_operating_income=observation.fcf_to_operating_income,
+        )
+
+
+class CashConversionView(CamelModel):
+    observations: list[CashConversionObservationView]
+    ocf_conversion_pattern: str
+    ocf_conversion_trend: str
+    ocf_conversion_stability: str
+    fcf_conversion_pattern: str
+    fcf_conversion_trend: str
+    fcf_conversion_stability: str
+
+    @classmethod
+    def from_domain(cls, knowledge: CashConversionKnowledge) -> "CashConversionView":
+        return cls(
+            observations=[CashConversionObservationView.from_domain(o) for o in knowledge.observations],
+            ocf_conversion_pattern=knowledge.ocf_conversion_pattern.value,
+            ocf_conversion_trend=knowledge.ocf_conversion_trend.value,
+            ocf_conversion_stability=knowledge.ocf_conversion_stability.value,
+            fcf_conversion_pattern=knowledge.fcf_conversion_pattern.value,
+            fcf_conversion_trend=knowledge.fcf_conversion_trend.value,
+            fcf_conversion_stability=knowledge.fcf_conversion_stability.value,
+        )
+
+
+class WorkingCapitalObservationView(CamelModel):
+    period_end: date
+    working_capital: float | None
+    working_capital_to_revenue: float | None
+    change_from_prior_period: float | None
+
+    @classmethod
+    def from_domain(cls, observation: WorkingCapitalObservation) -> "WorkingCapitalObservationView":
+        return cls(
+            period_end=observation.period_end, working_capital=observation.working_capital,
+            working_capital_to_revenue=observation.working_capital_to_revenue,
+            change_from_prior_period=observation.change_from_prior_period,
+        )
+
+
+class WorkingCapitalIntelligenceView(CamelModel):
+    observations: list[WorkingCapitalObservationView]
+    trend: str
+    most_recent_direction: str
+    stability: str
+
+    @classmethod
+    def from_domain(cls, knowledge: WorkingCapitalIntelligence) -> "WorkingCapitalIntelligenceView":
+        return cls(
+            observations=[WorkingCapitalObservationView.from_domain(o) for o in knowledge.observations],
+            trend=knowledge.trend.value, most_recent_direction=knowledge.most_recent_direction.value,
+            stability=knowledge.stability.value,
+        )
+
+
+class MarginReversalView(CamelModel):
+    period_end: date
+    margin_value: float
+    deviation_from_average: float
+
+    @classmethod
+    def from_domain(cls, reversal: MarginReversal) -> "MarginReversalView":
+        return cls(
+            period_end=reversal.period_end, margin_value=reversal.margin_value,
+            deviation_from_average=reversal.deviation_from_average,
+        )
+
+
+class MarginDurabilityView(CamelModel):
+    margin: str
+    current_level: float | None
+    trend: str
+    stability: str
+    reversals: list[MarginReversalView]
+    periods_considered: int
+
+    @classmethod
+    def from_domain(cls, durability: MarginDurability) -> "MarginDurabilityView":
+        return cls(
+            margin=durability.margin.value, current_level=durability.current_level, trend=durability.trend.value,
+            stability=durability.stability.value,
+            reversals=[MarginReversalView.from_domain(r) for r in durability.reversals],
+            periods_considered=durability.periods_considered,
+        )
+
+
+class ProfitabilityDurabilityView(CamelModel):
+    gross_margin: MarginDurabilityView
+    operating_margin: MarginDurabilityView
+    net_margin: MarginDurabilityView
+
+    @classmethod
+    def from_domain(cls, durability: ProfitabilityDurability) -> "ProfitabilityDurabilityView":
+        return cls(
+            gross_margin=MarginDurabilityView.from_domain(durability.gross_margin),
+            operating_margin=MarginDurabilityView.from_domain(durability.operating_margin),
+            net_margin=MarginDurabilityView.from_domain(durability.net_margin),
+        )
+
+
+class CapitalEfficiencyObservationView(CamelModel):
+    period_end: date
+    return_on_assets: float | None
+    return_on_equity: float | None
+    asset_turnover: float | None
+
+    @classmethod
+    def from_domain(cls, observation: CapitalEfficiencyObservation) -> "CapitalEfficiencyObservationView":
+        return cls(
+            period_end=observation.period_end, return_on_assets=observation.return_on_assets,
+            return_on_equity=observation.return_on_equity, asset_turnover=observation.asset_turnover,
+        )
+
+
+class CapitalEfficiencyView(CamelModel):
+    """(Capability Expansion Sprint 5) `return_on_invested_capital_
+    unavailable_reason` names, as real structured knowledge, why ROIC
+    is not computed -- see `financial_quality_intelligence.py`'s own
+    module docstring."""
+
+    observations: list[CapitalEfficiencyObservationView]
+    return_on_assets_trend: str
+    return_on_equity_trend: str
+    asset_turnover_trend: str
+    capital_intensity_trend: str
+    return_on_invested_capital_unavailable_reason: str
+
+    @classmethod
+    def from_domain(cls, knowledge: CapitalEfficiencyKnowledge) -> "CapitalEfficiencyView":
+        return cls(
+            observations=[CapitalEfficiencyObservationView.from_domain(o) for o in knowledge.observations],
+            return_on_assets_trend=knowledge.return_on_assets_trend.value,
+            return_on_equity_trend=knowledge.return_on_equity_trend.value,
+            asset_turnover_trend=knowledge.asset_turnover_trend.value,
+            capital_intensity_trend=knowledge.capital_intensity_trend.value,
+            return_on_invested_capital_unavailable_reason=knowledge.return_on_invested_capital_unavailable_reason.value,
+        )
+
+
+class FinancialDurabilityView(CamelModel):
+    findings: list[str]
+
+    @classmethod
+    def from_domain(cls, knowledge: FinancialDurabilityKnowledge) -> "FinancialDurabilityView":
+        return cls(findings=[f.value for f in knowledge.findings])
+
+
+class FinancialQualityIntelligenceView(CamelModel):
+    """(Capability Expansion Sprint 5) A pure, second-order
+    transformation of `FinancialStatementIntelligenceView`'s own already
+    -covered data -- see `financial_quality_intelligence.py`'s own
+    module docstring for why this introduces no new Knowledge Coverage
+    domain."""
+
+    cash_conversion: CashConversionView
+    working_capital: WorkingCapitalIntelligenceView
+    profitability_durability: ProfitabilityDurabilityView
+    capital_efficiency: CapitalEfficiencyView
+    financial_durability: FinancialDurabilityView
+
+    @classmethod
+    def from_domain(cls, knowledge: FinancialQualityKnowledge) -> "FinancialQualityIntelligenceView":
+        return cls(
+            cash_conversion=CashConversionView.from_domain(knowledge.cash_conversion),
+            working_capital=WorkingCapitalIntelligenceView.from_domain(knowledge.working_capital),
+            profitability_durability=ProfitabilityDurabilityView.from_domain(knowledge.profitability_durability),
+            capital_efficiency=CapitalEfficiencyView.from_domain(knowledge.capital_efficiency),
+            financial_durability=FinancialDurabilityView.from_domain(knowledge.financial_durability),
+        )
+
+
+class GrowthObservationView(CamelModel):
+    period_end: date
+    value: float | None
+    year_over_year_growth: float | None
+
+    @classmethod
+    def from_domain(cls, observation: GrowthObservation) -> "GrowthObservationView":
+        return cls(
+            period_end=observation.period_end, value=observation.value,
+            year_over_year_growth=observation.year_over_year_growth,
+        )
+
+
+class GrowthDurabilityView(CamelModel):
+    consistency: str
+    consecutive_growth_periods: int
+    recovery_status: str
+
+    @classmethod
+    def from_domain(cls, durability: GrowthDurability) -> "GrowthDurabilityView":
+        return cls(
+            consistency=durability.consistency.value,
+            consecutive_growth_periods=durability.consecutive_growth_periods,
+            recovery_status=durability.recovery_status.value,
+        )
+
+
+class GrowthTrendKnowledgeView(CamelModel):
+    metric: str
+    observations: list[GrowthObservationView]
+    cagr: float | None
+    direction: str
+    pattern: str
+    durability: GrowthDurabilityView
+    periods_considered: int
+
+    @classmethod
+    def from_domain(cls, trend: GrowthTrendKnowledge) -> "GrowthTrendKnowledgeView":
+        return cls(
+            metric=trend.metric.value,
+            observations=[GrowthObservationView.from_domain(o) for o in trend.observations],
+            cagr=trend.cagr, direction=trend.direction.value, pattern=trend.pattern.value,
+            durability=GrowthDurabilityView.from_domain(trend.durability),
+            periods_considered=trend.periods_considered,
+        )
+
+
+class SegmentGrowthInformationView(CamelModel):
+    available: bool
+
+    @classmethod
+    def from_domain(cls, segment_growth: SegmentGrowthInformation) -> "SegmentGrowthInformationView":
+        return cls(available=segment_growth.available)
+
+
+class GrowthKnowledgeView(CamelModel):
+    """(Capability Expansion Sprint 6) Structured knowledge describing
+    the nature, consistency and durability of growth -- see
+    `growth_intelligence.py`'s own module docstring."""
+
+    revenue: GrowthTrendKnowledgeView
+    earnings: GrowthTrendKnowledgeView
+    operating_cash_flow: GrowthTrendKnowledgeView
+    free_cash_flow: GrowthTrendKnowledgeView
+    book_value: GrowthTrendKnowledgeView
+    earnings_per_share: GrowthTrendKnowledgeView
+    segment_growth: SegmentGrowthInformationView
+
+    @classmethod
+    def from_domain(cls, knowledge: GrowthKnowledge) -> "GrowthKnowledgeView":
+        return cls(
+            revenue=GrowthTrendKnowledgeView.from_domain(knowledge.revenue),
+            earnings=GrowthTrendKnowledgeView.from_domain(knowledge.earnings),
+            operating_cash_flow=GrowthTrendKnowledgeView.from_domain(knowledge.operating_cash_flow),
+            free_cash_flow=GrowthTrendKnowledgeView.from_domain(knowledge.free_cash_flow),
+            book_value=GrowthTrendKnowledgeView.from_domain(knowledge.book_value),
+            earnings_per_share=GrowthTrendKnowledgeView.from_domain(knowledge.earnings_per_share),
+            segment_growth=SegmentGrowthInformationView.from_domain(knowledge.segment_growth),
+        )
+
+
+class BusinessStabilityView(CamelModel):
+    profitability_stability: str
+    revenue_stability: str
+    cash_generation_stability: str
+    capital_allocation_stability: str
+
+    @classmethod
+    def from_domain(cls, stability: BusinessStability) -> "BusinessStabilityView":
+        return cls(
+            profitability_stability=stability.profitability_stability.value,
+            revenue_stability=stability.revenue_stability.value,
+            cash_generation_stability=stability.cash_generation_stability.value,
+            capital_allocation_stability=stability.capital_allocation_stability.value,
+        )
+
+
+class GrowthDurabilitySummaryView(CamelModel):
+    metrics_with_consistent_growth: list[str]
+    metrics_with_consistent_decline: list[str]
+    metrics_recovered_from_decline: list[str]
+
+    @classmethod
+    def from_domain(cls, summary: GrowthDurabilitySummary) -> "GrowthDurabilitySummaryView":
+        return cls(
+            metrics_with_consistent_growth=[m.value for m in summary.metrics_with_consistent_growth],
+            metrics_with_consistent_decline=[m.value for m in summary.metrics_with_consistent_decline],
+            metrics_recovered_from_decline=[m.value for m in summary.metrics_recovered_from_decline],
+        )
+
+
+class BusinessDurabilityView(CamelModel):
+    financial_durability: FinancialDurabilityView
+    earnings_durability: str
+    growth_durability: GrowthDurabilitySummaryView
+    capital_discipline: ManagementCapitalAllocationView
+
+    @classmethod
+    def from_domain(cls, durability: BusinessDurability) -> "BusinessDurabilityView":
+        return cls(
+            financial_durability=FinancialDurabilityView.from_domain(durability.financial_durability),
+            earnings_durability=durability.earnings_durability.value,
+            growth_durability=GrowthDurabilitySummaryView.from_domain(durability.growth_durability),
+            capital_discipline=ManagementCapitalAllocationView.from_domain(durability.capital_discipline),
+        )
+
+
+class BusinessEfficiencyView(CamelModel):
+    capital_efficiency: CapitalEfficiencyView
+    asset_efficiency_trend: str
+    operating_efficiency_trend: str
+
+    @classmethod
+    def from_domain(cls, efficiency: BusinessEfficiency) -> "BusinessEfficiencyView":
+        return cls(
+            capital_efficiency=CapitalEfficiencyView.from_domain(efficiency.capital_efficiency),
+            asset_efficiency_trend=efficiency.asset_efficiency_trend.value,
+            operating_efficiency_trend=efficiency.operating_efficiency_trend.value,
+        )
+
+
+class HistoricalDisruptionView(CamelModel):
+    margin: str
+    period_end: date
+    margin_value: float
+    deviation_from_average: float
+
+    @classmethod
+    def from_domain(cls, disruption: HistoricalDisruption) -> "HistoricalDisruptionView":
+        return cls(
+            margin=disruption.margin.value, period_end=disruption.period_end, margin_value=disruption.margin_value,
+            deviation_from_average=disruption.deviation_from_average,
+        )
+
+
+class BusinessConsistencyView(CamelModel):
+    stable_dimensions: list[str]
+    volatile_dimensions: list[str]
+    major_historical_disruptions: list[HistoricalDisruptionView]
+
+    @classmethod
+    def from_domain(cls, consistency: BusinessConsistency) -> "BusinessConsistencyView":
+        return cls(
+            stable_dimensions=list(consistency.stable_dimensions),
+            volatile_dimensions=list(consistency.volatile_dimensions),
+            major_historical_disruptions=[
+                HistoricalDisruptionView.from_domain(d) for d in consistency.major_historical_disruptions
+            ],
+        )
+
+
+class BusinessEvolutionView(CamelModel):
+    direction: str
+    strengthening_signals: list[str]
+    weakening_signals: list[str]
+
+    @classmethod
+    def from_domain(cls, evolution: BusinessEvolution) -> "BusinessEvolutionView":
+        return cls(
+            direction=evolution.direction.value,
+            strengthening_signals=list(evolution.strengthening_signals),
+            weakening_signals=list(evolution.weakening_signals),
+        )
+
+
+class BusinessQualityFindingView(CamelModel):
+    kind: str
+    supporting_dimensions: list[str]
+
+    @classmethod
+    def from_domain(cls, finding: BusinessQualityFinding) -> "BusinessQualityFindingView":
+        return cls(kind=finding.kind.value, supporting_dimensions=list(finding.supporting_dimensions))
+
+
+class BusinessQualityIntelligenceView(CamelModel):
+    """(Capability Expansion Sprint 7) A pure, higher-order aggregation
+    over Financial Statement/Capital Allocation/Financial Quality/Growth
+    Intelligence's own already-computed outputs -- see `business_
+    quality_intelligence.py`'s own module docstring."""
+
+    stability: BusinessStabilityView
+    durability: BusinessDurabilityView
+    efficiency: BusinessEfficiencyView
+    consistency: BusinessConsistencyView
+    evolution: BusinessEvolutionView
+    findings: list[BusinessQualityFindingView]
+
+    @classmethod
+    def from_domain(cls, knowledge: BusinessQualityKnowledge) -> "BusinessQualityIntelligenceView":
+        return cls(
+            stability=BusinessStabilityView.from_domain(knowledge.stability),
+            durability=BusinessDurabilityView.from_domain(knowledge.durability),
+            efficiency=BusinessEfficiencyView.from_domain(knowledge.efficiency),
+            consistency=BusinessConsistencyView.from_domain(knowledge.consistency),
+            evolution=BusinessEvolutionView.from_domain(knowledge.evolution),
+            findings=[BusinessQualityFindingView.from_domain(f) for f in knowledge.findings],
+        )
+
+
+class ManagementCommitmentView(CamelModel):
+    signal: str
+    commitment_category: str
+    statement_date: date
+    reporting_period: str
+    fiscal_date_ending: date | None
+    speaker: str
+    source_transcript: str
+    supporting_quotation: str
+    revision_direction: str | None
+    outcome: str
+
+    @classmethod
+    def from_domain(cls, commitment: ManagementCommitment) -> "ManagementCommitmentView":
+        return cls(
+            signal=commitment.signal.value, commitment_category=commitment.commitment_category.value,
+            statement_date=commitment.statement_date, reporting_period=commitment.reporting_period,
+            fiscal_date_ending=commitment.fiscal_date_ending, speaker=commitment.speaker,
+            source_transcript=commitment.source_transcript, supporting_quotation=commitment.supporting_quotation,
+            revision_direction=commitment.revision_direction.value if commitment.revision_direction is not None else None,
+            outcome=commitment.outcome.value,
+        )
+
+
+class CommunicationConsistencyView(CamelModel):
+    direction: str
+    strengthened_categories: list[str]
+    weakened_categories: list[str]
+    guidance_changed: bool
+    strategic_emphasis_shifted: bool
+
+    @classmethod
+    def from_domain(cls, consistency: CommunicationConsistency) -> "CommunicationConsistencyView":
+        return cls(
+            direction=consistency.direction.value,
+            strengthened_categories=[c.value for c in consistency.strengthened_categories],
+            weakened_categories=[c.value for c in consistency.weakened_categories],
+            guidance_changed=consistency.guidance_changed,
+            strategic_emphasis_shifted=consistency.strategic_emphasis_shifted,
+        )
+
+
+class GuidanceReliabilityView(CamelModel):
+    guidance_history: list[ManagementCommitmentView]
+    guidance_revisions: list[ManagementCommitmentView]
+    fulfilled_guidance_count: int
+    withdrawn_guidance_count: int
+    unresolved_guidance_count: int
+
+    @classmethod
+    def from_domain(cls, guidance: GuidanceReliabilityKnowledge) -> "GuidanceReliabilityView":
+        return cls(
+            guidance_history=[ManagementCommitmentView.from_domain(c) for c in guidance.guidance_history],
+            guidance_revisions=[ManagementCommitmentView.from_domain(c) for c in guidance.guidance_revisions],
+            fulfilled_guidance_count=guidance.fulfilled_guidance_count,
+            withdrawn_guidance_count=guidance.withdrawn_guidance_count,
+            unresolved_guidance_count=guidance.unresolved_guidance_count,
+        )
+
+
+class CredibilityFindingView(CamelModel):
+    kind: str
+    supporting_commitments: list[ManagementCommitmentView]
+
+    @classmethod
+    def from_domain(cls, finding: CredibilityFinding) -> "CredibilityFindingView":
+        return cls(
+            kind=finding.kind.value,
+            supporting_commitments=[ManagementCommitmentView.from_domain(c) for c in finding.supporting_commitments],
+        )
+
+
+class ManagementCredibilityIntelligenceView(CamelModel):
+    """(Capability Expansion Sprint 8) A pure, higher-order aggregation
+    over Earnings Call/Financial Statement/Growth/Capital Allocation
+    Intelligence's own already-computed outputs -- see `management_
+    credibility_intelligence.py`'s own module docstring."""
+
+    commitments: list[ManagementCommitmentView]
+    communication_consistency: CommunicationConsistencyView
+    guidance_reliability: GuidanceReliabilityView
+    execution_consistency: str
+    findings: list[CredibilityFindingView]
+
+    @classmethod
+    def from_domain(cls, knowledge: ManagementCredibilityKnowledge) -> "ManagementCredibilityIntelligenceView":
+        return cls(
+            commitments=[ManagementCommitmentView.from_domain(c) for c in knowledge.commitments],
+            communication_consistency=CommunicationConsistencyView.from_domain(knowledge.communication_consistency),
+            guidance_reliability=GuidanceReliabilityView.from_domain(knowledge.guidance_reliability),
+            execution_consistency=knowledge.execution_consistency.value,
+            findings=[CredibilityFindingView.from_domain(f) for f in knowledge.findings],
+        )
+
+
+class ExplicitTargetView(CamelModel):
+    value: float
+    unit: str
+
+    @classmethod
+    def from_domain(cls, target: ExplicitTarget) -> "ExplicitTargetView":
+        return cls(value=target.value, unit=target.unit.value)
+
+
+class ExplicitTargetRangeView(CamelModel):
+    low: float
+    high: float
+    unit: str
+
+    @classmethod
+    def from_domain(cls, target_range: ExplicitTargetRange) -> "ExplicitTargetRangeView":
+        return cls(low=target_range.low, high=target_range.high, unit=target_range.unit.value)
+
+
+class GuidanceItemView(CamelModel):
+    guidance_type: str
+    speaker: str
+    reporting_period: str
+    statement_date: date
+    fiscal_date_ending: date | None
+    source_transcript: str
+    direction: str
+    explicit_target: ExplicitTargetView | None
+    explicit_target_range: ExplicitTargetRangeView | None
+    confidence_wording: str
+    supporting_quotation: str
+    status: str
+    revision_kind: str
+    outcome: str
+
+    @classmethod
+    def from_domain(cls, item: GuidanceItem) -> "GuidanceItemView":
+        return cls(
+            guidance_type=item.guidance_type.value, speaker=item.speaker, reporting_period=item.reporting_period,
+            statement_date=item.statement_date, fiscal_date_ending=item.fiscal_date_ending,
+            source_transcript=item.source_transcript, direction=item.direction.value,
+            explicit_target=ExplicitTargetView.from_domain(item.explicit_target) if item.explicit_target is not None else None,
+            explicit_target_range=(
+                ExplicitTargetRangeView.from_domain(item.explicit_target_range)
+                if item.explicit_target_range is not None else None
+            ),
+            confidence_wording=item.confidence_wording.value, supporting_quotation=item.supporting_quotation,
+            status=item.status.value, revision_kind=item.revision_kind.value, outcome=item.outcome.value,
+        )
+
+
+class GuidanceReliabilitySummaryView(CamelModel):
+    total_guidance_count: int
+    revision_count: int
+    fulfilled_count: int
+    partially_fulfilled_count: int
+    missed_count: int
+    unresolved_count: int
+    withdrawn_count: int
+
+    @classmethod
+    def from_domain(cls, summary: GuidanceReliabilitySummary) -> "GuidanceReliabilitySummaryView":
+        return cls(
+            total_guidance_count=summary.total_guidance_count, revision_count=summary.revision_count,
+            fulfilled_count=summary.fulfilled_count, partially_fulfilled_count=summary.partially_fulfilled_count,
+            missed_count=summary.missed_count, unresolved_count=summary.unresolved_count,
+            withdrawn_count=summary.withdrawn_count,
+        )
+
+
+class ManagementGuidanceIntelligenceView(CamelModel):
+    """(Capability Expansion Sprint 9) A pure, higher-order aggregation
+    over Earnings Call/Financial Statement/Growth Intelligence's own
+    already-computed outputs -- see `management_guidance_intelligence
+    .py`'s own module docstring."""
+
+    guidance_items: list[GuidanceItemView]
+    reliability: GuidanceReliabilitySummaryView
+
+    @classmethod
+    def from_domain(cls, knowledge: ManagementGuidanceKnowledge) -> "ManagementGuidanceIntelligenceView":
+        return cls(
+            guidance_items=[GuidanceItemView.from_domain(g) for g in knowledge.guidance_items],
+            reliability=GuidanceReliabilitySummaryView.from_domain(knowledge.reliability),
+        )
+
+
+class ExecutiveIdentityView(CamelModel):
+    name: str
+    role_category: str
+    raw_title: str | None
+    company: str | None
+    start_date: date | None
+    end_date: date | None
+    is_interim: bool
+    first_observed_date: date
+    last_observed_date: date
+    source_transcripts: list[str]
+    statement_count: int
+
+    @classmethod
+    def from_domain(cls, identity: ExecutiveIdentity) -> "ExecutiveIdentityView":
+        return cls(
+            name=identity.name, role_category=identity.role_category.value, raw_title=identity.raw_title,
+            company=identity.company, start_date=identity.start_date, end_date=identity.end_date,
+            is_interim=identity.is_interim, first_observed_date=identity.first_observed_date,
+            last_observed_date=identity.last_observed_date, source_transcripts=list(identity.source_transcripts),
+            statement_count=identity.statement_count,
+        )
+
+
+class LeadershipChangeEventView(CamelModel):
+    event_type: str
+    executive_name: str
+    role_category: str
+    prior_role_category: str | None
+    effective_date: date | None
+    announcement_date: date | None
+    observed_date: date
+    source_transcript: str
+    provenance: str
+
+    @classmethod
+    def from_domain(cls, event: LeadershipChangeEvent) -> "LeadershipChangeEventView":
+        return cls(
+            event_type=event.event_type.value, executive_name=event.executive_name,
+            role_category=event.role_category.value,
+            prior_role_category=event.prior_role_category.value if event.prior_role_category is not None else None,
+            effective_date=event.effective_date, announcement_date=event.announcement_date,
+            observed_date=event.observed_date, source_transcript=event.source_transcript, provenance=event.provenance,
+        )
+
+
+class SuccessionRelationshipView(CamelModel):
+    role_category: str
+    outgoing_executive_name: str
+    outgoing_last_observed_date: date
+    incoming_executive_name: str
+    incoming_first_observed_date: date
+    evidence: str
+
+    @classmethod
+    def from_domain(cls, succession: SuccessionRelationship) -> "SuccessionRelationshipView":
+        return cls(
+            role_category=succession.role_category.value, outgoing_executive_name=succession.outgoing_executive_name,
+            outgoing_last_observed_date=succession.outgoing_last_observed_date,
+            incoming_executive_name=succession.incoming_executive_name,
+            incoming_first_observed_date=succession.incoming_first_observed_date, evidence=succession.evidence,
+        )
+
+
+class LeadershipChangeFindingView(CamelModel):
+    kind: str
+    supporting_executives: list[str]
+    supporting_events: list[LeadershipChangeEventView]
+
+    @classmethod
+    def from_domain(cls, finding: LeadershipChangeFinding) -> "LeadershipChangeFindingView":
+        return cls(
+            kind=finding.kind.value, supporting_executives=list(finding.supporting_executives),
+            supporting_events=[LeadershipChangeEventView.from_domain(e) for e in finding.supporting_events],
+        )
+
+
+class ExecutiveChangeIntelligenceView(CamelModel):
+    """(Capability Expansion Sprint 10) A pure, higher-order aggregation
+    over Earnings Call Intelligence's own already-classified speaker/
+    title metadata -- see `executive_change_intelligence.py`'s own
+    module docstring."""
+
+    executives: list[ExecutiveIdentityView]
+    leadership_changes: list[LeadershipChangeEventView]
+    successions: list[SuccessionRelationshipView]
+    findings: list[LeadershipChangeFindingView]
+
+    @classmethod
+    def from_domain(cls, knowledge: ExecutiveChangeKnowledge) -> "ExecutiveChangeIntelligenceView":
+        return cls(
+            executives=[ExecutiveIdentityView.from_domain(e) for e in knowledge.executives],
+            leadership_changes=[LeadershipChangeEventView.from_domain(e) for e in knowledge.leadership_changes],
+            successions=[SuccessionRelationshipView.from_domain(s) for s in knowledge.successions],
+            findings=[LeadershipChangeFindingView.from_domain(f) for f in knowledge.findings],
+        )
+
+
+class TenureContextView(CamelModel):
+    financial_periods: list[IncomeStatementPeriodView]
+    earnings_calls: list[EarningsCallTranscriptView]
+    capital_allocation_periods: list[CapitalAllocationPeriodView]
+    growth_observations: list[GrowthObservationView]
+    commitments: list[ManagementCommitmentView]
+
+    @classmethod
+    def from_domain(cls, context: TenureContext) -> "TenureContextView":
+        return cls(
+            financial_periods=[IncomeStatementPeriodView.from_domain(p) for p in context.financial_periods],
+            earnings_calls=[EarningsCallTranscriptView.from_domain(t) for t in context.earnings_calls],
+            capital_allocation_periods=[
+                CapitalAllocationPeriodView.from_domain(p) for p in context.capital_allocation_periods
+            ],
+            growth_observations=[GrowthObservationView.from_domain(o) for o in context.growth_observations],
+            commitments=[ManagementCommitmentView.from_domain(c) for c in context.commitments],
+        )
+
+
+class TenureGuidanceHistoryView(CamelModel):
+    issued: list[GuidanceItemView]
+    revised: list[GuidanceItemView]
+    completed: list[GuidanceItemView]
+    unresolved: list[GuidanceItemView]
+    fulfilled: list[GuidanceItemView]
+    withdrawn: list[GuidanceItemView]
+
+    @classmethod
+    def from_domain(cls, history: TenureGuidanceHistory) -> "TenureGuidanceHistoryView":
+        return cls(
+            issued=[GuidanceItemView.from_domain(g) for g in history.issued],
+            revised=[GuidanceItemView.from_domain(g) for g in history.revised],
+            completed=[GuidanceItemView.from_domain(g) for g in history.completed],
+            unresolved=[GuidanceItemView.from_domain(g) for g in history.unresolved],
+            fulfilled=[GuidanceItemView.from_domain(g) for g in history.fulfilled],
+            withdrawn=[GuidanceItemView.from_domain(g) for g in history.withdrawn],
+        )
+
+
+class TenureTimelineView(CamelModel):
+    own_events: list[LeadershipChangeEventView]
+    overlapping_executives: list[ExecutiveIdentityView]
+
+    @classmethod
+    def from_domain(cls, timeline: TenureTimeline) -> "TenureTimelineView":
+        return cls(
+            own_events=[LeadershipChangeEventView.from_domain(e) for e in timeline.own_events],
+            overlapping_executives=[ExecutiveIdentityView.from_domain(e) for e in timeline.overlapping_executives],
+        )
+
+
+class TrackRecordFindingView(CamelModel):
+    kind: str
+    evidence_count: int
+
+    @classmethod
+    def from_domain(cls, finding: TrackRecordFinding) -> "TrackRecordFindingView":
+        return cls(kind=finding.kind.value, evidence_count=finding.evidence_count)
+
+
+class ExecutiveTenureRecordView(CamelModel):
+    executive: ExecutiveIdentityView
+    evidence_completeness: str
+    context: TenureContextView
+    guidance_history: TenureGuidanceHistoryView
+    timeline: TenureTimelineView
+    findings: list[TrackRecordFindingView]
+
+    @classmethod
+    def from_domain(cls, record: ExecutiveTenureRecord) -> "ExecutiveTenureRecordView":
+        return cls(
+            executive=ExecutiveIdentityView.from_domain(record.executive),
+            evidence_completeness=record.evidence_completeness.value,
+            context=TenureContextView.from_domain(record.context),
+            guidance_history=TenureGuidanceHistoryView.from_domain(record.guidance_history),
+            timeline=TenureTimelineView.from_domain(record.timeline),
+            findings=[TrackRecordFindingView.from_domain(f) for f in record.findings],
+        )
+
+
+class ExecutiveTrackRecordIntelligenceView(CamelModel):
+    """(Capability Expansion Sprint 11) A pure, higher-order aggregation
+    over Executive Change/Management Guidance/Management Credibility
+    Intelligence's own already-computed outputs -- see `executive_
+    track_record_intelligence.py`'s own module docstring."""
+
+    tenures: list[ExecutiveTenureRecordView]
+
+    @classmethod
+    def from_domain(cls, knowledge: ExecutiveTrackRecordKnowledge) -> "ExecutiveTrackRecordIntelligenceView":
+        return cls(tenures=[ExecutiveTenureRecordView.from_domain(t) for t in knowledge.tenures])
+
+
+class EquityIncentiveView(CamelModel):
+    executive_name: str
+    kind: str
+    program: str | None
+    source: str | None
+    effective_period: str | None
+    status: str
+    provenance: str
+
+    @classmethod
+    def from_domain(cls, incentive: EquityIncentive) -> "EquityIncentiveView":
+        return cls(
+            executive_name=incentive.executive_name, kind=incentive.kind.value, program=incentive.program,
+            source=incentive.source, effective_period=incentive.effective_period, status=incentive.status.value,
+            provenance=incentive.provenance,
+        )
+
+
+class CashIncentiveView(CamelModel):
+    executive_name: str
+    kind: str
+    program: str | None
+    source: str | None
+    effective_period: str | None
+    status: str
+    provenance: str
+
+    @classmethod
+    def from_domain(cls, incentive: CashIncentive) -> "CashIncentiveView":
+        return cls(
+            executive_name=incentive.executive_name, kind=incentive.kind.value, program=incentive.program,
+            source=incentive.source, effective_period=incentive.effective_period, status=incentive.status.value,
+            provenance=incentive.provenance,
+        )
+
+
+class PerformanceIncentiveView(CamelModel):
+    executive_name: str
+    metric_kind: str
+    explicit_target: float | None
+    program: str | None
+    source: str | None
+    status: str
+    provenance: str
+
+    @classmethod
+    def from_domain(cls, incentive: PerformanceIncentive) -> "PerformanceIncentiveView":
+        return cls(
+            executive_name=incentive.executive_name, metric_kind=incentive.metric_kind.value,
+            explicit_target=incentive.explicit_target, program=incentive.program, source=incentive.source,
+            status=incentive.status.value, provenance=incentive.provenance,
+        )
+
+
+class ExecutiveIncentiveProgramView(CamelModel):
+    executive_name: str
+    role: str | None
+    program: str | None
+    source: str | None
+    effective_period: str | None
+    status: str
+    equity_incentives: list[EquityIncentiveView]
+    cash_incentives: list[CashIncentiveView]
+    performance_incentives: list[PerformanceIncentiveView]
+
+    @classmethod
+    def from_domain(cls, program: ExecutiveIncentiveProgram) -> "ExecutiveIncentiveProgramView":
+        return cls(
+            executive_name=program.executive_name, role=program.role, program=program.program,
+            source=program.source, effective_period=program.effective_period, status=program.status.value,
+            equity_incentives=[EquityIncentiveView.from_domain(e) for e in program.equity_incentives],
+            cash_incentives=[CashIncentiveView.from_domain(c) for c in program.cash_incentives],
+            performance_incentives=[PerformanceIncentiveView.from_domain(p) for p in program.performance_incentives],
+        )
+
+
+class IncentiveTimelineEventView(CamelModel):
+    kind: str
+    executive_name: str | None
+    program: str | None
+    effective_date: date | None
+    source: str | None
+    provenance: str
+
+    @classmethod
+    def from_domain(cls, event: IncentiveTimelineEvent) -> "IncentiveTimelineEventView":
+        return cls(
+            kind=event.kind.value, executive_name=event.executive_name, program=event.program,
+            effective_date=event.effective_date, source=event.source, provenance=event.provenance,
+        )
+
+
+class OwnershipAlignmentView(CamelModel):
+    executive_name: str
+    shares_owned: float | None
+    ownership_guideline: str | None
+    status: str
+    source: str | None
+    provenance: str
+
+    @classmethod
+    def from_domain(cls, alignment: OwnershipAlignment) -> "OwnershipAlignmentView":
+        return cls(
+            executive_name=alignment.executive_name, shares_owned=alignment.shares_owned,
+            ownership_guideline=alignment.ownership_guideline, status=alignment.status.value,
+            source=alignment.source, provenance=alignment.provenance,
+        )
+
+
+class DilutionEventView(CamelModel):
+    kind: str
+    executive_name: str | None
+    shares: float | None
+    effective_date: date | None
+    source: str | None
+    provenance: str
+
+    @classmethod
+    def from_domain(cls, event: DilutionEvent) -> "DilutionEventView":
+        return cls(
+            kind=event.kind.value, executive_name=event.executive_name, shares=event.shares,
+            effective_date=event.effective_date, source=event.source, provenance=event.provenance,
+        )
+
+
+class IncentiveStructureView(CamelModel):
+    executive_name: str
+    components: list[str]
+    source: str | None
+    provenance: str
+
+    @classmethod
+    def from_domain(cls, structure: IncentiveStructure) -> "IncentiveStructureView":
+        return cls(
+            executive_name=structure.executive_name, components=[c.value for c in structure.components],
+            source=structure.source, provenance=structure.provenance,
+        )
+
+
+class CompensationDisclosureFilingView(CamelModel):
+    filing: RegulatoryFilingView
+
+    @classmethod
+    def from_domain(cls, disclosure: CompensationDisclosureFiling) -> "CompensationDisclosureFilingView":
+        return cls(filing=RegulatoryFilingView.from_domain(disclosure.filing))
+
+
+class IncentiveChangeFindingView(CamelModel):
+    kind: str
+    evidence_count: int
+
+    @classmethod
+    def from_domain(cls, finding: IncentiveChangeFinding) -> "IncentiveChangeFindingView":
+        return cls(kind=finding.kind.value, evidence_count=finding.evidence_count)
+
+
+class IncentiveIntelligenceView(CamelModel):
+    """(Capability Expansion Sprint 12) A pure re-labeling of
+    `RegulatoryFiling`'s own `DEF 14A` records -- see `incentive_
+    intelligence.py`'s own module docstring for why every other field
+    below is always an empty list in this build. Each is nonetheless
+    given its own complete, typed view -- the shape a future filing-
+    content-reading capability can populate without redesigning this
+    schema."""
+
+    compensation_disclosure_filings: list[CompensationDisclosureFilingView]
+    executive_incentive_programs: list[ExecutiveIncentiveProgramView]
+    timeline: list[IncentiveTimelineEventView]
+    ownership_alignment: list[OwnershipAlignmentView]
+    dilution_events: list[DilutionEventView]
+    incentive_structures: list[IncentiveStructureView]
+    findings: list[IncentiveChangeFindingView]
+
+    @classmethod
+    def from_domain(cls, knowledge: IncentiveKnowledge) -> "IncentiveIntelligenceView":
+        return cls(
+            compensation_disclosure_filings=[
+                CompensationDisclosureFilingView.from_domain(d) for d in knowledge.compensation_disclosure_filings
+            ],
+            executive_incentive_programs=[
+                ExecutiveIncentiveProgramView.from_domain(p) for p in knowledge.executive_incentive_programs
+            ],
+            timeline=[IncentiveTimelineEventView.from_domain(e) for e in knowledge.timeline],
+            ownership_alignment=[OwnershipAlignmentView.from_domain(a) for a in knowledge.ownership_alignment],
+            dilution_events=[DilutionEventView.from_domain(e) for e in knowledge.dilution_events],
+            incentive_structures=[IncentiveStructureView.from_domain(s) for s in knowledge.incentive_structures],
+            findings=[IncentiveChangeFindingView.from_domain(f) for f in knowledge.findings],
         )
 
 
@@ -764,6 +2474,202 @@ class OutlookView(CamelModel):
         )
 
 
+class StanceReasonView(CamelModel):
+    """Atlas Intelligence Sprint 2 (Recommendation Quality &
+    Actionability). Independently declared here, field-for-field
+    identical to `atlas.alpha.stance.api.schemas.StanceReasonView` --
+    this codebase's own no-cross-package-View-import convention
+    (matching `CoverageAssessmentView`'s own precedent from Sprint 1).
+    `investment_case` itself has no dependency on `atlas.alpha.stance`
+    at all -- only this router's own composition root does; see
+    `api/router.py`'s own docstring."""
+
+    code: str
+
+
+class StanceView(CamelModel):
+    level: str
+    reasoning: list[StanceReasonView]
+    supporting_signals: list[StanceReasonView]
+    limiting_signals: list[StanceReasonView]
+    confidence: str
+    missing_information: list[str]
+
+
+class ExplanationView(CamelModel):
+    """Atlas Intelligence Sprint 3 (Decision Explainability & Evidence
+    Trace). Independently declared here, field-for-field identical to
+    `atlas.alpha.explainability.api.schemas.ExplanationView` -- the same
+    no-cross-package-View-import convention `StanceReasonView`/
+    `StanceView` above already establish. Reuses this module's own
+    `DimensionCoverageView`/`ConfidenceReasonView` (Sprint 1) and
+    `StanceReasonView` (Sprint 2) rather than redeclaring them a second
+    time within this same file -- those two are shared, lower-level
+    presentation types already declared once above."""
+
+    supporting_evidence: list[StanceReasonView]
+    contradicting_evidence: list[StanceReasonView]
+    limiting_factors: list[StanceReasonView]
+    missing_evidence: list[DimensionCoverageView]
+    confidence_drivers: list[ConfidenceReasonView]
+    most_valuable_missing_information: DimensionCoverageView | None
+
+    # No `from_domain` here, deliberately -- mirrors `StanceView`'s own
+    # precedent immediately above: this schema module has no dependency
+    # on `atlas.alpha.explainability` at all, so the conversion lives in
+    # `api/router.py`'s own composition root (`_explanation_view()`),
+    # never here.
+
+
+class EvidenceConflictView(CamelModel):
+    """Atlas Intelligence Sprint 4 (Evidence Quality & Conflict
+    Resolution). Independently declared here, field-for-field identical
+    to `atlas.alpha.evidence_quality.api.schemas.EvidenceConflictView`
+    -- the same no-cross-package-View-import convention `StanceView`/
+    `ExplanationView` above already establish."""
+
+    fact_kind: str
+    period: str
+    unit: str
+    values: list[float]
+    source_record_ids: list[str]
+
+
+class FactQualityView(CamelModel):
+    fact_kind: str
+    freshness: str
+    dominance: str
+    latest_period: str | None
+    latest_published_at: datetime | None
+    source_record_count: int
+
+
+class UnsupportedFindingView(CamelModel):
+    category: str
+    status: str
+
+
+class EvidenceQualityReportView(CamelModel):
+    quality: str
+    conflict_status: str
+    freshness: str
+    dominance: str
+    warnings: list[str]
+    facts: list[FactQualityView]
+    conflicts: list[EvidenceConflictView]
+    unsupported_findings: list[UnsupportedFindingView]
+
+    # No `from_domain` here either -- see `ExplanationView`'s own note
+    # immediately above; the conversion lives in `api/router.py`'s own
+    # composition root (`_evidence_quality_view()`).
+
+
+class EvidenceTransitionView(CamelModel):
+    """Atlas Intelligence Sprint 5 (Evidence Timeline & Historical
+    Understanding). Independently declared here, field-for-field
+    identical to `atlas.alpha.evidence_timeline.api.schemas
+    .EvidenceTransitionView`."""
+
+    id: str
+    category: str
+    direction: str
+    previous_state: str
+    current_state: str
+    is_material: bool
+    """Deliverable 7 -- the real, already-computed output of
+    `atlas.alpha.evidence_timeline.is_material_transition()`, a fixed
+    declared filter (never a second priority engine). The frontend
+    reads this to decide prominence; it never reimplements the
+    classification itself."""
+
+
+class SourceEvidenceEventView(CamelModel):
+    """A real `(fact_kind, period)` combination new since the last
+    capture -- **Source Evidence History** (a fact about the world),
+    deliberately never merged into `transitions` (**Atlas Analysis
+    History** -- Atlas's own conclusions changing). See
+    `atlas.alpha.evidence_timeline.models`'s own module docstring for
+    why this distinction is structural, not just documented."""
+
+    fact_kind: str
+    period: str
+
+
+class EvidenceTimelineView(CamelModel):
+    """The most recent `EvidenceHistory` transition for this Case --
+    Deliverable 5/8's own "recent evidence changes" (never the full,
+    potentially-long timeline; that lives at `GET /evidence-timeline
+    /case/{case_id}`, one click away -- progressive disclosure, not a
+    second History page). `is_baseline=True` and empty `transitions`/
+    `newSourceEvidence` lists are all real, honest states: a Case with
+    no prior snapshot to compare against, or one whose evidence
+    genuinely has not changed since the last capture."""
+
+    is_baseline: bool
+    transitions: list[EvidenceTransitionView]
+    new_source_evidence: list[SourceEvidenceEventView]
+    previous_captured_at: datetime | None
+    current_captured_at: datetime
+
+    # No `from_domain` here either -- same reason as `ExplanationView`/
+    # `EvidenceQualityReportView` above.
+
+
+class MaterialEvidenceView(CamelModel):
+    """Atlas Intelligence Sprint -- Materiality & Priority Engine.
+    Independently declared here, field-for-field identical to
+    `atlas.alpha.materiality.api.schemas.MaterialEvidenceView`."""
+
+    reason: StanceReasonView
+    materiality: str
+
+
+class MaterialityAssessmentView(CamelModel):
+    """Deliverable 5 -- the four "top" picks Investment Case leads with,
+    plus each bucket's full, materiality-ordered membership (most
+    material first) so the page can collapse everything below the top
+    pick behind progressive disclosure without a second sort."""
+
+    supporting_evidence: list[MaterialEvidenceView]
+    contradicting_evidence: list[MaterialEvidenceView]
+    limiting_factors: list[MaterialEvidenceView]
+    top_supporting_evidence: MaterialEvidenceView | None
+    top_contradicting_evidence: MaterialEvidenceView | None
+    top_limiting_factor: MaterialEvidenceView | None
+    top_missing_evidence: DimensionCoverageView | None
+
+    # No `from_domain` here either -- same reason as `ExplanationView`
+    # above.
+
+
+class MonitoringStatusView(CamelModel):
+    """Sprint 7, Deliverable 13 -- the compact view. Field-identical to
+    the relevant slice of `atlas.alpha.monitoring.api.schemas
+    .MonitoringResultView`, locally redeclared per this file's own
+    "no cross-package View import" convention, and deliberately
+    narrower: `latest_change_reason` is the single most material
+    change's own reason text (highest-importance category first, ties
+    broken by `MonitoringChange.id` for determinism), never the full
+    `changes` list."""
+
+    status: str
+    material_change_count: int
+    latest_change_reason: str | None
+    generated_at: datetime | None
+
+
+class CaseOperationalFreshnessView(CamelModel):
+    """Sprint 8/9, Deliverable 15/6/7 -- field-identical to `atlas.alpha
+    .monitoring.api.schemas.CaseOperationalFreshnessView`, locally
+    redeclared per this file's own "no cross-package View import"
+    convention."""
+
+    is_pending: bool
+    last_monitored_at: datetime | None
+    last_run_failed_for_case: bool
+    data_freshness_status: str
+
+
 class InvestmentCaseAnalysisView(CamelModel):
     """The canonical Investment Case -- one coherent object mirroring
     `InvestmentCaseComposition` plus its `CanonicalAnalysis`. Every
@@ -777,6 +2683,12 @@ class InvestmentCaseAnalysisView(CamelModel):
     is_thesis_stale: bool
     confidence: str
     conviction: ConvictionAssessmentView
+    coverage: CoverageAssessmentView
+    """Atlas Intelligence Sprint 1 (Data Coverage & Confidence Engine):
+    per-dimension coverage plus a qualitative overall confidence -- see
+    `atlas.alpha.coverage`'s own module docstring. A new, additive,
+    Alpha-only presentation layer over `business_analysis`/`valuation`/
+    `risk` above; none of those fields' own meaning changes."""
     business_analysis: BusinessAnalysisView
     valuation: ValuationEngineView
     valuation_support: ValuationSupportView
@@ -801,6 +2713,19 @@ class InvestmentCaseAnalysisView(CamelModel):
     company_profile: CompanyProfileView | None
     financial_history: list[FinancialPeriodView]
     market_snapshot: MarketSnapshotView | None
+    regulatory_filings: list[RegulatoryFilingView]
+    historical_valuation: HistoricalValuationView
+    earnings_call: EarningsCallView
+    financial_statement_intelligence: FinancialStatementIntelligenceView
+    capital_allocation_intelligence: CapitalAllocationIntelligenceView
+    financial_quality_intelligence: FinancialQualityIntelligenceView
+    growth_intelligence: GrowthKnowledgeView
+    business_quality_intelligence: BusinessQualityIntelligenceView
+    management_credibility_intelligence: ManagementCredibilityIntelligenceView
+    management_guidance_intelligence: ManagementGuidanceIntelligenceView
+    executive_change_intelligence: ExecutiveChangeIntelligenceView
+    executive_track_record_intelligence: ExecutiveTrackRecordIntelligenceView
+    incentive_intelligence: IncentiveIntelligenceView
     strengths: list[CaseHighlightView]
     risks: list[CaseHighlightView]
     growth_analysis: GrowthAnalysisView
@@ -835,10 +2760,99 @@ class InvestmentCaseAnalysisView(CamelModel):
     previous_analysis_at: datetime | None
     current_analysis_at: datetime
     generated_at: datetime
+    stance: StanceView | None
+    """Atlas Intelligence Sprint 2 -- Deliverable 5. `None` only when no
+    `StanceService` was wired for this build (mirrors
+    `change_intelligence_available`'s own precedent); every real API
+    call site wires one, via `api/router.py`'s own composition root, so
+    this is populated in practice. Reuses the existing Executive
+    Summary area at the presentation layer -- no new large section."""
+    explanation: ExplanationView | None
+    """Atlas Intelligence Sprint 3 -- Deliverable 4. `None` only when no
+    `Explanation` was built for this call (mirrors `stance`'s own
+    `None` precedent above); every real API call site wires one via
+    `api/router.py`'s own composition root, so this is populated in
+    practice."""
+    evidence_quality_report: EvidenceQualityReportView | None
+    """Atlas Intelligence Sprint 4 -- Deliverable 5. `None` only when no
+    `EvidenceQualityReport` was built for this call, same `stance`/
+    `explanation` precedent above. Named `evidence_quality_report`,
+    not `evidence_quality` -- that name is already taken by the
+    unrelated, older `EvidenceQualityFindingsSchema` field above
+    (Product Sprint 14's own per-finding evidence-reference-resolution
+    concept), a real, pre-existing naming collision this field must
+    not silently shadow."""
+    evidence_timeline: EvidenceTimelineView | None
+    """Atlas Intelligence Sprint 5 -- Deliverable 5. `None` only when no
+    `EvidenceTimelineService`/snapshot capture was wired for this call,
+    same `stance`/`explanation`/`evidence_quality_report` precedent
+    above."""
+    monitoring: "MonitoringStatusView | None"
+    """Atlas Intelligence Sprint 7 (Monitoring & Change Detection,
+    Deliverable 13). `None` only when Monitoring has never run for this
+    Case yet (an honest "not evaluated," never defaulted to "up to
+    date"). Deliberately compact -- a status plus the single most
+    important change's reason, not the full `MonitoringResult.changes`
+    list; the full picture already lives on `evidence_timeline`/
+    `materiality` above, which Monitoring only reprioritizes, never
+    duplicates (see `atlas.alpha.monitoring`'s own module docstring)."""
+    operational_freshness: "CaseOperationalFreshnessView | None"
+    """Atlas Intelligence Sprint 8 (Automated Monitoring Operations,
+    Deliverable 15). Deliberately a separate field from `monitoring`
+    above -- this one is purely operational ("has Atlas recomputed this
+    recently, and did that recomputation succeed"), never investment
+    confidence. `None` only when Monitoring has no read model wired for
+    this build."""
+    materiality: MaterialityAssessmentView | None
+    """Atlas Intelligence -- Materiality & Priority Engine, Deliverable
+    5. `None` only when no materiality classification was built for
+    this call, same precedent above."""
+    knowledge_coverage: InvestmentCaseKnowledgeCoverageView | None
+    """Automatic Investment Case Builder Foundation. `None` only when
+    no `InvestmentCaseKnowledgeCoverage` was built for this call, same
+    `stance`/`explanation`/`materiality` precedent above -- every real
+    API call site wires one, via `api/router.py`'s own composition
+    root, so this is populated in practice. A different, lower-level
+    question than `coverage` above: not "has Atlas concluded something"
+    (evaluator coverage) but "does Atlas have the raw knowledge to
+    conclude anything at all" (see `atlas.alpha.knowledge_coverage
+    .models`'s own module docstring)."""
 
     @classmethod
-    def from_domain(cls, composition: InvestmentCaseComposition) -> "InvestmentCaseAnalysisView":
+    def from_domain(
+        cls,
+        composition: InvestmentCaseComposition,
+        *,
+        stance: "StanceView | None" = None,
+        explanation: "ExplanationView | None" = None,
+        evidence_quality_report: "EvidenceQualityReportView | None" = None,
+        evidence_timeline: "EvidenceTimelineView | None" = None,
+        materiality: "MaterialityAssessmentView | None" = None,
+        monitoring: "MonitoringStatusView | None" = None,
+        operational_freshness: "CaseOperationalFreshnessView | None" = None,
+        knowledge_coverage: "InvestmentCaseKnowledgeCoverageView | None" = None,
+    ) -> "InvestmentCaseAnalysisView":
         analysis: CanonicalAnalysis = composition.canonical_analysis
+
+        # Product Sprint 14 (Evidence & Explanation Quality): the one
+        # place every finding's own opaque evidence-reference ids get
+        # resolved into real prose before they leave this service --
+        # built once, from data this method already has in scope
+        # (`composition.business_facts`/`.market_facts`/
+        # `.observation_history`, plus the very same findings being
+        # serialized below, so a Finding-self-reference resolves too).
+        resolver = _EvidenceResolverContext(
+            facts_by_id={f.id: f for f in (*composition.business_facts, *composition.market_facts)},
+            findings_by_id={
+                f.id: f
+                for f in (
+                    *analysis.business_analysis.findings,
+                    *analysis.valuation_engine.findings,
+                    *analysis.risk_analysis.findings,
+                )
+            },
+            observations_by_id={str(o.id): o for o in composition.observation_history},
+        )
         change_intelligence: ChangeIntelligence | None = composition.change_intelligence
         if change_intelligence is None:
             change_intelligence_available = False
@@ -863,10 +2877,13 @@ class InvestmentCaseAnalysisView(CamelModel):
             is_thesis_stale=composition.is_thesis_stale,
             confidence=analysis.confidence.value,
             conviction=ConvictionAssessmentView.from_domain(analysis.conviction),
-            business_analysis=BusinessAnalysisView.from_domain(analysis.business_analysis),
-            valuation=ValuationEngineView.from_domain(analysis.valuation_engine),
+            coverage=CoverageAssessmentView.from_domain(
+                _assess_coverage(analysis, is_thesis_stale=composition.is_thesis_stale)
+            ),
+            business_analysis=BusinessAnalysisView.from_domain(analysis.business_analysis, resolver=resolver),
+            valuation=ValuationEngineView.from_domain(analysis.valuation_engine, resolver=resolver),
             valuation_support=ValuationSupportView.from_domain(analysis.valuation_support),
-            risk=RiskAnalysisView.from_domain(analysis.risk_analysis),
+            risk=RiskAnalysisView.from_domain(analysis.risk_analysis, resolver=resolver),
             risk_projection=RiskProjectionView.from_domain(risk_projection(analysis.risk_analysis)),
             evidence_quality=(
                 EvidenceQualityFindingsSchema.from_domain(analysis.business.evidence_quality)
@@ -892,6 +2909,33 @@ class InvestmentCaseAnalysisView(CamelModel):
                 if composition.market_snapshot is not None
                 else None
             ),
+            regulatory_filings=[RegulatoryFilingView.from_domain(f) for f in composition.regulatory_filings],
+            historical_valuation=HistoricalValuationView.from_domain(composition.historical_valuation),
+            earnings_call=EarningsCallView.from_domain(composition.earnings_call),
+            financial_statement_intelligence=FinancialStatementIntelligenceView.from_domain(
+                composition.financial_statement_intelligence
+            ),
+            capital_allocation_intelligence=CapitalAllocationIntelligenceView.from_domain(
+                composition.capital_allocation_intelligence
+            ),
+            financial_quality_intelligence=FinancialQualityIntelligenceView.from_domain(
+                composition.financial_quality_intelligence
+            ),
+            growth_intelligence=GrowthKnowledgeView.from_domain(composition.growth_intelligence),
+            business_quality_intelligence=BusinessQualityIntelligenceView.from_domain(composition.business_quality_intelligence),
+            management_credibility_intelligence=ManagementCredibilityIntelligenceView.from_domain(
+                composition.management_credibility_intelligence
+            ),
+            management_guidance_intelligence=ManagementGuidanceIntelligenceView.from_domain(
+                composition.management_guidance_intelligence
+            ),
+            executive_change_intelligence=ExecutiveChangeIntelligenceView.from_domain(
+                composition.executive_change_intelligence
+            ),
+            executive_track_record_intelligence=ExecutiveTrackRecordIntelligenceView.from_domain(
+                composition.executive_track_record_intelligence
+            ),
+            incentive_intelligence=IncentiveIntelligenceView.from_domain(composition.incentive_intelligence),
             strengths=[CaseHighlightView.from_domain(h) for h in analysis.synthesis.strengths],
             risks=[CaseHighlightView.from_domain(h) for h in analysis.synthesis.risks],
             growth_analysis=GrowthAnalysisView.from_domain(analysis.synthesis.growth),
@@ -907,4 +2951,12 @@ class InvestmentCaseAnalysisView(CamelModel):
             previous_analysis_at=previous_analysis_at,
             current_analysis_at=current_analysis_at,
             generated_at=composition.generated_at,
+            stance=stance,
+            explanation=explanation,
+            evidence_quality_report=evidence_quality_report,
+            evidence_timeline=evidence_timeline,
+            materiality=materiality,
+            monitoring=monitoring,
+            operational_freshness=operational_freshness,
+            knowledge_coverage=knowledge_coverage,
         )

@@ -1124,3 +1124,84 @@ class TestFetchCompanyProfile:
         provider.fetch_company_profile(company_identifier="AAPL", evaluated_at=_NOW)
         provider.fetch_company_profile(company_identifier="MSFT", evaluated_at=_NOW)
         assert call_count["OVERVIEW"] == 2
+
+
+def _transcript_fetcher(entries: list[dict]):
+    return _fake_fetcher({"EARNINGS_CALL_TRANSCRIPT": {"symbol": "AAPL", "quarter": "2026Q2", "transcript": entries}})
+
+
+class TestEarningsCallTranscripts:
+    """Capability Expansion Sprint 2 -- `fetch_earnings_call_transcripts`,
+    the most-recently-ended-calendar-quarter, one-document-per-statement
+    path. `_NOW` is 2026-08-09, so the most recently ended calendar
+    quarter is `2026Q2` (Apr-Jun)."""
+
+    def test_missing_api_key_raises(self, monkeypatch):
+        monkeypatch.delenv("ALPHA_VANTAGE_API_KEY", raising=False)
+        provider = AlphaVantageMarketDataProvider(lambda url, headers: {})
+        with pytest.raises(MissingRequiredField):
+            provider.fetch_earnings_call_transcripts(company_identifier="AAPL", evaluated_at=_NOW)
+
+    def test_requests_the_most_recently_ended_calendar_quarter(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        seen_urls = []
+
+        def fetcher(url: str, headers):
+            seen_urls.append(url)
+            return {"symbol": "AAPL", "quarter": "2026Q2", "transcript": []}
+
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        provider.fetch_earnings_call_transcripts(company_identifier="AAPL", evaluated_at=_NOW)
+        assert any("quarter=2026Q2" in url for url in seen_urls)
+
+    def test_an_empty_transcript_produces_no_documents(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        provider = AlphaVantageMarketDataProvider(_transcript_fetcher([]))
+        docs = provider.fetch_earnings_call_transcripts(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs == ()
+
+    def test_one_document_per_statement(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        entries = [
+            {"speaker": "Operator", "title": "", "content": "Good afternoon, welcome.", "sentiment": "0.1"},
+            {"speaker": "Tim Cook", "title": "CEO", "content": "Thank you, we had a strong quarter.", "sentiment": "0.7"},
+        ]
+        provider = AlphaVantageMarketDataProvider(_transcript_fetcher(entries))
+        docs = provider.fetch_earnings_call_transcripts(company_identifier="AAPL", evaluated_at=_NOW)
+        assert len(docs) == 2
+        assert docs[0].metadata["speaker"] == "Operator"
+        assert docs[0].metadata["statement_index"] == 0
+        assert "title" not in docs[0].metadata  # empty title omitted, never persisted as blank
+        assert docs[1].metadata["speaker"] == "Tim Cook"
+        assert docs[1].metadata["title"] == "CEO"
+        assert docs[1].metadata["sentiment"] == 0.7
+        assert docs[1].metadata["quarter"] == "2026Q2"
+        assert docs[1].source_kind == "transcript"
+        assert docs[1].identifier == "AAPL:transcript:2026Q2:1"
+        assert docs[1].period_end == date_(2026, 6, 30)
+
+    def test_a_statement_with_no_sentiment_reported_omits_the_field(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        entries = [{"speaker": "CFO", "title": "CFO", "content": "Revenue grew 8%."}]
+        provider = AlphaVantageMarketDataProvider(_transcript_fetcher(entries))
+        (doc,) = provider.fetch_earnings_call_transcripts(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "sentiment" not in doc.metadata
+
+    def test_a_malformed_entry_missing_content_is_skipped(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        entries = [{"speaker": "CFO", "content": ""}, {"speaker": "CEO", "content": "Real statement."}]
+        provider = AlphaVantageMarketDataProvider(_transcript_fetcher(entries))
+        docs = provider.fetch_earnings_call_transcripts(company_identifier="AAPL", evaluated_at=_NOW)
+        assert len(docs) == 1
+        assert docs[0].metadata["content"] == "Real statement."
+
+    def test_published_at_is_evaluated_at(self, monkeypatch):
+        """Unlike historical price snapshots, the true call date is not
+        reliably known from this endpoint -- `evaluated_at` (when Atlas
+        fetched it) is the honest choice, mirroring `fetch()`'s own
+        current-snapshot precedent."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        entries = [{"speaker": "CEO", "content": "Statement."}]
+        provider = AlphaVantageMarketDataProvider(_transcript_fetcher(entries))
+        (doc,) = provider.fetch_earnings_call_transcripts(company_identifier="AAPL", evaluated_at=_NOW)
+        assert doc.published_at == _NOW

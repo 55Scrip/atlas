@@ -737,3 +737,221 @@ class TestInstantBalanceSheetConcepts:
         fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
         docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
         assert "cash" not in docs[0].metadata
+
+
+class TestFinancialStatementIntelligenceConcepts:
+    """Capability Expansion Sprint 3 -- the new Income Statement/Balance
+    Sheet concepts and their derived figures (`ebitda`/`working_capital`
+    /`tangible_assets`)."""
+
+    def test_gross_profit_persists(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "GrossProfit": [_usd_entry(start="2023-01-01", end="2023-12-31", val=400.0, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["gross_profit"] == 400.0
+
+    def test_gross_profit_absent_when_not_reported(self):
+        companyfacts = _companyfacts(
+            {"Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "gross_profit" not in docs[0].metadata
+
+    def test_operating_cash_flow_now_persists_directly(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "NetCashProvidedByUsedInOperatingActivities": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=250.0, filed="2024-02-01")
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["operating_cash_flow"] == 250.0
+
+    def test_investing_and_financing_cash_flow_persist(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "NetCashProvidedByUsedInInvestingActivities": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=-80.0, filed="2024-02-01")
+                ],
+                "NetCashProvidedByUsedInFinancingActivities": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=-60.0, filed="2024-02-01")
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["investing_cash_flow"] == -80.0
+        assert docs[0].metadata["financing_cash_flow"] == -60.0
+
+    def test_ebitda_is_derived_from_operating_income_and_depreciation_amortization(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "OperatingIncomeLoss": [_usd_entry(start="2023-01-01", end="2023-12-31", val=200.0, filed="2024-02-01")],
+                "DepreciationDepletionAndAmortization": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=50.0, filed="2024-02-01")
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["ebitda"] == 250.0
+        assert "_depreciation_and_amortization" not in docs[0].metadata
+
+    def test_ebitda_absent_when_depreciation_and_amortization_is_not_reported(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "OperatingIncomeLoss": [_usd_entry(start="2023-01-01", end="2023-12-31", val=200.0, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "ebitda" not in docs[0].metadata
+
+    def test_equity_current_assets_and_current_liabilities_persist(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "StockholdersEquity": [_instant_entry(end="2023-12-31", val=700.0, filed="2024-02-01")],
+                "AssetsCurrent": [_instant_entry(end="2023-12-31", val=300.0, filed="2024-02-01")],
+                "LiabilitiesCurrent": [_instant_entry(end="2023-12-31", val=120.0, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["equity"] == 700.0
+        assert docs[0].metadata["current_assets"] == 300.0
+        assert docs[0].metadata["current_liabilities"] == 120.0
+        assert docs[0].metadata["working_capital"] == 180.0
+
+    def test_working_capital_absent_when_only_one_side_is_reported(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "AssetsCurrent": [_instant_entry(end="2023-12-31", val=300.0, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "working_capital" not in docs[0].metadata
+
+    def test_tangible_assets_subtracts_goodwill_and_intangibles_from_total_assets(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "Assets": [_instant_entry(end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "Goodwill": [_instant_entry(end="2023-12-31", val=200.0, filed="2024-02-01")],
+                "IntangibleAssetsNetExcludingGoodwill": [_instant_entry(end="2023-12-31", val=50.0, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["total_assets"] == 1000.0
+        assert docs[0].metadata["goodwill"] == 200.0
+        assert docs[0].metadata["intangible_assets"] == 50.0
+        assert docs[0].metadata["tangible_assets"] == 750.0
+
+    def test_tangible_assets_equals_total_assets_when_no_goodwill_or_intangibles_reported(self):
+        """A company genuinely reporting no goodwill/intangibles is a
+        real zero for those two, not a missing value -- their absence
+        must not block the subtraction."""
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "Assets": [_instant_entry(end="2023-12-31", val=1000.0, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["tangible_assets"] == 1000.0
+
+    def test_tangible_assets_absent_when_total_assets_is_not_reported(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "Goodwill": [_instant_entry(end="2023-12-31", val=200.0, filed="2024-02-01")],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "tangible_assets" not in docs[0].metadata
+
+
+class TestCapitalAllocationIntelligenceConcepts:
+    """Capability Expansion Sprint 4 -- the one genuinely missing
+    concept per this sprint's own Phase 2 audit (acquisitions/disposals/
+    treasury share count; every other Capital Allocation fact already
+    existed before this sprint)."""
+
+    def test_acquisitions_persist(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "PaymentsToAcquireBusinessesNetOfCashAcquired": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=500.0, filed="2024-02-01")
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["acquisitions"] == 500.0
+
+    def test_disposals_persist(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "ProceedsFromDivestitureOfBusinesses": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=80.0, filed="2024-02-01")
+                ],
+            }
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["disposals"] == 80.0
+
+    def test_acquisitions_and_disposals_absent_when_not_reported(self):
+        companyfacts = _companyfacts(
+            {"Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")]}
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "acquisitions" not in docs[0].metadata
+        assert "disposals" not in docs[0].metadata
+
+    def test_treasury_shares_acquired_persists_under_its_own_shares_unit(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "TreasuryStockSharesAcquired": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=1_000_000.0, filed="2024-02-01")
+                ],
+            },
+            units={"TreasuryStockSharesAcquired": "shares"},
+        )
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert docs[0].metadata["treasury_shares_acquired"] == 1_000_000.0
+
+    def test_treasury_shares_acquired_reported_under_the_wrong_unit_is_never_extracted(self):
+        companyfacts = _companyfacts(
+            {
+                "Revenues": [_usd_entry(start="2023-01-01", end="2023-12-31", val=1000.0, filed="2024-02-01")],
+                "TreasuryStockSharesAcquired": [
+                    _usd_entry(start="2023-01-01", end="2023-12-31", val=1_000_000.0, filed="2024-02-01")
+                ],
+            },
+        )  # deliberately no `units=` override -- defaults to "USD", the wrong unit for a share count
+        fetcher = _fake_fetcher({"company_tickers.json": _TICKER_MAP, "companyfacts": companyfacts})
+        docs = SecEdgarFundamentalsProvider(fetcher).fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert "treasury_shares_acquired" not in docs[0].metadata

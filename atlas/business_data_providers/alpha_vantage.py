@@ -185,6 +185,11 @@ def _identity_fields(overview: dict[str, Any]) -> dict[str, str]:
 #: documented constant from Alpha Vantage itself.
 _DEFAULT_INTER_REQUEST_DELAY_SECONDS = 1.1
 
+#: Quarter-end (month, day) per Alpha Vantage's own `"YYYYQN"` quarter
+#: format -- lets `_quarter_end_date` derive a real calendar date from a
+#: quarter string alone, with no extra API field.
+_QUARTER_END_MONTH_DAY: dict[int, tuple[int, int]] = {1: (3, 31), 2: (6, 30), 3: (9, 30), 4: (12, 31)}
+
 Sleeper = Callable[[float], None]
 Clock = Callable[[], float]
 
@@ -237,6 +242,32 @@ def _confirmed_currency_metadata(
     if shares_outstanding is not None:
         metadata["shares_outstanding"] = shares_outstanding
     return metadata
+
+
+def _most_recent_completed_quarter(evaluated_at: datetime) -> str:
+    """The most recently *ended* calendar quarter as of `evaluated_at`
+    -- no invented reporting-lag heuristic (real lag varies by company
+    and Atlas has no owned constant for it). If that quarter's own
+    transcript is not yet published, Alpha Vantage's own response says
+    so (an empty `transcript` array) and `fetch_earnings_call_transcripts`
+    honestly returns `()`, exactly like `fetch_company_profile` does
+    when OVERVIEW carries no identity fields."""
+    quarter_of_month = (evaluated_at.month - 1) // 3 + 1
+    if quarter_of_month == 1:
+        return f"{evaluated_at.year - 1}Q4"
+    return f"{evaluated_at.year}Q{quarter_of_month - 1}"
+
+
+def _quarter_end_date(quarter: str) -> date | None:
+    try:
+        year = int(quarter[:4])
+        q = int(quarter[5])
+    except (ValueError, IndexError):
+        return None
+    month_day = _QUARTER_END_MONTH_DAY.get(q)
+    if month_day is None:
+        return None
+    return date(year, *month_day)
 
 
 def _first_on_or_after(sorted_dates: list[date], target: date) -> date | None:
@@ -358,6 +389,15 @@ class AlphaVantageMarketDataProvider:
                 f"Alpha Vantage TIME_SERIES_MONTHLY_ADJUSTED({ticker}) missing its time series"
             )
         return series
+
+    def _earnings_call_transcript(self, ticker: str, quarter: str, api_key: str) -> list[dict[str, Any]]:
+        url = f"{_BASE_URL}?function=EARNINGS_CALL_TRANSCRIPT&symbol={ticker}&quarter={quarter}&apikey={api_key}"
+        payload = self._request_json(url)
+        _check_for_provider_error(payload, context=f"Alpha Vantage EARNINGS_CALL_TRANSCRIPT({ticker}, {quarter})")
+        transcript = payload.get("transcript") if isinstance(payload, dict) else None
+        if not isinstance(transcript, list):
+            return []
+        return [entry for entry in transcript if isinstance(entry, dict)]
 
     def _now(self) -> float:
         return self._clock() if self._clock is not None else time.monotonic()
@@ -542,3 +582,78 @@ class AlphaVantageMarketDataProvider:
             metadata=identity,
         )
         return (document,)
+
+    def fetch_earnings_call_transcripts(
+        self, *, company_identifier: str, evaluated_at: datetime
+    ) -> tuple[RawBusinessDocument, ...]:
+        """(Capability Expansion Sprint 2) The optional `EarningsCall
+        TranscriptProvider` capability -- one real API call, requesting
+        the most recently *ended* calendar quarter (see `_most_recent_
+        completed_quarter`'s own docstring for why no reporting-lag
+        heuristic is invented). Returns `()`, never a fabricated
+        document, when that quarter's transcript is not yet published
+        (an empty `transcript` array in Alpha Vantage's own response)
+        or the symbol has none at all.
+
+        **One `RawBusinessDocument` per individual speaker statement**,
+        not one per transcript -- `RawBusinessDocument.metadata` only
+        supports scalar values (see its own dataclass docstring), so a
+        transcript's own list of statements cannot be packed into a
+        single document's metadata without inventing a bespoke blob
+        format this sprint's own "no provider-specific architecture"
+        instruction rules out. This mirrors `SecEdgarFundamentalsProvider
+        .fetch`'s own "one document per atomic fact" convention exactly,
+        just at statement granularity instead of fiscal-period
+        granularity. A real transcript can therefore produce dozens of
+        documents from this one call -- `refresh_company_data`'s own
+        `_ingest_documents` loop already handles an arbitrary document
+        count per provider call with no special case (confirmed by its
+        own use for `SecEdgarFundamentalsProvider`'s multi-period
+        `fetch`)."""
+        api_key = self._resolved_api_key()
+        ticker = company_identifier.upper()
+        quarter = _most_recent_completed_quarter(evaluated_at)
+
+        entries = self._earnings_call_transcript(ticker, quarter, api_key)
+        if not entries:
+            return ()
+
+        fiscal_date_ending = _quarter_end_date(quarter)
+        documents: list[RawBusinessDocument] = []
+        for index, entry in enumerate(entries):
+            speaker = entry.get("speaker")
+            content = entry.get("content")
+            if not isinstance(speaker, str) or not isinstance(content, str) or not content.strip():
+                continue
+            title = entry.get("title")
+            sentiment = _numeric(entry.get("sentiment"))
+            metadata: dict[str, Any] = {
+                "quarter": quarter,
+                "statement_index": index,
+                "speaker": speaker.strip(),
+                "content": content.strip(),
+            }
+            if isinstance(title, str) and title.strip():
+                metadata["title"] = title.strip()
+            if sentiment is not None:
+                metadata["sentiment"] = sentiment
+
+            content_hash = hashlib.sha256(
+                json.dumps({"quarter": quarter, "index": index, **metadata}, sort_keys=True).encode("utf-8")
+            ).hexdigest()
+            documents.append(
+                RawBusinessDocument(
+                    identifier=f"{ticker}:transcript:{quarter}:{index}",
+                    company=ticker,
+                    source_kind=SourceKind.TRANSCRIPT.value,
+                    published_at=evaluated_at,
+                    provider_id="alpha_vantage",
+                    raw_reference=f"{_BASE_URL}?function=EARNINGS_CALL_TRANSCRIPT&symbol={ticker}&quarter={quarter}",
+                    content_hash=content_hash,
+                    period_start=fiscal_date_ending,
+                    period_end=fiscal_date_ending,
+                    language="en",
+                    metadata=metadata,
+                )
+            )
+        return tuple(documents)

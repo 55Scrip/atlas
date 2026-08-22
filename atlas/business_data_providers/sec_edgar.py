@@ -26,34 +26,39 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from datetime import date, datetime, timezone
 from typing import Any
 
+from atlas.alpha.knowledge_coverage.models import KnowledgeDomain
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 from atlas.analysis_engine.business_data.sources import SourceKind
-from atlas.business_data_providers.errors import (
-    CompanyNotFound,
-    MalformedProviderResponse,
-    MissingRequiredField,
-)
-from atlas.business_data_providers.http import JsonFetcher, fetch_json
+from atlas.business_data_providers.errors import MalformedProviderResponse, MissingRequiredField
+from atlas.business_data_providers.http import JsonFetcher
+from atlas.business_data_providers.sec_edgar_identity import SecEdgarIdentity
 
-__all__ = ["SecEdgarFundamentalsProvider"]
+__all__ = ["SecEdgarFundamentalsProvider", "SecEdgarFilingHistoryProvider"]
 
-_TICKER_MAP_URL = "https://www.sec.gov/files/company_tickers.json"
 _COMPANYFACTS_URL_TEMPLATE = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik10}.json"
 _FILING_INDEX_URL_TEMPLATE = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik}&type=10-K"
+_SUBMISSIONS_URL_TEMPLATE = "https://data.sec.gov/submissions/CIK{cik10}.json"
 
-#: SEC's fair-access policy requires every automated caller to
-#: identify itself as "company name + contact email" -- not a secret,
-#: not authentication, but confirmed live (Phase 1 audit) to be
-#: strictly enforced: a `User-Agent` without an email-shaped contact
-#: gets a genuine `403`, not just a polite warning. Override with a
-#: real contact via `ATLAS_SEC_EDGAR_USER_AGENT` (`atlas.ai.provider`'s
-#: own `os.environ.get(...)`-only convention -- see that module for the
-#: precedent this follows).
-_DEFAULT_USER_AGENT = "Atlas Investment OS admin@atlas-investment-os.local (set ATLAS_SEC_EDGAR_USER_AGENT)"
+#: Automatic Knowledge Ingestion Framework, Foundation Provider --
+#: `SecEdgarFilingHistoryProvider` only reports these real filing types
+#: (a genuine annual/quarterly/material-event/proxy report an investor
+#: would actually want to know about), never every administrative SEC
+#: form (e.g. Form 3/4/5, S-8) -- consistent with `KnowledgeDomain
+#: .REGULATORY_FILINGS`'s own product intent ("regulatory filings," not
+#: "every SEC EDGAR submission of any kind").
+#: `"DEF 14A"` (Capability Expansion Sprint 12: Incentive Intelligence)
+#: is the one, minimal, additive registry change that sprint made: it
+#: lets Atlas discover *that* a proxy statement -- the real-world
+#: document that discloses executive compensation -- was filed, and
+#: when. It does not fetch or read that filing's own content (the same
+#: "existence and metadata only" discipline every other tracked form
+#: already follows); see `incentive_intelligence.py`'s own module
+#: docstring for why that is a real, disclosed limitation, not an
+#: oversight.
+_TRACKED_FORM_TYPES = frozenset({"10-K", "10-Q", "8-K", "DEF 14A"})
 
 _MIN_ANNUAL_DAYS = 300
 _MAX_ANNUAL_DAYS = 400
@@ -110,6 +115,23 @@ _DURATION_CONCEPT_TAGS: dict[str, tuple[tuple[str, ...], str]] = {
     "operating_income": (("OperatingIncomeLoss",), "USD"),
     "net_income": (("NetIncomeLoss", "ProfitLoss"), "USD"),
     "eps": (("EarningsPerShareDiluted", "EarningsPerShareBasic"), "USD/shares"),
+    # Capability Expansion Sprint 3 (Financial Statement Intelligence) --
+    # `gross_profit` is a real, standard XBRL concept, but not every
+    # filer reports it (e.g. many financial-sector companies do not
+    # break out cost of revenue at all) -- `None`, never derived from a
+    # guess, exactly like every other optional concept here.
+    "gross_profit": (("GrossProfit",), "USD"),
+    # Internal-only (never reaches `FinancialStatementFact` directly) --
+    # used solely to derive `ebitda` below, the same "internal helper
+    # key, popped before persistence" convention `_operating_cash_flow`
+    # already establishes. SEC has no single "EBITDA" tag of its own;
+    # EBITDA is *always* a derived figure, never a raw filed fact.
+    "_depreciation_and_amortization": (
+        ("DepreciationDepletionAndAmortization", "DepreciationAmortizationAndAccretionNet"),
+        "USD",
+    ),
+    "investing_cash_flow": (("NetCashProvidedByUsedInInvestingActivities",), "USD"),
+    "financing_cash_flow": (("NetCashProvidedByUsedInFinancingActivities",), "USD"),
     "capital_expenditure": (
         (
             "PaymentsToAcquirePropertyPlantAndEquipment",
@@ -141,6 +163,17 @@ _DURATION_CONCEPT_TAGS: dict[str, tuple[tuple[str, ...], str]] = {
         ),
         "USD",
     ),
+    # Capability Expansion Sprint 4 (Capital Allocation Intelligence) --
+    # the one genuinely missing acquisition per this sprint's own Phase
+    # 2 audit: every other Capital Allocation raw fact (capex, buybacks,
+    # issuance, dividends, debt issuance/repayment, shares outstanding)
+    # was already fetched, by this same provider, before this sprint --
+    # confirmed by reading this exact file, not assumed. Real, standard
+    # XBRL concepts; not every filer reports M&A activity, so `None`
+    # (never derived from a guess) is the honest default.
+    "acquisitions": (("PaymentsToAcquireBusinessesNetOfCashAcquired",), "USD"),
+    "disposals": (("ProceedsFromDivestitureOfBusinesses",), "USD"),
+    "treasury_shares_acquired": (("TreasuryStockSharesAcquired",), "shares"),
 }
 
 #: **Instant concepts** (Company Data Foundation v1) -- a balance-sheet
@@ -180,11 +213,22 @@ _INSTANT_CONCEPT_TAGS: dict[str, tuple[tuple[str, ...], str]] = {
     # letting Capital Allocation see genuine share-count movement
     # (dilution or retirement) across years, not just today's snapshot.
     "shares_outstanding": (("CommonStockSharesOutstanding",), "shares"),
+    # Capability Expansion Sprint 3 (Financial Statement Intelligence).
+    # `equity`/`current_assets`/`current_liabilities`/`total_assets`/
+    # `goodwill`/`intangible_assets` are all real, standalone concepts,
+    # exposed directly the same as `cash`/`total_debt` already are.
+    # `tangible_assets` (derived: `total_assets - goodwill - intangible
+    # _assets`, see `fetch`'s own comment at the merge point) is the
+    # one figure here with no XBRL tag of its own -- always derived,
+    # never a raw filed fact, the same "no single source tag" reasoning
+    # `ebitda`'s own comment above already applies to EBITDA.
+    "equity": (("StockholdersEquity",), "USD"),
+    "current_assets": (("AssetsCurrent",), "USD"),
+    "current_liabilities": (("LiabilitiesCurrent",), "USD"),
+    "total_assets": (("Assets",), "USD"),
+    "goodwill": (("Goodwill",), "USD"),
+    "intangible_assets": (("IntangibleAssetsNetExcludingGoodwill", "FiniteLivedIntangibleAssetsNet"), "USD"),
 }
-
-
-def _user_agent() -> str:
-    return os.environ.get("ATLAS_SEC_EDGAR_USER_AGENT", _DEFAULT_USER_AGENT)
 
 
 def _is_annual_span(start: str | None, end: str | None) -> bool:
@@ -218,22 +262,6 @@ def _annual_entries(fact_node: dict[str, Any] | None, *, unit_key: str = "USD") 
         and isinstance(entry.get("val"), (int, float))
         and not isinstance(entry.get("val"), bool)
     ]
-
-
-def _sec_ticker_candidates(ticker: str) -> tuple[str, ...]:
-    """Provider-local normalization only (ATLAS-031A, Issue 2) -- Atlas's
-    own ticker identity is never changed by this; only the candidate
-    strings tried against SEC's own ticker map. SEC's `company_tickers
-    .json` commonly uses a hyphen where Atlas (and most retail-facing
-    data) uses a dot for multi-class tickers -- confirmed live: Atlas's
-    `BRK.B` has no entry in SEC's map, but `BRK-B` does. Tried in
-    order; the exact ticker always wins first so an already-SEC-format
-    ticker never pays for a wasted lookup or behaves differently."""
-    upper = ticker.upper()
-    candidates = [upper]
-    if "." in upper:
-        candidates.append(upper.replace(".", "-"))
-    return tuple(candidates)
 
 
 def _latest_value_per_period(entries: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, Any]]:
@@ -308,40 +336,13 @@ class SecEdgarFundamentalsProvider:
         *,
         ticker_cik_map: dict[str, str] | None = None,
     ) -> None:
-        self._fetch_json = fetch_json_fn or fetch_json
-        self._ticker_cik_cache: dict[str, str] | None = ticker_cik_map
+        self._identity = SecEdgarIdentity(fetch_json_fn, ticker_cik_map=ticker_cik_map)
         self._companyfacts_cache: dict[str, Any] = {}
-
-    def _headers(self) -> dict[str, str]:
-        return {"User-Agent": _user_agent()}
-
-    def _ticker_to_cik(self) -> dict[str, str]:
-        if self._ticker_cik_cache is not None:
-            return self._ticker_cik_cache
-        payload = self._fetch_json(_TICKER_MAP_URL, self._headers())
-        if not isinstance(payload, dict):
-            raise MalformedProviderResponse("SEC ticker map response was not a JSON object")
-        mapping: dict[str, str] = {}
-        for entry in payload.values():
-            ticker = entry.get("ticker") if isinstance(entry, dict) else None
-            cik = entry.get("cik_str") if isinstance(entry, dict) else None
-            if isinstance(ticker, str) and cik is not None:
-                mapping[ticker.upper()] = f"{int(cik):010d}"
-        self._ticker_cik_cache = mapping
-        return mapping
-
-    def _resolve_cik(self, company_identifier: str) -> str:
-        mapping = self._ticker_to_cik()
-        for candidate in _sec_ticker_candidates(company_identifier):
-            cik = mapping.get(candidate)
-            if cik is not None:
-                return cik
-        raise CompanyNotFound(f"{company_identifier!r} did not resolve to any SEC-registered filer")
 
     def _companyfacts(self, cik10: str) -> dict[str, Any]:
         if cik10 in self._companyfacts_cache:
             return self._companyfacts_cache[cik10]
-        payload = self._fetch_json(_COMPANYFACTS_URL_TEMPLATE.format(cik10=cik10), self._headers())
+        payload = self._identity.fetch_json(_COMPANYFACTS_URL_TEMPLATE.format(cik10=cik10))
         if not isinstance(payload, dict) or "facts" not in payload:
             raise MalformedProviderResponse(f"SEC companyfacts response for CIK {cik10} was not the expected shape")
         self._companyfacts_cache[cik10] = payload
@@ -349,7 +350,7 @@ class SecEdgarFundamentalsProvider:
 
     def fetch(self, *, company_identifier: str, evaluated_at: datetime) -> tuple[RawBusinessDocument, ...]:
         del evaluated_at  # every timestamp here comes from SEC's own filing data, never a wall-clock read
-        cik10 = self._resolve_cik(company_identifier)
+        cik10 = self._identity.resolve_cik(company_identifier)
         payload = self._companyfacts(cik10)
         us_gaap = payload.get("facts", {}).get("us-gaap", {})
         if not us_gaap:
@@ -396,7 +397,18 @@ class SecEdgarFundamentalsProvider:
         documents: list[RawBusinessDocument] = []
         for (start, end), values in sorted(periods.items()):
             operating_cash_flow = values.pop("_operating_cash_flow", None)
+            if operating_cash_flow is not None:
+                values["operating_cash_flow"] = operating_cash_flow
             capital_expenditure = values.get("capital_expenditure")
+
+            # Capability Expansion Sprint 3: EBITDA is always derived
+            # (Operating Income + Depreciation & Amortization), never a
+            # raw filed tag -- only computed when both real inputs are
+            # known for this exact period, never from one side alone.
+            depreciation_and_amortization = values.pop("_depreciation_and_amortization", None)
+            operating_income = values.get("operating_income")
+            if operating_income is not None and depreciation_and_amortization is not None:
+                values["ebitda"] = operating_income + depreciation_and_amortization
 
             # Sign validation (ATLAS-031A, Issue 4). "Payments to
             # Acquire..." concepts represent a cash outflow and are
@@ -441,6 +453,39 @@ class SecEdgarFundamentalsProvider:
             if shares_outstanding is not None:
                 values["shares_outstanding"] = shares_outstanding
 
+            # Capability Expansion Sprint 3: `equity`/`current_assets`/
+            # `current_liabilities`/`total_assets`/`goodwill`/
+            # `intangible_assets` pass through directly, the same as
+            # `cash` above. `working_capital`/`tangible_assets` are
+            # always derived, never a raw filed tag -- `working_capital`
+            # only when both sides are known; `tangible_assets` only
+            # when `total_assets` is known (a company genuinely
+            # reporting no goodwill/intangibles is a real zero for
+            # those two, not a missing value, so their own absence does
+            # not block the subtraction).
+            equity = period_instant.get("equity")
+            if equity is not None:
+                values["equity"] = equity
+            current_assets = period_instant.get("current_assets")
+            if current_assets is not None:
+                values["current_assets"] = current_assets
+            current_liabilities = period_instant.get("current_liabilities")
+            if current_liabilities is not None:
+                values["current_liabilities"] = current_liabilities
+            if current_assets is not None and current_liabilities is not None:
+                values["working_capital"] = current_assets - current_liabilities
+            total_assets = period_instant.get("total_assets")
+            if total_assets is not None:
+                values["total_assets"] = total_assets
+            goodwill = period_instant.get("goodwill")
+            if goodwill is not None:
+                values["goodwill"] = goodwill
+            intangible_assets = period_instant.get("intangible_assets")
+            if intangible_assets is not None:
+                values["intangible_assets"] = intangible_assets
+            if total_assets is not None:
+                values["tangible_assets"] = total_assets - (goodwill or 0.0) - (intangible_assets or 0.0)
+
             filed = filed_by_period.get((start, end), end)
             try:
                 published_at = datetime.fromisoformat(filed).replace(tzinfo=timezone.utc)
@@ -473,6 +518,104 @@ class SecEdgarFundamentalsProvider:
                     period_end=date.fromisoformat(end),
                     language="en",
                     metadata=metadata,
+                )
+            )
+        return tuple(documents)
+
+
+class SecEdgarFilingHistoryProvider:
+    """Automatic Knowledge Ingestion Framework, Foundation Provider
+    (`KnowledgeDomain.REGULATORY_FILINGS`). One `RawBusinessDocument`
+    per real, investor-relevant filing (10-K/10-Q/8-K) SEC's own public
+    `submissions` endpoint reports for a company -- the filing's own
+    existence and metadata (form type, filing date, accession number),
+    never the filing's own content (this provider does not fetch or
+    read the filing document itself, the same "a `BusinessRecord` says
+    a document exists, never what it says" discipline
+    `SecEdgarFundamentalsProvider` already follows for `companyfacts`).
+
+    Reuses `SecEdgarIdentity` for ticker->CIK resolution -- the exact
+    same cached, live, keyless resolution `SecEdgarFundamentalsProvider`
+    already uses, never a second, independent implementation.
+    """
+
+    provider_id = "sec_edgar_filings"
+    supported_domains = (KnowledgeDomain.REGULATORY_FILINGS,)
+    supported_source_kinds = (SourceKind.COMPANY_FILING,)
+
+    def __init__(self, fetch_json_fn: JsonFetcher | None = None, *, ticker_cik_map: dict[str, str] | None = None) -> None:
+        self._identity = SecEdgarIdentity(fetch_json_fn, ticker_cik_map=ticker_cik_map)
+
+    def fetch(self, *, company_identifier: str, evaluated_at: datetime) -> tuple[RawBusinessDocument, ...]:
+        del evaluated_at  # every timestamp here comes from SEC's own filing data, never a wall-clock read
+        cik10 = self._identity.resolve_cik(company_identifier)
+        payload = self._identity.fetch_json(_SUBMISSIONS_URL_TEMPLATE.format(cik10=cik10))
+        if not isinstance(payload, dict):
+            raise MalformedProviderResponse(f"SEC submissions response for CIK {cik10} was not a JSON object")
+
+        recent = payload.get("filings", {}).get("recent", {})
+        forms = recent.get("form", [])
+        accession_numbers = recent.get("accessionNumber", [])
+        filing_dates = recent.get("filingDate", [])
+        report_dates = recent.get("reportDate", [])
+        primary_documents = recent.get("primaryDocument", [])
+        if not (forms and accession_numbers and filing_dates):
+            raise MissingRequiredField(
+                f"SEC submissions for CIK {cik10} ({company_identifier}) has no recent filings array"
+            )
+        if not (len(forms) == len(accession_numbers) == len(filing_dates)):
+            raise MalformedProviderResponse(
+                f"SEC submissions for CIK {cik10} ({company_identifier}) has mismatched parallel filing arrays"
+            )
+
+        documents: list[RawBusinessDocument] = []
+        for index, form in enumerate(forms):
+            if form not in _TRACKED_FORM_TYPES:
+                continue
+            accession = accession_numbers[index]
+            filing_date = filing_dates[index]
+            report_date = report_dates[index] if index < len(report_dates) else None
+            primary_document = primary_documents[index] if index < len(primary_documents) else None
+
+            try:
+                published_at = datetime.fromisoformat(filing_date).replace(tzinfo=timezone.utc)
+            except (TypeError, ValueError):
+                continue  # a filing with no parseable date is skipped, never fabricated
+            period_end = None
+            if report_date:
+                try:
+                    period_end = date.fromisoformat(report_date)
+                except ValueError:
+                    period_end = None
+
+            accession_no_dashes = accession.replace("-", "")
+            filing_url = (
+                f"https://www.sec.gov/Archives/edgar/data/{int(cik10)}/{accession_no_dashes}/{primary_document}"
+                if primary_document
+                else f"https://www.sec.gov/Archives/edgar/data/{int(cik10)}/{accession_no_dashes}/"
+            )
+            content_hash = hashlib.sha256(
+                json.dumps({"accn": accession, "form": form, "filed": filing_date}, sort_keys=True).encode("utf-8")
+            ).hexdigest()
+
+            documents.append(
+                RawBusinessDocument(
+                    identifier=f"{company_identifier.upper()}:FILING:{accession}",
+                    company=company_identifier.upper(),
+                    source_kind=SourceKind.COMPANY_FILING.value,
+                    published_at=published_at,
+                    provider_id=self.provider_id,
+                    raw_reference=filing_url,
+                    content_hash=content_hash,
+                    period_start=None,
+                    period_end=period_end,
+                    language="en",
+                    metadata={
+                        "form_type": form,
+                        "accession_number": accession,
+                        "sec_cik": cik10,
+                        "filing_url": filing_url,
+                    },
                 )
             )
         return tuple(documents)

@@ -11,6 +11,19 @@ from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecor
 from atlas.alpha.investment_case.company_profile import extract_company_profile
 from atlas.alpha.investment_case.financial_history import extract_financial_history, extract_market_snapshot
 from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComposition
+from atlas.alpha.investment_case.business_quality_intelligence import extract_business_quality
+from atlas.alpha.investment_case.capital_allocation_intelligence import extract_capital_allocation_history
+from atlas.alpha.investment_case.earnings_call import extract_earnings_call_knowledge
+from atlas.alpha.investment_case.executive_change_intelligence import extract_executive_change_intelligence
+from atlas.alpha.investment_case.executive_track_record_intelligence import extract_executive_track_record
+from atlas.alpha.investment_case.financial_quality_intelligence import extract_financial_quality
+from atlas.alpha.investment_case.incentive_intelligence import extract_incentive_intelligence
+from atlas.alpha.investment_case.growth_intelligence import extract_growth_knowledge
+from atlas.alpha.investment_case.financial_statement_intelligence import extract_financial_statement_history
+from atlas.alpha.investment_case.historical_valuation import extract_historical_valuation
+from atlas.alpha.investment_case.management_credibility_intelligence import extract_management_credibility
+from atlas.alpha.investment_case.management_guidance_intelligence import extract_management_guidance
+from atlas.alpha.investment_case.regulatory_filings import extract_regulatory_filings
 from atlas.alpha.investment_case_change.repository import SqlAlchemyInvestmentCaseSnapshotRepository
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaTradeLogEntry
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
@@ -20,8 +33,10 @@ from atlas.alpha.portfolio_status.service import VERY_OLD_CASE_THRESHOLD_DAYS
 from atlas.alpha.watchlist.store import AlphaWatchlistStore
 from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.business_data.versioning import latest_versions
+from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
 from atlas.analysis_engine.investment_case_change import ChangeIntelligence, capture_snapshot, compare_snapshots
 from atlas.analysis_engine.pipeline import assemble_analysis
+from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
 from atlas.core.domain.case.entity import Case
 from atlas.core.domain.case.repository import CaseRepository
 from atlas.core.domain.case.value_objects import CaseId
@@ -161,6 +176,16 @@ class InvestmentCaseCompositionService:
             generated_at=evaluated_at,
         )
 
+        # Product Sprint 14 (Evidence & Explanation Quality): the exact
+        # same pure extraction `assemble_analysis` already ran
+        # internally to produce the findings above -- re-derived once
+        # more here (cheap, deterministic, no side effects) so the API
+        # schema layer can resolve a finding's own evidence-reference
+        # ids back into the real fact they name. See
+        # `InvestmentCaseComposition.business_facts`'s own docstring.
+        business_facts = extract_facts_from_records(business_records, evaluated_at=evaluated_at)
+        market_facts = extract_valuation_facts_from_records(business_records, evaluated_at=evaluated_at)
+
         # Investment Case Engine v1 slice: a direct, unevaluated read of
         # the same already-ingested `business_records` -- "what does
         # Atlas actually know," alongside `canonical_analysis`'s own
@@ -172,6 +197,30 @@ class InvestmentCaseCompositionService:
         company_profile = extract_company_profile(ticker, business_records) if ticker is not None else None
         financial_history = extract_financial_history(business_records)
         market_snapshot = extract_market_snapshot(business_records)
+        regulatory_filings = extract_regulatory_filings(business_records)
+        incentive_intelligence = extract_incentive_intelligence(regulatory_filings)
+        historical_valuation = extract_historical_valuation(business_facts, market_facts)
+        earnings_call = extract_earnings_call_knowledge(business_records)
+        financial_statement_intelligence = extract_financial_statement_history(business_records)
+        financial_quality_intelligence = extract_financial_quality(financial_statement_intelligence)
+        growth_intelligence = extract_growth_knowledge(financial_statement_intelligence)
+        capital_allocation_intelligence = extract_capital_allocation_history(business_records)
+        business_quality_intelligence = extract_business_quality(
+            financial_statement_intelligence, capital_allocation_intelligence, financial_quality_intelligence,
+            growth_intelligence,
+        )
+        management_credibility_intelligence = extract_management_credibility(
+            earnings_call, financial_statement_intelligence, growth_intelligence, capital_allocation_intelligence,
+        )
+        management_guidance_intelligence = extract_management_guidance(
+            earnings_call, financial_statement_intelligence, growth_intelligence, capital_allocation_intelligence,
+        )
+        executive_change_intelligence = extract_executive_change_intelligence(ticker, earnings_call)
+        executive_track_record_intelligence = extract_executive_track_record(
+            executive_change_intelligence, financial_statement_intelligence, earnings_call,
+            capital_allocation_intelligence, growth_intelligence, management_credibility_intelligence,
+            management_guidance_intelligence,
+        )
 
         # Investment Case Monitoring & Change Intelligence v1: the
         # smallest correct integration point is exactly here -- the one
@@ -211,6 +260,21 @@ class InvestmentCaseCompositionService:
             market_snapshot=market_snapshot,
             change_intelligence=change_intelligence,
             generated_at=evaluated_at,
+            business_facts=business_facts,
+            market_facts=market_facts,
+            regulatory_filings=regulatory_filings,
+            historical_valuation=historical_valuation,
+            earnings_call=earnings_call,
+            financial_statement_intelligence=financial_statement_intelligence,
+            financial_quality_intelligence=financial_quality_intelligence,
+            growth_intelligence=growth_intelligence,
+            capital_allocation_intelligence=capital_allocation_intelligence,
+            business_quality_intelligence=business_quality_intelligence,
+            management_credibility_intelligence=management_credibility_intelligence,
+            management_guidance_intelligence=management_guidance_intelligence,
+            executive_change_intelligence=executive_change_intelligence,
+            executive_track_record_intelligence=executive_track_record_intelligence,
+            incentive_intelligence=incentive_intelligence,
         )
 
     def build(self, case_id_str: str) -> InvestmentCaseComposition | None:
