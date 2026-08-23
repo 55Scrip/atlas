@@ -95,7 +95,7 @@ def _utc_now() -> datetime:
 
 
 class Signal:
-    __slots__ = ("priority", "kind", "source", "reason", "nature", "since")
+    __slots__ = ("priority", "kind", "source", "reason", "nature", "since", "attention_category", "attention_count")
 
     def __init__(
         self,
@@ -105,6 +105,9 @@ class Signal:
         reason: str,
         nature: SignalNature,
         since: datetime | None = None,
+        *,
+        attention_category: AttentionCategory | None = None,
+        attention_count: int | None = None,
     ) -> None:
         self.priority = priority
         self.kind = kind
@@ -112,6 +115,14 @@ class Signal:
         self.reason = reason
         self.nature = nature
         self.since = since
+        # Localization fix (Portfolio live-verification follow-up):
+        # `reason` above stays a raw, English, backend-composed string
+        # (unchanged, for any consumer reading it directly), but only
+        # `workflow_signal` also populates these two so the frontend can
+        # compose and translate its own version of the same sentence --
+        # see `AgendaItem.attention_category`'s own docstring.
+        self.attention_category = attention_category
+        self.attention_count = attention_count
 
 
 # -- Workflow (ported verbatim from `derivePortfolioActions.ts`'s own
@@ -127,7 +138,7 @@ _WORKFLOW_PRIORITY: dict[AttentionCategory, PriorityLevel] = {
 }
 
 
-def workflow_signal(category: AttentionCategory, reason: str) -> Signal:
+def workflow_signal(category: AttentionCategory, reason: str, *, count: int) -> Signal:
     """Fix Sprint 4: `PERSISTENT_CONDITION` -- `status_report
     .review_queue` (`service.py`'s own source 4) is membership in a
     structural gap that stays true until resolved (a Decision still
@@ -137,13 +148,20 @@ def workflow_signal(category: AttentionCategory, reason: str) -> Signal:
     `VERY_OLD_CASE`'s own `age_days` (a portfolio-status-page-only
     field this package's own `ReviewQueueItem` does not carry through)
     -- see this sprint's own Final Report for why extending that is
-    left to a future, narrower sprint rather than done here."""
+    left to a future, narrower sprint rather than done here.
+
+    `count` (`ReviewQueueItem.reason_count`, already computed by the
+    caller) is threaded through alongside `category` purely so the
+    frontend can compose a translated headline -- see `attention
+    _category`/`attention_count` on `Signal`/`AgendaItem`."""
     return Signal(
         _WORKFLOW_PRIORITY[category],
         AgendaItemKind.REVIEW_PORTFOLIO_POSITION,
         AgendaSource.PORTFOLIO_STATUS,
         reason,
         SignalNature.PERSISTENT_CONDITION,
+        attention_category=category,
+        attention_count=count,
     )
 
 
@@ -621,6 +639,8 @@ def _item_for_ticker(context: TickerContext, signals: list[Signal], now: datetim
         case_id=context.case_id,
         portfolio_context=context.portfolio_context,
         generated_at=now,
+        attention_category=winner.attention_category,
+        attention_count=winner.attention_count,
     )
 
 
@@ -665,6 +685,8 @@ def build_agenda(
                 case_id=None,
                 portfolio_context=None,
                 generated_at=resolved_now,
+                attention_category=signal.attention_category,
+                attention_count=signal.attention_count,
             )
         )
 

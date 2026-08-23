@@ -442,6 +442,31 @@ export const SIGNAL_NATURE_TONE: Record<SignalNature, StatusTone> = {
   persistent_condition: "neutral",
 };
 
+/** Localization fix (Portfolio live-verification follow-up) -- mirrors
+ * `atlas.alpha.portfolio_status.models.AttentionCategory` exactly (six
+ * members). Before this, a workflow-sourced item's `headline` was a
+ * raw, backend-composed English sentence built directly from this
+ * enum's own `.value` (`.replace('_', ' ').lower()`) -- the one gap in
+ * an otherwise fully localized UI. `agendaItemHeadline`
+ * (`../dailyBriefAgenda/describeAgendaHeadline.ts`) uses this map to
+ * compose a translated version instead. */
+export type AttentionCategory =
+  | "MISSING_CASE"
+  | "DECISION_WITHOUT_OUTCOME"
+  | "OUTCOME_WITHOUT_EXECUTION"
+  | "AWAITING_RECONCILIATION"
+  | "VERY_OLD_CASE"
+  | "OBSERVATION_WITHOUT_DECISION";
+
+export const ATTENTION_CATEGORY_KEY: Record<AttentionCategory, TranslationKey> = {
+  MISSING_CASE: "dailyBriefAgenda.attentionCategory.missingCase",
+  DECISION_WITHOUT_OUTCOME: "dailyBriefAgenda.attentionCategory.decisionWithoutOutcome",
+  OUTCOME_WITHOUT_EXECUTION: "dailyBriefAgenda.attentionCategory.outcomeWithoutExecution",
+  AWAITING_RECONCILIATION: "dailyBriefAgenda.attentionCategory.awaitingReconciliation",
+  VERY_OLD_CASE: "dailyBriefAgenda.attentionCategory.veryOldCase",
+  OBSERVATION_WITHOUT_DECISION: "dailyBriefAgenda.attentionCategory.observationWithoutDecision",
+};
+
 /** Atlas Intelligence Sprint 1 (Data Coverage & Confidence Engine) --
  * mirrors `atlas.alpha.coverage.models.DimensionCoverageLevel` exactly
  * (five members). `unavailable`/`insufficient_evidence` both read

@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 
+from atlas.alpha.portfolio_status.models import AttentionCategory
+
 __all__ = [
     "PriorityLevel",
     "AgendaItemKind",
@@ -273,6 +275,25 @@ class AgendaItem:
     case_id: str | None
     portfolio_context: str | None
     generated_at: datetime
+    attention_category: AttentionCategory | None = None
+    """Localization fix (Portfolio live-verification follow-up): only
+    populated when the winning signal came from `workflow_signal`
+    (`AgendaSource.PORTFOLIO_STATUS`) -- every other source leaves this
+    `None`. `headline`/`reason` above stay raw, backend-composed
+    English strings, per this package's own established "enum stays
+    English on the wire, frontend owns localized labels via its own
+    key map" convention (see `api/schemas.py`'s module docstring).
+    Before this field existed, `headline` was the *only* thing the
+    frontend had to display for a workflow item, so it was forced to
+    show that raw English sentence verbatim -- the one gap in an
+    otherwise fully localized UI. `attention_category`/`attention
+    _count` let the frontend compose and translate its own version of
+    the same sentence instead, the same way every other enum-shaped
+    field on this page already works."""
+    attention_count: int | None = None
+    """Parallel to `attention_category` -- `ReviewQueueItem.reason
+    _count`, threaded through so the frontend's composed sentence can
+    still say how many real facts it summarizes."""
 
 
 @dataclass(frozen=True)

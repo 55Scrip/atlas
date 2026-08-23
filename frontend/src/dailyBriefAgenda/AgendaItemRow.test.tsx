@@ -21,6 +21,8 @@ function item(overrides: Partial<AgendaItemView> = {}): AgendaItemView {
     caseId: "case-aapl",
     portfolioContext: null,
     generatedAt: "2026-01-01T00:00:00Z",
+    attentionCategory: null,
+    attentionCount: null,
     ...overrides,
   };
 }
@@ -90,6 +92,26 @@ describe("AgendaItemRow", () => {
   it("never renders a numeric score anywhere in the row", () => {
     renderRow();
     expect(screen.queryByText(/^\d+\/\d+$|^\d+%$/)).not.toBeInTheDocument();
+  });
+
+  describe("Localization fix (Portfolio live-verification follow-up)", () => {
+    it("composes a translated headline instead of the raw backend headline when attentionCategory is present", () => {
+      renderRow({
+        kind: "review_portfolio_position",
+        source: "portfolio_status",
+        headline: "AAPL: outcome without execution (3 item(s))",
+        reason: ["AAPL: outcome without execution (3 item(s))"],
+        attentionCategory: "OUTCOME_WITHOUT_EXECUTION",
+        attentionCount: 3,
+      });
+      expect(screen.getByText("utfall utan verkställande (3 st)", { exact: false })).toBeInTheDocument();
+      expect(screen.queryByText(/outcome without execution/)).not.toBeInTheDocument();
+    });
+
+    it("falls back to the raw backend headline when attentionCategory is absent (every non-workflow source)", () => {
+      renderRow({ headline: "AAPL: China revenue declines (satisfied)", attentionCategory: null, attentionCount: null });
+      expect(screen.getByText("China revenue declines (satisfied)", { exact: false })).toBeInTheDocument();
+    });
   });
 
   describe("Signal nature (Fix Sprint 4 -- Daily Brief Signal Quality)", () => {

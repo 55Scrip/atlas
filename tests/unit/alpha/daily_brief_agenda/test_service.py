@@ -65,6 +65,7 @@ from atlas.alpha.portfolio.trade_log_store import AlphaTradeLogStore
 from atlas.alpha.portfolio.trade_log_table import create_alpha_trade_log_table
 from atlas.alpha.portfolio_fit.service import PortfolioFitService
 from atlas.alpha.portfolio_intelligence.service import PortfolioIntelligenceService
+from atlas.alpha.portfolio_status.models import AttentionCategory
 from atlas.alpha.portfolio_status.service import PortfolioStatusService
 from atlas.alpha.stance.service import StanceService
 from atlas.alpha.watchlist.models import AlphaWatchlistEntry
@@ -685,6 +686,52 @@ class TestMissingEvidenceIntegration:
         assert aapl_items[0].priority is PriorityLevel.HIGH
         assert aapl_items[0].kind is AgendaItemKind.REVIEW_PORTFOLIO_POSITION
         assert any("missing evidence" in r for r in aapl_items[0].reason)
+
+
+class TestWorkflowItemLocalization:
+    """Localization fix (Portfolio live-verification follow-up):
+    `AgendaItem.headline` for a workflow-sourced item used to be a raw,
+    untranslated English sentence built server-side
+    (`f"{ticker}: {category.value...} ({count} item(s))"`) that reached
+    the Swedish UI verbatim. `attention_category`/`attention_count` now
+    ride alongside it end-to-end so the frontend can compose its own
+    translated version instead -- see `AgendaItemRow.tsx`/
+    `HoldingAttentionPage.tsx`'s own `agendaItemHeadline` usage."""
+
+    def test_a_decision_without_outcome_item_carries_its_real_category_and_count(self, harness):
+        case_id = harness.import_holding("AAPL")
+        harness.record_decision(case_id)
+
+        agenda = harness.agenda_service.build_agenda()
+        aapl_items = [i for i in agenda.items if i.ticker == "AAPL"]
+        assert len(aapl_items) == 1
+        item = aapl_items[0]
+        # DECISION_WITHOUT_OUTCOME is CRITICAL -- strictly above every
+        # other real signal a single, freshly-imported, freshly-decided
+        # holding can also fire (HIGH_CONCENTRATION, missing evidence
+        # are both HIGH), so it is deterministically the winner here.
+        assert item.attention_category is AttentionCategory.DECISION_WITHOUT_OUTCOME
+        assert item.attention_count == 1
+
+    def test_a_non_workflow_item_carries_no_attention_category(self, harness):
+        case_id = harness.import_holding("AAPL")
+        decision = harness.record_decision(case_id)
+        condition = harness.case_condition_service.create(
+            case_id=decision.case_id,
+            decision_id=decision.id,
+            content=CaseConditionContent(predicate_text="Thesis breaks", role="invalidation", authorship="user"),
+        )
+        harness.case_condition_service.evaluate(condition.condition_id, human_asserted_satisfied=True)
+
+        agenda = harness.agenda_service.build_agenda()
+        aapl_items = [i for i in agenda.items if i.ticker == "AAPL"]
+        assert len(aapl_items) == 1
+        # The satisfied invalidation CaseCondition is also CRITICAL and
+        # wins the tie-break over DECISION_WITHOUT_OUTCOME (Case
+        # Condition's own higher `_SOURCE_TIE_RANK`) -- a real,
+        # non-workflow source, so `attention_category` must stay `None`.
+        assert aapl_items[0].attention_category is None
+        assert aapl_items[0].attention_count is None
 
 
 class TestWatchlistIntegration:

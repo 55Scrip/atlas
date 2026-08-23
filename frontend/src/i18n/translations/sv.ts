@@ -1346,6 +1346,13 @@ export const sv: Record<TranslationKey, string> = {
   // ---------- Fix Sprint 4 (Daily Brief Signal Quality) ----------
   "dailyBriefAgenda.nature.changeEvent": "Nytt",
   "dailyBriefAgenda.nature.persistentCondition": "Pågående",
+  // ---------- Localization fix (Portfolio live-verification follow-up) ----------
+  "dailyBriefAgenda.attentionCategory.missingCase": "saknar investeringscase ({{count}} st)",
+  "dailyBriefAgenda.attentionCategory.decisionWithoutOutcome": "beslut utan utfall ({{count}} st)",
+  "dailyBriefAgenda.attentionCategory.outcomeWithoutExecution": "utfall utan verkställande ({{count}} st)",
+  "dailyBriefAgenda.attentionCategory.awaitingReconciliation": "väntar på avstämning ({{count}} st)",
+  "dailyBriefAgenda.attentionCategory.veryOldCase": "mycket gammalt case ({{count}} st)",
+  "dailyBriefAgenda.attentionCategory.observationWithoutDecision": "observation utan beslut ({{count}} st)",
   "dailyBriefAgenda.since.withDate": "Pågående sedan {{date}}.",
   "dailyBriefAgenda.since.withoutDate": "Atlas identifierar detta för närvarande som pågående; det finns ingen uppgift om exakt när det uppstod.",
 

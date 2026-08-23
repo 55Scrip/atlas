@@ -37,6 +37,10 @@ class AgendaItemView(CamelModel):
     case_id: str | None
     portfolio_context: str | None
     generated_at: datetime
+    attention_category: str | None
+    """Localization fix -- only present for workflow-sourced items; see
+    `AgendaItem.attention_category`'s own docstring."""
+    attention_count: int | None
 
     @classmethod
     def from_domain(cls, item: AgendaItem) -> "AgendaItemView":
@@ -55,6 +59,8 @@ class AgendaItemView(CamelModel):
             case_id=item.case_id,
             portfolio_context=item.portfolio_context,
             generated_at=item.generated_at,
+            attention_category=item.attention_category.value if item.attention_category is not None else None,
+            attention_count=item.attention_count,
         )
 
 

@@ -47,15 +47,24 @@ _NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
 class TestWorkflowSignal:
     def test_decision_without_outcome_is_critical(self):
-        signal = workflow_signal(AttentionCategory.DECISION_WITHOUT_OUTCOME, "reason")
+        signal = workflow_signal(AttentionCategory.DECISION_WITHOUT_OUTCOME, "reason", count=1)
         assert signal.priority is PriorityLevel.CRITICAL
         assert signal.kind is AgendaItemKind.REVIEW_PORTFOLIO_POSITION
 
     def test_missing_case_is_high(self):
-        assert workflow_signal(AttentionCategory.MISSING_CASE, "r").priority is PriorityLevel.HIGH
+        assert workflow_signal(AttentionCategory.MISSING_CASE, "r", count=1).priority is PriorityLevel.HIGH
 
     def test_very_old_case_is_normal(self):
-        assert workflow_signal(AttentionCategory.VERY_OLD_CASE, "r").priority is PriorityLevel.NORMAL
+        assert workflow_signal(AttentionCategory.VERY_OLD_CASE, "r", count=1).priority is PriorityLevel.NORMAL
+
+    def test_carries_attention_category_and_count_for_frontend_localization(self):
+        """Localization fix (Portfolio live-verification follow-up):
+        `attention_category`/`attention_count` must reach the returned
+        `Signal` unchanged so the frontend can compose its own
+        translated headline instead of the raw `reason` string."""
+        signal = workflow_signal(AttentionCategory.OUTCOME_WITHOUT_EXECUTION, "AAPL: outcome without execution (3 item(s))", count=3)
+        assert signal.attention_category is AttentionCategory.OUTCOME_WITHOUT_EXECUTION
+        assert signal.attention_count == 3
 
 
 class TestCaseConditionSignal:

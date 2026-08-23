@@ -1351,6 +1351,13 @@ export const en = {
   // ---------- Fix Sprint 4 (Daily Brief Signal Quality) ----------
   "dailyBriefAgenda.nature.changeEvent": "New",
   "dailyBriefAgenda.nature.persistentCondition": "Ongoing",
+  // ---------- Localization fix (Portfolio live-verification follow-up) ----------
+  "dailyBriefAgenda.attentionCategory.missingCase": "missing investment case ({{count}} item(s))",
+  "dailyBriefAgenda.attentionCategory.decisionWithoutOutcome": "decision without outcome ({{count}} item(s))",
+  "dailyBriefAgenda.attentionCategory.outcomeWithoutExecution": "outcome without execution ({{count}} item(s))",
+  "dailyBriefAgenda.attentionCategory.awaitingReconciliation": "awaiting reconciliation ({{count}} item(s))",
+  "dailyBriefAgenda.attentionCategory.veryOldCase": "very old case ({{count}} item(s))",
+  "dailyBriefAgenda.attentionCategory.observationWithoutDecision": "observation without decision ({{count}} item(s))",
   "dailyBriefAgenda.since.withDate": "Ongoing since {{date}}.",
   "dailyBriefAgenda.since.withoutDate": "Atlas currently observes this as ongoing; no record of exactly when it began.",
   "dailyBriefAgenda.empty.noItems": "Atlas has no significant changes to report today.",

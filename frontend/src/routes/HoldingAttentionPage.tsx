@@ -10,6 +10,7 @@ import {
   type DecisionSupportLevel,
 } from "../status/statusTone";
 import type { AgendaItemView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
+import { agendaItemHeadline } from "../dailyBriefAgenda/describeAgendaHeadline";
 
 /** Portfolio Workspace v1 -- the per-holding "attention detail" screen
  * matching the approved `portfolio-attention-expanded` /
@@ -168,7 +169,7 @@ function HoldingAttentionDetail({
    * list -- read verbatim off the real Agenda item, never re-derived,
    * so this text can never drift from what the investor already read
    * on Portfolio. */
-  const originatingReason = originatingAgendaItem ? originatingAgendaItem.headline : null;
+  const originatingReason = originatingAgendaItem ? agendaItemHeadline(originatingAgendaItem, t) : null;
 
   return (
     <Stack gap="inter-section">

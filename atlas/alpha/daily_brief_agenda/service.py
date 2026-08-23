@@ -703,7 +703,7 @@ class DailyBriefAgendaService:
             if item.case_id is None:
                 continue
             reason = f"{item.ticker}: {item.top_category.value.replace('_', ' ').lower()} ({item.reason_count} item(s))"
-            signal = workflow_signal(item.top_category, reason)
+            signal = workflow_signal(item.top_category, reason, count=item.reason_count)
             self._ensure(bundles, item.ticker, item.case_id, True).append(signal)
 
         # 5. Portfolio-wide findings -- `PortfolioIntelligenceService`

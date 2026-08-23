@@ -20,6 +20,19 @@ export type AgendaItemKind =
 
 export type AgendaGroup = "portfolio" | "watchlist" | "discovery" | "system";
 
+/** Localization fix (Portfolio live-verification follow-up) -- mirrors
+ * `atlas.alpha.portfolio_status.models.AttentionCategory` exactly (six
+ * members). Only ever present on a workflow-sourced item
+ * (`source === "portfolio_status"`); every other item leaves
+ * `attentionCategory`/`attentionCount` on `AgendaItemView` `null`. */
+export type AttentionCategory =
+  | "MISSING_CASE"
+  | "DECISION_WITHOUT_OUTCOME"
+  | "OUTCOME_WITHOUT_EXECUTION"
+  | "AWAITING_RECONCILIATION"
+  | "VERY_OLD_CASE"
+  | "OBSERVATION_WITHOUT_DECISION";
+
 /** Fix Sprint 4 (Daily Brief Signal Quality) -- mirrors
  * `atlas.alpha.daily_brief_agenda.models.SignalNature` exactly. */
 export type SignalNature = "change_event" | "persistent_condition";
@@ -77,6 +90,12 @@ export interface AgendaItemView {
   caseId: string | null;
   portfolioContext: string | null;
   generatedAt: string;
+  /** Localization fix -- only populated for a workflow-sourced item;
+   * see `agendaItemHeadline` in `describeAgendaHeadline.ts` for how
+   * this is used to compose a translated `headline` instead of
+   * showing the backend's raw English sentence verbatim. */
+  attentionCategory: AttentionCategory | null;
+  attentionCount: number | null;
 }
 
 export interface PortfolioSummaryView {

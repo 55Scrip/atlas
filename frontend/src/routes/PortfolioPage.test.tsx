@@ -68,6 +68,13 @@ function agendaResponse(overrides: Record<string, unknown> = {}) {
         caseId: "case-aapl",
         portfolioContext: null,
         generatedAt: "2026-01-01T00:00:00Z",
+        // Localization fix (Portfolio live-verification follow-up):
+        // a real workflow item always carries these two -- the raw
+        // English `headline` above is the backend's own unused-by-the
+        // -UI fallback now, kept here only so a test overriding this
+        // fixture without `attentionCategory` still gets a headline.
+        attentionCategory: "OUTCOME_WITHOUT_EXECUTION",
+        attentionCount: 1,
       },
     ],
     ...overrides,
@@ -161,7 +168,12 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
-    expect(screen.getByText(/outcome without execution/)).toBeInTheDocument();
+    // Localization fix (Portfolio live-verification follow-up): a real
+    // workflow item's headline is now composed and translated from
+    // `attentionCategory`/`attentionCount`, never the backend's raw
+    // English `headline` string -- see `describeAgendaHeadline.ts`.
+    expect(screen.getByText(/utfall utan verkställande/)).toBeInTheDocument();
+    expect(screen.queryByText(/outcome without execution/)).not.toBeInTheDocument();
   });
 
   it("shows the honest empty state for Attention Required when the agenda has no portfolio items", async () => {

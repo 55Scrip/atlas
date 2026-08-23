@@ -4,6 +4,7 @@ import { useTranslation } from "../i18n";
 import { AGENDA_GROUP_KEY, AGENDA_ITEM_KIND_KEY, SIGNAL_NATURE_KEY } from "../status/statusTone";
 import { PriorityBadge } from "./PriorityBadge";
 import { SignalNatureBadge } from "./SignalNatureBadge";
+import { agendaItemHeadline } from "./describeAgendaHeadline";
 import type { AgendaItemView } from "./dailyBriefAgendaApi";
 import { StanceBadge } from "../stance/StanceBadge";
 import { primaryStanceReason, stanceReasonSentence } from "../stance/describeStance";
@@ -78,7 +79,7 @@ export function AgendaItemRow({
             {item.ticker} —{" "}
           </Text>
         )}
-        {item.headline}
+        {agendaItemHeadline(item, t)}
       </Text>
 
       {item.nature === "persistent_condition" && (
