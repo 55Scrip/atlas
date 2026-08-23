@@ -106,6 +106,40 @@ class _Harness:
             investment_case_composition_service=self.composition_service,
         )
 
+    def fresh_daily_brief_service(self) -> DailyBriefService:
+        """A new `DailyBriefService` over a new `InvestmentCaseComposition
+        Service` instance, both reading this harness's own already-open
+        repositories/stores -- exactly what a second, separate real
+        HTTP request to `/daily-brief` gets in production (fresh
+        instances, same persisted database state). Portfolio
+        Performance Instrumentation (profiling-confirmed follow-up):
+        `InvestmentCaseCompositionService.build` now memoizes by
+        `case_id_str` on the instance it's called through (request-
+        scoped, since a real request always gets a fresh instance --
+        see that cache's own docstring). A test that establishes a
+        baseline via `harness.composition_service.build(...)` and then
+        wants a genuinely fresh re-read after a write must build the
+        brief through a fresh pair of services here, mirroring
+        `tests/unit/alpha/investment_case/test_service.py`'s own
+        `fresh_composition_service` for the identical reason."""
+        composition_service = InvestmentCaseCompositionService(
+            self.case_repository,
+            self.decision_repository,
+            self.observation_repository,
+            self.evidence_repository,
+            self.outcome_repository,
+            self.portfolio_store,
+            self.trade_log_store,
+            self.business_record_repository,
+            watchlist_store=self.watchlist_store,
+            snapshot_repository=self.snapshot_repository,
+        )
+        return DailyBriefService(
+            portfolio_store=self.portfolio_store,
+            watchlist_store=self.watchlist_store,
+            investment_case_composition_service=composition_service,
+        )
+
     def import_holding(self, ticker: str, weight_percent: float = 100.0) -> str:
         state = self.portfolio_service.import_portfolio(
             ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker=ticker, weight_percent=weight_percent),))
@@ -171,7 +205,10 @@ class TestOneCompanyChanged:
             _growth_record(company="NVDA", identifier="NVDA-fy26", period_end=date(2026, 12, 31), revenue=3000.0, free_cash_flow=900.0)
         )
 
-        brief = harness.daily_brief_service.build_daily_brief()
+        # A fresh service pair -- the next real request -- so this
+        # genuinely re-reads the two new records just added rather
+        # than reusing the baseline build's own memoized result.
+        brief = harness.fresh_daily_brief_service().build_daily_brief()
         assert len(brief.entries) == 1
         assert brief.entries[0].ticker == "NVDA"
         assert brief.entries[0].case_id == case_id
@@ -194,7 +231,11 @@ class TestPortfolioAndWatchlistMix:
                 _growth_record(company=ticker, identifier=f"{ticker}-fy26", period_end=date(2026, 12, 31), revenue=3000.0, free_cash_flow=900.0)
             )
 
-        brief = harness.daily_brief_service.build_daily_brief()
+        # A fresh service pair -- the next real request -- so this
+        # genuinely re-reads the new records just added for both
+        # tickers rather than reusing either baseline build's own
+        # memoized result.
+        brief = harness.fresh_daily_brief_service().build_daily_brief()
         assert {e.ticker for e in brief.entries} == {"NVDA", "META"}
         # Alphabetical ordering, regardless of Portfolio/Watchlist origin.
         assert [e.ticker for e in brief.entries] == ["META", "NVDA"]
@@ -210,7 +251,10 @@ class TestPortfolioAndWatchlistMix:
         harness.business_record_repository.add(
             _growth_record(company="NVDA", identifier="NVDA-fy26", period_end=date(2026, 12, 31), revenue=3000.0, free_cash_flow=900.0)
         )
-        brief = harness.daily_brief_service.build_daily_brief()
+        # A fresh service pair -- the next real request -- so this
+        # genuinely re-reads the two new records just added rather
+        # than reusing the baseline build's own memoized result.
+        brief = harness.fresh_daily_brief_service().build_daily_brief()
         assert len(brief.entries) == 1
 
 

@@ -117,6 +117,36 @@ class _Harness:
         repository = getattr(self, repository_name)
         return _CallCounter(repository)
 
+    def fresh_composition_service(self) -> InvestmentCaseCompositionService:
+        """A new `InvestmentCaseCompositionService` instance over this
+        harness's own already-open repositories/stores -- exactly what
+        a second, separate real HTTP request gets in production (a
+        fresh instance, but reading the same persisted database
+        state). Portfolio Performance Instrumentation (profiling-
+        confirmed follow-up): `build`'s own memoization cache lives on
+        the service instance (request-scoped by construction, since a
+        real request always gets a fresh instance via FastAPI's own
+        dependency injection -- see that cache's own docstring). A
+        test that wants to see genuinely fresh state after a write, or
+        wants to prove a second real request behaves independently of
+        a first, must ask for a fresh instance here rather than
+        reusing `self.composition_service` -- reusing it would instead
+        be testing "the same request calls build twice," a different,
+        unrelated case (already covered by
+        `TestBuildMemoization`)."""
+        return InvestmentCaseCompositionService(
+            self.case_repository,
+            self.decision_repository,
+            self.observation_repository,
+            self.evidence_repository,
+            self.outcome_repository,
+            self.portfolio_store,
+            self.trade_log_store,
+            self.business_record_repository,
+            watchlist_store=self.watchlist_store,
+            snapshot_repository=self.snapshot_repository,
+        )
+
 
 class _CallCounter:
     """Wraps a repository's `list_all` to count invocations, without
@@ -439,6 +469,98 @@ class TestBuildMany:
             )
 
 
+class TestBuildMemoization:
+    """Portfolio Performance Instrumentation (profiling-confirmed
+    follow-up): `build` now memoizes by `case_id_str` on `self
+    ._build_cache` -- request-scoped because a fresh `Investment
+    CaseCompositionService` instance is what every real HTTP request
+    gets (no dependency-injection provider anywhere uses a module-
+    level singleton or `lru_cache`; see `build`'s own docstring).
+    Profiling showed a single request to one of the four portfolio
+    "synthesis" endpoints rebuilding the same Case's own composition
+    from scratch up to ~20 times."""
+
+    def test_repeated_calls_for_the_same_case_within_one_instance_build_only_once(self, harness):
+        case_id = harness.import_holding("AMD")
+        decision_counter = harness.count_calls("decision_repository")
+
+        first = harness.composition_service.build(case_id)
+        second = harness.composition_service.build(case_id)
+        third = harness.composition_service.build(case_id)
+
+        # One real repository scan for three calls -- the same shape
+        # `TestBuildMany`'s own `test_repository_scans_happen_exactly
+        # _once_regardless_of_case_count` already proves for the batch
+        # path, now true for three repeated single-Case calls too.
+        assert decision_counter.call_count == 1
+        # The exact same object, not merely an equal one -- proof this
+        # is a cache hit, not a fresh (if deterministic) rebuild.
+        assert first is second is third
+
+    def test_different_cases_within_one_instance_are_still_built_separately(self, harness):
+        amd_id, nvda_id = harness.import_holdings(("AMD", "NVDA"))
+        decision_counter = harness.count_calls("decision_repository")
+
+        amd = harness.composition_service.build(amd_id)
+        nvda = harness.composition_service.build(nvda_id)
+
+        assert decision_counter.call_count == 2
+        assert amd.case_id == amd_id
+        assert nvda.case_id == nvda_id
+        assert amd.holding_context.ticker == "AMD"
+        assert nvda.holding_context.ticker == "NVDA"
+        assert amd is not nvda
+
+        # Each is itself now cached under its own case_id -- rebuilding
+        # AMD a second time must not trigger a third scan, and must
+        # not return NVDA's own composition.
+        amd_again = harness.composition_service.build(amd_id)
+        assert decision_counter.call_count == 2
+        assert amd_again is amd
+
+    def test_cache_does_not_leak_between_requests(self, harness):
+        """Two separate service instances -- exactly what two separate
+        real HTTP requests each get -- must never share a cache entry,
+        and a write made between them must be visible to the second."""
+        case_id = harness.import_holding("AMD")
+
+        first_request = harness.composition_service
+        first_request.build(case_id)
+
+        decision = _make_decision(case_id=case_id, reason="Written between two separate requests.")
+        harness.decision_repository.add(decision)
+
+        second_request = harness.fresh_composition_service()
+        second = second_request.build(case_id)
+
+        assert len(second.decision_history) == 1
+        assert second.decision_history[0].investment_case.reason == "Written between two separate requests."
+        # The two instances' caches are genuinely separate objects, not
+        # merely separately keyed within a shared one.
+        assert first_request._build_cache is not second_request._build_cache
+
+    def test_cached_result_is_identical_to_the_uncached_computation(self, harness):
+        """The one thing this whole change must never do: change what
+        `build` returns. Compares the (now cached) public `build` call
+        against a direct call to the pre-existing, unmodified `_build
+        _uncached` for the same Case -- proving the cache changes only
+        how many times the work happens, never what it produces."""
+        case_id = harness.import_holding("AMD")
+        decision = _make_decision(case_id=case_id, reason="Some real recorded reasoning.")
+        harness.decision_repository.add(decision)
+
+        cached = harness.composition_service.build(case_id)
+        uncached = harness.composition_service._build_uncached(case_id)
+
+        assert cached.case_id == uncached.case_id
+        assert cached.holding_context == uncached.holding_context
+        assert cached.decision_history == uncached.decision_history
+        assert cached.canonical_analysis.conviction.level == uncached.canonical_analysis.conviction.level
+        cached_statuses = {f.kind.value: f.status.value for f in cached.canonical_analysis.business_analysis.findings}
+        uncached_statuses = {f.kind.value: f.status.value for f in uncached.canonical_analysis.business_analysis.findings}
+        assert cached_statuses == uncached_statuses
+
+
 class TestCompanyProfileFinancialHistoryAndMarketSnapshot:
     """(Investment Case Engine v1 slice) Proves the composition service
     surfaces already-ingested `BusinessRecord`s directly -- Company
@@ -711,7 +833,11 @@ class TestAtlasThesisRemainsDistinctFromInvestorThesis:
         )
         harness.decision_repository.add(decision)
 
-        composition_after = harness.composition_service.build(case_id)
+        # A fresh service instance -- exactly what a second, separate
+        # real HTTP request gets in production -- so this genuinely
+        # re-reads the Decision just added rather than reusing
+        # `build`'s own request-scoped memoization from the first call.
+        composition_after = harness.fresh_composition_service().build(case_id)
         thesis_after = composition_after.canonical_analysis.synthesis.atlas_thesis
 
         # The Atlas Thesis narrative is a pure function of business/
@@ -765,11 +891,16 @@ class TestChangeIntelligenceEndToEnd:
         harness.composition_service.build(case_id)
         baseline_captured_at = harness.snapshot_repository.get_latest(case_id).captured_at
 
-        second = harness.composition_service.build(case_id)
+        # Each of the next two builds uses its own fresh service
+        # instance -- three genuinely separate real requests, exactly
+        # like the three real GET requests this idempotency guarantee
+        # actually has to hold across in production, not three calls
+        # within one request's own memoization.
+        second = harness.fresh_composition_service().build(case_id)
         assert second.change_intelligence.is_baseline is False
         assert second.change_intelligence.changes == ()
 
-        third = harness.composition_service.build(case_id)
+        third = harness.fresh_composition_service().build(case_id)
         assert third.change_intelligence.changes == ()
 
         # Idempotent: the persisted head is still the very first
@@ -802,7 +933,10 @@ class TestChangeIntelligenceEndToEnd:
         harness.business_record_repository.add(
             _growth_record(identifier="fy26", period_end=date(2026, 12, 31), revenue=3000.0, free_cash_flow=900.0)
         )
-        updated = harness.composition_service.build(case_id)
+        # A fresh service instance -- the next real request -- so this
+        # genuinely re-reads the two new records just added rather
+        # than reusing the baseline build's own memoized result.
+        updated = harness.fresh_composition_service().build(case_id)
         assert updated.change_intelligence.is_baseline is False
         assert len(updated.change_intelligence.changes) >= 1
         from atlas.analysis_engine.investment_case_change import ChangeCategory

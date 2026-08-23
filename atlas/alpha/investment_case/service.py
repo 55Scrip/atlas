@@ -132,6 +132,20 @@ class InvestmentCaseCompositionService:
         # comment for exactly how `None` is distinguished from a real,
         # populated `ChangeIntelligence` at the composition layer.
         self._snapshot_repository = snapshot_repository
+        # Portfolio Performance Instrumentation (profiling-confirmed
+        # follow-up) -- memoizes `build` by `case_id_str` for the
+        # lifetime of this one service instance. Every dependency-
+        # injection provider for this service (`investment_case`,
+        # `discovery_context`, `portfolio_cockpit`) constructs a fresh
+        # `InvestmentCaseCompositionService` with no module-level
+        # singleton and no `lru_cache`, and FastAPI's own `Depends()`
+        # caching hands that one instance to every sibling service a
+        # single request's dependency tree resolves -- so this dict is
+        # exactly as request-scoped as the instance itself: empty at
+        # the start of every request, discarded at its end, never
+        # shared across requests. See `build`'s own docstring for the
+        # measured problem this fixes.
+        self._build_cache: dict[str, InvestmentCaseComposition | None] = {}
 
     def _assemble(
         self,
@@ -335,7 +349,34 @@ class InvestmentCaseCompositionService:
         A caller building this for many Cases in a loop should use
         `build_many` instead (ATLAS-028) -- see that method's own
         docstring for why.
+
+        Portfolio Performance Instrumentation (profiling-confirmed
+        follow-up): memoized by `case_id_str` on `self._build_cache`
+        (see `__init__`'s own docstring for exactly why that dict is
+        request-scoped, never global). Profiling a single request to
+        each of the four portfolio "synthesis" endpoints
+        (`decision_explanation`, `decision_memory`, `opportunity_cost`,
+        `portfolio_decision` -- each chaining through several sibling
+        services that independently call `build` again for the same
+        Case, some of them comparing against every other known Case)
+        showed this one Case's own composition rebuilt from scratch up
+        to ~20 times within one request, against a system that had
+        only 10 real Cases total. `build` only ever reads today's
+        already-persisted state -- nothing it reads can change mid-
+        request -- so its own return value for a given `case_id_str`
+        is unconditionally identical between two calls made without an
+        intervening write, and caching it within one request changes
+        no observable behavior, only how many times the identical read
+        and its identical `_assemble` computation are repeated.
         """
+        if case_id_str in self._build_cache:
+            return self._build_cache[case_id_str]
+
+        composition = self._build_uncached(case_id_str)
+        self._build_cache[case_id_str] = composition
+        return composition
+
+    def _build_uncached(self, case_id_str: str) -> InvestmentCaseComposition | None:
         case = self._case_repository.get(CaseId(value=uuid.UUID(case_id_str)))
         if case is None:
             return None
