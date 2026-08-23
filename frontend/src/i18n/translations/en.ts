@@ -1536,7 +1536,7 @@ export const en = {
   "watchlist.table.coverageHeader": "Coverage",
   "watchlist.table.monitoringHeader": "Monitoring",
   "watchlist.table.addedHeader": "Added",
-  "watchlist.table.rowAriaLabel": "Open {{ticker}} in Company Workspace",
+  "watchlist.table.rowAriaLabel": "Open Investment Case for {{ticker}}",
   "watchlist.table.notAvailable": "—",
   "watchlist.table.rowLoadError": "Details unavailable",
   "watchlist.table.removeButton": "Remove",

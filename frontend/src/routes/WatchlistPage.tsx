@@ -611,8 +611,23 @@ function WatchlistTableRow({
     previousRemoveStatusKind.current = removeStatus.kind;
   }, [removeStatus.kind]);
 
+  /** Watchlist Navigation Scope (live-verification follow-up): the row
+   * used to activate into Company Workspace -- a documented, deliberate
+   * mid-flow triage page ("Portfolio -> Company -> Investment Case ->
+   * Record Decision," per that page's own module docstring) whose own
+   * "Record a decision" action already does nothing but navigate to
+   * Investment Case itself. Watchlist's own mission is "which companies
+   * deserve my attention today, and why" -- a page about deciding what
+   * to do next, not a triage waypoint. The row now activates straight
+   * into the one page that actually holds the full decision support and
+   * the real decision-recording form, matching the explicit "Öppna
+   * investeringscase" action in the same row exactly (same destination,
+   * same origin-tracking state) rather than sending the row and the
+   * button to two different pages. Company Workspace itself is
+   * unchanged and remains reachable via its own existing entry points
+   * (e.g. Portfolio); this only changes where Watchlist's own row leads. */
   function handleRowActivate() {
-    navigate(`/company/${encodeURIComponent(entry.ticker)}`);
+    navigate(`/investment-case/${entry.caseId}`, { state: { origin: "watchlist", ticker: entry.ticker } });
   }
 
   /** Internal Alpha Stabilization: this used to be a two-step

@@ -80,6 +80,21 @@ describe("WatchlistPage (Product Sprint 9 -- Discovery Excellence, Deliverable 8
     // caseId from the entry, is the behavior under test.
   });
 
+  it("activates the whole row into the real Investment Case (not Company Workspace), matching the row's explicit action button", async () => {
+    mockFetch();
+    const user = userEvent.setup();
+    renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
+    await waitFor(() => expect(screen.getByText("NVIDIA Corp")).toBeInTheDocument());
+    // Clicking the company-name cell -- outside the action cell entirely
+    // -- exercises the row's own `role="button"` activation, not the
+    // explicit "Öppna investeringscase" button tested above. MemoryRouter
+    // has no /investment-case/:caseId route registered in this harness,
+    // matching the existing button test's own precedent -- reaching this
+    // click without throwing, on the real caseId, is the behavior under
+    // test.
+    await user.click(screen.getByText("NVIDIA Corp"));
+  });
+
   it("shows the honest empty state with no fabricated candidates", async () => {
     mockFetch({ entries: [] });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });

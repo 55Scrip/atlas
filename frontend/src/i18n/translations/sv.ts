@@ -1532,7 +1532,7 @@ export const sv: Record<TranslationKey, string> = {
   "watchlist.table.coverageHeader": "Täckning",
   "watchlist.table.monitoringHeader": "Övervakning",
   "watchlist.table.addedHeader": "Tillagd",
-  "watchlist.table.rowAriaLabel": "Öppna {{ticker}}s vy",
+  "watchlist.table.rowAriaLabel": "Öppna investeringscase för {{ticker}}",
   "watchlist.table.notAvailable": "—",
   "watchlist.table.rowLoadError": "Detaljer ej tillgängliga",
   "watchlist.table.removeButton": "Ta bort",
