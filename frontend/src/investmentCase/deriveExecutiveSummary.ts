@@ -153,74 +153,6 @@ export function deriveCaseStatus(input: CaseStatusInput): CaseStatusLevel {
   return "healthy";
 }
 
-export type AssessmentPointKind = "conviction" | "valuation" | "risk" | "thesisStale" | "insufficientOverall";
-
-export interface AssessmentPoint {
-  kind: AssessmentPointKind;
-  convictionLevel?: ConvictionLevel;
-  valuationStatus?: ValuationStatus;
-  riskCategory?: RiskCategory;
-  riskStatus?: RiskStatus;
-}
-
-/**
- * Corrective pass (compactness): 3, not 5 -- "Maximum 3 concise
- * assessment lines in the normal case." The point-generation order
- * below (conviction, then valuation, then risk, then thesis staleness)
- * doubles as the priority order this cap truncates against: Conviction/
- * Valuation/Risk are the three genuinely analytical dimensions: thesis
- * staleness is the one most likely to get dropped when all four would
- * otherwise apply, and dropping it here loses nothing, since it is
- * already shown in Outstanding Issues -- never silently lost, just not
- * duplicated in both places at once.
- */
-const MAX_ASSESSMENT_POINTS = 3;
-
-/**
- * At most a handful of short, grounded points -- never a synthesized
- * conclusion the backend doesn't itself state (e.g. no "position sizing
- * may deserve review"-style inference connecting two facts; that is a
- * judgment call this codebase's data does not make, and would edge
- * toward a fabricated recommendation). Each point maps 1:1 to one
- * already-computed categorical value: Conviction is always included
- * (it's the one axis every case has an opinion on); Valuation only when
- * a real FCF Yield finding exists; Risk only when the single most
- * severe category is at least Moderate (Low/no-data risk isn't worth a
- * sentence); thesis staleness only when true. If Conviction is the only
- * point and it's "insufficient_evidence", collapse to one honest
- * "not enough evidence yet" sentence rather than one thin bullet.
- */
-export function deriveAssessmentPoints(input: {
-  convictionLevel: ConvictionLevel;
-  valuationStatus: ValuationStatus | null;
-  mostSevereRisk: RiskFindingLite | null;
-  isThesisStale: boolean;
-}): AssessmentPoint[] {
-  const points: AssessmentPoint[] = [{ kind: "conviction", convictionLevel: input.convictionLevel }];
-
-  if (
-    input.valuationStatus !== null &&
-    input.valuationStatus !== "not_evaluated" &&
-    input.valuationStatus !== "insufficient_input"
-  ) {
-    points.push({ kind: "valuation", valuationStatus: input.valuationStatus });
-  }
-
-  if (input.mostSevereRisk !== null && (input.mostSevereRisk.status === "high" || input.mostSevereRisk.status === "moderate")) {
-    points.push({ kind: "risk", riskCategory: input.mostSevereRisk.category, riskStatus: input.mostSevereRisk.status });
-  }
-
-  if (input.isThesisStale) {
-    points.push({ kind: "thesisStale" });
-  }
-
-  if (points.length === 1 && input.convictionLevel === "insufficient_evidence") {
-    return [{ kind: "insufficientOverall" }];
-  }
-
-  return points.slice(0, MAX_ASSESSMENT_POINTS);
-}
-
 export type CurrentPriorityKind = "outcomeMissing" | "reconciliationNeeded" | "thesisStale" | "openQuestion" | "none";
 
 /**
@@ -275,29 +207,3 @@ export function deriveOutstandingIssues(input: {
   return issues;
 }
 
-export type CaseDiscussionKind = "valuationVsConviction" | "thesisStale" | "evidenceGap" | "outstandingWork" | "generic";
-
-/**
- * "Discuss this Case" -- one proactive conversation starter, per the
- * sprint's own singular framing ("Atlas should proactively start *one*
- * conversation"). Phrased about the *current* state only ("valuation
- * currently looks demanding"), never a claimed change over time
- * ("has changed") -- this codebase does not track a valuation history
- * delta, so claiming one changed would be fabricating a fact it doesn't
- * have, even though the sprint's own illustrative example used that
- * phrasing.
- */
-export function deriveCaseDiscussionKind(input: {
-  convictionLevel: ConvictionLevel;
-  valuationStatus: ValuationStatus | null;
-  isThesisStale: boolean;
-  evidenceGap: boolean;
-  hasOutstandingWork: boolean;
-}): CaseDiscussionKind {
-  const highConviction = input.convictionLevel === "high" || input.convictionLevel === "very_high";
-  if (input.valuationStatus === "expensive" && highConviction) return "valuationVsConviction";
-  if (input.isThesisStale) return "thesisStale";
-  if (input.evidenceGap) return "evidenceGap";
-  if (input.hasOutstandingWork) return "outstandingWork";
-  return "generic";
-}

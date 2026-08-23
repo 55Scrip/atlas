@@ -6,6 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from atlas.alpha.coverage import CoverageAssessment
 from atlas.alpha.decision_support import DecisionSupportView
 from atlas.alpha.portfolio.models import ReconciliationStatus
 from atlas.alpha.portfolio_status.models import PortfolioSummaryMetrics
@@ -107,6 +108,13 @@ class PortfolioHoldingAnalysis:
     docstring. Reads `analysis.recommendation` (already computed by
     `atlas.analysis_engine.pipeline.assemble_analysis`), never
     recomputes it."""
+    coverage: CoverageAssessment
+    """Atlas Intelligence Sprint 1 (Data Coverage & Confidence Engine):
+    per-dimension coverage plus a qualitative overall confidence for
+    this holding -- see `atlas.alpha.coverage`'s own module docstring.
+    A finer-grained sibling of `analysis_coverage` above, never a
+    replacement for it (`overall_coverage` on this field is that exact
+    same `AnalysisCoverageLevel`, reused verbatim)."""
 
 
 @dataclass(frozen=True)

@@ -39,12 +39,17 @@ for already exists; re-fetching or re-deriving it here would be exactly
 the "parallel provider" this sprint's own Phase 2 instruction forbids.
 
 **Every trend classification is a disclosed, categorical bucket over a
-later-half/earlier-half average comparison -- duplicated (not imported)
-from the identical algorithm `financial_statement_intelligence
-.TrendDirection`'s own module already establishes**, to keep this
-module independent of that protected sibling (this sprint's own
-non-goal list forbids redesigning it, and importing from it would
-create exactly the kind of coupling that discipline exists to avoid).
+later-half/earlier-half average comparison -- the `_trend_direction`
+algorithm below is duplicated (not imported), the same "small justified
+duplication over touching a protected sibling" discipline every other
+capability module in this package follows for its own copy of this
+algorithm.** The *vocabulary* it returns, `TrendDirection`, is reused
+directly from `financial_statement_intelligence.py` (Cleanup Sprint 1)
+rather than independently redeclared: six of this module's own sibling
+capabilities already import that identical type, and a plain enum of
+closed string values carries no logic of its own to protect against
+"redesigning a protected sibling" -- only the `_trend_direction`
+function's own algorithm is the thing worth keeping independent.
 """
 from __future__ import annotations
 
@@ -52,6 +57,7 @@ from dataclasses import dataclass
 from datetime import date
 from enum import Enum
 
+from atlas.alpha.investment_case.financial_statement_intelligence import TrendDirection
 from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.business_data.sources import SourceKind
 
@@ -144,13 +150,6 @@ def extract_capital_allocation_history(business_records: tuple[BusinessRecord, .
 
 
 # -- Phase 4: Capital Allocation Trend Intelligence ----------------------
-
-
-class TrendDirection(str, Enum):
-    RISING = "rising"
-    FALLING = "falling"
-    STABLE = "stable"
-    INSUFFICIENT_DATA = "insufficient_data"
 
 
 class CapitalAllocationTrendMetric(str, Enum):

@@ -21,6 +21,8 @@ from fastapi import Depends
 
 from atlas.alpha.discovery_context.service import DiscoveryContextService
 from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
+from atlas.alpha.monitoring.api.dependencies import get_monitoring_service
+from atlas.alpha.monitoring.service import MonitoringService
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_store, get_alpha_trade_log_store
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.trade_log_store import AlphaTradeLogStore
@@ -70,9 +72,11 @@ def get_discovery_context_service(
         get_investment_case_composition_service
     ),
     portfolio_status_service: PortfolioStatusService = Depends(get_portfolio_status_service),
+    monitoring_service: MonitoringService = Depends(get_monitoring_service),
 ) -> DiscoveryContextService:
     return DiscoveryContextService(
         portfolio_intelligence_service=portfolio_intelligence_service,
         investment_case_composition_service=investment_case_composition_service,
         portfolio_status_service=portfolio_status_service,
+        monitoring_service=monitoring_service,
     )

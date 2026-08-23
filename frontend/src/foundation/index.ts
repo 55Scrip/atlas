@@ -19,5 +19,6 @@ export { StatusBadge, StatusText } from "./utility/StatusBadge";
 export type { StatusTone } from "./utility/StatusBadge";
 export { AsyncSection } from "./utility/AsyncSection";
 export type { AsyncStatus } from "./utility/AsyncSection";
+export { ACCENT_LINK_STYLE } from "./utility/accentLinkStyle";
 
 export type { TextColorToken, SurfaceToken, BorderToken, SpaceToken } from "./tokenRefs";

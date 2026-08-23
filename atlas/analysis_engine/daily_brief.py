@@ -117,9 +117,16 @@ _RISK_CATEGORIES = (
 
 def _single_change_headline(change: ChangeFinding) -> str:
     if change.category is ChangeCategory.ANALYTICAL_COVERAGE_CHANGED:
+        # Atlas Intelligence Sprint 1 (Data Coverage & Confidence
+        # Engine, Deliverable 8): names the specific dimension, matching
+        # every sibling branch below -- previously the one headline in
+        # this table that stayed generic even though `change.details`
+        # already carries exactly the dimension needed, the same field
+        # `describe_change`'s own longer sentence already uses.
+        label = dimension_label(change.details.get("dimension", ""))
         if change.current_state in ("insufficient_input", "not_evaluated"):
-            return "Analytical coverage reduced."
-        return "New analytical coverage."
+            return f"Atlas can no longer evaluate {label.lower()}."
+        return f"Atlas can now evaluate {label.lower()}."
     if change.category in _BUSINESS_QUALITY_CATEGORIES:
         label = dimension_label(change.details.get("dimension", ""))
         return f"{label} {_SINGLE_CHANGE_HEADLINE_VERB[change.direction]}."

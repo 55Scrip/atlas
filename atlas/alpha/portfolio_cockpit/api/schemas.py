@@ -31,6 +31,8 @@ from atlas.alpha.portfolio_cockpit.models import (
     ValuationStatusCount,
 )
 from atlas.alpha.portfolio_status.api.schemas import PortfolioSummaryView
+from atlas.alpha.coverage import CoverageAssessment, DimensionCoverage
+from atlas.alpha.coverage.models import ConfidenceReason
 from atlas.analysis_engine.analysis_coverage import AnalysisCoverageAssessment
 from atlas.analysis_engine.conviction import ConvictionAssessment
 from atlas.analysis_engine.risk.models import RiskFinding
@@ -54,6 +56,57 @@ class AnalysisCoverageAssessmentView(CamelModel):
     @classmethod
     def from_domain(cls, assessment: AnalysisCoverageAssessment) -> "AnalysisCoverageAssessmentView":
         return cls(level=assessment.level.value, reasons=[r.value for r in assessment.reasons])
+
+
+class DimensionCoverageView(CamelModel):
+    """Atlas Intelligence Sprint 1. Independently declared here, field-
+    for-field identical to `atlas.alpha.investment_case.api.schemas
+    .DimensionCoverageView` -- this module's own no-cross-package-
+    View-import convention, matching `ConvictionAssessmentView`/
+    `AnalysisCoverageAssessmentView` above."""
+
+    dimension: str
+    level: str
+    reasoning: list[str]
+
+    @classmethod
+    def from_domain(cls, coverage: DimensionCoverage) -> "DimensionCoverageView":
+        return cls(dimension=coverage.dimension, level=coverage.level.value, reasoning=list(coverage.reasoning))
+
+
+class ConfidenceReasonView(CamelModel):
+    """Atlas Intelligence Sprint 1. Independently declared here, field-
+    for-field identical to the equivalent view in
+    `atlas.alpha.investment_case.api.schemas` -- this module's own
+    no-cross-package-View-import convention."""
+
+    code: str
+    count: int | None
+    total: int | None
+
+    @classmethod
+    def from_domain(cls, reason: ConfidenceReason) -> "ConfidenceReasonView":
+        return cls(code=reason.code.value, count=reason.count, total=reason.total)
+
+
+class CoverageAssessmentView(CamelModel):
+    dimensions: list[DimensionCoverageView]
+    overall_coverage: str
+    overall_confidence: str
+    missing_dimensions: list[str]
+    not_applicable_dimensions: list[str]
+    reasoning: list[ConfidenceReasonView]
+
+    @classmethod
+    def from_domain(cls, assessment: CoverageAssessment) -> "CoverageAssessmentView":
+        return cls(
+            dimensions=[DimensionCoverageView.from_domain(d) for d in assessment.dimensions],
+            overall_coverage=assessment.overall_coverage.value,
+            overall_confidence=assessment.overall_confidence.value,
+            missing_dimensions=list(assessment.missing_dimensions),
+            not_applicable_dimensions=list(assessment.not_applicable_dimensions),
+            reasoning=[ConfidenceReasonView.from_domain(r) for r in assessment.reasoning],
+        )
 
 
 class ValuationFindingView(CamelModel):
@@ -162,6 +215,7 @@ class PortfolioHoldingAnalysisView(CamelModel):
     is_thesis_stale: bool
     attention: HoldingAttentionView
     decision_support: DecisionSupportView
+    coverage: CoverageAssessmentView
 
     @classmethod
     def from_domain(cls, analysis: PortfolioHoldingAnalysis) -> "PortfolioHoldingAnalysisView":
@@ -181,6 +235,7 @@ class PortfolioHoldingAnalysisView(CamelModel):
             is_thesis_stale=analysis.is_thesis_stale,
             attention=HoldingAttentionView.from_domain(analysis.attention),
             decision_support=DecisionSupportView.from_domain(analysis.decision_support),
+            coverage=CoverageAssessmentView.from_domain(analysis.coverage),
         )
 
 

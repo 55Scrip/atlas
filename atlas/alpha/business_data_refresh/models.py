@@ -1,8 +1,11 @@
 """The deterministic per-refresh report (ATLAS-031, Phase 17)."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+
+from atlas.analysis_engine.business_data.models import BusinessRecord
 
 __all__ = [
     "ProviderFailure",
@@ -52,6 +55,21 @@ class RefreshSummary:
     #: outcome is `AUTO_ACCEPT` (nothing to explain).
     identity_gate_outcome: str = "AUTO_ACCEPT"
     identity_gate_reason: str | None = None
+    #: Atlas Intelligence Sprint 9 (Data Ingestion & Automatic Refresh).
+    #: Every `BusinessRecord` this run actually wrote (`new_records` +
+    #: `new_versions` combined, in the order ingested) -- `()` by
+    #: default so every pre-Sprint-9 caller/test keeps constructing a
+    #: valid `RefreshSummary` unchanged. The one real per-document
+    #: detail this dataclass previously discarded down to counts only;
+    #: `atlas.alpha.ingestion` reads this to classify exactly which
+    #: `SourceKind`/lineage changed, never re-deriving it by diffing
+    #: the repository a second time.
+    changed_records: tuple[BusinessRecord, ...] = field(default_factory=tuple)
+    #: The one real wall-clock timestamp this refresh run used for
+    #: every document it touched (`atlas.analysis_engine.business_data
+    #: .pipeline.ingest`'s own `evaluated_at`) -- `None` only for a
+    #: `RefreshSummary` built before this field existed.
+    evaluated_at: datetime | None = None
 
 
 class EnrichmentOutcome(str, Enum):

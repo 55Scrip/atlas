@@ -320,7 +320,9 @@ function HorizonPanel({
           {t(
             horizon.scenarios[0].assumption.growthRate != null
               ? "investmentCase.outlook.growthScenariosCaption"
-              : "investmentCase.outlook.scenariosCaption",
+              : horizon.scenarios[0].assumption.observationCount === 1
+                ? "investmentCase.outlook.scenariosCaptionOne"
+                : "investmentCase.outlook.scenariosCaptionOther",
             {
               count: String(horizon.scenarios[0].assumption.observationCount),
               growthCount: String(horizon.scenarios[0].assumption.growthObservationCount ?? 0),

@@ -137,6 +137,12 @@ class ManagementStatement:
     """Alpha Vantage's own reported per-statement sentiment, passed
     through unmodified -- `None` when the provider did not report one
     for this statement, never a default or an Atlas-computed guess."""
+    source_reference: str
+    """(Cleanup Sprint 1) The real `BusinessRecord.source_reference`
+    this one statement was ingested from -- `BusinessRecord.source_
+    reference` is a required, always-present field, so this is never
+    empty for any real, ingested statement; it was simply never read
+    into this dataclass until now."""
 
 
 @dataclass(frozen=True)
@@ -191,6 +197,7 @@ def extract_earnings_call_knowledge(business_records: tuple[BusinessRecord, ...]
                 content=str(r.metadata.get("content") or ""),
                 categories=_classify(str(r.metadata.get("content") or "")),
                 confidence=_parse_confidence(r.metadata.get("sentiment")),
+                source_reference=r.source_reference,
             )
             for r in records
         )

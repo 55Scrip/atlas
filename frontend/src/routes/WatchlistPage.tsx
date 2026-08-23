@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { CSSProperties, FormEvent } from "react";
-import { Button, Container, Heading, Inline, Stack, StatusBadge, Surface, Text } from "../foundation";
+import { Button, Container, Heading, Inline, Stack, StatusBadge, StatusText, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   CONFIDENCE_KEY,
   CONFIDENCE_TONE,
+  DATA_FRESHNESS_STATUS_KEY,
+  DATA_FRESHNESS_STATUS_TONE,
   DECISION_SUPPORT_BADGE_KEY,
   DECISION_SUPPORT_TONE,
+  type DataFreshnessStatus,
   type DecisionSupportLevel,
   type EvidenceCoverageLevel,
 } from "../status/statusTone";
+import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNote";
+import { fetchMonitoringStatus, type MonitoringOperationalStatusView } from "../monitoring/monitoringApi";
+import { fetchDailyBriefAgenda, type AgendaItemView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
+import { PriorityBadge } from "../dailyBriefAgenda/PriorityBadge";
 
 /**
  * Watchlist Workspace v1 -- exposes Atlas Alpha's existing provisional
@@ -31,8 +38,13 @@ import {
  * it never deletes the ticker's Case, Decision history, or Company
  * data (see `atlas/alpha/watchlist/service.py::remove_ticker`). The
  * row is removed from the table only after the backend confirms the
- * mutation (no optimistic hide), and the confirmation copy says so
- * explicitly.
+ * mutation (no optimistic hide). Internal Alpha Stabilization: the
+ * original two-step click-then-confirm flow is gone -- its own
+ * confirmation copy stated the action was non-destructive, which was
+ * itself the proof no confirmation step was warranted; Discovery's own
+ * "Remove from Watchlist" button was already one click for this exact
+ * same mutation. Remove is now one click here too, matching Discovery
+ * rather than the other way around.
  *
  * The approved Figma reference frames (`watchlist-workspace`/-empty/
  * -loading/-add-flow/-remove-flow) were generated for this sprint but
@@ -55,6 +67,15 @@ interface CaseAnalysisLite {
   recommendation: { level: DecisionSupportLevel };
   confidence: EvidenceCoverageLevel;
   evidenceQuality: { coverage: EvidenceCoverageLevel } | null;
+  /** Atlas Intelligence Sprint 8 (Automated Monitoring Operations,
+   * Deliverable 10). `null` only when Monitoring has no read model
+   * wired for this build. */
+  operationalFreshness: {
+    isPending: boolean;
+    lastMonitoredAt: string | null;
+    lastRunFailedForCase: boolean;
+    dataFreshnessStatus: DataFreshnessStatus;
+  } | null;
 }
 
 type ListStatus =
@@ -64,6 +85,23 @@ type ListStatus =
 
 type RowStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; analysis: CaseAnalysisLite };
 
+/** Product Intelligence Sprint 2 (Watchlist Intelligence Activation).
+ * `unavailable` covers both a genuine fetch failure and the honest
+ * "Monitoring has never run" absence `daily_brief_agenda` itself
+ * already returns as an empty item list -- either way, Attention is
+ * simply not yet known for this page load, never rendered as "nothing
+ * to see" (Phase 7's own "never imply missing data is a positive
+ * signal"). Mirrors `monitoringStatus`'s own existing fetch-and-forget
+ * pattern on this same page exactly. */
+type AgendaStatus =
+  | { kind: "loading" }
+  | { kind: "unavailable" }
+  | { kind: "loaded"; itemsByTicker: Map<string, AgendaItemView> };
+
+/** Mirrors `atlas.alpha.daily_brief_agenda.engine._PRIORITY_RANK`
+ * exactly -- the same, already-computed ranking, never a new one. */
+const PRIORITY_RANK: Record<AgendaItemView["priority"], number> = { low: 0, normal: 1, high: 2, critical: 3 };
+
 type AddStatus =
   | { kind: "idle" }
   | { kind: "submitting" }
@@ -72,7 +110,6 @@ type AddStatus =
 
 type RemoveStatus =
   | { kind: "idle" }
-  | { kind: "confirming" }
   | { kind: "removing" }
   | { kind: "error" };
 
@@ -104,6 +141,8 @@ export function WatchlistPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [tickerInput, setTickerInput] = useState("");
   const [addStatus, setAddStatus] = useState<AddStatus>({ kind: "idle" });
+  const [monitoringStatus, setMonitoringStatus] = useState<MonitoringOperationalStatusView | null>(null);
+  const [agendaStatus, setAgendaStatus] = useState<AgendaStatus>({ kind: "loading" });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -117,6 +156,41 @@ export function WatchlistPage() {
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setListStatus({ kind: "error" });
+      });
+    return () => controller.abort();
+  }, []);
+
+  /** Sprint 9, Deliverable 9 -- same aggregate summary Portfolio shows,
+   * same source (`/api/monitoring/status`), same shared component. */
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchMonitoringStatus(controller.signal)
+      .then((status) => setMonitoringStatus(status))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      });
+    return () => controller.abort();
+  }, []);
+
+  /** Product Intelligence Sprint 2 (Watchlist Intelligence Activation)
+   * -- the exact same `/api/daily-brief-agenda` fetch Portfolio's own
+   * "Attention Required" section already uses (`PortfolioPage.tsx`),
+   * filtered to `group === "watchlist"` the identical way that section
+   * filters to `"portfolio"`. One request for the whole page, never
+   * per-row -- reused across every row below via `itemsByTicker`. */
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchDailyBriefAgenda(controller.signal)
+      .then((agenda) => {
+        const itemsByTicker = new Map<string, AgendaItemView>();
+        for (const item of agenda.items) {
+          if (item.group === "watchlist" && item.ticker) itemsByTicker.set(item.ticker, item);
+        }
+        setAgendaStatus({ kind: "loaded", itemsByTicker });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setAgendaStatus({ kind: "unavailable" });
       });
     return () => controller.abort();
   }, []);
@@ -216,6 +290,7 @@ export function WatchlistPage() {
           onOpenAddForm={() => setShowAddForm(true)}
           t={t}
         />
+        {monitoringStatus && <ScopeFreshnessSummaryNote summary={monitoringStatus.watchlistFreshness} t={t} />}
 
         {showAddForm && (
           <AddCompanyForm
@@ -246,6 +321,7 @@ export function WatchlistPage() {
           <WatchlistTable
             entries={listStatus.entries}
             rowStatuses={rowStatuses}
+            agendaStatus={agendaStatus}
             navigate={navigate}
             locale={locale}
             onRemoved={handleTickerRemoved}
@@ -382,9 +458,26 @@ function WatchlistEmptyState({ onAdd, t }: { onAdd: () => void; t: (key: Transla
   );
 }
 
+/** Product Intelligence Sprint 2, Phase 4 (Prioritization). Rows with a
+ * real, already-computed Agenda item sort first, highest `PriorityLevel`
+ * first (mirrors the backend's own `_PRIORITY_RANK` order, never a new
+ * ranking); rows with no item keep their existing relative order,
+ * `Array.prototype.sort` being stable. Before the Agenda itself has
+ * loaded, order is left entirely unchanged -- never resorted twice. */
+function sortByAttention(entries: WatchlistEntryView[], agendaStatus: AgendaStatus): WatchlistEntryView[] {
+  if (agendaStatus.kind !== "loaded") return entries;
+  const { itemsByTicker } = agendaStatus;
+  const rankOf = (ticker: string): number => {
+    const item = itemsByTicker.get(ticker);
+    return item ? PRIORITY_RANK[item.priority] : -1;
+  };
+  return [...entries].sort((a, b) => rankOf(b.ticker) - rankOf(a.ticker));
+}
+
 function WatchlistTable({
   entries,
   rowStatuses,
+  agendaStatus,
   navigate,
   locale,
   onRemoved,
@@ -392,30 +485,44 @@ function WatchlistTable({
 }: {
   entries: WatchlistEntryView[];
   rowStatuses: Record<string, RowStatus>;
+  agendaStatus: AgendaStatus;
   navigate: ReturnType<typeof useNavigate>;
   locale: string;
   onRemoved: (ticker: string) => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
+  const orderedEntries = sortByAttention(entries, agendaStatus);
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
             <th style={headerCellStyle}>{t("watchlist.table.companyHeader")}</th>
+            {/* Product Intelligence Sprint 2: the page's own Mission --
+                "which companies deserve my attention today, and why" --
+                made a first-class column, positioned right after Company
+                as the row's own most decision-relevant fact. */}
+            <th style={headerCellStyle}>{t("watchlist.table.attentionHeader")}</th>
             <th style={headerCellStyle}>{t("watchlist.table.sectorHeader")}</th>
-            <th style={headerCellStyle}>{t("watchlist.table.statusHeader")}</th>
+            {/* Internal Alpha Stabilization: was "Status" -- the exact
+                same `DecisionSupportLevel` badge is labeled "Decision
+                Support" on Portfolio's Holdings table and Company
+                Workspace; standardized here so identical information
+                carries the identical label everywhere it appears. */}
+            <th style={headerCellStyle}>{t("watchlist.table.decisionSupportHeader")}</th>
             <th style={headerCellStyle}>{t("watchlist.table.coverageHeader")}</th>
+            <th style={headerCellStyle}>{t("watchlist.table.monitoringHeader")}</th>
             <th style={headerCellStyle}>{t("watchlist.table.addedHeader")}</th>
             <th style={headerCellStyle} />
           </tr>
         </thead>
         <tbody>
-          {entries.map((entry) => (
+          {orderedEntries.map((entry) => (
             <WatchlistTableRow
               key={entry.ticker}
               entry={entry}
               rowStatus={rowStatuses[entry.ticker]}
+              agendaStatus={agendaStatus}
               navigate={navigate}
               locale={locale}
               onRemoved={onRemoved}
@@ -428,9 +535,47 @@ function WatchlistTable({
   );
 }
 
+/** Product Intelligence Sprint 2, Phase 7 (Empty States). Three real,
+ * distinct states, never conflated: the Agenda hasn't loaded yet
+ * (`notYetAvailable`, a neutral "—", matching every other column's own
+ * loading convention on this page); it loaded and genuinely found
+ * nothing for this ticker (`noSignificantChanges`, `tone="neutral"`,
+ * never `"positive"` -- Phase 7's own explicit "never imply missing
+ * data is a positive signal"); or a real item exists. */
+function AttentionCell({
+  ticker,
+  agendaStatus,
+  t,
+}: {
+  ticker: string;
+  agendaStatus: AgendaStatus;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  if (agendaStatus.kind !== "loaded") {
+    return (
+      <Text as="span" color="tertiary">
+        {t("watchlist.table.notAvailable")}
+      </Text>
+    );
+  }
+  const item = agendaStatus.itemsByTicker.get(ticker);
+  if (!item) {
+    return <StatusText label={t("watchlist.attention.noSignificantChanges")} tone="neutral" />;
+  }
+  return (
+    <Stack gap="metadata">
+      <PriorityBadge priority={item.priority} />
+      <Text as="span" color="secondary">
+        {item.headline}
+      </Text>
+    </Stack>
+  );
+}
+
 function WatchlistTableRow({
   entry,
   rowStatus,
+  agendaStatus,
   navigate,
   locale,
   onRemoved,
@@ -438,6 +583,7 @@ function WatchlistTableRow({
 }: {
   entry: WatchlistEntryView;
   rowStatus: RowStatus | undefined;
+  agendaStatus: AgendaStatus;
   navigate: ReturnType<typeof useNavigate>;
   locale: string;
   onRemoved: (ticker: string) => void;
@@ -469,15 +615,18 @@ function WatchlistTableRow({
     navigate(`/company/${encodeURIComponent(entry.ticker)}`);
   }
 
+  /** Internal Alpha Stabilization: this used to be a two-step
+   * click-Remove-then-confirm flow. Removed here specifically because
+   * the confirmation dialog's own copy ("This only removes {ticker}
+   * from your Watchlist. The Investment Case and decision history are
+   * preserved.") proved the action was never destructive in the first
+   * place -- Discovery's own "Remove from Watchlist" button was already
+   * one click, no confirmation, for the exact same real backend
+   * mutation. Two different click-counts for one identical action was
+   * both unnecessary friction (Deliverable 3) and a real inconsistency
+   * (Deliverable 4); Watchlist now matches Discovery rather than the
+   * other way around, per this sprint's "prefer removing friction." */
   function handleRemoveClick() {
-    setRemoveStatus({ kind: "confirming" });
-  }
-
-  function handleCancelRemove() {
-    setRemoveStatus({ kind: "idle" });
-  }
-
-  function handleConfirmRemove() {
     setRemoveStatus({ kind: "removing" });
     fetch(`/api/alpha-watchlist/${encodeURIComponent(entry.ticker)}`, { method: "DELETE" })
       .then((r) => {
@@ -485,6 +634,14 @@ function WatchlistTableRow({
         onRemoved(entry.ticker);
       })
       .catch(() => setRemoveStatus({ kind: "error" }));
+  }
+
+  function handleCancelRemove() {
+    setRemoveStatus({ kind: "idle" });
+  }
+
+  function handleRetryRemove() {
+    handleRemoveClick();
   }
 
   return (
@@ -510,6 +667,9 @@ function WatchlistTableRow({
             {entry.ticker}
           </Text>
         </Inline>
+      </td>
+      <td style={cellStyle}>
+        <AttentionCell ticker={entry.ticker} agendaStatus={agendaStatus} t={t} />
       </td>
       <td style={cellStyle}>
         <Text as="span" color="secondary">
@@ -538,6 +698,18 @@ function WatchlistTableRow({
           </Text>
         )}
       </td>
+      <td style={cellStyle}>
+        {loaded?.operationalFreshness ? (
+          <StatusBadge
+            label={t(DATA_FRESHNESS_STATUS_KEY[loaded.operationalFreshness.dataFreshnessStatus])}
+            tone={DATA_FRESHNESS_STATUS_TONE[loaded.operationalFreshness.dataFreshnessStatus]}
+          />
+        ) : (
+          <Text as="span" color="tertiary">
+            {t("watchlist.table.notAvailable")}
+          </Text>
+        )}
+      </td>
       <td style={{ ...cellStyle, fontVariantNumeric: "tabular-nums" }}>
         <Text as="span" color="secondary">
           {addedDate}
@@ -545,37 +717,33 @@ function WatchlistTableRow({
       </td>
       <td ref={actionCellRef} style={cellStyle} onClick={(event) => event.stopPropagation()}>
         {removeStatus.kind === "idle" && (
-          <Button variant="tertiary" onClick={handleRemoveClick}>
-            {t("watchlist.table.removeButton")}
-          </Button>
+          <Inline gap="row" wrap>
+            {/* Product Sprint 9 (Discovery Excellence, Deliverable 8 --
+                Watchlist Flow): the only navigation this page previously
+                offered was the row click into Company Workspace --
+                Investment Case and Compare were both a dead end from
+                here. Both reuse `entry.caseId`, already on hand, no new
+                fetch. */}
+            <Button
+              variant="tertiary"
+              onClick={() =>
+                navigate(`/investment-case/${entry.caseId}`, { state: { origin: "watchlist", ticker: entry.ticker } })
+              }
+            >
+              {t("watchlist.table.openInvestmentCase")}
+            </Button>
+            <Button variant="tertiary" onClick={() => navigate(`/discovery/compare?a=${encodeURIComponent(entry.ticker)}`)}>
+              {t("watchlist.table.compareButton")}
+            </Button>
+            <Button variant="tertiary" onClick={handleRemoveClick}>
+              {t("watchlist.table.removeButton")}
+            </Button>
+          </Inline>
         )}
-        {(removeStatus.kind === "confirming" || removeStatus.kind === "removing") && (
-          <Stack gap="metadata">
-            <Text as="p" role="status" style={{ fontWeight: 600 }}>
-              {t("watchlist.remove.confirmTitle", { ticker: entry.ticker })}
-            </Text>
-            <Text as="p" color="secondary">
-              {t("watchlist.remove.confirmExplanation", { ticker: entry.ticker })}
-            </Text>
-            <Inline gap="row" wrap>
-              <Button
-                variant="tertiary"
-                onClick={handleCancelRemove}
-                disabled={removeStatus.kind === "removing"}
-              >
-                {t("watchlist.remove.cancelButton")}
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleConfirmRemove}
-                disabled={removeStatus.kind === "removing"}
-              >
-                {removeStatus.kind === "removing"
-                  ? t("watchlist.remove.removingLabel")
-                  : t("watchlist.remove.confirmButton")}
-              </Button>
-            </Inline>
-          </Stack>
+        {removeStatus.kind === "removing" && (
+          <Text as="p" role="status" color="tertiary">
+            {t("watchlist.remove.removingLabel")}
+          </Text>
         )}
         {removeStatus.kind === "error" && (
           <Stack gap="metadata">
@@ -586,7 +754,7 @@ function WatchlistTableRow({
               <Button variant="tertiary" onClick={handleCancelRemove}>
                 {t("watchlist.remove.cancelButton")}
               </Button>
-              <Button variant="primary" onClick={handleConfirmRemove}>
+              <Button variant="primary" onClick={handleRetryRemove}>
                 {t("watchlist.remove.retryButton")}
               </Button>
             </Inline>

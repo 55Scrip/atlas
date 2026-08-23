@@ -296,6 +296,54 @@ class TestCaseIntelligenceContext:
         assert "Durable moat and cheap valuation." in rendered
         assert "discussing AMD specifically" in rendered
 
+    def test_monitoring_pending_is_disclosed_honestly(self):
+        """Atlas Intelligence Sprint 8 (Automated Monitoring Operations,
+        Deliverable 17) -- Companion never fabricates freshness."""
+        portfolio = PortfolioContextInput(
+            holdings=(),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+            case_context=CaseContextInput(
+                ticker="AMD",
+                held=True,
+                current_thesis_reason=None,
+                confidence="full",
+                conviction_level="moderate",
+                is_stale=False,
+                missing_evidence_kinds=(),
+                open_questions=(),
+                key_risks=(),
+                consider_kinds=(),
+                monitoring_pending=True,
+            ),
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert "not yet completed a fresh monitoring run" in rendered
+
+    def test_monitoring_pending_false_is_not_mentioned(self):
+        portfolio = PortfolioContextInput(
+            holdings=(),
+            cash_weight_percent=None,
+            has_absolute_values=False,
+            concentration_level=None,
+            case_context=CaseContextInput(
+                ticker="AMD",
+                held=True,
+                current_thesis_reason=None,
+                confidence="full",
+                conviction_level="moderate",
+                is_stale=False,
+                missing_evidence_kinds=(),
+                open_questions=(),
+                key_risks=(),
+                consider_kinds=(),
+                monitoring_pending=False,
+            ),
+        )
+        rendered = render_portfolio_context(portfolio)
+        assert "monitoring run" not in rendered
+
     def test_unheld_case_states_it_is_not_a_holding(self):
         portfolio = PortfolioContextInput(
             holdings=(),

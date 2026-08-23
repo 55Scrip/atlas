@@ -13,12 +13,19 @@ import type { ReactNode } from "react";
 export function ExpandableDetail({
   summaryLabel,
   children,
+  onToggle,
 }: {
   summaryLabel: string;
   children: ReactNode;
+  /** Fires once, the first time the detail is opened -- used by
+   * callers that lazily fetch content only when an investor actually
+   * asks to see it, never eagerly for every row on a list (Atlas
+   * Intelligence Sprint 3, Deliverable 5/8). Optional; every existing
+   * caller is unaffected. */
+  onToggle?: (open: boolean) => void;
 }) {
   return (
-    <details>
+    <details onToggle={onToggle ? (event) => onToggle(event.currentTarget.open) : undefined}>
       <summary
         style={{
           cursor: "pointer",

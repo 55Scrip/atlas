@@ -23,6 +23,8 @@ from atlas.alpha.business_data_refresh.service import ensure_company_enriched
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.alpha.case_generation.service import CaseGenerationService
 from atlas.alpha.case_membership import resolve_case_id_for_ticker
+from atlas.alpha.ingestion.engine import classify_refresh
+from atlas.alpha.ingestion.repository import SqlAlchemyIngestionResultRepository
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.watchlist.exceptions import (
     AlphaWatchlistEntryNotFoundError,
@@ -48,6 +50,7 @@ class AlphaWatchlistService:
         business_record_repository: SqlAlchemyBusinessRecordRepository | None = None,
         business_data_providers: tuple[BusinessDataProvider, ...] | None = None,
         identity_gate: CanonicalSecurityIdentityGate | None = None,
+        ingestion_result_repository: SqlAlchemyIngestionResultRepository | None = None,
     ) -> None:
         self._store = store
         self._case_generation_service = case_generation_service
@@ -55,8 +58,9 @@ class AlphaWatchlistService:
         self._business_record_repository = business_record_repository
         self._business_data_providers = business_data_providers
         self._identity_gate = identity_gate
+        self._ingestion_result_repository = ingestion_result_repository
 
-    def _trigger_enrichment(self, ticker: str) -> None:
+    def _trigger_enrichment(self, ticker: str, case_id: str | None = None) -> None:
         """Best-effort, never raises for the caller: `ensure_company_
         enriched` already isolates every provider failure into its own
         returned `RefreshSummary` (discarded here -- this slice does
@@ -76,10 +80,20 @@ class AlphaWatchlistService:
             or self._identity_gate is None
         ):
             return
-        ensure_company_enriched(
+        summary = ensure_company_enriched(
             ticker, self._business_data_providers, self._business_record_repository,
             identity_gate=self._identity_gate,
         )
+        # Atlas Intelligence Sprint 9 (Data Ingestion & Automatic
+        # Refresh, Deliverable 4/11) -- records the real, already-
+        # computed `RefreshSummary` as this Case's own `IngestionResult`
+        # so Monitoring can later read (never re-detect) whether new
+        # data arrived. `summary is None` means `ensure_company_enriched`
+        # itself no-opped (already minimally complete) -- an honest
+        # "no check happened," never recorded as a fabricated result.
+        if summary is not None and self._ingestion_result_repository is not None:
+            result = classify_refresh(summary, ticker=ticker, case_id=case_id, ran_at=summary.evaluated_at or _utc_now())
+            self._ingestion_result_repository.upsert(result)
 
     def add_ticker(self, ticker: str) -> AlphaWatchlistEntry:
         """Idempotent: adding an already-watchlisted ticker returns the
@@ -113,7 +127,7 @@ class AlphaWatchlistService:
         )
         entry = AlphaWatchlistEntry(ticker=normalized, case_id=case_id, added_at=_utc_now())
         self._store.add(entry)
-        self._trigger_enrichment(normalized)
+        self._trigger_enrichment(normalized, case_id)
         return entry
 
     def remove_ticker(self, ticker: str) -> None:

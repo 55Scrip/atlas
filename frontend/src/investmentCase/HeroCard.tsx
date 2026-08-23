@@ -37,6 +37,8 @@ import { formatFinancialValue } from "./FinancialsTable";
 import { deriveHeroHasNotableChange, deriveHeroTension, type HeroTensionKind } from "./deriveHeroNarrative";
 import { formatPercent, GAP_KEY, type OutlookGapKind } from "./AtlasOutlookSection";
 import type { TranslationKey } from "../i18n";
+import { StanceSummary } from "../stance/StanceSummary";
+import type { StanceView } from "../stance/stanceApi";
 
 /**
  * Investment Case Hero (Figma-fidelity rebuild, on top of `APP-003`'s
@@ -164,8 +166,14 @@ export interface HeroAnalysisInput {
    * §3/§6): the real, at-most-2 "what limits this conclusion" facts --
    * see `deriveLimitingFactors`'s own docstring. Only the first (highest
    * -priority) entry renders here, as the hero's compact "Limited by:"
-   * line; the full list renders in `LimitingFactorsCard` further down
-   * the page, never duplicated with different content. */
+   * line -- real value on Company Workspace, where this Hero renders
+   * standalone with nothing below it. Internal Alpha Stabilization:
+   * `InvestmentCasePage.tsx` renders `ValuationSupportCard` then
+   * `LimitingFactorsCard` immediately below this same Hero (only
+   * hairline dividers between them), which restated this exact sentence
+   * up to two more times before this fix -- that page now passes
+   * `suppressLimitingFactorPreview` to omit this line there specifically,
+   * rather than removing the fact everywhere it has real value. */
   limitingFactors: LimitingFactor[];
   /** Beta Recommendation Experience implementation sprint (`UX-022`
    * §4): real, per-case Withheld reasons -- always `[]` when
@@ -176,6 +184,13 @@ export interface HeroAnalysisInput {
    * own corrected component table: "Current Price only (real)"). */
   sharePrice: number | null;
   currency: string | null;
+  /** Atlas Intelligence Sprint 2 (Recommendation Quality &
+   * Actionability, Deliverable 5) -- `null` only when no `StanceService`
+   * was wired for this build (mirrors `changeIntelligenceAvailable`'s
+   * own precedent elsewhere on this page); every real API call site
+   * wires one. Reuses this existing Hero area rather than a new
+   * section -- see `StanceSummary`'s own docstring. */
+  stance: StanceView | null;
 }
 
 interface HeroCardProps {
@@ -186,6 +201,12 @@ interface HeroCardProps {
   openQuestionCount: number;
   t: Translate;
   locale: string;
+  /** Internal Alpha Stabilization -- see `HeroAnalysisInput.limitingFactors`'s
+   * own docstring. Defaults to `false` (shows the preview line), the
+   * original behavior every existing caller still gets; only
+   * `InvestmentCasePage.tsx` opts in, since it alone renders the fuller
+   * detail immediately below this same card. */
+  suppressLimitingFactorPreview?: boolean;
 }
 
 const HERO_SENTENCE_STYLE: CSSProperties = {
@@ -205,7 +226,16 @@ function MetricField({ label, children }: { label: string; children: ReactNode }
   );
 }
 
-export function HeroCard({ ticker, analysis, outstandingWorkKinds, isThesisStale, openQuestionCount, t, locale }: HeroCardProps) {
+export function HeroCard({
+  ticker,
+  analysis,
+  outstandingWorkKinds,
+  isThesisStale,
+  openQuestionCount,
+  t,
+  locale,
+  suppressLimitingFactorPreview = false,
+}: HeroCardProps) {
   const isWithheld = analysis.recommendationLevel === "insufficient_evidence";
   const topLimitingFactor: LimitingFactor | undefined = analysis.limitingFactors[0];
 
@@ -251,6 +281,12 @@ export function HeroCard({ ticker, analysis, outstandingWorkKinds, isThesisStale
               ))}
             </Stack>
           )}
+          {analysis.stance && (
+            <>
+              <Divider tone="hairline" />
+              <StanceSummary stance={analysis.stance} t={t} />
+            </>
+          )}
         </>
       ) : (
         <>
@@ -262,15 +298,31 @@ export function HeroCard({ ticker, analysis, outstandingWorkKinds, isThesisStale
           </Text>
 
           {/* `UX-022` §3/§6: the single highest-priority real limiting
-              factor, compact hero placement -- the full (up to 2-item)
-              list renders separately in `LimitingFactorsCard`. */}
-          {topLimitingFactor && (
+              factor, compact hero placement. Internal Alpha Stabilization:
+              suppressed specifically on Investment Case, where
+              `ValuationSupportCard` then `LimitingFactorsCard` render
+              immediately below this same card (only hairline dividers
+              between them) -- a real investor reading top to bottom saw
+              the identical sentence (e.g. "the valuation range contains
+              both an upside and a downside") up to three times in one
+              screen's worth of content before this fix. Company
+              Workspace renders this Hero standalone with nothing below
+              it, so it still gets this line -- the fact is never lost
+              where it's the only place stating it. */}
+          {topLimitingFactor && !suppressLimitingFactorPreview && (
             <Text as="p" color="secondary">
               {t("investmentCase.hero.limitedByPrefix")}{" "}
               {topLimitingFactor.kind === "valuationGap"
                 ? t(VALUATION_SUPPORT_GAP_COPY_KEY[topLimitingFactor.gap])
                 : t(CONCERN_SENTENCE_KEY[topLimitingFactor.category])}
             </Text>
+          )}
+
+          {analysis.stance && (
+            <>
+              <Divider tone="hairline" />
+              <StanceSummary stance={analysis.stance} t={t} />
+            </>
           )}
 
           <Divider tone="hairline" />

@@ -2,6 +2,7 @@ import { Inline, Label, Stack, StatusBadge, Text } from "../foundation";
 import type { StatusTone } from "../foundation";
 import type { Translate } from "../changeIntelligence/describeChange";
 import { ExpandableDetail } from "./ExpandableDetail";
+import { capFacts, isReadableFact } from "./AtlasReasoningSection";
 
 /**
  * Company Health Assessment (Figma-fidelity rebuild): five expandable
@@ -64,14 +65,26 @@ function CompanyHealthCard({ card, t }: { card: CompanyHealthCardInput; t: Trans
       </Text>
       <ExpandableDetail summaryLabel={t("investmentCase.companyHealth.expandLabel")}>
         <Stack gap="intra-section">
+          {/* Product Sprint 13 (Company Intelligence Excellence):
+              live-testing found `supportingEvidence`/`contradictingEvidence`
+              sometimes hold raw, unresolved evidence-reference ids
+              rather than prose -- see `isReadableFact`'s own doc
+              comment. Filtered here, at the one place this page renders
+              them as "the evidence" a click reveals, so a raw id is
+              never shown as if it were a real cited fact.
+              Product Sprint 14: now that resolution genuinely works,
+              a Growth/Valuation finding evaluated across a company's
+              full history can carry 20-30+ real facts -- `capFacts`
+              keeps this readable, matching the same cap
+              `AtlasReasoningSection`'s own terse cards use. */}
           <EvidenceList
             heading={t("investmentCase.companyHealth.supportingHeading")}
-            items={card.supportingEvidence}
+            items={capFacts(card.supportingEvidence.filter(isReadableFact))}
             emptyLabel={t("investmentCase.companyHealth.noneFound")}
           />
           <EvidenceList
             heading={t("investmentCase.companyHealth.contradictingHeading")}
-            items={card.contradictingEvidence}
+            items={capFacts(card.contradictingEvidence.filter(isReadableFact))}
             emptyLabel={t("investmentCase.companyHealth.noneFound")}
           />
           <EvidenceList

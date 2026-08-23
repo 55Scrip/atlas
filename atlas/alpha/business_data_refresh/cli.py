@@ -30,7 +30,7 @@ from atlas.alpha.canonical_security_gate.factory import build_identity_gate
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.analysis_engine.business_data.providers import BusinessDataProvider
 from atlas.business_data_providers.alpha_vantage import AlphaVantageMarketDataProvider
-from atlas.business_data_providers.sec_edgar import SecEdgarFundamentalsProvider
+from atlas.business_data_providers.sec_edgar import SecEdgarFilingHistoryProvider, SecEdgarFundamentalsProvider
 from atlas.core.infrastructure.api.decision.dependencies import get_decision_engine
 
 __all__ = ["main"]
@@ -84,7 +84,11 @@ def main(
     create_business_record_table(engine)
     repository = SqlAlchemyBusinessRecordRepository(engine)
 
-    providers = providers if providers is not None else (SecEdgarFundamentalsProvider(), AlphaVantageMarketDataProvider())
+    providers = (
+        providers
+        if providers is not None
+        else (SecEdgarFundamentalsProvider(), AlphaVantageMarketDataProvider(), SecEdgarFilingHistoryProvider())
+    )
     identity_gate = identity_gate if identity_gate is not None else build_identity_gate(engine)
     summary = refresh_company_data(ticker.upper(), providers, repository, identity_gate=identity_gate)
     _print_summary(summary)

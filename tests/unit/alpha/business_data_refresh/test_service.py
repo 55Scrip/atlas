@@ -160,6 +160,30 @@ class _FakeHistoricalProvider:
         return tuple(d for d in self.historical_documents if d.company == company_identifier)
 
 
+@dataclass(frozen=True)
+class _FakeEarningsCallProvider:
+    """A `BusinessDataProvider` that additionally implements
+    `fetch_earnings_call_transcripts` -- structurally conforms to
+    `EarningsCallTranscriptProvider` with no import of that Protocol,
+    mirroring `_FakeHistoricalProvider`'s own duck-typing proof."""
+
+    current_documents: tuple[RawBusinessDocument, ...] = ()
+    transcript_documents: tuple[RawBusinessDocument, ...] = ()
+    transcript_exception: Exception | None = None
+    call_count: list = field(default_factory=list)
+
+    def fetch(self, *, company_identifier: str, evaluated_at: datetime) -> tuple[RawBusinessDocument, ...]:
+        return tuple(d for d in self.current_documents if d.company == company_identifier)
+
+    def fetch_earnings_call_transcripts(
+        self, *, company_identifier: str, evaluated_at: datetime
+    ) -> tuple[RawBusinessDocument, ...]:
+        self.call_count.append(company_identifier)
+        if self.transcript_exception is not None:
+            raise self.transcript_exception
+        return tuple(d for d in self.transcript_documents if d.company == company_identifier)
+
+
 @pytest.fixture
 def engine() -> Engine:
     engine = create_engine("sqlite:///:memory:", future=True, poolclass=StaticPool, connect_args={"check_same_thread": False})
@@ -432,6 +456,66 @@ class TestHistoricalMarketDataCapability:
         assert summary.provider_errors[0].provider_id == "_FakeHistoricalProvider.fetch_historical_snapshots"
         assert "rate limited" in summary.provider_errors[0].error
 
+
+class TestEarningsCallCapability:
+    """Capability Expansion Sprint 2 -- the optional fourth pass for
+    any provider that also implements `EarningsCallTranscriptProvider`,
+    checked via `isinstance`, never a hardcoded provider-class name."""
+
+    def test_provider_without_the_capability_is_never_asked_for_a_transcript(self, repository, identity_gate):
+        provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2023"),))
+        summary = refresh_company_data(
+            "AAPL", (provider, _identity_provider("AAPL")), repository, identity_gate=identity_gate
+        )
+        assert summary.provider_errors == ()
+
+    def test_transcript_provider_is_called_with_no_date_argument(self, repository, identity_gate):
+        """Unlike the historical-market-data pass, this needs no
+        `known_records`-derived input -- called even when no
+        `FINANCIAL_STATEMENT` record exists at all."""
+        transcript_provider = _FakeEarningsCallProvider()
+        refresh_company_data(
+            "AAPL", (transcript_provider, _identity_provider("AAPL")), repository, identity_gate=identity_gate
+        )
+        assert transcript_provider.call_count == ["AAPL"]
+
+    def test_transcript_documents_are_ingested(self, repository, identity_gate):
+        transcript_provider = _FakeEarningsCallProvider(
+            transcript_documents=(
+                RawBusinessDocument(
+                    identifier="AAPL:transcript:2026Q2:0",
+                    company="AAPL",
+                    source_kind="transcript",
+                    published_at=_EVALUATED_AT,
+                    provider_id="fake",
+                    raw_reference="https://example.test/transcript",
+                    content_hash="transcript-hash-1",
+                    language="en",
+                    metadata={"quarter": "2026Q2", "statement_index": 0, "speaker": "CEO", "content": "Strong quarter."},
+                ),
+            )
+        )
+        summary = refresh_company_data(
+            "AAPL", (transcript_provider, _identity_provider("AAPL")), repository, identity_gate=identity_gate
+        )
+        assert summary.new_records == 2  # transcript statement + identity/profile
+        transcript_records = [r for r in repository.get_by_company("AAPL") if r.document_type.value == "transcript"]
+        assert len(transcript_records) == 1
+
+    def test_transcript_failure_is_isolated_and_reported_distinctly(self, repository, identity_gate):
+        fundamentals_provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2022"),))
+        transcript_provider = _FakeEarningsCallProvider(transcript_exception=RuntimeError("premium endpoint"))
+        summary = refresh_company_data(
+            "AAPL",
+            (fundamentals_provider, transcript_provider, _identity_provider("AAPL")),
+            repository,
+            identity_gate=identity_gate,
+        )
+        assert summary.new_records == 2  # fundamentals + identity/profile still persisted
+        assert len(summary.provider_errors) == 1
+        assert summary.provider_errors[0].provider_id == "_FakeEarningsCallProvider.fetch_earnings_call_transcripts"
+        assert "premium endpoint" in summary.provider_errors[0].error
+
     def test_duplicate_historical_documents_are_skipped_not_duplicated_on_rerun(self, repository, identity_gate):
         identity = _identity_provider("AAPL")
         fundamentals_provider = _FakeProvider(
@@ -657,3 +741,56 @@ class TestEnsureCompanyEnriched:
         calling_again = _FakeProvider(exception=AssertionError("must never be called"))
         result = ensure_company_enriched("AAPL", (calling_again,), repository, identity_gate=identity_gate)
         assert result is None
+
+
+@dataclass(frozen=True)
+class _FakeKnowledgeProvider:
+    """Automatic Knowledge Ingestion Framework, Phase 1. A minimal
+    `KnowledgeProvider`-shaped fake (declares `provider_id`/
+    `supported_domains`/`supported_source_kinds` in addition to the
+    already-proven `fetch()`) -- proves `refresh_company_data` needs
+    zero changes to accept a real `KnowledgeProvider`: it flows through
+    the exact same per-provider loop `_FakeProvider` above already
+    exercises, never a second, parallel orchestration path."""
+
+    documents: tuple[RawBusinessDocument, ...] = ()
+    provider_id: str = "fake_knowledge_provider"
+
+    @property
+    def supported_domains(self):
+        from atlas.alpha.knowledge_coverage.models import KnowledgeDomain
+
+        return (KnowledgeDomain.REGULATORY_FILINGS,)
+
+    @property
+    def supported_source_kinds(self):
+        from atlas.analysis_engine.business_data.sources import SourceKind
+
+        return (SourceKind.COMPANY_FILING,)
+
+    def fetch(self, *, company_identifier: str, evaluated_at: datetime) -> tuple[RawBusinessDocument, ...]:
+        return tuple(d for d in self.documents if d.company == company_identifier)
+
+
+class TestKnowledgeProviderContractCompatibility:
+    def test_a_knowledge_provider_shaped_fake_is_a_real_isinstance_match(self):
+        from atlas.alpha.knowledge_provider import KnowledgeProvider
+        from atlas.analysis_engine.business_data.providers import BusinessDataProvider
+
+        provider = _FakeKnowledgeProvider()
+        assert isinstance(provider, KnowledgeProvider)
+        assert isinstance(provider, BusinessDataProvider)
+
+    def test_its_documents_flow_into_changed_records_unmodified(self, repository, identity_gate):
+        filing = _doc(identifier="AAPL:FILING:0001", source_kind="company_filing")
+        provider = _FakeKnowledgeProvider(documents=(filing,))
+        summary = refresh_company_data(
+            "AAPL", (provider, _identity_provider("AAPL")), repository, identity_gate=identity_gate
+        )
+
+        assert summary.fetched_documents == 2  # 1 filing + 1 identity/profile document
+        assert summary.new_records == 2
+        assert summary.provider_errors == ()
+        filing_records = [r for r in summary.changed_records if r.document_type.value == "company_filing"]
+        assert len(filing_records) == 1
+        assert filing_records[0].id.startswith(filing_records[0].lineage_id)

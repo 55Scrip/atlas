@@ -113,6 +113,13 @@ class DiscoveryCaseContext:
     key_risks: tuple[KeyRiskKind, ...]
     consider_kinds: tuple[ConsiderKind, ...]
     portfolio_context_facts: tuple[PortfolioContextFact, ...]
+    monitoring_pending: bool = False
+    """Atlas Intelligence Sprint 8 (Automated Monitoring Operations,
+    Deliverable 17) -- computed by the caller (`DiscoveryContextService
+    .build`, via `MonitoringService.freshness_for_case`), passed in
+    rather than derived here, since this module stays a pure projection
+    over `InvestmentCaseComposition`/`PortfolioStatusReport` and never
+    imports `atlas.alpha.monitoring` itself."""
 
 
 def _pending_workflow(ticker: str, status_report: PortfolioStatusReport) -> bool:
@@ -125,6 +132,8 @@ def _pending_workflow(ticker: str, status_report: PortfolioStatusReport) -> bool
 def build_discovery_case_context(
     composition: InvestmentCaseComposition,
     status_report: PortfolioStatusReport,
+    *,
+    monitoring_pending: bool = False,
 ) -> DiscoveryCaseContext:
     analysis = composition.canonical_analysis
     holding = composition.holding_context
@@ -190,4 +199,5 @@ def build_discovery_case_context(
         key_risks=tuple(key_risks),
         consider_kinds=tuple(consider_kinds),
         portfolio_context_facts=tuple(portfolio_context_facts),
+        monitoring_pending=monitoring_pending,
     )

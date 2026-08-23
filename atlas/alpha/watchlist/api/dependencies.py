@@ -19,6 +19,8 @@ from atlas.alpha.business_data_refresh.api.dependencies import (
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.alpha.case_generation.service import CaseGenerationService
+from atlas.alpha.ingestion.api.dependencies import get_ingestion_result_repository
+from atlas.alpha.ingestion.repository import SqlAlchemyIngestionResultRepository
 from atlas.alpha.portfolio.api.dependencies import get_case_generation_service
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.table import create_alpha_portfolio_state_table
@@ -58,6 +60,7 @@ def get_alpha_watchlist_service(
     business_record_repository: SqlAlchemyBusinessRecordRepository = Depends(get_business_record_repository),
     business_data_providers: tuple[BusinessDataProvider, ...] = Depends(get_default_business_data_providers),
     identity_gate: CanonicalSecurityIdentityGate = Depends(get_canonical_security_identity_gate),
+    ingestion_result_repository: SqlAlchemyIngestionResultRepository = Depends(get_ingestion_result_repository),
 ) -> AlphaWatchlistService:
     return AlphaWatchlistService(
         store,
@@ -66,4 +69,5 @@ def get_alpha_watchlist_service(
         business_record_repository=business_record_repository,
         business_data_providers=business_data_providers,
         identity_gate=identity_gate,
+        ingestion_result_repository=ingestion_result_repository,
     )

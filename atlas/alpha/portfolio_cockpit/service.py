@@ -5,8 +5,10 @@ Portfolio Cockpit composition owner. See this package's own
 from __future__ import annotations
 
 from collections import Counter
+from dataclasses import replace
 from datetime import datetime, timezone
 
+from atlas.alpha.coverage import assess_coverage
 from atlas.alpha.decision_support import describe_recommendation
 from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
@@ -24,6 +26,7 @@ from atlas.alpha.portfolio_status.service import PortfolioStatusService
 from atlas.alpha.portfolio_cockpit.contracts import ReviewPriority
 from atlas.analysis_engine.analysis_coverage import AnalysisCoverageLevel
 from atlas.analysis_engine.conviction import ConvictionLevel
+from atlas.analysis_engine.evidence_resolution import resolve_evidence_references
 from atlas.analysis_engine.valuation.contracts import ValuationStatus
 
 __all__ = ["PortfolioCockpitService"]
@@ -78,6 +81,51 @@ class PortfolioCockpitService:
                 confidence=analysis.confidence,
                 risk_findings=risk_findings,
             )
+
+            # Product Sprint 14 (Evidence & Explanation Quality): the
+            # exact same resolution `investment_case`'s own schema
+            # layer applies (`InvestmentCaseAnalysisView.from_domain`)
+            # -- reused here, not reimplemented, so this surface and
+            # that one keep showing byte-identical evidence for the
+            # same underlying finding (`TestRiskAgreement`'s own
+            # cross-surface consistency check depends on exactly this).
+            # Domain `Finding` objects are frozen; `dataclasses.replace`
+            # produces a new instance carrying resolved evidence, never
+            # mutates `analysis` itself.
+            facts_by_id = {f.id: f for f in (*composition.business_facts, *composition.market_facts)}
+            findings_by_id = {
+                f.id: f
+                for f in (
+                    *analysis.business_analysis.findings,
+                    *analysis.valuation_engine.findings,
+                    *analysis.risk_analysis.findings,
+                )
+            }
+            observations_by_id = {str(o.id): o for o in composition.observation_history}
+
+            def _resolve(references: tuple[str, ...]) -> tuple[str, ...]:
+                return resolve_evidence_references(
+                    references,
+                    facts_by_id=facts_by_id,
+                    findings_by_id=findings_by_id,
+                    observations_by_id=observations_by_id,
+                )
+
+            resolved_risk_findings = tuple(
+                replace(
+                    f,
+                    supporting_facts=_resolve(f.supporting_facts),
+                    contradicting_facts=_resolve(f.contradicting_facts),
+                )
+                for f in risk_findings
+            )
+            raw_valuation_finding = valuation_finding(analysis.valuation_engine)
+            resolved_valuation_finding = replace(
+                raw_valuation_finding,
+                supporting_facts=_resolve(raw_valuation_finding.supporting_facts),
+                contradicting_facts=_resolve(raw_valuation_finding.contradicting_facts),
+            )
+
             holdings.append(
                 PortfolioHoldingAnalysis(
                     ticker=holding.ticker,
@@ -87,14 +135,15 @@ class PortfolioCockpitService:
                     reconciliation_status=holding.reconciliation_status,
                     conviction=analysis.conviction,
                     analysis_coverage=analysis.analysis_coverage,
-                    valuation=valuation_finding(analysis.valuation_engine),
+                    valuation=resolved_valuation_finding,
                     business=business_summary(analysis.business_analysis),
                     risk_projection=risk_projection(analysis.risk_analysis),
-                    risk_findings=risk_findings,
+                    risk_findings=resolved_risk_findings,
                     confidence=analysis.confidence,
                     is_thesis_stale=composition.is_thesis_stale,
                     attention=attention,
                     decision_support=describe_recommendation(analysis.recommendation),
+                    coverage=assess_coverage(analysis, is_thesis_stale=composition.is_thesis_stale),
                 )
             )
 

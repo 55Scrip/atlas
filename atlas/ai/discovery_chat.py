@@ -135,6 +135,15 @@ class CaseContextInput:
     # Investment Case page's own Portfolio Context section already
     # shows for this ticker — reused verbatim, not recomputed here.
     portfolio_context_facts: tuple[str, ...] = ()
+    monitoring_pending: bool = False
+    """Atlas Intelligence Sprint 8 (Automated Monitoring Operations,
+    Deliverable 17) -- operational, not investment, freshness. `True`
+    only when Monitoring's own cheap dirty-check
+    (`atlas.alpha.monitoring.service.MonitoringService
+    .freshness_for_case`) currently finds this Case genuinely due for
+    recomputation -- never merely because time has passed. Deliberately
+    distinct from `is_stale` above (thesis staleness, a different,
+    longer-horizon concept)."""
 
 
 @dataclass(frozen=True)
@@ -423,6 +432,8 @@ def render_portfolio_context(portfolio: PortfolioContextInput | None) -> str | N
         lines.append(f"  - Conviction: {_readable(_CONVICTION_LABELS, case.conviction_level)}")
         if case.is_stale:
             lines.append("  - This Investment Case has not been reviewed in a long time.")
+        if case.monitoring_pending:
+            lines.append("  - Atlas has not yet completed a fresh monitoring run since the latest evidence arrived.")
         for kind in case.missing_evidence_kinds:
             lines.append(f"  - Missing evidence: {_readable(_MISSING_EVIDENCE_LABELS, kind)}")
         # `open_questions` can repeat the same kind multiple times (e.g.

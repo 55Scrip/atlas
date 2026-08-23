@@ -30,6 +30,8 @@ from datetime import datetime, timezone
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.service import ensure_company_enriched
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
+from atlas.alpha.ingestion.engine import classify_refresh
+from atlas.alpha.ingestion.repository import SqlAlchemyIngestionResultRepository
 from atlas.alpha.case_generation.service import CaseGenerationService
 from atlas.alpha.portfolio.exceptions import (
     AlphaHoldingNotFoundError,
@@ -301,6 +303,7 @@ class AlphaPortfolioService:
         business_record_repository: SqlAlchemyBusinessRecordRepository | None = None,
         business_data_providers: tuple[BusinessDataProvider, ...] | None = None,
         identity_gate: CanonicalSecurityIdentityGate | None = None,
+        ingestion_result_repository: SqlAlchemyIngestionResultRepository | None = None,
     ) -> None:
         self._store = store
         self._trade_log_store = trade_log_store
@@ -310,6 +313,7 @@ class AlphaPortfolioService:
         self._business_record_repository = business_record_repository
         self._business_data_providers = business_data_providers
         self._identity_gate = identity_gate
+        self._ingestion_result_repository = ingestion_result_repository
 
     def _known_watchlist_case_ids(self) -> dict[str, str]:
         """(Investment Case Engine v1 slice) Watchlist's own entries,
@@ -345,23 +349,29 @@ class AlphaPortfolioService:
             holdings, known_case_ids_by_ticker=self._known_watchlist_case_ids()
         )
 
-    def _trigger_enrichment(self, ticker: str) -> None:
+    def _trigger_enrichment(self, ticker: str, case_id: str | None = None) -> None:
         """(Investment Case Engine v1 slice) Best-effort, never raises:
         see `AlphaWatchlistService._trigger_enrichment`'s identical
         docstring for the full rationale -- this is the same no-op-if-
         undependency-absent, idempotent-if-already-enriched trigger,
         reused here rather than redefined. Sprint O: `identity_gate`
-        joins the other two as a third all-or-nothing dependency."""
+        joins the other two as a third all-or-nothing dependency.
+        Atlas Intelligence Sprint 9: records the resulting
+        `RefreshSummary` as this Case's own `IngestionResult`, same
+        rationale as `AlphaWatchlistService`'s own identical addition."""
         if (
             self._business_record_repository is None
             or self._business_data_providers is None
             or self._identity_gate is None
         ):
             return
-        ensure_company_enriched(
+        summary = ensure_company_enriched(
             ticker, self._business_data_providers, self._business_record_repository,
             identity_gate=self._identity_gate,
         )
+        if summary is not None and self._ingestion_result_repository is not None:
+            result = classify_refresh(summary, ticker=ticker, case_id=case_id, ran_at=summary.evaluated_at or _utc_now())
+            self._ingestion_result_repository.upsert(result)
 
     def import_portfolio(self, request: ImportPortfolioRequest) -> AlphaPortfolioState:
         """Establish (or re-establish) the Alpha portfolio from an
@@ -632,7 +642,8 @@ class AlphaPortfolioService:
         # synchronously triggering many sequential provider calls is
         # out of this slice's scope.
         if existing is None and trade_entry.transaction_type in (TransactionType.BUY, TransactionType.ADD):
-            self._trigger_enrichment(trade_entry.security)
+            new_case_id = next((h.case_id for h in new_state.holdings if h.ticker == trade_entry.security), None)
+            self._trigger_enrichment(trade_entry.security, new_case_id)
 
         self._store.replace(new_state)
         return new_state

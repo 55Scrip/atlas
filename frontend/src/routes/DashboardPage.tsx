@@ -5,6 +5,7 @@ import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
   deriveOutstandingWork,
+  formatRelativeTime,
   sortActivity,
   type DecisionRecord,
   type HoldingLite,
@@ -293,7 +294,7 @@ export function DashboardPage() {
                     <RouterLink
                       key={item.id}
                       to={`/investment-case/${item.caseId}`}
-                      state={{ origin: "dashboard" }}
+                      state={{ origin: "dashboard", ticker: item.security }}
                     >
                       {t(OUTSTANDING_WORK_LABEL_KEY[item.kind], { security: item.security })}
                     </RouterLink>
@@ -328,7 +329,7 @@ export function DashboardPage() {
                     {event.caseId ? (
                       <RouterLink
                         to={`/investment-case/${event.caseId}`}
-                        state={{ origin: "dashboard" }}
+                        state={{ origin: "dashboard", ticker: event.security }}
                       >
                         {event.security}
                       </RouterLink>
@@ -344,7 +345,7 @@ export function DashboardPage() {
                       {event.summary}
                     </Text>
                     <Text color="tertiary" as="p">
-                      {event.date}
+                      {formatRelativeTime(event.date, t)}
                     </Text>
                   </div>
                 ))}
@@ -373,7 +374,7 @@ export function DashboardPage() {
                   <RouterLink
                     key={item.caseId}
                     to={`/investment-case/${item.caseId}`}
-                    state={{ origin: "dashboard" }}
+                    state={{ origin: "dashboard", ticker: item.security }}
                   >
                     {item.security}
                   </RouterLink>

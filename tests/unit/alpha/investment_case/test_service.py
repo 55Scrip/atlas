@@ -607,6 +607,94 @@ class TestCompanyProfileFinancialHistoryAndMarketSnapshot:
         assert composition.financial_history == ()
 
 
+class TestFilingContentIntelligenceFamilyIsWiredIntoProduction:
+    """(Integration Sprint 1: Knowledge Activation) Proves Governance/
+    Risk Factor/Legal Proceedings/Ownership/Executive Compensation/
+    Insider Alignment Intelligence -- previously absent from
+    `InvestmentCaseComposition` entirely, not merely empty -- are now
+    real fields, computed through the real `build()` pipeline for a
+    real ingested `COMPANY_FILING` record, exactly as a real Atlas user
+    would trigger it (Watchlist add -> filing ingestion -> Investment
+    Case build). Each is honestly empty: no production path yet fetches
+    real filing *content* (see `models.py`'s own `governance_
+    intelligence` field docstring for the full, disclosed reason) --
+    this proves the wiring itself, not fabricated non-empty data."""
+
+    @staticmethod
+    def _ingest_def_14a(harness, ticker: str) -> None:
+        from atlas.analysis_engine.business_data.models import RawBusinessDocument
+        from atlas.analysis_engine.business_data.pipeline import ingest
+
+        document = RawBusinessDocument(
+            identifier=f"{ticker}:FILING:0000000000-26-000001", company=ticker, source_kind="company_filing",
+            published_at=_NOW, provider_id="sec_edgar_filings", raw_reference="https://example.test/def14a",
+            content_hash="def14a-hash", language="en",
+            metadata={
+                "form_type": "DEF 14A", "accession_number": "0000000000-26-000001",
+                "filing_url": "https://example.test/def14a",
+            },
+        )
+        result = ingest(document, evaluated_at=_NOW)
+        harness.business_record_repository.add(result.record)
+
+    def test_every_filing_content_family_field_is_present_and_correctly_typed(self, harness):
+        from atlas.alpha.investment_case.executive_compensation_intelligence import ExecutiveCompensationKnowledge
+        from atlas.alpha.investment_case.governance_intelligence import GovernanceKnowledge
+        from atlas.alpha.investment_case.insider_alignment_intelligence import InsiderAlignmentKnowledge
+        from atlas.alpha.investment_case.legal_proceedings_intelligence import LegalProceedingsKnowledge
+        from atlas.alpha.investment_case.ownership_intelligence import OwnershipKnowledge
+        from atlas.alpha.investment_case.risk_factor_intelligence import RiskFactorKnowledge
+
+        case_id = harness.add_to_watchlist("AAPL")
+        self._ingest_def_14a(harness, "AAPL")
+        composition = harness.composition_service.build(case_id)
+
+        assert len(composition.regulatory_filings) == 1
+        assert composition.regulatory_filings[0].form_type == "DEF 14A"
+        assert isinstance(composition.governance_intelligence, GovernanceKnowledge)
+        assert isinstance(composition.risk_factor_intelligence, RiskFactorKnowledge)
+        assert isinstance(composition.legal_proceedings_intelligence, LegalProceedingsKnowledge)
+        assert isinstance(composition.ownership_intelligence, OwnershipKnowledge)
+        assert isinstance(composition.executive_compensation_intelligence, ExecutiveCompensationKnowledge)
+        assert isinstance(composition.insider_alignment_intelligence, InsiderAlignmentKnowledge)
+        # Honestly empty -- no production content-fetch path exists yet.
+        assert composition.governance_intelligence.filings_considered == ()
+        assert composition.ownership_intelligence.disclosures == ()
+        assert composition.executive_compensation_intelligence.records == ()
+
+    def test_the_same_fields_survive_the_real_api_view_serialization(self, harness):
+        from atlas.alpha.investment_case.api.schemas import InvestmentCaseAnalysisView
+
+        case_id = harness.add_to_watchlist("MSFT")
+        self._ingest_def_14a(harness, "MSFT")
+        composition = harness.composition_service.build(case_id)
+        view = InvestmentCaseAnalysisView.from_domain(composition)
+
+        assert view.governance_intelligence.filings_considered == []
+        assert view.risk_factor_intelligence.disclosures == []
+        assert view.legal_proceedings_intelligence.disclosures == []
+        assert view.ownership_intelligence.disclosures == []
+        assert view.executive_compensation_intelligence.records == []
+        assert view.insider_alignment_intelligence.profiles == []
+        # camelCase on the wire, matching every other field on this view.
+        dumped = view.model_dump(by_alias=True)
+        assert "riskFactorIntelligence" in dumped
+        assert "executiveCompensationIntelligence" in dumped
+
+    def test_ownership_and_executive_compensation_are_computed_once_not_duplicated(self, harness):
+        """Insider Alignment Intelligence consumes the exact same
+        `ownership_intelligence`/`executive_compensation_intelligence`
+        values `service.py` also exposes as their own top-level fields
+        -- never a second, redundant computation (Phase 9: "remove
+        duplicated activation")."""
+        case_id = harness.add_to_watchlist("GOOGL")
+        self._ingest_def_14a(harness, "GOOGL")
+        composition = harness.composition_service.build(case_id)
+        assert composition.insider_alignment_intelligence.filings_considered == (
+            tuple(sorted(set(composition.ownership_intelligence.filings_considered) | set(composition.executive_compensation_intelligence.filings_considered)))
+        )
+
+
 class TestAtlasThesisRemainsDistinctFromInvestorThesis:
     """Investment Case Intelligence v1 slice, requirement 7: Atlas
     Thesis must remain distinct from the investor's own recorded

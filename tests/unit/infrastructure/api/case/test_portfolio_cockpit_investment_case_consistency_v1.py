@@ -114,6 +114,30 @@ class TestConfidenceAgreement:
         assert cockpit["holdings"][0]["confidence"] == investment_case["confidence"]
 
 
+class TestCoverageAgreement:
+    """Atlas Intelligence Sprint 1: both surfaces compute `coverage` via
+    the same `atlas.alpha.coverage.assess_coverage` call over the same
+    `CanonicalAnalysis` + `is_thesis_stale` -- they must agree."""
+
+    def test_overall_confidence_matches_across_both_surfaces(self, client):
+        _import_portfolio(client, [{"ticker": "NVDA", "weightPercent": 100}])
+        cockpit = client.get("/alpha-portfolio/cockpit").json()
+        case_id = cockpit["holdings"][0]["caseId"]
+        investment_case = client.get(f"/cases/{case_id}/analysis").json()
+
+        assert cockpit["holdings"][0]["coverage"]["overallConfidence"] == investment_case["coverage"]["overallConfidence"]
+
+    def test_dimension_levels_match_across_both_surfaces(self, client):
+        _import_portfolio(client, [{"ticker": "NVDA", "weightPercent": 100}])
+        cockpit = client.get("/alpha-portfolio/cockpit").json()
+        case_id = cockpit["holdings"][0]["caseId"]
+        investment_case = client.get(f"/cases/{case_id}/analysis").json()
+
+        cockpit_levels = {d["dimension"]: d["level"] for d in cockpit["holdings"][0]["coverage"]["dimensions"]}
+        case_levels = {d["dimension"]: d["level"] for d in investment_case["coverage"]["dimensions"]}
+        assert cockpit_levels == case_levels
+
+
 class TestMultipleHoldingsAllAgree:
     def test_every_holding_agrees_on_every_shared_field(self, client):
         _import_portfolio(

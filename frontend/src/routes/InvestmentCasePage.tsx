@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link as RouterLink, useLocation, useParams } from "react-router-dom";
-import { Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, StatusText, Surface, Text, VisuallyHidden } from "../foundation";
+import { ACCENT_LINK_STYLE, Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, StatusText, Surface, Text, VisuallyHidden } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
@@ -19,6 +19,11 @@ import {
   DECISION_SUPPORT_BADGE_KEY,
   DECISION_SUPPORT_STATEMENT_KEY,
   DECISION_SUPPORT_TONE,
+  DATA_FRESHNESS_STATUS_KEY,
+  DATA_FRESHNESS_STATUS_TONE,
+  FIT_RATING_KEY,
+  MONITORING_STATUS_KEY,
+  MONITORING_STATUS_TONE,
   RISK_STATUS_TONE,
   VALUATION_STATUS_TONE,
   type ConvictionLevel,
@@ -30,6 +35,56 @@ import {
   type ValuationSupportGapKind,
   type ValuationSupportStatus,
 } from "../status/statusTone";
+import { PortfolioFitSection } from "../portfolioFit/PortfolioFitSection";
+import { EvidenceGraphSection } from "../evidenceGraph/EvidenceGraphSection";
+import { fetchEvidenceGraph, type EvidenceGraphView } from "../evidenceGraph/evidenceGraphApi";
+import { DecisionReadinessSection } from "../decisionReadiness/DecisionReadinessSection";
+import {
+  fetchDecisionReadiness,
+  fetchDecisionReadinessChange,
+  type DecisionReadinessChangeView,
+  type DecisionReadinessView,
+} from "../decisionReadiness/decisionReadinessApi";
+import { fetchPortfolioFitForCase, type PortfolioFitAssessmentView } from "../portfolioFit/portfolioFitApi";
+import { InvestmentDecisionSection } from "../investmentDecision/InvestmentDecisionSection";
+import {
+  fetchInvestmentDecision,
+  fetchInvestmentDecisionChange,
+  type DecisionChangeView,
+  type InvestmentDecisionView,
+} from "../investmentDecision/investmentDecisionApi";
+import { RecommendationConvictionSection } from "../recommendationConviction/RecommendationConvictionSection";
+import {
+  fetchRecommendationConviction,
+  fetchRecommendationConvictionChange,
+  type ConvictionChangeView,
+  type RecommendationConvictionView,
+} from "../recommendationConviction/recommendationConvictionApi";
+import { DecisionPathSection } from "../decisionPath/DecisionPathSection";
+import {
+  fetchDecisionPath,
+  fetchDecisionPathChange,
+  type DecisionPathChangeView,
+  type DecisionPathView,
+} from "../decisionPath/decisionPathApi";
+import { OpportunityCostSection } from "../opportunityCost/OpportunityCostSection";
+import {
+  fetchOpportunityCost,
+  fetchOpportunityCostChange,
+  type OpportunityCostChangeView,
+  type OpportunityCostView,
+} from "../opportunityCost/opportunityCostApi";
+import { DecisionMemorySection } from "../decisionMemory/DecisionMemorySection";
+import { fetchDecisionMemory, type DecisionMemoryView } from "../decisionMemory/decisionMemoryApi";
+import { DecisionExplanationSection } from "../decisionExplanation/DecisionExplanationSection";
+import { fetchDecisionExplanation, type DecisionExplanationView } from "../decisionExplanation/decisionExplanationApi";
+import { DecisionReliabilitySection } from "../decisionReliability/DecisionReliabilitySection";
+import { fetchDecisionReliability, type DecisionReliabilityView } from "../decisionReliability/decisionReliabilityApi";
+import { PortfolioDecisionSection } from "../portfolioDecision/PortfolioDecisionSection";
+import { fetchPortfolioDecision, type PortfolioDecisionView } from "../portfolioDecision/portfolioDecisionApi";
+import { addTickerToWatchlist, fetchWatchlist, type WatchlistEntryView } from "../discovery/watchlistActions";
+import { ALPHA_PLACEHOLDER_USER_ID } from "../decisionWorkspace/alphaUser";
+import { StartDecisionSection } from "../decisionWorkspace/StartDecisionSection";
 import {
   BUSINESS_CATEGORY_KEY,
   BUSINESS_DATA_GAP_KEY,
@@ -39,7 +94,6 @@ import {
   dimensionLabel,
   HIGHLIGHT_KIND_KEY,
   humanize,
-  OPEN_QUESTION_ORIGIN_KEY,
   RISK_CATEGORY_KEY,
   RISK_DATA_GAP_KEY,
   RISK_STATUS_KEY,
@@ -82,10 +136,41 @@ import {
 import { HeroCard, type HeroAnalysisInput } from "../investmentCase/HeroCard";
 import { AtlasOutlookSection, type OutlookView } from "../investmentCase/AtlasOutlookSection";
 import { InvestmentArgumentSection } from "../investmentCase/InvestmentArgumentSection";
-import { AtlasReasoningSection, type AtlasReasoningInput } from "../investmentCase/AtlasReasoningSection";
+import {
+  AtlasReasoningSection,
+  capFacts,
+  isReadableFact,
+  type AtlasReasoningInput,
+  type ReasoningFacts,
+} from "../investmentCase/AtlasReasoningSection";
 import { CompanyHealthAssessmentSection, type CompanyHealthCardInput } from "../investmentCase/CompanyHealthAssessmentSection";
 import { InterpretedFinancialEvidenceSection } from "../investmentCase/InterpretedFinancialEvidenceSection";
 import { WhatChangedSection } from "../investmentCase/WhatChangedSection";
+import { CoveragePanel } from "../coverage/CoveragePanel";
+import type { CoverageAssessmentView } from "../coverage/coverageApi";
+import { KnowledgeCoveragePanel } from "../knowledgeCoverage/KnowledgeCoveragePanel";
+import type { InvestmentCaseKnowledgeCoverageView } from "../knowledgeCoverage/knowledgeCoverageApi";
+import type { StanceView } from "../stance/stanceApi";
+import { ExplanationPanel } from "../explainability/ExplanationPanel";
+import type { ExplanationView } from "../explainability/explainabilityApi";
+import { EvidenceQualityPanel } from "../evidenceQuality/EvidenceQualityPanel";
+import type { EvidenceQualityReportView } from "../evidenceQuality/evidenceQualityApi";
+import { EvidenceTimelinePanel } from "../evidenceTimeline/EvidenceTimelinePanel";
+import type { EvidenceHistoryView } from "../evidenceTimeline/evidenceTimelineApi";
+import { MaterialityPanel } from "../materiality/MaterialityPanel";
+import type { MaterialityAssessmentView } from "../materiality/materialityApi";
+import { ManagementIntelligencePanel } from "../investmentCase/ManagementIntelligencePanel";
+import type {
+  ExecutiveChangeIntelligenceView,
+  ExecutiveCompensationIntelligenceView,
+  ExecutiveTrackRecordIntelligenceView,
+  GovernanceIntelligenceView,
+  InsiderAlignmentIntelligenceView,
+  OwnershipIntelligenceView,
+  RegulatoryFilingView,
+} from "../investmentCase/managementIntelligenceApi";
+import { RegulatoryIntelligencePanel } from "../investmentCase/RegulatoryIntelligencePanel";
+import type { LegalProceedingsIntelligenceView, RiskFactorIntelligenceView } from "../investmentCase/regulatoryIntelligenceApi";
 
 /** Renders a bounded enum value's real copy; falls back to `humanize()`
  * only for a value the map doesn't (yet) cover, mirroring the
@@ -137,6 +222,15 @@ type TradeLogFetchStatus =
   | { kind: "loading" }
   | { kind: "error"; message: string }
   | { kind: "loaded"; trades: TradeLogEntry[] };
+
+/** Product Sprint 10 (Navigation & Workflow Excellence, Deliverable 4/5):
+ * this page previously had no way to tell whether the ticker it's
+ * showing is already on the Watchlist, so a case for a ticker that is
+ * neither held nor watched had no "Add to Watchlist" affordance at all
+ * -- an isolated island reachable only by leaving and using Discovery's
+ * own Search flow. Reuses the exact same `/api/alpha-watchlist` wrapper
+ * Discovery/Watchlist already use (`watchlistActions.ts`). */
+type WatchlistFetchStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; entries: WatchlistEntryView[] };
 
 /**
  * Shared shape for every "fetch the full list, scoped to this Case"
@@ -218,6 +312,7 @@ function deleteRecord<T>(
       current: Record<string, "idle" | "deleting" | "error">,
     ) => Record<string, "idle" | "deleting" | "error">,
   ) => void,
+  onSuccess?: () => void,
 ) {
   setDeleteStatus((current) => ({ ...current, [id]: "deleting" }));
 
@@ -228,6 +323,7 @@ function deleteRecord<T>(
       }
       setRecords((current) => current.filter((record) => !matchesId(record)));
       setDeleteStatus((current) => ({ ...current, [id]: "idle" }));
+      onSuccess?.();
     })
     .catch(() => {
       setDeleteStatus((current) => ({ ...current, [id]: "error" }));
@@ -280,15 +376,6 @@ interface EvidenceFormInput {
   source: string;
   direction: "SUPPORTS" | "CHALLENGES";
 }
-
-/** Visual Fidelity Pass -- Figma's own navigation links ("Back to
- * Portfolio", "View all financial data") render in the accent color,
- * not the Foundation `Link`/`RouterLink` default. */
-const ACCENT_LINK_STYLE: CSSProperties = {
-  color: "var(--global-color-accent)",
-  textDecoration: "none",
-  fontSize: "var(--type-body-min-size)",
-};
 
 /** Visual Fidelity Pass -- the approved screen's bottom tab bar is
  * plain text (active = primary color + a hairline underline, inactive
@@ -479,16 +566,9 @@ const ACTION_LABEL_KEY: Record<PositionAction, TranslationKey> = {
  */
 const CASE_LEVEL_DECISION_KEY = "__case_level_decision__";
 
-/**
- * Atlas Alpha has no login/session/identity system anywhere in this
- * frontend. The real backend's `Decision.user_id` is required, but per
- * the governing (unimplemented) Decision-Implementation-Design.md, it
- * "has no future semantic role" and is retained only as legacy
- * compatibility metadata — never shown to the investor. This fixed,
- * documented placeholder is used until Atlas Alpha has a real identity
- * system; it is not real user data, and no authentication is added.
- */
-const ALPHA_PLACEHOLDER_USER_ID = "00000000-0000-0000-0000-000000000001";
+// `ALPHA_PLACEHOLDER_USER_ID` moved to `../decisionWorkspace/alphaUser`
+// (Product Sprint 12) so `StartDecisionSection.tsx` can reuse the exact
+// same constant without a circular import between the two modules.
 
 interface OutcomeRecord {
   id: string;
@@ -821,6 +901,8 @@ interface InvestmentCaseAnalysisView {
   isThesisStale: boolean;
   confidence: EvidenceCoverageLevel;
   conviction: { level: AnalysisConvictionLevel; reasons: string[] };
+  coverage: CoverageAssessmentView;
+  stance: StanceView | null;
   businessAnalysis: { state: string; findings: BusinessFindingView[] };
   valuation: { state: string; findings: ValuationFindingView[] };
   /** Alpha Freeze correction sprint (Principal Engineer Review 2.0,
@@ -857,7 +939,52 @@ interface InvestmentCaseAnalysisView {
   previousAnalysisAt: string | null;
   currentAnalysisAt: string;
   generatedAt: string;
+  explanation: ExplanationView | null;
+  evidenceQualityReport: EvidenceQualityReportView | null;
+  evidenceTimeline: EvidenceHistoryView | null;
+  materiality: MaterialityAssessmentView | null;
+  monitoring: MonitoringStatusView | null;
+  operationalFreshness: OperationalFreshnessView | null;
+  knowledgeCoverage: InvestmentCaseKnowledgeCoverageView | null;
+  /** Product Utilization Sprint 1 (Investment Case Experience
+   * Activation). Every field below already existed on the backend
+   * response (Capability Expansion Sprints 10/11/15/16/17/18/19/20/21)
+   * -- this interface simply never grew to include them, so they were
+   * unreachable from this page regardless of what Atlas actually knew.
+   * See `ManagementIntelligencePanel`/`RegulatoryIntelligencePanel`'s
+   * own module docstrings. */
+  regulatoryFilings: RegulatoryFilingView[];
+  executiveChangeIntelligence: ExecutiveChangeIntelligenceView;
+  executiveTrackRecordIntelligence: ExecutiveTrackRecordIntelligenceView;
+  governanceIntelligence: GovernanceIntelligenceView;
+  riskFactorIntelligence: RiskFactorIntelligenceView;
+  legalProceedingsIntelligence: LegalProceedingsIntelligenceView;
+  ownershipIntelligence: OwnershipIntelligenceView;
+  executiveCompensationIntelligence: ExecutiveCompensationIntelligenceView;
+  insiderAlignmentIntelligence: InsiderAlignmentIntelligenceView;
 }
+
+/** Atlas Intelligence Sprint 7 (Monitoring & Change Detection,
+ * Deliverable 13). `null` only when Monitoring has never run for this
+ * Case yet. */
+interface MonitoringStatusView {
+  status: "up_to_date" | "changed_review_suggested" | "changed_high_importance" | "waiting_for_better_evidence" | "unavailable";
+  materialChangeCount: number;
+  latestChangeReason: string | null;
+  generatedAt: string | null;
+}
+
+/** Atlas Intelligence Sprint 8/9 (Automated Monitoring Operations /
+ * Data Ingestion & Automatic Refresh, Deliverable 15/6/7) -- purely
+ * operational, never investment status. */
+interface OperationalFreshnessView {
+  isPending: boolean;
+  lastMonitoredAt: string | null;
+  lastRunFailedForCase: boolean;
+  dataFreshnessStatus: DataFreshnessStatus;
+}
+
+type DataFreshnessStatus = "waiting_for_new_data" | "waiting_for_analysis" | "monitoring_failed" | "no_data_source" | "unknown";
 
 type InvestmentCaseAnalysisFetchStatus =
   | { kind: "loading" }
@@ -923,11 +1050,13 @@ export function InvestmentCasePage() {
             ? "investmentCase.origin.dailyBrief"
             : origin === "discovery"
               ? "investmentCase.origin.discovery"
-              : origin === "companion"
-                ? "investmentCase.origin.companion"
-                : origin === "company"
-                  ? "investmentCase.origin.company"
-                  : null;
+              : origin === "watchlist"
+                ? "investmentCase.origin.watchlist"
+                : origin === "companion"
+                  ? "investmentCase.origin.companion"
+                  : origin === "company"
+                    ? "investmentCase.origin.company"
+                    : null;
 
   /**
    * Origin-aware return (Sprint 8 audit fix): the badge above already
@@ -938,6 +1067,15 @@ export function InvestmentCasePage() {
    * (a brand-new Case, or a direct URL) still falls back to Portfolio,
    * the one origin with nothing more specific to return to.
    */
+  // Product Sprint 7 (Deliverable 9 -- Navigation): `origin === "companion"`
+  // previously had no explicit branch here, unlike the badge above
+  // (`originLabelKey`), which does name it -- it silently fell through
+  // to the same final `/portfolio` default every unrecognized origin
+  // uses. The destination was already correct (Companion is a
+  // persistent, cross-page overlay with no route of its own, so
+  // Portfolio is as sensible a landing spot as any), but naming it
+  // explicitly keeps this ternary chain honest about every origin the
+  // badge can show, rather than one falling through silently.
   const returnTo: string =
     origin === "dashboard"
       ? "/dashboard"
@@ -947,9 +1085,11 @@ export function InvestmentCasePage() {
           ? "/daily-brief"
           : origin === "discovery"
             ? "/discovery"
-            : origin === "company" && originTicker
-              ? `/company/${encodeURIComponent(originTicker)}`
-              : "/portfolio";
+            : origin === "watchlist"
+              ? "/watchlist"
+              : origin === "company" && originTicker
+                ? `/company/${encodeURIComponent(originTicker)}`
+                : "/portfolio";
   const returnLabelKey: TranslationKey =
     origin === "dashboard"
       ? "investmentCase.returnTo.dashboard"
@@ -959,9 +1099,11 @@ export function InvestmentCasePage() {
           ? "investmentCase.returnTo.dailyBrief"
           : origin === "discovery"
             ? "investmentCase.returnTo.discovery"
-            : origin === "company" && originTicker
-              ? "investmentCase.returnTo.company"
-              : "investmentCase.returnTo.portfolio";
+            : origin === "watchlist"
+              ? "investmentCase.returnTo.watchlist"
+              : origin === "company" && originTicker
+                ? "investmentCase.returnTo.company"
+                : "investmentCase.returnTo.portfolio";
 
   const [status, setStatus] = useState<CaseStatus>({ kind: "loading" });
 
@@ -1042,10 +1184,121 @@ export function InvestmentCasePage() {
     kind: "loading",
   });
   const [tradeLogStatus, setTradeLogStatus] = useState<TradeLogFetchStatus>({ kind: "loading" });
+  const [watchlistStatus, setWatchlistStatus] = useState<WatchlistFetchStatus>({ kind: "loading" });
+  const [watchlistAddStatus, setWatchlistAddStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [pendingAction, setPendingAction] = useState<PositionAction | null>(null);
   const [investmentCaseAnalysis, setInvestmentCaseAnalysis] = useState<InvestmentCaseAnalysisFetchStatus>({
     kind: "loading",
   });
+  /** Product Sprint 4 (Portfolio Fit Engine) -- `null` once loaded means
+   * the backend genuinely has no assessment for this Case (a disclosed
+   * absence, not a fetch failure), distinct from `status.kind` staying
+   * `"loading"`/`"error"`. */
+  const [portfolioFitStatus, setPortfolioFitStatus] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; assessment: PortfolioFitAssessmentView | null }
+  >({ kind: "loading" });
+
+  /** Atlas Intelligence Sprint 10 (Evidence Graph & Dependency
+   * Understanding, Deliverable 6) -- independent fetch, same pattern
+   * as `portfolioFitStatus` above. */
+  const [evidenceGraphStatus, setEvidenceGraphStatus] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; graph: EvidenceGraphView }
+  >({ kind: "loading" });
+
+  /** Atlas Intelligence Sprint 11 (Decision Readiness & Decision
+   * Eligibility, Deliverable 6) -- independent fetch, same pattern as
+   * `evidenceGraphStatus` above. `change` is fetched separately and
+   * allowed to fail/stay null silently -- "latest readiness change" is
+   * a bonus fact, never a blocking one. */
+  const [decisionReadinessStatus, setDecisionReadinessStatus] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; readiness: DecisionReadinessView }
+  >({ kind: "loading" });
+  const [decisionReadinessChange, setDecisionReadinessChange] = useState<DecisionReadinessChangeView | null>(null);
+
+  /** Atlas Decision Layer Sprint 1 (Investment Decision Synthesis,
+   * Deliverable 6) -- independent fetch, same pattern as
+   * `decisionReadinessStatus` above. `change` is fetched separately and
+   * allowed to fail/stay null silently. */
+  const [investmentDecisionStatus, setInvestmentDecisionStatus] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; decision: InvestmentDecisionView }
+  >({ kind: "loading" });
+  const [investmentDecisionChange, setInvestmentDecisionChange] = useState<DecisionChangeView | null>(null);
+
+  /** Atlas Decision Layer Sprint 2 (Recommendation Strength &
+   * Conviction, Deliverable 6) -- independent fetch, same pattern as
+   * `investmentDecisionStatus` above. */
+  const [recommendationConvictionStatus, setRecommendationConvictionStatus] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; conviction: RecommendationConvictionView }
+  >({ kind: "loading" });
+  const [recommendationConvictionChange, setRecommendationConvictionChange] = useState<ConvictionChangeView | null>(null);
+
+  /** Atlas Decision Layer Sprint 3 (Decision Path & Required
+   * Progress, Deliverable 6) -- independent fetch, same pattern as
+   * `recommendationConvictionStatus` above. */
+  const [decisionPathStatus, setDecisionPathStatus] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; path: DecisionPathView }
+  >({ kind: "loading" });
+  const [decisionPathChange, setDecisionPathChange] = useState<DecisionPathChangeView | null>(null);
+
+  /** Atlas Decision Layer Sprint 4 (Decision Alternatives &
+   * Opportunity Cost, Deliverable 6) -- independent fetch, same
+   * pattern as `decisionPathStatus` above. */
+  const [opportunityCostStatus, setOpportunityCostStatus] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; opportunityCost: OpportunityCostView }
+  >({ kind: "loading" });
+  const [opportunityCostChange, setOpportunityCostChange] = useState<OpportunityCostChangeView | null>(null);
+
+  /** Atlas Decision Layer Sprint 5 (Decision Memory, Deliverable 6)
+   * -- independent fetch, same pattern as `opportunityCostStatus`
+   * above. No separate change fetch: `DecisionMemoryView.latestChange`
+   * already embeds the latest real transition. */
+  const [decisionMemoryStatus, setDecisionMemoryStatus] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; memory: DecisionMemoryView }
+  >({ kind: "loading" });
+
+  /** Atlas Decision Layer Sprint 6 (Decision Explanation &
+   * Traceability, Deliverable 6) -- independent fetch, same pattern
+   * as `decisionMemoryStatus` above. */
+  const [decisionExplanationStatus, setDecisionExplanationStatus] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; explanation: DecisionExplanationView }
+  >({ kind: "loading" });
+
+  /** Atlas Decision Layer Sprint 7 (Decision Reliability, Deliverable
+   * 7) -- independent fetch, same pattern as `decisionExplanationStatus`
+   * above. */
+  const [decisionReliabilityStatus, setDecisionReliabilityStatus] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; reliability: DecisionReliabilityView }
+  >({ kind: "loading" });
+
+  /** Atlas Decision Layer Sprint 8 (Portfolio Decision Synthesis,
+   * Deliverable 7) -- independent fetch, same pattern as
+   * `decisionReliabilityStatus` above. */
+  const [portfolioDecisionStatus, setPortfolioDecisionStatus] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; decision: PortfolioDecisionView }
+  >({ kind: "loading" });
+
+  /** Fix Sprint 3 (Investment Case Post-Mutation Refresh Correctness).
+   * `caseDataVersion` is a plain, request-local invalidation counter --
+   * no polling, no timer, no global event: every one of the fetch
+   * effects below that reads this Case's own Decision Layer state
+   * (case analysis, Portfolio Fit, Evidence Graph, and all nine
+   * Decision Layer sections) lists it as a dependency alongside
+   * `caseId`, so incrementing it re-runs exactly those effects, the
+   * same way a `caseId` change already does. Every mutation that
+   * writes to a repository `InvestmentCaseCompositionService.build()`
+   * itself reads (Decision, Observation, Evidence, Outcome -- verified
+   * directly in `atlas/alpha/investment_case/service.py`; confirmed by
+   * grep that Judgment/KnowledgeReference/ReasoningTrace are read by no
+   * Alpha service at all, so their own mutations do not increment this)
+   * increments it on success only -- never on validation/API error, so
+   * a failed mutation leaves the page exactly as it was.
+   * `portfolioDataVersion` is the identical mechanism for the two
+   * Portfolio-scoped fetches (`/api/alpha-portfolio`, `/api/alpha-
+   * portfolio/trade-log`), incremented only by `applyTrade`, since a
+   * trade is the one mutation on this page that changes Portfolio
+   * state rather than only this Case's own. */
+  const [caseDataVersion, setCaseDataVersion] = useState(0);
+  const [portfolioDataVersion, setPortfolioDataVersion] = useState(0);
 
   /** Action Flow Tier 2 (Workspace Migration Phase 3, approved §13
    * Option A) -- whether the inline decision-recording panel is
@@ -1143,7 +1396,212 @@ export function InvestmentCasePage() {
       });
 
     return () => controller.abort();
-  }, [caseId]);
+  }, [caseId, caseDataVersion]);
+
+  // Product Sprint 4 (Portfolio Fit Engine, Deliverable 8) -- the new
+  // Portfolio Fit section's own fetch, independent of the analysis
+  // fetch above (Portfolio Fit is a separate Alpha-layer interpretation,
+  // not a field on `InvestmentCaseAnalysisView`).
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setPortfolioFitStatus({ kind: "loading" });
+
+    fetchPortfolioFitForCase(caseId, controller.signal)
+      .then((assessment) => setPortfolioFitStatus({ kind: "loaded", assessment }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setPortfolioFitStatus({ kind: "error" });
+      });
+
+    return () => controller.abort();
+  }, [caseId, caseDataVersion, portfolioDataVersion]);
+
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setEvidenceGraphStatus({ kind: "loading" });
+
+    fetchEvidenceGraph(caseId, controller.signal)
+      .then((graph) => setEvidenceGraphStatus({ kind: "loaded", graph }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setEvidenceGraphStatus({ kind: "error" });
+      });
+
+    return () => controller.abort();
+  }, [caseId, caseDataVersion]);
+
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setDecisionReadinessStatus({ kind: "loading" });
+
+    fetchDecisionReadiness(caseId, controller.signal)
+      .then((readiness) => setDecisionReadinessStatus({ kind: "loaded", readiness }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setDecisionReadinessStatus({ kind: "error" });
+      });
+    fetchDecisionReadinessChange(caseId, controller.signal)
+      .then((change) => setDecisionReadinessChange(change))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      });
+
+    return () => controller.abort();
+  }, [caseId, caseDataVersion]);
+
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setInvestmentDecisionStatus({ kind: "loading" });
+
+    fetchInvestmentDecision(caseId, controller.signal)
+      .then((decision) => setInvestmentDecisionStatus({ kind: "loaded", decision }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setInvestmentDecisionStatus({ kind: "error" });
+      });
+    fetchInvestmentDecisionChange(caseId, controller.signal)
+      .then((change) => setInvestmentDecisionChange(change))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      });
+
+    return () => controller.abort();
+  }, [caseId, caseDataVersion]);
+
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setRecommendationConvictionStatus({ kind: "loading" });
+
+    fetchRecommendationConviction(caseId, controller.signal)
+      .then((conviction) => setRecommendationConvictionStatus({ kind: "loaded", conviction }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setRecommendationConvictionStatus({ kind: "error" });
+      });
+    fetchRecommendationConvictionChange(caseId, controller.signal)
+      .then((change) => setRecommendationConvictionChange(change))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      });
+
+    return () => controller.abort();
+  }, [caseId, caseDataVersion]);
+
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setDecisionPathStatus({ kind: "loading" });
+
+    fetchDecisionPath(caseId, controller.signal)
+      .then((path) => setDecisionPathStatus({ kind: "loaded", path }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setDecisionPathStatus({ kind: "error" });
+      });
+    fetchDecisionPathChange(caseId, controller.signal)
+      .then((change) => setDecisionPathChange(change))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      });
+
+    return () => controller.abort();
+  }, [caseId, caseDataVersion]);
+
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setOpportunityCostStatus({ kind: "loading" });
+
+    fetchOpportunityCost(caseId, controller.signal)
+      .then((opportunityCost) => setOpportunityCostStatus({ kind: "loaded", opportunityCost }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setOpportunityCostStatus({ kind: "error" });
+      });
+    fetchOpportunityCostChange(caseId, controller.signal)
+      .then((change) => setOpportunityCostChange(change))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      });
+
+    return () => controller.abort();
+  }, [caseId, caseDataVersion]);
+
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setDecisionMemoryStatus({ kind: "loading" });
+
+    fetchDecisionMemory(caseId, controller.signal)
+      .then((memory) => setDecisionMemoryStatus({ kind: "loaded", memory }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setDecisionMemoryStatus({ kind: "error" });
+      });
+
+    return () => controller.abort();
+  }, [caseId, caseDataVersion]);
+
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setDecisionExplanationStatus({ kind: "loading" });
+
+    fetchDecisionExplanation(caseId, controller.signal)
+      .then((explanation) => setDecisionExplanationStatus({ kind: "loaded", explanation }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setDecisionExplanationStatus({ kind: "error" });
+      });
+
+    return () => controller.abort();
+  }, [caseId, caseDataVersion]);
+
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setDecisionReliabilityStatus({ kind: "loading" });
+
+    fetchDecisionReliability(caseId, controller.signal)
+      .then((reliability) => setDecisionReliabilityStatus({ kind: "loaded", reliability }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setDecisionReliabilityStatus({ kind: "error" });
+      });
+
+    return () => controller.abort();
+  }, [caseId, caseDataVersion]);
+
+  useEffect(() => {
+    if (!caseId) return;
+
+    const controller = new AbortController();
+    setPortfolioDecisionStatus({ kind: "loading" });
+
+    fetchPortfolioDecision(caseId, controller.signal)
+      .then((decision) => setPortfolioDecisionStatus({ kind: "loaded", decision }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setPortfolioDecisionStatus({ kind: "error" });
+      });
+
+    return () => controller.abort();
+  }, [caseId, caseDataVersion, portfolioDataVersion]);
 
   useEffect(() => {
     if (!caseId) return;
@@ -1193,6 +1651,17 @@ export function InvestmentCasePage() {
       });
 
     return () => controller.abort();
+  }, [portfolioDataVersion]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchWatchlist(controller.signal)
+      .then((entries) => setWatchlistStatus({ kind: "loaded", entries }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setWatchlistStatus({ kind: "error" });
+      });
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -1215,7 +1684,7 @@ export function InvestmentCasePage() {
       });
 
     return () => controller.abort();
-  }, []);
+  }, [portfolioDataVersion]);
 
   const unknownErrorMessage = t("common.unknownError");
   useApiList<EvidenceRecord>(
@@ -1297,6 +1766,10 @@ export function InvestmentCasePage() {
           ...current,
           [observationId]: { kind: "success", evidence },
         }));
+        // Fix Sprint 3: new Evidence is a `composition.build()` input
+        // (`evidence_repository`) -- every Decision Layer section
+        // derived from it is now stale until this bumps.
+        setCaseDataVersion((v) => v + 1);
       })
       .catch((error: unknown) => {
         setEvidenceCreateStatus((current) => ({
@@ -1316,6 +1789,9 @@ export function InvestmentCasePage() {
       (e) => e.evidenceId === evidenceId,
       setAllEvidence,
       setEvidenceDeleteStatus,
+      // Fix Sprint 3: same reasoning as `submitEvidence` above -- removing
+      // Evidence changes the same `composition.build()` input.
+      () => setCaseDataVersion((v) => v + 1),
     );
   }
 
@@ -1550,6 +2026,10 @@ export function InvestmentCasePage() {
           ...current,
           [formKey]: { kind: "success", decision },
         }));
+        // Fix Sprint 3: a new Decision is a `composition.build()` input
+        // (`decision_repository`) -- every Decision Layer section
+        // derived from it is now stale until this bumps.
+        setCaseDataVersion((v) => v + 1);
       })
       .catch((error: unknown) => {
         setDecisionCreateStatus((current) => ({
@@ -1598,6 +2078,13 @@ export function InvestmentCasePage() {
             kind: view.awaitingReconciliation ? "awaiting-reconciliation" : "updated",
           },
         }));
+        // Fix Sprint 3: a trade changes Portfolio holdings (Portfolio-
+        // scoped state, not only this Case's own) and, through
+        // `portfolio_store`, `composition.build()`'s own `holding_context`
+        // -- both this Case's Decision Layer sections and the Portfolio-
+        // scoped fetches below are now stale until these bump.
+        setCaseDataVersion((v) => v + 1);
+        setPortfolioDataVersion((v) => v + 1);
       })
       .catch((error: unknown) => {
         setTradeApplyStatus((current) => ({
@@ -1669,6 +2156,12 @@ export function InvestmentCasePage() {
           ...current,
           [observationId]: { kind: "success", outcome },
         }));
+        // Fix Sprint 3: a new Outcome is a `composition.build()` input
+        // (`outcome_repository`) -- every Decision Layer section derived
+        // from it is now stale until this bumps. `applyTrade` below bumps
+        // it again itself once the trade completes, which is correct: two
+        // real, sequential state changes, two refreshes.
+        setCaseDataVersion((v) => v + 1);
         if (form.isExternalTrade) {
           applyTrade(observationId, form, outcome);
         }
@@ -1710,6 +2203,10 @@ export function InvestmentCasePage() {
         const observation = (await response.json()) as ObservationRecord;
         setObservations((current) => [...current, observation]);
         setCreateStatus({ kind: "success", observation });
+        // Fix Sprint 3: a new Observation is a `composition.build()`
+        // input (`observation_repository`) -- every Decision Layer
+        // section derived from it is now stale until this bumps.
+        setCaseDataVersion((v) => v + 1);
       })
       .catch((error: unknown) => {
         setCreateStatus({
@@ -1883,6 +2380,39 @@ export function InvestmentCasePage() {
   );
 
   const companyProfile = investmentCaseAnalysis.kind === "loaded" ? investmentCaseAnalysis.report.companyProfile : null;
+
+  /** Product Sprint 10 (Navigation & Workflow Excellence, Deliverable
+   * 4/5): `linkedHolding` alone left any case for a ticker that isn't
+   * (yet) a Portfolio holding without a resolvable ticker at all -- no
+   * Compare link, no Add-to-Watchlist affordance. `companyProfile.ticker`
+   * is populated for any case with real analysis, regardless of
+   * Portfolio/Watchlist status, so it's the more general source; falls
+   * back to `linkedHolding`, and finally to `originTicker` (live-tested:
+   * a Watchlist entry with no analysis yet -- e.g. `VOLVO B` -- arrives
+   * here with neither `companyProfile` nor a linked holding, so without
+   * this last fallback the ticker was unresolvable even though
+   * `WatchlistPage.tsx` already knew it and now passes it along). */
+  const resolvedTicker = companyProfile?.ticker ?? linkedHolding?.ticker ?? originTicker ?? null;
+  const isOnWatchlist =
+    watchlistStatus.kind === "loaded" &&
+    resolvedTicker !== null &&
+    watchlistStatus.entries.some((entry) => entry.ticker === resolvedTicker);
+
+  function handleAddToWatchlist() {
+    if (!resolvedTicker) return;
+    setWatchlistAddStatus("submitting");
+    addTickerToWatchlist(resolvedTicker).then((result) => {
+      if (result.kind === "added") {
+        setWatchlistStatus((current) =>
+          current.kind === "loaded" ? { kind: "loaded", entries: [...current.entries, result.entry] } : current,
+        );
+        setWatchlistAddStatus("idle");
+      } else {
+        setWatchlistAddStatus("error");
+      }
+    });
+  }
+
   const identityLine = companyProfile
     ? [companyProfile.exchange, companyProfile.sector, companyProfile.industry].filter(Boolean).join(" · ")
     : "";
@@ -1890,12 +2420,21 @@ export function InvestmentCasePage() {
    * metadata line (Valuation / Portfolio fit / Portfolio weight /
    * Status), pipe-separated, replacing four separate paragraphs.
    * Every value is the same real one those paragraphs already read --
-   * only the presentation is denser. */
+   * only the presentation is denser.
+   *
+   * Product Sprint 4 -- Portfolio Fit is now a real value (Deliverable
+   * 8's own full section, further down this page, is the same
+   * `portfolioFitStatus` fetch read in full; this line stays the
+   * existing compact one-word summary, never a duplicated computation). */
   const metadataLineParts: string[] =
     investmentCaseAnalysis.kind === "loaded"
       ? [
           `${t("investmentCase.header.valuationLabel")}: ${t(VALUATION_STATUS_KEY[investmentCaseAnalysis.report.valuationContext.fcfYieldStatus])}`,
-          `${t("investmentCase.header.portfolioFitLabel")}: ${t("investmentCase.atlasView.notAvailable")}`,
+          `${t("investmentCase.header.portfolioFitLabel")}: ${
+            portfolioFitStatus.kind === "loaded" && portfolioFitStatus.assessment !== null
+              ? t(FIT_RATING_KEY[portfolioFitStatus.assessment.overall])
+              : t("investmentCase.atlasView.notAvailable")
+          }`,
           linkedHolding
             ? `${t("investmentCase.header.currentAllocation", { percent: linkedHolding.weightPercent })}`
             : null,
@@ -1949,13 +2488,11 @@ export function InvestmentCasePage() {
             <Heading level={1} style={{ fontWeight: 700 }}>
               {companyProfile?.name
                 ? companyProfile.name
-                : linkedHolding
-                  ? linkedHolding.ticker
-                  : t("investmentCase.header.untitled")}
+                : (resolvedTicker ?? t("investmentCase.header.untitled"))}
             </Heading>
-            {companyProfile?.name && linkedHolding && (
+            {companyProfile?.name && resolvedTicker && (
               <Text as="span" color="secondary" style={{ fontSize: "var(--type-size-h4)" }}>
-                {linkedHolding.ticker}
+                {resolvedTicker}
               </Text>
             )}
           </Inline>
@@ -1971,20 +2508,103 @@ export function InvestmentCasePage() {
             </Text>
           )}
 
-          {!linkedHolding && caseId && (
+          {/* Product Sprint 7 (Investment Case Excellence, Deliverable 9
+              -- Navigation): the only way off this page used to be the
+              single origin-aware back-link above -- no path forward to
+              Compare, even though Discovery/Portfolio/Daily Brief all
+              already link into Compare for the same ticker
+              (`/discovery/compare?a=...`, Sprint 5). Reuses that exact
+              existing route and query param; no new navigation concept.
+              Product Sprint 10 (Navigation & Workflow Excellence,
+              Deliverable 4/5): broadened from `linkedHolding` to
+              `resolvedTicker` -- a case for a ticker that isn't (yet) a
+              Portfolio holding previously had no Compare link either,
+              even when its own analysis already carries a real ticker.
+              The same widening also enables the new Add-to-Watchlist
+              action right beside it, for the one case that was a real
+              isolated island: a ticker Atlas has analyzed but the
+              investor has neither watchlisted nor bought. */}
+          {resolvedTicker && (
+            <Inline gap="row" wrap>
+              <RouterLink to={`/discovery/compare?a=${encodeURIComponent(resolvedTicker)}`} style={ACCENT_LINK_STYLE}>
+                {t("investmentCase.header.compareLink")}
+              </RouterLink>
+              {!linkedHolding && !isOnWatchlist && (
+                <Button variant="tertiary" onClick={handleAddToWatchlist} disabled={watchlistAddStatus === "submitting"}>
+                  {t("watchlist.addForm.submit")}
+                </Button>
+              )}
+            </Inline>
+          )}
+          {watchlistAddStatus === "error" && (
+            <Text color="tertiary" role="alert">
+              {t("discovery.card.addFailed")}
+            </Text>
+          )}
+
+          {/* Internal Alpha Sprint 2 (Real-World Workflow Validation) --
+              real-usage finding: `alphaHoldings` defaults to `[]` while
+              `alphaPortfolioStatus` is still "loading" (a fast, ~1-2s
+              fetch), so `!linkedHolding` was `true` -- and this message
+              rendered -- for every Case during that window, including
+              ones that genuinely are a real portfolio holding. A
+              confirmed-loaded "not linked" is a real fact; a
+              still-loading "not linked" is not linked information at
+              all -- "unknown remains unknown," never shown as a
+              premature negative. */}
+          {alphaPortfolioStatus.kind === "loaded" && !linkedHolding && caseId && (
             <Text color="secondary">{t("investmentCase.header.notLinked")}</Text>
           )}
-          {!caseId && <Text color="secondary">{t("investmentCase.noCaseSelected")}</Text>}
+          {!caseId && (
+            <Stack gap="metadata">
+              <Text color="secondary">{t("investmentCase.noCaseSelected")}</Text>
+              {/* Product Sprint 10 (Navigation & Workflow Excellence,
+                  Deliverable 1/7): the bare `/investment-case` route
+                  (no `:caseId`) is unreachable from any in-app link --
+                  it previously rendered this text with no way forward
+                  at all except the browser's own Back button. Reuses
+                  the same key/route Dashboard's own "go to Portfolio"
+                  link already uses, rather than a new one. */}
+              <RouterLink to="/portfolio" style={ACCENT_LINK_STYLE}>
+                {t("dashboard.portfolioStatus.goToPortfolio")}
+              </RouterLink>
+            </Stack>
+          )}
           {caseId && status.kind === "loading" && (
             <Text role="status" aria-live="polite">
               {t("investmentCase.hero.loading", {
-                ticker: linkedHolding ? linkedHolding.ticker : t("investmentCase.header.untitled"),
+                ticker: resolvedTicker ?? t("investmentCase.header.untitled"),
               })}
             </Text>
           )}
           {caseId && status.kind === "error" && (
             <Text color="tertiary" role="alert">
               {t("investmentCase.loadError", { message: status.message })}
+            </Text>
+          )}
+
+          {/* Product Sprint 7 (Investment Case Excellence, Deliverable
+              10 -- Polish) -- `investmentCaseAnalysis` is the single
+              most important fetch on this page (it drives the Hero,
+              Executive Summary, every canonical section, and two of
+              the six tabs), but every one of its consumers only ever
+              branched on `.kind === "loaded"`. A still-loading or
+              failed analysis fetch previously showed nothing at all --
+              a silent blank page -- even after the case summary itself
+              (`status`) had already loaded successfully and its own
+              loading/error text above had disappeared. This mirrors
+              that same text, gated on the fetch that was actually
+              missing it. */}
+          {caseId && status.kind === "loaded" && investmentCaseAnalysis.kind === "loading" && (
+            <Text role="status" aria-live="polite">
+              {t("investmentCase.hero.loading", {
+                ticker: resolvedTicker ?? t("investmentCase.header.untitled"),
+              })}
+            </Text>
+          )}
+          {caseId && status.kind === "loaded" && investmentCaseAnalysis.kind === "error" && (
+            <Text color="tertiary" role="alert">
+              {t("investmentCase.analysisLoadError")}
             </Text>
           )}
 
@@ -2045,17 +2665,19 @@ export function InvestmentCasePage() {
               missingEvaluations: report.recommendation.missingEvaluations,
               sharePrice: report.marketSnapshot ? report.marketSnapshot.sharePrice : null,
               currency: report.marketSnapshot ? report.marketSnapshot.currency : null,
+              stance: report.stance,
             };
             return (
               <>
                 <HeroCard
-                  ticker={linkedHolding ? linkedHolding.ticker : t("investmentCase.header.untitled")}
+                  ticker={resolvedTicker ?? t("investmentCase.header.untitled")}
                   analysis={heroAnalysis}
                   outstandingWorkKinds={caseOutstandingWork.map((item) => item.kind)}
                   isThesisStale={report.isThesisStale}
                   openQuestionCount={report.openQuestions.length}
                   t={t}
                   locale={locale}
+                  suppressLimitingFactorPreview
                 />
                 {report.recommendation.level !== "insufficient_evidence" && isValuationSupportLoadBearing && (
                   <>
@@ -2090,8 +2712,43 @@ export function InvestmentCasePage() {
           {caseId && status.kind === "loaded" && !isDecisionPanelExpanded && (
             <>
               <Divider tone="hairline" />
-              {!linkedHolding && (
-                <Text color="secondary">{t("investmentCase.actions.notLinkedNote")}</Text>
+              {/* Internal Alpha Sprint 2 (Real-World Workflow
+                  Validation) -- real-usage finding: this branch and its
+                  `linkedHolding && (...)` sibling below both keyed
+                  purely off `linkedHolding`, which defaults to `null`
+                  while `alphaPortfolioStatus` is still "loading." A real
+                  holding's own Case briefly showed this not-linked
+                  branch (import-portfolio note + Start Decision) instead
+                  of the real "Record a decision" trigger, for the same
+                  ~1-2s window Finding 1 covers above -- confirmed live
+                  by instrumenting `linkedHolding` across renders: `null`
+                  for many renders, then the real, matching holding. */}
+              {alphaPortfolioStatus.kind === "loaded" && !linkedHolding && (
+                // Product Sprint 11 (Investment Workflow Excellence,
+                // Deliverable 2/8): this note previously named a real
+                // requirement ("linked to a portfolio holding") with no
+                // way to act on it -- a decision entry point that looked
+                // hidden rather than simply not-yet-applicable. Atlas has
+                // no in-context "buy this new ticker" flow (a Core/
+                // ontology change, out of this sprint's scope) -- the
+                // real mechanism is re-importing the portfolio once a
+                // trade has actually been made, so this now names that
+                // path explicitly, reusing the exact same route/label
+                // Portfolio's own empty state already uses.
+                <Stack gap="metadata">
+                  <Text color="secondary">{t("investmentCase.actions.notLinkedNote")}</Text>
+                  <RouterLink to="/portfolio/import" style={ACCENT_LINK_STYLE}>
+                    {t("portfolio.empty.importButton")}
+                  </RouterLink>
+                  {/* Product Sprint 12 (Decision Workflow Consolidation,
+                      Deliverable 2/3 -- One Decision Workflow / Start
+                      Decision): the real, working alternative to the
+                      quick-action panel above (which requires an
+                      existing holding) -- recording an actual decision
+                      on a brand-new candidate via the existing,
+                      previously-unreachable Decision Draft system. */}
+                  {caseId && <StartDecisionSection caseId={caseId} ticker={resolvedTicker} />}
+                </Stack>
               )}
               {linkedHolding && (
                 <Inline gap="row" align="center">
@@ -2125,9 +2782,12 @@ export function InvestmentCasePage() {
                         setIsDecisionPanelExpanded(true);
                       }}
                     >
-                      {t("investmentCase.actions.outcomeAwaitingNudge", {
-                        count: decisionsAwaitingOutcome.length,
-                      })}
+                      {t(
+                        decisionsAwaitingOutcome.length === 1
+                          ? "investmentCase.actions.outcomeAwaitingNudgeOne"
+                          : "investmentCase.actions.outcomeAwaitingNudgeOther",
+                        { count: decisionsAwaitingOutcome.length },
+                      )}
                     </Button>
                   )}
                 </Inline>
@@ -2624,6 +3284,123 @@ export function InvestmentCasePage() {
 
             <Divider tone="hairline" />
 
+            {/* Product Sprint 4 (Portfolio Fit Engine, Deliverable 8) --
+                a new, always-visible section, the same placement tier as
+                Business/Valuation/Risk/Evidence above (not hidden behind
+                a tab click, matching Portfolio Fit's own stated product
+                priority). Independent fetch (`portfolioFitStatus`); a
+                still-loading or failed fetch never blocks the rest of
+                the page, the same pattern every section on this page
+                already follows. */}
+            {portfolioFitStatus.kind === "loaded" && <PortfolioFitSection assessment={portfolioFitStatus.assessment} />}
+            {portfolioFitStatus.kind === "loading" && (
+              <Text role="status" aria-live="polite">
+                {t("portfolioFit.section.loading")}
+              </Text>
+            )}
+            {portfolioFitStatus.kind === "error" && (
+              <Text color="tertiary" role="alert">
+                {t("portfolioFit.section.unavailable")}
+              </Text>
+            )}
+
+            {/* Atlas Intelligence Sprint 10 (Evidence Graph &
+                Dependency Understanding, Deliverable 6). Independent
+                fetch (`evidenceGraphStatus`); renders nothing at all
+                on error or when the graph is genuinely empty -- never
+                a placeholder, never blocking the rest of the page. */}
+            {evidenceGraphStatus.kind === "loaded" && <EvidenceGraphSection graph={evidenceGraphStatus.graph} t={t} />}
+
+            {/* Atlas Intelligence Sprint 11 (Decision Readiness &
+                Decision Eligibility, Deliverable 6). Independent fetch
+                (`decisionReadinessStatus`); renders nothing on error,
+                never blocking the rest of the page. */}
+            {decisionReadinessStatus.kind === "loaded" && (
+              <DecisionReadinessSection
+                readiness={decisionReadinessStatus.readiness}
+                change={decisionReadinessChange}
+                t={t}
+              />
+            )}
+
+            {/* Atlas Decision Layer Sprint 1 (Investment Decision
+                Synthesis, Deliverable 6). Independent fetch
+                (`investmentDecisionStatus`); renders nothing on error,
+                never blocking the rest of the page. */}
+            {investmentDecisionStatus.kind === "loaded" && (
+              <InvestmentDecisionSection
+                decision={investmentDecisionStatus.decision}
+                change={investmentDecisionChange}
+                t={t}
+              />
+            )}
+
+            {/* Atlas Decision Layer Sprint 2 (Recommendation Strength
+                & Conviction, Deliverable 6). Independent fetch
+                (`recommendationConvictionStatus`); renders nothing on
+                error, never blocking the rest of the page. */}
+            {recommendationConvictionStatus.kind === "loaded" && (
+              <RecommendationConvictionSection
+                conviction={recommendationConvictionStatus.conviction}
+                change={recommendationConvictionChange}
+                t={t}
+              />
+            )}
+
+            {/* Atlas Decision Layer Sprint 3 (Decision Path &
+                Required Progress, Deliverable 6). Independent fetch
+                (`decisionPathStatus`); renders nothing on error, never
+                blocking the rest of the page. */}
+            {decisionPathStatus.kind === "loaded" && (
+              <DecisionPathSection path={decisionPathStatus.path} change={decisionPathChange} t={t} />
+            )}
+
+            {/* Atlas Decision Layer Sprint 4 (Decision Alternatives &
+                Opportunity Cost, Deliverable 6). Independent fetch
+                (`opportunityCostStatus`); renders nothing when there
+                are no real alternatives, never blocking the rest of
+                the page. */}
+            {opportunityCostStatus.kind === "loaded" && (
+              <OpportunityCostSection
+                opportunityCost={opportunityCostStatus.opportunityCost}
+                currentTicker={resolvedTicker ?? ""}
+                change={opportunityCostChange}
+                t={t}
+              />
+            )}
+
+            {/* Atlas Decision Layer Sprint 5 (Decision Memory,
+                Deliverable 6). Independent fetch
+                (`decisionMemoryStatus`); renders nothing on error,
+                never blocking the rest of the page. */}
+            {decisionMemoryStatus.kind === "loaded" && <DecisionMemorySection memory={decisionMemoryStatus.memory} t={t} />}
+
+            {/* Atlas Decision Layer Sprint 6 (Decision Explanation &
+                Traceability, Deliverable 6). Independent fetch
+                (`decisionExplanationStatus`); renders nothing on
+                error, never blocking the rest of the page. */}
+            {decisionExplanationStatus.kind === "loaded" && (
+              <DecisionExplanationSection explanation={decisionExplanationStatus.explanation} t={t} />
+            )}
+
+            {/* Atlas Decision Layer Sprint 7 (Decision Reliability,
+                Deliverable 7). Independent fetch
+                (`decisionReliabilityStatus`); renders nothing on
+                error, never blocking the rest of the page. */}
+            {decisionReliabilityStatus.kind === "loaded" && (
+              <DecisionReliabilitySection reliability={decisionReliabilityStatus.reliability} t={t} />
+            )}
+
+            {/* Atlas Decision Layer Sprint 8 (Portfolio Decision
+                Synthesis, Deliverable 7). Independent fetch
+                (`portfolioDecisionStatus`); renders nothing on error,
+                never blocking the rest of the page. */}
+            {portfolioDecisionStatus.kind === "loaded" && (
+              <PortfolioDecisionSection decision={portfolioDecisionStatus.decision} t={t} />
+            )}
+
+            <Divider tone="hairline" />
+
             {/* Figma-fidelity rebuild -- the approved screen's own
                 bottom tab bar, replacing the previous single <details>
                 "More details" catch-all: the approved screen shows six
@@ -2683,6 +3460,15 @@ export function InvestmentCasePage() {
                     <Text color="tertiary" as="p">
                       {entry.decidedAt}
                     </Text>
+                    {/* Product Sprint 10 (Navigation & Workflow Excellence,
+                        Deliverable 1/4): the real Reasoning Workspace for
+                        this exact Decision (Assumptions, Case Conditions,
+                        the Reasoning Timeline) previously had no link
+                        anywhere in the app -- reachable only by typing
+                        the URL directly. */}
+                    <RouterLink to={`/decisions/${entry.decisionId}/workspace`} style={ACCENT_LINK_STYLE}>
+                      {t("investmentCase.analysis.decisionHistory.openReasoningWorkspace")}
+                    </RouterLink>
                     <Divider tone="hairline" />
                   </Stack>
                 ))}
@@ -2835,6 +3621,22 @@ export function InvestmentCasePage() {
                       isBaselineCase={investmentCaseAnalysis.report.isBaselineCase}
                       latestChanges={investmentCaseAnalysis.report.latestChanges}
                       thesisChange={investmentCaseAnalysis.report.thesisChange}
+                      factsForDimension={(dimension) => {
+                        const report = investmentCaseAnalysis.report;
+                        const business = report.businessAnalysis.findings.find((f) => f.kind === dimension);
+                        if (business) {
+                          return { supporting: business.supportingEvidence, contradicting: business.contradictingEvidence };
+                        }
+                        const risk = report.risk.findings.find((f) => f.category === dimension);
+                        if (risk) {
+                          return { supporting: risk.supportingFacts, contradicting: risk.contradictingFacts };
+                        }
+                        const valuation = report.valuation.findings.find((f) => f.kind === dimension);
+                        if (valuation) {
+                          return { supporting: valuation.supportingFacts, contradicting: valuation.contradictingFacts };
+                        }
+                        return { supporting: [], contradicting: [] };
+                      }}
                       t={t}
                     />
                   </>
@@ -4590,9 +5392,12 @@ function ExecutiveSummaryCard({
             .map((issue) => t(OUTSTANDING_ISSUE_KEY[issue]))
             .join(", ")}
           {outstandingIssues.length > MAX_OUTSTANDING_ISSUES_SHOWN &&
-            ` ${t("investmentCase.executiveSummary.outstandingIssues.moreCount", {
-              count: outstandingIssues.length - MAX_OUTSTANDING_ISSUES_SHOWN,
-            })}`}
+            ` ${t(
+              outstandingIssues.length - MAX_OUTSTANDING_ISSUES_SHOWN === 1
+                ? "investmentCase.executiveSummary.outstandingIssues.moreCountOne"
+                : "investmentCase.executiveSummary.outstandingIssues.moreCountOther",
+              { count: outstandingIssues.length - MAX_OUTSTANDING_ISSUES_SHOWN },
+            )}`}
         </Text>
       )}
     </Stack>
@@ -4601,51 +5406,19 @@ function ExecutiveSummaryCard({
 
 
 /**
- * Business / Valuation / Risk / Evidence (Investment Case Workspace v2,
- * Sprint 2, Phase 2) -- the "explain the summary" workspace immediately
- * below Executive Summary. Every value is the exact same
- * `InvestmentCaseAnalysisView` field Phase 1's canonical sections
- * already rendered (nothing recomputed, nothing newly fetched) -- this
- * phase only regroups where each fact lives, per the sprint's own
- * "reduce unnecessary cards... merge sections that belong together"
- * instruction. Four top-level cards, matching the sprint's named list
- * exactly (Decision History/Outcomes below are unchanged, per "keep
- * mostly unchanged"):
- *
- * - **Business** (`BusinessSection`) -- Portfolio Context first (the
- *   deeper explanation Executive Summary's "This is your largest
- *   position" line points to), then Growth/Capital Allocation
- *   highlighted (the only two of the six business categories this
- *   codebase can currently evaluate for real -- see
- *   `atlas/alpha/portfolio_cockpit/models.py`'s own `BusinessSummary`
- *   docstring), then the remaining four categories.
- * - **Valuation** (`ValuationSection`) -- unchanged content (FCF Yield +
- *   scenario placeholder), just its own top-level card as before.
- * - **Risk** (`RiskSection`) -- unchanged content: the real four-category
- *   vector (business/financial/valuation/thesis risk). This sprint's
- *   own example wording ("operational/competitive/macro risk") names
- *   categories this codebase does not evaluate -- reusing existing data
- *   only means the real four stay exactly as they are, not renamed or
- *   padded out to match that wording.
- * - **Evidence** (`EvidenceSection`) -- "everything Atlas knows, and what
- *   it still doesn't" in one place: Current Thesis, Conviction,
- *   Confidence (all three moved here from their own former top-level
- *   cards -- each is fundamentally a judgment about evidence quality,
- *   not a Business/Valuation/Risk fact), Evidence Quality, Observations
- *   (moved from the former standalone "Investor Observations" card),
- *   Missing Evidence and Open Questions (`analysis.openQuestions` split
- *   by kind -- a presentational grouping over the exact same six
- *   existing `OpenQuestionKind` values, never a new domain concept).
- *   Decision Support (the evidence-support badge/statement) no longer
- *   closes this section -- Workspace Migration Phase 3 (approved §13)
- *   relocated it to the page header, directly beneath Atlas's other
- *   assessment facts; it is never rendered in both places.
- *
- * The former standalone "compact header badges" card (Conviction/
- * Valuation/Evidence one-liner, added in ATLAS-029 Phase 9 before
- * Executive Summary existed) is removed: Executive Summary's own Atlas
- * Assessment now states the same facts directly under the page header,
- * so the badges had become a duplicate of it.
+ * Product Sprint 7 (Investment Case Excellence) -- this comment
+ * previously described a "Business / Valuation / Risk / Evidence"
+ * four-card layout from an earlier iteration (Investment Case
+ * Workspace v2, Sprint 2), including a `BusinessSection` component.
+ * That layout was superseded by `InvestmentCaseCanonicalSections`
+ * (`AtlasOutlookSection` → `InvestmentArgumentSection` →
+ * `AtlasReasoningSection` → `CompanyHealthAssessmentSection` →
+ * `InterpretedFinancialEvidenceSection` → `CompanyOverviewSection` →
+ * `EvidenceSection`, rendered above the tab bar) without this comment
+ * being updated -- `BusinessSection` itself had zero call sites left
+ * anywhere on the page and is removed as dead code this sprint.
+ * `RiskSection`/`EvidenceSection`/`ValuationDetailSection` referenced
+ * below are still real and still live in the `moreDetails` tab.
  */
 /** Company Health Assessment summary sentences -- deliberately fuller
  * and more assessment-toned than `AtlasReasoningSection`'s own terse
@@ -4732,17 +5505,56 @@ function InvestmentCaseCanonicalSections({
   const management = findBusiness("management");
   const competitivePosition = findBusiness("competitive_position");
   const financialRisk = findRisk("financial_risk");
+  const businessRisk = findRisk("business_risk");
+  const valuationRisk = findRisk("valuation_risk");
   const fcfYield = analysis.valuation.findings.find((f) => f.kind === "fcf_yield_relative");
   const valuationStatus: AnalysisValuationStatus = fcfYield ? fcfYield.status : "not_evaluated";
 
   const strengthKinds = analysis.strengths.map((h) => h.kind);
   const riskKinds = analysis.risks.map((h) => h.kind);
 
+  /** Product Sprint 13 (Company Intelligence Excellence, Deliverable 6
+   * -- Bull/Bear Balance): `strengthKinds`/`riskKinds` alone are bare
+   * category words (`CaseHighlightView.kind`) -- the real fact text
+   * that explains *why* lives on the finding each kind already maps
+   * to, one lookup away via the same `findBusiness`/`findRisk`/
+   * `fcfYield` this function already resolved above for
+   * `AtlasReasoningSection`. Reused, not recomputed. */
+  function factsForHighlightKind(kind: AnalysisHighlightKind): ReasoningFacts {
+    switch (kind) {
+      case "growth":
+        return { supporting: growth?.supportingEvidence ?? [], contradicting: growth?.contradictingEvidence ?? [] };
+      case "capital_allocation":
+        return {
+          supporting: capitalAllocation?.supportingEvidence ?? [],
+          contradicting: capitalAllocation?.contradictingEvidence ?? [],
+        };
+      case "valuation":
+        return { supporting: fcfYield?.supportingFacts ?? [], contradicting: fcfYield?.contradictingFacts ?? [] };
+      case "business_risk":
+        return { supporting: businessRisk?.supportingFacts ?? [], contradicting: businessRisk?.contradictingFacts ?? [] };
+      case "financial_risk":
+        return { supporting: financialRisk?.supportingFacts ?? [], contradicting: financialRisk?.contradictingFacts ?? [] };
+      case "valuation_risk":
+        return { supporting: valuationRisk?.supportingFacts ?? [], contradicting: valuationRisk?.contradictingFacts ?? [] };
+    }
+  }
+
   const reasoningInput: AtlasReasoningInput = {
     growthStatus: growth?.status ?? "not_evaluated",
+    growthFacts: { supporting: growth?.supportingEvidence ?? [], contradicting: growth?.contradictingEvidence ?? [] },
     valuationStatus,
+    valuationFacts: { supporting: fcfYield?.supportingFacts ?? [], contradicting: fcfYield?.contradictingFacts ?? [] },
     financialHealthStatus: financialRisk?.status ?? "not_evaluated",
+    financialHealthFacts: {
+      supporting: financialRisk?.supportingFacts ?? [],
+      contradicting: financialRisk?.contradictingFacts ?? [],
+    },
     businessQualityStatus: durability?.status ?? "not_evaluated",
+    businessQualityFacts: {
+      supporting: durability?.supportingEvidence ?? [],
+      contradicting: durability?.contradictingEvidence ?? [],
+    },
   };
 
   const companyHealthCards: CompanyHealthCardInput[] = [
@@ -4795,11 +5607,115 @@ function InvestmentCaseCanonicalSections({
 
   return (
     <Stack gap="inter-section">
+      <CoveragePanel coverage={analysis.coverage} t={t} />
+
+      {analysis.knowledgeCoverage && (
+        <>
+          <Divider tone="hairline" />
+          <KnowledgeCoveragePanel coverage={analysis.knowledgeCoverage} t={t} />
+        </>
+      )}
+
+      {analysis.materiality && (
+        <>
+          <Divider tone="hairline" />
+          <MaterialityPanel assessment={analysis.materiality} t={t} />
+        </>
+      )}
+
+      {analysis.explanation && (
+        <>
+          <Divider tone="hairline" />
+          <ExplanationPanel explanation={analysis.explanation} t={t} />
+        </>
+      )}
+
+      {analysis.evidenceQualityReport && (
+        <>
+          <Divider tone="hairline" />
+          <EvidenceQualityPanel report={analysis.evidenceQualityReport} t={t} />
+        </>
+      )}
+
+      {analysis.evidenceTimeline && (
+        <>
+          <Divider tone="hairline" />
+          <EvidenceTimelinePanel caseId={analysis.caseId} history={analysis.evidenceTimeline} t={t} />
+        </>
+      )}
+
+      {/* Product Utilization Sprint 1 (Investment Case Experience
+          Activation). Two new, always-present panels (their own
+          sub-sections handle emptiness individually, the same "real
+          field, honest empty state" shape every other panel here
+          already uses) -- see each panel's own module docstring. */}
+      <Divider tone="hairline" />
+      <ManagementIntelligencePanel
+        regulatoryFilings={analysis.regulatoryFilings}
+        executiveChange={analysis.executiveChangeIntelligence}
+        trackRecord={analysis.executiveTrackRecordIntelligence}
+        governance={analysis.governanceIntelligence}
+        ownership={analysis.ownershipIntelligence}
+        executiveCompensation={analysis.executiveCompensationIntelligence}
+        insiderAlignment={analysis.insiderAlignmentIntelligence}
+        t={t}
+      />
+
+      <Divider tone="hairline" />
+      <RegulatoryIntelligencePanel
+        regulatoryFilings={analysis.regulatoryFilings}
+        riskFactor={analysis.riskFactorIntelligence}
+        legalProceedings={analysis.legalProceedingsIntelligence}
+        t={t}
+      />
+
+      {/* Atlas Intelligence Sprint 7 (Monitoring & Change Detection,
+          Deliverable 13). Deliberately one compact line, not a section
+          -- reuses Evidence Timeline/Materiality above for the full
+          picture; this only reprioritizes/frames it. `latestChangeReason`
+          is a server-generated English sentence (matching how every
+          other `daily_brief_agenda` signal reason already works, since
+          it can carry verbatim investor-authored CaseCondition
+          predicate text that cannot be translated) -- deliberately not
+          shown here, where the rest of the page is fully translated;
+          the status badge alone is enough for a compact line, and the
+          same reason already surfaces, in full, on the Daily Brief
+          agenda item. */}
+      {analysis.monitoring && (
+        <Inline gap="metadata" align="center">
+          <StatusBadge
+            label={t(MONITORING_STATUS_KEY[analysis.monitoring.status])}
+            tone={MONITORING_STATUS_TONE[analysis.monitoring.status]}
+          />
+        </Inline>
+      )}
+
+      {/* Atlas Intelligence Sprint 8/9 (Automated Monitoring Operations
+          / Data Ingestion & Automatic Refresh, Deliverable 15/6/7).
+          Deliberately a separate line from the Monitoring status badge
+          above -- operational freshness ("has Atlas recomputed this
+          recently, and did new data even arrive") is never mixed with
+          investment status ("what did Atlas conclude"). */}
+      {analysis.operationalFreshness && (
+        <StatusBadge
+          label={t(DATA_FRESHNESS_STATUS_KEY[analysis.operationalFreshness.dataFreshnessStatus])}
+          tone={DATA_FRESHNESS_STATUS_TONE[analysis.operationalFreshness.dataFreshnessStatus]}
+        />
+      )}
+
+      <Divider tone="hairline" />
+
       <AtlasOutlookSection outlook={analysis.outlook} latestChanges={analysis.latestChanges} t={t} />
 
       <Divider tone="hairline" />
 
-      <InvestmentArgumentSection strengthKinds={strengthKinds} riskKinds={riskKinds} t={t} />
+      <InvestmentArgumentSection
+        strengthKinds={strengthKinds}
+        riskKinds={riskKinds}
+        openQuestionOrigins={analysis.keyOpenQuestions.map((q) => q.origin)}
+        factsForKind={factsForHighlightKind}
+        t={t}
+      />
 
       <Divider tone="hairline" />
 
@@ -5046,84 +5962,41 @@ const GROWTH_TREND_KEY: Record<AnalysisMetricTrend, TranslationKey> = {
 };
 
 /**
- * Case Analysis Detail (Figma-fidelity rebuild) -- the former Atlas
- * View content (Thesis narrative, Strengths/Risks highlight lists,
- * Growth/Valuation detail with recent-trend and current-yield facts,
- * Open Questions), relocated verbatim into the More Details tab. The
- * approved Figma screen's own "ATLAS VIEW" block shows only the dot
- * scorecard (`AtlasViewSection` above) -- none of this content on the
- * primary view -- but nothing here is fabricated or unsupported, so it
- * is real, real depth one tab away, not deleted.
+ * Product Sprint 7 (Investment Case Excellence, Deliverable 2 -- Remove
+ * Noise) -- this section used to restate Thesis/Strengths/Risks/Growth
+ * status/Valuation Context in full, every one of them a second (or
+ * third) rendering of a fact the always-visible view above the tab bar
+ * already states: Strengths/Risks in full sentence form live in
+ * `InvestmentArgumentSection`; Growth's own status lives in
+ * `AtlasReasoningSection`'s Growth card; Valuation's status/current
+ * yield/scenario-availability are the exact same three facts
+ * `ValuationDetailSection` (this same tab, immediately below) already
+ * renders. The bare "Thesis" heading rendered no content under it at
+ * all (`atlasThesis.narrative` was deliberately never shown -- see the
+ * removed comment that used to sit here). Open Questions moved out of
+ * this tab entirely in Deliverable 4 -- it is now its own always-visible
+ * column in `InvestmentArgumentSection`, next to Bull/Bear, so rendering
+ * it here too would be exactly the duplication this deliverable removes.
+ * What's left below is only what remains genuinely unique to this
+ * section: Growth's own recent-trend detail (periods considered + trend
+ * direction), not shown anywhere else.
  */
 function CaseNarrativeDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
-  const { strengths, risks, growthAnalysis, valuationContext, keyOpenQuestions } = analysis;
+  const { growthAnalysis } = analysis;
+
+  if (!growthAnalysis.recentTrend) {
+    return null;
+  }
 
   return (
     <Stack gap="intra-section">
-      {/* `analysis.atlasThesis.narrative` (backend `investment_case_synthesis.py`)
-          is deliberately not rendered here -- it's an English-only prose
-          sentence with no Swedish counterpart, and every fact it states is
-          already shown, fully localized, in the Strengths/Risks/Growth/
-          Valuation/Open Questions detail directly below. */}
-      <Heading level={3}>{t("investmentCase.atlasView.thesis.heading")}</Heading>
-
-      <Divider tone="hairline" />
-      <Heading level={3}>{t("investmentCase.atlasView.strengths.heading")}</Heading>
-      {strengths.length === 0 && <Text color="secondary">{t("investmentCase.atlasView.strengths.empty")}</Text>}
-      {strengths.map((highlight) => (
-        <Text as="p" key={highlight.supportingFindingId}>
-          {t(HIGHLIGHT_KIND_KEY[highlight.kind])}
-        </Text>
-      ))}
-
-      <Divider tone="hairline" />
-      <Heading level={3}>{t("investmentCase.atlasView.risks.heading")}</Heading>
-      {risks.length === 0 && <Text color="secondary">{t("investmentCase.atlasView.risks.empty")}</Text>}
-      {risks.map((highlight) => (
-        <Text as="p" key={highlight.supportingFindingId}>
-          {t(HIGHLIGHT_KIND_KEY[highlight.kind])}
-        </Text>
-      ))}
-
-      <Divider tone="hairline" />
       <Heading level={3}>{t("investmentCase.atlasView.growth.heading")}</Heading>
-      <Text as="p">
-        {t(BUSINESS_CATEGORY_KEY.growth)}: {t(BUSINESS_STATUS_KEY[growthAnalysis.status])}
+      <Text as="p" color="secondary">
+        {t("investmentCase.atlasView.growth.recentTrendLabel", {
+          periods: growthAnalysis.recentTrend.periodsConsidered.join(" → "),
+        })}
+        : {t(GROWTH_TREND_KEY[growthAnalysis.recentTrend.trend])}
       </Text>
-      {growthAnalysis.recentTrend && (
-        <Text as="p" color="secondary">
-          {t("investmentCase.atlasView.growth.recentTrendLabel", {
-            periods: growthAnalysis.recentTrend.periodsConsidered.join(" → "),
-          })}
-          : {t(GROWTH_TREND_KEY[growthAnalysis.recentTrend.trend])}
-        </Text>
-      )}
-
-      <Divider tone="hairline" />
-      <Heading level={3}>{t("investmentCase.atlasView.valuationContext.heading")}</Heading>
-      <Text as="p">{t(VALUATION_STATUS_KEY[valuationContext.fcfYieldStatus])}</Text>
-      {valuationContext.currentYield !== null && (
-        <Text as="p" color="secondary">
-          {t("investmentCase.atlasView.valuationContext.currentYieldLabel")}:{" "}
-          {(valuationContext.currentYield * 100).toFixed(2)}%
-        </Text>
-      )}
-      {!valuationContext.scenarioAvailable && (
-        <Text as="p" color="secondary">
-          {t("investmentCase.atlasView.valuationContext.scenarioUnavailable")}
-        </Text>
-      )}
-
-      <Divider tone="hairline" />
-      <Heading level={3}>{t("investmentCase.atlasView.openQuestions.heading")}</Heading>
-      {keyOpenQuestions.length === 0 && (
-        <Text color="secondary">{t("investmentCase.atlasView.openQuestions.empty")}</Text>
-      )}
-      {keyOpenQuestions.map((question, index) => (
-        <Text as="p" key={`${question.origin}:${index}`}>
-          {t(OPEN_QUESTION_ORIGIN_KEY[question.origin])}
-        </Text>
-      ))}
     </Stack>
   );
 }
@@ -5195,78 +6068,6 @@ function PortfolioContextDetail({
   );
 }
 
-/**
- * Business Analysis (Figma-fidelity rebuild) -- the approved screen's
- * own qualitative panel (Competitive Position, Moat, Key Growth
- * Drivers, Market Expectations, Management). Growth and Capital
- * Allocation are real, already-shipped categorical assessments;
- * Business Model/Competitive Position/Management/Durability are the
- * same real `businessAnalysis.findings` entries, honestly
- * `insufficient_input` today (doctrine forbids fabricating qualitative
- * judgment from financial statements alone) -- never invented text,
- * the same honest state already shown before this rebuild. Portfolio
- * Context moved to `PortfolioContextDetail` in the More Details tab
- * (see its own docstring).
- */
-function BusinessSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t: Translate }) {
-  const growth = analysis.businessAnalysis.findings.find((f) => f.kind === "growth");
-  const capitalAllocation = analysis.businessAnalysis.findings.find((f) => f.kind === "capital_allocation");
-  const otherFindings = analysis.businessAnalysis.findings.filter(
-    (f) => f.kind !== "growth" && f.kind !== "capital_allocation",
-  );
-
-  function renderFinding(finding: BusinessFindingView) {
-    return (
-      <Stack key={finding.kind} gap="metadata">
-        <Text as="p">
-          <Text as="span" color="tertiary">
-            {t(BUSINESS_CATEGORY_KEY[finding.kind])}:{" "}
-          </Text>
-          {t(BUSINESS_STATUS_KEY[finding.status])}
-        </Text>
-        {finding.supportingEvidence.length > 0 && (
-          <Text color="tertiary" as="p">
-            {t("investmentCase.analysis.business.supportingLabel")}: {finding.supportingEvidence.join(", ")}
-          </Text>
-        )}
-        {finding.contradictingEvidence.length > 0 && (
-          <Text color="tertiary" as="p">
-            {t("investmentCase.analysis.business.contradictingLabel")}: {finding.contradictingEvidence.join(", ")}
-          </Text>
-        )}
-        {finding.missingEvidence.length > 0 && (
-          <Text color="tertiary" as="p">
-            {t("investmentCase.analysis.business.missingLabel")}:{" "}
-            {finding.missingEvidence.map((v) => describeGapKind(v, BUSINESS_DATA_GAP_KEY, t)).join(", ")}
-          </Text>
-        )}
-      </Stack>
-    );
-  }
-
-  return (
-    <Stack gap="metadata">
-      <Label>{t("investmentCase.analysis.business.heading")}</Label>
-
-      {(growth || capitalAllocation) && (
-        <Stack gap="row">
-          {growth && renderFinding(growth)}
-          {capitalAllocation && renderFinding(capitalAllocation)}
-        </Stack>
-      )}
-
-      {otherFindings.length > 0 && (
-        <Stack gap="row">
-          <Text as="p" color="tertiary">
-            {t("investmentCase.analysis.business.otherCategoriesHeading")}
-          </Text>
-          {otherFindings.map(renderFinding)}
-        </Stack>
-      )}
-    </Stack>
-  );
-}
-
 /** Valuation -- unchanged content from Phase 1's canonical sections,
  * extracted into its own component for this sprint's four-section
  * structure. FCF Yield named explicitly; the three scenario methods
@@ -5290,9 +6091,16 @@ function ValuationDetailSection({ analysis, t }: { analysis: InvestmentCaseAnaly
               {t("investmentCase.analysis.valuation.currentYieldLabel")}: {(fcfYield.currentYield * 100).toFixed(2)}%
             </Text>
           )}
-          {fcfYield.supportingFacts.length > 0 && (
+          {/* Product Sprint 13 (Company Intelligence Excellence):
+              see `isReadableFact`'s own doc comment -- this field
+              sometimes holds raw, unresolved evidence-reference ids.
+              Product Sprint 14: `capFacts` keeps a fully-resolved,
+              many-observation finding (e.g. FCF Yield, evaluated
+              across a full price/share-count history) readable. */}
+          {capFacts(fcfYield.supportingFacts.filter(isReadableFact)).length > 0 && (
             <Text color="secondary" as="p">
-              {t("investmentCase.analysis.business.supportingLabel")}: {fcfYield.supportingFacts.join(", ")}
+              {t("investmentCase.analysis.business.supportingLabel")}:{" "}
+              {capFacts(fcfYield.supportingFacts.filter(isReadableFact)).join(", ")}
             </Text>
           )}
           {fcfYield.missingEvidence.length > 0 && (
@@ -5327,29 +6135,50 @@ function RiskSection({ analysis, t }: { analysis: InvestmentCaseAnalysisView; t:
       <Text color="tertiary" as="p">
         {t("investmentCase.analysis.risk.subheading")}
       </Text>
-      {analysis.risk.findings.map((finding) => (
-        <Stack key={finding.category} gap="metadata">
-          <Text as="p">
-            {t(RISK_CATEGORY_KEY[finding.category])}: {t(RISK_STATUS_KEY[finding.status])}
-          </Text>
-          {finding.supportingFacts.length > 0 && (
-            <Text color="tertiary" as="p">
-              {t("investmentCase.analysis.business.supportingLabel")}: {finding.supportingFacts.join(", ")}
-            </Text>
-          )}
-          {finding.contradictingFacts.length > 0 && (
-            <Text color="tertiary" as="p">
-              {t("investmentCase.analysis.business.contradictingLabel")}: {finding.contradictingFacts.join(", ")}
-            </Text>
-          )}
-          {finding.missingEvidence.length > 0 && (
-            <Text color="tertiary" as="p">
-              {t("investmentCase.analysis.business.missingLabel")}:{" "}
-              {finding.missingEvidence.map((v) => describeGapKind(v, RISK_DATA_GAP_KEY, t)).join(", ")}
-            </Text>
-          )}
-        </Stack>
-      ))}
+      {/* Product Sprint 11 (Investment Workflow Excellence, Deliverable
+          10 -- Page Density): this rendered one full-width row per
+          finding regardless of viewport width, unlike its sibling
+          `AtlasReasoningSection` a few sections above -- the same shape
+          of data (a handful of short status findings) already reflows
+          into a wrapping row there. Matches that exact pattern rather
+          than inventing a new one; no information removed, only
+          reflowed. */}
+      <Inline gap="inter-section" wrap align="start">
+        {analysis.risk.findings.map((finding) => {
+          // Product Sprint 13 (Company Intelligence Excellence):
+          // live-testing found `supportingFacts`/`contradictingFacts`
+          // sometimes hold raw, unresolved evidence-reference ids
+          // (e.g. `21ea5c...:v1:free_cash_flow:2017-06-30`) rather
+          // than prose -- see `isReadableFact`'s own doc comment.
+          // Product Sprint 14: `capFacts` keeps a fully-resolved,
+          // many-observation finding readable.
+          const supportingFacts = capFacts(finding.supportingFacts.filter(isReadableFact));
+          const contradictingFacts = capFacts(finding.contradictingFacts.filter(isReadableFact));
+          return (
+            <Stack key={finding.category} gap="metadata" style={{ flex: "1 1 280px", minWidth: 0 }}>
+              <Text as="p">
+                {t(RISK_CATEGORY_KEY[finding.category])}: {t(RISK_STATUS_KEY[finding.status])}
+              </Text>
+              {supportingFacts.length > 0 && (
+                <Text color="tertiary" as="p">
+                  {t("investmentCase.analysis.business.supportingLabel")}: {supportingFacts.join(", ")}
+                </Text>
+              )}
+              {contradictingFacts.length > 0 && (
+                <Text color="tertiary" as="p">
+                  {t("investmentCase.analysis.business.contradictingLabel")}: {contradictingFacts.join(", ")}
+                </Text>
+              )}
+              {finding.missingEvidence.length > 0 && (
+                <Text color="tertiary" as="p">
+                  {t("investmentCase.analysis.business.missingLabel")}:{" "}
+                  {finding.missingEvidence.map((v) => describeGapKind(v, RISK_DATA_GAP_KEY, t)).join(", ")}
+                </Text>
+              )}
+            </Stack>
+          );
+        })}
+      </Inline>
     </Stack>
   );
 }
@@ -5440,15 +6269,21 @@ function EvidenceDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalys
           {analysis.evidenceQuality && (
             <Stack gap="intra-section">
               <Text color="secondary" as="p">
-                {t("investmentCase.analysis.evidence.supportingCount", {
-                  count: analysis.evidenceQuality.supportingEvidenceCount,
-                })}
+                {t(
+                  analysis.evidenceQuality.supportingEvidenceCount === 1
+                    ? "investmentCase.analysis.evidence.supportingCountOne"
+                    : "investmentCase.analysis.evidence.supportingCountOther",
+                  { count: analysis.evidenceQuality.supportingEvidenceCount },
+                )}
               </Text>
               {analysis.evidenceQuality.challengingEvidenceCount > 0 && (
                 <Text color="tertiary" as="p">
-                  {t("investmentCase.analysis.evidence.challengingCount", {
-                    count: analysis.evidenceQuality.challengingEvidenceCount,
-                  })}
+                  {t(
+                    analysis.evidenceQuality.challengingEvidenceCount === 1
+                      ? "investmentCase.analysis.evidence.challengingCountOne"
+                      : "investmentCase.analysis.evidence.challengingCountOther",
+                    { count: analysis.evidenceQuality.challengingEvidenceCount },
+                  )}
                 </Text>
               )}
             </Stack>

@@ -28,6 +28,7 @@ __all__ = [
     "BusinessDataProvider",
     "HistoricalMarketDataProvider",
     "CompanyProfileProvider",
+    "EarningsCallTranscriptProvider",
     "StaticBusinessDataProvider",
 ]
 
@@ -97,6 +98,36 @@ class CompanyProfileProvider(Protocol):
     """
 
     def fetch_company_profile(
+        self, *, company_identifier: str, evaluated_at: datetime
+    ) -> tuple[RawBusinessDocument, ...]:
+        ...
+
+
+@runtime_checkable
+class EarningsCallTranscriptProvider(Protocol):
+    """(Capability Expansion Sprint 2: Earnings Call Intelligence) An
+    optional, third capability a provider may additionally implement --
+    checked for at the orchestration layer via `isinstance` against
+    this `runtime_checkable` Protocol, the identical pattern
+    `HistoricalMarketDataProvider`/`CompanyProfileProvider` already
+    establish. Deliberately not folded into `BusinessDataProvider.fetch`
+    itself, for the same reason those two are not: a fundamentals
+    provider (SEC EDGAR) has no earnings-call concept to serve.
+
+    Unlike `HistoricalMarketDataProvider.fetch_historical_snapshots`,
+    this method takes **no caller-supplied dates** -- there is no
+    existing quarterly-period signal anywhere in Atlas's own ingested
+    data to hand it (SEC EDGAR's own fundamentals in this build are
+    annual 10-Ks only, confirmed by `sec_edgar._annual_entries`'s own
+    `fp == "FY"` filter). A conforming provider derives which quarter to
+    request itself, deterministically, from `evaluated_at` -- the exact
+    same "never a wall-clock read, only the caller-supplied timestamp"
+    discipline `fetch` itself already follows, just with the provider
+    owning the one real piece of domain knowledge (its own transcript
+    cadence) needed to turn that timestamp into a request.
+    """
+
+    def fetch_earnings_call_transcripts(
         self, *, company_identifier: str, evaluated_at: datetime
     ) -> tuple[RawBusinessDocument, ...]:
         ...

@@ -12,6 +12,8 @@ from fastapi import FastAPI
 from atlas.ai.api.router import router as discovery_chat_router
 from atlas.alpha.case_intelligence.api.router import router as case_intelligence_router
 from atlas.alpha.daily_brief.api.router import router as daily_brief_router
+from atlas.alpha.portfolio_fit.api.router import router as portfolio_fit_router
+from atlas.alpha.daily_brief_agenda.api.router import router as daily_brief_agenda_router
 from atlas.alpha.investment_case.api.router import router as investment_case_router
 from atlas.alpha.investment_case_history.api.router import router as investment_case_history_router
 from atlas.alpha.observed_decision_properties.api.router import (
@@ -26,15 +28,42 @@ from atlas.alpha.security_confirmation.api.errors import (
 )
 from atlas.alpha.security_confirmation.api.router import router as security_confirmation_router
 from atlas.alpha.security_discovery.api.router import router as security_discovery_router
+from atlas.alpha.stance.api.router import router as stance_router
+from atlas.alpha.explainability.api.router import router as explainability_router
+from atlas.alpha.evidence_quality.api.router import router as evidence_quality_router
+from atlas.alpha.evidence_timeline.api.router import router as evidence_timeline_router
+from atlas.alpha.materiality.api.router import router as materiality_router
+from atlas.alpha.monitoring.api.router import router as monitoring_router
+from atlas.alpha.ingestion.api.router import router as ingestion_router
+from atlas.alpha.knowledge_orchestration.api.router import router as knowledge_orchestration_router
+from atlas.alpha.knowledge_strategy.api.router import router as knowledge_strategy_router
+from atlas.alpha.evidence_graph.api.router import router as evidence_graph_router
+from atlas.alpha.decision_readiness.api.router import router as decision_readiness_router
+from atlas.alpha.investment_decision.api.router import router as investment_decision_router
+from atlas.alpha.recommendation_conviction.api.router import router as recommendation_conviction_router
+from atlas.alpha.decision_path.api.router import router as decision_path_router
+from atlas.alpha.opportunity_cost.api.router import router as opportunity_cost_router
+from atlas.alpha.decision_explanation.api.router import router as decision_explanation_router
+from atlas.alpha.decision_reliability.api.router import router as decision_reliability_router
+from atlas.alpha.portfolio_decision.api.router import router as portfolio_decision_router
+from atlas.alpha.decision_memory.api.router import router as decision_memory_router
 from atlas.alpha.security_identity_evidence.api.errors import (
     register_error_handlers as register_security_identity_evidence_error_handlers,
 )
 from atlas.alpha.security_identity_evidence.api.router import router as security_identity_evidence_router
 from atlas.alpha.watchlist.api.router import router as alpha_watchlist_router
+from atlas.core.infrastructure.api.assumption.errors import (
+    register_error_handlers as register_assumption_error_handlers,
+)
+from atlas.core.infrastructure.api.assumption.router import router as assumption_router
 from atlas.core.infrastructure.api.case.errors import (
     register_error_handlers as register_case_error_handlers,
 )
 from atlas.core.infrastructure.api.case.router import router as case_router
+from atlas.core.infrastructure.api.case_condition.errors import (
+    register_error_handlers as register_case_condition_error_handlers,
+)
+from atlas.core.infrastructure.api.case_condition.router import router as case_condition_router
 from atlas.core.infrastructure.api.decision.errors import (
     register_error_handlers as register_decision_error_handlers,
 )
@@ -45,6 +74,10 @@ from atlas.core.infrastructure.api.decision_context.errors import (
 from atlas.core.infrastructure.api.decision_context.router import (
     router as decision_context_router,
 )
+from atlas.core.infrastructure.api.decision_draft.errors import (
+    register_error_handlers as register_decision_draft_error_handlers,
+)
+from atlas.core.infrastructure.api.decision_draft.router import router as decision_draft_router
 from atlas.core.infrastructure.api.evidence.errors import (
     register_error_handlers as register_evidence_error_handlers,
 )
@@ -75,6 +108,9 @@ from atlas.core.infrastructure.api.reasoning_trace.errors import (
     register_error_handlers as register_reasoning_trace_error_handlers,
 )
 from atlas.core.infrastructure.api.reasoning_trace.router import router as reasoning_trace_router
+from atlas.core.infrastructure.api.reasoning_workspace.router import (
+    router as reasoning_workspace_router,
+)
 
 
 def create_app() -> FastAPI:
@@ -131,6 +167,22 @@ def create_app() -> FastAPI:
     # .change_intelligence` via `InvestmentCaseCompositionService.build`,
     # never recomputing analysis itself).
     app.include_router(daily_brief_router)
+    # Portfolio Fit Engine (Product Sprint 4): an Alpha-layer
+    # *interpretation*, not a new source of truth -- authored and owned in
+    # `atlas/alpha/portfolio_fit/`, composing `InvestmentCaseComposition
+    # .canonical_analysis` and `AlphaPortfolioState` (both unmodified) into
+    # a deterministic, qualitative Portfolio Fit assessment. Stores
+    # nothing of its own; see that package's own `__init__.py`.
+    app.include_router(portfolio_fit_router)
+    # Daily Brief Agenda / Priority Engine (Product Sprint 6): a further
+    # Alpha-layer orchestration -- authored and owned in `atlas/alpha
+    # /daily_brief_agenda/`, composing Change Intelligence, Portfolio
+    # Fit, Portfolio Status, Portfolio Intelligence, Case Condition, and
+    # Assumption (all six unmodified) into one deterministic,
+    # qualitatively-prioritized agenda. Owns no business logic beyond
+    # priority mapping and per-ticker consolidation; see that package's
+    # own `__init__.py`.
+    app.include_router(daily_brief_agenda_router)
     # History v1: a seventh, sibling composition point -- authored and
     # owned in `atlas/alpha/investment_case_history/`, a read-only
     # presentation layer over the exact same persisted
@@ -180,18 +232,140 @@ def create_app() -> FastAPI:
     # unbuilt SecurityIdentity.
     app.include_router(security_identity_evidence_router)
     app.include_router(decision_context_router)
+    # ADR-DD-001 (Sprint 9): DecisionDraft, the Case-scoped, event-sourced
+    # save-and-resume aggregate for the Decision Workspace. Authored and
+    # owned in `atlas/core/`, following Decision/DecisionContext's own
+    # layering exactly -- see DecisionDraft-Implementation-Design.md.
+    app.include_router(decision_draft_router)
+    # ADR-CC-001 (Sprint 10): CaseCondition, the Case-scoped, event-sourced
+    # Monitoring/Invalidation Condition aggregate. Authored and owned in
+    # `atlas/core/`, following DecisionDraft's own layering exactly.
+    app.include_router(case_condition_router)
+    # ADR-AS-001 (Sprint 11): Assumption, the Decision-anchored,
+    # event-sourced premise-tracking aggregate. Authored and owned in
+    # `atlas/core/`, reusing CaseCondition's own event-stream pattern.
+    app.include_router(assumption_router)
     app.include_router(observation_router)
     app.include_router(hypothesis_router)
     app.include_router(evidence_router)
     app.include_router(knowledge_reference_router)
     app.include_router(judgment_router)
     app.include_router(reasoning_trace_router)
+    # Sprint 12: Reasoning Workspace orchestration -- composes Decision,
+    # DecisionContext, DecisionDraft, Assumption, and CaseCondition via
+    # their own existing services. Introduces no new domain entity, no
+    # new table, no new exception type of its own (see that package's
+    # own router docstring for why it has no dedicated errors.py).
+    app.include_router(reasoning_workspace_router)
     app.include_router(outcome_router)
+    # Atlas Intelligence Sprint 2 (Recommendation Quality & Actionability)
+    # -- composes Investment Case + Portfolio Fit + Coverage, mirroring
+    # `portfolio_fit_router`'s own composition-only shape.
+    app.include_router(stance_router)
+    # Atlas Intelligence Sprint 3 (Decision Explainability & Evidence
+    # Trace) -- composes Investment Case + Portfolio Fit + Coverage +
+    # Stance, mirroring `stance_router`'s own composition-only shape.
+    app.include_router(explainability_router)
+    # Atlas Intelligence Sprint 4 (Evidence Quality & Conflict
+    # Resolution) -- composes Investment Case + the raw BusinessRecord
+    # repository directly (the one input `InvestmentCaseComposition`
+    # does not itself expose), mirroring `stance_router`'s own
+    # composition-only shape.
+    app.include_router(evidence_quality_router)
+    # Atlas Intelligence Sprint 5 (Evidence Timeline & Historical
+    # Understanding) -- a new, durable snapshot store for Coverage/
+    # Stance/Evidence Quality (captured as a side effect of
+    # `/cases/{case_id}/analysis`), plus a read-only cross-Case feed.
+    app.include_router(evidence_timeline_router)
+    # Atlas Intelligence -- Materiality & Priority Engine -- composes
+    # Investment Case + Portfolio Fit + Coverage + Stance +
+    # Explainability, mirroring `explainability_router`'s own
+    # composition-only shape.
+    app.include_router(materiality_router)
+    # Atlas Intelligence Sprint 7 (Monitoring & Change Detection) --
+    # `POST /monitoring/run`, an explicit, deterministic evaluation of
+    # every Portfolio/Watchlist Case (never a scheduler); `GET
+    # /monitoring/results`, its own read-model cache.
+    app.include_router(monitoring_router)
+    # Atlas Intelligence Sprint 9 (Data Ingestion & Automatic Refresh)
+    # -- `POST /ingestion/refresh/{ticker}`, an explicit, forced
+    # provider check; `GET /ingestion/results/{case_id}`, its own
+    # read-model cache.
+    app.include_router(ingestion_router)
+    # Knowledge Orchestration Engine -- `POST /orchestration/{ticker}`,
+    # a new, explicit, additive operation (mirrors `POST /ingestion
+    # /refresh/{ticker}` exactly): plans and executes only the
+    # provider calls current Knowledge Coverage actually justifies,
+    # never invoked automatically by any existing trigger.
+    app.include_router(knowledge_orchestration_router)
+    # Knowledge Strategy Engine -- `GET /research-strategy/{ticker}`, a
+    # new, additive, read-only operation: reports every current
+    # knowledge gap's Decision Relevance and why, ordered by research
+    # priority, without running any provider. `knowledge_orchestration`
+    # itself now also consumes this package internally (relevance-based
+    # research ordering, a richer Research Completion outcome) -- see
+    # `atlas.alpha.knowledge_strategy`'s own module docstring.
+    app.include_router(knowledge_strategy_router)
+    # Atlas Intelligence Sprint 10 (Evidence Graph & Dependency
+    # Understanding) -- `GET /evidence-graph/{case_id}`, the dependency
+    # network among one Case's own Observations/Evidence/Decisions/
+    # Outcomes/CaseConditions/Assumptions/Findings, plus its weak
+    # dependencies.
+    app.include_router(evidence_graph_router)
+    # Atlas Intelligence Sprint 11 (Decision Readiness & Decision
+    # Eligibility) -- `GET /decision-readiness/{case_id}`, whether Atlas
+    # has genuinely reached the point where a decision is justified.
+    app.include_router(decision_readiness_router)
+    # Atlas Decision Layer Sprint 1 (Investment Decision Synthesis) --
+    # `GET /investment-decision/{case_id}`, one synthesized Buy/Add/
+    # Hold/Reduce/Exit/Wait/No Decision, reused from Decision Support/
+    # Decision Readiness/Stance, never a new judgment.
+    app.include_router(investment_decision_router)
+    # Atlas Decision Layer Sprint 2 (Recommendation Strength &
+    # Conviction) -- `GET /recommendation-conviction/{case_id}`, how
+    # strongly Atlas stands behind the Investment Decision it already
+    # recommended; never a probability, never a new recommendation.
+    app.include_router(recommendation_conviction_router)
+    # Atlas Decision Layer Sprint 3 (Decision Path & Required
+    # Progress) -- `GET /decision-path/{case_id}`, exactly what would
+    # need to change before Atlas recommends something different;
+    # deterministic dependency analysis, never a forecast.
+    app.include_router(decision_path_router)
+    # Atlas Decision Layer Sprint 4 (Decision Alternatives &
+    # Opportunity Cost) -- `GET /opportunity-cost/{case_id}`, what a
+    # decision genuinely competes against (another Case, waiting,
+    # cash); deterministic comparison only, never a choice made for
+    # the investor.
+    app.include_router(opportunity_cost_router)
+    # Atlas Decision Layer Sprint 5 (Decision Memory) -- `GET
+    # /decision-memory/{case_id}`, the durable, append-only history of
+    # every real change to this Case's own decision; never overwrites
+    # a prior snapshot.
+    app.include_router(decision_memory_router)
+    # Atlas Decision Layer Sprint 6 (Decision Explanation &
+    # Traceability) -- `GET /decision-explanation/{case_id}`, one
+    # coherent, traceable explanation for why Atlas reached this
+    # Case's own current decision; computes no new analysis.
+    app.include_router(decision_explanation_router)
+    # Atlas Decision Layer Sprint 7 (Decision Reliability) -- `GET
+    # /decision-reliability/{case_id}`, how trustworthy this Case's
+    # own decision is, reclassified from Coverage/Confidence, Evidence
+    # Quality, and Decision Readiness; computes no new analysis.
+    app.include_router(decision_reliability_router)
+    # Atlas Decision Layer Sprint 8 (Portfolio Decision Synthesis) --
+    # `GET /portfolio-decision/{case_id}`, what this Case's own
+    # decision means for the investor's actual portfolio -- capital
+    # competition, portfolio context, and a real conflict/support
+    # classification; computes no new portfolio analysis.
+    app.include_router(portfolio_decision_router)
     register_case_error_handlers(app)
     register_decision_error_handlers(app)
     register_security_confirmation_error_handlers(app)
     register_security_identity_evidence_error_handlers(app)
     register_decision_context_error_handlers(app)
+    register_decision_draft_error_handlers(app)
+    register_case_condition_error_handlers(app)
+    register_assumption_error_handlers(app)
     register_observation_error_handlers(app)
     register_hypothesis_error_handlers(app)
     register_evidence_error_handlers(app)

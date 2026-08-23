@@ -26,6 +26,7 @@ from atlas.alpha.discovery_context.models import (
     ResolvedIdentity,
 )
 from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
+from atlas.alpha.monitoring.service import MonitoringService
 from atlas.alpha.portfolio_intelligence.service import PortfolioIntelligenceService
 from atlas.alpha.portfolio_status.service import PortfolioStatusService
 
@@ -36,10 +37,12 @@ class DiscoveryContextService:
         portfolio_intelligence_service: PortfolioIntelligenceService,
         investment_case_composition_service: InvestmentCaseCompositionService,
         portfolio_status_service: PortfolioStatusService,
+        monitoring_service: MonitoringService,
     ) -> None:
         self._portfolio_intelligence_service = portfolio_intelligence_service
         self._investment_case_composition_service = investment_case_composition_service
         self._portfolio_status_service = portfolio_status_service
+        self._monitoring_service = monitoring_service
 
     def build(self, case_id: str | None) -> DiscoveryContext:
         """`case_id`, when given, is resolved deterministically (Phase
@@ -79,7 +82,12 @@ class DiscoveryContextService:
             )
 
         status_report = self._portfolio_status_service.build_report()
-        case_context = build_discovery_case_context(composition, status_report)
+        # Sprint 8, Deliverable 17 -- Companion's own honest freshness
+        # disclosure, computed via the same cheap pre-pass `run()`
+        # itself uses (see `MonitoringService._signal_maps`), never a
+        # second monitoring run triggered by a chat message.
+        monitoring_pending = self._monitoring_service.freshness_for_case(case_id).is_pending
+        case_context = build_discovery_case_context(composition, status_report, monitoring_pending=monitoring_pending)
 
         return DiscoveryContext(
             identity=ResolvedIdentity(

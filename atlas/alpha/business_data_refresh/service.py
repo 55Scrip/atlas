@@ -39,6 +39,16 @@ descriptive identity fields -- the same `isinstance`-checked,
 provider-agnostic pattern as the historical-market-data pass above,
 never a hardcoded provider name.
 
+**Capability Expansion Sprint 2: a fourth, identically-shaped optional
+pass for `business_data.providers.EarningsCallTranscriptProvider`.**
+Any provider that also implements it is asked, once, for its own
+most-recently-ended quarter's earnings call transcript -- the same
+`isinstance`-checked pattern once more, never a hardcoded provider
+name. Unlike the historical-market-data pass, this one needs no
+`known_records`-derived input: the provider itself owns the one real
+piece of domain knowledge (its own transcript cadence) needed to turn
+`evaluated_at` into a request.
+
 **`ensure_company_enriched` is this slice's own automatic-trigger
 entrypoint**, layered on top of `refresh_company_data` rather than
 replacing it: the CLI and any future explicit "force refresh" caller
@@ -97,6 +107,7 @@ from atlas.analysis_engine.business_data.pipeline import IngestionRejected, inge
 from atlas.analysis_engine.business_data.providers import (
     BusinessDataProvider,
     CompanyProfileProvider,
+    EarningsCallTranscriptProvider,
     HistoricalMarketDataProvider,
 )
 from atlas.analysis_engine.business_data.sources import SourceKind
@@ -156,6 +167,7 @@ def refresh_company_data(
     duplicates_skipped = 0
     rejected_documents = 0
     provider_errors: list[ProviderFailure] = []
+    changed_records: list[BusinessRecord] = []
     identity: BusinessRecordIdentityProvenance | None = None
 
     def _ingest_documents(documents: tuple) -> None:
@@ -180,6 +192,7 @@ def refresh_company_data(
             record = result.record
             repository.add(record)
             known_records.append(record)
+            changed_records.append(record)
             if record.version.version_number == 1:
                 new_records += 1
             else:
@@ -213,6 +226,8 @@ def refresh_company_data(
             provider_errors=tuple(provider_errors),
             identity_gate_outcome=decision.outcome,
             identity_gate_reason=decision.reason,
+            changed_records=(),
+            evaluated_at=evaluated_at,
         )
 
     identity = decision.provenance
@@ -244,6 +259,27 @@ def refresh_company_data(
             continue
         _ingest_documents(historical_documents)
 
+    # Capability Expansion Sprint 2: a fourth, identically-shaped
+    # optional pass -- any provider that also implements
+    # `EarningsCallTranscriptProvider` is asked, once, for its own
+    # most-recently-ended quarter's transcript. Unlike the historical-
+    # market-data pass above, this needs no `known_records`-derived
+    # date list: the provider itself derives which quarter to request
+    # from `evaluated_at` alone (see that Protocol's own docstring for
+    # why).
+    for provider in providers:
+        if not isinstance(provider, EarningsCallTranscriptProvider):
+            continue
+        provider_id = f"{type(provider).__name__}.fetch_earnings_call_transcripts"
+        try:
+            transcript_documents = provider.fetch_earnings_call_transcripts(
+                company_identifier=ticker, evaluated_at=evaluated_at
+            )
+        except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
+            provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc)))
+            continue
+        _ingest_documents(transcript_documents)
+
     return RefreshSummary(
         ticker=ticker,
         providers_attempted=tuple(provider_ids),
@@ -255,6 +291,8 @@ def refresh_company_data(
         provider_errors=tuple(provider_errors),
         identity_gate_outcome=decision.outcome,
         identity_gate_reason=None,
+        changed_records=tuple(changed_records),
+        evaluated_at=evaluated_at,
     )
 
 

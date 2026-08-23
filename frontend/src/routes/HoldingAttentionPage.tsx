@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams, Link as RouterLink } from "react-router-dom";
-import { Button, Container, Heading, Inline, Label, Stack, StatusText, Surface, Text } from "../foundation";
+import { ACCENT_LINK_STYLE, Button, Container, Heading, Inline, Label, Stack, StatusText, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   CONVICTION_LEVEL_KEY,
@@ -9,8 +9,7 @@ import {
   type ConvictionLevel,
   type DecisionSupportLevel,
 } from "../status/statusTone";
-import type { PortfolioAction } from "../portfolio/derivePortfolioActions";
-import { describePortfolioAction } from "../portfolio/describePortfolioAction";
+import type { AgendaItemView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
 
 /** Portfolio Workspace v1 -- the per-holding "attention detail" screen
  * matching the approved `portfolio-attention-expanded` /
@@ -63,6 +62,7 @@ type Status =
  * elsewhere on this page (`PortfolioPage.tsx`). */
 const CONCENTRATION_THRESHOLD_PERCENT = 15;
 
+
 const ATTENTION_REASON_KEY: Record<CockpitAttentionReason, TranslationKey> = {
   high_financial_risk: "portfolio.attention.reason.high_financial_risk",
   high_valuation_risk: "portfolio.attention.reason.high_valuation_risk",
@@ -76,14 +76,19 @@ export function HoldingAttentionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  /** UX Refinement Sprint (F-03): the `PortfolioAction` that put this
-   * ticker into "Needs Your Attention", passed through route state by
-   * `NeedsYourAttentionRow` -- the actual reason the user was sent here,
-   * as opposed to this page's own narrower cockpit-derived risk-narrative
-   * reasons below (a genuinely different, real backend vocabulary; see
-   * `derivePortfolioActions.ts`'s own module docstring). Absent on a
-   * direct URL visit/refresh, in which case nothing is guessed. */
-  const originatingAction = (location.state as { action?: PortfolioAction } | null)?.action;
+  /** Product Sprint 8 (Portfolio Excellence, Deliverable 4): the real
+   * `AgendaItemView` that put this ticker into Portfolio's "Attention
+   * Required" list, passed through route state by that row's own click
+   * handler -- the actual reason the user was sent here, as opposed to
+   * this page's own narrower cockpit-derived risk-narrative reasons
+   * below (a genuinely different, real backend vocabulary). Previously
+   * this was a `PortfolioAction` from the now-deleted, separately-
+   * derived "Needs Your Attention" section; now it's the same shared
+   * Daily Brief Agenda item already visible in that row, so the "why"
+   * text here can never disagree with what the row already showed.
+   * Absent on a direct URL visit/refresh, in which case nothing is
+   * guessed. */
+  const originatingAgendaItem = (location.state as { agendaItem?: AgendaItemView } | null)?.agendaItem;
   const [status, setStatus] = useState<Status>({ kind: "loading" });
 
   useEffect(() => {
@@ -122,13 +127,13 @@ export function HoldingAttentionPage() {
             <Text color="tertiary" role="alert">
               {t("portfolio.holdingDetail.notFound")}
             </Text>
-            <RouterLink to="/portfolio">{t("portfolio.holdingDetail.backToPortfolio")}</RouterLink>
+            <RouterLink to="/portfolio" style={ACCENT_LINK_STYLE}>{t("portfolio.holdingDetail.backToPortfolio")}</RouterLink>
           </Stack>
         )}
         {status.kind === "loaded" && (
           <HoldingAttentionDetail
             holding={status.holding}
-            originatingAction={originatingAction}
+            originatingAgendaItem={originatingAgendaItem}
             navigate={navigate}
             t={t}
           />
@@ -140,12 +145,12 @@ export function HoldingAttentionPage() {
 
 function HoldingAttentionDetail({
   holding,
-  originatingAction,
+  originatingAgendaItem,
   navigate,
   t,
 }: {
   holding: CockpitHoldingDetail;
-  originatingAction: PortfolioAction | undefined;
+  originatingAgendaItem: AgendaItemView | undefined;
   navigate: ReturnType<typeof useNavigate>;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
@@ -158,11 +163,12 @@ function HoldingAttentionDetail({
     attentionLines.push(t(ATTENTION_REASON_KEY[reason]));
   }
 
-  /** UX Refinement Sprint (F-03): the exact reason that put this ticker
-   * into Portfolio's "Needs Your Attention" -- reuses `describePortfolioAction`
-   * verbatim (no new derivation) so this text can never drift from what
-   * the investor already read on Portfolio. */
-  const originatingReason = originatingAction ? describePortfolioAction(originatingAction, t).reason : null;
+  /** Product Sprint 8 (Portfolio Excellence, Deliverable 4): the exact
+   * headline that put this ticker into Portfolio's "Attention Required"
+   * list -- read verbatim off the real Agenda item, never re-derived,
+   * so this text can never drift from what the investor already read
+   * on Portfolio. */
+  const originatingReason = originatingAgendaItem ? originatingAgendaItem.headline : null;
 
   return (
     <Stack gap="inter-section">
@@ -172,9 +178,17 @@ function HoldingAttentionDetail({
         </Text>
         <Heading level={2}>{holding.ticker}</Heading>
         <Text color="secondary">{t("portfolio.holdingDetail.subheading")}</Text>
-        <RouterLink to={`/company/${encodeURIComponent(holding.ticker)}`}>
-          {t("portfolio.holdingDetail.openCompanyWorkspace")}
-        </RouterLink>
+        <Inline gap="row" wrap>
+          <RouterLink to={`/company/${encodeURIComponent(holding.ticker)}`} style={ACCENT_LINK_STYLE}>
+            {t("portfolio.holdingDetail.openCompanyWorkspace")}
+          </RouterLink>
+          {/* Deliverable 1/4: previously no path to Compare from this
+              page -- reuses the exact same route and copy every other
+              Tier-1 page's own Compare link already uses. */}
+          <RouterLink to={`/discovery/compare?a=${encodeURIComponent(holding.ticker)}`} style={ACCENT_LINK_STYLE}>
+            {t("investmentCase.header.compareLink")}
+          </RouterLink>
+        </Inline>
       </Stack>
 
       {originatingReason && (
@@ -258,14 +272,14 @@ function HoldingAttentionDetail({
       </Surface>
 
       <Inline gap="row" wrap style={{ justifyContent: "space-between" }}>
-        <RouterLink to="/portfolio">{t("portfolio.holdingDetail.backToPortfolio")}</RouterLink>
+        <RouterLink to="/portfolio" style={ACCENT_LINK_STYLE}>{t("portfolio.holdingDetail.backToPortfolio")}</RouterLink>
         <Inline gap="row" wrap>
           <Button variant="tertiary" disabled title={t("portfolio.holdingDetail.dismissUnavailable")}>
             {t("portfolio.holdingDetail.dismissButton")}
           </Button>
           <Button
             variant="primary"
-            onClick={() => navigate(`/investment-case/${holding.caseId}`, { state: { origin: "portfolio" } })}
+            onClick={() => navigate(`/investment-case/${holding.caseId}`, { state: { origin: "portfolio", ticker: holding.ticker } })}
           >
             {t("portfolio.holdingDetail.recordDecisionButton")}
           </Button>

@@ -1,21 +1,25 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
-import { Container, Divider, Heading, Inline, Label, Link, Stack, Text } from "../foundation";
-import { useTranslation, type TranslationKey } from "../i18n";
-import { derivePortfolioActions, type AttentionCategory, type PortfolioAction } from "../portfolio/derivePortfolioActions";
-import { describePortfolioAction, SEVERITY_EMOJI } from "../portfolio/describePortfolioAction";
-
-/** Visual Fidelity Pass -- matches Portfolio/Investment Case's own
- * accent link treatment. */
-const ACCENT_LINK_STYLE = { color: "var(--global-color-accent)", textDecoration: "none", fontSize: "var(--type-body-min-size)" } as const;
+import { ACCENT_LINK_STYLE, Container, Divider, Heading, Inline, Stack, Text } from "../foundation";
+import { useTranslation } from "../i18n";
+import { AgendaItemRow } from "../dailyBriefAgenda/AgendaItemRow";
+import { fetchDailyBriefAgenda, type DailyBriefAgendaView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
+import { ALPHA_PLACEHOLDER_USER_ID } from "../decisionWorkspace/alphaUser";
+import { fetchDailyBriefDraftSummary, type DecisionDraftSummaryView } from "../decisionWorkspace/decisionDraftApi";
+import { fetchStanceForHoldings, fetchStanceForCandidates, type TickerStanceView } from "../stance/stanceApi";
+import { MonitoringFreshnessNote } from "../monitoring/MonitoringFreshnessNote";
+import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNote";
+import { MonitoringChangeFeed } from "../monitoring/MonitoringChangeFeed";
+import {
+  fetchMonitoringResults,
+  fetchMonitoringStatus,
+  type MonitoringOperationalStatusView,
+  type MonitoringResultView,
+} from "../monitoring/monitoringApi";
 
 /** Cross-Workspace Consistency Cleanup -- same uppercase small-caps
- * workspace-label treatment Portfolio's own `PAGE_TITLE_STYLE`
- * established, so every top-level workspace (Portfolio, Daily Brief,
- * Discovery, History) shares one page-title visual language. Investment
- * Case is a detail page, not a workspace, and keeps its own distinct
- * company-name heading. */
+ * workspace-label treatment every top-level workspace shares. */
 const PAGE_TITLE_STYLE: CSSProperties = {
   fontFamily: "var(--type-family-prose)",
   fontWeight: 700,
@@ -23,267 +27,143 @@ const PAGE_TITLE_STYLE: CSSProperties = {
   letterSpacing: "0.02em",
 };
 
-interface ChangeFindingView {
-  id: string;
-  category: string;
-  direction: "positive" | "negative" | "neutral";
-  previousState: string;
-  currentState: string;
-}
-
-interface DailyBriefEntryView {
-  caseId: string;
-  ticker: string | null;
-  headline: string;
-  changeSummary: string;
-  whyItMatters: string;
-  thesisImpact: string;
-  changes: ChangeFindingView[];
-}
-
-interface DailyBriefView {
-  generatedAt: string;
-  summary: string;
-  entries: DailyBriefEntryView[];
-}
-
-type DailyBriefStatus =
-  | { kind: "loading" }
-  | { kind: "error"; message: string }
-  | { kind: "loaded"; brief: DailyBriefView };
+type AgendaStatus = { kind: "loading" } | { kind: "error"; message: string } | { kind: "loaded"; agenda: DailyBriefAgendaView };
 
 /**
- * Which Cases belong to the Portfolio vs. the Watchlist (Workspace
- * Migration Phase 4) — fetched independently from `/api/daily-brief`
- * itself, purely to classify each already-real `DailyBriefEntryView`
- * into "Portfolio Changes" / "Watchlist Updates" for the approved
- * Figma hierarchy. A failure here never blocks the entry list from
- * rendering; it only means entries can't yet be grouped (see
- * `portfolioChangeEntries`/`watchlistChangeEntries` below), the same
- * "independent fetch, section quietly degrades" pattern Portfolio's own
- * Status/Intelligence/Cockpit fetches already use.
- */
-interface PortfolioHoldingLite {
-  ticker: string;
-  caseId: string | null;
-}
-interface PortfolioMembershipView {
-  exists: boolean;
-  holdings: PortfolioHoldingLite[];
-}
-type PortfolioMembershipStatus =
-  | { kind: "loading" }
-  | { kind: "error" }
-  | { kind: "loaded"; view: PortfolioMembershipView };
-
-interface WatchlistEntryView {
-  ticker: string;
-  caseId: string;
-  addedAt: string;
-}
-type WatchlistStatus =
-  | { kind: "loading" }
-  | { kind: "error" }
-  | { kind: "loaded"; entries: WatchlistEntryView[] };
-
-/**
- * "Today's Priorities" (Migration Review §10 item 5) reuses Portfolio's
- * own real Action Center data verbatim -- the same `reviewQueue`/
- * `attentionItems`/`missingEvidence`/`keyFindings` shapes
- * `PortfolioPage.tsx` already fetches from `/alpha-portfolio/status` and
- * `/alpha-portfolio/intelligence`, fed through the same pure
- * `derivePortfolioActions` this page never re-implements. These local
- * interfaces are the same wire-shape subset `PortfolioPage.tsx` declares
- * for itself -- only the fields `derivePortfolioActions` actually reads.
- */
-interface AttentionItemView {
-  ticker: string;
-  category: AttentionCategory;
-  caseId: string | null;
-  ageDays: number | null;
-}
-interface ReviewQueueItemView {
-  ticker: string;
-  caseId: string | null;
-  reasonCount: number;
-  topCategory: AttentionCategory;
-}
-interface PortfolioStatusView {
-  exists: boolean;
-  summary: { unallocatedPercent: number | null } | null;
-  attentionItems: AttentionItemView[];
-  reviewQueue: ReviewQueueItemView[];
-}
-type PortfolioStatusFetchStatus =
-  | { kind: "loading" }
-  | { kind: "error" }
-  | { kind: "loaded"; report: PortfolioStatusView };
-
-type KeyFindingKind =
-  | "high_concentration"
-  | "elevated_concentration"
-  | "large_unallocated"
-  | "multiple_missing_cases"
-  | "multiple_stale_cases"
-  | "multiple_evidence_gaps";
-interface KeyFindingView {
-  kind: KeyFindingKind;
-  count: number;
-  tickers: string[];
-}
-interface MissingEvidenceItemLiteView {
-  ticker: string;
-  caseId: string;
-}
-interface PortfolioIntelligenceView {
-  exists: boolean;
-  keyFindings: KeyFindingView[];
-  missingEvidence: MissingEvidenceItemLiteView[];
-}
-type PortfolioIntelligenceFetchStatus =
-  | { kind: "loading" }
-  | { kind: "error" }
-  | { kind: "loaded"; report: PortfolioIntelligenceView };
-
-/**
- * Compact, not a second Action Center -- Daily Brief's job is a pointer
- * a reader can scan in seconds, Portfolio's own workspace is where the
- * full queue lives. Capped flat at 3 (not per-severity like Portfolio's
- * own `MAX_ACTIONS_PER_SEVERITY`), most-severe-first per
- * `derivePortfolioActions`'s own existing ordering.
- */
-const MAX_PRIORITIES = 3;
-
-/**
- * Daily Brief v2 (Workspace Migration Phase 4) -- structure only, per
- * the approved Migration Review §10 item 5: ships "Portfolio Changes" /
- * "Watchlist Updates" (real Change Intelligence data, unchanged from v1)
- * and "Today's Priorities" (real Action Center data, reused from
- * Portfolio) ahead of the still-unbuilt narrative-synthesis paragraph
- * (§11.2), Opportunities (§11.3), and Upcoming Events / Market Context
- * (§11.4) -- each of the latter three stays an honest, calm "not yet
- * available" disclosure rather than fabricated content, the same
- * pattern Discovery's own Opportunities section already established.
- * No embedded Ask Atlas UI (Decision Log #2) -- this page never had one.
+ * Daily Brief Engine & Prioritization (Product Sprint 6) -- a complete
+ * rebuild around Deliverable 2's own explicit instruction: "instead of
+ * presenting independent lists, build one prioritized agenda." The
+ * previous v2 page (three independent sections: a client-derived
+ * "Today's Priorities" list, plus separately-fetched "Portfolio
+ * Changes"/"Watchlist Updates" columns, each with its own silent
+ * ordering) is fully replaced -- every one of those three signal
+ * sources (`derivePortfolioActions`'s own review-queue/evidence/
+ * concentration data, and Change Intelligence's own entries) is now a
+ * *source* feeding the one shared `/api/daily-brief-agenda` endpoint
+ * (`atlas.alpha.daily_brief_agenda`, Product Sprint 6), not a
+ * page-local re-derivation. Every item already answers "why is this
+ * here / why today / why should I care" via its own `headline`/
+ * `reason`/`portfolioContext` -- this page adds no narrative of its
+ * own beyond the summary line (Deliverable 9), itself built from real
+ * `PortfolioSummaryView` fields only.
  */
 export function DailyBriefPage() {
   const { t, language } = useTranslation();
   const locale = language === "sv" ? "sv-SE" : "en-US";
   const navigate = useNavigate();
-  const [status, setStatus] = useState<DailyBriefStatus>({ kind: "loading" });
-  const [portfolioMembership, setPortfolioMembership] = useState<PortfolioMembershipStatus>({ kind: "loading" });
-  const [watchlist, setWatchlist] = useState<WatchlistStatus>({ kind: "loading" });
-  const [portfolioStatus, setPortfolioStatus] = useState<PortfolioStatusFetchStatus>({ kind: "loading" });
-  const [portfolioIntelligence, setPortfolioIntelligence] = useState<PortfolioIntelligenceFetchStatus>({
-    kind: "loading",
-  });
+  const [status, setStatus] = useState<AgendaStatus>({ kind: "loading" });
+  const [openDrafts, setOpenDrafts] = useState<DecisionDraftSummaryView[]>([]);
+  /** Atlas Intelligence Sprint 2 (Recommendation Quality &
+   * Actionability, Deliverable 8) -- one ticker->Stance map, covering
+   * both Portfolio holdings and Watchlist candidates (Daily Brief items
+   * span both groups). `AgendaItemRow` itself only ever shows the
+   * current Stance next to an item whose `source` is already
+   * `change_intelligence` -- Change Intelligence's own real, already-
+   * established "did something genuinely change today" eligibility
+   * gate, never a new persisted "previous stance" this Sprint does not
+   * build (see this page's own Sprint 2 addendum below). */
+  const [stanceByTicker, setStanceByTicker] = useState<Map<string, TickerStanceView["stance"]>>(new Map());
+  /** Atlas Intelligence Sprint 8 (Automated Monitoring Operations,
+   * Deliverable 16) -- a separate fetch, deliberately: operational
+   * status is a distinct read model from the agenda itself (Deliverable
+   * 7), never folded into `DailyBriefAgendaView`. */
+  const [monitoringStatus, setMonitoringStatus] = useState<MonitoringOperationalStatusView | null>(null);
+  /** Product Intelligence Sprint 3 (Monitoring Intelligence Activation)
+   * -- `GET /api/monitoring/results` (Deliverable 21's own cached read
+   * model) had zero frontend callers before this sprint; only the
+   * operational half above (`fetchMonitoringStatus`) was ever fetched.
+   * A separate fetch, deliberately: this is investment-state
+   * (`MonitoringResultView`), never conflated with `monitoringStatus`
+   * above (operational state), mirroring that exact same distinction
+   * this codebase already enforces at every other layer. Fetch-and-
+   * forget with a silent `AbortError` no-op, matching every other
+   * effect on this page. */
+  const [monitoringResultsStatus, setMonitoringResultsStatus] = useState<
+    { kind: "loading" } | { kind: "unavailable" } | { kind: "loaded"; results: MonitoringResultView[] }
+  >({ kind: "loading" });
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/daily-brief", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
-        return response.json() as Promise<DailyBriefView>;
-      })
-      .then((brief) => setStatus({ kind: "loaded", brief }))
+    fetchDailyBriefAgenda(controller.signal)
+      .then((agenda) => setStatus({ kind: "loaded", agenda }))
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        setStatus({
-          kind: "error",
-          message: error instanceof Error ? error.message : t("common.unknownError"),
-        });
+        setStatus({ kind: "error", message: error instanceof Error ? error.message : t("common.unknownError") });
       });
     return () => controller.abort();
   }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/alpha-portfolio", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
-        return response.json() as Promise<PortfolioMembershipView>;
-      })
-      .then((view) => setPortfolioMembership({ kind: "loaded", view }))
+    fetchMonitoringStatus(controller.signal)
+      .then((s) => setMonitoringStatus(s))
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        setPortfolioMembership({ kind: "error" });
       });
     return () => controller.abort();
   }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/alpha-watchlist", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
-        return response.json() as Promise<WatchlistEntryView[]>;
-      })
-      .then((entries) => setWatchlist({ kind: "loaded", entries }))
+    fetchMonitoringResults(controller.signal)
+      .then((run) => setMonitoringResultsStatus({ kind: "loaded", results: run.results }))
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        setWatchlist({ kind: "error" });
+        setMonitoringResultsStatus({ kind: "unavailable" });
       });
     return () => controller.abort();
   }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/alpha-portfolio/status", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
-        return response.json() as Promise<PortfolioStatusView>;
+    Promise.all([fetchStanceForHoldings(controller.signal), fetchStanceForCandidates(controller.signal)])
+      .then(([holdings, candidates]) => {
+        const map = new Map<string, TickerStanceView["stance"]>();
+        for (const entry of [...holdings, ...candidates]) map.set(entry.ticker, entry.stance);
+        setStanceByTicker(map);
       })
-      .then((report) => setPortfolioStatus({ kind: "loaded", report }))
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        setPortfolioStatus({ kind: "error" });
       });
     return () => controller.abort();
   }, []);
 
+  /** Product Sprint 12 (Decision Workflow Consolidation, Deliverable 4/7
+   * -- Draft Workflow discoverability / Daily Brief Integration):
+   * `fetchDailyBriefDraftSummary` already existed (Sprint 9's own
+   * ADR-DD-001 design anticipated exactly this) with zero callers
+   * anywhere in the frontend. A committed Decision on a case with no
+   * Portfolio holding and no Watchlist entry -- e.g. a brand-new
+   * candidate's first decision, `StartDecisionSection`'s own primary
+   * scenario -- has no visibility anywhere in Daily Brief's own agenda
+   * (scoped to Portfolio/Watchlist groups only, unchanged here), so an
+   * in-progress *draft* had no visibility anywhere at all. This closes
+   * that gap with the endpoint already built for it. */
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/alpha-portfolio/intelligence", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
-        return response.json() as Promise<PortfolioIntelligenceView>;
-      })
-      .then((report) => setPortfolioIntelligence({ kind: "loaded", report }))
+    fetchDailyBriefDraftSummary(ALPHA_PLACEHOLDER_USER_ID, controller.signal)
+      .then((drafts) => setOpenDrafts(drafts))
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        setPortfolioIntelligence({ kind: "error" });
       });
     return () => controller.abort();
   }, []);
 
-  function openInvestmentCase(caseId: string) {
-    navigate(`/investment-case/${caseId}`, { state: { origin: "daily-brief" } });
+  function openInvestmentCase(caseId: string, ticker: string | null) {
+    navigate(`/investment-case/${caseId}`, { state: { origin: "daily-brief", ticker } });
   }
-
-  const portfolioCaseIds = new Set(
-    portfolioMembership.kind === "loaded"
-      ? portfolioMembership.view.holdings.flatMap((holding) => (holding.caseId ? [holding.caseId] : []))
-      : [],
-  );
-  const watchlistCaseIds = new Set(watchlist.kind === "loaded" ? watchlist.entries.map((entry) => entry.caseId) : []);
-
-  const entries = status.kind === "loaded" ? status.brief.entries : [];
-  // Portfolio takes precedence for a Case that is both held and
-  // watchlisted -- mirrors `atlas.alpha.case_membership.known_cases`'s
-  // own dedup precedence exactly, so a Case never appears in both lists.
-  const portfolioChangeEntries = entries.filter((entry) => portfolioCaseIds.has(entry.caseId));
-  const watchlistChangeEntries = entries.filter(
-    (entry) => !portfolioCaseIds.has(entry.caseId) && watchlistCaseIds.has(entry.caseId),
-  );
-
-  const allActions: PortfolioAction[] = derivePortfolioActions(
-    portfolioStatus.kind === "loaded" ? portfolioStatus.report.reviewQueue : [],
-    portfolioIntelligence.kind === "loaded" ? portfolioIntelligence.report.missingEvidence : [],
-    portfolioIntelligence.kind === "loaded" ? portfolioIntelligence.report.keyFindings : [],
-    portfolioStatus.kind === "loaded" ? (portfolioStatus.report.summary?.unallocatedPercent ?? null) : null,
-    portfolioStatus.kind === "loaded" ? portfolioStatus.report.attentionItems : [],
-  );
-  const topPriorities = allActions.slice(0, MAX_PRIORITIES);
+  function openCandidate(ticker: string) {
+    navigate(`/discovery/candidate/${encodeURIComponent(ticker)}`);
+  }
+  function compare(ticker: string) {
+    navigate(`/discovery/compare?a=${encodeURIComponent(ticker)}`);
+  }
+  function openHolding(ticker: string) {
+    navigate(`/portfolio/holding/${encodeURIComponent(ticker)}`);
+  }
+  function goToPortfolio() {
+    navigate("/portfolio");
+  }
 
   return (
     <Container width="wide">
@@ -296,150 +176,163 @@ export function DailyBriefPage() {
           <Text color="secondary">{t("dailyBrief.subtitle")}</Text>
           {status.kind === "loaded" && (
             <Text color="tertiary">
-              {t("dailyBrief.lastUpdated", { time: new Date(status.brief.generatedAt).toLocaleString(locale) })}
+              {t("dailyBriefAgenda.lastUpdated", { time: new Date(status.agenda.generatedAt).toLocaleString(locale) })}
             </Text>
           )}
         </Inline>
 
+        {monitoringStatus && <MonitoringFreshnessNote status={monitoringStatus} t={t} />}
+        {monitoringStatus && (
+          <ScopeFreshnessSummaryNote
+            summary={{
+              waitingForAnalysis:
+                monitoringStatus.portfolioFreshness.waitingForAnalysis + monitoringStatus.watchlistFreshness.waitingForAnalysis,
+              noNewData: monitoringStatus.portfolioFreshness.noNewData + monitoringStatus.watchlistFreshness.noNewData,
+              needsAttention:
+                monitoringStatus.portfolioFreshness.needsAttention + monitoringStatus.watchlistFreshness.needsAttention,
+            }}
+            t={t}
+          />
+        )}
+
         <Divider tone="hairline" />
 
-        {/* Orientation -- derived client-side from the real entry count
-            (Migration Review §11.2 defers a fabricated multi-sentence
-            narrative -- no real synthesis step exists yet) so it goes
-            through `t()` instead of the backend's English-only templated
-            `summary` string. Flowing paragraph, not a heading -- Figma's
-            own screen reads it as prose, not a titled block. */}
         {status.kind === "loading" && (
           <Text role="status" aria-live="polite">
             {t("common.loading")}
           </Text>
         )}
         {status.kind === "error" && <Text color="secondary">{status.message}</Text>}
+
         {status.kind === "loaded" && (
-          <Text as="p">
-            {status.brief.entries.length === 0
-              ? t("dailyBrief.summary.empty")
-              : status.brief.entries.length === 1
-                ? t("dailyBrief.summary.countOne")
-                : t("dailyBrief.summary.countOther", { count: status.brief.entries.length })}
-          </Text>
-        )}
+          <>
+            <PortfolioSummarySection agenda={status.agenda} />
 
-        <Divider tone="hairline" />
+            {openDrafts.length > 0 && (
+              <>
+                <Divider tone="hairline" />
+                <Stack gap="metadata">
+                  <Heading level={2}>{t("dailyBrief.openDrafts.heading")}</Heading>
+                  <Stack gap="row">
+                    {openDrafts.map((draft) => (
+                      <RouterLink key={draft.draftId} to={`/decision-drafts/${draft.draftId}/commit`} style={ACCENT_LINK_STYLE}>
+                        {t("dailyBrief.openDrafts.resumeLink", {
+                          subject: draft.subject ?? t("decisionWorkspace.startDecision.resumeFallbackSubject"),
+                        })}
+                      </RouterLink>
+                    ))}
+                  </Stack>
+                </Stack>
+              </>
+            )}
 
-        {/* Today's Priorities -- reuses Portfolio's real Action Center
-            derivation and copy verbatim (see module doc comment). */}
-        <Stack gap="metadata">
-          <Label>{t("dailyBrief.priorities.heading")}</Label>
-          {topPriorities.length === 0 && <Text color="tertiary">{t("dailyBrief.priorities.empty")}</Text>}
-          {topPriorities.map((action, index) => {
-            const { title } = describePortfolioAction(action, t);
-            return (
-              <Inline key={action.id} gap="row" align="baseline" style={{ justifyContent: "space-between" }}>
-                <Text as="span">
-                  {SEVERITY_EMOJI[action.severity]} {index + 1}. {title}
+            <Divider tone="hairline" />
+
+            <Stack gap="metadata">
+              <Heading level={2}>{t("dailyBriefAgenda.heading")}</Heading>
+              {status.agenda.items.length === 0 && <Text color="tertiary">{t("dailyBriefAgenda.empty.noItems")}</Text>}
+              <Stack gap="inter-section">
+                {status.agenda.items.map((item) => (
+                  <AgendaItemRow
+                    key={item.id}
+                    item={item}
+                    stance={item.ticker ? (stanceByTicker.get(item.ticker) ?? null) : null}
+                    onOpenInvestmentCase={openInvestmentCase}
+                    onOpenCandidate={openCandidate}
+                    onCompare={compare}
+                    onOpenHolding={openHolding}
+                    onGoToPortfolio={goToPortfolio}
+                  />
+                ))}
+              </Stack>
+            </Stack>
+
+            <Divider tone="hairline" />
+
+            <Stack gap="metadata">
+              <Heading level={2}>{t("monitoring.changeFeed.heading")}</Heading>
+              {monitoringResultsStatus.kind === "loading" && (
+                <Text role="status" aria-live="polite">
+                  {t("common.loading")}
                 </Text>
-                {action.caseId ? (
-                  <Link
-                    href="#"
-                    style={ACCENT_LINK_STYLE}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      openInvestmentCase(action.caseId!);
-                    }}
-                  >
-                    {t("dailyBrief.priorities.reviewButton")} →
-                  </Link>
-                ) : (
-                  <Link
-                    href="#"
-                    style={ACCENT_LINK_STYLE}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      navigate("/portfolio");
-                    }}
-                  >
-                    {t("dailyBrief.priorities.goToPortfolioButton")} →
-                  </Link>
-                )}
-              </Inline>
-            );
-          })}
-        </Stack>
-
-        <Divider tone="hairline" />
-
-        {/* Portfolio Changes | Watchlist Updates -- the approved screen's
-            own two-column pairing. `New Opportunities`/`Upcoming Events`/
-            `Market Context` have no real data source in this Alpha (no
-            candidate generator, no earnings-calendar/macro provider) --
-            per the History precedent this program already established,
-            multiple large "not yet available" blocks would make the page
-            look unfinished; they are omitted entirely rather than shown
-            as empty placeholders, leaving only genuinely real content. */}
-        <Inline gap="inter-section" wrap align="start">
-          <div style={{ flex: "1 1 380px", minWidth: 0 }}>
-            <Stack gap="metadata">
-              <Label>{t("dailyBrief.portfolioChanges.heading")}</Label>
-              {status.kind === "loaded" && portfolioChangeEntries.length === 0 && (
-                <Text color="tertiary">{t("dailyBrief.portfolioChanges.empty")}</Text>
               )}
-              {portfolioChangeEntries.map((entry) => (
-                <DailyBriefEntryRow key={entry.caseId} entry={entry} onOpen={() => openInvestmentCase(entry.caseId)} t={t} />
-              ))}
-            </Stack>
-          </div>
-          <div style={{ flex: "1 1 380px", minWidth: 0 }}>
-            <Stack gap="metadata">
-              <Label>{t("dailyBrief.watchlistUpdates.heading")}</Label>
-              {status.kind === "loaded" && watchlistChangeEntries.length === 0 && (
-                <Text color="tertiary">{t("dailyBrief.watchlistUpdates.empty")}</Text>
+              {monitoringResultsStatus.kind === "unavailable" && (
+                <Text color="tertiary" role="alert">
+                  {t("monitoring.changeFeed.unavailable")}
+                </Text>
               )}
-              {watchlistChangeEntries.map((entry) => (
-                <DailyBriefEntryRow key={entry.caseId} entry={entry} onOpen={() => openInvestmentCase(entry.caseId)} t={t} />
-              ))}
+              {monitoringResultsStatus.kind === "loaded" && (
+                <MonitoringChangeFeed
+                  results={monitoringResultsStatus.results}
+                  t={t}
+                  onOpenInvestmentCase={openInvestmentCase}
+                />
+              )}
             </Stack>
-          </div>
-        </Inline>
+          </>
+        )}
       </Stack>
     </Container>
   );
 }
 
-/** Visual Fidelity Pass -- one dense row per entry (ticker + first
- * change line + a "Review" link into the Investment Case), replacing
- * the former per-entry Surface card. `changeSummary`'s remaining
- * lines and `whyItMatters` stay real, evidence-traceable content --
- * genuinely deeper detail belongs on the Investment Case page itself
- * (one click away via the same link), not duplicated here. */
-function DailyBriefEntryRow({
-  entry,
-  onOpen,
-  t,
-}: {
-  entry: DailyBriefEntryView;
-  onOpen: () => void;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  const firstChangeLine = entry.changeSummary.split("\n")[0] ?? entry.headline;
+/** Deliverable 9 -- a concise opening summary, entirely from real
+ * `PortfolioSummaryView` fields. No invented metric: cash is shown as
+ * a plain fact (not "unchanged" -- this engine tracks no cash history
+ * to honestly claim that), and every count line is omitted entirely
+ * when it would be zero, rather than a padded "0 opportunities" line.
+ *
+ * Internal Alpha Stabilization fix: critical and high-priority counts
+ * used to be mutually exclusive (an `if critical, else if high` chain)
+ * -- with both present, the summary said only "2 items need attention
+ * today," silently dropping the high-priority item from the count even
+ * though the full agenda list right below still showed it. A real
+ * investor reading "2" then counting 3+ rows in the list is exactly the
+ * "no contradictions" violation this stabilization sprint targets. Both
+ * lines now render whenever their count is nonzero -- no new copy, the
+ * `highCount` strings already existed and were simply never reachable
+ * together with a nonzero `criticalCount`. */
+function PortfolioSummarySection({ agenda }: { agenda: DailyBriefAgendaView }) {
+  const { t } = useTranslation();
+  const { summary } = agenda;
+
   return (
-    <Inline gap="row" align="baseline" wrap style={{ justifyContent: "space-between" }}>
-      <Text as="span">
-        <Text as="span" color="secondary">
-          {entry.ticker ?? t("dailyBrief.entry.unknownCompany")} —{" "}
+    <Stack gap="metadata">
+      {summary.criticalCount === 0 && summary.highCount === 0 && (
+        <Text as="p" style={{ fontWeight: 600 }}>
+          {t("dailyBriefAgenda.summary.allStable")}
         </Text>
-        {firstChangeLine}
-      </Text>
-      <Link
-        href="#"
-        style={ACCENT_LINK_STYLE}
-        onClick={(event) => {
-          event.preventDefault();
-          onOpen();
-        }}
-      >
-        {t("dailyBrief.entry.openInvestmentCase")} →
-      </Link>
-    </Inline>
+      )}
+      {summary.criticalCount > 0 && (
+        <Text as="p" style={{ fontWeight: 600 }}>
+          {t(summary.criticalCount === 1 ? "dailyBriefAgenda.summary.criticalCountOne" : "dailyBriefAgenda.summary.criticalCountOther", {
+            count: summary.criticalCount,
+          })}
+        </Text>
+      )}
+      {summary.highCount > 0 && (
+        <Text as="p" style={{ fontWeight: summary.criticalCount > 0 ? 400 : 600 }} color={summary.criticalCount > 0 ? "secondary" : "primary"}>
+          {t(summary.highCount === 1 ? "dailyBriefAgenda.summary.highCountOne" : "dailyBriefAgenda.summary.highCountOther", {
+            count: summary.highCount,
+          })}
+        </Text>
+      )}
+      {summary.watchlistOpportunityCount > 0 && (
+        <Text color="secondary" as="p">
+          {t(
+            summary.watchlistOpportunityCount === 1
+              ? "dailyBriefAgenda.summary.watchlistOpportunityCountOne"
+              : "dailyBriefAgenda.summary.watchlistOpportunityCountOther",
+            { count: summary.watchlistOpportunityCount },
+          )}
+        </Text>
+      )}
+      <Inline gap="row" wrap>
+        <Text color="tertiary">{t("dailyBriefAgenda.summary.holdingsCount", { count: summary.holdingsCount })}</Text>
+        {summary.cashWeightPercent !== null && (
+          <Text color="tertiary">{t("dailyBriefAgenda.summary.cash", { percent: summary.cashWeightPercent.toFixed(1) })}</Text>
+        )}
+      </Inline>
+    </Stack>
   );
 }

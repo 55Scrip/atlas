@@ -103,7 +103,7 @@ class TestOneCompanyChanged:
             current_state="moderate",
         )
         entry = build_daily_brief_entry("case-1", "MSFT", _intelligence(changes=(change,), thesis_impact=ThesisImpact.UNCHANGED))
-        assert entry.headline == "New analytical coverage."
+        assert entry.headline == "Atlas can now evaluate capital allocation."
         assert "Atlas can now evaluate" in entry.change_summary
 
     def test_single_coverage_loss_headline(self):
@@ -115,7 +115,7 @@ class TestOneCompanyChanged:
             current_state="insufficient_input",
         )
         entry = build_daily_brief_entry("case-1", "TSLA", _intelligence(changes=(change,)))
-        assert entry.headline == "Analytical coverage reduced."
+        assert entry.headline == "Atlas can no longer evaluate growth."
 
     def test_single_financial_risk_increase_headline(self):
         change = _change(

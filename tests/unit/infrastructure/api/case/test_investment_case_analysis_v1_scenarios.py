@@ -214,6 +214,143 @@ class TestConvictionAndConfidenceAreDistinct:
         assert set(body["conviction"]) == {"level", "reasons"}
 
 
+class TestStanceIntegration:
+    """Atlas Intelligence Sprint 2 (Recommendation Quality &
+    Actionability, Deliverable 5)."""
+
+    def test_present_on_a_research_case_with_no_data(self, client):
+        case_id = _open_case(client)
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        assert body["stance"] is not None
+        assert body["stance"]["level"] in (
+            "increase", "maintain", "reduce", "review", "wait", "avoid_decision", "no_recommendation",
+        )
+        assert body["stance"]["reasoning"]
+
+    def test_matches_the_dedicated_stance_endpoint_exactly(self, client):
+        case_id = _import_holding(client, "NVDA")
+        analysis_body = client.get(f"/cases/{case_id}/analysis").json()
+        stance_body = client.get(f"/stance/case/{case_id}").json()
+        assert analysis_body["stance"] == stance_body
+
+    def test_never_recommends_buying_or_selling_shares(self, client):
+        case_id = _import_holding(client, "NVDA")
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        assert set(body["stance"]) == {
+            "level", "reasoning", "supportingSignals", "limitingSignals", "confidence", "missingInformation",
+        }
+
+
+class TestExplanationIntegration:
+    """Atlas Intelligence Sprint 3 (Decision Explainability & Evidence
+    Trace, Deliverable 4)."""
+
+    def test_present_on_a_research_case_with_no_data(self, client):
+        case_id = _open_case(client)
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        assert body["explanation"] is not None
+        assert body["explanation"]["limitingFactors"]
+
+    def test_matches_the_dedicated_explainability_endpoint_exactly(self, client):
+        case_id = _import_holding(client, "NVDA")
+        analysis_body = client.get(f"/cases/{case_id}/analysis").json()
+        explainability_body = client.get(f"/explainability/case/{case_id}").json()
+        assert analysis_body["explanation"] == explainability_body
+
+    def test_shape_is_the_five_evidence_buckets_plus_most_valuable_missing_information(self, client):
+        case_id = _import_holding(client, "NVDA")
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        assert set(body["explanation"]) == {
+            "supportingEvidence", "contradictingEvidence", "limitingFactors",
+            "missingEvidence", "confidenceDrivers", "mostValuableMissingInformation",
+        }
+
+
+class TestMaterialityIntegration:
+    """Atlas Intelligence -- Materiality & Priority Engine, Deliverable
+    5."""
+
+    def test_present_on_a_research_case_with_no_data(self, client):
+        case_id = _open_case(client)
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        assert body["materiality"] is not None
+        assert body["materiality"]["topLimitingFactor"] is not None
+
+    def test_matches_the_dedicated_materiality_endpoint_exactly(self, client):
+        case_id = _import_holding(client, "NVDA")
+        analysis_body = client.get(f"/cases/{case_id}/analysis").json()
+        materiality_body = client.get(f"/materiality/case/{case_id}").json()
+        assert analysis_body["materiality"] == materiality_body
+
+    def test_top_missing_evidence_matches_explanation_own_most_valuable_pick(self, client):
+        case_id = _import_holding(client, "NVDA")
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        assert body["materiality"]["topMissingEvidence"] == body["explanation"]["mostValuableMissingInformation"]
+
+
+class TestEvidenceQualityIntegration:
+    """Atlas Intelligence Sprint 4 (Evidence Quality & Conflict
+    Resolution, Deliverable 5)."""
+
+    def test_present_on_a_research_case_with_no_data(self, client):
+        case_id = _open_case(client)
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        assert body["evidenceQualityReport"] is not None
+        assert body["evidenceQualityReport"]["quality"] == "not_applicable"
+
+    def test_matches_the_dedicated_evidence_quality_endpoint_exactly(self, client):
+        case_id = _import_holding(client, "NVDA")
+        analysis_body = client.get(f"/cases/{case_id}/analysis").json()
+        evidence_quality_body = client.get(f"/evidence-quality/case/{case_id}").json()
+        assert analysis_body["evidenceQualityReport"] == evidence_quality_body
+
+    def test_shape_never_collides_with_the_older_unrelated_evidence_quality_field(self, client):
+        """Product Sprint 14's own `evidenceQuality` field (per-finding
+        evidence-reference resolution) and this Sprint's own
+        `evidenceQualityReport` are two different, real fields -- both
+        must be present, never merged or shadowing one another."""
+        case_id = _import_holding(client, "NVDA")
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        assert "evidenceQuality" in body
+        assert "evidenceQualityReport" in body
+        assert body["evidenceQuality"] != body["evidenceQualityReport"]
+
+
+class TestCoverageAssessment:
+    """Atlas Intelligence Sprint 1 (Data Coverage & Confidence Engine)."""
+
+    def test_present_on_a_research_case_with_no_data(self, client):
+        case_id = _open_case(client)
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        coverage = body["coverage"]
+        assert coverage["overallConfidence"] == "very_limited"
+        dims = {d["dimension"]: d["level"] for d in coverage["dimensions"]}
+        assert dims["growth"] == "unavailable"
+        assert dims["business_model"] == "not_applicable"
+
+    def test_never_reports_a_permanently_locked_dimension_as_unavailable(self, client):
+        """Business Model/Competitive Position/Management/Durability
+        have no evaluator wired in today regardless of company data --
+        they must always read Not Applicable, never Unavailable, and
+        must never count toward `missingDimensions`."""
+        case_id = _import_holding(client, "NVDA")
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        coverage = body["coverage"]
+        for locked in ("business_model", "competitive_position", "management", "durability"):
+            assert locked in coverage["notApplicableDimensions"]
+            assert locked not in coverage["missingDimensions"]
+
+    def test_reasoning_is_never_empty(self, client):
+        case_id = _import_holding(client, "NVDA")
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        assert body["coverage"]["reasoning"]
+
+    def test_overall_coverage_matches_the_dimension_count(self, client):
+        case_id = _open_case(client)
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        assert body["coverage"]["overallCoverage"] == "no_coverage"
+
+
 class TestEvidenceQuality:
     def test_present_with_zero_evidence_when_none_recorded(self, client):
         case_id = _import_holding(client, "NVDA")
@@ -329,6 +466,19 @@ def _strip_volatile_timestamps(body: dict) -> None:
     body.pop("changeSummary", None)
     body.pop("previousAnalysisAt", None)
     body.pop("currentAnalysisAt", None)
+    # Atlas Intelligence Sprint 5 (Evidence Timeline & Historical
+    # Understanding): `evidenceTimeline` is captured/persisted by this
+    # exact endpoint (see `investment_case/api/router.py`'s own
+    # docstring), the identical "first GET persists a baseline, second
+    # GET legitimately sees it as real prior state" pattern
+    # `isBaselineCase` above already established one layer below --
+    # `transitions` itself still must match (nothing else changed
+    # between the two calls), only the baseline/timestamp bookkeeping.
+    evidence_timeline = body.get("evidenceTimeline")
+    if evidence_timeline is not None:
+        evidence_timeline.pop("isBaseline", None)
+        evidence_timeline.pop("previousCapturedAt", None)
+        evidence_timeline.pop("currentCapturedAt", None)
     # Outlook Intelligence Sprint 1: `outlook.*.momentum` derives from
     # the identical baseline/`thesis_impact` state as `isBaselineCase`
     # above (see `atlas.analysis_engine.outlook.derive_outlook_momentum`)
@@ -411,3 +561,32 @@ class TestChangeIntelligenceSerialization:
             "evidenceReferences": ["business_finding:growth"],
             "sourceFindingId": "business_finding:growth",
         }
+
+
+class TestOperationalFreshnessIntegration:
+    """Atlas Intelligence Sprint 8 (Automated Monitoring Operations,
+    Deliverable 15) -- purely operational, always present and never
+    confused with `monitoring` (investment status)."""
+
+    def test_a_never_monitored_case_reports_pending_with_no_last_monitored_at(self, client):
+        case_id = _import_holding(client, "NVDA")
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        freshness = body["operationalFreshness"]
+        assert freshness["isPending"] is True
+        assert freshness["lastMonitoredAt"] is None
+        assert freshness["lastRunFailedForCase"] is False
+
+    def test_a_freshly_monitored_case_reports_not_pending(self, client):
+        case_id = _import_holding(client, "NVDA")
+        client.post("/monitoring/run")
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        freshness = body["operationalFreshness"]
+        assert freshness["isPending"] is False
+        assert freshness["lastMonitoredAt"] is not None
+
+    def test_operational_freshness_is_structurally_distinct_from_monitoring_status(self, client):
+        case_id = _import_holding(client, "NVDA")
+        client.post("/monitoring/run")
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        assert set(body["operationalFreshness"]) == {"isPending", "lastMonitoredAt", "lastRunFailedForCase", "dataFreshnessStatus"}
+        assert "status" not in body["operationalFreshness"]

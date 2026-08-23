@@ -145,6 +145,53 @@ from atlas.alpha.investment_case.incentive_intelligence import (
     OwnershipAlignment,
     PerformanceIncentive,
 )
+from atlas.alpha.investment_case.insider_alignment_intelligence import (
+    AlignmentFinding,
+    AlignmentObservation,
+    EquityCompensationExposure,
+    ExecutiveAlignmentProfile,
+    ExecutiveOwnership,
+    InsiderAlignmentKnowledge,
+    InsiderHolding,
+    OwnershipChange,
+)
+from atlas.alpha.investment_case.governance_intelligence import (
+    BoardComposition,
+    Committee,
+    Director,
+    GovernanceChange,
+    GovernanceFinding,
+    GovernanceKnowledge,
+    GovernanceObservation,
+    GovernancePolicy,
+    ShareClass,
+    VotingStructure,
+)
+from atlas.alpha.investment_case.risk_factor_intelligence import (
+    RiskCategorySummary,
+    RiskChangeObservation,
+    RiskDisclosure,
+    RiskFactorKnowledge,
+)
+from atlas.alpha.investment_case.legal_proceedings_intelligence import (
+    LegalChangeObservation,
+    LegalProceedingDisclosure,
+    LegalProceedingsKnowledge,
+    ProceedingCategorySummary,
+)
+from atlas.alpha.investment_case.ownership_intelligence import (
+    OwnerCategorySummary,
+    OwnershipChangeObservation,
+    OwnershipDisclosure,
+    OwnershipKnowledge,
+)
+from atlas.alpha.investment_case.executive_compensation_intelligence import (
+    CompensationChangeObservation,
+    EquityAwardDisclosure,
+    ExecutiveCompensationKnowledge,
+    ExecutiveCompensationRecord,
+    PerformanceMetricDisclosure,
+)
 from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComposition
 from atlas.alpha.investment_case.regulatory_filings import RegulatoryFiling
 from atlas.alpha.portfolio.models import AlphaHolding, AlphaTradeLogEntry
@@ -844,6 +891,7 @@ class ManagementStatementView(CamelModel):
     content: str
     categories: list[str]
     confidence: float | None
+    source_reference: str
 
     @classmethod
     def from_domain(cls, statement: ManagementStatement) -> "ManagementStatementView":
@@ -853,6 +901,7 @@ class ManagementStatementView(CamelModel):
             content=statement.content,
             categories=[c.value for c in statement.categories],
             confidence=statement.confidence,
+            source_reference=statement.source_reference,
         )
 
 
@@ -1166,12 +1215,14 @@ class CashConversionObservationView(CamelModel):
     ocf_to_net_income: float | None
     fcf_to_net_income: float | None
     fcf_to_operating_income: float | None
+    source_reference: str | None
 
     @classmethod
     def from_domain(cls, observation: CashConversionObservation) -> "CashConversionObservationView":
         return cls(
             period_end=observation.period_end, ocf_to_net_income=observation.ocf_to_net_income,
             fcf_to_net_income=observation.fcf_to_net_income, fcf_to_operating_income=observation.fcf_to_operating_income,
+            source_reference=observation.source_reference,
         )
 
 
@@ -1202,6 +1253,7 @@ class WorkingCapitalObservationView(CamelModel):
     working_capital: float | None
     working_capital_to_revenue: float | None
     change_from_prior_period: float | None
+    source_reference: str | None
 
     @classmethod
     def from_domain(cls, observation: WorkingCapitalObservation) -> "WorkingCapitalObservationView":
@@ -1209,6 +1261,7 @@ class WorkingCapitalObservationView(CamelModel):
             period_end=observation.period_end, working_capital=observation.working_capital,
             working_capital_to_revenue=observation.working_capital_to_revenue,
             change_from_prior_period=observation.change_from_prior_period,
+            source_reference=observation.source_reference,
         )
 
 
@@ -1231,12 +1284,13 @@ class MarginReversalView(CamelModel):
     period_end: date
     margin_value: float
     deviation_from_average: float
+    source_reference: str | None
 
     @classmethod
     def from_domain(cls, reversal: MarginReversal) -> "MarginReversalView":
         return cls(
             period_end=reversal.period_end, margin_value=reversal.margin_value,
-            deviation_from_average=reversal.deviation_from_average,
+            deviation_from_average=reversal.deviation_from_average, source_reference=reversal.source_reference,
         )
 
 
@@ -1277,12 +1331,14 @@ class CapitalEfficiencyObservationView(CamelModel):
     return_on_assets: float | None
     return_on_equity: float | None
     asset_turnover: float | None
+    source_reference: str | None
 
     @classmethod
     def from_domain(cls, observation: CapitalEfficiencyObservation) -> "CapitalEfficiencyObservationView":
         return cls(
             period_end=observation.period_end, return_on_assets=observation.return_on_assets,
             return_on_equity=observation.return_on_equity, asset_turnover=observation.asset_turnover,
+            source_reference=observation.source_reference,
         )
 
 
@@ -2126,6 +2182,723 @@ class IncentiveIntelligenceView(CamelModel):
         )
 
 
+class InsiderHoldingView(CamelModel):
+    disclosed_percentage: str | None
+    disclosed_share_count: str | None
+    source: str
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+    provenance: str
+
+    @classmethod
+    def from_domain(cls, holding: InsiderHolding) -> "InsiderHoldingView":
+        return cls(
+            disclosed_percentage=holding.disclosed_percentage, disclosed_share_count=holding.disclosed_share_count,
+            source=holding.source.value, accession_number=holding.accession_number, form_type=holding.form_type,
+            filed_at=holding.filed_at, source_reference=holding.source_reference, provenance=holding.provenance,
+        )
+
+
+class OwnershipChangeView(CamelModel):
+    executive_name: str
+    trend: str
+    compared_field: str | None
+    previous_value: str | None
+    current_value: str | None
+    previous_holding: InsiderHoldingView
+    current_holding: InsiderHoldingView
+    provenance: str
+
+    @classmethod
+    def from_domain(cls, change: OwnershipChange) -> "OwnershipChangeView":
+        return cls(
+            executive_name=change.executive_name, trend=change.trend.value, compared_field=change.compared_field,
+            previous_value=change.previous_value, current_value=change.current_value,
+            previous_holding=InsiderHoldingView.from_domain(change.previous_holding),
+            current_holding=InsiderHoldingView.from_domain(change.current_holding), provenance=change.provenance,
+        )
+
+
+class ExecutiveOwnershipView(CamelModel):
+    executive_name: str
+    holdings: list[InsiderHoldingView]
+    trend: str
+
+    @classmethod
+    def from_domain(cls, ownership: ExecutiveOwnership) -> "ExecutiveOwnershipView":
+        return cls(
+            executive_name=ownership.executive_name, holdings=[InsiderHoldingView.from_domain(h) for h in ownership.holdings],
+            trend=ownership.trend.value,
+        )
+
+
+class EquityCompensationExposureView(CamelModel):
+    executive_name: str
+    has_equity_awards: bool
+    equity_incentive_kinds: list[str]
+    has_cash_compensation: bool
+    disclosed_components: list[str]
+    program: ExecutiveIncentiveProgramView | None
+    structure: IncentiveStructureView | None
+
+    @classmethod
+    def from_domain(cls, exposure: EquityCompensationExposure) -> "EquityCompensationExposureView":
+        return cls(
+            executive_name=exposure.executive_name, has_equity_awards=exposure.has_equity_awards,
+            equity_incentive_kinds=[k.value for k in exposure.equity_incentive_kinds],
+            has_cash_compensation=exposure.has_cash_compensation,
+            disclosed_components=[c.value for c in exposure.disclosed_components],
+            program=ExecutiveIncentiveProgramView.from_domain(exposure.program) if exposure.program is not None else None,
+            structure=IncentiveStructureView.from_domain(exposure.structure) if exposure.structure is not None else None,
+        )
+
+
+class AlignmentObservationView(CamelModel):
+    kind: str
+    executive_name: str
+    accession_number: str | None
+    form_type: str | None
+    filed_at: datetime | None
+    source_reference: str | None
+    disclosure_source: str | None
+    provenance: str
+
+    @classmethod
+    def from_domain(cls, observation: AlignmentObservation) -> "AlignmentObservationView":
+        return cls(
+            kind=observation.kind.value, executive_name=observation.executive_name,
+            accession_number=observation.accession_number, form_type=observation.form_type,
+            filed_at=observation.filed_at, source_reference=observation.source_reference,
+            disclosure_source=observation.disclosure_source, provenance=observation.provenance,
+        )
+
+
+class AlignmentFindingView(CamelModel):
+    kind: str
+    evidence_count: int
+
+    @classmethod
+    def from_domain(cls, finding: AlignmentFinding) -> "AlignmentFindingView":
+        return cls(kind=finding.kind.value, evidence_count=finding.evidence_count)
+
+
+class ExecutiveAlignmentProfileView(CamelModel):
+    executive: ExecutiveIdentityView
+    ownership: ExecutiveOwnershipView
+    ownership_changes: list[OwnershipChangeView]
+    equity_compensation: EquityCompensationExposureView
+    observations: list[AlignmentObservationView]
+
+    @classmethod
+    def from_domain(cls, profile: ExecutiveAlignmentProfile) -> "ExecutiveAlignmentProfileView":
+        return cls(
+            executive=ExecutiveIdentityView.from_domain(profile.executive),
+            ownership=ExecutiveOwnershipView.from_domain(profile.ownership),
+            ownership_changes=[OwnershipChangeView.from_domain(c) for c in profile.ownership_changes],
+            equity_compensation=EquityCompensationExposureView.from_domain(profile.equity_compensation),
+            observations=[AlignmentObservationView.from_domain(o) for o in profile.observations],
+        )
+
+
+class InsiderAlignmentIntelligenceView(CamelModel):
+    """(Capability Expansion Sprint 21) Links Ownership Intelligence and
+    Executive Compensation Intelligence to Executive Identity by exact
+    name -- see `insider_alignment_intelligence.py`'s own module
+    docstring for why `profiles` is honestly empty in a live build today
+    (no production path yet fetches real DEF 14A filing content into
+    this service)."""
+
+    profiles: list[ExecutiveAlignmentProfileView]
+    findings: list[AlignmentFindingView]
+    filings_considered: list[str]
+
+    @classmethod
+    def from_domain(cls, knowledge: InsiderAlignmentKnowledge) -> "InsiderAlignmentIntelligenceView":
+        return cls(
+            profiles=[ExecutiveAlignmentProfileView.from_domain(p) for p in knowledge.profiles],
+            findings=[AlignmentFindingView.from_domain(f) for f in knowledge.findings],
+            filings_considered=list(knowledge.filings_considered),
+        )
+
+
+# -- (Integration Sprint 1: Knowledge Activation) Governance, Risk
+# Factor, Legal Proceedings, Ownership, and Executive Compensation
+# Intelligence (Capability Expansion Sprints 15/16-20) had no API view
+# at all before this sprint -- not merely empty, genuinely absent from
+# the schema. Each is wired here for the first time, mirroring
+# `IncentiveIntelligenceView`'s own precedent exactly. Every field below
+# is honestly empty in a live build today -- see `InvestmentCaseComposition
+# .governance_intelligence`'s own docstring in `models.py` for why. -----
+
+class DirectorView(CamelModel):
+    name: str
+    is_chair: bool
+    is_lead_independent_director: bool
+    disclosed_independence: bool | None
+    committee_assignments: list[str]
+    appointment_status: str | None
+    tenure_years: int | None
+    table_order_index: int
+    row_index: int
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+
+    @classmethod
+    def from_domain(cls, director: Director) -> "DirectorView":
+        return cls(
+            name=director.name, is_chair=director.is_chair,
+            is_lead_independent_director=director.is_lead_independent_director,
+            disclosed_independence=director.disclosed_independence,
+            committee_assignments=[c.value for c in director.committee_assignments],
+            appointment_status=director.appointment_status, tenure_years=director.tenure_years,
+            table_order_index=director.table_order_index, row_index=director.row_index,
+            accession_number=director.accession_number, form_type=director.form_type,
+            filed_at=director.filed_at, source_reference=director.source_reference,
+        )
+
+
+class CommitteeView(CamelModel):
+    kind: str
+    disclosed_name: str
+    members: list[DirectorView]
+    chair: DirectorView | None
+    responsibilities: list[str]
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+
+    @classmethod
+    def from_domain(cls, committee: Committee) -> "CommitteeView":
+        return cls(
+            kind=committee.kind.value, disclosed_name=committee.disclosed_name,
+            members=[DirectorView.from_domain(m) for m in committee.members],
+            chair=DirectorView.from_domain(committee.chair) if committee.chair is not None else None,
+            responsibilities=list(committee.responsibilities), accession_number=committee.accession_number,
+            form_type=committee.form_type, filed_at=committee.filed_at, source_reference=committee.source_reference,
+        )
+
+
+class ShareClassView(CamelModel):
+    name: str
+    votes_per_share: str
+    table_order_index: int
+    row_index: int
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+
+    @classmethod
+    def from_domain(cls, share_class: ShareClass) -> "ShareClassView":
+        return cls(
+            name=share_class.name, votes_per_share=share_class.votes_per_share,
+            table_order_index=share_class.table_order_index, row_index=share_class.row_index,
+            accession_number=share_class.accession_number, form_type=share_class.form_type,
+            filed_at=share_class.filed_at, source_reference=share_class.source_reference,
+        )
+
+
+class VotingStructureView(CamelModel):
+    dual_class_disclosed: bool
+    controlled_company_disclosed: bool
+    share_classes: list[ShareClassView]
+
+    @classmethod
+    def from_domain(cls, structure: VotingStructure) -> "VotingStructureView":
+        return cls(
+            dual_class_disclosed=structure.dual_class_disclosed,
+            controlled_company_disclosed=structure.controlled_company_disclosed,
+            share_classes=[ShareClassView.from_domain(s) for s in structure.share_classes],
+        )
+
+
+class GovernancePolicyView(CamelModel):
+    kind: str
+    description: str
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+
+    @classmethod
+    def from_domain(cls, policy: GovernancePolicy) -> "GovernancePolicyView":
+        return cls(
+            kind=policy.kind, description=policy.description, accession_number=policy.accession_number,
+            form_type=policy.form_type, filed_at=policy.filed_at, source_reference=policy.source_reference,
+        )
+
+
+class GovernanceFindingView(CamelModel):
+    kind: str
+    excerpt: str | None
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+    section_kind: str | None
+    section_item_number: str | None
+    subsection_heading: str | None
+    paragraph_order_index: int | None
+    table_order_index: int | None
+
+    @classmethod
+    def from_domain(cls, finding: GovernanceFinding) -> "GovernanceFindingView":
+        return cls(
+            kind=finding.kind.value, excerpt=finding.excerpt, accession_number=finding.accession_number,
+            form_type=finding.form_type, filed_at=finding.filed_at, source_reference=finding.source_reference,
+            section_kind=finding.section_kind.value if finding.section_kind is not None else None,
+            section_item_number=finding.section_item_number, subsection_heading=finding.subsection_heading,
+            paragraph_order_index=finding.paragraph_order_index, table_order_index=finding.table_order_index,
+        )
+
+
+class GovernanceChangeView(CamelModel):
+    kind: str
+    excerpt: str
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+    section_item_number: str | None
+    paragraph_order_index: int
+
+    @classmethod
+    def from_domain(cls, change: GovernanceChange) -> "GovernanceChangeView":
+        return cls(
+            kind=change.kind.value, excerpt=change.excerpt, accession_number=change.accession_number,
+            form_type=change.form_type, filed_at=change.filed_at, source_reference=change.source_reference,
+            section_item_number=change.section_item_number, paragraph_order_index=change.paragraph_order_index,
+        )
+
+
+class GovernanceObservationView(CamelModel):
+    kind: str
+    committee_kind: str | None
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+    added_names: list[str]
+    removed_names: list[str]
+
+    @classmethod
+    def from_domain(cls, observation: GovernanceObservation) -> "GovernanceObservationView":
+        return cls(
+            kind=observation.kind.value,
+            committee_kind=observation.committee_kind.value if observation.committee_kind is not None else None,
+            accession_number=observation.accession_number, form_type=observation.form_type,
+            filed_at=observation.filed_at, source_reference=observation.source_reference,
+            added_names=list(observation.added_names), removed_names=list(observation.removed_names),
+        )
+
+
+class BoardCompositionView(CamelModel):
+    chair_disclosed: bool
+    lead_independent_director_disclosed: bool
+    directors: list[DirectorView]
+    findings: list[GovernanceFindingView]
+
+    @classmethod
+    def from_domain(cls, composition: BoardComposition) -> "BoardCompositionView":
+        return cls(
+            chair_disclosed=composition.chair_disclosed,
+            lead_independent_director_disclosed=composition.lead_independent_director_disclosed,
+            directors=[DirectorView.from_domain(d) for d in composition.directors],
+            findings=[GovernanceFindingView.from_domain(f) for f in composition.findings],
+        )
+
+
+class GovernanceIntelligenceView(CamelModel):
+    board_composition: BoardCompositionView
+    committees: list[CommitteeView]
+    voting_structure: VotingStructureView
+    policies: list[GovernancePolicyView]
+    changes: list[GovernanceChangeView]
+    observations: list[GovernanceObservationView]
+    findings: list[GovernanceFindingView]
+    filings_considered: list[str]
+
+    @classmethod
+    def from_domain(cls, knowledge: GovernanceKnowledge) -> "GovernanceIntelligenceView":
+        return cls(
+            board_composition=BoardCompositionView.from_domain(knowledge.board_composition),
+            committees=[CommitteeView.from_domain(c) for c in knowledge.committees],
+            voting_structure=VotingStructureView.from_domain(knowledge.voting_structure),
+            policies=[GovernancePolicyView.from_domain(p) for p in knowledge.policies],
+            changes=[GovernanceChangeView.from_domain(c) for c in knowledge.changes],
+            observations=[GovernanceObservationView.from_domain(o) for o in knowledge.observations],
+            findings=[GovernanceFindingView.from_domain(f) for f in knowledge.findings],
+            filings_considered=list(knowledge.filings_considered),
+        )
+
+
+class RiskDisclosureView(CamelModel):
+    categories: list[str]
+    text: str
+    source: str
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+    section_kind: str | None
+    section_item_number: str | None
+    subsection_heading: str | None
+    paragraph_order_index: int
+    table_order_index: int | None
+
+    @classmethod
+    def from_domain(cls, disclosure: RiskDisclosure) -> "RiskDisclosureView":
+        return cls(
+            categories=[c.value for c in disclosure.categories], text=disclosure.text,
+            source=disclosure.source.value, accession_number=disclosure.accession_number,
+            form_type=disclosure.form_type, filed_at=disclosure.filed_at,
+            source_reference=disclosure.source_reference,
+            section_kind=disclosure.section_kind.value if disclosure.section_kind is not None else None,
+            section_item_number=disclosure.section_item_number, subsection_heading=disclosure.subsection_heading,
+            paragraph_order_index=disclosure.paragraph_order_index, table_order_index=disclosure.table_order_index,
+        )
+
+
+class RiskCategorySummaryView(CamelModel):
+    kind: str
+    disclosures: list[RiskDisclosureView]
+
+    @classmethod
+    def from_domain(cls, summary: RiskCategorySummary) -> "RiskCategorySummaryView":
+        return cls(kind=summary.kind.value, disclosures=[RiskDisclosureView.from_domain(d) for d in summary.disclosures])
+
+
+class RiskChangeObservationView(CamelModel):
+    kind: str
+    category: str
+    previous_excerpts: list[str]
+    current_excerpts: list[str]
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+
+    @classmethod
+    def from_domain(cls, change: RiskChangeObservation) -> "RiskChangeObservationView":
+        return cls(
+            kind=change.kind.value, category=change.category.value,
+            previous_excerpts=list(change.previous_excerpts), current_excerpts=list(change.current_excerpts),
+            accession_number=change.accession_number, form_type=change.form_type, filed_at=change.filed_at,
+            source_reference=change.source_reference,
+        )
+
+
+class RiskFactorIntelligenceView(CamelModel):
+    categories: list[RiskCategorySummaryView]
+    changes: list[RiskChangeObservationView]
+    disclosures: list[RiskDisclosureView]
+    filings_considered: list[str]
+
+    @classmethod
+    def from_domain(cls, knowledge: RiskFactorKnowledge) -> "RiskFactorIntelligenceView":
+        return cls(
+            categories=[RiskCategorySummaryView.from_domain(c) for c in knowledge.categories],
+            changes=[RiskChangeObservationView.from_domain(c) for c in knowledge.changes],
+            disclosures=[RiskDisclosureView.from_domain(d) for d in knowledge.disclosures],
+            filings_considered=list(knowledge.filings_considered),
+        )
+
+
+class LegalProceedingDisclosureView(CamelModel):
+    categories: list[str]
+    text: str
+    source: str
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+    section_kind: str | None
+    section_item_number: str | None
+    subsection_heading: str | None
+    paragraph_order_index: int
+    table_order_index: int | None
+
+    @classmethod
+    def from_domain(cls, disclosure: LegalProceedingDisclosure) -> "LegalProceedingDisclosureView":
+        return cls(
+            categories=[c.value for c in disclosure.categories], text=disclosure.text,
+            source=disclosure.source.value, accession_number=disclosure.accession_number,
+            form_type=disclosure.form_type, filed_at=disclosure.filed_at,
+            source_reference=disclosure.source_reference,
+            section_kind=disclosure.section_kind.value if disclosure.section_kind is not None else None,
+            section_item_number=disclosure.section_item_number, subsection_heading=disclosure.subsection_heading,
+            paragraph_order_index=disclosure.paragraph_order_index, table_order_index=disclosure.table_order_index,
+        )
+
+
+class ProceedingCategorySummaryView(CamelModel):
+    kind: str
+    disclosures: list[LegalProceedingDisclosureView]
+
+    @classmethod
+    def from_domain(cls, summary: ProceedingCategorySummary) -> "ProceedingCategorySummaryView":
+        return cls(
+            kind=summary.kind.value, disclosures=[LegalProceedingDisclosureView.from_domain(d) for d in summary.disclosures]
+        )
+
+
+class LegalChangeObservationView(CamelModel):
+    kind: str
+    category: str
+    previous_excerpts: list[str]
+    current_excerpts: list[str]
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+
+    @classmethod
+    def from_domain(cls, change: LegalChangeObservation) -> "LegalChangeObservationView":
+        return cls(
+            kind=change.kind.value, category=change.category.value,
+            previous_excerpts=list(change.previous_excerpts), current_excerpts=list(change.current_excerpts),
+            accession_number=change.accession_number, form_type=change.form_type, filed_at=change.filed_at,
+            source_reference=change.source_reference,
+        )
+
+
+class LegalProceedingsIntelligenceView(CamelModel):
+    categories: list[ProceedingCategorySummaryView]
+    changes: list[LegalChangeObservationView]
+    disclosures: list[LegalProceedingDisclosureView]
+    filings_considered: list[str]
+
+    @classmethod
+    def from_domain(cls, knowledge: LegalProceedingsKnowledge) -> "LegalProceedingsIntelligenceView":
+        return cls(
+            categories=[ProceedingCategorySummaryView.from_domain(c) for c in knowledge.categories],
+            changes=[LegalChangeObservationView.from_domain(c) for c in knowledge.changes],
+            disclosures=[LegalProceedingDisclosureView.from_domain(d) for d in knowledge.disclosures],
+            filings_considered=list(knowledge.filings_considered),
+        )
+
+
+class OwnershipDisclosureView(CamelModel):
+    owner_name: str | None
+    categories: list[str]
+    disclosed_percentage: str | None
+    disclosed_share_count: str | None
+    text: str
+    source: str
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+    section_kind: str | None
+    section_item_number: str | None
+    subsection_heading: str | None
+    paragraph_order_index: int | None
+    table_order_index: int | None
+    row_index: int | None
+
+    @classmethod
+    def from_domain(cls, disclosure: OwnershipDisclosure) -> "OwnershipDisclosureView":
+        return cls(
+            owner_name=disclosure.owner_name, categories=[c.value for c in disclosure.categories],
+            disclosed_percentage=disclosure.disclosed_percentage, disclosed_share_count=disclosure.disclosed_share_count,
+            text=disclosure.text, source=disclosure.source.value, accession_number=disclosure.accession_number,
+            form_type=disclosure.form_type, filed_at=disclosure.filed_at, source_reference=disclosure.source_reference,
+            section_kind=disclosure.section_kind.value if disclosure.section_kind is not None else None,
+            section_item_number=disclosure.section_item_number, subsection_heading=disclosure.subsection_heading,
+            paragraph_order_index=disclosure.paragraph_order_index, table_order_index=disclosure.table_order_index,
+            row_index=disclosure.row_index,
+        )
+
+
+class OwnerCategorySummaryView(CamelModel):
+    kind: str
+    disclosures: list[OwnershipDisclosureView]
+
+    @classmethod
+    def from_domain(cls, summary: OwnerCategorySummary) -> "OwnerCategorySummaryView":
+        return cls(kind=summary.kind.value, disclosures=[OwnershipDisclosureView.from_domain(d) for d in summary.disclosures])
+
+
+class OwnershipChangeObservationView(CamelModel):
+    kind: str
+    owner_name: str
+    previous_excerpts: list[str]
+    current_excerpts: list[str]
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+
+    @classmethod
+    def from_domain(cls, change: OwnershipChangeObservation) -> "OwnershipChangeObservationView":
+        return cls(
+            kind=change.kind.value, owner_name=change.owner_name, previous_excerpts=list(change.previous_excerpts),
+            current_excerpts=list(change.current_excerpts), accession_number=change.accession_number,
+            form_type=change.form_type, filed_at=change.filed_at, source_reference=change.source_reference,
+        )
+
+
+class OwnershipIntelligenceView(CamelModel):
+    categories: list[OwnerCategorySummaryView]
+    changes: list[OwnershipChangeObservationView]
+    disclosures: list[OwnershipDisclosureView]
+    filings_considered: list[str]
+
+    @classmethod
+    def from_domain(cls, knowledge: OwnershipKnowledge) -> "OwnershipIntelligenceView":
+        return cls(
+            categories=[OwnerCategorySummaryView.from_domain(c) for c in knowledge.categories],
+            changes=[OwnershipChangeObservationView.from_domain(c) for c in knowledge.changes],
+            disclosures=[OwnershipDisclosureView.from_domain(d) for d in knowledge.disclosures],
+            filings_considered=list(knowledge.filings_considered),
+        )
+
+
+class ExecutiveCompensationRecordView(CamelModel):
+    executive_name: str
+    disclosed_role: str | None
+    reporting_year: str | None
+    salary: str | None
+    bonus: str | None
+    stock_awards: str | None
+    option_awards: str | None
+    non_equity_incentive: str | None
+    pension_change: str | None
+    other_compensation: str | None
+    total: str | None
+    currency: str | None
+    source: str
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+    section_kind: str | None
+    section_item_number: str | None
+    subsection_heading: str | None
+    table_order_index: int
+    row_index: int
+    linked_executive_identity_name: str | None
+
+    @classmethod
+    def from_domain(cls, record: ExecutiveCompensationRecord) -> "ExecutiveCompensationRecordView":
+        return cls(
+            executive_name=record.executive_name, disclosed_role=record.disclosed_role,
+            reporting_year=record.reporting_year, salary=record.salary, bonus=record.bonus,
+            stock_awards=record.stock_awards, option_awards=record.option_awards,
+            non_equity_incentive=record.non_equity_incentive, pension_change=record.pension_change,
+            other_compensation=record.other_compensation, total=record.total, currency=record.currency,
+            source=record.source.value, accession_number=record.accession_number, form_type=record.form_type,
+            filed_at=record.filed_at, source_reference=record.source_reference,
+            section_kind=record.section_kind.value if record.section_kind is not None else None,
+            section_item_number=record.section_item_number, subsection_heading=record.subsection_heading,
+            table_order_index=record.table_order_index, row_index=record.row_index,
+            linked_executive_identity_name=record.linked_executive_identity_name,
+        )
+
+
+class EquityAwardDisclosureView(CamelModel):
+    executive_name: str
+    disclosed_award_type: str | None
+    kind: str | None
+    grant_value: str | None
+    unit_count: str | None
+    vesting_disclosure: str | None
+    performance_conditions: str | None
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+    table_order_index: int
+    row_index: int
+
+    @classmethod
+    def from_domain(cls, award: EquityAwardDisclosure) -> "EquityAwardDisclosureView":
+        return cls(
+            executive_name=award.executive_name, disclosed_award_type=award.disclosed_award_type,
+            kind=award.kind.value if award.kind is not None else None, grant_value=award.grant_value,
+            unit_count=award.unit_count, vesting_disclosure=award.vesting_disclosure,
+            performance_conditions=award.performance_conditions, accession_number=award.accession_number,
+            form_type=award.form_type, filed_at=award.filed_at, source_reference=award.source_reference,
+            table_order_index=award.table_order_index, row_index=award.row_index,
+        )
+
+
+class PerformanceMetricDisclosureView(CamelModel):
+    executive_name: str | None
+    metric_kind: str
+    metric_label: str | None
+    target: str | None
+    range_disclosure: str | None
+    performance_period: str | None
+    weighting: str | None
+    outcome: str | None
+    text: str
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+    paragraph_order_index: int | None
+    table_order_index: int | None
+    row_index: int | None
+
+    @classmethod
+    def from_domain(cls, metric: PerformanceMetricDisclosure) -> "PerformanceMetricDisclosureView":
+        return cls(
+            executive_name=metric.executive_name, metric_kind=metric.metric_kind.value,
+            metric_label=metric.metric_label, target=metric.target, range_disclosure=metric.range_disclosure,
+            performance_period=metric.performance_period, weighting=metric.weighting, outcome=metric.outcome,
+            text=metric.text, accession_number=metric.accession_number, form_type=metric.form_type,
+            filed_at=metric.filed_at, source_reference=metric.source_reference,
+            paragraph_order_index=metric.paragraph_order_index, table_order_index=metric.table_order_index,
+            row_index=metric.row_index,
+        )
+
+
+class CompensationChangeObservationView(CamelModel):
+    kind: str
+    executive_name: str
+    component: str | None
+    previous_value: str | None
+    current_value: str | None
+    accession_number: str
+    form_type: str
+    filed_at: datetime
+    source_reference: str
+
+    @classmethod
+    def from_domain(cls, change: CompensationChangeObservation) -> "CompensationChangeObservationView":
+        return cls(
+            kind=change.kind.value, executive_name=change.executive_name,
+            component=change.component.value if change.component is not None else None,
+            previous_value=change.previous_value, current_value=change.current_value,
+            accession_number=change.accession_number, form_type=change.form_type, filed_at=change.filed_at,
+            source_reference=change.source_reference,
+        )
+
+
+class ExecutiveCompensationIntelligenceView(CamelModel):
+    records: list[ExecutiveCompensationRecordView]
+    equity_awards: list[EquityAwardDisclosureView]
+    performance_metrics: list[PerformanceMetricDisclosureView]
+    changes: list[CompensationChangeObservationView]
+    filings_considered: list[str]
+
+    @classmethod
+    def from_domain(cls, knowledge: ExecutiveCompensationKnowledge) -> "ExecutiveCompensationIntelligenceView":
+        return cls(
+            records=[ExecutiveCompensationRecordView.from_domain(r) for r in knowledge.records],
+            equity_awards=[EquityAwardDisclosureView.from_domain(a) for a in knowledge.equity_awards],
+            performance_metrics=[PerformanceMetricDisclosureView.from_domain(m) for m in knowledge.performance_metrics],
+            changes=[CompensationChangeObservationView.from_domain(c) for c in knowledge.changes],
+            filings_considered=list(knowledge.filings_considered),
+        )
+
+
 class FinancialPeriodView(CamelModel):
     period_start: date | None
     period_end: date | None
@@ -2726,6 +3499,12 @@ class InvestmentCaseAnalysisView(CamelModel):
     executive_change_intelligence: ExecutiveChangeIntelligenceView
     executive_track_record_intelligence: ExecutiveTrackRecordIntelligenceView
     incentive_intelligence: IncentiveIntelligenceView
+    governance_intelligence: GovernanceIntelligenceView
+    risk_factor_intelligence: RiskFactorIntelligenceView
+    legal_proceedings_intelligence: LegalProceedingsIntelligenceView
+    ownership_intelligence: OwnershipIntelligenceView
+    executive_compensation_intelligence: ExecutiveCompensationIntelligenceView
+    insider_alignment_intelligence: InsiderAlignmentIntelligenceView
     strengths: list[CaseHighlightView]
     risks: list[CaseHighlightView]
     growth_analysis: GrowthAnalysisView
@@ -2936,6 +3715,18 @@ class InvestmentCaseAnalysisView(CamelModel):
                 composition.executive_track_record_intelligence
             ),
             incentive_intelligence=IncentiveIntelligenceView.from_domain(composition.incentive_intelligence),
+            governance_intelligence=GovernanceIntelligenceView.from_domain(composition.governance_intelligence),
+            risk_factor_intelligence=RiskFactorIntelligenceView.from_domain(composition.risk_factor_intelligence),
+            legal_proceedings_intelligence=LegalProceedingsIntelligenceView.from_domain(
+                composition.legal_proceedings_intelligence
+            ),
+            ownership_intelligence=OwnershipIntelligenceView.from_domain(composition.ownership_intelligence),
+            executive_compensation_intelligence=ExecutiveCompensationIntelligenceView.from_domain(
+                composition.executive_compensation_intelligence
+            ),
+            insider_alignment_intelligence=InsiderAlignmentIntelligenceView.from_domain(
+                composition.insider_alignment_intelligence
+            ),
             strengths=[CaseHighlightView.from_domain(h) for h in analysis.synthesis.strengths],
             risks=[CaseHighlightView.from_domain(h) for h in analysis.synthesis.risks],
             growth_analysis=GrowthAnalysisView.from_domain(analysis.synthesis.growth),

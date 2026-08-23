@@ -18,6 +18,12 @@ from atlas.alpha.investment_case.executive_change_intelligence import extract_ex
 from atlas.alpha.investment_case.executive_track_record_intelligence import extract_executive_track_record
 from atlas.alpha.investment_case.financial_quality_intelligence import extract_financial_quality
 from atlas.alpha.investment_case.incentive_intelligence import extract_incentive_intelligence
+from atlas.alpha.investment_case.insider_alignment_intelligence import extract_insider_alignment_knowledge
+from atlas.alpha.investment_case.ownership_intelligence import extract_ownership_knowledge
+from atlas.alpha.investment_case.executive_compensation_intelligence import extract_executive_compensation_knowledge
+from atlas.alpha.investment_case.governance_intelligence import extract_governance_knowledge
+from atlas.alpha.investment_case.risk_factor_intelligence import extract_risk_factor_knowledge
+from atlas.alpha.investment_case.legal_proceedings_intelligence import extract_legal_proceedings_knowledge
 from atlas.alpha.investment_case.growth_intelligence import extract_growth_knowledge
 from atlas.alpha.investment_case.financial_statement_intelligence import extract_financial_statement_history
 from atlas.alpha.investment_case.historical_valuation import extract_historical_valuation
@@ -221,6 +227,36 @@ class InvestmentCaseCompositionService:
             capital_allocation_intelligence, growth_intelligence, management_credibility_intelligence,
             management_guidance_intelligence,
         )
+        # (Integration Sprint 1: Knowledge Activation) The entire Filing
+        # Content Intelligence family (Sprints 13-20) -- Governance, Risk
+        # Factor, Legal Proceedings, Ownership, Executive Compensation --
+        # is wired into production composition here for the first time,
+        # each called with the real, empty `()` filing-content tuple this
+        # service actually has today. No production code path fetches
+        # real DEF 14A/10-K/10-Q content into a `FilingContent` anywhere
+        # in Atlas: `filing_content_intelligence.extract_filing_content`'s
+        # own real fetcher dependencies (`atlas.business_data_providers.
+        # http.fetch_text`, `sec_edgar_identity.sec_user_agent`) already
+        # exist, production-ready, purpose-built for exactly this by
+        # Sprint 13 -- but wiring them into this synchronous path was a
+        # deliberate, documented decision NOT to make this sprint: `build_
+        # many` (ATLAS-028) was engineered specifically to cost a fixed
+        # number of reads regardless of Case count, and a per-Case network
+        # fetch here, through the shared `_assemble` both `build` and
+        # `build_many` call, would reintroduce exactly the N-times-per-
+        # Case cost that sprint eliminated. See `models.py`'s own
+        # `governance_intelligence` field docstring for the same reasoning
+        # in full, and the Integration Sprint 1 Final Report for the
+        # complete tradeoff. Every module below remains entirely
+        # unmodified; only this call site is new.
+        governance_intelligence = extract_governance_knowledge(())
+        risk_factor_intelligence = extract_risk_factor_knowledge(())
+        legal_proceedings_intelligence = extract_legal_proceedings_knowledge(())
+        ownership_intelligence = extract_ownership_knowledge(())
+        executive_compensation_intelligence = extract_executive_compensation_knowledge(())
+        insider_alignment_intelligence = extract_insider_alignment_knowledge(
+            executive_change_intelligence.executives, ownership_intelligence, executive_compensation_intelligence,
+        )
 
         # Investment Case Monitoring & Change Intelligence v1: the
         # smallest correct integration point is exactly here -- the one
@@ -275,6 +311,12 @@ class InvestmentCaseCompositionService:
             executive_change_intelligence=executive_change_intelligence,
             executive_track_record_intelligence=executive_track_record_intelligence,
             incentive_intelligence=incentive_intelligence,
+            governance_intelligence=governance_intelligence,
+            risk_factor_intelligence=risk_factor_intelligence,
+            legal_proceedings_intelligence=legal_proceedings_intelligence,
+            ownership_intelligence=ownership_intelligence,
+            executive_compensation_intelligence=executive_compensation_intelligence,
+            insider_alignment_intelligence=insider_alignment_intelligence,
         )
 
     def build(self, case_id_str: str) -> InvestmentCaseComposition | None:

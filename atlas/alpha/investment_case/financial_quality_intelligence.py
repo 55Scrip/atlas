@@ -203,6 +203,12 @@ class CashConversionObservation:
     ocf_to_net_income: float | None
     fcf_to_net_income: float | None
     fcf_to_operating_income: float | None
+    source_reference: str | None
+    """(Cleanup Sprint 1) The cash-flow-statement period's own real
+    `source_reference` (Sprint 3) -- these ratios' own numerators
+    (`operating_cash_flow`/`free_cash_flow`) both come from that
+    statement. Never fabricated; `None` only when the underlying period
+    itself has no source reference."""
 
 
 @dataclass(frozen=True)
@@ -227,6 +233,7 @@ def _cash_conversion(history: FinancialStatementHistory) -> CashConversionKnowle
                 ocf_to_net_income=_margin(cash_flow.operating_cash_flow, income.net_income),
                 fcf_to_net_income=_margin(cash_flow.free_cash_flow, income.net_income),
                 fcf_to_operating_income=_margin(cash_flow.free_cash_flow, income.operating_income),
+                source_reference=cash_flow.source_reference,
             )
         )
 
@@ -262,6 +269,11 @@ class WorkingCapitalObservation:
     working_capital: float | None
     working_capital_to_revenue: float | None
     change_from_prior_period: float | None
+    source_reference: str | None
+    """(Cleanup Sprint 1) The balance-sheet period's own real
+    `source_reference` (Sprint 3) -- working capital is itself a
+    balance-sheet-derived figure. `None` only when the underlying
+    period has no source reference."""
 
 
 @dataclass(frozen=True)
@@ -289,6 +301,7 @@ def _working_capital(history: FinancialStatementHistory) -> WorkingCapitalIntell
                 working_capital=balance_sheet.working_capital,
                 working_capital_to_revenue=_margin(balance_sheet.working_capital, income.revenue),
                 change_from_prior_period=change,
+                source_reference=balance_sheet.source_reference,
             )
         )
         if balance_sheet.working_capital is not None:
@@ -329,6 +342,10 @@ class MarginReversal:
     period_end: date
     margin_value: float
     deviation_from_average: float
+    source_reference: str | None
+    """(Cleanup Sprint 1) The income-statement period's own real
+    `source_reference` (Sprint 3) this margin figure was reported in.
+    `None` only when the underlying period has no source reference."""
 
 
 @dataclass(frozen=True)
@@ -341,7 +358,9 @@ class MarginDurability:
     periods_considered: int
 
 
-def _reversals(period_ends: tuple[date, ...], values: tuple[float, ...]) -> tuple[MarginReversal, ...]:
+def _reversals(
+    period_ends: tuple[date, ...], values: tuple[float, ...], source_references: tuple[str | None, ...],
+) -> tuple[MarginReversal, ...]:
     if len(values) < _MIN_PERIODS_FOR_REVERSALS:
         return ()
     mean = sum(values) / len(values)
@@ -350,8 +369,11 @@ def _reversals(period_ends: tuple[date, ...], values: tuple[float, ...]) -> tupl
     if std == 0:
         return ()
     return tuple(
-        MarginReversal(period_end=period_end, margin_value=value, deviation_from_average=value - mean)
-        for period_end, value in zip(period_ends, values)
+        MarginReversal(
+            period_end=period_end, margin_value=value, deviation_from_average=value - mean,
+            source_reference=source_reference,
+        )
+        for period_end, value, source_reference in zip(period_ends, values, source_references)
         if abs(value - mean) > _DEVIATION_THRESHOLD_STD * std
     )
 
@@ -359,15 +381,19 @@ def _reversals(period_ends: tuple[date, ...], values: tuple[float, ...]) -> tupl
 def _margin_durability(
     margin: MarginKind, metric: FinancialTrendMetric, history: FinancialStatementHistory, attr: str
 ) -> MarginDurability:
-    known = [(p.period_end, getattr(p, attr)) for p in history.income_statements if getattr(p, attr) is not None]
-    period_ends = tuple(period_end for period_end, _ in known)
-    values = tuple(value for _, value in known)
+    known = [
+        (p.period_end, getattr(p, attr), p.source_reference)
+        for p in history.income_statements if getattr(p, attr) is not None
+    ]
+    period_ends = tuple(period_end for period_end, _, _ in known)
+    values = tuple(value for _, value, _ in known)
+    source_references = tuple(source_reference for _, _, source_reference in known)
     return MarginDurability(
         margin=margin,
         current_level=values[-1] if values else None,
         trend=_trend_from_metric(metric, history),
         stability=_stability(values),
-        reversals=_reversals(period_ends, values),
+        reversals=_reversals(period_ends, values, source_references),
         periods_considered=len(values),
     )
 
@@ -402,6 +428,11 @@ class CapitalEfficiencyObservation:
     return_on_assets: float | None
     return_on_equity: float | None
     asset_turnover: float | None
+    source_reference: str | None
+    """(Cleanup Sprint 1) The income-statement period's own real
+    `source_reference` (Sprint 3) -- `net_income`/`revenue`, the
+    numerator for all three ratios, both come from that statement.
+    `None` only when the underlying period has no source reference."""
 
 
 @dataclass(frozen=True)
@@ -427,6 +458,7 @@ def _capital_efficiency(history: FinancialStatementHistory) -> CapitalEfficiency
                 return_on_assets=_margin(income.net_income, balance_sheet.total_assets),
                 return_on_equity=_margin(income.net_income, balance_sheet.equity),
                 asset_turnover=_margin(income.revenue, balance_sheet.total_assets),
+                source_reference=income.source_reference,
             )
         )
 

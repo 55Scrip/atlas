@@ -18,6 +18,7 @@ from atlas.alpha.business_data_refresh.bulk import enrich_holdings
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.table import create_business_record_table
 from atlas.alpha.canonical_security_gate.factory import build_identity_gate
+from atlas.alpha.monitoring.api.dependencies import build_monitoring_service
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_service
 from atlas.alpha.portfolio.api.schemas import (
     ApplyTradeRequestBody,
@@ -79,6 +80,25 @@ def _run_bulk_enrichment_in_background(tickers: tuple[str, ...]) -> None:
     providers = get_default_business_data_providers()
     identity_gate = build_identity_gate(engine)
     enrich_holdings(tickers, providers, repository, identity_gate=identity_gate)
+    # Internal Alpha Fix Sprint 1, Deliverable 4/5 (Business Refresh /
+    # Portfolio Change Integration): chained onto the same background
+    # task, after enrichment -- not a second scheduled job. Any holding
+    # enrichment just found new data for (or any Case that had never
+    # been monitored before) is now genuinely dirty; `trigger_automatic_
+    # run` (best-effort, never blocks this task on an unrelated in-
+    # progress run) is the same non-blocking entrypoint every other
+    # automatic call site in this sprint uses.
+    build_monitoring_service(engine).trigger_automatic_run()
+
+
+def _trigger_automatic_monitoring_in_background() -> None:
+    """Same fresh-`Engine`-per-background-task reasoning as
+    `_run_bulk_enrichment_in_background` above, for call sites that
+    schedule an automatic Monitoring run without also enriching
+    anything in the same task (Internal Alpha Fix Sprint 1,
+    Deliverable 5 -- `apply_trade`, below)."""
+    engine = get_decision_engine()
+    build_monitoring_service(engine).trigger_automatic_run()
 
 
 @router.get("", response_model=PortfolioView)
@@ -187,6 +207,7 @@ def link_case_to_holding(
 @router.post("/apply-trade", response_model=PortfolioView)
 def apply_trade(
     payload: ApplyTradeRequestBody,
+    background_tasks: BackgroundTasks,
     service: AlphaPortfolioService = Depends(get_alpha_portfolio_service),
 ) -> PortfolioView:
     try:
@@ -208,6 +229,17 @@ def apply_trade(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except (DecisionMismatchError, AlphaPortfolioValidationError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    # Internal Alpha Fix Sprint 1, Deliverable 5 (Portfolio Change
+    # Integration): a BUY/ADD on a not-previously-held ticker opens a
+    # brand-new, never-monitored Case (see `AlphaPortfolioService
+    # .apply_confirmed_trade`'s own comment on this exact branch) --
+    # genuinely new information Monitoring should reflect without
+    # waiting for a manual trigger. Every other trade shape (an add to
+    # an already-held position, a SELL, an EXIT) leaves no Case newly
+    # dirty on its own, but `trigger_automatic_run`'s own pre-pass makes
+    # that case a cheap, correct no-op rather than something this
+    # endpoint needs to detect itself.
+    background_tasks.add_task(_trigger_automatic_monitoring_in_background)
     return PortfolioView.from_domain(state, derive_portfolio_view(state))
 
 

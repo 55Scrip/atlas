@@ -81,6 +81,7 @@ def _case_context(context: DiscoveryContext) -> CaseContextInput | None:
         key_risks=tuple(kind.value for kind in case.key_risks),
         consider_kinds=tuple(kind.value for kind in case.consider_kinds),
         portfolio_context_facts=tuple(fact.value for fact in case.portfolio_context_facts),
+        monitoring_pending=case.monitoring_pending,
     )
 
 

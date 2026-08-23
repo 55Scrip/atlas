@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import type { CSSProperties } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
-import { Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, StatusText, Surface, Text } from "../foundation";
+import { ACCENT_LINK_STYLE, Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, StatusText, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
@@ -58,9 +57,12 @@ import { deriveLimitingFactors, type LimitingFactor, type OutstandingWorkKind } 
 import { LimitingFactorsCard } from "../investmentCase/LimitingFactorsCard";
 import { HeroCard, STRENGTH_SENTENCE_KEY, CHALLENGE_SENTENCE_KEY, type HeroAnalysisInput } from "../investmentCase/HeroCard";
 import { InvestmentArgumentSection } from "../investmentCase/InvestmentArgumentSection";
+import type { ReasoningFacts } from "../investmentCase/AtlasReasoningSection";
 import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
 import { WhatChangedSection } from "../investmentCase/WhatChangedSection";
 import { AtlasOutlookSection, type OutlookView } from "../investmentCase/AtlasOutlookSection";
+import type { CoverageAssessmentView } from "../coverage/coverageApi";
+import type { StanceView } from "../stance/stanceApi";
 
 /**
  * Company Workspace v1 (Atlas Beta Company Workspace Implementation
@@ -155,6 +157,12 @@ interface CaseHighlightView {
 interface BusinessFindingLite {
   kind: string;
   status: AnalysisBusinessStatus;
+  /** Product Sprint 13 (Company Intelligence Excellence, Deliverable 6):
+   * widened from kind/status only -- same `/api/cases/{caseId}/analysis`
+   * payload `InvestmentCasePage.tsx`'s own `BusinessFindingView` already
+   * reads these two fields from; this page just hadn't typed them yet. */
+  supportingEvidence: string[];
+  contradictingEvidence: string[];
 }
 
 interface RiskFindingView {
@@ -165,6 +173,16 @@ interface RiskFindingView {
   contradictingFacts: string[];
   missingEvidence: string[];
   confidence: EvidenceCoverageLevel;
+}
+
+/** Product Sprint 13: same `analysis.valuation.findings` array
+ * `InvestmentCasePage.tsx` already reads for its own `fcfYield` lookup
+ * -- only the `kind`/`supportingFacts`/`contradictingFacts` this page
+ * needs, not the fuller shape. */
+interface ValuationFindingLite {
+  kind: string;
+  supportingFacts: string[];
+  contradictingFacts: string[];
 }
 
 interface ValuationContextView {
@@ -203,9 +221,12 @@ interface InvestmentCaseAnalysisView {
   isThesisStale: boolean;
   confidence: EvidenceCoverageLevel;
   conviction: { level: ConvictionLevel; reasons: string[] };
+  coverage: CoverageAssessmentView;
+  stance: StanceView | null;
   businessAnalysis: { findings: BusinessFindingLite[] };
   valuationSupport: { status: ValuationSupportStatus; gap: ValuationSupportGapKind | null };
   risk: { findings: RiskFindingView[] };
+  valuation: { findings: ValuationFindingLite[] };
   evidenceQuality: { coverage: EvidenceCoverageLevel } | null;
   openQuestions: OpenQuestionView[];
   recommendation: RecommendationStateView;
@@ -270,12 +291,6 @@ type ActivityFetchStatus =
   | { kind: "loading" }
   | { kind: "error" }
   | { kind: "loaded"; decisions: DecisionRecord[]; outcomes: OutcomeRecord[]; trades: TradeLogEntry[] };
-
-const ACCENT_LINK_STYLE: CSSProperties = {
-  color: "var(--global-color-accent)",
-  textDecoration: "none",
-  fontSize: "var(--type-body-min-size)",
-};
 
 export function CompanyWorkspacePage() {
   const { ticker } = useParams<{ ticker: string }>();
@@ -510,6 +525,21 @@ function CompanyWorkspaceLoaded({
                 isBaselineCase={report.isBaselineCase}
                 latestChanges={report.latestChanges}
                 thesisChange={report.thesisChange}
+                factsForDimension={(dimension) => {
+                  const business = report.businessAnalysis.findings.find((f) => f.kind === dimension);
+                  if (business) {
+                    return { supporting: business.supportingEvidence, contradicting: business.contradictingEvidence };
+                  }
+                  const risk = report.risk.findings.find((f) => f.category === dimension);
+                  if (risk) {
+                    return { supporting: risk.supportingFacts, contradicting: risk.contradictingFacts };
+                  }
+                  const valuation = report.valuation.findings.find((f) => f.kind === dimension);
+                  if (valuation) {
+                    return { supporting: valuation.supportingFacts, contradicting: valuation.contradictingFacts };
+                  }
+                  return { supporting: [], contradicting: [] };
+                }}
                 t={t}
               />
             </Stack>
@@ -518,7 +548,7 @@ function CompanyWorkspaceLoaded({
             <Stack gap="inter-section">
               <DecisionSupportCard report={report} onRecordDecision={openInvestmentCase} t={t} />
               <RiskCard report={report} t={t} />
-              <EvidenceCoverageCard report={report} cockpit={cockpit} t={t} />
+              <EvidenceCoverageCard report={report} t={t} />
               <RecentActivityCard
                 caseId={report.caseId}
                 activity={activity}
@@ -587,12 +617,18 @@ function CompanyHeader({
           ) : (
             <StatusText label={t("companyWorkspace.header.notHeld")} tone="neutral" />
           )}
-          {cockpit && (
-            <StatusText
-              label={t(ANALYSIS_COVERAGE_LEVEL_KEY[cockpit.analysisCoverage.level])}
-              tone={ANALYSIS_COVERAGE_TONE[cockpit.analysisCoverage.level]}
-            />
-          )}
+          {/* Atlas Intelligence Sprint 1: previously read `cockpit
+              .analysisCoverage.level`, which only exists for a real
+              Portfolio holding (a separate fetch, guarded `cockpit &&`)
+              -- a live-tested gap where a Watchlist-only or search-only
+              company's own Investment Case showed no coverage badge at
+              all. `report.coverage.overallCoverage` is the exact same
+              `AnalysisCoverageLevel`, now on Investment Case's own
+              response for every Case regardless of holding status. */}
+          <StatusText
+            label={t(ANALYSIS_COVERAGE_LEVEL_KEY[report.coverage.overallCoverage])}
+            tone={ANALYSIS_COVERAGE_TONE[report.coverage.overallCoverage]}
+          />
           {report.companyProfile?.sector && (
             <Text as="span" color="tertiary">
               {report.companyProfile.sector}
@@ -603,6 +639,17 @@ function CompanyHeader({
         <Text as="p" color="tertiary">
           {t("companyWorkspace.header.lastUpdated", { when: freshness })}
         </Text>
+
+        {/* Product Sprint 10 (Navigation & Workflow Excellence,
+            Deliverable 1/4/10): Company Workspace previously had no path
+            to Compare at all -- reuses the exact `?a=<ticker>` route
+            every other Tier-1 page already links into, and the exact
+            same `investmentCase.header.compareLink` copy Investment
+            Case's own identical link already uses, rather than a second,
+            differently-worded key for the same action. */}
+        <RouterLink to={`/discovery/compare?a=${encodeURIComponent(ticker)}`} style={ACCENT_LINK_STYLE}>
+          {t("investmentCase.header.compareLink")}
+        </RouterLink>
       </Stack>
     </Surface>
   );
@@ -667,6 +714,7 @@ function CurrentPicture({
     missingEvaluations: report.recommendation.missingEvaluations,
     sharePrice: report.marketSnapshot ? report.marketSnapshot.sharePrice : null,
     currency: report.marketSnapshot ? report.marketSnapshot.currency : null,
+    stance: report.stance,
   };
 
   return (
@@ -693,6 +741,24 @@ function InvestmentThesis({ report, t }: { report: InvestmentCaseAnalysisView; t
   const strengthKinds = report.strengths.map((s) => s.kind);
   const riskKinds = report.risks.map((r) => r.kind);
 
+  /** Product Sprint 13 (Company Intelligence Excellence, Deliverable 6):
+   * same resolver as `InvestmentCasePage.tsx`'s own `factsForHighlightKind`
+   * -- reuses the finding each kind already maps to for its real
+   * supporting/contradicting facts, rather than the bare category
+   * sentence alone. */
+  function factsForKind(kind: AnalysisHighlightKind): ReasoningFacts {
+    if (kind === "financial_risk" || kind === "business_risk" || kind === "valuation_risk") {
+      const finding = report.risk.findings.find((f) => f.category === kind);
+      return { supporting: finding?.supportingFacts ?? [], contradicting: finding?.contradictingFacts ?? [] };
+    }
+    if (kind === "valuation") {
+      const finding = report.valuation.findings.find((f) => f.kind === "fcf_yield_relative");
+      return { supporting: finding?.supportingFacts ?? [], contradicting: finding?.contradictingFacts ?? [] };
+    }
+    const finding = report.businessAnalysis.findings.find((f) => f.kind === kind);
+    return { supporting: finding?.supportingEvidence ?? [], contradicting: finding?.contradictingEvidence ?? [] };
+  }
+
   return (
     <Stack gap="metadata">
       <Label>{t("companyWorkspace.thesis.heading")}</Label>
@@ -716,7 +782,15 @@ function InvestmentThesis({ report, t }: { report: InvestmentCaseAnalysisView; t
         )}
       </Inline>
       <ExpandableDetail summaryLabel={t("companyWorkspace.thesis.viewFull")}>
-        <InvestmentArgumentSection strengthKinds={strengthKinds} riskKinds={riskKinds} t={t} />
+        <InvestmentArgumentSection
+          strengthKinds={strengthKinds}
+          riskKinds={riskKinds}
+          openQuestionOrigins={report.openQuestions
+            .filter((q): q is OpenQuestionView & { kind: AnalysisOpenQuestionOrigin } => q.kind in OPEN_QUESTION_ORIGIN_KEY)
+            .map((q) => q.kind)}
+          factsForKind={factsForKind}
+          t={t}
+        />
       </ExpandableDetail>
     </Stack>
   );
@@ -821,11 +895,9 @@ function RiskCard({ report, t }: { report: InvestmentCaseAnalysisView; t: Transl
 
 function EvidenceCoverageCard({
   report,
-  cockpit,
   t,
 }: {
   report: InvestmentCaseAnalysisView;
-  cockpit: CockpitHoldingLite | null;
   t: Translate;
 }) {
   const missingCount = report.openQuestions.filter((q) => EVIDENCE_GAP_QUESTION_KINDS.includes(q.kind)).length;
@@ -843,13 +915,15 @@ function EvidenceCoverageCard({
         <Text as="p" color="tertiary">
           {t("investmentCase.analysis.confidence.explanation")}
         </Text>
-        {cockpit && (
-          <Inline gap="row" wrap>
-            <Text as="span" color="secondary">
-              {t("companyWorkspace.evidence.analysisCoverageLabel")}: {t(ANALYSIS_COVERAGE_LEVEL_KEY[cockpit.analysisCoverage.level])}
-            </Text>
-          </Inline>
-        )}
+        {/* Atlas Intelligence Sprint 1: `report.coverage.overallCoverage`
+            is the same `AnalysisCoverageLevel` `cockpit.analysisCoverage
+            .level` carried, now on Investment Case's own response for
+            every Case -- no longer gated on a Portfolio holding. */}
+        <Inline gap="row" wrap>
+          <Text as="span" color="secondary">
+            {t("companyWorkspace.evidence.analysisCoverageLabel")}: {t(ANALYSIS_COVERAGE_LEVEL_KEY[report.coverage.overallCoverage])}
+          </Text>
+        </Inline>
         <Inline gap="row" wrap>
           <Text as="span" color="secondary">
             {t("companyWorkspace.evidence.missingLabel")}: {missingCount}

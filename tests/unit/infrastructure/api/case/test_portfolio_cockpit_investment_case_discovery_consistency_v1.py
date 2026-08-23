@@ -23,17 +23,31 @@ from sqlalchemy.pool import StaticPool
 
 from atlas.alpha.business_data_refresh.api.dependencies import get_business_record_repository
 from atlas.alpha.discovery_context.service import DiscoveryContextService
+from atlas.alpha.evidence_timeline.api.dependencies import get_evidence_snapshot_repository
+from atlas.alpha.ingestion.api.dependencies import get_ingestion_result_repository
 from atlas.alpha.investment_case.api.dependencies import get_investment_case_composition_service
 from atlas.alpha.investment_case_change.api.dependencies import get_investment_case_snapshot_repository
+from atlas.alpha.monitoring.repository import SqlAlchemyMonitoringResultRepository, SqlAlchemyMonitoringRunRecordRepository
+from atlas.alpha.monitoring.service import MonitoringService
+from atlas.alpha.monitoring.table import create_monitoring_result_table, create_monitoring_run_record_table
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_store, get_alpha_trade_log_store
+from atlas.alpha.portfolio_fit.api.dependencies import get_portfolio_fit_service
 from atlas.alpha.portfolio_intelligence.service import PortfolioIntelligenceService
 from atlas.alpha.portfolio_status.api.dependencies import get_portfolio_status_service
+from atlas.alpha.stance.api.dependencies import get_stance_service
+from atlas.alpha.watchlist.api.dependencies import get_alpha_watchlist_store
+from atlas.alpha.watchlist.table import create_alpha_watchlist_entry_table
+from atlas.core.application.case_condition.case_condition_service import CaseConditionService
 from atlas.core.infrastructure.api.app import create_app
 from atlas.core.infrastructure.api.case.dependencies import get_case_repository
 from atlas.core.infrastructure.api.decision.dependencies import get_decision_engine, get_decision_repository
 from atlas.core.infrastructure.api.evidence.dependencies import get_evidence_repository
 from atlas.core.infrastructure.api.knowledge_reference.dependencies import get_outcome_repository
 from atlas.core.infrastructure.api.observation.dependencies import get_observation_repository
+from atlas.core.infrastructure.persistence.case_condition.sqlalchemy_repository import (
+    SqlAlchemyCaseConditionEventRepository,
+)
+from atlas.core.infrastructure.persistence.case_condition.table import create_case_condition_events_table
 from atlas.core.infrastructure.persistence.decision.table import create_decision_table
 
 
@@ -60,6 +74,18 @@ def _discovery_context_service(engine: Engine) -> DiscoveryContextService:
     observation_repository = get_observation_repository(engine)
     evidence_repository = get_evidence_repository(engine)
     outcome_repository = get_outcome_repository(engine)
+    business_record_repository = get_business_record_repository(engine)
+    create_alpha_watchlist_entry_table(engine)
+    watchlist_store = get_alpha_watchlist_store(engine)
+    evidence_snapshot_repository = get_evidence_snapshot_repository(engine)
+    create_case_condition_events_table(engine)
+    case_condition_service = CaseConditionService(
+        SqlAlchemyCaseConditionEventRepository(engine), get_case_repository(engine), decision_repository
+    )
+    create_monitoring_result_table(engine)
+    create_monitoring_run_record_table(engine)
+    monitoring_result_repository = SqlAlchemyMonitoringResultRepository(engine)
+    monitoring_run_record_repository = SqlAlchemyMonitoringRunRecordRepository(engine)
 
     portfolio_status_service = get_portfolio_status_service(
         portfolio_store=portfolio_store,
@@ -76,8 +102,9 @@ def _discovery_context_service(engine: Engine) -> DiscoveryContextService:
         outcome_repository=outcome_repository,
         portfolio_store=portfolio_store,
         trade_log_store=trade_log_store,
-        business_record_repository=get_business_record_repository(engine),
+        business_record_repository=business_record_repository,
         snapshot_repository=get_investment_case_snapshot_repository(engine),
+        watchlist_store=watchlist_store,
     )
     portfolio_intelligence_service = PortfolioIntelligenceService(
         portfolio_store,
@@ -88,10 +115,36 @@ def _discovery_context_service(engine: Engine) -> DiscoveryContextService:
         outcome_repository,
         portfolio_status_service,
     )
+    portfolio_fit_service = get_portfolio_fit_service(
+        portfolio_store=portfolio_store,
+        watchlist_store=watchlist_store,
+        composition_service=investment_case_composition_service,
+    )
+    stance_service = get_stance_service(
+        composition_service=investment_case_composition_service,
+        portfolio_fit_service=portfolio_fit_service,
+        portfolio_store=portfolio_store,
+        watchlist_store=watchlist_store,
+    )
+    monitoring_service = MonitoringService(
+        portfolio_store=portfolio_store,
+        watchlist_store=watchlist_store,
+        composition_service=investment_case_composition_service,
+        stance_service=stance_service,
+        business_record_repository=business_record_repository,
+        evidence_snapshot_repository=evidence_snapshot_repository,
+        case_condition_service=case_condition_service,
+        monitoring_result_repository=monitoring_result_repository,
+        decision_repository=decision_repository,
+        observation_repository=observation_repository,
+        monitoring_run_record_repository=monitoring_run_record_repository,
+        ingestion_result_repository=get_ingestion_result_repository(engine),
+    )
     return DiscoveryContextService(
         portfolio_intelligence_service=portfolio_intelligence_service,
         investment_case_composition_service=investment_case_composition_service,
         portfolio_status_service=portfolio_status_service,
+        monitoring_service=monitoring_service,
     )
 
 

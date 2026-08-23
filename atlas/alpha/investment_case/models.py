@@ -24,6 +24,21 @@ from atlas.alpha.investment_case.growth_intelligence import GrowthKnowledge, ext
 from atlas.alpha.investment_case.financial_statement_intelligence import FinancialStatementHistory, SegmentInformation
 from atlas.alpha.investment_case.historical_valuation import HistoricalValuationKnowledge
 from atlas.alpha.investment_case.incentive_intelligence import IncentiveKnowledge, extract_incentive_intelligence
+from atlas.alpha.investment_case.insider_alignment_intelligence import (
+    InsiderAlignmentKnowledge,
+    extract_insider_alignment_knowledge,
+)
+from atlas.alpha.investment_case.ownership_intelligence import OwnershipKnowledge, extract_ownership_knowledge
+from atlas.alpha.investment_case.executive_compensation_intelligence import (
+    ExecutiveCompensationKnowledge,
+    extract_executive_compensation_knowledge,
+)
+from atlas.alpha.investment_case.governance_intelligence import GovernanceKnowledge, extract_governance_knowledge
+from atlas.alpha.investment_case.risk_factor_intelligence import RiskFactorKnowledge, extract_risk_factor_knowledge
+from atlas.alpha.investment_case.legal_proceedings_intelligence import (
+    LegalProceedingsKnowledge,
+    extract_legal_proceedings_knowledge,
+)
 from atlas.alpha.investment_case.management_credibility_intelligence import (
     ManagementCredibilityKnowledge,
     extract_management_credibility,
@@ -297,3 +312,67 @@ class InvestmentCaseComposition:
     by calling the real extraction function with an empty filing
     history, never a hand-written duplicate of its own honest
     "unavailable" shape."""
+    governance_intelligence: GovernanceKnowledge = field(default_factory=lambda: extract_governance_knowledge(()))
+    """(Capability Expansion Sprint 15/16: Governance Intelligence;
+    wired into production composition by Integration Sprint 1) Board/
+    committee/voting knowledge read from Filing Content Intelligence's
+    own structured DEF 14A output -- see `governance_intelligence.py`'s
+    own module docstring. No production code path yet fetches real
+    filing content into a `FilingContent` (Integration Sprint 1's own
+    Phase 1 audit finding: `filing_content_intelligence.extract_filing_
+    content`'s real, production-ready fetcher dependencies already
+    exist -- `atlas.business_data_providers.http.fetch_text` and
+    `sec_edgar_identity.sec_user_agent` -- but wiring them into this
+    synchronous composition path was judged out of scope: `build_many`
+    was deliberately engineered, ATLAS-028, to cost a fixed number of
+    reads regardless of Case count, and adding a per-Case network fetch
+    here would reintroduce exactly the N-times-per-Case cost that sprint
+    eliminated). The default is produced by calling the real extraction
+    function with an empty filing-content tuple, never a hand-written
+    duplicate of its own honest "no evidence" shape."""
+    risk_factor_intelligence: RiskFactorKnowledge = field(default_factory=lambda: extract_risk_factor_knowledge(()))
+    """(Capability Expansion Sprint 17: Risk Factor Intelligence; wired
+    into production composition by Integration Sprint 1) See `governance_
+    intelligence` immediately above for why this is honestly empty in a
+    live build today -- the identical reason applies verbatim."""
+    legal_proceedings_intelligence: LegalProceedingsKnowledge = field(
+        default_factory=lambda: extract_legal_proceedings_knowledge(())
+    )
+    """(Capability Expansion Sprint 18: Legal Proceedings Intelligence;
+    wired into production composition by Integration Sprint 1) See
+    `governance_intelligence` above for why this is honestly empty in a
+    live build today -- the identical reason applies verbatim."""
+    ownership_intelligence: OwnershipKnowledge = field(default_factory=lambda: extract_ownership_knowledge(()))
+    """(Capability Expansion Sprint 19: Ownership Intelligence; wired
+    into production composition by Integration Sprint 1) See
+    `governance_intelligence` above for why this is honestly empty in a
+    live build today -- the identical reason applies verbatim. This same
+    (empty, real) value is also what `insider_alignment_intelligence`
+    below is built from -- computed once in `service.py`, never
+    duplicated."""
+    executive_compensation_intelligence: ExecutiveCompensationKnowledge = field(
+        default_factory=lambda: extract_executive_compensation_knowledge(())
+    )
+    """(Capability Expansion Sprint 20: Executive Compensation
+    Intelligence; wired into production composition by Integration
+    Sprint 1) See `governance_intelligence` above for why this is
+    honestly empty in a live build today -- the identical reason applies
+    verbatim. This same (empty, real) value is also what `insider_
+    alignment_intelligence` below is built from -- computed once in
+    `service.py`, never duplicated."""
+    insider_alignment_intelligence: InsiderAlignmentKnowledge = field(
+        default_factory=lambda: extract_insider_alignment_knowledge((), extract_ownership_knowledge(()), extract_executive_compensation_knowledge(()))
+    )
+    """(Capability Expansion Sprint 21: Insider Alignment Intelligence) A
+    pure, higher-order aggregation linking Ownership Intelligence and
+    Executive Compensation Intelligence to Executive Identity by exact
+    name -- see `insider_alignment_intelligence.py`'s own module
+    docstring. No production code path yet fetches real DEF 14A filing
+    content into `service.py`'s own composition (see `governance_
+    intelligence` above for the full reasoning, confirmed unchanged by
+    Integration Sprint 1's own audit), so this field is honestly empty
+    in a live build today, exactly like `incentive_intelligence` above
+    was before Sprint 20 gave it a real bridge. The default is produced
+    by calling the real extraction function with every sibling at its
+    own empty default, never a hand-written duplicate of its own honest
+    "insufficient" shape."""

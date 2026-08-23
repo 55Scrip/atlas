@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Divider, Inline, Label, Link, Stack, Surface, Text } from "../foundation";
+import { ACCENT_LINK_STYLE, Button, Divider, Inline, Label, Link, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import { useCompanionContext } from "./useCompanionContext";
 import {
@@ -10,8 +10,6 @@ import {
   type CompanionRole,
 } from "./companionApi";
 import styles from "./CompanionPanel.module.css";
-
-const ACCENT_LINK_STYLE = { color: "var(--global-color-accent)", textDecoration: "none", fontSize: "var(--type-body-min-size)" } as const;
 
 type Translate = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
@@ -86,10 +84,15 @@ export function readPersistedExpanded(): boolean {
  *
  * The only backend dependency is the existing `POST /api/discovery/chat`
  * (`companionApi.ts`) -- no new endpoint, no new system-prompt or
- * context-assembly logic. `useCompanionContext()` resolves which
- * workspace is active and, when on a specific Investment Case, its
- * `caseId` -- the same portfolio-wide-vs-Case-scoped granularity
- * `DiscoveryContextService.build(case_id)` already supports server-side.
+ * context-assembly logic. `useCompanionContext()` resolves which workspace
+ * is active and either its `caseId` (Investment Case, known directly from
+ * the URL) or its `ticker` (the holding-detail and Company routes, added
+ * in Product Sprint 3, which carry only a ticker) -- `resolvedCaseId`
+ * below converts the latter using the same ticker/Case map this component
+ * already fetches for display, before it ever reaches the backend. Either
+ * way the backend only ever sees a real Case ID or nothing -- the same
+ * portfolio-wide-vs-Case-scoped granularity `DiscoveryContextService.
+ * build(case_id)` already supports server-side.
  *
  * Session continuity only (`sessionStorage`, not `localStorage`): the
  * transcript survives navigation and an in-tab refresh, and is
@@ -119,6 +122,7 @@ export function CompanionPanel({
   const [sending, setSending] = useState(false);
   const [providerNotConfigured, setProviderNotConfigured] = useState(false);
   const [caseIdToTicker, setCaseIdToTicker] = useState<Record<string, string>>({});
+  const [tickerToCaseId, setTickerToCaseId] = useState<Record<string, string>>({});
   const [holdingsLoaded, setHoldingsLoaded] = useState(false);
 
   const announcedKeyRef = useRef<string | null>(session.announcedKey);
@@ -134,38 +138,56 @@ export function CompanionPanel({
     window.sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
   }, [session]);
 
-  // Ticker resolution only -- the same real `/api/alpha-portfolio` fetch
-  // every other page already makes independently for itself (Portfolio,
-  // Daily Brief, Discovery, History). Fetched once; Companion is mounted
+  // Ticker/Case ID resolution -- the same real `/api/alpha-portfolio` +
+  // `/api/alpha-watchlist` pair every other page already fetches
+  // independently for itself to resolve a ticker (Portfolio, Company,
+  // Daily Brief, Discovery, History, `CompanyWorkspacePage`). Portfolio
+  // takes precedence over Watchlist when a ticker exists in both, matching
+  // `case_membership.py`'s server-side precedence and every existing
+  // frontend caller of the same pair. Fetched once; Companion is mounted
   // for the whole session, so there is no per-navigation refetch.
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/alpha-portfolio", { signal: controller.signal })
-      .then((response) => (response.ok ? (response.json() as Promise<{ holdings: { ticker: string; caseId: string | null }[] }>) : null))
-      .then((data) => {
-        // `setCaseIdToTicker` and `setHoldingsLoaded` are both called
-        // from this one callback invocation deliberately -- React 18
-        // batches state updates scheduled within the same synchronous
-        // callback, but NOT necessarily across separate promise-chain
-        // ticks (e.g. a later `.finally`). Keeping both calls here
-        // guarantees the resolved ticker map is visible in the very
+    Promise.all([
+      fetch("/api/alpha-portfolio", { signal: controller.signal }).then((response) =>
+        response.ok ? (response.json() as Promise<{ holdings: { ticker: string; caseId: string | null }[] }>) : null,
+      ),
+      fetch("/api/alpha-watchlist", { signal: controller.signal }).then((response) =>
+        response.ok ? (response.json() as Promise<{ ticker: string; caseId: string }[]>) : null,
+      ),
+    ])
+      .then(([portfolio, watchlist]) => {
+        // `setCaseIdToTicker`/`setTickerToCaseId` and `setHoldingsLoaded`
+        // are all called from this one callback invocation deliberately
+        // -- React 18 batches state updates scheduled within the same
+        // synchronous callback, but NOT necessarily across separate
+        // promise-chain ticks (e.g. a later `.finally`). Keeping every
+        // call here guarantees both resolved maps are visible in the very
         // same render where `holdingsLoaded` first becomes true, so the
         // context-change announcement effect (gated on `holdingsLoaded`)
         // never reads a stale, still-empty map.
-        if (data) {
-          const map: Record<string, string> = {};
-          for (const holding of data.holdings) {
-            if (holding.caseId) map[holding.caseId] = holding.ticker;
-          }
-          setCaseIdToTicker(map);
+        const caseToTicker: Record<string, string> = {};
+        const tickerToCase: Record<string, string> = {};
+        // Watchlist first, Portfolio second -- later writes win, so a
+        // ticker present in both ends up keyed to its Portfolio Case.
+        for (const entry of watchlist ?? []) {
+          caseToTicker[entry.caseId] = entry.ticker;
+          tickerToCase[entry.ticker] = entry.caseId;
         }
+        for (const holding of portfolio?.holdings ?? []) {
+          if (!holding.caseId) continue;
+          caseToTicker[holding.caseId] = holding.ticker;
+          tickerToCase[holding.ticker] = holding.caseId;
+        }
+        setCaseIdToTicker(caseToTicker);
+        setTickerToCaseId(tickerToCase);
         setHoldingsLoaded(true);
       })
       .catch((error: unknown) => {
         // In React 18 dev/StrictMode this effect mounts, cleans up
         // (aborting the in-flight fetch), then mounts again -- the
         // aborted first request's rejection lands here too. Treating
-        // that as "loaded" would mark holdings ready with an empty map
+        // that as "loaded" would mark holdings ready with empty maps
         // before the real second fetch has had a chance to resolve,
         // which is exactly what caused the context-change announcement
         // to show the raw caseId instead of its ticker. Only a genuine
@@ -196,10 +218,35 @@ export function CompanionPanel({
     transcriptEndRef.current?.scrollIntoView({ block: "end" });
   }, [session.transcript.length, sending]);
 
-  const currentSubject = context.caseId
-    ? (caseIdToTicker[context.caseId] ?? context.caseId)
-    : t("companion.context.portfolioWide");
-  const currentKey = context.workspace === null ? null : (context.caseId ?? "portfolio");
+  // `resolvedCaseId` is the one identifier ever sent to the backend.
+  // `investmentCase` already carries a real Case ID from the URL
+  // (`context.caseId`); `portfolio` (the holding-detail route) and
+  // `company` carry only a ticker, resolved here against the map built
+  // above -- the exact same resolution `CompanyWorkspacePage` already
+  // does for itself, reused rather than duplicated as a new concept.
+  const resolvedCaseId = context.caseId ?? (context.ticker ? (tickerToCaseId[context.ticker] ?? null) : null);
+  // The ticker is already known synchronously from the URL wherever one
+  // is present, so the context strip never waits on the holdings fetch to
+  // name the company -- only the structural key below (and therefore the
+  // announcement and the backend call) does.
+  const currentSubject = context.ticker
+    ? context.ticker
+    : context.caseId
+      ? (caseIdToTicker[context.caseId] ?? context.caseId)
+      : t("companion.context.portfolioWide");
+  const hasSubject = context.ticker !== null || context.caseId !== null;
+  // "portfolio" is the shared key for every context with no case scoping
+  // (bare Portfolio, Daily Brief, Discovery, History, Dashboard, and a
+  // Watchlist with nothing selected) -- deliberately the same key as
+  // before this sprint, so none of those pages announce a change against
+  // each other (design doc: announcements track grounding context, never
+  // which page component happens to be mounted).
+  const currentKey = context.workspace === null ? null : (resolvedCaseId ?? "portfolio");
+  // Only a route that still needs the holdings fetch to resolve its
+  // identifier (a direct caseId, or a ticker awaiting conversion) should
+  // gate the announcement effect below on it; bare workspace routes have
+  // nothing to resolve and must not wait on it.
+  const awaitingResolution = (context.caseId !== null || context.ticker !== null) && !holdingsLoaded;
 
   // Context-change announcement (design doc: never swap `case_id` under
   // an ongoing conversation silently). Keyed on the structural identity
@@ -214,7 +261,7 @@ export function CompanionPanel({
   // itself trigger a second, spurious announcement).
   useEffect(() => {
     if (currentKey === null || currentKey === announcedKeyRef.current) return;
-    if (context.caseId !== null && !holdingsLoaded) return;
+    if (awaitingResolution) return;
     // Captured *before* the ref below is mutated -- reading the ref live
     // inside the `setSession` updater is unsafe, since React can defer
     // invoking that updater until after this synchronous block
@@ -233,17 +280,17 @@ export function CompanionPanel({
       };
     });
     announcedKeyRef.current = currentKey;
-    // context.caseId intentionally excluded -- currentKey already embeds
-    // it (currentKey === context.caseId whenever caseId is non-null), so
-    // this effect only needs to re-run on a real navigation (currentKey
-    // changing) or the holdings fetch finishing.
+    // context.caseId/context.ticker intentionally excluded -- currentKey
+    // already embeds their resolved value, so this effect only needs to
+    // re-run on a real navigation (currentKey changing) or the holdings
+    // fetch resolving what it was waiting on (awaitingResolution changing).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentKey, holdingsLoaded]);
+  }, [currentKey, awaitingResolution]);
 
   if (context.workspace === null) return null;
 
   function openCase(caseId: string) {
-    navigate(`/investment-case/${caseId}`, { state: { origin: "companion" } });
+    navigate(`/investment-case/${caseId}`, { state: { origin: "companion", ticker: caseIdToTicker[caseId] ?? null } });
   }
 
   async function handleSend() {
@@ -260,7 +307,7 @@ export function CompanionPanel({
     setSending(true);
 
     try {
-      const result = await sendCompanionChat(apiMessages, language, context.caseId);
+      const result = await sendCompanionChat(apiMessages, language, resolvedCaseId);
       if (result.mode === "not_configured") {
         setProviderNotConfigured(true);
       } else if (result.mode === "provider_error") {
@@ -319,7 +366,7 @@ export function CompanionPanel({
               {t("companion.panel.title")}
             </Text>
             <Text color="tertiary" as="p">
-              {context.caseId
+              {hasSubject
                 ? t("companion.context.discussing", { subject: currentSubject })
                 : t("companion.context.portfolioWide")}
             </Text>

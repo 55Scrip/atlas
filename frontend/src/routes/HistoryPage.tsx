@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, Text } from "../foundation";
+import { ACCENT_LINK_STYLE, Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
@@ -45,10 +45,10 @@ import {
   type SecurityIdentityEvidenceView,
   type SecurityVerificationStatus,
 } from "../history/securityIdentityEvidenceApi";
-
-/** Visual Fidelity Pass -- matches Portfolio/Investment Case/Daily
- * Brief/Discovery's own accent link treatment. */
-const ACCENT_LINK_STYLE = { color: "var(--global-color-accent)", textDecoration: "none", fontSize: "var(--type-body-min-size)" } as const;
+import { ChangeFacts } from "../decisionMemory/DecisionMemorySection";
+import { CHANGE_DIRECTION_KEY, blockerCodeLabel } from "../decisionMemory/describeDecisionMemory";
+import type { DecisionMemoryChangeView, DecisionMemoryView, DecisionTimelineEntryView } from "../decisionMemory/decisionMemoryApi";
+import { ACTION_KEY } from "../investmentDecision/describeInvestmentDecision";
 
 /** Cross-Workspace Consistency Cleanup -- same uppercase small-caps
  * workspace-label treatment Portfolio's own `PAGE_TITLE_STYLE`
@@ -73,7 +73,7 @@ type FetchStatus<T> =
 type StatusFilter = "all" | "open" | "completed";
 type TypeFilter = "all" | "BUY" | "SELL" | "HOLD";
 type SortDirection = "newest" | "oldest";
-type KindFilter = "all" | "decisions" | "investmentCases";
+type KindFilter = "all" | "decisions" | "investmentCases" | "decisionMemory";
 
 const KIND_LABEL_KEY: Record<ActivityEvent["kind"], TranslationKey> = {
   decision: "history.row.kindDecision",
@@ -129,9 +129,22 @@ interface AnalyticalHistoryView {
   entries: HistoricalAnalysisEntryView[];
 }
 
+/** Product Intelligence Sprint 4 (History & Decision Memory
+ * Activation) -- one flattened entry from an already-computed
+ * `DecisionTimeline` (`atlas.alpha.decision_memory`, Decision Layer
+ * Sprint 5). `ticker` is read from the same `HistoricalAnalysisEntryView
+ * .ticker` field the analytical timeline already resolved for this
+ * `caseId`, never a second ticker-resolution mechanism. */
+interface DecisionMemoryRow {
+  caseId: string;
+  ticker: string | null;
+  entry: DecisionTimelineEntryView;
+}
+
 type TimelineRow =
   | { kind: "activity"; date: string; event: ActivityEvent }
-  | { kind: "analytical"; date: string; entry: HistoricalAnalysisEntryView };
+  | { kind: "analytical"; date: string; entry: HistoricalAnalysisEntryView }
+  | { kind: "decisionMemory"; date: string; row: DecisionMemoryRow };
 
 const TIMELINE_PREVIEW_COUNT = 8;
 /** Matches the approved screen's own two-up "Decision Reviews" layout. */
@@ -205,12 +218,28 @@ export function HistoryPage() {
   const [observedPropertiesStatus, setObservedPropertiesStatus] = useState<
     FetchStatus<ObservedDecisionPropertiesResponse>
   >({ kind: "loading" });
+  /** Product Intelligence Sprint 4 (History & Decision Memory
+   * Activation) -- a 7th fetch, deliberately kept OUT of `statuses`
+   * below, mirroring Observed Decision Properties' own precedent
+   * immediately above: the Timeline must keep rendering from the five
+   * statuses it already depends on whether this one is still loading,
+   * partially failed, or done. `GET /api/decision-memory/{caseId}` is
+   * fetched once per Case this page already knows about (via the
+   * analytical timeline's own `caseId`s, never a second case-discovery
+   * mechanism) -- not a bulk endpoint, because none exists; this
+   * mirrors Watchlist's own established one-fetch-per-known-case
+   * precedent, never a duplicate of the same request. */
+  const [decisionMemoryStatus, setDecisionMemoryStatus] = useState<
+    | { kind: "loading" }
+    | { kind: "loaded"; rows: DecisionMemoryRow[]; neverRecordedCount: number; unavailableCount: number }
+  >({ kind: "loading" });
 
   const [kindFilter, setKindFilter] = useState<KindFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [sortDirection, setSortDirection] = useState<SortDirection>("newest");
   const [expandedSnapshotIds, setExpandedSnapshotIds] = useState<Set<string>>(new Set());
+  const [expandedDecisionMemoryIds, setExpandedDecisionMemoryIds] = useState<Set<string>>(new Set());
   const [timelineExpanded, setTimelineExpanded] = useState(false);
 
   useEffect(() => {
@@ -321,6 +350,50 @@ export function HistoryPage() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    if (analyticalStatus.kind !== "loaded") return;
+    const controller = new AbortController();
+    const tickerByCaseId = new Map<string, string | null>();
+    for (const entry of analyticalStatus.data.entries) {
+      if (!tickerByCaseId.has(entry.caseId)) tickerByCaseId.set(entry.caseId, entry.ticker);
+    }
+    async function fetchOne(
+      caseId: string,
+    ): Promise<{ kind: "loaded"; caseId: string; memory: DecisionMemoryView } | { kind: "neverRecorded" } | { kind: "unavailable" }> {
+      try {
+        const response = await fetch(`/api/decision-memory/${encodeURIComponent(caseId)}`, { signal: controller.signal });
+        if (response.status === 404) return { kind: "neverRecorded" };
+        if (!response.ok) return { kind: "unavailable" };
+        const memory = (await response.json()) as DecisionMemoryView;
+        return { kind: "loaded", caseId, memory };
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") throw error;
+        return { kind: "unavailable" };
+      }
+    }
+    Promise.all([...tickerByCaseId.keys()].map(fetchOne))
+      .then((results) => {
+        const rows: DecisionMemoryRow[] = [];
+        let neverRecordedCount = 0;
+        let unavailableCount = 0;
+        for (const result of results) {
+          if (result.kind === "loaded") {
+            const ticker = tickerByCaseId.get(result.caseId) ?? null;
+            for (const entry of result.memory.history.entries) rows.push({ caseId: result.caseId, ticker, entry });
+          } else if (result.kind === "neverRecorded") {
+            neverRecordedCount += 1;
+          } else {
+            unavailableCount += 1;
+          }
+        }
+        setDecisionMemoryStatus({ kind: "loaded", rows, neverRecordedCount, unavailableCount });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      });
+    return () => controller.abort();
+  }, [analyticalStatus]);
+
   const statuses = [decisionsStatus, outcomesStatus, tradesStatus, portfolioStatus, analyticalStatus];
   const isLoading = statuses.some((s) => s.kind === "loading");
   const firstError = statuses.find((s) => s.kind === "error") as
@@ -340,22 +413,25 @@ export function HistoryPage() {
       ? deriveActivity(decisionsStatus.data, outcomesStatus.data, tradesStatus.data, holdings)
       : [];
   const analyticalEntries = analyticalStatus.kind === "loaded" ? analyticalStatus.data.entries : [];
+  const decisionMemoryRows = decisionMemoryStatus.kind === "loaded" ? decisionMemoryStatus.rows : [];
 
-  const isEmpty = activityEvents.length === 0 && analyticalEntries.length === 0;
+  const isEmpty = activityEvents.length === 0 && analyticalEntries.length === 0 && decisionMemoryRows.length === 0;
 
   const filteredActivity =
-    kindFilter === "investmentCases"
+    kindFilter === "investmentCases" || kindFilter === "decisionMemory"
       ? []
       : activityEvents.filter((event) => {
           if (statusFilter !== "all" && event.status !== statusFilter) return false;
           if (typeFilter !== "all" && event.decisionType !== typeFilter) return false;
           return true;
         });
-  const filteredAnalytical = kindFilter === "decisions" ? [] : analyticalEntries;
+  const filteredAnalytical = kindFilter === "decisions" || kindFilter === "decisionMemory" ? [] : analyticalEntries;
+  const filteredDecisionMemory = kindFilter === "decisions" || kindFilter === "investmentCases" ? [] : decisionMemoryRows;
 
   const rows: TimelineRow[] = [
     ...filteredActivity.map((event): TimelineRow => ({ kind: "activity", date: event.date, event })),
     ...filteredAnalytical.map((entry): TimelineRow => ({ kind: "analytical", date: entry.capturedAt, entry })),
+    ...filteredDecisionMemory.map((row): TimelineRow => ({ kind: "decisionMemory", date: row.entry.snapshot.recordedAt, row })),
   ];
   const sortedRows = [...rows].sort((a, b) => {
     const delta = new Date(a.date).getTime() - new Date(b.date).getTime();
@@ -406,11 +482,11 @@ export function HistoryPage() {
 
   function openEvent(event: ActivityEvent) {
     if (!event.caseId) return;
-    navigate(`/investment-case/${event.caseId}`, { state: { origin: "history" } });
+    navigate(`/investment-case/${event.caseId}`, { state: { origin: "history", ticker: event.security } });
   }
 
-  function openCase(caseId: string) {
-    navigate(`/investment-case/${caseId}`, { state: { origin: "history" } });
+  function openCase(caseId: string, ticker: string | null) {
+    navigate(`/investment-case/${caseId}`, { state: { origin: "history", ticker } });
   }
 
   function toggleDetails(snapshotId: string) {
@@ -418,6 +494,15 @@ export function HistoryPage() {
       const next = new Set(current);
       if (next.has(snapshotId)) next.delete(snapshotId);
       else next.add(snapshotId);
+      return next;
+    });
+  }
+
+  function toggleDecisionMemoryDetails(id: string) {
+    setExpandedDecisionMemoryIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -497,7 +582,11 @@ export function HistoryPage() {
                     <FilterTab active={kindFilter === "investmentCases"} onClick={() => setKindFilter("investmentCases")}>
                       {t("history.scope.investmentCases")}
                     </FilterTab>
-                    {kindFilter !== "investmentCases" && (
+                    <Text color="tertiary">·</Text>
+                    <FilterTab active={kindFilter === "decisionMemory"} onClick={() => setKindFilter("decisionMemory")}>
+                      {t("history.scope.decisionMemory")}
+                    </FilterTab>
+                    {kindFilter !== "investmentCases" && kindFilter !== "decisionMemory" && (
                       <>
                         <Text color="tertiary">|</Text>
                         <FilterTab active={statusFilter === "all"} onClick={() => setStatusFilter("all")}>
@@ -535,28 +624,48 @@ export function HistoryPage() {
                   {kindFilter === "investmentCases" && analyticalEntries.length === 0 && (
                     <Text color="secondary">{t("history.analytical.emptyOnly")}</Text>
                   )}
-
-                  {visibleRows.map((row) =>
-                    row.kind === "activity" ? (
-                      <ActivityTimelineRow
-                        key={`activity:${row.event.id}`}
-                        event={row.event}
-                        onOpen={() => openEvent(row.event)}
-                        t={t}
-                        locale={locale}
-                      />
-                    ) : (
-                      <AnalyticalTimelineRow
-                        key={`analytical:${row.entry.snapshotId}`}
-                        entry={row.entry}
-                        expanded={expandedSnapshotIds.has(row.entry.snapshotId)}
-                        onToggleDetails={() => toggleDetails(row.entry.snapshotId)}
-                        onOpenCase={() => openCase(row.entry.caseId)}
-                        t={t}
-                        locale={locale}
-                      />
-                    ),
+                  {kindFilter === "decisionMemory" && decisionMemoryRows.length === 0 && (
+                    <Text color="secondary">{t("history.decisionMemory.emptyOnly")}</Text>
                   )}
+
+                  {visibleRows.map((row) => {
+                    if (row.kind === "activity") {
+                      return (
+                        <ActivityTimelineRow
+                          key={`activity:${row.event.id}`}
+                          event={row.event}
+                          onOpen={() => openEvent(row.event)}
+                          t={t}
+                          locale={locale}
+                        />
+                      );
+                    }
+                    if (row.kind === "analytical") {
+                      return (
+                        <AnalyticalTimelineRow
+                          key={`analytical:${row.entry.snapshotId}`}
+                          entry={row.entry}
+                          expanded={expandedSnapshotIds.has(row.entry.snapshotId)}
+                          onToggleDetails={() => toggleDetails(row.entry.snapshotId)}
+                          onOpenCase={() => openCase(row.entry.caseId, row.entry.ticker)}
+                          t={t}
+                          locale={locale}
+                        />
+                      );
+                    }
+                    const rowId = `${row.row.caseId}:${row.row.entry.snapshot.contentHash}`;
+                    return (
+                      <DecisionMemoryTimelineRow
+                        key={`decisionMemory:${rowId}`}
+                        row={row.row}
+                        expanded={expandedDecisionMemoryIds.has(rowId)}
+                        onToggleDetails={() => toggleDecisionMemoryDetails(rowId)}
+                        onOpenCase={() => openCase(row.row.caseId, row.row.ticker)}
+                        t={t}
+                        locale={locale}
+                      />
+                    );
+                  })}
 
                   {hasMoreRows && !timelineExpanded && (
                     <Link
@@ -569,6 +678,17 @@ export function HistoryPage() {
                     >
                       {t("history.timeline.viewFull")} →
                     </Link>
+                  )}
+
+                  {decisionMemoryStatus.kind === "loaded" && decisionMemoryStatus.neverRecordedCount > 0 && (
+                    <Text color="tertiary">
+                      {t(
+                        decisionMemoryStatus.neverRecordedCount === 1
+                          ? "history.decisionMemory.neverRecordedCountOne"
+                          : "history.decisionMemory.neverRecordedCountOther",
+                        { count: decisionMemoryStatus.neverRecordedCount },
+                      )}
+                    </Text>
                   )}
                 </Stack>
 
@@ -586,7 +706,7 @@ export function HistoryPage() {
                             outcome={outcome}
                             ticker={holdingByCaseId.get(decision.caseId)?.ticker ?? decision.subject}
                             observedProperties={observedPropertiesByDecisionId.get(decision.id) ?? []}
-                            onOpen={() => openCase(decision.caseId)}
+                            onOpen={() => openCase(decision.caseId, holdingByCaseId.get(decision.caseId)?.ticker ?? decision.subject)}
                             t={t}
                             locale={locale}
                           />
@@ -787,6 +907,127 @@ function AnalyticalTimelineRow({
               ? t("history.analytical.detail.empty")
               : entry.openQuestions.map((origin) => t(OPEN_QUESTION_ORIGIN_KEY[origin])).join(" · ")}
           </Text>
+        </Stack>
+      )}
+      <Divider tone="hairline" />
+    </Stack>
+  );
+}
+
+/** Product Intelligence Sprint 4 (History & Decision Memory
+ * Activation) -- picks the first non-null/changed fact in
+ * `DecisionMemoryChange`'s own declared field order as the collapsed
+ * row's one-line summary, exactly mirroring `AnalyticalTimelineRow`'s
+ * own `entry.changes[0]` precedent immediately above: a tie-break by
+ * existing struct order, never a new priority judgment. The fallback
+ * only fires for a real but structurally uncategorized change (e.g. a
+ * `decisionPathStepCount`/`alternativeCount` shift the four named
+ * fields don't cover) -- an honest, generic disclosure rather than a
+ * silently wrong specific claim. */
+function decisionMemoryChangeSummary(change: DecisionMemoryChangeView, company: string, t: Translate): string {
+  if (change.recommendationChanged) {
+    return t("decisionMemory.change.recommendationChanged", {
+      previous: change.previousAction ? t(ACTION_KEY[change.previousAction as keyof typeof ACTION_KEY]) : "",
+      current: t(ACTION_KEY[change.currentAction as keyof typeof ACTION_KEY]),
+    });
+  }
+  if (change.convictionDirection && change.convictionDirection !== "unchanged") {
+    return t("decisionMemory.change.convictionDirection", { direction: t(CHANGE_DIRECTION_KEY[change.convictionDirection]) });
+  }
+  if (change.readinessDirection && change.readinessDirection !== "unchanged") {
+    return t("decisionMemory.change.readinessDirection", { direction: t(CHANGE_DIRECTION_KEY[change.readinessDirection]) });
+  }
+  if (change.decisionPathDirection && change.decisionPathDirection !== "unchanged") {
+    return t("decisionMemory.change.pathDirection", { direction: t(CHANGE_DIRECTION_KEY[change.decisionPathDirection]) });
+  }
+  if (change.blockersResolved.length > 0) {
+    return t("decisionMemory.change.blockersResolved", { items: change.blockersResolved.map((c) => blockerCodeLabel(c, t)).join(" · ") });
+  }
+  if (change.blockersAdded.length > 0) {
+    return t("decisionMemory.change.blockersAdded", { items: change.blockersAdded.map((c) => blockerCodeLabel(c, t)).join(" · ") });
+  }
+  if (change.alternativeChanged) return t("decisionMemory.change.alternativeChanged");
+  return t("history.decisionMemory.otherChange", { company });
+}
+
+/** Product Intelligence Sprint 4 (History & Decision Memory
+ * Activation) -- one flattened `DecisionTimelineEntry` from
+ * `atlas.alpha.decision_memory`, rendered with the exact same
+ * collapsed-summary/expand-for-detail shape `AnalyticalTimelineRow`
+ * already established on this page. The expanded detail reuses
+ * `ChangeFacts` verbatim from `DecisionMemorySection` (Investment
+ * Case's own per-Case Decision Memory panel) rather than
+ * re-implementing it -- the identical facts, never a duplicated
+ * judgment. */
+function DecisionMemoryTimelineRow({
+  row,
+  expanded,
+  onToggleDetails,
+  onOpenCase,
+  t,
+  locale,
+}: {
+  row: DecisionMemoryRow;
+  expanded: boolean;
+  onToggleDetails: () => void;
+  onOpenCase: () => void;
+  t: Translate;
+  locale: string;
+}) {
+  const company = row.ticker ?? row.caseId;
+  const { entry } = row;
+  const description = entry.change.isBaseline
+    ? t("decisionMemory.section.baseline")
+    : decisionMemoryChangeSummary(entry.change, company, t);
+
+  return (
+    <Stack gap="metadata">
+      <Inline gap="row" align="baseline" wrap style={{ justifyContent: "space-between" }}>
+        <Inline gap="row" align="baseline" wrap>
+          <Text color="tertiary" style={{ minWidth: "60px" }}>
+            {formatDate(entry.snapshot.recordedAt, locale)}
+          </Text>
+          <Text color="secondary" style={{ minWidth: "84px" }}>
+            {t("decisionMemory.section.heading")}
+          </Text>
+          <Text as="span" style={{ fontWeight: 600 }}>
+            {company}
+          </Text>
+          <Text color="secondary">— {description}</Text>
+        </Inline>
+        <Inline gap="row">
+          <Link
+            href="#"
+            style={ACCENT_LINK_STYLE}
+            onClick={(event) => {
+              event.preventDefault();
+              onToggleDetails();
+            }}
+          >
+            {expanded ? t("history.decisionMemory.hideDetails") : t("history.decisionMemory.viewDetails")}
+          </Link>
+          <Link
+            href="#"
+            style={ACCENT_LINK_STYLE}
+            onClick={(event) => {
+              event.preventDefault();
+              onOpenCase();
+            }}
+          >
+            {t("dailyBrief.entry.openInvestmentCase")} →
+          </Link>
+        </Inline>
+      </Inline>
+
+      {expanded && (
+        <Stack gap="metadata" style={{ paddingLeft: "var(--space-intra-section)" }}>
+          {entry.change.isBaseline ? (
+            <Text color="secondary" as="p">
+              {t("decisionMemory.section.baseline")}
+            </Text>
+          ) : (
+            <ChangeFacts change={entry.change} t={t} />
+          )}
         </Stack>
       )}
       <Divider tone="hairline" />
