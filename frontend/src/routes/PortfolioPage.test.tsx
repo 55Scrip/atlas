@@ -97,11 +97,40 @@ function fitAssessment(overrides: Record<string, unknown> = {}) {
   };
 }
 
+const EMPTY_ACTION_DISTRIBUTION = { buy: [], add: [], hold: [], reduce: [], exit: [], wait: [], noDecision: [] };
+const EMPTY_OPPORTUNITY_COST = {
+  holdingsCompetingForCapital: [],
+  watchlistCompetingWithHoldings: [],
+  waitingPreferable: [],
+  noActionAppropriate: [],
+};
+const EMPTY_CONVICTION = { highestConviction: [], lowestConviction: [], evidenceLimited: [], operationallyBlocked: [] };
+const EMPTY_DECISION_PATH = {
+  closestToInvestable: [],
+  operationallyBlocked: [],
+  requiringMoreEvidence: [],
+  requiringDependencyResolution: [],
+};
+const EMPTY_DECISION_MEMORY = { recentlyChanged: [], stable: [], recentlyStrengthened: [], recentlyWeakened: [] };
+const EMPTY_DECISION_EXPLANATION = { recentlyChanged: [], newSupportingFindings: [], resolvedBlockers: [], recentlyStrengthened: [] };
+const EMPTY_DECISION_RELIABILITY = { mostReliable: [], leastReliable: [], recentlyImproved: [], recentlyWeakened: [] };
+const EMPTY_PORTFOLIO_SYNTHESIS = { supportsPortfolio: [], highestCapitalCompetition: [], conflictsWithPortfolio: [], neutral: [] };
+const EMPTY_SHARED_WEAK_POINTS = { sharedWeakAssumptions: [], sharedConditions: [], sharedMissingEvidence: [] };
+
 function mockFetch(overrides: {
   view?: Record<string, unknown>;
   cockpitHoldings?: Record<string, unknown>[];
   fitAssessments?: Record<string, unknown>[];
   agenda?: Record<string, unknown>;
+  actionDistribution?: Record<string, unknown>;
+  opportunityCost?: Record<string, unknown>;
+  conviction?: Record<string, unknown>;
+  decisionPath?: Record<string, unknown>;
+  decisionMemory?: Record<string, unknown>;
+  decisionExplanation?: Record<string, unknown>;
+  decisionReliability?: Record<string, unknown>;
+  portfolioSynthesis?: Record<string, unknown>;
+  sharedWeakPoints?: Record<string, unknown>;
 } = {}) {
   const view = overrides.view ?? portfolioView();
   const cockpitHoldings = overrides.cockpitHoldings ?? [
@@ -113,6 +142,21 @@ function mockFetch(overrides: {
     fitAssessment({ ticker: "MSFT", caseId: "case-msft", overall: "excellent", trend: "unchanged", currentWeightPercent: 70 }),
   ];
   const agenda = overrides.agenda ?? agendaResponse();
+  // Pulse Simplification (live-verification follow-up): every Decision
+  // Layer breakdown endpoint defaults to an honest "nothing here" shape
+  // -- matching how none of these were mocked at all before this pass
+  // (each request rejected, silently swallowed by the page's own
+  // `.catch()`) -- so every pre-existing test's rendered output is
+  // unchanged unless a test explicitly opts into real data.
+  const actionDistribution = overrides.actionDistribution ?? EMPTY_ACTION_DISTRIBUTION;
+  const opportunityCost = overrides.opportunityCost ?? EMPTY_OPPORTUNITY_COST;
+  const conviction = overrides.conviction ?? EMPTY_CONVICTION;
+  const decisionPath = overrides.decisionPath ?? EMPTY_DECISION_PATH;
+  const decisionMemory = overrides.decisionMemory ?? EMPTY_DECISION_MEMORY;
+  const decisionExplanation = overrides.decisionExplanation ?? EMPTY_DECISION_EXPLANATION;
+  const decisionReliability = overrides.decisionReliability ?? EMPTY_DECISION_RELIABILITY;
+  const portfolioSynthesis = overrides.portfolioSynthesis ?? EMPTY_PORTFOLIO_SYNTHESIS;
+  const sharedWeakPoints = overrides.sharedWeakPoints ?? EMPTY_SHARED_WEAK_POINTS;
 
   vi.stubGlobal(
     "fetch",
@@ -138,6 +182,33 @@ function mockFetch(overrides: {
       }
       if (url.includes("/api/decisions") || url.includes("/api/outcomes")) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response);
+      }
+      if (url.includes("/api/investment-decision/portfolio/distribution")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(actionDistribution) } as Response);
+      }
+      if (url.includes("/api/opportunity-cost/portfolio/breakdown")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(opportunityCost) } as Response);
+      }
+      if (url.includes("/api/recommendation-conviction/portfolio/breakdown")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(conviction) } as Response);
+      }
+      if (url.includes("/api/decision-path/portfolio/breakdown")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(decisionPath) } as Response);
+      }
+      if (url.includes("/api/decision-memory/portfolio/breakdown")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(decisionMemory) } as Response);
+      }
+      if (url.includes("/api/decision-explanation/portfolio/breakdown")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(decisionExplanation) } as Response);
+      }
+      if (url.includes("/api/decision-reliability/portfolio/breakdown")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(decisionReliability) } as Response);
+      }
+      if (url.includes("/api/portfolio-decision/portfolio/breakdown")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(portfolioSynthesis) } as Response);
+      }
+      if (url.includes("/api/evidence-graph/portfolio/shared-weak-points")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(sharedWeakPoints) } as Response);
       }
       return Promise.reject(new Error(`Unexpected fetch: ${url}`));
     }),
@@ -245,5 +316,84 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await waitFor(() => expect(screen.getByText("Sektorfördelning")).toBeInTheDocument());
     expect(screen.getByText(/Sektorsdata följs ännu inte/)).toBeInTheDocument();
+  });
+});
+
+describe("Pulse Simplification (live-verification follow-up)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("shows the new Beslutsläge section, right after Attention Required, with real Action Distribution and Opportunity Cost content", async () => {
+    mockFetch({
+      actionDistribution: { ...EMPTY_ACTION_DISTRIBUTION, reduce: ["AAPL"] },
+      opportunityCost: { ...EMPTY_OPPORTUNITY_COST, waitingPreferable: ["AAPL"] },
+    });
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(screen.getByText("Beslutsläge")).toBeInTheDocument());
+    expect(screen.getByText("Minska (1)")).toBeInTheDocument();
+    expect(screen.getByText("Att vänta är att föredra (1)")).toBeInTheDocument();
+    // Attention Required must still come first -- Beslutsläge is a
+    // secondary, named section right after it, never competing with it.
+    const attentionHeading = screen.getByText("Kräver uppmärksamhet");
+    const decisionStatusHeading = screen.getByText("Beslutsläge");
+    expect(attentionHeading.compareDocumentPosition(decisionStatusHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("renders no Beslutsläge section at all when Action Distribution and Opportunity Cost are both genuinely empty", async () => {
+    mockFetch();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
+    expect(screen.queryByText("Beslutsläge")).not.toBeInTheDocument();
+  });
+
+  it("never fetches Decision Readiness -- removed as a Pulse row, its information already lives on the Holdings table and Attention Required", async () => {
+    mockFetch();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
+    const calledUrls = (fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((call) => String(call[0]));
+    expect(calledUrls.some((url) => url.includes("decision-readiness"))).toBe(false);
+  });
+
+  it("groups the remaining Decision Layer widgets behind one collapsed detail, each under its own label, closed by default", async () => {
+    mockFetch({
+      conviction: { ...EMPTY_CONVICTION, lowestConviction: ["AAPL"] },
+      decisionPath: { ...EMPTY_DECISION_PATH, requiringDependencyResolution: ["AAPL"] },
+      decisionMemory: { ...EMPTY_DECISION_MEMORY, recentlyChanged: ["AAPL"] },
+      decisionExplanation: { ...EMPTY_DECISION_EXPLANATION, resolvedBlockers: ["AAPL"] },
+      decisionReliability: { ...EMPTY_DECISION_RELIABILITY, leastReliable: ["AAPL"] },
+      portfolioSynthesis: { ...EMPTY_PORTFOLIO_SYNTHESIS, conflictsWithPortfolio: ["AAPL"] },
+    });
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(screen.getByText("Detaljerad beslutsstatus")).toBeInTheDocument());
+
+    // Closed by default: the native <details> element must not be open,
+    // so an investor never has to see this on first glance.
+    const details = screen.getByText("Detaljerad beslutsstatus").closest("details");
+    expect(details).not.toBeNull();
+    expect(details).not.toHaveAttribute("open");
+
+    // Every one of the six moved widgets is present, each under its
+    // own real label -- the one thing none of them did for themselves
+    // before this pass.
+    expect(screen.getByText("Rekommendationens styrka")).toBeInTheDocument();
+    expect(screen.getByText("Svagast stöd (1)")).toBeInTheDocument();
+    expect(screen.getByText("Beslutsväg")).toBeInTheDocument();
+    expect(screen.getByText("Vägen kräver ett löst beroende (1)")).toBeInTheDocument();
+    expect(screen.getByText("Beslutsregister")).toBeInTheDocument();
+    expect(screen.getByText("Nyligen ändrade (1)")).toBeInTheDocument();
+    expect(screen.getByText("Beslutsmotivering")).toBeInTheDocument();
+    expect(screen.getByText("Lösta hinder (1)")).toBeInTheDocument();
+    expect(screen.getByText("Tillförlitlighet")).toBeInTheDocument();
+    expect(screen.getByText("Minst tillförlitliga (1)")).toBeInTheDocument();
+    expect(screen.getByText("Portföljsyntes")).toBeInTheDocument();
+    expect(screen.getByText("Står i konflikt med portföljen (1)")).toBeInTheDocument();
+  });
+
+  it("renders no collapsed detail section at all when every remaining Decision Layer widget is genuinely empty", async () => {
+    mockFetch();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
+    expect(screen.queryByText("Detaljerad beslutsstatus")).not.toBeInTheDocument();
   });
 });

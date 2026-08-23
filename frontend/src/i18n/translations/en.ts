@@ -191,6 +191,16 @@ export const en = {
   // ---------- attention required (Product Sprint 8) ----------
   "portfolio.attentionRequired.heading": "Attention Required",
 
+  // ---------- Pulse Simplification (live-verification follow-up) ----------
+  "portfolio.decisionStatus.heading": "Decision Status",
+  "portfolio.decisionLayerDetail.summaryLabel": "Detailed decision status",
+  "portfolio.decisionLayerDetail.label.conviction": "Recommendation conviction",
+  "portfolio.decisionLayerDetail.label.decisionPath": "Decision path",
+  "portfolio.decisionLayerDetail.label.decisionMemory": "Decision record",
+  "portfolio.decisionLayerDetail.label.decisionExplanation": "Decision reasoning",
+  "portfolio.decisionLayerDetail.label.decisionReliability": "Reliability",
+  "portfolio.decisionLayerDetail.label.portfolioSynthesis": "Portfolio synthesis",
+
   // ---------- attention row copy (reused by Attention Required + Holding Attention Detail) ----------
   "portfolio.attention.viewAll": "View all attention items",
   "portfolio.attention.viewFewer": "Show fewer",

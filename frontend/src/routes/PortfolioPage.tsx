@@ -30,17 +30,13 @@ import { fetchPortfolioFitForHoldings, type PortfolioFitAssessmentView, type Fit
 import { fetchStanceForHoldings, type TickerStanceView } from "../stance/stanceApi";
 import { StanceBadge } from "../stance/StanceBadge";
 import type { StanceLevel } from "../status/statusTone";
+import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
 import { AgendaItemRow } from "../dailyBriefAgenda/AgendaItemRow";
 import { PriorityBadge } from "../dailyBriefAgenda/PriorityBadge";
 import { fetchDailyBriefAgenda, type AgendaItemView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
 import { MonitoringFreshnessNote } from "../monitoring/MonitoringFreshnessNote";
 import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNote";
 import { PortfolioSharedWeakPointsSection } from "../evidenceGraph/PortfolioSharedWeakPointsSection";
-import { PortfolioReadinessBreakdown } from "../decisionReadiness/PortfolioReadinessBreakdown";
-import {
-  fetchPortfolioReadinessBreakdown,
-  type PortfolioReadinessBreakdownView,
-} from "../decisionReadiness/decisionReadinessApi";
 import { PortfolioActionDistribution } from "../investmentDecision/PortfolioActionDistribution";
 import {
   fetchPortfolioActionDistribution,
@@ -459,21 +455,8 @@ export function PortfolioPage() {
     return () => controller.abort();
   }, []);
 
-  /** Atlas Intelligence Sprint 11 (Decision Readiness & Decision
-   * Eligibility, Deliverable 7). */
-  const [readinessBreakdown, setReadinessBreakdown] = useState<PortfolioReadinessBreakdownView | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchPortfolioReadinessBreakdown(controller.signal)
-      .then((breakdown) => setReadinessBreakdown(breakdown))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-    return () => controller.abort();
-  }, []);
-
   /** Atlas Decision Layer Sprint 1 (Investment Decision Synthesis,
-   * Deliverable 7). Same pattern as `readinessBreakdown` above. */
+   * Deliverable 7). */
   const [actionDistribution, setActionDistribution] = useState<PortfolioActionDistributionView | null>(null);
   useEffect(() => {
     const controller = new AbortController();
@@ -892,16 +875,6 @@ export function PortfolioPage() {
               coveredCount={coveredCount}
               criticalAgendaCount={criticalAgendaCount}
               monitoringStatus={monitoringStatus}
-              sharedWeakPoints={sharedWeakPoints}
-              readinessBreakdown={readinessBreakdown}
-              actionDistribution={actionDistribution}
-              convictionBreakdown={convictionBreakdown}
-              decisionPathBreakdown={decisionPathBreakdown}
-              opportunityCostBreakdown={opportunityCostBreakdown}
-              decisionMemoryBreakdown={decisionMemoryBreakdown}
-              decisionExplanationBreakdown={decisionExplanationBreakdown}
-              decisionReliabilityBreakdown={decisionReliabilityBreakdown}
-              portfolioSynthesisBreakdown={portfolioSynthesisBreakdown}
               t={t}
             />
 
@@ -1006,6 +979,28 @@ export function PortfolioPage() {
                 -- the former, separately-derived "Needs Your Attention"
                 section is gone; see this file's own module docstring. */}
             <AttentionRequiredSection status={dailyBriefAgenda} navigate={navigate} t={t} />
+
+            {/* Pulse Simplification (live-verification follow-up):
+                the one Decision Layer signal that answers "what
+                should I do next" -- named, compact, right after
+                Attention Required rather than buried at the very top
+                mixed in among eight other widgets. */}
+            <DecisionStatusSection actionDistribution={actionDistribution} opportunityCostBreakdown={opportunityCostBreakdown} t={t} />
+
+            {/* Pulse Simplification: everything else that used to
+                render unlabeled at the top of Portfolio -- real
+                context, but "why", not "what to do" -- now lives
+                behind one collapsed, per-widget-labeled detail. */}
+            <DecisionLayerDetailSection
+              convictionBreakdown={convictionBreakdown}
+              decisionPathBreakdown={decisionPathBreakdown}
+              decisionMemoryBreakdown={decisionMemoryBreakdown}
+              decisionExplanationBreakdown={decisionExplanationBreakdown}
+              decisionReliabilityBreakdown={decisionReliabilityBreakdown}
+              portfolioSynthesisBreakdown={portfolioSynthesisBreakdown}
+              sharedWeakPoints={sharedWeakPoints}
+              t={t}
+            />
 
             {/* Deliverable 2, step 3: Holdings -- what do I own, in
                 detail, ordered so what matters is on top by default. */}
@@ -1205,6 +1200,20 @@ const PAGE_TITLE_STYLE: CSSProperties = {
  * per-holding source anywhere in this codebase (grepped: no `sector`
  * field exists on any company/holding model) and is deliberately not
  * rendered here or anywhere else on this page.
+ *
+ * Pulse Simplification (live-verification follow-up): the ten Decision
+ * Layer "portfolio breakdown" widgets (Deliverable 7/8 of eight
+ * separate Decision Layer sprints, each individually correct as "one
+ * compact summary line") used to all render here, stacked above this
+ * card, before an investor had even seen what they own -- an
+ * unlabeled wall of jargon-y counts nobody looked at in aggregate.
+ * They are now split two ways and rendered as siblings, after this
+ * card and Attention Required: the two that actually answer "what
+ * should I do next" (Action Distribution, Opportunity Cost) live in
+ * the small, named `DecisionStatusSection`; the rest (context that
+ * explains *why*, not *what to do*) live behind one collapsed
+ * `DecisionLayerDetailSection`, each under its own label. This
+ * component itself only ever renders the real Pulse status line.
  */
 function PortfolioPulse({
   view,
@@ -1212,16 +1221,6 @@ function PortfolioPulse({
   coveredCount,
   criticalAgendaCount,
   monitoringStatus,
-  sharedWeakPoints,
-  readinessBreakdown,
-  actionDistribution,
-  convictionBreakdown,
-  decisionPathBreakdown,
-  opportunityCostBreakdown,
-  decisionMemoryBreakdown,
-  decisionExplanationBreakdown,
-  decisionReliabilityBreakdown,
-  portfolioSynthesisBreakdown,
   t,
 }: {
   view: PortfolioView;
@@ -1229,16 +1228,6 @@ function PortfolioPulse({
   coveredCount: number | null;
   criticalAgendaCount: number;
   monitoringStatus: MonitoringOperationalStatusView | null;
-  sharedWeakPoints: PortfolioSharedWeakPointsView | null;
-  readinessBreakdown: PortfolioReadinessBreakdownView | null;
-  actionDistribution: PortfolioActionDistributionView | null;
-  convictionBreakdown: PortfolioConvictionBreakdownView | null;
-  decisionPathBreakdown: PortfolioDecisionPathBreakdownView | null;
-  opportunityCostBreakdown: PortfolioOpportunityCostBreakdownView | null;
-  decisionMemoryBreakdown: PortfolioDecisionMemoryBreakdownView | null;
-  decisionExplanationBreakdown: PortfolioDecisionExplanationBreakdownView | null;
-  decisionReliabilityBreakdown: PortfolioReliabilityBreakdownView | null;
-  portfolioSynthesisBreakdown: PortfolioSynthesisBreakdownView | null;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   const cashDisplay =
@@ -1260,16 +1249,6 @@ function PortfolioPulse({
       </Inline>
       {monitoringStatus && <MonitoringFreshnessNote status={monitoringStatus} t={t} />}
       {monitoringStatus && <ScopeFreshnessSummaryNote summary={monitoringStatus.portfolioFreshness} t={t} />}
-      {sharedWeakPoints && <PortfolioSharedWeakPointsSection points={sharedWeakPoints} t={t} />}
-      {readinessBreakdown && <PortfolioReadinessBreakdown breakdown={readinessBreakdown} t={t} />}
-      {actionDistribution && <PortfolioActionDistribution distribution={actionDistribution} t={t} />}
-      {convictionBreakdown && <PortfolioConvictionBreakdown breakdown={convictionBreakdown} t={t} />}
-      {decisionPathBreakdown && <PortfolioDecisionPathBreakdown breakdown={decisionPathBreakdown} t={t} />}
-      {opportunityCostBreakdown && <PortfolioOpportunityCostBreakdown breakdown={opportunityCostBreakdown} t={t} />}
-      {decisionMemoryBreakdown && <PortfolioDecisionMemoryBreakdown breakdown={decisionMemoryBreakdown} t={t} />}
-      {decisionExplanationBreakdown && <PortfolioDecisionExplanationBreakdown breakdown={decisionExplanationBreakdown} t={t} />}
-      {decisionReliabilityBreakdown && <PortfolioReliabilityBreakdown breakdown={decisionReliabilityBreakdown} t={t} />}
-      {portfolioSynthesisBreakdown && <PortfolioSynthesisBreakdown breakdown={portfolioSynthesisBreakdown} t={t} />}
       <Surface tier="primary">
         <Inline gap="inter-section" wrap style={{ justifyContent: "space-between" }}>
           <Stack gap="metadata">
@@ -1319,6 +1298,190 @@ function PortfolioPulse({
         </Inline>
       </Surface>
     </Stack>
+  );
+}
+
+/**
+ * Pulse Simplification (live-verification follow-up) -- the one Decision
+ * Layer signal that actually answers "what should I do next" at a
+ * portfolio level: Action Distribution (buy/add/hold/reduce/exit/wait
+ * counts) and Opportunity Cost (capital-competition counts), named and
+ * shown together, never mixed in among the other eight Decision Layer
+ * widgets that only explain *why* (those live in
+ * `DecisionLayerDetailSection` below). Neither underlying breakdown
+ * component's own semantics change here -- both are reused verbatim,
+ * this only adds a heading and decides where they render. Renders
+ * nothing at all when both are genuinely empty, matching every
+ * Decision Layer widget's own "no real signal, no line" convention.
+ */
+function DecisionStatusSection({
+  actionDistribution,
+  opportunityCostBreakdown,
+  t,
+}: {
+  actionDistribution: PortfolioActionDistributionView | null;
+  opportunityCostBreakdown: PortfolioOpportunityCostBreakdownView | null;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const actionTotal = actionDistribution
+    ? actionDistribution.buy.length +
+      actionDistribution.add.length +
+      actionDistribution.hold.length +
+      actionDistribution.reduce.length +
+      actionDistribution.exit.length +
+      actionDistribution.wait.length +
+      actionDistribution.noDecision.length
+    : 0;
+  const opportunityTotal = opportunityCostBreakdown
+    ? opportunityCostBreakdown.holdingsCompetingForCapital.length +
+      opportunityCostBreakdown.watchlistCompetingWithHoldings.length +
+      opportunityCostBreakdown.waitingPreferable.length +
+      opportunityCostBreakdown.noActionAppropriate.length
+    : 0;
+  if (actionTotal === 0 && opportunityTotal === 0) return null;
+
+  return (
+    <Stack gap="metadata">
+      <Heading level={2}>{t("portfolio.decisionStatus.heading")}</Heading>
+      {actionDistribution && <PortfolioActionDistribution distribution={actionDistribution} t={t} />}
+      {opportunityCostBreakdown && <PortfolioOpportunityCostBreakdown breakdown={opportunityCostBreakdown} t={t} />}
+    </Stack>
+  );
+}
+
+/**
+ * Pulse Simplification (live-verification follow-up) -- everywhere else
+ * eight Decision Layer sprints each added their own "one compact
+ * summary line" to the top of Portfolio (Recommendation Conviction,
+ * Decision Path, Decision Memory, Decision Explanation, Decision
+ * Reliability, Portfolio Synthesis, Evidence Graph Shared Weak Points),
+ * plus Decision Readiness -- removed as a Portfolio Pulse row entirely,
+ * not moved here, since its own information already lives on the
+ * Holdings table's own Beslutsstöd/Uppmärksamhet columns and Attention
+ * Required. Each was individually correct by its own sprint's stated
+ * goal; stacked unlabeled at the very top of the page they read as
+ * noise nobody could attribute to a system. None of that is a bug in
+ * any one widget, so none of their own components or backend semantics
+ * change here -- this only decides *where* they render (behind one
+ * collapsed detail, reusing the exact `ExpandableDetail` primitive
+ * `PortfolioSharedWeakPointsSection` already used) and adds one short
+ * label per widget so a reader can tell which real Atlas system each
+ * line came from -- the one thing none of the ten original lines did
+ * for themselves. Decision Memory and Decision Explanation are kept as
+ * two separate labeled entries, not merged, even though they answer a
+ * similar "what changed" question -- a deliberate product decision,
+ * not an oversight (see this file's own git history).
+ */
+function DecisionLayerDetailSection({
+  convictionBreakdown,
+  decisionPathBreakdown,
+  decisionMemoryBreakdown,
+  decisionExplanationBreakdown,
+  decisionReliabilityBreakdown,
+  portfolioSynthesisBreakdown,
+  sharedWeakPoints,
+  t,
+}: {
+  convictionBreakdown: PortfolioConvictionBreakdownView | null;
+  decisionPathBreakdown: PortfolioDecisionPathBreakdownView | null;
+  decisionMemoryBreakdown: PortfolioDecisionMemoryBreakdownView | null;
+  decisionExplanationBreakdown: PortfolioDecisionExplanationBreakdownView | null;
+  decisionReliabilityBreakdown: PortfolioReliabilityBreakdownView | null;
+  portfolioSynthesisBreakdown: PortfolioSynthesisBreakdownView | null;
+  sharedWeakPoints: PortfolioSharedWeakPointsView | null;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const convictionTotal = convictionBreakdown
+    ? convictionBreakdown.highestConviction.length +
+      convictionBreakdown.lowestConviction.length +
+      convictionBreakdown.evidenceLimited.length +
+      convictionBreakdown.operationallyBlocked.length
+    : 0;
+  const decisionPathTotal = decisionPathBreakdown
+    ? decisionPathBreakdown.closestToInvestable.length +
+      decisionPathBreakdown.operationallyBlocked.length +
+      decisionPathBreakdown.requiringMoreEvidence.length +
+      decisionPathBreakdown.requiringDependencyResolution.length
+    : 0;
+  const decisionMemoryTotal = decisionMemoryBreakdown
+    ? decisionMemoryBreakdown.recentlyChanged.length +
+      decisionMemoryBreakdown.stable.length +
+      decisionMemoryBreakdown.recentlyStrengthened.length +
+      decisionMemoryBreakdown.recentlyWeakened.length
+    : 0;
+  const decisionExplanationTotal = decisionExplanationBreakdown
+    ? decisionExplanationBreakdown.recentlyChanged.length +
+      decisionExplanationBreakdown.newSupportingFindings.length +
+      decisionExplanationBreakdown.resolvedBlockers.length +
+      decisionExplanationBreakdown.recentlyStrengthened.length
+    : 0;
+  const decisionReliabilityTotal = decisionReliabilityBreakdown
+    ? decisionReliabilityBreakdown.mostReliable.length +
+      decisionReliabilityBreakdown.leastReliable.length +
+      decisionReliabilityBreakdown.recentlyImproved.length +
+      decisionReliabilityBreakdown.recentlyWeakened.length
+    : 0;
+  const portfolioSynthesisTotal = portfolioSynthesisBreakdown
+    ? portfolioSynthesisBreakdown.supportsPortfolio.length +
+      portfolioSynthesisBreakdown.highestCapitalCompetition.length +
+      portfolioSynthesisBreakdown.conflictsWithPortfolio.length +
+      portfolioSynthesisBreakdown.neutral.length
+    : 0;
+  const sharedWeakPointsTotal = sharedWeakPoints
+    ? sharedWeakPoints.sharedWeakAssumptions.length + sharedWeakPoints.sharedConditions.length + sharedWeakPoints.sharedMissingEvidence.length
+    : 0;
+  const total =
+    convictionTotal +
+    decisionPathTotal +
+    decisionMemoryTotal +
+    decisionExplanationTotal +
+    decisionReliabilityTotal +
+    portfolioSynthesisTotal +
+    sharedWeakPointsTotal;
+  if (total === 0) return null;
+
+  return (
+    <ExpandableDetail summaryLabel={t("portfolio.decisionLayerDetail.summaryLabel")}>
+      <Stack gap="inter-section">
+        {convictionTotal > 0 && (
+          <Stack gap="metadata">
+            <Label>{t("portfolio.decisionLayerDetail.label.conviction")}</Label>
+            <PortfolioConvictionBreakdown breakdown={convictionBreakdown!} t={t} />
+          </Stack>
+        )}
+        {decisionPathTotal > 0 && (
+          <Stack gap="metadata">
+            <Label>{t("portfolio.decisionLayerDetail.label.decisionPath")}</Label>
+            <PortfolioDecisionPathBreakdown breakdown={decisionPathBreakdown!} t={t} />
+          </Stack>
+        )}
+        {decisionMemoryTotal > 0 && (
+          <Stack gap="metadata">
+            <Label>{t("portfolio.decisionLayerDetail.label.decisionMemory")}</Label>
+            <PortfolioDecisionMemoryBreakdown breakdown={decisionMemoryBreakdown!} t={t} />
+          </Stack>
+        )}
+        {decisionExplanationTotal > 0 && (
+          <Stack gap="metadata">
+            <Label>{t("portfolio.decisionLayerDetail.label.decisionExplanation")}</Label>
+            <PortfolioDecisionExplanationBreakdown breakdown={decisionExplanationBreakdown!} t={t} />
+          </Stack>
+        )}
+        {decisionReliabilityTotal > 0 && (
+          <Stack gap="metadata">
+            <Label>{t("portfolio.decisionLayerDetail.label.decisionReliability")}</Label>
+            <PortfolioReliabilityBreakdown breakdown={decisionReliabilityBreakdown!} t={t} />
+          </Stack>
+        )}
+        {portfolioSynthesisTotal > 0 && (
+          <Stack gap="metadata">
+            <Label>{t("portfolio.decisionLayerDetail.label.portfolioSynthesis")}</Label>
+            <PortfolioSynthesisBreakdown breakdown={portfolioSynthesisBreakdown!} t={t} />
+          </Stack>
+        )}
+        {sharedWeakPointsTotal > 0 && <PortfolioSharedWeakPointsSection points={sharedWeakPoints!} t={t} />}
+      </Stack>
+    </ExpandableDetail>
   );
 }
 

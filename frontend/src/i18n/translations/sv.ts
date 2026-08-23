@@ -190,6 +190,16 @@ export const sv: Record<TranslationKey, string> = {
   // ---------- attention required (Product Sprint 8) ----------
   "portfolio.attentionRequired.heading": "Kräver uppmärksamhet",
 
+  // ---------- Pulse Simplification (live-verification follow-up) ----------
+  "portfolio.decisionStatus.heading": "Beslutsläge",
+  "portfolio.decisionLayerDetail.summaryLabel": "Detaljerad beslutsstatus",
+  "portfolio.decisionLayerDetail.label.conviction": "Rekommendationens styrka",
+  "portfolio.decisionLayerDetail.label.decisionPath": "Beslutsväg",
+  "portfolio.decisionLayerDetail.label.decisionMemory": "Beslutsregister",
+  "portfolio.decisionLayerDetail.label.decisionExplanation": "Beslutsmotivering",
+  "portfolio.decisionLayerDetail.label.decisionReliability": "Tillförlitlighet",
+  "portfolio.decisionLayerDetail.label.portfolioSynthesis": "Portföljsyntes",
+
   // ---------- needs your attention (Portfolio Workspace v1) ----------
   "portfolio.attention.viewAll": "Visa alla uppmärksamhetspunkter",
   "portfolio.attention.viewFewer": "Visa färre",
