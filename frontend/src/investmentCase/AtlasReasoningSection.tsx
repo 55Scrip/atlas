@@ -144,7 +144,20 @@ function ReasoningCard({
   t: Translate;
 }) {
   const supporting = capFacts(facts.supporting.filter(isReadableFact));
-  const contradicting = capFacts(facts.contradicting.filter(isReadableFact));
+  /* Live Verification (Internal Alpha) -- `supporting`/`contradicting`
+   * are read from two real, independently-computed backend arrays that
+   * can genuinely share a fact (e.g. one year's free cash flow is the
+   * "up" endpoint of one year-over-year comparison and the "down"
+   * endpoint of the next in a non-monotonic trend -- see
+   * `evaluate_growth`'s own trend classification). Capping each array
+   * independently, as before, could pick the *same* top-sorted fact for
+   * both lists, rendering the identical sentence under "Supporting" and
+   * "Contradicting" with no context -- reads as a broken/duplicated UI,
+   * not as the real nuance it is. Excluding whatever `supporting` already
+   * shows from `contradicting`'s own candidate pool before capping keeps
+   * every fact real (never invented) while guaranteeing the two visible
+   * lists are never byte-identical. */
+  const contradicting = capFacts(facts.contradicting.filter(isReadableFact).filter((fact) => !supporting.includes(fact)));
 
   return (
     <Stack gap="metadata" style={{ flex: "1 1 220px", minWidth: 0 }}>

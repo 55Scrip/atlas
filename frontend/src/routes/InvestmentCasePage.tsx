@@ -3458,7 +3458,7 @@ export function InvestmentCasePage() {
                       {entry.reason}
                     </Text>
                     <Text color="tertiary" as="p">
-                      {entry.decidedAt}
+                      {formatRelativeTime(entry.decidedAt, t)}
                     </Text>
                     {/* Product Sprint 10 (Navigation & Workflow Excellence,
                         Deliverable 1/4): the real Reasoning Workspace for
@@ -3822,7 +3822,7 @@ export function InvestmentCasePage() {
                             {observation.statement}
                           </Text>
                           <Text color="tertiary" as="p">
-                            {observation.observedAt}
+                            {formatRelativeTime(observation.observedAt, t)}
                           </Text>
 
                           <Stack gap="inter-section">
@@ -4060,7 +4060,7 @@ export function InvestmentCasePage() {
                                         })}
                                       </Text>
                                       <Text color="tertiary" as="p">
-                                        {knowledgeReference.recordedAt}
+                                        {formatRelativeTime(knowledgeReference.recordedAt, t)}
                                       </Text>
                                       <Button
                                         variant="tertiary"
@@ -4214,7 +4214,7 @@ export function InvestmentCasePage() {
                                         })}
                                       </Text>
                                       <Text color="tertiary" as="p">
-                                        {reasoningTrace.recordedAt}
+                                        {formatRelativeTime(reasoningTrace.recordedAt, t)}
                                       </Text>
                                       <Button
                                         variant="tertiary"
@@ -4358,7 +4358,7 @@ export function InvestmentCasePage() {
                                     <div key={judgment.judgmentId}>
                                       <Text>{judgment.characterization}</Text>
                                       <Text color="tertiary" as="p">
-                                        {judgment.recordedAt}
+                                        {formatRelativeTime(judgment.recordedAt, t)}
                                       </Text>
                                       <Button
                                         variant="tertiary"
@@ -4526,7 +4526,7 @@ export function InvestmentCasePage() {
                                         })}
                                       </Text>
                                       <Text color="tertiary" as="p">
-                                        {decision.decidedAt}
+                                        {formatRelativeTime(decision.decidedAt, t)}
                                       </Text>
                                     </div>
                                   ))}
@@ -6304,7 +6304,7 @@ function EvidenceDetailSection({ analysis, t }: { analysis: InvestmentCaseAnalys
             <Stack key={entry.observationId} gap="intra-section">
               <Text as="p">{entry.statement}</Text>
               <Text color="tertiary" as="p">
-                {entry.observedAt}
+                {formatRelativeTime(entry.observedAt, t)}
               </Text>
               <Divider tone="hairline" />
             </Stack>
