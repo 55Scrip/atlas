@@ -49,6 +49,7 @@ import { ChangeFacts } from "../decisionMemory/DecisionMemorySection";
 import { CHANGE_DIRECTION_KEY, blockerCodeLabel } from "../decisionMemory/describeDecisionMemory";
 import type { DecisionMemoryChangeView, DecisionMemoryView, DecisionTimelineEntryView } from "../decisionMemory/decisionMemoryApi";
 import { ACTION_KEY } from "../investmentDecision/describeInvestmentDecision";
+import { useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 
 /** Cross-Workspace Consistency Cleanup -- same uppercase small-caps
  * workspace-label treatment Portfolio's own `PAGE_TITLE_STYLE`
@@ -203,9 +204,9 @@ export function HistoryPage() {
   const [tradesStatus, setTradesStatus] = useState<FetchStatus<TradeLogEntry[]>>({
     kind: "loading",
   });
-  const [portfolioStatus, setPortfolioStatus] = useState<FetchStatus<PortfolioViewLite>>({
-    kind: "loading",
-  });
+  const portfolioResource = useAlphaPortfolio();
+  const portfolioStatus: FetchStatus<PortfolioViewLite> =
+    portfolioResource.kind === "loaded" ? { kind: "loaded", data: portfolioResource.data as PortfolioViewLite } : portfolioResource;
   const [analyticalStatus, setAnalyticalStatus] = useState<FetchStatus<AnalyticalHistoryView>>({
     kind: "loading",
   });
@@ -289,24 +290,6 @@ export function HistoryPage() {
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setTradesStatus({
-          kind: "error",
-          message: error instanceof Error ? error.message : t("common.unknownError"),
-        });
-      });
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/alpha-portfolio", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
-        return response.json() as Promise<PortfolioViewLite>;
-      })
-      .then((data) => setPortfolioStatus({ kind: "loaded", data }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setPortfolioStatus({
           kind: "error",
           message: error instanceof Error ? error.message : t("common.unknownError"),
         });

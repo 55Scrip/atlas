@@ -6,6 +6,8 @@ import { MemoryRouter, Link } from "react-router-dom";
 import { LanguageProvider } from "../i18n";
 import { CompanionPanel } from "./CompanionPanel";
 import * as companionApi from "./companionApi";
+import { __resetAlphaWatchlistCacheForTests } from "../discovery/watchlistActions";
+import { __resetAlphaPortfolioCacheForTests } from "../portfolio/alphaPortfolioData";
 
 // `LanguageContext.tsx`'s own `DEFAULT_LANGUAGE` is `"sv"` -- every
 // assertion below uses the real Swedish copy, matching every other test
@@ -75,6 +77,8 @@ describe("CompanionPanel -- Sprint 3 coverage completion", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    __resetAlphaPortfolioCacheForTests();
+    __resetAlphaWatchlistCacheForTests();
   });
 
   it("renders nothing on an unsupported route (Platform Status)", () => {

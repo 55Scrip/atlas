@@ -13,6 +13,7 @@ import {
   type OutstandingWorkItem,
   type TradeLogEntry,
 } from "../activity/deriveActivity";
+import { useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 
 /**
  * `transactionType` is an internal enum value (`TransactionType.BUY` /
@@ -88,7 +89,11 @@ const CONTINUE_WORKING_LIMIT = 5;
 export function DashboardPage() {
   const { t } = useTranslation();
   const [decisionsStatus, setDecisionsStatus] = useState<DecisionsStatus>({ kind: "loading" });
-  const [portfolioStatus, setPortfolioStatus] = useState<PortfolioStatus>({ kind: "loading" });
+  const portfolioResource = useAlphaPortfolio();
+  const portfolioStatus: PortfolioStatus =
+    portfolioResource.kind === "loaded"
+      ? { kind: "loaded", view: portfolioResource.data as PortfolioSummaryView }
+      : portfolioResource;
   const [outcomesStatus, setOutcomesStatus] = useState<OutcomesStatus>({ kind: "loading" });
   const [tradeLogStatus, setTradeLogStatus] = useState<TradeLogStatus>({ kind: "loading" });
 
@@ -106,28 +111,6 @@ export function DashboardPage() {
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setDecisionsStatus({
-          kind: "error",
-          message: error instanceof Error ? error.message : t("common.unknownError"),
-        });
-      });
-
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetch("/api/alpha-portfolio", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        return response.json() as Promise<PortfolioSummaryView>;
-      })
-      .then((view) => setPortfolioStatus({ kind: "loaded", view }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setPortfolioStatus({
           kind: "error",
           message: error instanceof Error ? error.message : t("common.unknownError"),
         });

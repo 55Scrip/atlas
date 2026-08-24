@@ -6,7 +6,14 @@ import { useTranslation, type TranslationKey } from "../i18n";
 import { DiscoveryCandidateCard } from "../discovery/DiscoveryCandidateCard";
 import { groupCandidatesByTier } from "../discovery/groupCandidatesByTier";
 import { searchSecurities, type SecurityCandidateView } from "../discovery/securityDiscoveryApi";
-import { fetchWatchlist, removeTickerFromWatchlist, type WatchlistEntryView } from "../discovery/watchlistActions";
+import {
+  getAlphaWatchlistSnapshot,
+  removeTickerFromWatchlist,
+  setAlphaWatchlistData,
+  useAlphaWatchlist,
+  type WatchlistEntryView,
+} from "../discovery/watchlistActions";
+import { useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import {
   deriveActivity,
   sortActivity,
@@ -110,8 +117,11 @@ export function DiscoveryPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const [portfolioStatus, setPortfolioStatus] = useState<PortfolioStatus>({ kind: "loading" });
-  const [watchlistStatus, setWatchlistStatus] = useState<WatchlistStatus>({ kind: "loading" });
+  const portfolioResource = useAlphaPortfolio();
+  const portfolioStatus: PortfolioStatus =
+    portfolioResource.kind === "loaded" ? { kind: "loaded", view: portfolioResource.data as PortfolioView } : portfolioResource;
+  const watchlistResource = useAlphaWatchlist();
+  const watchlistStatus: WatchlistStatus = watchlistResource;
   const [candidateFitStatus, setCandidateFitStatus] = useState<CandidateFitStatus>({ kind: "loading" });
   /** Live-verification finding (Deliverable 14): a Watchlist entry that
    * is *also* a Portfolio holding (e.g. AAPL, MSFT) never appears in
@@ -129,32 +139,6 @@ export function DiscoveryPage() {
   const [recentActivity, setRecentActivity] = useState<RecentActivityFetchStatus>({ kind: "loading" });
   const [searchQuery, setSearchQuery] = useState("");
   const [searchStatus, setSearchStatus] = useState<SearchStatus>({ kind: "idle" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/alpha-portfolio", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
-        return response.json() as Promise<PortfolioView>;
-      })
-      .then((view) => setPortfolioStatus({ kind: "loaded", view }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setPortfolioStatus({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchWatchlist(controller.signal)
-      .then((entries) => setWatchlistStatus({ kind: "loaded", entries }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setWatchlistStatus({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -241,7 +225,6 @@ export function DiscoveryPage() {
     if (watchlistStatus.kind !== "loaded") return;
     const removedEntry = watchlistStatus.entries.find((e) => e.ticker === ticker);
     if (!removedEntry) return;
-    setWatchlistStatus({ kind: "loaded", entries: watchlistStatus.entries.filter((e) => e.ticker !== ticker) });
     // Product Sprint 9 (Discovery Excellence): reuses the same
     // `removeTickerFromWatchlist` helper `CandidateDetailPage.tsx`
     // already uses (`watchlistActions.ts`) instead of a second,
@@ -250,13 +233,19 @@ export function DiscoveryPage() {
     // filtered array back into state instead of restoring the removed
     // entry, silently leaving the UI showing a ticker as removed even
     // when the backend DELETE had failed.
+    //
+    // Internal Alpha Stabilization 1 (navigation/cache fix): the
+    // optimistic update now writes through the shared cache
+    // (`setAlphaWatchlistData`), not local state, so every other open
+    // consumer of the Watchlist (e.g. `WatchlistPage` in another tab
+    // navigation) sees the same instant removal, not just this page.
+    setAlphaWatchlistData(watchlistStatus.entries.filter((e) => e.ticker !== ticker));
     removeTickerFromWatchlist(ticker).then((ok) => {
       if (ok) return;
-      setWatchlistStatus((current) =>
-        current.kind === "loaded" && !current.entries.some((e) => e.ticker === ticker)
-          ? { kind: "loaded", entries: [...current.entries, removedEntry] }
-          : current,
-      );
+      const current = getAlphaWatchlistSnapshot();
+      if (current.kind === "loaded" && !current.entries.some((e) => e.ticker === ticker)) {
+        setAlphaWatchlistData([...current.entries, removedEntry]);
+      }
     });
   }
 

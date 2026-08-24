@@ -2,6 +2,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "../testUtils";
 import { PortfolioPage } from "./PortfolioPage";
+import { __resetAlphaPortfolioCacheForTests } from "../portfolio/alphaPortfolioData";
 
 function cockpitHolding(overrides: Record<string, unknown> = {}) {
   return {
@@ -218,6 +219,7 @@ function mockFetch(overrides: {
 describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    __resetAlphaPortfolioCacheForTests();
   });
 
   it("renders portfolio status: holdings count, cash, largest position, and concentration", async () => {
@@ -322,6 +324,7 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
 describe("Pulse Simplification (live-verification follow-up)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    __resetAlphaPortfolioCacheForTests();
   });
 
   it("shows the new Beslutsläge section, right after Attention Required, with real Action Distribution and Opportunity Cost content", async () => {

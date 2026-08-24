@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ACCENT_LINK_STYLE, Button, Divider, Inline, Label, Link, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
+import { useAlphaWatchlist } from "../discovery/watchlistActions";
+import { useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import { useCompanionContext } from "./useCompanionContext";
 import {
   sendCompanionChat,
@@ -124,6 +126,8 @@ export function CompanionPanel({
   const [caseIdToTicker, setCaseIdToTicker] = useState<Record<string, string>>({});
   const [tickerToCaseId, setTickerToCaseId] = useState<Record<string, string>>({});
   const [holdingsLoaded, setHoldingsLoaded] = useState(false);
+  const portfolioResource = useAlphaPortfolio();
+  const watchlistResource = useAlphaWatchlist();
 
   const announcedKeyRef = useRef<string | null>(session.announcedKey);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -139,64 +143,45 @@ export function CompanionPanel({
   }, [session]);
 
   // Ticker/Case ID resolution -- the same real `/api/alpha-portfolio` +
-  // `/api/alpha-watchlist` pair every other page already fetches
-  // independently for itself to resolve a ticker (Portfolio, Company,
-  // Daily Brief, Discovery, History, `CompanyWorkspacePage`). Portfolio
-  // takes precedence over Watchlist when a ticker exists in both, matching
+  // `/api/alpha-watchlist` pair every other page reads (Portfolio,
+  // Company, Daily Brief, Discovery, History, `CompanyWorkspacePage`),
+  // now via the shared, cached hooks (Internal Alpha Stabilization 1,
+  // navigation/cache fix) instead of Companion's own independent fetch
+  // -- Companion is mounted once for the whole session (outside the
+  // per-route `<Outlet/>`, see `AppShell.tsx`), so this still only
+  // recomputes when the shared cache itself changes, not on every
+  // navigation. A genuine improvement over the prior "fetched once,
+  // frozen forever": a mutation elsewhere (add/remove holding, add/
+  // remove watchlist entry) now keeps these maps correct instead of
+  // going stale for the rest of the session. Portfolio takes precedence
+  // over Watchlist when a ticker exists in both, matching
   // `case_membership.py`'s server-side precedence and every existing
-  // frontend caller of the same pair. Fetched once; Companion is mounted
-  // for the whole session, so there is no per-navigation refetch.
+  // frontend caller of the same pair.
   useEffect(() => {
-    const controller = new AbortController();
-    Promise.all([
-      fetch("/api/alpha-portfolio", { signal: controller.signal }).then((response) =>
-        response.ok ? (response.json() as Promise<{ holdings: { ticker: string; caseId: string | null }[] }>) : null,
-      ),
-      fetch("/api/alpha-watchlist", { signal: controller.signal }).then((response) =>
-        response.ok ? (response.json() as Promise<{ ticker: string; caseId: string }[]>) : null,
-      ),
-    ])
-      .then(([portfolio, watchlist]) => {
-        // `setCaseIdToTicker`/`setTickerToCaseId` and `setHoldingsLoaded`
-        // are all called from this one callback invocation deliberately
-        // -- React 18 batches state updates scheduled within the same
-        // synchronous callback, but NOT necessarily across separate
-        // promise-chain ticks (e.g. a later `.finally`). Keeping every
-        // call here guarantees both resolved maps are visible in the very
-        // same render where `holdingsLoaded` first becomes true, so the
-        // context-change announcement effect (gated on `holdingsLoaded`)
-        // never reads a stale, still-empty map.
-        const caseToTicker: Record<string, string> = {};
-        const tickerToCase: Record<string, string> = {};
-        // Watchlist first, Portfolio second -- later writes win, so a
-        // ticker present in both ends up keyed to its Portfolio Case.
-        for (const entry of watchlist ?? []) {
-          caseToTicker[entry.caseId] = entry.ticker;
-          tickerToCase[entry.ticker] = entry.caseId;
-        }
-        for (const holding of portfolio?.holdings ?? []) {
-          if (!holding.caseId) continue;
-          caseToTicker[holding.caseId] = holding.ticker;
-          tickerToCase[holding.ticker] = holding.caseId;
-        }
-        setCaseIdToTicker(caseToTicker);
-        setTickerToCaseId(tickerToCase);
-        setHoldingsLoaded(true);
-      })
-      .catch((error: unknown) => {
-        // In React 18 dev/StrictMode this effect mounts, cleans up
-        // (aborting the in-flight fetch), then mounts again -- the
-        // aborted first request's rejection lands here too. Treating
-        // that as "loaded" would mark holdings ready with empty maps
-        // before the real second fetch has had a chance to resolve,
-        // which is exactly what caused the context-change announcement
-        // to show the raw caseId instead of its ticker. Only a genuine
-        // failure (not our own cleanup) should mark holdings as loaded.
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setHoldingsLoaded(true);
-      });
-    return () => controller.abort();
-  }, []);
+    if (portfolioResource.kind === "loading" || watchlistResource.kind === "loading") return;
+    const portfolio =
+      portfolioResource.kind === "loaded"
+        ? (portfolioResource.data as { holdings: { ticker: string; caseId: string | null }[] })
+        : null;
+    const watchlist = watchlistResource.kind === "loaded" ? watchlistResource.entries : null;
+
+    const caseToTicker: Record<string, string> = {};
+    const tickerToCase: Record<string, string> = {};
+    // Watchlist first, Portfolio second -- later writes win, so a
+    // ticker present in both ends up keyed to its Portfolio Case.
+    for (const entry of watchlist ?? []) {
+      caseToTicker[entry.caseId] = entry.ticker;
+      tickerToCase[entry.ticker] = entry.caseId;
+    }
+    for (const holding of portfolio?.holdings ?? []) {
+      if (!holding.caseId) continue;
+      caseToTicker[holding.caseId] = holding.ticker;
+      tickerToCase[holding.ticker] = holding.caseId;
+    }
+    setCaseIdToTicker(caseToTicker);
+    setTickerToCaseId(tickerToCase);
+    setHoldingsLoaded(true);
+  }, [portfolioResource, watchlistResource]);
 
   useEffect(() => {
     if (!expanded) return;

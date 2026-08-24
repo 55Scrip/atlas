@@ -3,6 +3,8 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../testUtils";
 import { DiscoveryPage } from "./DiscoveryPage";
+import { __resetAlphaWatchlistCacheForTests } from "../discovery/watchlistActions";
+import { __resetAlphaPortfolioCacheForTests } from "../portfolio/alphaPortfolioData";
 
 const PORTFOLIO_RESPONSE = { exists: true, holdings: [{ ticker: "AAPL", caseId: "case-aapl" }] };
 const WATCHLIST_RESPONSE = [{ ticker: "NVDA", caseId: "case-nvda", addedAt: "2026-01-01T00:00:00Z" }];
@@ -81,6 +83,8 @@ describe("DiscoveryPage (Discovery Engine v2)", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    __resetAlphaPortfolioCacheForTests();
+    __resetAlphaWatchlistCacheForTests();
   });
 
   it("renders the ranked Candidates for Your Portfolio section with a Fit badge", async () => {

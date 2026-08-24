@@ -3,6 +3,8 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../testUtils";
 import { CandidateDetailPage } from "./CandidateDetailPage";
+import { __resetAlphaWatchlistCacheForTests } from "./watchlistActions";
+import { __resetAlphaPortfolioCacheForTests } from "../portfolio/alphaPortfolioData";
 
 const EMPTY_COVERAGE = {
   dimensions: [],
@@ -68,6 +70,8 @@ function mockFetch(opts: { fit?: unknown; fitStatus?: number; watchlist?: unknow
 describe("CandidateDetailPage", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    __resetAlphaPortfolioCacheForTests();
+    __resetAlphaWatchlistCacheForTests();
   });
 
   it("renders the candidate card with a real Portfolio Fit assessment when one exists", async () => {

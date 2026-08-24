@@ -18,6 +18,7 @@ import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNo
 import { fetchMonitoringStatus, type MonitoringOperationalStatusView } from "../monitoring/monitoringApi";
 import { fetchDailyBriefAgenda, type AgendaItemView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
 import { PriorityBadge } from "../dailyBriefAgenda/PriorityBadge";
+import { getAlphaWatchlistSnapshot, setAlphaWatchlistData, useAlphaWatchlist } from "../discovery/watchlistActions";
 
 /**
  * Watchlist Workspace v1 -- exposes Atlas Alpha's existing provisional
@@ -136,29 +137,13 @@ export function WatchlistPage() {
   const navigate = useNavigate();
   const locale = language === "sv" ? "sv-SE" : "en-US";
 
-  const [listStatus, setListStatus] = useState<ListStatus>({ kind: "loading" });
+  const listStatus: ListStatus = useAlphaWatchlist();
   const [rowStatuses, setRowStatuses] = useState<Record<string, RowStatus>>({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [tickerInput, setTickerInput] = useState("");
   const [addStatus, setAddStatus] = useState<AddStatus>({ kind: "idle" });
   const [monitoringStatus, setMonitoringStatus] = useState<MonitoringOperationalStatusView | null>(null);
   const [agendaStatus, setAgendaStatus] = useState<AgendaStatus>({ kind: "loading" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setListStatus({ kind: "loading" });
-    fetch("/api/alpha-watchlist", { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error(`Backend responded with ${r.status}`);
-        return r.json() as Promise<WatchlistEntryView[]>;
-      })
-      .then((entries) => setListStatus({ kind: "loaded", entries }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setListStatus({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, []);
 
   /** Sprint 9, Deliverable 9 -- same aggregate summary Portfolio shows,
    * same source (`/api/monitoring/status`), same shared component. */
@@ -250,11 +235,12 @@ export function WatchlistPage() {
           return;
         }
         const entry = (await r.json()) as WatchlistEntryView;
-        setListStatus((current) => {
-          if (current.kind !== "loaded") return { kind: "loaded", entries: [entry] };
-          if (current.entries.some((e) => e.ticker === entry.ticker)) return current;
-          return { kind: "loaded", entries: [...current.entries, entry] };
-        });
+        const current = getAlphaWatchlistSnapshot();
+        if (current.kind !== "loaded") {
+          setAlphaWatchlistData([entry]);
+        } else if (!current.entries.some((e) => e.ticker === entry.ticker)) {
+          setAlphaWatchlistData([...current.entries, entry]);
+        }
         fetchRowAnalysis(entry.ticker, entry.caseId);
         setAddStatus({ kind: "success", ticker: entry.ticker });
         setTickerInput("");
@@ -263,10 +249,10 @@ export function WatchlistPage() {
   }
 
   function handleTickerRemoved(ticker: string) {
-    setListStatus((current) => {
-      if (current.kind !== "loaded") return current;
-      return { kind: "loaded", entries: current.entries.filter((e) => e.ticker !== ticker) };
-    });
+    const snapshot = getAlphaWatchlistSnapshot();
+    if (snapshot.kind === "loaded") {
+      setAlphaWatchlistData(snapshot.entries.filter((e) => e.ticker !== ticker));
+    }
     setRowStatuses((current) => {
       if (!(ticker in current)) return current;
       const next = { ...current };

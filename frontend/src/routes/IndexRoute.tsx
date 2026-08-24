@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Text } from "../foundation";
 import { useTranslation } from "../i18n";
+import { useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 
 type Status =
   | { kind: "loading" }
@@ -17,29 +17,11 @@ type Status =
  */
 export function IndexRoute() {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<Status>({ kind: "loading" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetch("/api/alpha-portfolio", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        return response.json() as Promise<{ exists: boolean }>;
-      })
-      .then((body) => setStatus({ kind: "resolved", exists: body.exists }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setStatus({
-          kind: "error",
-          message: error instanceof Error ? error.message : t("common.unknownError"),
-        });
-      });
-
-    return () => controller.abort();
-  }, []);
+  const portfolioResource = useAlphaPortfolio();
+  const status: Status =
+    portfolioResource.kind === "loaded"
+      ? { kind: "resolved", exists: (portfolioResource.data as { exists: boolean }).exists }
+      : portfolioResource;
 
   if (status.kind === "loading") {
     return (

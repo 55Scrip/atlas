@@ -3,6 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../testUtils";
 import { HistoryPage } from "./HistoryPage";
+import { __resetAlphaPortfolioCacheForTests } from "../portfolio/alphaPortfolioData";
 
 const EMPTY_ANALYTICAL = { generatedAt: "2026-01-01T00:00:00Z", entries: [] };
 const EMPTY_OBSERVED_PROPERTIES = { properties: [] };
@@ -133,6 +134,7 @@ function mockFetch(
 describe("HistoryPage Decision Memory timeline (Product Intelligence Sprint 4 -- History & Decision Memory Activation)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    __resetAlphaPortfolioCacheForTests();
   });
 
   it("surfaces a real Decision Memory change -- previously computed and never shown in History", async () => {

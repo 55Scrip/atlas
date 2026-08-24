@@ -5,7 +5,8 @@ import { useTranslation } from "../i18n";
 import { fetchPortfolioFitForTicker, fetchPortfolioFitForHoldings, type PortfolioFitAssessmentView } from "../portfolioFit/portfolioFitApi";
 import { fetchDailyBriefAgenda, type AgendaItemView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
 import { DiscoveryCandidateCard } from "./DiscoveryCandidateCard";
-import { addTickerToWatchlist, removeTickerFromWatchlist, fetchWatchlist, type WatchlistEntryView } from "./watchlistActions";
+import { addTickerToWatchlist, removeTickerFromWatchlist, useAlphaWatchlist, type WatchlistEntryView } from "./watchlistActions";
+import { invalidateAlphaPortfolio, useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import { fetchStanceForTicker, type StanceView } from "../stance/stanceApi";
 import { EvidenceGraphSection } from "../evidenceGraph/EvidenceGraphSection";
 import { fetchEvidenceGraph, type EvidenceGraphView } from "../evidenceGraph/evidenceGraphApi";
@@ -78,8 +79,17 @@ export function CandidateDetailPage() {
   const { t } = useTranslation();
 
   const [fitStatus, setFitStatus] = useState<FitStatus>({ kind: "loading" });
-  const [watchlistStatus, setWatchlistStatus] = useState<WatchlistStatus>({ kind: "loading" });
-  const [holdingsStatus, setHoldingsStatus] = useState<HoldingsStatus>({ kind: "loading" });
+  const watchlistStatus: WatchlistStatus = useAlphaWatchlist();
+  const portfolioResource = useAlphaPortfolio();
+  const holdingsStatus: HoldingsStatus =
+    portfolioResource.kind === "loaded"
+      ? {
+          kind: "loaded",
+          holdings: (portfolioResource.data as { exists: boolean; holdings: AlphaHoldingLite[] }).exists
+            ? (portfolioResource.data as { exists: boolean; holdings: AlphaHoldingLite[] }).holdings
+            : [],
+        }
+      : portfolioResource;
   const [actionStatus, setActionStatus] = useState<ActionStatus>({ kind: "idle" });
   /** Deliverable 6 -- the same "vs weakest holding" fact Compare's own
    * quick-pick and Discovery's list page already use, fetched once here
@@ -121,32 +131,6 @@ export function CandidateDetailPage() {
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticker]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchWatchlist(controller.signal)
-      .then((entries) => setWatchlistStatus({ kind: "loaded", entries }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setWatchlistStatus({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/alpha-portfolio", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
-        return response.json() as Promise<{ exists: boolean; holdings: AlphaHoldingLite[] }>;
-      })
-      .then((body) => setHoldingsStatus({ kind: "loaded", holdings: body.exists ? body.holdings : [] }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setHoldingsStatus({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -404,9 +388,6 @@ export function CandidateDetailPage() {
     setActionStatus({ kind: "submitting" });
     addTickerToWatchlist(ticker).then((result) => {
       if (result.kind === "added") {
-        setWatchlistStatus((current) =>
-          current.kind === "loaded" ? { kind: "loaded", entries: [...current.entries, result.entry] } : current,
-        );
         setActionStatus({ kind: "idle" });
         loadFit();
       } else {
@@ -419,9 +400,6 @@ export function CandidateDetailPage() {
     setActionStatus({ kind: "submitting" });
     removeTickerFromWatchlist(ticker).then((ok) => {
       if (ok) {
-        setWatchlistStatus((current) =>
-          current.kind === "loaded" ? { kind: "loaded", entries: current.entries.filter((e) => e.ticker !== ticker) } : current,
-        );
         setActionStatus({ kind: "idle" });
       } else {
         setActionStatus({ kind: "error", message: t("discovery.card.removeFailed") });
@@ -465,7 +443,10 @@ export function CandidateDetailPage() {
             return linkResponse.json() as Promise<{ caseId: string }>;
           }),
         )
-        .then((linked) => navigate(`/investment-case/${linked.caseId}`, { state: { origin: "discovery", ticker } }))
+        .then((linked) => {
+          invalidateAlphaPortfolio();
+          navigate(`/investment-case/${linked.caseId}`, { state: { origin: "discovery", ticker } });
+        })
         .catch(() => setActionStatus({ kind: "error", message: t("discovery.card.openCaseFailed") }));
     }
   }

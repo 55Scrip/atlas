@@ -37,6 +37,7 @@ import { fetchDailyBriefAgenda, type AgendaItemView } from "../dailyBriefAgenda/
 import { MonitoringFreshnessNote } from "../monitoring/MonitoringFreshnessNote";
 import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNote";
 import { PortfolioSharedWeakPointsSection } from "../evidenceGraph/PortfolioSharedWeakPointsSection";
+import { invalidateAlphaPortfolio, setAlphaPortfolioData, useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import { PortfolioActionDistribution } from "../investmentDecision/PortfolioActionDistribution";
 import {
   fetchPortfolioActionDistribution,
@@ -348,7 +349,9 @@ interface ReplaceRow {
 export function PortfolioPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<Status>({ kind: "loading" });
+  const portfolioResource = useAlphaPortfolio();
+  const status: Status =
+    portfolioResource.kind === "loaded" ? { kind: "loaded", view: portfolioResource.data as PortfolioView } : portfolioResource;
   const [cockpit, setCockpit] = useState<PortfolioCockpitFetchStatus>({ kind: "loading" });
   const [recentActivity, setRecentActivity] = useState<RecentActivityFetchStatus>({ kind: "loading" });
   /** Deliverable 7 (Portfolio Fit Engine) -- best/worst fit today and
@@ -376,28 +379,6 @@ export function PortfolioPage() {
   const [replaceCashWeight, setReplaceCashWeight] = useState("");
   const [replaceCashValue, setReplaceCashValue] = useState("");
   const [replaceStatus, setReplaceStatus] = useState<ReconcileStatus>({ kind: "idle" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetch("/api/alpha-portfolio", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        return response.json() as Promise<PortfolioView>;
-      })
-      .then((view) => setStatus({ kind: "loaded", view }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setStatus({
-          kind: "error",
-          message: error instanceof Error ? error.message : t("common.unknownError"),
-        });
-      });
-
-    return () => controller.abort();
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -640,6 +621,7 @@ export function PortfolioPage() {
             return linkResponse.json() as Promise<{ caseId: string }>;
           })
           .then((linked) => {
+            invalidateAlphaPortfolio();
             navigate(`/investment-case/${linked.caseId}`, { state: { origin: "portfolio", ticker } });
           });
       })
@@ -684,7 +666,7 @@ export function PortfolioPage() {
           throw new Error(`Backend responded with ${response.status}`);
         }
         const view = (await response.json()) as PortfolioView;
-        setStatus({ kind: "loaded", view });
+        setAlphaPortfolioData(view);
         setReconcileStatus((current) => ({ ...current, [ticker]: { kind: "idle" } }));
       })
       .catch((error: unknown) => {
@@ -764,7 +746,7 @@ export function PortfolioPage() {
           throw new Error(`Backend responded with ${response.status}`);
         }
         const view = (await response.json()) as PortfolioView;
-        setStatus({ kind: "loaded", view });
+        setAlphaPortfolioData(view);
         setReplaceStatus({ kind: "idle" });
         setShowReplaceForm(false);
       })

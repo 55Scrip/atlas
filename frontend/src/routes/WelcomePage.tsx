@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Container, Divider, Heading, Stack, Surface, Text } from "../foundation";
 import { useTranslation } from "../i18n";
+import { invalidateAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 
 type Step = "choice" | "import" | "scratch";
 
@@ -151,6 +152,7 @@ export function WelcomePage() {
         if (!response.ok) {
           throw new Error(`Backend responded with ${response.status}`);
         }
+        invalidateAlphaPortfolio();
         navigate("/portfolio");
       })
       .catch((error: unknown) => {
@@ -192,6 +194,7 @@ export function WelcomePage() {
         if (!response.ok) {
           throw new Error(`Backend responded with ${response.status}`);
         }
+        invalidateAlphaPortfolio();
         navigate("/portfolio");
       })
       .catch((error: unknown) => {

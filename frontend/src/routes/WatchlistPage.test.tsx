@@ -3,6 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../testUtils";
 import { WatchlistPage } from "./WatchlistPage";
+import { __resetAlphaWatchlistCacheForTests } from "../discovery/watchlistActions";
 
 const ENTRY = { ticker: "NVDA", caseId: "case-nvda", addedAt: "2026-01-01T00:00:00Z" };
 const ANALYSIS = {
@@ -59,6 +60,7 @@ function mockFetch(overrides: { entries?: unknown[]; agendaItems?: unknown[] } =
 describe("WatchlistPage (Product Sprint 9 -- Discovery Excellence, Deliverable 8)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    __resetAlphaWatchlistCacheForTests();
   });
 
   it("offers Open Investment Case and Compare on every row -- no dead end from Watchlist", async () => {
@@ -133,6 +135,7 @@ describe("WatchlistPage (Product Sprint 9 -- Discovery Excellence, Deliverable 8
 describe("WatchlistPage Attention column (Product Intelligence Sprint 2 -- Watchlist Intelligence Activation)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    __resetAlphaWatchlistCacheForTests();
   });
 
   it("shows a real Agenda item's own priority and headline for a ticker with a signal", async () => {

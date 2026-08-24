@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { ACCENT_LINK_STYLE, Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, StatusText, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
+import { useAlphaWatchlist } from "../discovery/watchlistActions";
+import { useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import {
   deriveActivity,
   deriveOutstandingWork,
@@ -302,57 +304,55 @@ export function CompanyWorkspacePage() {
   const [analysis, setAnalysis] = useState<AnalysisFetchStatus>({ kind: "idle" });
   const [cockpit, setCockpit] = useState<CockpitHoldingLite | null>(null);
   const [activity, setActivity] = useState<ActivityFetchStatus>({ kind: "loading" });
+  const portfolioResource = useAlphaPortfolio();
+  const watchlistResource = useAlphaWatchlist();
 
   useEffect(() => {
-    const controller = new AbortController();
-    setResolution({ kind: "loading" });
     setAnalysis({ kind: "idle" });
     setCockpit(null);
 
-    Promise.all([
-      fetch("/api/alpha-portfolio", { signal: controller.signal }).then((r) => {
-        if (!r.ok) throw new Error(`Backend responded with ${r.status}`);
-        return r.json() as Promise<{ exists: boolean; holdings: AlphaHoldingLite[] }>;
-      }),
-      fetch("/api/alpha-watchlist", { signal: controller.signal }).then((r) => {
-        if (!r.ok) throw new Error(`Backend responded with ${r.status}`);
-        return r.json() as Promise<WatchlistEntryLite[]>;
-      }),
-    ])
-      .then(([portfolio, watchlist]) => {
-        const holdings = portfolio.exists ? portfolio.holdings : [];
-        const holdingMatch = holdings.find((h) => h.ticker === ticker && h.caseId !== null);
-        const watchlistMatch = watchlist.find((w) => w.ticker === ticker);
-        const caseId = holdingMatch?.caseId ?? watchlistMatch?.caseId ?? null;
-        const holdingsLite: HoldingLite[] = holdings.map((h) => ({
-          ticker: h.ticker,
-          caseId: h.caseId,
-          reconciliationStatus: h.reconciliationStatus,
-        }));
-        if (!caseId) {
-          setResolution({ kind: "not-found" });
-          return;
-        }
-        setResolution({ kind: "resolved", caseId, held: holdingMatch !== undefined, holdingsLite });
+    if (portfolioResource.kind === "loading" || watchlistResource.kind === "loading") {
+      setResolution({ kind: "loading" });
+      return;
+    }
+    if (portfolioResource.kind === "error" || watchlistResource.kind === "error") {
+      setResolution({ kind: "error" });
+      return;
+    }
 
-        if (holdingMatch) {
-          fetch("/api/alpha-portfolio/cockpit", { signal: controller.signal })
-            .then((r) => (r.ok ? (r.json() as Promise<{ holdings: CockpitHoldingLite[] }>) : null))
-            .then((body) => {
-              if (!body) return;
-              const match = body.holdings.find((h) => h.ticker === ticker);
-              if (match) setCockpit(match);
-            })
-            .catch(() => undefined);
-        }
+    const portfolio = portfolioResource.data as { exists: boolean; holdings: AlphaHoldingLite[] };
+    const watchlist = watchlistResource.entries;
+    const holdings = portfolio.exists ? portfolio.holdings : [];
+    const holdingMatch = holdings.find((h) => h.ticker === ticker && h.caseId !== null);
+    const watchlistMatch = watchlist.find((w) => w.ticker === ticker);
+    const caseId = holdingMatch?.caseId ?? watchlistMatch?.caseId ?? null;
+    const holdingsLite: HoldingLite[] = holdings.map((h) => ({
+      ticker: h.ticker,
+      caseId: h.caseId,
+      reconciliationStatus: h.reconciliationStatus,
+    }));
+    if (!caseId) {
+      setResolution({ kind: "not-found" });
+      return;
+    }
+    setResolution({ kind: "resolved", caseId, held: holdingMatch !== undefined, holdingsLite });
+  }, [ticker, portfolioResource, watchlistResource]);
+
+  useEffect(() => {
+    if (resolution.kind !== "resolved" || !resolution.held) return;
+    const controller = new AbortController();
+    fetch("/api/alpha-portfolio/cockpit", { signal: controller.signal })
+      .then((r) => (r.ok ? (r.json() as Promise<{ holdings: CockpitHoldingLite[] }>) : null))
+      .then((body) => {
+        if (!body) return;
+        const match = body.holdings.find((h) => h.ticker === ticker);
+        if (match) setCockpit(match);
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        setResolution({ kind: "error" });
       });
-
     return () => controller.abort();
-  }, [ticker]);
+  }, [resolution, ticker]);
 
   useEffect(() => {
     if (resolution.kind !== "resolved") return;

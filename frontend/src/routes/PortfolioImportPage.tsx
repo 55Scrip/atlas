@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Container, Divider, Heading, Inline, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
+import { invalidateAlphaPortfolio, useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import type { InstrumentType } from "../portfolio-import/instrumentRegistry";
 import { parsePortfolioText } from "../portfolio-import/parser";
 import { reconcileRows } from "../portfolio-import/resolution";
@@ -86,23 +87,10 @@ export function PortfolioImportPage() {
   const [rawText, setRawText] = useState("");
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [manualTickers, setManualTickers] = useState<Record<number, string>>({});
-  const [snapshotStatus, setSnapshotStatus] = useState<SnapshotStatus>({ kind: "loading" });
+  const portfolioResource = useAlphaPortfolio();
+  const snapshotStatus: SnapshotStatus =
+    portfolioResource.kind === "loaded" ? { kind: "loaded", view: portfolioResource.data as PortfolioSnapshot } : portfolioResource;
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>({ kind: "idle" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/alpha-portfolio", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
-        return response.json() as Promise<PortfolioSnapshot>;
-      })
-      .then((view) => setSnapshotStatus({ kind: "loaded", view }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setSnapshotStatus({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, []);
 
   const reconciled = useMemo(
     () => (parseResult ? reconcileRows(parseResult.rows, manualTickers) : null),
@@ -181,7 +169,10 @@ export function PortfolioImportPage() {
         return response.json();
       })
       .then((result) => {
-        if (result) navigate("/portfolio");
+        if (result) {
+          invalidateAlphaPortfolio();
+          navigate("/portfolio");
+        }
       })
       .catch((error: unknown) => {
         setSubmitStatus({

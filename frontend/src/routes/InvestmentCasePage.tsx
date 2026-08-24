@@ -82,7 +82,8 @@ import { DecisionReliabilitySection } from "../decisionReliability/DecisionRelia
 import { fetchDecisionReliability, type DecisionReliabilityView } from "../decisionReliability/decisionReliabilityApi";
 import { PortfolioDecisionSection } from "../portfolioDecision/PortfolioDecisionSection";
 import { fetchPortfolioDecision, type PortfolioDecisionView } from "../portfolioDecision/portfolioDecisionApi";
-import { addTickerToWatchlist, fetchWatchlist, type WatchlistEntryView } from "../discovery/watchlistActions";
+import { addTickerToWatchlist, useAlphaWatchlist, type WatchlistEntryView } from "../discovery/watchlistActions";
+import { invalidateAlphaPortfolio, useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import { ALPHA_PLACEHOLDER_USER_ID } from "../decisionWorkspace/alphaUser";
 import { StartDecisionSection } from "../decisionWorkspace/StartDecisionSection";
 import {
@@ -1190,11 +1191,13 @@ export function InvestmentCasePage() {
   const [outcomeForm, setOutcomeForm] = useState<Record<string, OutcomeFormInput>>({});
   const [tradeApplyStatus, setTradeApplyStatus] = useState<Record<string, TradeApplyStatus>>({});
 
-  const [alphaPortfolioStatus, setAlphaPortfolioStatus] = useState<AlphaPortfolioStatus>({
-    kind: "loading",
-  });
+  const alphaPortfolioResource = useAlphaPortfolio();
+  const alphaPortfolioStatus: AlphaPortfolioStatus =
+    alphaPortfolioResource.kind === "loaded"
+      ? { kind: "loaded", view: alphaPortfolioResource.data as AlphaPortfolioView }
+      : alphaPortfolioResource;
   const [tradeLogStatus, setTradeLogStatus] = useState<TradeLogFetchStatus>({ kind: "loading" });
-  const [watchlistStatus, setWatchlistStatus] = useState<WatchlistFetchStatus>({ kind: "loading" });
+  const watchlistStatus: WatchlistFetchStatus = useAlphaWatchlist();
   const [watchlistAddStatus, setWatchlistAddStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [pendingAction, setPendingAction] = useState<PositionAction | null>(null);
   const [investmentCaseAnalysis, setInvestmentCaseAnalysis] = useState<InvestmentCaseAnalysisFetchStatus>({
@@ -1652,39 +1655,6 @@ export function InvestmentCasePage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch("/api/alpha-portfolio", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        return response.json() as Promise<AlphaPortfolioView>;
-      })
-      .then((view) => setAlphaPortfolioStatus({ kind: "loaded", view }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setAlphaPortfolioStatus({
-          kind: "error",
-          message: error instanceof Error ? error.message : t("common.unknownError"),
-        });
-      });
-
-    return () => controller.abort();
-  }, [portfolioDataVersion]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchWatchlist(controller.signal)
-      .then((entries) => setWatchlistStatus({ kind: "loaded", entries }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setWatchlistStatus({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
     fetch("/api/alpha-portfolio/trade-log", { signal: controller.signal })
       .then((response) => {
         if (!response.ok) {
@@ -2132,8 +2102,15 @@ export function InvestmentCasePage() {
         // `portfolio_store`, `composition.build()`'s own `holding_context`
         // -- both this Case's Decision Layer sections and the Portfolio-
         // scoped fetches below are now stale until these bump.
+        // Internal Alpha Stabilization 1 (navigation/cache fix):
+        // `/api/alpha-portfolio` itself is no longer part of what
+        // `portfolioDataVersion` re-fetches (that endpoint now goes
+        // through the shared cache), so it needs its own explicit
+        // invalidation here too -- `portfolioDataVersion` still governs
+        // the trade-log re-fetch below unchanged.
         setCaseDataVersion((v) => v + 1);
         setPortfolioDataVersion((v) => v + 1);
+        invalidateAlphaPortfolio();
       })
       .catch((error: unknown) => {
         setTradeApplyStatus((current) => ({
@@ -2452,9 +2429,6 @@ export function InvestmentCasePage() {
     setWatchlistAddStatus("submitting");
     addTickerToWatchlist(resolvedTicker).then((result) => {
       if (result.kind === "added") {
-        setWatchlistStatus((current) =>
-          current.kind === "loaded" ? { kind: "loaded", entries: [...current.entries, result.entry] } : current,
-        );
         setWatchlistAddStatus("idle");
       } else {
         setWatchlistAddStatus("error");
