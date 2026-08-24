@@ -36,6 +36,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.pool import StaticPool
 
+from atlas.alpha.business_data_refresh.models import ProviderFailure
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.service import ensure_company_enriched, refresh_company_data
 from atlas.alpha.business_data_refresh.table import create_business_record_table
@@ -718,19 +719,52 @@ class TestEnsureCompanyEnriched:
         assert second is not None  # retried -- never permanently stuck
         assert second.identity_gate_outcome == "NO_MATCH"
 
-    def test_a_company_profile_alone_stops_further_retries(self, repository, identity_gate):
-        """The bounding half of the same fix: the moment either
-        provider succeeds with real identity or fundamentals, the
-        ticker becomes minimally complete and stops retrying -- this
-        never turns into an unbounded background poller."""
+    def test_a_company_profile_alone_remains_eligible_for_missing_fundamentals_work(self, repository, identity_gate):
+        """Automatic Enrichment Coverage, Implementation Phase 1: a
+        ticker with only Alpha Vantage identity (no SEC fundamentals
+        yet) must remain eligible for the missing fundamentals work --
+        `completion.assess_enrichment_completion` reports SEC as
+        `NOT_YET_ATTEMPTED`, not folded into a whole-ticker "already
+        enriched" boolean the way the superseded `is_minimally_complete`
+        gate did. `calling_again` genuinely gets called; its own profile
+        document is simply a duplicate of the first call's (same
+        content), never a fresh `new_records` count."""
         profile_provider = _FakeCompanyProfileProvider(profile_documents=(_profile_doc(company="XYZ"),))
         ensure_company_enriched("XYZ", (profile_provider,), repository, identity_gate=identity_gate)
         assert len(profile_provider.profile_call_count) == 1
+        assert len(repository.get_by_company("XYZ")) == 1  # profile only, no fundamentals yet
 
         calling_again = _FakeCompanyProfileProvider(profile_documents=(_profile_doc(company="XYZ"),))
         result = ensure_company_enriched("XYZ", (calling_again,), repository, identity_gate=identity_gate)
+        assert result is not None
+        assert len(calling_again.profile_call_count) == 1  # called again -- SEC leg still outstanding
+        assert result.new_records == 0
+        assert result.duplicates_skipped == 1  # the identical profile document, not a fresh record
+
+    def test_a_company_profile_alone_stops_retrying_once_fundamentals_classified_unsupported(
+        self, repository, identity_gate
+    ):
+        """The bounding half of the same fix: once the missing provider
+        is *known*, from a prior run, to have failed in a way
+        `completion.classify_provider_failure` calls `UNSUPPORTED`
+        (Requirement 8 -- never retried as though it were a transient
+        failure), passing that failure back in as `known_provider
+        _failures` stops the retry `refresh_company_data` would
+        otherwise attempt. This is what actually bounds retries now --
+        not "any one provider succeeded," but "every required provider
+        is either succeeded or genuinely unsupported.\""""
+        profile_provider = _FakeCompanyProfileProvider(profile_documents=(_profile_doc(company="XYZ"),))
+        ensure_company_enriched("XYZ", (profile_provider,), repository, identity_gate=identity_gate)
+
+        known_sec_failure = (
+            ProviderFailure(provider_id="SecEdgarFundamentalsProvider", error="not an SEC filer", kind="CompanyNotFound"),
+        )
+        calling_again = _FakeCompanyProfileProvider(profile_documents=(_profile_doc(company="XYZ"),))
+        result = ensure_company_enriched(
+            "XYZ", (calling_again,), repository, identity_gate=identity_gate, known_provider_failures=known_sec_failure
+        )
         assert result is None
-        assert len(calling_again.profile_call_count) == 0  # never called -- already minimally complete
+        assert len(calling_again.profile_call_count) == 0  # never called -- nothing retryable remains
 
     def test_a_financial_statement_alone_stops_further_retries(self, repository, identity_gate):
         provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2023", source_kind="financial_statement"),))

@@ -30,11 +30,14 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.pool import StaticPool
 
 from atlas.alpha.business_data_refresh.bulk import enrich_holdings
-from atlas.alpha.business_data_refresh.models import EnrichmentOutcome
+from atlas.alpha.business_data_refresh.models import EnrichmentOutcome, ProviderFailure
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.table import create_business_record_table
 from atlas.alpha.canonical_security_gate.factory import build_identity_gate
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
+from atlas.alpha.ingestion.models import IngestionResult
+from atlas.alpha.ingestion.repository import SqlAlchemyIngestionResultRepository
+from atlas.alpha.ingestion.table import create_ingestion_result_table
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 
 _EVALUATED_AT = datetime(2026, 8, 9, tzinfo=timezone.utc)
@@ -213,10 +216,12 @@ class TestPerTickerFailureIsolation:
 
         real_ensure = bulk_module.ensure_company_enriched
 
-        def _flaky_ensure(ticker, providers, repo, *, identity_gate):
+        def _flaky_ensure(ticker, providers, repo, *, identity_gate, known_provider_failures=()):
             if ticker == "BROKEN":
                 raise RuntimeError("unexpected bug")
-            return real_ensure(ticker, providers, repo, identity_gate=identity_gate)
+            return real_ensure(
+                ticker, providers, repo, identity_gate=identity_gate, known_provider_failures=known_provider_failures
+            )
 
         monkeypatch.setattr(bulk_module, "ensure_company_enriched", _flaky_ensure)
 
@@ -278,3 +283,95 @@ class TestDeterminism:
         second_identity_gate = _make_identity_gate(second_engine)
         second = enrich_holdings(("AAPL",), (provider, identity), second_repository, identity_gate=second_identity_gate)
         assert first == second
+
+
+class TestProviderAwareCompletionAndIngestionPersistence:
+    """Automatic Enrichment Coverage, Implementation Phase 1. Requires
+    both `ingestion_result_repository` and `case_ids_by_ticker` -- the
+    two new, optional, progressively-enhancing parameters."""
+
+    def test_omitting_the_new_parameters_persists_nothing(self, engine, repository, identity_gate):
+        """Regression: `enrich_holdings` behaves exactly as it did
+        before this field existed when the new parameters are omitted."""
+        create_ingestion_result_table(engine)
+        ingestion_repository = SqlAlchemyIngestionResultRepository(engine)
+        provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2023", company="AAPL"),))
+        enrich_holdings(("AAPL",), (provider, _identity_provider("AAPL")), repository, identity_gate=identity_gate)
+        assert ingestion_repository.get_by_ticker("AAPL") is None
+
+    def test_a_resolvable_case_id_persists_the_run_as_ingestion_result(self, engine, repository, identity_gate):
+        create_ingestion_result_table(engine)
+        ingestion_repository = SqlAlchemyIngestionResultRepository(engine)
+        provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2023", company="AAPL"),))
+        enrich_holdings(
+            ("AAPL",),
+            (provider, _identity_provider("AAPL")),
+            repository,
+            identity_gate=identity_gate,
+            ingestion_result_repository=ingestion_repository,
+            case_ids_by_ticker={"AAPL": "case-aapl"},
+        )
+        persisted = ingestion_repository.get(case_id="case-aapl")
+        assert persisted is not None
+        assert persisted.ticker == "AAPL"
+        assert persisted.has_new_data is True
+
+    def test_a_ticker_with_no_resolvable_case_id_is_not_persisted(self, engine, repository, identity_gate):
+        """`case_ids_by_ticker` deliberately absent for this ticker --
+        a real, honest condition (e.g. a Watchlist-only ticker not yet
+        linked) never fabricates a `case_id` to force persistence."""
+        create_ingestion_result_table(engine)
+        ingestion_repository = SqlAlchemyIngestionResultRepository(engine)
+        provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2023", company="AAPL"),))
+        enrich_holdings(
+            ("AAPL",),
+            (provider, _identity_provider("AAPL")),
+            repository,
+            identity_gate=identity_gate,
+            ingestion_result_repository=ingestion_repository,
+            case_ids_by_ticker={},
+        )
+        assert ingestion_repository.get_by_ticker("AAPL") is None
+
+    def test_a_known_unsupported_failure_is_not_retried_on_the_next_bulk_run(self, engine, repository, identity_gate):
+        """End-to-end proof through the real bulk path: a prior run's
+        classified `FAILED_UNSUPPORTED` provider failure, persisted and
+        read back via `get_by_ticker`, suppresses the retry a fresh
+        `enrich_holdings` call would otherwise attempt for that provider
+        -- Requirement 8, exercised through `enrich_holdings` itself
+        rather than `assess_enrichment_completion` in isolation."""
+        create_ingestion_result_table(engine)
+        ingestion_repository = SqlAlchemyIngestionResultRepository(engine)
+        # Seed a prior run's own persisted, classified-unsupported SEC
+        # failure for a ticker that already has real identity data --
+        # simulating "Alpha Vantage succeeded, SEC never will."
+        ingestion_repository.upsert(
+            IngestionResult(
+                ticker="XYZ",
+                case_id="case-xyz",
+                ran_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                changes=(),
+                has_new_data=False,
+                fetched_documents=1,
+                duplicates_skipped=0,
+                rejected_documents=0,
+                provider_errors=(),
+                identity_gate_outcome="AUTO_ACCEPT",
+                provider_failures=(
+                    ProviderFailure(provider_id="SecEdgarFundamentalsProvider", error="not an SEC filer", kind="CompanyNotFound"),
+                ),
+            )
+        )
+        identity = _identity_provider("XYZ")
+        enrich_holdings(("XYZ",), (identity,), repository, identity_gate=identity_gate)
+        assert len(repository.get_by_company("XYZ")) == 1  # profile only -- pre-seeded, no SEC record
+
+        never_called = _FakeProvider(exception=AssertionError("SEC must never be called -- already unsupported"))
+        summary = enrich_holdings(
+            ("XYZ",),
+            (never_called, _identity_provider("XYZ")),
+            repository,
+            identity_gate=identity_gate,
+            ingestion_result_repository=ingestion_repository,
+        )
+        assert summary.results[0].outcome is EnrichmentOutcome.SKIPPED_ALREADY_ENRICHED

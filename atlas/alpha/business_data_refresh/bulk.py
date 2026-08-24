@@ -39,20 +39,31 @@ that -- it is simply not needed to solve IA-001.
 
 **Never touches Cases, never calls a Case-creation path.** This module
 only ever writes `BusinessRecord`s through `ensure_company_enriched`;
-it has no knowledge of `AlphaHolding`/`Case` at all. "No duplicate
-Cases" therefore holds trivially -- Case creation/reuse is exactly
-whatever `CaseGenerationService`/`_ensure_cases` already guaranteed
-before this module existed, untouched.
+it has no knowledge of `AlphaHolding`/`Case` beyond the one optional,
+read-only `case_ids_by_ticker` mapping below (Automatic Enrichment
+Coverage, Implementation Phase 1). "No duplicate Cases" still holds
+trivially -- this module never creates, resolves, or reuses a Case,
+only accepts one already resolved by its caller; Case creation/reuse
+is exactly whatever `CaseGenerationService`/`_ensure_cases` already
+guaranteed before this module existed, untouched.
 """
 from __future__ import annotations
+
+from datetime import datetime, timezone
 
 from atlas.alpha.business_data_refresh.models import BulkEnrichmentSummary, EnrichmentOutcome, HoldingEnrichmentResult
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.service import ensure_company_enriched
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
+from atlas.alpha.ingestion.engine import classify_refresh
+from atlas.alpha.ingestion.repository import SqlAlchemyIngestionResultRepository
 from atlas.analysis_engine.business_data.providers import BusinessDataProvider
 
 __all__ = ["enrich_holdings"]
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def enrich_holdings(
@@ -61,6 +72,8 @@ def enrich_holdings(
     repository: SqlAlchemyBusinessRecordRepository,
     *,
     identity_gate: CanonicalSecurityIdentityGate,
+    ingestion_result_repository: SqlAlchemyIngestionResultRepository | None = None,
+    case_ids_by_ticker: dict[str, str] | None = None,
 ) -> BulkEnrichmentSummary:
     """Deterministic given a deterministic set of provider responses:
     the only non-determinism comes from the underlying providers
@@ -72,11 +85,36 @@ def enrich_holdings(
     `SKIPPED_ALREADY_ENRICHED`), so a duplicate is harmless, just
     slightly wasteful; callers are expected to pass already-distinct
     tickers (every real call site does).
+
+    `ingestion_result_repository` (Automatic Enrichment Coverage,
+    Implementation Phase 1) is optional, the same progressively-
+    enhancing `X | None = None` pattern this module's own dependencies
+    already use. When supplied: (1) each ticker's prior `IngestionResult
+    .provider_failures` (if any) is threaded into `ensure_company
+    _enriched`, so a provider already known `FAILED_UNSUPPORTED` for
+    that ticker is not retried (Requirement 8); (2) if `case_ids_by
+    _ticker` also resolves this ticker to a real Case, this run's own
+    result is persisted back as that Case's `IngestionResult` (reusing
+    `classify_refresh`, exactly `AlphaPortfolioService`/
+    `AlphaWatchlistService._trigger_enrichment`'s own existing pattern
+    -- never a second, duplicate persistence mechanism), so the *next*
+    bulk or single-ticker enrichment call can see it. Without both,
+    `enrich_holdings` behaves exactly as it did before this field
+    existed: every provider not yet `SUCCEEDED` stays retryable, and no
+    Case is ever read or written.
     """
     results: list[HoldingEnrichmentResult] = []
     for ticker in tickers:
+        known_provider_failures: tuple = ()
+        if ingestion_result_repository is not None:
+            prior = ingestion_result_repository.get_by_ticker(ticker)
+            if prior is not None:
+                known_provider_failures = prior.provider_failures
         try:
-            summary = ensure_company_enriched(ticker, providers, repository, identity_gate=identity_gate)
+            summary = ensure_company_enriched(
+                ticker, providers, repository, identity_gate=identity_gate,
+                known_provider_failures=known_provider_failures,
+            )
         except Exception as exc:  # noqa: BLE001 -- one ticker's unexpected failure must never abort the batch
             results.append(HoldingEnrichmentResult(ticker=ticker, outcome=EnrichmentOutcome.FAILED, detail=str(exc)))
             continue
@@ -90,5 +128,11 @@ def enrich_holdings(
         else:
             detail = "; ".join(f"{failure.provider_id}: {failure.error}" for failure in summary.provider_errors) or None
             results.append(HoldingEnrichmentResult(ticker=ticker, outcome=EnrichmentOutcome.UNSUPPORTED, detail=detail))
+
+        if summary is not None and ingestion_result_repository is not None and case_ids_by_ticker is not None:
+            case_id = case_ids_by_ticker.get(ticker)
+            if case_id is not None:
+                result = classify_refresh(summary, ticker=ticker, case_id=case_id, ran_at=summary.evaluated_at or _utc_now())
+                ingestion_result_repository.upsert(result)
 
     return BulkEnrichmentSummary(results=tuple(results))

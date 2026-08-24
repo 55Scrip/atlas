@@ -13,9 +13,11 @@ did not already compute.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+
+from atlas.alpha.business_data_refresh.models import ProviderFailure
 
 __all__ = ["DataChangeKind", "DataChange", "IngestionResult"]
 
@@ -96,3 +98,16 @@ class IngestionResult:
     rejected_documents: int
     provider_errors: tuple[str, ...]
     identity_gate_outcome: str
+    provider_failures: tuple[ProviderFailure, ...] = field(default_factory=tuple)
+    """Automatic Enrichment Coverage, Implementation Phase 1: the same
+    failures `provider_errors` above already flattens to display
+    strings, kept structured here instead -- `atlas.alpha.business_data
+    _refresh.completion.assess_enrichment_completion` reads
+    `ProviderFailure.kind` (the exception's own class name) to tell a
+    genuinely unsupported ticker/filer from a transient, retry-worthy
+    failure, a distinction `provider_errors`'s free text cannot make
+    reliably. Additive: `provider_errors` is unchanged and still the
+    field every existing display consumer reads. Defaults to `()` so
+    every `IngestionResult` built before this field existed -- including
+    one read back from a row persisted before this sprint -- stays
+    valid."""

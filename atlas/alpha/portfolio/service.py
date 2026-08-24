@@ -365,9 +365,20 @@ class AlphaPortfolioService:
             or self._identity_gate is None
         ):
             return
+        # Automatic Enrichment Coverage, Implementation Phase 1: the
+        # prior run's own classified failures (if any), so a provider
+        # already known `FAILED_UNSUPPORTED` for this ticker is not
+        # retried -- see `AlphaWatchlistService._trigger_enrichment`'s
+        # identical comment for the full rationale.
+        known_provider_failures: tuple = ()
+        if self._ingestion_result_repository is not None:
+            prior = self._ingestion_result_repository.get_by_ticker(ticker)
+            if prior is not None:
+                known_provider_failures = prior.provider_failures
         summary = ensure_company_enriched(
             ticker, self._business_data_providers, self._business_record_repository,
             identity_gate=self._identity_gate,
+            known_provider_failures=known_provider_failures,
         )
         if summary is not None and self._ingestion_result_repository is not None:
             result = classify_refresh(summary, ticker=ticker, case_id=case_id, ran_at=summary.evaluated_at or _utc_now())

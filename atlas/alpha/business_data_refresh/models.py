@@ -21,10 +21,24 @@ class ProviderFailure:
     """One provider's fetch failing never blocks another provider, and
     is always reported here -- never silently converted into "no data,"
     Phase 13's "we checked and it's missing" vs. "the provider failed"
-    distinction, preserved end to end."""
+    distinction, preserved end to end.
+
+    `kind` (Automatic Enrichment Coverage, Implementation Phase 1)
+    is the raised exception's own class name (e.g. `"CompanyNotFound"`,
+    `"MissingRequiredField"`, `"ProviderUnavailable"`) -- the one piece
+    of information `refresh_company_data`'s own `except Exception as
+    exc:` handlers already have in scope but, before this field
+    existed, discarded down to `str(exc)` alone.
+    `completion.classify_provider_failure` reads this to distinguish a
+    genuinely unsupported ticker/filer from a transient, retry-worthy
+    failure -- a distinction `error`'s free-text message alone cannot
+    make reliably. Defaults to `""` so every pre-existing direct
+    construction of this type (tests, older call sites) stays valid;
+    `""` classifies the same as an unrecognized kind (transient)."""
 
     provider_id: str
     error: str
+    kind: str = ""
 
 
 @dataclass(frozen=True)

@@ -53,6 +53,7 @@ def classify_refresh(summary: RefreshSummary, *, ticker: str, case_id: str | Non
         rejected_documents=summary.rejected_documents,
         provider_errors=tuple(f"{failure.provider_id}: {failure.error}" for failure in summary.provider_errors),
         identity_gate_outcome=summary.identity_gate_outcome,
+        provider_failures=summary.provider_errors,
     )
 
 

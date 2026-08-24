@@ -229,3 +229,135 @@ class TestExplicitEnrichBackfillEndpoint:
         assert response.status_code == 202
         # No new records, no duplicates -- still exactly two.
         assert len(_business_record_repository(engine).get_by_company("AAPL")) == 2
+
+
+class TestReconcileTriggersBackgroundEnrichment:
+    """Automatic Enrichment Coverage, Implementation Phase 1, Part A --
+    `reconcile_replace_allocation`'s own confirmed gap: unlike `/import`
+    (Internal Alpha Fix Sprint 1), REPLACE_ALLOCATION never scheduled
+    background enrichment at all before this sprint."""
+
+    def test_a_new_holding_introduced_via_replace_allocation_is_enriched(self, client, engine, monkeypatch):
+        _set_fake_providers(monkeypatch, _FakeProvider(documents=()))
+        client.post("/alpha-portfolio/import", json={"holdings": [{"ticker": "AAPL", "weightPercent": 100.0}]})
+
+        provider = _FakeProvider(
+            documents=(
+                _doc(identifier="AAPL:FY:2024", company="AAPL"),
+                _doc(identifier="MSFT:FY:2024", company="MSFT"),
+            )
+        )
+        _set_fake_providers(monkeypatch, provider, _identity_provider("AAPL", "MSFT"))
+        response = client.post(
+            "/alpha-portfolio/reconcile",
+            json={
+                "mode": "REPLACE_ALLOCATION",
+                "holdings": [
+                    {"ticker": "AAPL", "weightPercent": 50.0},
+                    {"ticker": "MSFT", "weightPercent": 50.0},
+                ],
+            },
+        )
+        assert response.status_code == 200
+        repository = _business_record_repository(engine)
+        assert len(repository.get_by_company("AAPL")) == 2  # fundamentals + identity/profile
+        assert len(repository.get_by_company("MSFT")) == 2
+
+    def test_reconcile_still_succeeds_even_when_every_provider_fails(self, client, monkeypatch):
+        _set_fake_providers(monkeypatch, _FakeProvider(documents=()))
+        client.post("/alpha-portfolio/import", json={"holdings": [{"ticker": "AAPL", "weightPercent": 100.0}]})
+
+        _set_fake_providers(monkeypatch, _FakeProvider(exception=RuntimeError("provider outage")))
+        response = client.post(
+            "/alpha-portfolio/reconcile",
+            json={"mode": "REPLACE_ALLOCATION", "holdings": [{"ticker": "AAPL", "weightPercent": 100.0}]},
+        )
+        assert response.status_code == 200
+
+    def test_update_holding_weight_never_triggers_enrichment(self, client, engine, monkeypatch):
+        """No new ticker is introduced by `UPDATE_HOLDING_WEIGHT` --
+        deliberately excluded, mirroring `apply_trade`'s own "only for
+        a genuinely new position" restraint."""
+        _set_fake_providers(monkeypatch, _FakeProvider(documents=()))
+        client.post("/alpha-portfolio/import", json={"holdings": [{"ticker": "AAPL", "weightPercent": 100.0}]})
+
+        calling_provider = _FakeProvider(exception=AssertionError("must never be called"))
+        _set_fake_providers(monkeypatch, calling_provider)
+        response = client.post(
+            "/alpha-portfolio/reconcile",
+            json={"mode": "UPDATE_HOLDING_WEIGHT", "ticker": "AAPL", "weightPercent": 75.0},
+        )
+        assert response.status_code == 200
+        assert len(_business_record_repository(engine).get_by_company("AAPL")) == 0
+
+
+class TestProviderAwareCompletionEndToEnd:
+    """Automatic Enrichment Coverage, Implementation Phase 1, Part B --
+    proven through the real, mounted API, not `completion.py`/
+    `enrich_holdings` in isolation."""
+
+    def test_sec_only_holding_gains_alpha_vantage_on_a_later_action(self, client, engine, monkeypatch):
+        """Requirement 5: a case with only SEC-shaped data remains
+        eligible for the missing Alpha Vantage work on a later explicit
+        action.
+
+        The "SEC-only" precondition is seeded directly into the
+        repository rather than produced by a first `/import` call: the
+        mandatory Identity Gate (Sprint O) requires a `CompanyProfile
+        Provider` to succeed *before* any provider -- SEC included --
+        is ever reached, so a fresh run can no longer produce a
+        SEC-only result on its own. Every real SEC-only case this
+        sprint's own investigation found is exactly this kind of
+        historical artifact (predating the mandatory gate) -- seeding
+        it directly is the honest way to reproduce that real
+        precondition, not a test-only shortcut."""
+        _set_fake_providers(monkeypatch, _FakeProvider(documents=()))
+        client.post("/alpha-portfolio/import", json={"holdings": [{"ticker": "AAPL", "weightPercent": 100.0}]})
+        repository = _business_record_repository(engine)
+        assert len(repository.get_by_company("AAPL")) == 0
+
+        from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
+
+        seeded = ingest(_doc(identifier="AAPL:FY:2024", company="AAPL"), evaluated_at=_EVALUATED_AT)
+        assert isinstance(seeded, IngestedRecord)
+        repository.add(seeded.record)
+        assert len(repository.get_by_company("AAPL")) == 1
+
+        sec_only = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2024", company="AAPL"),))
+        _set_fake_providers(monkeypatch, sec_only, _identity_provider("AAPL"))
+        response = client.post("/alpha-portfolio/enrich")
+        assert response.status_code == 202
+        records = repository.get_by_company("AAPL")
+        assert len(records) == 2
+        assert {r.document_type.value for r in records} == {"financial_statement", "company_profile"}
+
+    def test_alpha_vantage_only_holding_gains_fundamentals_on_a_later_action(self, client, engine, monkeypatch):
+        """Requirement 6: a case with only Alpha Vantage identity (no
+        fundamentals provider in the first import) remains eligible for
+        the missing SEC work on a later explicit action."""
+        identity_only = _identity_provider("AAPL")
+        _set_fake_providers(monkeypatch, identity_only)
+        client.post("/alpha-portfolio/import", json={"holdings": [{"ticker": "AAPL", "weightPercent": 100.0}]})
+        repository = _business_record_repository(engine)
+        assert len(repository.get_by_company("AAPL")) == 1
+        assert repository.get_by_company("AAPL")[0].document_type.value == "company_profile"
+
+        fundamentals = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2024", company="AAPL"),))
+        _set_fake_providers(monkeypatch, fundamentals, identity_only)
+        response = client.post("/alpha-portfolio/enrich")
+        assert response.status_code == 202
+        records = repository.get_by_company("AAPL")
+        assert len(records) == 2
+        assert {r.document_type.value for r in records} == {"financial_statement", "company_profile"}
+
+    def test_fully_satisfied_coverage_performs_no_redundant_enrichment(self, client, engine, monkeypatch):
+        """Requirement 7."""
+        provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2024", company="AAPL"),))
+        _set_fake_providers(monkeypatch, provider, _identity_provider("AAPL"))
+        client.post("/alpha-portfolio/import", json={"holdings": [{"ticker": "AAPL", "weightPercent": 100.0}]})
+        assert len(_business_record_repository(engine).get_by_company("AAPL")) == 2
+
+        _set_fake_providers(monkeypatch, _FakeProvider(exception=AssertionError("must never be called")))
+        response = client.post("/alpha-portfolio/enrich")
+        assert response.status_code == 202
+        assert len(_business_record_repository(engine).get_by_company("AAPL")) == 2

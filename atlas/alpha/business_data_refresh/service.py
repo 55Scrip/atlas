@@ -57,28 +57,33 @@ Watchlist/Portfolio "add a company" write paths must never re-fetch (or
 re-call rate-limited providers for) a ticker Atlas has already
 meaningfully enriched.
 
-**Company Data Foundation v1: the gate is `assess_data_completeness
-.is_minimally_complete`, not "any record at all."** The original gate
-("does this company already have at least one persisted
-`BusinessRecord`, of any kind") was too coarse: a company whose only
-persisted record was, say, a single `MARKET_DATA_SNAPSHOT` (SEC failed
-or is unsupported for this ticker; Alpha Vantage's own profile fetch
-also failed transiently) permanently blocked every future enrichment
-attempt, even though Atlas never actually recovered any identity or
-fundamentals for it. The new gate requires real `COMPANY_PROFILE` or
-`FINANCIAL_STATEMENT` coverage -- see `completeness.py`'s own docstring
-for the exact predicate.
+**Company Data Foundation v1 (superseded by Automatic Enrichment
+Coverage, Implementation Phase 1): the gate is now per-provider, not a
+single whole-ticker boolean.** The original gate ("does this company
+already have at least one persisted `BusinessRecord`, of any kind") was
+too coarse; Company Data Foundation v1 narrowed it to `assess_data
+_completeness.is_minimally_complete` (`has_profile or has_statements`)
+-- an improvement, but still a single boolean that could not
+distinguish "SEC succeeded, Alpha Vantage never got a chance to run"
+from "both succeeded," so a ticker with only one provider's data stayed
+permanently unenriched for the other. `completion.assess_enrichment
+_completion` (see that module's own docstring) is the real fix:
+Alpha Vantage identity and SEC fundamentals are tracked independently,
+each `SUCCEEDED`/`NOT_YET_ATTEMPTED`/`FAILED_TRANSIENT`/
+`FAILED_UNSUPPORTED`.
 
 **This still bounds retries; it does not create a background poller.**
-A ticker either provider can genuinely serve becomes minimally complete
-on its first successful refresh and never re-fetches again after that
--- identical behavior to before for the common case. Only a ticker
-*neither* provider can ever serve (e.g. a foreign filer SEC does not
-cover, on a deployment with no Alpha Vantage key configured) keeps
-attempting a fresh `refresh_company_data` on every subsequent
-Watchlist/Portfolio add -- a real, bounded cost paid only for a company
-Atlas genuinely has nothing for yet, triggered only by an explicit user
-action, never a schedule.
+A required provider that already `SUCCEEDED`, or that failed in a way
+classified `FAILED_UNSUPPORTED` (a genuine, permanent per-ticker/filer
+mismatch -- never re-attempted, Requirement 8's own "not retried as
+though it were a transient failure"), is never re-fetched. A required
+provider that is `NOT_YET_ATTEMPTED` or `FAILED_TRANSIENT` (e.g. a
+still-unconfigured Alpha Vantage API key) keeps attempting a fresh
+`refresh_company_data` on every subsequent explicit Watchlist/Portfolio
+action -- a real, bounded cost paid only for a company Atlas genuinely
+still has real, retryable work left for, triggered only by an explicit
+user action, never a schedule (periodic automatic recovery is
+explicitly out of this sprint's scope).
 
 **Sprint O: the Canonical Security Identity Gate is now mandatory.**
 `identity_gate` is a required keyword-only argument -- there is no
@@ -101,7 +106,6 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from atlas.analysis_engine.business_data.completeness import assess_data_completeness
 from atlas.analysis_engine.business_data.models import BusinessRecord, RawBusinessDocument
 from atlas.analysis_engine.business_data.pipeline import IngestionRejected, ingest
 from atlas.analysis_engine.business_data.providers import (
@@ -112,6 +116,7 @@ from atlas.analysis_engine.business_data.providers import (
 )
 from atlas.analysis_engine.business_data.sources import SourceKind
 from atlas.analysis_engine.business_data.versioning import DuplicateRecord
+from atlas.alpha.business_data_refresh.completion import assess_enrichment_completion
 from atlas.alpha.business_data_refresh.models import ProviderFailure, RefreshSummary
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
@@ -207,7 +212,7 @@ def refresh_company_data(
         try:
             fetched = provider.fetch_company_profile(company_identifier=ticker, evaluated_at=evaluated_at)
         except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
-            provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc)))
+            provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc), kind=type(exc).__name__))
             continue
         profile_documents.extend(fetched)
 
@@ -239,7 +244,7 @@ def refresh_company_data(
         try:
             documents = provider.fetch(company_identifier=ticker, evaluated_at=evaluated_at)
         except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
-            provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc)))
+            provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc), kind=type(exc).__name__))
             continue
         _ingest_documents(documents)
 
@@ -255,7 +260,7 @@ def refresh_company_data(
                 company_identifier=ticker, filing_dates=filing_dates, evaluated_at=evaluated_at
             )
         except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
-            provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc)))
+            provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc), kind=type(exc).__name__))
             continue
         _ingest_documents(historical_documents)
 
@@ -276,7 +281,7 @@ def refresh_company_data(
                 company_identifier=ticker, evaluated_at=evaluated_at
             )
         except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
-            provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc)))
+            provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc), kind=type(exc).__name__))
             continue
         _ingest_documents(transcript_documents)
 
@@ -302,24 +307,38 @@ def ensure_company_enriched(
     repository: SqlAlchemyBusinessRecordRepository,
     *,
     identity_gate: CanonicalSecurityIdentityGate,
+    known_provider_failures: tuple[ProviderFailure, ...] = (),
 ) -> RefreshSummary | None:
     """Idempotent, automatic-trigger wrapper for the Investment Case
     Engine v1 slice's "add a company" write paths (Watchlist/Portfolio).
 
-    Returns `None` -- no provider called at all -- if `ticker` already
-    has enough persisted `BusinessRecord`s to be `assess_data_completeness
-    .is_minimally_complete` (Company Data Foundation v1; see this
-    module's own docstring for exactly why "any record at all" was too
-    coarse a gate). A ticker that is not yet minimally complete --
-    including one with no records at all, and one with only a stray
-    record that never established real identity or fundamentals --
-    delegates to `refresh_company_data`, whose own per-provider
-    isolation already guarantees this never raises for a provider
-    failure -- a caller on the Case-creation path may call this
-    unconditionally without risking Case creation itself failing
-    because of a transient provider outage.
+    Returns `None` -- no provider called at all -- only when
+    `completion.assess_enrichment_completion` finds no retryable work
+    left for this ticker: every required provider (Alpha Vantage
+    identity, SEC fundamentals) has either already succeeded, or failed
+    in a way classified `UNSUPPORTED` (Automatic Enrichment Coverage,
+    Implementation Phase 1 -- replaces this function's own prior,
+    coarser `assess_data_completeness.is_minimally_complete` gate, which
+    treated any *one* successful provider as permanent, whole-ticker
+    "done" and could never distinguish "this provider never got a
+    chance to run" from "this provider will never succeed here"; see
+    `completion.py`'s own module docstring for the full rationale).
+
+    `known_provider_failures` is the caller's own most recently
+    persisted `IngestionResult.provider_failures` for this ticker (empty
+    by default) -- this function performs no repository lookup for it
+    itself, keeping this module free of any dependency on
+    `atlas.alpha.ingestion` (see `completion.py`'s own docstring for
+    why that dependency direction would be circular).
+
+    A ticker with retryable work delegates to `refresh_company_data`,
+    whose own per-provider isolation already guarantees this never
+    raises for a provider failure -- a caller on the Case-creation path
+    may call this unconditionally without risking Case creation itself
+    failing because of a transient provider outage.
     """
     existing = repository.get_by_company(ticker)
-    if existing and assess_data_completeness(existing).is_minimally_complete:
+    completion = assess_enrichment_completion(ticker, existing, known_provider_failures)
+    if not completion.has_retryable_work:
         return None
     return refresh_company_data(ticker, providers, repository, identity_gate=identity_gate)

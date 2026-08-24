@@ -18,6 +18,8 @@ from atlas.alpha.business_data_refresh.bulk import enrich_holdings
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.table import create_business_record_table
 from atlas.alpha.canonical_security_gate.factory import build_identity_gate
+from atlas.alpha.ingestion.repository import SqlAlchemyIngestionResultRepository
+from atlas.alpha.ingestion.table import create_ingestion_result_table
 from atlas.alpha.monitoring.api.dependencies import build_monitoring_service
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_service
 from atlas.alpha.portfolio.api.schemas import (
@@ -55,7 +57,7 @@ from atlas.core.infrastructure.api.decision.dependencies import get_decision_eng
 router = APIRouter(prefix="/alpha-portfolio", tags=["alpha-portfolio"])
 
 
-def _run_bulk_enrichment_in_background(tickers: tuple[str, ...]) -> None:
+def _run_bulk_enrichment_in_background(ticker_case_pairs: tuple[tuple[str, str | None], ...]) -> None:
     """Runs on Starlette's background-task thread, after the HTTP
     response has already been sent (Internal Alpha Fix Sprint 1,
     IA-001: "Portfolio import must still complete successfully even if
@@ -71,15 +73,32 @@ def _run_bulk_enrichment_in_background(tickers: tuple[str, ...]) -> None:
     threading error the first time this function actually ran. A freshly
     constructed `Engine`, created on whichever thread calls this
     function, has no such cross-thread history and is safe.
+
+    `ticker_case_pairs` (widened from a bare `tuple[str, ...]`,
+    Automatic Enrichment Coverage, Implementation Phase 1) carries each
+    holding's own resolved `case_id` (already known to the request
+    handler via `_ensure_cases`, `None` only if a holding genuinely has
+    none) so this run's own result can be persisted as that Case's
+    `IngestionResult` -- the one piece of state a *future* bulk or
+    single-ticker enrichment call needs to tell "already tried and
+    genuinely unsupported" from "never tried" for this ticker (see
+    `business_data_refresh.completion`'s own module docstring).
     """
-    if not tickers:
+    if not ticker_case_pairs:
         return
     engine = get_decision_engine()
     create_business_record_table(engine)
+    create_ingestion_result_table(engine)
     repository = SqlAlchemyBusinessRecordRepository(engine)
+    ingestion_result_repository = SqlAlchemyIngestionResultRepository(engine)
     providers = get_default_business_data_providers()
     identity_gate = build_identity_gate(engine)
-    enrich_holdings(tickers, providers, repository, identity_gate=identity_gate)
+    tickers = tuple(ticker for ticker, _ in ticker_case_pairs)
+    case_ids_by_ticker = {ticker: case_id for ticker, case_id in ticker_case_pairs if case_id is not None}
+    enrich_holdings(
+        tickers, providers, repository, identity_gate=identity_gate,
+        ingestion_result_repository=ingestion_result_repository, case_ids_by_ticker=case_ids_by_ticker,
+    )
     # Internal Alpha Fix Sprint 1, Deliverable 4/5 (Business Refresh /
     # Portfolio Change Integration): chained onto the same background
     # task, after enrichment -- not a second scheduled job. Any holding
@@ -140,7 +159,7 @@ def import_portfolio(
     # state is already persisted and the response body already built --
     # a provider outage during enrichment can never fail this import.
     background_tasks.add_task(
-        _run_bulk_enrichment_in_background, tuple(holding.ticker for holding in state.holdings)
+        _run_bulk_enrichment_in_background, tuple((holding.ticker, holding.case_id) for holding in state.holdings)
     )
     return PortfolioView.from_domain(state, derive_portfolio_view(state))
 
@@ -167,7 +186,9 @@ def enrich_portfolio(
     if state is None:
         raise HTTPException(status_code=404, detail="No Alpha portfolio has been established yet.")
     tickers = tuple(holding.ticker for holding in state.holdings)
-    background_tasks.add_task(_run_bulk_enrichment_in_background, tickers)
+    background_tasks.add_task(
+        _run_bulk_enrichment_in_background, tuple((holding.ticker, holding.case_id) for holding in state.holdings)
+    )
     return EnrichmentScheduledView(scheduled_tickers=list(tickers))
 
 
@@ -246,8 +267,10 @@ def apply_trade(
 @router.post("/reconcile", response_model=PortfolioView)
 def reconcile(
     payload: ReconcileRequestBody,
+    background_tasks: BackgroundTasks,
     service: AlphaPortfolioService = Depends(get_alpha_portfolio_service),
 ) -> PortfolioView:
+    is_replace_allocation = payload.mode != "UPDATE_HOLDING_WEIGHT"
     try:
         if payload.mode == "UPDATE_HOLDING_WEIGHT":
             if payload.ticker is None or payload.weight_percent is None:
@@ -284,6 +307,18 @@ def reconcile(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except AlphaPortfolioValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if is_replace_allocation:
+        # Automatic Enrichment Coverage, Implementation Phase 1: the
+        # same background-task wiring `/import` already established
+        # (Internal Alpha Fix Sprint 1, IA-001) -- REPLACE_ALLOCATION
+        # is the same shape of "many holdings introduced/replaced at
+        # once" operation `import_portfolio` is, and had the identical
+        # gap. `UPDATE_HOLDING_WEIGHT` never introduces a new ticker, so
+        # it is deliberately excluded, mirroring `apply_trade`'s own
+        # "only for a genuinely new position" restraint.
+        background_tasks.add_task(
+            _run_bulk_enrichment_in_background, tuple((holding.ticker, holding.case_id) for holding in state.holdings)
+        )
     return PortfolioView.from_domain(state, derive_portfolio_view(state))
 
 

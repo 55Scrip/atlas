@@ -80,9 +80,23 @@ class AlphaWatchlistService:
             or self._identity_gate is None
         ):
             return
+        # Automatic Enrichment Coverage, Implementation Phase 1: the
+        # prior run's own classified failures (if any), so a provider
+        # already known `FAILED_UNSUPPORTED` for this ticker (e.g. SEC
+        # for a foreign-private-issuer 20-F filer) is never retried as
+        # though it were transient (Requirement 8), while one classified
+        # `FAILED_TRANSIENT`/`NOT_YET_ATTEMPTED` (e.g. Alpha Vantage
+        # with a still-unconfigured API key) still is -- see
+        # `business_data_refresh.completion`'s own module docstring.
+        known_provider_failures: tuple = ()
+        if self._ingestion_result_repository is not None:
+            prior = self._ingestion_result_repository.get_by_ticker(ticker)
+            if prior is not None:
+                known_provider_failures = prior.provider_failures
         summary = ensure_company_enriched(
             ticker, self._business_data_providers, self._business_record_repository,
             identity_gate=self._identity_gate,
+            known_provider_failures=known_provider_failures,
         )
         # Atlas Intelligence Sprint 9 (Data Ingestion & Automatic
         # Refresh, Deliverable 4/11) -- records the real, already-
