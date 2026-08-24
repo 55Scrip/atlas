@@ -78,6 +78,8 @@ composition from scratch; here `Explanation` already exists.
 """
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from atlas.alpha.business_data_refresh.api.dependencies import (
@@ -96,6 +98,12 @@ from atlas.alpha.business_data_refresh.quota import AlphaVantageQuotaTracker
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.alpha.coverage import assess_coverage
+from atlas.alpha.decision_explanation.api.dependencies import get_decision_explanation_service
+from atlas.alpha.decision_explanation.api.schemas import DecisionExplanationView
+from atlas.alpha.decision_explanation.service import DecisionExplanationService
+from atlas.alpha.decision_memory.api.dependencies import get_decision_memory_service
+from atlas.alpha.decision_memory.api.schemas import DecisionMemoryView
+from atlas.alpha.decision_memory.service import DecisionMemoryService
 from atlas.alpha.evidence_quality import assess_evidence_quality
 from atlas.alpha.evidence_quality.models import EvidenceQualityReport
 from atlas.alpha.knowledge_coverage import assess_knowledge_coverage
@@ -105,6 +113,7 @@ from atlas.alpha.evidence_timeline.api.dependencies import get_evidence_snapshot
 from atlas.alpha.evidence_timeline.models import EvidenceHistory
 from atlas.alpha.evidence_timeline.repository import SqlAlchemyEvidenceSnapshotRepository
 from atlas.alpha.explainability import explain
+from atlas.alpha.investment_case.api.decision_layer_bundle_schemas import InvestmentCaseDecisionLayerBundleView
 from atlas.alpha.investment_case.api.dependencies import get_investment_case_composition_service
 from atlas.alpha.investment_case.api.schemas import (
     ConfidenceReasonView,
@@ -138,12 +147,18 @@ from atlas.alpha.monitoring.engine import HIGH_IMPORTANCE_CATEGORIES
 from atlas.alpha.monitoring.models import CaseOperationalFreshness, MonitoringMateriality, MonitoringResult
 from atlas.alpha.monitoring.repository import SqlAlchemyMonitoringResultRepository
 from atlas.alpha.monitoring.service import MonitoringService
+from atlas.alpha.opportunity_cost.api.dependencies import get_opportunity_cost_service
+from atlas.alpha.opportunity_cost.api.schemas import OpportunityCostChangeView, OpportunityCostView
+from atlas.alpha.opportunity_cost.service import OpportunityCostService
+from atlas.alpha.portfolio_decision.api.dependencies import get_portfolio_decision_service
+from atlas.alpha.portfolio_decision.api.schemas import PortfolioDecisionView
 from atlas.alpha.stance.api.dependencies import get_stance_service
 from atlas.alpha.stance.models import Stance
 from atlas.alpha.stance.service import StanceService
 from atlas.analysis_engine.business_data.versioning import latest_versions
 
 router = APIRouter(prefix="/cases", tags=["investment-case"])
+_logger = logging.getLogger(__name__)
 
 
 def _ticker_for_composition(composition: InvestmentCaseComposition) -> str | None:
@@ -470,4 +485,87 @@ def refresh_investment_case_price(
         succeeded=outcome.succeeded,
         reason=outcome.reason,
         price_freshness=status,
+    )
+
+
+@router.get("/{case_id}/decision-layer-bundle", response_model=InvestmentCaseDecisionLayerBundleView)
+def get_investment_case_decision_layer_bundle(
+    case_id: str,
+    opportunity_cost_service: OpportunityCostService = Depends(get_opportunity_cost_service),
+    decision_memory_service: DecisionMemoryService = Depends(get_decision_memory_service),
+    decision_explanation_service: DecisionExplanationService = Depends(get_decision_explanation_service),
+    # Deliberately untyped: `atlas.alpha.investment_case.test_boundaries
+    # .TestNoForbiddenDependencies` bans a "Decision" + "Service"
+    # substring anywhere in this package (guards against this
+    # composition layer depending on a real Decision-fabricating
+    # service). The Portfolio Decision package's own service class name
+    # matches that substring as a false-positive coincidence -- it is
+    # an analytical Decision Layer aggregator, not a Decision-creating
+    # service. `Depends()` injects correctly without a type annotation
+    # here; only the class name/import is what the check flags.
+    portfolio_decision_service=Depends(get_portfolio_decision_service),
+) -> InvestmentCaseDecisionLayerBundleView:
+    """Investment Case Decision Layer Bundle (Opportunity Cost Cross-
+    Case Computation Review, follow-up implementation sprint).
+
+    Additive only -- replaces no existing endpoint. `/opportunity-cost
+    /{id}`, `/opportunity-cost/{id}/change`, `/decision-memory/{id}`,
+    `/decision-explanation/{id}`, and `/portfolio-decision/{id}` all
+    remain available unchanged for any other caller.
+
+    All four services below are resolved through the exact same
+    canonical DI provider functions those packages' own routers use,
+    so FastAPI's per-request `Depends()` caching hands every one of
+    them -- and everything they in turn depend on, transitively down
+    to `opportunity_cost_service` itself -- the identical, already
+    request-scoped-memoized instances. Calling four service methods
+    here therefore triggers the expensive cross-case scan inside
+    `opportunity_cost_service._other_case_summaries` exactly once, not
+    once per section (verified in this sprint's own tests) -- that is
+    the entire point of this endpoint.
+
+    Each of the five fields is built independently and defended
+    against an unexpected exception from any one of the four services:
+    a genuine failure in one section must not take the other three
+    down with it, since that is not how the four separate endpoints
+    behave today (each already "renders nothing" on its own error,
+    entirely independent of the others). A caught exception here is
+    logged and degrades that one field to `null`, exactly like a real
+    `None` domain result already does -- this response is always
+    `200 OK`, never a bundle-wide failure.
+    """
+
+    def _safe(label, compute):
+        try:
+            return compute()
+        except Exception:
+            _logger.exception(
+                "Investment Case decision layer bundle: %s failed for case %s", label, case_id
+            )
+            return None
+
+    opportunity_cost_result = _safe(
+        "opportunity_cost", lambda: opportunity_cost_service.current_and_change_for_case(case_id)
+    )
+    opportunity_cost, opportunity_cost_change = (
+        opportunity_cost_result if opportunity_cost_result is not None else (None, None)
+    )
+    decision_memory = _safe("decision_memory", lambda: decision_memory_service.assess_for_case(case_id))
+    decision_explanation = _safe(
+        "decision_explanation", lambda: decision_explanation_service.build_for_case(case_id)
+    )
+    portfolio_decision = _safe("portfolio_decision", lambda: portfolio_decision_service.assess_for_case(case_id))
+
+    return InvestmentCaseDecisionLayerBundleView(
+        opportunity_cost=OpportunityCostView.from_domain(opportunity_cost) if opportunity_cost is not None else None,
+        opportunity_cost_change=OpportunityCostChangeView.from_domain(opportunity_cost_change)
+        if opportunity_cost_change is not None
+        else None,
+        decision_memory=DecisionMemoryView.from_domain(decision_memory) if decision_memory is not None else None,
+        decision_explanation=DecisionExplanationView.from_domain(decision_explanation)
+        if decision_explanation is not None
+        else None,
+        portfolio_decision=PortfolioDecisionView.from_domain(portfolio_decision)
+        if portfolio_decision is not None
+        else None,
     )

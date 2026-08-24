@@ -70,6 +70,23 @@ class OpportunityCostService:
         self._result_repository = result_repository
         self._portfolio_store = portfolio_store
         self._watchlist_store = watchlist_store
+        # Request-scoped memoization (Investment Case Decision Layer
+        # Bundle sprint) -- same pattern and justification as the
+        # Decision Layer Runtime Verification sprint's own fix, applied
+        # here because the Bundle endpoint made real what that earlier
+        # sprint had only that this method already had `count=1` in
+        # every endpoint tested at the time: the Bundle calls this
+        # method up to four times for the same `case_id` within one
+        # request (directly, plus transitively via `decision_memory`,
+        # `decision_explanation`, and `portfolio_decision`), each of
+        # which would otherwise independently re-run
+        # `_other_case_summaries` -- the full, expensive scan over
+        # every other known Case -- from scratch. `ticker` is
+        # deliberately excluded from the key -- see
+        # `recommendation_conviction.service`'s own identical comment
+        # for why; the repository upsert only runs on the one call that
+        # actually computes a fresh result, not on a cache hit.
+        self._assess_for_case_cache: dict[str, OpportunityCost | None] = {}
 
     def _ticker_for_case(self, case_id: str) -> str | None:
         for known_case_id, ticker in known_cases(self._portfolio_store, self._watchlist_store):
@@ -106,14 +123,22 @@ class OpportunityCostService:
         or a real Investment Decision -- the same honest-absence
         contract every sibling Decision Layer service already uses."""
         resolved_ticker = ticker if ticker is not None else self._ticker_for_case(case_id)
+        if case_id in self._assess_for_case_cache:
+            return self._assess_for_case_cache[case_id]
+        result = self._assess_for_case_uncached(case_id, ticker=resolved_ticker)
+        self._assess_for_case_cache[case_id] = result
+        if result is not None:
+            self._result_repository.upsert(result, ticker=resolved_ticker)
+        return result
 
-        decision = self._investment_decision_service.synthesize_for_case(case_id, ticker=resolved_ticker)
+    def _assess_for_case_uncached(self, case_id: str, *, ticker: str | None) -> OpportunityCost | None:
+        decision = self._investment_decision_service.synthesize_for_case(case_id, ticker=ticker)
         if decision is None:
             return None
-        conviction = self._recommendation_conviction_service.assess_for_case(case_id, ticker=resolved_ticker)
+        conviction = self._recommendation_conviction_service.assess_for_case(case_id, ticker=ticker)
         if conviction is None:
             return None
-        path = self._decision_path_service.build_for_case(case_id, ticker=resolved_ticker)
+        path = self._decision_path_service.build_for_case(case_id, ticker=ticker)
         if path is None:
             return None
 
@@ -132,9 +157,7 @@ class OpportunityCostService:
                     comparison = build_alternative_comparison(conviction, other_conviction, path, other_path)
             tradeoffs.append(DecisionTradeoff(alternative=alternative, comparison=comparison))
 
-        result = build_opportunity_cost(case_id, decision.action, tuple(tradeoffs), generated_at=_utc_now())
-        self._result_repository.upsert(result, ticker=resolved_ticker)
-        return result
+        return build_opportunity_cost(case_id, decision.action, tuple(tradeoffs), generated_at=_utc_now())
 
     def assess_for_ticker(self, ticker: str) -> OpportunityCost | None:
         case_id = resolve_case_id_for_ticker(ticker, self._portfolio_store, self._watchlist_store)
@@ -154,6 +177,23 @@ class OpportunityCostService:
         if current is None:
             return None
         return detect_opportunity_cost_change(previous, current, detected_at=current.generated_at)
+
+    def current_and_change_for_case(
+        self, case_id: str, *, ticker: str | None = None
+    ) -> tuple[OpportunityCost | None, OpportunityCostChange | None]:
+        """Investment Case Decision Layer Bundle -- returns both
+        `current` and `change` from a single cross-case scan instead of
+        the two independent ones `assess_for_case` and `change_for_case`
+        would otherwise each trigger (this method's own body is exactly
+        `change_for_case`'s, extended to also keep `current`). Preserves
+        the identical read-before-write ordering: `previous` is read
+        before `assess_for_case` runs and (on a cache miss) upserts."""
+        previous = self._result_repository.get(case_id)
+        current = self.assess_for_case(case_id, ticker=ticker)
+        if current is None:
+            return None, None
+        change = detect_opportunity_cost_change(previous, current, detected_at=current.generated_at)
+        return current, change
 
     def compare(self, ticker_a: str, ticker_b: str) -> AlternativeComparison | None:
         """Deliverable 9 -- the exact `AlternativeComparison` shape

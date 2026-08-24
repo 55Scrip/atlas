@@ -68,20 +68,16 @@ import {
   type DecisionPathView,
 } from "../decisionPath/decisionPathApi";
 import { OpportunityCostSection } from "../opportunityCost/OpportunityCostSection";
-import {
-  fetchOpportunityCost,
-  fetchOpportunityCostChange,
-  type OpportunityCostChangeView,
-  type OpportunityCostView,
-} from "../opportunityCost/opportunityCostApi";
+import { type OpportunityCostChangeView, type OpportunityCostView } from "../opportunityCost/opportunityCostApi";
 import { DecisionMemorySection } from "../decisionMemory/DecisionMemorySection";
-import { fetchDecisionMemory, type DecisionMemoryView } from "../decisionMemory/decisionMemoryApi";
+import { type DecisionMemoryView } from "../decisionMemory/decisionMemoryApi";
 import { DecisionExplanationSection } from "../decisionExplanation/DecisionExplanationSection";
-import { fetchDecisionExplanation, type DecisionExplanationView } from "../decisionExplanation/decisionExplanationApi";
+import { type DecisionExplanationView } from "../decisionExplanation/decisionExplanationApi";
 import { DecisionReliabilitySection } from "../decisionReliability/DecisionReliabilitySection";
 import { fetchDecisionReliability, type DecisionReliabilityView } from "../decisionReliability/decisionReliabilityApi";
 import { PortfolioDecisionSection } from "../portfolioDecision/PortfolioDecisionSection";
-import { fetchPortfolioDecision, type PortfolioDecisionView } from "../portfolioDecision/portfolioDecisionApi";
+import { type PortfolioDecisionView } from "../portfolioDecision/portfolioDecisionApi";
+import { fetchInvestmentCaseDecisionLayerBundle } from "../investmentCase/decisionLayerBundleApi";
 import { addTickerToWatchlist, useAlphaWatchlist, type WatchlistEntryView } from "../discovery/watchlistActions";
 import { invalidateAlphaPortfolio, useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import { ALPHA_PLACEHOLDER_USER_ID } from "../decisionWorkspace/alphaUser";
@@ -1544,58 +1540,57 @@ export function InvestmentCasePage() {
     return () => controller.abort();
   }, [caseId, caseDataVersion]);
 
+  /** Investment Case Decision Layer Bundle (Opportunity Cost Cross-
+   * Case Computation Review, follow-up implementation sprint) --
+   * replaces what were four independent fetches (opportunity-cost +
+   * its own change fetch, decision-memory, decision-explanation,
+   * portfolio-decision) with a single request. `portfolioDataVersion`
+   * is kept in the dependency array (not just `caseDataVersion`) since
+   * `portfolio_decision`'s own data depends on portfolio-wide state
+   * (weights, other holdings), exactly as its own separate effect
+   * required before this change. Each of the four sections keeps its
+   * own independent loading/error status -- a `null` field in the
+   * bundle (whichever section it came from) maps to that section's own
+   * `"error"` state, matching exactly how that section's own separate
+   * fetch already handled a 404 or an unexpected failure, without
+   * affecting the other three. */
   useEffect(() => {
     if (!caseId) return;
 
     const controller = new AbortController();
     setOpportunityCostStatus({ kind: "loading" });
+    setDecisionMemoryStatus({ kind: "loading" });
+    setDecisionExplanationStatus({ kind: "loading" });
+    setPortfolioDecisionStatus({ kind: "loading" });
 
-    fetchOpportunityCost(caseId, controller.signal)
-      .then((opportunityCost) => setOpportunityCostStatus({ kind: "loaded", opportunityCost }))
+    fetchInvestmentCaseDecisionLayerBundle(caseId, controller.signal)
+      .then((bundle) => {
+        setOpportunityCostStatus(
+          bundle.opportunityCost !== null ? { kind: "loaded", opportunityCost: bundle.opportunityCost } : { kind: "error" },
+        );
+        setOpportunityCostChange(bundle.opportunityCostChange);
+        setDecisionMemoryStatus(
+          bundle.decisionMemory !== null ? { kind: "loaded", memory: bundle.decisionMemory } : { kind: "error" },
+        );
+        setDecisionExplanationStatus(
+          bundle.decisionExplanation !== null
+            ? { kind: "loaded", explanation: bundle.decisionExplanation }
+            : { kind: "error" },
+        );
+        setPortfolioDecisionStatus(
+          bundle.portfolioDecision !== null ? { kind: "loaded", decision: bundle.portfolioDecision } : { kind: "error" },
+        );
+      })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setOpportunityCostStatus({ kind: "error" });
-      });
-    fetchOpportunityCostChange(caseId, controller.signal)
-      .then((change) => setOpportunityCostChange(change))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-
-    return () => controller.abort();
-  }, [caseId, caseDataVersion]);
-
-  useEffect(() => {
-    if (!caseId) return;
-
-    const controller = new AbortController();
-    setDecisionMemoryStatus({ kind: "loading" });
-
-    fetchDecisionMemory(caseId, controller.signal)
-      .then((memory) => setDecisionMemoryStatus({ kind: "loaded", memory }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
         setDecisionMemoryStatus({ kind: "error" });
-      });
-
-    return () => controller.abort();
-  }, [caseId, caseDataVersion]);
-
-  useEffect(() => {
-    if (!caseId) return;
-
-    const controller = new AbortController();
-    setDecisionExplanationStatus({ kind: "loading" });
-
-    fetchDecisionExplanation(caseId, controller.signal)
-      .then((explanation) => setDecisionExplanationStatus({ kind: "loaded", explanation }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
         setDecisionExplanationStatus({ kind: "error" });
+        setPortfolioDecisionStatus({ kind: "error" });
       });
 
     return () => controller.abort();
-  }, [caseId, caseDataVersion]);
+  }, [caseId, caseDataVersion, portfolioDataVersion]);
 
   useEffect(() => {
     if (!caseId) return;
@@ -1612,22 +1607,6 @@ export function InvestmentCasePage() {
 
     return () => controller.abort();
   }, [caseId, caseDataVersion]);
-
-  useEffect(() => {
-    if (!caseId) return;
-
-    const controller = new AbortController();
-    setPortfolioDecisionStatus({ kind: "loading" });
-
-    fetchPortfolioDecision(caseId, controller.signal)
-      .then((decision) => setPortfolioDecisionStatus({ kind: "loaded", decision }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setPortfolioDecisionStatus({ kind: "error" });
-      });
-
-    return () => controller.abort();
-  }, [caseId, caseDataVersion, portfolioDataVersion]);
 
   useEffect(() => {
     if (!caseId) return;

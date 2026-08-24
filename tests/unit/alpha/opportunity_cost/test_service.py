@@ -304,3 +304,145 @@ class TestPortfolioOpportunityCostBreakdown:
             | set(breakdown.no_action_appropriate)
         )
         assert "MSFT" not in primary_tickers
+
+
+class TestRequestScopedMemoization:
+    """Investment Case Decision Layer Bundle sprint: `assess_for_case`
+    was, until this sprint, the one Decision Layer method still
+    unmemoized -- the Bundle endpoint calls it up to four times for the
+    same Case within one request (directly, plus transitively via
+    decision_memory, decision_explanation, and portfolio_decision),
+    each of which would otherwise independently re-run
+    `_other_case_summaries`, the full scan over every other known Case.
+    These tests verify the fix, mirroring
+    `InvestmentCaseCompositionService._build_cache`'s own pattern."""
+
+    def test_same_case_id_is_computed_only_once_per_instance(self, harness, monkeypatch):
+        case_id = harness.import_holding("NVDA")
+        calls = {"n": 0}
+        original = harness.opportunity_cost_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.opportunity_cost_service, "_assess_for_case_uncached", counting)
+
+        harness.opportunity_cost_service.assess_for_case(case_id)
+        harness.opportunity_cost_service.assess_for_case(case_id)
+        harness.opportunity_cost_service.assess_for_case(case_id)
+
+        assert calls["n"] == 1
+
+    def test_repeated_calls_return_the_identical_cached_object(self, harness):
+        case_id = harness.import_holding("NVDA")
+        first = harness.opportunity_cost_service.assess_for_case(case_id)
+        second = harness.opportunity_cost_service.assess_for_case(case_id)
+        assert first is second
+
+    def test_different_cases_are_still_computed_separately(self, harness, monkeypatch):
+        case_ids = harness.import_holdings({"AAPL": 50.0, "MSFT": 50.0})
+        calls = {"n": 0}
+        original = harness.opportunity_cost_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.opportunity_cost_service, "_assess_for_case_uncached", counting)
+
+        result_a = harness.opportunity_cost_service.assess_for_case(case_ids["AAPL"])
+        result_b = harness.opportunity_cost_service.assess_for_case(case_ids["MSFT"])
+
+        assert calls["n"] == 2
+        assert result_a.case_id != result_b.case_id
+
+    def test_ticker_argument_does_not_fragment_the_cache_or_change_the_result(self, harness, monkeypatch):
+        case_id = harness.import_holding("NVDA")
+        calls = {"n": 0}
+        original = harness.opportunity_cost_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.opportunity_cost_service, "_assess_for_case_uncached", counting)
+
+        no_ticker = harness.opportunity_cost_service.assess_for_case(case_id)
+        with_ticker = harness.opportunity_cost_service.assess_for_case(case_id, ticker="NVDA")
+
+        assert calls["n"] == 1
+        assert no_ticker is with_ticker
+
+    def test_repository_upsert_runs_once_per_case_not_once_per_call(self, harness):
+        """See `decision_readiness.test_service`'s identical test for
+        why the upsert is skipped on cache hits and why `change_for_case`
+        still works correctly despite it."""
+        case_id = harness.import_holding("NVDA")
+        harness.opportunity_cost_service.assess_for_case(case_id)  # populates the cache, upserts once
+        harness.opportunity_cost_service.assess_for_case(case_id)  # cache hit, no upsert
+        change = harness.opportunity_cost_service.change_for_case(case_id)
+        assert change is None  # nothing changed -- proves previous/current still compare equal
+
+    def test_no_state_leaks_between_service_instances(self, harness):
+        case_id = harness.import_holding("NVDA")
+        harness.opportunity_cost_service.assess_for_case(case_id)
+
+        second_service = OpportunityCostService(
+            harness.investment_decision_service,
+            harness.recommendation_conviction_service,
+            harness.decision_path_service,
+            harness.opportunity_cost_result_repository,
+            harness.portfolio_store,
+            harness.watchlist_store,
+        )
+        calls = {"n": 0}
+        original = second_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        second_service._assess_for_case_uncached = counting
+        second_service.assess_for_case(case_id)
+
+        assert calls["n"] == 1
+
+
+class TestCurrentAndChangeForCase:
+    """Investment Case Decision Layer Bundle sprint: verifies the new
+    combined entry point returns exactly what the two separate calls
+    (`assess_for_case` + `change_for_case`) would have, from a single
+    cross-case scan."""
+
+    def test_returns_the_same_current_as_assess_for_case(self, harness):
+        case_id = harness.import_holding("NVDA")
+        current, _ = harness.opportunity_cost_service.current_and_change_for_case(case_id)
+        separate = harness.opportunity_cost_service.assess_for_case(case_id)
+        assert current is separate  # same request, same cache entry
+
+    def test_first_call_reports_no_change(self, harness):
+        case_id = harness.import_holding("NVDA")
+        current, change = harness.opportunity_cost_service.current_and_change_for_case(case_id)
+        assert current is not None
+        assert change is None
+
+    def test_unknown_case_returns_none_none(self, harness):
+        current, change = harness.opportunity_cost_service.current_and_change_for_case(str(uuid.uuid4()))
+        assert current is None
+        assert change is None
+
+    def test_only_computes_the_cross_case_scan_once(self, harness, monkeypatch):
+        case_ids = harness.import_holdings({"NVDA": 25.0, "AAPL": 25.0, "MSFT": 25.0, "GOOGL": 25.0})
+        calls = {"n": 0}
+        original = OpportunityCostService._other_case_summaries
+
+        def counting(self, exclude_case_id):
+            calls["n"] += 1
+            return original(self, exclude_case_id)
+
+        monkeypatch.setattr(OpportunityCostService, "_other_case_summaries", counting)
+
+        harness.opportunity_cost_service.current_and_change_for_case(case_ids["NVDA"])
+
+        assert calls["n"] == 1
