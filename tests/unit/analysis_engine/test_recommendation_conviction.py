@@ -171,6 +171,47 @@ class TestBoundaryTransitions:
         assert {m.value for m in RecommendationConvictionLevel} == {"high", "medium", "low"}
 
 
+class TestRecommendationEvidenceSufficiencyAlignment:
+    """`has_company_fundamentals_evidence` -- the parallel fix to
+    `direction_selector.select_direction`'s own Stage-1 alignment. See
+    `test_direction_selector.py`'s own
+    `TestRecommendationEvidenceSufficiencyAlignment` for the twin gate
+    this mirrors."""
+
+    @pytest.mark.parametrize(
+        "coverage", [EvidenceCoverageLevel.NOT_APPLICABLE, EvidenceCoverageLevel.NONE]
+    )
+    def test_company_fundamentals_evidence_alone_is_low_not_none(self, coverage):
+        result = _call(evidence_coverage=coverage, has_company_fundamentals_evidence=True)
+        assert result is not None
+        assert result.level is RecommendationConvictionLevel.LOW
+        assert result.reasons == (RecommendationConvictionReasonCode.COMPANY_FUNDAMENTALS_EVIDENCE_ONLY,)
+
+    @pytest.mark.parametrize(
+        "coverage", [EvidenceCoverageLevel.NOT_APPLICABLE, EvidenceCoverageLevel.NONE]
+    )
+    def test_neither_evidence_source_still_returns_none(self, coverage):
+        result = _call(evidence_coverage=coverage, has_company_fundamentals_evidence=False)
+        assert result is None
+
+    def test_has_company_fundamentals_evidence_defaults_false(self):
+        """Every existing call site that never supplies this new
+        parameter keeps its exact prior behavior."""
+        assert (
+            inspect.signature(calculate_recommendation_conviction)
+            .parameters["has_company_fundamentals_evidence"]
+            .default
+            is False
+        )
+
+    def test_full_coverage_case_is_unaffected_by_company_fundamentals_evidence(self):
+        """Observation-backed cases (`FULL` coverage) ignore this new
+        parameter entirely -- confirms the fix is additive."""
+        with_evidence = _call(evidence_coverage=EvidenceCoverageLevel.FULL, has_company_fundamentals_evidence=True)
+        without_evidence = _call(evidence_coverage=EvidenceCoverageLevel.FULL, has_company_fundamentals_evidence=False)
+        assert with_evidence == without_evidence
+
+
 class TestDeterministicBehaviour:
     def test_identical_inputs_produce_equal_results(self):
         first = _call(evidence_coverage=EvidenceCoverageLevel.FULL, has_open_questions=True)

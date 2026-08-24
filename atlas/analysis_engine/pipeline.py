@@ -555,6 +555,19 @@ def assemble_analysis(
         for risk_finding in risk_analysis.findings
         if risk_finding.category in (RiskCategory.FINANCIAL_RISK, RiskCategory.VALUATION_RISK)
     )
+    # Recommendation Evidence Sufficiency Alignment: any real (not
+    # NOT_EVALUATED/INSUFFICIENT_INPUT) risk category is provenance-
+    # backed company evidence -- one of the three real evidence sources
+    # `select_direction`'s Stage-1 gate now recognizes, alongside Growth/
+    # Capital Allocation and Valuation (already its own parameters).
+    # Deliberately broader than `has_high_financial_or_valuation_risk`
+    # above (HIGH-only, two categories, used for matrix dampening): this
+    # is an existence check across all four real risk categories, not a
+    # severity check.
+    has_real_risk_evidence = any(
+        risk_finding.status in (RiskStatus.LOW, RiskStatus.MODERATE, RiskStatus.HIGH)
+        for risk_finding in risk_analysis.findings
+    )
 
     # Internal Alpha Fix Sprint 1, Part 2 (IA-003): a separate, purely
     # company-data-driven signal -- deliberately never reads
@@ -623,6 +636,7 @@ def assemble_analysis(
         has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
         has_open_questions=bool(open_questions),
         generated_at=generated_at,
+        has_real_risk_evidence=has_real_risk_evidence,
     )
     # "Recommendation Backend Step 3": `recommendation.recommendation` is
     # now a real union -- `RecommendationWithheld` (no `direction` field,

@@ -91,8 +91,22 @@ class TestHardGate:
     @pytest.mark.parametrize(
         "coverage", [EvidenceCoverageLevel.NOT_APPLICABLE, EvidenceCoverageLevel.NONE]
     )
-    def test_no_evidence_coverage_withholds(self, coverage):
-        assert _select(evidence_coverage=coverage) is None
+    def test_no_evidence_from_either_source_withholds(self, coverage):
+        """Recommendation Evidence Sufficiency Alignment: withholding
+        now requires *both* evidence sources to be absent -- no
+        Observation-linked Evidence coverage AND no real company-
+        fundamentals conclusion (Growth/Capital Allocation/Valuation/
+        Risk all inconclusive)."""
+        assert (
+            _select(
+                evidence_coverage=coverage,
+                growth_status=BUSINESS_NOT_EVALUATED,
+                capital_allocation_status=BUSINESS_INSUFFICIENT,
+                valuation_status=VALUATION_INSUFFICIENT,
+                has_real_risk_evidence=False,
+            )
+            is None
+        )
 
     def test_hard_gate_checked_before_any_positive_case_reasoning(self):
         """A failed hard gate withholds even for a held position with
@@ -107,6 +121,134 @@ class TestHardGate:
             )
             is None
         )
+
+
+# ---------------------------------------------------------------------------
+# Recommendation Evidence Sufficiency Alignment: Stage 1's evidence-
+# existence check now recognizes two independent evidence sources --
+# Core-Domain Observation/Evidence coverage (`evidence_coverage`,
+# pre-existing) and provenance-backed company-fundamentals evidence
+# (`growth_status`/`capital_allocation_status`/`valuation_status`,
+# already this function's own parameters, plus the new
+# `has_real_risk_evidence`) -- either one alone is now sufficient to
+# reach the real matrix. Governing principle: Atlas-generated,
+# provenance-backed company analysis is real evidence; a Core-Domain
+# Observation may strengthen it but is not mandatory for it.
+# ---------------------------------------------------------------------------
+
+
+class TestRecommendationEvidenceSufficiencyAlignment:
+    def test_no_observation_but_real_growth_evidence_reaches_the_matrix(self):
+        """No Observation-linked Evidence at all (`NOT_APPLICABLE`), but
+        a real, provenance-backed Growth conclusion plus a real,
+        conclusive Valuation status -- reaches the real matrix and
+        resolves to a real direction, not RecommendationWithheld. (A
+        real Business conclusion alone, with Valuation still
+        inconclusive, correctly stays withheld -- `DE-008`'s own "needs
+        to know which ValuationStatus applies" gap, untouched here; see
+        `test_no_observation_but_real_valuation_evidence_reaches_the_matrix`
+        for that half of the evidence-source proof.)"""
+        result = _select(
+            evidence_coverage=EvidenceCoverageLevel.NOT_APPLICABLE,
+            growth_status=STRONG,
+            capital_allocation_status=BUSINESS_INSUFFICIENT,
+            valuation_status=FAIRLY_VALUED,
+            has_real_risk_evidence=False,
+            holding_linkage=PRESENT,
+        )
+        assert result is RecommendationDirection.HOLD
+
+    def test_no_observation_but_real_valuation_evidence_reaches_the_matrix(self):
+        """Growth/Capital Allocation both inconclusive, but a real FCF
+        valuation conclusion alone is enough evidence to pass Stage 1 --
+        the matrix itself still withholds here (business INSUFFICIENT,
+        untouched by this change) -- proving Stage 1 passing does not
+        force a fabricated direction."""
+        result = _select(
+            evidence_coverage=EvidenceCoverageLevel.NONE,
+            growth_status=BUSINESS_INSUFFICIENT,
+            capital_allocation_status=BUSINESS_NOT_EVALUATED,
+            valuation_status=FAIRLY_VALUED,
+            has_real_risk_evidence=False,
+        )
+        assert result is None
+
+    def test_no_observation_and_no_real_company_evidence_stays_withheld(self):
+        """Neither evidence source present -- still RecommendationWithheld,
+        unchanged from before this alignment."""
+        result = _select(
+            evidence_coverage=EvidenceCoverageLevel.NOT_APPLICABLE,
+            growth_status=BUSINESS_NOT_EVALUATED,
+            capital_allocation_status=BUSINESS_INSUFFICIENT,
+            valuation_status=VALUATION_NOT_EVALUATED,
+            has_real_risk_evidence=False,
+        )
+        assert result is None
+
+    def test_observation_backed_case_is_unaffected(self):
+        """`evidence_coverage=FULL` (the old, sole evidence source)
+        behaves exactly as before this alignment, regardless of company-
+        fundamentals evidence -- confirms the fix is additive, not a
+        replacement."""
+        result = _select(
+            evidence_coverage=EvidenceCoverageLevel.FULL,
+            growth_status=STRONG,
+            capital_allocation_status=STRONG,
+            valuation_status=FAIRLY_VALUED,
+            has_real_risk_evidence=False,
+            holding_linkage=PRESENT,
+        )
+        assert result is RecommendationDirection.HOLD
+
+    def test_weak_company_evidence_counts_as_evidence_not_absence(self):
+        """A real but negative Growth conclusion (`WEAK`) is still real,
+        provenance-backed evidence -- passes Stage 1 and resolves via
+        the matrix's own WEAK-business branch (TRIM/NO_ACTION), never
+        treated as if no evidence existed."""
+        result = _select(
+            evidence_coverage=EvidenceCoverageLevel.NOT_APPLICABLE,
+            growth_status=WEAK,
+            capital_allocation_status=BUSINESS_INSUFFICIENT,
+            valuation_status=VALUATION_INSUFFICIENT,
+            has_real_risk_evidence=False,
+            holding_linkage=ABSENT,
+        )
+        assert result is RecommendationDirection.NO_ACTION
+
+    def test_insufficient_input_does_not_count_as_evidence(self):
+        """`INSUFFICIENT_INPUT` (Growth/Capital Allocation/Valuation) and
+        `NOT_EVALUATED` are both still treated as "no conclusion" -- only
+        a real categorical status counts."""
+        result = _select(
+            evidence_coverage=EvidenceCoverageLevel.NONE,
+            growth_status=BUSINESS_INSUFFICIENT,
+            capital_allocation_status=BUSINESS_INSUFFICIENT,
+            valuation_status=VALUATION_INSUFFICIENT,
+            has_real_risk_evidence=False,
+        )
+        assert result is None
+
+    def test_real_risk_evidence_alone_passes_stage_one_but_matrix_still_withholds_without_business(self):
+        """`has_real_risk_evidence=True` alone is enough real evidence to
+        pass Stage 1 -- but the matrix's own untouched
+        business-INSUFFICIENT branch still withholds when Growth/Capital
+        Allocation/Valuation are all inconclusive. Proves risk evidence
+        passing Stage 1 never forces a fabricated direction."""
+        result = _select(
+            evidence_coverage=EvidenceCoverageLevel.NOT_APPLICABLE,
+            growth_status=BUSINESS_NOT_EVALUATED,
+            capital_allocation_status=BUSINESS_INSUFFICIENT,
+            valuation_status=VALUATION_INSUFFICIENT,
+            has_real_risk_evidence=True,
+        )
+        assert result is None
+
+    def test_has_real_risk_evidence_defaults_false(self):
+        """Every existing call site that never supplies this new
+        parameter keeps its exact prior behavior."""
+        import inspect
+
+        assert inspect.signature(select_direction).parameters["has_real_risk_evidence"].default is False
 
 
 # ---------------------------------------------------------------------------

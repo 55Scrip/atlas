@@ -156,7 +156,7 @@ from atlas.analysis_engine.valuation.contracts import ValuationStatus
 from atlas.analysis_engine.valuation.support import ValuationSupportStatus
 from atlas.decision_engine.contracts import EvaluationState, EvidenceCoverageLevel, HoldingLinkage
 
-__all__ = ["select_direction"]
+__all__ = ["select_direction", "has_company_fundamentals_evidence"]
 
 
 class _BusinessSignal(str, Enum):
@@ -182,6 +182,39 @@ _INCONCLUSIVE_VALUATION_STATUSES = (
 )
 
 _NO_EVIDENCE_COVERAGE = (EvidenceCoverageLevel.NOT_APPLICABLE, EvidenceCoverageLevel.NONE)
+
+
+def has_company_fundamentals_evidence(
+    *,
+    growth_status: BusinessCategoryStatus,
+    capital_allocation_status: BusinessCategoryStatus,
+    valuation_status: ValuationStatus,
+    has_real_risk_evidence: bool,
+) -> bool:
+    """Recommendation Evidence Sufficiency Alignment: `True` whenever at
+    least one of `atlas.analysis_engine`'s own Business/Valuation/Risk
+    evaluators reached a real, provenance-backed conclusion from ingested
+    company data -- `WEAK`/`MODERATE`/`STRONG` (Growth, Capital
+    Allocation), a real `ValuationStatus`, or any real risk category all
+    count identically; only `NOT_EVALUATED`/`INSUFFICIENT_INPUT` do not.
+    Public (unlike `_business_signal` above) because this exact question
+    -- "does real company-fundamentals evidence exist for this case?" --
+    is also asked by `select_direction`'s own Stage 1 below and, via
+    `evaluate_recommendation_gate`, by `recommendation_conviction
+    .calculate_recommendation_conviction`'s own independent, parallel
+    hard gate (see that function's own docstring) -- one shared
+    computation, not two separately-maintained copies of the same OR
+    expression.
+
+    A negative/weak conclusion (`WEAK`, or any real risk severity) counts
+    exactly the same as a positive one -- this function answers "is there
+    a real conclusion at all," never "is the conclusion favorable.\""""
+    return (
+        growth_status not in _INCONCLUSIVE_BUSINESS_STATUSES
+        or capital_allocation_status not in _INCONCLUSIVE_BUSINESS_STATUSES
+        or valuation_status not in _INCONCLUSIVE_VALUATION_STATUSES
+        or has_real_risk_evidence
+    )
 
 
 def _business_signal(
@@ -231,6 +264,7 @@ def select_direction(
     valuation_support_status: ValuationSupportStatus,
     has_portfolio_dampening: bool,
     has_high_financial_or_valuation_risk: bool,
+    has_real_risk_evidence: bool = False,
 ) -> RecommendationDirection | None:
     """Deterministic: identical inputs always produce an identical
     result (or identically `None`). Implements `DE-008` §18's
@@ -250,17 +284,49 @@ def select_direction(
     `RecommendationDirection`-shaped value, matching `DE-008` §1's "not a
     seventh direction" and `RecommendationOutcomeKind`'s own two-branch
     shape.
+
+    **Recommendation Evidence Sufficiency Alignment.** `evidence_coverage`
+    alone used to be Stage 1's only evidence-existence check -- but it
+    measures exactly one evidentiary source: Core-Domain Observations
+    with linked Evidence (`decision_engine.stages.business_evaluation
+    ._coverage`'s own `observation_count == 0 -> NOT_APPLICABLE` rule).
+    That is a real, legitimate evidence source, but not the only one
+    this codebase has: `growth_status`/`capital_allocation_status`/
+    `valuation_status` (already this function's own parameters) and
+    `has_real_risk_evidence` are provenance-backed, deterministically
+    computed conclusions from real, ingested company data (SEC filings,
+    market data) via `atlas.analysis_engine`'s own Business/Valuation/
+    Risk evaluators -- the identical evidence source
+    `investment_case_lifecycle`'s own Mandatory Core (M2/M4) already
+    treats as real. Governing principle: Atlas-generated,
+    provenance-backed company analysis is real evidence; a Core-Domain
+    Observation may strengthen it, but is not mandatory for it. Stage 1
+    below now blocks only when *neither* evidence source is present --
+    `evidence_coverage` still gates alone whenever no company-fundamentals
+    conclusion exists at all (identical to the prior behavior for a
+    case with no ingested company data), preserving the "never fabricate
+    a direction from nothing" guarantee unchanged.
     """
+    fundamentals_evidence_present = has_company_fundamentals_evidence(
+        growth_status=growth_status,
+        capital_allocation_status=capital_allocation_status,
+        valuation_status=valuation_status,
+        has_real_risk_evidence=has_real_risk_evidence,
+    )
+
     # Stage 1 (DE-008 §18, §4): hard gate. The same existence-floor
     # facts `calculate_recommendation_conviction` independently checks
     # for the identical reason -- reading them here is not a second
-    # Conviction computation (see module docstring).
+    # Conviction computation (see module docstring). `evidence_coverage`
+    # is now OR-combined with `fundamentals_evidence_present` (see
+    # this function's own docstring) -- every other condition here is
+    # unchanged.
     if (
         business_evaluation_state is not EvaluationState.EVALUATED
         or valuation_state is not EvaluationState.EVALUATED
         or portfolio_intelligence_state is not EvaluationState.EVALUATED
         or reasoning_state is not EvaluationState.EVALUATED
-        or evidence_coverage in _NO_EVIDENCE_COVERAGE
+        or (evidence_coverage in _NO_EVIDENCE_COVERAGE and not fundamentals_evidence_present)
     ):
         return None
 

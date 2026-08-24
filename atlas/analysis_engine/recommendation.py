@@ -65,7 +65,7 @@ parameter alone, exactly as before.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import Enum
 
@@ -96,6 +96,7 @@ from atlas.decision_engine.contracts import (
     ReasoningResult,
     ReasoningSummary,
     RecommendationWithheld,
+    RecommendationWithheldReason,
     SupportingEvidenceSummary,
     ValuationResult,
 )
@@ -399,6 +400,7 @@ def evaluate_recommendation_gate(
     has_open_questions: bool,
     generated_at: datetime,
     has_portfolio_dampening: bool = False,
+    has_real_risk_evidence: bool = False,
 ) -> RecommendationGateResult:
     """Deterministic: identical inputs always produce an identical
     `RecommendationGateResult`.
@@ -425,6 +427,12 @@ def evaluate_recommendation_gate(
     call site can honestly supply `True` yet; see
     `direction_selector.py`'s own docstring.
 
+    `has_real_risk_evidence` (Recommendation Evidence Sufficiency
+    Alignment) defaults `False` for the same reason `has_portfolio
+    _dampening` does -- an explicit opt-in signal, never inferred here.
+    Forwarded to `select_direction`'s own Stage-1 gate unchanged; see
+    that function's own docstring for what it does.
+
     First attempts to select a real Direction and a real
     Recommendation-specific Conviction; falls back to the existing
     `determine_recommendation`-produced `RecommendationWithheld`
@@ -433,11 +441,10 @@ def evaluate_recommendation_gate(
     independently rather than assumed equivalent."""
     # Imported here, not at module level: `direction_selector` imports
     # `RecommendationDirection` from this module, so a top-level import
-    # of `select_direction` here would be a circular import. This
-    # function-local import is the standard, minimal-footprint break --
-    # both modules are fully loaded by the time this function is ever
-    # called.
-    from atlas.analysis_engine.direction_selector import select_direction
+    # here would be a circular import. This function-local import is the
+    # standard, minimal-footprint break -- both modules are fully loaded
+    # by the time this function is ever called.
+    from atlas.analysis_engine.direction_selector import has_company_fundamentals_evidence, select_direction
 
     conviction_gate_met = _CONVICTION_ORDER.index(conviction.level) >= _CONVICTION_ORDER.index(
         RECOMMENDATION_GATE_MINIMUM_CONVICTION
@@ -454,6 +461,13 @@ def evaluate_recommendation_gate(
     evidence_coverage = _safe_evidence_coverage(business_evaluation)
     has_contradicting_evidence = _safe_has_contradicting_evidence(reasoning)
 
+    fundamentals_evidence_present = has_company_fundamentals_evidence(
+        growth_status=growth_finding.status,
+        capital_allocation_status=capital_allocation_finding.status,
+        valuation_status=fcf_yield_finding.status,
+        has_real_risk_evidence=has_real_risk_evidence,
+    )
+
     recommendation_conviction = calculate_recommendation_conviction(
         business_state=business_evaluation.state,
         valuation_state=valuation.state,
@@ -462,6 +476,7 @@ def evaluate_recommendation_gate(
         evidence_coverage=evidence_coverage,
         has_contradicting_evidence=has_contradicting_evidence,
         has_open_questions=has_open_questions,
+        has_company_fundamentals_evidence=fundamentals_evidence_present,
     )
 
     direction = select_direction(
@@ -477,6 +492,7 @@ def evaluate_recommendation_gate(
         valuation_support_status=valuation_support.status,
         has_portfolio_dampening=has_portfolio_dampening,
         has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
+        has_real_risk_evidence=has_real_risk_evidence,
     )
 
     recommendation: RecommendationWithheld | ComputedDirectionalRecommendation
@@ -508,6 +524,18 @@ def evaluate_recommendation_gate(
             reasoning=reasoning,
             generated_at=generated_at,
         )
+        if not recommendation.missing_evaluations:
+            # `determine_recommendation` always stamps `ENGINE_NOT
+            # _IMPLEMENTED` (accurate at its own, lower `decision_engine`
+            # call site, which genuinely has no Direction selector).
+            # Reached from here, that label is stale: `select_direction`
+            # is real and ran (Recommendation Evidence Sufficiency
+            # Alignment) -- an empty `missing_evaluations` means every
+            # prerequisite stage was EVALUATED, so a withheld outcome at
+            # this call site is always "ran the real evaluators, still
+            # not enough evidence" (`RecommendationWithheldReason`'s own
+            # docstring), never "the engine isn't built."
+            recommendation = replace(recommendation, reason=RecommendationWithheldReason.EVIDENCE_INSUFFICIENT)
 
     return RecommendationGateResult(
         recommendation=recommendation, conviction_gate_met=conviction_gate_met, conviction=conviction

@@ -108,6 +108,14 @@ class RecommendationConvictionReasonCode(str, Enum):
     NO_CONTRADICTING_EVIDENCE = "no_contradicting_evidence"
     OPEN_QUESTIONS_REMAIN = "open_questions_remain"
     NO_OPEN_QUESTIONS = "no_open_questions"
+    # Recommendation Evidence Sufficiency Alignment: no Core-Domain
+    # Observation-linked Evidence coverage exists, but a real,
+    # provenance-backed company-fundamentals conclusion (Growth/Capital
+    # Allocation/Valuation/Risk) does -- distinct from
+    # `EVIDENCE_COVERAGE_PARTIAL`, which names an entirely different
+    # evidence source. Never combined with either `EVIDENCE_COVERAGE_*`
+    # code in the same assessment.
+    COMPANY_FUNDAMENTALS_EVIDENCE_ONLY = "company_fundamentals_evidence_only"
 
 
 @dataclass(frozen=True)
@@ -152,6 +160,7 @@ def calculate_recommendation_conviction(
     evidence_coverage: EvidenceCoverageLevel,
     has_contradicting_evidence: bool,
     has_open_questions: bool,
+    has_company_fundamentals_evidence: bool = False,
 ) -> RecommendationConvictionAssessment | None:
     """Deterministic: identical inputs always produce an identical
     result (or identically `None`). No wall-clock read, no randomness,
@@ -164,6 +173,17 @@ def calculate_recommendation_conviction(
     regardless of which one decided the level -- the same
     "trivially diffable" discipline `conviction.py`'s own
     `calculate_conviction` already established.
+
+    `has_company_fundamentals_evidence` (Recommendation Evidence
+    Sufficiency Alignment) defaults `False`, mirroring `direction_selector
+    .select_direction`'s own `has_real_risk_evidence` default -- an
+    explicit opt-in, never inferred here. When `evidence_coverage` alone
+    would withhold (`NOT_APPLICABLE`/`NONE`) but this is `True`, this
+    function now returns `LOW` conviction instead of `None` -- the same
+    conservative floor `PARTIAL` Observation coverage already gets,
+    reflecting that a real company-fundamentals conclusion with no
+    Observation-based cross-check is real evidence, but not yet the
+    richer, fully-corroborated picture `FULL`/`MEDIUM`/`HIGH` require.
     """
     if (
         business_state is not EvaluationState.EVALUATED
@@ -174,7 +194,12 @@ def calculate_recommendation_conviction(
         return None
 
     if evidence_coverage in (EvidenceCoverageLevel.NOT_APPLICABLE, EvidenceCoverageLevel.NONE):
-        return None
+        if not has_company_fundamentals_evidence:
+            return None
+        return RecommendationConvictionAssessment(
+            level=RecommendationConvictionLevel.LOW,
+            reasons=(RecommendationConvictionReasonCode.COMPANY_FUNDAMENTALS_EVIDENCE_ONLY,),
+        )
 
     if evidence_coverage is EvidenceCoverageLevel.PARTIAL:
         return RecommendationConvictionAssessment(

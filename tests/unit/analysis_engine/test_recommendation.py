@@ -35,6 +35,7 @@ from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
 from atlas.analysis_engine.valuation.support import ValuationSupport, ValuationSupportGapKind, ValuationSupportStatus
 from atlas.decision_engine.contracts import (
     EvaluationState,
+    EvidenceCoverageLevel,
     HoldingLinkage,
     PortfolioHoldingContext,
     RecommendationOutcomeKind,
@@ -95,6 +96,12 @@ def _call_gate(engine_input, output, *, conviction, **overrides):
 
 class TestRecommendationIsDelegatedNotReimplemented:
     def test_result_matches_determine_recommendation_called_directly(self):
+        """Still delegates to `determine_recommendation` for every field
+        except `reason` -- `evaluate_recommendation_gate` corrects that
+        one field afterward (Recommendation Evidence Sufficiency
+        Alignment: `determine_recommendation`'s own `ENGINE_NOT
+        _IMPLEMENTED` is stale from this call site, since `select_direction`
+        is real and ran; see `recommendation.py`'s own comment)."""
         engine_input, output = run_minimal()
         result = _call_gate(engine_input, output, conviction=_assessment(ConvictionLevel.HIGH))
         expected = determine_recommendation(
@@ -105,13 +112,20 @@ class TestRecommendationIsDelegatedNotReimplemented:
             reasoning=output.reasoning,
             generated_at=GENERATED_AT,
         )
-        assert result.recommendation == expected
+        assert result.recommendation.kind == expected.kind
+        assert result.recommendation.missing_evaluations == expected.missing_evaluations
+        assert result.recommendation.required_before_recommendation == expected.required_before_recommendation
+        assert result.recommendation.reason is RecommendationWithheldReason.EVIDENCE_INSUFFICIENT
 
     def test_still_recommendation_withheld_when_business_is_inconclusive(self):
         engine_input, output = run_populated()
         result = _call_gate(engine_input, output, conviction=_assessment(ConvictionLevel.VERY_HIGH))
         assert result.recommendation.kind is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
-        assert result.recommendation.reason is RecommendationWithheldReason.ENGINE_NOT_IMPLEMENTED
+        # Every prerequisite stage was EVALUATED here (real ran, real
+        # declined) -- honest reason is EVIDENCE_INSUFFICIENT, not the
+        # stale "engine not implemented" (Recommendation Evidence
+        # Sufficiency Alignment).
+        assert result.recommendation.reason is RecommendationWithheldReason.EVIDENCE_INSUFFICIENT
 
 
 class TestConvictionGate:
@@ -446,6 +460,49 @@ class TestBuyAddNowWired:
             has_open_questions=False,
             generated_at=GENERATED_AT,
         )
+        assert result.recommendation.kind is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
+
+
+class TestRecommendationEvidenceSufficiencyAlignmentIntegration:
+    """End-to-end proof through the real `evaluate_recommendation_gate`
+    (not just `select_direction`/`calculate_recommendation_conviction`
+    in isolation -- those are `test_direction_selector.py`'s and
+    `test_recommendation_conviction.py`'s own responsibility): a Case
+    with zero recorded Observations (`run_minimal`, the same fixture
+    `TestRecommendationIsDelegatedNotReimplemented` uses) but real,
+    provenance-backed company-fundamentals evidence now reaches a real
+    `ComputedDirectionalRecommendation`, exactly as it would for an
+    Observation-backed Case."""
+
+    def test_no_observations_but_real_growth_and_valuation_produces_a_real_buy(self):
+        engine_input, output = run_minimal()
+        assert output.portfolio_intelligence.holding_context.linkage is HoldingLinkage.ABSENT
+        assert output.business_evaluation.evidence_quality.coverage is EvidenceCoverageLevel.NOT_APPLICABLE
+
+        result = evaluate_recommendation_gate(
+            engine_input,
+            business_evaluation=output.business_evaluation,
+            valuation=output.valuation,
+            portfolio_intelligence=output.portfolio_intelligence,
+            reasoning=output.reasoning,
+            conviction=_assessment(ConvictionLevel.HIGH),
+            business_analysis=_strong_growth_business_analysis(),
+            valuation_engine=_undervalued_valuation_engine(),
+            valuation_support=_supported_valuation_support(),
+            has_high_financial_or_valuation_risk=False,
+            has_open_questions=False,
+            generated_at=GENERATED_AT,
+        )
+        assert isinstance(result.recommendation, ComputedDirectionalRecommendation)
+        assert result.recommendation.direction is RecommendationDirection.BUY
+        assert result.recommendation.conviction_level is RecommendationConvictionLevel.LOW
+
+    def test_no_observations_and_no_real_company_evidence_stays_withheld(self):
+        """The control: zero Observations AND business/valuation still
+        inconclusive (this file's own default `_call_gate` fixtures) --
+        unchanged, still withheld."""
+        engine_input, output = run_minimal()
+        result = _call_gate(engine_input, output, conviction=_assessment(ConvictionLevel.HIGH))
         assert result.recommendation.kind is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
 
 
