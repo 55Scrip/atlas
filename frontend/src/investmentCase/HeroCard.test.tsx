@@ -190,4 +190,36 @@ describe("HeroCard", () => {
       expect(screen.queryByRole("button", { name: /priceRefresh/ })).not.toBeInTheDocument();
     });
   });
+
+  describe("No provider data found (Import Robustness, Internal Alpha Stabilization 1)", () => {
+    it("shows the honest 'no provider data' message instead of the generic withheld sentence when withheld and noProviderDataFound is true", () => {
+      renderHero({
+        analysis: analysis({ recommendationLevel: "insufficient_evidence", noProviderDataFound: true }),
+      });
+      expect(screen.getByText("investmentCase.hero.noProviderData")).toBeInTheDocument();
+      expect(screen.queryByText(/investmentCase.hero.withheld.opening/)).not.toBeInTheDocument();
+    });
+
+    it("shows the ordinary generic withheld sentence, unchanged, when withheld but noProviderDataFound is false", () => {
+      renderHero({
+        analysis: analysis({ recommendationLevel: "insufficient_evidence", noProviderDataFound: false }),
+      });
+      expect(screen.getByText(/investmentCase.hero.withheld.opening/)).toBeInTheDocument();
+      expect(screen.queryByText("investmentCase.hero.noProviderData")).not.toBeInTheDocument();
+    });
+
+    it("shows the ordinary generic withheld sentence, unchanged, when withheld and noProviderDataFound is omitted (older caller shape, e.g. a build not yet passing this field)", () => {
+      const { noProviderDataFound: _omit, ...rest } = analysis({ recommendationLevel: "insufficient_evidence" });
+      renderHero({ analysis: rest as HeroAnalysisInput });
+      expect(screen.getByText(/investmentCase.hero.withheld.opening/)).toBeInTheDocument();
+      expect(screen.queryByText("investmentCase.hero.noProviderData")).not.toBeInTheDocument();
+    });
+
+    it("never shows the no-provider-data message outside the withheld branch, even if noProviderDataFound were somehow true", () => {
+      renderHero({
+        analysis: analysis({ recommendationLevel: "reduction_supported", noProviderDataFound: true }),
+      });
+      expect(screen.queryByText("investmentCase.hero.noProviderData")).not.toBeInTheDocument();
+    });
+  });
 });

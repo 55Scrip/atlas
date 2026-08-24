@@ -733,6 +733,8 @@ export const sv: Record<TranslationKey, string> = {
     "Det som finns tillgängligt hittills lämnar verkliga, olösta frågor som gör att Atlas inte kan dra en säker slutsats åt något håll.",
   "investmentCase.hero.withheld.closing":
     "Det finns inget att agera på idag — det här är inte en lucka Atlas har förbisett, utan en ärlig återspegling av vad som går att veta just nu.",
+  "investmentCase.hero.noProviderData":
+    "Atlas hittar inget underlag alls för {{ticker}} — kontrollera att tickern stämmer, eller så är det en tillgångstyp (till exempel en kryptovaluta eller råvara) som Atlas ännu inte stödjer.",
   "investmentCase.hero.asOf": "Speglar Atlas analys per {{when}}.",
   "investmentCase.hero.riskLabel": "{{category}}risk: {{status}}",
   "investmentCase.hero.supportingDetailsLabel": "Kompletterande detaljer",

@@ -3618,6 +3618,20 @@ class InvestmentCaseAnalysisView(CamelModel):
     (evaluator coverage) but "does Atlas have the raw knowledge to
     conclude anything at all" (see `atlas.alpha.knowledge_coverage
     .models`'s own module docstring)."""
+    no_provider_data_found: bool = False
+    """Import Robustness (Internal Alpha Stabilization 1). `True` only
+    when `CanonicalSecurityIdentityGate.latest_resolution_was_no_match`
+    reports a real, persisted `NO_MATCH` outcome for this Case's ticker
+    -- i.e. no provider has ever returned any identity-bearing data for
+    it at all (a crypto/commodity symbol, or any ticker no provider
+    recognizes) -- *and* this Case still carries neither
+    `company_profile` nor `market_snapshot`. Every other resolution
+    outcome (`MANUAL_CONFIRMATION`/`AMBIGUOUS`/`LOW_CONFIDENCE`/
+    `REJECT`) means real candidates were found and is deliberately never
+    reported here -- see that method's own docstring. `False` (the
+    default) is the honest "nothing unusual to report" case, including
+    "never even attempted yet" -- never treat this as "Atlas is
+    confident this ticker is fine."""
 
     @classmethod
     def from_domain(

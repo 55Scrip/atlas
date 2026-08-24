@@ -735,6 +735,8 @@ export const en = {
     "What's available so far leaves real, unresolved questions that keep Atlas from reaching a confident conclusion either way.",
   "investmentCase.hero.withheld.closing":
     "There's nothing to act on today — this isn't a gap Atlas overlooked, it's an honest reflection of what's currently knowable.",
+  "investmentCase.hero.noProviderData":
+    "Atlas can't find any data at all for {{ticker}} — check that the ticker is correct, or this may be an asset type (such as a cryptocurrency or commodity) Atlas doesn't yet support.",
   "investmentCase.hero.asOf": "Reflects Atlas's analysis as of {{when}}.",
   "investmentCase.hero.riskLabel": "{{category}} risk: {{status}}",
   "investmentCase.hero.supportingDetailsLabel": "Supporting details",

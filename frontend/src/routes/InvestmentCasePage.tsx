@@ -973,6 +973,11 @@ interface InvestmentCaseAnalysisView {
   ownershipIntelligence: OwnershipIntelligenceView;
   executiveCompensationIntelligence: ExecutiveCompensationIntelligenceView;
   insiderAlignmentIntelligence: InsiderAlignmentIntelligenceView;
+  /** Import Robustness (Internal Alpha Stabilization 1) -- see the
+   * backend `InvestmentCaseAnalysisView.no_provider_data_found`'s own
+   * docstring for the exact, narrow honesty rule. Optional to default
+   * safely to `false` ("nothing unusual to report") if ever absent. */
+  noProviderDataFound?: boolean;
 }
 
 /** Atlas Intelligence Sprint 7 (Monitoring & Change Detection,
@@ -2691,6 +2696,7 @@ export function InvestmentCasePage() {
               tradingDay: report.marketSnapshot ? report.marketSnapshot.tradingDay : null,
               priceFreshness: report.marketSnapshot ? report.marketSnapshot.priceFreshness : "unavailable",
               stance: report.stance,
+              noProviderDataFound: report.noProviderDataFound ?? false,
             };
             return (
               <>

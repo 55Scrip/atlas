@@ -1,22 +1,32 @@
 import { lookupInstrument, type InstrumentType } from "./instrumentRegistry";
 import type { ParsedRow, ReconcileResult } from "./types";
 
-const TICKER_SHAPE_PATTERN = /^[A-Za-z]{1,5}(\.[A-Za-z]{1,2})?$/;
+const TICKER_SHAPE_PATTERN = /^[A-Za-z]{1,5}([.-][A-Za-z]{1,2})?$/;
 
 /**
  * True only for text that has BOTH the shape of a ticker (short,
- * letters, optional one/two-letter share-class suffix like "BRK.B")
+ * letters, optional one/two-letter share-class suffix like "BRK.B" or,
+ * the Nordic exchange convention, "VOLV-B"/"ATCO-B"/"HM-B"/"INVE-B")
  * AND is written in the all-uppercase form a person uses when they
  * mean to paste a literal ticker symbol ("AMD", "MSFT", "NVDA",
- * "BRK.B"). Shape alone is not enough: "Volvo" (5 letters) has the
- * same shape as a ticker but is Title Case, exactly how it appears on
- * every broker statement — under a shape-only check it would silently
- * become the fabricated ticker "VOLVO", which is the root cause this
- * sprint exists to fix. Requiring the input to already be uppercase is
- * the smallest deterministic signal available (no ticker database, no
- * fuzzy logic) that distinguishes "the investor is telling me this is
- * a ticker" from "the investor pasted a company name that happens to
- * be short."
+ * "BRK.B", "VOLV-B"). Shape alone is not enough: "Volvo" (5 letters)
+ * has the same shape as a ticker but is Title Case, exactly how it
+ * appears on every broker statement — under a shape-only check it
+ * would silently become the fabricated ticker "VOLVO", which is the
+ * root cause this sprint exists to fix. Requiring the input to already
+ * be uppercase is the smallest deterministic signal available (no
+ * ticker database, no fuzzy logic) that distinguishes "the investor is
+ * telling me this is a ticker" from "the investor pasted a company
+ * name that happens to be short."
+ *
+ * Import Robustness (Internal Alpha Stabilization 1): the share-class
+ * suffix originally only matched the US dot convention ("BRK.B"), so a
+ * raw, correctly-formatted Swedish ticker pasted directly (e.g. from a
+ * brokerage export) fell through to "needs confirmation" even though
+ * it was already an unambiguous, literal ticker — real friction for
+ * this app's actually Swedish-heavy real usage. Both suffix forms are
+ * accepted now; nothing else about the two-rule resolution above
+ * changes.
  */
 function looksLikeExplicitTickerInput(trimmed: string): boolean {
   return TICKER_SHAPE_PATTERN.test(trimmed) && trimmed === trimmed.toUpperCase();

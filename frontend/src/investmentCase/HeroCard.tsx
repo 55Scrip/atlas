@@ -200,6 +200,16 @@ export interface HeroAnalysisInput {
    * wires one. Reuses this existing Hero area rather than a new
    * section -- see `StanceSummary`'s own docstring. */
   stance: StanceView | null;
+  /** Import Robustness (Internal Alpha Stabilization 1) --
+   * `InvestmentCaseAnalysisView.noProviderDataFound`, verbatim. `True`
+   * only for a real, persisted "no provider ever returned any identity
+   * data for this ticker" fact (see the backend's own
+   * `CanonicalSecurityIdentityGate.latest_resolution_was_no_match`
+   * docstring) -- never a guess. Only ever meaningful while
+   * `recommendationLevel === "insufficient_evidence"`; optional so
+   * `CompanyWorkspacePage.tsx`'s older call site (which does not fetch
+   * this field) keeps its unchanged generic withheld message. */
+  noProviderDataFound?: boolean;
 }
 
 interface HeroCardProps {
@@ -279,10 +289,16 @@ export function HeroCard({
 
       {isWithheld ? (
         <>
-          <Text as="p" style={HERO_SENTENCE_STYLE}>
-            {t("investmentCase.hero.withheld.opening", { ticker })} {t("investmentCase.hero.withheld.reason")}{" "}
-            {t("investmentCase.hero.withheld.closing")}
-          </Text>
+          {analysis.noProviderDataFound ? (
+            <Text as="p" style={HERO_SENTENCE_STYLE}>
+              {t("investmentCase.hero.noProviderData", { ticker })}
+            </Text>
+          ) : (
+            <Text as="p" style={HERO_SENTENCE_STYLE}>
+              {t("investmentCase.hero.withheld.opening", { ticker })} {t("investmentCase.hero.withheld.reason")}{" "}
+              {t("investmentCase.hero.withheld.closing")}
+            </Text>
+          )}
           <StatusBadge
             label={t(DECISION_SUPPORT_BADGE_KEY[analysis.recommendationLevel])}
             tone={DECISION_SUPPORT_TONE[analysis.recommendationLevel]}

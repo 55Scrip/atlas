@@ -84,6 +84,7 @@ from atlas.alpha.business_data_refresh.api.dependencies import (
     get_alpha_vantage_price_provider,
     get_alpha_vantage_quota_tracker,
     get_business_record_repository,
+    get_canonical_security_identity_gate,
     get_price_refresh_coordinator,
 )
 from atlas.alpha.business_data_refresh.price_refresh import (
@@ -93,6 +94,7 @@ from atlas.alpha.business_data_refresh.price_refresh import (
 )
 from atlas.alpha.business_data_refresh.quota import AlphaVantageQuotaTracker
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
+from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.alpha.coverage import assess_coverage
 from atlas.alpha.evidence_quality import assess_evidence_quality
 from atlas.alpha.evidence_quality.models import EvidenceQualityReport
@@ -309,6 +311,7 @@ def get_investment_case_analysis(
     price_provider=Depends(get_alpha_vantage_price_provider),
     price_quota: AlphaVantageQuotaTracker = Depends(get_alpha_vantage_quota_tracker),
     price_refresh_coordinator: PriceRefreshCoordinator = Depends(get_price_refresh_coordinator),
+    identity_gate: CanonicalSecurityIdentityGate = Depends(get_canonical_security_identity_gate),
 ) -> InvestmentCaseAnalysisView:
     composition = service.build(case_id)
     if composition is None:
@@ -392,6 +395,26 @@ def get_investment_case_analysis(
                 quota=price_quota,
                 coordinator=price_refresh_coordinator,
             )
+
+    # Import Robustness (Internal Alpha Stabilization 1): distinguishes
+    # "Atlas hasn't looked at this ticker yet" (the generic
+    # insufficient-evidence framing, left completely unchanged) from
+    # "Atlas looked and found zero identity-bearing provider data at
+    # all" (e.g. a crypto/commodity ticker, or any symbol no provider
+    # recognizes) -- a real, different fact the investor deserves to
+    # see, not the same "give it time" message that will never resolve
+    # for a ticker like this. `latest_resolution_was_no_match` only
+    # ever reports True for a real, persisted NO_MATCH outcome -- see
+    # its own docstring for why every other blocked outcome
+    # (`MANUAL_CONFIRMATION`/`AMBIGUOUS`/`LOW_CONFIDENCE`/`REJECT`) is
+    # deliberately never conflated with this one, narrower fact.
+    if (
+        ticker is not None
+        and view.company_profile is None
+        and view.market_snapshot is None
+        and identity_gate.latest_resolution_was_no_match(ticker)
+    ):
+        view.no_provider_data_found = True
 
     return view
 

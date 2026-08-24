@@ -254,6 +254,16 @@ def _listing_from_candidate(candidate: ProviderCandidate) -> ListingRef | None:
         exchange_mic=candidate.exchange_mic,
         currency=candidate.currency,
         relationship=candidate.listing_relationship or "NATIVE",
-        security_type=candidate.security_type or "COMMON_STOCK",
+        # Import Robustness (Internal Alpha Stabilization 1): a
+        # candidate can reach this point with `security_type=None`
+        # (e.g. corroborated on company name/exchange/currency alone,
+        # with no provider ever supplying a security type) -- "OTHER"
+        # says exactly that honestly, matching
+        # `candidate_mapping._translate_asset_type`'s own identical
+        # "known-something-exists, unknown-what" precedent. Silently
+        # guessing "COMMON_STOCK" here would mislabel a fund/ETF/other
+        # instrument the moment anything downstream starts reading
+        # this field.
+        security_type=candidate.security_type or "OTHER",
         provider_symbol=candidate.symbol,
     )

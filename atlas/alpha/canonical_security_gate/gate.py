@@ -190,6 +190,33 @@ class CanonicalSecurityIdentityGate:
             resolution_record_id=record_id,
         )
 
+    def latest_resolution_was_no_match(self, ticker: str) -> bool:
+        """Import Robustness (Internal Alpha Stabilization 1): `True`
+        only when the most recently persisted resolution attempt for
+        this exact ticker concluded `NO_MATCH` -- i.e. zero identity-
+        bearing provider candidates were ever found for it (the
+        zero-candidates branch at the top of `evaluate()` above).
+
+        Every other recorded outcome (`MANUAL_CONFIRMATION`,
+        `AMBIGUOUS`, `LOW_CONFIDENCE`, `REJECT`, `AUTO_ACCEPT`) means
+        candidates *were* found -- just not confidently or uniquely
+        enough to proceed automatically -- and must never be conflated
+        with this specific "no provider data exists at all" fact; a
+        caller that needs those other outcomes must read
+        `GateDecision.outcome` from a real `evaluate()` call, not this
+        method. `False` when no resolution attempt has ever been
+        recorded for this ticker at all -- nothing to report yet, not
+        evidence of anything.
+
+        Read-only: makes no resolution attempt, never mutates state,
+        safe to call on every request. The one sanctioned way for a
+        caller outside this package to learn a fact from
+        `canonical_security_resolution`'s persisted history without
+        importing that package directly (see this module's own
+        docstring on why that boundary exists)."""
+        stored = self._resolution_repository.find_latest_resolution(ticker)
+        return stored is not None and stored.outcome == "NO_MATCH"
+
     def _find_existing(
         self, ticker: str, candidates: tuple[ProviderCandidate, ...]
     ) -> CanonicalSecurity | None:

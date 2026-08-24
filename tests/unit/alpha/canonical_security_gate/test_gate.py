@@ -374,3 +374,121 @@ class TestRepositoryIntegration:
         assert loaded is not None
         assert loaded.resolution_status == "CANONICAL"
         assert loaded.canonical_company_name == "Apple Inc."
+
+
+class TestLatestResolutionWasNoMatch:
+    """Import Robustness (Internal Alpha Stabilization 1) -- the one
+    sanctioned way for a caller outside this package to learn whether
+    a ticker has been through identity resolution and come back with
+    zero identity-bearing candidates at all (e.g. a crypto/commodity
+    symbol, or any ticker no provider recognizes). Every other blocked
+    outcome (`MANUAL_CONFIRMATION`, `LOW_CONFIDENCE`, `AMBIGUOUS`,
+    `REJECT`) means candidates *were* found -- this method must never
+    report `True` for any of them."""
+
+    def test_false_when_no_resolution_attempt_has_ever_been_recorded(self) -> None:
+        engine = _engine()
+        gate = _gate(engine)
+        assert gate.latest_resolution_was_no_match("ZZZZ") is False
+
+    def test_true_after_a_real_no_match_evaluate_call(self) -> None:
+        engine = _engine()
+        gate = _gate(engine)
+        gate.evaluate(ticker="BTC", documents=(), clock=lambda: _NOW)
+        assert gate.latest_resolution_was_no_match("BTC") is True
+
+    def test_false_after_auto_accept_never_conflated(self) -> None:
+        engine = _engine()
+        gate = _gate(engine)
+        doc = _profile_doc(
+            ticker="AAPL", provider_id="alpha_vantage", name="Apple Inc.",
+            exchange="NASDAQ", country="USA", currency="USD", security_type="COMMON_STOCK",
+        )
+        decision = gate.evaluate(ticker="AAPL", documents=(doc,), clock=lambda: _NOW)
+        assert decision.outcome == "AUTO_ACCEPT"
+        assert gate.latest_resolution_was_no_match("AAPL") is False
+
+    def test_false_after_manual_confirmation_never_conflated(self) -> None:
+        """Candidates were found here -- just not confidently enough to
+        auto-accept. A real, different fact from NO_MATCH; must not
+        report True."""
+        engine = _engine()
+        gate = _gate(engine)
+        doc = _profile_doc(ticker="AAPL", provider_id="alpha_vantage", name="Apple Inc.", exchange="NASDAQ", country="USA", currency="USD")
+        decision = gate.evaluate(ticker="AAPL", documents=(doc,), clock=lambda: _NOW)
+        assert decision.outcome == "MANUAL_CONFIRMATION"
+        assert gate.latest_resolution_was_no_match("AAPL") is False
+
+    def test_false_after_low_confidence_never_conflated(self) -> None:
+        engine = _engine()
+        gate = _gate(engine)
+        doc = _profile_doc(ticker="AAPL", provider_id="alpha_vantage")  # no metadata at all
+        decision = gate.evaluate(ticker="AAPL", documents=(doc,), clock=lambda: _NOW)
+        assert decision.outcome == "LOW_CONFIDENCE"
+        assert gate.latest_resolution_was_no_match("AAPL") is False
+
+    def test_false_after_ambiguous_never_conflated(self) -> None:
+        engine = _engine()
+        gate = _gate(engine)
+        lvmh_candidate = _profile_doc(
+            ticker="MC", provider_id="alpha_vantage", name="LVMH Moet Hennessy Louis Vuitton",
+            exchange="EURONEXT PARIS", country="France", currency="EUR", security_type="COMMON_STOCK",
+        )
+        moelis_candidate = _profile_doc(ticker="MC", provider_id="sec_edgar", name="Moelis & Co", identifier_suffix="-2")
+        decision = gate.evaluate(ticker="MC", documents=(lvmh_candidate, moelis_candidate), clock=lambda: _NOW)
+        assert decision.outcome == "AMBIGUOUS"
+        assert gate.latest_resolution_was_no_match("MC") is False
+
+    def test_false_after_reject_never_conflated(self) -> None:
+        engine = _engine()
+        gate = _gate(engine)
+        original = _profile_doc(
+            ticker="XYZ", provider_id="alpha_vantage", name="Real Company Inc.",
+            exchange="NASDAQ", country="USA", currency="USD", security_type="COMMON_STOCK",
+        )
+        gate.evaluate(ticker="XYZ", documents=(original,), clock=lambda: _NOW)
+        contradicting = _profile_doc(
+            ticker="XYZ", provider_id="alpha_vantage", name="A Totally Different Company",
+            exchange="NASDAQ", country="USA", currency="USD", security_type="COMMON_STOCK",
+            identifier_suffix="-2",
+        )
+        decision = gate.evaluate(ticker="XYZ", documents=(contradicting,), clock=lambda: _NOW)
+        assert decision.outcome == "REJECT"
+        assert gate.latest_resolution_was_no_match("XYZ") is False
+
+    def test_reflects_only_the_most_recent_attempt_not_ever_no_match(self) -> None:
+        """A ticker that first came back NO_MATCH but later, on a real
+        retry, resolves successfully must stop reporting True -- this
+        is "as of now," never a permanent, sticky flag from history."""
+        engine = _engine()
+        gate = _gate(engine)
+        gate.evaluate(ticker="AAPL", documents=(), clock=lambda: _NOW)
+        assert gate.latest_resolution_was_no_match("AAPL") is True
+
+        doc = _profile_doc(
+            ticker="AAPL", provider_id="alpha_vantage", name="Apple Inc.",
+            exchange="NASDAQ", country="USA", currency="USD", security_type="COMMON_STOCK",
+        )
+        later = datetime(2026, 8, 19, tzinfo=timezone.utc)
+        decision = gate.evaluate(ticker="AAPL", documents=(doc,), clock=lambda: later)
+        assert decision.outcome == "AUTO_ACCEPT"
+        assert gate.latest_resolution_was_no_match("AAPL") is False
+
+    def test_never_calls_evaluate_or_mutates_persisted_state(self) -> None:
+        """Read-only: calling this method twice in a row must not
+        change what it reports, and must not create any new resolution
+        record -- verified by the resolution record's own id staying
+        identical, not just the derived boolean."""
+        engine = _engine()
+        gate = _gate(engine)
+        gate.evaluate(ticker="BTC", documents=(), clock=lambda: _NOW)
+        resolution_repository = SqlAlchemyResolutionRepository(engine)
+        before = resolution_repository.find_latest_resolution("BTC")
+        assert before is not None
+
+        assert gate.latest_resolution_was_no_match("BTC") is True
+        assert gate.latest_resolution_was_no_match("BTC") is True
+
+        after = resolution_repository.find_latest_resolution("BTC")
+        assert after is not None
+        assert after.id == before.id

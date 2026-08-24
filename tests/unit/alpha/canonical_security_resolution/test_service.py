@@ -148,6 +148,26 @@ def test_multiple_provider_agreement_reaches_auto_accept() -> None:
     assert result.outcome == "AUTO_ACCEPT"
 
 
+def test_missing_security_type_on_the_winning_candidate_falls_back_to_other_never_common_stock() -> None:
+    """Import Robustness (Internal Alpha Stabilization 1) regression:
+    a candidate that corroborates on name/exchange/country/currency
+    alone, with no provider ever supplying a security type, must reach
+    `ListingRef.security_type == "OTHER"` -- never silently guessed as
+    `"COMMON_STOCK"`. Same two candidates as
+    `test_multiple_provider_agreement_reaches_auto_accept` above, minus
+    `security_type` on the corroborating one, to isolate exactly the
+    fallback in `_listing_from_candidate`."""
+    a = ProviderCandidate(provider_name="SEC_EDGAR", symbol="AAPL", company_name="Apple Inc.")
+    b = ProviderCandidate(
+        provider_name="TWELVE_DATA", symbol="AAPL", company_name="Apple Inc.",
+        exchange_mic=MicCode("XNGS"), country="United States", currency=TradingCurrency("USD"),
+    )
+    result = _service().resolve(ResolutionRequest(investor_ticker="AAPL", candidates=(a, b)))
+    assert result.outcome == "AUTO_ACCEPT"
+    assert result.canonical_security is not None
+    assert result.canonical_security.listings[0].security_type == "OTHER"
+
+
 def test_provider_disagreement_never_silently_merged() -> None:
     a = ProviderCandidate(
         provider_name="SEC_EDGAR", symbol="MC", company_name="LVMH",
