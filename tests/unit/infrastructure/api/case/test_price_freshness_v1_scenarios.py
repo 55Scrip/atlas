@@ -18,6 +18,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+import atlas.alpha.business_data_refresh.price_refresh as price_refresh
 from atlas.alpha.business_data_refresh.api.dependencies import (
     get_alpha_vantage_price_provider,
     get_alpha_vantage_quota_tracker,
@@ -37,6 +38,28 @@ from atlas.core.infrastructure.persistence.decision.table import create_decision
 _NOW = datetime(2026, 8, 24, 12, tzinfo=timezone.utc)
 _STALE_TRADING_DAY = date(2026, 8, 7)
 _FRESH_TRADING_DAY = date(2026, 8, 21)
+
+
+class _FixedDatetime(datetime):
+    """Test Hygiene Fix: `price_freshness_status` (`atlas.alpha
+    .business_data_refresh.price_refresh`) defaults `as_of` to real
+    `datetime.now(timezone.utc)` when not given one -- the router
+    calling it (`investment_case/api/router.py`) never passes `as_of`
+    at all, so there is no existing dependency-injection seam for "now"
+    reachable from an HTTP test. `is_price_fresh`/`latest_expected
+    _trading_day` (`atlas.analysis_engine.business_data.freshness`)
+    already take `as_of` as a required, non-optional parameter -- the
+    real freshness *logic* was always deterministic; only this one
+    default-argument fallback wasn't. Subclassing `datetime` (rather
+    than a bare fake/mock) preserves every other real `datetime`
+    behavior `price_refresh.py` might use -- only `.now()` is
+    overridden, to the fixed `_NOW` above, so `_FRESH_TRADING_DAY`
+    reports "fresh" and `_STALE_TRADING_DAY` reports "stale" regardless
+    of the real calendar date this test happens to run on."""
+
+    @classmethod
+    def now(cls, tz=None):  # noqa: D102 -- matches datetime.now's own signature
+        return _NOW
 
 
 class _FakePriceProvider:
@@ -132,7 +155,14 @@ def _persist(client, *documents: RawBusinessDocument) -> None:
 
 
 class TestFreshnessFieldOnAnalysisEndpoint:
-    def test_fresh_snapshot_reports_fresh_and_never_calls_the_provider(self, client, fake_price_provider):
+    def test_fresh_snapshot_reports_fresh_and_never_calls_the_provider(self, client, fake_price_provider, monkeypatch):
+        """Test Hygiene Fix: pins `price_refresh.py`'s own notion of
+        "now" to the fixed `_NOW` above -- see `_FixedDatetime`'s own
+        docstring for why this, not a dynamically-guessed trading day,
+        is the correct fix. `_FRESH_TRADING_DAY` (2026-08-21) stays
+        genuinely fresh relative to `_NOW` (2026-08-24) regardless of
+        the real calendar date this test runs on."""
+        monkeypatch.setattr(price_refresh, "datetime", _FixedDatetime)
         case_id = _import_holding(client, "MSFT")
         _persist(client, _snapshot_document(ticker="MSFT", trading_day=_FRESH_TRADING_DAY))
 
