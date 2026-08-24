@@ -306,9 +306,23 @@ class AlphaVantageMarketDataProvider:
         sleeper: Sleeper | None = None,
         inter_request_delay_seconds: float = _DEFAULT_INTER_REQUEST_DELAY_SECONDS,
         clock: Clock | None = None,
+        on_request: Callable[[], None] | None = None,
     ) -> None:
         self._fetch_json = fetch_json_fn or fetch_json
         self._explicit_api_key = api_key
+        # Internal Alpha Stabilization 1 (Backend 500 follow-up, price
+        # freshness): an optional, injectable hook called exactly once
+        # per real outbound HTTP request this instance makes (from
+        # `_request_json`, the one funnel every public method already
+        # goes through) -- never on a cache hit, never on a request
+        # that never happened. This class has zero knowledge of *why*
+        # a caller wants to know (the real use is a persisted daily
+        # call-budget counter, so the free tier's real 25-calls/day cap
+        # is tracked accurately regardless of which method or how many
+        # provider instances make the call) -- it only guarantees the
+        # callback fires for every real call, matching this module's
+        # existing "pure provider, no atlas.alpha import" boundary.
+        self._on_request = on_request
         # `sleeper` defaults to `None`, resolved to `time.sleep` fresh at
         # call time (never bound as a mutable default) so a test-suite
         # -wide `monkeypatch.setattr(time, "sleep", ...)` silences every
@@ -426,8 +440,12 @@ class AlphaVantageMarketDataProvider:
         `_monthly_adjusted` all call this instead of `self._fetch_json`
         directly, so pacing is enforced across the whole instance
         (both `fetch` and `fetch_historical_snapshots`), not hand-placed
-        between specific call pairs inside one method."""
+        between specific call pairs inside one method. `on_request`
+        fires here too, for the identical reason -- every real call,
+        from any public method, counted exactly once."""
         self._pace()
+        if self._on_request is not None:
+            self._on_request()
         return self._fetch_json(url, None)
 
     def fetch(self, *, company_identifier: str, evaluated_at: datetime) -> tuple[RawBusinessDocument, ...]:
@@ -478,6 +496,73 @@ class AlphaVantageMarketDataProvider:
             metadata=metadata,
         )
         return (document,)
+
+    def fetch_price_only(
+        self,
+        *,
+        company_identifier: str,
+        evaluated_at: datetime,
+        known_currency: str,
+        known_shares_outstanding: float | None,
+    ) -> RawBusinessDocument:
+        """Internal Alpha Stabilization 1 (MSFT price root cause fix):
+        the minimal refresh a stale market price actually needs --
+        exactly **one** real request (`GLOBAL_QUOTE`), never `OVERVIEW`.
+
+        `known_currency`/`known_shares_outstanding` are carried forward
+        from this ticker's own last-known, already-confirmed
+        fundamentals/profile data (read by the caller from already-
+        persisted records) rather than re-fetched -- company currency
+        essentially never changes, and shares outstanding is a slow-
+        moving fundamentals concern with its own, separate, much
+        slower freshness policy (see `atlas.analysis_engine.business
+        _data.freshness`'s own module docstring). This is the one
+        place that split is enforced: this method is never asked to
+        (and never does) call `OVERVIEW` to re-derive either value.
+
+        Raises the same typed errors `fetch` does (`RateLimited`,
+        `MalformedProviderResponse`, ...) on any failure -- the caller
+        never receives a partial or fabricated document, and (being a
+        raise rather than a return) never gets anything ingested,
+        which is exactly what leaves the last good snapshot untouched
+        on failure.
+        """
+        api_key = self._resolved_api_key()
+        ticker = company_identifier.upper()
+
+        quote = self._global_quote(ticker, api_key)
+        share_price = _numeric(quote.get("05. price"))
+        trading_day = quote.get("07. latest trading day")
+        if share_price is None or not trading_day:
+            raise MalformedProviderResponse(f"Alpha Vantage GLOBAL_QUOTE({ticker}) missing price/trading day")
+        try:
+            snapshot_date = date.fromisoformat(trading_day)
+        except ValueError:
+            raise MalformedProviderResponse(
+                f"Alpha Vantage GLOBAL_QUOTE({ticker}) latest trading day {trading_day!r} is not ISO-8601"
+            ) from None
+
+        metadata = _confirmed_currency_metadata(
+            known_currency, share_price=share_price, shares_outstanding=known_shares_outstanding
+        )
+
+        content_hash = hashlib.sha256(
+            json.dumps({"date": trading_day, **metadata}, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+
+        return RawBusinessDocument(
+            identifier=f"{ticker}:snapshot:{trading_day}",
+            company=ticker,
+            source_kind=SourceKind.MARKET_DATA_SNAPSHOT.value,
+            published_at=evaluated_at,
+            provider_id="alpha_vantage",
+            raw_reference=f"{_BASE_URL}?function=GLOBAL_QUOTE&symbol={ticker}",
+            content_hash=content_hash,
+            period_start=snapshot_date,
+            period_end=snapshot_date,
+            language="en",
+            metadata=metadata,
+        )
 
     def fetch_historical_snapshots(
         self, *, company_identifier: str, filing_dates: tuple[date, ...], evaluated_at: datetime

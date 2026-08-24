@@ -2943,6 +2943,15 @@ class MarketSnapshotView(CamelModel):
     shares_outstanding: float | None
     currency: str | None
     market_cap: float | None
+    #: Internal Alpha Stabilization 1 (MSFT price root cause fix): the
+    #: real trading day the price is from -- what "Uppdaterad {{date}}"
+    #: shows, never `as_of` (when Atlas happened to fetch it).
+    trading_day: date | None
+    #: `"fresh" | "stale" | "refreshing" | "failed" | "unavailable"`.
+    #: Always overwritten by the router after `from_domain` (which has
+    #: no access to the in-process refresh coordinator) -- `"unavailable"`
+    #: here is only ever a placeholder, never the real served value.
+    price_freshness: str = "unavailable"
 
     @classmethod
     def from_domain(cls, snapshot: MarketSnapshot) -> "MarketSnapshotView":
@@ -2952,7 +2961,20 @@ class MarketSnapshotView(CamelModel):
             shares_outstanding=snapshot.shares_outstanding,
             currency=snapshot.currency,
             market_cap=snapshot.market_cap,
+            trading_day=snapshot.trading_day,
         )
+
+
+class PriceRefreshResponseView(CamelModel):
+    """Internal Alpha Stabilization 1 (MSFT price root cause fix) --
+    the manual "Uppdatera" action's own response, reporting exactly
+    what `price_refresh.refresh_price_only` (the identical function
+    the lazy background trigger also calls) actually did."""
+
+    attempted: bool
+    succeeded: bool
+    reason: str
+    price_freshness: str
 
 
 class TradeLogEntryView(CamelModel):

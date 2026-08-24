@@ -25,6 +25,8 @@ function analysis(overrides: Partial<HeroAnalysisInput> = {}): HeroAnalysisInput
     missingEvaluations: [],
     sharePrice: 100,
     currency: "USD",
+    tradingDay: "2026-08-21",
+    priceFreshness: "fresh",
     stance: null,
     ...overrides,
   };
@@ -134,6 +136,58 @@ describe("HeroCard", () => {
         }),
       });
       expect(screen.getByText(/stance.missingInformationLabel/)).toBeInTheDocument();
+    });
+  });
+
+  describe("Price freshness (Internal Alpha Stabilization 1 -- MSFT price root cause fix)", () => {
+    it("shows the updated-date caption but no badge and no button when fresh", () => {
+      renderHero({ analysis: analysis({ priceFreshness: "fresh", tradingDay: "2026-08-21" }) });
+      expect(screen.getByText(/investmentCase.keyMetrics.priceUpdatedLabel/)).toBeInTheDocument();
+      expect(screen.queryByText("investmentCase.keyMetrics.priceStale")).not.toBeInTheDocument();
+      expect(screen.queryByText("investmentCase.keyMetrics.priceRefreshing")).not.toBeInTheDocument();
+      expect(screen.queryByText("investmentCase.keyMetrics.priceRefreshFailed")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "investmentCase.keyMetrics.priceRefreshButton" })).not.toBeInTheDocument();
+    });
+
+    it("shows a stale badge and an enabled Refresh button when stale", () => {
+      renderHero({ analysis: analysis({ priceFreshness: "stale" }), onRefreshPrice: () => {} });
+      expect(screen.getByText("investmentCase.keyMetrics.priceStale")).toBeInTheDocument();
+      const button = screen.getByRole("button", { name: "investmentCase.keyMetrics.priceRefreshButton" });
+      expect(button).not.toBeDisabled();
+    });
+
+    it("shows a refreshing badge and a disabled button while a refresh is in flight", () => {
+      renderHero({ analysis: analysis({ priceFreshness: "refreshing" }), onRefreshPrice: () => {} });
+      // Both the badge and the button legitimately show the identical
+      // "Uppdaterar…" text while refreshing -- two real occurrences,
+      // not a duplicate-rendering bug.
+      expect(screen.getAllByText("investmentCase.keyMetrics.priceRefreshing")).toHaveLength(2);
+      const button = screen.getByRole("button", { name: "investmentCase.keyMetrics.priceRefreshing" });
+      expect(button).toBeDisabled();
+    });
+
+    it("also disables the button via the local isRefreshingPrice flag, even if the server-reported status has not caught up yet", () => {
+      renderHero({ analysis: analysis({ priceFreshness: "stale" }), onRefreshPrice: () => {}, isRefreshingPrice: true });
+      const button = screen.getByRole("button", { name: "investmentCase.keyMetrics.priceRefreshing" });
+      expect(button).toBeDisabled();
+    });
+
+    it("shows a failed badge, distinct from plain stale, when the last refresh attempt failed", () => {
+      renderHero({ analysis: analysis({ priceFreshness: "failed" }), onRefreshPrice: () => {} });
+      expect(screen.getByText("investmentCase.keyMetrics.priceRefreshFailed")).toBeInTheDocument();
+      expect(screen.queryByText("investmentCase.keyMetrics.priceStale")).not.toBeInTheDocument();
+    });
+
+    it("shows no refresh button at all when no onRefreshPrice handler is supplied (e.g. Company Workspace's own reuse of this card)", () => {
+      renderHero({ analysis: analysis({ priceFreshness: "stale" }) });
+      expect(screen.queryByRole("button", { name: /priceRefresh/ })).not.toBeInTheDocument();
+    });
+
+    it("shows no button and no badge for an unavailable price, only when priceFreshness is genuinely omitted (older caller shape)", () => {
+      const { priceFreshness: _omit, tradingDay: _omitDay, ...rest } = analysis();
+      renderHero({ analysis: rest as HeroAnalysisInput, onRefreshPrice: () => {} });
+      expect(screen.queryByText("investmentCase.keyMetrics.priceStale")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /priceRefresh/ })).not.toBeInTheDocument();
     });
   });
 });

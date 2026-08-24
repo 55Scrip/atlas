@@ -1205,3 +1205,145 @@ class TestEarningsCallTranscripts:
         provider = AlphaVantageMarketDataProvider(_transcript_fetcher(entries))
         (doc,) = provider.fetch_earnings_call_transcripts(company_identifier="AAPL", evaluated_at=_NOW)
         assert doc.published_at == _NOW
+
+
+def _counting_fetcher(responses: dict[str, object]):
+    """Like `_fake_fetcher`, but also records every URL actually
+    requested -- `fetch_price_only`'s whole point is costing exactly
+    one real call, so its own tests assert the real count, not just
+    the returned document's shape."""
+    calls: list[str] = []
+
+    def fetcher(url: str, headers: dict | None) -> object:
+        calls.append(url)
+        for key, value in responses.items():
+            if key in url:
+                return value
+        raise AssertionError(f"unexpected URL in test: {url}")
+
+    fetcher.calls = calls  # type: ignore[attr-defined]
+    return fetcher
+
+
+class TestFetchPriceOnly:
+    """Internal Alpha Stabilization 1 (MSFT price root cause fix):
+    `fetch_price_only` is the whole point of the fix -- verified
+    against the extraction chain (`atlas.alpha.investment_case
+    .financial_history.extract_market_snapshot`) that it produces a
+    document carrying everything "Aktuellt pris" needs, using only
+    `GLOBAL_QUOTE`."""
+
+    def test_costs_exactly_one_real_call_never_overview(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _counting_fetcher(
+            {"GLOBAL_QUOTE": {"Global Quote": {"05. price": "483.24", "07. latest trading day": "2026-08-21"}}}
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        provider.fetch_price_only(
+            company_identifier="MSFT", evaluated_at=_NOW, known_currency="USD", known_shares_outstanding=7425545000.0
+        )
+        assert len(fetcher.calls) == 1
+        assert "GLOBAL_QUOTE" in fetcher.calls[0]
+        assert all("OVERVIEW" not in url for url in fetcher.calls)
+
+    def test_carries_forward_the_given_currency_and_shares_outstanding_unchanged(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {"GLOBAL_QUOTE": {"Global Quote": {"05. price": "483.24", "07. latest trading day": "2026-08-21"}}}
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        doc = provider.fetch_price_only(
+            company_identifier="MSFT", evaluated_at=_NOW, known_currency="USD", known_shares_outstanding=7425545000.0
+        )
+        assert doc.metadata["share_price"] == 483.24
+        assert doc.metadata["currency"] == "USD"
+        assert doc.metadata["shares_outstanding"] == 7425545000.0
+        assert doc.period_end.isoformat() == "2026-08-21"
+
+    def test_document_shape_matches_what_extract_market_snapshot_needs(self, monkeypatch):
+        """The real proof this satisfies Investment Case's "Aktuellt
+        pris": run the actual extraction function -- not just inspect
+        the document's own fields -- against a document this method
+        produced."""
+        from atlas.alpha.investment_case.financial_history import extract_market_snapshot
+
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {"GLOBAL_QUOTE": {"Global Quote": {"05. price": "483.24", "07. latest trading day": "2026-08-21"}}}
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        doc = provider.fetch_price_only(
+            company_identifier="MSFT", evaluated_at=_NOW, known_currency="USD", known_shares_outstanding=7425545000.0
+        )
+        business_record = _ingest_for_test(doc)
+        snapshot = extract_market_snapshot((business_record,))
+        assert snapshot is not None
+        assert snapshot.share_price == 483.24
+        assert snapshot.currency == "USD"
+        assert snapshot.trading_day.isoformat() == "2026-08-21"
+
+    def test_no_currency_confirmed_omits_the_price_rather_than_guessing(self, monkeypatch):
+        """Mirrors `fetch`'s own currency-safety rule exactly -- an
+        empty/unconfirmed `known_currency` must never let a price
+        through under a guessed denomination."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {"GLOBAL_QUOTE": {"Global Quote": {"05. price": "483.24", "07. latest trading day": "2026-08-21"}}}
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        doc = provider.fetch_price_only(
+            company_identifier="MSFT", evaluated_at=_NOW, known_currency="", known_shares_outstanding=None
+        )
+        assert "share_price" not in doc.metadata
+
+    def test_unsupported_currency_raises_rather_than_ingesting(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {"GLOBAL_QUOTE": {"Global Quote": {"05. price": "483.24", "07. latest trading day": "2026-08-21"}}}
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        with pytest.raises(UnsupportedUnit):
+            provider.fetch_price_only(
+                company_identifier="MSFT", evaluated_at=_NOW, known_currency="EUR", known_shares_outstanding=None
+            )
+
+    def test_missing_price_or_trading_day_raises_malformed_response(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher({"GLOBAL_QUOTE": {"Global Quote": {"05. price": "483.24"}}})
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        with pytest.raises(MalformedProviderResponse):
+            provider.fetch_price_only(
+                company_identifier="MSFT", evaluated_at=_NOW, known_currency="USD", known_shares_outstanding=None
+            )
+
+    def test_rate_limited_response_raises_rate_limited(self, monkeypatch):
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher({"GLOBAL_QUOTE": {"Information": "Thank you for using Alpha Vantage! ..."}})
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        with pytest.raises(RateLimited):
+            provider.fetch_price_only(
+                company_identifier="MSFT", evaluated_at=_NOW, known_currency="USD", known_shares_outstanding=None
+            )
+
+    def test_on_request_hook_fires_exactly_once(self, monkeypatch):
+        """The quota-tracking hook -- see `AlphaVantageMarketDataProvider
+        .__init__`'s own docstring -- must fire for this real call too,
+        exactly as many times as real requests were made (one)."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        fetcher = _fake_fetcher(
+            {"GLOBAL_QUOTE": {"Global Quote": {"05. price": "483.24", "07. latest trading day": "2026-08-21"}}}
+        )
+        calls = []
+        provider = AlphaVantageMarketDataProvider(fetcher, on_request=lambda: calls.append(1))
+        provider.fetch_price_only(
+            company_identifier="MSFT", evaluated_at=_NOW, known_currency="USD", known_shares_outstanding=None
+        )
+        assert len(calls) == 1
+
+
+def _ingest_for_test(document: RawBusinessDocument):
+    from atlas.analysis_engine.business_data.pipeline import IngestedRecord, ingest
+
+    result = ingest(document, evaluated_at=_NOW)
+    assert isinstance(result, IngestedRecord)
+    return result.record

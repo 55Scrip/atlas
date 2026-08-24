@@ -6,9 +6,13 @@ own `get_decision_engine`.
 """
 from __future__ import annotations
 
+from functools import lru_cache
+
 from fastapi import Depends
 from sqlalchemy.engine import Engine
 
+from atlas.alpha.business_data_refresh.price_refresh import PriceRefreshCoordinator
+from atlas.alpha.business_data_refresh.quota import AlphaVantageQuotaTracker
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.table import create_business_record_table
 from atlas.alpha.canonical_security_gate.factory import build_identity_gate
@@ -17,6 +21,27 @@ from atlas.analysis_engine.business_data.providers import BusinessDataProvider
 from atlas.business_data_providers.alpha_vantage import AlphaVantageMarketDataProvider
 from atlas.business_data_providers.sec_edgar import SecEdgarFilingHistoryProvider, SecEdgarFundamentalsProvider
 from atlas.core.infrastructure.api.decision.dependencies import get_decision_engine
+
+
+@lru_cache
+def get_price_refresh_coordinator() -> PriceRefreshCoordinator:
+    """Internal Alpha Stabilization 1 (MSFT price root cause fix): one
+    shared, process-lifetime coordinator (`@lru_cache`, the identical
+    pattern `get_decision_engine` already established) -- its whole
+    purpose is deduping/serializing across *different* requests, so it
+    must be the same instance every request gets, never a fresh one
+    per request the way most other `Depends()` providers here are."""
+    return PriceRefreshCoordinator()
+
+
+def get_alpha_vantage_quota_tracker(
+    engine: Engine = Depends(get_decision_engine),
+) -> AlphaVantageQuotaTracker:
+    """Internal Alpha Stabilization 1 (MSFT price root cause fix): the
+    one shared, persisted daily call-budget tracker -- see that
+    class's own module docstring for why 25/day, confirmed live
+    against the real key."""
+    return AlphaVantageQuotaTracker(engine)
 
 
 def get_business_record_repository(
@@ -52,8 +77,53 @@ def get_default_business_data_providers() -> tuple[BusinessDataProvider, ...]:
     never on the concrete provider classes directly, so that boundary
     is never crossed. Mirrors `cli.py::main`'s own default construction
     exactly -- one real definition of "the current default provider
-    set," not two."""
-    return (SecEdgarFundamentalsProvider(), AlphaVantageMarketDataProvider(), SecEdgarFilingHistoryProvider())
+    set," not two.
+
+    Takes **no** `Depends()`-injected parameters, deliberately -- this
+    function must stay callable as a plain function with zero
+    arguments, the same contract it already had, because
+    `atlas.alpha.portfolio.api.router._run_bulk_enrichment_in_background`
+    already calls it directly (never through FastAPI's own dependency
+    resolution) from Starlette's background-task thread, the identical
+    reason that module's own `get_decision_engine()` call is also a
+    plain call, not a `Depends()`. Adding a required `Depends()`
+    parameter here broke that real call site (confirmed by the full
+    test suite) -- the fix is this function resolving its own
+    `AlphaVantageQuotaTracker` internally, via the same plain
+    `get_decision_engine()` call already proven safe to make directly.
+
+    Internal Alpha Stabilization 1 (MSFT price root cause fix): the
+    Alpha Vantage instance's `on_request` is wired to the shared,
+    persisted quota tracker -- every real call any caller of this
+    function makes (full enrichment, ingestion refresh, ...) counts
+    against the same real daily budget the new price-only refresh also
+    respects. `cli.py::main`'s own separate construction is not wired
+    to this tracker -- a real, small, disclosed gap (CLI usage is
+    manual/developer-only, not a live-app request path)."""
+    quota = AlphaVantageQuotaTracker(get_decision_engine())
+    return (
+        SecEdgarFundamentalsProvider(),
+        AlphaVantageMarketDataProvider(on_request=quota.record_call),
+        SecEdgarFilingHistoryProvider(),
+    )
+
+
+def get_alpha_vantage_price_provider() -> AlphaVantageMarketDataProvider:
+    """Internal Alpha Stabilization 1 (MSFT price root cause fix): a
+    dedicated instance for `price_refresh.refresh_price_only`, wired to
+    the identical shared quota tracker `get_default_business_data
+    _providers` uses (both construct their own `AlphaVantageQuotaTracker`
+    the same way, but both read/write the same persisted table, so
+    they agree on the real remaining budget regardless). Kept separate
+    from that function (rather than fishing the Alpha Vantage instance
+    out of its returned tuple) so price-only refresh never accidentally
+    depends on the other two providers being constructed too. No
+    `Depends()` parameters, for the identical "must stay a plain,
+    directly-callable function" reason as `get_default_business_data
+    _providers` above -- this one is also captured into a `Background
+    Tasks` closure, not resolved fresh on a background thread."""
+    quota = AlphaVantageQuotaTracker(get_decision_engine())
+    return AlphaVantageMarketDataProvider(on_request=quota.record_call)
 
 
 #: `SecEdgarFundamentalsProvider`/`AlphaVantageMarketDataProvider` were

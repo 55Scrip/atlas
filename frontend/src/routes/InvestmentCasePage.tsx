@@ -834,12 +834,22 @@ interface CompanyProfileView {
   fiscalYearEnd: string | null;
 }
 
+/** Internal Alpha Stabilization 1 (MSFT price root cause fix) --
+ * `"fresh" | "stale" | "refreshing" | "failed" | "unavailable"`, real,
+ * server-computed against the actual trading day this price is from
+ * -- never a client-side guess. */
+export type PriceFreshnessStatus = "fresh" | "stale" | "refreshing" | "failed" | "unavailable";
+
 interface MarketSnapshotView {
   asOf: string;
   sharePrice: number | null;
   sharesOutstanding: number | null;
   currency: string | null;
   marketCap: number | null;
+  /** The real trading day this price is from (the source record's own
+   * `period_end`) -- distinct from `asOf` (when Atlas fetched it). */
+  tradingDay: string | null;
+  priceFreshness: PriceFreshnessStatus;
 }
 
 // Investment Case Intelligence v1 slice: Strengths/Risks/Growth/
@@ -1299,6 +1309,14 @@ export function InvestmentCasePage() {
    * state rather than only this Case's own. */
   const [caseDataVersion, setCaseDataVersion] = useState(0);
   const [portfolioDataVersion, setPortfolioDataVersion] = useState(0);
+  /** Internal Alpha Stabilization 1 (MSFT price root cause fix) -- the
+   * manual "Uppdatera" button's own local in-flight flag, purely for
+   * immediate UI feedback (disables the button while a request is in
+   * the air). The real dedup/serialization guarantee lives server-side
+   * (`PriceRefreshCoordinator`); this only prevents a double-click from
+   * firing two HTTP requests, it is not what makes concurrent refresh
+   * attempts safe. */
+  const [priceRefreshStatus, setPriceRefreshStatus] = useState<"idle" | "refreshing">("idle");
 
   /** Action Flow Tier 2 (Workspace Migration Phase 3, approved §13
    * Option A) -- whether the inline decision-recording panel is
@@ -1793,6 +1811,37 @@ export function InvestmentCasePage() {
       // Evidence changes the same `composition.build()` input.
       () => setCaseDataVersion((v) => v + 1),
     );
+  }
+
+  /** Internal Alpha Stabilization 1 (MSFT price root cause fix) -- the
+   * manual "Uppdatera" escape hatch, calling the exact same server-side
+   * `refresh_price_only` the lazy background trigger on the analysis
+   * fetch itself already uses (`POST /cases/{caseId}/refresh-price`).
+   * Bumps `caseDataVersion` only on a real, attempted call (whether it
+   * succeeded, was a no-op duplicate/quota-exhausted, or failed) so the
+   * page re-reads the server's own current freshness status either
+   * way -- never assumes success client-side. */
+  function refreshPrice() {
+    if (!caseId || priceRefreshStatus === "refreshing") return;
+    setPriceRefreshStatus("refreshing");
+    fetch(`/api/cases/${caseId}/refresh-price`, { method: "POST" })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Backend responded with ${response.status}`);
+        }
+        return response.json() as Promise<{ attempted: boolean }>;
+      })
+      .then(() => {
+        setCaseDataVersion((v) => v + 1);
+      })
+      .catch(() => {
+        // Honest failure: the analysis refetch below will still show
+        // the real, unchanged `priceFreshness` from the server (never
+        // client-side guessed as "fresh") -- nothing to fabricate here.
+      })
+      .finally(() => {
+        setPriceRefreshStatus("idle");
+      });
   }
 
   function submitKnowledgeReference(observationId: string) {
@@ -2665,6 +2714,8 @@ export function InvestmentCasePage() {
               missingEvaluations: report.recommendation.missingEvaluations,
               sharePrice: report.marketSnapshot ? report.marketSnapshot.sharePrice : null,
               currency: report.marketSnapshot ? report.marketSnapshot.currency : null,
+              tradingDay: report.marketSnapshot ? report.marketSnapshot.tradingDay : null,
+              priceFreshness: report.marketSnapshot ? report.marketSnapshot.priceFreshness : "unavailable",
               stance: report.stance,
             };
             return (
@@ -2678,6 +2729,8 @@ export function InvestmentCasePage() {
                   t={t}
                   locale={locale}
                   suppressLimitingFactorPreview
+                  onRefreshPrice={refreshPrice}
+                  isRefreshingPrice={priceRefreshStatus === "refreshing"}
                 />
                 {report.recommendation.level !== "insufficient_evidence" && isValuationSupportLoadBearing && (
                   <>

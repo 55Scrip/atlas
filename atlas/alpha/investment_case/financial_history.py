@@ -70,6 +70,13 @@ class MarketSnapshot:
     shares_outstanding: float | None
     currency: str | None
     market_cap: float | None = None
+    #: Internal Alpha Stabilization 1 (MSFT price root cause fix): the
+    #: real trading day this price is *from* (the record's own
+    #: `period_end`) -- distinct from `as_of` (`published_at`, when
+    #: Atlas happened to fetch it). Freshness is judged against this,
+    #: never against `as_of` -- see `atlas.analysis_engine.business
+    #: _data.freshness.is_price_fresh`.
+    trading_day: date | None = None
 
 
 def extract_financial_history(business_records: tuple[BusinessRecord, ...]) -> tuple[FinancialPeriod, ...]:
@@ -130,4 +137,5 @@ def extract_market_snapshot(business_records: tuple[BusinessRecord, ...]) -> Mar
         shares_outstanding=shares_outstanding,
         currency=metadata.get("currency"),
         market_cap=market_cap,
+        trading_day=latest.period_end,
     )

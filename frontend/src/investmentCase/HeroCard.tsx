@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { Divider, Heading, Inline, Label, Stack, StatusBadge, StatusText, Text, VisuallyHidden } from "../foundation";
+import { Button, Divider, Heading, Inline, Label, Stack, StatusBadge, StatusText, Text, VisuallyHidden } from "../foundation";
 import type { Translate } from "../changeIntelligence/describeChange";
 import {
   type AnalysisBusinessStatus,
@@ -184,6 +184,15 @@ export interface HeroAnalysisInput {
    * own corrected component table: "Current Price only (real)"). */
   sharePrice: number | null;
   currency: string | null;
+  /** Internal Alpha Stabilization 1 (MSFT price root cause fix) -- the
+   * real trading day this price is from (ISO date string), and the
+   * server-computed freshness status against it. Never derived
+   * client-side. Both optional: `CompanyWorkspacePage.tsx` also reuses
+   * this component verbatim and does not (yet) fetch either value --
+   * omitting them there falls back to "unavailable" (no badge, no
+   * button), never a fabricated status. */
+  tradingDay?: string | null;
+  priceFreshness?: "fresh" | "stale" | "refreshing" | "failed" | "unavailable";
   /** Atlas Intelligence Sprint 2 (Recommendation Quality &
    * Actionability, Deliverable 5) -- `null` only when no `StanceService`
    * was wired for this build (mirrors `changeIntelligenceAvailable`'s
@@ -207,6 +216,12 @@ interface HeroCardProps {
    * `InvestmentCasePage.tsx` opts in, since it alone renders the fuller
    * detail immediately below this same card. */
   suppressLimitingFactorPreview?: boolean;
+  /** Internal Alpha Stabilization 1 (MSFT price root cause fix) -- the
+   * manual "Uppdatera" escape hatch next to "Aktuellt pris". Optional
+   * so this component stays usable without it (e.g. in tests that
+   * don't exercise the refresh flow); when omitted, no button renders. */
+  onRefreshPrice?: () => void;
+  isRefreshingPrice?: boolean;
 }
 
 const HERO_SENTENCE_STYLE: CSSProperties = {
@@ -235,6 +250,8 @@ export function HeroCard({
   t,
   locale,
   suppressLimitingFactorPreview = false,
+  onRefreshPrice,
+  isRefreshingPrice = false,
 }: HeroCardProps) {
   const isWithheld = analysis.recommendationLevel === "insufficient_evidence";
   const topLimitingFactor: LimitingFactor | undefined = analysis.limitingFactors[0];
@@ -354,9 +371,38 @@ export function HeroCard({
               />
             </MetricField>
             <MetricField label={t("investmentCase.keyMetrics.currentPriceLabel")}>
-              <Text as="span" style={{ fontWeight: 600 }}>
-                {formatFinancialValue(analysis.sharePrice, analysis.currency, locale)}
-              </Text>
+              <Stack gap="metadata">
+                <Text as="span" style={{ fontWeight: 600 }}>
+                  {formatFinancialValue(analysis.sharePrice, analysis.currency, locale)}
+                </Text>
+                {analysis.tradingDay && (
+                  <Text as="span" color="tertiary">
+                    {t("investmentCase.keyMetrics.priceUpdatedLabel", {
+                      date: new Date(analysis.tradingDay).toLocaleDateString(locale, { month: "short", day: "numeric" }),
+                    })}
+                  </Text>
+                )}
+                {analysis.priceFreshness === "stale" && (
+                  <StatusBadge label={t("investmentCase.keyMetrics.priceStale")} tone="caution" />
+                )}
+                {analysis.priceFreshness === "refreshing" && (
+                  <StatusBadge label={t("investmentCase.keyMetrics.priceRefreshing")} tone="neutral" />
+                )}
+                {analysis.priceFreshness === "failed" && (
+                  <StatusBadge label={t("investmentCase.keyMetrics.priceRefreshFailed")} tone="critical" />
+                )}
+                {onRefreshPrice && (analysis.priceFreshness ?? "unavailable") !== "unavailable" && (
+                  <Button
+                    variant="tertiary"
+                    onClick={onRefreshPrice}
+                    disabled={isRefreshingPrice || analysis.priceFreshness === "refreshing"}
+                  >
+                    {isRefreshingPrice || analysis.priceFreshness === "refreshing"
+                      ? t("investmentCase.keyMetrics.priceRefreshing")
+                      : t("investmentCase.keyMetrics.priceRefreshButton")}
+                  </Button>
+                )}
+              </Stack>
             </MetricField>
             <MetricField label={t("investmentCase.keyMetrics.expectedReturnLabel")}>
               {analysis.longTermExpectedReturn ? (

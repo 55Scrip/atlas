@@ -78,9 +78,20 @@ composition from scratch; here `Explanation` already exists.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
-from atlas.alpha.business_data_refresh.api.dependencies import get_business_record_repository
+from atlas.alpha.business_data_refresh.api.dependencies import (
+    get_alpha_vantage_price_provider,
+    get_alpha_vantage_quota_tracker,
+    get_business_record_repository,
+    get_price_refresh_coordinator,
+)
+from atlas.alpha.business_data_refresh.price_refresh import (
+    PriceRefreshCoordinator,
+    price_freshness_status,
+    refresh_price_only,
+)
+from atlas.alpha.business_data_refresh.quota import AlphaVantageQuotaTracker
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.coverage import assess_coverage
 from atlas.alpha.evidence_quality import assess_evidence_quality
@@ -109,10 +120,12 @@ from atlas.alpha.investment_case.api.schemas import (
     MaterialEvidenceView,
     MaterialityAssessmentView,
     MonitoringStatusView,
+    PriceRefreshResponseView,
     StanceReasonView,
     StanceView,
     UnsupportedFindingView,
 )
+from atlas.alpha.investment_case.financial_history import extract_market_snapshot
 from atlas.alpha.investment_case.models import InvestmentCaseComposition
 from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
 from atlas.alpha.explainability.models import Explanation
@@ -286,12 +299,16 @@ def _operational_freshness_view(freshness: CaseOperationalFreshness) -> CaseOper
 @router.get("/{case_id}/analysis", response_model=InvestmentCaseAnalysisView)
 def get_investment_case_analysis(
     case_id: str,
+    background_tasks: BackgroundTasks,
     service: InvestmentCaseCompositionService = Depends(get_investment_case_composition_service),
     stance_service: StanceService = Depends(get_stance_service),
     business_record_repository: SqlAlchemyBusinessRecordRepository = Depends(get_business_record_repository),
     evidence_snapshot_repository: SqlAlchemyEvidenceSnapshotRepository = Depends(get_evidence_snapshot_repository),
     monitoring_result_repository: SqlAlchemyMonitoringResultRepository = Depends(get_monitoring_result_repository),
     monitoring_service: MonitoringService = Depends(get_monitoring_service),
+    price_provider=Depends(get_alpha_vantage_price_provider),
+    price_quota: AlphaVantageQuotaTracker = Depends(get_alpha_vantage_quota_tracker),
+    price_refresh_coordinator: PriceRefreshCoordinator = Depends(get_price_refresh_coordinator),
 ) -> InvestmentCaseAnalysisView:
     composition = service.build(case_id)
     if composition is None:
@@ -340,7 +357,7 @@ def get_investment_case_analysis(
     # ._signal_maps`), never mixed into `monitoring` above.
     operational_freshness = monitoring_service.freshness_for_case(case_id)
 
-    return InvestmentCaseAnalysisView.from_domain(
+    view = InvestmentCaseAnalysisView.from_domain(
         composition,
         stance=_stance_view(stance) if stance is not None else None,
         explanation=_explanation_view(explanation) if explanation is not None else None,
@@ -350,4 +367,84 @@ def get_investment_case_analysis(
         monitoring=_monitoring_status_view(monitoring_result) if monitoring_result is not None else None,
         operational_freshness=_operational_freshness_view(operational_freshness),
         knowledge_coverage=_knowledge_coverage_view(knowledge_coverage),
+    )
+
+    # Internal Alpha Stabilization 1 (MSFT price root cause fix):
+    # existing (possibly stale) data is returned immediately either
+    # way -- this only decides the `priceFreshness` label the response
+    # already carries, and, only for a single-ticker view like this
+    # one (never Portfolio/Watchlist's own list endpoints), whether to
+    # lazily schedule a real refresh in the background after the
+    # response is already on its way to the client.
+    if view.market_snapshot is not None and ticker is not None:
+        status = price_freshness_status(
+            trading_day=view.market_snapshot.trading_day,
+            ticker=ticker,
+            coordinator=price_refresh_coordinator,
+        )
+        view.market_snapshot.price_freshness = status
+        if status in ("stale", "failed"):
+            background_tasks.add_task(
+                refresh_price_only,
+                ticker,
+                provider=price_provider,
+                repository=business_record_repository,
+                quota=price_quota,
+                coordinator=price_refresh_coordinator,
+            )
+
+    return view
+
+
+@router.post("/{case_id}/refresh-price", response_model=PriceRefreshResponseView)
+def refresh_investment_case_price(
+    case_id: str,
+    service: InvestmentCaseCompositionService = Depends(get_investment_case_composition_service),
+    business_record_repository: SqlAlchemyBusinessRecordRepository = Depends(get_business_record_repository),
+    price_provider=Depends(get_alpha_vantage_price_provider),
+    price_quota: AlphaVantageQuotaTracker = Depends(get_alpha_vantage_quota_tracker),
+    price_refresh_coordinator: PriceRefreshCoordinator = Depends(get_price_refresh_coordinator),
+) -> PriceRefreshResponseView:
+    """Internal Alpha Stabilization 1 (MSFT price root cause fix) --
+    the manual "Uppdatera" escape hatch. Calls the identical
+    `refresh_price_only` the lazy background trigger on `GET
+    .../analysis` uses -- same dedup/serialization (a click while a
+    refresh is already in flight for this ticker is a no-op, reported
+    honestly as `attempted: false`), same quota, same "never touch the
+    last good snapshot on failure" guarantee. Synchronous (unlike the
+    lazy trigger): an explicit user action should see its own real
+    outcome, not just an immediate "started."
+    """
+    composition = service.build(case_id)
+    if composition is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    ticker = _ticker_for_composition(composition)
+    if ticker is None:
+        raise HTTPException(status_code=400, detail="No ticker resolvable for this Case")
+
+    outcome = refresh_price_only(
+        ticker,
+        provider=price_provider,
+        repository=business_record_repository,
+        quota=price_quota,
+        coordinator=price_refresh_coordinator,
+    )
+
+    # Read the true current state directly from the repository, never
+    # through `service` -- that instance's own `build()` is memoized
+    # per case_id for this request (Portfolio Performance
+    # Instrumentation) and would otherwise report the pre-refresh
+    # snapshot it already cached above.
+    records = latest_versions(business_record_repository.get_by_company(ticker))
+    snapshot = extract_market_snapshot(records)
+    status = price_freshness_status(
+        trading_day=snapshot.trading_day if snapshot is not None else None,
+        ticker=ticker,
+        coordinator=price_refresh_coordinator,
+    )
+    return PriceRefreshResponseView(
+        attempted=outcome.attempted,
+        succeeded=outcome.succeeded,
+        reason=outcome.reason,
+        price_freshness=status,
     )
