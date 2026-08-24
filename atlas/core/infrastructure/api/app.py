@@ -39,6 +39,7 @@ from atlas.alpha.knowledge_orchestration.api.router import router as knowledge_o
 from atlas.alpha.knowledge_strategy.api.router import router as knowledge_strategy_router
 from atlas.alpha.evidence_graph.api.router import router as evidence_graph_router
 from atlas.alpha.decision_readiness.api.router import router as decision_readiness_router
+from atlas.alpha.investment_case_lifecycle.api.router import router as investment_case_lifecycle_router
 from atlas.alpha.investment_decision.api.router import router as investment_decision_router
 from atlas.alpha.recommendation_conviction.api.router import router as recommendation_conviction_router
 from atlas.alpha.decision_path.api.router import router as decision_path_router
@@ -316,6 +317,11 @@ def create_app() -> FastAPI:
     # Eligibility) -- `GET /decision-readiness/{case_id}`, whether Atlas
     # has genuinely reached the point where a decision is justified.
     app.include_router(decision_readiness_router)
+    # Investment Case Redesign, Implementation Phase 1 (Atlas Status &
+    # Lifecycle Foundation) -- `GET /investment-case-lifecycle/{case_id}
+    # /atlas-status`, Atlas's own analytical process state. Additive and
+    # observation-only: does not gate or alter any existing endpoint.
+    app.include_router(investment_case_lifecycle_router)
     # Atlas Decision Layer Sprint 1 (Investment Decision Synthesis) --
     # `GET /investment-decision/{case_id}`, one synthesized Buy/Add/
     # Hold/Reduce/Exit/Wait/No Decision, reused from Decision Support/
