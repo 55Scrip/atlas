@@ -169,6 +169,22 @@ export function DashboardPage() {
     tradeLogStatus.kind === "loaded" &&
     portfolioStatus.kind === "loaded";
 
+  /** Status/Explanation Language stabilization: Needs Attention, Recent
+   * Activity, and Continue Working below all require every one of the
+   * four fetches above (`allLoaded`), since `deriveOutstandingWork`/
+   * `deriveActivity` both need decisions+outcomes+trades+holdings
+   * together -- that gate itself is correct and unchanged. What was
+   * missing: if any one fetch fails *permanently* (not just "still in
+   * flight"), `allLoaded` never becomes true and those three sections
+   * showed "Loading..." forever, with no way to tell a real failure
+   * apart from a fetch that simply hasn't resolved yet. This flag lets
+   * each section choose between the two honestly instead. */
+  const anyError =
+    decisionsStatus.kind === "error" ||
+    outcomesStatus.kind === "error" ||
+    tradeLogStatus.kind === "error" ||
+    portfolioStatus.kind === "error";
+
   const holdings = portfolioStatus.kind === "loaded" ? portfolioStatus.view.holdings : [];
 
   /** Decisions/outcomes/trades are fetched system-wide (every Case ever
@@ -262,9 +278,14 @@ export function DashboardPage() {
         <Surface tier="primary">
           <Stack gap="inter-section">
             <Heading level={2}>{t("dashboard.needsAttention.heading")}</Heading>
-            {!allLoaded && (
+            {!allLoaded && !anyError && (
               <Text role="status" aria-live="polite">
                 {t("common.loading")}
+              </Text>
+            )}
+            {!allLoaded && anyError && (
+              <Text color="tertiary" role="alert">
+                {t("dashboard.needsAttention.loadError")}
               </Text>
             )}
             {allLoaded && outstandingWork.length === 0 && (
@@ -297,9 +318,14 @@ export function DashboardPage() {
         <Surface tier="primary">
           <Stack gap="inter-section">
             <Heading level={2}>{t("dashboard.recentActivity.heading")}</Heading>
-            {!allLoaded && (
+            {!allLoaded && !anyError && (
               <Text role="status" aria-live="polite">
                 {t("common.loading")}
+              </Text>
+            )}
+            {!allLoaded && anyError && (
+              <Text color="tertiary" role="alert">
+                {t("dashboard.recentActivity.loadError")}
               </Text>
             )}
             {allLoaded && recentActivity.length === 0 && (
@@ -343,9 +369,14 @@ export function DashboardPage() {
         <Surface tier="primary">
           <Stack gap="inter-section">
             <Heading level={2}>{t("dashboard.continueWorking.heading")}</Heading>
-            {!allLoaded && (
+            {!allLoaded && !anyError && (
               <Text role="status" aria-live="polite">
                 {t("common.loading")}
+              </Text>
+            )}
+            {!allLoaded && anyError && (
+              <Text color="tertiary" role="alert">
+                {t("dashboard.continueWorking.loadError")}
               </Text>
             )}
             {allLoaded && continueWorking.length === 0 && (

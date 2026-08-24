@@ -719,6 +719,14 @@ export const en = {
     "Valuation looks attractive here, though the underlying business raises real questions worth resolving first.",
   "investmentCase.hero.why.insufficient":
     "The evidence so far is thinner than usual, so this view should be treated as a starting point rather than a settled one.",
+  // Status/Explanation Language stabilization: a genuinely computed
+  // "moderate" business trajectory (real signal, not missing data)
+  // previously fell into the same `insufficient` tension as truly
+  // absent evidence, so both showed the sentence above -- which is
+  // false for the moderate case. This is the honest text for that
+  // real, distinct conclusion.
+  "investmentCase.hero.why.neutral":
+    "The underlying business looks moderate rather than clearly strong or weak — a real conclusion, not a data gap.",
   "investmentCase.hero.closing.changed": "Something has changed since your last review — worth a closer look below.",
   "investmentCase.hero.closing.none": "Nothing has changed since your last visit.",
   "investmentCase.hero.closing.outcomeMissing":
@@ -1062,13 +1070,23 @@ export const en = {
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Outstanding Work",
   "dashboard.needsAttention.empty": "No outstanding work right now.",
+  // Status/Explanation Language stabilization: previously this section
+  // (and Recent Activity / Continue Working below) showed "Loading..."
+  // forever if any of the underlying fetches permanently failed --
+  // there was no honest way to distinguish "still loading" from "this
+  // failed." Shown only once loading has genuinely stopped and at
+  // least one of the shared fetches errored (see `anyError` in
+  // `DashboardPage.tsx`).
+  "dashboard.needsAttention.loadError": "Something failed to load, so this can't be shown right now.",
   "dashboard.needsAttention.outcomeMissing": "{{security}}: outcome not yet reported",
   "dashboard.needsAttention.tradeMissing": "{{security}}: trade not yet reported",
   "dashboard.needsAttention.reconciliationNeeded": "{{security}}: allocation awaiting reconciliation",
   "dashboard.recentActivity.heading": "Recent Activity",
   "dashboard.recentActivity.empty": "No activity recorded yet.",
+  "dashboard.recentActivity.loadError": "Something failed to load, so this can't be shown right now.",
   "dashboard.continueWorking.heading": "Continue Working",
   "dashboard.continueWorking.empty": "No recent case activity yet.",
+  "dashboard.continueWorking.loadError": "Something failed to load, so this can't be shown right now.",
   "dashboard.viewHistoryLink": "View History →",
 
   // ---------- sprint 4: investment case last activity / timeline / outstanding work ----------
@@ -1831,7 +1849,16 @@ export const en = {
   "stance.level.reduce": "View weakened",
   "stance.level.review": "Review required",
   "stance.level.wait": "Wait for more evidence",
-  "stance.level.avoidDecision": "Insufficient basis for a decision",
+  // Status/Explanation Language stabilization: `avoid_decision` is the
+  // one Stance level reserved for a genuine red flag (contradicting
+  // evidence, or conviction itself unreachable) -- never merely "not
+  // enough data yet" (see `atlas.alpha.stance.models.StanceLevel
+  // .AVOID_DECISION`'s own docstring). The prior label ("Insufficient
+  // basis for a decision") read identically to `stance.level.wait`
+  // ("Wait for more evidence"), the actual low-severity "we simply
+  // don't know yet" state -- a reader could not tell a real warning
+  // apart from patient waiting. Critical tone is unchanged.
+  "stance.level.avoidDecision": "Red flag found",
   "stance.level.noRecommendation": "No recommendation",
   "stance.heading": "Atlas's Current View",
   "stance.reason.noCompanyData": "Atlas does not yet have any company data to reason from.",

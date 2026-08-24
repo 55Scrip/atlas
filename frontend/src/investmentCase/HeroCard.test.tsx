@@ -222,4 +222,20 @@ describe("HeroCard", () => {
       expect(screen.queryByText("investmentCase.hero.noProviderData")).not.toBeInTheDocument();
     });
   });
+
+  describe("Neutral vs. insufficient business tension (Status/Explanation Language stabilization)", () => {
+    it("a genuinely moderate business signal (the default fixture: both dimensions 'moderate') shows the neutral sentence, not the insufficient-evidence one", () => {
+      renderHero();
+      expect(screen.getByText(/investmentCase\.hero\.why\.neutral/)).toBeInTheDocument();
+      expect(screen.queryByText(/investmentCase\.hero\.why\.insufficient/)).not.toBeInTheDocument();
+    });
+
+    it("truly missing business data (both dimensions insufficient_input) still shows the insufficient-evidence sentence, unchanged", () => {
+      renderHero({
+        analysis: analysis({ growthStatus: "insufficient_input", capitalAllocationStatus: "insufficient_input" }),
+      });
+      expect(screen.getByText(/investmentCase\.hero\.why\.insufficient/)).toBeInTheDocument();
+      expect(screen.queryByText(/investmentCase\.hero\.why\.neutral/)).not.toBeInTheDocument();
+    });
+  });
 });

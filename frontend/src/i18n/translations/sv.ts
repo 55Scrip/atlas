@@ -717,6 +717,10 @@ export const sv: Record<TranslationKey, string> = {
     "Värderingen ser attraktiv ut här, även om den underliggande verksamheten väcker frågor som bör redas ut först.",
   "investmentCase.hero.why.insufficient":
     "Underlaget är hittills tunnare än vanligt, så den här bedömningen bör ses som en utgångspunkt snarare än en färdig slutsats.",
+  // Status-/förklaringsspråket stabiliseringssprint: se motsvarande
+  // kommentar i en.ts.
+  "investmentCase.hero.why.neutral":
+    "Det underliggande affärsläget ser måttligt ut snarare än tydligt starkt eller svagt — en verklig slutsats, inte en kunskapslucka.",
   "investmentCase.hero.closing.changed": "Något har förändrats sedan din senaste genomgång — värt en närmare titt nedan.",
   "investmentCase.hero.closing.none": "Inget har förändrats sedan ditt senaste besök.",
   "investmentCase.hero.closing.outcomeMissing":
@@ -1053,13 +1057,18 @@ export const sv: Record<TranslationKey, string> = {
   // ---------- sprint 4: dashboard sections ----------
   "dashboard.needsAttention.heading": "Återstående att göra",
   "dashboard.needsAttention.empty": "Inget återstår just nu.",
+  // Status-/förklaringsspråket stabiliseringssprint: se motsvarande
+  // kommentar i en.ts.
+  "dashboard.needsAttention.loadError": "Något gick fel vid inläsningen, så det här kan inte visas just nu.",
   "dashboard.needsAttention.outcomeMissing": "{{security}}: utfall inte rapporterat ännu",
   "dashboard.needsAttention.tradeMissing": "{{security}}: affär inte rapporterad ännu",
   "dashboard.needsAttention.reconciliationNeeded": "{{security}}: fördelningen väntar på avstämning",
   "dashboard.recentActivity.heading": "Senaste aktivitet",
   "dashboard.recentActivity.empty": "Ingen aktivitet registrerad ännu.",
+  "dashboard.recentActivity.loadError": "Något gick fel vid inläsningen, så det här kan inte visas just nu.",
   "dashboard.continueWorking.heading": "Fortsätt arbeta",
   "dashboard.continueWorking.empty": "Ingen nyligen aktivitet i något case ännu.",
+  "dashboard.continueWorking.loadError": "Något gick fel vid inläsningen, så det här kan inte visas just nu.",
   "dashboard.viewHistoryLink": "Visa historik →",
 
   // ---------- sprint 4: investment case last activity / timeline / outstanding work ----------
@@ -1825,7 +1834,9 @@ export const sv: Record<TranslationKey, string> = {
   "stance.level.reduce": "Synen har försvagats",
   "stance.level.review": "Genomgång krävs",
   "stance.level.wait": "Avvakta mer underlag",
-  "stance.level.avoidDecision": "Otillräcklig grund för ett beslut",
+  // Status-/förklaringsspråket stabiliseringssprint: se motsvarande
+  // kommentar i en.ts -- samma fix, samma ärlighetsregel.
+  "stance.level.avoidDecision": "Röd flagga hittad",
   "stance.level.noRecommendation": "Ingen rekommendation",
   "stance.heading": "Atlas nuvarande syn",
   "stance.reason.noCompanyData": "Atlas har ännu inget bolagsunderlag att utgå från.",

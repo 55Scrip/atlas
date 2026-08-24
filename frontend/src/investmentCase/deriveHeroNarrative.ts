@@ -38,7 +38,8 @@ export type HeroTensionKind =
   | "aligned_negative"
   | "business_strong_valuation_weak"
   | "business_weak_valuation_strong"
-  | "insufficient";
+  | "insufficient"
+  | "neutral";
 
 export interface HeroTensionInput {
   growthStatus: AnalysisBusinessStatus | null;
@@ -101,7 +102,15 @@ export function deriveHeroTension(input: HeroTensionInput): HeroTensionKind {
   if (business === "negative" && valuation === "positive") return "business_weak_valuation_strong";
   if (business === "positive") return "aligned_positive"; // valuation positive, neutral, or unknown
   if (business === "negative") return "aligned_negative";
-  return "insufficient"; // business === "neutral"
+  // Status/Explanation Language stabilization: `business === "neutral"`
+  // is a real, positively-computed "moderate" conclusion (both Growth
+  // and Capital Allocation genuinely evaluated as moderate, or a mix
+  // that nets out neutral) -- a different fact from `business === null`
+  // above (missing/insufficient input, or never evaluated at all).
+  // Previously both fell through to "insufficient," which told the
+  // reader evidence was thin even when it wasn't -- see `HERO_WHY_KEY`
+  // in `HeroCard.tsx` for the now-distinct sentence this renders.
+  return "neutral"; // business === "neutral"
 }
 
 export interface HeroChangeInput {

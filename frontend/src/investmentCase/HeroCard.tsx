@@ -78,6 +78,7 @@ const HERO_WHY_KEY: Record<HeroTensionKind, TranslationKey> = {
   business_strong_valuation_weak: "investmentCase.hero.why.business_strong_valuation_weak",
   business_weak_valuation_strong: "investmentCase.hero.why.business_weak_valuation_strong",
   insufficient: "investmentCase.hero.why.insufficient",
+  neutral: "investmentCase.hero.why.neutral",
 };
 
 const PRIORITY_SENTENCE_KEY: Record<CurrentPriorityKind, TranslationKey> = {
