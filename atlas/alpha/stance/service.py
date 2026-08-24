@@ -37,6 +37,15 @@ class StanceService:
         self._portfolio_fit_service = portfolio_fit_service
         self._portfolio_store = portfolio_store
         self._watchlist_store = watchlist_store
+        # Request-scoped memoization (Decision Layer Runtime
+        # Verification sprint) -- same pattern and justification as
+        # `InvestmentCaseCompositionService._build_cache`: this dict is
+        # as request-scoped as the instance itself, so caching by
+        # `case_id` changes no observable behavior, only how many times
+        # an identical assessment is repeated within one request.
+        # Measured: `assess_for_case` was called up to 111 times for
+        # one Case within a single `/decision-explanation/{id}` request.
+        self._assess_for_case_cache: dict[str, Stance | None] = {}
 
     def _assess(self, case_id: str) -> Stance | None:
         composition = self._composition_service.build(case_id)
@@ -54,7 +63,11 @@ class StanceService:
     def assess_for_case(self, case_id: str) -> Stance | None:
         """Investment Case's own Executive Summary area has a `case_id`
         in hand; this is the direct path (Deliverable 5)."""
-        return self._assess(case_id)
+        if case_id in self._assess_for_case_cache:
+            return self._assess_for_case_cache[case_id]
+        result = self._assess(case_id)
+        self._assess_for_case_cache[case_id] = result
+        return result
 
     def assess_for_ticker(self, ticker: str) -> Stance | None:
         case_id = resolve_case_id_for_ticker(ticker, self._portfolio_store, self._watchlist_store)

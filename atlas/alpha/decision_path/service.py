@@ -69,6 +69,19 @@ class DecisionPathService:
         self._result_repository = result_repository
         self._portfolio_store = portfolio_store
         self._watchlist_store = watchlist_store
+        # Request-scoped memoization (Decision Layer Runtime
+        # Verification sprint) -- same pattern and justification as
+        # `InvestmentCaseCompositionService._build_cache`: this dict is
+        # as request-scoped as the instance itself, so caching by
+        # `case_id` changes no observable behavior, only how many times
+        # an identical path -- and its own repository upsert, which a
+        # cache hit now also skips -- is repeated within one request.
+        # `ticker` is deliberately excluded from the key -- see
+        # `recommendation_conviction.service`'s own identical comment
+        # for why. Measured: `build_for_case` was called up to 3 times
+        # for one Case within a single `/decision-explanation/{id}`
+        # request.
+        self._build_for_case_cache: dict[str, DecisionPath | None] = {}
 
     def _build_inputs(self, case_id: str, *, ticker: str | None) -> DecisionPathInputs | None:
         decision = self._investment_decision_service.synthesize_for_case(case_id, ticker=ticker)
@@ -101,13 +114,19 @@ class DecisionPathService:
         """`None` only when `case_id` does not resolve to a real Case
         or a real Investment Decision -- the same honest-absence
         contract every sibling Decision Layer service already uses."""
+        if case_id in self._build_for_case_cache:
+            return self._build_for_case_cache[case_id]
+        path = self._build_for_case_uncached(case_id, ticker=ticker)
+        self._build_for_case_cache[case_id] = path
+        if path is not None:
+            self._result_repository.upsert(path, ticker=ticker)
+        return path
+
+    def _build_for_case_uncached(self, case_id: str, *, ticker: str | None) -> DecisionPath | None:
         inputs = self._build_inputs(case_id, ticker=ticker)
         if inputs is None:
             return None
-
-        path = build_decision_path(case_id, inputs, generated_at=_utc_now())
-        self._result_repository.upsert(path, ticker=ticker)
-        return path
+        return build_decision_path(case_id, inputs, generated_at=_utc_now())
 
     def build_for_ticker(self, ticker: str) -> DecisionPath | None:
         case_id = resolve_case_id_for_ticker(ticker, self._portfolio_store, self._watchlist_store)

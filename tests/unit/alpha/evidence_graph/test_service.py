@@ -266,3 +266,76 @@ class TestCompare:
         assert comparison.b.case_id == case_b
         assert comparison.a.independent_observation_chains == 1
         assert comparison.b.independent_observation_chains == 0
+
+
+class TestRequestScopedMemoization:
+    """Decision Layer Runtime Verification sprint: `build_for_case` was
+    measured being called up to 71 times for one Case within a single
+    `/decision-explanation/{id}` request, all recomputing the identical
+    graph. These tests verify the request-scoped fix, mirroring
+    `InvestmentCaseCompositionService._build_cache`'s own pattern."""
+
+    def test_same_case_id_is_computed_only_once_per_instance(self, harness, monkeypatch):
+        case_id = harness.import_holding("NVDA")
+        calls = {"n": 0}
+        original = harness.evidence_graph_service._build_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.evidence_graph_service, "_build_for_case_uncached", counting)
+
+        harness.evidence_graph_service.build_for_case(case_id)
+        harness.evidence_graph_service.build_for_case(case_id)
+        harness.evidence_graph_service.build_for_case(case_id)
+
+        assert calls["n"] == 1
+
+    def test_repeated_calls_return_the_identical_cached_object(self, harness):
+        case_id = harness.import_holding("NVDA")
+        first = harness.evidence_graph_service.build_for_case(case_id)
+        second = harness.evidence_graph_service.build_for_case(case_id)
+        assert first is second
+
+    def test_different_cases_are_still_computed_separately(self, harness, monkeypatch):
+        case_a = harness.import_holding("NVDA")
+        case_b = harness.add_to_watchlist("MSFT")
+        calls = {"n": 0}
+        original = harness.evidence_graph_service._build_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.evidence_graph_service, "_build_for_case_uncached", counting)
+
+        result_a = harness.evidence_graph_service.build_for_case(case_a)
+        result_b = harness.evidence_graph_service.build_for_case(case_b)
+
+        assert calls["n"] == 2
+        assert result_a.graph.case_id != result_b.graph.case_id
+
+    def test_no_state_leaks_between_service_instances(self, harness):
+        case_id = harness.import_holding("NVDA")
+        harness.evidence_graph_service.build_for_case(case_id)
+
+        second_service = EvidenceGraphService(
+            harness.composition_service,
+            harness.evidence_repository,
+            harness.case_condition_service,
+            harness.assumption_service,
+            harness.portfolio_store,
+            harness.watchlist_store,
+        )
+        calls = {"n": 0}
+        original = second_service._build_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        second_service._build_for_case_uncached = counting
+        second_service.build_for_case(case_id)
+
+        assert calls["n"] == 1

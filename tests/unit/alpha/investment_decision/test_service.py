@@ -265,3 +265,104 @@ class TestPortfolioActionDistribution:
         harness.import_holding("NVDA")
         distribution = harness.investment_decision_service.portfolio_action_distribution()
         assert "NVDA" in distribution[DecisionAction.NO_DECISION.value]
+
+
+class TestRequestScopedMemoization:
+    """Decision Layer Runtime Verification sprint: `synthesize_for_case`
+    was measured being called up to 50 times for one Case within a
+    single `/decision-explanation/{id}` request. These tests verify
+    the request-scoped fix, mirroring
+    `InvestmentCaseCompositionService._build_cache`'s own pattern."""
+
+    def test_same_case_id_is_computed_only_once_per_instance(self, harness, monkeypatch):
+        case_id = harness.import_holding("NVDA")
+        calls = {"n": 0}
+        original = harness.investment_decision_service._synthesize_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.investment_decision_service, "_synthesize_for_case_uncached", counting)
+
+        harness.investment_decision_service.synthesize_for_case(case_id)
+        harness.investment_decision_service.synthesize_for_case(case_id)
+        harness.investment_decision_service.synthesize_for_case(case_id)
+
+        assert calls["n"] == 1
+
+    def test_repeated_calls_return_the_identical_cached_object(self, harness):
+        case_id = harness.import_holding("NVDA")
+        first = harness.investment_decision_service.synthesize_for_case(case_id)
+        second = harness.investment_decision_service.synthesize_for_case(case_id)
+        assert first is second
+
+    def test_different_cases_are_still_computed_separately(self, harness, monkeypatch):
+        case_a = harness.import_holding("NVDA")
+        case_b = harness.add_to_watchlist("MSFT")
+        calls = {"n": 0}
+        original = harness.investment_decision_service._synthesize_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.investment_decision_service, "_synthesize_for_case_uncached", counting)
+
+        result_a = harness.investment_decision_service.synthesize_for_case(case_a)
+        result_b = harness.investment_decision_service.synthesize_for_case(case_b)
+
+        assert calls["n"] == 2
+        assert result_a.case_id != result_b.case_id
+
+    def test_ticker_argument_does_not_fragment_the_cache_or_change_the_result(self, harness, monkeypatch):
+        case_id = harness.import_holding("NVDA")
+        calls = {"n": 0}
+        original = harness.investment_decision_service._synthesize_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.investment_decision_service, "_synthesize_for_case_uncached", counting)
+
+        no_ticker = harness.investment_decision_service.synthesize_for_case(case_id)
+        with_ticker = harness.investment_decision_service.synthesize_for_case(case_id, ticker="NVDA")
+
+        assert calls["n"] == 1
+        assert no_ticker is with_ticker
+
+    def test_repository_upsert_runs_once_per_case_not_once_per_call(self, harness):
+        """See `decision_readiness.test_service`'s identical test for
+        why the upsert is skipped on cache hits (profiling-confirmed
+        the dominant real cost) and why `change_for_case` still works
+        correctly despite it."""
+        case_id = harness.import_holding("NVDA")
+        harness.investment_decision_service.synthesize_for_case(case_id)  # populates the cache, upserts once
+        harness.investment_decision_service.synthesize_for_case(case_id)  # cache hit, no upsert
+        change = harness.investment_decision_service.change_for_case(case_id)
+        assert change is None  # nothing changed -- proves previous/current still compare equal
+
+    def test_no_state_leaks_between_service_instances(self, harness):
+        case_id = harness.import_holding("NVDA")
+        harness.investment_decision_service.synthesize_for_case(case_id)
+
+        second_service = InvestmentDecisionService(
+            harness.composition_service,
+            harness.decision_readiness_service,
+            harness.stance_service,
+            harness.investment_decision_result_repository,
+            harness.portfolio_store,
+            harness.watchlist_store,
+        )
+        calls = {"n": 0}
+        original = second_service._synthesize_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        second_service._synthesize_for_case_uncached = counting
+        second_service.synthesize_for_case(case_id)
+
+        assert calls["n"] == 1

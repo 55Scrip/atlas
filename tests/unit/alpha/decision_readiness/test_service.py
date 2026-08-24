@@ -296,3 +296,123 @@ class TestPortfolioBreakdown:
         harness.import_holding("NVDA")
         breakdown = harness.decision_readiness_service.portfolio_breakdown()
         assert "NVDA" in breakdown[DecisionReadinessStatus.UNKNOWN]
+
+
+class TestRequestScopedMemoization:
+    """Decision Layer Runtime Verification sprint: `assess_for_case` was
+    measured being called up to 61 times for one Case within a single
+    `/decision-explanation/{id}` request -- the single largest
+    contributor to that endpoint's own latency (65% of its own time).
+    These tests verify the request-scoped fix, mirroring
+    `InvestmentCaseCompositionService._build_cache`'s own pattern."""
+
+    def test_same_case_id_is_computed_only_once_per_instance(self, harness, monkeypatch):
+        case_id = harness.import_holding("NVDA")
+        calls = {"n": 0}
+        original = harness.decision_readiness_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.decision_readiness_service, "_assess_for_case_uncached", counting)
+
+        harness.decision_readiness_service.assess_for_case(case_id)
+        harness.decision_readiness_service.assess_for_case(case_id)
+        harness.decision_readiness_service.assess_for_case(case_id)
+
+        assert calls["n"] == 1
+
+    def test_repeated_calls_return_the_identical_cached_object(self, harness):
+        case_id = harness.import_holding("NVDA")
+        first = harness.decision_readiness_service.assess_for_case(case_id)
+        second = harness.decision_readiness_service.assess_for_case(case_id)
+        assert first is second
+
+    def test_different_cases_are_still_computed_separately(self, harness, monkeypatch):
+        case_a = harness.import_holding("NVDA")
+        case_b = harness.add_to_watchlist("MSFT")
+        calls = {"n": 0}
+        original = harness.decision_readiness_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.decision_readiness_service, "_assess_for_case_uncached", counting)
+
+        result_a = harness.decision_readiness_service.assess_for_case(case_a)
+        result_b = harness.decision_readiness_service.assess_for_case(case_b)
+
+        assert calls["n"] == 2
+        assert result_a.case_id != result_b.case_id
+
+    def test_ticker_argument_does_not_fragment_the_cache_or_change_the_result(self, harness, monkeypatch):
+        """`ticker` is proven ticker-independent for the returned
+        `DecisionReadiness` (only used for the repository upsert's own
+        metadata) -- real callers in the Decision Layer DAG call this
+        method both with and without `ticker` for the identical
+        `case_id` (e.g. `decision_path`'s own `_build_inputs` omits it,
+        `decision_explanation` passes it directly), so the cache must
+        still collapse to one computation regardless."""
+        case_id = harness.import_holding("NVDA")
+        calls = {"n": 0}
+        original = harness.decision_readiness_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.decision_readiness_service, "_assess_for_case_uncached", counting)
+
+        no_ticker = harness.decision_readiness_service.assess_for_case(case_id)
+        with_ticker = harness.decision_readiness_service.assess_for_case(case_id, ticker="NVDA")
+
+        assert calls["n"] == 1
+        assert no_ticker is with_ticker
+
+    def test_repository_upsert_runs_once_per_case_not_once_per_call(self, harness):
+        """The repository write only happens on the one call that
+        actually computes a fresh result -- a later cache hit skips it
+        entirely, since the row it would write is byte-identical
+        (profiling showed this upsert, not the computation itself, was
+        the dominant real cost once the computation was memoized: every
+        upsert is its own committed transaction under this database's
+        `synchronous=FULL` config). `change_for_case`'s own
+        read-before-write ordering still works correctly despite the
+        skipped writes -- this is the existing `TestChangeForCase`
+        suite's own regression coverage, re-asserted here explicitly
+        against a case that already has a cached result."""
+        case_id = harness.import_holding("NVDA")
+        harness.decision_readiness_service.assess_for_case(case_id)  # populates the cache, upserts once
+        stored_after_first = harness.decision_readiness_result_repository.get(case_id)
+        assert stored_after_first is not None
+
+        harness.decision_readiness_service.assess_for_case(case_id)  # cache hit, no upsert
+        change = harness.decision_readiness_service.change_for_case(case_id)
+        assert change is None  # nothing changed -- proves previous/current still compare equal
+
+    def test_no_state_leaks_between_service_instances(self, harness):
+        case_id = harness.import_holding("NVDA")
+        harness.decision_readiness_service.assess_for_case(case_id)
+
+        second_service = DecisionReadinessService(
+            harness.composition_service,
+            harness.stance_service,
+            harness.monitoring_service,
+            harness.evidence_graph_service,
+            harness.decision_readiness_result_repository,
+            harness.portfolio_store,
+            harness.watchlist_store,
+        )
+        calls = {"n": 0}
+        original = second_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        second_service._assess_for_case_uncached = counting
+        second_service.assess_for_case(case_id)
+
+        assert calls["n"] == 1

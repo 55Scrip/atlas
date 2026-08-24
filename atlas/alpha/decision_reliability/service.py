@@ -63,6 +63,18 @@ class DecisionReliabilityService:
         self._result_repository = result_repository
         self._portfolio_store = portfolio_store
         self._watchlist_store = watchlist_store
+        # Request-scoped memoization (Decision Layer Runtime
+        # Verification sprint) -- same pattern and justification as
+        # `InvestmentCaseCompositionService._build_cache`: this dict is
+        # as request-scoped as the instance itself, so caching by
+        # `case_id` changes no observable behavior, only how many times
+        # an identical assessment is repeated within one request.
+        # `ticker` is deliberately excluded from the key -- see
+        # `recommendation_conviction.service`'s own identical comment
+        # for why (the resolved ticker is still threaded to the nested
+        # `decision_readiness_service` call and to the one repository
+        # upsert a cache miss performs).
+        self._assess_for_case_cache: dict[str, DecisionReliability | None] = {}
 
     def _ticker_for_case(self, case_id: str) -> str | None:
         for known_case_id, ticker in known_cases(self._portfolio_store, self._watchlist_store):
@@ -75,7 +87,15 @@ class DecisionReliabilityService:
         -- the same honest-absence contract every sibling Decision
         Layer service already uses."""
         resolved_ticker = ticker if ticker is not None else self._ticker_for_case(case_id)
+        if case_id in self._assess_for_case_cache:
+            return self._assess_for_case_cache[case_id]
+        result = self._assess_for_case_uncached(case_id, ticker=resolved_ticker)
+        self._assess_for_case_cache[case_id] = result
+        if result is not None:
+            self._result_repository.upsert(result, ticker=resolved_ticker)
+        return result
 
+    def _assess_for_case_uncached(self, case_id: str, *, ticker: str | None) -> DecisionReliability | None:
         composition = self._composition_service.build(case_id)
         if composition is None:
             return None
@@ -83,15 +103,13 @@ class DecisionReliabilityService:
         evidence_quality = self._evidence_quality_service.assess_for_case(case_id)
         if evidence_quality is None:
             return None
-        readiness = self._decision_readiness_service.assess_for_case(case_id, ticker=resolved_ticker)
+        readiness = self._decision_readiness_service.assess_for_case(case_id, ticker=ticker)
         if readiness is None:
             return None
 
-        result = build_decision_reliability(
+        return build_decision_reliability(
             case_id, coverage=coverage, evidence_quality=evidence_quality, readiness=readiness, generated_at=_utc_now()
         )
-        self._result_repository.upsert(result, ticker=resolved_ticker)
-        return result
 
     def assess_for_ticker(self, ticker: str) -> DecisionReliability | None:
         case_id = resolve_case_id_for_ticker(ticker, self._portfolio_store, self._watchlist_store)

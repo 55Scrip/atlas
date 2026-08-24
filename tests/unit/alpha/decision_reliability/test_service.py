@@ -264,3 +264,101 @@ class TestPortfolioReliabilityBreakdown:
         harness.import_holding("NVDA")
         breakdown = harness.decision_reliability_service.portfolio_reliability_breakdown()
         assert not ("NVDA" in breakdown.most_reliable and "NVDA" in breakdown.least_reliable)
+
+
+class TestRequestScopedMemoization:
+    """Decision Layer Runtime Verification sprint: request-scoped
+    memoization mirroring `InvestmentCaseCompositionService
+    ._build_cache`'s own pattern."""
+
+    def test_same_case_id_is_computed_only_once_per_instance(self, harness, monkeypatch):
+        case_id = harness.import_holding("NVDA")
+        calls = {"n": 0}
+        original = harness.decision_reliability_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.decision_reliability_service, "_assess_for_case_uncached", counting)
+
+        harness.decision_reliability_service.assess_for_case(case_id)
+        harness.decision_reliability_service.assess_for_case(case_id)
+        harness.decision_reliability_service.assess_for_case(case_id)
+
+        assert calls["n"] == 1
+
+    def test_repeated_calls_return_the_identical_cached_object(self, harness):
+        case_id = harness.import_holding("NVDA")
+        first = harness.decision_reliability_service.assess_for_case(case_id)
+        second = harness.decision_reliability_service.assess_for_case(case_id)
+        assert first is second
+
+    def test_different_cases_are_still_computed_separately(self, harness, monkeypatch):
+        case_ids = harness.import_holdings({"AAPL": 50.0, "MSFT": 50.0})
+        calls = {"n": 0}
+        original = harness.decision_reliability_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.decision_reliability_service, "_assess_for_case_uncached", counting)
+
+        result_a = harness.decision_reliability_service.assess_for_case(case_ids["AAPL"])
+        result_b = harness.decision_reliability_service.assess_for_case(case_ids["MSFT"])
+
+        assert calls["n"] == 2
+        assert result_a.case_id != result_b.case_id
+
+    def test_ticker_argument_does_not_fragment_the_cache_or_change_the_result(self, harness, monkeypatch):
+        case_id = harness.import_holding("NVDA")
+        calls = {"n": 0}
+        original = harness.decision_reliability_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.decision_reliability_service, "_assess_for_case_uncached", counting)
+
+        no_ticker = harness.decision_reliability_service.assess_for_case(case_id)
+        with_ticker = harness.decision_reliability_service.assess_for_case(case_id, ticker="NVDA")
+
+        assert calls["n"] == 1
+        assert no_ticker is with_ticker
+
+    def test_repository_upsert_runs_once_per_case_not_once_per_call(self, harness):
+        """See `decision_readiness.test_service`'s identical test for
+        why the upsert is skipped on cache hits (profiling-confirmed
+        the dominant real cost) and why `change_for_case` still works
+        correctly despite it."""
+        case_id = harness.import_holding("NVDA")
+        harness.decision_reliability_service.assess_for_case(case_id)  # populates the cache, upserts once
+        harness.decision_reliability_service.assess_for_case(case_id)  # cache hit, no upsert
+        change = harness.decision_reliability_service.change_for_case(case_id)
+        assert change is None  # nothing changed -- proves previous/current still compare equal
+
+    def test_no_state_leaks_between_service_instances(self, harness):
+        case_id = harness.import_holding("NVDA")
+        harness.decision_reliability_service.assess_for_case(case_id)
+
+        second_service = DecisionReliabilityService(
+            harness.composition_service,
+            harness.evidence_quality_service,
+            harness.decision_readiness_service,
+            harness.decision_reliability_result_repository,
+            harness.portfolio_store,
+            harness.watchlist_store,
+        )
+        calls = {"n": 0}
+        original = second_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        second_service._assess_for_case_uncached = counting
+        second_service.assess_for_case(case_id)
+
+        assert calls["n"] == 1

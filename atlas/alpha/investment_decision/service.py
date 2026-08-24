@@ -65,6 +65,26 @@ class InvestmentDecisionService:
         self._result_repository = result_repository
         self._portfolio_store = portfolio_store
         self._watchlist_store = watchlist_store
+        # Request-scoped memoization (Decision Layer Runtime
+        # Verification sprint) -- same pattern and justification as
+        # `InvestmentCaseCompositionService._build_cache`: this dict is
+        # as request-scoped as the instance itself, so caching by
+        # `case_id` changes no observable behavior, only how many times
+        # an identical synthesis -- and its own repository upsert,
+        # profiling-confirmed the dominant real cost, since every
+        # upsert is its own committed transaction under this database's
+        # `synchronous=FULL` config -- is repeated within one request.
+        # `ticker` is deliberately excluded from the key: it is never
+        # read while computing `InvestmentDecision` itself, only passed
+        # to the one upsert a cache miss still performs; the repository
+        # row it writes is byte-identical on every call within a
+        # request regardless of which call triggers it, and no reader
+        # anywhere in this codebase looks up a row by its `ticker`
+        # column (confirmed by grep), so upserting once per `case_id`
+        # instead of once per call changes no observable state.
+        # Measured: `synthesize_for_case` was called up to 50 times for
+        # one Case within a single `/decision-explanation/{id}` request.
+        self._synthesize_for_case_cache: dict[str, InvestmentDecision | None] = {}
 
     def _build_inputs(self, case_id: str) -> SynthesisInputs | None:
         composition = self._composition_service.build(case_id)
@@ -92,13 +112,19 @@ class InvestmentDecisionService:
         """`None` only when `case_id` does not resolve to a real Case
         -- the same honest-absence contract every sibling Alpha
         service already uses."""
+        if case_id in self._synthesize_for_case_cache:
+            return self._synthesize_for_case_cache[case_id]
+        decision = self._synthesize_for_case_uncached(case_id)
+        self._synthesize_for_case_cache[case_id] = decision
+        if decision is not None:
+            self._result_repository.upsert(decision, ticker=ticker)
+        return decision
+
+    def _synthesize_for_case_uncached(self, case_id: str) -> InvestmentDecision | None:
         inputs = self._build_inputs(case_id)
         if inputs is None:
             return None
-
-        decision = synthesize_decision(case_id, inputs, generated_at=_utc_now())
-        self._result_repository.upsert(decision, ticker=ticker)
-        return decision
+        return synthesize_decision(case_id, inputs, generated_at=_utc_now())
 
     def synthesize_for_ticker(self, ticker: str) -> InvestmentDecision | None:
         case_id = resolve_case_id_for_ticker(ticker, self._portfolio_store, self._watchlist_store)

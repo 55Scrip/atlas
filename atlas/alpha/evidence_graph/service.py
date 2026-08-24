@@ -90,11 +90,27 @@ class EvidenceGraphService:
         self._assumption_service = assumption_service
         self._portfolio_store = portfolio_store
         self._watchlist_store = watchlist_store
+        # Request-scoped memoization (Decision Layer Runtime
+        # Verification sprint) -- same pattern and justification as
+        # `InvestmentCaseCompositionService._build_cache`: this dict is
+        # as request-scoped as the instance itself, so caching by
+        # `case_id` changes no observable behavior, only how many times
+        # an identical graph is rebuilt within one request. Measured:
+        # `build_for_case` was called up to 71 times for one Case within
+        # a single `/decision-explanation/{id}` request.
+        self._build_for_case_cache: dict[str, CaseEvidenceGraph | None] = {}
 
     def build_for_case(self, case_id: str) -> CaseEvidenceGraph | None:
         """`None` only when `case_id` does not resolve to a real Case --
         the same honest-absence contract `InvestmentCaseCompositionService
         .build` already uses."""
+        if case_id in self._build_for_case_cache:
+            return self._build_for_case_cache[case_id]
+        result = self._build_for_case_uncached(case_id)
+        self._build_for_case_cache[case_id] = result
+        return result
+
+    def _build_for_case_uncached(self, case_id: str) -> CaseEvidenceGraph | None:
         composition = self._composition_service.build(case_id)
         if composition is None:
             return None

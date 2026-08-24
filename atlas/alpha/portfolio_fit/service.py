@@ -54,6 +54,20 @@ class PortfolioFitService:
         self._portfolio_store = portfolio_store
         self._watchlist_store = watchlist_store
         self._composition_service = composition_service
+        # Request-scoped memoization (Decision Layer Runtime
+        # Verification sprint) -- same pattern and justification as
+        # `InvestmentCaseCompositionService._build_cache`: this dict is
+        # as request-scoped as the instance itself, so caching by
+        # `case_id` changes no observable behavior, only how many times
+        # an identical assessment is repeated within one request. Only
+        # `assess_for_case` is memoized here -- `assess_for_ticker`/
+        # `compare`/`assess_all_holdings`/`rank_candidates` call the
+        # private `_assess` with a `portfolio_state` that varies by
+        # caller, so they are left untouched (out of this sprint's
+        # verified scope). Measured: `assess_for_case` was called up to
+        # 111 times for one Case within a single
+        # `/decision-explanation/{id}` request.
+        self._assess_for_case_cache: dict[str, PortfolioFitAssessment | None] = {}
 
     def _ticker_for_case(self, case_id: str, composition, portfolio_state: AlphaPortfolioState | None) -> str:
         """Resolves the real ticker for a Case whose caller only has a
@@ -102,7 +116,11 @@ class PortfolioFitService:
     def assess_for_case(self, case_id: str) -> PortfolioFitAssessment | None:
         """Deliverable 8 -- Investment Case's own "Portfolio Fit" section
         already has a `case_id` in hand; this is the direct path."""
-        return self._assess(case_id, self._portfolio_store.get())
+        if case_id in self._assess_for_case_cache:
+            return self._assess_for_case_cache[case_id]
+        result = self._assess(case_id, self._portfolio_store.get())
+        self._assess_for_case_cache[case_id] = result
+        return result
 
     def assess_for_ticker(self, ticker: str) -> PortfolioFitAssessment | None:
         case_id = resolve_case_id_for_ticker(ticker, self._portfolio_store, self._watchlist_store)

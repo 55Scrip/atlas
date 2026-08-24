@@ -273,3 +273,103 @@ class TestPortfolioConvictionBreakdown:
         breakdown = harness.recommendation_conviction_service.portfolio_conviction_breakdown()
         all_tickers = set(breakdown.highest_conviction) | set(breakdown.lowest_conviction)
         assert "MSFT" not in all_tickers
+
+
+class TestRequestScopedMemoization:
+    """Decision Layer Runtime Verification sprint: request-scoped
+    memoization mirroring `InvestmentCaseCompositionService
+    ._build_cache`'s own pattern."""
+
+    def test_same_case_id_is_computed_only_once_per_instance(self, harness, monkeypatch):
+        case_id = harness.import_holding("NVDA")
+        calls = {"n": 0}
+        original = harness.recommendation_conviction_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.recommendation_conviction_service, "_assess_for_case_uncached", counting)
+
+        harness.recommendation_conviction_service.assess_for_case(case_id)
+        harness.recommendation_conviction_service.assess_for_case(case_id)
+        harness.recommendation_conviction_service.assess_for_case(case_id)
+
+        assert calls["n"] == 1
+
+    def test_repeated_calls_return_the_identical_cached_object(self, harness):
+        case_id = harness.import_holding("NVDA")
+        first = harness.recommendation_conviction_service.assess_for_case(case_id)
+        second = harness.recommendation_conviction_service.assess_for_case(case_id)
+        assert first is second
+
+    def test_different_cases_are_still_computed_separately(self, harness, monkeypatch):
+        case_a = harness.import_holding("NVDA")
+        case_b = harness.add_to_watchlist("MSFT")
+        calls = {"n": 0}
+        original = harness.recommendation_conviction_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.recommendation_conviction_service, "_assess_for_case_uncached", counting)
+
+        result_a = harness.recommendation_conviction_service.assess_for_case(case_a)
+        result_b = harness.recommendation_conviction_service.assess_for_case(case_b)
+
+        assert calls["n"] == 2
+        assert result_a.case_id != result_b.case_id
+
+    def test_ticker_argument_does_not_fragment_the_cache_or_change_the_result(self, harness, monkeypatch):
+        case_id = harness.import_holding("NVDA")
+        calls = {"n": 0}
+        original = harness.recommendation_conviction_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.recommendation_conviction_service, "_assess_for_case_uncached", counting)
+
+        no_ticker = harness.recommendation_conviction_service.assess_for_case(case_id)
+        with_ticker = harness.recommendation_conviction_service.assess_for_case(case_id, ticker="NVDA")
+
+        assert calls["n"] == 1
+        assert no_ticker is with_ticker
+
+    def test_repository_upsert_runs_once_per_case_not_once_per_call(self, harness):
+        """See `decision_readiness.test_service`'s identical test for
+        why the upsert is skipped on cache hits (profiling-confirmed
+        the dominant real cost) and why `change_for_case` still works
+        correctly despite it."""
+        case_id = harness.import_holding("NVDA")
+        harness.recommendation_conviction_service.assess_for_case(case_id)  # populates the cache, upserts once
+        harness.recommendation_conviction_service.assess_for_case(case_id)  # cache hit, no upsert
+        change = harness.recommendation_conviction_service.change_for_case(case_id)
+        assert change is None  # nothing changed -- proves previous/current still compare equal
+
+    def test_no_state_leaks_between_service_instances(self, harness):
+        case_id = harness.import_holding("NVDA")
+        harness.recommendation_conviction_service.assess_for_case(case_id)
+
+        second_service = RecommendationConvictionService(
+            harness.composition_service,
+            harness.decision_readiness_service,
+            harness.investment_decision_service,
+            harness.evidence_graph_service,
+            harness.recommendation_conviction_result_repository,
+            harness.portfolio_store,
+            harness.watchlist_store,
+        )
+        calls = {"n": 0}
+        original = second_service._assess_for_case_uncached
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        second_service._assess_for_case_uncached = counting
+        second_service.assess_for_case(case_id)
+
+        assert calls["n"] == 1

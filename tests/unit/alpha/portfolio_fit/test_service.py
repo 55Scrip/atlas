@@ -245,3 +245,74 @@ class TestNoPersistence:
 
         assert first.overall == second.overall
         assert first.dimensions == second.dimensions
+
+
+class TestRequestScopedMemoization:
+    """Decision Layer Runtime Verification sprint: `assess_for_case` was
+    measured being called up to 111 times for one Case within a single
+    `/decision-explanation/{id}` request, all recomputing the identical
+    assessment. These tests verify the request-scoped fix, mirroring
+    `InvestmentCaseCompositionService._build_cache`'s own pattern."""
+
+    def test_same_case_id_is_computed_only_once_per_instance(self, harness, monkeypatch):
+        case_id = harness.import_holding("AAPL")
+        calls = {"n": 0}
+        original = harness.fit_service._assess
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.fit_service, "_assess", counting)
+
+        harness.fit_service.assess_for_case(case_id)
+        harness.fit_service.assess_for_case(case_id)
+        harness.fit_service.assess_for_case(case_id)
+
+        assert calls["n"] == 1
+
+    def test_repeated_calls_return_the_identical_cached_object(self, harness):
+        case_id = harness.import_holding("AAPL")
+        first = harness.fit_service.assess_for_case(case_id)
+        second = harness.fit_service.assess_for_case(case_id)
+        assert first is second
+
+    def test_different_cases_are_still_computed_separately(self, harness, monkeypatch):
+        case_ids = harness.import_holdings({"AAPL": 50.0, "MSFT": 50.0})
+        calls = {"n": 0}
+        original = harness.fit_service._assess
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(harness.fit_service, "_assess", counting)
+
+        result_a = harness.fit_service.assess_for_case(case_ids["AAPL"])
+        result_b = harness.fit_service.assess_for_case(case_ids["MSFT"])
+
+        assert calls["n"] == 2
+        assert result_a.case_id != result_b.case_id
+        assert result_a.ticker == "AAPL"
+        assert result_b.ticker == "MSFT"
+
+    def test_no_state_leaks_between_service_instances(self, harness):
+        case_id = harness.import_holding("AAPL")
+        harness.fit_service.assess_for_case(case_id)
+
+        second_service = PortfolioFitService(
+            portfolio_store=harness.portfolio_store,
+            watchlist_store=harness.watchlist_store,
+            composition_service=harness.composition_service,
+        )
+        calls = {"n": 0}
+        original = second_service._assess
+
+        def counting(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        second_service._assess = counting
+        second_service.assess_for_case(case_id)
+
+        assert calls["n"] == 1
