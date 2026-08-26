@@ -18,6 +18,7 @@ import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNo
 import { fetchMonitoringStatus, type MonitoringOperationalStatusView } from "../monitoring/monitoringApi";
 import { fetchDailyBriefAgenda, type AgendaItemView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
 import { PriorityBadge } from "../dailyBriefAgenda/PriorityBadge";
+import { agendaItemHeadline } from "../dailyBriefAgenda/describeAgendaHeadline";
 import { getAlphaWatchlistSnapshot, setAlphaWatchlistData, useAlphaWatchlist } from "../discovery/watchlistActions";
 
 /**
@@ -552,7 +553,7 @@ function AttentionCell({
     <Stack gap="metadata">
       <PriorityBadge priority={item.priority} />
       <Text as="span" color="secondary">
-        {item.headline}
+        {agendaItemHeadline(item, t)}
       </Text>
     </Stack>
   );

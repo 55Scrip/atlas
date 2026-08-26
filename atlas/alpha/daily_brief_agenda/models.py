@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 
+from atlas.alpha.daily_brief_agenda.reason_facts import ReasonFact
 from atlas.alpha.portfolio_status.models import AttentionCategory
 
 __all__ = [
@@ -294,6 +295,19 @@ class AgendaItem:
     """Parallel to `attention_category` -- `ReviewQueueItem.reason
     _count`, threaded through so the frontend's composed sentence can
     still say how many real facts it summarizes."""
+    reason_facts: tuple[ReasonFact | None, ...] = ()
+    """Implementation Sprint B1.1 (Backend Language Cleanup): parallel
+    to `reason` -- same length, same order, one `ReasonFact` per
+    contributing fact when that fact's source has been converted to
+    the semantic-reason-code contract (see `reason_facts.py`'s own
+    module docstring for exactly which sources that is, and why the
+    rest are not, this sprint). `None` at a given index means that
+    reason's own source has not been converted yet -- the frontend
+    falls back to the raw `reason` text at the same index, exactly the
+    same "structured field present -> use it; absent -> fall back to
+    the raw string" contract `attention_category` already established,
+    generalized from "one field, one source" to "one per reason, every
+    converted source." Never removes or replaces `reason` itself."""
 
 
 @dataclass(frozen=True)

@@ -69,6 +69,37 @@ export type AgendaSource =
   | "management_credibility"
   | "business_quality";
 
+/** Implementation Sprint B1.1 (Backend Language Cleanup) -- mirrors
+ * `atlas.alpha.daily_brief_agenda.reason_facts.ReasonCode` exactly.
+ * One member per distinct semantic fact shape the backend has
+ * converted; see that module's own docstring for exactly which
+ * sources that is, and why the rest still return `null` here. */
+export type ReasonCode =
+  | "workflow_gap"
+  | "missing_evidence"
+  | "concentration"
+  | "large_unallocated_capital"
+  | "executive_change"
+  | "management_credibility"
+  | "business_quality"
+  | "case_condition_status"
+  | "assumption_status";
+
+/** A semantic reason payload, never a rendered sentence --
+ * `value`/`secondaryValue` are always a closed enum's own value
+ * (translate via `describeReasonFact.ts`'s own key maps); `label` is
+ * real, already-real free text (a person's name, an investor's own
+ * words) that was never system language and must never be
+ * translated -- render it verbatim. */
+export interface ReasonFactView {
+  code: ReasonCode;
+  entity: string;
+  value: string | null;
+  secondaryValue: string | null;
+  label: string | null;
+  count: number | null;
+}
+
 export interface AgendaItemView {
   id: string;
   priority: PriorityLevel;
@@ -96,6 +127,13 @@ export interface AgendaItemView {
    * showing the backend's raw English sentence verbatim. */
   attentionCategory: AttentionCategory | null;
   attentionCount: number | null;
+  /** Implementation Sprint B1.1 -- parallel to `reason`, same length,
+   * same order. `null` at a given index means that reason's own
+   * source has not been converted to the semantic-reason-code
+   * contract yet; see `describeReasonFact.ts` for how a present entry
+   * is translated instead of showing the backend's raw English
+   * sentence verbatim. */
+  reasonFacts: (ReasonFactView | null)[];
 }
 
 export interface PortfolioSummaryView {

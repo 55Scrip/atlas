@@ -20,6 +20,7 @@ function item(overrides: Partial<AgendaItemView> = {}): AgendaItemView {
     generatedAt: "2026-01-01T00:00:00Z",
     attentionCategory: null,
     attentionCount: null,
+    reasonFacts: [null],
     ...overrides,
   };
 }

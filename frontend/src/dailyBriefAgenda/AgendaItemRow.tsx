@@ -5,6 +5,7 @@ import { AGENDA_GROUP_KEY, AGENDA_ITEM_KIND_KEY, SIGNAL_NATURE_KEY } from "../st
 import { PriorityBadge } from "./PriorityBadge";
 import { SignalNatureBadge } from "./SignalNatureBadge";
 import { agendaItemHeadline } from "./describeAgendaHeadline";
+import { describeReasonLine } from "./describeReasonFact";
 import type { AgendaItemView } from "./dailyBriefAgendaApi";
 import { StanceBadge } from "../stance/StanceBadge";
 import { primaryStanceReason, stanceReasonSentence } from "../stance/describeStance";
@@ -98,14 +99,18 @@ export function AgendaItemRow({
 
       {item.reason.length > 1 &&
         item.reason
-          .map((r, index) => ({ text: r, nature: item.reasonNature[index] ?? item.nature }))
+          .map((r, index) => ({
+            text: r,
+            nature: item.reasonNature[index] ?? item.nature,
+            fact: (item.reasonFacts ?? [])[index] ?? null,
+          }))
           .filter(({ text }) => text !== item.headline)
-          .map(({ text, nature }, index) => (
+          .map(({ text, nature, fact }, index) => (
             <Text key={index} color="tertiary" as="p">
               <Text as="span" color="tertiary" style={{ fontWeight: 600 }}>
                 {t(SIGNAL_NATURE_KEY[nature])}:{" "}
               </Text>
-              {text}
+              {describeReasonLine(text, fact, t)}
             </Text>
           ))}
 

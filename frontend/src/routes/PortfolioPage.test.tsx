@@ -76,6 +76,16 @@ function agendaResponse(overrides: Record<string, unknown> = {}) {
         // fixture without `attentionCategory` still gets a headline.
         attentionCategory: "OUTCOME_WITHOUT_EXECUTION",
         attentionCount: 1,
+        reasonFacts: [
+          {
+            code: "workflow_gap",
+            entity: "AAPL",
+            value: "OUTCOME_WITHOUT_EXECUTION",
+            secondaryValue: null,
+            label: null,
+            count: 1,
+          },
+        ],
       },
     ],
     ...overrides,

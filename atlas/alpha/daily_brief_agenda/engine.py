@@ -38,6 +38,7 @@ from atlas.alpha.daily_brief_agenda.models import (
     PriorityLevel,
     SignalNature,
 )
+from atlas.alpha.daily_brief_agenda.reason_facts import ReasonFact
 from atlas.alpha.decision_readiness.models import DecisionReadinessStatus
 from atlas.alpha.investment_decision.models import DecisionAction, DecisionQualifierKind
 from atlas.alpha.monitoring.engine import DAILY_BRIEF_EXCLUDED_CATEGORIES, HIGH_IMPORTANCE_CATEGORIES
@@ -95,7 +96,7 @@ def _utc_now() -> datetime:
 
 
 class Signal:
-    __slots__ = ("priority", "kind", "source", "reason", "nature", "since", "attention_category", "attention_count")
+    __slots__ = ("priority", "kind", "source", "reason", "nature", "since", "attention_category", "attention_count", "fact")
 
     def __init__(
         self,
@@ -108,6 +109,7 @@ class Signal:
         *,
         attention_category: AttentionCategory | None = None,
         attention_count: int | None = None,
+        fact: ReasonFact | None = None,
     ) -> None:
         self.priority = priority
         self.kind = kind
@@ -123,6 +125,11 @@ class Signal:
         # see `AgendaItem.attention_category`'s own docstring.
         self.attention_category = attention_category
         self.attention_count = attention_count
+        # Implementation Sprint B1.1: the generalized successor to the
+        # pair above -- see `AgendaItem.reason_facts`'s own docstring.
+        # Populated by every signal source this sprint converts;
+        # `None` everywhere else (unchanged behavior).
+        self.fact = fact
 
 
 # -- Workflow (ported verbatim from `derivePortfolioActions.ts`'s own
@@ -138,7 +145,7 @@ _WORKFLOW_PRIORITY: dict[AttentionCategory, PriorityLevel] = {
 }
 
 
-def workflow_signal(category: AttentionCategory, reason: str, *, count: int) -> Signal:
+def workflow_signal(category: AttentionCategory, reason: str, *, count: int, fact: ReasonFact | None = None) -> Signal:
     """Fix Sprint 4: `PERSISTENT_CONDITION` -- `status_report
     .review_queue` (`service.py`'s own source 4) is membership in a
     structural gap that stays true until resolved (a Decision still
@@ -162,10 +169,11 @@ def workflow_signal(category: AttentionCategory, reason: str, *, count: int) -> 
         SignalNature.PERSISTENT_CONDITION,
         attention_category=category,
         attention_count=count,
+        fact=fact,
     )
 
 
-def case_condition_signal(role: str, status: str, reason: str, since: datetime) -> Signal | None:
+def case_condition_signal(role: str, status: str, reason: str, since: datetime, *, fact: ReasonFact | None = None) -> Signal | None:
     """Fix Sprint 4: `PERSISTENT_CONDITION`, with a real `since` --
     `status == "satisfied"` is this Condition's own current state
     (re-evaluated fresh every call, no transition check), but
@@ -183,10 +191,11 @@ def case_condition_signal(role: str, status: str, reason: str, since: datetime) 
         reason,
         SignalNature.PERSISTENT_CONDITION,
         since=since,
+        fact=fact,
     )
 
 
-def assumption_signal(status: str, reason: str, since: datetime) -> Signal | None:
+def assumption_signal(status: str, reason: str, since: datetime, *, fact: ReasonFact | None = None) -> Signal | None:
     """Fix Sprint 4: `PERSISTENT_CONDITION`, with a real `since` --
     identical reasoning to `case_condition_signal` above, using
     `AssumptionView.updated_at`."""
@@ -198,6 +207,7 @@ def assumption_signal(status: str, reason: str, since: datetime) -> Signal | Non
             reason,
             SignalNature.PERSISTENT_CONDITION,
             since=since,
+            fact=fact,
         )
     if status == "challenged":
         return Signal(
@@ -207,6 +217,7 @@ def assumption_signal(status: str, reason: str, since: datetime) -> Signal | Non
             reason,
             SignalNature.PERSISTENT_CONDITION,
             since=since,
+            fact=fact,
         )
     return None
 
@@ -475,7 +486,7 @@ _CONCENTRATION_PRIORITY = {
 }
 
 
-def concentration_signal(kind: KeyFindingKind, reason: str) -> Signal | None:
+def concentration_signal(kind: KeyFindingKind, reason: str, *, fact: ReasonFact | None = None) -> Signal | None:
     """Fix Sprint 4: `PERSISTENT_CONDITION` -- a position's own share of
     the portfolio, recomputed fresh from current weights on every read,
     with no persisted prior-weight history anywhere in this codebase to
@@ -485,10 +496,12 @@ def concentration_signal(kind: KeyFindingKind, reason: str) -> Signal | None:
     priority = _CONCENTRATION_PRIORITY.get(kind)
     if priority is None:
         return None
-    return Signal(priority, AgendaItemKind.PORTFOLIO_RISK, AgendaSource.PORTFOLIO_INTELLIGENCE, reason, SignalNature.PERSISTENT_CONDITION)
+    return Signal(
+        priority, AgendaItemKind.PORTFOLIO_RISK, AgendaSource.PORTFOLIO_INTELLIGENCE, reason, SignalNature.PERSISTENT_CONDITION, fact=fact
+    )
 
 
-def evidence_gap_signal(reason: str) -> Signal:
+def evidence_gap_signal(reason: str, *, fact: ReasonFact | None = None) -> Signal:
     """Product Sprint 8 (Portfolio Excellence, Deliverable 4 -- Unify
     Attention Surfaces): before this, a missing-evidence gap
     (`PortfolioIntelligenceReport.missing_evidence`) was the one signal
@@ -509,15 +522,18 @@ def evidence_gap_signal(reason: str) -> Signal:
         AgendaSource.PORTFOLIO_INTELLIGENCE,
         reason,
         SignalNature.PERSISTENT_CONDITION,
+        fact=fact,
     )
 
 
-def portfolio_level_signal(priority: PriorityLevel, reason: str) -> Signal:
+def portfolio_level_signal(priority: PriorityLevel, reason: str, *, fact: ReasonFact | None = None) -> Signal:
     """Fix Sprint 4: `PERSISTENT_CONDITION` -- large unallocated capital
     is a current-state fact about today's portfolio composition, not a
     detected transition; no existing "since when has cash sat
     unallocated" timestamp exists to compose."""
-    return Signal(priority, AgendaItemKind.PORTFOLIO_RISK, AgendaSource.PORTFOLIO_INTELLIGENCE, reason, SignalNature.PERSISTENT_CONDITION)
+    return Signal(
+        priority, AgendaItemKind.PORTFOLIO_RISK, AgendaSource.PORTFOLIO_INTELLIGENCE, reason, SignalNature.PERSISTENT_CONDITION, fact=fact
+    )
 
 
 # -- Product Intelligence Sprint 1 (Portfolio Intelligence Activation) --
@@ -539,7 +555,9 @@ directors, ...) is genuine news but not elevated -- `PriorityLevel.LOW`,
 the `.get(..., LOW)` default below."""
 
 
-def executive_change_signal(role_category: ExecutiveRoleCategory, reason: str, since: datetime | None) -> Signal:
+def executive_change_signal(
+    role_category: ExecutiveRoleCategory, reason: str, since: datetime | None, *, fact: ReasonFact | None = None
+) -> Signal:
     """Fires only for a `LeadershipChangeEvent` disclosed in the most
     recent earnings-call transcript Atlas has for this ticker (the
     caller's own responsibility -- see `service.py`'s own source 17) --
@@ -556,10 +574,11 @@ def executive_change_signal(role_category: ExecutiveRoleCategory, reason: str, s
         reason,
         SignalNature.CHANGE_EVENT,
         since=since,
+        fact=fact,
     )
 
 
-def management_credibility_signal(kind: CredibilityFindingKind, reason: str) -> Signal | None:
+def management_credibility_signal(kind: CredibilityFindingKind, reason: str, *, fact: ReasonFact | None = None) -> Signal | None:
     """`None` for every finding that is not itself a deterioration --
     `CONSISTENT_FOLLOW_THROUGH`/`MIXED_FOLLOW_THROUGH`/`COMMUNICATION_
     REMAINED_CONSISTENT`/`COMMUNICATION_SHIFTED`/`INSUFFICIENT_HISTORY`
@@ -569,13 +588,17 @@ def management_credibility_signal(kind: CredibilityFindingKind, reason: str) -> 
     the "no ambiguous warnings" instruction this sprint's own Phase 5
     forbids."""
     if kind is CredibilityFindingKind.INCONSISTENT_FOLLOW_THROUGH:
-        return Signal(PriorityLevel.HIGH, AgendaItemKind.REVIEW_INVESTMENT_CASE, AgendaSource.MANAGEMENT_CREDIBILITY, reason, SignalNature.PERSISTENT_CONDITION)
+        return Signal(
+            PriorityLevel.HIGH, AgendaItemKind.REVIEW_INVESTMENT_CASE, AgendaSource.MANAGEMENT_CREDIBILITY, reason, SignalNature.PERSISTENT_CONDITION, fact=fact
+        )
     if kind is CredibilityFindingKind.GUIDANCE_REVISED_DOWNWARD:
-        return Signal(PriorityLevel.NORMAL, AgendaItemKind.REVIEW_INVESTMENT_CASE, AgendaSource.MANAGEMENT_CREDIBILITY, reason, SignalNature.PERSISTENT_CONDITION)
+        return Signal(
+            PriorityLevel.NORMAL, AgendaItemKind.REVIEW_INVESTMENT_CASE, AgendaSource.MANAGEMENT_CREDIBILITY, reason, SignalNature.PERSISTENT_CONDITION, fact=fact
+        )
     return None
 
 
-def business_quality_signal(kind: BusinessQualityFindingKind, reason: str) -> Signal | None:
+def business_quality_signal(kind: BusinessQualityFindingKind, reason: str, *, fact: ReasonFact | None = None) -> Signal | None:
     """`None` for every finding except `WEAKENING_BUSINESS` -- the one
     member this sprint's own Phase 3 names ("business quality
     deterioration"); every other member (`CONSISTENT_VALUE_CREATION`,
@@ -583,7 +606,9 @@ def business_quality_signal(kind: BusinessQualityFindingKind, reason: str) -> Si
     and genuinely positive or neutral news, never surfaced as an
     attention item."""
     if kind is BusinessQualityFindingKind.WEAKENING_BUSINESS:
-        return Signal(PriorityLevel.HIGH, AgendaItemKind.REVIEW_INVESTMENT_CASE, AgendaSource.BUSINESS_QUALITY, reason, SignalNature.PERSISTENT_CONDITION)
+        return Signal(
+            PriorityLevel.HIGH, AgendaItemKind.REVIEW_INVESTMENT_CASE, AgendaSource.BUSINESS_QUALITY, reason, SignalNature.PERSISTENT_CONDITION, fact=fact
+        )
     return None
 
 
@@ -621,9 +646,13 @@ def _item_for_ticker(context: TickerContext, signals: list[Signal], now: datetim
     # two tuples can never disagree about which signal a given reason
     # text came from).
     nature_by_reason: dict[str, SignalNature] = {}
+    fact_by_reason: dict[str, ReasonFact | None] = {}
     for signal in ordered:
         nature_by_reason.setdefault(signal.reason, signal.nature)
+        if signal.reason not in fact_by_reason:
+            fact_by_reason[signal.reason] = signal.fact
     reason_nature = tuple(nature_by_reason[text] for text in reasons)
+    reason_facts = tuple(fact_by_reason[text] for text in reasons)
     return AgendaItem(
         id=f"{winner.kind.value}:{context.ticker}",
         priority=winner.priority,
@@ -641,6 +670,7 @@ def _item_for_ticker(context: TickerContext, signals: list[Signal], now: datetim
         generated_at=now,
         attention_category=winner.attention_category,
         attention_count=winner.attention_count,
+        reason_facts=reason_facts,
     )
 
 
@@ -687,6 +717,7 @@ def build_agenda(
                 generated_at=resolved_now,
                 attention_category=signal.attention_category,
                 attention_count=signal.attention_count,
+                reason_facts=(signal.fact,),
             )
         )
 

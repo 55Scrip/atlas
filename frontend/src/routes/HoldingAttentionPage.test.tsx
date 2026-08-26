@@ -69,6 +69,7 @@ describe("HoldingAttentionPage (Product Sprint 10 -- Navigation & Workflow Excel
         generatedAt: "2026-01-01T00:00:00Z",
         attentionCategory: null,
         attentionCount: null,
+        reasonFacts: [null],
         ...overrides,
       };
     }
@@ -80,7 +81,20 @@ describe("HoldingAttentionPage (Product Sprint 10 -- Navigation & Workflow Excel
           initialEntries={[
             {
               pathname: "/portfolio/holding/AAPL",
-              state: { agendaItem: agendaItem({ attentionCategory: "OUTCOME_WITHOUT_EXECUTION", attentionCount: 3 }) },
+              state: {
+                agendaItem: agendaItem({
+                  reasonFacts: [
+                    {
+                      code: "workflow_gap",
+                      entity: "AAPL",
+                      value: "OUTCOME_WITHOUT_EXECUTION",
+                      secondaryValue: null,
+                      label: null,
+                      count: 3,
+                    },
+                  ],
+                }),
+              },
             },
           ]}
         >

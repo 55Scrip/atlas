@@ -2,6 +2,7 @@ import { Inline, Stack, Text } from "../foundation";
 import { useTranslation } from "../i18n";
 import { PriorityBadge } from "./PriorityBadge";
 import { AgendaItemRow, AgendaItemActions } from "./AgendaItemRow";
+import { describeReasonLine } from "./describeReasonFact";
 import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
 import type { TickerAgendaGroup } from "./groupAgendaByTicker";
 import type { TickerStanceView } from "../stance/stanceApi";
@@ -64,7 +65,7 @@ export function TickerAgendaCard({
       <Stack gap="row">
         {compactReasons.map((reason, index) => (
           <Text key={index} as="p" color="secondary">
-            • {reason}
+            • {describeReasonLine(reason, group.reasonFacts[index] ?? null, t)}
           </Text>
         ))}
         {hiddenReasonCount > 0 && (

@@ -91,6 +91,7 @@ from atlas.alpha.daily_brief_agenda.engine import (
     workflow_signal,
 )
 from atlas.alpha.daily_brief_agenda.models import DailyBriefAgenda, PriorityLevel
+from atlas.alpha.daily_brief_agenda.reason_facts import ReasonCode, ReasonFact
 from atlas.alpha.decision_explanation.models import DecisionExplanationChange
 from atlas.alpha.decision_explanation.service import DecisionExplanationService
 from atlas.alpha.decision_reliability.models import ReliabilityChange
@@ -685,13 +686,31 @@ class DailyBriefAgendaService:
             for row in list_active_case_conditions(self._case_condition_service, case_id):
                 predicate = row.predicate_text or "CaseCondition"
                 reason = f"{resolved_ticker}: {predicate} ({row.status})"
-                signal = case_condition_signal(row.role or "monitoring", row.status, reason, row.updated_at)
+                # `label` is the investor's own predicate text -- real
+                # free text, never translated (see `reason_facts.py`'s
+                # own docstring). When it's absent, there is nothing
+                # honest to translate: leave `fact` unset so the
+                # frontend falls back to the raw `reason` text above,
+                # the same "structured field present -> use it; absent
+                # -> fall back" contract every other converted source
+                # here already follows.
+                fact = (
+                    ReasonFact(ReasonCode.CASE_CONDITION_STATUS, resolved_ticker, value=row.status, label=row.predicate_text)
+                    if row.predicate_text
+                    else None
+                )
+                signal = case_condition_signal(row.role or "monitoring", row.status, reason, row.updated_at, fact=fact)
                 if signal is not None:
                     self._ensure(bundles, resolved_ticker, case_id_str, is_holding).append(signal)
             for row in list_active_assumptions(self._assumption_service, case_id):
                 statement = row.statement or "Assumption"
                 reason = f"{resolved_ticker}: {statement} ({row.status})"
-                signal = assumption_signal(row.status, reason, row.updated_at)
+                fact = (
+                    ReasonFact(ReasonCode.ASSUMPTION_STATUS, resolved_ticker, value=row.status, label=row.statement)
+                    if row.statement
+                    else None
+                )
+                signal = assumption_signal(row.status, reason, row.updated_at, fact=fact)
                 if signal is not None:
                     self._ensure(bundles, resolved_ticker, case_id_str, is_holding).append(signal)
 
@@ -703,7 +722,8 @@ class DailyBriefAgendaService:
             if item.case_id is None:
                 continue
             reason = f"{item.ticker}: {item.top_category.value.replace('_', ' ').lower()} ({item.reason_count} item(s))"
-            signal = workflow_signal(item.top_category, reason, count=item.reason_count)
+            fact = ReasonFact(ReasonCode.WORKFLOW_GAP, item.ticker, value=item.top_category.value, count=item.reason_count)
+            signal = workflow_signal(item.top_category, reason, count=item.reason_count, fact=fact)
             self._ensure(bundles, item.ticker, item.case_id, True).append(signal)
 
         # 5. Portfolio-wide findings -- `PortfolioIntelligenceService`
@@ -723,12 +743,14 @@ class DailyBriefAgendaService:
                 if case_id_for_ticker is None:
                     continue
                 reason = f"{ticker}: {finding.kind.value.replace('_', ' ')}"
-                signal = concentration_signal(finding.kind, reason)
+                fact = ReasonFact(ReasonCode.CONCENTRATION, ticker, value=finding.kind.value)
+                signal = concentration_signal(finding.kind, reason, fact=fact)
                 if signal is not None:
                     self._ensure(bundles, ticker, case_id_for_ticker, ticker in held_tickers).append(signal)
             elif finding.kind is KeyFindingKind.LARGE_UNALLOCATED:
                 reason = f"Large unallocated capital across {finding.count} consideration(s)"
-                portfolio_level_signals.append(portfolio_level_signal(PriorityLevel.NORMAL, reason))
+                fact = ReasonFact(ReasonCode.LARGE_UNALLOCATED_CAPITAL, "portfolio", count=finding.count)
+                portfolio_level_signals.append(portfolio_level_signal(PriorityLevel.NORMAL, reason, fact=fact))
 
         # 6. Missing evidence -- `PortfolioIntelligenceReport.missing_evidence`,
         # the one "Needs Your Attention" (`derivePortfolioActions.ts`)
@@ -740,7 +762,8 @@ class DailyBriefAgendaService:
         # always, mirroring workflow items above.
         for gap in intelligence_report.missing_evidence:
             reason = f"{gap.ticker}: missing evidence ({gap.gap_kind.value.replace('_', ' ')})"
-            self._ensure(bundles, gap.ticker, gap.case_id, True).append(evidence_gap_signal(reason))
+            fact = ReasonFact(ReasonCode.MISSING_EVIDENCE, gap.ticker, value=gap.gap_kind.value)
+            self._ensure(bundles, gap.ticker, gap.case_id, True).append(evidence_gap_signal(reason, fact=fact))
 
         # 7. Monitoring & Change Detection (Atlas Intelligence Sprint 7,
         # Deliverable 10) -- reads the last `POST /monitoring/run`'s own
@@ -977,17 +1000,28 @@ class DailyBriefAgendaService:
                     event_date = event.effective_date or event.observed_date
                     since = datetime.combine(event_date, datetime.min.time(), tzinfo=timezone.utc)
                     reason = _executive_change_reason(resolved_ticker, event)
+                    fact = ReasonFact(
+                        ReasonCode.EXECUTIVE_CHANGE,
+                        resolved_ticker,
+                        value=event.event_type.value,
+                        secondary_value=event.role_category.value,
+                        label=event.executive_name,
+                    )
                     self._ensure(bundles, resolved_ticker, case_id, is_holding).append(
-                        executive_change_signal(event.role_category, reason, since)
+                        executive_change_signal(event.role_category, reason, since, fact=fact)
                     )
 
             for finding in composition.management_credibility_intelligence.findings:
-                signal = management_credibility_signal(finding.kind, _management_credibility_reason(resolved_ticker, finding.kind))
+                fact = ReasonFact(ReasonCode.MANAGEMENT_CREDIBILITY, resolved_ticker, value=finding.kind.value)
+                signal = management_credibility_signal(
+                    finding.kind, _management_credibility_reason(resolved_ticker, finding.kind), fact=fact
+                )
                 if signal is not None:
                     self._ensure(bundles, resolved_ticker, case_id, is_holding).append(signal)
 
             for finding in composition.business_quality_intelligence.findings:
-                signal = business_quality_signal(finding.kind, _business_quality_reason(resolved_ticker))
+                fact = ReasonFact(ReasonCode.BUSINESS_QUALITY, resolved_ticker, value=finding.kind.value)
+                signal = business_quality_signal(finding.kind, _business_quality_reason(resolved_ticker), fact=fact)
                 if signal is not None:
                     self._ensure(bundles, resolved_ticker, case_id, is_holding).append(signal)
 

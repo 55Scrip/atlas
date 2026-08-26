@@ -12,7 +12,7 @@
  * single-item group, since there is nothing real to group it with.
  */
 import { PRIORITY_LEVEL_RANK } from "../status/statusTone";
-import type { AgendaItemView, PriorityLevel } from "./dailyBriefAgendaApi";
+import type { AgendaItemView, PriorityLevel, ReasonFactView } from "./dailyBriefAgendaApi";
 
 export interface TickerAgendaGroup {
   /** `null` only for a portfolio-wide/system item with no ticker. */
@@ -33,11 +33,36 @@ export interface TickerAgendaGroup {
    * the same reason twice"). Order preserved: highest-priority item's
    * lines first. */
   reasons: string[];
+  /** Implementation Sprint B1.1 (Backend Language Cleanup) -- parallel
+   * to `reasons`, same length, same order (built from the identical
+   * dedup pass, never a second, independently-ordered one): the
+   * semantic fact behind that reason line, when its source has been
+   * converted; `null` otherwise. `reasons` itself stays raw text,
+   * unchanged, since `DailyBriefPage.tsx` still compares it by exact
+   * string against Monitoring's own, separately-sourced reason text
+   * (`filterDuplicateMonitoringChanges`) -- rendering (`TickerAgendaCard
+   * .tsx`) is the one place that owns turning a `{ text, fact }` pair
+   * into the final, localized line. */
+  reasonFacts: (ReasonFactView | null)[];
 }
 
-function reasonLinesFor(item: AgendaItemView): string[] {
-  const lines = [item.headline, ...item.reason];
-  return lines.filter((line, index) => lines.indexOf(line) === index);
+/** One dedup pass producing both parallel arrays together, so `reasons`
+ * and `reasonFacts` can never drift out of alignment the way two
+ * independently-deduplicated passes could. `item.headline` always
+ * equals `item.reason[j]` for some `j` (the backend's own
+ * `_item_for_ticker` builds `headline` from the winning signal's
+ * `reason`, and `reason` always includes it) -- that same index's own
+ * `reasonFacts[j]` is reused as the headline's fact rather than
+ * treating the headline as a fact-less, separate line. */
+function reasonLinesFor(item: AgendaItemView): { text: string; fact: ReasonFactView | null }[] {
+  const reasonFacts = item.reasonFacts ?? [];
+  const headlineIndex = item.reason.indexOf(item.headline);
+  const headlineFact = headlineIndex >= 0 ? (reasonFacts[headlineIndex] ?? null) : null;
+  const pairs = [
+    { text: item.headline, fact: headlineFact },
+    ...item.reason.map((text, index) => ({ text, fact: reasonFacts[index] ?? null })),
+  ];
+  return pairs.filter(({ text }, index) => pairs.findIndex((p) => p.text === text) === index);
 }
 
 /** Highest priority first; within equal priority, a group carrying a
@@ -77,25 +102,28 @@ export function groupAgendaByTicker(items: AgendaItemView[]): TickerAgendaGroup[
     const sortedItems = [...groupItems].sort(
       (a, b) => PRIORITY_LEVEL_RANK[b.priority] - PRIORITY_LEVEL_RANK[a.priority],
     );
-    const reasons = sortedItems
+    const pairs = sortedItems
       .flatMap((item) => reasonLinesFor(item))
-      .filter((line, index, all) => all.indexOf(line) === index);
+      .filter((pair, index, all) => all.findIndex((p) => p.text === pair.text) === index);
     groups.push({
       ticker,
       items: sortedItems,
       topPriority,
       hasChangeEvent: groupItems.some((item) => item.nature === "change_event"),
-      reasons,
+      reasons: pairs.map((p) => p.text),
+      reasonFacts: pairs.map((p) => p.fact),
     });
   }
 
   for (const item of standalone) {
+    const pairs = reasonLinesFor(item);
     groups.push({
       ticker: null,
       items: [item],
       topPriority: item.priority,
       hasChangeEvent: item.nature === "change_event",
-      reasons: reasonLinesFor(item),
+      reasons: pairs.map((p) => p.text),
+      reasonFacts: pairs.map((p) => p.fact),
     });
   }
 

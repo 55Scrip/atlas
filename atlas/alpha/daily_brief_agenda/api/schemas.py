@@ -9,7 +9,37 @@ from __future__ import annotations
 from datetime import datetime
 
 from atlas.alpha.daily_brief_agenda.models import AgendaItem, DailyBriefAgenda, PortfolioSummary
+from atlas.alpha.daily_brief_agenda.reason_facts import ReasonFact
 from atlas.core.infrastructure.api.serialization import CamelModel
+
+
+class ReasonFactView(CamelModel):
+    """Implementation Sprint B1.1 (Backend Language Cleanup): a semantic
+    reason payload, never a rendered sentence -- `value`/`secondaryValue`
+    are always a closed enum's own `.value` string (the frontend owns
+    the translated label via its own key map, see `reason_facts.py`'s
+    own module docstring); `label` is real, already-real free text (a
+    person's name, an investor's own predicate/assumption statement)
+    that was never system language and is shown verbatim, never
+    translated."""
+
+    code: str
+    entity: str
+    value: str | None
+    secondary_value: str | None
+    label: str | None
+    count: int | None
+
+    @classmethod
+    def from_domain(cls, fact: ReasonFact) -> "ReasonFactView":
+        return cls(
+            code=fact.code.value,
+            entity=fact.entity,
+            value=fact.value,
+            secondary_value=fact.secondary_value,
+            label=fact.label,
+            count=fact.count,
+        )
 
 
 class AgendaItemView(CamelModel):
@@ -41,6 +71,11 @@ class AgendaItemView(CamelModel):
     """Localization fix -- only present for workflow-sourced items; see
     `AgendaItem.attention_category`'s own docstring."""
     attention_count: int | None
+    reason_facts: list[ReasonFactView | None]
+    """Implementation Sprint B1.1 -- parallel to `reason`, same length,
+    same order; see `AgendaItem.reason_facts`'s own docstring. `null`
+    at a given index means that reason's own source has not been
+    converted to the semantic-reason-code contract yet."""
 
     @classmethod
     def from_domain(cls, item: AgendaItem) -> "AgendaItemView":
@@ -61,6 +96,7 @@ class AgendaItemView(CamelModel):
             generated_at=item.generated_at,
             attention_category=item.attention_category.value if item.attention_category is not None else None,
             attention_count=item.attention_count,
+            reason_facts=[ReasonFactView.from_domain(f) if f is not None else None for f in item.reason_facts],
         )
 
 
