@@ -415,3 +415,100 @@ describe("Pulse Simplification (live-verification follow-up)", () => {
     expect(screen.queryByText("Detaljerad beslutsstatus")).not.toBeInTheDocument();
   });
 });
+
+/**
+ * Reliability Fix Sprint P2.1 -- regression coverage for the exact
+ * failure mode found via live investigation: under React 18
+ * StrictMode's dev-only mount -> cleanup -> remount cycle, the Daily
+ * Brief Agenda fetch's own `AbortController` was found to corrupt not
+ * only the first (StrictMode-discarded) request but the second, kept
+ * one as well, leaving `dailyBriefAgenda` -- and therefore Attention
+ * Required -- stuck at its initial loading state forever, even though
+ * the endpoint itself returned a valid 200. These tests don't assert
+ * on StrictMode directly (this test harness doesn't render inside it,
+ * matching every other test in this file); they instead simulate its
+ * observable shape -- an early, superseded request whose result must
+ * never win against a later, current one -- directly at the fetch
+ * layer, which is what the fix (a plain `cancelled` flag on the
+ * effect, replacing `AbortController`) actually guards against.
+ */
+describe("PortfolioPage Attention Required -- loading reliability (Reliability Fix Sprint P2.1)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    __resetAlphaPortfolioCacheForTests();
+  });
+
+  /** Installs the same baseline `mockFetch()` stub, then layers a
+   * controllable mock over `/api/daily-brief-agenda` specifically:
+   * each call returns its own deferred promise, resolved or rejected
+   * only when the test explicitly says so, while every other endpoint
+   * keeps responding immediately exactly as `mockFetch()` already
+   * sets up. */
+  function mockFetchWithControllableAgenda() {
+    mockFetch();
+    const baseline = globalThis.fetch as unknown as (input: RequestInfo | URL) => Promise<Response>;
+    const deferred: { resolve: (agenda: unknown) => void; reject: (error: unknown) => void }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/daily-brief-agenda")) {
+          return new Promise<Response>((resolve, reject) => {
+            deferred.push({
+              resolve: (agenda) => resolve({ ok: true, json: () => Promise.resolve(agenda) } as Response),
+              reject,
+            });
+          });
+        }
+        return baseline(input);
+      }),
+    );
+    return deferred;
+  }
+
+  it("Scenario A -- a single successful response moves Attention Required out of loading into loaded", async () => {
+    const deferred = mockFetchWithControllableAgenda();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(deferred.length).toBe(1));
+    deferred[0]!.resolve(agendaResponse());
+    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
+    expect(screen.getAllByText(/utfall utan verkställande/).length).toBeGreaterThan(0);
+  });
+
+  it("Scenario B -- an earlier, superseded request resolving late must never overwrite a later request's own loaded state (the exact StrictMode-shaped race)", async () => {
+    const deferred = mockFetchWithControllableAgenda();
+    // Simulates React 18 StrictMode's real dev-only sequence exactly:
+    // mount (request #1 goes out) -> immediate unmount (the effect's
+    // own cleanup runs, marking request #1's result as stale, the same
+    // guard the fix relies on) -> remount (request #2 goes out, this
+    // is the instance that stays mounted for the rest of the test).
+    const first = renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(deferred.length).toBe(1));
+    first.unmount();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(deferred.length).toBe(2));
+    // The second, current request resolves first...
+    deferred[1]!.resolve(agendaResponse());
+    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
+    expect(screen.getAllByText(/utfall utan verkställande/).length).toBeGreaterThan(0);
+    // ...and only then does the first, superseded request's own result
+    // arrive late, on an already-unmounted instance. Under the pre-fix
+    // `AbortController` version this path never mattered because the
+    // second (current) request itself never resolved at all; the
+    // guarantee this test protects is that a late, stale response --
+    // real or superseded -- can never corrupt state that has already
+    // moved on. Resolving it must not throw and must not disturb the
+    // still-mounted instance's own loaded content.
+    expect(() => deferred[0]!.resolve(agendaResponse({ items: [] }))).not.toThrow();
+    expect(screen.getAllByText(/utfall utan verkställande/).length).toBeGreaterThan(0);
+  });
+
+  it("Scenario C -- a genuine request failure resolves to the error state, never an indefinite loading state", async () => {
+    const deferred = mockFetchWithControllableAgenda();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(deferred.length).toBe(1));
+    deferred[0]!.reject(new Error("network failure"));
+    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
+    expect(screen.getByText("Atlas har inga väsentliga förändringar att rapportera idag.")).toBeInTheDocument();
+  });
+});

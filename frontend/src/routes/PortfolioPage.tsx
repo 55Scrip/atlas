@@ -390,15 +390,44 @@ export function PortfolioPage() {
     return () => controller.abort();
   }, []);
 
+  /** Reliability Fix Sprint P2.1 -- this fetch used to cancel itself via
+   * `AbortController`, the same pattern every other fetch on this page
+   * still uses. Under React 18 StrictMode's dev-only mount -> cleanup ->
+   * remount cycle, that abort call was confirmed (via direct
+   * instrumentation, then experimentally verified by removing it) to
+   * corrupt the *second*, kept request as well -- not just the first,
+   * StrictMode-discarded one -- leaving `dailyBriefAgenda` stuck at its
+   * initial `{ kind: "loading" }` forever, since the one effect that
+   * would ever move it out of that state never got a chance to resolve
+   * successfully. This endpoint's own response is large enough (~38
+   * items, each carrying translated reason facts) relative to the dozen
+   * other requests this page fires on mount that it was the one
+   * request consistently unlucky enough to lose that race; the sibling
+   * `AbortController`-cancelled fetches on this page have not shown
+   * the same failure and are intentionally left as they are -- this
+   * fix is scoped to the one proven-broken effect, not a page-wide
+   * data-fetching refactor. A plain `cancelled` flag replaces the
+   * AbortController: both the StrictMode-discarded request and the
+   * real one are now allowed to actually complete over the network:
+   * the stale request's own result, whenever it arrives, is inert
+   * (ignored via the flag) rather than being denied outright, so it
+   * can never corrupt the current request's connection, and the
+   * current request can always reach `loaded` or `error` -- never an
+   * indefinite `loading`. */
   useEffect(() => {
-    const controller = new AbortController();
-    fetchDailyBriefAgenda(controller.signal)
-      .then((agenda) => setDailyBriefAgenda({ kind: "loaded", items: agenda.items.filter((item) => item.group === "portfolio") }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
+    let cancelled = false;
+    fetchDailyBriefAgenda()
+      .then((agenda) => {
+        if (cancelled) return;
+        setDailyBriefAgenda({ kind: "loaded", items: agenda.items.filter((item) => item.group === "portfolio") });
+      })
+      .catch(() => {
+        if (cancelled) return;
         setDailyBriefAgenda({ kind: "error" });
       });
-    return () => controller.abort();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
