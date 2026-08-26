@@ -29,7 +29,7 @@ const BASE: CoverageAssessmentView = {
 describe("CoveragePanel (Atlas Intelligence Sprint 1)", () => {
   it("shows the overall coverage and confidence badges", () => {
     renderPanel({ ...BASE, overallCoverage: "substantial_coverage", overallConfidence: "high" });
-    expect(screen.getByText("Omfattande")).toBeInTheDocument();
+    expect(screen.getByText("Utvärderat")).toBeInTheDocument();
     expect(screen.getByText("Hög tillförlitlighet")).toBeInTheDocument();
   });
 

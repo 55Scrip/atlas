@@ -211,6 +211,6 @@ describe("DailyBriefPage Monitoring section (Product Intelligence Sprint 3 -- Mo
     );
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
     await waitFor(() => expect(screen.getByText("Kritisk")).toBeInTheDocument());
-    expect(await screen.findByText("Övervakningsförändringar är inte tillgängliga just nu.")).toBeInTheDocument();
+    expect(await screen.findByText("Förändringar är inte tillgängliga just nu.")).toBeInTheDocument();
   });
 });

@@ -100,7 +100,7 @@ describe("MonitoringChangeFeed (Product Intelligence Sprint 3 -- Monitoring Inte
 
   it("discloses companies Monitoring has not evaluated yet, separately from 'nothing changed'", () => {
     renderFeed([result({ changes: [] as MonitoringChangeView[], status: "unavailable" }), result({ caseId: "case-nvda", ticker: "NVDA" })]);
-    expect(screen.getByText("1 bolag har ännu inte utvärderats av Övervakning.")).toBeInTheDocument();
+    expect(screen.getByText("1 bolag har ännu inte kontrollerats för förändringar.")).toBeInTheDocument();
   });
 
   it("navigates to the real Investment Case when opened, never a dead end", () => {
