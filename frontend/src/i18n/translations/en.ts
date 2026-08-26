@@ -1382,6 +1382,15 @@ export const en = {
   "dailyBriefAgenda.summary.watchlistOpportunityCountOther": "{{count}} watchlist opportunities worth a look.",
   "dailyBriefAgenda.summary.holdingsCount": "{{count}} holdings tracked.",
   "dailyBriefAgenda.summary.cash": "Cash: {{percent}}% of portfolio.",
+  "dailyBriefAgenda.group.updateCountOne": "1 update",
+  "dailyBriefAgenda.group.updateCountOther": "{{count}} updates",
+  "dailyBriefAgenda.group.review": "Review",
+  "dailyBriefAgenda.group.showDetails": "Show every item",
+  "dailyBriefAgenda.group.moreReasonsOne": "+1 more",
+  "dailyBriefAgenda.group.moreReasonsOther": "+{{count}} more",
+  "dailyBriefAgenda.collapsed.headingOne": "1 lower-priority item, unchanged",
+  "dailyBriefAgenda.collapsed.headingOther": "{{count}} lower-priority items, unchanged",
+  "dailyBriefAgenda.collapsed.showAll": "Show all",
 
   // ---------- Fix Sprint 4 (Daily Brief Signal Quality) ----------
   "dailyBriefAgenda.nature.changeEvent": "New",

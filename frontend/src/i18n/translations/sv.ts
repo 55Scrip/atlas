@@ -1368,6 +1368,15 @@ export const sv: Record<TranslationKey, string> = {
   "dailyBriefAgenda.summary.watchlistOpportunityCountOther": "{{count}} bevakningslistemöjligheter värda en titt.",
   "dailyBriefAgenda.summary.holdingsCount": "{{count}} innehav bevakas.",
   "dailyBriefAgenda.summary.cash": "Kassa: {{percent}}% av portföljen.",
+  "dailyBriefAgenda.group.updateCountOne": "1 uppdatering",
+  "dailyBriefAgenda.group.updateCountOther": "{{count}} uppdateringar",
+  "dailyBriefAgenda.group.review": "Granska",
+  "dailyBriefAgenda.group.showDetails": "Visa alla punkter",
+  "dailyBriefAgenda.group.moreReasonsOne": "+1 till",
+  "dailyBriefAgenda.group.moreReasonsOther": "+{{count}} till",
+  "dailyBriefAgenda.collapsed.headingOne": "1 punkt med lägre prioritet, oförändrad",
+  "dailyBriefAgenda.collapsed.headingOther": "{{count}} punkter med lägre prioritet, oförändrade",
+  "dailyBriefAgenda.collapsed.showAll": "Visa alla",
 
   // ---------- Fix Sprint 4 (Daily Brief Signal Quality) ----------
   "dailyBriefAgenda.nature.changeEvent": "Nytt",

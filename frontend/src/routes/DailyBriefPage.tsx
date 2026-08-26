@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { ACCENT_LINK_STYLE, Container, Divider, Heading, Inline, Stack, Text } from "../foundation";
 import { useTranslation } from "../i18n";
-import { AgendaItemRow } from "../dailyBriefAgenda/AgendaItemRow";
 import { fetchDailyBriefAgenda, type DailyBriefAgendaView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
+import { groupAgendaByTicker } from "../dailyBriefAgenda/groupAgendaByTicker";
+import { TickerAgendaCard } from "../dailyBriefAgenda/TickerAgendaCard";
+import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
 import { ALPHA_PLACEHOLDER_USER_ID } from "../decisionWorkspace/alphaUser";
 import { fetchDailyBriefDraftSummary, type DecisionDraftSummaryView } from "../decisionWorkspace/decisionDraftApi";
 import { fetchStanceForHoldings, fetchStanceForCandidates, type TickerStanceView } from "../stance/stanceApi";
@@ -228,24 +230,15 @@ export function DailyBriefPage() {
 
             <Divider tone="hairline" />
 
-            <Stack gap="metadata">
-              <Heading level={2}>{t("dailyBriefAgenda.heading")}</Heading>
-              {status.agenda.items.length === 0 && <Text color="tertiary">{t("dailyBriefAgenda.empty.noItems")}</Text>}
-              <Stack gap="inter-section">
-                {status.agenda.items.map((item) => (
-                  <AgendaItemRow
-                    key={item.id}
-                    item={item}
-                    stance={item.ticker ? (stanceByTicker.get(item.ticker) ?? null) : null}
-                    onOpenInvestmentCase={openInvestmentCase}
-                    onOpenCandidate={openCandidate}
-                    onCompare={compare}
-                    onOpenHolding={openHolding}
-                    onGoToPortfolio={goToPortfolio}
-                  />
-                ))}
-              </Stack>
-            </Stack>
+            <DailyBriefAgendaSection
+              agenda={status.agenda}
+              stanceByTicker={stanceByTicker}
+              onOpenInvestmentCase={openInvestmentCase}
+              onOpenCandidate={openCandidate}
+              onCompare={compare}
+              onOpenHolding={openHolding}
+              onGoToPortfolio={goToPortfolio}
+            />
 
             <Divider tone="hairline" />
 
@@ -273,6 +266,81 @@ export function DailyBriefPage() {
         )}
       </Stack>
     </Container>
+  );
+}
+
+/** Daily Brief Compression -- Deliverable 4's own strict ranking: show
+ * the five highest-priority ticker groups (`groupAgendaByTicker`'s own
+ * priority + change-event ordering), collapse the remainder behind one
+ * disclosure rather than rendering every group at once. Never a second
+ * fetch, never a second sort criterion beyond what `groupAgendaByTicker`
+ * already computes from real, existing fields. */
+const MAX_VISIBLE_GROUPS = 5;
+
+function DailyBriefAgendaSection({
+  agenda,
+  stanceByTicker,
+  onOpenInvestmentCase,
+  onOpenCandidate,
+  onCompare,
+  onOpenHolding,
+  onGoToPortfolio,
+}: {
+  agenda: DailyBriefAgendaView;
+  stanceByTicker: Map<string, TickerStanceView["stance"]>;
+  onOpenInvestmentCase: (caseId: string, ticker: string | null) => void;
+  onOpenCandidate: (ticker: string) => void;
+  onCompare: (ticker: string) => void;
+  onOpenHolding: (ticker: string) => void;
+  onGoToPortfolio: () => void;
+}) {
+  const { t } = useTranslation();
+  const groups = groupAgendaByTicker(agenda.items);
+  const visible = groups.slice(0, MAX_VISIBLE_GROUPS);
+  const collapsed = groups.slice(MAX_VISIBLE_GROUPS);
+
+  return (
+    <Stack gap="metadata">
+      <Heading level={2}>{t("dailyBriefAgenda.heading")}</Heading>
+      {agenda.items.length === 0 && <Text color="tertiary">{t("dailyBriefAgenda.empty.noItems")}</Text>}
+      <Stack gap="inter-section">
+        {visible.map((group) => (
+          <TickerAgendaCard
+            key={group.ticker ?? group.items[0]!.id}
+            group={group}
+            stanceByTicker={stanceByTicker}
+            onOpenInvestmentCase={onOpenInvestmentCase}
+            onOpenCandidate={onOpenCandidate}
+            onCompare={onCompare}
+            onOpenHolding={onOpenHolding}
+            onGoToPortfolio={onGoToPortfolio}
+          />
+        ))}
+      </Stack>
+      {collapsed.length > 0 && (
+        <ExpandableDetail
+          summaryLabel={t(
+            collapsed.length === 1 ? "dailyBriefAgenda.collapsed.headingOne" : "dailyBriefAgenda.collapsed.headingOther",
+            { count: collapsed.length },
+          )}
+        >
+          <Stack gap="inter-section">
+            {collapsed.map((group) => (
+              <TickerAgendaCard
+                key={group.ticker ?? group.items[0]!.id}
+                group={group}
+                stanceByTicker={stanceByTicker}
+                onOpenInvestmentCase={onOpenInvestmentCase}
+                onOpenCandidate={onOpenCandidate}
+                onCompare={onCompare}
+                onOpenHolding={onOpenHolding}
+                onGoToPortfolio={onGoToPortfolio}
+              />
+            ))}
+          </Stack>
+        </ExpandableDetail>
+      )}
+    </Stack>
   );
 }
 

@@ -149,7 +149,10 @@ export function AgendaItemRow({
   );
 }
 
-function AgendaItemActions({
+/** Exported for `TickerAgendaCard` (Daily Brief Compression) -- the
+ * compact grouped card's own "Review →" action reuses this exact
+ * routing logic rather than a second copy of the same `kind` switch. */
+export function AgendaItemActions({
   item,
   onOpenInvestmentCase,
   onOpenCandidate,
