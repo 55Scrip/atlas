@@ -28,6 +28,7 @@ function analysis(overrides: Partial<HeroAnalysisInput> = {}): HeroAnalysisInput
     tradingDay: "2026-08-21",
     priceFreshness: "fresh",
     stance: null,
+    convictionReasonCodes: [],
     ...overrides,
   };
 }

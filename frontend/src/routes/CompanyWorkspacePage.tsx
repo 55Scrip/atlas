@@ -32,6 +32,7 @@ import {
   RISK_STATUS_TONE,
   type AnalysisCoverageLevel,
   type ConvictionLevel,
+  type ConvictionReasonCode,
   type DecisionSupportLevel,
   type EvidenceCoverageLevel,
   type MissingEvaluationCategory,
@@ -276,6 +277,19 @@ const EVIDENCE_GAP_QUESTION_KEY: Record<EvidenceGapQuestionKind, TranslationKey>
   observation_without_evidence: "investmentCase.intelligence.openQuestions.observationWithoutEvidence",
   decision_without_linked_observation: "investmentCase.intelligence.openQuestions.decisionWithoutLinkedObservation",
 };
+
+/** Implementation Sprint B2 (Hero Reordering): the exact resolution
+ * `EvidenceCoverageCard` below already performs per-question, factored
+ * out so the Hero's own "Open question" field (Decision First's own
+ * 8th step) can show the *same* real question, translated the same
+ * way, rather than a second, parallel resolution. `null` only when the
+ * kind matches neither known vocabulary (never happens for real
+ * backend data, but keeps this a total function). */
+function resolveOpenQuestionKey(kind: OpenQuestionView["kind"]): TranslationKey | null {
+  if (kind in EVIDENCE_GAP_QUESTION_KEY) return EVIDENCE_GAP_QUESTION_KEY[kind as EvidenceGapQuestionKind];
+  if (kind in OPEN_QUESTION_ORIGIN_KEY) return OPEN_QUESTION_ORIGIN_KEY[kind as AnalysisOpenQuestionOrigin];
+  return null;
+}
 
 type ResolutionStatus =
   | { kind: "loading" }
@@ -715,7 +729,15 @@ function CurrentPicture({
     sharePrice: report.marketSnapshot ? report.marketSnapshot.sharePrice : null,
     currency: report.marketSnapshot ? report.marketSnapshot.currency : null,
     stance: report.stance,
+    convictionReasonCodes: report.conviction.reasons as ConvictionReasonCode[],
   };
+
+  // Implementation Sprint B2 (Hero Reordering): the same real question
+  // `EvidenceCoverageCard` shows in its own expandable detail, promoted
+  // once (the first) into the Hero's own "Open question" step -- never
+  // a second, different question invented for the Hero specifically.
+  const primaryOpenQuestion = report.openQuestions[0];
+  const primaryOpenQuestionKey = primaryOpenQuestion ? resolveOpenQuestionKey(primaryOpenQuestion.kind) : null;
 
   return (
     <Stack gap="metadata">
@@ -726,6 +748,7 @@ function CurrentPicture({
         outstandingWorkKinds={outstandingWorkKinds}
         isThesisStale={report.isThesisStale}
         openQuestionCount={report.openQuestions.length}
+        primaryOpenQuestionKey={primaryOpenQuestionKey}
         t={t}
         locale={locale}
       />
@@ -934,11 +957,10 @@ function EvidenceCoverageCard({
             <Stack gap="metadata">
               {missingQuestions.map((q, index) => (
                 <Text as="p" color="secondary" key={index}>
-                  {q.kind in EVIDENCE_GAP_QUESTION_KEY
-                    ? t(EVIDENCE_GAP_QUESTION_KEY[q.kind as EvidenceGapQuestionKind])
-                    : q.kind in OPEN_QUESTION_ORIGIN_KEY
-                      ? t(OPEN_QUESTION_ORIGIN_KEY[q.kind as AnalysisOpenQuestionOrigin])
-                      : humanize(q.kind)}
+                  {(() => {
+                    const key = resolveOpenQuestionKey(q.kind);
+                    return key ? t(key) : humanize(q.kind);
+                  })()}
                 </Text>
               ))}
             </Stack>

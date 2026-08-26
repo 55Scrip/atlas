@@ -817,9 +817,7 @@ export function PortfolioPage() {
   return (
     <Container width="wide">
       <Stack gap="intra-section">
-        {!(status.kind === "loaded" && status.view.exists && status.view.holdings.length > 0) && (
-          <PageTitle t={t} />
-        )}
+        <PortfolioPageHeader monitoringStatus={monitoringStatus} t={t} />
 
         {status.kind === "loading" && (
           <Text role="status" aria-live="polite">
@@ -849,16 +847,10 @@ export function PortfolioPage() {
 
         {status.kind === "loaded" && status.view.exists && status.view.holdings.length > 0 && (
           <Stack gap="intra-section">
-            {/* Deliverable 2 (Portfolio Information Hierarchy), step 1:
-                Portfolio Status -- what do I own, at a glance. */}
-            <PortfolioPulse
-              view={status.view}
-              largestHolding={largestHolding}
-              coveredCount={coveredCount}
-              criticalAgendaCount={criticalAgendaCount}
-              monitoringStatus={monitoringStatus}
-              t={t}
-            />
+            {/* Implementation Sprint B2 (Hero Reordering): Decision
+                First's own step 1 -- Atlas's conclusion, before any
+                supporting data. */}
+            <PortfolioOverallConclusion status={dailyBriefAgenda} t={t} />
 
             {status.view.awaitingReconciliation && (
               <Surface tier="primary">
@@ -981,6 +973,20 @@ export function PortfolioPage() {
               decisionReliabilityBreakdown={decisionReliabilityBreakdown}
               portfolioSynthesisBreakdown={portfolioSynthesisBreakdown}
               sharedWeakPoints={sharedWeakPoints}
+              t={t}
+            />
+
+            {/* Implementation Sprint B2 (Hero Reordering): Decision
+                First's own step 4 -- Portfolio health, moved down from
+                its former hero position (it used to render first, ahead
+                of Atlas's own conclusion -- exactly the "raw stats
+                before the opinion" ordering this sprint exists to fix).
+                Unchanged data, unchanged component. */}
+            <PortfolioPulse
+              view={status.view}
+              largestHolding={largestHolding}
+              coveredCount={coveredCount}
+              criticalAgendaCount={criticalAgendaCount}
               t={t}
             />
 
@@ -1143,6 +1149,32 @@ function PageTitle({ t }: { t: (key: TranslationKey) => string }) {
   );
 }
 
+/** Implementation Sprint B2 (Hero Reordering): the page's own title and
+ * operational status notes, factored out of `PortfolioPulse` (which
+ * used to bundle them with the stats card) so they can stay pinned at
+ * the very top of the page while the stats card itself -- Decision
+ * First's own "Portfolio health" step -- moves down to make room for
+ * Atlas's conclusion above it. A page's own heading is chrome, not a
+ * hero fact; it was never meant to travel with whichever card happened
+ * to render first. Unchanged content, unchanged components -- `Page
+ * Title` above still exists for the empty/loading states, which never
+ * reach `PortfolioPulse` at all. */
+function PortfolioPageHeader({
+  monitoringStatus,
+  t,
+}: {
+  monitoringStatus: MonitoringOperationalStatusView | null;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  return (
+    <Stack gap="metadata">
+      <PageTitle t={t} />
+      {monitoringStatus && <MonitoringFreshnessNote status={monitoringStatus} t={t} />}
+      {monitoringStatus && <ScopeFreshnessSummaryNote summary={monitoringStatus.portfolioFreshness} t={t} />}
+    </Stack>
+  );
+}
+
 const PAGE_TITLE_STYLE: CSSProperties = {
   fontFamily: "var(--type-family-prose)",
   fontWeight: 700,
@@ -1202,14 +1234,12 @@ function PortfolioPulse({
   largestHolding,
   coveredCount,
   criticalAgendaCount,
-  monitoringStatus,
   t,
 }: {
   view: PortfolioView;
   largestHolding: HoldingView | null;
   coveredCount: number | null;
   criticalAgendaCount: number;
-  monitoringStatus: MonitoringOperationalStatusView | null;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   const cashDisplay =
@@ -1221,16 +1251,6 @@ function PortfolioPulse({
 
   return (
     <Stack gap="metadata">
-      <Inline gap="row" align="baseline" wrap>
-        <Heading level={3} style={PAGE_TITLE_STYLE}>
-          {t("portfolio.title")}
-        </Heading>
-        <RouterLink to="/portfolio/import" style={ACCENT_LINK_STYLE}>
-          {t("portfolioImport.title")}
-        </RouterLink>
-      </Inline>
-      {monitoringStatus && <MonitoringFreshnessNote status={monitoringStatus} t={t} />}
-      {monitoringStatus && <ScopeFreshnessSummaryNote summary={monitoringStatus.portfolioFreshness} t={t} />}
       <Surface tier="primary">
         <Inline gap="inter-section" wrap style={{ justifyContent: "space-between" }}>
           <Stack gap="metadata">
@@ -1695,6 +1715,36 @@ const HOLDINGS_PAGE_SIZE = 15;
  * exact same "why" text this row already showed, never a second,
  * independently-worded reason. */
 const AGENDA_INITIAL_COUNT = 4;
+
+/** Implementation Sprint B2 (Hero Reordering) -- Decision First's own
+ * step 1 for Portfolio: one sentence, before anything else, reusing
+ * the exact same `dailyBriefAgenda` fetch `AttentionRequiredSection`
+ * already reads immediately below it (the portfolio-scoped subset,
+ * already computed, never a second count derived independently -- the
+ * two can never disagree about how many items there are). Renders
+ * nothing while loading/erroring; `AttentionRequiredSection` already
+ * owns disclosing those states with its own heading, so this line
+ * would otherwise show and then immediately get replaced, a flash of
+ * text no real reader benefits from. */
+function PortfolioOverallConclusion({
+  status,
+  t,
+}: {
+  status: DailyBriefAgendaFetchStatus;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  if (status.kind !== "loaded") return null;
+  const count = status.items.length;
+  return (
+    <Text as="p" style={{ fontFamily: "var(--type-family-prose)", fontSize: "var(--type-size-h5)", lineHeight: 1.6 }}>
+      {count === 0
+        ? t("portfolio.overallConclusion.noIssues")
+        : t(count === 1 ? "portfolio.overallConclusion.attentionCountOne" : "portfolio.overallConclusion.attentionCountOther", {
+            count,
+          })}
+    </Text>
+  );
+}
 
 function AttentionRequiredSection({
   status,

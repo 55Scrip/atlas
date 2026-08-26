@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { CSSProperties, FormEvent } from "react";
-import { Button, Container, Heading, Inline, Stack, StatusBadge, StatusText, Surface, Text } from "../foundation";
+import { Button, Container, Heading, Inline, Label, Link, Stack, StatusBadge, StatusText, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   CONFIDENCE_KEY,
@@ -304,17 +304,35 @@ export function WatchlistPage() {
         {listStatus.kind === "loaded" && listStatus.entries.length === 0 && !showAddForm && (
           <WatchlistEmptyState onAdd={() => setShowAddForm(true)} t={t} />
         )}
-        {listStatus.kind === "loaded" && listStatus.entries.length > 0 && (
-          <WatchlistTable
-            entries={listStatus.entries}
-            rowStatuses={rowStatuses}
-            agendaStatus={agendaStatus}
-            navigate={navigate}
-            locale={locale}
-            onRemoved={handleTickerRemoved}
-            t={t}
-          />
-        )}
+        {listStatus.kind === "loaded" && listStatus.entries.length > 0 && (() => {
+          // Implementation Sprint B2 (Hero Reordering): the same
+          // top-sorted entry `WatchlistTable` itself leads with, given
+          // a standalone Decision First presentation before the full
+          // list -- computed once here, never a second, independent
+          // ranking that could disagree with the table's own order.
+          const topEntry = sortByAttention(listStatus.entries, agendaStatus)[0]!;
+          return (
+            <>
+              <WatchlistHero
+                entry={topEntry}
+                rowStatus={rowStatuses[topEntry.ticker]}
+                agendaStatus={agendaStatus}
+                navigate={navigate}
+                t={t}
+              />
+              <Label>{t("watchlist.hero.otherCompaniesHeading")}</Label>
+              <WatchlistTable
+                entries={listStatus.entries}
+                rowStatuses={rowStatuses}
+                agendaStatus={agendaStatus}
+                navigate={navigate}
+                locale={locale}
+                onRemoved={handleTickerRemoved}
+                t={t}
+              />
+            </>
+          );
+        })()}
       </Stack>
     </Container>
   );
@@ -451,6 +469,75 @@ function WatchlistEmptyState({ onAdd, t }: { onAdd: () => void; t: (key: Transla
  * ranking); rows with no item keep their existing relative order,
  * `Array.prototype.sort` being stable. Before the Agenda itself has
  * loaded, order is left entirely unchanged -- never resorted twice. */
+/** Implementation Sprint B2 (Hero Reordering): Watchlist's own Decision
+ * First sequence -- the single most interesting company, why it earned
+ * that spot, and how confident Atlas is, all before the full list.
+ * `entry`/`rowStatus`/`agendaStatus` are the exact same already-fetched
+ * data `WatchlistTable` renders below -- this never fetches or computes
+ * anything new, it only gives the table's own top-sorted row (`sort
+ * ByAttention`'s own first result) a prominent, single-company
+ * presentation instead of making a reader scan the whole table to find
+ * it. Renders nothing when the entry's own analysis hasn't loaded yet
+ * or genuinely carries no current attention item -- an honest "nothing
+ * to promote yet" rather than a fabricated highlight. */
+function WatchlistHero({
+  entry,
+  rowStatus,
+  agendaStatus,
+  navigate,
+  t,
+}: {
+  entry: WatchlistEntryView;
+  rowStatus: RowStatus | undefined;
+  agendaStatus: AgendaStatus;
+  navigate: ReturnType<typeof useNavigate>;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const loaded = rowStatus?.kind === "loaded" ? rowStatus.analysis : null;
+  const agendaItem = agendaStatus.kind === "loaded" ? agendaStatus.itemsByTicker.get(entry.ticker) : undefined;
+  if (!loaded || !agendaItem) return null;
+
+  const companyName = loaded.companyProfile?.name ?? entry.ticker;
+  const coverage = loaded.evidenceQuality?.coverage ?? loaded.confidence;
+
+  return (
+    <Surface tier="primary" bordered>
+      <Stack gap="metadata">
+        <Label>{t("watchlist.hero.heading")}</Label>
+        <Inline gap="row" align="baseline" wrap>
+          <Heading level={2}>{companyName}</Heading>
+          <Text as="span" color="tertiary">
+            {entry.ticker}
+          </Text>
+        </Inline>
+        <StatusBadge
+          label={t(DECISION_SUPPORT_BADGE_KEY[loaded.recommendation.level])}
+          tone={DECISION_SUPPORT_TONE[loaded.recommendation.level]}
+        />
+        <Stack gap="metadata">
+          <Label>{t("watchlist.hero.whyNowLabel")}</Label>
+          <Text as="p">{agendaItemHeadline(agendaItem, t)}</Text>
+        </Stack>
+        <Inline gap="row" align="center" wrap>
+          <Text as="span" color="secondary" style={{ fontWeight: 600 }}>
+            {t("watchlist.hero.confidenceLabel")}
+          </Text>
+          <StatusBadge label={t(CONFIDENCE_KEY[coverage])} tone={CONFIDENCE_TONE[coverage]} />
+        </Inline>
+        <Link
+          href="#"
+          onClick={(event) => {
+            event.preventDefault();
+            navigate(`/investment-case/${entry.caseId}`, { state: { origin: "watchlist", ticker: entry.ticker } });
+          }}
+        >
+          {t("watchlist.table.openInvestmentCase")} →
+        </Link>
+      </Stack>
+    </Surface>
+  );
+}
+
 function sortByAttention(entries: WatchlistEntryView[], agendaStatus: AgendaStatus): WatchlistEntryView[] {
   if (agendaStatus.kind !== "loaded") return entries;
   const { itemsByTicker } = agendaStatus;

@@ -2676,6 +2676,7 @@ export function InvestmentCasePage() {
               priceFreshness: report.marketSnapshot ? report.marketSnapshot.priceFreshness : "unavailable",
               stance: report.stance,
               noProviderDataFound: report.noProviderDataFound ?? false,
+              convictionReasonCodes: report.conviction.reasons as ConvictionReasonCode[],
             };
             return (
               <>

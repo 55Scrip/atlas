@@ -66,7 +66,7 @@ describe("WatchlistPage (Product Sprint 9 -- Discovery Excellence, Deliverable 8
   it("offers Open Investment Case and Compare on every row -- no dead end from Watchlist", async () => {
     mockFetch();
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    await waitFor(() => expect(screen.getByText("NVIDIA Corp")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("NVIDIA Corp").length).toBeGreaterThan(0));
     expect(screen.getByRole("button", { name: "Öppna investeringscase" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Jämför" })).toBeInTheDocument();
   });
@@ -75,7 +75,7 @@ describe("WatchlistPage (Product Sprint 9 -- Discovery Excellence, Deliverable 8
     mockFetch();
     const user = userEvent.setup();
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    await waitFor(() => expect(screen.getByText("NVIDIA Corp")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("NVIDIA Corp").length).toBeGreaterThan(0));
     await user.click(screen.getByRole("button", { name: "Öppna investeringscase" }));
     // MemoryRouter has no /investment-case/:caseId route registered in
     // this harness -- reaching this click without throwing, on the real
@@ -86,7 +86,7 @@ describe("WatchlistPage (Product Sprint 9 -- Discovery Excellence, Deliverable 8
     mockFetch();
     const user = userEvent.setup();
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    await waitFor(() => expect(screen.getByText("NVIDIA Corp")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("NVIDIA Corp").length).toBeGreaterThan(0));
     // Clicking the company-name cell -- outside the action cell entirely
     // -- exercises the row's own `role="button"` activation, not the
     // explicit "Öppna investeringscase" button tested above. MemoryRouter
@@ -124,7 +124,7 @@ describe("WatchlistPage (Product Sprint 9 -- Discovery Excellence, Deliverable 8
     );
     const user = userEvent.setup();
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    await waitFor(() => expect(screen.getByText("NVIDIA Corp")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("NVIDIA Corp").length).toBeGreaterThan(0));
     expect(screen.queryByText(/Ta bort NVDA från din bevakningslista/)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Ta bort" }));
     await waitFor(() => expect(deleteCalled).toBe(true));
@@ -141,15 +141,22 @@ describe("WatchlistPage Attention column (Product Intelligence Sprint 2 -- Watch
   it("shows a real Agenda item's own priority and headline for a ticker with a signal", async () => {
     mockFetch({ agendaItems: [agendaItem()] });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    await waitFor(() => expect(screen.getByText("NVIDIA Corp")).toBeInTheDocument());
-    expect(await screen.findByText("NVDA: Jensen Huang (CEO) appointed.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText("NVIDIA Corp").length).toBeGreaterThan(0));
+    // Implementation Sprint B2 (Hero Reordering): the same real headline
+    // now renders twice by design -- once as the Hero's own compact
+    // "Why now" preview, once in the table's Attention column below --
+    // the same "compact fact in the hero, full detail below" pattern
+    // this page's own Hero docstring establishes, never two different,
+    // independently-worded reasons.
+    const headlines = await screen.findAllByText("NVDA: Jensen Huang (CEO) appointed.");
+    expect(headlines.length).toBe(2);
     expect(screen.getByText("Hög")).toBeInTheDocument();
   });
 
   it("shows an honest 'no significant changes' state, never implying it as positive news, when the Agenda has no item for this ticker", async () => {
     mockFetch({ agendaItems: [] });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    await waitFor(() => expect(screen.getByText("NVIDIA Corp")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("NVIDIA Corp").length).toBeGreaterThan(0));
     expect(await screen.findByText("Inga betydande förändringar")).toBeInTheDocument();
   });
 
@@ -159,7 +166,7 @@ describe("WatchlistPage Attention column (Product Intelligence Sprint 2 -- Watch
     // filter is real, not merely present.
     mockFetch({ agendaItems: [agendaItem({ group: "portfolio" })] });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    await waitFor(() => expect(screen.getByText("NVIDIA Corp")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("NVIDIA Corp").length).toBeGreaterThan(0));
     expect(await screen.findByText("Inga betydande förändringar")).toBeInTheDocument();
     expect(screen.queryByText("NVDA: Jensen Huang (CEO) appointed.")).not.toBeInTheDocument();
   });
@@ -176,8 +183,14 @@ describe("WatchlistPage Attention column (Product Intelligence Sprint 2 -- Watch
       agendaItems: [agendaItem({ id: "review_investment_case:NVDA" })],
     });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    await waitFor(() => expect(screen.getAllByText(/^(AAPL|NVDA)$/).length).toBe(2));
+    // Implementation Sprint B2 (Hero Reordering): 3 matches, not 2 --
+    // the Hero (added this sprint) also renders the top entry's own
+    // ticker, ahead of the table. NVDA appears twice (Hero, then its
+    // own table row) and AAPL once, in that DOM order -- the table's
+    // own sort is unchanged, just no longer the only place this page
+    // shows its highest-priority ticker.
+    await waitFor(() => expect(screen.getAllByText(/^(AAPL|NVDA)$/).length).toBe(3));
     const tickerCells = screen.getAllByText(/^(AAPL|NVDA)$/);
-    expect(tickerCells.map((el) => el.textContent)).toEqual(["NVDA", "AAPL"]);
+    expect(tickerCells.map((el) => el.textContent)).toEqual(["NVDA", "NVDA", "AAPL"]);
   });
 });

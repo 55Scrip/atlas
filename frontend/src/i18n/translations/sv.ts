@@ -189,6 +189,10 @@ export const sv: Record<TranslationKey, string> = {
 
   // ---------- attention required (Product Sprint 8) ----------
   "portfolio.attentionRequired.heading": "Kräver uppmärksamhet",
+  // ---------- Implementation Sprint B2 (Hero Reordering) ----------
+  "portfolio.overallConclusion.noIssues": "Atlas ser inga större problem just nu.",
+  "portfolio.overallConclusion.attentionCountOne": "1 innehav kräver uppmärksamhet.",
+  "portfolio.overallConclusion.attentionCountOther": "{{count}} innehav kräver uppmärksamhet.",
 
   // ---------- Pulse Simplification (live-verification follow-up) ----------
   "portfolio.decisionStatus.heading": "Beslutsläge",
@@ -443,6 +447,13 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.whatChanged.heading": "Vad som ändrats",
   "investmentCase.whatChanged.baseline": "Atlas har etablerat en baslinje för det här caset. Framtida analyser jämförs mot den.",
   "investmentCase.whatChanged.noChange": "Ingen väsentlig förändring sedan föregående analys.",
+  // ---------- Implementation Sprint B2 (Hero Reordering) ----------
+  "investmentCase.hero.sinceYouWereHere.heading": "Sedan du var här senast",
+  "investmentCase.hero.sinceYouWereHere.countOne": "1 förändring sedan föregående analys.",
+  "investmentCase.hero.sinceYouWereHere.countOther": "{{count}} förändringar sedan föregående analys.",
+  "investmentCase.hero.confidenceLabel": "Säkerhet",
+  "investmentCase.hero.openQuestionLabel": "Öppen fråga",
+  "investmentCase.hero.openQuestion.none": "Inga öppna frågor just nu.",
   "investmentCase.whatChanged.sincePrevious": "Sedan föregående analys:",
   "investmentCase.whatChanged.thesisImpact.strengthened": "Sammantaget har Atlas tes stärkts.",
   "investmentCase.whatChanged.thesisImpact.weakened": "Sammantaget har Atlas tes försvagats, men kvarstår intakt.",
@@ -1591,6 +1602,11 @@ export const sv: Record<TranslationKey, string> = {
   "watchlist.countOther": "{{count}} bolag bevakas",
   "watchlist.loadError": "Kunde inte läsa in din bevakningslista.",
   "watchlist.addButton": "+ Lägg till bolag",
+  // ---------- Implementation Sprint B2 (Hero Reordering) ----------
+  "watchlist.hero.heading": "Mest intressant just nu",
+  "watchlist.hero.whyNowLabel": "Varför nu",
+  "watchlist.hero.confidenceLabel": "Säkerhet",
+  "watchlist.hero.otherCompaniesHeading": "Övriga bolag",
   "watchlist.addForm.label": "Ticker",
   "watchlist.addForm.placeholder": "t.ex. AAPL",
   "watchlist.addForm.submit": "Lägg till i bevakningslistan",

@@ -9,6 +9,7 @@ import {
 } from "../changeIntelligence/describeChange";
 import {
   CONVICTION_LEVEL_KEY,
+  CONVICTION_REASON_KEY,
   CONVICTION_TONE,
   DECISION_SUPPORT_BADGE_KEY,
   DECISION_SUPPORT_STATEMENT_KEY,
@@ -19,6 +20,7 @@ import {
   VALUATION_SUPPORT_LABEL_KEY,
   VALUATION_SUPPORT_TONE,
   type ConvictionLevel,
+  type ConvictionReasonCode,
   type DecisionSupportLevel,
   type MissingEvaluationCategory,
   type OutlookRecommendationRelationship,
@@ -201,6 +203,16 @@ export interface HeroAnalysisInput {
    * wires one. Reuses this existing Hero area rather than a new
    * section -- see `StanceSummary`'s own docstring. */
   stance: StanceView | null;
+  /** Implementation Sprint B2 (Hero Reordering) -- `ConvictionAssessment
+   * .reasons`, real, already-fetched, previously never surfaced
+   * anywhere on this page (`report.conviction.reasons` was fetched and
+   * silently unused). Only the first (highest-priority) entry renders,
+   * as the Hero's own "Confidence" step's supporting reason -- the same
+   * "compact fact in the hero, never a fabricated one" discipline every
+   * other field on this card already follows. Empty array is a normal,
+   * honest state (Conviction reached its level without a specific
+   * disclosed reason to name), never treated as missing data. */
+  convictionReasonCodes: ConvictionReasonCode[];
   /** Import Robustness (Internal Alpha Stabilization 1) --
    * `InvestmentCaseAnalysisView.noProviderDataFound`, verbatim. `True`
    * only for a real, persisted "no provider ever returned any identity
@@ -219,6 +231,15 @@ interface HeroCardProps {
   outstandingWorkKinds: OutstandingWorkKind[];
   isThesisStale: boolean;
   openQuestionCount: number;
+  /** Implementation Sprint B2 (Hero Reordering) -- the real, already-
+   * resolved translation key for `report.openQuestions[0]` (the exact
+   * same resolution `EvidenceCoverageCard` already performs, computed
+   * once by the caller and passed in rather than re-derived here, so
+   * this presentation-only component never needs to know the backend's
+   * open-question kind vocabulary). `null` when there is no open
+   * question at all -- a genuinely good state, rendered as such, never
+   * hidden or padded with a fabricated one. */
+  primaryOpenQuestionKey?: TranslationKey | null;
   t: Translate;
   locale: string;
   /** Internal Alpha Stabilization -- see `HeroAnalysisInput.limitingFactors`'s
@@ -258,6 +279,7 @@ export function HeroCard({
   outstandingWorkKinds,
   isThesisStale,
   openQuestionCount,
+  primaryOpenQuestionKey = null,
   t,
   locale,
   suppressLimitingFactorPreview = false,
@@ -361,66 +383,58 @@ export function HeroCard({
 
           <Divider tone="hairline" />
 
-          {/* Key Metrics -- Figma's own labeled-field row. Expected
-              Return / Upside-Downside render Long-Term Outlook's real
-              figures when this company's Outlook clears its own
-              eligibility gate, and an honest "not yet available" state
-              (with the real, named reason) otherwise -- never a
-              fabricated figure. See file header. */}
-          <Label>{t("investmentCase.keyMetrics.heading")}</Label>
-          <Inline gap="inter-section" wrap align="start">
-            <MetricField label={t("investmentCase.keyMetrics.recommendationLabel")}>
-              <Text as="span" style={{ fontWeight: 600 }}>
-                {t(DECISION_SUPPORT_BADGE_KEY[analysis.recommendationLevel])}
+          {/* Implementation Sprint B2 (Hero Reordering): Decision First's
+              own step 3 -- Confidence, immediately after Why, before any
+              supporting metric. `Conviction` is this Hero's existing
+              Confidence-equivalent field (unchanged data, unchanged
+              badge); the reason line is new only in the sense that
+              `conviction.reasons` was already fetched and simply never
+              rendered anywhere before this sprint. */}
+          <Stack gap="metadata">
+            <Label>{t("investmentCase.hero.confidenceLabel")}</Label>
+            <StatusBadge
+              label={t(CONVICTION_LEVEL_KEY[analysis.convictionLevel])}
+              tone={CONVICTION_TONE[analysis.convictionLevel]}
+            />
+            {analysis.convictionReasonCodes[0] && (
+              <Text as="p" color="secondary">
+                {t(CONVICTION_REASON_KEY[analysis.convictionReasonCodes[0]])}
               </Text>
-            </MetricField>
-            <MetricField label={t("investmentCase.keyMetrics.convictionLabel")}>
-              <StatusBadge
-                label={t(CONVICTION_LEVEL_KEY[analysis.convictionLevel])}
-                tone={CONVICTION_TONE[analysis.convictionLevel]}
-              />
-            </MetricField>
-            <MetricField label={t("investmentCase.keyMetrics.valuationSupportLabel")}>
-              <StatusBadge
-                label={t(VALUATION_SUPPORT_LABEL_KEY[analysis.valuationSupportStatus])}
-                tone={VALUATION_SUPPORT_TONE[analysis.valuationSupportStatus]}
-                style={{ whiteSpace: "normal" }}
-              />
-            </MetricField>
-            <MetricField label={t("investmentCase.keyMetrics.currentPriceLabel")}>
-              <Stack gap="metadata">
-                <Text as="span" style={{ fontWeight: 600 }}>
-                  {formatFinancialValue(analysis.sharePrice, analysis.currency, locale)}
-                </Text>
-                {analysis.tradingDay && (
-                  <Text as="span" color="tertiary">
-                    {t("investmentCase.keyMetrics.priceUpdatedLabel", {
-                      date: new Date(analysis.tradingDay).toLocaleDateString(locale, { month: "short", day: "numeric" }),
-                    })}
-                  </Text>
-                )}
-                {analysis.priceFreshness === "stale" && (
-                  <StatusBadge label={t("investmentCase.keyMetrics.priceStale")} tone="caution" />
-                )}
-                {analysis.priceFreshness === "refreshing" && (
-                  <StatusBadge label={t("investmentCase.keyMetrics.priceRefreshing")} tone="neutral" />
-                )}
-                {analysis.priceFreshness === "failed" && (
-                  <StatusBadge label={t("investmentCase.keyMetrics.priceRefreshFailed")} tone="critical" />
-                )}
-                {onRefreshPrice && (analysis.priceFreshness ?? "unavailable") !== "unavailable" && (
-                  <Button
-                    variant="tertiary"
-                    onClick={onRefreshPrice}
-                    disabled={isRefreshingPrice || analysis.priceFreshness === "refreshing"}
-                  >
-                    {isRefreshingPrice || analysis.priceFreshness === "refreshing"
-                      ? t("investmentCase.keyMetrics.priceRefreshing")
-                      : t("investmentCase.keyMetrics.priceRefreshButton")}
-                  </Button>
-                )}
-              </Stack>
-            </MetricField>
+            )}
+          </Stack>
+
+          {/* Decision First's own step 4 -- Since you were here, the
+              same real facts (`isBaselineCase`/`latestChangeCount`)
+              `deriveHeroHasNotableChange` already reads, now stated as
+              its own compact fact rather than folded silently into
+              Priority below. The full, itemized change list remains
+              exactly where it already was, one section down
+              (`WhatChangedSection`) -- this is a preview, not a
+              duplicate, the same "compact in the Hero, full detail
+              below" shape `topLimitingFactor` above already
+              establishes. */}
+          <Stack gap="metadata">
+            <Label>{t("investmentCase.hero.sinceYouWereHere.heading")}</Label>
+            <Text as="p">
+              {analysis.isBaselineCase
+                ? t("investmentCase.whatChanged.baseline")
+                : analysis.latestChangeCount === 0
+                  ? t("investmentCase.whatChanged.noChange")
+                  : t(
+                      analysis.latestChangeCount === 1
+                        ? "investmentCase.hero.sinceYouWereHere.countOne"
+                        : "investmentCase.hero.sinceYouWereHere.countOther",
+                      { count: analysis.latestChangeCount },
+                    )}
+            </Text>
+          </Stack>
+
+          <Divider tone="hairline" />
+
+          {/* Decision First's own step 5 -- Expected Return, moved up
+              from the metrics row below (unchanged figures, unchanged
+              "not yet available" honesty). */}
+          <Inline gap="inter-section" wrap align="start">
             <MetricField label={t("investmentCase.keyMetrics.expectedReturnLabel")}>
               {analysis.longTermExpectedReturn ? (
                 <>
@@ -463,13 +477,16 @@ export function HeroCard({
 
           <Divider tone="hairline" />
 
-          {/* Biggest Strength / Biggest Concern / Current Priority --
-              three real, already-computed facts, never restated
-              elsewhere in different words: Strength reuses the same
-              sentence bank `InvestmentArgumentSection` uses for its
-              Supports column; Concern reuses the same `findMostSevereRisk`
-              selection already used for the supporting-strip risk chip;
-              Priority reuses `deriveCurrentPriority` unchanged. */}
+          {/* Decision First's own steps 6-8 -- Primary strength, primary
+              risk, open question. Strength reuses the same sentence bank
+              `InvestmentArgumentSection` uses for its Supports column;
+              risk (labeled "Concern" in this codebase, same fact) reuses
+              the same `findMostSevereRisk` selection already used for
+              the supporting-strip risk chip; the open question is the
+              same real, resolved question `EvidenceCoverageCard` shows
+              in its own expandable detail (`resolveOpenQuestionKey` in
+              `CompanyWorkspacePage.tsx`), never a second one invented
+              for the Hero. */}
           <Inline gap="inter-section" wrap align="start">
             <Stack gap="metadata" style={{ flex: "1 1 220px", minWidth: 0 }}>
               <Label>{t("investmentCase.strengthConcernPriority.strengthLabel")}</Label>
@@ -488,13 +505,76 @@ export function HeroCard({
               </Text>
             </Stack>
             <Stack gap="metadata" style={{ flex: "1 1 220px", minWidth: 0 }}>
-              <Label>{t("investmentCase.strengthConcernPriority.priorityLabel")}</Label>
+              <Label>{t("investmentCase.hero.openQuestionLabel")}</Label>
+              <Text as="p">{primaryOpenQuestionKey ? t(primaryOpenQuestionKey) : t("investmentCase.hero.openQuestion.none")}</Text>
+            </Stack>
+          </Inline>
+
+          <Divider tone="hairline" />
+
+          {/* Supporting metrics -- Figma's own labeled-field row, minus
+              the two fields promoted above. Recommendation/Valuation
+              Support/Current Price stay as compact reference data;
+              Current Priority (an operational nudge, not a decision
+              fact -- outcome missing, reconciliation needed, etc.)
+              moves down here too, alongside them, now that "Since you
+              were here" above owns the "did something change" fact on
+              its own. */}
+          <Label>{t("investmentCase.keyMetrics.heading")}</Label>
+          <Inline gap="inter-section" wrap align="start">
+            <MetricField label={t("investmentCase.keyMetrics.recommendationLabel")}>
+              <Text as="span" style={{ fontWeight: 600 }}>
+                {t(DECISION_SUPPORT_BADGE_KEY[analysis.recommendationLevel])}
+              </Text>
+            </MetricField>
+            <MetricField label={t("investmentCase.keyMetrics.valuationSupportLabel")}>
+              <StatusBadge
+                label={t(VALUATION_SUPPORT_LABEL_KEY[analysis.valuationSupportStatus])}
+                tone={VALUATION_SUPPORT_TONE[analysis.valuationSupportStatus]}
+                style={{ whiteSpace: "normal" }}
+              />
+            </MetricField>
+            <MetricField label={t("investmentCase.keyMetrics.currentPriceLabel")}>
+              <Stack gap="metadata">
+                <Text as="span" style={{ fontWeight: 600 }}>
+                  {formatFinancialValue(analysis.sharePrice, analysis.currency, locale)}
+                </Text>
+                {analysis.tradingDay && (
+                  <Text as="span" color="tertiary">
+                    {t("investmentCase.keyMetrics.priceUpdatedLabel", {
+                      date: new Date(analysis.tradingDay).toLocaleDateString(locale, { month: "short", day: "numeric" }),
+                    })}
+                  </Text>
+                )}
+                {analysis.priceFreshness === "stale" && (
+                  <StatusBadge label={t("investmentCase.keyMetrics.priceStale")} tone="caution" />
+                )}
+                {analysis.priceFreshness === "refreshing" && (
+                  <StatusBadge label={t("investmentCase.keyMetrics.priceRefreshing")} tone="neutral" />
+                )}
+                {analysis.priceFreshness === "failed" && (
+                  <StatusBadge label={t("investmentCase.keyMetrics.priceRefreshFailed")} tone="critical" />
+                )}
+                {onRefreshPrice && (analysis.priceFreshness ?? "unavailable") !== "unavailable" && (
+                  <Button
+                    variant="tertiary"
+                    onClick={onRefreshPrice}
+                    disabled={isRefreshingPrice || analysis.priceFreshness === "refreshing"}
+                  >
+                    {isRefreshingPrice || analysis.priceFreshness === "refreshing"
+                      ? t("investmentCase.keyMetrics.priceRefreshing")
+                      : t("investmentCase.keyMetrics.priceRefreshButton")}
+                  </Button>
+                )}
+              </Stack>
+            </MetricField>
+            <MetricField label={t("investmentCase.strengthConcernPriority.priorityLabel")}>
               <Text as="p">
                 {hasNotableChange && priority === "none"
                   ? t("investmentCase.hero.closing.changed")
                   : t(PRIORITY_SENTENCE_KEY[priority])}
               </Text>
-            </Stack>
+            </MetricField>
           </Inline>
         </>
       )}

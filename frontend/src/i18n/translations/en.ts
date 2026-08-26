@@ -190,6 +190,10 @@ export const en = {
 
   // ---------- attention required (Product Sprint 8) ----------
   "portfolio.attentionRequired.heading": "Attention Required",
+  // ---------- Implementation Sprint B2 (Hero Reordering) ----------
+  "portfolio.overallConclusion.noIssues": "Atlas sees no major problems right now.",
+  "portfolio.overallConclusion.attentionCountOne": "1 holding needs attention.",
+  "portfolio.overallConclusion.attentionCountOther": "{{count}} holdings need attention.",
 
   // ---------- Pulse Simplification (live-verification follow-up) ----------
   "portfolio.decisionStatus.heading": "Decision Status",
@@ -444,6 +448,13 @@ export const en = {
   "investmentCase.whatChanged.heading": "What Changed",
   "investmentCase.whatChanged.baseline": "Atlas has established a baseline for this Case. Future analyses will be compared against it.",
   "investmentCase.whatChanged.noChange": "No material change since the previous analysis.",
+  // ---------- Implementation Sprint B2 (Hero Reordering) ----------
+  "investmentCase.hero.sinceYouWereHere.heading": "Since you were here",
+  "investmentCase.hero.sinceYouWereHere.countOne": "1 change since the previous analysis.",
+  "investmentCase.hero.sinceYouWereHere.countOther": "{{count}} changes since the previous analysis.",
+  "investmentCase.hero.confidenceLabel": "Confidence",
+  "investmentCase.hero.openQuestionLabel": "Open question",
+  "investmentCase.hero.openQuestion.none": "No open questions right now.",
   "investmentCase.whatChanged.sincePrevious": "Since the previous analysis:",
   "investmentCase.whatChanged.thesisImpact.strengthened": "Overall, the Atlas Thesis has strengthened.",
   "investmentCase.whatChanged.thesisImpact.weakened": "Overall, the Atlas Thesis has weakened, but remains intact.",
@@ -1604,6 +1615,11 @@ export const en = {
   "watchlist.countOther": "{{count}} companies tracked",
   "watchlist.loadError": "Could not load your watchlist.",
   "watchlist.addButton": "+ Add Company",
+  // ---------- Implementation Sprint B2 (Hero Reordering) ----------
+  "watchlist.hero.heading": "Most interesting right now",
+  "watchlist.hero.whyNowLabel": "Why now",
+  "watchlist.hero.confidenceLabel": "Confidence",
+  "watchlist.hero.otherCompaniesHeading": "Other companies",
   "watchlist.addForm.label": "Ticker",
   "watchlist.addForm.placeholder": "e.g. AAPL",
   "watchlist.addForm.submit": "Add to Watchlist",

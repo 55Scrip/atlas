@@ -225,6 +225,26 @@ export function DailyBriefPage() {
           )}
         </Inline>
 
+        <Divider tone="hairline" />
+
+        {status.kind === "loading" && (
+          <Text role="status" aria-live="polite">
+            {t("common.loading")}
+          </Text>
+        )}
+        {status.kind === "error" && <Text color="secondary">{status.message}</Text>}
+
+        {status.kind === "loaded" && <SinceYouWereHereSection agenda={status.agenda} viewState={viewState} locale={locale} />}
+
+        {/* Implementation Sprint B2 (Hero Reordering): moved down from
+            directly under the page title -- these are Atlas's own
+            operational status ("N companies awaiting analysis"), not
+            its conclusion, the same "raw stats after the opinion, not
+            before it" fix Portfolio's own hero already got this sprint.
+            Still independent of `status.kind` (unchanged behavior --
+            `monitoringStatus` is its own, separately-fetched state, so
+            these notes still show even while the agenda itself is still
+            loading or failed to load); only their position moved. */}
         {monitoringStatus && <MonitoringFreshnessNote status={monitoringStatus} t={t} />}
         {monitoringStatus && (
           <ScopeFreshnessSummaryNote
@@ -239,19 +259,8 @@ export function DailyBriefPage() {
           />
         )}
 
-        <Divider tone="hairline" />
-
-        {status.kind === "loading" && (
-          <Text role="status" aria-live="polite">
-            {t("common.loading")}
-          </Text>
-        )}
-        {status.kind === "error" && <Text color="secondary">{status.message}</Text>}
-
         {status.kind === "loaded" && (
           <>
-            <SinceYouWereHereSection agenda={status.agenda} viewState={viewState} locale={locale} />
-
             <Divider tone="hairline" />
 
             <PortfolioSummarySection agenda={status.agenda} />
