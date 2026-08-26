@@ -1776,21 +1776,29 @@ function PortfolioOverallConclusion({
     // a body sentence -- so a reader's eye lands here first, before
     // the supporting stat strip below. Same real count, same copy;
     // only the typographic weight changed.
-    <Text
-      as="p"
-      style={{
-        fontFamily: "var(--type-family-display)",
-        fontSize: "var(--type-size-h3)",
-        lineHeight: "var(--type-heading-line-height)",
-        color: "var(--color-text-primary)",
-      }}
-    >
-      {count === 0
-        ? t("portfolio.overallConclusion.noIssues")
-        : t(count === 1 ? "portfolio.overallConclusion.attentionCountOne" : "portfolio.overallConclusion.attentionCountOther", {
-            count,
-          })}
-    </Text>
+    //
+    // Editorial Layout Reconstruction Sprint P4 (Phase 2/9): wrapped in
+    // its own card so Portfolio's own Hero reads as one deliberate
+    // visual block -- the same real conclusion sentence, now with the
+    // weight of a genuine Hero rather than a floating line of text
+    // above the next section.
+    <Surface tier="elevated">
+      <Text
+        as="p"
+        style={{
+          fontFamily: "var(--type-family-display)",
+          fontSize: "var(--type-size-h3)",
+          lineHeight: "var(--type-heading-line-height)",
+          color: "var(--color-text-primary)",
+        }}
+      >
+        {count === 0
+          ? t("portfolio.overallConclusion.noIssues")
+          : t(count === 1 ? "portfolio.overallConclusion.attentionCountOne" : "portfolio.overallConclusion.attentionCountOther", {
+              count,
+            })}
+      </Text>
+    </Surface>
   );
 }
 

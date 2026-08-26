@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { Button, Divider, Heading, Inline, Label, Stack, StatusBadge, StatusText, Text, VisuallyHidden } from "../foundation";
+import { Button, Divider, Heading, Inline, Label, Stack, StatusBadge, StatusText, Surface, Text, VisuallyHidden } from "../foundation";
 import type { Translate } from "../changeIntelligence/describeChange";
 import {
   type AnalysisBusinessStatus,
@@ -564,28 +564,47 @@ export function HeroCard({
               in its own expandable detail (`resolveOpenQuestionKey` in
               `CompanyWorkspacePage.tsx`), never a second one invented
               for the Hero. */}
-          <Inline gap="inter-section" wrap align="start">
-            <Stack gap="metadata" style={{ flex: "1 1 220px", minWidth: 0 }}>
-              <Label>{t("investmentCase.strengthConcernPriority.strengthLabel")}</Label>
-              <Text as="p">
-                {analysis.topStrengthKind
-                  ? t(STRENGTH_SENTENCE_KEY[analysis.topStrengthKind])
-                  : t("investmentCase.strengthConcernPriority.noStrength")}
-              </Text>
-            </Stack>
-            <Stack gap="metadata" style={{ flex: "1 1 220px", minWidth: 0 }}>
-              <Label>{t("investmentCase.strengthConcernPriority.concernLabel")}</Label>
-              <Text as="p">
-                {mostSevereRisk
-                  ? t(CONCERN_SENTENCE_KEY[mostSevereRisk.category])
-                  : t("investmentCase.strengthConcernPriority.noConcern")}
-              </Text>
-            </Stack>
-            <Stack gap="metadata" style={{ flex: "1 1 220px", minWidth: 0 }}>
-              <Label>{t("investmentCase.hero.openQuestionLabel")}</Label>
-              <Text as="p">{primaryOpenQuestionKey ? t(primaryOpenQuestionKey) : t("investmentCase.hero.openQuestion.none")}</Text>
-            </Stack>
-          </Inline>
+          {/* Editorial Layout Reconstruction Sprint P4 (Phase 5/8): three
+              real editorial cards -- Biggest Strength, Biggest Concern,
+              Open Question -- each its own bordered block instead of a
+              plain three-column text row, matching the Figma reference's
+              own "written by an analyst" card treatment. Same three real
+              facts as before (`topStrengthKind`/`mostSevereRisk`/
+              `primaryOpenQuestionKey`), no new selection logic. */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "var(--space-row)",
+            }}
+          >
+            <Surface tier="elevated">
+              <Stack gap="metadata">
+                <Label>{t("investmentCase.strengthConcernPriority.strengthLabel")}</Label>
+                <Text as="p">
+                  {analysis.topStrengthKind
+                    ? t(STRENGTH_SENTENCE_KEY[analysis.topStrengthKind])
+                    : t("investmentCase.strengthConcernPriority.noStrength")}
+                </Text>
+              </Stack>
+            </Surface>
+            <Surface tier="elevated">
+              <Stack gap="metadata">
+                <Label>{t("investmentCase.strengthConcernPriority.concernLabel")}</Label>
+                <Text as="p">
+                  {mostSevereRisk
+                    ? t(CONCERN_SENTENCE_KEY[mostSevereRisk.category])
+                    : t("investmentCase.strengthConcernPriority.noConcern")}
+                </Text>
+              </Stack>
+            </Surface>
+            <Surface tier="elevated">
+              <Stack gap="metadata">
+                <Label>{t("investmentCase.hero.openQuestionLabel")}</Label>
+                <Text as="p">{primaryOpenQuestionKey ? t(primaryOpenQuestionKey) : t("investmentCase.hero.openQuestion.none")}</Text>
+              </Stack>
+            </Surface>
+          </div>
 
           <Divider tone="hairline" />
 

@@ -1,4 +1,4 @@
-import { Inline, Label, Stack, StatusBadge, Text } from "../foundation";
+import { Inline, Label, Stack, StatusBadge, Surface, Text } from "../foundation";
 import {
   BUSINESS_STATUS_KEY,
   RISK_STATUS_KEY,
@@ -160,31 +160,53 @@ function ReasoningCard({
   const contradicting = capFacts(facts.contradicting.filter(isReadableFact).filter((fact) => !supporting.includes(fact)));
 
   return (
-    <Stack gap="metadata" style={{ flex: "1 1 220px", minWidth: 0 }}>
-      <Inline gap="row" align="center" style={{ justifyContent: "space-between" }}>
-        <Label>{label}</Label>
-        <StatusBadge label={statusLabel} tone={tone} />
-      </Inline>
-      <Text as="p">{interpretation}</Text>
-      {supporting.length > 0 && (
-        <Text color="tertiary" as="p">
-          {t("investmentCase.analysis.business.supportingLabel")}: {supporting.join(", ")}
-        </Text>
-      )}
-      {contradicting.length > 0 && (
-        <Text color="tertiary" as="p">
-          {t("investmentCase.analysis.business.contradictingLabel")}: {contradicting.join(", ")}
-        </Text>
-      )}
-    </Stack>
+    <Surface tier="elevated">
+      <Stack gap="metadata">
+        <Inline gap="row" align="center" style={{ justifyContent: "space-between" }}>
+          <Label>{label}</Label>
+          <StatusBadge label={statusLabel} tone={tone} />
+        </Inline>
+        <Text as="p">{interpretation}</Text>
+        {supporting.length > 0 && (
+          <Text color="tertiary" as="p">
+            {t("investmentCase.analysis.business.supportingLabel")}: {supporting.join(", ")}
+          </Text>
+        )}
+        {contradicting.length > 0 && (
+          <Text color="tertiary" as="p">
+            {t("investmentCase.analysis.business.contradictingLabel")}: {contradicting.join(", ")}
+          </Text>
+        )}
+      </Stack>
+    </Surface>
   );
 }
 
+/**
+ * Editorial Layout Reconstruction Sprint P4 (Phase 6/8) -- "Atlas
+ * Reasoning (grid)": four real, already-computed findings
+ * (Growth/Valuation/Financial Health/Business Quality), each promoted
+ * from a plain flex column to its own bordered card so the four read
+ * as one deliberate reasoning grid rather than four labels floating in
+ * a row -- the exact "4-card reasoning row" the Figma reference uses.
+ * A real CSS grid (not flex-wrap) holds two columns at narrow widths
+ * and all four across a real desktop width, matching how much visual
+ * weight this section actually carries relative to the narrative above
+ * it and the deep evidence below it -- Phase 7's own "alternating
+ * rhythm" applied at this one section. No new data: every field is the
+ * same `AtlasReasoningInput` this component already received.
+ */
 export function AtlasReasoningSection({ input, t }: { input: AtlasReasoningInput; t: Translate }) {
   return (
     <Stack gap="intra-section">
       <Label>{t("investmentCase.reasoning.heading")}</Label>
-      <Inline gap="inter-section" wrap align="start">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "var(--space-row)",
+        }}
+      >
         <ReasoningCard
           label={t("investmentCase.reasoning.growthLabel")}
           statusLabel={t(BUSINESS_STATUS_KEY[input.growthStatus])}
@@ -217,7 +239,7 @@ export function AtlasReasoningSection({ input, t }: { input: AtlasReasoningInput
           facts={input.businessQualityFacts}
           t={t}
         />
-      </Inline>
+      </div>
     </Stack>
   );
 }
