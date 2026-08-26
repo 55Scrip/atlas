@@ -2040,6 +2040,8 @@ export const sv: Record<TranslationKey, string> = {
   "monitoring.changeFeed.sourceCaseCondition": "via ditt villkor",
   "monitoring.changeFeed.unavailableCountOne": "1 bolag har ännu inte utvärderats av Övervakning.",
   "monitoring.changeFeed.unavailableCountOther": "{{count}} bolag har ännu inte utvärderats av Övervakning.",
+  "monitoring.changeFeed.viewEventsOne": "Visa 1 övervakningshändelse →",
+  "monitoring.changeFeed.viewEventsOther": "Visa {{count}} övervakningshändelser →",
 
   "evidenceGraph.section.heading": "Vad caset bygger på",
   "evidenceGraph.section.summary": "{{critical}} kritiska beroenden, {{weak}} svaga länkar, {{missing}} slutsatser utan stöd.",

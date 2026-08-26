@@ -13,6 +13,7 @@ import { fetchStanceForHoldings, fetchStanceForCandidates, type TickerStanceView
 import { MonitoringFreshnessNote } from "../monitoring/MonitoringFreshnessNote";
 import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNote";
 import { MonitoringChangeFeed } from "../monitoring/MonitoringChangeFeed";
+import { filterDuplicateMonitoringChanges } from "../monitoring/filterDuplicateMonitoringChanges";
 import {
   fetchMonitoringResults,
   fetchMonitoringStatus,
@@ -242,26 +243,11 @@ export function DailyBriefPage() {
 
             <Divider tone="hairline" />
 
-            <Stack gap="metadata">
-              <Heading level={2}>{t("monitoring.changeFeed.heading")}</Heading>
-              {monitoringResultsStatus.kind === "loading" && (
-                <Text role="status" aria-live="polite">
-                  {t("common.loading")}
-                </Text>
-              )}
-              {monitoringResultsStatus.kind === "unavailable" && (
-                <Text color="tertiary" role="alert">
-                  {t("monitoring.changeFeed.unavailable")}
-                </Text>
-              )}
-              {monitoringResultsStatus.kind === "loaded" && (
-                <MonitoringChangeFeed
-                  results={monitoringResultsStatus.results}
-                  t={t}
-                  onOpenInvestmentCase={openInvestmentCase}
-                />
-              )}
-            </Stack>
+            <MonitoringHistorySection
+              agenda={status.agenda}
+              monitoringResultsStatus={monitoringResultsStatus}
+              onOpenInvestmentCase={openInvestmentCase}
+            />
           </>
         )}
       </Stack>
@@ -338,6 +324,74 @@ function DailyBriefAgendaSection({
               />
             ))}
           </Stack>
+        </ExpandableDetail>
+      )}
+    </Stack>
+  );
+}
+
+/** Daily Brief Consolidation -- Monitoring history becomes a
+ * collapsed, secondary drill-down (Phase 3's source-of-truth
+ * principle: Daily Brief agenda owns "what matters now," Monitoring
+ * owns "what happened historically"; no surface should compete with
+ * another). `filterDuplicateMonitoringChanges` removes only the exact
+ * change lines already surfaced in the agenda above (same ticker, same
+ * `reason` string -- structurally the same underlying fact, not a
+ * fuzzy guess); every minor change and every change for a ticker with
+ * no agenda entry survives untouched, so no real history is lost, only
+ * de-duplicated against what is already visible one section up. */
+function MonitoringHistorySection({
+  agenda,
+  monitoringResultsStatus,
+  onOpenInvestmentCase,
+}: {
+  agenda: DailyBriefAgendaView;
+  monitoringResultsStatus: { kind: "loading" } | { kind: "unavailable" } | { kind: "loaded"; results: MonitoringResultView[] };
+  onOpenInvestmentCase: (caseId: string, ticker: string | null) => void;
+}) {
+  const { t } = useTranslation();
+
+  if (monitoringResultsStatus.kind === "loading") {
+    return (
+      <Stack gap="metadata">
+        <Heading level={2}>{t("monitoring.changeFeed.heading")}</Heading>
+        <Text role="status" aria-live="polite">
+          {t("common.loading")}
+        </Text>
+      </Stack>
+    );
+  }
+  if (monitoringResultsStatus.kind === "unavailable") {
+    return (
+      <Stack gap="metadata">
+        <Heading level={2}>{t("monitoring.changeFeed.heading")}</Heading>
+        <Text color="tertiary" role="alert">
+          {t("monitoring.changeFeed.unavailable")}
+        </Text>
+      </Stack>
+    );
+  }
+
+  const agendaReasonsByTicker = new Map<string, Set<string>>();
+  for (const group of groupAgendaByTicker(agenda.items)) {
+    if (group.ticker === null) continue;
+    agendaReasonsByTicker.set(group.ticker, new Set(group.reasons));
+  }
+  const deduplicated = filterDuplicateMonitoringChanges(monitoringResultsStatus.results, agendaReasonsByTicker);
+  const eventCount = deduplicated.reduce((total, result) => total + result.changes.length, 0);
+
+  return (
+    <Stack gap="metadata">
+      <Heading level={2}>{t("monitoring.changeFeed.heading")}</Heading>
+      {eventCount === 0 ? (
+        <Text color="secondary">{t("monitoring.changeFeed.empty")}</Text>
+      ) : (
+        <ExpandableDetail
+          summaryLabel={t(eventCount === 1 ? "monitoring.changeFeed.viewEventsOne" : "monitoring.changeFeed.viewEventsOther", {
+            count: eventCount,
+          })}
+        >
+          <MonitoringChangeFeed results={deduplicated} t={t} onOpenInvestmentCase={onOpenInvestmentCase} />
         </ExpandableDetail>
       )}
     </Stack>

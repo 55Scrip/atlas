@@ -2062,6 +2062,8 @@ export const en = {
   "monitoring.changeFeed.sourceCaseCondition": "via your condition",
   "monitoring.changeFeed.unavailableCountOne": "1 company has not been evaluated by Monitoring yet.",
   "monitoring.changeFeed.unavailableCountOther": "{{count}} companies have not been evaluated by Monitoring yet.",
+  "monitoring.changeFeed.viewEventsOne": "View 1 monitoring event →",
+  "monitoring.changeFeed.viewEventsOther": "View {{count}} monitoring events →",
 
   "evidenceGraph.section.heading": "How this case is supported",
   "evidenceGraph.section.summary": "{{critical}} critical dependencies, {{weak}} weak links, {{missing}} conclusions lacking support.",
