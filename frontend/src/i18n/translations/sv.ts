@@ -191,6 +191,11 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.todaysFocus.biggestOpportunityLabel": "Dagens största möjlighet",
   "portfolio.todaysFocus.biggestRiskLabel": "Dagens största risk",
 
+  // ---------- Portfolio Redesign V1 ----------
+  "portfolio.pulse.attentionItemsLabel": "Uppmärksamhetspunkter",
+  "portfolio.todaysStory.heading": "Vad som hänt idag",
+  "portfolio.todaysFocus.whatChangedLabel": "Vad som ändrats",
+
   // ---------- attention required (Product Sprint 8) ----------
   "portfolio.attentionRequired.heading": "Kräver uppmärksamhet",
   // ---------- Implementation Sprint B2 (Hero Reordering) ----------

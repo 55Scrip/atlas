@@ -824,6 +824,22 @@ export function PortfolioPage() {
     fitByTicker.set(assessment.ticker, assessment);
   }
 
+  /** Portfolio Redesign V1 -- one selection, shared by the Executive
+   * Summary Strip's own compact "Largest Risk"/"Largest Opportunity"
+   * fields and the fuller Today's Biggest Risk/Opportunity cards below
+   * them, so the same two tickers never diverge between a compact
+   * mention and its own full explanation. Reads the same server-sorted
+   * (best-first) `PortfolioFitAssessmentView[]` `PortfolioFitOverviewSection`
+   * already renders in full further down the page -- no new fetch, no
+   * new fit computation. `null` when fewer than two holdings have been
+   * evaluated, or the single evaluated holding would have to serve as
+   * both its own biggest risk and biggest opportunity. */
+  const fitEvaluated = fitAssessments.filter((a) => a.overall !== "unavailable");
+  const biggestOpportunity = fitEvaluated[0] ?? null;
+  const biggestRisk = fitEvaluated.length > 1 ? fitEvaluated[fitEvaluated.length - 1]! : null;
+  const hasDistinctRiskAndOpportunity =
+    biggestOpportunity !== null && biggestRisk !== null && biggestOpportunity.ticker !== biggestRisk.ticker;
+
   /** Atlas Intelligence Sprint 2 (Recommendation Quality &
    * Actionability, Deliverable 6) -- one ticker->Stance map, the same
    * "single shared fetch, no divergent copies" pattern `fitByTicker`/
@@ -878,7 +894,7 @@ export function PortfolioPage() {
             {/* Implementation Sprint B2 (Hero Reordering): Decision
                 First's own step 1 -- Atlas's conclusion, before any
                 supporting data. */}
-            <PortfolioOverallConclusion status={dailyBriefAgenda} t={t} />
+            <PortfolioHero status={dailyBriefAgenda} view={status.view} t={t} />
 
             {status.view.awaitingReconciliation && (
               <Surface tier="primary">
@@ -974,12 +990,56 @@ export function PortfolioPage() {
               </Surface>
             )}
 
+            {/* Portfolio Redesign V1 -- the Executive Summary Strip now
+                sits directly under the Hero (health + position already
+                live in the Hero itself), ahead of Today's Story and the
+                Risk/Opportunity cards, so every fact promised by "five
+                seconds to understand the portfolio" is visible before
+                any individual holding. Unchanged data, unchanged
+                component -- only its position and its two new fields
+                (Attention Items, Largest Risk/Opportunity tickers). */}
+            <PortfolioPulse
+              view={status.view}
+              largestHolding={largestHolding}
+              coveredCount={coveredCount}
+              criticalAgendaCount={criticalAgendaCount}
+              attentionItemCount={agendaItems.length}
+              biggestRisk={hasDistinctRiskAndOpportunity ? biggestRisk : null}
+              biggestOpportunity={hasDistinctRiskAndOpportunity ? biggestOpportunity : null}
+              t={t}
+            />
+
+            {/* Portfolio Redesign V1 -- "Today's Story": what actually
+                happened, real change events only. */}
+            <TodaysStorySection agendaItems={agendaItems} navigate={navigate} t={t} />
+
+            {/* Portfolio Redesign V1 -- "Today's Biggest Risk" /
+                "Today's Biggest Opportunity": the same two tickers the
+                Executive Summary Strip just named, now with their own
+                full reasoning, what changed, and an explicit action --
+                the "compact fact in the story, full detail as evidence
+                right after" shape this codebase already uses for Since
+                You Were Here and the top limiting factor on Investment
+                Case. No new fetch, no new fit computation. */}
+            <TodaysBiggestRiskOpportunity
+              biggestOpportunity={hasDistinctRiskAndOpportunity ? biggestOpportunity : null}
+              biggestRisk={hasDistinctRiskAndOpportunity ? biggestRisk : null}
+              agendaItemByTicker={agendaItemByTicker}
+              onOpenCase={openInvestmentCase}
+              t={t}
+            />
+
             {/* Deliverable 2, step 2: Attention Required -- the one
                 shared `/api/daily-brief-agenda` fetch Daily Brief itself
-                reads, filtered to this portfolio's own items. This is
-                now Portfolio's *only* attention surface (Deliverable 4)
-                -- the former, separately-derived "Needs Your Attention"
-                section is gone; see this file's own module docstring. */}
+                reads, filtered to this portfolio's own items. Portfolio
+                Redesign V1 moved this below Today's Story and the
+                Risk/Opportunity cards: "what actually happened" and
+                "where's the biggest risk/opportunity" now come first,
+                with the fuller priority-by-priority list -- including
+                the persistent conditions Today's Story deliberately
+                excludes -- immediately after, before any individual
+                holding. Still Portfolio's only attention surface
+                (Deliverable 4). */}
             <AttentionRequiredSection status={dailyBriefAgenda} navigate={navigate} t={t} />
 
             {/* Pulse Simplification (live-verification follow-up):
@@ -1003,32 +1063,6 @@ export function PortfolioPage() {
               sharedWeakPoints={sharedWeakPoints}
               t={t}
             />
-
-            {/* Implementation Sprint B2 (Hero Reordering): Decision
-                First's own step 4 -- Portfolio health, moved down from
-                its former hero position (it used to render first, ahead
-                of Atlas's own conclusion -- exactly the "raw stats
-                before the opinion" ordering this sprint exists to fix).
-                Unchanged data, unchanged component. */}
-            <PortfolioPulse
-              view={status.view}
-              largestHolding={largestHolding}
-              coveredCount={coveredCount}
-              criticalAgendaCount={criticalAgendaCount}
-              t={t}
-            />
-
-            {/* Redesign From Zero Sprint V2 -- "Today's Biggest Risk" /
-                "Today's Biggest Opportunity": a single-ticker preview of
-                the same already-fetched, already-sorted Portfolio Fit
-                data `PortfolioFitOverviewSection` shows in full further
-                down this page. Deliberately the single most compelling
-                entry on each side, not another multi-column list --
-                the "compact fact in the story, full detail as evidence
-                below" shape this codebase already uses for Since You
-                Were Here and the top limiting factor on Investment
-                Case. No new fetch, no new fit computation. */}
-            <TodaysBiggestRiskOpportunity status={portfolioFitHoldings} onOpenCase={openInvestmentCase} t={t} />
 
             {/* Deliverable 2, step 3: Holdings -- what do I own, in
                 detail, ordered so what matters is on top by default. */}
@@ -1271,26 +1305,36 @@ const PAGE_TITLE_STYLE: CSSProperties = {
  * `DecisionLayerDetailSection`, each under its own label. This
  * component itself only ever renders the real Pulse status line.
  */
+/**
+ * Portfolio Redesign V1: renamed in spirit to the Executive Summary
+ * Strip -- Concentration/Holdings/Cash moved up into the Hero
+ * (`PortfolioHero`) so they're not repeated here; this card now adds
+ * the three fields the Hero doesn't cover -- total agenda item count
+ * ("Attention Items," distinct from the Critical-only pill that was
+ * already here), and the same `biggestOpportunity`/`biggestRisk`
+ * tickers `TodaysBiggestRiskOpportunity` shows in full just below --
+ * a compact mention here, the real reasoning there, never the same
+ * sentence twice.
+ */
 function PortfolioPulse({
   view,
   largestHolding,
   coveredCount,
   criticalAgendaCount,
+  attentionItemCount,
+  biggestRisk,
+  biggestOpportunity,
   t,
 }: {
   view: PortfolioView;
   largestHolding: HoldingView | null;
   coveredCount: number | null;
   criticalAgendaCount: number;
+  attentionItemCount: number;
+  biggestRisk: PortfolioFitAssessmentView | null;
+  biggestOpportunity: PortfolioFitAssessmentView | null;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  const cashDisplay =
-    view.cashValueAbsolute !== null
-      ? view.cashValueAbsolute
-      : view.cashWeightPercent !== null
-        ? `${view.cashWeightPercent}%`
-        : t("portfolio.header.notAvailable");
-
   return (
     <Stack gap="metadata">
       <Surface tier="primary">
@@ -1300,14 +1344,6 @@ function PortfolioPulse({
             <Text as="span" style={{ fontSize: "var(--type-heading-3-size, 1.5rem)", fontWeight: 700 }}>
               {view.totalValue !== null ? view.totalValue : t("portfolio.pulse.totalValueUnavailable")}
             </Text>
-          </Stack>
-          <Stack gap="metadata">
-            <Label>{t("portfolio.pulse.holdingsLabel")}</Label>
-            <Text as="span">{t("portfolio.pulse.holdingsCount", { count: view.numberOfHoldings })}</Text>
-          </Stack>
-          <Stack gap="metadata">
-            <Label>{t("portfolio.pulse.cashLabel")}</Label>
-            <Text as="span">{cashDisplay}</Text>
           </Stack>
           <Stack gap="metadata">
             <Label>{t("portfolio.pulse.largestPositionLabel")}</Label>
@@ -1321,20 +1357,24 @@ function PortfolioPulse({
             </Text>
           </Stack>
           <Stack gap="metadata">
-            <Label>{t("portfolio.pulse.concentrationLabel")}</Label>
-            <Text as="span">
-              {view.concentrationLevel && CONCENTRATION_LEVEL_KEY[view.concentrationLevel]
-                ? t(CONCENTRATION_LEVEL_KEY[view.concentrationLevel]!)
-                : t("portfolio.header.notAvailable")}
-            </Text>
-          </Stack>
-          <Stack gap="metadata">
             <Label>{t("portfolio.pulse.coverageLabel")}</Label>
             <Text as="span">
               {coveredCount !== null
                 ? t("portfolio.pulse.coverageValue", { covered: coveredCount, total: view.numberOfHoldings })
                 : t("portfolio.header.notAvailable")}
             </Text>
+          </Stack>
+          <Stack gap="metadata">
+            <Label>{t("portfolio.pulse.attentionItemsLabel")}</Label>
+            <Text as="span">{attentionItemCount}</Text>
+          </Stack>
+          <Stack gap="metadata">
+            <Label>{t("portfolio.todaysFocus.biggestOpportunityLabel")}</Label>
+            <Text as="span">{biggestOpportunity ? biggestOpportunity.ticker : t("portfolio.header.notAvailable")}</Text>
+          </Stack>
+          <Stack gap="metadata">
+            <Label>{t("portfolio.todaysFocus.biggestRiskLabel")}</Label>
+            <Text as="span">{biggestRisk ? biggestRisk.ticker : t("portfolio.header.notAvailable")}</Text>
           </Stack>
           {criticalAgendaCount > 0 && (
             <StatusBadge label={t("portfolio.pulse.criticalPill", { count: criticalAgendaCount })} tone="critical" />
@@ -1773,44 +1813,148 @@ const AGENDA_INITIAL_COUNT = 3;
  * owns disclosing those states with its own heading, so this line
  * would otherwise show and then immediately get replaced, a flash of
  * text no real reader benefits from. */
-function PortfolioOverallConclusion({
+/**
+ * Portfolio Redesign V1 -- the Hero: one visual block answering
+ * "portfolio health, current position, overall narrative" together,
+ * rather than a bare conclusion sentence with health/position facts
+ * shown separately several sections later. The narrative sentence
+ * itself is unchanged (the same real attention-count synthesis Sprint
+ * B2 already established); Concentration and Holdings/Cash now sit
+ * directly beneath it in the same card, so the one sentence a reader
+ * sees first is immediately grounded in the two facts that most
+ * qualify it. No new computation -- `concentrationLevel` and
+ * `numberOfHoldings`/cash are the same `PortfolioView` fields
+ * `PortfolioPulse` (now the Executive Summary Strip below) already
+ * reads.
+ */
+function PortfolioHero({
   status,
+  view,
   t,
 }: {
   status: DailyBriefAgendaFetchStatus;
+  view: PortfolioView;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   if (status.kind !== "loaded") return null;
   const count = status.items.length;
+  const cashDisplay =
+    view.cashValueAbsolute !== null
+      ? view.cashValueAbsolute
+      : view.cashWeightPercent !== null
+        ? `${view.cashWeightPercent}%`
+        : t("portfolio.header.notAvailable");
+
   return (
-    // Editorial Design Sprint P3 (Phase 2/11): the page's own headline
-    // register -- the display face, sized like a real conclusion, not
-    // a body sentence -- so a reader's eye lands here first, before
-    // the supporting stat strip below. Same real count, same copy;
-    // only the typographic weight changed.
-    //
-    // Editorial Layout Reconstruction Sprint P4 (Phase 2/9): wrapped in
-    // its own card so Portfolio's own Hero reads as one deliberate
-    // visual block -- the same real conclusion sentence, now with the
-    // weight of a genuine Hero rather than a floating line of text
-    // above the next section.
     <Surface tier="elevated">
-      <Text
-        as="p"
+      <Stack gap="metadata">
+        <Text
+          as="p"
+          style={{
+            fontFamily: "var(--type-family-display)",
+            fontSize: "var(--type-size-h3)",
+            lineHeight: "var(--type-heading-line-height)",
+            color: "var(--color-text-primary)",
+          }}
+        >
+          {count === 0
+            ? t("portfolio.overallConclusion.noIssues")
+            : t(count === 1 ? "portfolio.overallConclusion.attentionCountOne" : "portfolio.overallConclusion.attentionCountOther", {
+                count,
+              })}
+        </Text>
+        <Inline gap="inter-section" wrap>
+          <Stack gap="metadata">
+            <Label>{t("portfolio.pulse.concentrationLabel")}</Label>
+            <Text as="span">
+              {view.concentrationLevel && CONCENTRATION_LEVEL_KEY[view.concentrationLevel]
+                ? t(CONCENTRATION_LEVEL_KEY[view.concentrationLevel]!)
+                : t("portfolio.header.notAvailable")}
+            </Text>
+          </Stack>
+          <Stack gap="metadata">
+            <Label>{t("portfolio.pulse.holdingsLabel")}</Label>
+            <Text as="span">{t("portfolio.pulse.holdingsCount", { count: view.numberOfHoldings })}</Text>
+          </Stack>
+          <Stack gap="metadata">
+            <Label>{t("portfolio.pulse.cashLabel")}</Label>
+            <Text as="span">{cashDisplay}</Text>
+          </Stack>
+        </Inline>
+      </Stack>
+    </Surface>
+  );
+}
+
+/**
+ * Portfolio Redesign V1 -- "Today's Story": up to three real change
+ * events (`item.nature === "change_event"`), never the persistent
+ * conditions (`"persistent_condition"`) Attention Required already
+ * covers in full further down. This is the honest distinction the
+ * backend already draws between "something happened" and "this is an
+ * ongoing state" (`atlas.alpha.daily_brief_agenda.models.SignalNature`,
+ * already surfaced elsewhere via `SignalNatureBadge`) -- reused here,
+ * not recomputed, to answer "what actually happened" without
+ * re-listing every open condition a second time. Items are already
+ * priority-sorted (the same shared Agenda fetch every attention-aware
+ * element on this page reads); this only filters and caps at three.
+ * Renders nothing when no real change happened -- an honest "quiet
+ * day," never a fabricated headline.
+ */
+const TODAYS_STORY_CAP = 3;
+
+function TodaysStorySection({
+  agendaItems,
+  navigate,
+  t,
+}: {
+  agendaItems: AgendaItemView[];
+  navigate: ReturnType<typeof useNavigate>;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const changeEvents = agendaItems.filter((item) => item.nature === "change_event").slice(0, TODAYS_STORY_CAP);
+  if (changeEvents.length === 0) return null;
+
+  return (
+    <Stack gap="metadata">
+      <Label>{t("portfolio.todaysStory.heading")}</Label>
+      <div
         style={{
-          fontFamily: "var(--type-family-display)",
-          fontSize: "var(--type-size-h3)",
-          lineHeight: "var(--type-heading-line-height)",
-          color: "var(--color-text-primary)",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "var(--space-row)",
         }}
       >
-        {count === 0
-          ? t("portfolio.overallConclusion.noIssues")
-          : t(count === 1 ? "portfolio.overallConclusion.attentionCountOne" : "portfolio.overallConclusion.attentionCountOther", {
-              count,
-            })}
-      </Text>
-    </Surface>
+        {changeEvents.map((item) => (
+          <Surface tier="elevated" key={item.id}>
+            <Stack gap="metadata">
+              {item.ticker && (
+                <Text as="span" style={{ fontWeight: 600 }}>
+                  {item.ticker}
+                </Text>
+              )}
+              <Text as="p" color="secondary">
+                {agendaItemHeadline(item, t)}
+              </Text>
+              {item.ticker && item.caseId && (
+                <div>
+                  <Link
+                    href="#"
+                    style={{ color: "var(--global-color-accent)" }}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      navigate(`/investment-case/${item.caseId}`, { state: { origin: "portfolio", ticker: item.ticker } });
+                    }}
+                  >
+                    {t("dailyBriefAgenda.action.openInvestmentCase")} →
+                  </Link>
+                </div>
+              )}
+            </Stack>
+          </Surface>
+        ))}
+      </div>
+    </Stack>
   );
 }
 
@@ -1893,22 +2037,74 @@ function AttentionRequiredSection({
  * nothing when fewer than two holdings have been evaluated (nothing
  * true and distinct to say yet), never a fabricated placeholder.
  */
-function TodaysBiggestRiskOpportunity({
-  status,
+/**
+ * Portfolio Redesign V1 -- "Today's Biggest Risk" / "Today's Biggest
+ * Opportunity", mirrored: each card now states why (the real Portfolio
+ * Fit reasoning), what changed (the same real Agenda signal the
+ * Holdings Table's own "Change" column reads, looked up by the same
+ * `agendaItemByTicker` map -- omitted honestly when nothing has
+ * changed for that ticker), and one explicit action link, rather than
+ * a ticker and a single sentence. `biggestOpportunity`/`biggestRisk`
+ * are computed once in the parent and shared with the Executive
+ * Summary Strip's own compact mention of the same two tickers -- this
+ * component never re-selects them.
+ */
+function TodaysRiskOpportunityCard({
+  label,
+  assessment,
+  agendaItem,
   onOpenCase,
   t,
 }: {
-  status: PortfolioFitFetchStatus;
+  label: string;
+  assessment: PortfolioFitAssessmentView;
+  agendaItem: AgendaItemView | undefined;
   onOpenCase: (ticker: string, existingCaseId: string | null) => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  if (status.kind !== "loaded") return null;
-  const evaluated = status.assessments.filter((a) => a.overall !== "unavailable");
-  if (evaluated.length < 2) return null;
+  return (
+    <Surface tier="elevated">
+      <Stack gap="metadata">
+        <Label>{label}</Label>
+        <Text as="span" style={{ fontWeight: 600, fontSize: "var(--type-size-h5)" }}>
+          {assessment.ticker}
+        </Text>
+        {assessment.overallReasoning[0] && <Text as="p" color="secondary">{assessment.overallReasoning[0]}</Text>}
+        <Text as="p" color="tertiary">
+          {t("portfolio.todaysFocus.whatChangedLabel")}:{" "}
+          {agendaItem ? agendaItemHeadline(agendaItem, t) : t("watchlist.attention.noSignificantChanges")}
+        </Text>
+        <div>
+          <Link
+            href="#"
+            style={{ color: "var(--global-color-accent)" }}
+            onClick={(event) => {
+              event.preventDefault();
+              onOpenCase(assessment.ticker, assessment.caseId);
+            }}
+          >
+            {t("dailyBriefAgenda.action.openInvestmentCase")} →
+          </Link>
+        </div>
+      </Stack>
+    </Surface>
+  );
+}
 
-  const biggestOpportunity = evaluated[0]!;
-  const biggestRisk = evaluated[evaluated.length - 1]!;
-  if (biggestOpportunity.ticker === biggestRisk.ticker) return null;
+function TodaysBiggestRiskOpportunity({
+  biggestOpportunity,
+  biggestRisk,
+  agendaItemByTicker,
+  onOpenCase,
+  t,
+}: {
+  biggestOpportunity: PortfolioFitAssessmentView | null;
+  biggestRisk: PortfolioFitAssessmentView | null;
+  agendaItemByTicker: Map<string, AgendaItemView>;
+  onOpenCase: (ticker: string, existingCaseId: string | null) => void;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  if (!biggestOpportunity || !biggestRisk) return null;
 
   return (
     <div
@@ -1918,38 +2114,20 @@ function TodaysBiggestRiskOpportunity({
         gap: "var(--space-row)",
       }}
     >
-      <Surface tier="elevated">
-        <Stack gap="metadata">
-          <Label>{t("portfolio.todaysFocus.biggestOpportunityLabel")}</Label>
-          <Link
-            href="#"
-            style={{ fontWeight: 600, fontSize: "var(--type-size-h5)" }}
-            onClick={(event) => {
-              event.preventDefault();
-              onOpenCase(biggestOpportunity.ticker, biggestOpportunity.caseId);
-            }}
-          >
-            {biggestOpportunity.ticker}
-          </Link>
-          {biggestOpportunity.overallReasoning[0] && <Text as="p" color="secondary">{biggestOpportunity.overallReasoning[0]}</Text>}
-        </Stack>
-      </Surface>
-      <Surface tier="elevated">
-        <Stack gap="metadata">
-          <Label>{t("portfolio.todaysFocus.biggestRiskLabel")}</Label>
-          <Link
-            href="#"
-            style={{ fontWeight: 600, fontSize: "var(--type-size-h5)" }}
-            onClick={(event) => {
-              event.preventDefault();
-              onOpenCase(biggestRisk.ticker, biggestRisk.caseId);
-            }}
-          >
-            {biggestRisk.ticker}
-          </Link>
-          {biggestRisk.overallReasoning[0] && <Text as="p" color="secondary">{biggestRisk.overallReasoning[0]}</Text>}
-        </Stack>
-      </Surface>
+      <TodaysRiskOpportunityCard
+        label={t("portfolio.todaysFocus.biggestOpportunityLabel")}
+        assessment={biggestOpportunity}
+        agendaItem={agendaItemByTicker.get(biggestOpportunity.ticker)}
+        onOpenCase={onOpenCase}
+        t={t}
+      />
+      <TodaysRiskOpportunityCard
+        label={t("portfolio.todaysFocus.biggestRiskLabel")}
+        assessment={biggestRisk}
+        agendaItem={agendaItemByTicker.get(biggestRisk.ticker)}
+        onOpenCase={onOpenCase}
+        t={t}
+      />
     </div>
   );
 }

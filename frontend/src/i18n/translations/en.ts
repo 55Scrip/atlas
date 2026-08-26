@@ -192,6 +192,11 @@ export const en = {
   "portfolio.todaysFocus.biggestOpportunityLabel": "Today's biggest opportunity",
   "portfolio.todaysFocus.biggestRiskLabel": "Today's biggest risk",
 
+  // ---------- Portfolio Redesign V1 ----------
+  "portfolio.pulse.attentionItemsLabel": "Attention items",
+  "portfolio.todaysStory.heading": "Today's story",
+  "portfolio.todaysFocus.whatChangedLabel": "What changed",
+
   // ---------- attention required (Product Sprint 8) ----------
   "portfolio.attentionRequired.heading": "Attention Required",
   // ---------- Implementation Sprint B2 (Hero Reordering) ----------
