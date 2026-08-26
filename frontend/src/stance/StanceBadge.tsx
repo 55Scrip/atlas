@@ -11,7 +11,7 @@ import { STANCE_LEVEL_KEY, STANCE_LEVEL_TONE, type StanceLevel } from "../status
  * present-tense, non-imperative labels ("View strengthened," never
  * "Buy more") everywhere it appears.
  */
-export function StanceBadge({ level }: { level: StanceLevel }) {
+export function StanceBadge({ level, weight = "outline" }: { level: StanceLevel; weight?: "outline" | "strong" }) {
   const { t } = useTranslation();
-  return <StatusBadge label={t(STANCE_LEVEL_KEY[level])} tone={STANCE_LEVEL_TONE[level]} />;
+  return <StatusBadge label={t(STANCE_LEVEL_KEY[level])} tone={STANCE_LEVEL_TONE[level]} weight={weight} />;
 }

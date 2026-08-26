@@ -511,6 +511,7 @@ function WatchlistHero({
         <StatusBadge
           label={t(DECISION_SUPPORT_BADGE_KEY[loaded.recommendation.level])}
           tone={DECISION_SUPPORT_TONE[loaded.recommendation.level]}
+          weight="strong"
         />
         <Stack gap="metadata">
           <Label>{t("watchlist.hero.whyNowLabel")}</Label>
@@ -761,7 +762,7 @@ function WatchlistTableRow({
       </td>
       <td style={cellStyle}>
         {loaded ? (
-          <StatusBadge label={t(DECISION_SUPPORT_BADGE_KEY[loaded.recommendation.level])} tone={DECISION_SUPPORT_TONE[loaded.recommendation.level]} />
+          <StatusBadge label={t(DECISION_SUPPORT_BADGE_KEY[loaded.recommendation.level])} tone={DECISION_SUPPORT_TONE[loaded.recommendation.level]} weight="strong" />
         ) : rowStatus?.kind === "error" ? (
           <Text as="span" color="tertiary">
             {t("watchlist.table.rowLoadError")}

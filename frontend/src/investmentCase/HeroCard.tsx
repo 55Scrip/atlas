@@ -273,6 +273,81 @@ function MetricField({ label, children }: { label: string; children: ReactNode }
   );
 }
 
+function SummaryStat({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Stack gap="metadata" style={{ minWidth: "8rem" }}>
+      <Label>{label}</Label>
+      {children}
+    </Stack>
+  );
+}
+
+/**
+ * Editorial Design Sprint P3 (Phase 5/10) -- the "readable in under
+ * three seconds" executive summary row: Recommendation, Confidence,
+ * Expected Return, Upside/Downside, in one compact strip above
+ * everything else on the card. Every field is data this component
+ * already receives and already renders further down (unchanged
+ * `DECISION_SUPPORT_BADGE_KEY`/`CONVICTION_LEVEL_KEY`/long-term
+ * expected-return figures) -- this recomposes it into a single glance,
+ * it does not compute or fetch anything new. Recommendation is the
+ * one PRIMARY signal on this card (Sprint B3's own "one company, one
+ * primary message" discipline), rendered with the new `weight="strong"`
+ * treatment; Confidence/Expected Return/Upside-Downside are SECONDARY,
+ * one visual step down. Deliberately omits a separate "current status"
+ * chip: Recommendation already is that status in this codebase, and a
+ * second badge naming the same thing would reintroduce exactly the
+ * competing-badges problem Sprint B3 removed.
+ */
+function ExecutiveSummaryBar({ analysis, t }: { analysis: HeroAnalysisInput; t: Translate }) {
+  return (
+    <Inline
+      gap="inter-section"
+      wrap
+      align="center"
+      style={{
+        padding: "var(--space-card-padding)",
+        background: "var(--surface-elevated)",
+        borderRadius: "var(--radius-card)",
+      }}
+    >
+      <SummaryStat label={t("investmentCase.keyMetrics.recommendationLabel")}>
+        <StatusBadge
+          label={t(DECISION_SUPPORT_BADGE_KEY[analysis.recommendationLevel])}
+          tone={DECISION_SUPPORT_TONE[analysis.recommendationLevel]}
+          weight="strong"
+        />
+      </SummaryStat>
+      <SummaryStat label={t("investmentCase.hero.confidenceLabel")}>
+        <StatusBadge
+          label={t(CONVICTION_LEVEL_KEY[analysis.convictionLevel])}
+          tone={CONVICTION_TONE[analysis.convictionLevel]}
+        />
+      </SummaryStat>
+      <SummaryStat label={t("investmentCase.keyMetrics.expectedReturnLabel")}>
+        {analysis.longTermExpectedReturn ? (
+          <Text as="span" style={{ fontWeight: 600, fontSize: "var(--type-size-h5)" }}>
+            {formatPercent(analysis.longTermExpectedReturn.lowPercent)} {"→"}{" "}
+            {formatPercent(analysis.longTermExpectedReturn.highPercent)}
+          </Text>
+        ) : (
+          <StatusText label={t("investmentCase.keyMetrics.notYetAvailable")} tone="neutral" />
+        )}
+      </SummaryStat>
+      <SummaryStat label={t("investmentCase.keyMetrics.upsideDownsideLabel")}>
+        {analysis.longTermBullReturnPercent != null && analysis.longTermBearReturnPercent != null ? (
+          <Text as="span" style={{ fontWeight: 600, fontSize: "var(--type-size-h5)" }}>
+            {formatPercent(analysis.longTermBullReturnPercent)} {"/"}{" "}
+            {formatPercent(analysis.longTermBearReturnPercent)}
+          </Text>
+        ) : (
+          <StatusText label={t("investmentCase.keyMetrics.notYetAvailable")} tone="neutral" />
+        )}
+      </SummaryStat>
+    </Inline>
+  );
+}
+
 export function HeroCard({
   ticker,
   analysis,
@@ -346,6 +421,8 @@ export function HeroCard({
         </>
       ) : (
         <>
+          <ExecutiveSummaryBar analysis={analysis} t={t} />
+
           {/* One sentence -- the conclusion, plus its tension where one
               genuinely exists (`APP-003` ATM-R-002). Prose supports the
               Key Metrics row below, it does not restate it. */}

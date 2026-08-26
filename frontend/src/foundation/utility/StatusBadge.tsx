@@ -5,6 +5,15 @@ export type StatusTone = "positive" | "caution" | "critical" | "neutral";
 interface StatusBadgeProps extends HTMLAttributes<HTMLSpanElement> {
   label: string;
   tone?: StatusTone;
+  /** Editorial Design Sprint P3 -- `"outline"` (default, unchanged) is
+   * the existing thin-border chip every current caller already renders.
+   * `"strong"` is additive: a filled, higher-contrast treatment for the
+   * one badge a page wants read before anything else is (Recommendation
+   * on Investment Case's own new summary bar, "Current view" on
+   * Portfolio/Watchlist) -- same four tones, same enum-to-tone maps in
+   * `status/statusTone.ts`, purely a heavier rendering for the single
+   * PRIMARY signal on a page, never a new categorical meaning. */
+  weight?: "outline" | "strong";
 }
 
 const toneColor: Record<StatusTone, string> = {
@@ -12,6 +21,13 @@ const toneColor: Record<StatusTone, string> = {
   caution: "var(--color-semantic-amber)",
   critical: "var(--color-semantic-red)",
   neutral: "var(--color-text-tertiary)",
+};
+
+const toneSoftBackground: Record<StatusTone, string> = {
+  positive: "var(--global-color-green-soft)",
+  caution: "var(--global-color-amber-soft)",
+  critical: "var(--global-color-red-soft)",
+  neutral: "var(--surface-elevated)",
 };
 
 /**
@@ -33,20 +49,23 @@ const toneColor: Record<StatusTone, string> = {
  * text color for the "nothing to signal" case — never a fifth,
  * invented hue.
  */
-export function StatusBadge({ label, tone = "neutral", style, ...rest }: StatusBadgeProps) {
+export function StatusBadge({ label, tone = "neutral", weight = "outline", style, ...rest }: StatusBadgeProps) {
   const color = toneColor[tone];
+  const isStrong = weight === "strong";
   return (
     <span
       {...rest}
       style={{
         display: "inline-flex",
         alignItems: "center",
-        padding: "0.125rem var(--space-metadata)",
+        padding: isStrong ? "0.3rem var(--space-row)" : "0.125rem var(--space-metadata)",
         borderRadius: "var(--radius-chip)",
         border: `var(--width-border-hairline) solid ${color}`,
+        background: isStrong ? toneSoftBackground[tone] : "transparent",
         color,
         fontFamily: "var(--type-family-metadata)",
-        fontSize: "var(--type-body-min-size)",
+        fontSize: isStrong ? "var(--type-size-h5)" : "var(--type-body-min-size)",
+        fontWeight: isStrong ? 600 : 400,
         lineHeight: "var(--type-body-line-height)",
         whiteSpace: "nowrap",
         ...style,

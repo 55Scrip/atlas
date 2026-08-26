@@ -1771,7 +1771,20 @@ function PortfolioOverallConclusion({
   if (status.kind !== "loaded") return null;
   const count = status.items.length;
   return (
-    <Text as="p" style={{ fontFamily: "var(--type-family-prose)", fontSize: "var(--type-size-h5)", lineHeight: 1.6 }}>
+    // Editorial Design Sprint P3 (Phase 2/11): the page's own headline
+    // register -- the display face, sized like a real conclusion, not
+    // a body sentence -- so a reader's eye lands here first, before
+    // the supporting stat strip below. Same real count, same copy;
+    // only the typographic weight changed.
+    <Text
+      as="p"
+      style={{
+        fontFamily: "var(--type-family-display)",
+        fontSize: "var(--type-size-h3)",
+        lineHeight: "var(--type-heading-line-height)",
+        color: "var(--color-text-primary)",
+      }}
+    >
       {count === 0
         ? t("portfolio.overallConclusion.noIssues")
         : t(count === 1 ? "portfolio.overallConclusion.attentionCountOne" : "portfolio.overallConclusion.attentionCountOther", {
@@ -2308,7 +2321,7 @@ function HoldingsTableRow({
         <td style={cellStyle}>{holding.weightPercent}%</td>
         <td style={cellStyle}>
           {stanceLevel ? (
-            <StanceBadge level={stanceLevel} />
+            <StanceBadge level={stanceLevel} weight="strong" />
           ) : (
             <Text color="tertiary" as="span">
               {t("portfolio.holdingsTable.coverage.new")}
