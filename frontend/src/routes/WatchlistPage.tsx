@@ -6,8 +6,6 @@ import { useTranslation, type TranslationKey } from "../i18n";
 import {
   CONFIDENCE_KEY,
   CONFIDENCE_TONE,
-  DATA_FRESHNESS_STATUS_KEY,
-  DATA_FRESHNESS_STATUS_TONE,
   DECISION_SUPPORT_BADGE_KEY,
   DECISION_SUPPORT_TONE,
   type DataFreshnessStatus,
@@ -572,20 +570,20 @@ function WatchlistTable({
         <thead>
           <tr>
             <th style={headerCellStyle}>{t("watchlist.table.companyHeader")}</th>
-            {/* Product Intelligence Sprint 2: the page's own Mission --
-                "which companies deserve my attention today, and why" --
-                made a first-class column, positioned right after Company
-                as the row's own most decision-relevant fact. */}
-            <th style={headerCellStyle}>{t("watchlist.table.attentionHeader")}</th>
             <th style={headerCellStyle}>{t("watchlist.table.sectorHeader")}</th>
-            {/* Internal Alpha Stabilization: was "Status" -- the exact
-                same `DecisionSupportLevel` badge is labeled "Decision
-                Support" on Portfolio's Holdings table and Company
-                Workspace; standardized here so identical information
-                carries the identical label everywhere it appears. */}
-            <th style={headerCellStyle}>{t("watchlist.table.decisionSupportHeader")}</th>
-            <th style={headerCellStyle}>{t("watchlist.table.coverageHeader")}</th>
-            <th style={headerCellStyle}>{t("watchlist.table.monitoringHeader")}</th>
+            {/* Status Consolidation (Implementation Sprint B3): the prior
+                Decision Support/Coverage/Monitoring three-badge spread is
+                replaced by the same "Current view" + "Why" pair Portfolio's
+                own Holdings Table now leads with -- Current view is the
+                same real `recommendation.level` (Decision Support) badge,
+                unchanged and unrenamed in its own data; Why is the same
+                real Agenda signal `AttentionCell` already rendered, just
+                under a name that states its purpose instead of its source.
+                Coverage and Monitoring freshness remain real, available
+                data -- one click into the Investment Case away -- they no
+                longer compete for attention as separate row badges. */}
+            <th style={headerCellStyle}>{t("watchlist.table.currentViewHeader")}</th>
+            <th style={headerCellStyle}>{t("watchlist.table.whyHeader")}</th>
             <th style={headerCellStyle}>{t("watchlist.table.addedHeader")}</th>
             <th style={headerCellStyle} />
           </tr>
@@ -666,7 +664,6 @@ function WatchlistTableRow({
   const loaded = rowStatus?.kind === "loaded" ? rowStatus.analysis : null;
   const companyName = loaded?.companyProfile?.name ?? entry.ticker;
   const sector = loaded?.companyProfile?.sector;
-  const coverage = loaded ? loaded.evidenceQuality?.coverage ?? loaded.confidence : null;
   const addedDate = new Date(entry.addedAt).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
 
   const [removeStatus, setRemoveStatus] = useState<RemoveStatus>({ kind: "idle" });
@@ -758,9 +755,6 @@ function WatchlistTableRow({
         </Inline>
       </td>
       <td style={cellStyle}>
-        <AttentionCell ticker={entry.ticker} agendaStatus={agendaStatus} t={t} />
-      </td>
-      <td style={cellStyle}>
         <Text as="span" color="secondary">
           {sector ?? t("watchlist.table.notAvailable")}
         </Text>
@@ -779,25 +773,7 @@ function WatchlistTableRow({
         )}
       </td>
       <td style={cellStyle}>
-        {coverage ? (
-          <StatusBadge label={t(CONFIDENCE_KEY[coverage])} tone={CONFIDENCE_TONE[coverage]} />
-        ) : (
-          <Text as="span" color="tertiary">
-            {t("watchlist.table.notAvailable")}
-          </Text>
-        )}
-      </td>
-      <td style={cellStyle}>
-        {loaded?.operationalFreshness ? (
-          <StatusBadge
-            label={t(DATA_FRESHNESS_STATUS_KEY[loaded.operationalFreshness.dataFreshnessStatus])}
-            tone={DATA_FRESHNESS_STATUS_TONE[loaded.operationalFreshness.dataFreshnessStatus]}
-          />
-        ) : (
-          <Text as="span" color="tertiary">
-            {t("watchlist.table.notAvailable")}
-          </Text>
-        )}
+        <AttentionCell ticker={entry.ticker} agendaStatus={agendaStatus} t={t} />
       </td>
       <td style={{ ...cellStyle, fontVariantNumeric: "tabular-nums" }}>
         <Text as="span" color="secondary">

@@ -255,7 +255,12 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     // workflow item's headline is now composed and translated from
     // `attentionCategory`/`attentionCount`, never the backend's raw
     // English `headline` string -- see `describeAgendaHeadline.ts`.
-    expect(screen.getByText(/utfall utan verkställande/)).toBeInTheDocument();
+    // Status Consolidation (Implementation Sprint B3): the same real
+    // headline now renders twice by design -- once in the Attention
+    // Required section, once in the Holdings Table's own "Change"
+    // column below -- the same "one real signal, shown compactly in
+    // two places" pattern established for Watchlist's Hero + table.
+    expect(screen.getAllByText(/utfall utan verkställande/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/outcome without execution/)).not.toBeInTheDocument();
   });
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { ACCENT_LINK_STYLE, Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, StatusText, Surface, Text, VisuallyHidden } from "../foundation";
+import { ACCENT_LINK_STYLE, Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, Surface, Text, VisuallyHidden } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   deriveActivity,
@@ -15,7 +15,6 @@ import {
 import {
   DECISION_SUPPORT_BADGE_KEY,
   DECISION_SUPPORT_TONE,
-  ANALYSIS_COVERAGE_TONE,
   type AnalysisCoverageLevel,
   type ConvictionLevel,
   type DecisionSupportLevel,
@@ -27,12 +26,14 @@ import type { StatusTone } from "../foundation";
 import type { AnalysisRiskStatus } from "../changeIntelligence/describeChange";
 import { FitBadge } from "../portfolioFit/FitBadge";
 import { fetchPortfolioFitForHoldings, type PortfolioFitAssessmentView, type FitRating } from "../portfolioFit/portfolioFitApi";
-import { fetchStanceForHoldings, type TickerStanceView } from "../stance/stanceApi";
+import { fetchStanceForHoldings, type TickerStanceView, type StanceView } from "../stance/stanceApi";
 import { StanceBadge } from "../stance/StanceBadge";
+import { primaryStanceReason, stanceReasonSentence } from "../stance/describeStance";
 import type { StanceLevel } from "../status/statusTone";
 import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
 import { AgendaItemRow } from "../dailyBriefAgenda/AgendaItemRow";
 import { PriorityBadge } from "../dailyBriefAgenda/PriorityBadge";
+import { agendaItemHeadline } from "../dailyBriefAgenda/describeAgendaHeadline";
 import { fetchDailyBriefAgenda, type AgendaItemView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
 import { MonitoringFreshnessNote } from "../monitoring/MonitoringFreshnessNote";
 import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNote";
@@ -124,19 +125,6 @@ type StanceHoldingsFetchStatus =
  * stays English on the wire, per the localization architecture. This
  * maps it to a translated word only where it's displayed.
  */
-/** Holdings table Coverage column (Portfolio Workspace v1) -- the
- * approved frame shows a binary Covered/Not Covered display, but the
- * real `AnalysisCoverageLevel` has three honest states. Collapsing
- * `partial_coverage` into "Covered" would misrepresent real data, so
- * it gets its own distinct label ("Partial") rather than being folded
- * into either binary state -- a deliberate, documented deviation from
- * the frame's own two-state display, not a Figma-fidelity gap. */
-const COVERAGE_DISPLAY_KEY: Record<AnalysisCoverageLevel, TranslationKey> = {
-  substantial_coverage: "portfolio.holdingsTable.coverage.substantial_coverage",
-  partial_coverage: "portfolio.holdingsTable.coverage.partial_coverage",
-  no_coverage: "portfolio.holdingsTable.coverage.no_coverage",
-};
-
 const CONCENTRATION_LEVEL_KEY: Record<string, TranslationKey> = {
   Low: "portfolio.concentrationLevel.low",
   Moderate: "portfolio.concentrationLevel.moderate",
@@ -788,8 +776,12 @@ export function PortfolioPage() {
    * in one place and Normal in another using separate logic. */
   const agendaItems = dailyBriefAgenda.kind === "loaded" ? dailyBriefAgenda.items : [];
   const priorityByTicker = new Map<string, PriorityLevel>();
+  const agendaItemByTicker = new Map<string, AgendaItemView>();
   for (const item of agendaItems) {
-    if (item.ticker) priorityByTicker.set(item.ticker, item.priority);
+    if (item.ticker) {
+      priorityByTicker.set(item.ticker, item.priority);
+      agendaItemByTicker.set(item.ticker, item);
+    }
   }
   const criticalAgendaCount = agendaItems.filter((item) => item.priority === "critical").length;
 
@@ -810,8 +802,15 @@ export function PortfolioPage() {
    * Table's own Recommendation column and sort. */
   const stanceEntries = stanceHoldings.kind === "loaded" ? stanceHoldings.entries : [];
   const stanceByTicker = new Map<string, StanceLevel>();
+  /** Status Consolidation (Implementation Sprint B3): the same
+   * already-fetched entries, kept as full `StanceView` objects (not
+   * just `.level`) so the Holdings Table's "Why" column can read
+   * `.reasoning[0]` -- no new fetch, `stanceByTicker` above is
+   * untouched and still feeds `sortHoldings`'s own "stance" sort key. */
+  const stanceViewByTicker = new Map<string, StanceView>();
   for (const entry of stanceEntries) {
     stanceByTicker.set(entry.ticker, entry.stance.level);
+    stanceViewByTicker.set(entry.ticker, entry.stance);
   }
 
   return (
@@ -998,8 +997,10 @@ export function PortfolioPage() {
                   view={status.view}
                   cockpit={cockpit}
                   priorityByTicker={priorityByTicker}
+                  agendaItemByTicker={agendaItemByTicker}
                   fitByTicker={fitByTicker}
                   stanceByTicker={stanceByTicker}
+                  stanceViewByTicker={stanceViewByTicker}
                   caseCreateStatus={caseCreateStatus}
                   openInvestmentCase={openInvestmentCase}
                   expandedReconcileTicker={expandedReconcileTicker}
@@ -1922,8 +1923,10 @@ function HoldingsTable({
   view,
   cockpit,
   priorityByTicker,
+  agendaItemByTicker,
   fitByTicker,
   stanceByTicker,
+  stanceViewByTicker,
   caseCreateStatus,
   openInvestmentCase,
   expandedReconcileTicker,
@@ -1937,8 +1940,10 @@ function HoldingsTable({
   view: PortfolioView;
   cockpit: PortfolioCockpitFetchStatus;
   priorityByTicker: Map<string, PriorityLevel>;
+  agendaItemByTicker: Map<string, AgendaItemView>;
   fitByTicker: Map<string, PortfolioFitAssessmentView>;
   stanceByTicker: Map<string, StanceLevel>;
+  stanceViewByTicker: Map<string, StanceView>;
   caseCreateStatus: Record<string, CaseCreateStatus>;
   openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
   expandedReconcileTicker: string | null;
@@ -2042,27 +2047,27 @@ function HoldingsTable({
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.tickerHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.valueHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.shareHeader")}</th>
-                {/* Internal Alpha Stabilization: was the full "Portfolio
-                    Fit" section heading, verbatim -- a visibly longer,
-                    differently-registered label than every neighboring
-                    single-word column header, and a literal duplicate of
-                    the section heading rendered lower on this same page.
-                    `fitHeader` ("Fit") already existed for exactly this
-                    column but had gone unused since an earlier table
-                    redesign; revived rather than adding a new key. */}
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.fitHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.decisionSupportHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.attentionHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.coverageHeader")}</th>
-                <th style={headerCellStyle}>{t("stance.portfolio.columnLabel")}</th>
+                {/* Status Consolidation (Implementation Sprint B3): the
+                    prior Fit/Decision Support/Attention/Coverage/Stance
+                    five-column spread -- the exact "one company, five
+                    competing badges" problem this sprint exists to fix
+                    -- is replaced by the target column set the brief
+                    itself names: Current view (Stance, already the
+                    backend's own synthesis of all five signals) + Why
+                    (its own leading reason) + Change (the real Agenda
+                    signal, if any) + an explicit Action link. Fit and
+                    Coverage remain real, available data -- one click
+                    into the Investment Case away -- and their sort
+                    options below are unchanged, but they no longer
+                    compete for attention as separate row badges. */}
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.currentViewHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.whyHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.changeHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.actionHeader")}</th>
               </tr>
             </thead>
             <tbody>
               {visibleHoldings.map((holding) => {
-                const cockpitHolding =
-                  cockpit.kind === "loaded"
-                    ? cockpit.report.holdings.find((h) => h.ticker === holding.ticker)
-                    : undefined;
                 const isUnresolvedInCockpit =
                   cockpit.kind === "loaded" &&
                   cockpit.report.unresolvedHoldings.some((h) => h.ticker === holding.ticker);
@@ -2071,11 +2076,11 @@ function HoldingsTable({
                   <HoldingsTableRow
                     key={holding.ticker}
                     holding={holding}
-                    cockpitHolding={cockpitHolding}
                     isUnresolvedInCockpit={isUnresolvedInCockpit}
-                    fitAssessment={fitByTicker.get(holding.ticker)}
                     stanceLevel={stanceByTicker.get(holding.ticker)}
+                    stanceView={stanceViewByTicker.get(holding.ticker)}
                     priority={priorityByTicker.get(holding.ticker)}
+                    agendaItem={agendaItemByTicker.get(holding.ticker)}
                     thisCaseCreateStatus={caseCreateStatus[holding.ticker] ?? { kind: "idle" }}
                     thisReconcileStatus={reconcileStatus[holding.ticker] ?? { kind: "idle" }}
                     openInvestmentCase={openInvestmentCase}
@@ -2159,11 +2164,11 @@ function HoldingsTable({
  */
 function HoldingsTableRow({
   holding,
-  cockpitHolding,
   isUnresolvedInCockpit,
-  fitAssessment,
   stanceLevel,
+  stanceView,
   priority,
+  agendaItem,
   thisCaseCreateStatus,
   thisReconcileStatus,
   openInvestmentCase,
@@ -2176,11 +2181,11 @@ function HoldingsTableRow({
   t,
 }: {
   holding: HoldingView;
-  cockpitHolding: PortfolioCockpitHoldingView | undefined;
   isUnresolvedInCockpit: boolean;
-  fitAssessment: PortfolioFitAssessmentView | undefined;
   stanceLevel: StanceLevel | undefined;
+  stanceView: StanceView | undefined;
   priority: PriorityLevel | undefined;
+  agendaItem: AgendaItemView | undefined;
   thisCaseCreateStatus: CaseCreateStatus;
   thisReconcileStatus: ReconcileStatus;
   openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
@@ -2268,46 +2273,6 @@ function HoldingsTableRow({
         <td style={cellStyle}>{holding.valueAbsolute !== null ? holding.valueAbsolute : "—"}</td>
         <td style={cellStyle}>{holding.weightPercent}%</td>
         <td style={cellStyle}>
-          {fitAssessment ? (
-            <FitBadge rating={fitAssessment.overall} />
-          ) : (
-            <Text color="tertiary" as="span">
-              {t("portfolio.header.notAvailable")}
-            </Text>
-          )}
-        </td>
-        <td style={cellStyle}>
-          {cockpitHolding ? (
-            <StatusBadge
-              label={t(DECISION_SUPPORT_BADGE_KEY[cockpitHolding.decisionSupport.level])}
-              tone={DECISION_SUPPORT_TONE[cockpitHolding.decisionSupport.level]}
-            />
-          ) : (
-            <Text color="tertiary" as="span">
-              {t("portfolio.holdingsTable.coverage.new")}
-            </Text>
-          )}
-        </td>
-        <td style={cellStyle}>
-          {priority ? (
-            <PriorityBadge priority={priority} />
-          ) : (
-            <Text color="tertiary" as="span">
-              {t("portfolio.holdingsTable.attention.none")}
-            </Text>
-          )}
-        </td>
-        <td style={cellStyle}>
-          {cockpitHolding ? (
-            <StatusText
-              label={t(COVERAGE_DISPLAY_KEY[cockpitHolding.analysisCoverage.level])}
-              tone={ANALYSIS_COVERAGE_TONE[cockpitHolding.analysisCoverage.level]}
-            />
-          ) : (
-            <StatusText label={t("portfolio.holdingsTable.coverage.new")} />
-          )}
-        </td>
-        <td style={cellStyle}>
           {stanceLevel ? (
             <StanceBadge level={stanceLevel} />
           ) : (
@@ -2316,10 +2281,53 @@ function HoldingsTableRow({
             </Text>
           )}
         </td>
+        <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)", maxWidth: "320px" }}>
+          {stanceView ? (
+            (() => {
+              const primaryReason = primaryStanceReason(stanceView);
+              return primaryReason ? (
+                <Text as="span">{stanceReasonSentence(primaryReason, t)}</Text>
+              ) : (
+                <Text color="tertiary" as="span">
+                  {t("portfolio.holdingsTable.coverage.new")}
+                </Text>
+              );
+            })()
+          ) : (
+            <Text color="tertiary" as="span">
+              {t("portfolio.holdingsTable.coverage.new")}
+            </Text>
+          )}
+        </td>
+        <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)", maxWidth: "260px" }}>
+          <Inline gap="metadata" align="baseline" wrap>
+            {priority && <PriorityBadge priority={priority} />}
+            {agendaItem ? (
+              <Text as="span">{agendaItemHeadline(agendaItem, t)}</Text>
+            ) : (
+              <Text as="span" color="tertiary">
+                {t("watchlist.attention.noSignificantChanges")}
+              </Text>
+            )}
+          </Inline>
+        </td>
+        <td style={cellStyle}>
+          <Link
+            href="#"
+            style={{ color: "var(--global-color-accent)" }}
+            onClick={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+              handleRowActivate();
+            }}
+          >
+            {t("portfolio.holdingsTable.openAction")}
+          </Link>
+        </td>
       </tr>
       {isReconcileExpanded && (
         <tr>
-          <td colSpan={8} style={cellStyle}>
+          <td colSpan={7} style={cellStyle}>
             <Stack gap="inter-section">
               <Text color="tertiary" as="p">
                 {t("portfolio.holdings.awaitingReconciliation")}

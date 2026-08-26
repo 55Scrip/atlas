@@ -22,9 +22,6 @@ import {
   CONFIDENCE_TONE,
   CONVICTION_LEVEL_KEY,
   CONVICTION_TONE,
-  DECISION_SUPPORT_BADGE_KEY,
-  DECISION_SUPPORT_STATEMENT_KEY,
-  DECISION_SUPPORT_TONE,
   MISSING_EVALUATION_COPY_KEY,
   OUTLOOK_ALIGNMENT_KEY,
   REVIEW_PRIORITY_KEY,
@@ -840,11 +837,15 @@ function DecisionSupportCard({
   return (
     <Surface tier="primary">
       <Stack gap="metadata">
+        {/* Status Consolidation (Implementation Sprint B3): the
+            Recommendation badge + statement this card used to lead with
+            duplicated the exact same `report.recommendation.level`
+            HeroCard already shows as the page's own primary message,
+            above, in `CurrentPicture`. This card now shows only what
+            Hero doesn't -- the fuller decision-support detail below and
+            the real "Record Decision" action -- reinforcing the one
+            recommendation instead of restating it. */}
         <Label>{t("companyWorkspace.decisionSupport.heading")}</Label>
-        <StatusBadge label={t(DECISION_SUPPORT_BADGE_KEY[rec.level])} tone={DECISION_SUPPORT_TONE[rec.level]} />
-        <Text as="p" color="secondary">
-          {t(DECISION_SUPPORT_STATEMENT_KEY[rec.level])}
-        </Text>
         {rec.level === "insufficient_evidence" && rec.missingEvaluations.length > 0 && (
           <Stack gap="metadata">
             {rec.missingEvaluations.map((category) => (
