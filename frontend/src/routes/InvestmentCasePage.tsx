@@ -131,6 +131,8 @@ import {
   type FinancialPeriodView,
 } from "../investmentCase/FinancialsTable";
 import { HeroCard, type HeroAnalysisInput } from "../investmentCase/HeroCard";
+import { AtlasDecisionSummary } from "../investmentCase/AtlasDecisionSummary";
+import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
 import { AtlasOutlookSection, type OutlookView } from "../investmentCase/AtlasOutlookSection";
 import { InvestmentArgumentSection } from "../investmentCase/InvestmentArgumentSection";
 import {
@@ -3324,93 +3326,121 @@ export function InvestmentCasePage() {
                 a placeholder, never blocking the rest of the page. */}
             {evidenceGraphStatus.kind === "loaded" && <EvidenceGraphSection graph={evidenceGraphStatus.graph} t={t} />}
 
-            {/* Atlas Intelligence Sprint 11 (Decision Readiness &
-                Decision Eligibility, Deliverable 6). Independent fetch
-                (`decisionReadinessStatus`); renders nothing on error,
-                never blocking the rest of the page. */}
-            {decisionReadinessStatus.kind === "loaded" && (
-              <DecisionReadinessSection
-                readiness={decisionReadinessStatus.readiness}
-                change={decisionReadinessChange}
-                t={t}
-              />
-            )}
-
-            {/* Atlas Decision Layer Sprint 1 (Investment Decision
-                Synthesis, Deliverable 6). Independent fetch
-                (`investmentDecisionStatus`); renders nothing on error,
-                never blocking the rest of the page. */}
-            {investmentDecisionStatus.kind === "loaded" && (
-              <InvestmentDecisionSection
-                decision={investmentDecisionStatus.decision}
-                change={investmentDecisionChange}
-                t={t}
-              />
-            )}
-
-            {/* Atlas Decision Layer Sprint 2 (Recommendation Strength
-                & Conviction, Deliverable 6). Independent fetch
-                (`recommendationConvictionStatus`); renders nothing on
-                error, never blocking the rest of the page. */}
-            {recommendationConvictionStatus.kind === "loaded" && (
-              <RecommendationConvictionSection
-                conviction={recommendationConvictionStatus.conviction}
-                change={recommendationConvictionChange}
-                t={t}
-              />
-            )}
-
-            {/* Atlas Decision Layer Sprint 3 (Decision Path &
-                Required Progress, Deliverable 6). Independent fetch
-                (`decisionPathStatus`); renders nothing on error, never
-                blocking the rest of the page. */}
-            {decisionPathStatus.kind === "loaded" && (
-              <DecisionPathSection path={decisionPathStatus.path} change={decisionPathChange} t={t} />
-            )}
-
-            {/* Atlas Decision Layer Sprint 4 (Decision Alternatives &
-                Opportunity Cost, Deliverable 6). Independent fetch
-                (`opportunityCostStatus`); renders nothing when there
-                are no real alternatives, never blocking the rest of
-                the page. */}
-            {opportunityCostStatus.kind === "loaded" && (
-              <OpportunityCostSection
-                opportunityCost={opportunityCostStatus.opportunityCost}
-                currentTicker={resolvedTicker ?? ""}
-                change={opportunityCostChange}
-                t={t}
-              />
-            )}
-
-            {/* Atlas Decision Layer Sprint 5 (Decision Memory,
-                Deliverable 6). Independent fetch
-                (`decisionMemoryStatus`); renders nothing on error,
-                never blocking the rest of the page. */}
-            {decisionMemoryStatus.kind === "loaded" && <DecisionMemorySection memory={decisionMemoryStatus.memory} t={t} />}
-
-            {/* Atlas Decision Layer Sprint 6 (Decision Explanation &
-                Traceability, Deliverable 6). Independent fetch
-                (`decisionExplanationStatus`); renders nothing on
-                error, never blocking the rest of the page. */}
-            {decisionExplanationStatus.kind === "loaded" && (
-              <DecisionExplanationSection explanation={decisionExplanationStatus.explanation} t={t} />
-            )}
-
-            {/* Atlas Decision Layer Sprint 7 (Decision Reliability,
-                Deliverable 7). Independent fetch
-                (`decisionReliabilityStatus`); renders nothing on
-                error, never blocking the rest of the page. */}
+            {/* Information Compression (Productization Sprint P2, Phase
+                4 -- Decision-Layer Consolidation). The nine Decision
+                Layer sections below (Readiness through Portfolio
+                Decision) all independently restate one underlying
+                question -- "why isn't Atlas more certain, and what
+                would change that" -- each in its own vocabulary.
+                `AtlasDecisionSummary` answers it once, from the two
+                views built to already hold a single authoritative
+                answer (Decision Reliability's own `primaryLimitingReason`,
+                Decision Path's own `nextAchievableImprovement`) -- no
+                new fetch, no new computation. The nine sections
+                themselves are unchanged and un-deleted; they move into
+                one collapsed disclosure immediately below, so every
+                reason, count, and source tag they show remains exactly
+                as reachable as before -- only the default reading path
+                changes. */}
             {decisionReliabilityStatus.kind === "loaded" && (
-              <DecisionReliabilitySection reliability={decisionReliabilityStatus.reliability} t={t} />
+              <AtlasDecisionSummary
+                reliability={decisionReliabilityStatus.reliability}
+                path={decisionPathStatus.kind === "loaded" ? decisionPathStatus.path : null}
+                t={t}
+              />
             )}
 
-            {/* Atlas Decision Layer Sprint 8 (Portfolio Decision
-                Synthesis, Deliverable 7). Independent fetch
-                (`portfolioDecisionStatus`); renders nothing on error,
-                never blocking the rest of the page. */}
-            {portfolioDecisionStatus.kind === "loaded" && (
-              <PortfolioDecisionSection decision={portfolioDecisionStatus.decision} t={t} />
-            )}
+            <ExpandableDetail summaryLabel={t("investmentCase.decisionSummary.viewFullLabel")}>
+              <Stack gap="inter-section">
+                {/* Atlas Intelligence Sprint 11 (Decision Readiness &
+                    Decision Eligibility, Deliverable 6). Independent fetch
+                    (`decisionReadinessStatus`); renders nothing on error,
+                    never blocking the rest of the page. */}
+                {decisionReadinessStatus.kind === "loaded" && (
+                  <DecisionReadinessSection
+                    readiness={decisionReadinessStatus.readiness}
+                    change={decisionReadinessChange}
+                    t={t}
+                  />
+                )}
+
+                {/* Atlas Decision Layer Sprint 1 (Investment Decision
+                    Synthesis, Deliverable 6). Independent fetch
+                    (`investmentDecisionStatus`); renders nothing on error,
+                    never blocking the rest of the page. */}
+                {investmentDecisionStatus.kind === "loaded" && (
+                  <InvestmentDecisionSection
+                    decision={investmentDecisionStatus.decision}
+                    change={investmentDecisionChange}
+                    t={t}
+                  />
+                )}
+
+                {/* Atlas Decision Layer Sprint 2 (Recommendation Strength
+                    & Conviction, Deliverable 6). Independent fetch
+                    (`recommendationConvictionStatus`); renders nothing on
+                    error, never blocking the rest of the page. */}
+                {recommendationConvictionStatus.kind === "loaded" && (
+                  <RecommendationConvictionSection
+                    conviction={recommendationConvictionStatus.conviction}
+                    change={recommendationConvictionChange}
+                    t={t}
+                  />
+                )}
+
+                {/* Atlas Decision Layer Sprint 3 (Decision Path &
+                    Required Progress, Deliverable 6). Independent fetch
+                    (`decisionPathStatus`); renders nothing on error, never
+                    blocking the rest of the page. */}
+                {decisionPathStatus.kind === "loaded" && (
+                  <DecisionPathSection path={decisionPathStatus.path} change={decisionPathChange} t={t} />
+                )}
+
+                {/* Atlas Decision Layer Sprint 4 (Decision Alternatives &
+                    Opportunity Cost, Deliverable 6). Independent fetch
+                    (`opportunityCostStatus`); renders nothing when there
+                    are no real alternatives, never blocking the rest of
+                    the page. */}
+                {opportunityCostStatus.kind === "loaded" && (
+                  <OpportunityCostSection
+                    opportunityCost={opportunityCostStatus.opportunityCost}
+                    currentTicker={resolvedTicker ?? ""}
+                    change={opportunityCostChange}
+                    t={t}
+                  />
+                )}
+
+                {/* Atlas Decision Layer Sprint 5 (Decision Memory,
+                    Deliverable 6). Independent fetch
+                    (`decisionMemoryStatus`); renders nothing on error,
+                    never blocking the rest of the page. */}
+                {decisionMemoryStatus.kind === "loaded" && <DecisionMemorySection memory={decisionMemoryStatus.memory} t={t} />}
+
+                {/* Atlas Decision Layer Sprint 6 (Decision Explanation &
+                    Traceability, Deliverable 6). Independent fetch
+                    (`decisionExplanationStatus`); renders nothing on
+                    error, never blocking the rest of the page. */}
+                {decisionExplanationStatus.kind === "loaded" && (
+                  <DecisionExplanationSection explanation={decisionExplanationStatus.explanation} t={t} />
+                )}
+
+                {/* Atlas Decision Layer Sprint 7 (Decision Reliability,
+                    Deliverable 7). Independent fetch
+                    (`decisionReliabilityStatus`); renders nothing on
+                    error, never blocking the rest of the page. */}
+                {decisionReliabilityStatus.kind === "loaded" && (
+                  <DecisionReliabilitySection reliability={decisionReliabilityStatus.reliability} t={t} />
+                )}
+
+                {/* Atlas Decision Layer Sprint 8 (Portfolio Decision
+                    Synthesis, Deliverable 7). Independent fetch
+                    (`portfolioDecisionStatus`); renders nothing on error,
+                    never blocking the rest of the page. */}
+                {portfolioDecisionStatus.kind === "loaded" && (
+                  <PortfolioDecisionSection decision={portfolioDecisionStatus.decision} t={t} />
+                )}
+              </Stack>
+            </ExpandableDetail>
 
             <Divider tone="hairline" />
 

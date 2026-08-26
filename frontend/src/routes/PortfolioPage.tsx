@@ -1715,7 +1715,12 @@ const HOLDINGS_PAGE_SIZE = 15;
  * per-holding detail page (`/portfolio/holding/:ticker`) can show the
  * exact same "why" text this row already showed, never a second,
  * independently-worded reason. */
-const AGENDA_INITIAL_COUNT = 4;
+/** Information Compression (Productization Sprint P2, Phase 8 --
+ * Information Budget): Portfolio's first screen budgets a maximum of
+ * 3 default Attention items -- the same real, already-sorted list,
+ * just a shorter initial slice; "View all attention items" still
+ * reaches every item, unchanged. */
+const AGENDA_INITIAL_COUNT = 3;
 
 /** Implementation Sprint B2 (Hero Reordering) -- Decision First's own
  * step 1 for Portfolio: one sentence, before anything else, reusing

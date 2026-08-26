@@ -877,6 +877,10 @@ export const en = {
   "investmentCase.uncertain.awaitingReconciliation":
     "The latest allocation requires reconciliation.",
 
+  // ---------- investment case v2: decision summary (Productization Sprint P2) ----------
+  "investmentCase.decisionSummary.heading": "Why Atlas isn't more certain",
+  "investmentCase.decisionSummary.viewFullLabel": "See Atlas's full decision reasoning",
+
   // ---------- investment case v2: more details ----------
   "investmentCase.moreDetails.heading": "More details",
   "investmentCase.moreDetails.subheading": "Underlying record",

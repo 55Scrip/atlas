@@ -868,6 +868,10 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.uncertain.percentOnly": "Påverkan på portföljen kan bara uttryckas i procent.",
   "investmentCase.uncertain.awaitingReconciliation": "Den senaste fördelningen behöver stämmas av.",
 
+  // ---------- investment case v2: decision summary (Productization Sprint P2) ----------
+  "investmentCase.decisionSummary.heading": "Varför Atlas inte är säkrare",
+  "investmentCase.decisionSummary.viewFullLabel": "Se Atlas fullständiga beslutsresonemang",
+
   // ---------- investment case v2: more details ----------
   "investmentCase.moreDetails.heading": "Mer information",
   "investmentCase.moreDetails.subheading": "Underliggande dokumentation",
