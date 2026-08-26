@@ -127,17 +127,61 @@ _ROLE_KEYWORDS: tuple[tuple[str, ExecutiveRoleCategory], ...] = (
     ("director", ExecutiveRoleCategory.BOARD_DIRECTOR),
 )
 """Priority-ordered, literal substring matches only -- a title that
-matches none of these (or is `None`) resolves to `OTHER_EXECUTIVE`,
-never a guess (Phase 2's own "do not infer titles that are not
-explicitly supported by source material")."""
+matches none of these falls through to the non-executive exclusion
+check below, never a guess (Phase 2's own "do not infer titles that
+are not explicitly supported by source material")."""
 
 _INTERIM_KEYWORD = "interim"
 
+#: Trust Hardening Sprint: Alpha Vantage's own transcript metadata
+#: reports these literally and consistently -- confirmed against real,
+#: already-ingested AMAT transcripts: every sell-side participant's
+#: title is exactly `"Analyst (<firm>)"` (e.g. `"Analyst (Bernstein
+#: Research)"`), and the call moderator's title is exactly
+#: `"Operator"`. Neither is a guess or a heuristic threshold -- both are
+#: literal, structural substrings Alpha Vantage itself always includes,
+#: the same "real, disclosed textual evidence, never an inference"
+#: discipline this module's own docstring already requires elsewhere
+#: (see Succession Knowledge/Role-change detection above). A speaker
+#: whose title contains either marker is never a company executive,
+#: regardless of what other words the title contains.
+_NON_EXECUTIVE_KEYWORDS = ("analyst", "operator", "moderator")
 
-def _role_category(title: str | None) -> ExecutiveRoleCategory:
+#: Investor Relations staff (confirmed real example: "Corporate Vice
+#: President, Investor Relations") are real company employees, but an
+#: IR title alone does not identify a leadership role -- only tracked
+#: as an executive when the title *also* carries one of the real
+#: `_ROLE_KEYWORDS` matches above (checked first, so this never
+#: excludes a genuine "Chief Investor Relations Officer"-style title).
+_INVESTOR_RELATIONS_KEYWORD = "investor relations"
+
+
+def _role_category(title: str | None) -> ExecutiveRoleCategory | None:
+    """Returns `None` -- never `OTHER_EXECUTIVE` -- for a speaker who is
+    not a company executive at all: an analyst, the call operator, or
+    an untitled/unknown speaker (Phase 5's own "unknown roles must not
+    default into executive identities"). `OTHER_EXECUTIVE` remains the
+    real, honest catch-all for a genuinely-titled executive whose exact
+    role just isn't one of the specific keywords tracked above -- it is
+    never a default for "we don't know who this is.\""""
     if title is None:
-        return ExecutiveRoleCategory.OTHER_EXECUTIVE
+        return None
     lowered = title.lower()
+    if any(keyword in lowered for keyword in _NON_EXECUTIVE_KEYWORDS):
+        return None
+    if _INVESTOR_RELATIONS_KEYWORD in lowered:
+        # Checked before the keyword loop below, not after: an
+        # "Investor Relations" title very commonly carries "Vice
+        # President" (the real, confirmed example this sprint found --
+        # "Corporate Vice President, Investor Relations" -- would
+        # otherwise falsely match the bare "president" keyword). A
+        # title that is genuinely both IR *and* a real top executive
+        # role would need a stronger, unambiguous marker than "vice
+        # president" to overturn this -- none of `_ROLE_KEYWORDS`'
+        # entries besides "president"/"chairman"/"chair" are broad
+        # enough to accidentally fire here, and those three are exactly
+        # the ones this exclusion exists to guard against.
+        return None
     for keyword, category in _ROLE_KEYWORDS:
         if keyword in lowered:
             return category
@@ -188,6 +232,8 @@ def _extract_identities(ticker: str | None, earnings_call: EarningsCallKnowledge
         seen_this_transcript: set[tuple[str, ExecutiveRoleCategory]] = set()
         for statement in transcript.statements:
             role_category = _role_category(statement.title)
+            if role_category is None:
+                continue
             key = (statement.speaker, role_category)
             entry = accumulators.setdefault(key, {"dates": [], "transcripts": [], "raw_title": None, "statement_count": 0})
             entry["statement_count"] += 1

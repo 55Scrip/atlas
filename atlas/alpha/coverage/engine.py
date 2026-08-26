@@ -160,6 +160,25 @@ def _derive_confidence(
         reasons.append(ConfidenceReason(ConfidenceReasonCode.THESIS_STALE))
 
     if not available and not partial:
+        # Trust Hardening Sprint: this is the identical real-world fact
+        # the `if not live` branch above already exists to name --
+        # "Atlas has no real conclusion for this company from any
+        # dimension" -- just reached via `UNAVAILABLE`/
+        # `INSUFFICIENT_EVIDENCE` dimensions instead of `NOT_APPLICABLE`
+        # ones. `_classify_business`/`_classify_valuation`/`_classify_risk`
+        # only produce `NOT_APPLICABLE` for a few specific, named gap
+        # kinds (e.g. `NO_EXTERNAL_DATA_SOURCE_CONNECTED`); a company
+        # with genuinely zero ingested data (BTC, INVE-B -- confirmed
+        # live, this sprint) classifies as `UNAVAILABLE` instead, so
+        # `not live` was never true for them and this branch's own
+        # `NO_COMPANY_DATA` signal never reached `stance.engine`'s
+        # "real red flag vs. no data at all" gate -- the exact,
+        # traced cause of a zero-data holding rendering as a red flag
+        # identical to one with a genuine, evidence-backed contradiction.
+        # Naming the fact once, here, correctly, fixes every downstream
+        # reader (`stance`, `decision_reliability`, `explainability`,
+        # `materiality`) that already keys off this one reason code.
+        reasons.append(ConfidenceReason(ConfidenceReasonCode.NO_COMPANY_DATA))
         return ConfidenceLevel.VERY_LIMITED, tuple(reasons)
     if has_contradiction:
         return ConfidenceLevel.LIMITED, tuple(reasons)

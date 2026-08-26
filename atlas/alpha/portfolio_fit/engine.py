@@ -52,7 +52,6 @@ from atlas.analysis_engine.outlook import HorizonOutlook
 from atlas.analysis_engine.risk.models import EVALUATED_RISK_CATEGORIES, RiskAnalysisResult, RiskStatus
 from atlas.analysis_engine.valuation.models import ValuationEngineResult, ValuationMethodKind, ValuationStatus
 from atlas.analysis_engine.valuation.support import ValuationSupport, ValuationSupportStatus
-from atlas.decision_engine.contracts import EvaluationState
 from atlas.domains.portfolio.models import ConcentrationLevel
 
 __all__ = ["assess_portfolio_fit", "compare_fit"]
@@ -76,8 +75,27 @@ def _utc_now() -> datetime:
 # ---------------------------------------------------------------------
 
 
+#: Trust Hardening Sprint: `BusinessAnalysisResult.state` is *always*
+#: `EvaluationState.EVALUATED` (see that class's own docstring --
+#: "assembling six conclusions, honest or real, is itself a real,
+#: deterministic result"), so gating on `.state` here was dead code --
+#: it never distinguished a company with real findings from one where
+#: every category came back `INSUFFICIENT_INPUT`/`NOT_EVALUATED`. The
+#: real signal is whether any *individual* category reached a real
+#: conclusion, the same `WEAK`/`MODERATE`/`STRONG` set
+#: `investment_case_lifecycle.engine._BUSINESS_REAL_STATUSES` and
+#: `direction_selector._INCONCLUSIVE_BUSINESS_STATUSES` already both
+#: use for the identical distinction -- defined locally here rather
+#: than imported, mirroring how `direction_selector.py` itself defines
+#: its own copy rather than reaching into a sibling package.
+_REAL_BUSINESS_STATUSES = frozenset(
+    {BusinessCategoryStatus.WEAK, BusinessCategoryStatus.MODERATE, BusinessCategoryStatus.STRONG}
+)
+
+
 def _business_fit(business_analysis) -> FitDimension:  # noqa: ANN001 -- BusinessAnalysisResult
-    if business_analysis.state is not EvaluationState.EVALUATED:
+    statuses = [finding.status for finding in business_analysis.findings]
+    if not any(status in _REAL_BUSINESS_STATUSES for status in statuses):
         return FitDimension(
             kind=FitDimensionKind.BUSINESS,
             rating=FitRating.UNAVAILABLE,
@@ -85,7 +103,6 @@ def _business_fit(business_analysis) -> FitDimension:  # noqa: ANN001 -- Busines
             unavailable_reason="Business analysis has not reached a full evaluation for this Case yet.",
         )
 
-    statuses = [finding.status for finding in business_analysis.findings]
     strong = statuses.count(BusinessCategoryStatus.STRONG)
     moderate = statuses.count(BusinessCategoryStatus.MODERATE)
     weak = statuses.count(BusinessCategoryStatus.WEAK)
@@ -169,8 +186,18 @@ def _valuation_fit(valuation_engine: ValuationEngineResult, valuation_support: V
 # Risk Fit
 # ---------------------------------------------------------------------
 
+#: Trust Hardening Sprint: the same dead-code gate as `_business_fit`
+#: above -- `RiskAnalysisResult.state` is always `EVALUATED` by its own
+#: contract. Real signal is whether any evaluated category reached a
+#: real conclusion (`LOW`/`MODERATE`/`HIGH`), matching
+#: `investment_case_lifecycle.engine._RISK_REAL_STATUSES` exactly.
+_REAL_RISK_STATUSES = frozenset({RiskStatus.LOW, RiskStatus.MODERATE, RiskStatus.HIGH})
+
+
 def _risk_fit(risk_analysis: RiskAnalysisResult) -> FitDimension:
-    if risk_analysis.state is not EvaluationState.EVALUATED:
+    relevant = [f for f in risk_analysis.findings if f.category in EVALUATED_RISK_CATEGORIES]
+    statuses = [f.status for f in relevant]
+    if not any(status in _REAL_RISK_STATUSES for status in statuses):
         return FitDimension(
             kind=FitDimensionKind.RISK,
             rating=FitRating.UNAVAILABLE,
@@ -178,8 +205,6 @@ def _risk_fit(risk_analysis: RiskAnalysisResult) -> FitDimension:
             unavailable_reason="Risk analysis has not reached a full evaluation for this Case yet.",
         )
 
-    relevant = [f for f in risk_analysis.findings if f.category in EVALUATED_RISK_CATEGORIES]
-    statuses = [f.status for f in relevant]
     high = statuses.count(RiskStatus.HIGH)
     moderate = statuses.count(RiskStatus.MODERATE)
     low = statuses.count(RiskStatus.LOW)
@@ -356,6 +381,25 @@ def _overall_fit(dimensions: tuple[FitDimension, ...]) -> tuple[FitRating, tuple
     evaluated = [d for d in dimensions if d.rating is not FitRating.UNAVAILABLE]
     if not evaluated:
         return FitRating.UNAVAILABLE, ("No dimension could be evaluated for this company.",)
+
+    # Trust Hardening Sprint: an overall verdict is a statement about
+    # how well *this company* fits the portfolio -- it must never rest
+    # solely on portfolio-structural dimensions (Allocation, Expected
+    # Contribution, Cash Impact) that need no company-specific data at
+    # all. Business/Valuation/Risk are the only dimensions that read
+    # real, ingested company analysis (`CanonicalAnalysis`) -- if none
+    # of the three ever reached a real conclusion, Atlas knows nothing
+    # about the company itself, and no overall rating may be produced,
+    # regardless of how favorable the structural dimensions look (this
+    # is exactly how a zero-data holding like BTC previously reached
+    # "Good"/"Excellent" fit purely from its position size and the
+    # portfolio's cash level).
+    analytical_kinds = (FitDimensionKind.BUSINESS, FitDimensionKind.VALUATION, FitDimensionKind.RISK)
+    if not any(d.kind in analytical_kinds for d in evaluated):
+        return FitRating.UNAVAILABLE, (
+            "No company-level analysis (Business, Valuation, or Risk) has been evaluated yet -- "
+            "portfolio-context dimensions alone cannot establish a fit verdict for this company.",
+        )
 
     counts = {rating: sum(1 for d in evaluated if d.rating is rating) for rating in _ORDERED_RATINGS}
     risk = next((d for d in evaluated if d.kind is FitDimensionKind.RISK), None)

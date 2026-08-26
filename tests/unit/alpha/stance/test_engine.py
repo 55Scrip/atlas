@@ -127,24 +127,27 @@ def _fit(rating: FitRating) -> PortfolioFitAssessment:
 
 
 class TestNoCompanyDataFloor:
-    def test_zero_records_and_zero_investor_evidence_is_avoid_decision(self):
-        """`StanceReasonCode.NO_COMPANY_DATA` (like Sprint 1's own
-        `ConfidenceReasonCode.NO_COMPANY_DATA`) is currently unreachable
-        in practice: 7 of the 14 dimensions always carry a real Finding
-        object regardless of data, so `coverage.reasoning` never actually
-        names it for a real `assemble_analysis` call. With zero records
-        and zero investor evidence, Conviction's own, already-reliable
-        gate (`evidence_coverage in (NOT_APPLICABLE, NONE)`) fires first
-        and correctly produces `INSUFFICIENT_EVIDENCE` -- this engine
-        honestly propagates that into `AVOID_DECISION`, a defensible
-        outcome for a case with neither company data nor investor
-        evidence, not a bug."""
+    def test_zero_records_and_zero_investor_evidence_is_no_recommendation(self):
+        """Trust Hardening Sprint: `ConfidenceReasonCode.NO_COMPANY_DATA`
+        previously only fired when every dimension was `NOT_APPLICABLE`
+        (`coverage.engine._derive_confidence`'s own `if not live` gate),
+        but a genuinely zero-data company (confirmed live: BTC, INVE-B)
+        classifies its dimensions as `UNAVAILABLE`, not `NOT_APPLICABLE`
+        -- so that gate never fired, Conviction's `INSUFFICIENT_EVIDENCE`
+        fell through to `AVOID_DECISION` instead, and a company Atlas has
+        never analyzed rendered identically to one with a real,
+        evidence-backed contradiction. `_derive_confidence` now names
+        `NO_COMPANY_DATA` whenever zero dimensions are `AVAILABLE`/
+        `PARTIALLY_AVAILABLE` regardless of which non-conclusive level
+        the rest carry, so this engine's own step-1 gate now correctly
+        intercepts this case before it can ever reach the red-flag
+        branch."""
         analysis = _assemble()
         stance = determine_stance(
             analysis, coverage=_coverage(analysis), change_intelligence=None, portfolio_fit=None
         )
-        assert stance.level is StanceLevel.AVOID_DECISION
-        assert any(r.code is StanceReasonCode.CONVICTION_INSUFFICIENT for r in stance.reasoning)
+        assert stance.level is StanceLevel.NO_RECOMMENDATION
+        assert any(r.code is StanceReasonCode.NO_COMPANY_DATA for r in stance.reasoning)
 
 
 class TestConfidenceGating:

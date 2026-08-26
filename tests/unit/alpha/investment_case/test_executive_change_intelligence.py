@@ -65,8 +65,48 @@ class TestIdentityExtraction:
         assert knowledge.executives[0].role_category is ExecutiveRoleCategory.CEO
         assert knowledge.executives[0].name == "Alice Smith"
 
-    def test_missing_title_is_other_executive(self):
+    def test_missing_title_is_excluded_not_other_executive(self):
+        """Trust Hardening Sprint: an untitled speaker is unknown, not a
+        default executive -- Phase 5's own "unknown roles must not
+        default into executive identities.\""""
         records = (_statement("2023Q4", 0, "Alice Smith", None, "Strong quarter.", period_end=date(2023, 12, 31)),)
+        knowledge = _knowledge(records)
+        assert knowledge.executives == ()
+
+    def test_analyst_title_is_never_an_executive(self):
+        records = (
+            _statement(
+                "2023Q4", 0, "Stacy Rasgon", "Analyst (Bernstein Research)", "What's the outlook?",
+                period_end=date(2023, 12, 31),
+            ),
+        )
+        knowledge = _knowledge(records)
+        assert knowledge.executives == ()
+
+    def test_operator_title_is_never_an_executive(self):
+        records = (
+            _statement("2023Q4", 0, "Operator", "Operator", "Welcome to the call.", period_end=date(2023, 12, 31)),
+        )
+        knowledge = _knowledge(records)
+        assert knowledge.executives == ()
+
+    def test_investor_relations_title_without_executive_keyword_is_excluded(self):
+        records = (
+            _statement(
+                "2023Q4", 0, "Michael Sullivan", "Corporate Vice President, Investor Relations",
+                "Thanks for joining.", period_end=date(2023, 12, 31),
+            ),
+        )
+        knowledge = _knowledge(records)
+        assert knowledge.executives == ()
+
+    def test_genuine_executive_title_not_in_keyword_list_is_still_other_executive(self):
+        records = (
+            _statement(
+                "2023Q4", 0, "Jane Doe", "Chief Marketing Officer", "Brand momentum is strong.",
+                period_end=date(2023, 12, 31),
+            ),
+        )
         knowledge = _knowledge(records)
         assert knowledge.executives[0].role_category is ExecutiveRoleCategory.OTHER_EXECUTIVE
 

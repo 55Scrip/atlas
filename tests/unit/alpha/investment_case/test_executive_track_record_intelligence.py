@@ -195,7 +195,15 @@ class TestEvidenceCompleteness:
 
 class TestFindings:
     def test_stable_single_executive_with_no_data_has_insufficient_evidence(self):
-        records = (_statement("2023Q4", 0, "Alice Smith", None, "Update.", period_end=date(2023, 12, 31)),)
+        """Trust Hardening Sprint: a `None` title is now correctly
+        excluded from executive identity entirely (an untitled speaker
+        is not assumed to be an executive at all -- see
+        `executive_change_intelligence._role_category`), so this
+        fixture uses a real, minimal title instead. What this test
+        actually exercises -- a single observation producing
+        insufficient track-record evidence -- is unrelated to that
+        identity question and is unchanged by it."""
+        records = (_statement("2023Q4", 0, "Alice Smith", "CEO", "Update.", period_end=date(2023, 12, 31)),)
         track_record = _track_record(records)
         kinds = {f.kind for f in track_record.tenures[0].findings}
         assert TrackRecordFindingKind.COMMUNICATION_ACTIVITY_OBSERVED in kinds
