@@ -53,6 +53,7 @@ from atlas.alpha.security_identity_evidence.api.errors import (
 )
 from atlas.alpha.security_identity_evidence.api.router import router as security_identity_evidence_router
 from atlas.alpha.watchlist.api.router import router as alpha_watchlist_router
+from atlas.alpha.daily_brief_view_state.api.router import router as daily_brief_view_state_router
 from atlas.core.infrastructure.api.assumption.errors import (
     register_error_handlers as register_assumption_error_handlers,
 )
@@ -129,6 +130,13 @@ def create_app() -> FastAPI:
     # Portfolio already has, per "Watchlist and Portfolio are membership
     # contexts around the same company knowledge."
     app.include_router(alpha_watchlist_router)
+    # Since You Were Here: the one new piece of state this sprint adds
+    # (`last_viewed_at`) -- authored and owned in
+    # `atlas/alpha/daily_brief_view_state/`, same Alpha/Core boundary
+    # as every sibling composition point above. Reads and writes
+    # nothing but its own one-column table; no other package depends
+    # on it.
+    app.include_router(daily_brief_view_state_router)
     # ATLAS-015: the Portfolio Status report is a second, sibling
     # composition point with the same Alpha/Core boundary as the line
     # above -- authored and owned in `atlas/alpha/portfolio_status/`,

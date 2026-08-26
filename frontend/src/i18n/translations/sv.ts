@@ -1330,6 +1330,11 @@ export const sv: Record<TranslationKey, string> = {
   // ---------- daily brief v2 (Workspace Migration Phase 4) ----------
   "dailyBrief.title": "Dagens genomgång",
   "dailyBrief.subtitle": "Atlas morgongenomgång för din uppmärksamhet.",
+  "dailyBrief.sinceYouWereHere.heading": "Sedan du var här senast",
+  "dailyBrief.sinceYouWereHere.countOne": "1 meningsfull förändring",
+  "dailyBrief.sinceYouWereHere.countOther": "{{count}} meningsfulla förändringar",
+  "dailyBrief.sinceYouWereHere.empty": "Inga meningsfulla portföljförändringar sedan ditt senaste besök.",
+  "dailyBrief.sinceYouWereHere.lastChecked": "Senast kontrollerad {{time}}",
   "dailyBrief.openDrafts.heading": "Pågående beslut",
   "dailyBrief.openDrafts.resumeLink": "Återuppta: {{subject}} →",
   "dailyBrief.entry.unknownCompany": "Okänt företag",

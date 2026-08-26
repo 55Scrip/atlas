@@ -6,6 +6,8 @@ import { useTranslation } from "../i18n";
 import { fetchDailyBriefAgenda, type DailyBriefAgendaView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
 import { groupAgendaByTicker } from "../dailyBriefAgenda/groupAgendaByTicker";
 import { TickerAgendaCard } from "../dailyBriefAgenda/TickerAgendaCard";
+import { itemsSinceLastVisit } from "../dailyBriefAgenda/sinceYouWereHere";
+import { fetchDailyBriefViewState, markDailyBriefViewed } from "../dailyBriefAgenda/dailyBriefViewStateApi";
 import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
 import { ALPHA_PLACEHOLDER_USER_ID } from "../decisionWorkspace/alphaUser";
 import { fetchDailyBriefDraftSummary, type DecisionDraftSummaryView } from "../decisionWorkspace/decisionDraftApi";
@@ -84,6 +86,17 @@ export function DailyBriefPage() {
   const [monitoringResultsStatus, setMonitoringResultsStatus] = useState<
     { kind: "loading" } | { kind: "unavailable" } | { kind: "loaded"; results: MonitoringResultView[] }
   >({ kind: "loading" });
+  /** Since You Were Here -- the value read BEFORE this visit, used to
+   * compute this render's own "since you were here" window. Marking a
+   * new `lastViewedAt` happens separately, once, after this value and
+   * the agenda have both successfully loaded (see the effect below) --
+   * never before, so a failed or still-loading page never silently
+   * consumes this visit's own window without the user ever having
+   * seen it. */
+  const [viewState, setViewState] = useState<{ kind: "loading" } | { kind: "unavailable" } | { kind: "loaded"; lastViewedAt: string | null }>({
+    kind: "loading",
+  });
+  const [hasMarkedViewed, setHasMarkedViewed] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -95,6 +108,34 @@ export function DailyBriefPage() {
       });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchDailyBriefViewState(ALPHA_PLACEHOLDER_USER_ID, controller.signal)
+      .then((state) => setViewState({ kind: "loaded", lastViewedAt: state.lastViewedAt }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setViewState({ kind: "unavailable" });
+      });
+    return () => controller.abort();
+  }, []);
+
+  /** Marks `lastViewedAt` as now -- deliberately only once the agenda
+   * has *successfully rendered* (both fetches loaded), and only once
+   * per page visit (`hasMarkedViewed`). Marking on page load alone
+   * (before the agenda is confirmed loaded) would risk consuming this
+   * visit's own change window even if the agenda fetch then failed --
+   * the smallest choice that never claims the user saw something they
+   * were never actually shown. */
+  useEffect(() => {
+    if (hasMarkedViewed || status.kind !== "loaded" || viewState.kind !== "loaded") return;
+    setHasMarkedViewed(true);
+    markDailyBriefViewed(ALPHA_PLACEHOLDER_USER_ID).catch(() => {
+      // Best-effort: a failed mark-viewed call simply means the next
+      // visit's own window starts from the same lastViewedAt as this
+      // one did -- never a lie, only a slightly wider honest window.
+    });
+  }, [hasMarkedViewed, status.kind, viewState.kind]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -209,6 +250,10 @@ export function DailyBriefPage() {
 
         {status.kind === "loaded" && (
           <>
+            <SinceYouWereHereSection agenda={status.agenda} viewState={viewState} locale={locale} />
+
+            <Divider tone="hairline" />
+
             <PortfolioSummarySection agenda={status.agenda} />
 
             {openDrafts.length > 0 && (
@@ -252,6 +297,51 @@ export function DailyBriefPage() {
         )}
       </Stack>
     </Container>
+  );
+}
+
+/** Since You Were Here -- the only new judgment this section makes is
+ * "is `lastViewedAt` known, and if so, which already-real agenda items
+ * carry a `since` timestamp after it" (`itemsSinceLastVisit`, pure,
+ * tested separately). A genuine first visit (`lastViewedAt === null`)
+ * renders nothing here -- "since you were here" presupposes a real
+ * prior visit to compare against; inventing first-visit copy would be
+ * exactly the fabricated precision this sprint exists to avoid. From
+ * the second visit onward, the empty state uses Phase 7's own required
+ * exact wording -- never "no events," never "everything OK." */
+function SinceYouWereHereSection({
+  agenda,
+  viewState,
+  locale,
+}: {
+  agenda: DailyBriefAgendaView;
+  viewState: { kind: "loading" } | { kind: "unavailable" } | { kind: "loaded"; lastViewedAt: string | null };
+  locale: string;
+}) {
+  const { t } = useTranslation();
+  if (viewState.kind !== "loaded" || viewState.lastViewedAt === null) return null;
+
+  const changed = itemsSinceLastVisit(agenda.items, viewState.lastViewedAt);
+  const lastCheckedText = t("dailyBrief.sinceYouWereHere.lastChecked", {
+    time: new Date(viewState.lastViewedAt).toLocaleString(locale),
+  });
+
+  return (
+    <Stack gap="metadata">
+      <Inline gap="row" align="center" wrap style={{ justifyContent: "space-between" }}>
+        <Heading level={2}>{t("dailyBrief.sinceYouWereHere.heading")}</Heading>
+        <Text color="tertiary">{lastCheckedText}</Text>
+      </Inline>
+      {changed.length === 0 ? (
+        <Text color="secondary">{t("dailyBrief.sinceYouWereHere.empty")}</Text>
+      ) : (
+        <Text as="p" style={{ fontWeight: 600 }}>
+          {t(changed.length === 1 ? "dailyBrief.sinceYouWereHere.countOne" : "dailyBrief.sinceYouWereHere.countOther", {
+            count: changed.length,
+          })}
+        </Text>
+      )}
+    </Stack>
   );
 }
 

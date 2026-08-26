@@ -1344,6 +1344,11 @@ export const en = {
   // ---------- daily brief v2 (Workspace Migration Phase 4) ----------
   "dailyBrief.title": "Daily Brief",
   "dailyBrief.subtitle": "Atlas morning brief for your attention.",
+  "dailyBrief.sinceYouWereHere.heading": "Since you were here",
+  "dailyBrief.sinceYouWereHere.countOne": "1 meaningful change",
+  "dailyBrief.sinceYouWereHere.countOther": "{{count}} meaningful changes",
+  "dailyBrief.sinceYouWereHere.empty": "No meaningful portfolio changes since your last visit.",
+  "dailyBrief.sinceYouWereHere.lastChecked": "Last checked {{time}}",
   "dailyBrief.openDrafts.heading": "Decisions in progress",
   "dailyBrief.openDrafts.resumeLink": "Resume: {{subject}} →",
   "dailyBrief.entry.unknownCompany": "Unknown company",
