@@ -76,6 +76,121 @@ const ASSUMPTION_STATUS_KEY: Record<string, TranslationKey> = {
   challenged: "decisionWorkspace.assumptions.status.challenged",
 };
 
+// ---- Implementation Sprint B1.2 (Engine Reason Localization
+// Contract) -- every map below reuses an existing, already-translated
+// key set rather than inventing a second vocabulary for the same
+// closed backend enum (Phase 6: "the same reason must never appear
+// differently depending on where it is rendered"). ----
+
+const THESIS_IMPACT_KEY: Record<string, TranslationKey> = {
+  weakened: "investmentCase.whatChanged.thesisImpact.weakened",
+  mixed: "investmentCase.whatChanged.thesisImpact.mixed",
+  unchanged: "investmentCase.whatChanged.thesisImpact.unchanged",
+  strengthened: "investmentCase.whatChanged.thesisImpact.strengthened",
+};
+
+const PORTFOLIO_FIT_VERDICT_KEY: Record<string, TranslationKey> = {
+  no_dimension_evaluated: "portfolioFit.verdictReason.noDimensionEvaluated",
+  no_company_level_analysis: "portfolioFit.verdictReason.noCompanyLevelAnalysis",
+  risk_gate: "portfolioFit.verdictReason.riskGate",
+  multiple_poor: "portfolioFit.verdictReason.multiplePoorOther",
+  more_weak_poor_than_good_excellent: "portfolioFit.verdictReason.moreWeakPoorThanGoodExcellent",
+  mostly_excellent: "portfolioFit.verdictReason.mostlyExcellent",
+  more_good_excellent_than_weak_poor: "portfolioFit.verdictReason.moreGoodExcellentThanWeakPoor",
+  mixed: "portfolioFit.verdictReason.mixed",
+};
+
+const MONITORING_CATEGORY_KEY: Record<string, TranslationKey> = {
+  new_material_evidence: "monitoring.category.newMaterialEvidence",
+  material_evidence_strengthened: "evidenceTimeline.sentence.evidenceQualityChanged.positive",
+  material_evidence_weakened: "evidenceTimeline.sentence.evidenceQualityChanged.negative",
+  evidence_became_stale: "evidenceTimeline.sentence.freshnessChanged.negative",
+  evidence_conflict_appeared: "evidenceTimeline.sentence.conflictStatusChanged.negative",
+  evidence_conflict_resolved: "evidenceTimeline.sentence.conflictStatusChanged.positive",
+  coverage_improved: "evidenceTimeline.sentence.coverageChanged.positive",
+  coverage_deteriorated: "evidenceTimeline.sentence.coverageChanged.negative",
+  confidence_improved: "evidenceTimeline.sentence.confidenceChanged.positive",
+  confidence_deteriorated: "evidenceTimeline.sentence.confidenceChanged.negative",
+  stance_strengthened: "evidenceTimeline.sentence.stanceChanged.positive",
+  stance_weakened: "evidenceTimeline.sentence.stanceChanged.negative",
+  stance_became_uncertain: "evidenceTimeline.sentence.stanceChanged.neutral",
+  material_risk_appeared: "monitoring.category.materialRiskAppeared",
+  // `case_condition_triggered` deliberately absent -- its own real
+  // sentence embeds the investor's predicate text, not on the wire as
+  // a separate field yet; falls through to the raw fallback string.
+};
+
+const DECISION_READINESS_STATUS_KEY: Record<string, TranslationKey> = {
+  ready: "decisionReadiness.status.ready",
+  almost_ready: "decisionReadiness.status.almostReady",
+  waiting: "decisionReadiness.status.waiting",
+  blocked: "decisionReadiness.status.blocked",
+  unavailable: "decisionReadiness.status.unavailable",
+  unknown: "decisionReadiness.status.unknown",
+};
+
+const INVESTMENT_DECISION_ACTION_KEY: Record<string, TranslationKey> = {
+  buy: "investmentDecision.action.buy",
+  add: "investmentDecision.action.add",
+  hold: "investmentDecision.action.hold",
+  reduce: "investmentDecision.action.reduce",
+  exit: "investmentDecision.action.exit",
+  wait: "investmentDecision.action.wait",
+  no_decision: "investmentDecision.action.noDecision",
+};
+
+const CONVICTION_STRENGTH_KEY: Record<string, TranslationKey> = {
+  very_strong: "recommendationConviction.strength.veryStrong",
+  strong: "recommendationConviction.strength.strong",
+  moderate: "recommendationConviction.strength.moderate",
+  weak: "recommendationConviction.strength.weak",
+  very_weak: "recommendationConviction.strength.veryWeak",
+  unavailable: "recommendationConviction.strength.unavailable",
+};
+
+const DECISION_PATH_STATE_KEY: Record<string, TranslationKey> = {
+  already_reached: "decisionPath.finalState.alreadyReached",
+  fully_reachable: "decisionPath.finalState.fullyReachable",
+  partially_reachable: "decisionPath.finalState.partiallyReachable",
+  not_reachable: "decisionPath.finalState.notReachable",
+};
+
+const DECISION_RELIABILITY_LEVEL_KEY: Record<string, TranslationKey> = {
+  high: "decisionReliability.level.high",
+  moderate: "decisionReliability.level.moderate",
+  limited: "decisionReliability.level.limited",
+  unavailable: "decisionReliability.level.unavailable",
+  unknown: "decisionReliability.level.unknown",
+};
+
+const PORTFOLIO_DECISION_CATEGORY_KEY: Record<string, TranslationKey> = {
+  supports_portfolio: "portfolioDecision.category.supportsPortfolio",
+  neutral: "portfolioDecision.category.neutral",
+  requires_review: "portfolioDecision.category.requiresReview",
+  conflicts_with_portfolio: "portfolioDecision.category.conflictsWithPortfolio",
+  operationally_limited: "portfolioDecision.category.operationallyLimited",
+  unknown: "portfolioDecision.category.unknown",
+};
+
+/** Shared shape for the six "previous -> current" transitions above:
+ * look both values up in their own closed key map, then compose via
+ * the matching `*.change.line` template (`{{previous}}`/`{{current}}`
+ * already-translated text, never the raw enum). `null` when either
+ * side isn't recognized -- never a half-translated sentence. */
+function describeTransition(
+  keyMap: Record<string, TranslationKey>,
+  lineKey: TranslationKey,
+  current: string | null,
+  previous: string | null,
+  t: Translate,
+): string | null {
+  if (!current || !previous) return null;
+  const currentKey = keyMap[current];
+  const previousKey = keyMap[previous];
+  if (!currentKey || !previousKey) return null;
+  return t(lineKey, { current: t(currentKey), previous: t(previousKey) });
+}
+
 /**
  * The translated fragment for one fact -- never ticker-prefixed;
  * `describeReasonLine` below combines it with `fact.entity` itself,
@@ -119,9 +234,76 @@ export function describeReasonFact(fact: ReasonFactView, t: Translate): string |
       const statusKey = ASSUMPTION_STATUS_KEY[fact.value];
       return statusKey ? `${fact.label} (${t(statusKey)})` : null;
     }
+    case "change_intelligence_thesis_impact": {
+      if (!fact.value) return null;
+      const impactKey = THESIS_IMPACT_KEY[fact.value];
+      if (!impactKey) return null;
+      const sentence = t(impactKey);
+      return fact.count ? `${sentence} ${t("evidenceGraph.section.impact", { count: fact.count })}` : sentence;
+    }
+    case "portfolio_fit_verdict": {
+      if (!fact.value) return null;
+      const verdictKey =
+        fact.value === "multiple_poor" && fact.count === 1
+          ? "portfolioFit.verdictReason.multiplePoorOne"
+          : PORTFOLIO_FIT_VERDICT_KEY[fact.value];
+      if (!verdictKey) return null;
+      return fact.count != null ? t(verdictKey, { count: fact.count }) : t(verdictKey);
+    }
+    case "monitoring_change": {
+      if (!fact.value) return null;
+      const categoryKey = MONITORING_CATEGORY_KEY[fact.value];
+      return categoryKey ? t(categoryKey) : null;
+    }
+    case "decision_readiness_transition":
+      return describeTransition(DECISION_READINESS_STATUS_KEY, "decisionReadiness.change.line", fact.value, fact.secondaryValue, t);
+    case "investment_decision_transition":
+      return describeTransition(INVESTMENT_DECISION_ACTION_KEY, "investmentDecision.change.line", fact.value, fact.secondaryValue, t);
+    case "recommendation_conviction_transition":
+      return describeTransition(
+        CONVICTION_STRENGTH_KEY,
+        "recommendationConviction.change.line",
+        fact.value,
+        fact.secondaryValue,
+        t,
+      );
+    case "decision_path_transition":
+      return describeTransition(DECISION_PATH_STATE_KEY, "decisionPath.change.line", fact.value, fact.secondaryValue, t);
+    case "decision_reliability_transition":
+      return describeTransition(
+        DECISION_RELIABILITY_LEVEL_KEY,
+        "decisionReliability.change.line",
+        fact.value,
+        fact.secondaryValue,
+        t,
+      );
+    case "portfolio_decision_transition":
+      return describeTransition(
+        PORTFOLIO_DECISION_CATEGORY_KEY,
+        "portfolioDecision.change.line",
+        fact.value,
+        fact.secondaryValue,
+        t,
+      );
     default:
       return null;
   }
+}
+
+/**
+ * Implementation Sprint B1.2 -- the same `MONITORING_CATEGORY_KEY` map
+ * `describeReasonFact`'s own `"monitoring_change"` case reads, exported
+ * directly for `monitoring/MonitoringChangeFeed.tsx` (a real Monitoring
+ * change reads `category` straight off `MonitoringChangeView`, with no
+ * `ReasonFact` wrapper of its own -- Monitoring's dedicated feed is a
+ * different consumer of the identical closed backend enum). One
+ * canonical vocabulary, two call sites, never two maps that could
+ * drift apart. `null` falls back to the raw `reason` string, same
+ * contract as `describeReasonFact` itself.
+ */
+export function describeMonitoringCategory(category: string, t: Translate): string | null {
+  const key = MONITORING_CATEGORY_KEY[category];
+  return key ? t(key) : null;
 }
 
 /**

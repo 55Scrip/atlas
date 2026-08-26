@@ -1798,6 +1798,16 @@ export const en = {
   "portfolioFit.portfolioSection.worsened": "Worsened",
   "portfolioFit.portfolioSection.empty": "No holdings have an evaluated Portfolio Fit yet.",
   "portfolioFit.discovery.sortedNotice": "Candidates below are ordered by how well each fits your portfolio, not by market ranking.",
+  // ---------- Implementation Sprint B1.2 (Engine Reason Localization Contract) ----------
+  "portfolioFit.verdictReason.noDimensionEvaluated": "No dimension could be evaluated yet.",
+  "portfolioFit.verdictReason.noCompanyLevelAnalysis": "No company-level analysis (business, valuation, or risk) has been evaluated yet.",
+  "portfolioFit.verdictReason.riskGate": "Risk fit is poor, which outweighs the other dimensions.",
+  "portfolioFit.verdictReason.multiplePoorOne": "1 dimension is rated poor.",
+  "portfolioFit.verdictReason.multiplePoorOther": "{{count}} dimensions are rated poor.",
+  "portfolioFit.verdictReason.moreWeakPoorThanGoodExcellent": "More dimensions are weak or poor than good or excellent.",
+  "portfolioFit.verdictReason.mostlyExcellent": "{{count}} of the evaluated dimensions are excellent, none weak or poor.",
+  "portfolioFit.verdictReason.moreGoodExcellentThanWeakPoor": "More dimensions are good or excellent than weak or poor.",
+  "portfolioFit.verdictReason.mixed": "The dimensions point in different directions, with no clear lean.",
 
   // Atlas Intelligence Sprint 1 -- Data Coverage & Confidence Engine
   "coverage.dimension.available": "Available",
@@ -2089,6 +2099,9 @@ export const en = {
   "monitoring.freshness.failed": "Atlas's latest check didn't complete for every company — some information may be out of date.",
   "monitoring.freshness.unknown": "Atlas hasn't completed its first check yet.",
   "monitoring.freshnessSummary.line": "{{waiting}} companies awaiting analysis, {{current}} unchanged since last time, {{attention}} need your attention.",
+  // ---------- Implementation Sprint B1.2 (Engine Reason Localization Contract) ----------
+  "monitoring.category.newMaterialEvidence": "Atlas received new evidence that materially changed its reading of the company.",
+  "monitoring.category.materialRiskAppeared": "Atlas identified a new risk.",
 
   "monitoring.changeFeed.heading": "Changes",
   "monitoring.changeFeed.empty": "Atlas has not found any changes to report for your companies.",
@@ -2362,6 +2375,7 @@ export const en = {
   "decisionReliability.level.limited": "Limited",
   "decisionReliability.level.unavailable": "Unavailable",
   "decisionReliability.level.unknown": "Unknown",
+  "decisionReliability.change.line": "Reliability changed from {{previous}} to {{current}}.",
   "decisionReliability.source.confidence": "Analysis completeness",
   "decisionReliability.source.evidenceQuality": "Evidence quality",
   "decisionReliability.source.readinessBlocker": "Decision readiness",
@@ -2398,6 +2412,7 @@ export const en = {
   "portfolioDecision.category.conflictsWithPortfolio": "Conflicts with portfolio",
   "portfolioDecision.category.operationallyLimited": "Operationally limited",
   "portfolioDecision.category.unknown": "Unknown",
+  "portfolioDecision.change.line": "What this means for the portfolio changed from \"{{previous}}\" to \"{{current}}\".",
   "portfolioDecision.source.portfolioFit": "Portfolio fit",
   "portfolioDecision.source.portfolioIntelligence": "Portfolio-wide finding",
   "portfolioDecision.source.opportunityCost": "Capital competition",

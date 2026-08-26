@@ -2,6 +2,7 @@ import { Divider, Inline, Link, Stack, StatusBadge, Text } from "../foundation";
 import type { Translate } from "../changeIntelligence/describeChange";
 import type { TranslationKey } from "../i18n";
 import { MONITORING_STATUS_KEY, MONITORING_STATUS_TONE, type MonitoringStatus } from "../status/statusTone";
+import { describeMonitoringCategory } from "../dailyBriefAgenda/describeReasonFact";
 import type { MonitoringChangeView, MonitoringResultView } from "./monitoringApi";
 
 const SOURCE_CAPABILITY_KEY: Record<string, TranslationKey> = {
@@ -131,7 +132,7 @@ function MonitoringChangeRow({ change, t }: { change: MonitoringChangeView; t: T
   return (
     <Stack gap="metadata">
       <Text color={isMinor ? "tertiary" : "secondary"} as="p">
-        {change.reason}
+        {describeMonitoringCategory(change.category, t) ?? change.reason}
       </Text>
       <Text color="tertiary">
         {t(MATERIALITY_KEY[change.materiality] ?? "monitoring.changeFeed.materialityMinor")}

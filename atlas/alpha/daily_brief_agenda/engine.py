@@ -38,12 +38,14 @@ from atlas.alpha.daily_brief_agenda.models import (
     PriorityLevel,
     SignalNature,
 )
-from atlas.alpha.daily_brief_agenda.reason_facts import ReasonFact
+from atlas.alpha.daily_brief_agenda.reason_facts import ReasonCode, ReasonFact
 from atlas.alpha.decision_readiness.models import DecisionReadinessStatus
 from atlas.alpha.investment_decision.models import DecisionAction, DecisionQualifierKind
 from atlas.alpha.monitoring.engine import DAILY_BRIEF_EXCLUDED_CATEGORIES, HIGH_IMPORTANCE_CATEGORIES
 from atlas.alpha.decision_path.models import FinalReachableState
-from atlas.alpha.recommendation_conviction.models import RecommendationStability
+from atlas.alpha.decision_reliability.models import ReliabilityLevel
+from atlas.alpha.portfolio_decision.models import PortfolioDecisionCategory
+from atlas.alpha.recommendation_conviction.models import ConvictionStrength, RecommendationStability
 from atlas.alpha.monitoring.models import MonitoringChangeCategory, MonitoringMateriality
 from atlas.alpha.portfolio_fit.models import FitRating, FitTrend
 from atlas.alpha.portfolio_intelligence.models import KeyFindingKind
@@ -222,7 +224,9 @@ def assumption_signal(status: str, reason: str, since: datetime, *, fact: Reason
     return None
 
 
-def portfolio_fit_signal(overall: FitRating, trend: FitTrend, is_holding: bool, reason: str) -> Signal | None:
+def portfolio_fit_signal(
+    overall: FitRating, trend: FitTrend, is_holding: bool, reason: str, *, fact: ReasonFact | None = None
+) -> Signal | None:
     """Fix Sprint 4: the one source whose real firing condition is
     genuinely `Mixed` at the source level -- resolved to exactly one
     `SignalNature` per branch below, never a third value. The first
@@ -232,22 +236,33 @@ def portfolio_fit_signal(overall: FitRating, trend: FitTrend, is_holding: bool, 
     computed here: `FitTrend` is itself a direct relabeling of
     `ChangeIntelligence.thesis_impact` (see `atlas.alpha.monitoring
     .__init__`'s own documented reuse) -- genuine, already-real change
-    information, so those branches are `CHANGE_EVENT`."""
+    information, so those branches are `CHANGE_EVENT`.
+
+    Implementation Sprint B1.2: `fact` (built by the caller from
+    `PortfolioFitAssessment.overall_reasoning_code`) names *why*
+    `overall` is what it is; it does not itself distinguish
+    `PERSISTENT_CONDITION` from `CHANGE_EVENT` branches below -- that
+    split already existed and is unchanged."""
     concern_kind = AgendaItemKind.REVIEW_PORTFOLIO_POSITION if is_holding else AgendaItemKind.REVIEW_WATCHLIST_CANDIDATE
     if overall is FitRating.POOR:
-        return Signal(PriorityLevel.CRITICAL, concern_kind, AgendaSource.PORTFOLIO_FIT, reason, SignalNature.PERSISTENT_CONDITION)
+        return Signal(PriorityLevel.CRITICAL, concern_kind, AgendaSource.PORTFOLIO_FIT, reason, SignalNature.PERSISTENT_CONDITION, fact=fact)
     if overall is FitRating.WEAK and trend is FitTrend.DECLINING:
-        return Signal(PriorityLevel.HIGH, concern_kind, AgendaSource.PORTFOLIO_FIT, reason, SignalNature.CHANGE_EVENT)
+        return Signal(PriorityLevel.HIGH, concern_kind, AgendaSource.PORTFOLIO_FIT, reason, SignalNature.CHANGE_EVENT, fact=fact)
     if overall is FitRating.WEAK:
-        return Signal(PriorityLevel.NORMAL, concern_kind, AgendaSource.PORTFOLIO_FIT, reason, SignalNature.PERSISTENT_CONDITION)
+        return Signal(PriorityLevel.NORMAL, concern_kind, AgendaSource.PORTFOLIO_FIT, reason, SignalNature.PERSISTENT_CONDITION, fact=fact)
     if trend is FitTrend.DECLINING:
-        return Signal(PriorityLevel.NORMAL, concern_kind, AgendaSource.PORTFOLIO_FIT, reason, SignalNature.CHANGE_EVENT)
+        return Signal(PriorityLevel.NORMAL, concern_kind, AgendaSource.PORTFOLIO_FIT, reason, SignalNature.CHANGE_EVENT, fact=fact)
     if not is_holding and overall in (FitRating.EXCELLENT, FitRating.GOOD) and trend is FitTrend.IMPROVING:
         return Signal(
-            PriorityLevel.LOW, AgendaItemKind.PORTFOLIO_OPPORTUNITY, AgendaSource.PORTFOLIO_FIT, reason, SignalNature.CHANGE_EVENT
+            PriorityLevel.LOW,
+            AgendaItemKind.PORTFOLIO_OPPORTUNITY,
+            AgendaSource.PORTFOLIO_FIT,
+            reason,
+            SignalNature.CHANGE_EVENT,
+            fact=fact,
         )
     if trend is FitTrend.IMPROVING:
-        return Signal(PriorityLevel.LOW, concern_kind, AgendaSource.PORTFOLIO_FIT, reason, SignalNature.CHANGE_EVENT)
+        return Signal(PriorityLevel.LOW, concern_kind, AgendaSource.PORTFOLIO_FIT, reason, SignalNature.CHANGE_EVENT, fact=fact)
     return None
 
 
@@ -259,27 +274,49 @@ _THESIS_IMPACT_PRIORITY = {
 }
 
 
-def change_intelligence_signal(thesis_impact: ThesisImpact, reason: str, *, affected_finding_count: int = 0) -> Signal:
+def change_intelligence_signal(
+    thesis_impact: ThesisImpact, reason: str, *, affected_finding_count: int = 0, ticker: str | None = None
+) -> Signal:
     """`affected_finding_count` -- Atlas Intelligence Sprint 10
     (Evidence Graph & Dependency Understanding, Deliverable 10):
     "detta påverkar tre slutsatser." `0` (the default) appends nothing
     -- never a fabricated "this affects 0 conclusions" clause. The
     count itself is real, computed by `EvidenceGraphService`'s own
-    dependency-graph traversal, never estimated here."""
+    dependency-graph traversal, never estimated here.
+
+    Implementation Sprint B1.2: `thesis_impact` was already this
+    function's own parameter -- the `ReasonFact` built from it carries
+    `count=affected_finding_count` too, so the frontend's own
+    translation can append the identical "affects N other conclusions"
+    clause (reusing `evidenceGraph.section.impact`, not a new key)
+    rather than silently dropping it the way a naive fact-only
+    translation would."""
     if affected_finding_count > 0:
         noun = "conclusion" if affected_finding_count == 1 else "conclusions"
         reason = f"{reason} This affects {affected_finding_count} other {noun}."
+    fact = ReasonFact(
+        ReasonCode.CHANGE_INTELLIGENCE_THESIS_IMPACT,
+        ticker or "this company",
+        value=thesis_impact.value,
+        count=affected_finding_count or None,
+    )
     return Signal(
         _THESIS_IMPACT_PRIORITY[thesis_impact],
         AgendaItemKind.REVIEW_INVESTMENT_CASE,
         AgendaSource.CHANGE_INTELLIGENCE,
         reason,
         SignalNature.CHANGE_EVENT,
+        fact=fact,
     )
 
 
 def monitoring_signal(
-    category: MonitoringChangeCategory, materiality: MonitoringMateriality, is_holding: bool, reason: str
+    category: MonitoringChangeCategory,
+    materiality: MonitoringMateriality,
+    is_holding: bool,
+    reason: str,
+    *,
+    ticker: str | None = None,
 ) -> Signal | None:
     """Atlas Intelligence Sprint 7 (Monitoring & Change Detection,
     Deliverable 10/11). `None` for a `MINOR` change (Deliverable 11's
@@ -288,12 +325,17 @@ def monitoring_signal(
     `category in DAILY_BRIEF_EXCLUDED_CATEGORIES` (Deliverable 12 --
     `MATERIAL_RISK_APPEARED`/`CASE_CONDITION_TRIGGERED` already have
     their own, non-duplicative Daily Brief signal; see
-    `atlas.alpha.monitoring.engine`'s own module docstring)."""
+    `atlas.alpha.monitoring.engine`'s own module docstring).
+
+    Implementation Sprint B1.2: `ticker` is only used to build the new
+    `ReasonFact` (`entity`) -- `category` was already this function's
+    own parameter, so no new data is threaded in from `service.py`."""
     if materiality is not MonitoringMateriality.MATERIAL or category in DAILY_BRIEF_EXCLUDED_CATEGORIES:
         return None
     priority = PriorityLevel.HIGH if category in HIGH_IMPORTANCE_CATEGORIES else PriorityLevel.NORMAL
     kind = AgendaItemKind.REVIEW_PORTFOLIO_POSITION if is_holding else AgendaItemKind.REVIEW_WATCHLIST_CANDIDATE
-    return Signal(priority, kind, AgendaSource.MONITORING, reason, SignalNature.CHANGE_EVENT)
+    fact = ReasonFact(ReasonCode.MONITORING_CHANGE, ticker or "this company", value=category.value)
+    return Signal(priority, kind, AgendaSource.MONITORING, reason, SignalNature.CHANGE_EVENT, fact=fact)
 
 
 _READINESS_CHANGE_PRIORITY: dict[DecisionReadinessStatus, PriorityLevel] = {
@@ -310,20 +352,42 @@ the one readiness change genuinely worth elevated attention; becoming
 every other transition is a normal, unalarming step, never inflated."""
 
 
-def decision_readiness_signal(current_status: DecisionReadinessStatus, reason: str) -> Signal:
+def decision_readiness_signal(
+    current_status: DecisionReadinessStatus,
+    reason: str,
+    *,
+    previous_status: DecisionReadinessStatus | None = None,
+    ticker: str | None = None,
+) -> Signal:
     """Atlas Intelligence Sprint 11 (Decision Readiness & Decision
     Eligibility, Deliverable 10). Always fires -- the caller
     (`service.py`'s own loop) only calls this when `atlas.alpha
     .decision_readiness.engine.detect_readiness_change` already found a
     real transition; there is no "minor, suppress" tier here the way
     `monitoring_signal` has, since a status *change* is inherently the
-    material fact, not a graded one."""
+    material fact, not a graded one.
+
+    Implementation Sprint B1.2: `previous_status`/`ticker` are only
+    used to build the new `ReasonFact` -- both are already real fields
+    the caller has on hand (`DecisionReadinessChange.previous_status`,
+    the same ticker `reason` was already composed from)."""
+    fact = (
+        ReasonFact(
+            ReasonCode.DECISION_READINESS_TRANSITION,
+            ticker or "this company",
+            value=current_status.value,
+            secondary_value=previous_status.value,
+        )
+        if previous_status is not None
+        else None
+    )
     return Signal(
         _READINESS_CHANGE_PRIORITY[current_status],
         AgendaItemKind.REVIEW_INVESTMENT_CASE,
         AgendaSource.DECISION_READINESS,
         reason,
         SignalNature.CHANGE_EVENT,
+        fact=fact,
     )
 
 
@@ -344,21 +408,52 @@ settling into Hold/Wait/No decision is never alarming. Becoming
 ordinary" shape."""
 
 
-def investment_decision_signal(current_action: DecisionAction, current_qualifier_kinds: tuple[DecisionQualifierKind, ...], reason: str) -> Signal:
+def investment_decision_signal(
+    current_action: DecisionAction,
+    current_qualifier_kinds: tuple[DecisionQualifierKind, ...],
+    reason: str,
+    *,
+    previous_action: DecisionAction | None = None,
+    ticker: str | None = None,
+) -> Signal:
     """Atlas Decision Layer Sprint 1 (Investment Decision Synthesis,
     Deliverable 10). Always fires -- the caller (`service.py`'s own
     loop) only calls this when `atlas.alpha.investment_decision.engine
     .detect_decision_change` already found a real transition (action or
-    qualifier set)."""
+    qualifier set).
+
+    Implementation Sprint B1.2: `previous_action`/`ticker` build the
+    new `ReasonFact`; `None` when only the qualifier set changed (the
+    action itself didn't) -- no real transition to name, so no fact
+    (raw fallback), never a fabricated "unchanged" one."""
     priority = (
         PriorityLevel.HIGH
         if DecisionQualifierKind.DECISION_BLOCKED in current_qualifier_kinds
         else _ACTION_CHANGE_PRIORITY[current_action]
     )
-    return Signal(priority, AgendaItemKind.REVIEW_INVESTMENT_CASE, AgendaSource.INVESTMENT_DECISION, reason, SignalNature.CHANGE_EVENT)
+    fact = (
+        ReasonFact(
+            ReasonCode.INVESTMENT_DECISION_TRANSITION,
+            ticker or "this company",
+            value=current_action.value,
+            secondary_value=previous_action.value,
+        )
+        if previous_action is not None and previous_action is not current_action
+        else None
+    )
+    return Signal(
+        priority, AgendaItemKind.REVIEW_INVESTMENT_CASE, AgendaSource.INVESTMENT_DECISION, reason, SignalNature.CHANGE_EVENT, fact=fact
+    )
 
 
-def recommendation_conviction_signal(current_stability: RecommendationStability, reason: str) -> Signal:
+def recommendation_conviction_signal(
+    current_stability: RecommendationStability,
+    reason: str,
+    *,
+    current_strength: ConvictionStrength | None = None,
+    previous_strength: ConvictionStrength | None = None,
+    ticker: str | None = None,
+) -> Signal:
     """Atlas Decision Layer Sprint 2 (Recommendation Strength &
     Conviction, Deliverable 10). Always fires -- the caller
     (`service.py`'s own loop) only calls this when `atlas.alpha
@@ -368,14 +463,42 @@ def recommendation_conviction_signal(current_stability: RecommendationStability,
     "one elevated case, everything else ordinary" shape
     `_READINESS_CHANGE_PRIORITY`/`_ACTION_CHANGE_PRIORITY` above
     already establish -- a real strength change alone (e.g. Strong ->
-    Weak) is genuine, ordinary-priority news, never inflated."""
+    Weak) is genuine, ordinary-priority news, never inflated.
+
+    Implementation Sprint B1.2: the `ReasonFact` names the *strength*
+    transition specifically (`ConvictionStrength`, a different, more
+    granular enum than `current_stability` above) -- `None` when only
+    stability changed (strength itself didn't), the same "no real
+    transition, no fabricated fact" rule every sibling signal here
+    follows."""
     priority = PriorityLevel.HIGH if current_stability is RecommendationStability.OPERATIONALLY_BLOCKED else PriorityLevel.NORMAL
+    fact = (
+        ReasonFact(
+            ReasonCode.RECOMMENDATION_CONVICTION_TRANSITION,
+            ticker or "this company",
+            value=current_strength.value,
+            secondary_value=previous_strength.value,
+        )
+        if current_strength is not None and previous_strength is not None and current_strength is not previous_strength
+        else None
+    )
     return Signal(
-        priority, AgendaItemKind.REVIEW_INVESTMENT_CASE, AgendaSource.RECOMMENDATION_CONVICTION, reason, SignalNature.CHANGE_EVENT
+        priority,
+        AgendaItemKind.REVIEW_INVESTMENT_CASE,
+        AgendaSource.RECOMMENDATION_CONVICTION,
+        reason,
+        SignalNature.CHANGE_EVENT,
+        fact=fact,
     )
 
 
-def decision_path_signal(current_final_reachable_state: FinalReachableState, reason: str) -> Signal:
+def decision_path_signal(
+    current_final_reachable_state: FinalReachableState,
+    reason: str,
+    *,
+    previous_final_reachable_state: FinalReachableState | None = None,
+    ticker: str | None = None,
+) -> Signal:
     """Atlas Decision Layer Sprint 3 (Decision Path & Required
     Progress, Deliverable 10). Always fires -- the caller (`service.py`'s
     own loop) only calls this when `atlas.alpha.decision_path.engine
@@ -386,7 +509,19 @@ def decision_path_signal(current_final_reachable_state: FinalReachableState, rea
     establishes; every other real transition (a path shortening, a
     dependency resolving) is genuine, ordinary-priority news."""
     priority = PriorityLevel.HIGH if current_final_reachable_state is FinalReachableState.NOT_REACHABLE else PriorityLevel.NORMAL
-    return Signal(priority, AgendaItemKind.REVIEW_INVESTMENT_CASE, AgendaSource.DECISION_PATH, reason, SignalNature.CHANGE_EVENT)
+    fact = (
+        ReasonFact(
+            ReasonCode.DECISION_PATH_TRANSITION,
+            ticker or "this company",
+            value=current_final_reachable_state.value,
+            secondary_value=previous_final_reachable_state.value,
+        )
+        if previous_final_reachable_state is not None
+        else None
+    )
+    return Signal(
+        priority, AgendaItemKind.REVIEW_INVESTMENT_CASE, AgendaSource.DECISION_PATH, reason, SignalNature.CHANGE_EVENT, fact=fact
+    )
 
 
 def opportunity_cost_signal(reason: str) -> Signal:
@@ -442,7 +577,13 @@ def decision_explanation_signal(reason: str) -> Signal:
     )
 
 
-def decision_reliability_signal(reason: str) -> Signal:
+def decision_reliability_signal(
+    reason: str,
+    *,
+    current_level: ReliabilityLevel | None = None,
+    previous_level: ReliabilityLevel | None = None,
+    ticker: str | None = None,
+) -> Signal:
     """Atlas Decision Layer Sprint 7 (Decision Reliability, Deliverable
     11). Always fires -- the caller (`service.py`'s own loop) only
     calls this when `atlas.alpha.decision_reliability.engine
@@ -453,17 +594,41 @@ def decision_reliability_signal(reason: str) -> Signal:
     facts it reflects (Coverage/Confidence, Evidence Quality, Decision
     Readiness) already have their own sources above for the alarm-
     worthy content itself; this source only ever announces that the
-    reliability reading built from them moved."""
+    reliability reading built from them moved.
+
+    Implementation Sprint B1.2: `current_level`/`previous_level` are
+    `None` whenever `ReliabilityChange.previous_level == .current_level`
+    (a real transition can fire on a resolved/new limiting reason
+    alone) -- no real level transition to name in that case, so no
+    fact, never a fabricated "unchanged" one; see `reason_facts.py`'s
+    own `DECISION_RELIABILITY_TRANSITION` docstring."""
+    fact = (
+        ReasonFact(
+            ReasonCode.DECISION_RELIABILITY_TRANSITION,
+            ticker or "this company",
+            value=current_level.value,
+            secondary_value=previous_level.value,
+        )
+        if current_level is not None and previous_level is not None
+        else None
+    )
     return Signal(
         PriorityLevel.NORMAL,
         AgendaItemKind.REVIEW_INVESTMENT_CASE,
         AgendaSource.DECISION_RELIABILITY,
         reason,
         SignalNature.CHANGE_EVENT,
+        fact=fact,
     )
 
 
-def portfolio_decision_signal(reason: str) -> Signal:
+def portfolio_decision_signal(
+    reason: str,
+    *,
+    current_category: PortfolioDecisionCategory | None = None,
+    previous_category: PortfolioDecisionCategory | None = None,
+    ticker: str | None = None,
+) -> Signal:
     """Atlas Decision Layer Sprint 8 (Portfolio Decision Synthesis,
     Deliverable 11). Always fires -- the caller (`service.py`'s own
     loop) only calls this when `atlas.alpha.portfolio_decision.engine
@@ -475,8 +640,23 @@ def portfolio_decision_signal(reason: str) -> Signal:
     portfolio, not a new alarm-worthy fact of its own; the underlying
     decision/reliability facts it composes already have their own
     sources above for that."""
+    fact = (
+        ReasonFact(
+            ReasonCode.PORTFOLIO_DECISION_TRANSITION,
+            ticker or "this company",
+            value=current_category.value,
+            secondary_value=previous_category.value,
+        )
+        if current_category is not None and previous_category is not None and current_category is not previous_category
+        else None
+    )
     return Signal(
-        PriorityLevel.NORMAL, AgendaItemKind.REVIEW_INVESTMENT_CASE, AgendaSource.PORTFOLIO_DECISION, reason, SignalNature.CHANGE_EVENT
+        PriorityLevel.NORMAL,
+        AgendaItemKind.REVIEW_INVESTMENT_CASE,
+        AgendaSource.PORTFOLIO_DECISION,
+        reason,
+        SignalNature.CHANGE_EVENT,
+        fact=fact,
     )
 
 

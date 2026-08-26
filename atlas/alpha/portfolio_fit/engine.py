@@ -43,6 +43,7 @@ from atlas.alpha.portfolio_fit.models import (
     FitDimensionKind,
     FitRating,
     FitTrend,
+    FitVerdictReasonCode,
     PortfolioFitAssessment,
 )
 from atlas.analysis_engine.business_contracts import BusinessCategoryStatus
@@ -372,15 +373,25 @@ def _trend(composition: InvestmentCaseComposition) -> FitTrend:
 _ORDERED_RATINGS = (FitRating.POOR, FitRating.WEAK, FitRating.NEUTRAL, FitRating.GOOD, FitRating.EXCELLENT)
 
 
-def _overall_fit(dimensions: tuple[FitDimension, ...]) -> tuple[FitRating, tuple[str, ...]]:
+def _overall_fit(
+    dimensions: tuple[FitDimension, ...],
+) -> tuple[FitRating, tuple[str, ...], FitVerdictReasonCode, int | None]:
     """Deterministic, rule-based aggregation -- explicit gates over the
     *set* of dimension ratings, the same reasoning style
     `atlas.analysis_engine.recommendation`'s own conviction gate uses,
-    never a weighted average or any other hidden numeric score."""
+    never a weighted average or any other hidden numeric score.
+
+    Implementation Sprint B1.2: the 3rd/4th return values are additive
+    -- `FitVerdictReasonCode` names which of the 8 branches below fired
+    (`FitRating` alone conflates `RISK_GATE`/`MULTIPLE_POOR`, both
+    `POOR`); the trailing `int | None` is the one real count two of
+    those branches already compute (`MULTIPLE_POOR`'s Poor count,
+    `MOSTLY_EXCELLENT`'s Excellent-of-evaluated count) -- `None` for
+    every other branch, never a fabricated number."""
 
     evaluated = [d for d in dimensions if d.rating is not FitRating.UNAVAILABLE]
     if not evaluated:
-        return FitRating.UNAVAILABLE, ("No dimension could be evaluated for this company.",)
+        return FitRating.UNAVAILABLE, ("No dimension could be evaluated for this company.",), FitVerdictReasonCode.NO_DIMENSION_EVALUATED, None
 
     # Trust Hardening Sprint: an overall verdict is a statement about
     # how well *this company* fits the portfolio -- it must never rest
@@ -396,25 +407,50 @@ def _overall_fit(dimensions: tuple[FitDimension, ...]) -> tuple[FitRating, tuple
     # portfolio's cash level).
     analytical_kinds = (FitDimensionKind.BUSINESS, FitDimensionKind.VALUATION, FitDimensionKind.RISK)
     if not any(d.kind in analytical_kinds for d in evaluated):
-        return FitRating.UNAVAILABLE, (
-            "No company-level analysis (Business, Valuation, or Risk) has been evaluated yet -- "
-            "portfolio-context dimensions alone cannot establish a fit verdict for this company.",
+        return (
+            FitRating.UNAVAILABLE,
+            (
+                "No company-level analysis (Business, Valuation, or Risk) has been evaluated yet -- "
+                "portfolio-context dimensions alone cannot establish a fit verdict for this company.",
+            ),
+            FitVerdictReasonCode.NO_COMPANY_LEVEL_ANALYSIS,
+            None,
         )
 
     counts = {rating: sum(1 for d in evaluated if d.rating is rating) for rating in _ORDERED_RATINGS}
     risk = next((d for d in evaluated if d.kind is FitDimensionKind.RISK), None)
 
     if risk is not None and risk.rating is FitRating.POOR:
-        return FitRating.POOR, ("Risk Fit is Poor, which this engine treats as a gate on the overall verdict.",)
+        return (
+            FitRating.POOR,
+            ("Risk Fit is Poor, which this engine treats as a gate on the overall verdict.",),
+            FitVerdictReasonCode.RISK_GATE,
+            None,
+        )
     if counts[FitRating.POOR] >= 2:
-        return FitRating.POOR, (f"{counts[FitRating.POOR]} dimensions rated Poor.",)
+        return FitRating.POOR, (f"{counts[FitRating.POOR]} dimensions rated Poor.",), FitVerdictReasonCode.MULTIPLE_POOR, counts[FitRating.POOR]
     if counts[FitRating.POOR] + counts[FitRating.WEAK] > counts[FitRating.GOOD] + counts[FitRating.EXCELLENT]:
-        return FitRating.WEAK, ("More dimensions rated Weak/Poor than Good/Excellent.",)
+        return (
+            FitRating.WEAK,
+            ("More dimensions rated Weak/Poor than Good/Excellent.",),
+            FitVerdictReasonCode.MORE_WEAK_POOR_THAN_GOOD_EXCELLENT,
+            None,
+        )
     if counts[FitRating.EXCELLENT] >= (len(evaluated) + 1) // 2 and counts[FitRating.WEAK] == 0 and counts[FitRating.POOR] == 0:
-        return FitRating.EXCELLENT, (f"{counts[FitRating.EXCELLENT]} of {len(evaluated)} evaluated dimensions rated Excellent, none Weak or Poor.",)
+        return (
+            FitRating.EXCELLENT,
+            (f"{counts[FitRating.EXCELLENT]} of {len(evaluated)} evaluated dimensions rated Excellent, none Weak or Poor.",),
+            FitVerdictReasonCode.MOSTLY_EXCELLENT,
+            counts[FitRating.EXCELLENT],
+        )
     if counts[FitRating.GOOD] + counts[FitRating.EXCELLENT] > counts[FitRating.WEAK] + counts[FitRating.POOR]:
-        return FitRating.GOOD, ("More dimensions rated Good/Excellent than Weak/Poor.",)
-    return FitRating.NEUTRAL, ("Dimension ratings are mixed, with no clear lean either way.",)
+        return (
+            FitRating.GOOD,
+            ("More dimensions rated Good/Excellent than Weak/Poor.",),
+            FitVerdictReasonCode.MORE_GOOD_EXCELLENT_THAN_WEAK_POOR,
+            None,
+        )
+    return FitRating.NEUTRAL, ("Dimension ratings are mixed, with no clear lean either way.",), FitVerdictReasonCode.MIXED, None
 
 
 # ---------------------------------------------------------------------
@@ -455,7 +491,7 @@ def assess_portfolio_fit(
         _expected_contribution_fit(analysis.outlook.long_term),
         _cash_impact_fit(portfolio_state),
     )
-    overall, overall_reasoning = _overall_fit(dimensions)
+    overall, overall_reasoning, overall_reasoning_code, overall_reasoning_count = _overall_fit(dimensions)
 
     data_gaps = tuple(f"{d.kind.value}: {d.unavailable_reason}" for d in dimensions if d.unavailable_reason is not None)
 
@@ -466,6 +502,8 @@ def assess_portfolio_fit(
         current_weight_percent=holding.weight_percent if holding is not None else None,
         overall=overall,
         overall_reasoning=overall_reasoning,
+        overall_reasoning_code=overall_reasoning_code,
+        overall_reasoning_count=overall_reasoning_count,
         dimensions=dimensions,
         trend=_trend(composition),
         data_gaps=data_gaps,

@@ -183,7 +183,7 @@ describe("DailyBriefPage Monitoring section (Product Intelligence Sprint 3 -- Mo
   it("surfaces a real Monitoring change -- previously computed and never shown anywhere", async () => {
     mockFetch(agendaResponse(), [], { generatedAt: "2026-01-01T00:00:00Z", results: [monitoringResult()] });
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("Atlas's view on AAPL weakened.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Atlas syn har försvagats.")).toBeInTheDocument());
   });
 
   it("shows the honest empty state when Monitoring has found no changes", async () => {

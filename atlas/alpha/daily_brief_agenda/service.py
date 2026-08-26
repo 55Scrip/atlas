@@ -658,7 +658,9 @@ class DailyBriefAgendaService:
                 (i.affected_finding_count for i in built.impacted_changes), default=0
             ) if built is not None else 0
             self._ensure(bundles, ticker, entry.case_id, is_holding).append(
-                change_intelligence_signal(entry.thesis_impact, reason, affected_finding_count=affected_finding_count)
+                change_intelligence_signal(
+                    entry.thesis_impact, reason, affected_finding_count=affected_finding_count, ticker=ticker
+                )
             )
 
         # 2. Portfolio Fit -- `PortfolioFitService` unmodified, both its
@@ -666,12 +668,36 @@ class DailyBriefAgendaService:
         # each other, see that service's own docstring).
         for assessment in self._portfolio_fit_service.assess_all_holdings():
             reason_text = assessment.overall_reasoning[0] if assessment.overall_reasoning else f"Portfolio Fit is {assessment.overall.value}"
-            signal = portfolio_fit_signal(assessment.overall, assessment.trend, True, f"{assessment.ticker}: {reason_text}")
+            fact = (
+                ReasonFact(
+                    ReasonCode.PORTFOLIO_FIT_VERDICT,
+                    assessment.ticker,
+                    value=assessment.overall_reasoning_code.value,
+                    count=assessment.overall_reasoning_count,
+                )
+                if assessment.overall_reasoning_code is not None
+                else None
+            )
+            signal = portfolio_fit_signal(
+                assessment.overall, assessment.trend, True, f"{assessment.ticker}: {reason_text}", fact=fact
+            )
             if signal is not None:
                 self._ensure(bundles, assessment.ticker, assessment.case_id, True).append(signal)
         for assessment in self._portfolio_fit_service.rank_candidates():
             reason_text = assessment.overall_reasoning[0] if assessment.overall_reasoning else f"Portfolio Fit is {assessment.overall.value}"
-            signal = portfolio_fit_signal(assessment.overall, assessment.trend, False, f"{assessment.ticker}: {reason_text}")
+            fact = (
+                ReasonFact(
+                    ReasonCode.PORTFOLIO_FIT_VERDICT,
+                    assessment.ticker,
+                    value=assessment.overall_reasoning_code.value,
+                    count=assessment.overall_reasoning_count,
+                )
+                if assessment.overall_reasoning_code is not None
+                else None
+            )
+            signal = portfolio_fit_signal(
+                assessment.overall, assessment.trend, False, f"{assessment.ticker}: {reason_text}", fact=fact
+            )
             if signal is not None:
                 self._ensure(bundles, assessment.ticker, assessment.case_id, False).append(signal)
 
@@ -783,7 +809,9 @@ class DailyBriefAgendaService:
                 continue
             is_holding = result.scope.value == "portfolio"
             for change in result.changes:
-                signal = monitoring_signal(change.category, change.materiality, is_holding, change.reason)
+                signal = monitoring_signal(
+                    change.category, change.materiality, is_holding, change.reason, ticker=result.ticker
+                )
                 if signal is not None:
                     self._ensure(bundles, result.ticker or result.case_id, result.case_id, is_holding).append(signal)
 
@@ -804,7 +832,9 @@ class DailyBriefAgendaService:
             is_holding = ticker in held_tickers if ticker else False
             reason = _decision_readiness_change_reason(resolved_ticker, change)
             self._ensure(bundles, resolved_ticker, case_id, is_holding).append(
-                decision_readiness_signal(change.current_status, reason)
+                decision_readiness_signal(
+                    change.current_status, reason, previous_status=change.previous_status, ticker=resolved_ticker
+                )
             )
 
         # 9. Investment Decision Synthesis (Atlas Decision Layer
@@ -821,7 +851,13 @@ class DailyBriefAgendaService:
             is_holding = ticker in held_tickers if ticker else False
             reason = _investment_decision_change_reason(resolved_ticker, decision_change)
             self._ensure(bundles, resolved_ticker, case_id, is_holding).append(
-                investment_decision_signal(decision_change.current_action, decision_change.current_qualifier_kinds, reason)
+                investment_decision_signal(
+                    decision_change.current_action,
+                    decision_change.current_qualifier_kinds,
+                    reason,
+                    previous_action=decision_change.previous_action,
+                    ticker=resolved_ticker,
+                )
             )
 
         # 10. Recommendation Conviction & Strength (Atlas Decision
@@ -839,7 +875,13 @@ class DailyBriefAgendaService:
             is_holding = ticker in held_tickers if ticker else False
             reason = _recommendation_conviction_change_reason(resolved_ticker, conviction_change)
             self._ensure(bundles, resolved_ticker, case_id, is_holding).append(
-                recommendation_conviction_signal(conviction_change.current_stability, reason)
+                recommendation_conviction_signal(
+                    conviction_change.current_stability,
+                    reason,
+                    current_strength=conviction_change.current_strength,
+                    previous_strength=conviction_change.previous_strength,
+                    ticker=resolved_ticker,
+                )
             )
 
         # 11. Decision Path & Required Progress (Atlas Decision Layer
@@ -857,7 +899,12 @@ class DailyBriefAgendaService:
             is_holding = ticker in held_tickers if ticker else False
             reason = _decision_path_change_reason(resolved_ticker, path_change)
             self._ensure(bundles, resolved_ticker, case_id, is_holding).append(
-                decision_path_signal(path_change.current_final_reachable_state, reason)
+                decision_path_signal(
+                    path_change.current_final_reachable_state,
+                    reason,
+                    previous_final_reachable_state=path_change.previous_final_reachable_state,
+                    ticker=resolved_ticker,
+                )
             )
 
         # 12. Decision Alternatives & Opportunity Cost (Atlas Decision
@@ -940,7 +987,15 @@ class DailyBriefAgendaService:
             resolved_ticker = ticker or case_id
             is_holding = ticker in held_tickers if ticker else False
             reason = _decision_reliability_change_reason(resolved_ticker, reliability_change)
-            self._ensure(bundles, resolved_ticker, case_id, is_holding).append(decision_reliability_signal(reason))
+            level_changed = reliability_change.previous_level != reliability_change.current_level
+            self._ensure(bundles, resolved_ticker, case_id, is_holding).append(
+                decision_reliability_signal(
+                    reason,
+                    current_level=reliability_change.current_level if level_changed else None,
+                    previous_level=reliability_change.previous_level if level_changed else None,
+                    ticker=resolved_ticker,
+                )
+            )
 
         # 16. Portfolio Decision Synthesis (Atlas Decision Layer
         # Sprint 8, Deliverable 11) -- "portfolio decision changed,
@@ -962,7 +1017,14 @@ class DailyBriefAgendaService:
             resolved_ticker = ticker or case_id
             is_holding = ticker in held_tickers if ticker else False
             reason = _portfolio_decision_change_reason(resolved_ticker, portfolio_decision_change)
-            self._ensure(bundles, resolved_ticker, case_id, is_holding).append(portfolio_decision_signal(reason))
+            self._ensure(bundles, resolved_ticker, case_id, is_holding).append(
+                portfolio_decision_signal(
+                    reason,
+                    current_category=portfolio_decision_change.current_category,
+                    previous_category=portfolio_decision_change.previous_category,
+                    ticker=resolved_ticker,
+                )
+            )
 
         # 17. Executive Change / Management Credibility / Business
         # Quality (Product Intelligence Sprint 1: Portfolio Intelligence

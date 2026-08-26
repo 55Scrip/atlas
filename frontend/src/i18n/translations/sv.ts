@@ -1783,6 +1783,16 @@ export const sv: Record<TranslationKey, string> = {
   "portfolioFit.portfolioSection.worsened": "Försämrade",
   "portfolioFit.portfolioSection.empty": "Inga innehav har en utvärderad portföljpassform än.",
   "portfolioFit.discovery.sortedNotice": "Kandidaterna nedan är ordnade efter hur väl de passar din portfölj, inte efter marknadsranking.",
+  // ---------- Implementation Sprint B1.2 (Engine Reason Localization Contract) ----------
+  "portfolioFit.verdictReason.noDimensionEvaluated": "Ingen dimension har kunnat utvärderas än.",
+  "portfolioFit.verdictReason.noCompanyLevelAnalysis": "Ingen bolagsspecifik analys (verksamhet, värdering eller risk) är utvärderad än.",
+  "portfolioFit.verdictReason.riskGate": "Riskpassformen är dålig, vilket väger tyngre än övriga dimensioner.",
+  "portfolioFit.verdictReason.multiplePoorOne": "1 dimension är bedömd som dålig.",
+  "portfolioFit.verdictReason.multiplePoorOther": "{{count}} dimensioner är bedömda som dåliga.",
+  "portfolioFit.verdictReason.moreWeakPoorThanGoodExcellent": "Fler dimensioner är svaga eller dåliga än bra eller utmärkta.",
+  "portfolioFit.verdictReason.mostlyExcellent": "{{count}} av de utvärderade dimensionerna är utmärkta, ingen svag eller dålig.",
+  "portfolioFit.verdictReason.moreGoodExcellentThanWeakPoor": "Fler dimensioner är bra eller utmärkta än svaga eller dåliga.",
+  "portfolioFit.verdictReason.mixed": "Dimensionerna pekar åt olika håll, utan en tydlig övervikt.",
 
   // Atlas Intelligence Sprint 1 -- Data Coverage & Confidence Engine
   "coverage.dimension.available": "Tillgängligt",
@@ -2067,6 +2077,9 @@ export const sv: Record<TranslationKey, string> = {
   "monitoring.freshness.failed": "Atlas senaste kontroll slutfördes inte för alla bolag — viss information kan vara inaktuell.",
   "monitoring.freshness.unknown": "Atlas har ännu inte slutfört sin första kontroll.",
   "monitoring.freshnessSummary.line": "{{waiting}} bolag inväntar analys, {{current}} oförändrade sedan senast, {{attention}} behöver din uppmärksamhet.",
+  // ---------- Implementation Sprint B1.2 (Engine Reason Localization Contract) ----------
+  "monitoring.category.newMaterialEvidence": "Atlas fick nya belägg som väsentligt ändrade dess bild av bolaget.",
+  "monitoring.category.materialRiskAppeared": "Atlas identifierade en ny risk.",
 
   "monitoring.changeFeed.heading": "Förändringar",
   "monitoring.changeFeed.empty": "Atlas har inte hittat några förändringar att rapportera för dina bolag.",
@@ -2340,6 +2353,7 @@ export const sv: Record<TranslationKey, string> = {
   "decisionReliability.level.limited": "Begränsad",
   "decisionReliability.level.unavailable": "Otillgänglig",
   "decisionReliability.level.unknown": "Okänd",
+  "decisionReliability.change.line": "Tillförlitligheten ändrades från {{previous}} till {{current}}.",
   "decisionReliability.source.confidence": "Analysens fullständighet",
   "decisionReliability.source.evidenceQuality": "Underlagets kvalitet",
   "decisionReliability.source.readinessBlocker": "Beslutsberedskap",
@@ -2376,6 +2390,7 @@ export const sv: Record<TranslationKey, string> = {
   "portfolioDecision.category.conflictsWithPortfolio": "Står i konflikt med portföljen",
   "portfolioDecision.category.operationallyLimited": "Operationellt begränsad",
   "portfolioDecision.category.unknown": "Okänd",
+  "portfolioDecision.change.line": "Vad detta betyder för portföljen ändrades från \"{{previous}}\" till \"{{current}}\".",
   "portfolioDecision.source.portfolioFit": "Portföljpassform",
   "portfolioDecision.source.portfolioIntelligence": "Portföljomfattande fynd",
   "portfolioDecision.source.opportunityCost": "Kapitalkonkurrens",

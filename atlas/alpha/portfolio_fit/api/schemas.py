@@ -90,6 +90,11 @@ class PortfolioFitAssessmentView(CamelModel):
     current_weight_percent: float | None
     overall: str
     overall_reasoning: list[str]
+    overall_reasoning_code: str | None
+    """Implementation Sprint B1.2 -- the semantic counterpart to
+    `overall_reasoning` (unchanged, still raw English for any consumer
+    that has not adopted this field yet)."""
+    overall_reasoning_count: int | None
     dimensions: list[FitDimensionView]
     trend: str
     data_gaps: list[str]
@@ -105,6 +110,8 @@ class PortfolioFitAssessmentView(CamelModel):
             current_weight_percent=assessment.current_weight_percent,
             overall=assessment.overall.value,
             overall_reasoning=list(assessment.overall_reasoning),
+            overall_reasoning_code=assessment.overall_reasoning_code.value if assessment.overall_reasoning_code is not None else None,
+            overall_reasoning_count=assessment.overall_reasoning_count,
             dimensions=[FitDimensionView.from_domain(d) for d in assessment.dimensions],
             trend=assessment.trend.value,
             data_gaps=list(assessment.data_gaps),

@@ -53,10 +53,16 @@ describe("MonitoringChangeFeed (Product Intelligence Sprint 3 -- Monitoring Inte
     expect(screen.getByText("Atlas har inte hittat några förändringar att rapportera för dina bolag.")).toBeInTheDocument();
   });
 
-  it("renders a real change's own reason text and status badge", () => {
+  it("translates a change's category into the canonical Swedish sentence, never the raw backend reason", () => {
     renderFeed([result()]);
-    expect(screen.getByText("Atlas's view on AAPL weakened.")).toBeInTheDocument();
+    expect(screen.getByText("Atlas syn har försvagats.")).toBeInTheDocument();
+    expect(screen.queryByText("Atlas's view on AAPL weakened.")).not.toBeInTheDocument();
     expect(screen.getByText("AAPL")).toBeInTheDocument();
+  });
+
+  it("falls back to the raw backend reason when the category isn't a recognized value", () => {
+    renderFeed([result({ changes: [change({ category: "case_condition_triggered", reason: "A condition you set for AAPL was met: real predicate text." })] })]);
+    expect(screen.getByText("A condition you set for AAPL was met: real predicate text.")).toBeInTheDocument();
   });
 
   it("orders companies by the backend's own status severity, highest importance first", () => {
@@ -87,13 +93,13 @@ describe("MonitoringChangeFeed (Product Intelligence Sprint 3 -- Monitoring Inte
     renderFeed([
       result({
         changes: [
-          change({ id: "c-material", materiality: "material", reason: "Material change." }),
-          change({ id: "c-minor", materiality: "minor", reason: "Minor change." }),
+          change({ id: "c-material", materiality: "material", category: "stance_weakened" }),
+          change({ id: "c-minor", materiality: "minor", category: "stance_strengthened" }),
         ],
       }),
     ]);
-    expect(screen.getByText("Material change.")).toBeInTheDocument();
-    expect(screen.getByText("Minor change.")).toBeInTheDocument();
+    expect(screen.getByText("Atlas syn har försvagats.")).toBeInTheDocument();
+    expect(screen.getByText("Atlas syn har stärkts.")).toBeInTheDocument();
     expect(screen.getByText(/^Väsentlig ·/)).toBeInTheDocument();
     expect(screen.getByText(/^Mindre ·/)).toBeInTheDocument();
   });

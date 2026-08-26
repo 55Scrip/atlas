@@ -83,7 +83,17 @@ export type ReasonCode =
   | "management_credibility"
   | "business_quality"
   | "case_condition_status"
-  | "assumption_status";
+  | "assumption_status"
+  // Implementation Sprint B1.2 (Engine Reason Localization Contract)
+  | "change_intelligence_thesis_impact"
+  | "portfolio_fit_verdict"
+  | "monitoring_change"
+  | "decision_readiness_transition"
+  | "investment_decision_transition"
+  | "recommendation_conviction_transition"
+  | "decision_path_transition"
+  | "decision_reliability_transition"
+  | "portfolio_decision_transition";
 
 /** A semantic reason payload, never a rendered sentence --
  * `value`/`secondaryValue` are always a closed enum's own value

@@ -118,6 +118,8 @@ def _fit(rating: FitRating) -> PortfolioFitAssessment:
         current_weight_percent=None,
         overall=rating,
         overall_reasoning=(),
+        overall_reasoning_code=None,
+        overall_reasoning_count=None,
         dimensions=dims,
         trend=FitTrend.UNAVAILABLE,
         data_gaps=(),

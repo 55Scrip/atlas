@@ -11,6 +11,7 @@ from atlas.alpha.coverage import CoverageAssessment
 
 __all__ = [
     "FitRating",
+    "FitVerdictReasonCode",
     "FitDimensionKind",
     "FitTrend",
     "FitDimension",
@@ -34,6 +35,28 @@ class FitRating(str, Enum):
     WEAK = "weak"
     POOR = "poor"
     UNAVAILABLE = "unavailable"
+
+
+class FitVerdictReasonCode(str, Enum):
+    """Implementation Sprint B1.2 (Engine Reason Localization Contract)
+    -- names *why* `engine.py::_overall_fit` reached its verdict, a
+    closed, 8-member set matching that function's own 8 return
+    branches exactly (verified against the real source, not assumed).
+    Exists because `FitRating` alone cannot distinguish two verdicts
+    that reach the same rating for different reasons -- `RISK_GATE`
+    and `MULTIPLE_POOR` both produce `FitRating.POOR`, but name a
+    different fact. `overall_reasoning` (the pre-rendered English
+    sentence) is unchanged by this addition -- this is a new, additive
+    field alongside it, not a replacement."""
+
+    NO_DIMENSION_EVALUATED = "no_dimension_evaluated"
+    NO_COMPANY_LEVEL_ANALYSIS = "no_company_level_analysis"
+    RISK_GATE = "risk_gate"
+    MULTIPLE_POOR = "multiple_poor"
+    MORE_WEAK_POOR_THAN_GOOD_EXCELLENT = "more_weak_poor_than_good_excellent"
+    MOSTLY_EXCELLENT = "mostly_excellent"
+    MORE_GOOD_EXCELLENT_THAN_WEAK_POOR = "more_good_excellent_than_weak_poor"
+    MIXED = "mixed"
 
 
 class FitDimensionKind(str, Enum):
@@ -90,6 +113,19 @@ class PortfolioFitAssessment:
     input exists to project one)."""
     overall: FitRating
     overall_reasoning: tuple[str, ...]
+    overall_reasoning_code: FitVerdictReasonCode | None
+    """Implementation Sprint B1.2 -- the semantic counterpart to
+    `overall_reasoning` above (unchanged, still the pre-rendered
+    English sentence for any consumer that has not adopted this field
+    yet). `None` only when `overall_reasoning` is itself empty, which
+    `_overall_fit` never produces -- see `engine.py`'s own return
+    contract; typed optional rather than asserted non-null so this
+    dataclass makes no assumption about a future branch it cannot see."""
+    overall_reasoning_count: int | None
+    """The one real count two of `overall_reasoning_code`'s 8 branches
+    carry (`MULTIPLE_POOR`'s Poor count, `MOSTLY_EXCELLENT`'s
+    Excellent-of-evaluated count) -- `None` for every other branch,
+    never a fabricated number."""
     dimensions: tuple[FitDimension, ...]
     trend: FitTrend
     data_gaps: tuple[str, ...]

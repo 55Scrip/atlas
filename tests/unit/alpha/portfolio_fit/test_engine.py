@@ -28,6 +28,7 @@ from atlas.alpha.portfolio_fit.models import (
     FitDimensionKind,
     FitRating,
     FitTrend,
+    FitVerdictReasonCode,
     PortfolioFitAssessment,
 )
 from atlas.analysis_engine.business_contracts import (
@@ -314,22 +315,27 @@ def _dim(kind: FitDimensionKind, rating: FitRating) -> FitDimension:
 class TestOverallFit:
     def test_all_excellent_is_excellent(self):
         dims = tuple(_dim(kind, FitRating.EXCELLENT) for kind in FitDimensionKind)
-        overall, _ = _overall_fit(dims)
+        overall, _, code, count = _overall_fit(dims)
         assert overall is FitRating.EXCELLENT
+        assert code is FitVerdictReasonCode.MOSTLY_EXCELLENT
+        assert count == len(FitDimensionKind)
 
     def test_poor_risk_gates_the_overall_verdict_even_with_other_dimensions_excellent(self):
         dims = tuple(
             _dim(kind, FitRating.POOR if kind is FitDimensionKind.RISK else FitRating.EXCELLENT)
             for kind in FitDimensionKind
         )
-        overall, reasoning = _overall_fit(dims)
+        overall, reasoning, code, count = _overall_fit(dims)
         assert overall is FitRating.POOR
         assert any("Risk Fit" in r for r in reasoning)
+        assert code is FitVerdictReasonCode.RISK_GATE
+        assert count is None
 
     def test_all_unavailable_is_unavailable(self):
         dims = tuple(_dim(kind, FitRating.UNAVAILABLE) for kind in FitDimensionKind)
-        overall, _ = _overall_fit(dims)
+        overall, _, code, _count = _overall_fit(dims)
         assert overall is FitRating.UNAVAILABLE
+        assert code is FitVerdictReasonCode.NO_DIMENSION_EVALUATED
 
     def test_same_dimension_set_always_produces_same_overall(self):
         dims = (
@@ -337,8 +343,8 @@ class TestOverallFit:
             _dim(FitDimensionKind.VALUATION, FitRating.NEUTRAL),
             _dim(FitDimensionKind.RISK, FitRating.GOOD),
         )
-        first, _ = _overall_fit(dims)
-        second, _ = _overall_fit(dims)
+        first, _, _, _ = _overall_fit(dims)
+        second, _, _, _ = _overall_fit(dims)
         assert first == second
 
 
@@ -360,6 +366,8 @@ def _assessment(ticker: str, overall: FitRating, dimensions: tuple[FitDimension,
         current_weight_percent=None,
         overall=overall,
         overall_reasoning=(),
+        overall_reasoning_code=None,
+        overall_reasoning_count=None,
         dimensions=dimensions,
         trend=FitTrend.UNAVAILABLE,
         data_gaps=(),
