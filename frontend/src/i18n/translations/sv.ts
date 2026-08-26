@@ -187,6 +187,10 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.pulse.concentrationLabel": "Koncentration",
   "portfolio.pulse.criticalPill": "{{count}} kritiska",
 
+  // ---------- Redesign From Zero Sprint V2 ----------
+  "portfolio.todaysFocus.biggestOpportunityLabel": "Dagens största möjlighet",
+  "portfolio.todaysFocus.biggestRiskLabel": "Dagens största risk",
+
   // ---------- attention required (Product Sprint 8) ----------
   "portfolio.attentionRequired.heading": "Kräver uppmärksamhet",
   // ---------- Implementation Sprint B2 (Hero Reordering) ----------
@@ -451,6 +455,8 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.whatChanged.heading": "Vad som ändrats",
   "investmentCase.whatChanged.baseline": "Atlas har etablerat en baslinje för det här caset. Framtida analyser jämförs mot den.",
   "investmentCase.whatChanged.noChange": "Ingen väsentlig förändring sedan föregående analys.",
+  // ---------- Redesign From Zero Sprint V2 ----------
+  "investmentCase.hero.additionalDetailsHeading": "Ytterligare detaljer",
   // ---------- Implementation Sprint B2 (Hero Reordering) ----------
   "investmentCase.hero.sinceYouWereHere.heading": "Sedan du var här senast",
   "investmentCase.hero.sinceYouWereHere.countOne": "1 förändring sedan föregående analys.",
@@ -1116,7 +1122,6 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.origin.company": "Öppnad från bolagsvyn",
 
   // ---------- investment case figma-fidelity rebuild: key metrics / strength-concern-priority ----------
-  "investmentCase.keyMetrics.heading": "Nyckeltal",
   "investmentCase.keyMetrics.recommendationLabel": "Beslutsstöd",
   "investmentCase.keyMetrics.convictionLabel": "Analysdjup",
   "investmentCase.keyMetrics.valuationSupportLabel": "Nedsidesstöd",

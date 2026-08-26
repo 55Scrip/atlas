@@ -1018,6 +1018,18 @@ export function PortfolioPage() {
               t={t}
             />
 
+            {/* Redesign From Zero Sprint V2 -- "Today's Biggest Risk" /
+                "Today's Biggest Opportunity": a single-ticker preview of
+                the same already-fetched, already-sorted Portfolio Fit
+                data `PortfolioFitOverviewSection` shows in full further
+                down this page. Deliberately the single most compelling
+                entry on each side, not another multi-column list --
+                the "compact fact in the story, full detail as evidence
+                below" shape this codebase already uses for Since You
+                Were Here and the top limiting factor on Investment
+                Case. No new fetch, no new fit computation. */}
+            <TodaysBiggestRiskOpportunity status={portfolioFitHoldings} onOpenCase={openInvestmentCase} t={t} />
+
             {/* Deliverable 2, step 3: Holdings -- what do I own, in
                 detail, ordered so what matters is on top by default. */}
             <Inline gap="inter-section" wrap align="start">
@@ -1867,6 +1879,78 @@ function AttentionRequiredSection({
         </Link>
       )}
     </Stack>
+  );
+}
+
+/**
+ * Redesign From Zero Sprint V2 -- "Today's Biggest Risk" / "Today's
+ * Biggest Opportunity": the single weakest-fit and single best-fit
+ * holding, each with its own real `overallReasoning[0]` sentence,
+ * side by side. Reads the exact same server-sorted (best-first)
+ * `PortfolioFitAssessmentView[]` `PortfolioFitOverviewSection` already
+ * renders in full further down this page -- this is a one-entry
+ * preview of that same real ranking, not a second computation. Renders
+ * nothing when fewer than two holdings have been evaluated (nothing
+ * true and distinct to say yet), never a fabricated placeholder.
+ */
+function TodaysBiggestRiskOpportunity({
+  status,
+  onOpenCase,
+  t,
+}: {
+  status: PortfolioFitFetchStatus;
+  onOpenCase: (ticker: string, existingCaseId: string | null) => void;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  if (status.kind !== "loaded") return null;
+  const evaluated = status.assessments.filter((a) => a.overall !== "unavailable");
+  if (evaluated.length < 2) return null;
+
+  const biggestOpportunity = evaluated[0]!;
+  const biggestRisk = evaluated[evaluated.length - 1]!;
+  if (biggestOpportunity.ticker === biggestRisk.ticker) return null;
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+        gap: "var(--space-row)",
+      }}
+    >
+      <Surface tier="elevated">
+        <Stack gap="metadata">
+          <Label>{t("portfolio.todaysFocus.biggestOpportunityLabel")}</Label>
+          <Link
+            href="#"
+            style={{ fontWeight: 600, fontSize: "var(--type-size-h5)" }}
+            onClick={(event) => {
+              event.preventDefault();
+              onOpenCase(biggestOpportunity.ticker, biggestOpportunity.caseId);
+            }}
+          >
+            {biggestOpportunity.ticker}
+          </Link>
+          {biggestOpportunity.overallReasoning[0] && <Text as="p" color="secondary">{biggestOpportunity.overallReasoning[0]}</Text>}
+        </Stack>
+      </Surface>
+      <Surface tier="elevated">
+        <Stack gap="metadata">
+          <Label>{t("portfolio.todaysFocus.biggestRiskLabel")}</Label>
+          <Link
+            href="#"
+            style={{ fontWeight: 600, fontSize: "var(--type-size-h5)" }}
+            onClick={(event) => {
+              event.preventDefault();
+              onOpenCase(biggestRisk.ticker, biggestRisk.caseId);
+            }}
+          >
+            {biggestRisk.ticker}
+          </Link>
+          {biggestRisk.overallReasoning[0] && <Text as="p" color="secondary">{biggestRisk.overallReasoning[0]}</Text>}
+        </Stack>
+      </Surface>
+    </div>
   );
 }
 

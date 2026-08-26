@@ -331,7 +331,18 @@ function ExecutiveSummaryBar({ analysis, t }: { analysis: HeroAnalysisInput; t: 
             {formatPercent(analysis.longTermExpectedReturn.highPercent)}
           </Text>
         ) : (
-          <StatusText label={t("investmentCase.keyMetrics.notYetAvailable")} tone="neutral" />
+          <Stack gap="metadata">
+            <StatusText label={t("investmentCase.keyMetrics.notYetAvailable")} tone="neutral" />
+            {/* Redesign From Zero Sprint V2: the gap explanation used to
+                live in a now-removed duplicate Expected Return block --
+                folded in here so the real reason Expected Return isn't
+                available yet stays reachable, not lost in the merge. */}
+            {analysis.longTermExpectedReturnGap && (
+              <Text as="p" color="tertiary">
+                {t(GAP_KEY[analysis.longTermExpectedReturnGap])}
+              </Text>
+            )}
+          </Stack>
         )}
       </SummaryStat>
       <SummaryStat label={t("investmentCase.keyMetrics.upsideDownsideLabel")}>
@@ -423,31 +434,40 @@ export function HeroCard({
         <>
           <ExecutiveSummaryBar analysis={analysis} t={t} />
 
-          {/* One sentence -- the conclusion, plus its tension where one
-              genuinely exists (`APP-003` ATM-R-002). Prose supports the
-              Key Metrics row below, it does not restate it. */}
+          {/* Redesign From Zero Sprint V2 (Phase: Investment Case
+              reconstruction) -- the narrative block right below the
+              three-second Summary Bar now carries every sentence that
+              explains *why* the bar says what it says: the conclusion,
+              its tension, the top limiting factor, and Confidence's own
+              reason -- one continuous read, not four re-labeled
+              sub-sections each repeating a badge the Summary Bar
+              already showed. Confidence's own badge is deliberately not
+              repeated here (it's the Summary Bar's own second field);
+              only the reason sentence, previously stranded under its
+              own "Confidence" heading below a divider, moved up next to
+              the conclusion it actually explains. */}
           <Text as="p" style={HERO_SENTENCE_STYLE}>
             {t(DECISION_SUPPORT_STATEMENT_KEY[analysis.recommendationLevel])} {t(HERO_WHY_KEY[tension])}
           </Text>
 
-          {/* `UX-022` §3/§6: the single highest-priority real limiting
-              factor, compact hero placement. Internal Alpha Stabilization:
-              suppressed specifically on Investment Case, where
-              `ValuationSupportCard` then `LimitingFactorsCard` render
-              immediately below this same card (only hairline dividers
-              between them) -- a real investor reading top to bottom saw
-              the identical sentence (e.g. "the valuation range contains
-              both an upside and a downside") up to three times in one
-              screen's worth of content before this fix. Company
-              Workspace renders this Hero standalone with nothing below
-              it, so it still gets this line -- the fact is never lost
-              where it's the only place stating it. */}
           {topLimitingFactor && !suppressLimitingFactorPreview && (
             <Text as="p" color="secondary">
               {t("investmentCase.hero.limitedByPrefix")}{" "}
               {topLimitingFactor.kind === "valuationGap"
                 ? t(VALUATION_SUPPORT_GAP_COPY_KEY[topLimitingFactor.gap])
                 : t(CONCERN_SENTENCE_KEY[topLimitingFactor.category])}
+            </Text>
+          )}
+
+          {analysis.convictionReasonCodes[0] && (
+            <Text as="p" color="secondary">
+              {t(CONVICTION_REASON_KEY[analysis.convictionReasonCodes[0]])}
+            </Text>
+          )}
+
+          {analysis.outlookAlignmentLongTerm !== "unavailable" && (
+            <Text as="p" color="tertiary">
+              {t(OUTLOOK_ALIGNMENT_KEY[analysis.outlookAlignmentLongTerm])}
             </Text>
           )}
 
@@ -460,36 +480,12 @@ export function HeroCard({
 
           <Divider tone="hairline" />
 
-          {/* Implementation Sprint B2 (Hero Reordering): Decision First's
-              own step 3 -- Confidence, immediately after Why, before any
-              supporting metric. `Conviction` is this Hero's existing
-              Confidence-equivalent field (unchanged data, unchanged
-              badge); the reason line is new only in the sense that
-              `conviction.reasons` was already fetched and simply never
-              rendered anywhere before this sprint. */}
-          <Stack gap="metadata">
-            <Label>{t("investmentCase.hero.confidenceLabel")}</Label>
-            <StatusBadge
-              label={t(CONVICTION_LEVEL_KEY[analysis.convictionLevel])}
-              tone={CONVICTION_TONE[analysis.convictionLevel]}
-            />
-            {analysis.convictionReasonCodes[0] && (
-              <Text as="p" color="secondary">
-                {t(CONVICTION_REASON_KEY[analysis.convictionReasonCodes[0]])}
-              </Text>
-            )}
-          </Stack>
-
-          {/* Decision First's own step 4 -- Since you were here, the
-              same real facts (`isBaselineCase`/`latestChangeCount`)
-              `deriveHeroHasNotableChange` already reads, now stated as
-              its own compact fact rather than folded silently into
-              Priority below. The full, itemized change list remains
-              exactly where it already was, one section down
+          {/* Since you were here -- the same real facts
+              (`isBaselineCase`/`latestChangeCount`) as before, unchanged
+              placement. The full, itemized change list remains exactly
+              where it already was, one section down
               (`WhatChangedSection`) -- this is a preview, not a
-              duplicate, the same "compact in the Hero, full detail
-              below" shape `topLimitingFactor` above already
-              establishes. */}
+              duplicate. */}
           <Stack gap="metadata">
             <Label>{t("investmentCase.hero.sinceYouWereHere.heading")}</Label>
             <Text as="p">
@@ -508,69 +504,19 @@ export function HeroCard({
 
           <Divider tone="hairline" />
 
-          {/* Decision First's own step 5 -- Expected Return, moved up
-              from the metrics row below (unchanged figures, unchanged
-              "not yet available" honesty). */}
-          <Inline gap="inter-section" wrap align="start">
-            <MetricField label={t("investmentCase.keyMetrics.expectedReturnLabel")}>
-              {analysis.longTermExpectedReturn ? (
-                <>
-                  <Text as="span" style={{ fontWeight: 600 }}>
-                    {formatPercent(analysis.longTermExpectedReturn.lowPercent)} {"→"}{" "}
-                    {formatPercent(analysis.longTermExpectedReturn.highPercent)}
-                  </Text>
-                  <Text as="p" color="tertiary">
-                    {t("investmentCase.keyMetrics.expectedReturnCaption")}
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <StatusText label={t("investmentCase.keyMetrics.notYetAvailable")} tone="neutral" />
-                  {analysis.longTermExpectedReturnGap && (
-                    <Text as="p" color="tertiary">
-                      {t(GAP_KEY[analysis.longTermExpectedReturnGap])}
-                    </Text>
-                  )}
-                </>
-              )}
-            </MetricField>
-            <MetricField label={t("investmentCase.keyMetrics.upsideDownsideLabel")}>
-              {analysis.longTermBullReturnPercent != null && analysis.longTermBearReturnPercent != null ? (
-                <Text as="span" style={{ fontWeight: 600 }}>
-                  {formatPercent(analysis.longTermBullReturnPercent)} {"/"}{" "}
-                  {formatPercent(analysis.longTermBearReturnPercent)}
-                </Text>
-              ) : (
-                <StatusText label={t("investmentCase.keyMetrics.notYetAvailable")} tone="neutral" />
-              )}
-            </MetricField>
-          </Inline>
-
-          {analysis.outlookAlignmentLongTerm !== "unavailable" && (
-            <Text as="p" color="tertiary">
-              {t(OUTLOOK_ALIGNMENT_KEY[analysis.outlookAlignmentLongTerm])}
-            </Text>
-          )}
-
-          <Divider tone="hairline" />
-
-          {/* Decision First's own steps 6-8 -- Primary strength, primary
-              risk, open question. Strength reuses the same sentence bank
+          {/* Biggest Strength / Biggest Concern / Open Question --
+              unchanged since Sprint P4's card-grid treatment. Now sits
+              directly after Since You Were Here, one section earlier
+              than before, since the Expected Return/Upside-Downside
+              block that used to separate them has been removed as a
+              pure duplicate of the Summary Bar above (Redesign From
+              Zero Sprint V2). Strength reuses the same sentence bank
               `InvestmentArgumentSection` uses for its Supports column;
-              risk (labeled "Concern" in this codebase, same fact) reuses
-              the same `findMostSevereRisk` selection already used for
-              the supporting-strip risk chip; the open question is the
-              same real, resolved question `EvidenceCoverageCard` shows
-              in its own expandable detail (`resolveOpenQuestionKey` in
-              `CompanyWorkspacePage.tsx`), never a second one invented
-              for the Hero. */}
-          {/* Editorial Layout Reconstruction Sprint P4 (Phase 5/8): three
-              real editorial cards -- Biggest Strength, Biggest Concern,
-              Open Question -- each its own bordered block instead of a
-              plain three-column text row, matching the Figma reference's
-              own "written by an analyst" card treatment. Same three real
-              facts as before (`topStrengthKind`/`mostSevereRisk`/
-              `primaryOpenQuestionKey`), no new selection logic. */}
+              risk (labeled "Concern" in this codebase, same fact)
+              reuses the same `findMostSevereRisk` selection already
+              used for the supporting-strip risk chip; the open
+              question is the same real, resolved question
+              `EvidenceCoverageCard` shows in its own expandable detail. */}
           <div
             style={{
               display: "grid",
@@ -608,21 +554,16 @@ export function HeroCard({
 
           <Divider tone="hairline" />
 
-          {/* Supporting metrics -- Figma's own labeled-field row, minus
-              the two fields promoted above. Recommendation/Valuation
-              Support/Current Price stay as compact reference data;
-              Current Priority (an operational nudge, not a decision
-              fact -- outcome missing, reconciliation needed, etc.)
-              moves down here too, alongside them, now that "Since you
-              were here" above owns the "did something change" fact on
-              its own. */}
-          <Label>{t("investmentCase.keyMetrics.heading")}</Label>
+          {/* Redesign From Zero Sprint V2: renamed from "Key Metrics" to
+              "Additional details" -- Recommendation and Expected Return/
+              Upside-Downside, the two fields that used to anchor this
+              row, are now exclusively the Summary Bar's own job; what's
+              left (Valuation Support, Current Price, Current Priority)
+              is genuinely supporting reference data, and the heading
+              now says so rather than calling three secondary fields
+              "Key Metrics" when the real key metrics live above. */}
+          <Label>{t("investmentCase.hero.additionalDetailsHeading")}</Label>
           <Inline gap="inter-section" wrap align="start">
-            <MetricField label={t("investmentCase.keyMetrics.recommendationLabel")}>
-              <Text as="span" style={{ fontWeight: 600 }}>
-                {t(DECISION_SUPPORT_BADGE_KEY[analysis.recommendationLevel])}
-              </Text>
-            </MetricField>
             <MetricField label={t("investmentCase.keyMetrics.valuationSupportLabel")}>
               <StatusBadge
                 label={t(VALUATION_SUPPORT_LABEL_KEY[analysis.valuationSupportStatus])}

@@ -188,6 +188,10 @@ export const en = {
   "portfolio.pulse.concentrationLabel": "Concentration",
   "portfolio.pulse.criticalPill": "{{count}} critical",
 
+  // ---------- Redesign From Zero Sprint V2 ----------
+  "portfolio.todaysFocus.biggestOpportunityLabel": "Today's biggest opportunity",
+  "portfolio.todaysFocus.biggestRiskLabel": "Today's biggest risk",
+
   // ---------- attention required (Product Sprint 8) ----------
   "portfolio.attentionRequired.heading": "Attention Required",
   // ---------- Implementation Sprint B2 (Hero Reordering) ----------
@@ -452,6 +456,8 @@ export const en = {
   "investmentCase.whatChanged.heading": "What Changed",
   "investmentCase.whatChanged.baseline": "Atlas has established a baseline for this Case. Future analyses will be compared against it.",
   "investmentCase.whatChanged.noChange": "No material change since the previous analysis.",
+  // ---------- Redesign From Zero Sprint V2 ----------
+  "investmentCase.hero.additionalDetailsHeading": "Additional details",
   // ---------- Implementation Sprint B2 (Hero Reordering) ----------
   "investmentCase.hero.sinceYouWereHere.heading": "Since you were here",
   "investmentCase.hero.sinceYouWereHere.countOne": "1 change since the previous analysis.",
@@ -1134,7 +1140,6 @@ export const en = {
   "investmentCase.origin.company": "Opened from Company Workspace",
 
   // ---------- investment case figma-fidelity rebuild: key metrics / strength-concern-priority ----------
-  "investmentCase.keyMetrics.heading": "Key Metrics",
   "investmentCase.keyMetrics.recommendationLabel": "Decision Support",
   "investmentCase.keyMetrics.convictionLabel": "Analysis Depth",
   "investmentCase.keyMetrics.valuationSupportLabel": "Downside Support",
