@@ -93,25 +93,15 @@ describe("DiscoveryPage (Discovery Engine v2)", () => {
     expect(screen.getAllByText("Bra passform").length).toBeGreaterThan(0);
   });
 
-  it("shows the honest empty state when no candidates exist", async () => {
-    mockFetch({ candidates: [], watchlist: [] });
-    renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
-    await waitFor(() =>
-      expect(
-        screen.getByText("Atlas har inte identifierat en tillräckligt övertygande kandidat utifrån tillgänglig data."),
-      ).toBeInTheDocument(),
-    );
-  });
-
-  it("shows the empty Watchlist message when the Watchlist is empty", async () => {
+  it("shows the empty Watchlist message when the Watchlist is empty (Atlas UX Phase 7B, Phase 2: one merged section, one honest empty state)", async () => {
     mockFetch({ candidates: [], watchlist: [] });
     renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
     await waitFor(() => expect(screen.getByText("Din bevakningslista är tom. Sök ovan för att lägga till ett bolag.")).toBeInTheDocument());
   });
 
-  it("lists the full Watchlist roster, cross-referencing the ranked candidates for its Fit badge", async () => {
+  it("lists every Watchlist entry exactly once -- never a second, duplicate rendering of the same roster (Atlas UX Phase 7B, Phase 2)", async () => {
     renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
-    await waitFor(() => expect(screen.getAllByText("NVDA").length).toBeGreaterThanOrEqual(2));
+    await waitFor(() => expect(screen.getAllByText("NVDA").length).toBe(1));
   });
 
   it("shows a Watchlist entry's real Fit even when it is also a Portfolio holding (live-verification regression)", async () => {
@@ -141,7 +131,7 @@ describe("DiscoveryPage (Discovery Engine v2)", () => {
       ],
     });
     renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
-    await waitFor(() => expect(screen.getByText("Svag passform")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("Svag passform").length).toBeGreaterThan(0));
     expect(screen.queryByText("Inte tillgängligt än")).not.toBeInTheDocument();
   });
 
@@ -234,8 +224,8 @@ describe("DiscoveryPage (Discovery Engine v2)", () => {
     });
     renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
     await waitFor(() => expect(screen.getAllByText(/^(AMD|NVDA)$/).length).toBeGreaterThan(0));
-    const tickerLinks = screen.getAllByRole("link", { name: /^(AMD|NVDA)$/ });
-    expect(tickerLinks.map((link) => link.textContent)).toEqual(["AMD", "NVDA"]);
+    const tickerHeadings = screen.getAllByRole("heading", { name: /^(AMD|NVDA)$/ });
+    expect(tickerHeadings.map((heading) => heading.textContent)).toEqual(["AMD", "NVDA"]);
   });
 
   it("pre-fills Compare's second candidate with the weakest-fit holding (Deliverable 6)", async () => {
@@ -328,6 +318,6 @@ describe("DiscoveryPage (Discovery Engine v2)", () => {
     await waitFor(() => expect(screen.getAllByText("Ta bort från bevakningslistan").length).toBeGreaterThan(0));
     await user.click(screen.getAllByText("Ta bort från bevakningslistan")[0]!);
     // Optimistically removed, then restored once the failed DELETE resolves.
-    await waitFor(() => expect(screen.getAllByRole("link", { name: "NVDA" }).length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText("NVDA").length).toBeGreaterThan(0));
   });
 });

@@ -189,4 +189,77 @@ describe("DiscoveryCandidateCard", () => {
     const numbers = screen.queryAllByText(/^\d+$|^\d+\/\d+$|^\d+%$/);
     expect(numbers).toHaveLength(0);
   });
+
+  describe("Stance/Fit tension bridging (Atlas UX Phase 7B, Phase 3)", () => {
+    function stanceView(level: "avoid_decision" | "increase") {
+      return {
+        level,
+        reasoning: [{ code: "portfolio_fit_weak" as const }],
+        supportingSignals: [],
+        limitingSignals: [],
+        confidence: "high" as const,
+        missingInformation: [],
+      };
+    }
+
+    it("explains a real Stance/Fit disagreement instead of leaving two opposing badges unexplained (confirmed live: 'Red flag found' next to 'Good Fit')", () => {
+      renderCard({ assessment: assessment({ overall: "good" }), stance: stanceView("avoid_decision") });
+      expect(screen.getByText("Röd flagga hittad")).toBeInTheDocument();
+      expect(screen.getByText("Bra passform")).toBeInTheDocument();
+      expect(
+        screen.getByText("Det här gäller enbart portföljpassformen — Atlas flaggade separat en oro i själva bolaget."),
+      ).toBeInTheDocument();
+    });
+
+    it("explains the opposite disagreement too -- a strengthened view but a poor portfolio fit", () => {
+      renderCard({ assessment: assessment({ overall: "poor" }), stance: stanceView("increase") });
+      expect(screen.getByText("Atlas syn på bolaget har stärkts, men det skulle passa din portfölj dåligt.")).toBeInTheDocument();
+    });
+
+    it("never shows a bridging sentence when Stance and Fit are simply neutral/compatible, not genuinely opposed", () => {
+      renderCard({ assessment: assessment({ overall: "neutral" }), stance: stanceView("increase") });
+      expect(screen.queryByText(/gäller enbart portföljpassformen|skulle passa din portfölj dåligt/)).not.toBeInTheDocument();
+    });
+
+    it("never shows a bridging sentence when either Stance or Fit is missing", () => {
+      renderCard({ assessment: null, stance: stanceView("avoid_decision") });
+      expect(screen.queryByText(/gäller enbart portföljpassformen|skulle passa din portfölj dåligt/)).not.toBeInTheDocument();
+    });
+  });
+
+  it("filters the generic 'no trade size available' allocation boilerplate out of the compact preview, so it doesn't repeat identically on nearly every card (Atlas UX Phase 7B, Phase 2)", () => {
+    renderCard({
+      variant: "compact",
+      assessment: assessment({
+        dimensions: [
+          {
+            kind: "allocation",
+            rating: "good",
+            reasoning: ["No trade size is available to project a resulting weight; portfolio concentration is currently Low."],
+            unavailableReason: null,
+          },
+          { kind: "business", rating: "weak", reasoning: ["Thin margins versus peers."], unavailableReason: null },
+        ],
+      }),
+    });
+    expect(screen.queryByText(/No trade size is available/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Thin margins versus peers\./)).toBeInTheDocument();
+  });
+
+  it("still shows the real allocation dimension in the full detail view -- the boilerplate filter only applies to the short compact preview", () => {
+    renderCard({
+      variant: "full",
+      assessment: assessment({
+        dimensions: [
+          {
+            kind: "allocation",
+            rating: "good",
+            reasoning: ["No trade size is available to project a resulting weight; portfolio concentration is currently Low."],
+            unavailableReason: null,
+          },
+        ],
+      }),
+    });
+    expect(screen.getByText(/No trade size is available/)).toBeInTheDocument();
+  });
 });

@@ -31,7 +31,7 @@ import {
   type FitRating,
   type PortfolioFitAssessmentView,
 } from "../portfolioFit/portfolioFitApi";
-import { FIT_RATING_KEY, NO_PRIORITY_RANK, PRIORITY_LEVEL_RANK, type PriorityLevel } from "../status/statusTone";
+import { NO_PRIORITY_RANK, PRIORITY_LEVEL_RANK, type PriorityLevel } from "../status/statusTone";
 import { fetchStanceForCandidates, type TickerStanceView } from "../stance/stanceApi";
 
 const FIT_RANK: Record<FitRating, number> = { excellent: 0, good: 1, neutral: 2, weak: 3, poor: 4, unavailable: 5 };
@@ -89,21 +89,26 @@ type RecentActivityFetchStatus =
  * sprint's own mission: "what should I look at next, given what I
  * already own?" not "what stocks exist?"
  *
- * Deliverable 9's suggested four sections, implemented as four real,
- * independent data sources, none duplicating another:
- * 1. Search / Review a Company -- `atlas.alpha.security_discovery`
- *    (Deliverable 2), the one real candidate-search capability in this
- *    codebase, previously never called from any page.
- * 2. Candidates for Your Portfolio -- `/api/portfolio-fit/candidates`
- *    directly (every Watchlist Case not already held, ranked,
- *    Deliverable 3), not the old Daily-Brief-change-gated slice --
- *    that gate meant a freshly-watchlisted candidate with no detected
- *    "change" yet was invisible; Portfolio Fit has no such gate.
- * 3. Watchlist Candidates -- the real, full Watchlist roster
- *    (Deliverable 7), reusing the exact same `/api/alpha-watchlist`
- *    add/remove endpoints `WatchlistPage.tsx` already uses.
- * 4. Compare -- an entry point into `/discovery/compare`
+ * Deliverable 9's suggested sections, implemented as real, independent
+ * data sources, none duplicating another:
+ * 1. Candidates for Your Portfolio -- the one canonical candidate
+ *    presentation (Atlas UX Phase 7B, Phase 2), tiered by Portfolio Fit
+ *    (`/api/portfolio-fit/candidates` + `/api/portfolio-fit/holdings`
+ *    for Watchlist entries that are also held). Previously two separate
+ *    sections -- these same tiered cards, plus a second compact table
+ *    below reusing the full `/api/alpha-watchlist` roster -- rendered
+ *    the same ~11 tickers twice on one page (confirmed live). The full
+ *    roster is now folded into this one list: every Watchlist entry
+ *    appears exactly once, tiered when a real Fit assessment exists,
+ *    or listed afterward via the card's own honest "fit pending"/"no
+ *    Case yet" state when it doesn't.
+ * 2. Compare -- an entry point into `/discovery/compare`
  *    (Deliverable 5/6).
+ * 3. Search / Review a Company -- `atlas.alpha.security_discovery`
+ *    (Deliverable 2), the one real candidate-search capability in this
+ *    codebase.
+ * 4. Recent Activity -- Decision/Outcome/Trade events scoped to
+ *    Watchlist Cases (Deliverable 2).
  *
  * "What Atlas Found" (the old Daily-Brief-re-slice of *existing
  * holdings'* changes) is deliberately removed: that fact already has a
@@ -279,7 +284,46 @@ export function DiscoveryPage() {
   const stanceByTicker = new Map(
     stanceCandidatesStatus.kind === "loaded" ? stanceCandidatesStatus.entries.map((e) => [e.ticker, e.stance]) : [],
   );
-  const tiers = candidateFitStatus.kind === "loaded" ? groupCandidatesByTier(candidateFitStatus.assessments, priorityByTicker) : [];
+  /** Deliverable 9 -- the candidate list's own real ordering signals:
+   * Agenda priority first, then Fit rating, then ticker -- never a
+   * numeric score, and two candidates with neither signal remain a tie
+   * broken only alphabetically. */
+  const orderedWatchlistEntries =
+    watchlistStatus.kind === "loaded"
+      ? [...watchlistStatus.entries].sort((a, b) => {
+          const priorityRank = (t: string) => {
+            const p = priorityByTicker.get(t);
+            return p ? PRIORITY_LEVEL_RANK[p] : NO_PRIORITY_RANK;
+          };
+          const rankDiff = priorityRank(b.ticker) - priorityRank(a.ticker);
+          if (rankDiff !== 0) return rankDiff;
+          const fitRank = (t: string) => {
+            const fit = anyFitByTicker.get(t)?.overall;
+            return fit ? FIT_RANK[fit] : 6;
+          };
+          const fitDiff = fitRank(a.ticker) - fitRank(b.ticker);
+          if (fitDiff !== 0) return fitDiff;
+          return a.ticker.localeCompare(b.ticker);
+        })
+      : [];
+
+  /** Atlas UX Phase 7B, Phase 2 -- previously two independent sections
+   * rendered the same watchlist roster twice: full cards here (sourced
+   * only from `/api/portfolio-fit/candidates`, which excludes held
+   * tickers) and a second, compact table below (the full
+   * `/api/alpha-watchlist` roster). Confirmed live: the same ~11
+   * tickers appeared in both. This is now the one canonical
+   * presentation, tiered by Fit exactly as before, but built from
+   * `anyFitByTicker` (candidates + held watchlist entries together --
+   * the same union the old compact table's own badge lookup already
+   * used) so no entry is lost. A watchlist entry with no Fit assessment
+   * at all yet (freshly added, still evaluating) is neither dropped nor
+   * given a fabricated tier -- it renders after the tiers via the
+   * card's own real "fit pending"/"no Case yet" state. */
+  const allAssessments = Array.from(anyFitByTicker.values()).filter((a) => watchlistTickers.has(a.ticker));
+  const tiers = groupCandidatesByTier(allAssessments, priorityByTicker);
+  const assessedTickers = new Set(allAssessments.map((a) => a.ticker));
+  const unassessedWatchlistEntries = orderedWatchlistEntries.filter((entry) => !assessedTickers.has(entry.ticker));
 
   /** Deliverable 6 (Portfolio Context) -- "which holding is most
    * relevant to compare against?" The same already-computed fact
@@ -313,30 +357,6 @@ export function DiscoveryPage() {
         ).slice(0, RECENT_ACTIVITY_COUNT)
       : [];
 
-  /** Deliverable 9 -- the Watchlist Candidates roster (a full-membership
-   * list, not a Fit-tiered ranking) still benefits from the same real
-   * ordering signals: Agenda priority first, then Fit rating, then
-   * ticker -- never a numeric score, and two candidates with neither
-   * signal remain a tie broken only alphabetically. */
-  const orderedWatchlistEntries =
-    watchlistStatus.kind === "loaded"
-      ? [...watchlistStatus.entries].sort((a, b) => {
-          const priorityRank = (t: string) => {
-            const p = priorityByTicker.get(t);
-            return p ? PRIORITY_LEVEL_RANK[p] : NO_PRIORITY_RANK;
-          };
-          const rankDiff = priorityRank(b.ticker) - priorityRank(a.ticker);
-          if (rankDiff !== 0) return rankDiff;
-          const fitRank = (t: string) => {
-            const fit = anyFitByTicker.get(t)?.overall;
-            return fit ? FIT_RANK[fit] : 6;
-          };
-          const fitDiff = fitRank(a.ticker) - fitRank(b.ticker);
-          if (fitDiff !== 0) return fitDiff;
-          return a.ticker.localeCompare(b.ticker);
-        })
-      : [];
-
   return (
     <Container width="wide">
       <Stack gap="intra-section">
@@ -363,15 +383,18 @@ export function DiscoveryPage() {
         {/* 1. Candidates for Your Portfolio -- ranked by Portfolio Fit,
             grouped by tier (Deliverable 3: ties shown as ties), with
             Agenda-flagged candidates surfaced first within a tier
-            (Deliverable 9). */}
+            (Deliverable 9). Atlas UX Phase 7B, Phase 2: this is now the
+            one canonical candidate presentation -- the entries formerly
+            duplicated in a second "Watchlist Candidates" table below
+            are shown here once, and once only. */}
         <Stack gap="metadata">
           <Label>{t("discovery.candidatesForPortfolio.heading")}</Label>
-          {/* Internal Alpha Stabilization: this section (and the two
-              below it) previously rendered nothing at all while loading
-              -- visually indistinguishable from "genuinely empty" until
-              the fetch resolved. Reuses the same loading copy Portfolio
-              Fit already uses everywhere else in the app. */}
-          {candidateFitStatus.kind === "loading" && (
+          {/* Internal Alpha Stabilization: this section previously
+              rendered nothing at all while loading -- visually
+              indistinguishable from "genuinely empty" until the fetch
+              resolved. Reuses the same loading copy Portfolio Fit
+              already uses everywhere else in the app. */}
+          {(candidateFitStatus.kind === "loading" || watchlistStatus.kind === "loading") && (
             <Text role="status" aria-live="polite">
               {t("portfolioFit.section.loading")}
             </Text>
@@ -381,8 +404,8 @@ export function DiscoveryPage() {
               {t("discovery.candidatesForPortfolio.loadError")}
             </Text>
           )}
-          {candidateFitStatus.kind === "loaded" && tiers.length === 0 && (
-            <Text color="tertiary">{t("discovery.candidatesForPortfolio.empty")}</Text>
+          {watchlistStatus.kind === "loaded" && watchlistStatus.entries.length === 0 && (
+            <Text color="tertiary">{t("discovery.watchlistCandidates.empty")}</Text>
           )}
           {tiers.map((tier) => (
             <Stack key={tier.rating} gap="metadata">
@@ -397,96 +420,54 @@ export function DiscoveryPage() {
                   )}
                 </Text>
               </Inline>
-              {tier.candidates.map((assessment) => (
+              {tier.candidates.map((assessment) => {
+                const isHolding = heldTickers.has(assessment.ticker);
+                return (
+                  <DiscoveryCandidateCard
+                    key={assessment.caseId}
+                    ticker={assessment.ticker}
+                    reasonKey={isHolding ? "discovery.card.reason.holding" : "discovery.card.reason.watchlist"}
+                    agendaHeadline={agendaByTicker.get(assessment.ticker)?.headline ?? null}
+                    assessment={assessment}
+                    stance={stanceByTicker.get(assessment.ticker) ?? null}
+                    isOnWatchlist={true}
+                    isHolding={isHolding}
+                    variant="compact"
+                    onOpenCase={() =>
+                      navigate(`/investment-case/${assessment.caseId}`, { state: { origin: "discovery", ticker: assessment.ticker } })
+                    }
+                    onRemoveFromWatchlist={() => removeFromWatchlist(assessment.ticker)}
+                    onCompare={() => navigate(compareHref(assessment.ticker))}
+                  />
+                );
+              })}
+            </Stack>
+          ))}
+          {unassessedWatchlistEntries.length > 0 && (
+            <Stack gap="metadata">
+              {unassessedWatchlistEntries.map((entry) => (
                 <DiscoveryCandidateCard
-                  key={assessment.caseId}
-                  ticker={assessment.ticker}
-                  reasonKey="discovery.card.reason.watchlist"
-                  agendaHeadline={agendaByTicker.get(assessment.ticker)?.headline ?? null}
-                  assessment={assessment}
-                  stance={stanceByTicker.get(assessment.ticker) ?? null}
+                  key={entry.ticker}
+                  ticker={entry.ticker}
+                  reasonKey={heldTickers.has(entry.ticker) ? "discovery.card.reason.holding" : "discovery.card.reason.watchlist"}
+                  agendaHeadline={agendaByTicker.get(entry.ticker)?.headline ?? null}
+                  assessment={null}
+                  stance={stanceByTicker.get(entry.ticker) ?? null}
                   isOnWatchlist={true}
-                  isHolding={false}
+                  isHolding={heldTickers.has(entry.ticker)}
                   variant="compact"
-                  onOpenCase={() =>
-                    navigate(`/investment-case/${assessment.caseId}`, { state: { origin: "discovery", ticker: assessment.ticker } })
-                  }
-                  onRemoveFromWatchlist={() => removeFromWatchlist(assessment.ticker)}
-                  onCompare={() => navigate(compareHref(assessment.ticker))}
+                  onOpenCase={() => navigate(`/investment-case/${entry.caseId}`, { state: { origin: "discovery", ticker: entry.ticker } })}
+                  onRemoveFromWatchlist={() => removeFromWatchlist(entry.ticker)}
+                  onCompare={() => navigate(compareHref(entry.ticker))}
                 />
               ))}
             </Stack>
-          ))}
+          )}
         </Stack>
 
         <Divider tone="hairline" />
 
-        {/* 2. Watchlist Candidates -- the full roster (Deliverable 7),
-            reusing the exact `/api/alpha-watchlist` endpoints Watchlist
-            itself uses; fit badge cross-referenced from the ranked list
-            above, never recomputed. Ordered by Agenda priority, then
-            Fit, then ticker (Deliverable 9). */}
-        <Stack gap="metadata">
-          <Label>{t("discovery.watchlistCandidates.heading")}</Label>
-          {watchlistStatus.kind === "loading" && (
-            <Text role="status" aria-live="polite">
-              {t("common.loading")}
-            </Text>
-          )}
-          {watchlistStatus.kind === "error" && (
-            <Text color="tertiary" role="alert">
-              {t("discovery.watchlistCandidates.loadError")}
-            </Text>
-          )}
-          {watchlistStatus.kind === "loaded" && watchlistStatus.entries.length === 0 && (
-            <Text color="tertiary">{t("discovery.watchlistCandidates.empty")}</Text>
-          )}
-          {orderedWatchlistEntries.map((entry) => {
-            const fit = anyFitByTicker.get(entry.ticker) ?? null;
-            const agendaHeadline = agendaByTicker.get(entry.ticker)?.headline ?? null;
-            return (
-              <Inline key={entry.ticker} gap="row" align="center" wrap style={{ justifyContent: "space-between" }}>
-                <Stack gap="metadata" style={{ minWidth: 0 }}>
-                  <Link
-                    href="#"
-                    style={{ ...ACCENT_LINK_STYLE, color: "var(--color-text-primary)" }}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      navigate(`/investment-case/${entry.caseId}`, { state: { origin: "discovery", ticker: entry.ticker } });
-                    }}
-                  >
-                    {entry.ticker}
-                  </Link>
-                  {agendaHeadline && (
-                    <Text as="span" color="secondary">
-                      {agendaHeadline}
-                    </Text>
-                  )}
-                </Stack>
-                <Inline gap="row" align="center">
-                  {fit !== null ? <FitBadge rating={fit.overall} /> : <Text color="tertiary">{t(FIT_RATING_KEY.unavailable)}</Text>}
-                  <Link
-                    href="#"
-                    style={ACCENT_LINK_STYLE}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      navigate(compareHref(entry.ticker));
-                    }}
-                  >
-                    {t("discovery.card.compare")}
-                  </Link>
-                  <Button variant="tertiary" onClick={() => removeFromWatchlist(entry.ticker)}>
-                    {t("discovery.card.removeFromWatchlist")}
-                  </Button>
-                </Inline>
-              </Inline>
-            );
-          })}
-        </Stack>
-
-        <Divider tone="hairline" />
-
-        {/* 3. Compare -- entry point into `/discovery/compare`
+        {/* 2. Compare -- entry point into `/discovery/compare`
             (Deliverable 5/6); the page itself discloses "no candidate
             selected" honestly when reached with no `?a=`. */}
         <Stack gap="metadata">
@@ -501,7 +482,7 @@ export function DiscoveryPage() {
 
         <Divider tone="hairline" />
 
-        {/* 4. Search / Review a Company -- real `security_discovery`
+        {/* 3. Search / Review a Company -- real `security_discovery`
             search. Deliverable 7: every result's membership state is
             shown before the click, never only after navigating in. */}
         <Stack gap="metadata">
@@ -566,7 +547,7 @@ export function DiscoveryPage() {
 
         <Divider tone="hairline" />
 
-        {/* 5. Recent Activity -- Decision/Outcome/Trade events scoped to
+        {/* 4. Recent Activity -- Decision/Outcome/Trade events scoped to
             Watchlist Cases only, a genuinely different slice from
             Portfolio's own (holdings-scoped) Recent Activity, reusing
             the exact same `deriveActivity` cross-reference. */}

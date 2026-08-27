@@ -4,7 +4,7 @@ import { FitBadge } from "../portfolioFit/FitBadge";
 import { FitDimensionRow } from "../portfolioFit/FitDimensionRow";
 import { groupFitDimensions } from "../portfolioFit/groupFitDimensions";
 import type { PortfolioFitAssessmentView } from "../portfolioFit/portfolioFitApi";
-import { COVERAGE_CONFIDENCE_KEY, COVERAGE_CONFIDENCE_TONE } from "../status/statusTone";
+import { COVERAGE_CONFIDENCE_KEY, COVERAGE_CONFIDENCE_TONE, FIT_RATING_TONE, STANCE_LEVEL_TONE } from "../status/statusTone";
 import { StanceBadge } from "../stance/StanceBadge";
 import type { StanceView } from "../stance/stanceApi";
 import { TickerExplanationDetail } from "../explainability/TickerExplanationDetail";
@@ -39,6 +39,40 @@ import { TickerEvidenceTimelineDetail } from "../evidenceTimeline/TickerEvidence
  * Agenda item exists for this ticker, only the generic category shows,
  * honestly.
  */
+/** Atlas UX Phase 7B, Phase 3 -- Stance and Portfolio Fit are two real,
+ * independently-computed engines (Stance folds in thesis change/risk
+ * signals Fit's own dimension math doesn't weigh the same way), so they
+ * can legitimately disagree -- confirmed live, "Red flag found" next to
+ * "Good Fit" for the same real candidate. Shown with no explanation,
+ * that reads as a contradiction rather than two real, different
+ * questions answered honestly. This bridging line only renders when the
+ * two badges' own tones genuinely oppose (one positive, one critical) --
+ * never for a merely different-but-compatible pairing (e.g. neutral
+ * Stance beside a Good Fit), so it never manufactures tension that
+ * isn't really there. */
+function stanceFitTensionKey(stance: StanceView | null, assessment: PortfolioFitAssessmentView | null): TranslationKey | null {
+  if (stance === null || assessment === null) return null;
+  const stanceTone = STANCE_LEVEL_TONE[stance.level];
+  const fitTone = FIT_RATING_TONE[assessment.overall];
+  if (stanceTone === "critical" && fitTone === "positive") return "discovery.card.tension.stanceNegativeFitPositive";
+  if (stanceTone === "positive" && fitTone === "critical") return "discovery.card.tension.stancePositiveFitNegative";
+  return null;
+}
+
+/** The generic "no trade size available, so concentration reads as the
+ * default favorable fact" line (`atlas/alpha/portfolio_fit/engine.py`'s
+ * own `_allocation_fit` for any non-held candidate) repeats near-
+ * verbatim across almost every card, since it is the allocation
+ * dimension's default reasoning whenever no real position size exists
+ * yet to evaluate -- not a real differentiator between candidates.
+ * Filtered out of the short compact-variant preview only; the full
+ * detail view (`variant="full"`) still shows every real dimension,
+ * including this one, as part of a complete breakdown. */
+const GENERIC_ALLOCATION_REASONING_PREFIX = "No trade size is available";
+function isGenericAllocationReasoning(reasoning: string | undefined): boolean {
+  return reasoning !== undefined && reasoning.startsWith(GENERIC_ALLOCATION_REASONING_PREFIX);
+}
+
 export function DiscoveryCandidateCard({
   ticker,
   displayName,
@@ -136,6 +170,12 @@ export function DiscoveryCandidateCard({
           </Text>
         )}
 
+        {stanceFitTensionKey(stance, assessment) !== null && (
+          <Text color="secondary" as="p">
+            {t(stanceFitTensionKey(stance, assessment)!)}
+          </Text>
+        )}
+
         {assessment !== null && assessment.overallReasoning.length > 0 && (
           <Text color="secondary" as="p">
             {assessment.overallReasoning[0]}
@@ -217,20 +257,27 @@ export function DiscoveryCandidateCard({
           </>
         )}
 
-        {variant === "compact" && grouped !== null && (grouped.favorable[0] || grouped.unfavorable[0]) && (
-          <Stack gap="metadata">
-            {grouped.favorable[0] && (
-              <Text color="tertiary" as="p">
-                + {grouped.favorable[0].reasoning[0] ?? t(`portfolioFit.dimension.${grouped.favorable[0].kind}` as TranslationKey)}
-              </Text>
-            )}
-            {grouped.unfavorable[0] && (
-              <Text color="tertiary" as="p">
-                − {grouped.unfavorable[0].reasoning[0] ?? t(`portfolioFit.dimension.${grouped.unfavorable[0].kind}` as TranslationKey)}
-              </Text>
-            )}
-          </Stack>
-        )}
+        {variant === "compact" &&
+          grouped !== null &&
+          (() => {
+            const favorable = grouped.favorable.filter((d) => !isGenericAllocationReasoning(d.reasoning[0]));
+            const unfavorable = grouped.unfavorable.filter((d) => !isGenericAllocationReasoning(d.reasoning[0]));
+            if (!favorable[0] && !unfavorable[0]) return null;
+            return (
+              <Stack gap="metadata">
+                {favorable[0] && (
+                  <Text color="tertiary" as="p">
+                    + {favorable[0].reasoning[0] ?? t(`portfolioFit.dimension.${favorable[0].kind}` as TranslationKey)}
+                  </Text>
+                )}
+                {unfavorable[0] && (
+                  <Text color="tertiary" as="p">
+                    − {unfavorable[0].reasoning[0] ?? t(`portfolioFit.dimension.${unfavorable[0].kind}` as TranslationKey)}
+                  </Text>
+                )}
+              </Stack>
+            );
+          })()}
 
         <Inline gap="row" align="center" wrap>
           {canEvaluate ? (
