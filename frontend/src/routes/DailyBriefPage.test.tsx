@@ -36,35 +36,6 @@ function agendaResponse(overrides: Record<string, unknown> = {}) {
   };
 }
 
-const EMPTY_MONITORING_RUN = { generatedAt: "2026-01-01T00:00:00Z", results: [] };
-
-function monitoringResult(overrides: Record<string, unknown> = {}) {
-  return {
-    caseId: "case-aapl",
-    ticker: "AAPL",
-    scope: "portfolio",
-    status: "changed_high_importance",
-    changes: [
-      {
-        id: "change-1",
-        category: "stance_weakened",
-        materiality: "material",
-        direction: "negative",
-        reason: "Atlas's view on AAPL weakened.",
-        sourceCapability: "evidence_timeline",
-        evidenceReference: "evidence-1",
-      },
-    ],
-    stanceLevel: null,
-    confidenceLevel: null,
-    coverageLevel: null,
-    latestMeaningfulEvidenceAt: null,
-    recommendedAction: null,
-    generatedAt: "2026-01-01T00:00:00Z",
-    ...overrides,
-  };
-}
-
 function changeGroup(overrides: Record<string, unknown> = {}) {
   return {
     ticker: "NVDA",
@@ -91,17 +62,10 @@ function changeGroup(overrides: Record<string, unknown> = {}) {
 function mockFetch(options: {
   agenda?: unknown;
   openDrafts?: unknown[];
-  monitoringRun?: unknown;
   lastViewedAt?: string | null;
   changeGroups?: unknown[];
 }) {
-  const {
-    agenda = agendaResponse(),
-    openDrafts = [],
-    monitoringRun = EMPTY_MONITORING_RUN,
-    lastViewedAt = "2026-08-26T09:00:00Z",
-    changeGroups = [],
-  } = options;
+  const { agenda = agendaResponse(), openDrafts = [], lastViewedAt = "2026-08-26T09:00:00Z", changeGroups = [] } = options;
   const markSeenCalls: unknown[] = [];
   vi.stubGlobal(
     "fetch",
@@ -126,8 +90,8 @@ function mockFetch(options: {
       if (url.includes("/api/decision-drafts/daily-brief-summary")) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(openDrafts) } as Response);
       }
-      if (url.includes("/api/monitoring/results")) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve(monitoringRun) } as Response);
+      if (url.includes("/api/monitoring/status")) {
+        return Promise.resolve({ ok: false, status: 500 } as Response);
       }
       return Promise.reject(new Error(`Unexpected fetch: ${url}`));
     }),
@@ -195,13 +159,15 @@ describe("DailyBriefPage (Daily Brief 2.0 -- Since your last visit)", () => {
     await waitFor(() => expect(screen.getByText("+2 uppdateringar till för NVDA →")).toBeInTheDocument());
   });
 
-  it("marks a NEW change seen when its Investment Case is opened from the card", async () => {
+  it("navigates to the Investment Case when its card is opened, without a second mark-seen call of its own (RC-3, Phase 4)", async () => {
+    // Marking a change SEEN moved to InvestmentCasePage itself (the one
+    // real convergence point for every navigation path into a case) --
+    // this card now only navigates.
     const { markSeenCalls } = mockFetch({ changeGroups: [changeGroup()] });
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
     await waitFor(() => expect(screen.getByText("NVDA")).toBeInTheDocument());
     screen.getByText("Öppna investeringscase →").click();
-    await waitFor(() => expect(markSeenCalls.length).toBe(1));
-    expect(JSON.parse(markSeenCalls[0] as string)).toEqual({ changeIds: ["change-nvda-1"] });
+    expect(markSeenCalls.length).toBe(0);
   });
 
   it("always shows the calm 'Atlas is watching today' fallback -- no scheduled-catalyst data source exists (documented gap)", async () => {
@@ -213,53 +179,26 @@ describe("DailyBriefPage (Daily Brief 2.0 -- Since your last visit)", () => {
   });
 });
 
-describe("DailyBriefPage summary strip (unchanged by Daily Brief 2.0)", () => {
+describe("DailyBriefPage summary strip (RC-3, Phase 1/2 -- current-portfolio-state language removed)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the all-stable summary line when there are no critical or high items", async () => {
-    mockFetch({
-      agenda: agendaResponse({
-        summary: { holdingsCount: 2, criticalCount: 0, highCount: 0, watchlistOpportunityCount: 0, cashWeightPercent: null, concentrationLevel: "Low" },
-        items: [],
-      }),
-    });
-    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("Portföljen är stabil. Inget behöver din uppmärksamhet idag.")).toBeInTheDocument());
-  });
-
-  it("shows the one primary attention count when a real critical item exists", async () => {
+  it("states a single calm, factual holdings-monitored count -- never a raw attention count competing with Since your last visit", async () => {
     mockFetch({});
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("1 sak behöver din uppmärksamhet idag.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Atlas bevakar 3 innehav.")).toBeInTheDocument());
+    // The former "N things need your attention today" line is gone --
+    // it directly contradicted a real "Since your last visit" count.
+    expect(screen.queryByText(/behöver din uppmärksamhet/)).not.toBeInTheDocument();
   });
 
-  it("never counts Atlas's own bookkeeping toward the attention count (Atlas UX Phase 7B, Phase 1)", async () => {
-    mockFetch({
-      agenda: agendaResponse({
-        items: [
-          agendaItem({
-            priority: "critical",
-            headline: "MSFT: a decision is missing a note explaining why",
-            reason: ["MSFT: a decision is missing a note explaining why"],
-            reasonFacts: [{ code: "workflow_gap", value: "decision_without_outcome" }],
-            ticker: "MSFT",
-            caseId: "case-msft",
-          }),
-        ],
-      }),
-    });
-    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("Portföljen är stabil. Inget behöver din uppmärksamhet idag.")).toBeInTheDocument());
-    expect(screen.queryByText(/^\d+ sak(er)? behöver din uppmärksamhet idag\.$/)).not.toBeInTheDocument();
-  });
-
-  it("shows the real cash fact, never an invented 'unchanged' claim", async () => {
+  it("never shows current portfolio state (cash, watchlist opportunities) -- that belongs to Portfolio/Watchlist", async () => {
     mockFetch({});
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("Kassa: 5.0% av portföljen.")).toBeInTheDocument());
-    expect(screen.queryByText(/oförändrad/)).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Atlas bevakar 3 innehav.")).toBeInTheDocument());
+    expect(screen.queryByText(/Kassa:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/bevakningslistemöjlighet/)).not.toBeInTheDocument();
   });
 
   it("surfaces an open decision draft with a resume link", async () => {
@@ -272,7 +211,7 @@ describe("DailyBriefPage summary strip (unchanged by Daily Brief 2.0)", () => {
   it("omits the open-drafts section entirely when there are none", async () => {
     mockFetch({});
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("1 sak behöver din uppmärksamhet idag.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Atlas bevakar 3 innehav.")).toBeInTheDocument());
     expect(screen.queryByText("Pågående beslut")).not.toBeInTheDocument();
   });
 
@@ -289,52 +228,5 @@ describe("DailyBriefPage summary strip (unchanged by Daily Brief 2.0)", () => {
     );
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
     await waitFor(() => expect(screen.getByText(/Backend responded with 500/)).toBeInTheDocument());
-  });
-});
-
-describe("DailyBriefPage Monitoring section (unchanged by Daily Brief 2.0)", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("surfaces a real Monitoring change", async () => {
-    mockFetch({ monitoringRun: { generatedAt: "2026-01-01T00:00:00Z", results: [monitoringResult()] } });
-    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("Atlas syn har försvagats.")).toBeInTheDocument());
-  });
-
-  it("shows the honest empty state when Monitoring has found no changes", async () => {
-    mockFetch({});
-    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() =>
-      expect(screen.getByText("Atlas har inte hittat några förändringar att rapportera för dina bolag.")).toBeInTheDocument(),
-    );
-  });
-
-  it("shows a distinct unavailable state, never blank, when the Monitoring fetch fails", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.includes("/api/daily-brief-change-log")) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response);
-        }
-        if (url.includes("/api/daily-brief/view-state")) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve({ lastViewedAt: "2026-08-26T09:00:00Z" }) } as Response);
-        }
-        if (url.includes("/api/daily-brief-agenda")) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve(agendaResponse()) } as Response);
-        }
-        if (url.includes("/api/monitoring/results")) {
-          return Promise.resolve({ ok: false, status: 500 } as Response);
-        }
-        if (url.includes("/api/decision-drafts/daily-brief-summary")) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response);
-        }
-        return Promise.reject(new Error(`Unexpected fetch: ${url}`));
-      }),
-    );
-    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("Förändringar är inte tillgängliga just nu.")).toBeInTheDocument());
   });
 });

@@ -81,6 +81,7 @@ import { fetchInvestmentCaseDecisionLayerBundle } from "../investmentCase/decisi
 import { addTickerToWatchlist, useAlphaWatchlist, type WatchlistEntryView } from "../discovery/watchlistActions";
 import { invalidateAlphaPortfolio, useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import { ALPHA_PLACEHOLDER_USER_ID } from "../decisionWorkspace/alphaUser";
+import { fetchDailyBriefChangeLog, markDailyBriefChangesSeen } from "../dailyBriefAgenda/dailyBriefChangeLogApi";
 import { StartDecisionSection } from "../decisionWorkspace/StartDecisionSection";
 import {
   BUSINESS_CATEGORY_KEY,
@@ -1408,6 +1409,29 @@ export function InvestmentCasePage() {
         });
       });
 
+    return () => controller.abort();
+  }, [caseId]);
+
+  /** Daily Brief RC-3, Phase 4 (Read State Everywhere) -- every real
+   * navigation path into an Investment Case (Daily Brief, Portfolio,
+   * Watchlist, Discover, a direct link) converges on this one page, so
+   * this is the single place a change genuinely gets marked SEEN,
+   * rather than duplicating a mark-seen call at each origin's own
+   * click handler. Reuses the exact same change-log read/write Daily
+   * Brief itself uses -- no second read-state mechanism. Best-effort
+   * and silent: this page renders nothing about it either way, and a
+   * failed call simply leaves the change NEW for one more Daily Brief
+   * visit, never a lie in the other direction. */
+  useEffect(() => {
+    if (!caseId) return;
+    const controller = new AbortController();
+    fetchDailyBriefChangeLog(ALPHA_PLACEHOLDER_USER_ID, controller.signal)
+      .then((groups) => {
+        const unseen = groups.find((group) => group.primary.caseId === caseId && group.isNew);
+        if (unseen) return markDailyBriefChangesSeen(ALPHA_PLACEHOLDER_USER_ID, [unseen.primary.id], controller.signal);
+        return undefined;
+      })
+      .catch(() => {});
     return () => controller.abort();
   }, [caseId]);
 

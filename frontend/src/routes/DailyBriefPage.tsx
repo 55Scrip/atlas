@@ -4,13 +4,7 @@ import type { CSSProperties } from "react";
 import { ACCENT_LINK_STYLE, Container, Divider, Heading, Inline, Stack, Text } from "../foundation";
 import { useTranslation } from "../i18n";
 import { fetchDailyBriefAgenda, type DailyBriefAgendaView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
-import type { TickerAgendaGroup } from "../dailyBriefAgenda/groupAgendaByTicker";
-import { realAgendaGroups } from "../dailyBriefAgenda/bookkeepingFilter";
-import {
-  fetchDailyBriefChangeLog,
-  markDailyBriefChangesSeen,
-  type TickerChangeGroupView,
-} from "../dailyBriefAgenda/dailyBriefChangeLogApi";
+import { fetchDailyBriefChangeLog, type TickerChangeGroupView } from "../dailyBriefAgenda/dailyBriefChangeLogApi";
 import { describeChangeLogEntry } from "../dailyBriefAgenda/describeChangeLogEntry";
 import { fetchDailyBriefViewState, markDailyBriefViewed } from "../dailyBriefAgenda/dailyBriefViewStateApi";
 import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
@@ -18,14 +12,7 @@ import { ALPHA_PLACEHOLDER_USER_ID } from "../decisionWorkspace/alphaUser";
 import { fetchDailyBriefDraftSummary, type DecisionDraftSummaryView } from "../decisionWorkspace/decisionDraftApi";
 import { MonitoringFreshnessNote } from "../monitoring/MonitoringFreshnessNote";
 import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNote";
-import { MonitoringChangeFeed } from "../monitoring/MonitoringChangeFeed";
-import { filterDuplicateMonitoringChanges } from "../monitoring/filterDuplicateMonitoringChanges";
-import {
-  fetchMonitoringResults,
-  fetchMonitoringStatus,
-  type MonitoringOperationalStatusView,
-  type MonitoringResultView,
-} from "../monitoring/monitoringApi";
+import { fetchMonitoringStatus, type MonitoringOperationalStatusView } from "../monitoring/monitoringApi";
 
 /** Cross-Workspace Consistency Cleanup -- same uppercase small-caps
  * workspace-label treatment every top-level workspace shares. */
@@ -77,9 +64,6 @@ export function DailyBriefPage() {
   const [status, setStatus] = useState<AgendaStatus>({ kind: "loading" });
   const [openDrafts, setOpenDrafts] = useState<DecisionDraftSummaryView[]>([]);
   const [monitoringStatus, setMonitoringStatus] = useState<MonitoringOperationalStatusView | null>(null);
-  const [monitoringResultsStatus, setMonitoringResultsStatus] = useState<
-    { kind: "loading" } | { kind: "unavailable" } | { kind: "loaded"; results: MonitoringResultView[] }
-  >({ kind: "loading" });
   /** Read BEFORE this visit's agenda call -- `lastViewedAt === null`
    * means this is the user's first-ever Daily Brief visit (Phase 6):
    * nothing is "since your last visit" yet, and this visit's own
@@ -165,17 +149,6 @@ export function DailyBriefPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchMonitoringResults(controller.signal)
-      .then((run) => setMonitoringResultsStatus({ kind: "loaded", results: run.results }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setMonitoringResultsStatus({ kind: "unavailable" });
-      });
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
     fetchDailyBriefDraftSummary(ALPHA_PLACEHOLDER_USER_ID, controller.signal)
       .then((drafts) => setOpenDrafts(drafts))
       .catch((error: unknown) => {
@@ -188,19 +161,14 @@ export function DailyBriefPage() {
     navigate(`/investment-case/${caseId}`, { state: { origin: "daily-brief", ticker } });
   }
 
-  /** Marks a change group's own primary entry seen (Phase 8: "seen" is
-   * never "resolved" -- this never touches the recommendation itself,
-   * only that the user has now looked at it), then opens the
-   * Investment Case exactly like every other entry point already does.
-   * Best-effort and optimistic: a failed mark-seen call never blocks
-   * navigation, and the next fetch of this page simply shows the same
-   * NEW dot again rather than silently claiming it was seen. */
+  /** RC-3, Phase 4 -- marking a change SEEN is no longer done here.
+   * Every real path into an Investment Case (this card included)
+   * converges on `InvestmentCasePage` itself, which is now the one
+   * place that marks the case's own live change seen on load -- so
+   * this card only navigates, exactly like every other entry point,
+   * rather than duplicating a second mark-seen call and a second
+   * optimistic-update path. */
   function openChangeFromCard(group: TickerChangeGroupView) {
-    if (group.isNew) {
-      markDailyBriefChangesSeen(ALPHA_PLACEHOLDER_USER_ID, [group.primary.id])
-        .then((groups) => setChangeLogStatus({ kind: "loaded", groups }))
-        .catch(() => {});
-    }
     if (group.primary.caseId) openInvestmentCase(group.primary.caseId, group.ticker);
   }
 
@@ -255,7 +223,7 @@ export function DailyBriefPage() {
           <>
             <Divider tone="hairline" />
 
-            <PortfolioSummarySection agenda={status.agenda} groups={realAgendaGroups(status.agenda.items)} />
+            <PortfolioSummarySection agenda={status.agenda} />
 
             {openDrafts.length > 0 && (
               <>
@@ -274,14 +242,6 @@ export function DailyBriefPage() {
                 </Stack>
               </>
             )}
-
-            <Divider tone="hairline" />
-
-            <MonitoringHistorySection
-              agenda={status.agenda}
-              monitoringResultsStatus={monitoringResultsStatus}
-              onOpenInvestmentCase={openInvestmentCase}
-            />
           </>
         )}
       </Stack>
@@ -440,112 +400,20 @@ function AtlasIsWatchingTodaySection() {
   );
 }
 
-/** Daily Brief Consolidation -- Monitoring history remains a collapsed,
- * secondary drill-down (Phase 20: Daily Brief owns "what matters now,"
- * History stays internal). Unchanged by this sprint beyond reusing the
- * same `realAgendaGroups` dedup source it always has. */
-function MonitoringHistorySection({
-  agenda,
-  monitoringResultsStatus,
-  onOpenInvestmentCase,
-}: {
-  agenda: DailyBriefAgendaView;
-  monitoringResultsStatus: { kind: "loading" } | { kind: "unavailable" } | { kind: "loaded"; results: MonitoringResultView[] };
-  onOpenInvestmentCase: (caseId: string, ticker: string | null) => void;
-}) {
+/** RC-3, Phase 2 -- the former "N things need your attention today"
+ * line directly contradicted "Since your last visit" showing 1 real
+ * change: two competing definitions of "attention" on the same page.
+ * Every field this used to derive that count (`attentionCount` from
+ * raw agenda priorities, `watchlistOpportunityCount`, `cashWeightPercent`)
+ * still exists on `PortfolioSummaryView` and is still shown -- on
+ * Portfolio/Watchlist, the pages that actually own current portfolio
+ * state (RC-3, Phase 1). This section now states one calm, factual
+ * count Daily Brief is entitled to: how many holdings Atlas keeps
+ * under ongoing review. No data was removed, only what this specific
+ * page renders from it. */
+function PortfolioSummarySection({ agenda }: { agenda: DailyBriefAgendaView }) {
   const { t } = useTranslation();
-
-  if (monitoringResultsStatus.kind === "loading") {
-    return (
-      <Stack gap="metadata">
-        <Heading level={2}>{t("monitoring.changeFeed.heading")}</Heading>
-        <Text role="status" aria-live="polite">
-          {t("common.loading")}
-        </Text>
-      </Stack>
-    );
-  }
-  if (monitoringResultsStatus.kind === "unavailable") {
-    return (
-      <Stack gap="metadata">
-        <Heading level={2}>{t("monitoring.changeFeed.heading")}</Heading>
-        <Text color="tertiary" role="alert">
-          {t("monitoring.changeFeed.unavailable")}
-        </Text>
-      </Stack>
-    );
-  }
-
-  const agendaReasonsByTicker = new Map<string, Set<string>>();
-  for (const group of realAgendaGroups(agenda.items)) {
-    if (group.ticker === null) continue;
-    const labels = group.reasonFacts.map((fact) => fact?.label).filter((label): label is string => !!label);
-    agendaReasonsByTicker.set(group.ticker, new Set([...group.reasons, ...labels]));
-  }
-  const deduplicated = filterDuplicateMonitoringChanges(monitoringResultsStatus.results, agendaReasonsByTicker);
-  const eventCount = deduplicated.reduce((total, result) => total + result.changes.length, 0);
-
   return (
-    <Stack gap="metadata">
-      <Heading level={2}>{t("monitoring.changeFeed.heading")}</Heading>
-      {eventCount === 0 ? (
-        <Text color="secondary">{t("monitoring.changeFeed.empty")}</Text>
-      ) : (
-        <ExpandableDetail
-          summaryLabel={t(eventCount === 1 ? "monitoring.changeFeed.viewEventsOne" : "monitoring.changeFeed.viewEventsOther", {
-            count: eventCount,
-          })}
-        >
-          <MonitoringChangeFeed results={deduplicated} t={t} onOpenInvestmentCase={onOpenInvestmentCase} />
-        </ExpandableDetail>
-      )}
-    </Stack>
-  );
-}
-
-/** Quiet operational stats (Atlas UX Phase 7B) -- unchanged by this
- * sprint. */
-function PortfolioSummarySection({
-  agenda,
-  groups,
-}: {
-  agenda: DailyBriefAgendaView;
-  groups: TickerAgendaGroup[];
-}) {
-  const { t } = useTranslation();
-  const { summary } = agenda;
-  const attentionCount = groups.filter((group) => group.topPriority === "critical" || group.topPriority === "high").length;
-
-  return (
-    <Stack gap="metadata">
-      {attentionCount === 0 && (
-        <Text as="p" style={{ fontWeight: 600 }}>
-          {t("dailyBriefAgenda.summary.allStable")}
-        </Text>
-      )}
-      {summary.watchlistOpportunityCount > 0 && (
-        <Text color="secondary" as="p">
-          {t(
-            summary.watchlistOpportunityCount === 1
-              ? "dailyBriefAgenda.summary.watchlistOpportunityCountOne"
-              : "dailyBriefAgenda.summary.watchlistOpportunityCountOther",
-            { count: summary.watchlistOpportunityCount },
-          )}
-        </Text>
-      )}
-      <Inline gap="row" wrap>
-        {attentionCount > 0 && (
-          <Text color="tertiary">
-            {t(attentionCount === 1 ? "dailyBriefAgenda.summary.attentionCountOne" : "dailyBriefAgenda.summary.attentionCountOther", {
-              count: attentionCount,
-            })}
-          </Text>
-        )}
-        <Text color="tertiary">{t("dailyBriefAgenda.summary.holdingsCount", { count: summary.holdingsCount })}</Text>
-        {summary.cashWeightPercent !== null && (
-          <Text color="tertiary">{t("dailyBriefAgenda.summary.cash", { percent: summary.cashWeightPercent.toFixed(1) })}</Text>
-        )}
-      </Inline>
-    </Stack>
+    <Text color="tertiary">{t("dailyBriefAgenda.summary.holdingsMonitored", { count: agenda.summary.holdingsCount })}</Text>
   );
 }
