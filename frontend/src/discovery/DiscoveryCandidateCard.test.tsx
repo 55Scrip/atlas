@@ -58,9 +58,9 @@ describe("DiscoveryCandidateCard", () => {
     expect(screen.getByText("Bra passform")).toBeInTheDocument();
   });
 
-  it("shows a coverage-confidence badge distinct from the Fit badge (Atlas Intelligence Sprint 1, Deliverable 7)", () => {
+  it("no longer shows a standalone coverage-confidence badge -- removed in RC-2's badge audit as a duplicate of Evidence Rating, still reachable via the Evidence quality/history disclosures below", () => {
     renderCard({ assessment: assessment({ coverage: { ...EMPTY_COVERAGE, overallConfidence: "high" } }) });
-    expect(screen.getByText("Hög tillförlitlighet")).toBeInTheDocument();
+    expect(screen.queryByText("Hög tillförlitlighet")).not.toBeInTheDocument();
     expect(screen.getByText("Bra passform")).toBeInTheDocument();
   });
 

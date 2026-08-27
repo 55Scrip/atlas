@@ -1,10 +1,10 @@
-import { Button, Divider, Heading, Inline, Stack, StatusBadge, Surface, Text } from "../foundation";
+import { Button, Divider, Heading, Inline, Stack, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import { FitBadge } from "../portfolioFit/FitBadge";
 import { FitDimensionRow } from "../portfolioFit/FitDimensionRow";
 import { groupFitDimensions } from "../portfolioFit/groupFitDimensions";
 import type { PortfolioFitAssessmentView } from "../portfolioFit/portfolioFitApi";
-import { COVERAGE_CONFIDENCE_KEY, COVERAGE_CONFIDENCE_TONE, FIT_RATING_TONE, STANCE_LEVEL_TONE } from "../status/statusTone";
+import { FIT_RATING_TONE, STANCE_LEVEL_TONE } from "../status/statusTone";
 import { StanceBadge } from "../stance/StanceBadge";
 import type { StanceView } from "../stance/stanceApi";
 import { TickerExplanationDetail } from "../explainability/TickerExplanationDetail";
@@ -150,15 +150,15 @@ export function DiscoveryCandidateCard({
                   not Consider adding" worked example), so it is never
                   stronger than Fit/Coverage beside it would justify. */}
               {stance !== null && <StanceBadge level={stance.level} />}
-              {/* Atlas Intelligence Sprint 1 (Deliverable 7): a second,
-                  distinct badge from Fit above -- how mature Atlas's own
-                  *understanding* of this company is, never how well it
-                  fits the portfolio. Presentation only: this never
-                  affects candidate ordering or which candidates appear. */}
-              <StatusBadge
-                label={t(COVERAGE_CONFIDENCE_KEY[assessment.coverage.overallConfidence])}
-                tone={COVERAGE_CONFIDENCE_TONE[assessment.coverage.overallConfidence]}
-              />
+              {/* RC-2, Phase 1 (Badge Audit) -- the standalone Confidence
+                  badge that used to sit here answered the same underlying
+                  question ("how much does Atlas actually know here") that
+                  Evidence Rating answers elsewhere in the product, just in
+                  a different word. Removed, not lost: the "Evidence
+                  quality"/"Evidence history" disclosures immediately below
+                  still open onto the identical coverage/confidence data,
+                  one click away instead of a permanent third badge on
+                  every one of ~11 cards. */}
               <FitBadge rating={assessment.overall} />
             </Inline>
           )}
