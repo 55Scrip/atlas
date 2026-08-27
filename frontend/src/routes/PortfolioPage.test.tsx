@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "../testUtils";
 import { PortfolioPage } from "./PortfolioPage";
 import { __resetAlphaPortfolioCacheForTests } from "../portfolio/alphaPortfolioData";
@@ -295,23 +295,26 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     expect(orderedTickersFromRowButtons()).toEqual(["MSFT", "AAPL"]);
   });
 
-  it("shows the same Portfolio Fit rating for AAPL in both the Holdings Table and the Weakest Holdings section", async () => {
+  it("shows AAPL's weak Portfolio Fit rating once, in Portfolio Weaknesses (no longer duplicated across a separate Fit overview)", async () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
-    await waitFor(() => expect(screen.getByText("Svagaste innehaven")).toBeInTheDocument());
-    const fitLabels = screen.getAllByText("Svag passform");
-    expect(fitLabels.length).toBeGreaterThanOrEqual(2);
+    const heading = await screen.findByText("Portföljsvagheter");
+    const section = within(heading.closest("div")!);
+    expect(section.getByText("Svag passform")).toBeInTheDocument();
+    expect(screen.getAllByText("Svag passform")).toHaveLength(1);
   });
 
-  it("lists AAPL in Weakest Holdings (weak fit + reduction-supported) but not MSFT", async () => {
+  it("lists AAPL in Portfolio Weaknesses (weak fit + reduction-supported) but not MSFT", async () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
-    await screen.findByText("Svagaste innehaven");
+    const heading = await screen.findByText("Portföljsvagheter");
+    const section = within(heading.closest("div")!);
     // Exactly one holding (AAPL, weak fit + reduction-supported) qualifies
     // -- MSFT (excellent fit, thesis intact) does not -- so exactly one
-    // "Compare alternatives" investigation link renders.
-    expect(screen.getAllByRole("link", { name: /Jämför alternativ/ })).toHaveLength(1);
-    expect(screen.queryByText("Inga innehav visar just nu svag portföljpassform eller ett reduktionsstött beslutsstöd.")).not.toBeInTheDocument();
+    // "Compare alternatives" investigation link renders within this section
+    // (MSFT's own such link, if any, lives in Portfolio Opportunities instead).
+    expect(section.getAllByRole("link", { name: /Jämför alternativ/ })).toHaveLength(1);
+    expect(section.queryByText("Inga innehav visar just nu svag portföljpassform eller ett reduktionsstött beslutsstöd.")).not.toBeInTheDocument();
   });
 
   it("offers Watchlist and Discovery entry points", async () => {

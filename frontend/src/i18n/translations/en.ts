@@ -214,9 +214,8 @@ export const en = {
   "portfolio.decisionLayerDetail.label.decisionReliability": "Reliability",
   "portfolio.decisionLayerDetail.label.portfolioSynthesis": "Portfolio synthesis",
 
-  // ---------- attention row copy (reused by Attention Required + Holding Attention Detail) ----------
-  "portfolio.attention.viewAll": "View all attention items",
-  "portfolio.attention.viewFewer": "Show fewer",
+  // ---------- Portfolio Lower-Half Reconstruction Sprint 6D ----------
+  "portfolio.attention.viewAllRemaining": "View {{count}} more",
   "portfolio.attention.reason.concentration": "Concentration at {{percent}}% — above typical single-holding threshold.",
   "portfolio.attention.reason.high_financial_risk": "Financial risk is elevated.",
   "portfolio.attention.reason.high_valuation_risk": "Valuation risk is elevated.",
@@ -226,8 +225,6 @@ export const en = {
 
   // ---------- holdings table (Portfolio Workspace v1) ----------
   "portfolio.holdingsTable.tickerHeader": "Ticker",
-  "portfolio.holdingsTable.valueHeader": "Value",
-  "portfolio.holdingsTable.shareHeader": "% Share",
   "portfolio.holdingsTable.coverageHeader": "Analysis depth",
   "portfolio.holdingsTable.reviewStatusHeader": "Review Status",
   "portfolio.holdingsTable.weightHeader": "Weight",
@@ -239,8 +236,8 @@ export const en = {
   "portfolio.holdingsTable.riskHeader": "Risk",
   "portfolio.holdingsTable.actionHeader": "Action",
   "portfolio.holdingsTable.currentViewHeader": "Current view",
-  "portfolio.holdingsTable.whyHeader": "Why",
-  "portfolio.holdingsTable.changeHeader": "Change",
+  "portfolio.holdingsTable.reasonHeader": "Reason",
+  "portfolio.holdingsTable.showWhyLabel": "Show why",
   "portfolio.holdingsTable.openAction": "Open",
   "portfolio.holdingsTable.reconcileToggle": "Reconcile",
   "portfolio.holdingsTable.showingCount": "Showing {{shown}} of {{total}}",
@@ -278,8 +275,9 @@ export const en = {
   "portfolio.allocation.cashLabel": "Cash",
   "portfolio.allocation.unallocatedLabel": "Unallocated",
 
-  // ---------- weakest holdings / capital competition (Product Sprint 8) ----------
-  "portfolio.weakestHoldings.heading": "Weakest Holdings",
+  // ---------- portfolio opportunities / weaknesses (Phase 6D-3) ----------
+  "portfolio.opportunities.heading": "Portfolio Opportunities",
+  "portfolio.weakestHoldings.heading": "Portfolio Weaknesses",
   "portfolio.weakestHoldings.subheading": "Where capital currently looks least compelling — worth a look, not a sell list.",
   "portfolio.weakestHoldings.empty": "No holdings currently show a weak Portfolio Fit or reduction-supported Decision Support.",
   "portfolio.weakestHoldings.reviewPosition": "Review position",
@@ -1823,11 +1821,6 @@ export const en = {
   "portfolioFit.section.other": "Other dimensions",
   "portfolioFit.section.dataGapsHeading": "What Atlas could not evaluate:",
   "portfolioFit.badge.label": "Portfolio Fit",
-  "portfolioFit.portfolioSection.heading": "Portfolio Fit",
-  "portfolioFit.portfolioSection.bestFit": "Best fit today",
-  "portfolioFit.portfolioSection.weakestFit": "Weakest fit today",
-  "portfolioFit.portfolioSection.improved": "Improved",
-  "portfolioFit.portfolioSection.worsened": "Worsened",
   "portfolioFit.portfolioSection.empty": "No holdings have an evaluated Portfolio Fit yet.",
   "portfolioFit.discovery.sortedNotice": "Candidates below are ordered by how well each fits your portfolio, not by market ranking.",
   // ---------- Implementation Sprint B1.2 (Engine Reason Localization Contract) ----------

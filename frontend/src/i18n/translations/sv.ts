@@ -213,9 +213,8 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.decisionLayerDetail.label.decisionReliability": "Tillförlitlighet",
   "portfolio.decisionLayerDetail.label.portfolioSynthesis": "Portföljsyntes",
 
-  // ---------- needs your attention (Portfolio Workspace v1) ----------
-  "portfolio.attention.viewAll": "Visa alla uppmärksamhetspunkter",
-  "portfolio.attention.viewFewer": "Visa färre",
+  // ---------- Portfolio Lower-Half Reconstruction Sprint 6D ----------
+  "portfolio.attention.viewAllRemaining": "Visa {{count}} till",
   "portfolio.attention.reason.concentration": "Koncentration på {{percent}}% — över typisk tröskel för ett enskilt innehav.",
   "portfolio.attention.reason.high_financial_risk": "Finansiell risk är förhöjd.",
   "portfolio.attention.reason.high_valuation_risk": "Värderingsrisk är förhöjd.",
@@ -225,8 +224,6 @@ export const sv: Record<TranslationKey, string> = {
 
   // ---------- holdings table (Portfolio Workspace v1) ----------
   "portfolio.holdingsTable.tickerHeader": "Ticker",
-  "portfolio.holdingsTable.valueHeader": "Värde",
-  "portfolio.holdingsTable.shareHeader": "% Andel",
   "portfolio.holdingsTable.coverageHeader": "Analysdjup",
   "portfolio.holdingsTable.reviewStatusHeader": "Granskningsstatus",
   "portfolio.holdingsTable.weightHeader": "Andel",
@@ -238,8 +235,8 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.holdingsTable.riskHeader": "Risk",
   "portfolio.holdingsTable.actionHeader": "Åtgärd",
   "portfolio.holdingsTable.currentViewHeader": "Nuvarande syn",
-  "portfolio.holdingsTable.whyHeader": "Varför",
-  "portfolio.holdingsTable.changeHeader": "Förändring",
+  "portfolio.holdingsTable.reasonHeader": "Anledning",
+  "portfolio.holdingsTable.showWhyLabel": "Visa varför",
   "portfolio.holdingsTable.openAction": "Öppna",
   "portfolio.holdingsTable.reconcileToggle": "Stäm av",
   "portfolio.holdingsTable.showingCount": "Visar {{shown}} av {{total}}",
@@ -277,8 +274,9 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.allocation.cashLabel": "Kontanter",
   "portfolio.allocation.unallocatedLabel": "Ej allokerat",
 
-  // ---------- weakest holdings / capital competition (Product Sprint 8) ----------
-  "portfolio.weakestHoldings.heading": "Svagaste innehaven",
+  // ---------- portfolio opportunities / weaknesses (Phase 6D-3) ----------
+  "portfolio.opportunities.heading": "Portföljmöjligheter",
+  "portfolio.weakestHoldings.heading": "Portföljsvagheter",
   "portfolio.weakestHoldings.subheading": "Var kapitalet just nu ser minst attraktivt ut — värt en titt, inte en säljlista.",
   "portfolio.weakestHoldings.empty": "Inga innehav visar just nu svag portföljpassform eller ett reduktionsstött beslutsstöd.",
   "portfolio.weakestHoldings.reviewPosition": "Granska position",
@@ -1808,11 +1806,6 @@ export const sv: Record<TranslationKey, string> = {
   "portfolioFit.section.other": "Övriga dimensioner",
   "portfolioFit.section.dataGapsHeading": "Vad Atlas inte kunde utvärdera:",
   "portfolioFit.badge.label": "Portföljpassform",
-  "portfolioFit.portfolioSection.heading": "Portföljpassform",
-  "portfolioFit.portfolioSection.bestFit": "Bäst passform idag",
-  "portfolioFit.portfolioSection.weakestFit": "Svagast passform idag",
-  "portfolioFit.portfolioSection.improved": "Förbättrade",
-  "portfolioFit.portfolioSection.worsened": "Försämrade",
   "portfolioFit.portfolioSection.empty": "Inga innehav har en utvärderad portföljpassform än.",
   "portfolioFit.discovery.sortedNotice": "Kandidaterna nedan är ordnade efter hur väl de passar din portfölj, inte efter marknadsranking.",
   // ---------- Implementation Sprint B1.2 (Engine Reason Localization Contract) ----------

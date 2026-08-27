@@ -31,7 +31,8 @@ import { StanceBadge } from "../stance/StanceBadge";
 import { primaryStanceReason, stanceReasonSentence } from "../stance/describeStance";
 import type { StanceLevel } from "../status/statusTone";
 import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
-import { AgendaItemRow } from "../dailyBriefAgenda/AgendaItemRow";
+import { TickerAgendaCard } from "../dailyBriefAgenda/TickerAgendaCard";
+import { groupAgendaByTicker } from "../dailyBriefAgenda/groupAgendaByTicker";
 import { PriorityBadge } from "../dailyBriefAgenda/PriorityBadge";
 import { agendaItemHeadline } from "../dailyBriefAgenda/describeAgendaHeadline";
 import { fetchDailyBriefAgenda, type AgendaItemView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
@@ -1040,7 +1041,7 @@ export function PortfolioPage() {
                 excludes -- immediately after, before any individual
                 holding. Still Portfolio's only attention surface
                 (Deliverable 4). */}
-            <AttentionRequiredSection status={dailyBriefAgenda} navigate={navigate} t={t} />
+            <AttentionRequiredSection status={dailyBriefAgenda} stanceViewByTicker={stanceViewByTicker} navigate={navigate} t={t} />
 
             {/* Pulse Simplification (live-verification follow-up):
                 the one Decision Layer signal that answers "what
@@ -1102,16 +1103,16 @@ export function PortfolioPage() {
               </div>
             </Inline>
 
-            {/* Deliverable 2, step 5: Portfolio Fit -- best/worst fit
-                today and improved/worsened, all from the one already-
+            {/* Phase 6D-3: Portfolio Opportunities / Portfolio Weaknesses
+                -- one editorial section per direction, replacing the old
+                four-column Portfolio Fit overview and the separate
+                Weakest Holdings section, all from the one already-
                 sorted `/api/portfolio-fit/holdings` fetch, the same
-                engine Investment Case and Discovery read. */}
-            <PortfolioFitOverviewSection status={portfolioFitHoldings} onOpenCase={openInvestmentCase} t={t} />
+                engine Investment Case and Discovery read. Never a
+                buy/sell recommendation. */}
+            <PortfolioOpportunitiesSection status={portfolioFitHoldings} onOpenCase={openInvestmentCase} navigate={navigate} t={t} />
 
-            {/* Deliverable 10 -- "where is capital least compelling?",
-                reusing only Portfolio Fit and Decision Support, both
-                already fetched above. Never a sell list. */}
-            <WeakestHoldingsSection
+            <PortfolioWeaknessesSection
               holdings={status.view.holdings}
               cockpit={cockpit}
               fitByTicker={fitByTicker}
@@ -1120,17 +1121,22 @@ export function PortfolioPage() {
               t={t}
             />
 
-            {/* Deliverable 2, step 6 / Deliverable 11: Watchlist
-                relationship -- entry points only, no duplicated
-                Watchlist functionality on this page. */}
-            <WatchlistRelationshipSection t={t} />
-
+            {/* Phase 6D-5 (Section Hierarchy): "what happened recently"
+                now comes before "where should I go next" -- matching
+                this sprint's own five-question order -- so the page
+                ends on a forward-looking navigational close rather than
+                a history log sandwiched in the middle. */}
             <RecentActivitySection
               recentActivity={recentActivity}
               holdings={status.view.holdings}
               openInvestmentCase={openInvestmentCase}
               t={t}
             />
+
+            {/* Deliverable 2, step 6 / Deliverable 11: Watchlist
+                relationship -- entry points only, no duplicated
+                Watchlist functionality on this page. */}
+            <WatchlistRelationshipSection t={t} />
           </Stack>
         )}
       </Stack>
@@ -1676,16 +1682,31 @@ function PortfolioSidebar({
 }
 
 /**
- * Recent Activity (Portfolio Workspace v1) -- reuses `deriveActivity`
- * unfiltered, then shows the most recent few, newest first, matching
- * the approved frame's own bulleted "You recorded... / Atlas
- * update..." pattern as closely as real data allows. Atlas-authored
- * "coverage expanded" events have no real source anywhere (no
- * coverage-change history is persisted) and are never fabricated here
- * -- only real Decision/Outcome/Trade events, exactly as
- * `deriveActivity` already produces for History and Dashboard.
+ * Recent Activity (Portfolio Lower-Half Reconstruction Sprint 6D,
+ * Phase 4) -- reuses `deriveActivity` unfiltered, newest first, exactly
+ * as before; the only change is presentation. Each event was a single
+ * plain-text row (`"AAPL — Bought 10 shares · 2d ago"`) with no visual
+ * distinction between a Decision, an Outcome, and a Trade -- it looked
+ * like a system log, not something worth reading. Now each event is
+ * its own compact editorial card (kind label, ticker, relative time,
+ * one summary sentence), matching the card language the rest of this
+ * page's lower half already uses (Portfolio Opportunities/Weaknesses'
+ * own `PortfolioSignalCard`). No event, field, or link is removed --
+ * `event.kind` (already computed, never shown before) is now visible
+ * too, since knowing whether something was a Decision, an Outcome, or
+ * a Trade is real information a reader needs to scan a timeline.
+ * Atlas-authored "coverage expanded" events have no real source
+ * anywhere (no coverage-change history is persisted) and are never
+ * fabricated here -- only real Decision/Outcome/Trade events, exactly
+ * as `deriveActivity` already produces for History and Dashboard.
  */
 const RECENT_ACTIVITY_COUNT = 4;
+
+const ACTIVITY_KIND_LABEL_KEY: Record<ActivityEvent["kind"], TranslationKey> = {
+  decision: "history.row.kindDecision",
+  outcome: "history.row.kindOutcome",
+  trade: "history.row.kindTrade",
+};
 
 function RecentActivitySection({
   recentActivity,
@@ -1712,7 +1733,7 @@ function RecentActivitySection({
 
   return (
     <Stack gap="metadata">
-      <Label>{t("portfolio.recentActivity.heading")}</Label>
+      <Heading level={2}>{t("portfolio.recentActivity.heading")}</Heading>
       {events.length === 0 && <Text color="tertiary">{t("portfolio.recentActivity.empty")}</Text>}
       <Stack gap="row">
         {events.map((event) => (
@@ -1738,16 +1759,33 @@ function RecentActivityRow({
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   return (
-    <Link
-      href="#"
-      style={{ color: "var(--color-text-secondary)", textDecoration: "none" }}
-      onClick={(clickEvent) => {
-        clickEvent.preventDefault();
-        openInvestmentCase(event.security, event.caseId);
-      }}
-    >
-      {event.security} — {event.summary} · {formatRelativeTime(event.date, t)}
-    </Link>
+    <Surface tier="primary">
+      <Link
+        href="#"
+        style={{ color: "var(--color-text-primary)", textDecoration: "none", display: "block" }}
+        onClick={(clickEvent) => {
+          clickEvent.preventDefault();
+          openInvestmentCase(event.security, event.caseId);
+        }}
+      >
+        <Stack gap="metadata">
+          <Inline gap="row" align="baseline" wrap style={{ justifyContent: "space-between" }}>
+            <Inline gap="row" align="baseline" wrap>
+              <Label>{t(ACTIVITY_KIND_LABEL_KEY[event.kind])}</Label>
+              <Text as="span" style={{ fontWeight: 600 }}>
+                {event.security}
+              </Text>
+            </Inline>
+            <Text color="tertiary" as="span">
+              {formatRelativeTime(event.date, t)}
+            </Text>
+          </Inline>
+          <Text color="secondary" as="p">
+            {event.summary}
+          </Text>
+        </Stack>
+      </Link>
+    </Surface>
   );
 }
 
@@ -1786,22 +1824,19 @@ const HOLDINGS_PAGE_SIZE = 15;
  * work for a future sprint -- out of scope here.
  */
 /** Product Sprint 8 (Portfolio Excellence, Deliverable 4) -- Portfolio's
- * one and only attention surface, renders the same `AgendaItemRow`
- * Daily Brief itself uses, for the items already filtered to
- * `group === "portfolio"`. A capped, collapsible list rather than every
- * item at once -- a busy portfolio's full agenda (including its
- * Watchlist items) still belongs on Daily Brief itself; this is the
- * portfolio-scoped subset, not a second full copy. `onOpenHolding` also
- * carries the real `AgendaItemView` through router state so the
+ * one and only attention surface, for the items already filtered to
+ * `group === "portfolio"` -- a busy portfolio's full agenda (including
+ * its Watchlist items) still belongs on Daily Brief itself; this is
+ * the portfolio-scoped subset, not a second full copy. `onOpenHolding`
+ * also carries the real `AgendaItemView` through router state so the
  * per-holding detail page (`/portfolio/holding/:ticker`) can show the
- * exact same "why" text this row already showed, never a second,
- * independently-worded reason. */
-/** Information Compression (Productization Sprint P2, Phase 8 --
- * Information Budget): Portfolio's first screen budgets a maximum of
- * 3 default Attention items -- the same real, already-sorted list,
- * just a shorter initial slice; "View all attention items" still
- * reaches every item, unchanged. */
-const AGENDA_INITIAL_COUNT = 3;
+ * exact same "why" text this section already showed, never a second,
+ * independently-worded reason.
+ *
+ * Portfolio Lower-Half Reconstruction Sprint 6D (Phase 1): now renders
+ * `TickerAgendaCard` -- the same compact, one-ticker-one-card component
+ * Daily Brief already ships -- instead of the full, always-expanded
+ * `AgendaItemRow`. See that component's own definition, just below. */
 
 /** Implementation Sprint B2 (Hero Reordering) -- Decision First's own
  * step 1 for Portfolio: one sentence, before anything else, reusing
@@ -1958,17 +1993,32 @@ function TodaysStorySection({
   );
 }
 
+/** Portfolio Lower-Half Reconstruction Sprint 6D (Phase 1) -- three
+ * highest-priority ticker groups, never more, each a compact editorial
+ * card (`TickerAgendaCard`) instead of a full verbose `AgendaItemRow`
+ * -- the exact same "one ticker, one card, badges/ongoing-sentence/
+ * disclosures behind one expand" component Daily Brief already ships
+ * (`DailyBriefAgendaSection`), reused verbatim rather than a second,
+ * bespoke compact design. `groupAgendaByTicker` is the same pure,
+ * already-existing grouping function that component already calls;
+ * this only lowers the visible cap from Daily Brief's 5 to this
+ * section's own 3, per this sprint's explicit "three highest-priority
+ * items" requirement. `stanceViewByTicker` is the same map the
+ * Holdings Table's own "Current view" column already reads -- no new
+ * fetch. */
+const ATTENTION_CARD_CAP = 3;
+
 function AttentionRequiredSection({
   status,
+  stanceViewByTicker,
   navigate,
   t,
 }: {
   status: DailyBriefAgendaFetchStatus;
+  stanceViewByTicker: Map<string, StanceView>;
   navigate: ReturnType<typeof useNavigate>;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  const [expanded, setExpanded] = useState(false);
-
   if (status.kind === "loading") {
     return (
       <Text role="status" aria-live="polite">
@@ -1985,42 +2035,67 @@ function AttentionRequiredSection({
     );
   }
 
-  const visible = expanded ? status.items : status.items.slice(0, AGENDA_INITIAL_COUNT);
-  const hiddenCount = status.items.length - visible.length;
+  // `HoldingAttentionPage` reads `location.state.agendaItem` to show
+  // the real originating reason -- preserved here via a ticker lookup,
+  // since `TickerAgendaCard`'s own `onOpenHolding` only ever passes a
+  // ticker string, never the full item.
+  const itemByTicker = new Map<string, AgendaItemView>();
+  for (const item of status.items) {
+    if (item.ticker && !itemByTicker.has(item.ticker)) itemByTicker.set(item.ticker, item);
+  }
+
+  const onOpenInvestmentCase = (caseId: string, ticker: string | null) =>
+    navigate(`/investment-case/${caseId}`, { state: { origin: "portfolio", ticker } });
+  const onOpenCandidate = (ticker: string) => navigate(`/discovery/candidate/${encodeURIComponent(ticker)}`);
+  const onCompare = (ticker: string) => navigate(`/discovery/compare?a=${encodeURIComponent(ticker)}`);
+  const onOpenHolding = (ticker: string) =>
+    navigate(`/portfolio/holding/${encodeURIComponent(ticker)}`, { state: { agendaItem: itemByTicker.get(ticker) } });
+  /* Internal Alpha Stabilization: this was a dead no-op click
+     (`() => {}`) -- already being on Portfolio, the honest equivalent
+     of "Go to Portfolio" is scrolling to the top of this same page,
+     not a link that visibly does nothing. */
+  const onGoToPortfolio = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
+  const groups = groupAgendaByTicker(status.items);
+  const visible = groups.slice(0, ATTENTION_CARD_CAP);
+  const collapsed = groups.slice(ATTENTION_CARD_CAP);
 
   return (
     <Stack gap="metadata">
       <Heading level={2}>{t("portfolio.attentionRequired.heading")}</Heading>
       <Stack gap="inter-section">
-        {visible.map((item) => (
-          <AgendaItemRow
-            key={item.id}
-            item={item}
-            onOpenInvestmentCase={(caseId, ticker) => navigate(`/investment-case/${caseId}`, { state: { origin: "portfolio", ticker } })}
-            onOpenCandidate={(ticker) => navigate(`/discovery/candidate/${encodeURIComponent(ticker)}`)}
-            onCompare={(ticker) => navigate(`/discovery/compare?a=${encodeURIComponent(ticker)}`)}
-            onOpenHolding={(ticker) => navigate(`/portfolio/holding/${encodeURIComponent(ticker)}`, { state: { agendaItem: item } })}
-            /* Internal Alpha Stabilization: this was a dead no-op click
-               (`() => {}`) -- `AgendaItemRow` offers "Go to Portfolio"
-               for a portfolio-level item with no ticker (e.g. large
-               unallocated capital), and on every other page that's a
-               real navigation to `/portfolio`. Already being on
-               Portfolio, the honest equivalent is scrolling to the
-               Portfolio Status / Allocation content at the top of this
-               same page, not a link that visibly does nothing. */
-            onGoToPortfolio={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          />
+        {visible.map((group) => (
+          <Surface tier="elevated" key={group.ticker ?? group.items[0]!.id}>
+            <TickerAgendaCard
+              group={group}
+              stanceByTicker={stanceViewByTicker}
+              onOpenInvestmentCase={onOpenInvestmentCase}
+              onOpenCandidate={onOpenCandidate}
+              onCompare={onCompare}
+              onOpenHolding={onOpenHolding}
+              onGoToPortfolio={onGoToPortfolio}
+            />
+          </Surface>
         ))}
       </Stack>
-      {hiddenCount > 0 && (
-        <Link href="#" style={{ color: "var(--global-color-accent)" }} onClick={(event) => { event.preventDefault(); setExpanded(true); }}>
-          {t("portfolio.attention.viewAll")}
-        </Link>
-      )}
-      {expanded && status.items.length > AGENDA_INITIAL_COUNT && (
-        <Link href="#" style={{ color: "var(--global-color-accent)" }} onClick={(event) => { event.preventDefault(); setExpanded(false); }}>
-          {t("portfolio.attention.viewFewer")}
-        </Link>
+      {collapsed.length > 0 && (
+        <ExpandableDetail summaryLabel={t("portfolio.attention.viewAllRemaining", { count: collapsed.length })}>
+          <Stack gap="inter-section">
+            {collapsed.map((group) => (
+              <Surface tier="elevated" key={group.ticker ?? group.items[0]!.id}>
+                <TickerAgendaCard
+                  group={group}
+                  stanceByTicker={stanceViewByTicker}
+                  onOpenInvestmentCase={onOpenInvestmentCase}
+                  onOpenCandidate={onOpenCandidate}
+                  onCompare={onCompare}
+                  onOpenHolding={onOpenHolding}
+                  onGoToPortfolio={onGoToPortfolio}
+                />
+              </Surface>
+            ))}
+          </Stack>
+        </ExpandableDetail>
       )}
     </Stack>
   );
@@ -2132,25 +2207,32 @@ function TodaysBiggestRiskOpportunity({
   );
 }
 
-/** Deliverable 7 (Portfolio Fit Engine) -- groups the same, already-
- * loaded `assessments` list four ways: Best Fit Today (top of the
- * server's best-first order), Weakest Fit Today (bottom of it),
- * Improved and Worsened (`.trend`, sourced from the existing Change
- * Intelligence signal, computed by the backend, never a client-side
- * recomputation). A holding appearing in none of the four groups
- * (rated `neutral`/`unavailable` fit with an `unchanged`/`unavailable`
- * trend) simply does not appear here -- this section highlights the
- * holdings worth a second look, not a full re-listing of the Holdings
- * Table below it. */
-const FIT_OVERVIEW_GROUP_SIZE = 3;
+/**
+ * Portfolio Lower-Half Reconstruction Sprint 6D (Phase 3) -- "Portfolio
+ * Opportunities": the positive-direction half of what used to be four
+ * separate `FitGroupColumn` lists (Best Fit / Weakest Fit / Improved /
+ * Worsened) plus a fifth, richer `WeakestHoldingsSection` -- one
+ * editorial section per direction (Opportunities here, Weaknesses just
+ * below) instead of two overlapping analytical modules. A holding
+ * qualifies by fit rating (good/excellent) or by trend (improving,
+ * Change Intelligence's own real signal) -- either is real, already-
+ * computed evidence that this position currently looks more
+ * attractive, never a buy signal on its own. Same server-sorted
+ * (best-first) data `PortfolioFitOverviewSection` always read; no new
+ * fetch, no new fit computation.
+ */
+const OPPORTUNITY_FIT_RATINGS: FitRating[] = ["excellent", "good"];
+const PORTFOLIO_SIGNAL_CAP = 6;
 
-function PortfolioFitOverviewSection({
+function PortfolioOpportunitiesSection({
   status,
   onOpenCase,
+  navigate,
   t,
 }: {
   status: PortfolioFitFetchStatus;
   onOpenCase: (ticker: string, existingCaseId: string | null) => void;
+  navigate: ReturnType<typeof useNavigate>;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   if (status.kind === "loading") {
@@ -2163,65 +2245,130 @@ function PortfolioFitOverviewSection({
   if (status.kind === "error" || status.assessments.length === 0) {
     return (
       <Stack gap="metadata">
-        <Heading level={2}>{t("portfolioFit.portfolioSection.heading")}</Heading>
+        <Heading level={2}>{t("portfolio.opportunities.heading")}</Heading>
         <Text color="tertiary">{t("portfolioFit.portfolioSection.empty")}</Text>
       </Stack>
     );
   }
 
-  const evaluated = status.assessments.filter((a) => a.overall !== "unavailable");
-  const bestFit = evaluated.slice(0, FIT_OVERVIEW_GROUP_SIZE);
-  const weakestFit = [...evaluated].reverse().slice(0, FIT_OVERVIEW_GROUP_SIZE).filter((a) => !bestFit.includes(a));
-  const improved = status.assessments.filter((a) => a.trend === "improving");
-  const worsened = status.assessments.filter((a) => a.trend === "declining");
+  const candidates = status.assessments
+    .filter((a) => OPPORTUNITY_FIT_RATINGS.includes(a.overall) || a.trend === "improving")
+    .sort((a, b) => (b.currentWeightPercent ?? 0) - (a.currentWeightPercent ?? 0))
+    .slice(0, PORTFOLIO_SIGNAL_CAP);
+
+  if (candidates.length === 0) {
+    return (
+      <Stack gap="metadata">
+        <Heading level={2}>{t("portfolio.opportunities.heading")}</Heading>
+        <Text color="tertiary">{t("portfolioFit.portfolioSection.empty")}</Text>
+      </Stack>
+    );
+  }
 
   return (
     <Stack gap="metadata">
-      <Heading level={2}>{t("portfolioFit.portfolioSection.heading")}</Heading>
-      <Inline gap="inter-section" wrap align="start">
-        <FitGroupColumn heading={t("portfolioFit.portfolioSection.bestFit")} assessments={bestFit} onOpenCase={onOpenCase} t={t} />
-        <FitGroupColumn heading={t("portfolioFit.portfolioSection.weakestFit")} assessments={weakestFit} onOpenCase={onOpenCase} t={t} />
-        <FitGroupColumn heading={t("portfolioFit.portfolioSection.improved")} assessments={improved} onOpenCase={onOpenCase} t={t} />
-        <FitGroupColumn heading={t("portfolioFit.portfolioSection.worsened")} assessments={worsened} onOpenCase={onOpenCase} t={t} />
-      </Inline>
+      <Heading level={2}>{t("portfolio.opportunities.heading")}</Heading>
+      <Stack gap="row">
+        {candidates.map((assessment) => (
+          <PortfolioSignalCard
+            key={assessment.caseId}
+            ticker={assessment.ticker}
+            weightPercent={assessment.currentWeightPercent}
+            fit={assessment}
+            decisionSupport={null}
+            caseId={assessment.caseId}
+            onOpenCase={onOpenCase}
+            navigate={navigate}
+            t={t}
+          />
+        ))}
+      </Stack>
     </Stack>
   );
 }
 
-function FitGroupColumn({
-  heading,
-  assessments,
+/** Shared by Portfolio Opportunities and Portfolio Weaknesses -- the
+ * one compact editorial card both sections render, so a company's
+ * fit/decision-support signals and its three real actions (Review
+ * position, Compare alternatives, Open Investment Case) always look
+ * identical regardless of which direction placed it there. */
+function PortfolioSignalCard({
+  ticker,
+  weightPercent,
+  fit,
+  decisionSupport,
+  caseId,
   onOpenCase,
+  navigate,
   t,
 }: {
-  heading: string;
-  assessments: PortfolioFitAssessmentView[];
+  ticker: string;
+  weightPercent: number | null;
+  fit: PortfolioFitAssessmentView | null;
+  decisionSupport: { level: DecisionSupportLevel } | null;
+  caseId: string | null;
   onOpenCase: (ticker: string, existingCaseId: string | null) => void;
+  navigate: ReturnType<typeof useNavigate>;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  if (assessments.length === 0) return null;
   return (
-    <Stack gap="metadata" style={{ flex: "1 1 200px", minWidth: 0 }}>
-      <Label>{heading}</Label>
-      {assessments.map((assessment) => (
-        <Link
-          key={assessment.caseId}
-          href="#"
-          style={{ color: "var(--color-text-primary)", textDecoration: "none", display: "block" }}
-          onClick={(event) => {
-            event.preventDefault();
-            onOpenCase(assessment.ticker, assessment.caseId);
-          }}
-        >
-          <Inline gap="row" align="center" style={{ justifyContent: "space-between" }}>
+    <Surface tier="primary">
+      <Stack gap="metadata">
+        <Inline gap="row" align="baseline" wrap style={{ justifyContent: "space-between" }}>
+          <Text as="span" style={{ fontWeight: 600 }}>
+            {ticker}
+          </Text>
+          {weightPercent !== null && (
             <Text as="span" color="secondary">
-              {assessment.ticker}
+              {weightPercent}%
             </Text>
-            <FitBadge rating={assessment.overall} />
-          </Inline>
-        </Link>
-      ))}
-    </Stack>
+          )}
+        </Inline>
+        <Inline gap="row" wrap>
+          {fit && fit.overall !== "unavailable" && <FitBadge rating={fit.overall} />}
+          {decisionSupport && (
+            <StatusBadge
+              label={t(DECISION_SUPPORT_BADGE_KEY[decisionSupport.level])}
+              tone={DECISION_SUPPORT_TONE[decisionSupport.level]}
+            />
+          )}
+        </Inline>
+        <Inline gap="row" wrap>
+          <Link
+            href="#"
+            style={{ color: "var(--global-color-accent)" }}
+            onClick={(event) => {
+              event.preventDefault();
+              navigate(`/portfolio/holding/${encodeURIComponent(ticker)}`);
+            }}
+          >
+            {t("portfolio.weakestHoldings.reviewPosition")} →
+          </Link>
+          <Link
+            href="#"
+            style={{ color: "var(--global-color-accent)" }}
+            onClick={(event) => {
+              event.preventDefault();
+              navigate(`/discovery/compare?a=${encodeURIComponent(ticker)}`);
+            }}
+          >
+            {t("portfolio.weakestHoldings.compareAlternatives")} →
+          </Link>
+          {caseId && (
+            <Link
+              href="#"
+              style={{ color: "var(--global-color-accent)" }}
+              onClick={(event) => {
+                event.preventDefault();
+                onOpenCase(ticker, caseId);
+              }}
+            >
+              {t("dailyBriefAgenda.action.openInvestmentCase")} →
+            </Link>
+          )}
+        </Inline>
+      </Stack>
+    </Surface>
   );
 }
 
@@ -2361,25 +2508,22 @@ function HoldingsTable({
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
+                {/* Portfolio Lower-Half Reconstruction Sprint 6D (Phase
+                    2): four columns, matching this sprint's own target
+                    row shape exactly -- Company, Atlas view, one
+                    important reason, Action. Value and Share (real
+                    data, previously two of their own dedicated columns)
+                    now live inside the Company cell, shown only when
+                    genuinely populated -- a portfolio entered as
+                    percent-only no longer renders a permanently-empty
+                    Value column. Why and Change (Sprint B3's own two
+                    columns) are merged into one Reason cell: whichever
+                    of the two is more time-sensitive today (a real
+                    Agenda signal, if any) leads; the other is one click
+                    away in the same cell, never deleted. */}
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.tickerHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.valueHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.shareHeader")}</th>
-                {/* Status Consolidation (Implementation Sprint B3): the
-                    prior Fit/Decision Support/Attention/Coverage/Stance
-                    five-column spread -- the exact "one company, five
-                    competing badges" problem this sprint exists to fix
-                    -- is replaced by the target column set the brief
-                    itself names: Current view (Stance, already the
-                    backend's own synthesis of all five signals) + Why
-                    (its own leading reason) + Change (the real Agenda
-                    signal, if any) + an explicit Action link. Fit and
-                    Coverage remain real, available data -- one click
-                    into the Investment Case away -- and their sort
-                    options below are unchanged, but they no longer
-                    compete for attention as separate row badges. */}
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.currentViewHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.whyHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.changeHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.reasonHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.actionHeader")}</th>
               </tr>
             </thead>
@@ -2471,6 +2615,65 @@ function HoldingsTable({
 }
 
 /**
+ * Portfolio Lower-Half Reconstruction Sprint 6D (Phase 2) -- the
+ * Holdings Table's own merged "one important reason" cell. Sprint B3
+ * gave the table two separate columns, Why (Stance's own leading
+ * reason) and Change (the real Agenda signal, if any); this folds them
+ * into one, ranking whichever is more time-sensitive today first:
+ * a real Agenda signal (something happened) leads over Why (the
+ * steady-state explanation), since "what changed" is the more
+ * decision-relevant fact when both are available. The other reason,
+ * when it's real, is one click away in the same cell -- never deleted.
+ * When there is no real Agenda signal, Why is shown directly with no
+ * expand affordance: "nothing changed" is an absence, not a second
+ * fact worth hiding behind a click, the same "absence is itself the
+ * honest answer" discipline this codebase already applies to Knowledge
+ * Coverage.
+ */
+function HoldingReasonCell({
+  agendaItem,
+  priority,
+  stanceView,
+  t,
+}: {
+  agendaItem: AgendaItemView | undefined;
+  priority: PriorityLevel | undefined;
+  stanceView: StanceView | undefined;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  const primaryReason = stanceView ? primaryStanceReason(stanceView) : null;
+  const whySentence = primaryReason ? stanceReasonSentence(primaryReason, t) : null;
+
+  if (agendaItem) {
+    return (
+      <Stack gap="metadata">
+        <Inline gap="metadata" align="baseline" wrap>
+          {priority && <PriorityBadge priority={priority} />}
+          <Text as="span">{agendaItemHeadline(agendaItem, t)}</Text>
+        </Inline>
+        {whySentence && (
+          <ExpandableDetail summaryLabel={t("portfolio.holdingsTable.showWhyLabel")}>
+            <Text as="p" color="secondary">
+              {whySentence}
+            </Text>
+          </ExpandableDetail>
+        )}
+      </Stack>
+    );
+  }
+
+  if (whySentence) {
+    return <Text as="span">{whySentence}</Text>;
+  }
+
+  return (
+    <Text color="tertiary" as="span">
+      {t("portfolio.holdingsTable.coverage.new")}
+    </Text>
+  );
+}
+
+/**
  * One dense, clickable row. `role="button"`/`tabIndex`/`onKeyDown` make
  * the whole row a keyboard-operable navigation target (Enter/Space open
  * the Investment Case) rather than requiring a separate visible button
@@ -2551,7 +2754,21 @@ function HoldingsTableRow({
       >
         <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)" }}>
           <Inline gap="metadata" align="baseline" wrap>
-            <Text as="span">{holding.ticker}</Text>
+            <Text as="span" style={{ fontWeight: 600 }}>
+              {holding.ticker}
+            </Text>
+            <Text as="span" color="tertiary">
+              {holding.weightPercent}%
+            </Text>
+            {/* Real Value, shown only when this portfolio actually has
+                one -- a percent-only portfolio (the common case in this
+                data) no longer renders a permanently-empty column for
+                it. */}
+            {holding.valueAbsolute !== null && (
+              <Text as="span" color="tertiary">
+                {holding.valueAbsolute}
+              </Text>
+            )}
             {isCreating && (
               <Text as="span" color="tertiary">
                 {t("portfolio.holdings.opening")}
@@ -2587,8 +2804,6 @@ function HoldingsTableRow({
             )}
           </Inline>
         </td>
-        <td style={cellStyle}>{holding.valueAbsolute !== null ? holding.valueAbsolute : "—"}</td>
-        <td style={cellStyle}>{holding.weightPercent}%</td>
         <td style={cellStyle}>
           {stanceLevel ? (
             <StanceBadge level={stanceLevel} weight="strong" />
@@ -2598,35 +2813,8 @@ function HoldingsTableRow({
             </Text>
           )}
         </td>
-        <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)", maxWidth: "320px" }}>
-          {stanceView ? (
-            (() => {
-              const primaryReason = primaryStanceReason(stanceView);
-              return primaryReason ? (
-                <Text as="span">{stanceReasonSentence(primaryReason, t)}</Text>
-              ) : (
-                <Text color="tertiary" as="span">
-                  {t("portfolio.holdingsTable.coverage.new")}
-                </Text>
-              );
-            })()
-          ) : (
-            <Text color="tertiary" as="span">
-              {t("portfolio.holdingsTable.coverage.new")}
-            </Text>
-          )}
-        </td>
-        <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)", maxWidth: "260px" }}>
-          <Inline gap="metadata" align="baseline" wrap>
-            {priority && <PriorityBadge priority={priority} />}
-            {agendaItem ? (
-              <Text as="span">{agendaItemHeadline(agendaItem, t)}</Text>
-            ) : (
-              <Text as="span" color="tertiary">
-                {t("watchlist.attention.noSignificantChanges")}
-              </Text>
-            )}
-          </Inline>
+        <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)", maxWidth: "320px" }} onClick={(event) => event.stopPropagation()}>
+          <HoldingReasonCell agendaItem={agendaItem} priority={priority} stanceView={stanceView} t={t} />
         </td>
         <td style={cellStyle}>
           <Link
@@ -2644,7 +2832,7 @@ function HoldingsTableRow({
       </tr>
       {isReconcileExpanded && (
         <tr>
-          <td colSpan={7} style={cellStyle}>
+          <td colSpan={4} style={cellStyle}>
             <Stack gap="inter-section">
               <Text color="tertiary" as="p">
                 {t("portfolio.holdings.awaitingReconciliation")}
@@ -2682,26 +2870,26 @@ function HoldingsTableRow({
 }
 
 /**
- * Weakest Holdings / Capital Competition (Product Sprint 8, Deliverable
- * 10) -- answers "where in my portfolio is capital currently least
- * compelling?" using only two already-fetched, real signals: Portfolio
- * Fit (`weak`/`poor`) and Decision Support (`reduction_supported`/
- * `exit_supported` -- both real, existing evidence-support states, the
- * same seven-member enum Investment Case's own Decision Support badge
- * already uses). A holding qualifies if either signal flags it; neither
- * signal is a sell recommendation on its own, and this section never
- * computes a new one -- it only surfaces the two real signals side by
- * side per holding and offers investigation, never action ("Review
- * position" / "Compare alternatives" / "Open Investment Case"), per
- * this deliverable's own explicit "not automatically a Sell list" rule.
- * Capped and ordered by weight desc, so the largest capital-competition
- * candidate is the one most worth a look first.
+ * Portfolio Lower-Half Reconstruction Sprint 6D (Phase 3) -- "Portfolio
+ * Weaknesses": the negative-direction counterpart of Portfolio
+ * Opportunities above, replacing what used to be a separate
+ * `WeakestHoldingsSection` plus two more `FitGroupColumn`s (Weakest
+ * Fit / Worsened) inside the old four-column Portfolio Fit overview --
+ * one section instead of two overlapping ones, per this sprint's own
+ * "Portfolio Opportunities / Portfolio Weaknesses" instruction. A
+ * holding qualifies by fit rating (weak/poor), by Decision Support
+ * (`reduction_supported`/`exit_supported` -- the same real,
+ * already-existing evidence-support states Investment Case's own badge
+ * uses), or by trend (declining) -- three real, already-computed
+ * signals, never a new one. Neither this section nor any one signal is
+ * a sell recommendation; it only surfaces the evidence and offers
+ * investigation ("Review position" / "Compare alternatives" / "Open
+ * Investment Case"), never action.
  */
 const WEAK_FIT_RATINGS: FitRating[] = ["weak", "poor"];
 const WEAK_DECISION_SUPPORT: DecisionSupportLevel[] = ["reduction_supported", "exit_supported"];
-const WEAKEST_HOLDINGS_CAP = 6;
 
-function WeakestHoldingsSection({
+function PortfolioWeaknessesSection({
   holdings,
   cockpit,
   fitByTicker,
@@ -2722,17 +2910,17 @@ function WeakestHoldingsSection({
     .map((holding) => {
       const cockpitHolding = cockpit.report.holdings.find((h) => h.ticker === holding.ticker);
       const fit = fitByTicker.get(holding.ticker);
-      const weakFit = fit && WEAK_FIT_RATINGS.includes(fit.overall) ? fit : null;
+      const weakFit = fit && (WEAK_FIT_RATINGS.includes(fit.overall) || fit.trend === "declining") ? fit : null;
       const weakDecisionSupport =
         cockpitHolding && WEAK_DECISION_SUPPORT.includes(cockpitHolding.decisionSupport.level)
           ? cockpitHolding.decisionSupport
           : null;
       if (!weakFit && !weakDecisionSupport) return null;
-      return { holding, cockpitHolding, weakFit, weakDecisionSupport };
+      return { holding, weakFit, weakDecisionSupport };
     })
     .filter((c): c is NonNullable<typeof c> => c !== null)
     .sort((a, b) => b.holding.weightPercent - a.holding.weightPercent)
-    .slice(0, WEAKEST_HOLDINGS_CAP);
+    .slice(0, PORTFOLIO_SIGNAL_CAP);
 
   return (
     <Stack gap="metadata">
@@ -2743,61 +2931,17 @@ function WeakestHoldingsSection({
       {candidates.length === 0 && <Text color="secondary">{t("portfolio.weakestHoldings.empty")}</Text>}
       <Stack gap="row">
         {candidates.map(({ holding, weakFit, weakDecisionSupport }) => (
-          <Surface tier="primary" key={holding.ticker}>
-            <Stack gap="metadata">
-              <Inline gap="row" align="baseline" wrap style={{ justifyContent: "space-between" }}>
-                <Text as="span" style={{ fontWeight: 600 }}>
-                  {holding.ticker}
-                </Text>
-                <Text as="span" color="secondary">
-                  {holding.weightPercent}%
-                </Text>
-              </Inline>
-              <Inline gap="row" wrap>
-                {weakFit && <FitBadge rating={weakFit.overall} />}
-                {weakDecisionSupport && (
-                  <StatusBadge
-                    label={t(DECISION_SUPPORT_BADGE_KEY[weakDecisionSupport.level])}
-                    tone={DECISION_SUPPORT_TONE[weakDecisionSupport.level]}
-                  />
-                )}
-              </Inline>
-              <Inline gap="row" wrap>
-                <Link
-                  href="#"
-                  style={{ color: "var(--global-color-accent)" }}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    navigate(`/portfolio/holding/${encodeURIComponent(holding.ticker)}`);
-                  }}
-                >
-                  {t("portfolio.weakestHoldings.reviewPosition")} →
-                </Link>
-                <Link
-                  href="#"
-                  style={{ color: "var(--global-color-accent)" }}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    navigate(`/discovery/compare?a=${encodeURIComponent(holding.ticker)}`);
-                  }}
-                >
-                  {t("portfolio.weakestHoldings.compareAlternatives")} →
-                </Link>
-                {holding.caseId && (
-                  <Link
-                    href="#"
-                    style={{ color: "var(--global-color-accent)" }}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      openInvestmentCase(holding.ticker, holding.caseId);
-                    }}
-                  >
-                    {t("dailyBriefAgenda.action.openInvestmentCase")} →
-                  </Link>
-                )}
-              </Inline>
-            </Stack>
-          </Surface>
+          <PortfolioSignalCard
+            key={holding.ticker}
+            ticker={holding.ticker}
+            weightPercent={holding.weightPercent}
+            fit={weakFit}
+            decisionSupport={weakDecisionSupport}
+            caseId={holding.caseId}
+            onOpenCase={openInvestmentCase}
+            navigate={navigate}
+            t={t}
+          />
         ))}
       </Stack>
     </Stack>
@@ -2809,8 +2953,8 @@ function WeakestHoldingsSection({
  * points only, reusing the existing Watchlist and Discovery routes
  * exactly as they already exist. No Watchlist data is duplicated onto
  * this page; per-holding "compare against an alternative" already lives
- * in the Weakest Holdings section above and every Holdings Table row,
- * both reusing the same existing Compare route.
+ * in Portfolio Weaknesses above and every Holdings Table row, both
+ * reusing the same existing Compare route.
  */
 function WatchlistRelationshipSection({ t }: { t: (key: TranslationKey) => string }) {
   return (
