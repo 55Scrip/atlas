@@ -130,7 +130,18 @@ import {
   formatShareCount,
   type FinancialPeriodView,
 } from "../investmentCase/FinancialsTable";
-import { HeroCard, type HeroAnalysisInput } from "../investmentCase/HeroCard";
+import { HeroCard, HERO_WHY_KEY, type HeroAnalysisInput } from "../investmentCase/HeroCard";
+import { deriveHeroTension } from "../investmentCase/deriveHeroNarrative";
+import {
+  deriveCompanyRating,
+  deriveEvidenceRating,
+  deriveHorizon,
+  deriveInvestmentRating,
+  derivePortfolioRating,
+  deriveRisk,
+  deriveUpside,
+} from "../investmentCase/atlasRatingModel";
+import { SevenCategoriesSection, CaseDnaLine, type SevenCategoriesInput } from "../investmentCase/SevenCategoriesSection";
 import { AtlasDecisionSummary } from "../investmentCase/AtlasDecisionSummary";
 import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
 import { AtlasOutlookSection, type OutlookView } from "../investmentCase/AtlasOutlookSection";
@@ -2631,6 +2642,7 @@ export function InvestmentCasePage() {
             const growth = report.businessAnalysis.findings.find((f) => f.kind === "growth");
             const capitalAllocation = report.businessAnalysis.findings.find((f) => f.kind === "capital_allocation");
             const longTerm = report.outlook.longTerm;
+            const shortTerm = report.outlook.shortTerm;
             const longTermBull = longTerm.scenarios.find((s) => s.kind === "bull");
             const longTermBear = longTerm.scenarios.find((s) => s.kind === "bear");
             const riskFindings = report.risk.findings.map((f) => ({ category: f.category, status: f.status }));
@@ -2680,6 +2692,42 @@ export function InvestmentCasePage() {
               noProviderDataFound: report.noProviderDataFound ?? false,
               convictionReasonCodes: report.conviction.reasons as ConvictionReasonCode[],
             };
+
+            /** Atlas UX Phase 7A (Semantic Investment Model, Foundation
+             * Sprint) -- the seven-category bar and Case DNA, computed
+             * once here from data this IIFE already fetched/derived
+             * above (no new fetch, no new analysis) and reused by both
+             * the bar and the promoted Case DNA line. `tension` is the
+             * identical pure computation `HeroCard` runs internally
+             * from the same three inputs -- recomputed here rather than
+             * threaded through a prop, the same "cheap and pure, so
+             * just call it again" convention this codebase already
+             * uses elsewhere for shared derivations. */
+            const tension = deriveHeroTension({
+              growthStatus: heroAnalysis.growthStatus,
+              capitalAllocationStatus: heroAnalysis.capitalAllocationStatus,
+              valuationStatus: heroAnalysis.valuationStatus,
+            });
+            const caseDnaSentence = t(HERO_WHY_KEY[tension]);
+            const sevenCategories: SevenCategoriesInput = {
+              company: deriveCompanyRating(report.businessAnalysis.findings),
+              investment: deriveInvestmentRating(report.recommendation.level),
+              portfolio: derivePortfolioRating(
+                portfolioFitStatus.kind === "loaded" ? (portfolioFitStatus.assessment?.overall ?? null) : null,
+              ),
+              evidence: deriveEvidenceRating(report.coverage.overallCoverage, report.coverage.overallConfidence),
+              upside: deriveUpside(longTermBull ? longTermBull.returnPercent : null),
+              risk: deriveRisk(riskFindings),
+              horizon: deriveHorizon(
+                longTerm.expectedReturn
+                  ? { monthsLow: longTerm.expectedReturn.horizonMonthsLow, monthsHigh: longTerm.expectedReturn.horizonMonthsHigh }
+                  : null,
+                shortTerm.expectedReturn
+                  ? { monthsLow: shortTerm.expectedReturn.horizonMonthsLow, monthsHigh: shortTerm.expectedReturn.horizonMonthsHigh }
+                  : null,
+              ),
+            };
+
             return (
               <>
                 <HeroCard
@@ -2691,6 +2739,7 @@ export function InvestmentCasePage() {
                   t={t}
                   locale={locale}
                   suppressLimitingFactorPreview
+                  suppressTensionSentence
                   onRefreshPrice={refreshPrice}
                   isRefreshingPrice={priceRefreshStatus === "refreshing"}
                 />
@@ -2706,6 +2755,39 @@ export function InvestmentCasePage() {
                     <LimitingFactorsCard factors={limitingFactors} t={t} />
                   </>
                 )}
+
+                {/* Atlas UX Phase 7A -- the seven-category bar and Case
+                    DNA lead the page, immediately after the Hero and
+                    its own supporting cards, per this sprint's own
+                    "Hero -> Seven Categories -> Case DNA -> ..."
+                    layout. */}
+                <Divider tone="hairline" />
+                <SevenCategoriesSection ratings={sevenCategories} t={t} />
+                <CaseDnaLine sentence={caseDnaSentence} t={t} />
+
+                {/* Outlook -> Investment Argument -> Atlas Reasoning ->
+                    Evidence -> everything else, in that order (reordered
+                    inside `InvestmentCaseCanonicalSections` itself) --
+                    moved up from its previous position after Executive
+                    Summary/the decision-recording action panel so it
+                    sits directly under Case DNA, matching this sprint's
+                    layout exactly. "Strengths"/"Concerns" are not a
+                    separate pair of sections: `InvestmentArgumentSection`
+                    already renders them together (as "Supports the
+                    Case"/"Challenges the Case") alongside Open
+                    Questions, and duplicating that content in a second,
+                    separate Strengths/Concerns block would violate this
+                    codebase's own "never repeat the same reason twice"
+                    discipline -- a disclosed, deliberate reading of the
+                    spec's own ordering, not a silent omission. */}
+                <InvestmentCaseCanonicalSections
+                  analysis={report}
+                  linkedHolding={linkedHolding}
+                  alphaPortfolioStatus={alphaPortfolioStatus}
+                  onViewMoreDetails={() => setActiveTab("moreDetails")}
+                  t={t}
+                  locale={locale}
+                />
               </>
             );
           })()}
@@ -3272,28 +3354,6 @@ export function InvestmentCasePage() {
                 alphaPortfolioStatus={alphaPortfolioStatus}
                 outstandingWorkKinds={caseOutstandingWork.map((item) => item.kind)}
                 t={t}
-              />
-            )}
-
-            <Divider tone="hairline" />
-
-            {/* Canonical analysis -- Business / Valuation / Risk / Evidence
-                (Investment Case Workspace v2, Sprint 2, Phase 2): the
-                "explain the summary" workspace. Straight from
-                `GET /api/cases/{caseId}/analysis`, plus the same
-                already-fetched Alpha portfolio data Executive Summary
-                uses (for Business's Portfolio Context subsection).
-                Renders only once loaded; a fetch failure never blocks
-                the rest of the page (same independent-fetch pattern
-                every other section here already uses). */}
-            {investmentCaseAnalysis.kind === "loaded" && (
-              <InvestmentCaseCanonicalSections
-                analysis={investmentCaseAnalysis.report}
-                linkedHolding={linkedHolding}
-                alphaPortfolioStatus={alphaPortfolioStatus}
-                onViewMoreDetails={() => setActiveTab("moreDetails")}
-                t={t}
-                locale={locale}
               />
             )}
 
@@ -5648,8 +5708,41 @@ function InvestmentCaseCanonicalSections({
     },
   ];
 
+  /** Atlas UX Phase 7A (Semantic Investment Model, Foundation Sprint)
+   * -- reordered so the four named-in-the-spec sections
+   * (Outlook -> Investment Argument -> Atlas Reasoning -> Evidence)
+   * render first, directly explaining the seven-category bar above
+   * them; every other panel here (deeper Coverage/Knowledge/
+   * Materiality/Explanation/Evidence-Quality/Evidence-Timeline/
+   * Management/Regulatory detail, plus Company Health, Financials,
+   * Company Overview) is real, unremoved "everything else" -- exactly
+   * the detail this sprint's own layout says exists only to explain
+   * the seven categories, now positioned as such rather than ahead of
+   * them. */
   return (
     <Stack gap="inter-section">
+      <AtlasOutlookSection outlook={analysis.outlook} latestChanges={analysis.latestChanges} t={t} />
+
+      <Divider tone="hairline" />
+
+      <InvestmentArgumentSection
+        strengthKinds={strengthKinds}
+        riskKinds={riskKinds}
+        openQuestionOrigins={analysis.keyOpenQuestions.map((q) => q.origin)}
+        factsForKind={factsForHighlightKind}
+        t={t}
+      />
+
+      <Divider tone="hairline" />
+
+      <AtlasReasoningSection input={reasoningInput} t={t} />
+
+      <Divider tone="hairline" />
+
+      <EvidenceSection analysis={analysis} linkedHolding={linkedHolding} onViewMoreDetails={onViewMoreDetails} t={t} />
+
+      <Divider tone="hairline" />
+
       <CoveragePanel coverage={analysis.coverage} t={t} />
 
       {analysis.knowledgeCoverage && (
@@ -5748,24 +5841,6 @@ function InvestmentCaseCanonicalSections({
 
       <Divider tone="hairline" />
 
-      <AtlasOutlookSection outlook={analysis.outlook} latestChanges={analysis.latestChanges} t={t} />
-
-      <Divider tone="hairline" />
-
-      <InvestmentArgumentSection
-        strengthKinds={strengthKinds}
-        riskKinds={riskKinds}
-        openQuestionOrigins={analysis.keyOpenQuestions.map((q) => q.origin)}
-        factsForKind={factsForHighlightKind}
-        t={t}
-      />
-
-      <Divider tone="hairline" />
-
-      <AtlasReasoningSection input={reasoningInput} t={t} />
-
-      <Divider tone="hairline" />
-
       <CompanyHealthAssessmentSection cards={companyHealthCards} t={t} />
 
       <Divider tone="hairline" />
@@ -5775,10 +5850,6 @@ function InvestmentCaseCanonicalSections({
       <Divider tone="hairline" />
 
       <CompanyOverviewSection companyProfile={analysis.companyProfile} marketSnapshot={analysis.marketSnapshot} t={t} locale={locale} />
-
-      <Divider tone="hairline" />
-
-      <EvidenceSection analysis={analysis} linkedHolding={linkedHolding} onViewMoreDetails={onViewMoreDetails} t={t} />
     </Stack>
   );
 }

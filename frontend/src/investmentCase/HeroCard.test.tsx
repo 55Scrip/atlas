@@ -66,6 +66,20 @@ describe("HeroCard", () => {
     expect(screen.queryByText(/investmentCase.hero.limitedByPrefix/)).not.toBeInTheDocument();
   });
 
+  describe("Case DNA promotion (Atlas UX Phase 7A -- Semantic Investment Model)", () => {
+    it("shows the tension sentence inline by default, unchanged (real value on Company Workspace, which has no separate Case DNA line)", () => {
+      renderHero();
+      expect(screen.getByText(/investmentCase.hero.why.neutral/)).toBeInTheDocument();
+    });
+
+    it("omits the tension sentence when suppressTensionSentence is set (Investment Case promotes it to its own Case DNA line elsewhere on the page)", () => {
+      renderHero({ suppressTensionSentence: true });
+      expect(screen.queryByText(/investmentCase.hero.why.neutral/)).not.toBeInTheDocument();
+      // The Recommendation statement itself is never suppressed -- only the tension half of the paragraph.
+      expect(screen.getByText(/decisionSupport\.statement/)).toBeInTheDocument();
+    });
+  });
+
   describe("Stance (Atlas Intelligence Sprint 2)", () => {
     it("shows no Stance block at all when stance is null, never a placeholder", () => {
       renderHero({ analysis: analysis({ stance: null }) });

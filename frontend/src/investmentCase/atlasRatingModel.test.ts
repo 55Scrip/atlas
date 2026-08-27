@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   deriveCompanyRating,
   deriveEvidenceRating,
+  deriveHorizon,
   deriveInvestmentRating,
   derivePortfolioRating,
+  deriveRisk,
+  deriveUpside,
 } from "./atlasRatingModel";
 
 describe("deriveCompanyRating -- Atlas Product Lock rating specification", () => {
@@ -94,5 +97,70 @@ describe("deriveEvidenceRating -- averages Knowledge Coverage's own two real sum
 
   it("no_coverage is missing outright -- nothing yet to rate the reliability of, not a rated-and-found-wanting evidence base", () => {
     expect(deriveEvidenceRating("no_coverage", "very_limited")).toEqual({ score: null, tier: "missing" });
+  });
+});
+
+describe("deriveUpside -- Long-Term Outlook's own real bull-case return, bucketed", () => {
+  it("null (no real scenario) is missing, never a guessed tier", () => {
+    expect(deriveUpside(null)).toEqual({ level: "missing" });
+  });
+  it("under 20% is low", () => {
+    expect(deriveUpside(12)).toEqual({ level: "low" });
+  });
+  it("20-49% is moderate", () => {
+    expect(deriveUpside(35)).toEqual({ level: "moderate" });
+  });
+  it("50-99% is high", () => {
+    expect(deriveUpside(60)).toEqual({ level: "high" });
+  });
+  it("100%+ is very high", () => {
+    expect(deriveUpside(150)).toEqual({ level: "very_high" });
+  });
+});
+
+describe("deriveRisk -- the worst real risk finding, never an average", () => {
+  it("no evaluated category is missing", () => {
+    expect(deriveRisk([{ status: "not_evaluated" }, { status: "insufficient_input" }])).toEqual({ level: "missing" });
+  });
+  it("all low is low", () => {
+    expect(deriveRisk([{ status: "low" }, { status: "low" }])).toEqual({ level: "low" });
+  });
+  it("any moderate (no high) is moderate", () => {
+    expect(deriveRisk([{ status: "low" }, { status: "moderate" }])).toEqual({ level: "moderate" });
+  });
+  it("exactly one high category is high", () => {
+    expect(deriveRisk([{ status: "moderate" }, { status: "high" }, { status: "low" }])).toEqual({ level: "high" });
+  });
+  it("two or more high categories together escalate to very high -- a disclosed aggregation rule, not a fabricated fourth backend severity", () => {
+    expect(deriveRisk([{ status: "high" }, { status: "high" }, { status: "low" }])).toEqual({ level: "very_high" });
+  });
+});
+
+describe("deriveHorizon -- Outlook's own real per-horizon month range, never a fabricated quarter count", () => {
+  it("neither horizon available is missing", () => {
+    expect(deriveHorizon(null, null)).toEqual({ bucket: "missing", monthsLow: null, monthsHigh: null });
+  });
+  it("prefers Long-Term when it has a real range, even if Short-Term also has one", () => {
+    expect(deriveHorizon({ monthsLow: 36, monthsHigh: 60 }, { monthsLow: 2, monthsHigh: 4 })).toEqual({
+      bucket: "three_to_five_years",
+      monthsLow: 36,
+      monthsHigh: 60,
+    });
+  });
+  it("falls back to Short-Term only when Long-Term itself has no real range", () => {
+    expect(deriveHorizon(null, { monthsLow: 2, monthsHigh: 4 })).toEqual({
+      bucket: "near_term",
+      monthsLow: 2,
+      monthsHigh: 4,
+    });
+  });
+  it("buckets a 4-6 month low as one_to_two_quarters", () => {
+    expect(deriveHorizon({ monthsLow: 4, monthsHigh: 8 }, null).bucket).toBe("one_to_two_quarters");
+  });
+  it("buckets a 12-month low as one_to_two_years", () => {
+    expect(deriveHorizon({ monthsLow: 12, monthsHigh: 18 }, null).bucket).toBe("one_to_two_years");
+  });
+  it("buckets a 72-month low as long_term", () => {
+    expect(deriveHorizon({ monthsLow: 72, monthsHigh: 96 }, null).bucket).toBe("long_term");
   });
 });

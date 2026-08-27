@@ -1,6 +1,7 @@
 import type {
   AnalysisBusinessCategory,
   AnalysisBusinessStatus,
+  AnalysisRiskStatus,
 } from "../changeIntelligence/describeChange";
 import type { AnalysisCoverageLevel, ConfidenceLevel, DecisionSupportLevel } from "../status/statusTone";
 import type { FitRating } from "../portfolioFit/portfolioFitApi";
@@ -169,4 +170,103 @@ export function deriveEvidenceRating(
   if (coveragePoints === undefined) return MISSING;
   const score = round1((coveragePoints + CONFIDENCE_POINTS[overallConfidence]) / 2);
   return { score, tier: tierForScore(score) };
+}
+
+/**
+ * Phase 7A -- Upside and Risk are deliberately *not* 0-10 ratings: the
+ * brief's own spec displays them as four qualitative levels
+ * (Low/Moderate/High/Very High), independent of each other -- a
+ * company can carry Very High Upside and Very High Risk at once. Both
+ * are still deterministic reads of real, already-computed data, never
+ * a felt judgment.
+ */
+export type QualitativeLevel = "low" | "moderate" | "high" | "very_high";
+
+export interface AtlasQualitative {
+  level: QualitativeLevel | "missing";
+}
+
+const QUALITATIVE_MISSING: AtlasQualitative = { level: "missing" };
+
+/**
+ * Upside -- reads Long-Term Outlook's own real bull-case return
+ * percent (`atlas.analysis_engine.outlook`, the identical figure the
+ * Hero's own "Upside/Downside" field already shows) and buckets it
+ * into the brief's four tiers. `missing` whenever Long-Term Outlook
+ * has no real scenario for this case yet (gapped) -- never a guessed
+ * tier standing in for absent evidence. Bucket edges are a disclosed,
+ * fixed lookup, not a felt judgment: doubling the position (>=100%)
+ * is Very High, a real 1.5x (>=50%) is High, a real 1.2x (>=20%) is
+ * Moderate, anything real below that is Low.
+ */
+export function deriveUpside(bullReturnPercent: number | null): AtlasQualitative {
+  if (bullReturnPercent === null) return QUALITATIVE_MISSING;
+  if (bullReturnPercent >= 100) return { level: "very_high" };
+  if (bullReturnPercent >= 50) return { level: "high" };
+  if (bullReturnPercent >= 20) return { level: "moderate" };
+  return { level: "low" };
+}
+
+/**
+ * Risk -- the *worst* real risk finding across Atlas's own four
+ * categories (`business_risk`/`financial_risk`/`valuation_risk`/
+ * `thesis_risk`), never an average: one severe risk is what an
+ * investor needs to see, never diluted by three unrelated calm ones.
+ * `"very_high"` is a disclosed aggregation rule over real data, not a
+ * fourth backend severity being invented -- the real
+ * `AnalysisRiskStatus` enum only has three real levels
+ * (low/moderate/high); two or more categories independently landing
+ * on `high` at once is what earns the escalation. `missing` only when
+ * no category has been evaluated at all.
+ */
+export function deriveRisk(findings: { status: AnalysisRiskStatus }[]): AtlasQualitative {
+  const evaluated = findings.filter(
+    (f): f is { status: "low" | "moderate" | "high" } =>
+      f.status === "low" || f.status === "moderate" || f.status === "high",
+  );
+  if (evaluated.length === 0) return QUALITATIVE_MISSING;
+  const highCount = evaluated.filter((f) => f.status === "high").length;
+  if (highCount >= 2) return { level: "very_high" };
+  if (highCount === 1) return { level: "high" };
+  if (evaluated.some((f) => f.status === "moderate")) return { level: "moderate" };
+  return { level: "low" };
+}
+
+/**
+ * Horizon -- "when does Atlas expect the thesis to play out," read
+ * from Outlook's own real per-horizon month range
+ * (`HorizonOutlookView.expectedReturn.horizonMonthsLow/High`), never a
+ * fabricated "3-4 quarters." Long-Term is preferred when it has a real
+ * (non-gapped) range -- the more durable thesis timeframe -- falling
+ * back to Short-Term's own range only when Long-Term itself has none.
+ * `missing` when neither horizon clears its own eligibility gate.
+ * Evolves for free: this is a read of Outlook's current output, not a
+ * persisted value, so the next analysis automatically produces the
+ * next Horizon.
+ */
+export type HorizonBucket = "near_term" | "one_to_two_quarters" | "one_to_two_years" | "three_to_five_years" | "long_term";
+
+export interface AtlasHorizon {
+  bucket: HorizonBucket | "missing";
+  monthsLow: number | null;
+  monthsHigh: number | null;
+}
+
+const HORIZON_MISSING: AtlasHorizon = { bucket: "missing", monthsLow: null, monthsHigh: null };
+
+function bucketForMonths(monthsLow: number): HorizonBucket {
+  if (monthsLow < 3) return "near_term";
+  if (monthsLow < 6) return "one_to_two_quarters";
+  if (monthsLow < 24) return "one_to_two_years";
+  if (monthsLow < 60) return "three_to_five_years";
+  return "long_term";
+}
+
+export function deriveHorizon(
+  longTermRange: { monthsLow: number; monthsHigh: number } | null,
+  shortTermRange: { monthsLow: number; monthsHigh: number } | null,
+): AtlasHorizon {
+  const chosen = longTermRange ?? shortTermRange;
+  if (!chosen) return HORIZON_MISSING;
+  return { bucket: bucketForMonths(chosen.monthsLow), monthsLow: chosen.monthsLow, monthsHigh: chosen.monthsHigh };
 }

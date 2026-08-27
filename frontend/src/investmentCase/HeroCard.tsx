@@ -74,7 +74,9 @@ import type { StanceView } from "../stance/stanceApi";
  * better than a noisy, uninformative one.
  */
 
-const HERO_WHY_KEY: Record<HeroTensionKind, TranslationKey> = {
+/** Exported for `SevenCategoriesSection.tsx`'s `CaseDnaLine` -- the
+ * one home for this lookup, reused, never duplicated. */
+export const HERO_WHY_KEY: Record<HeroTensionKind, TranslationKey> = {
   aligned_positive: "investmentCase.hero.why.aligned_positive",
   aligned_negative: "investmentCase.hero.why.aligned_negative",
   business_strong_valuation_weak: "investmentCase.hero.why.business_strong_valuation_weak",
@@ -248,6 +250,17 @@ interface HeroCardProps {
    * `InvestmentCasePage.tsx` opts in, since it alone renders the fuller
    * detail immediately below this same card. */
   suppressLimitingFactorPreview?: boolean;
+  /** Atlas UX Phase 7A (Semantic Investment Model) -- the tension
+   * sentence (`HERO_WHY_KEY[tension]`) is promoted to its own "Case
+   * DNA" line elsewhere on the page (`SevenCategoriesSection.tsx`'s
+   * `CaseDnaLine`), so this card renders only the Recommendation
+   * statement here, never both -- the exact "compact fact in the
+   * story, full detail as its own labeled block" split
+   * `suppressLimitingFactorPreview` already established. Defaults to
+   * `false` (shows the full two-sentence paragraph, unchanged), so
+   * every existing caller (`CompanyWorkspacePage.tsx`) keeps its
+   * current behavior; only `InvestmentCasePage.tsx` opts in. */
+  suppressTensionSentence?: boolean;
   /** Internal Alpha Stabilization 1 (MSFT price root cause fix) -- the
    * manual "Uppdatera" escape hatch next to "Aktuellt pris". Optional
    * so this component stays usable without it (e.g. in tests that
@@ -369,6 +382,7 @@ export function HeroCard({
   t,
   locale,
   suppressLimitingFactorPreview = false,
+  suppressTensionSentence = false,
   onRefreshPrice,
   isRefreshingPrice = false,
 }: HeroCardProps) {
@@ -447,7 +461,8 @@ export function HeroCard({
               own "Confidence" heading below a divider, moved up next to
               the conclusion it actually explains. */}
           <Text as="p" style={HERO_SENTENCE_STYLE}>
-            {t(DECISION_SUPPORT_STATEMENT_KEY[analysis.recommendationLevel])} {t(HERO_WHY_KEY[tension])}
+            {t(DECISION_SUPPORT_STATEMENT_KEY[analysis.recommendationLevel])}
+            {!suppressTensionSentence && ` ${t(HERO_WHY_KEY[tension])}`}
           </Text>
 
           {topLimitingFactor && !suppressLimitingFactorPreview && (
