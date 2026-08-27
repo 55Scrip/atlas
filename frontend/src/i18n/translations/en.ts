@@ -236,7 +236,6 @@ export const en = {
   "portfolio.holdingsTable.reviewStatus.reviewed": "Reviewed",
   "portfolio.holdingsTable.reviewStatus.needsReview": "Worth a look",
   "portfolio.holdingsTable.reviewStatus.new": "New",
-  "portfolio.holdingsTable.decisionSupportHeader": "Decision Support",
   "portfolio.holdingsTable.attentionHeader": "Attention",
   "portfolio.holdingsTable.attention.none": "—",
   "portfolio.holdingsTable.sortLabel": "Sort:",
@@ -265,7 +264,7 @@ export const en = {
   "portfolio.opportunities.heading": "Portfolio Opportunities",
   "portfolio.weakestHoldings.heading": "Portfolio Weaknesses",
   "portfolio.weakestHoldings.subheading": "Where capital currently looks least compelling — worth a look, not a sell list.",
-  "portfolio.weakestHoldings.empty": "No holdings currently show a weak Portfolio Fit or reduction-supported Decision Support.",
+  "portfolio.weakestHoldings.empty": "No holdings currently show a weak Portfolio Fit or a reduction-supported view.",
   "portfolio.weakestHoldings.reviewPosition": "Open position",
   "portfolio.weakestHoldings.compareAlternatives": "Compare alternatives",
 
@@ -586,7 +585,6 @@ export const en = {
   "investmentCase.analysis.evidence.noneRecorded": "No Evidence recorded for this Case yet.",
   "investmentCase.analysis.valuationScenarios.heading": "Valuation Scenarios",
   "investmentCase.analysis.valuationScenarios.notYet": "Not yet supported",
-  "investmentCase.analysis.recommendation.heading": "Decision Support",
   "decisionSupport.badge.entry_supported": "Entry supported",
   "decisionSupport.badge.increase_supported": "Increase supported",
   "decisionSupport.badge.thesis_intact": "Thesis intact",
@@ -1871,7 +1869,7 @@ export const en = {
   "coverage.confidenceReason.thesisStale": "This case has not been reviewed by the investor in a long time, so some evidence may be outdated.",
 
   // Automatic Investment Case Builder Foundation -- Knowledge Coverage
-  "knowledgeCoverage.panel.heading": "Knowledge Coverage",
+  "knowledgeCoverage.panel.heading": "Research Depth",
   "knowledgeCoverage.panel.summary": "{{available}} of {{applicable}} applicable domains available — {{percent}}%",
   "knowledgeCoverage.panel.notApplicableExpandLabelOne": "{{count}} knowledge domain is not yet part of Atlas's capabilities",
   "knowledgeCoverage.panel.notApplicableExpandLabelOther": "{{count}} knowledge domains are not yet part of Atlas's capabilities",
@@ -2279,7 +2277,7 @@ export const en = {
   "recommendationConviction.compare.moreStable": "{{ticker}} has more stable support.",
   "recommendationConviction.compare.stableTie": "Similarly stable support on both sides.",
 
-  "decisionPath.section.heading": "Decision path",
+  "decisionPath.section.heading": "What's needed next",
   "decisionPath.section.expandLabel": "Show every remaining step",
   "decisionPath.section.immediateBlocker": "Current blocker",
   "decisionPath.section.nextAchievableImprovement": "Next achievable improvement",
@@ -2346,7 +2344,7 @@ export const en = {
   "decisionMemory.change.recommendationChanged": "The recommendation changed from {{previous}} to {{current}}.",
   "decisionMemory.change.convictionDirection": "Conviction {{direction}}.",
   "decisionMemory.change.readinessDirection": "Readiness {{direction}}.",
-  "decisionMemory.change.pathDirection": "Decision path {{direction}}.",
+  "decisionMemory.change.pathDirection": "The path forward {{direction}}.",
   "decisionMemory.change.blockersResolved": "Resolved: {{items}}.",
   "decisionMemory.change.blockersAdded": "New: {{items}}.",
   "decisionMemory.change.alternativeChanged": "The alternatives changed.",

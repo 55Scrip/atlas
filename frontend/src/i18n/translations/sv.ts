@@ -236,7 +236,6 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.holdingsTable.reviewStatus.reviewed": "Granskad",
   "portfolio.holdingsTable.reviewStatus.needsReview": "Bör ses över",
   "portfolio.holdingsTable.reviewStatus.new": "Nytt",
-  "portfolio.holdingsTable.decisionSupportHeader": "Beslutsstöd",
   "portfolio.holdingsTable.attentionHeader": "Uppmärksamhet",
   "portfolio.holdingsTable.attention.none": "—",
   "portfolio.holdingsTable.sortLabel": "Sortera:",
@@ -265,7 +264,7 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.opportunities.heading": "Portföljmöjligheter",
   "portfolio.weakestHoldings.heading": "Portföljsvagheter",
   "portfolio.weakestHoldings.subheading": "Var kapitalet just nu ser minst attraktivt ut — värt en titt, inte en säljlista.",
-  "portfolio.weakestHoldings.empty": "Inga innehav visar just nu svag portföljpassform eller ett reduktionsstött beslutsstöd.",
+  "portfolio.weakestHoldings.empty": "Inga innehav visar just nu svag portföljpassform eller en reduktionsstödd syn.",
   "portfolio.weakestHoldings.reviewPosition": "Öppna position",
   "portfolio.weakestHoldings.compareAlternatives": "Jämför alternativ",
 
@@ -584,7 +583,6 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.analysis.evidence.noneRecorded": "Inget underlag registrerat för det här caset ännu.",
   "investmentCase.analysis.valuationScenarios.heading": "Värderingsscenarier",
   "investmentCase.analysis.valuationScenarios.notYet": "Stöds inte ännu",
-  "investmentCase.analysis.recommendation.heading": "Beslutsstöd",
   "decisionSupport.badge.entry_supported": "Nyinvestering stöds",
   "decisionSupport.badge.increase_supported": "Ökning stöds",
   "decisionSupport.badge.thesis_intact": "Tesen kvarstår",
@@ -1857,7 +1855,7 @@ export const sv: Record<TranslationKey, string> = {
   "coverage.confidenceReason.thesisStale": "Det här caset har inte granskats av investeraren på länge, så en del underlag kan vara inaktuellt.",
 
   // Automatic Investment Case Builder Foundation -- Knowledge Coverage
-  "knowledgeCoverage.panel.heading": "Kunskapstäckning",
+  "knowledgeCoverage.panel.heading": "Kunskapsdjup",
   "knowledgeCoverage.panel.summary": "{{available}} av {{applicable}} tillämpliga områden tillgängliga — {{percent}}%",
   "knowledgeCoverage.panel.notApplicableExpandLabelOne": "{{count}} kunskapsområde ingår ännu inte i Atlas förmågor",
   "knowledgeCoverage.panel.notApplicableExpandLabelOther": "{{count}} kunskapsområden ingår ännu inte i Atlas förmågor",
@@ -2258,7 +2256,7 @@ export const sv: Record<TranslationKey, string> = {
   "recommendationConviction.compare.moreStable": "{{ticker}} har stabilare stöd.",
   "recommendationConviction.compare.stableTie": "Ungefär lika stabilt stöd på båda sidor.",
 
-  "decisionPath.section.heading": "Beslutsväg",
+  "decisionPath.section.heading": "Vad som behövs härnäst",
   "decisionPath.section.expandLabel": "Visa alla återstående steg",
   "decisionPath.section.immediateBlocker": "Nuvarande hinder",
   "decisionPath.section.nextAchievableImprovement": "Nästa möjliga förbättring",
@@ -2325,7 +2323,7 @@ export const sv: Record<TranslationKey, string> = {
   "decisionMemory.change.recommendationChanged": "Rekommendationen ändrades från {{previous}} till {{current}}.",
   "decisionMemory.change.convictionDirection": "Övertygelsen {{direction}}.",
   "decisionMemory.change.readinessDirection": "Beredskapen {{direction}}.",
-  "decisionMemory.change.pathDirection": "Beslutsvägen {{direction}}.",
+  "decisionMemory.change.pathDirection": "Vägen framåt {{direction}}.",
   "decisionMemory.change.blockersResolved": "Löst: {{items}}.",
   "decisionMemory.change.blockersAdded": "Nytt: {{items}}.",
   "decisionMemory.change.alternativeChanged": "Alternativen ändrades.",
