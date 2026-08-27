@@ -73,9 +73,19 @@ def _utc_now() -> datetime:
 
 @dataclass(frozen=True)
 class ImportHoldingInput:
+    """`weight_percent` is optional as of Zero-Effort Portfolio Onboarding:
+    whenever `value_absolute`, or `quantity` and `price`, are supplied for
+    every holding in the batch, weight is always derived from those real
+    values rather than trusted from a typed percentage -- see
+    `_build_holdings_from_input`. It remains required only in the
+    manual-entry fallback, where no value data exists to derive from."""
+
     ticker: str
-    weight_percent: float
+    weight_percent: float | None = None
     value_absolute: float | None = None
+    quantity: float | None = None
+    price: float | None = None
+    currency: str | None = None
 
 
 @dataclass(frozen=True)
@@ -185,6 +195,101 @@ def _recompute_weights_from_absolute_values(
     )
     new_cash_weight = round(holding_weight(cash_holding, portfolio) * 100, 6)
     return updated_holdings, new_cash_weight
+
+
+def _resolve_holding_value(item: ImportHoldingInput) -> float | None:
+    """The value a holding line resolves to, in priority order: a
+    directly-reported value, else quantity x price, else unresolvable
+    from this line alone (Zero-Effort Portfolio Onboarding derivation
+    algorithm)."""
+    if item.value_absolute is not None:
+        return item.value_absolute
+    if item.quantity is not None and item.price is not None:
+        return item.quantity * item.price
+    return None
+
+
+def _build_holdings_from_input(
+    items: tuple[ImportHoldingInput, ...],
+    cash_value_absolute: float | None,
+    existing_case_ids: dict[str, str],
+) -> tuple[tuple[AlphaHolding, ...], float | None]:
+    """Build final holdings from bulk import input, sharing one derivation
+    path between `import_portfolio` and `reconcile_replace_allocation`
+    (Zero-Effort Portfolio Onboarding: "weight is always derived").
+
+    A submission must be either fully value-bearing (every holding has a
+    value, or quantity and price) -- in which case every weight is
+    (re)computed from those real values, discarding any weight_percent
+    that happened to also be supplied -- or fully weight-only, the
+    manual-entry fallback where no value data exists. Mixing the two
+    within one batch has no well-defined total to derive against, so it
+    is rejected outright. Returns the built holdings and, when value-
+    derivation ran and cash was reported, the derived cash weight
+    (`None` otherwise, leaving the caller's own `cash_weight_percent`
+    untouched).
+    """
+    has_value = tuple(_resolve_holding_value(item) is not None for item in items)
+    all_value_bearing = all(has_value)
+    none_value_bearing = not any(has_value)
+
+    if not all_value_bearing and not none_value_bearing:
+        raise AlphaPortfolioValidationError(
+            "Provide either a value (or quantity and price) for every holding, "
+            "or a weight percentage for every holding -- not a mix of the two."
+        )
+
+    if none_value_bearing:
+        for item in items:
+            if item.weight_percent is None:
+                raise AlphaPortfolioValidationError(
+                    f"Holding {item.ticker!r} has neither a weight percentage nor "
+                    "enough data (a value, or quantity and price) to determine its size."
+                )
+        holdings = tuple(
+            replace(
+                AlphaHolding(
+                    ticker=item.ticker,
+                    weight_percent=item.weight_percent,
+                    value_absolute=item.value_absolute,
+                    quantity=item.quantity,
+                    price=item.price,
+                    currency=item.currency,
+                ),
+                case_id=existing_case_ids.get(item.ticker.strip().upper()),
+            )
+            for item in items
+        )
+        return holdings, None
+
+    currencies = {
+        item.currency.strip().upper() for item in items if item.currency and item.currency.strip()
+    }
+    if len(currencies) > 1:
+        raise AlphaPortfolioValidationError(
+            f"Holdings report more than one currency ({', '.join(sorted(currencies))}); "
+            "cannot derive portfolio weights across mixed currencies."
+        )
+
+    interim_holdings = tuple(
+        replace(
+            AlphaHolding(
+                ticker=item.ticker,
+                weight_percent=0.0,
+                value_absolute=_resolve_holding_value(item),
+                quantity=item.quantity,
+                price=item.price,
+                currency=item.currency,
+            ),
+            case_id=existing_case_ids.get(item.ticker.strip().upper()),
+        )
+        for item in items
+    )
+    recomputed_holdings, recomputed_cash_weight = _recompute_weights_from_absolute_values(
+        interim_holdings, cash_value_absolute
+    )
+    derived_cash_weight = recomputed_cash_weight if cash_value_absolute is not None else None
+    return recomputed_holdings, derived_cash_weight
 
 
 def _apply_trade_absolute_mode(
@@ -412,23 +517,18 @@ class AlphaPortfolioService:
             else {}
         )
         try:
-            holdings = tuple(
-                replace(
-                    AlphaHolding(
-                        ticker=item.ticker,
-                        weight_percent=item.weight_percent,
-                        value_absolute=item.value_absolute,
-                    ),
-                    case_id=existing_case_ids.get(item.ticker.strip().upper()),
-                )
-                for item in request.holdings
+            holdings, derived_cash_weight_percent = _build_holdings_from_input(
+                request.holdings, request.cash_value_absolute, existing_case_ids
             )
         except ValueError as exc:
             raise AlphaPortfolioValidationError(str(exc)) from exc
 
-        _validate_holdings_and_cash(
-            holdings, request.cash_weight_percent, request.cash_value_absolute
+        cash_weight_percent = (
+            derived_cash_weight_percent
+            if derived_cash_weight_percent is not None
+            else request.cash_weight_percent
         )
+        _validate_holdings_and_cash(holdings, cash_weight_percent, request.cash_value_absolute)
         holdings = self._ensure_cases(holdings)
 
         now = _utc_now()
@@ -437,7 +537,7 @@ class AlphaPortfolioService:
             updated_at=now,
             entry_mode=EntryMode.IMPORTED,
             holdings=holdings,
-            cash_weight_percent=request.cash_weight_percent,
+            cash_weight_percent=cash_weight_percent,
             cash_value_absolute=request.cash_value_absolute,
             preferences=AlphaPreferences(notes=request.preferences_notes),
         )
@@ -722,29 +822,24 @@ class AlphaPortfolioService:
 
         existing_case_ids = {holding.ticker: holding.case_id for holding in state.holdings}
         try:
-            holdings = tuple(
-                replace(
-                    AlphaHolding(
-                        ticker=item.ticker,
-                        weight_percent=item.weight_percent,
-                        value_absolute=item.value_absolute,
-                    ),
-                    case_id=existing_case_ids.get(item.ticker.strip().upper()),
-                )
-                for item in request.holdings
+            holdings, derived_cash_weight_percent = _build_holdings_from_input(
+                request.holdings, request.cash_value_absolute, existing_case_ids
             )
         except ValueError as exc:
             raise AlphaPortfolioValidationError(str(exc)) from exc
 
-        _validate_holdings_and_cash(
-            holdings, request.cash_weight_percent, request.cash_value_absolute
+        cash_weight_percent = (
+            derived_cash_weight_percent
+            if derived_cash_weight_percent is not None
+            else request.cash_weight_percent
         )
+        _validate_holdings_and_cash(holdings, cash_weight_percent, request.cash_value_absolute)
         holdings = self._ensure_cases(holdings)
 
         new_state = replace(
             state,
             holdings=holdings,
-            cash_weight_percent=request.cash_weight_percent,
+            cash_weight_percent=cash_weight_percent,
             cash_value_absolute=request.cash_value_absolute,
             updated_at=_utc_now(),
         )

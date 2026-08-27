@@ -58,6 +58,61 @@ class TestAlphaPortfolioStore:
         assert fetched.objective == "Grow capital"
         assert fetched.preferences.notes == "No tobacco"
 
+    def test_quantity_price_currency_round_trip(self, store):
+        state = AlphaPortfolioState(
+            established_at=_NOW,
+            updated_at=_NOW,
+            entry_mode=EntryMode.IMPORTED,
+            holdings=(
+                AlphaHolding(
+                    ticker="NVDA",
+                    weight_percent=60,
+                    value_absolute=600.0,
+                    quantity=5,
+                    price=120.0,
+                    currency="USD",
+                ),
+            ),
+        )
+        store.replace(state)
+        fetched = store.get()
+        assert fetched.holdings[0].quantity == 5
+        assert fetched.holdings[0].price == 120.0
+        assert fetched.holdings[0].currency == "USD"
+
+    def test_pre_existing_rows_without_the_new_fields_deserialize_safely(self, store):
+        # Simulates a holding persisted before quantity/price/currency
+        # existed on AlphaHolding -- the JSON blob simply lacks those
+        # keys; deserialization must default them to None, not raise.
+        import json
+
+        from sqlalchemy import insert
+
+        from atlas.alpha.portfolio.table import alpha_portfolio_state_table
+
+        engine = store._engine
+        with engine.begin() as connection:
+            connection.execute(
+                insert(alpha_portfolio_state_table).values(
+                    id=1,
+                    established_at=_NOW.isoformat(),
+                    updated_at=_NOW.isoformat(),
+                    entry_mode=EntryMode.IMPORTED.value,
+                    holdings_json=json.dumps(
+                        [{"ticker": "NVDA", "weightPercent": 100.0}]
+                    ),
+                    cash_weight_percent=None,
+                    cash_value_absolute=None,
+                    objective=None,
+                    horizon=None,
+                    preferences_notes=None,
+                )
+            )
+        fetched = store.get()
+        assert fetched.holdings[0].quantity is None
+        assert fetched.holdings[0].price is None
+        assert fetched.holdings[0].currency is None
+
     def test_replace_overwrites_the_singleton_row(self, store):
         first = AlphaPortfolioState(
             established_at=_NOW, updated_at=_NOW, entry_mode=EntryMode.FROM_SCRATCH,

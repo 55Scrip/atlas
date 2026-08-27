@@ -144,6 +144,9 @@ def import_portfolio(
                         ticker=holding.ticker,
                         weight_percent=holding.weight_percent,
                         value_absolute=holding.value_absolute,
+                        quantity=holding.quantity,
+                        price=holding.price,
+                        currency=holding.currency,
                     )
                     for holding in payload.holdings
                 ),
@@ -294,6 +297,9 @@ def reconcile(
                             ticker=holding.ticker,
                             weight_percent=holding.weight_percent,
                             value_absolute=holding.value_absolute,
+                            quantity=holding.quantity,
+                            price=holding.price,
+                            currency=holding.currency,
                         )
                         for holding in payload.holdings
                     ),

@@ -57,10 +57,14 @@ class TransactionType(str, Enum):
 class AlphaHolding:
     """One investor-supplied holding line within the provisional state.
 
-    `weight_percent` is the only field the manual existing-portfolio
-    entry flow genuinely requires; `value_absolute` is optional, matching
-    the Alpha First-Time Experience requirement that percentages alone
-    must be sufficient.
+    `weight_percent` is always present on this stored shape -- every
+    existing reader may keep assuming a real float -- but as of Zero-
+    Effort Portfolio Onboarding it is a derived value whenever `quantity`
+    and `price` (or `value_absolute`) are known; it is only ever taken
+    literally from investor input in the manual-entry fallback, where no
+    value data exists to derive it from. `quantity`/`price`/`currency`
+    are optional: present when the source (a broker export, or a BUY/SELL
+    report) supplied them, absent for pre-existing weight-only holdings.
 
     `case_id` is the Sprint 1A Foundation Patch's holding-to-Investment-
     Case association: once the investor opens an Investment Case from
@@ -74,6 +78,9 @@ class AlphaHolding:
     ticker: str
     weight_percent: float
     value_absolute: float | None = None
+    quantity: float | None = None
+    price: float | None = None
+    currency: str | None = None
     case_id: str | None = None
     reconciliation_status: ReconciliationStatus = ReconciliationStatus.NONE
 
@@ -86,7 +93,13 @@ class AlphaHolding:
             raise ValueError("AlphaHolding.weight_percent must not exceed 100")
         if self.value_absolute is not None and self.value_absolute < 0:
             raise ValueError("AlphaHolding.value_absolute must not be negative")
+        if self.quantity is not None and self.quantity <= 0:
+            raise ValueError("AlphaHolding.quantity must be positive")
+        if self.price is not None and self.price <= 0:
+            raise ValueError("AlphaHolding.price must be positive")
         object.__setattr__(self, "ticker", self.ticker.strip().upper())
+        if self.currency is not None:
+            object.__setattr__(self, "currency", self.currency.strip().upper() or None)
 
 
 @dataclass(frozen=True)

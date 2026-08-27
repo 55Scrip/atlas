@@ -15,9 +15,17 @@ from atlas.domains.portfolio.models import PortfolioSummary
 
 
 class ImportHoldingRequest(CamelModel):
+    """`weight_percent` is optional: whenever `value_absolute`, or
+    `quantity` and `price`, are supplied for every holding in the batch,
+    weight is derived server-side rather than trusted from this field --
+    see `AlphaPortfolioService._build_holdings_from_input`."""
+
     ticker: str
-    weight_percent: float
+    weight_percent: float | None = None
     value_absolute: float | None = None
+    quantity: float | None = None
+    price: float | None = None
+    currency: str | None = None
 
 
 class ImportPortfolioRequestBody(CamelModel):
@@ -37,6 +45,9 @@ class HoldingView(CamelModel):
     ticker: str
     weight_percent: float
     value_absolute: float | None = None
+    quantity: float | None = None
+    price: float | None = None
+    currency: str | None = None
     case_id: str | None = None
     reconciliation_status: str = "NONE"
 
@@ -135,6 +146,9 @@ class PortfolioView(CamelModel):
                     ticker=holding.ticker,
                     weight_percent=holding.weight_percent,
                     value_absolute=holding.value_absolute,
+                    quantity=holding.quantity,
+                    price=holding.price,
+                    currency=holding.currency,
                     case_id=holding.case_id,
                     reconciliation_status=holding.reconciliation_status.value,
                 )

@@ -66,6 +66,9 @@ def _to_row(state: AlphaPortfolioState) -> dict[str, Any]:
                     "ticker": holding.ticker,
                     "weightPercent": holding.weight_percent,
                     "valueAbsolute": holding.value_absolute,
+                    "quantity": holding.quantity,
+                    "price": holding.price,
+                    "currency": holding.currency,
                     "caseId": holding.case_id,
                     "reconciliationStatus": holding.reconciliation_status.value,
                 }
@@ -86,6 +89,9 @@ def _to_state(row: Mapping[str, Any]) -> AlphaPortfolioState:
             ticker=item["ticker"],
             weight_percent=item["weightPercent"],
             value_absolute=item.get("valueAbsolute"),
+            quantity=item.get("quantity"),
+            price=item.get("price"),
+            currency=item.get("currency"),
             case_id=item.get("caseId"),
             reconciliation_status=ReconciliationStatus(
                 item.get("reconciliationStatus", ReconciliationStatus.NONE.value)

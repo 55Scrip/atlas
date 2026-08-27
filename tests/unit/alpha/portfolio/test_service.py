@@ -146,6 +146,143 @@ class TestImportPortfolio:
         assert state.preferences.notes is None
 
 
+class TestDerivedWeightsFromValue:
+    """Zero-Effort Portfolio Onboarding: weight is always derived
+    whenever value data is present, never trusted from a typed
+    percentage -- see `_build_holdings_from_input`."""
+
+    def test_derives_weight_from_value_absolute_alone(self, service):
+        state = service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(
+                    ImportHoldingInput(ticker="NVDA", value_absolute=600.0),
+                    ImportHoldingInput(ticker="AMD", value_absolute=400.0),
+                ),
+            )
+        )
+        by_ticker = {h.ticker: h for h in state.holdings}
+        assert by_ticker["NVDA"].weight_percent == pytest.approx(60.0)
+        assert by_ticker["AMD"].weight_percent == pytest.approx(40.0)
+
+    def test_derives_value_and_weight_from_quantity_and_price(self, service):
+        state = service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(
+                    ImportHoldingInput(ticker="NVDA", quantity=10, price=60.0),
+                    ImportHoldingInput(ticker="AMD", quantity=20, price=20.0),
+                ),
+            )
+        )
+        by_ticker = {h.ticker: h for h in state.holdings}
+        assert by_ticker["NVDA"].value_absolute == pytest.approx(600.0)
+        assert by_ticker["NVDA"].weight_percent == pytest.approx(60.0)
+        assert by_ticker["AMD"].value_absolute == pytest.approx(400.0)
+        assert by_ticker["AMD"].weight_percent == pytest.approx(40.0)
+
+    def test_a_typed_weight_percent_is_discarded_in_favor_of_the_derived_one(self, service):
+        state = service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(
+                    ImportHoldingInput(ticker="NVDA", weight_percent=1.0, value_absolute=600.0),
+                    ImportHoldingInput(ticker="AMD", weight_percent=1.0, value_absolute=400.0),
+                ),
+            )
+        )
+        by_ticker = {h.ticker: h for h in state.holdings}
+        assert by_ticker["NVDA"].weight_percent == pytest.approx(60.0)
+        assert by_ticker["AMD"].weight_percent == pytest.approx(40.0)
+
+    def test_derives_cash_weight_when_cash_value_is_reported(self, service):
+        state = service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(ImportHoldingInput(ticker="NVDA", value_absolute=900.0),),
+                cash_value_absolute=100.0,
+            )
+        )
+        assert state.cash_weight_percent == pytest.approx(10.0)
+        assert state.holdings[0].weight_percent == pytest.approx(90.0)
+
+    def test_cash_weight_stays_unset_when_cash_value_is_not_reported(self, service):
+        state = service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(ImportHoldingInput(ticker="NVDA", value_absolute=900.0),),
+            )
+        )
+        assert state.cash_weight_percent is None
+        assert state.holdings[0].weight_percent == pytest.approx(100.0)
+
+    def test_mixed_value_bearing_and_weight_only_holdings_are_rejected(self, service):
+        with pytest.raises(AlphaPortfolioValidationError, match="not a mix"):
+            service.import_portfolio(
+                ImportPortfolioRequest(
+                    holdings=(
+                        ImportHoldingInput(ticker="NVDA", value_absolute=600.0),
+                        ImportHoldingInput(ticker="AMD", weight_percent=40.0),
+                    ),
+                )
+            )
+
+    def test_holding_with_neither_weight_nor_value_data_is_rejected(self, service):
+        with pytest.raises(AlphaPortfolioValidationError, match="NVDA"):
+            service.import_portfolio(
+                ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="NVDA"),))
+            )
+
+    def test_mismatched_currencies_across_holdings_are_rejected(self, service):
+        with pytest.raises(AlphaPortfolioValidationError, match="currenc"):
+            service.import_portfolio(
+                ImportPortfolioRequest(
+                    holdings=(
+                        ImportHoldingInput(ticker="NVDA", value_absolute=600.0, currency="USD"),
+                        ImportHoldingInput(ticker="VOLV-B", value_absolute=400.0, currency="SEK"),
+                    ),
+                )
+            )
+
+    def test_a_shared_currency_across_holdings_is_accepted(self, service):
+        state = service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(
+                    ImportHoldingInput(ticker="VOLV-B", value_absolute=600.0, currency="SEK"),
+                    ImportHoldingInput(ticker="INVE-B", value_absolute=400.0, currency="sek"),
+                ),
+            )
+        )
+        assert {h.currency for h in state.holdings} == {"SEK"}
+
+    def test_derivation_also_applies_to_reconcile_replace_allocation(self, service):
+        service.import_portfolio(
+            ImportPortfolioRequest(holdings=(ImportHoldingInput(ticker="NVDA", weight_percent=100),))
+        )
+        state = service.reconcile_replace_allocation(
+            ReplaceAllocationRequest(
+                holdings=(
+                    ImportHoldingInput(ticker="NVDA", quantity=5, price=100.0),
+                    ImportHoldingInput(ticker="AMD", quantity=10, price=50.0),
+                ),
+            )
+        )
+        by_ticker = {h.ticker: h for h in state.holdings}
+        assert by_ticker["NVDA"].weight_percent == pytest.approx(50.0)
+        assert by_ticker["AMD"].weight_percent == pytest.approx(50.0)
+
+    def test_pre_existing_weight_only_portfolios_are_unaffected(self, service):
+        # Backward compatibility: the manual-entry fallback (no value
+        # data at all) behaves exactly as it did before this sprint.
+        state = service.import_portfolio(
+            ImportPortfolioRequest(
+                holdings=(
+                    ImportHoldingInput(ticker="NVDA", weight_percent=60),
+                    ImportHoldingInput(ticker="AMD", weight_percent=40),
+                ),
+            )
+        )
+        by_ticker = {h.ticker: h for h in state.holdings}
+        assert by_ticker["NVDA"].weight_percent == pytest.approx(60.0)
+        assert by_ticker["AMD"].weight_percent == pytest.approx(40.0)
+        assert by_ticker["NVDA"].value_absolute is None
+
+
 class TestFromScratch:
     def test_establishes_empty_state_with_objective_and_horizon(self, service):
         state = service.start_from_scratch(FromScratchRequest(objective="Grow", horizon="Long"))

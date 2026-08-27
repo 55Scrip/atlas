@@ -50,6 +50,28 @@ class TestAlphaHolding:
         holding = AlphaHolding(ticker="NVDA", weight_percent=10, case_id="case-1")
         assert holding.case_id == "case-1"
 
+    def test_quantity_price_currency_default_to_none(self):
+        holding = AlphaHolding(ticker="NVDA", weight_percent=10)
+        assert holding.quantity is None
+        assert holding.price is None
+        assert holding.currency is None
+
+    def test_quantity_price_currency_are_preserved_when_given(self):
+        holding = AlphaHolding(
+            ticker="NVDA", weight_percent=10, quantity=5, price=120.0, currency="usd"
+        )
+        assert holding.quantity == 5
+        assert holding.price == 120.0
+        assert holding.currency == "USD"
+
+    def test_rejects_zero_or_negative_quantity(self):
+        with pytest.raises(ValueError):
+            AlphaHolding(ticker="NVDA", weight_percent=10, quantity=0)
+
+    def test_rejects_zero_or_negative_price(self):
+        with pytest.raises(ValueError):
+            AlphaHolding(ticker="NVDA", weight_percent=10, price=-1.0)
+
 
 class TestAlphaPortfolioStateHasAbsoluteValues:
     def _state(self, holdings, cash_value_absolute) -> AlphaPortfolioState:
