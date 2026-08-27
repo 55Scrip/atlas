@@ -38,6 +38,8 @@ import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNo
 import { invalidateAlphaPortfolio, setAlphaPortfolioData, useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import { fetchMonitoringStatus, type MonitoringOperationalStatusView } from "../monitoring/monitoringApi";
 import { sortHoldings, type HoldingSortKey } from "../portfolio/sortHoldings";
+import { deriveInvestmentRating } from "../investmentCase/atlasRatingModel";
+import { CompactRatingBadge } from "../investmentCase/CompactRatingBadge";
 
 /** Product Sprint 8 (Portfolio Excellence, Deliverable 4 -- Unify
  * Attention Surfaces): Portfolio used to run two independent, competing
@@ -1954,9 +1956,16 @@ function HoldingsTable({
    * already-fetched per-holding `analysisCoverage.level` -- no new
    * fetch, matching `fitRatingByTicker`'s own pattern above. */
   const coverageByTicker = new Map<string, AnalysisCoverageLevel>();
+  /** Atlas UX Phase 7B, Phase 5 -- same cockpit report, same zero-new-
+   * fetch pattern as `coverageByTicker` immediately above: feeds the
+   * one compact Investment rating badge the Holdings Table row now
+   * shows next to Stance, so a holding reads the same Investment
+   * number here as it does on its own Investment Case. */
+  const decisionSupportByTicker = new Map<string, DecisionSupportLevel>();
   if (cockpit.kind === "loaded") {
     for (const holding of cockpit.report.holdings) {
       coverageByTicker.set(holding.ticker, holding.analysisCoverage.level);
+      decisionSupportByTicker.set(holding.ticker, holding.decisionSupport.level);
     }
   }
   const orderedHoldings = sortHoldings(
@@ -2044,6 +2053,7 @@ function HoldingsTable({
                     isUnresolvedInCockpit={isUnresolvedInCockpit}
                     stanceLevel={stanceByTicker.get(holding.ticker)}
                     stanceView={stanceViewByTicker.get(holding.ticker)}
+                    investmentLevel={decisionSupportByTicker.get(holding.ticker)}
                     priority={priorityByTicker.get(holding.ticker)}
                     agendaItem={agendaItemByTicker.get(holding.ticker)}
                     thisCaseCreateStatus={caseCreateStatus[holding.ticker] ?? { kind: "idle" }}
@@ -2188,6 +2198,7 @@ function HoldingsTableRow({
   isUnresolvedInCockpit,
   stanceLevel,
   stanceView,
+  investmentLevel,
   priority,
   agendaItem,
   thisCaseCreateStatus,
@@ -2200,6 +2211,7 @@ function HoldingsTableRow({
   isUnresolvedInCockpit: boolean;
   stanceLevel: StanceLevel | undefined;
   stanceView: StanceView | undefined;
+  investmentLevel: DecisionSupportLevel | undefined;
   priority: PriorityLevel | undefined;
   agendaItem: AgendaItemView | undefined;
   thisCaseCreateStatus: CaseCreateStatus;
@@ -2296,13 +2308,23 @@ function HoldingsTableRow({
           </Inline>
         </td>
         <td style={cellStyle}>
-          {stanceLevel ? (
-            <StanceBadge level={stanceLevel} weight="strong" />
-          ) : (
-            <Text color="tertiary" as="span">
-              {t("portfolio.holdingsTable.coverage.new")}
-            </Text>
-          )}
+          <Inline gap="metadata" wrap>
+            {stanceLevel ? (
+              <StanceBadge level={stanceLevel} weight="strong" />
+            ) : (
+              <Text color="tertiary" as="span">
+                {t("portfolio.holdingsTable.coverage.new")}
+              </Text>
+            )}
+            {/* Atlas UX Phase 7B, Phase 5 -- the same Investment rating
+                Watchlist's own compact cluster and Investment Case's
+                own Seven Categories bar show, so this holding reads the
+                same real number wherever it appears. Stance stays the
+                primary, leftmost badge (Portfolio's own established
+                "what should I do now" signal, unchanged) -- this is an
+                addition, not a redesign of the column. */}
+            {investmentLevel && <CompactRatingBadge labelKey="investmentCase.ratings.investment.label" rating={deriveInvestmentRating(investmentLevel)} t={t} />}
+          </Inline>
         </td>
         <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)", maxWidth: "320px" }} onClick={(event) => event.stopPropagation()}>
           <HoldingReasonCell agendaItem={agendaItem} priority={priority} stanceView={stanceView} t={t} />

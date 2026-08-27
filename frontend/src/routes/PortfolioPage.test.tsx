@@ -340,6 +340,15 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     expect(orderedTickersFromRowButtons()).toEqual(["MSFT", "AAPL"]);
   });
 
+  it("shows the same Investment rating in the Holdings Table that Watchlist and Investment Case show, next to (not replacing) Stance (Atlas UX Phase 7B, Phase 5)", async () => {
+    mockFetch();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(orderedTickersFromRowButtons().length).toBe(2));
+    // AAPL: reduction_supported -> 3.0 (Weak). MSFT: thesis_intact -> 6.0 (Fair).
+    expect(screen.getByText("Investering 3.0")).toBeInTheDocument();
+    expect(screen.getByText("Investering 6.0")).toBeInTheDocument();
+  });
+
   it("shows AAPL's weak Portfolio Fit rating once, in Portfolio Weaknesses (no longer duplicated across a separate Fit overview)", async () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
