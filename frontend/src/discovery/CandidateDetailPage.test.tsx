@@ -149,31 +149,13 @@ describe("CandidateDetailPage", () => {
     await waitFor(() => expect(screen.getAllByText("Bra passform").length).toBeGreaterThan(0));
   });
 
-  it("shows the real Daily Brief Agenda headline as the reason Atlas is showing this candidate (Deliverable 3)", async () => {
+  it("never renders a raw Daily Brief Agenda headline -- Discover Doctrine Phase 5 removed it from every card, including this full-detail one", async () => {
     mockFetch({
       fit: assessment("NVDA", "case-nvda"),
       watchlist: [{ ticker: "NVDA", caseId: "case-nvda", addedAt: "2026-01-01T00:00:00Z" }],
-      agenda: {
-        generatedAt: "2026-01-01T00:00:00Z",
-        summary: { holdingsCount: 0, criticalCount: 0, highCount: 0, watchlistOpportunityCount: 1, cashWeightPercent: null, concentrationLevel: null },
-        items: [
-          {
-            id: "portfolio_opportunity:NVDA",
-            priority: "low",
-            kind: "portfolio_opportunity",
-            group: "watchlist",
-            source: "portfolio_fit",
-            headline: "NVDA: Portfolio Fit is improving",
-            reason: ["NVDA: Portfolio Fit is improving"],
-            ticker: "NVDA",
-            caseId: "case-nvda",
-            portfolioContext: null,
-            generatedAt: "2026-01-01T00:00:00Z",
-          },
-        ],
-      },
     });
     renderWithProviders(<CandidateDetailPage />, { route: "/discovery/candidate/NVDA", path: "/discovery/candidate/:ticker" });
-    await waitFor(() => expect(screen.getByText("NVDA: Portfolio Fit is improving")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("NVDA").length).toBeGreaterThan(0));
+    expect(screen.queryByText(/Portfolio Fit is improving/)).not.toBeInTheDocument();
   });
 });

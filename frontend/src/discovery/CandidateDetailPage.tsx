@@ -3,7 +3,6 @@ import { useNavigate, useParams, Link as RouterLink } from "react-router-dom";
 import { Container, Divider, Stack, Text } from "../foundation";
 import { useTranslation } from "../i18n";
 import { fetchPortfolioFitForTicker, fetchPortfolioFitForHoldings, type PortfolioFitAssessmentView } from "../portfolioFit/portfolioFitApi";
-import { fetchDailyBriefAgenda, type AgendaItemView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
 import { DiscoveryCandidateCard } from "./DiscoveryCandidateCard";
 import { addTickerToWatchlist, removeTickerFromWatchlist, useAlphaWatchlist, type WatchlistEntryView } from "./watchlistActions";
 import { invalidateAlphaPortfolio, useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
@@ -98,7 +97,6 @@ export function CandidateDetailPage() {
   /** Deliverable 3 -- the real Daily Brief Agenda item (if any) that
    * currently flags this exact ticker, sourced from the same shared
    * `group === "watchlist"` slice Discovery's list page reads. */
-  const [agendaItem, setAgendaItem] = useState<AgendaItemView | null>(null);
   /** Atlas Intelligence Sprint 2 (Recommendation Quality &
    * Actionability, Deliverable 7). */
   const [stanceStatus, setStanceStatus] = useState<StanceStatus>({ kind: "loading" });
@@ -139,14 +137,6 @@ export function CandidateDetailPage() {
       .catch(() => {});
     return () => controller.abort();
   }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchDailyBriefAgenda(controller.signal)
-      .then((agenda) => setAgendaItem(agenda.items.find((item) => item.ticker === ticker && item.group === "watchlist") ?? null))
-      .catch(() => {});
-    return () => controller.abort();
-  }, [ticker]);
 
   const isOnWatchlist = watchlistStatus.kind === "loaded" && watchlistStatus.entries.some((e) => e.ticker === ticker);
   const isHolding = holdingsStatus.kind === "loaded" && holdingsStatus.holdings.some((h) => h.ticker === ticker && h.caseId !== null);
@@ -470,9 +460,8 @@ export function CandidateDetailPage() {
           <DiscoveryCandidateCard
             ticker={ticker}
             reasonKey={isOnWatchlist ? "discovery.card.reason.watchlist" : isHolding ? "discovery.card.reason.holding" : "discovery.card.reason.search"}
-            agendaHeadline={agendaItem?.headline ?? null}
             assessment={fitStatus.kind === "loaded" ? fitStatus.assessment : null}
-            stance={stanceStatus.kind === "loaded" ? stanceStatus.stance : null}
+            stance={stanceStatus.kind === "loaded" ? (stanceStatus.stance?.level ?? null) : null}
             isOnWatchlist={isOnWatchlist}
             isHolding={isHolding}
             variant="full"
