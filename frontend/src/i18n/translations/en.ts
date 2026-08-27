@@ -266,7 +266,7 @@ export const en = {
   "portfolio.weakestHoldings.heading": "Portfolio Weaknesses",
   "portfolio.weakestHoldings.subheading": "Where capital currently looks least compelling — worth a look, not a sell list.",
   "portfolio.weakestHoldings.empty": "No holdings currently show a weak Portfolio Fit or reduction-supported Decision Support.",
-  "portfolio.weakestHoldings.reviewPosition": "Review position",
+  "portfolio.weakestHoldings.reviewPosition": "Open position",
   "portfolio.weakestHoldings.compareAlternatives": "Compare alternatives",
 
   // ---------- watchlist relationship (Product Sprint 8) ----------
@@ -283,7 +283,7 @@ export const en = {
   "portfolio.holdingDetail.attentionHeading": "Attention",
   "portfolio.holdingDetail.noAttentionReasons": "This holding is not currently flagged for attention.",
   "portfolio.holdingDetail.analysisContextHeading": "Analysis Context",
-  "portfolio.holdingDetail.decisionSupportLabel": "Decision Support",
+  "portfolio.holdingDetail.decisionSupportLabel": "Atlas's Recommendation",
   "portfolio.holdingDetail.convictionLabel": "Conviction",
   "portfolio.holdingDetail.riskFactorsLabel": "Risk Factors Identified",
   "portfolio.holdingDetail.noRiskFactors": "No specific risk factors identified.",
@@ -292,7 +292,7 @@ export const en = {
   "portfolio.holdingDetail.backToPortfolio": "← Back to Portfolio",
   "portfolio.holdingDetail.dismissButton": "Dismiss from Attention",
   "portfolio.holdingDetail.dismissUnavailable": "Not yet available",
-  "portfolio.holdingDetail.recordDecisionButton": "Record a Decision",
+  "portfolio.holdingDetail.recordDecisionButton": "Update Your View",
   "portfolio.holdingDetail.openCompanyWorkspace": "Open Company Workspace",
   "portfolio.holdingDetail.notFound": "Could not find this holding in your portfolio.",
 
@@ -337,9 +337,6 @@ export const en = {
   "dashboard.portfolioStatus.goToPortfolio": "Go to Portfolio →",
   "dashboard.monitoring.heading": "Active Monitoring Conditions",
   "dashboard.notYetImplemented": "Not yet implemented.",
-  "dashboard.recentDecisions.heading": "Recent Decisions",
-  "dashboard.recentDecisions.loadError": "Could not load recent decisions: {{message}}",
-  "dashboard.recentDecisions.empty": "No decisions recorded yet.",
   "dashboard.outcomes.heading": "Outcomes",
   "dashboard.outcomes.loadError": "Could not load outcomes: {{message}}",
   "dashboard.outcomes.empty": "No outcomes recorded yet.",
@@ -970,7 +967,7 @@ export const en = {
   "investmentCase.intelligence.observationTimeline.evidenceCountOther": "{{count}} evidence items",
 
   // ---------- sprint 4: navigation ----------
-  "shell.nav.history": "History",
+  "shell.nav.history": "Activity",
 
   // ---------- daily brief implementation sprint 1: navigation ----------
   "shell.nav.dailyBrief": "Daily Brief",
@@ -1078,8 +1075,8 @@ export const en = {
   "history.reviews.securityConfirmation.verificationUnsupported": "Verification isn't available for this confirmation",
 
   // ---------- sprint 4: dashboard sections ----------
-  "dashboard.needsAttention.heading": "Outstanding Work",
-  "dashboard.needsAttention.empty": "No outstanding work right now.",
+  "dashboard.needsAttention.heading": "Needs Attention",
+  "dashboard.needsAttention.empty": "Nothing needs your attention right now.",
   // Status/Explanation Language stabilization: previously this section
   // (and Recent Activity / Continue Working below) showed "Loading..."
   // forever if any of the underlying fetches permanently failed --
@@ -1097,7 +1094,7 @@ export const en = {
   "dashboard.continueWorking.heading": "Continue Working",
   "dashboard.continueWorking.empty": "No recent case activity yet.",
   "dashboard.continueWorking.loadError": "Something failed to load, so this can't be shown right now.",
-  "dashboard.viewHistoryLink": "View History →",
+  "dashboard.viewHistoryLink": "View Activity →",
 
   // ---------- sprint 4: investment case last activity / timeline / outstanding work ----------
   "investmentCase.lastActivity.heading": "Last activity",
@@ -1381,7 +1378,7 @@ export const en = {
   "dailyBriefAgenda.group.discovery": "Discovery",
   "dailyBriefAgenda.group.system": "System",
   "dailyBriefAgenda.action.openInvestmentCase": "Open Investment Case",
-  "dailyBriefAgenda.action.reviewPosition": "Review Position",
+  "dailyBriefAgenda.action.reviewPosition": "Open Position",
   "dailyBriefAgenda.action.reviewCandidate": "Review Candidate",
   "dailyBriefAgenda.action.compare": "Compare",
   "dailyBriefAgenda.action.goToPortfolio": "Go to Portfolio",
@@ -1410,12 +1407,12 @@ export const en = {
   "dailyBriefAgenda.nature.changeEvent": "New",
   "dailyBriefAgenda.nature.persistentCondition": "Ongoing",
   // ---------- Localization fix (Portfolio live-verification follow-up) ----------
-  "dailyBriefAgenda.attentionCategory.missingCase": "missing investment case ({{count}} item(s))",
-  "dailyBriefAgenda.attentionCategory.decisionWithoutOutcome": "decision without outcome ({{count}} item(s))",
-  "dailyBriefAgenda.attentionCategory.outcomeWithoutExecution": "outcome without execution ({{count}} item(s))",
-  "dailyBriefAgenda.attentionCategory.awaitingReconciliation": "awaiting reconciliation ({{count}} item(s))",
-  "dailyBriefAgenda.attentionCategory.veryOldCase": "very old case ({{count}} item(s))",
-  "dailyBriefAgenda.attentionCategory.observationWithoutDecision": "observation without decision ({{count}} item(s))",
+  "dailyBriefAgenda.attentionCategory.missingCase": "no investment case yet ({{count}} item(s))",
+  "dailyBriefAgenda.attentionCategory.decisionWithoutOutcome": "still waiting on a result ({{count}} item(s))",
+  "dailyBriefAgenda.attentionCategory.outcomeWithoutExecution": "trade not yet confirmed ({{count}} item(s))",
+  "dailyBriefAgenda.attentionCategory.awaitingReconciliation": "portfolio needs updating ({{count}} item(s))",
+  "dailyBriefAgenda.attentionCategory.veryOldCase": "hasn't been reviewed in a while ({{count}} item(s))",
+  "dailyBriefAgenda.attentionCategory.observationWithoutDecision": "worth deciding on ({{count}} item(s))",
   // ---------- Implementation Sprint B1.1 (Backend Language Cleanup) ----------
   "dailyBriefAgenda.reasonFact.missingEvidence.noEvidenceRecorded": "no evidence recorded yet",
   "dailyBriefAgenda.reasonFact.missingEvidence.observationWithoutEvidence": "an observation is missing supporting evidence",
@@ -1582,11 +1579,11 @@ export const en = {
   "companyWorkspace.thesis.heading": "Investment Thesis",
   "companyWorkspace.thesis.empty": "No recorded thesis yet for this company.",
   "companyWorkspace.thesis.viewFull": "View full thesis",
-  "companyWorkspace.decisionSupport.heading": "Decision Support",
-  "companyWorkspace.decisionSupport.viewFull": "View full Decision Support",
+  "companyWorkspace.decisionSupport.heading": "Atlas's Recommendation",
+  "companyWorkspace.decisionSupport.viewFull": "See the full recommendation",
   "companyWorkspace.decisionSupport.supportingHeading": "Supports the current thesis",
   "companyWorkspace.decisionSupport.disclaimer": "This records your intent — Atlas never executes or simulates a trade.",
-  "companyWorkspace.decisionSupport.recordButton": "Record a Decision",
+  "companyWorkspace.decisionSupport.recordButton": "Update Your View",
   "companyWorkspace.risk.heading": "Risk",
   "companyWorkspace.evidence.heading": "Evidence & analysis depth",
   "companyWorkspace.evidence.coverageLabel": "Evidence depth",
@@ -1911,7 +1908,7 @@ export const en = {
   "stance.level.increase": "View strengthened",
   "stance.level.maintain": "View unchanged",
   "stance.level.reduce": "View weakened",
-  "stance.level.review": "Review required",
+  "stance.level.review": "Worth reviewing",
   "stance.level.wait": "Wait for more evidence",
   // Status/Explanation Language stabilization: `avoid_decision` is the
   // one Stance level reserved for a genuine red flag (contradicting
@@ -2226,7 +2223,7 @@ export const en = {
   "investmentDecision.compare.noSharedBlockers": "No shared blockers.",
   "investmentDecision.compare.noSharedStrengths": "No shared strengths.",
 
-  "recommendationConviction.section.heading": "Recommendation conviction",
+  "recommendationConviction.section.heading": "Confidence",
   "recommendationConviction.section.expandLabel": "Show full reasoning",
   "recommendationConviction.section.topSupporting": "Strongest support",
   "recommendationConviction.section.topLimiting": "Main limitation",
@@ -2247,7 +2244,7 @@ export const en = {
   "recommendationConviction.portfolio.lowest": "Lowest conviction ({{count}})",
   "recommendationConviction.portfolio.evidenceLimited": "Needs more evidence ({{count}})",
   "recommendationConviction.portfolio.operationallyBlocked": "Operationally blocked ({{count}})",
-  "recommendationConviction.compare.heading": "Recommendation conviction",
+  "recommendationConviction.compare.heading": "Confidence",
   "recommendationConviction.compare.stronger": "{{ticker}} has stronger support.",
   "recommendationConviction.compare.strongerTie": "Similarly strong support on both sides.",
   "recommendationConviction.compare.moreEvidenceLimited": "{{ticker}} is more evidence-limited.",

@@ -78,7 +78,7 @@ describe("DashboardPage", () => {
   it("renders real content in all three sections once every fetch succeeds -- baseline, unaffected by this fix", async () => {
     mockFetch();
     renderWithProviders(<DashboardPage />);
-    await waitFor(() => expect(screen.getByText("Inget återstår just nu.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Inget kräver din uppmärksamhet just nu.")).toBeInTheDocument());
     expect(screen.getByText("Ingen aktivitet registrerad ännu.")).toBeInTheDocument();
     expect(screen.getByText("Ingen nyligen aktivitet i något case ännu.")).toBeInTheDocument();
   });

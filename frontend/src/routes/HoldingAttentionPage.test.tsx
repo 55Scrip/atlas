@@ -106,7 +106,7 @@ describe("HoldingAttentionPage (Product Sprint 10 -- Navigation & Workflow Excel
         </MemoryRouter>,
       );
       await waitFor(() => expect(screen.getByRole("heading", { name: "AAPL" })).toBeInTheDocument());
-      expect(screen.getByText(/utfall utan verkställande \(3 st\)/)).toBeInTheDocument();
+      expect(screen.getByText(/affären ej bekräftad än \(3 st\)/)).toBeInTheDocument();
       expect(screen.queryByText(/outcome without execution/)).not.toBeInTheDocument();
     });
   });

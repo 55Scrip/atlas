@@ -82,7 +82,7 @@ describe("DiscoveryCandidateCard", () => {
           missingInformation: [],
         },
       });
-      expect(screen.getByText("Genomgång krävs")).toBeInTheDocument();
+      expect(screen.getByText("Värt att se över")).toBeInTheDocument();
     });
 
     it("shows no Stance badge at all when none exists yet, never a fabricated one", () => {

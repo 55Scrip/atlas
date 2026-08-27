@@ -85,9 +85,9 @@ describe("AgendaItemRow", () => {
     expect(onCompare).toHaveBeenCalledWith("AAPL");
   });
 
-  it("offers Review Position for a review_portfolio_position item", () => {
+  it("offers Open Position for a review_portfolio_position item", () => {
     renderRow({ kind: "review_portfolio_position" });
-    expect(screen.getByRole("link", { name: /Granska position/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Öppna position/ })).toBeInTheDocument();
   });
 
   it("never renders a numeric score anywhere in the row", () => {
@@ -106,7 +106,7 @@ describe("AgendaItemRow", () => {
           { code: "workflow_gap", entity: "AAPL", value: "OUTCOME_WITHOUT_EXECUTION", secondaryValue: null, label: null, count: 3 },
         ],
       });
-      expect(screen.getByText("utfall utan verkställande (3 st)", { exact: false })).toBeInTheDocument();
+      expect(screen.getByText("affären ej bekräftad än (3 st)", { exact: false })).toBeInTheDocument();
       expect(screen.queryByText(/outcome without execution/)).not.toBeInTheDocument();
     });
 

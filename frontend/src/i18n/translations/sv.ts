@@ -266,7 +266,7 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.weakestHoldings.heading": "Portföljsvagheter",
   "portfolio.weakestHoldings.subheading": "Var kapitalet just nu ser minst attraktivt ut — värt en titt, inte en säljlista.",
   "portfolio.weakestHoldings.empty": "Inga innehav visar just nu svag portföljpassform eller ett reduktionsstött beslutsstöd.",
-  "portfolio.weakestHoldings.reviewPosition": "Granska position",
+  "portfolio.weakestHoldings.reviewPosition": "Öppna position",
   "portfolio.weakestHoldings.compareAlternatives": "Jämför alternativ",
 
   // ---------- watchlist relationship (Product Sprint 8) ----------
@@ -283,7 +283,7 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.holdingDetail.attentionHeading": "Uppmärksamhet",
   "portfolio.holdingDetail.noAttentionReasons": "Det här innehavet är för närvarande inte flaggat för uppmärksamhet.",
   "portfolio.holdingDetail.analysisContextHeading": "Analyskontext",
-  "portfolio.holdingDetail.decisionSupportLabel": "Beslutsstöd",
+  "portfolio.holdingDetail.decisionSupportLabel": "Atlas rekommendation",
   "portfolio.holdingDetail.convictionLabel": "Övertygelse",
   "portfolio.holdingDetail.riskFactorsLabel": "Identifierade riskfaktorer",
   "portfolio.holdingDetail.noRiskFactors": "Inga specifika riskfaktorer identifierade.",
@@ -292,7 +292,7 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.holdingDetail.backToPortfolio": "← Tillbaka till portföljen",
   "portfolio.holdingDetail.dismissButton": "Avfärda från uppmärksamhet",
   "portfolio.holdingDetail.dismissUnavailable": "Inte tillgängligt än",
-  "portfolio.holdingDetail.recordDecisionButton": "Registrera ett beslut",
+  "portfolio.holdingDetail.recordDecisionButton": "Uppdatera din syn",
   "portfolio.holdingDetail.openCompanyWorkspace": "Öppna bolagsvyn",
   "portfolio.holdingDetail.notFound": "Kunde inte hitta det här innehavet i din portfölj.",
 
@@ -337,9 +337,6 @@ export const sv: Record<TranslationKey, string> = {
   "dashboard.portfolioStatus.goToPortfolio": "Gå till portföljen →",
   "dashboard.monitoring.heading": "Aktiva bevakningsvillkor",
   "dashboard.notYetImplemented": "Ännu inte implementerat.",
-  "dashboard.recentDecisions.heading": "Senaste besluten",
-  "dashboard.recentDecisions.loadError": "Kunde inte läsa in senaste besluten: {{message}}",
-  "dashboard.recentDecisions.empty": "Inga beslut registrerade ännu.",
   "dashboard.outcomes.heading": "Utfall",
   "dashboard.outcomes.loadError": "Kunde inte läsa in utfall: {{message}}",
   "dashboard.outcomes.empty": "Inga utfall registrerade ännu.",
@@ -962,7 +959,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.intelligence.observationTimeline.evidenceCountOther": "{{count}} beläggposter",
 
   // ---------- sprint 4: navigation ----------
-  "shell.nav.history": "Historik",
+  "shell.nav.history": "Aktivitet",
 
   // ---------- daily brief implementation sprint 1: navigation ----------
   "shell.nav.dailyBrief": "Dagens genomgång",
@@ -1066,8 +1063,8 @@ export const sv: Record<TranslationKey, string> = {
   "history.reviews.securityConfirmation.verificationUnsupported": "Verifiering är inte tillgänglig för denna bekräftelse",
 
   // ---------- sprint 4: dashboard sections ----------
-  "dashboard.needsAttention.heading": "Återstående att göra",
-  "dashboard.needsAttention.empty": "Inget återstår just nu.",
+  "dashboard.needsAttention.heading": "Kräver uppmärksamhet",
+  "dashboard.needsAttention.empty": "Inget kräver din uppmärksamhet just nu.",
   // Status-/förklaringsspråket stabiliseringssprint: se motsvarande
   // kommentar i en.ts.
   "dashboard.needsAttention.loadError": "Något gick fel vid inläsningen, så det här kan inte visas just nu.",
@@ -1080,7 +1077,7 @@ export const sv: Record<TranslationKey, string> = {
   "dashboard.continueWorking.heading": "Fortsätt arbeta",
   "dashboard.continueWorking.empty": "Ingen nyligen aktivitet i något case ännu.",
   "dashboard.continueWorking.loadError": "Något gick fel vid inläsningen, så det här kan inte visas just nu.",
-  "dashboard.viewHistoryLink": "Visa historik →",
+  "dashboard.viewHistoryLink": "Visa aktivitet →",
 
   // ---------- sprint 4: investment case last activity / timeline / outstanding work ----------
   "investmentCase.lastActivity.heading": "Senaste aktivitet",
@@ -1368,7 +1365,7 @@ export const sv: Record<TranslationKey, string> = {
   "dailyBriefAgenda.group.discovery": "Discovery",
   "dailyBriefAgenda.group.system": "System",
   "dailyBriefAgenda.action.openInvestmentCase": "Öppna investeringscase",
-  "dailyBriefAgenda.action.reviewPosition": "Granska position",
+  "dailyBriefAgenda.action.reviewPosition": "Öppna position",
   "dailyBriefAgenda.action.reviewCandidate": "Granska kandidat",
   "dailyBriefAgenda.action.compare": "Jämför",
   "dailyBriefAgenda.action.goToPortfolio": "Gå till portföljen",
@@ -1397,12 +1394,12 @@ export const sv: Record<TranslationKey, string> = {
   "dailyBriefAgenda.nature.changeEvent": "Nytt",
   "dailyBriefAgenda.nature.persistentCondition": "Pågående",
   // ---------- Localization fix (Portfolio live-verification follow-up) ----------
-  "dailyBriefAgenda.attentionCategory.missingCase": "saknar investeringscase ({{count}} st)",
-  "dailyBriefAgenda.attentionCategory.decisionWithoutOutcome": "beslut utan utfall ({{count}} st)",
-  "dailyBriefAgenda.attentionCategory.outcomeWithoutExecution": "utfall utan verkställande ({{count}} st)",
-  "dailyBriefAgenda.attentionCategory.awaitingReconciliation": "väntar på avstämning ({{count}} st)",
-  "dailyBriefAgenda.attentionCategory.veryOldCase": "mycket gammalt case ({{count}} st)",
-  "dailyBriefAgenda.attentionCategory.observationWithoutDecision": "observation utan beslut ({{count}} st)",
+  "dailyBriefAgenda.attentionCategory.missingCase": "inget investeringscase än ({{count}} st)",
+  "dailyBriefAgenda.attentionCategory.decisionWithoutOutcome": "väntar fortfarande på ett resultat ({{count}} st)",
+  "dailyBriefAgenda.attentionCategory.outcomeWithoutExecution": "affären ej bekräftad än ({{count}} st)",
+  "dailyBriefAgenda.attentionCategory.awaitingReconciliation": "portföljen behöver uppdateras ({{count}} st)",
+  "dailyBriefAgenda.attentionCategory.veryOldCase": "har inte setts över på ett tag ({{count}} st)",
+  "dailyBriefAgenda.attentionCategory.observationWithoutDecision": "värt att ta ställning till ({{count}} st)",
   // ---------- Implementation Sprint B1.1 (Backend Language Cleanup) ----------
   "dailyBriefAgenda.reasonFact.missingEvidence.noEvidenceRecorded": "inget underlag registrerat än",
   "dailyBriefAgenda.reasonFact.missingEvidence.observationWithoutEvidence": "en observation saknar underlag",
@@ -1570,11 +1567,11 @@ export const sv: Record<TranslationKey, string> = {
   "companyWorkspace.thesis.heading": "Investeringstes",
   "companyWorkspace.thesis.empty": "Ingen registrerad tes för det här bolaget ännu.",
   "companyWorkspace.thesis.viewFull": "Visa hela tesen",
-  "companyWorkspace.decisionSupport.heading": "Beslutsstöd",
-  "companyWorkspace.decisionSupport.viewFull": "Visa fullständigt beslutsstöd",
+  "companyWorkspace.decisionSupport.heading": "Atlas rekommendation",
+  "companyWorkspace.decisionSupport.viewFull": "Se hela rekommendationen",
   "companyWorkspace.decisionSupport.supportingHeading": "Stödjer den nuvarande tesen",
   "companyWorkspace.decisionSupport.disclaimer": "Det här registrerar din avsikt — Atlas genomför eller simulerar aldrig en affär.",
-  "companyWorkspace.decisionSupport.recordButton": "Registrera ett beslut",
+  "companyWorkspace.decisionSupport.recordButton": "Uppdatera din syn",
   "companyWorkspace.risk.heading": "Risk",
   "companyWorkspace.evidence.heading": "Underlag & analysdjup",
   "companyWorkspace.evidence.coverageLabel": "Underlagsdjup",
@@ -1897,7 +1894,7 @@ export const sv: Record<TranslationKey, string> = {
   "stance.level.increase": "Synen har stärkts",
   "stance.level.maintain": "Synen är oförändrad",
   "stance.level.reduce": "Synen har försvagats",
-  "stance.level.review": "Genomgång krävs",
+  "stance.level.review": "Värt att se över",
   "stance.level.wait": "Avvakta mer underlag",
   // Status-/förklaringsspråket stabiliseringssprint: se motsvarande
   // kommentar i en.ts -- samma fix, samma ärlighetsregel.
