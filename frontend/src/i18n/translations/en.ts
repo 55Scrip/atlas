@@ -97,26 +97,22 @@ export const en = {
   "portfolio.empty.explanation":
     "There is nothing to show here yet — Atlas does not fabricate holdings or opportunities. As you open Investment Cases and record decisions, they will appear here.",
   "portfolio.openNewCase": "Open a new Investment Case",
-  "portfolio.awaitingBanner.title": "Trade recorded. Allocation requires reconciliation.",
+  "portfolio.awaitingBanner.title": "A trade changed your allocation.",
   "portfolio.awaitingBanner.body":
-    "One or more holdings were traded while Atlas only knew percentages, so their allocation was left untouched rather than invented. Update the affected holding below, or replace the entire allocation.",
-  "portfolio.replaceAllocationButton": "Replace entire allocation",
-  "portfolio.replaceForm.heading": "Replace entire allocation",
-  "portfolio.replaceForm.saveButton": "Save allocation",
+    "One or more holdings were traded while Atlas only knew percentages, so their allocation was left untouched rather than invented. Edit Portfolio to update the affected holding.",
+  "portfolio.editPortfolio.button": "Edit Portfolio",
+  "portfolio.editPortfolio.heading": "Edit Portfolio",
+  "portfolio.editPortfolio.addHoldingButton": "+ Add holding",
+  "portfolio.editPortfolio.saveButton": "Save changes",
   "portfolio.replaceForm.errors.invalidPercentage": "Every holding needs a valid percentage.",
   "portfolio.holdings.heading": "Holdings",
   "portfolio.holdings.percentOnly":
     "Showing percentages only — no absolute portfolio value was entered.",
   "portfolio.holdings.totalValue": "Total value: {{value}}",
   "portfolio.holdings.updatedAutomatically": "Updated automatically",
-  "portfolio.holdings.awaitingReconciliation": "Awaiting reconciliation",
-  "portfolio.holdings.newWeightLabel": "New weight %",
-  "portfolio.holdings.updateButton": "Update this holding",
-  "portfolio.holdings.updating": "Updating…",
   "portfolio.holdings.openCaseButton": "Open Investment Case",
   "portfolio.holdings.opening": "Opening…",
   "portfolio.holdings.openCaseError": "Could not open an Investment Case.",
-  "portfolio.holdings.errors.invalidPercentage": "Enter a valid percentage.",
   // ---------- portfolio cockpit (ATLAS-028) ----------
   "portfolio.cockpit.conviction.very_high": "Very high",
   "portfolio.cockpit.conviction.high": "High",
@@ -204,16 +200,6 @@ export const en = {
   "portfolio.overallConclusion.attentionCountOne": "1 holding needs attention.",
   "portfolio.overallConclusion.attentionCountOther": "{{count}} holdings need attention.",
 
-  // ---------- Pulse Simplification (live-verification follow-up) ----------
-  "portfolio.decisionStatus.heading": "Decision Status",
-  "portfolio.decisionLayerDetail.summaryLabel": "Detailed decision status",
-  "portfolio.decisionLayerDetail.label.conviction": "Recommendation conviction",
-  "portfolio.decisionLayerDetail.label.decisionPath": "Decision path",
-  "portfolio.decisionLayerDetail.label.decisionMemory": "Decision record",
-  "portfolio.decisionLayerDetail.label.decisionExplanation": "Decision reasoning",
-  "portfolio.decisionLayerDetail.label.decisionReliability": "Reliability",
-  "portfolio.decisionLayerDetail.label.portfolioSynthesis": "Portfolio synthesis",
-
   // ---------- Portfolio Lower-Half Reconstruction Sprint 6D ----------
   "portfolio.attention.viewAllRemaining": "View {{count}} more",
   "portfolio.attention.reason.concentration": "Concentration at {{percent}}% — above typical single-holding threshold.",
@@ -239,7 +225,7 @@ export const en = {
   "portfolio.holdingsTable.reasonHeader": "Reason",
   "portfolio.holdingsTable.showWhyLabel": "Show why",
   "portfolio.holdingsTable.openAction": "Open",
-  "portfolio.holdingsTable.reconcileToggle": "Reconcile",
+  "portfolio.holdingsTable.needsUpdateLink": "Needs updated weight",
   "portfolio.holdingsTable.showingCount": "Showing {{shown}} of {{total}}",
   "portfolio.holdingsTable.viewAll": "View All Holdings ({{count}})",
   "portfolio.holdingsTable.viewFewer": "Show fewer",
@@ -287,10 +273,6 @@ export const en = {
   "portfolio.watchlistRelationship.heading": "Explore Further",
   "portfolio.watchlistRelationship.openWatchlist": "Open Watchlist",
   "portfolio.watchlistRelationship.openDiscovery": "Open Discovery",
-
-  // ---------- recent activity (Portfolio Workspace v1) ----------
-  "portfolio.recentActivity.heading": "Recent Activity",
-  "portfolio.recentActivity.empty": "No recent activity recorded.",
 
   // ---------- holding attention detail (Portfolio Workspace v1) ----------
   "portfolio.holdingDetail.breadcrumb": "Portfolio / {{ticker}}",

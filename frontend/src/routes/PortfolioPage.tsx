@@ -4,15 +4,6 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { ACCENT_LINK_STYLE, Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, Surface, Text, VisuallyHidden } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
-  deriveActivity,
-  sortActivity,
-  formatRelativeTime,
-  type DecisionRecord,
-  type OutcomeRecord,
-  type TradeLogEntry,
-  type ActivityEvent,
-} from "../activity/deriveActivity";
-import {
   DECISION_SUPPORT_BADGE_KEY,
   DECISION_SUPPORT_TONE,
   type AnalysisCoverageLevel,
@@ -32,58 +23,18 @@ import { primaryStanceReason, stanceReasonSentence } from "../stance/describeSta
 import type { StanceLevel } from "../status/statusTone";
 import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
 import { TickerAgendaCard } from "../dailyBriefAgenda/TickerAgendaCard";
-import { groupAgendaByTicker } from "../dailyBriefAgenda/groupAgendaByTicker";
+import { groupAgendaByTicker, type TickerAgendaGroup } from "../dailyBriefAgenda/groupAgendaByTicker";
 import { PriorityBadge } from "../dailyBriefAgenda/PriorityBadge";
 import { agendaItemHeadline } from "../dailyBriefAgenda/describeAgendaHeadline";
-import { fetchDailyBriefAgenda, type AgendaItemView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
+import { describeReasonLine } from "../dailyBriefAgenda/describeReasonFact";
+import {
+  fetchDailyBriefAgenda,
+  type AgendaItemView,
+  type ReasonFactView,
+} from "../dailyBriefAgenda/dailyBriefAgendaApi";
 import { MonitoringFreshnessNote } from "../monitoring/MonitoringFreshnessNote";
 import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNote";
-import { PortfolioSharedWeakPointsSection } from "../evidenceGraph/PortfolioSharedWeakPointsSection";
 import { invalidateAlphaPortfolio, setAlphaPortfolioData, useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
-import { PortfolioActionDistribution } from "../investmentDecision/PortfolioActionDistribution";
-import {
-  fetchPortfolioActionDistribution,
-  type PortfolioActionDistributionView,
-} from "../investmentDecision/investmentDecisionApi";
-import { PortfolioConvictionBreakdown } from "../recommendationConviction/PortfolioConvictionBreakdown";
-import {
-  fetchPortfolioConvictionBreakdown,
-  type PortfolioConvictionBreakdownView,
-} from "../recommendationConviction/recommendationConvictionApi";
-import { PortfolioDecisionPathBreakdown } from "../decisionPath/PortfolioDecisionPathBreakdown";
-import {
-  fetchPortfolioDecisionPathBreakdown,
-  type PortfolioDecisionPathBreakdownView,
-} from "../decisionPath/decisionPathApi";
-import { PortfolioOpportunityCostBreakdown } from "../opportunityCost/PortfolioOpportunityCostBreakdown";
-import {
-  fetchPortfolioOpportunityCostBreakdown,
-  type PortfolioOpportunityCostBreakdownView,
-} from "../opportunityCost/opportunityCostApi";
-import { PortfolioDecisionMemoryBreakdown } from "../decisionMemory/PortfolioDecisionMemoryBreakdown";
-import {
-  fetchPortfolioDecisionMemoryBreakdown,
-  type PortfolioDecisionMemoryBreakdownView,
-} from "../decisionMemory/decisionMemoryApi";
-import { PortfolioDecisionExplanationBreakdown } from "../decisionExplanation/PortfolioDecisionExplanationBreakdown";
-import {
-  fetchPortfolioDecisionExplanationBreakdown,
-  type PortfolioDecisionExplanationBreakdownView,
-} from "../decisionExplanation/decisionExplanationApi";
-import { PortfolioReliabilityBreakdown } from "../decisionReliability/PortfolioReliabilityBreakdown";
-import { PortfolioSynthesisBreakdown } from "../portfolioDecision/PortfolioSynthesisBreakdown";
-import {
-  fetchPortfolioSynthesisBreakdown,
-  type PortfolioSynthesisBreakdownView,
-} from "../portfolioDecision/portfolioDecisionApi";
-import {
-  fetchPortfolioReliabilityBreakdown,
-  type PortfolioReliabilityBreakdownView,
-} from "../decisionReliability/decisionReliabilityApi";
-import {
-  fetchPortfolioSharedWeakPoints,
-  type PortfolioSharedWeakPointsView,
-} from "../evidenceGraph/portfolioSharedWeakPointsApi";
 import { fetchMonitoringStatus, type MonitoringOperationalStatusView } from "../monitoring/monitoringApi";
 import { sortHoldings, type HoldingSortKey } from "../portfolio/sortHoldings";
 
@@ -294,17 +245,6 @@ type PortfolioCockpitFetchStatus =
   | { kind: "error" }
   | { kind: "loaded"; report: PortfolioCockpitView };
 
-/** Recent Activity (Portfolio Workspace v1) -- reuses the same three
- * real endpoints `HistoryPage.tsx`/`DashboardPage.tsx` already fetch
- * (`/api/decisions`, `/api/outcomes`, `/api/alpha-portfolio/trade-log`)
- * and the shared `deriveActivity` cross-reference, rather than
- * inventing a second "what happened" derivation. A failure here never
- * blocks the rest of the page -- the section simply doesn't render. */
-type RecentActivityFetchStatus =
-  | { kind: "loading" }
-  | { kind: "error" }
-  | { kind: "loaded"; decisions: DecisionRecord[]; outcomes: OutcomeRecord[]; trades: TradeLogEntry[] };
-
 type CaseCreateStatus =
   | { kind: "idle" }
   | { kind: "creating" }
@@ -319,6 +259,87 @@ interface ReplaceRow {
   ticker: string;
   weightPercent: string;
   valueAbsolute: string;
+}
+
+/**
+ * Product Simplification Sprint 6E, Phase 1/3 -- Atlas's own internal
+ * decision-hygiene bookkeeping (a decision recorded with no outcome yet,
+ * a decision missing its own note, an allocation awaiting
+ * reconciliation, a stale Case, a candidate with no Case at all) is
+ * process housekeeping, never an investment fact about the security --
+ * an investor should never see it phrased as a red flag about the
+ * company, and it must never be the reason a holding reads as Critical.
+ * `no_evidence_recorded` is the one `missing_evidence` value that IS
+ * real investment content ("Atlas has not evaluated this company yet")
+ * and is deliberately kept real content, not bookkeeping.
+ */
+function isBookkeepingFact(fact: ReasonFactView | null): boolean {
+  if (!fact) return false;
+  if (fact.code === "workflow_gap") return true;
+  if (fact.code === "missing_evidence" && fact.value !== "no_evidence_recorded") return true;
+  return false;
+}
+
+/** This item's own reason lines with the real investment content
+ * only -- Atlas's own bookkeeping lines excluded. A line with no
+ * structured fact yet (`fact === null`, a source not yet converted to
+ * the semantic-reason-code contract) is always kept: absent positive
+ * evidence it is bookkeeping, it is treated as real. */
+function realReasonLines(item: AgendaItemView): { text: string; fact: ReasonFactView | null }[] {
+  return item.reason
+    .map((text, index) => ({ text, fact: item.reasonFacts?.[index] ?? null }))
+    .filter(({ fact }) => !isBookkeepingFact(fact));
+}
+
+function hasRealReason(item: AgendaItemView): boolean {
+  return realReasonLines(item).length > 0;
+}
+
+/** The item's own priority is the backend's real, already-computed
+ * value whenever at least one real reason exists for this ticker today
+ * -- trusted as-is, never recomputed. When literally every reason is
+ * Atlas's own bookkeeping, this cannot honestly read as an investment
+ * issue, regardless of which workflow priority the backend assigned
+ * the underlying housekeeping signal. */
+function displayPriority(item: AgendaItemView): PriorityLevel {
+  return hasRealReason(item) ? item.priority : "low";
+}
+
+/** The best real headline text for one holding's Reason cell: the
+ * item's own headline when it is itself real content, otherwise the
+ * first remaining real reason line -- never Atlas's own bookkeeping
+ * phrasing, and `null` only when nothing real exists at all for this
+ * ticker today. */
+function realHeadlineText(
+  item: AgendaItemView,
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string,
+): string | null {
+  const real = realReasonLines(item);
+  if (real.length === 0) return null;
+  const headlineIndex = item.reason.indexOf(item.headline);
+  const headlineFact = headlineIndex >= 0 ? (item.reasonFacts?.[headlineIndex] ?? null) : null;
+  if (!isBookkeepingFact(headlineFact)) return agendaItemHeadline(item, t);
+  return describeReasonLine(real[0]!.text, real[0]!.fact, t);
+}
+
+/** The same group `groupAgendaByTicker` already builds, with Atlas's
+ * own bookkeeping reason lines excluded from what's shown -- the group
+ * only ever contains items with at least one real reason (the caller
+ * pre-filters via `hasRealReason` before grouping), so `topPriority`
+ * is always driven by a real signal; this only strips bookkeeping
+ * LINES a surviving item's own `reason[]` still mixed in alongside a
+ * real one (e.g. a real case-condition line bundled with a "decision
+ * without outcome" line for the same ticker). */
+function sanitizeGroupReasons(group: TickerAgendaGroup): TickerAgendaGroup {
+  const keptIndexes = group.reasonFacts
+    .map((fact, index) => ({ fact, index }))
+    .filter(({ fact }) => !isBookkeepingFact(fact))
+    .map(({ index }) => index);
+  return {
+    ...group,
+    reasons: keptIndexes.map((i) => group.reasons[i]!),
+    reasonFacts: keptIndexes.map((i) => group.reasonFacts[i]!),
+  };
 }
 
 /**
@@ -342,7 +363,6 @@ export function PortfolioPage() {
   const status: Status =
     portfolioResource.kind === "loaded" ? { kind: "loaded", view: portfolioResource.data as PortfolioView } : portfolioResource;
   const [cockpit, setCockpit] = useState<PortfolioCockpitFetchStatus>({ kind: "loading" });
-  const [recentActivity, setRecentActivity] = useState<RecentActivityFetchStatus>({ kind: "loading" });
   /** Deliverable 7 (Portfolio Fit Engine) -- best/worst fit today and
    * improved/worsened, all read from one `/api/portfolio-fit/holdings`
    * fetch (already sorted best-first server-side). */
@@ -355,13 +375,6 @@ export function PortfolioPage() {
    * quality/performance/Portfolio Fit. */
   const [monitoringStatus, setMonitoringStatus] = useState<MonitoringOperationalStatusView | null>(null);
   const [caseCreateStatus, setCaseCreateStatus] = useState<Record<string, CaseCreateStatus>>({});
-  const [reconcileWeightInputs, setReconcileWeightInputs] = useState<Record<string, string>>({});
-  const [reconcileStatus, setReconcileStatus] = useState<Record<string, ReconcileStatus>>({});
-  /** Holdings Table (Portfolio Workspace v3) -- at most one row's inline
-   * reconciliation form is expanded at a time ("Details on Demand"),
-   * instead of every awaiting-reconciliation holding permanently
-   * showing its own form inline as before. */
-  const [expandedReconcileTicker, setExpandedReconcileTicker] = useState<string | null>(null);
 
   const [showReplaceForm, setShowReplaceForm] = useState(false);
   const [replaceRows, setReplaceRows] = useState<ReplaceRow[]>([]);
@@ -441,130 +454,6 @@ export function PortfolioPage() {
     return () => controller.abort();
   }, []);
 
-  /** Atlas Intelligence Sprint 10 (Evidence Graph & Dependency
-   * Understanding, Deliverable 7). */
-  const [sharedWeakPoints, setSharedWeakPoints] = useState<PortfolioSharedWeakPointsView | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchPortfolioSharedWeakPoints(controller.signal)
-      .then((points) => setSharedWeakPoints(points))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-    return () => controller.abort();
-  }, []);
-
-  /** Atlas Decision Layer Sprint 1 (Investment Decision Synthesis,
-   * Deliverable 7). */
-  const [actionDistribution, setActionDistribution] = useState<PortfolioActionDistributionView | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchPortfolioActionDistribution(controller.signal)
-      .then((distribution) => setActionDistribution(distribution))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-    return () => controller.abort();
-  }, []);
-
-  /** Atlas Decision Layer Sprint 2 (Recommendation Strength &
-   * Conviction, Deliverable 7). Same pattern as `actionDistribution`
-   * above. */
-  const [convictionBreakdown, setConvictionBreakdown] = useState<PortfolioConvictionBreakdownView | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchPortfolioConvictionBreakdown(controller.signal)
-      .then((breakdown) => setConvictionBreakdown(breakdown))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-    return () => controller.abort();
-  }, []);
-
-  /** Atlas Decision Layer Sprint 3 (Decision Path & Required
-   * Progress, Deliverable 7). Same pattern as `convictionBreakdown`
-   * above. */
-  const [decisionPathBreakdown, setDecisionPathBreakdown] = useState<PortfolioDecisionPathBreakdownView | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchPortfolioDecisionPathBreakdown(controller.signal)
-      .then((breakdown) => setDecisionPathBreakdown(breakdown))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-    return () => controller.abort();
-  }, []);
-
-  /** Atlas Decision Layer Sprint 4 (Decision Alternatives &
-   * Opportunity Cost, Deliverable 7). Same pattern as
-   * `decisionPathBreakdown` above. */
-  const [opportunityCostBreakdown, setOpportunityCostBreakdown] = useState<PortfolioOpportunityCostBreakdownView | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchPortfolioOpportunityCostBreakdown(controller.signal)
-      .then((breakdown) => setOpportunityCostBreakdown(breakdown))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-    return () => controller.abort();
-  }, []);
-
-  /** Atlas Decision Layer Sprint 5 (Decision Memory, Deliverable 7).
-   * Same pattern as `opportunityCostBreakdown` above. */
-  const [decisionMemoryBreakdown, setDecisionMemoryBreakdown] = useState<PortfolioDecisionMemoryBreakdownView | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchPortfolioDecisionMemoryBreakdown(controller.signal)
-      .then((breakdown) => setDecisionMemoryBreakdown(breakdown))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-    return () => controller.abort();
-  }, []);
-
-  /** Atlas Decision Layer Sprint 6 (Decision Explanation &
-   * Traceability, Deliverable 7). Same pattern as
-   * `decisionMemoryBreakdown` above. */
-  const [decisionExplanationBreakdown, setDecisionExplanationBreakdown] = useState<PortfolioDecisionExplanationBreakdownView | null>(
-    null,
-  );
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchPortfolioDecisionExplanationBreakdown(controller.signal)
-      .then((breakdown) => setDecisionExplanationBreakdown(breakdown))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-    return () => controller.abort();
-  }, []);
-
-  /** Atlas Decision Layer Sprint 7 (Decision Reliability, Deliverable
-   * 8). Same pattern as `decisionExplanationBreakdown` above. */
-  const [decisionReliabilityBreakdown, setDecisionReliabilityBreakdown] = useState<PortfolioReliabilityBreakdownView | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchPortfolioReliabilityBreakdown(controller.signal)
-      .then((breakdown) => setDecisionReliabilityBreakdown(breakdown))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-    return () => controller.abort();
-  }, []);
-
-  /** Atlas Decision Layer Sprint 8 (Portfolio Decision Synthesis,
-   * Deliverable 8). Same pattern as `decisionReliabilityBreakdown`
-   * above. */
-  const [portfolioSynthesisBreakdown, setPortfolioSynthesisBreakdown] = useState<PortfolioSynthesisBreakdownView | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchPortfolioSynthesisBreakdown(controller.signal)
-      .then((breakdown) => setPortfolioSynthesisBreakdown(breakdown))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-    return () => controller.abort();
-  }, []);
-
   useEffect(() => {
     const controller = new AbortController();
 
@@ -581,30 +470,6 @@ export function PortfolioPage() {
         setCockpit({ kind: "error" });
       });
 
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    Promise.all([
-      fetch("/api/decisions", { signal: controller.signal }).then((r) => {
-        if (!r.ok) throw new Error(`Backend responded with ${r.status}`);
-        return r.json() as Promise<DecisionRecord[]>;
-      }),
-      fetch("/api/outcomes", { signal: controller.signal }).then((r) => {
-        if (!r.ok) throw new Error(`Backend responded with ${r.status}`);
-        return r.json() as Promise<OutcomeRecord[]>;
-      }),
-      fetch("/api/alpha-portfolio/trade-log", { signal: controller.signal }).then((r) => {
-        if (!r.ok) throw new Error(`Backend responded with ${r.status}`);
-        return r.json() as Promise<TradeLogEntry[]>;
-      }),
-    ])
-      .then(([decisions, outcomes, trades]) => setRecentActivity({ kind: "loaded", decisions, outcomes, trades }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setRecentActivity({ kind: "error" });
-      });
     return () => controller.abort();
   }, []);
 
@@ -654,50 +519,6 @@ export function PortfolioPage() {
       });
   }
 
-  function submitUpdateHoldingWeight(ticker: string) {
-    const raw = reconcileWeightInputs[ticker] ?? "";
-    const weightPercent = Number.parseFloat(raw);
-    if (raw.trim() === "" || Number.isNaN(weightPercent)) {
-      setReconcileStatus((current) => ({
-        ...current,
-        [ticker]: { kind: "error", message: t("portfolio.holdings.errors.invalidPercentage") },
-      }));
-      return;
-    }
-
-    setReconcileStatus((current) => ({ ...current, [ticker]: { kind: "submitting" } }));
-    fetch("/api/alpha-portfolio/reconcile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "UPDATE_HOLDING_WEIGHT", ticker, weightPercent }),
-    })
-      .then(async (response) => {
-        if (response.status === 400 || response.status === 404) {
-          const body = (await response.json()) as { detail?: string };
-          setReconcileStatus((current) => ({
-            ...current,
-            [ticker]: { kind: "error", message: body.detail ?? t("common.invalidInput") },
-          }));
-          return;
-        }
-        if (!response.ok) {
-          throw new Error(`Backend responded with ${response.status}`);
-        }
-        const view = (await response.json()) as PortfolioView;
-        setAlphaPortfolioData(view);
-        setReconcileStatus((current) => ({ ...current, [ticker]: { kind: "idle" } }));
-      })
-      .catch((error: unknown) => {
-        setReconcileStatus((current) => ({
-          ...current,
-          [ticker]: {
-            kind: "error",
-            message: error instanceof Error ? error.message : t("common.unknownError"),
-          },
-        }));
-      });
-  }
-
   function openReplaceForm() {
     if (status.kind === "loaded" && status.view.exists) {
       setReplaceRows(
@@ -722,6 +543,20 @@ export function PortfolioPage() {
     setReplaceRows((current) =>
       current.map((row, i) => (i === index ? { ...row, ...patch } : row)),
     );
+  }
+
+  /** Phase 6E, Phase 2 (Edit Portfolio): the one add-a-holding action --
+   * an empty row the investor fills in and saves, exactly like editing
+   * any other row. No separate "add holding" flow, no separate form. */
+  function addReplaceRow() {
+    setReplaceRows((current) => [...current, { ticker: "", weightPercent: "", valueAbsolute: "" }]);
+  }
+
+  /** The one remove-a-holding action -- deleting the row and saving
+   * submits the same `REPLACE_ALLOCATION` request without that ticker,
+   * exactly as if it had never been entered. */
+  function removeReplaceRow(index: number) {
+    setReplaceRows((current) => current.filter((_, i) => i !== index));
   }
 
   function submitReplaceAllocation() {
@@ -803,17 +638,27 @@ export function PortfolioPage() {
    * page reads from -- the Holdings Table's own Attention column, its
    * default sort, and the Pulse card's critical-item count all resolve
    * through this same map, so a holding can never be shown as Critical
-   * in one place and Normal in another using separate logic. */
+   * in one place and Normal in another using separate logic.
+   *
+   * Product Simplification Sprint 6E: `displayPriority` replaces the
+   * raw backend `item.priority` here -- Atlas's own bookkeeping
+   * (missing outcomes, missing notes, awaiting reconciliation) can
+   * never inflate a holding to Critical/High on its own; `realItems`
+   * is the same real-content-only subset every count on this page
+   * (the Hero sentence, the Pulse "Attention Items" figure, Attention
+   * Required itself) now shares, so none of them can disagree about
+   * how many things genuinely need attention today. */
   const agendaItems = dailyBriefAgenda.kind === "loaded" ? dailyBriefAgenda.items : [];
+  const realAgendaItems = agendaItems.filter(hasRealReason);
   const priorityByTicker = new Map<string, PriorityLevel>();
   const agendaItemByTicker = new Map<string, AgendaItemView>();
   for (const item of agendaItems) {
     if (item.ticker) {
-      priorityByTicker.set(item.ticker, item.priority);
+      priorityByTicker.set(item.ticker, displayPriority(item));
       agendaItemByTicker.set(item.ticker, item);
     }
   }
-  const criticalAgendaCount = agendaItems.filter((item) => item.priority === "critical").length;
+  const criticalAgendaCount = realAgendaItems.filter((item) => item.priority === "critical").length;
 
   /** Same reasoning, for Portfolio Fit -- one ticker->assessment map,
    * shared by the Holdings Table's Fit column/sort and the Weakest
@@ -862,7 +707,12 @@ export function PortfolioPage() {
   return (
     <Container width="wide">
       <Stack gap="intra-section">
-        <PortfolioPageHeader monitoringStatus={monitoringStatus} t={t} />
+        <PortfolioPageHeader
+          monitoringStatus={monitoringStatus}
+          hasHoldings={status.kind === "loaded" && status.view.exists && status.view.holdings.length > 0}
+          onEditPortfolio={openReplaceForm}
+          t={t}
+        />
 
         {status.kind === "loading" && (
           <Text role="status" aria-live="polite">
@@ -897,61 +747,85 @@ export function PortfolioPage() {
                 supporting data. */}
             <PortfolioHero status={dailyBriefAgenda} view={status.view} t={t} />
 
-            {status.view.awaitingReconciliation && (
+            {status.view.awaitingReconciliation && !showReplaceForm && (
               <Surface tier="primary">
                 <Stack gap="inter-section">
                   <Text color="tertiary" role="status">
                     {t("portfolio.awaitingBanner.title")}
                   </Text>
                   <Text color="secondary">{t("portfolio.awaitingBanner.body")}</Text>
-                  {!showReplaceForm && (
-                    <div>
-                      <Button variant="tertiary" onClick={openReplaceForm}>
-                        {t("portfolio.replaceAllocationButton")}
-                      </Button>
-                    </div>
-                  )}
+                  <div>
+                    <Button variant="tertiary" onClick={openReplaceForm}>
+                      {t("portfolio.editPortfolio.button")}
+                    </Button>
+                  </div>
                 </Stack>
               </Surface>
             )}
 
+            {/* Product Simplification Sprint 6E, Phase 2 -- the one
+                portfolio-management action: add, remove, increase, or
+                decrease any holding, all as edits to the same list,
+                saved together. Atlas infers everything else (Case
+                creation/linking, re-analysis) from the result, exactly
+                as it already does for an import. Replaces both the
+                old, always-hidden "Replace entire allocation" form and
+                the per-row inline Reconcile toggle that used to offer a
+                second, competing way to change a holding's weight. */}
             {showReplaceForm && (
               <Surface tier="primary">
                 <Stack gap="inter-section">
-                  <Heading level={2}>{t("portfolio.replaceForm.heading")}</Heading>
+                  <Heading level={2}>{t("portfolio.editPortfolio.heading")}</Heading>
                   {replaceRows.map((row, index) => (
                     <Stack key={index} gap="inter-section">
-                      <Text as="label">
-                        {t("form.ticker")}
-                        <br />
-                        <input
-                          value={row.ticker}
-                          onChange={(event) => updateReplaceRow(index, { ticker: event.target.value })}
-                        />
-                      </Text>
-                      <Text as="label">
-                        {t("form.weightPercent")}
-                        <br />
-                        <input
-                          value={row.weightPercent}
-                          onChange={(event) =>
-                            updateReplaceRow(index, { weightPercent: event.target.value })
-                          }
-                        />
-                      </Text>
-                      <Text as="label">
-                        {t("form.valueOptional")}
-                        <br />
-                        <input
-                          value={row.valueAbsolute}
-                          onChange={(event) =>
-                            updateReplaceRow(index, { valueAbsolute: event.target.value })
-                          }
-                        />
-                      </Text>
+                      <Inline gap="row" align="baseline" wrap style={{ justifyContent: "space-between" }}>
+                        <Text as="label">
+                          {t("form.ticker")}
+                          <br />
+                          <input
+                            value={row.ticker}
+                            onChange={(event) => updateReplaceRow(index, { ticker: event.target.value })}
+                          />
+                        </Text>
+                        <Text as="label">
+                          {t("form.weightPercent")}
+                          <br />
+                          <input
+                            value={row.weightPercent}
+                            onChange={(event) =>
+                              updateReplaceRow(index, { weightPercent: event.target.value })
+                            }
+                          />
+                        </Text>
+                        <Text as="label">
+                          {t("form.valueOptional")}
+                          <br />
+                          <input
+                            value={row.valueAbsolute}
+                            onChange={(event) =>
+                              updateReplaceRow(index, { valueAbsolute: event.target.value })
+                            }
+                          />
+                        </Text>
+                        <Link
+                          href="#"
+                          style={{ color: "var(--color-text-tertiary)" }}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            removeReplaceRow(index);
+                          }}
+                        >
+                          {t("form.removeButton")}
+                        </Link>
+                      </Inline>
                       <Divider tone="hairline" />
                     </Stack>
                   ))}
+                  <div>
+                    <Button variant="tertiary" onClick={addReplaceRow}>
+                      {t("portfolio.editPortfolio.addHoldingButton")}
+                    </Button>
+                  </div>
                   <Text as="label">
                     {t("form.cashPercent")}
                     <br />
@@ -981,7 +855,7 @@ export function PortfolioPage() {
                     >
                       {replaceStatus.kind === "submitting"
                         ? t("common.saving")
-                        : t("portfolio.replaceForm.saveButton")}
+                        : t("portfolio.editPortfolio.saveButton")}
                     </Button>{" "}
                     <Button variant="tertiary" onClick={() => setShowReplaceForm(false)}>
                       {t("common.cancel")}
@@ -1004,7 +878,7 @@ export function PortfolioPage() {
               largestHolding={largestHolding}
               coveredCount={coveredCount}
               criticalAgendaCount={criticalAgendaCount}
-              attentionItemCount={agendaItems.length}
+              attentionItemCount={realAgendaItems.length}
               biggestRisk={hasDistinctRiskAndOpportunity ? biggestRisk : null}
               biggestOpportunity={hasDistinctRiskAndOpportunity ? biggestOpportunity : null}
               t={t}
@@ -1043,28 +917,6 @@ export function PortfolioPage() {
                 (Deliverable 4). */}
             <AttentionRequiredSection status={dailyBriefAgenda} stanceViewByTicker={stanceViewByTicker} navigate={navigate} t={t} />
 
-            {/* Pulse Simplification (live-verification follow-up):
-                the one Decision Layer signal that answers "what
-                should I do next" -- named, compact, right after
-                Attention Required rather than buried at the very top
-                mixed in among eight other widgets. */}
-            <DecisionStatusSection actionDistribution={actionDistribution} opportunityCostBreakdown={opportunityCostBreakdown} t={t} />
-
-            {/* Pulse Simplification: everything else that used to
-                render unlabeled at the top of Portfolio -- real
-                context, but "why", not "what to do" -- now lives
-                behind one collapsed, per-widget-labeled detail. */}
-            <DecisionLayerDetailSection
-              convictionBreakdown={convictionBreakdown}
-              decisionPathBreakdown={decisionPathBreakdown}
-              decisionMemoryBreakdown={decisionMemoryBreakdown}
-              decisionExplanationBreakdown={decisionExplanationBreakdown}
-              decisionReliabilityBreakdown={decisionReliabilityBreakdown}
-              portfolioSynthesisBreakdown={portfolioSynthesisBreakdown}
-              sharedWeakPoints={sharedWeakPoints}
-              t={t}
-            />
-
             {/* Deliverable 2, step 3: Holdings -- what do I own, in
                 detail, ordered so what matters is on top by default. */}
             <Inline gap="inter-section" wrap align="start">
@@ -1079,12 +931,7 @@ export function PortfolioPage() {
                   stanceViewByTicker={stanceViewByTicker}
                   caseCreateStatus={caseCreateStatus}
                   openInvestmentCase={openInvestmentCase}
-                  expandedReconcileTicker={expandedReconcileTicker}
-                  setExpandedReconcileTicker={setExpandedReconcileTicker}
-                  reconcileWeightInputs={reconcileWeightInputs}
-                  setReconcileWeightInputs={setReconcileWeightInputs}
-                  reconcileStatus={reconcileStatus}
-                  submitUpdateHoldingWeight={submitUpdateHoldingWeight}
+                  onOpenEditPortfolio={openReplaceForm}
                   t={t}
                 />
               </div>
@@ -1121,17 +968,13 @@ export function PortfolioPage() {
               t={t}
             />
 
-            {/* Phase 6D-5 (Section Hierarchy): "what happened recently"
-                now comes before "where should I go next" -- matching
-                this sprint's own five-question order -- so the page
-                ends on a forward-looking navigational close rather than
-                a history log sandwiched in the middle. */}
-            <RecentActivitySection
-              recentActivity={recentActivity}
-              holdings={status.view.holdings}
-              openInvestmentCase={openInvestmentCase}
-              t={t}
-            />
+            {/* Phase 6E (Product Simplification): Recent Activity was
+                removed entirely -- a plain Decision/Outcome/Trade log
+                does not itself help today's investment decisions, and
+                Atlas's real activity history remains fully accessible
+                on its own dedicated History page. This portfolio-local
+                preview of it is gone, not hidden; nothing about History
+                itself changed. */}
 
             {/* Deliverable 2, step 6 / Deliverable 11: Watchlist
                 relationship -- entry points only, no duplicated
@@ -1217,16 +1060,45 @@ function PortfolioEmptyState({ view, t }: { view: PortfolioView; t: (key: Transl
  * primary state (loading/error/not-established/empty). The primary
  * "loaded with holdings" state instead renders its title inline with
  * the header stat row (`PortfolioHeaderBar` below), matching Figma's
- * single-row title+stats layout. */
-function PageTitle({ t }: { t: (key: TranslationKey) => string }) {
+ * single-row title+stats layout.
+ *
+ * Product Simplification Sprint 6E, Phase 2 -- the header offers
+ * exactly one portfolio-management action, context-appropriate: a
+ * portfolio that already has holdings gets "Edit Portfolio" (opens the
+ * one add/remove/increase/decrease panel, no navigation away); a
+ * portfolio that does not yet exist still gets the real first-time
+ * setup flow ("Import Portfolio"), a genuinely different action
+ * (establishing a portfolio, not editing one). */
+function PageTitle({
+  hasHoldings,
+  onEditPortfolio,
+  t,
+}: {
+  hasHoldings: boolean;
+  onEditPortfolio: () => void;
+  t: (key: TranslationKey) => string;
+}) {
   return (
     <Inline gap="row" align="baseline" wrap>
       <Heading level={3} style={PAGE_TITLE_STYLE}>
         {t("portfolio.title")}
       </Heading>
-      <RouterLink to="/portfolio/import" style={ACCENT_LINK_STYLE}>
-        {t("portfolioImport.title")}
-      </RouterLink>
+      {hasHoldings ? (
+        <Link
+          href="#"
+          style={ACCENT_LINK_STYLE}
+          onClick={(event) => {
+            event.preventDefault();
+            onEditPortfolio();
+          }}
+        >
+          {t("portfolio.editPortfolio.button")}
+        </Link>
+      ) : (
+        <RouterLink to="/portfolio/import" style={ACCENT_LINK_STYLE}>
+          {t("portfolioImport.title")}
+        </RouterLink>
+      )}
     </Inline>
   );
 }
@@ -1243,14 +1115,18 @@ function PageTitle({ t }: { t: (key: TranslationKey) => string }) {
  * reach `PortfolioPulse` at all. */
 function PortfolioPageHeader({
   monitoringStatus,
+  hasHoldings,
+  onEditPortfolio,
   t,
 }: {
   monitoringStatus: MonitoringOperationalStatusView | null;
+  hasHoldings: boolean;
+  onEditPortfolio: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   return (
     <Stack gap="metadata">
-      <PageTitle t={t} />
+      <PageTitle hasHoldings={hasHoldings} onEditPortfolio={onEditPortfolio} t={t} />
       {monitoringStatus && <MonitoringFreshnessNote status={monitoringStatus} t={t} />}
       {monitoringStatus && <ScopeFreshnessSummaryNote summary={monitoringStatus.portfolioFreshness} t={t} />}
     </Stack>
@@ -1392,190 +1268,6 @@ function PortfolioPulse({
 }
 
 /**
- * Pulse Simplification (live-verification follow-up) -- the one Decision
- * Layer signal that actually answers "what should I do next" at a
- * portfolio level: Action Distribution (buy/add/hold/reduce/exit/wait
- * counts) and Opportunity Cost (capital-competition counts), named and
- * shown together, never mixed in among the other eight Decision Layer
- * widgets that only explain *why* (those live in
- * `DecisionLayerDetailSection` below). Neither underlying breakdown
- * component's own semantics change here -- both are reused verbatim,
- * this only adds a heading and decides where they render. Renders
- * nothing at all when both are genuinely empty, matching every
- * Decision Layer widget's own "no real signal, no line" convention.
- */
-function DecisionStatusSection({
-  actionDistribution,
-  opportunityCostBreakdown,
-  t,
-}: {
-  actionDistribution: PortfolioActionDistributionView | null;
-  opportunityCostBreakdown: PortfolioOpportunityCostBreakdownView | null;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  const actionTotal = actionDistribution
-    ? actionDistribution.buy.length +
-      actionDistribution.add.length +
-      actionDistribution.hold.length +
-      actionDistribution.reduce.length +
-      actionDistribution.exit.length +
-      actionDistribution.wait.length +
-      actionDistribution.noDecision.length
-    : 0;
-  const opportunityTotal = opportunityCostBreakdown
-    ? opportunityCostBreakdown.holdingsCompetingForCapital.length +
-      opportunityCostBreakdown.watchlistCompetingWithHoldings.length +
-      opportunityCostBreakdown.waitingPreferable.length +
-      opportunityCostBreakdown.noActionAppropriate.length
-    : 0;
-  if (actionTotal === 0 && opportunityTotal === 0) return null;
-
-  return (
-    <Stack gap="metadata">
-      <Heading level={2}>{t("portfolio.decisionStatus.heading")}</Heading>
-      {actionDistribution && <PortfolioActionDistribution distribution={actionDistribution} t={t} />}
-      {opportunityCostBreakdown && <PortfolioOpportunityCostBreakdown breakdown={opportunityCostBreakdown} t={t} />}
-    </Stack>
-  );
-}
-
-/**
- * Pulse Simplification (live-verification follow-up) -- everywhere else
- * eight Decision Layer sprints each added their own "one compact
- * summary line" to the top of Portfolio (Recommendation Conviction,
- * Decision Path, Decision Memory, Decision Explanation, Decision
- * Reliability, Portfolio Synthesis, Evidence Graph Shared Weak Points),
- * plus Decision Readiness -- removed as a Portfolio Pulse row entirely,
- * not moved here, since its own information already lives on the
- * Holdings table's own Beslutsstöd/Uppmärksamhet columns and Attention
- * Required. Each was individually correct by its own sprint's stated
- * goal; stacked unlabeled at the very top of the page they read as
- * noise nobody could attribute to a system. None of that is a bug in
- * any one widget, so none of their own components or backend semantics
- * change here -- this only decides *where* they render (behind one
- * collapsed detail, reusing the exact `ExpandableDetail` primitive
- * `PortfolioSharedWeakPointsSection` already used) and adds one short
- * label per widget so a reader can tell which real Atlas system each
- * line came from -- the one thing none of the ten original lines did
- * for themselves. Decision Memory and Decision Explanation are kept as
- * two separate labeled entries, not merged, even though they answer a
- * similar "what changed" question -- a deliberate product decision,
- * not an oversight (see this file's own git history).
- */
-function DecisionLayerDetailSection({
-  convictionBreakdown,
-  decisionPathBreakdown,
-  decisionMemoryBreakdown,
-  decisionExplanationBreakdown,
-  decisionReliabilityBreakdown,
-  portfolioSynthesisBreakdown,
-  sharedWeakPoints,
-  t,
-}: {
-  convictionBreakdown: PortfolioConvictionBreakdownView | null;
-  decisionPathBreakdown: PortfolioDecisionPathBreakdownView | null;
-  decisionMemoryBreakdown: PortfolioDecisionMemoryBreakdownView | null;
-  decisionExplanationBreakdown: PortfolioDecisionExplanationBreakdownView | null;
-  decisionReliabilityBreakdown: PortfolioReliabilityBreakdownView | null;
-  portfolioSynthesisBreakdown: PortfolioSynthesisBreakdownView | null;
-  sharedWeakPoints: PortfolioSharedWeakPointsView | null;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  const convictionTotal = convictionBreakdown
-    ? convictionBreakdown.highestConviction.length +
-      convictionBreakdown.lowestConviction.length +
-      convictionBreakdown.evidenceLimited.length +
-      convictionBreakdown.operationallyBlocked.length
-    : 0;
-  const decisionPathTotal = decisionPathBreakdown
-    ? decisionPathBreakdown.closestToInvestable.length +
-      decisionPathBreakdown.operationallyBlocked.length +
-      decisionPathBreakdown.requiringMoreEvidence.length +
-      decisionPathBreakdown.requiringDependencyResolution.length
-    : 0;
-  const decisionMemoryTotal = decisionMemoryBreakdown
-    ? decisionMemoryBreakdown.recentlyChanged.length +
-      decisionMemoryBreakdown.stable.length +
-      decisionMemoryBreakdown.recentlyStrengthened.length +
-      decisionMemoryBreakdown.recentlyWeakened.length
-    : 0;
-  const decisionExplanationTotal = decisionExplanationBreakdown
-    ? decisionExplanationBreakdown.recentlyChanged.length +
-      decisionExplanationBreakdown.newSupportingFindings.length +
-      decisionExplanationBreakdown.resolvedBlockers.length +
-      decisionExplanationBreakdown.recentlyStrengthened.length
-    : 0;
-  const decisionReliabilityTotal = decisionReliabilityBreakdown
-    ? decisionReliabilityBreakdown.mostReliable.length +
-      decisionReliabilityBreakdown.leastReliable.length +
-      decisionReliabilityBreakdown.recentlyImproved.length +
-      decisionReliabilityBreakdown.recentlyWeakened.length
-    : 0;
-  const portfolioSynthesisTotal = portfolioSynthesisBreakdown
-    ? portfolioSynthesisBreakdown.supportsPortfolio.length +
-      portfolioSynthesisBreakdown.highestCapitalCompetition.length +
-      portfolioSynthesisBreakdown.conflictsWithPortfolio.length +
-      portfolioSynthesisBreakdown.neutral.length
-    : 0;
-  const sharedWeakPointsTotal = sharedWeakPoints
-    ? sharedWeakPoints.sharedWeakAssumptions.length + sharedWeakPoints.sharedConditions.length + sharedWeakPoints.sharedMissingEvidence.length
-    : 0;
-  const total =
-    convictionTotal +
-    decisionPathTotal +
-    decisionMemoryTotal +
-    decisionExplanationTotal +
-    decisionReliabilityTotal +
-    portfolioSynthesisTotal +
-    sharedWeakPointsTotal;
-  if (total === 0) return null;
-
-  return (
-    <ExpandableDetail summaryLabel={t("portfolio.decisionLayerDetail.summaryLabel")}>
-      <Stack gap="inter-section">
-        {convictionTotal > 0 && (
-          <Stack gap="metadata">
-            <Label>{t("portfolio.decisionLayerDetail.label.conviction")}</Label>
-            <PortfolioConvictionBreakdown breakdown={convictionBreakdown!} t={t} />
-          </Stack>
-        )}
-        {decisionPathTotal > 0 && (
-          <Stack gap="metadata">
-            <Label>{t("portfolio.decisionLayerDetail.label.decisionPath")}</Label>
-            <PortfolioDecisionPathBreakdown breakdown={decisionPathBreakdown!} t={t} />
-          </Stack>
-        )}
-        {decisionMemoryTotal > 0 && (
-          <Stack gap="metadata">
-            <Label>{t("portfolio.decisionLayerDetail.label.decisionMemory")}</Label>
-            <PortfolioDecisionMemoryBreakdown breakdown={decisionMemoryBreakdown!} t={t} />
-          </Stack>
-        )}
-        {decisionExplanationTotal > 0 && (
-          <Stack gap="metadata">
-            <Label>{t("portfolio.decisionLayerDetail.label.decisionExplanation")}</Label>
-            <PortfolioDecisionExplanationBreakdown breakdown={decisionExplanationBreakdown!} t={t} />
-          </Stack>
-        )}
-        {decisionReliabilityTotal > 0 && (
-          <Stack gap="metadata">
-            <Label>{t("portfolio.decisionLayerDetail.label.decisionReliability")}</Label>
-            <PortfolioReliabilityBreakdown breakdown={decisionReliabilityBreakdown!} t={t} />
-          </Stack>
-        )}
-        {portfolioSynthesisTotal > 0 && (
-          <Stack gap="metadata">
-            <Label>{t("portfolio.decisionLayerDetail.label.portfolioSynthesis")}</Label>
-            <PortfolioSynthesisBreakdown breakdown={portfolioSynthesisBreakdown!} t={t} />
-          </Stack>
-        )}
-        {sharedWeakPointsTotal > 0 && <PortfolioSharedWeakPointsSection points={sharedWeakPoints!} t={t} />}
-      </Stack>
-    </ExpandableDetail>
-  );
-}
-
-/**
  * Concentration / Allocation / Atlas Coverage sidebar (Product Sprint 8,
  * Deliverables 7 & 8). Top-N by weight and the concentration level are
  * both read from data `PortfolioPage` already computed/fetched once and
@@ -1681,114 +1373,6 @@ function PortfolioSidebar({
   );
 }
 
-/**
- * Recent Activity (Portfolio Lower-Half Reconstruction Sprint 6D,
- * Phase 4) -- reuses `deriveActivity` unfiltered, newest first, exactly
- * as before; the only change is presentation. Each event was a single
- * plain-text row (`"AAPL — Bought 10 shares · 2d ago"`) with no visual
- * distinction between a Decision, an Outcome, and a Trade -- it looked
- * like a system log, not something worth reading. Now each event is
- * its own compact editorial card (kind label, ticker, relative time,
- * one summary sentence), matching the card language the rest of this
- * page's lower half already uses (Portfolio Opportunities/Weaknesses'
- * own `PortfolioSignalCard`). No event, field, or link is removed --
- * `event.kind` (already computed, never shown before) is now visible
- * too, since knowing whether something was a Decision, an Outcome, or
- * a Trade is real information a reader needs to scan a timeline.
- * Atlas-authored "coverage expanded" events have no real source
- * anywhere (no coverage-change history is persisted) and are never
- * fabricated here -- only real Decision/Outcome/Trade events, exactly
- * as `deriveActivity` already produces for History and Dashboard.
- */
-const RECENT_ACTIVITY_COUNT = 4;
-
-const ACTIVITY_KIND_LABEL_KEY: Record<ActivityEvent["kind"], TranslationKey> = {
-  decision: "history.row.kindDecision",
-  outcome: "history.row.kindOutcome",
-  trade: "history.row.kindTrade",
-};
-
-function RecentActivitySection({
-  recentActivity,
-  holdings,
-  openInvestmentCase,
-  t,
-}: {
-  recentActivity: RecentActivityFetchStatus;
-  holdings: HoldingView[];
-  openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  if (recentActivity.kind !== "loaded") return null;
-
-  const holdingsLite = holdings.map((h) => ({
-    ticker: h.ticker,
-    caseId: h.caseId,
-    reconciliationStatus: h.reconciliationStatus,
-  }));
-  const events = sortActivity(
-    deriveActivity(recentActivity.decisions, recentActivity.outcomes, recentActivity.trades, holdingsLite),
-    "newest",
-  ).slice(0, RECENT_ACTIVITY_COUNT);
-
-  return (
-    <Stack gap="metadata">
-      <Heading level={2}>{t("portfolio.recentActivity.heading")}</Heading>
-      {events.length === 0 && <Text color="tertiary">{t("portfolio.recentActivity.empty")}</Text>}
-      <Stack gap="row">
-        {events.map((event) => (
-          <RecentActivityRow
-            key={`${event.kind}-${event.id}`}
-            event={event}
-            openInvestmentCase={openInvestmentCase}
-            t={t}
-          />
-        ))}
-      </Stack>
-    </Stack>
-  );
-}
-
-function RecentActivityRow({
-  event,
-  openInvestmentCase,
-  t,
-}: {
-  event: ActivityEvent;
-  openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  return (
-    <Surface tier="primary">
-      <Link
-        href="#"
-        style={{ color: "var(--color-text-primary)", textDecoration: "none", display: "block" }}
-        onClick={(clickEvent) => {
-          clickEvent.preventDefault();
-          openInvestmentCase(event.security, event.caseId);
-        }}
-      >
-        <Stack gap="metadata">
-          <Inline gap="row" align="baseline" wrap style={{ justifyContent: "space-between" }}>
-            <Inline gap="row" align="baseline" wrap>
-              <Label>{t(ACTIVITY_KIND_LABEL_KEY[event.kind])}</Label>
-              <Text as="span" style={{ fontWeight: 600 }}>
-                {event.security}
-              </Text>
-            </Inline>
-            <Text color="tertiary" as="span">
-              {formatRelativeTime(event.date, t)}
-            </Text>
-          </Inline>
-          <Text color="secondary" as="p">
-            {event.summary}
-          </Text>
-        </Stack>
-      </Link>
-    </Surface>
-  );
-}
-
 /** Figma-fidelity rebuild -- rows shown before "View All Holdings"
  * expands the table, matching the approved screen's own "Showing 15 of
  * 25" / "View All Holdings (25)" pattern. Purely a display cap over
@@ -1872,7 +1456,7 @@ function PortfolioHero({
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   if (status.kind !== "loaded") return null;
-  const count = status.items.length;
+  const count = status.items.filter(hasRealReason).length;
   const cashDisplay =
     view.cashValueAbsolute !== null
       ? view.cashValueAbsolute
@@ -2026,7 +1610,15 @@ function AttentionRequiredSection({
       </Text>
     );
   }
-  if (status.kind === "error" || status.items.length === 0) {
+  // Product Simplification Sprint 6E, Phase 3: Atlas's own internal
+  // bookkeeping (a decision without an outcome, a missing note, an
+  // allocation awaiting reconciliation) is never an investment issue --
+  // a ticker whose entire agenda is that kind of housekeeping has
+  // nothing genuinely worth knowing today and does not get a card here
+  // at all. This is meant to read as "Atlas found a few things worth
+  // knowing," not "here are your 32 outstanding tasks."
+  const realItems = status.kind === "loaded" ? status.items.filter(hasRealReason) : [];
+  if (status.kind === "error" || realItems.length === 0) {
     return (
       <Stack gap="metadata">
         <Heading level={2}>{t("portfolio.attentionRequired.heading")}</Heading>
@@ -2040,7 +1632,7 @@ function AttentionRequiredSection({
   // since `TickerAgendaCard`'s own `onOpenHolding` only ever passes a
   // ticker string, never the full item.
   const itemByTicker = new Map<string, AgendaItemView>();
-  for (const item of status.items) {
+  for (const item of realItems) {
     if (item.ticker && !itemByTicker.has(item.ticker)) itemByTicker.set(item.ticker, item);
   }
 
@@ -2056,7 +1648,7 @@ function AttentionRequiredSection({
      not a link that visibly does nothing. */
   const onGoToPortfolio = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
-  const groups = groupAgendaByTicker(status.items);
+  const groups = groupAgendaByTicker(realItems).map(sanitizeGroupReasons);
   const visible = groups.slice(0, ATTENTION_CARD_CAP);
   const collapsed = groups.slice(ATTENTION_CARD_CAP);
 
@@ -2147,7 +1739,9 @@ function TodaysRiskOpportunityCard({
         {assessment.overallReasoning[0] && <Text as="p" color="secondary">{assessment.overallReasoning[0]}</Text>}
         <Text as="p" color="tertiary">
           {t("portfolio.todaysFocus.whatChangedLabel")}:{" "}
-          {agendaItem ? agendaItemHeadline(agendaItem, t) : t("watchlist.attention.noSignificantChanges")}
+          {agendaItem && realHeadlineText(agendaItem, t) !== null
+            ? realHeadlineText(agendaItem, t)
+            : t("watchlist.attention.noSignificantChanges")}
         </Text>
         <div>
           <Link
@@ -2393,12 +1987,7 @@ function HoldingsTable({
   stanceViewByTicker,
   caseCreateStatus,
   openInvestmentCase,
-  expandedReconcileTicker,
-  setExpandedReconcileTicker,
-  reconcileWeightInputs,
-  setReconcileWeightInputs,
-  reconcileStatus,
-  submitUpdateHoldingWeight,
+  onOpenEditPortfolio,
   t,
 }: {
   view: PortfolioView;
@@ -2410,12 +1999,7 @@ function HoldingsTable({
   stanceViewByTicker: Map<string, StanceView>;
   caseCreateStatus: Record<string, CaseCreateStatus>;
   openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
-  expandedReconcileTicker: string | null;
-  setExpandedReconcileTicker: (ticker: string | null) => void;
-  reconcileWeightInputs: Record<string, string>;
-  setReconcileWeightInputs: (updater: (current: Record<string, string>) => Record<string, string>) => void;
-  reconcileStatus: Record<string, ReconcileStatus>;
-  submitUpdateHoldingWeight: (ticker: string) => void;
+  onOpenEditPortfolio: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   const cellStyle: CSSProperties = {
@@ -2543,17 +2127,8 @@ function HoldingsTable({
                     priority={priorityByTicker.get(holding.ticker)}
                     agendaItem={agendaItemByTicker.get(holding.ticker)}
                     thisCaseCreateStatus={caseCreateStatus[holding.ticker] ?? { kind: "idle" }}
-                    thisReconcileStatus={reconcileStatus[holding.ticker] ?? { kind: "idle" }}
                     openInvestmentCase={openInvestmentCase}
-                    isReconcileExpanded={expandedReconcileTicker === holding.ticker}
-                    onToggleReconcile={() =>
-                      setExpandedReconcileTicker(expandedReconcileTicker === holding.ticker ? null : holding.ticker)
-                    }
-                    reconcileWeightInput={reconcileWeightInputs[holding.ticker] ?? ""}
-                    onReconcileWeightInputChange={(value) =>
-                      setReconcileWeightInputs((current) => ({ ...current, [holding.ticker]: value }))
-                    }
-                    submitUpdateHoldingWeight={submitUpdateHoldingWeight}
+                    onOpenEditPortfolio={onOpenEditPortfolio}
                     cellStyle={cellStyle}
                     t={t}
                   />
@@ -2643,13 +2218,14 @@ function HoldingReasonCell({
 }) {
   const primaryReason = stanceView ? primaryStanceReason(stanceView) : null;
   const whySentence = primaryReason ? stanceReasonSentence(primaryReason, t) : null;
+  const headline = agendaItem ? realHeadlineText(agendaItem, t) : null;
 
-  if (agendaItem) {
+  if (agendaItem && headline) {
     return (
       <Stack gap="metadata">
         <Inline gap="metadata" align="baseline" wrap>
           {priority && <PriorityBadge priority={priority} />}
-          <Text as="span">{agendaItemHeadline(agendaItem, t)}</Text>
+          <Text as="span">{headline}</Text>
         </Inline>
         {whySentence && (
           <ExpandableDetail summaryLabel={t("portfolio.holdingsTable.showWhyLabel")}>
@@ -2678,9 +2254,14 @@ function HoldingReasonCell({
  * the whole row a keyboard-operable navigation target (Enter/Space open
  * the Investment Case) rather than requiring a separate visible button
  * per row -- consistent with "the user should never feel they are
- * leaving the Portfolio workspace" and this sprint's density goal. The
- * inline Reconcile toggle stops event propagation so clicking it never
- * also triggers row navigation.
+ * leaving the Portfolio workspace" and this sprint's density goal.
+ *
+ * Phase 6E (Product Simplification): the per-row inline "Reconcile"
+ * toggle + its own weight-input form -- a second, competing way to
+ * change a holding's weight, alongside the page's own general "Edit
+ * Portfolio" action -- is gone. A holding awaiting reconciliation now
+ * just says so in plain language and opens the one, same Edit
+ * Portfolio panel every other portfolio change goes through.
  */
 function HoldingsTableRow({
   holding,
@@ -2690,13 +2271,8 @@ function HoldingsTableRow({
   priority,
   agendaItem,
   thisCaseCreateStatus,
-  thisReconcileStatus,
   openInvestmentCase,
-  isReconcileExpanded,
-  onToggleReconcile,
-  reconcileWeightInput,
-  onReconcileWeightInputChange,
-  submitUpdateHoldingWeight,
+  onOpenEditPortfolio,
   cellStyle,
   t,
 }: {
@@ -2707,13 +2283,8 @@ function HoldingsTableRow({
   priority: PriorityLevel | undefined;
   agendaItem: AgendaItemView | undefined;
   thisCaseCreateStatus: CaseCreateStatus;
-  thisReconcileStatus: ReconcileStatus;
   openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
-  isReconcileExpanded: boolean;
-  onToggleReconcile: () => void;
-  reconcileWeightInput: string;
-  onReconcileWeightInputChange: (value: string) => void;
-  submitUpdateHoldingWeight: (ticker: string) => void;
+  onOpenEditPortfolio: () => void;
   cellStyle: CSSProperties;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
@@ -2796,10 +2367,10 @@ function HoldingsTableRow({
                 onClick={(event) => {
                   event.stopPropagation();
                   event.preventDefault();
-                  onToggleReconcile();
+                  onOpenEditPortfolio();
                 }}
               >
-                {isReconcileExpanded ? t("common.cancel") : t("portfolio.holdingsTable.reconcileToggle")}
+                {t("portfolio.holdingsTable.needsUpdateLink")}
               </Link>
             )}
           </Inline>
@@ -2830,41 +2401,6 @@ function HoldingsTableRow({
           </Link>
         </td>
       </tr>
-      {isReconcileExpanded && (
-        <tr>
-          <td colSpan={4} style={cellStyle}>
-            <Stack gap="inter-section">
-              <Text color="tertiary" as="p">
-                {t("portfolio.holdings.awaitingReconciliation")}
-              </Text>
-              <Text as="label">
-                {t("portfolio.holdings.newWeightLabel")}
-                <br />
-                <input
-                  value={reconcileWeightInput}
-                  onChange={(event) => onReconcileWeightInputChange(event.target.value)}
-                />
-              </Text>
-              <div>
-                <Button
-                  variant="tertiary"
-                  onClick={() => submitUpdateHoldingWeight(holding.ticker)}
-                  disabled={thisReconcileStatus.kind === "submitting"}
-                >
-                  {thisReconcileStatus.kind === "submitting"
-                    ? t("portfolio.holdings.updating")
-                    : t("portfolio.holdings.updateButton")}
-                </Button>
-              </div>
-              {thisReconcileStatus.kind === "error" && (
-                <Text color="tertiary" role="alert">
-                  {thisReconcileStatus.message}
-                </Text>
-              )}
-            </Stack>
-          </td>
-        </tr>
-      )}
     </>
   );
 }

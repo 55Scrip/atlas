@@ -57,35 +57,64 @@ function agendaResponse(overrides: Record<string, unknown> = {}) {
       concentrationLevel: "Elevated",
     },
     items: [
+      // Product Simplification Sprint 6E: the default fixture item is a
+      // real investment signal (Portfolio Fit), not Atlas's own
+      // decision-hygiene bookkeeping -- a `portfolio_status`/
+      // `workflow_gap` item is never allowed to read as Critical to an
+      // investor any more, so using one here would make AAPL silently
+      // vanish from Attention Required and break every test below that
+      // expects it to show up as the portfolio's one real critical
+      // holding. See the dedicated `bookkeepingAgendaItem` fixture
+      // below for coverage of the suppression behavior itself.
       {
-        id: "review_portfolio_position:AAPL",
+        id: "portfolio_fit:AAPL",
         priority: "critical",
         kind: "review_portfolio_position",
         group: "portfolio",
-        source: "portfolio_status",
-        headline: "AAPL: outcome without execution (1 item(s))",
-        reason: ["AAPL: outcome without execution (1 item(s))"],
+        source: "portfolio_fit",
+        headline: "AAPL: Risk fit is poor, which outweighs the other dimensions.",
+        reason: ["AAPL: Risk fit is poor, which outweighs the other dimensions."],
         ticker: "AAPL",
         caseId: "case-aapl",
         portfolioContext: null,
         generatedAt: "2026-01-01T00:00:00Z",
-        // Localization fix (Portfolio live-verification follow-up):
-        // a real workflow item always carries these two -- the raw
-        // English `headline` above is the backend's own unused-by-the
-        // -UI fallback now, kept here only so a test overriding this
-        // fixture without `attentionCategory` still gets a headline.
-        attentionCategory: "OUTCOME_WITHOUT_EXECUTION",
-        attentionCount: 1,
-        reasonFacts: [
-          {
-            code: "workflow_gap",
-            entity: "AAPL",
-            value: "OUTCOME_WITHOUT_EXECUTION",
-            secondaryValue: null,
-            label: null,
-            count: 1,
-          },
-        ],
+        attentionCategory: null,
+        attentionCount: null,
+        reasonFacts: [null],
+      },
+    ],
+    ...overrides,
+  };
+}
+
+/** Product Simplification Sprint 6E, Phase 1/3 -- Atlas's own internal
+ * decision-hygiene bookkeeping: a `portfolio_status`-sourced item whose
+ * entire `reason[]` is workflow housekeeping, never a real investment
+ * fact. `workflow_gap` items like this must never be shown to an
+ * investor and must never make a ticker read as Critical. */
+function bookkeepingAgendaItem(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "review_portfolio_position:MSFT",
+    priority: "critical",
+    kind: "review_portfolio_position",
+    group: "portfolio",
+    source: "portfolio_status",
+    headline: "MSFT: outcome without execution (1 item(s))",
+    reason: ["MSFT: outcome without execution (1 item(s))"],
+    ticker: "MSFT",
+    caseId: "case-msft",
+    portfolioContext: null,
+    generatedAt: "2026-01-01T00:00:00Z",
+    attentionCategory: "OUTCOME_WITHOUT_EXECUTION",
+    attentionCount: 1,
+    reasonFacts: [
+      {
+        code: "workflow_gap",
+        entity: "MSFT",
+        value: "OUTCOME_WITHOUT_EXECUTION",
+        secondaryValue: null,
+        label: null,
+        count: 1,
       },
     ],
     ...overrides,
@@ -251,17 +280,33 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
-    // Localization fix (Portfolio live-verification follow-up): a real
-    // workflow item's headline is now composed and translated from
-    // `attentionCategory`/`attentionCount`, never the backend's raw
-    // English `headline` string -- see `describeAgendaHeadline.ts`.
     // Status Consolidation (Implementation Sprint B3): the same real
-    // headline now renders twice by design -- once in the Attention
-    // Required section, once in the Holdings Table's own "Change"
-    // column below -- the same "one real signal, shown compactly in
-    // two places" pattern established for Watchlist's Hero + table.
-    expect(screen.getAllByText(/utfall utan verkställande/).length).toBeGreaterThan(0);
+    // signal renders twice by design -- once in the Attention Required
+    // section, once in the Holdings Table's own Reason column below --
+    // the same "one real signal, shown compactly in two places" pattern
+    // established for Watchlist's Hero + table.
+    expect(screen.getAllByText(/Risk fit is poor/).length).toBeGreaterThan(0);
+  });
+
+  it("Phase 6E: a ticker whose entire agenda is Atlas's own bookkeeping (a decision without an outcome) never gets a card, and never counts toward Critical", async () => {
+    mockFetch({
+      agenda: agendaResponse({
+        items: [agendaResponse().items[0], bookkeepingAgendaItem()],
+        summary: { holdingsCount: 2, criticalCount: 2, highCount: 0, watchlistOpportunityCount: 0, cashWeightPercent: 5, concentrationLevel: "Elevated" },
+      }),
+    });
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
+    // AAPL's real Portfolio Fit issue still shows.
+    expect(screen.getAllByText(/Risk fit is poor/).length).toBeGreaterThan(0);
+    // MSFT's own agenda item is entirely bookkeeping -- no raw or
+    // translated bookkeeping phrase ever reaches the page, in either
+    // Attention Required or the Holdings Table's Reason column, and
+    // the Pulse's critical pill counts only the one real issue (AAPL),
+    // never MSFT's bookkeeping-only "critical" workflow priority.
     expect(screen.queryByText(/outcome without execution/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/utfall utan verkställande/)).not.toBeInTheDocument();
+    expect(screen.getByText("1 kritiska")).toBeInTheDocument();
   });
 
   it("shows the honest empty state for Attention Required when the agenda has no portfolio items", async () => {
@@ -339,83 +384,25 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
   });
 });
 
-describe("Pulse Simplification (live-verification follow-up)", () => {
+describe("Product Simplification Sprint 6E -- Decision Status/Decision Layer Detail removed entirely", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     __resetAlphaPortfolioCacheForTests();
   });
 
-  it("shows the new Beslutsläge section, right after Attention Required, with real Action Distribution and Opportunity Cost content", async () => {
-    mockFetch({
-      actionDistribution: { ...EMPTY_ACTION_DISTRIBUTION, reduce: ["AAPL"] },
-      opportunityCost: { ...EMPTY_OPPORTUNITY_COST, waitingPreferable: ["AAPL"] },
-    });
-    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
-    await waitFor(() => expect(screen.getByText("Beslutsläge")).toBeInTheDocument());
-    expect(screen.getByText("Minska (1)")).toBeInTheDocument();
-    expect(screen.getByText("Att vänta är att föredra (1)")).toBeInTheDocument();
-    // Attention Required must still come first -- Beslutsläge is a
-    // secondary, named section right after it, never competing with it.
-    const attentionHeading = screen.getByText("Kräver uppmärksamhet");
-    const decisionStatusHeading = screen.getByText("Beslutsläge");
-    expect(attentionHeading.compareDocumentPosition(decisionStatusHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it("renders no Beslutsläge section at all when Action Distribution and Opportunity Cost are both genuinely empty", async () => {
+  it("never renders Decision Status or Decision Layer Detail -- Phase 5 removed both sections, not just their old jargon labels", async () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
     expect(screen.queryByText("Beslutsläge")).not.toBeInTheDocument();
-  });
-
-  it("never fetches Decision Readiness -- removed as a Pulse row, its information already lives on the Holdings table and Attention Required", async () => {
-    mockFetch();
-    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
-    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
-    const calledUrls = (fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((call) => String(call[0]));
-    expect(calledUrls.some((url) => url.includes("decision-readiness"))).toBe(false);
-  });
-
-  it("groups the remaining Decision Layer widgets behind one collapsed detail, each under its own label, closed by default", async () => {
-    mockFetch({
-      conviction: { ...EMPTY_CONVICTION, lowestConviction: ["AAPL"] },
-      decisionPath: { ...EMPTY_DECISION_PATH, requiringDependencyResolution: ["AAPL"] },
-      decisionMemory: { ...EMPTY_DECISION_MEMORY, recentlyChanged: ["AAPL"] },
-      decisionExplanation: { ...EMPTY_DECISION_EXPLANATION, resolvedBlockers: ["AAPL"] },
-      decisionReliability: { ...EMPTY_DECISION_RELIABILITY, leastReliable: ["AAPL"] },
-      portfolioSynthesis: { ...EMPTY_PORTFOLIO_SYNTHESIS, conflictsWithPortfolio: ["AAPL"] },
-    });
-    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
-    await waitFor(() => expect(screen.getByText("Detaljerad beslutsstatus")).toBeInTheDocument());
-
-    // Closed by default: the native <details> element must not be open,
-    // so an investor never has to see this on first glance.
-    const details = screen.getByText("Detaljerad beslutsstatus").closest("details");
-    expect(details).not.toBeNull();
-    expect(details).not.toHaveAttribute("open");
-
-    // Every one of the six moved widgets is present, each under its
-    // own real label -- the one thing none of them did for themselves
-    // before this pass.
-    expect(screen.getByText("Rekommendationens styrka")).toBeInTheDocument();
-    expect(screen.getByText("Svagast stöd (1)")).toBeInTheDocument();
-    expect(screen.getByText("Beslutsväg")).toBeInTheDocument();
-    expect(screen.getByText("Vägen kräver ett löst beroende (1)")).toBeInTheDocument();
-    expect(screen.getByText("Beslutsregister")).toBeInTheDocument();
-    expect(screen.getByText("Nyligen ändrade (1)")).toBeInTheDocument();
-    expect(screen.getByText("Beslutsmotivering")).toBeInTheDocument();
-    expect(screen.getByText("Lösta hinder (1)")).toBeInTheDocument();
-    expect(screen.getByText("Tillförlitlighet")).toBeInTheDocument();
-    expect(screen.getByText("Minst tillförlitliga (1)")).toBeInTheDocument();
-    expect(screen.getByText("Portföljsyntes")).toBeInTheDocument();
-    expect(screen.getByText("Står i konflikt med portföljen (1)")).toBeInTheDocument();
-  });
-
-  it("renders no collapsed detail section at all when every remaining Decision Layer widget is genuinely empty", async () => {
-    mockFetch();
-    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
-    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
     expect(screen.queryByText("Detaljerad beslutsstatus")).not.toBeInTheDocument();
+  });
+
+  it("never renders Recent Activity -- Phase 6 removed the portfolio-local activity log entirely", async () => {
+    mockFetch();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
+    expect(screen.queryByText("Senaste aktivitet")).not.toBeInTheDocument();
   });
 });
 
@@ -475,7 +462,7 @@ describe("PortfolioPage Attention Required -- loading reliability (Reliability F
     await waitFor(() => expect(deferred.length).toBe(1));
     deferred[0]!.resolve(agendaResponse());
     await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
-    expect(screen.getAllByText(/utfall utan verkställande/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Risk fit is poor/).length).toBeGreaterThan(0);
   });
 
   it("Scenario B -- an earlier, superseded request resolving late must never overwrite a later request's own loaded state (the exact StrictMode-shaped race)", async () => {
@@ -493,7 +480,7 @@ describe("PortfolioPage Attention Required -- loading reliability (Reliability F
     // The second, current request resolves first...
     deferred[1]!.resolve(agendaResponse());
     await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
-    expect(screen.getAllByText(/utfall utan verkställande/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Risk fit is poor/).length).toBeGreaterThan(0);
     // ...and only then does the first, superseded request's own result
     // arrive late, on an already-unmounted instance. Under the pre-fix
     // `AbortController` version this path never mattered because the
@@ -503,7 +490,7 @@ describe("PortfolioPage Attention Required -- loading reliability (Reliability F
     // moved on. Resolving it must not throw and must not disturb the
     // still-mounted instance's own loaded content.
     expect(() => deferred[0]!.resolve(agendaResponse({ items: [] }))).not.toThrow();
-    expect(screen.getAllByText(/utfall utan verkställande/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Risk fit is poor/).length).toBeGreaterThan(0);
   });
 
   it("Scenario C -- a genuine request failure resolves to the error state, never an indefinite loading state", async () => {

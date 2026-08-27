@@ -96,26 +96,22 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.empty.explanation":
     "Det finns inget att visa här än — Atlas hittar inte på innehav eller möjligheter. När du öppnar Investeringscase och registrerar beslut kommer de att visas här.",
   "portfolio.openNewCase": "Öppna ett nytt Investeringscase",
-  "portfolio.awaitingBanner.title": "Affär registrerad. Fördelningen behöver stämmas av.",
+  "portfolio.awaitingBanner.title": "En affär ändrade din fördelning.",
   "portfolio.awaitingBanner.body":
-    "Ett eller flera innehav handlades medan Atlas endast kände till procentandelar, så fördelningen lämnades orörd i stället för att gissas fram. Uppdatera det berörda innehavet nedan, eller ersätt hela fördelningen.",
-  "portfolio.replaceAllocationButton": "Ersätt hela fördelningen",
-  "portfolio.replaceForm.heading": "Ersätt hela fördelningen",
-  "portfolio.replaceForm.saveButton": "Spara fördelning",
+    "Ett eller flera innehav handlades medan Atlas endast kände till procentandelar, så fördelningen lämnades orörd i stället för att gissas fram. Redigera portföljen för att uppdatera det berörda innehavet.",
+  "portfolio.editPortfolio.button": "Redigera portfölj",
+  "portfolio.editPortfolio.heading": "Redigera portfölj",
+  "portfolio.editPortfolio.addHoldingButton": "+ Lägg till innehav",
+  "portfolio.editPortfolio.saveButton": "Spara ändringar",
   "portfolio.replaceForm.errors.invalidPercentage": "Alla innehav behöver en giltig andel i procent.",
   "portfolio.holdings.heading": "Innehav",
   "portfolio.holdings.percentOnly":
     "Visar endast procentandelar — inget totalt portföljvärde har angetts.",
   "portfolio.holdings.totalValue": "Totalt värde: {{value}}",
   "portfolio.holdings.updatedAutomatically": "Uppdaterad automatiskt",
-  "portfolio.holdings.awaitingReconciliation": "Väntar på avstämning",
-  "portfolio.holdings.newWeightLabel": "Ny andel %",
-  "portfolio.holdings.updateButton": "Uppdatera detta innehav",
-  "portfolio.holdings.updating": "Uppdaterar…",
   "portfolio.holdings.openCaseButton": "Öppna Investeringscase",
   "portfolio.holdings.opening": "Öppnar…",
   "portfolio.holdings.openCaseError": "Kunde inte öppna ett Investeringscase.",
-  "portfolio.holdings.errors.invalidPercentage": "Ange en giltig andel i procent.",
   // ---------- portfolio cockpit (ATLAS-028) ----------
   "portfolio.cockpit.conviction.very_high": "Mycket hög",
   "portfolio.cockpit.conviction.high": "Hög",
@@ -203,15 +199,6 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.overallConclusion.attentionCountOne": "1 innehav kräver uppmärksamhet.",
   "portfolio.overallConclusion.attentionCountOther": "{{count}} innehav kräver uppmärksamhet.",
 
-  // ---------- Pulse Simplification (live-verification follow-up) ----------
-  "portfolio.decisionStatus.heading": "Beslutsläge",
-  "portfolio.decisionLayerDetail.summaryLabel": "Detaljerad beslutsstatus",
-  "portfolio.decisionLayerDetail.label.conviction": "Rekommendationens styrka",
-  "portfolio.decisionLayerDetail.label.decisionPath": "Beslutsväg",
-  "portfolio.decisionLayerDetail.label.decisionMemory": "Beslutsregister",
-  "portfolio.decisionLayerDetail.label.decisionExplanation": "Beslutsmotivering",
-  "portfolio.decisionLayerDetail.label.decisionReliability": "Tillförlitlighet",
-  "portfolio.decisionLayerDetail.label.portfolioSynthesis": "Portföljsyntes",
 
   // ---------- Portfolio Lower-Half Reconstruction Sprint 6D ----------
   "portfolio.attention.viewAllRemaining": "Visa {{count}} till",
@@ -238,7 +225,7 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.holdingsTable.reasonHeader": "Anledning",
   "portfolio.holdingsTable.showWhyLabel": "Visa varför",
   "portfolio.holdingsTable.openAction": "Öppna",
-  "portfolio.holdingsTable.reconcileToggle": "Stäm av",
+  "portfolio.holdingsTable.needsUpdateLink": "Behöver uppdaterad andel",
   "portfolio.holdingsTable.showingCount": "Visar {{shown}} av {{total}}",
   "portfolio.holdingsTable.viewAll": "Visa alla innehav ({{count}})",
   "portfolio.holdingsTable.viewFewer": "Visa färre",
@@ -286,10 +273,6 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.watchlistRelationship.heading": "Utforska vidare",
   "portfolio.watchlistRelationship.openWatchlist": "Öppna bevakningslistan",
   "portfolio.watchlistRelationship.openDiscovery": "Öppna Discovery",
-
-  // ---------- recent activity (Portfolio Workspace v1) ----------
-  "portfolio.recentActivity.heading": "Senaste aktivitet",
-  "portfolio.recentActivity.empty": "Ingen senaste aktivitet registrerad.",
 
   // ---------- holding attention detail (Portfolio Workspace v1) ----------
   "portfolio.holdingDetail.breadcrumb": "Portfölj / {{ticker}}",
