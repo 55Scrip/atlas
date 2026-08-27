@@ -68,7 +68,7 @@ describe("InvestmentDecisionSection", () => {
       currentQualifierKinds: [],
       detectedAt: "2026-01-01T00:00:00Z",
     });
-    expect(screen.getByText(/Beslutet ändrades från/)).toBeInTheDocument();
+    expect(screen.getByText(/Rekommendationen ändrades från/)).toBeInTheDocument();
   });
 
   it("never renders raw technical vocabulary", () => {

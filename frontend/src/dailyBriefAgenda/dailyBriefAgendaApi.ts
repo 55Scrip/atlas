@@ -161,8 +161,18 @@ export interface DailyBriefAgendaView {
   items: AgendaItemView[];
 }
 
-export async function fetchDailyBriefAgenda(signal?: AbortSignal): Promise<DailyBriefAgendaView> {
-  const response = await fetch("/api/daily-brief-agenda", { signal: signal ?? null });
+/**
+ * `userId` is optional and additive (Daily Brief 2.0) -- passing it is
+ * what lets the backend durably record any eligible change this call
+ * observes into the change log (`dailyBriefChangeLogApi.ts`), since
+ * building the agenda is the one moment a real transition is visible
+ * before the upstream engines' own diff state self-erases. Omitting it
+ * returns the identical `DailyBriefAgendaView` this endpoint has
+ * always returned, with no recording side effect.
+ */
+export async function fetchDailyBriefAgenda(signal?: AbortSignal, userId?: string): Promise<DailyBriefAgendaView> {
+  const url = userId ? `/api/daily-brief-agenda?userId=${encodeURIComponent(userId)}` : "/api/daily-brief-agenda";
+  const response = await fetch(url, { signal: signal ?? null });
   if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
   return (await response.json()) as DailyBriefAgendaView;
 }

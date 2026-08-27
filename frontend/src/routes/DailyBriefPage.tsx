@@ -6,13 +6,16 @@ import { useTranslation } from "../i18n";
 import { fetchDailyBriefAgenda, type DailyBriefAgendaView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
 import type { TickerAgendaGroup } from "../dailyBriefAgenda/groupAgendaByTicker";
 import { realAgendaGroups } from "../dailyBriefAgenda/bookkeepingFilter";
-import { TickerAgendaCard } from "../dailyBriefAgenda/TickerAgendaCard";
-import { itemsSinceLastVisit } from "../dailyBriefAgenda/sinceYouWereHere";
+import {
+  fetchDailyBriefChangeLog,
+  markDailyBriefChangesSeen,
+  type TickerChangeGroupView,
+} from "../dailyBriefAgenda/dailyBriefChangeLogApi";
+import { describeChangeLogEntry } from "../dailyBriefAgenda/describeChangeLogEntry";
 import { fetchDailyBriefViewState, markDailyBriefViewed } from "../dailyBriefAgenda/dailyBriefViewStateApi";
 import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
 import { ALPHA_PLACEHOLDER_USER_ID } from "../decisionWorkspace/alphaUser";
 import { fetchDailyBriefDraftSummary, type DecisionDraftSummaryView } from "../decisionWorkspace/decisionDraftApi";
-import { fetchStanceForHoldings, fetchStanceForCandidates, type TickerStanceView } from "../stance/stanceApi";
 import { MonitoringFreshnessNote } from "../monitoring/MonitoringFreshnessNote";
 import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNote";
 import { MonitoringChangeFeed } from "../monitoring/MonitoringChangeFeed";
@@ -34,24 +37,38 @@ const PAGE_TITLE_STYLE: CSSProperties = {
 };
 
 type AgendaStatus = { kind: "loading" } | { kind: "error"; message: string } | { kind: "loaded"; agenda: DailyBriefAgendaView };
+type ViewState = { kind: "loading" } | { kind: "unavailable" } | { kind: "loaded"; lastViewedAt: string | null };
+type ChangeLogStatus =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "unavailable" }
+  | { kind: "loaded"; groups: TickerChangeGroupView[] };
 
 /**
- * Daily Brief Engine & Prioritization (Product Sprint 6) -- a complete
- * rebuild around Deliverable 2's own explicit instruction: "instead of
- * presenting independent lists, build one prioritized agenda." The
- * previous v2 page (three independent sections: a client-derived
- * "Today's Priorities" list, plus separately-fetched "Portfolio
- * Changes"/"Watchlist Updates" columns, each with its own silent
- * ordering) is fully replaced -- every one of those three signal
- * sources (`derivePortfolioActions`'s own review-queue/evidence/
- * concentration data, and Change Intelligence's own entries) is now a
- * *source* feeding the one shared `/api/daily-brief-agenda` endpoint
- * (`atlas.alpha.daily_brief_agenda`, Product Sprint 6), not a
- * page-local re-derivation. Every item already answers "why is this
- * here / why today / why should I care" via its own `headline`/
- * `reason`/`portfolioContext` -- this page adds no narrative of its
- * own beyond the summary line (Deliverable 9), itself built from real
- * `PortfolioSummaryView` fields only.
+ * Daily Brief 2.0 (Decision-First Briefing & Notification Lifecycle) --
+ * Daily Brief reports CHANGES in Atlas's investment view, never Atlas's
+ * current view (that is Portfolio/Watchlist/Investment Case's own job,
+ * unchanged by this sprint) and never raw system/bookkeeping activity.
+ * The page's own three-section shape mirrors this sprint's own Phase 7
+ * exactly: "Since your last visit" (real, durably-recorded eligible
+ * changes -- `dailyBriefChangeLogApi.ts`, backed by
+ * `atlas.alpha.daily_brief_change_log`), "Atlas is watching today"
+ * (forward-looking catalysts -- always the calm fallback today, since
+ * no scheduled-catalyst data source exists anywhere in this codebase;
+ * see this sprint's own final report for why that is a documented gap,
+ * not an oversight), and Reviews (intentionally not built this sprint
+ * -- Weekly/Monthly Review is a real future consumer of the same
+ * durable change log, but building it now would be exactly the
+ * "recreate History as another consumer feed" this sprint's own
+ * Non-Goals forbid).
+ *
+ * The former "Since You Were Here" section and the always-shown raw
+ * agenda cards ("Today's most important developments") are both
+ * removed: both re-announced Atlas's *current* state on every visit
+ * (a persistent Reduce recommendation would resurface indefinitely),
+ * which is precisely this sprint's Golden Rule violation. Current-state
+ * review (watchlist candidates, portfolio positions) already has a
+ * home on Portfolio/Watchlist -- unchanged by this sprint.
  */
 export function DailyBriefPage() {
   const { t, language } = useTranslation();
@@ -59,56 +76,20 @@ export function DailyBriefPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<AgendaStatus>({ kind: "loading" });
   const [openDrafts, setOpenDrafts] = useState<DecisionDraftSummaryView[]>([]);
-  /** Atlas Intelligence Sprint 2 (Recommendation Quality &
-   * Actionability, Deliverable 8) -- one ticker->Stance map, covering
-   * both Portfolio holdings and Watchlist candidates (Daily Brief items
-   * span both groups). `AgendaItemRow` itself only ever shows the
-   * current Stance next to an item whose `source` is already
-   * `change_intelligence` -- Change Intelligence's own real, already-
-   * established "did something genuinely change today" eligibility
-   * gate, never a new persisted "previous stance" this Sprint does not
-   * build (see this page's own Sprint 2 addendum below). */
-  const [stanceByTicker, setStanceByTicker] = useState<Map<string, TickerStanceView["stance"]>>(new Map());
-  /** Atlas Intelligence Sprint 8 (Automated Monitoring Operations,
-   * Deliverable 16) -- a separate fetch, deliberately: operational
-   * status is a distinct read model from the agenda itself (Deliverable
-   * 7), never folded into `DailyBriefAgendaView`. */
   const [monitoringStatus, setMonitoringStatus] = useState<MonitoringOperationalStatusView | null>(null);
-  /** Product Intelligence Sprint 3 (Monitoring Intelligence Activation)
-   * -- `GET /api/monitoring/results` (Deliverable 21's own cached read
-   * model) had zero frontend callers before this sprint; only the
-   * operational half above (`fetchMonitoringStatus`) was ever fetched.
-   * A separate fetch, deliberately: this is investment-state
-   * (`MonitoringResultView`), never conflated with `monitoringStatus`
-   * above (operational state), mirroring that exact same distinction
-   * this codebase already enforces at every other layer. Fetch-and-
-   * forget with a silent `AbortError` no-op, matching every other
-   * effect on this page. */
   const [monitoringResultsStatus, setMonitoringResultsStatus] = useState<
     { kind: "loading" } | { kind: "unavailable" } | { kind: "loaded"; results: MonitoringResultView[] }
   >({ kind: "loading" });
-  /** Since You Were Here -- the value read BEFORE this visit, used to
-   * compute this render's own "since you were here" window. Marking a
-   * new `lastViewedAt` happens separately, once, after this value and
-   * the agenda have both successfully loaded (see the effect below) --
-   * never before, so a failed or still-loading page never silently
-   * consumes this visit's own window without the user ever having
-   * seen it. */
-  const [viewState, setViewState] = useState<{ kind: "loading" } | { kind: "unavailable" } | { kind: "loaded"; lastViewedAt: string | null }>({
-    kind: "loading",
-  });
+  /** Read BEFORE this visit's agenda call -- `lastViewedAt === null`
+   * means this is the user's first-ever Daily Brief visit (Phase 6):
+   * nothing is "since your last visit" yet, and this visit's own
+   * agenda build deliberately records nothing into the change log
+   * either (see the agenda-fetch effect below), so a brand-new
+   * portfolio's initial analysis never resurfaces as "changes" on the
+   * second visit. */
+  const [viewState, setViewState] = useState<ViewState>({ kind: "loading" });
   const [hasMarkedViewed, setHasMarkedViewed] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchDailyBriefAgenda(controller.signal)
-      .then((agenda) => setStatus({ kind: "loaded", agenda }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setStatus({ kind: "error", message: error instanceof Error ? error.message : t("common.unknownError") });
-      });
-    return () => controller.abort();
-  }, []);
+  const [changeLogStatus, setChangeLogStatus] = useState<ChangeLogStatus>({ kind: "idle" });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -121,13 +102,47 @@ export function DailyBriefPage() {
     return () => controller.abort();
   }, []);
 
-  /** Marks `lastViewedAt` as now -- deliberately only once the agenda
-   * has *successfully rendered* (both fetches loaded), and only once
-   * per page visit (`hasMarkedViewed`). Marking on page load alone
-   * (before the agenda is confirmed loaded) would risk consuming this
-   * visit's own change window even if the agenda fetch then failed --
-   * the smallest choice that never claims the user saw something they
-   * were never actually shown. */
+  /** Waits for `viewState` to resolve before building the agenda, since
+   * whether this call passes `userId` (and therefore whether it may
+   * durably record an eligible change) depends on knowing first whether
+   * this is a genuine first visit. A `viewState` fetch failure
+   * ("unavailable") also withholds `userId` -- recording without a
+   * trustworthy `lastViewedAt` risks logging onboarding noise as a
+   * "change," which this sprint exists to prevent, not risk. */
+  useEffect(() => {
+    if (viewState.kind === "loading") return;
+    const controller = new AbortController();
+    const isGenuineFirstVisit = viewState.kind === "loaded" && viewState.lastViewedAt === null;
+    const recordingUserId = viewState.kind === "loaded" && !isGenuineFirstVisit ? ALPHA_PLACEHOLDER_USER_ID : undefined;
+    fetchDailyBriefAgenda(controller.signal, recordingUserId)
+      .then((agenda) => setStatus({ kind: "loaded", agenda }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setStatus({ kind: "error", message: error instanceof Error ? error.message : t("common.unknownError") });
+      });
+    return () => controller.abort();
+  }, [viewState.kind]);
+
+  /** The change log itself -- fetched only once this visit's own agenda
+   * build has already run (so a change first detected on this very
+   * visit is already durably recorded and included), and only when
+   * there is a real prior visit to report changes "since." */
+  useEffect(() => {
+    if (status.kind !== "loaded") return;
+    if (viewState.kind !== "loaded" || viewState.lastViewedAt === null) return;
+    const controller = new AbortController();
+    setChangeLogStatus({ kind: "loading" });
+    fetchDailyBriefChangeLog(ALPHA_PLACEHOLDER_USER_ID, controller.signal)
+      .then((groups) => setChangeLogStatus({ kind: "loaded", groups }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setChangeLogStatus({ kind: "unavailable" });
+      });
+    return () => controller.abort();
+  }, [status.kind, viewState.kind]);
+
+  /** Marks `lastViewedAt` as now -- only once the agenda has
+   * successfully rendered, and only once per page visit. */
   useEffect(() => {
     if (hasMarkedViewed || status.kind !== "loaded" || viewState.kind !== "loaded") return;
     setHasMarkedViewed(true);
@@ -161,31 +176,6 @@ export function DailyBriefPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([fetchStanceForHoldings(controller.signal), fetchStanceForCandidates(controller.signal)])
-      .then(([holdings, candidates]) => {
-        const map = new Map<string, TickerStanceView["stance"]>();
-        for (const entry of [...holdings, ...candidates]) map.set(entry.ticker, entry.stance);
-        setStanceByTicker(map);
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-    return () => controller.abort();
-  }, []);
-
-  /** Product Sprint 12 (Decision Workflow Consolidation, Deliverable 4/7
-   * -- Draft Workflow discoverability / Daily Brief Integration):
-   * `fetchDailyBriefDraftSummary` already existed (Sprint 9's own
-   * ADR-DD-001 design anticipated exactly this) with zero callers
-   * anywhere in the frontend. A committed Decision on a case with no
-   * Portfolio holding and no Watchlist entry -- e.g. a brand-new
-   * candidate's first decision, `StartDecisionSection`'s own primary
-   * scenario -- has no visibility anywhere in Daily Brief's own agenda
-   * (scoped to Portfolio/Watchlist groups only, unchanged here), so an
-   * in-progress *draft* had no visibility anywhere at all. This closes
-   * that gap with the endpoint already built for it. */
-  useEffect(() => {
-    const controller = new AbortController();
     fetchDailyBriefDraftSummary(ALPHA_PLACEHOLDER_USER_ID, controller.signal)
       .then((drafts) => setOpenDrafts(drafts))
       .catch((error: unknown) => {
@@ -197,17 +187,21 @@ export function DailyBriefPage() {
   function openInvestmentCase(caseId: string, ticker: string | null) {
     navigate(`/investment-case/${caseId}`, { state: { origin: "daily-brief", ticker } });
   }
-  function openCandidate(ticker: string) {
-    navigate(`/discovery/candidate/${encodeURIComponent(ticker)}`);
-  }
-  function compare(ticker: string) {
-    navigate(`/discovery/compare?a=${encodeURIComponent(ticker)}`);
-  }
-  function openHolding(ticker: string) {
-    navigate(`/portfolio/holding/${encodeURIComponent(ticker)}`);
-  }
-  function goToPortfolio() {
-    navigate("/portfolio");
+
+  /** Marks a change group's own primary entry seen (Phase 8: "seen" is
+   * never "resolved" -- this never touches the recommendation itself,
+   * only that the user has now looked at it), then opens the
+   * Investment Case exactly like every other entry point already does.
+   * Best-effort and optimistic: a failed mark-seen call never blocks
+   * navigation, and the next fetch of this page simply shows the same
+   * NEW dot again rather than silently claiming it was seen. */
+  function openChangeFromCard(group: TickerChangeGroupView) {
+    if (group.isNew) {
+      markDailyBriefChangesSeen(ALPHA_PLACEHOLDER_USER_ID, [group.primary.id])
+        .then((groups) => setChangeLogStatus({ kind: "loaded", groups }))
+        .catch(() => {});
+    }
+    if (group.primary.caseId) openInvestmentCase(group.primary.caseId, group.ticker);
   }
 
   return (
@@ -235,17 +229,13 @@ export function DailyBriefPage() {
         )}
         {status.kind === "error" && <Text color="secondary">{status.message}</Text>}
 
-        {status.kind === "loaded" && <SinceYouWereHereSection agenda={status.agenda} viewState={viewState} locale={locale} />}
+        {status.kind === "loaded" && (
+          <>
+            <SinceYourLastVisitSection viewState={viewState} changeLogStatus={changeLogStatus} onOpen={openChangeFromCard} />
+            <AtlasIsWatchingTodaySection />
+          </>
+        )}
 
-        {/* Implementation Sprint B2 (Hero Reordering): moved down from
-            directly under the page title -- these are Atlas's own
-            operational status ("N companies awaiting analysis"), not
-            its conclusion, the same "raw stats after the opinion, not
-            before it" fix Portfolio's own hero already got this sprint.
-            Still independent of `status.kind` (unchanged behavior --
-            `monitoringStatus` is its own, separately-fetched state, so
-            these notes still show even while the agenda itself is still
-            loading or failed to load); only their position moved. */}
         {monitoringStatus && <MonitoringFreshnessNote status={monitoringStatus} t={t} />}
         {monitoringStatus && (
           <ScopeFreshnessSummaryNote
@@ -287,18 +277,6 @@ export function DailyBriefPage() {
 
             <Divider tone="hairline" />
 
-            <DailyBriefAgendaSection
-              agenda={status.agenda}
-              stanceByTicker={stanceByTicker}
-              onOpenInvestmentCase={openInvestmentCase}
-              onOpenCandidate={openCandidate}
-              onCompare={compare}
-              onOpenHolding={openHolding}
-              onGoToPortfolio={goToPortfolio}
-            />
-
-            <Divider tone="hairline" />
-
             <MonitoringHistorySection
               agenda={status.agenda}
               monitoringResultsStatus={monitoringResultsStatus}
@@ -311,150 +289,161 @@ export function DailyBriefPage() {
   );
 }
 
-/** Since You Were Here -- the only new judgment this section makes is
- * "is `lastViewedAt` known, and if so, which already-real agenda items
- * carry a `since` timestamp after it" (`itemsSinceLastVisit`, pure,
- * tested separately). A genuine first visit (`lastViewedAt === null`)
- * renders nothing here -- "since you were here" presupposes a real
- * prior visit to compare against; inventing first-visit copy would be
- * exactly the fabricated precision this sprint exists to avoid. From
- * the second visit onward, the empty state uses Phase 7's own required
- * exact wording -- never "no events," never "everything OK." */
-function SinceYouWereHereSection({
-  agenda,
+/** Phase 7, Section 1: "Since your last visit" -- the only section
+ * reporting real, durably-recorded eligible changes
+ * (`eligibility.py`'s own materiality rule, applied once on the
+ * backend, never re-derived here). Capped at 3 primary cards, one per
+ * company (Phase 10), with the remainder behind one disclosure -- never
+ * dropped, never hidden permanently. */
+const MAX_VISIBLE_CHANGE_GROUPS = 3;
+
+function SinceYourLastVisitSection({
   viewState,
-  locale,
+  changeLogStatus,
+  onOpen,
 }: {
-  agenda: DailyBriefAgendaView;
-  viewState: { kind: "loading" } | { kind: "unavailable" } | { kind: "loaded"; lastViewedAt: string | null };
-  locale: string;
+  viewState: ViewState;
+  changeLogStatus: ChangeLogStatus;
+  onOpen: (group: TickerChangeGroupView) => void;
 }) {
   const { t } = useTranslation();
-  if (viewState.kind !== "loaded" || viewState.lastViewedAt === null) return null;
-
-  const changed = itemsSinceLastVisit(agenda.items, viewState.lastViewedAt);
-  const lastCheckedText = t("dailyBrief.sinceYouWereHere.lastChecked", {
-    time: new Date(viewState.lastViewedAt).toLocaleString(locale),
-  });
+  // A read-state we can't honestly confirm is rendered as nothing --
+  // never a fabricated "no changes" line when Atlas genuinely doesn't
+  // know whether this is a first visit (Non-Goal: "never fake
+  // read-state").
+  if (viewState.kind !== "loaded") return null;
 
   return (
     <Stack gap="metadata">
-      <Inline gap="row" align="center" wrap style={{ justifyContent: "space-between" }}>
-        <Heading level={2}>{t("dailyBrief.sinceYouWereHere.heading")}</Heading>
-        <Text color="tertiary">{lastCheckedText}</Text>
-      </Inline>
-      {changed.length === 0 ? (
-        <Text color="secondary">{t("dailyBrief.sinceYouWereHere.empty")}</Text>
-      ) : (
-        <Text as="p" style={{ fontWeight: 600 }}>
-          {t(changed.length === 1 ? "dailyBrief.sinceYouWereHere.countOne" : "dailyBrief.sinceYouWereHere.countOther", {
-            count: changed.length,
-          })}
+      <Heading level={2}>{t("dailyBrief.sinceLastVisit.heading")}</Heading>
+      {viewState.lastViewedAt === null ? (
+        <Text color="secondary">{t("dailyBrief.sinceLastVisit.onboardingCalm")}</Text>
+      ) : changeLogStatus.kind === "loading" || changeLogStatus.kind === "idle" ? (
+        <Text role="status" aria-live="polite">
+          {t("common.loading")}
         </Text>
-      )}
-    </Stack>
-  );
-}
-
-/** Daily Brief Compression -- Deliverable 4's own strict ranking: show
- * the highest-priority ticker groups (`groupAgendaByTicker`'s own
- * priority + change-event ordering), collapse the remainder behind one
- * disclosure rather than rendering every group at once. Never a second
- * fetch, never a second sort criterion beyond what `groupAgendaByTicker`
- * already computes from real, existing fields.
- *
- * RC-2, Phase 7 (Daily Brief Calmness): reduced from 5 to 3 -- "Today's
- * most important developments" should mean three real things, not a
- * five-item list that still reads like a queue. Everything past the
- * top 3 remains fully available, one click into the same disclosure
- * as before, never dropped. */
-const MAX_VISIBLE_GROUPS = 3;
-
-function DailyBriefAgendaSection({
-  agenda,
-  stanceByTicker,
-  onOpenInvestmentCase,
-  onOpenCandidate,
-  onCompare,
-  onOpenHolding,
-  onGoToPortfolio,
-}: {
-  agenda: DailyBriefAgendaView;
-  stanceByTicker: Map<string, TickerStanceView["stance"]>;
-  onOpenInvestmentCase: (caseId: string, ticker: string | null) => void;
-  onOpenCandidate: (ticker: string) => void;
-  onCompare: (ticker: string) => void;
-  onOpenHolding: (ticker: string) => void;
-  onGoToPortfolio: () => void;
-}) {
-  const { t } = useTranslation();
-  /* Atlas UX Phase 7B, Phase 1 -- Atlas's own internal bookkeeping (a
-     decision without an outcome, a missing note, an allocation awaiting
-     reconciliation) is process housekeeping, never an investment fact:
-     a ticker whose entire agenda is that kind of housekeeping gets no
-     card here, exactly matching Portfolio's own Attention Required
-     precedent (`PortfolioPage.tsx`'s `AttentionRequiredSection`), so
-     the same real signal never reads as Critical on one page and as
-     nothing at all on the other. */
-  const groups = realAgendaGroups(agenda.items);
-  const visible = groups.slice(0, MAX_VISIBLE_GROUPS);
-  const collapsed = groups.slice(MAX_VISIBLE_GROUPS);
-
-  return (
-    <Stack gap="metadata">
-      <Heading level={2}>{t("dailyBriefAgenda.heading")}</Heading>
-      {groups.length === 0 && <Text color="tertiary">{t("dailyBriefAgenda.empty.noItems")}</Text>}
-      <Stack gap="inter-section">
-        {visible.map((group) => (
-          <TickerAgendaCard
-            key={group.ticker ?? group.items[0]!.id}
-            group={group}
-            stanceByTicker={stanceByTicker}
-            onOpenInvestmentCase={onOpenInvestmentCase}
-            onOpenCandidate={onOpenCandidate}
-            onCompare={onCompare}
-            onOpenHolding={onOpenHolding}
-            onGoToPortfolio={onGoToPortfolio}
-          />
-        ))}
-      </Stack>
-      {collapsed.length > 0 && (
-        <ExpandableDetail
-          summaryLabel={t(
-            collapsed.length === 1 ? "dailyBriefAgenda.collapsed.headingOne" : "dailyBriefAgenda.collapsed.headingOther",
-            { count: collapsed.length },
-          )}
-        >
+      ) : changeLogStatus.kind === "unavailable" ? (
+        <Text color="tertiary" role="alert">
+          {t("dailyBrief.sinceLastVisit.unavailable")}
+        </Text>
+      ) : changeLogStatus.groups.length === 0 ? (
+        <Text color="secondary">{t("dailyBrief.sinceLastVisit.empty")}</Text>
+      ) : (
+        <>
           <Stack gap="inter-section">
-            {collapsed.map((group) => (
-              <TickerAgendaCard
-                key={group.ticker ?? group.items[0]!.id}
-                group={group}
-                stanceByTicker={stanceByTicker}
-                onOpenInvestmentCase={onOpenInvestmentCase}
-                onOpenCandidate={onOpenCandidate}
-                onCompare={onCompare}
-                onOpenHolding={onOpenHolding}
-                onGoToPortfolio={onGoToPortfolio}
-              />
+            {changeLogStatus.groups.slice(0, MAX_VISIBLE_CHANGE_GROUPS).map((group) => (
+              <ChangeGroupCard key={group.ticker} group={group} onOpen={onOpen} />
             ))}
           </Stack>
-        </ExpandableDetail>
+          {changeLogStatus.groups.length > MAX_VISIBLE_CHANGE_GROUPS && (
+            <ExpandableDetail
+              summaryLabel={t(
+                changeLogStatus.groups.length - MAX_VISIBLE_CHANGE_GROUPS === 1
+                  ? "dailyBriefAgenda.collapsed.headingOne"
+                  : "dailyBriefAgenda.collapsed.headingOther",
+                { count: changeLogStatus.groups.length - MAX_VISIBLE_CHANGE_GROUPS },
+              )}
+            >
+              <Stack gap="inter-section">
+                {changeLogStatus.groups.slice(MAX_VISIBLE_CHANGE_GROUPS).map((group) => (
+                  <ChangeGroupCard key={group.ticker} group={group} onOpen={onOpen} />
+                ))}
+              </Stack>
+            </ExpandableDetail>
+          )}
+        </>
       )}
     </Stack>
   );
 }
 
-/** Daily Brief Consolidation -- Monitoring history becomes a
- * collapsed, secondary drill-down (Phase 3's source-of-truth
- * principle: Daily Brief agenda owns "what matters now," Monitoring
- * owns "what happened historically"; no surface should compete with
- * another). `filterDuplicateMonitoringChanges` removes only the exact
- * change lines already surfaced in the agenda above (same ticker, same
- * `reason` string -- structurally the same underlying fact, not a
- * fuzzy guess); every minor change and every change for a ticker with
- * no agenda entry survives untouched, so no real history is lost, only
- * de-duplicated against what is already visible one section up. */
+const NEW_DOT_STYLE: CSSProperties = {
+  display: "inline-block",
+  width: "8px",
+  height: "8px",
+  borderRadius: "50%",
+  background: "var(--color-accent)",
+  flexShrink: 0,
+};
+
+/** One company, one message (Phase 10) -- `group.primary` is the single
+ * real fact this card is built from; `additionalCount` is surfaced as a
+ * plain link into the Investment Case, never a second card, never a
+ * fabricated combined sentence stitching unrelated facts together. */
+function ChangeGroupCard({ group, onOpen }: { group: TickerChangeGroupView; onOpen: (group: TickerChangeGroupView) => void }) {
+  const { t } = useTranslation();
+  const sentence = describeChangeLogEntry(group.primary, t);
+
+  return (
+    <Stack gap="row">
+      <Inline gap="row" align="center">
+        {group.isNew && <span aria-hidden="true" style={NEW_DOT_STYLE} />}
+        <Text as="span" style={{ fontWeight: 600 }}>
+          {group.ticker}
+        </Text>
+        {group.isNew && (
+          <Text as="span" color="tertiary" style={{ fontSize: "var(--type-body-min-size)" }}>
+            {t("dailyBrief.sinceLastVisit.newLabel")}
+          </Text>
+        )}
+      </Inline>
+      <Text color="secondary" as="p">
+        {sentence}
+      </Text>
+      {group.additionalCount > 0 && group.primary.caseId && (
+        <a
+          href="#"
+          style={ACCENT_LINK_STYLE}
+          onClick={(event) => {
+            event.preventDefault();
+            onOpen(group);
+          }}
+        >
+          {t(
+            group.additionalCount === 1 ? "dailyBrief.sinceLastVisit.moreForCompanyOne" : "dailyBrief.sinceLastVisit.moreForCompanyOther",
+            { count: group.additionalCount, ticker: group.ticker },
+          )}
+        </a>
+      )}
+      {group.primary.caseId && (
+        <a
+          href="#"
+          style={ACCENT_LINK_STYLE}
+          onClick={(event) => {
+            event.preventDefault();
+            onOpen(group);
+          }}
+        >
+          {t("dailyBrief.entry.openInvestmentCase")} →
+        </a>
+      )}
+    </Stack>
+  );
+}
+
+/** Phase 7, Section 2: "Atlas is watching today" -- forward-looking
+ * catalysts that may materially affect a holding. No scheduled-catalyst
+ * data source exists anywhere in this codebase today (`CanonicalAnalysis
+ * .catalysts` is an explicit `UnavailableCapability`, and every
+ * leadership-change event's own `effective_date`/`announcement_date` is
+ * hardcoded `None`) -- a documented structural gap, not an oversight
+ * this sprint invents data to paper over. This section therefore always
+ * shows the honest calm state; wiring it to real data is future work
+ * once a catalyst-aware provider exists. */
+function AtlasIsWatchingTodaySection() {
+  const { t } = useTranslation();
+  return (
+    <Stack gap="metadata">
+      <Heading level={2}>{t("dailyBrief.watchingToday.heading")}</Heading>
+      <Text color="secondary">{t("dailyBrief.watchingToday.calm")}</Text>
+    </Stack>
+  );
+}
+
+/** Daily Brief Consolidation -- Monitoring history remains a collapsed,
+ * secondary drill-down (Phase 20: Daily Brief owns "what matters now,"
+ * History stays internal). Unchanged by this sprint beyond reusing the
+ * same `realAgendaGroups` dedup source it always has. */
 function MonitoringHistorySection({
   agenda,
   monitoringResultsStatus,
@@ -487,16 +476,6 @@ function MonitoringHistorySection({
     );
   }
 
-  /* Atlas UX Phase 7B, Phase 1 -- the dedup set includes each reason's
-     own structured fact `label` (the bare, canonical fact statement,
-     e.g. "Data center capex growth decelerates below 10% YoY"), not
-     only the raw `reason[]` text. Confirmed live: a case-condition
-     agenda reason arrives from the backend wrapped in its own ticker
-     prefix and "(satisfied)" suffix, while Monitoring's own
-     `change.reason` wraps the identical fact in a different sentence
-     ("A condition you set for NVDA was met: ..."). Neither wrapped
-     string contains the other, so only the shared, unwrapped `label`
-     reliably identifies them as the same real event. */
   const agendaReasonsByTicker = new Map<string, Set<string>>();
   for (const group of realAgendaGroups(agenda.items)) {
     if (group.ticker === null) continue;
@@ -524,28 +503,15 @@ function MonitoringHistorySection({
   );
 }
 
-/** Atlas UX Phase 7B, Phase 1 -- Deliverable 9's original opening
- * summary showed three equal-weight bold numbers ("N items need
- * attention today" / "N high-priority items to review" / "N holdings
- * tracked") that could disagree with each other and with the agenda
- * list below (see this file's own prior "Internal Alpha Stabilization
- * fix" note, kept below for history): a real investor had no way to
- * know which number was the one that mattered. Phase 7B's own fix
- * chose one combined, bookkeeping-filtered count as the single bold
- * headline.
- *
- * RC-2, Phase 7 (Daily Brief Calmness): even one accurate, honest
- * number -- "35 things need your attention today" -- still reads as a
- * backlog, not a briefing, and the count itself was never the point:
- * the three real cards right below it are. The bold headline is now
- * the calm confirmation state only ("Portfolio stable..."); once there
- * is real work worth naming, "Today's most important developments"
- * (this page's own next heading) carries that framing instead, with
- * the top 3 cards underneath it. Nothing is hidden -- the same total
- * count that used to be the headline now lives as quiet supporting
- * metadata alongside holdings tracked, honest and available, just no
- * longer the first, boldest thing on the page. */
-function PortfolioSummarySection({ agenda, groups }: { agenda: DailyBriefAgendaView; groups: TickerAgendaGroup[] }) {
+/** Quiet operational stats (Atlas UX Phase 7B) -- unchanged by this
+ * sprint. */
+function PortfolioSummarySection({
+  agenda,
+  groups,
+}: {
+  agenda: DailyBriefAgendaView;
+  groups: TickerAgendaGroup[];
+}) {
   const { t } = useTranslation();
   const { summary } = agenda;
   const attentionCount = groups.filter((group) => group.topPriority === "critical" || group.topPriority === "high").length;
