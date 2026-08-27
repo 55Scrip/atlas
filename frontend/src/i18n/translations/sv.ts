@@ -1105,7 +1105,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.origin.company": "Öppnad från bolagsvyn",
 
   // ---------- investment case figma-fidelity rebuild: key metrics / strength-concern-priority ----------
-  "investmentCase.keyMetrics.recommendationLabel": "Beslutsstöd",
+  "investmentCase.keyMetrics.recommendationLabel": "Atlas rekommendation",
   "investmentCase.keyMetrics.convictionLabel": "Analysdjup",
   "investmentCase.keyMetrics.valuationSupportLabel": "Nedsidesstöd",
   "investmentCase.valuationSupport.present": "Nedsidesstöd finns",

@@ -1122,7 +1122,7 @@ export const en = {
   "investmentCase.origin.company": "Opened from Company Workspace",
 
   // ---------- investment case figma-fidelity rebuild: key metrics / strength-concern-priority ----------
-  "investmentCase.keyMetrics.recommendationLabel": "Decision Support",
+  "investmentCase.keyMetrics.recommendationLabel": "Atlas's Recommendation",
   "investmentCase.keyMetrics.convictionLabel": "Analysis Depth",
   "investmentCase.keyMetrics.valuationSupportLabel": "Downside Support",
   "investmentCase.valuationSupport.present": "Downside support present",
