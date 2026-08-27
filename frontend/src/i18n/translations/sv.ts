@@ -1642,7 +1642,7 @@ export const sv: Record<TranslationKey, string> = {
   "watchlist.empty.body": "Lägg till ett bolag för att börja bevaka det. Atlas bygger automatiskt ett Investeringscase för det.",
   "watchlist.empty.cta": "+ Lägg till ditt första bolag",
   "watchlist.table.companyHeader": "Bolag",
-  "watchlist.table.currentViewHeader": "Nuvarande syn",
+  "watchlist.table.ratingsHeader": "Betyg",
   "watchlist.table.whyHeader": "Varför",
   "watchlist.attention.noSignificantChanges": "Inga betydande förändringar",
   "watchlist.table.sectorHeader": "Sektor",

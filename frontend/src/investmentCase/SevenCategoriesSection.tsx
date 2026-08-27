@@ -25,7 +25,7 @@ type Translate = (key: TranslationKey, params?: Record<string, string | number>)
  * second way to reach the same content one scroll away.
  */
 
-const RATING_TIER_TONE: Record<AtlasRating["tier"], StatusTone> = {
+export const RATING_TIER_TONE: Record<AtlasRating["tier"], StatusTone> = {
   excellent: "positive",
   good: "positive",
   fair: "neutral",
@@ -35,7 +35,7 @@ const RATING_TIER_TONE: Record<AtlasRating["tier"], StatusTone> = {
   not_applicable: "neutral",
 };
 
-const RATING_TIER_LABEL_KEY: Record<AtlasRating["tier"], TranslationKey> = {
+export const RATING_TIER_LABEL_KEY: Record<AtlasRating["tier"], TranslationKey> = {
   excellent: "investmentCase.ratings.tier.excellent",
   good: "investmentCase.ratings.tier.good",
   fair: "investmentCase.ratings.tier.fair",

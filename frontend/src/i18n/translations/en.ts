@@ -1654,7 +1654,7 @@ export const en = {
   "watchlist.empty.body": "Add a company to start tracking it. Atlas will build an Investment Case for it automatically.",
   "watchlist.empty.cta": "+ Add Your First Company",
   "watchlist.table.companyHeader": "Company",
-  "watchlist.table.currentViewHeader": "Current view",
+  "watchlist.table.ratingsHeader": "Ratings",
   "watchlist.table.whyHeader": "Why",
   "watchlist.attention.noSignificantChanges": "No significant changes",
   "watchlist.table.sectorHeader": "Sector",

@@ -11,6 +11,7 @@ const ANALYSIS = {
   recommendation: { level: "thesis_intact" },
   confidence: "full",
   evidenceQuality: { coverage: "full" },
+  coverage: { overallCoverage: "substantial_coverage", overallConfidence: "high" },
 };
 
 const EMPTY_AGENDA = { generatedAt: "2026-01-01T00:00:00Z", summary: {}, items: [] };
@@ -35,13 +36,16 @@ function agendaItem(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-function mockFetch(overrides: { entries?: unknown[]; agendaItems?: unknown[] } = {}) {
+function mockFetch(overrides: { entries?: unknown[]; agendaItems?: unknown[]; portfolioFit?: unknown } = {}) {
   vi.stubGlobal(
     "fetch",
     vi.fn((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("/api/cases/") && url.includes("/analysis")) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(ANALYSIS) } as Response);
+      }
+      if (url.includes("/api/portfolio-fit/case/")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.portfolioFit ?? null) } as Response);
       }
       if (url.includes("/api/daily-brief-agenda")) {
         return Promise.resolve({
@@ -192,5 +196,31 @@ describe("WatchlistPage Attention column (Product Intelligence Sprint 2 -- Watch
     await waitFor(() => expect(screen.getAllByText(/^(AAPL|NVDA)$/).length).toBe(3));
     const tickerCells = screen.getAllByText(/^(AAPL|NVDA)$/);
     expect(tickerCells.map((el) => el.textContent)).toEqual(["NVDA", "NVDA", "AAPL"]);
+  });
+});
+
+describe("WatchlistPage compact ratings (Atlas UX Phase 7B, Phase 4 -- Model Propagation)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    __resetAlphaWatchlistCacheForTests();
+  });
+
+  it("shows Investment/Portfolio/Evidence ratings in the shared semantic vocabulary, replacing the old raw Decision Support badge", async () => {
+    mockFetch({ portfolioFit: { caseId: "case-nvda", ticker: "NVDA", overall: "good" } });
+    renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
+    await waitFor(() => expect(screen.getAllByText(/Investering/).length).toBeGreaterThan(0));
+    expect(screen.getAllByText(/Portfölj/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Underlag/).length).toBeGreaterThan(0);
+    // The raw engine label is gone from the table row -- the row's own
+    // rating cluster reads a rated pillar (Investering 6.0), never the
+    // literal old badge text.
+    expect(screen.queryByText("Tesen kvarstår")).not.toBeInTheDocument();
+  });
+
+  it("shows Portfolio as not applicable while its own Fit fetch is still resolving to null, never a fabricated number", async () => {
+    mockFetch({ portfolioFit: null });
+    renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
+    await waitFor(() => expect(screen.getAllByText(/Investering/).length).toBeGreaterThan(0));
+    expect(screen.getAllByText(/Portfölj —/).length).toBeGreaterThan(0);
   });
 });

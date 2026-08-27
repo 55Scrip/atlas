@@ -8,6 +8,8 @@ import {
   CONFIDENCE_TONE,
   DECISION_SUPPORT_BADGE_KEY,
   DECISION_SUPPORT_TONE,
+  type AnalysisCoverageLevel,
+  type ConfidenceLevel,
   type DataFreshnessStatus,
   type DecisionSupportLevel,
   type EvidenceCoverageLevel,
@@ -18,6 +20,9 @@ import { fetchDailyBriefAgenda, type AgendaItemView } from "../dailyBriefAgenda/
 import { PriorityBadge } from "../dailyBriefAgenda/PriorityBadge";
 import { agendaItemHeadline } from "../dailyBriefAgenda/describeAgendaHeadline";
 import { getAlphaWatchlistSnapshot, setAlphaWatchlistData, useAlphaWatchlist } from "../discovery/watchlistActions";
+import { fetchPortfolioFitForCase, type PortfolioFitAssessmentView } from "../portfolioFit/portfolioFitApi";
+import { deriveEvidenceRating, deriveInvestmentRating, derivePortfolioRating } from "../investmentCase/atlasRatingModel";
+import { CompactRatingBadge } from "../investmentCase/CompactRatingBadge";
 
 /**
  * Watchlist Workspace v1 -- exposes Atlas Alpha's existing provisional
@@ -67,6 +72,13 @@ interface CaseAnalysisLite {
   recommendation: { level: DecisionSupportLevel };
   confidence: EvidenceCoverageLevel;
   evidenceQuality: { coverage: EvidenceCoverageLevel } | null;
+  /** Atlas UX Phase 7B, Phase 4 -- the full `/api/cases/{caseId}/analysis`
+   * payload already includes this (it's the same real
+   * `CoverageAssessmentView` `InvestmentCasePage.tsx` reads as
+   * `report.coverage`); widening the type costs no new fetch, and
+   * feeds `deriveEvidenceRating` the same way Investment Case already
+   * does, so a ticker's Evidence rating reads identically here. */
+  coverage: { overallCoverage: AnalysisCoverageLevel; overallConfidence: ConfidenceLevel };
   /** Atlas Intelligence Sprint 8 (Automated Monitoring Operations,
    * Deliverable 10). `null` only when Monitoring has no read model
    * wired for this build. */
@@ -84,6 +96,13 @@ type ListStatus =
   | { kind: "loaded"; entries: WatchlistEntryView[] };
 
 type RowStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; analysis: CaseAnalysisLite };
+
+/** Atlas UX Phase 7B, Phase 4 -- Portfolio Rating is the one pillar
+ * `/api/cases/{caseId}/analysis` doesn't already carry; a genuinely new
+ * per-row fetch, mirroring this same page's own established "a
+ * watchlist is expected to stay small enough that N parallel per-row
+ * fetches are reasonable" precedent for the analysis fetch above. */
+type FitStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; assessment: PortfolioFitAssessmentView | null };
 
 /** Product Intelligence Sprint 2 (Watchlist Intelligence Activation).
  * `unavailable` covers both a genuine fetch failure and the honest
@@ -138,6 +157,7 @@ export function WatchlistPage() {
 
   const listStatus: ListStatus = useAlphaWatchlist();
   const [rowStatuses, setRowStatuses] = useState<Record<string, RowStatus>>({});
+  const [fitStatuses, setFitStatuses] = useState<Record<string, FitStatus>>({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [tickerInput, setTickerInput] = useState("");
   const [addStatus, setAddStatus] = useState<AddStatus>({ kind: "idle" });
@@ -194,6 +214,28 @@ export function WatchlistPage() {
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === "AbortError") return;
           setRowStatuses((current) => ({ ...current, [entry.ticker]: { kind: "error" } }));
+        });
+    }
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listStatus]);
+
+  /** Atlas UX Phase 7B, Phase 4 -- one Portfolio Fit fetch per row,
+   * mirroring the analysis fetch above exactly. Feeds the Portfolio
+   * pillar of the same compact rating cluster Investment Case's own
+   * Seven Categories bar shows, so a ticker's Portfolio rating reads
+   * identically on both pages. */
+  useEffect(() => {
+    if (listStatus.kind !== "loaded") return;
+    const controller = new AbortController();
+    for (const entry of listStatus.entries) {
+      if (fitStatuses[entry.ticker]) continue;
+      setFitStatuses((current) => ({ ...current, [entry.ticker]: { kind: "loading" } }));
+      fetchPortfolioFitForCase(entry.caseId, controller.signal)
+        .then((assessment) => setFitStatuses((current) => ({ ...current, [entry.ticker]: { kind: "loaded", assessment } })))
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          setFitStatuses((current) => ({ ...current, [entry.ticker]: { kind: "error" } }));
         });
     }
     return () => controller.abort();
@@ -322,6 +364,7 @@ export function WatchlistPage() {
               <WatchlistTable
                 entries={listStatus.entries}
                 rowStatuses={rowStatuses}
+                fitStatuses={fitStatuses}
                 agendaStatus={agendaStatus}
                 navigate={navigate}
                 locale={locale}
@@ -550,6 +593,7 @@ function sortByAttention(entries: WatchlistEntryView[], agendaStatus: AgendaStat
 function WatchlistTable({
   entries,
   rowStatuses,
+  fitStatuses,
   agendaStatus,
   navigate,
   locale,
@@ -558,6 +602,7 @@ function WatchlistTable({
 }: {
   entries: WatchlistEntryView[];
   rowStatuses: Record<string, RowStatus>;
+  fitStatuses: Record<string, FitStatus>;
   agendaStatus: AgendaStatus;
   navigate: ReturnType<typeof useNavigate>;
   locale: string;
@@ -572,18 +617,19 @@ function WatchlistTable({
           <tr>
             <th style={headerCellStyle}>{t("watchlist.table.companyHeader")}</th>
             <th style={headerCellStyle}>{t("watchlist.table.sectorHeader")}</th>
-            {/* Status Consolidation (Implementation Sprint B3): the prior
-                Decision Support/Coverage/Monitoring three-badge spread is
-                replaced by the same "Current view" + "Why" pair Portfolio's
-                own Holdings Table now leads with -- Current view is the
-                same real `recommendation.level` (Decision Support) badge,
-                unchanged and unrenamed in its own data; Why is the same
-                real Agenda signal `AttentionCell` already rendered, just
-                under a name that states its purpose instead of its source.
-                Coverage and Monitoring freshness remain real, available
-                data -- one click into the Investment Case away -- they no
-                longer compete for attention as separate row badges. */}
-            <th style={headerCellStyle}>{t("watchlist.table.currentViewHeader")}</th>
+            {/* Atlas UX Phase 7B, Phase 4 -- the single "Current view"
+                Decision Support badge is replaced by the same compact
+                rated pillars Investment Case's own Seven Categories bar
+                shows (Investment, Portfolio, Evidence): the same
+                underlying signals, now in the shared semantic vocabulary
+                instead of a second, page-local badge convention. Upside/
+                Risk/Horizon need Outlook data this page doesn't fetch
+                (would mean a new per-row Investment Case bundle call,
+                same cost class as Discover's own candidate list would
+                need) -- left for a future sprint rather than fetched
+                here, consistent with this sprint's own "propagate where
+                existing data permits" scope. */}
+            <th style={headerCellStyle}>{t("watchlist.table.ratingsHeader")}</th>
             <th style={headerCellStyle}>{t("watchlist.table.whyHeader")}</th>
             <th style={headerCellStyle}>{t("watchlist.table.addedHeader")}</th>
             <th style={headerCellStyle} />
@@ -595,6 +641,7 @@ function WatchlistTable({
               key={entry.ticker}
               entry={entry}
               rowStatus={rowStatuses[entry.ticker]}
+              fitStatus={fitStatuses[entry.ticker]}
               agendaStatus={agendaStatus}
               navigate={navigate}
               locale={locale}
@@ -648,6 +695,7 @@ function AttentionCell({
 function WatchlistTableRow({
   entry,
   rowStatus,
+  fitStatus,
   agendaStatus,
   navigate,
   locale,
@@ -656,6 +704,7 @@ function WatchlistTableRow({
 }: {
   entry: WatchlistEntryView;
   rowStatus: RowStatus | undefined;
+  fitStatus: FitStatus | undefined;
   agendaStatus: AgendaStatus;
   navigate: ReturnType<typeof useNavigate>;
   locale: string;
@@ -666,6 +715,15 @@ function WatchlistTableRow({
   const companyName = loaded?.companyProfile?.name ?? entry.ticker;
   const sector = loaded?.companyProfile?.sector;
   const addedDate = new Date(entry.addedAt).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
+  /** Atlas UX Phase 7B, Phase 4 -- Investment/Evidence read from the
+   * same `loaded` analysis payload already fetched for this row (no
+   * new cost); Portfolio reads from the new per-row Fit fetch, treating
+   * "still loading" the same as "not yet applicable" (`null`), the
+   * identical simplification `InvestmentCasePage.tsx`'s own Seven
+   * Categories bar already makes while its own Fit fetch is pending. */
+  const investmentRating = loaded ? deriveInvestmentRating(loaded.recommendation.level) : null;
+  const evidenceRating = loaded ? deriveEvidenceRating(loaded.coverage.overallCoverage, loaded.coverage.overallConfidence) : null;
+  const portfolioRating = derivePortfolioRating(fitStatus?.kind === "loaded" ? (fitStatus.assessment?.overall ?? null) : null);
 
   const [removeStatus, setRemoveStatus] = useState<RemoveStatus>({ kind: "idle" });
   const actionCellRef = useRef<HTMLTableCellElement>(null);
@@ -762,7 +820,11 @@ function WatchlistTableRow({
       </td>
       <td style={cellStyle}>
         {loaded ? (
-          <StatusBadge label={t(DECISION_SUPPORT_BADGE_KEY[loaded.recommendation.level])} tone={DECISION_SUPPORT_TONE[loaded.recommendation.level]} weight="strong" />
+          <Inline gap="metadata" wrap>
+            <CompactRatingBadge labelKey="investmentCase.ratings.investment.label" rating={investmentRating!} t={t} />
+            <CompactRatingBadge labelKey="investmentCase.ratings.portfolio.label" rating={portfolioRating} t={t} />
+            <CompactRatingBadge labelKey="investmentCase.ratings.evidence.label" rating={evidenceRating!} t={t} />
+          </Inline>
         ) : rowStatus?.kind === "error" ? (
           <Text as="span" color="tertiary">
             {t("watchlist.table.rowLoadError")}
