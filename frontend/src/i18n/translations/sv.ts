@@ -1393,7 +1393,7 @@ export const sv: Record<TranslationKey, string> = {
   "dailyBriefAgenda.action.reviewCandidate": "Granska kandidat",
   "dailyBriefAgenda.action.compare": "Jämför",
   "dailyBriefAgenda.action.goToPortfolio": "Gå till portföljen",
-  "dailyBriefAgenda.heading": "Dagens agenda",
+  "dailyBriefAgenda.heading": "Dagens viktigaste händelser",
   "dailyBriefAgenda.lastUpdated": "Senast uppdaterad {{time}}",
   "dailyBriefAgenda.summary.allStable": "Portföljen är stabil. Inget behöver din uppmärksamhet idag.",
   "dailyBriefAgenda.summary.attentionCountOne": "1 sak behöver din uppmärksamhet idag.",

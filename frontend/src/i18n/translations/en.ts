@@ -1406,7 +1406,7 @@ export const en = {
   "dailyBriefAgenda.action.reviewCandidate": "Review Candidate",
   "dailyBriefAgenda.action.compare": "Compare",
   "dailyBriefAgenda.action.goToPortfolio": "Go to Portfolio",
-  "dailyBriefAgenda.heading": "Today's Agenda",
+  "dailyBriefAgenda.heading": "Today's most important developments",
   "dailyBriefAgenda.lastUpdated": "Last updated {{time}}",
   "dailyBriefAgenda.summary.allStable": "Portfolio stable. Nothing needs your attention today.",
   "dailyBriefAgenda.summary.attentionCountOne": "1 thing needs your attention today.",

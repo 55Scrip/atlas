@@ -357,12 +357,18 @@ function SinceYouWereHereSection({
 }
 
 /** Daily Brief Compression -- Deliverable 4's own strict ranking: show
- * the five highest-priority ticker groups (`groupAgendaByTicker`'s own
+ * the highest-priority ticker groups (`groupAgendaByTicker`'s own
  * priority + change-event ordering), collapse the remainder behind one
  * disclosure rather than rendering every group at once. Never a second
  * fetch, never a second sort criterion beyond what `groupAgendaByTicker`
- * already computes from real, existing fields. */
-const MAX_VISIBLE_GROUPS = 5;
+ * already computes from real, existing fields.
+ *
+ * RC-2, Phase 7 (Daily Brief Calmness): reduced from 5 to 3 -- "Today's
+ * most important developments" should mean three real things, not a
+ * five-item list that still reads like a queue. Everything past the
+ * top 3 remains fully available, one click into the same disclosure
+ * as before, never dropped. */
+const MAX_VISIBLE_GROUPS = 3;
 
 function DailyBriefAgendaSection({
   agenda,
@@ -524,22 +530,21 @@ function MonitoringHistorySection({
  * tracked") that could disagree with each other and with the agenda
  * list below (see this file's own prior "Internal Alpha Stabilization
  * fix" note, kept below for history): a real investor had no way to
- * know which number was the one that mattered. This rebuild chooses
- * exactly one primary number -- real, bookkeeping-filtered Critical and
- * High-priority tickers combined into a single "N things need your
- * attention today," counted from the same `groups` `DailyBriefAgendaSection`
- * itself renders below, so the headline number and the visible list can
- * never contradict each other. Everything else (watchlist opportunities,
- * holdings tracked, cash) is real but secondary, and renders as quiet
- * supporting metadata, never a second bold claim.
+ * know which number was the one that mattered. Phase 7B's own fix
+ * chose one combined, bookkeeping-filtered count as the single bold
+ * headline.
  *
- * (Internal Alpha Stabilization fix, superseded by the above: critical
- * and high-priority counts used to be mutually exclusive (an `if
- * critical, else if high` chain) -- with both present, the summary said
- * only "2 items need attention today," silently dropping the
- * high-priority item from the count even though the full agenda list
- * right below still showed it. The combined count above inherits that
- * fix by construction: both priorities are summed into the one number.) */
+ * RC-2, Phase 7 (Daily Brief Calmness): even one accurate, honest
+ * number -- "35 things need your attention today" -- still reads as a
+ * backlog, not a briefing, and the count itself was never the point:
+ * the three real cards right below it are. The bold headline is now
+ * the calm confirmation state only ("Portfolio stable..."); once there
+ * is real work worth naming, "Today's most important developments"
+ * (this page's own next heading) carries that framing instead, with
+ * the top 3 cards underneath it. Nothing is hidden -- the same total
+ * count that used to be the headline now lives as quiet supporting
+ * metadata alongside holdings tracked, honest and available, just no
+ * longer the first, boldest thing on the page. */
 function PortfolioSummarySection({ agenda, groups }: { agenda: DailyBriefAgendaView; groups: TickerAgendaGroup[] }) {
   const { t } = useTranslation();
   const { summary } = agenda;
@@ -547,15 +552,9 @@ function PortfolioSummarySection({ agenda, groups }: { agenda: DailyBriefAgendaV
 
   return (
     <Stack gap="metadata">
-      {attentionCount === 0 ? (
+      {attentionCount === 0 && (
         <Text as="p" style={{ fontWeight: 600 }}>
           {t("dailyBriefAgenda.summary.allStable")}
-        </Text>
-      ) : (
-        <Text as="p" style={{ fontWeight: 600 }}>
-          {t(attentionCount === 1 ? "dailyBriefAgenda.summary.attentionCountOne" : "dailyBriefAgenda.summary.attentionCountOther", {
-            count: attentionCount,
-          })}
         </Text>
       )}
       {summary.watchlistOpportunityCount > 0 && (
@@ -569,6 +568,13 @@ function PortfolioSummarySection({ agenda, groups }: { agenda: DailyBriefAgendaV
         </Text>
       )}
       <Inline gap="row" wrap>
+        {attentionCount > 0 && (
+          <Text color="tertiary">
+            {t(attentionCount === 1 ? "dailyBriefAgenda.summary.attentionCountOne" : "dailyBriefAgenda.summary.attentionCountOther", {
+              count: attentionCount,
+            })}
+          </Text>
+        )}
         <Text color="tertiary">{t("dailyBriefAgenda.summary.holdingsCount", { count: summary.holdingsCount })}</Text>
         {summary.cashWeightPercent !== null && (
           <Text color="tertiary">{t("dailyBriefAgenda.summary.cash", { percent: summary.cashWeightPercent.toFixed(1) })}</Text>
