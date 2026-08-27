@@ -599,9 +599,9 @@ export const sv: Record<TranslationKey, string> = {
   "decisionSupport.statement.exit_supported": "Nuvarande underlag stöder att avyttra positionen.",
   "decisionSupport.statement.no_action_supported": "Nuvarande underlag stöder inte att inleda en position i detta värdepapper.",
   "decisionSupport.statement.insufficient_evidence": "Nuvarande underlag räcker inte för att stödja någon portföljåtgärd.",
-  "investmentCase.analysis.decisionHistory.heading": "Beslutshistorik",
+  "investmentCase.analysis.decisionHistory.heading": "Dina beslut",
   "investmentCase.analysis.decisionHistory.empty": "Inga beslut registrerade ännu.",
-  "investmentCase.analysis.decisionHistory.openReasoningWorkspace": "Öppna resonemangsarbetsyta →",
+  "investmentCase.analysis.decisionHistory.openReasoningWorkspace": "Se hela resonemanget →",
   "investmentCase.analysis.observations.heading": "Investerarens observationer",
   "investmentCase.analysis.observations.empty": "Inga observationer registrerade ännu — analysen kräver inga.",
   "investmentCase.analysis.outcomes.heading": "Utfall",
@@ -892,7 +892,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.moreDetails.subheading": "Underliggande dokumentation",
 
   // ---------- investment case v2: decision actions ----------
-  "investmentCase.actions.recordDecisionTrigger": "Registrera ett beslut",
+  "investmentCase.actions.recordDecisionTrigger": "Notera ditt resonemang",
   "investmentCase.actions.outcomeAwaitingNudgeOne": "{{count}} beslut väntar på ett utfall",
   "investmentCase.actions.outcomeAwaitingNudgeOther": "{{count}} beslut väntar på ett utfall",
   "investmentCase.actions.heading": "Vad vill du göra?",
@@ -1661,7 +1661,7 @@ export const sv: Record<TranslationKey, string> = {
   // ---------- decision workspace (Sprint 13) ----------
   "decisionWorkspace.loading": "Läser in resonemangsytan…",
   "decisionWorkspace.loadError": "Kunde inte läsa in resonemangsytan för detta beslut: {{message}}",
-  "decisionWorkspace.heading": "Beslutsarbetsyta",
+  "decisionWorkspace.heading": "Ditt resonemang",
   "decisionWorkspace.backToInvestmentCase": "← Tillbaka till investeringscaset",
 
   "decisionWorkspace.decisionSection.heading": "Beslut",

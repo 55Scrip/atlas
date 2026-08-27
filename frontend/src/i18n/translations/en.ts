@@ -601,9 +601,9 @@ export const en = {
   "decisionSupport.statement.exit_supported": "Current evidence supports exiting the position.",
   "decisionSupport.statement.no_action_supported": "Current evidence does not support initiating a position in this security.",
   "decisionSupport.statement.insufficient_evidence": "Current evidence is insufficient to support any portfolio action.",
-  "investmentCase.analysis.decisionHistory.heading": "Decision History",
+  "investmentCase.analysis.decisionHistory.heading": "Your Decisions",
   "investmentCase.analysis.decisionHistory.empty": "No Decisions recorded yet.",
-  "investmentCase.analysis.decisionHistory.openReasoningWorkspace": "Open Reasoning Workspace →",
+  "investmentCase.analysis.decisionHistory.openReasoningWorkspace": "See the full reasoning →",
   "investmentCase.analysis.observations.heading": "Investor Observations",
   "investmentCase.analysis.observations.empty": "No Observations recorded yet — analysis does not require any.",
   "investmentCase.analysis.outcomes.heading": "Outcomes",
@@ -900,7 +900,7 @@ export const en = {
   "investmentCase.moreDetails.subheading": "Underlying record",
 
   // ---------- investment case v2: decision actions ----------
-  "investmentCase.actions.recordDecisionTrigger": "Record a decision",
+  "investmentCase.actions.recordDecisionTrigger": "Note your reasoning",
   "investmentCase.actions.outcomeAwaitingNudgeOne": "{{count}} decision awaiting an outcome",
   "investmentCase.actions.outcomeAwaitingNudgeOther": "{{count}} decisions awaiting an outcome",
   "investmentCase.actions.heading": "What would you like to do?",
@@ -1673,7 +1673,7 @@ export const en = {
   // ---------- decision workspace (Sprint 13) ----------
   "decisionWorkspace.loading": "Loading the reasoning workspace…",
   "decisionWorkspace.loadError": "Could not load this Decision's reasoning workspace: {{message}}",
-  "decisionWorkspace.heading": "Decision Workspace",
+  "decisionWorkspace.heading": "Your Reasoning",
   "decisionWorkspace.backToInvestmentCase": "← Back to Investment Case",
 
   "decisionWorkspace.decisionSection.heading": "Decision",
