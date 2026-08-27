@@ -66,6 +66,19 @@ describe("filterDuplicateMonitoringChanges (Daily Brief Consolidation)", () => {
     expect(filtered).toEqual([]);
   });
 
+  it("drops a change whose bare reason is already shown in the agenda wrapped in a ticker prefix and '(Satisfied)' suffix (Atlas UX Phase 7B, Phase 1 -- confirmed live: NVDA's capex signal duplicated because case-condition agenda reasons arrive pre-wrapped)", () => {
+    const agendaReasons = new Map([
+      ["NVDA", new Set(["NVDA: Data center capex growth decelerates below 10% YoY (Satisfied)"])],
+    ]);
+    const wrapped = result({
+      caseId: "case-nvda",
+      ticker: "NVDA",
+      changes: [change({ reason: "Data center capex growth decelerates below 10% YoY" })],
+    });
+    const filtered = filterDuplicateMonitoringChanges([wrapped], agendaReasons);
+    expect(filtered).toEqual([]);
+  });
+
   it("partially filters a ticker with both a duplicated and a unique change, keeping only the unique one", () => {
     const agendaReasons = new Map([["AMAT", new Set(["duplicate reason"])]]);
     const mixed = result({

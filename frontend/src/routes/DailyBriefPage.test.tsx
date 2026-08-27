@@ -105,33 +105,69 @@ describe("DailyBriefPage (Daily Brief Engine & Prioritization)", () => {
   it("shows the all-stable summary line when there are no critical or high items", async () => {
     mockFetch(agendaResponse({ summary: { holdingsCount: 2, criticalCount: 0, highCount: 0, watchlistOpportunityCount: 0, cashWeightPercent: null, concentrationLevel: "Low" }, items: [] }));
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("Portföljen är stabil. Inga kritiska eller högprioriterade förändringar.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Portföljen är stabil. Inget behöver din uppmärksamhet idag.")).toBeInTheDocument());
   });
 
-  it("shows the critical-count summary line when critical items exist", async () => {
+  it("shows the one primary attention count when a real critical item exists", async () => {
     mockFetch(agendaResponse());
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("1 punkt behöver uppmärksamhet idag.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("1 sak behöver din uppmärksamhet idag.")).toBeInTheDocument());
   });
 
-  it("shows both the critical and high-priority counts together, never silently dropping one (Internal Alpha Stabilization fix)", async () => {
-    mockFetch(agendaResponse({ summary: { holdingsCount: 3, criticalCount: 2, highCount: 1, watchlistOpportunityCount: 0, cashWeightPercent: null, concentrationLevel: "Elevated" } }));
+  it("combines critical and high-priority tickers into the one primary count -- never two competing numbers (Atlas UX Phase 7B, Phase 1)", async () => {
+    mockFetch(
+      agendaResponse({
+        items: [
+          agendaItem({ id: "e1:AAPL", ticker: "AAPL", priority: "critical" }),
+          agendaItem({ id: "e2:MSFT", ticker: "MSFT", caseId: "case-msft", priority: "critical", headline: "MSFT: real signal", reason: ["MSFT: real signal"] }),
+          agendaItem({ id: "e3:NVDA", ticker: "NVDA", caseId: "case-nvda", priority: "high", headline: "NVDA: real signal", reason: ["NVDA: real signal"] }),
+        ],
+      }),
+    );
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("2 punkter behöver uppmärksamhet idag.")).toBeInTheDocument());
-    expect(screen.getByText("1 högprioriterad punkt att granska.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("3 saker behöver din uppmärksamhet idag.")).toBeInTheDocument());
+    // Never a second, separately-worded "high-priority" statement --
+    // one primary number only, matching what the agenda list below it
+    // actually shows.
+    expect(screen.queryByText(/högprioriterad/)).not.toBeInTheDocument();
   });
 
-  it("shows only the high-priority line when no critical items exist", async () => {
-    mockFetch(agendaResponse({ summary: { holdingsCount: 3, criticalCount: 0, highCount: 2, watchlistOpportunityCount: 0, cashWeightPercent: null, concentrationLevel: "Elevated" } }));
+  it("counts a high-priority-only ticker in the same one primary number, never a second line", async () => {
+    mockFetch(
+      agendaResponse({
+        items: [agendaItem({ priority: "high" })],
+      }),
+    );
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("2 högprioriterade punkter att granska.")).toBeInTheDocument());
-    expect(screen.queryByText(/behöver uppmärksamhet idag/)).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("1 sak behöver din uppmärksamhet idag.")).toBeInTheDocument());
+    expect(screen.queryByText(/högprioriterad/)).not.toBeInTheDocument();
+  });
+
+  it("never counts Atlas's own bookkeeping toward the attention count, and never gives it a card (Atlas UX Phase 7B, Phase 1)", async () => {
+    mockFetch(
+      agendaResponse({
+        items: [
+          agendaItem({
+            priority: "critical",
+            headline: "MSFT: a decision is missing a note explaining why",
+            reason: ["MSFT: a decision is missing a note explaining why"],
+            reasonFacts: [{ code: "workflow_gap", value: "decision_without_outcome" }],
+            ticker: "MSFT",
+            caseId: "case-msft",
+          }),
+        ],
+      }),
+    );
+    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
+    await waitFor(() => expect(screen.getByText("Portföljen är stabil. Inget behöver din uppmärksamhet idag.")).toBeInTheDocument());
+    expect(screen.queryByText("MSFT")).not.toBeInTheDocument();
+    expect(screen.queryByText(/^\d+ sak(er)? behöver din uppmärksamhet idag\.$/)).not.toBeInTheDocument();
   });
 
   it("never shows a watchlist-opportunity line when the count is zero", async () => {
     mockFetch(agendaResponse());
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("1 punkt behöver uppmärksamhet idag.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("1 sak behöver din uppmärksamhet idag.")).toBeInTheDocument());
     expect(screen.queryByText(/bevakningslistemöjlighet/)).not.toBeInTheDocument();
   });
 
@@ -145,7 +181,7 @@ describe("DailyBriefPage (Daily Brief Engine & Prioritization)", () => {
   it("omits the cash line entirely when cash is unrecorded, rather than fabricating a value", async () => {
     mockFetch(agendaResponse({ summary: { holdingsCount: 1, criticalCount: 1, highCount: 0, watchlistOpportunityCount: 0, cashWeightPercent: null, concentrationLevel: null } }));
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText("1 punkt behöver uppmärksamhet idag.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("1 sak behöver din uppmärksamhet idag.")).toBeInTheDocument());
     expect(screen.queryByText(/Kassa:/)).not.toBeInTheDocument();
   });
 

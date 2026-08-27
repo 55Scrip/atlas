@@ -4,7 +4,8 @@ import type { CSSProperties } from "react";
 import { ACCENT_LINK_STYLE, Container, Divider, Heading, Inline, Stack, Text } from "../foundation";
 import { useTranslation } from "../i18n";
 import { fetchDailyBriefAgenda, type DailyBriefAgendaView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
-import { groupAgendaByTicker } from "../dailyBriefAgenda/groupAgendaByTicker";
+import type { TickerAgendaGroup } from "../dailyBriefAgenda/groupAgendaByTicker";
+import { realAgendaGroups } from "../dailyBriefAgenda/bookkeepingFilter";
 import { TickerAgendaCard } from "../dailyBriefAgenda/TickerAgendaCard";
 import { itemsSinceLastVisit } from "../dailyBriefAgenda/sinceYouWereHere";
 import { fetchDailyBriefViewState, markDailyBriefViewed } from "../dailyBriefAgenda/dailyBriefViewStateApi";
@@ -263,7 +264,7 @@ export function DailyBriefPage() {
           <>
             <Divider tone="hairline" />
 
-            <PortfolioSummarySection agenda={status.agenda} />
+            <PortfolioSummarySection agenda={status.agenda} groups={realAgendaGroups(status.agenda.items)} />
 
             {openDrafts.length > 0 && (
               <>
@@ -380,14 +381,22 @@ function DailyBriefAgendaSection({
   onGoToPortfolio: () => void;
 }) {
   const { t } = useTranslation();
-  const groups = groupAgendaByTicker(agenda.items);
+  /* Atlas UX Phase 7B, Phase 1 -- Atlas's own internal bookkeeping (a
+     decision without an outcome, a missing note, an allocation awaiting
+     reconciliation) is process housekeeping, never an investment fact:
+     a ticker whose entire agenda is that kind of housekeeping gets no
+     card here, exactly matching Portfolio's own Attention Required
+     precedent (`PortfolioPage.tsx`'s `AttentionRequiredSection`), so
+     the same real signal never reads as Critical on one page and as
+     nothing at all on the other. */
+  const groups = realAgendaGroups(agenda.items);
   const visible = groups.slice(0, MAX_VISIBLE_GROUPS);
   const collapsed = groups.slice(MAX_VISIBLE_GROUPS);
 
   return (
     <Stack gap="metadata">
       <Heading level={2}>{t("dailyBriefAgenda.heading")}</Heading>
-      {agenda.items.length === 0 && <Text color="tertiary">{t("dailyBriefAgenda.empty.noItems")}</Text>}
+      {groups.length === 0 && <Text color="tertiary">{t("dailyBriefAgenda.empty.noItems")}</Text>}
       <Stack gap="inter-section">
         {visible.map((group) => (
           <TickerAgendaCard
@@ -471,10 +480,21 @@ function MonitoringHistorySection({
     );
   }
 
+  /* Atlas UX Phase 7B, Phase 1 -- the dedup set includes each reason's
+     own structured fact `label` (the bare, canonical fact statement,
+     e.g. "Data center capex growth decelerates below 10% YoY"), not
+     only the raw `reason[]` text. Confirmed live: a case-condition
+     agenda reason arrives from the backend wrapped in its own ticker
+     prefix and "(satisfied)" suffix, while Monitoring's own
+     `change.reason` wraps the identical fact in a different sentence
+     ("A condition you set for NVDA was met: ..."). Neither wrapped
+     string contains the other, so only the shared, unwrapped `label`
+     reliably identifies them as the same real event. */
   const agendaReasonsByTicker = new Map<string, Set<string>>();
-  for (const group of groupAgendaByTicker(agenda.items)) {
+  for (const group of realAgendaGroups(agenda.items)) {
     if (group.ticker === null) continue;
-    agendaReasonsByTicker.set(group.ticker, new Set(group.reasons));
+    const labels = group.reasonFacts.map((fact) => fact?.label).filter((label): label is string => !!label);
+    agendaReasonsByTicker.set(group.ticker, new Set([...group.reasons, ...labels]));
   }
   const deduplicated = filterDuplicateMonitoringChanges(monitoringResultsStatus.results, agendaReasonsByTicker);
   const eventCount = deduplicated.reduce((total, result) => total + result.changes.length, 0);
@@ -497,44 +517,43 @@ function MonitoringHistorySection({
   );
 }
 
-/** Deliverable 9 -- a concise opening summary, entirely from real
- * `PortfolioSummaryView` fields. No invented metric: cash is shown as
- * a plain fact (not "unchanged" -- this engine tracks no cash history
- * to honestly claim that), and every count line is omitted entirely
- * when it would be zero, rather than a padded "0 opportunities" line.
+/** Atlas UX Phase 7B, Phase 1 -- Deliverable 9's original opening
+ * summary showed three equal-weight bold numbers ("N items need
+ * attention today" / "N high-priority items to review" / "N holdings
+ * tracked") that could disagree with each other and with the agenda
+ * list below (see this file's own prior "Internal Alpha Stabilization
+ * fix" note, kept below for history): a real investor had no way to
+ * know which number was the one that mattered. This rebuild chooses
+ * exactly one primary number -- real, bookkeeping-filtered Critical and
+ * High-priority tickers combined into a single "N things need your
+ * attention today," counted from the same `groups` `DailyBriefAgendaSection`
+ * itself renders below, so the headline number and the visible list can
+ * never contradict each other. Everything else (watchlist opportunities,
+ * holdings tracked, cash) is real but secondary, and renders as quiet
+ * supporting metadata, never a second bold claim.
  *
- * Internal Alpha Stabilization fix: critical and high-priority counts
- * used to be mutually exclusive (an `if critical, else if high` chain)
- * -- with both present, the summary said only "2 items need attention
- * today," silently dropping the high-priority item from the count even
- * though the full agenda list right below still showed it. A real
- * investor reading "2" then counting 3+ rows in the list is exactly the
- * "no contradictions" violation this stabilization sprint targets. Both
- * lines now render whenever their count is nonzero -- no new copy, the
- * `highCount` strings already existed and were simply never reachable
- * together with a nonzero `criticalCount`. */
-function PortfolioSummarySection({ agenda }: { agenda: DailyBriefAgendaView }) {
+ * (Internal Alpha Stabilization fix, superseded by the above: critical
+ * and high-priority counts used to be mutually exclusive (an `if
+ * critical, else if high` chain) -- with both present, the summary said
+ * only "2 items need attention today," silently dropping the
+ * high-priority item from the count even though the full agenda list
+ * right below still showed it. The combined count above inherits that
+ * fix by construction: both priorities are summed into the one number.) */
+function PortfolioSummarySection({ agenda, groups }: { agenda: DailyBriefAgendaView; groups: TickerAgendaGroup[] }) {
   const { t } = useTranslation();
   const { summary } = agenda;
+  const attentionCount = groups.filter((group) => group.topPriority === "critical" || group.topPriority === "high").length;
 
   return (
     <Stack gap="metadata">
-      {summary.criticalCount === 0 && summary.highCount === 0 && (
+      {attentionCount === 0 ? (
         <Text as="p" style={{ fontWeight: 600 }}>
           {t("dailyBriefAgenda.summary.allStable")}
         </Text>
-      )}
-      {summary.criticalCount > 0 && (
+      ) : (
         <Text as="p" style={{ fontWeight: 600 }}>
-          {t(summary.criticalCount === 1 ? "dailyBriefAgenda.summary.criticalCountOne" : "dailyBriefAgenda.summary.criticalCountOther", {
-            count: summary.criticalCount,
-          })}
-        </Text>
-      )}
-      {summary.highCount > 0 && (
-        <Text as="p" style={{ fontWeight: summary.criticalCount > 0 ? 400 : 600 }} color={summary.criticalCount > 0 ? "secondary" : "primary"}>
-          {t(summary.highCount === 1 ? "dailyBriefAgenda.summary.highCountOne" : "dailyBriefAgenda.summary.highCountOther", {
-            count: summary.highCount,
+          {t(attentionCount === 1 ? "dailyBriefAgenda.summary.attentionCountOne" : "dailyBriefAgenda.summary.attentionCountOther", {
+            count: attentionCount,
           })}
         </Text>
       )}
