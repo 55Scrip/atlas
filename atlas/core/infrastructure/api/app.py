@@ -54,6 +54,7 @@ from atlas.alpha.security_identity_evidence.api.errors import (
 from atlas.alpha.security_identity_evidence.api.router import router as security_identity_evidence_router
 from atlas.alpha.watchlist.api.router import router as alpha_watchlist_router
 from atlas.alpha.daily_brief_view_state.api.router import router as daily_brief_view_state_router
+from atlas.alpha.daily_brief_change_log.api.router import router as daily_brief_change_log_router
 from atlas.core.infrastructure.api.assumption.errors import (
     register_error_handlers as register_assumption_error_handlers,
 )
@@ -137,6 +138,12 @@ def create_app() -> FastAPI:
     # nothing but its own one-column table; no other package depends
     # on it.
     app.include_router(daily_brief_view_state_router)
+    # Daily Brief 2.0: the durable change log (`atlas/alpha/daily_brief
+    # _change_log/`) -- one new table, read by Daily Brief's own
+    # "Since your last visit" section, written as a side effect of
+    # `GET /daily-brief-agenda` itself (see that router's own
+    # docstring for why the write belongs there and not here).
+    app.include_router(daily_brief_change_log_router)
     # ATLAS-015: the Portfolio Status report is a second, sibling
     # composition point with the same Alpha/Core boundary as the line
     # above -- authored and owned in `atlas/alpha/portfolio_status/`,
