@@ -7,8 +7,15 @@ from __future__ import annotations
 
 from atlas.alpha.portfolio_import.models import RowResolutionStatus
 from atlas.alpha.portfolio_import.service import PortfolioImportPreviewService
+from atlas.alpha.security_discovery.models import SecurityCandidate
 
 _service = PortfolioImportPreviewService()
+
+
+def _fake_candidate(ticker: str, display_name: str) -> SecurityCandidate:
+    return SecurityCandidate(
+        ticker=ticker, display_name=display_name, cik=1, discovery_method="title_canonical"
+    )
 
 
 class TestRealBrokerExport:
@@ -80,6 +87,47 @@ class TestCompanyNameResolution:
         raw = "Company,Ticker,Weight\nSome Unlisted Alias,QCOM,100"
         preview = _service.preview(raw)
         assert preview.rows[0].ticker == "QCOM"
+
+
+class TestSecurityDiscoveryFallback:
+    def test_a_single_discovery_match_auto_resolves(self):
+        def discover(query):
+            return (_fake_candidate("ASML", "ASML Holding N.V."),)
+
+        raw = "Name;Weight\nASML Holding;100"
+        preview = _service.preview(raw, discover=discover)
+        row = preview.rows[0]
+        assert row.status == RowResolutionStatus.RESOLVED
+        assert row.ticker == "ASML"
+
+    def test_multiple_discovery_matches_ask_one_clarification_question(self):
+        def discover(query):
+            return (
+                _fake_candidate("BRK.A", "Berkshire Hathaway Inc Class A"),
+                _fake_candidate("BRK.B", "Berkshire Hathaway Inc Class B"),
+            )
+
+        raw = "Name;Weight\nBerkshire Hathaway;100"
+        preview = _service.preview(raw, discover=discover)
+        row = preview.rows[0]
+        assert row.status == RowResolutionStatus.AMBIGUOUS
+        assert row.ticker is None
+        assert {c.ticker for c in row.candidates} == {"BRK.A", "BRK.B"}
+        assert preview.needs_review is True
+
+    def test_zero_discovery_matches_falls_back_to_unresolved(self):
+        def discover(query):
+            return ()
+
+        raw = "Name;Weight\nSchneider Electric;100"
+        preview = _service.preview(raw, discover=discover)
+        assert preview.rows[0].status == RowResolutionStatus.UNRESOLVED
+
+    def test_no_discover_function_behaves_exactly_as_before(self):
+        raw = "Name;Weight\nAMD;100"
+        preview = _service.preview(raw)
+        assert preview.rows[0].status == RowResolutionStatus.RESOLVED
+        assert preview.rows[0].ticker == "AMD"
 
 
 class TestDuplicateDetection:

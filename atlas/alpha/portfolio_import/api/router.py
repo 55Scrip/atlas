@@ -16,8 +16,10 @@ from fastapi import APIRouter, Depends
 from atlas.alpha.portfolio_import.api.dependencies import (
     get_existing_tickers,
     get_portfolio_import_preview_service,
+    get_security_discovery_fn,
 )
 from atlas.alpha.portfolio_import.api.schemas import ImportPreviewRequestBody, ImportPreviewView
+from atlas.alpha.portfolio_import.resolution_service import DiscoverFn
 from atlas.alpha.portfolio_import.service import PortfolioImportPreviewService
 
 router = APIRouter(prefix="/alpha-portfolio/import", tags=["alpha-portfolio-import"])
@@ -27,7 +29,8 @@ router = APIRouter(prefix="/alpha-portfolio/import", tags=["alpha-portfolio-impo
 def preview_import(
     payload: ImportPreviewRequestBody,
     existing_tickers: frozenset[str] = Depends(get_existing_tickers),
+    discover: DiscoverFn = Depends(get_security_discovery_fn),
     service: PortfolioImportPreviewService = Depends(get_portfolio_import_preview_service),
 ) -> ImportPreviewView:
-    preview = service.preview(payload.raw_text, existing_tickers)
+    preview = service.preview(payload.raw_text, existing_tickers, discover=discover)
     return ImportPreviewView.from_domain(preview)

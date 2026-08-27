@@ -9,16 +9,20 @@ from __future__ import annotations
 
 from atlas.alpha.portfolio_import.duplicate_detection import apply_duplicate_detection
 from atlas.alpha.portfolio_import.models import ImportPreview, RowResolutionStatus
-from atlas.alpha.portfolio_import.resolution_service import resolve_row
+from atlas.alpha.portfolio_import.resolution_service import DiscoverFn, resolve_row
 from atlas.alpha.portfolio_import.row_parser import parse_input
 
 
 class PortfolioImportPreviewService:
     def preview(
-        self, raw_text: str, existing_tickers: frozenset[str] = frozenset()
+        self,
+        raw_text: str,
+        existing_tickers: frozenset[str] = frozenset(),
+        *,
+        discover: DiscoverFn | None = None,
     ) -> ImportPreview:
         parsed_input = parse_input(raw_text)
-        resolved_rows = tuple(resolve_row(row) for row in parsed_input.rows)
+        resolved_rows = tuple(resolve_row(row, discover=discover) for row in parsed_input.rows)
         rows = apply_duplicate_detection(resolved_rows, existing_tickers)
 
         currencies = {

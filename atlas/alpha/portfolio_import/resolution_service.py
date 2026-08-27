@@ -1,19 +1,27 @@
-"""Company/ticker resolution -- ticker-resolution priority steps 1-3
-(exact ticker, exact company name, registry alias lookup). Steps 4-5
-(the `security_discovery` fallback and the one-question clarification
-for genuine ambiguity) are Phase 3 follow-up work, per the Zero-Effort
-Onboarding Architecture's own Implementation Plan -- a row this module
-can't resolve becomes `UNRESOLVED`, not a guess.
+"""Company/ticker resolution -- the full five-step priority: exact
+ticker, exact company name, registry alias lookup, the `security_
+discovery` fallback, and a one-question clarification for genuine
+ambiguity. A row nothing here can resolve becomes `UNRESOLVED`, never a
+guess.
 """
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 
 from atlas.alpha.portfolio_import.instrument_registry import lookup_instrument
-from atlas.alpha.portfolio_import.models import ColumnRole, ParsedHoldingRow, RowResolutionStatus
+from atlas.alpha.portfolio_import.models import (
+    ColumnRole,
+    ParsedHoldingRow,
+    ResolutionCandidate,
+    RowResolutionStatus,
+)
 from atlas.alpha.portfolio_import.row_parser import RawRow, parse_numeric
+from atlas.alpha.security_discovery.models import SecurityCandidate
 
 _TICKER_SHAPE_PATTERN = re.compile(r"^[A-Za-z]{1,5}([.-][A-Za-z]{1,2})?$")
+
+DiscoverFn = Callable[[str], "tuple[SecurityCandidate, ...]"]
 
 
 def _looks_like_explicit_ticker(trimmed: str) -> bool:
@@ -23,7 +31,7 @@ def _looks_like_explicit_ticker(trimmed: str) -> bool:
     return bool(_TICKER_SHAPE_PATTERN.match(trimmed)) and trimmed == trimmed.upper()
 
 
-def resolve_row(row: RawRow) -> ParsedHoldingRow:
+def resolve_row(row: RawRow, *, discover: DiscoverFn | None = None) -> ParsedHoldingRow:
     company_name = row.fields.get(ColumnRole.COMPANY_NAME)
     ticker_field = row.fields.get(ColumnRole.TICKER)
 
@@ -37,6 +45,7 @@ def resolve_row(row: RawRow) -> ParsedHoldingRow:
 
     ticker: str | None = None
     message: str | None = None
+    candidates: tuple[ResolutionCandidate, ...] = ()
 
     if ticker_field:
         # Priority 1: the source already told us the ticker directly.
@@ -52,8 +61,23 @@ def resolve_row(row: RawRow) -> ParsedHoldingRow:
                     f"{company_name!r} is a recognized {registry_hit.instrument_type}, "
                     "not a supported equity holding."
                 )
-        elif _looks_like_explicit_ticker(company_name.strip()):
-            ticker = company_name.strip().upper()
+        else:
+            # Priority 4: security_discovery's own exact ticker-symbol
+            # or canonical-title match -- SEC-filer coverage only, so a
+            # Nordic name/ticker this misses still falls through to the
+            # shape heuristic below rather than staying unresolved.
+            discovered = discover(company_name) if discover is not None else ()
+            if len(discovered) == 1:
+                ticker = discovered[0].ticker
+            elif len(discovered) > 1:
+                # Priority 5: genuine ambiguity -- one clarification
+                # question, never a guess (e.g. Berkshire's A/B classes).
+                candidates = tuple(
+                    ResolutionCandidate(ticker=c.ticker, display_name=c.display_name)
+                    for c in discovered
+                )
+            elif _looks_like_explicit_ticker(company_name.strip()):
+                ticker = company_name.strip().upper()
 
     def _parse_field(role: ColumnRole) -> tuple[float | None, bool]:
         """Returns (value, had_invalid_text) -- `had_invalid_text` is
@@ -86,6 +110,21 @@ def resolve_row(row: RawRow) -> ParsedHoldingRow:
     currency = row.fields.get(ColumnRole.CURRENCY)
     if currency is not None:
         currency = currency.strip().upper() or None
+
+    if candidates:
+        return ParsedHoldingRow(
+            line_number=row.line_number,
+            raw=row.raw,
+            original_name=company_name,
+            quantity=quantity,
+            price=price,
+            value_absolute=value_absolute,
+            weight_percent=weight,
+            currency=currency,
+            status=RowResolutionStatus.AMBIGUOUS,
+            message=f"Atlas found more than one match for {company_name!r}.",
+            candidates=candidates,
+        )
 
     if ticker is None:
         return ParsedHoldingRow(

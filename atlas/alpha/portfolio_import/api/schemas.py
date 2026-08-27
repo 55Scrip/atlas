@@ -5,12 +5,21 @@ same convention `atlas.alpha.portfolio.api.schemas` already follows.
 """
 from __future__ import annotations
 
-from atlas.alpha.portfolio_import.models import ImportPreview, ParsedHoldingRow
+from atlas.alpha.portfolio_import.models import ImportPreview, ParsedHoldingRow, ResolutionCandidate
 from atlas.core.infrastructure.api.serialization import CamelModel
 
 
 class ImportPreviewRequestBody(CamelModel):
     raw_text: str
+
+
+class ResolutionCandidateView(CamelModel):
+    ticker: str
+    display_name: str
+
+    @classmethod
+    def from_domain(cls, candidate: ResolutionCandidate) -> "ResolutionCandidateView":
+        return cls(ticker=candidate.ticker, display_name=candidate.display_name)
 
 
 class ParsedHoldingRowView(CamelModel):
@@ -25,6 +34,7 @@ class ParsedHoldingRowView(CamelModel):
     currency: str | None = None
     status: str
     message: str | None = None
+    candidates: list[ResolutionCandidateView] = []
     already_held: bool = False
 
     @classmethod
@@ -41,6 +51,7 @@ class ParsedHoldingRowView(CamelModel):
             currency=row.currency,
             status=row.status.value,
             message=row.message,
+            candidates=[ResolutionCandidateView.from_domain(c) for c in row.candidates],
             already_held=row.already_held,
         )
 

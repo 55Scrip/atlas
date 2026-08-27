@@ -42,6 +42,17 @@ class RowResolutionStatus(str, Enum):
 
 
 @dataclass(frozen=True)
+class ResolutionCandidate:
+    """One option in an `AMBIGUOUS` row's clarification choice -- e.g.
+    "Investor A" vs "Investor B" -- surfaced by the `security_discovery`
+    fallback (ticker-resolution priority step 4) when more than one
+    company plausibly matches the pasted name."""
+
+    ticker: str
+    display_name: str
+
+
+@dataclass(frozen=True)
 class ParsedHoldingRow:
     line_number: int
     raw: str
@@ -54,6 +65,9 @@ class ParsedHoldingRow:
     currency: str | None = None
     status: RowResolutionStatus = RowResolutionStatus.ERROR
     message: str | None = None
+    # Populated only when status is AMBIGUOUS -- the one-question
+    # clarification the review screen asks ("Investor A or Investor B?").
+    candidates: tuple[ResolutionCandidate, ...] = ()
     # Informational only -- never blocks import, never changes `status`.
     # Zero-Effort Onboarding review philosophy: "already held" is a fact
     # worth telling the investor, not a genuine ambiguity to interrupt on.

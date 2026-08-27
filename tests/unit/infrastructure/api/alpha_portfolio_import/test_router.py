@@ -1,4 +1,10 @@
-"""API tests for the unified import preview endpoint."""
+"""API tests for the unified import preview endpoint.
+
+`get_security_discovery_indexes` is overridden to a fixed, real-data-
+shaped fixture (same pattern as `tests/unit/infrastructure/api/
+security_discovery/test_router.py`) so these tests never make a real
+network call to SEC.
+"""
 from __future__ import annotations
 
 import pytest
@@ -6,9 +12,18 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+from atlas.alpha.security_discovery.api.dependencies import get_security_discovery_indexes
+from atlas.alpha.security_discovery.models import SecTickerEntry
+from atlas.alpha.security_discovery.service import build_ticker_index, build_title_index
 from atlas.core.infrastructure.api.app import create_app
 from atlas.core.infrastructure.api.decision.dependencies import get_decision_engine
 from atlas.core.infrastructure.persistence.decision.table import create_decision_table
+
+_SEC_FIXTURE = (
+    SecTickerEntry(cik=937966, ticker="ASML", title="ASML HOLDING NV"),
+    SecTickerEntry(cik=1067983, ticker="BRK-A", title="BERKSHIRE HATHAWAY INC"),
+    SecTickerEntry(cik=1067983, ticker="BRK-B", title="BERKSHIRE HATHAWAY INC"),
+)
 
 
 @pytest.fixture
@@ -22,6 +37,9 @@ def client():
     create_decision_table(engine)
     app = create_app()
     app.dependency_overrides[get_decision_engine] = lambda: engine
+    title_index = build_title_index(_SEC_FIXTURE)
+    ticker_index = build_ticker_index(_SEC_FIXTURE)
+    app.dependency_overrides[get_security_discovery_indexes] = lambda: (title_index, ticker_index)
     return TestClient(app)
 
 
@@ -48,6 +66,25 @@ class TestPreviewImportEndpoint:
         body = response.json()
         assert body["needsReview"] is True
         assert body["rows"][0]["status"] == "UNRESOLVED"
+
+    def test_a_name_the_registry_misses_resolves_via_security_discovery(self, client):
+        response = client.post(
+            "/alpha-portfolio/import/preview",
+            json={"rawText": "Name;Weight\nASML Holding NV;100"},
+        )
+        body = response.json()
+        assert body["rows"][0]["status"] == "RESOLVED"
+        assert body["rows"][0]["ticker"] == "ASML"
+
+    def test_a_genuinely_ambiguous_name_asks_one_clarification_question(self, client):
+        response = client.post(
+            "/alpha-portfolio/import/preview",
+            json={"rawText": "Name;Weight\nBerkshire Hathaway Inc;100"},
+        )
+        body = response.json()
+        row = body["rows"][0]
+        assert row["status"] == "AMBIGUOUS"
+        assert {c["ticker"] for c in row["candidates"]} == {"BRK-A", "BRK-B"}
 
     def test_ticker_already_in_the_current_portfolio_is_flagged(self, client):
         client.post(
