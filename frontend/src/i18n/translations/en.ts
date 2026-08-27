@@ -2125,7 +2125,10 @@ export const en = {
   "monitoring.freshness.running": "Atlas is checking for new changes right now.",
   "monitoring.freshness.failed": "Atlas's latest check didn't complete for every company — some information may be out of date.",
   "monitoring.freshness.unknown": "Atlas hasn't completed its first check yet.",
-  "monitoring.freshnessSummary.line": "{{waiting}} companies awaiting analysis, {{current}} unchanged since last time, {{attention}} need your attention.",
+  "monitoring.freshnessSummary.line": "{{waiting}} companies awaiting analysis, {{current}} unchanged since last time, {{attention}} could not be checked {{scope}}.",
+  "monitoring.freshnessSummary.scope.portfolio": "in your portfolio",
+  "monitoring.freshnessSummary.scope.watchlist": "in your watchlist",
+  "monitoring.freshnessSummary.scope.combined": "across your portfolio and watchlist",
   // ---------- Implementation Sprint B1.2 (Engine Reason Localization Contract) ----------
   "monitoring.category.newMaterialEvidence": "Atlas received new evidence that materially changed its reading of the company.",
   "monitoring.category.materialRiskAppeared": "Atlas identified a new risk.",

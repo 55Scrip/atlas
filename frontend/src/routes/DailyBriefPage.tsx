@@ -256,6 +256,7 @@ export function DailyBriefPage() {
               needsAttention:
                 monitoringStatus.portfolioFreshness.needsAttention + monitoringStatus.watchlistFreshness.needsAttention,
             }}
+            scopeKey="monitoring.freshnessSummary.scope.combined"
             t={t}
           />
         )}

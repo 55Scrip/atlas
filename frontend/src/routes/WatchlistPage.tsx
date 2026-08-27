@@ -317,7 +317,9 @@ export function WatchlistPage() {
           onOpenAddForm={() => setShowAddForm(true)}
           t={t}
         />
-        {monitoringStatus && <ScopeFreshnessSummaryNote summary={monitoringStatus.watchlistFreshness} t={t} />}
+        {monitoringStatus && (
+          <ScopeFreshnessSummaryNote summary={monitoringStatus.watchlistFreshness} scopeKey="monitoring.freshnessSummary.scope.watchlist" t={t} />
+        )}
 
         {showAddForm && (
           <AddCompanyForm

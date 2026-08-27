@@ -1050,7 +1050,9 @@ function PortfolioPageHeader({
     <Stack gap="metadata">
       <PageTitle hasHoldings={hasHoldings} onEditPortfolio={onEditPortfolio} t={t} />
       {monitoringStatus && <MonitoringFreshnessNote status={monitoringStatus} t={t} />}
-      {monitoringStatus && <ScopeFreshnessSummaryNote summary={monitoringStatus.portfolioFreshness} t={t} />}
+      {monitoringStatus && (
+        <ScopeFreshnessSummaryNote summary={monitoringStatus.portfolioFreshness} scopeKey="monitoring.freshnessSummary.scope.portfolio" t={t} />
+      )}
     </Stack>
   );
 }

@@ -2104,7 +2104,10 @@ export const sv: Record<TranslationKey, string> = {
   "monitoring.freshness.running": "Atlas kontrollerar för nya förändringar just nu.",
   "monitoring.freshness.failed": "Atlas senaste kontroll slutfördes inte för alla bolag — viss information kan vara inaktuell.",
   "monitoring.freshness.unknown": "Atlas har ännu inte slutfört sin första kontroll.",
-  "monitoring.freshnessSummary.line": "{{waiting}} bolag inväntar analys, {{current}} oförändrade sedan senast, {{attention}} behöver din uppmärksamhet.",
+  "monitoring.freshnessSummary.line": "{{waiting}} bolag inväntar analys, {{current}} oförändrade sedan senast, {{attention}} kunde inte kontrolleras {{scope}}.",
+  "monitoring.freshnessSummary.scope.portfolio": "i din portfölj",
+  "monitoring.freshnessSummary.scope.watchlist": "i din bevakningslista",
+  "monitoring.freshnessSummary.scope.combined": "i din portfölj och bevakningslista",
   // ---------- Implementation Sprint B1.2 (Engine Reason Localization Contract) ----------
   "monitoring.category.newMaterialEvidence": "Atlas fick nya belägg som väsentligt ändrade dess bild av bolaget.",
   "monitoring.category.materialRiskAppeared": "Atlas identifierade en ny risk.",
