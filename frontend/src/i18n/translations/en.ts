@@ -39,7 +39,6 @@ export const en = {
   "shell.header.brand": "Atlas",
   "shell.header.languageAriaLabel": "Choose language",
   "shell.nav.ariaLabel": "Primary",
-  "shell.nav.dashboard": "Dashboard",
   "shell.nav.portfolio": "Portfolio",
   "shell.notFound.title": "Page not found",
   "shell.notFound.body": "There is no route at this address.",
@@ -182,26 +181,18 @@ export const en = {
   "portfolio.pulse.largestPositionLabel": "Largest Position",
   "portfolio.pulse.largestPositionValue": "{{ticker}} ({{percent}}%)",
   "portfolio.pulse.concentrationLabel": "Concentration",
-  "portfolio.pulse.criticalPill": "{{count}} critical",
 
   // ---------- Redesign From Zero Sprint V2 ----------
   "portfolio.todaysFocus.biggestOpportunityLabel": "Today's biggest opportunity",
   "portfolio.todaysFocus.biggestRiskLabel": "Today's biggest risk",
-
-  // ---------- Portfolio Redesign V1 ----------
-  "portfolio.pulse.attentionItemsLabel": "Attention items",
-  "portfolio.todaysStory.heading": "Today's story",
   "portfolio.todaysFocus.whatChangedLabel": "What changed",
 
-  // ---------- attention required (Product Sprint 8) ----------
-  "portfolio.attentionRequired.heading": "Attention Required",
-  // ---------- Implementation Sprint B2 (Hero Reordering) ----------
-  "portfolio.overallConclusion.noIssues": "Atlas sees no major problems right now.",
-  "portfolio.overallConclusion.attentionCountOne": "1 holding needs attention.",
-  "portfolio.overallConclusion.attentionCountOther": "{{count}} holdings need attention.",
+  // ---------- Implementation Sprint B2 (Hero Reordering); reworded to
+  // lead with ownership in the Alpha Integration Fix (One Product Pass) ----------
+  "portfolio.overallConclusion.ownershipOne": "You own 1 holding.",
+  "portfolio.overallConclusion.ownershipOther": "You own {{count}} holdings.",
 
   // ---------- Portfolio Lower-Half Reconstruction Sprint 6D ----------
-  "portfolio.attention.viewAllRemaining": "View {{count}} more",
   "portfolio.attention.reason.concentration": "Concentration at {{percent}}% — above typical single-holding threshold.",
   "portfolio.attention.reason.high_financial_risk": "Financial risk is elevated.",
   "portfolio.attention.reason.high_valuation_risk": "Valuation risk is elevated.",
@@ -223,7 +214,6 @@ export const en = {
   "portfolio.holdingsTable.actionHeader": "Action",
   "portfolio.holdingsTable.currentViewHeader": "Current view",
   "portfolio.holdingsTable.reasonHeader": "Reason",
-  "portfolio.holdingsTable.showWhyLabel": "Show why",
   "portfolio.holdingsTable.openAction": "Open",
   "portfolio.holdingsTable.needsUpdateLink": "Needs updated weight",
   "portfolio.holdingsTable.showingCount": "Showing {{shown}} of {{total}}",
@@ -239,7 +229,6 @@ export const en = {
   "portfolio.holdingsTable.attentionHeader": "Attention",
   "portfolio.holdingsTable.attention.none": "—",
   "portfolio.holdingsTable.sortLabel": "Sort:",
-  "portfolio.holdingsTable.sort.attention": "Attention",
   "portfolio.holdingsTable.sort.weight": "Weight",
   "portfolio.holdingsTable.sort.fit": "Fit",
   "portfolio.holdingsTable.sort.alphabetical": "A–Z",
@@ -265,7 +254,6 @@ export const en = {
   "portfolio.weakestHoldings.heading": "Portfolio Weaknesses",
   "portfolio.weakestHoldings.subheading": "Where capital currently looks least compelling — worth a look, not a sell list.",
   "portfolio.weakestHoldings.empty": "No holdings currently show a weak Portfolio Fit or a reduction-supported view.",
-  "portfolio.weakestHoldings.reviewPosition": "Open position",
   "portfolio.weakestHoldings.compareAlternatives": "Compare alternatives",
 
   // ---------- watchlist relationship (Product Sprint 8) ----------
@@ -323,32 +311,8 @@ export const en = {
   "portfolio.intelligence.confidence.partial": "Partial evidence",
   "portfolio.intelligence.confidence.full": "Full evidence",
 
-  // ---------- dashboard ----------
-  "dashboard.title": "Dashboard",
-  "dashboard.portfolioStatus.heading": "Portfolio Status",
-  "dashboard.portfolioStatus.loadError": "Could not load portfolio status: {{message}}",
-  "dashboard.portfolioStatus.notEstablished": "No portfolio established yet.",
-  "dashboard.portfolioStatus.setupCta": "Set up portfolio →",
-  "dashboard.portfolioStatus.holdingSingular": "holding",
-  "dashboard.portfolioStatus.holdingPlural": "holdings",
-  "dashboard.portfolioStatus.summary": "{{count}} {{holdingWord}}",
-  "dashboard.portfolioStatus.cashSuffix": " — {{percent}}% cash",
-  "dashboard.portfolioStatus.goToPortfolio": "Go to Portfolio →",
-  "dashboard.monitoring.heading": "Active Monitoring Conditions",
-  "dashboard.notYetImplemented": "Not yet implemented.",
-  "dashboard.outcomes.heading": "Outcomes",
-  "dashboard.outcomes.loadError": "Could not load outcomes: {{message}}",
-  "dashboard.outcomes.empty": "No outcomes recorded yet.",
-  "dashboard.tradeExecutions.heading": "Trade Executions",
-  "dashboard.tradeExecutions.loadError": "Could not load trade executions: {{message}}",
-  "dashboard.tradeExecutions.empty": "No trades recorded yet.",
-  "dashboard.signals.heading": "Signals",
-  "dashboard.workspaces.heading": "Workspaces",
-  "dashboard.workspaces.empty": "No active Workspaces yet.",
-
   // ---------- investment case: shell ----------
   "investmentCase.heading": "Investment Case",
-  "investmentCase.returnTo.dashboard": "← Back to Dashboard",
   "investmentCase.returnTo.history": "← Back to History",
   "investmentCase.returnTo.portfolio": "← Back to Portfolio",
   "investmentCase.returnTo.dailyBrief": "← Back to Daily Brief",
@@ -356,13 +320,14 @@ export const en = {
   "investmentCase.returnTo.watchlist": "← Back to Watchlist",
   "investmentCase.returnTo.company": "← Back to Company Workspace",
   "investmentCase.noCaseSelected": "No case selected.",
+  "investmentCase.noCaseSelected.goToPortfolio": "Go to Portfolio →",
   "investmentCase.loadError": "Could not load this case: {{message}}",
   "investmentCase.analysisLoadError": "Atlas could not load its analysis for this company. Try refreshing the page.",
   "investmentCase.subject": "Subject: Case {{caseId}}",
   "investmentCase.status.heading": "Status",
   "investmentCase.status.healthy": "Healthy",
   "investmentCase.status.needsReview": "Worth a look",
-  "investmentCase.status.highPriority": "High Priority",
+  "investmentCase.status.highPriority": "Time-sensitive",
   "investmentCase.primaryWorkArea.heading": "Primary Work Area",
   "investmentCase.timeline.heading": "Timeline",
   "investmentCase.timeline.placeholder":
@@ -390,7 +355,7 @@ export const en = {
     "A high financial or valuation risk is present.",
   "investmentCase.analysis.conviction.reason.noHighFinancialOrValuationRisk":
     "No high financial or valuation risk identified.",
-  "investmentCase.analysis.confidence.heading": "Confidence",
+  "investmentCase.analysis.confidence.heading": "Evidence depth",
   "investmentCase.analysis.confidence.explanation": "How well the recorded Observations for this Case are backed by Evidence.",
   "investmentCase.analysis.thesis.heading": "Current Thesis",
   "investmentCase.analysis.thesis.investorDecisionReason": "Investor's stated reason (most recent Decision)",
@@ -443,7 +408,7 @@ export const en = {
   "investmentCase.hero.sinceYouWereHere.heading": "Since you were here",
   "investmentCase.hero.sinceYouWereHere.countOne": "1 change since the previous analysis.",
   "investmentCase.hero.sinceYouWereHere.countOther": "{{count}} changes since the previous analysis.",
-  "investmentCase.hero.confidenceLabel": "Confidence",
+  "investmentCase.hero.convictionLabel": "Conviction",
   // ---------- Atlas UX Phase 7A (Semantic Investment Model) -- the seven-category bar + Case DNA ----------
   "investmentCase.ratings.company.label": "Company",
   "investmentCase.ratings.investment.label": "Investment",
@@ -991,7 +956,7 @@ export const en = {
   "investmentCase.intelligence.observationTimeline.evidenceCountOther": "{{count}} evidence items",
 
   // ---------- sprint 4: navigation ----------
-  "shell.nav.history": "Activity",
+  "shell.nav.history": "History",
 
   // ---------- daily brief implementation sprint 1: navigation ----------
   "shell.nav.dailyBrief": "Daily Brief",
@@ -1098,27 +1063,6 @@ export const en = {
   "history.reviews.securityConfirmation.verificationAmbiguous": "External provider found multiple possible matches",
   "history.reviews.securityConfirmation.verificationUnsupported": "Verification isn't available for this confirmation",
 
-  // ---------- sprint 4: dashboard sections ----------
-  "dashboard.needsAttention.heading": "Needs Attention",
-  "dashboard.needsAttention.empty": "Nothing needs your attention right now.",
-  // Status/Explanation Language stabilization: previously this section
-  // (and Recent Activity / Continue Working below) showed "Loading..."
-  // forever if any of the underlying fetches permanently failed --
-  // there was no honest way to distinguish "still loading" from "this
-  // failed." Shown only once loading has genuinely stopped and at
-  // least one of the shared fetches errored (see `anyError` in
-  // `DashboardPage.tsx`).
-  "dashboard.needsAttention.loadError": "Something failed to load, so this can't be shown right now.",
-  "dashboard.needsAttention.outcomeMissing": "{{security}}: outcome not yet reported",
-  "dashboard.needsAttention.tradeMissing": "{{security}}: trade not yet reported",
-  "dashboard.needsAttention.reconciliationNeeded": "{{security}}: allocation awaiting reconciliation",
-  "dashboard.recentActivity.heading": "Recent Activity",
-  "dashboard.recentActivity.empty": "No activity recorded yet.",
-  "dashboard.recentActivity.loadError": "Something failed to load, so this can't be shown right now.",
-  "dashboard.continueWorking.heading": "Continue Working",
-  "dashboard.continueWorking.empty": "No recent case activity yet.",
-  "dashboard.continueWorking.loadError": "Something failed to load, so this can't be shown right now.",
-  "dashboard.viewHistoryLink": "View Activity →",
 
   // ---------- sprint 4: investment case last activity / timeline / outstanding work ----------
   "investmentCase.lastActivity.heading": "Last activity",
@@ -1136,7 +1080,6 @@ export const en = {
   "investmentCase.outstandingWork.tradeMissing": "Trade not yet reported.",
 
   // ---------- sprint 4: navigation continuity (origin badges) ----------
-  "investmentCase.origin.dashboard": "Opened from Dashboard",
   "investmentCase.origin.portfolio": "Opened from Portfolio",
   "investmentCase.origin.history": "Returned from History",
   "investmentCase.origin.dailyBrief": "Opened from Daily Brief",
@@ -1192,7 +1135,7 @@ export const en = {
 
   "investmentCase.strengthConcernPriority.strengthLabel": "Biggest Strength",
   "investmentCase.strengthConcernPriority.concernLabel": "Biggest Concern",
-  "investmentCase.strengthConcernPriority.priorityLabel": "Current Priority",
+  "investmentCase.strengthConcernPriority.priorityLabel": "Next Step",
   "investmentCase.strengthConcernPriority.noStrength": "No strength has clear evidence support yet.",
   "investmentCase.strengthConcernPriority.noConcern": "No concern has clear evidence support yet.",
   "investmentCase.currentPriority.none": "Nothing is currently outstanding for this case.",
@@ -1468,7 +1411,6 @@ export const en = {
   "dailyBriefAgenda.reasonFact.executiveChange.event.roleChange": "changed role",
   "dailyBriefAgenda.since.withDate": "Ongoing since {{date}}.",
   "dailyBriefAgenda.since.withoutDate": "Atlas currently observes this as ongoing; no record of exactly when it began.",
-  "dailyBriefAgenda.empty.noItems": "Atlas has no significant changes to report today.",
   "dailyBriefAgenda.empty.noWatchlistOpportunities": "No watchlist opportunities currently require review.",
 
   // ---------- discovery v1 implementation sprint ----------
@@ -1956,8 +1898,7 @@ export const en = {
   "stance.compare.bothStancesTied": "Atlas currently views both companies the same way.",
   "stance.compare.oneOrBothTooUncertain": "Atlas currently cannot recommend one over the other because at least one company has limited analytical coverage.",
   "stance.compare.heading": "Atlas's View",
-  "stance.portfolio.columnLabel": "Recommendation",
-  "stance.portfolio.sortLabel": "Recommendation",
+  "stance.portfolio.sortLabel": "Current view",
   "stance.discovery.badgeLabel": "Atlas's view",
   "stance.dailyBrief.currentViewLabel": "Atlas's current view:",
   "stance.compare.fitScopeNote": "This refers only to how each company's dimensions currently rate against your portfolio, not to Atlas's overall recommendation above.",
@@ -2236,7 +2177,7 @@ export const en = {
   "investmentDecision.compare.noSharedBlockers": "No shared blockers.",
   "investmentDecision.compare.noSharedStrengths": "No shared strengths.",
 
-  "recommendationConviction.section.heading": "Confidence",
+  "recommendationConviction.section.heading": "Recommendation Strength",
   "recommendationConviction.section.expandLabel": "Show full reasoning",
   "recommendationConviction.section.topSupporting": "Strongest support",
   "recommendationConviction.section.topLimiting": "Main limitation",
@@ -2257,7 +2198,7 @@ export const en = {
   "recommendationConviction.portfolio.lowest": "Lowest conviction ({{count}})",
   "recommendationConviction.portfolio.evidenceLimited": "Needs more evidence ({{count}})",
   "recommendationConviction.portfolio.operationallyBlocked": "Operationally blocked ({{count}})",
-  "recommendationConviction.compare.heading": "Confidence",
+  "recommendationConviction.compare.heading": "Recommendation Strength",
   "recommendationConviction.compare.stronger": "{{ticker}} has stronger support.",
   "recommendationConviction.compare.strongerTie": "Similarly strong support on both sides.",
   "recommendationConviction.compare.moreEvidenceLimited": "{{ticker}} is more evidence-limited.",
@@ -2393,7 +2334,7 @@ export const en = {
   "decisionReliability.level.unavailable": "Unavailable",
   "decisionReliability.level.unknown": "Unknown",
   "decisionReliability.change.line": "Reliability changed from {{previous}} to {{current}}.",
-  "decisionReliability.source.confidence": "Analysis completeness",
+  "decisionReliability.source.confidence": "Evidence depth",
   "decisionReliability.source.evidenceQuality": "Evidence quality",
   "decisionReliability.source.readinessBlocker": "Decision readiness",
   "decisionReliability.source.readinessSupport": "Decision readiness",

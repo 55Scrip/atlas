@@ -210,7 +210,7 @@ export interface HeroAnalysisInput {
    * .reasons`, real, already-fetched, previously never surfaced
    * anywhere on this page (`report.conviction.reasons` was fetched and
    * silently unused). Only the first (highest-priority) entry renders,
-   * as the Hero's own "Confidence" step's supporting reason -- the same
+   * as the Hero's own "Conviction" step's supporting reason -- the same
    * "compact fact in the hero, never a fabricated one" discipline every
    * other field on this card already follows. Empty array is a normal,
    * honest state (Conviction reached its level without a specific
@@ -298,7 +298,7 @@ function SummaryStat({ label, children }: { label: string; children: ReactNode }
 
 /**
  * Editorial Design Sprint P3 (Phase 5/10) -- the "readable in under
- * three seconds" executive summary row: Recommendation, Confidence,
+ * three seconds" executive summary row: Recommendation, Conviction,
  * Expected Return, Upside/Downside, in one compact strip above
  * everything else on the card. Every field is data this component
  * already receives and already renders further down (unchanged
@@ -307,11 +307,19 @@ function SummaryStat({ label, children }: { label: string; children: ReactNode }
  * it does not compute or fetch anything new. Recommendation is the
  * one PRIMARY signal on this card (Sprint B3's own "one company, one
  * primary message" discipline), rendered with the new `weight="strong"`
- * treatment; Confidence/Expected Return/Upside-Downside are SECONDARY,
+ * treatment; Conviction/Expected Return/Upside-Downside are SECONDARY,
  * one visual step down. Deliberately omits a separate "current status"
  * chip: Recommendation already is that status in this codebase, and a
  * second badge naming the same thing would reintroduce exactly the
  * competing-badges problem Sprint B3 removed.
+ *
+ * Alpha Integration Fix (One Product Pass): this field's own label was
+ * "Confidence" even though it has always rendered `convictionLevel` via
+ * `CONVICTION_LEVEL_KEY` -- a direct contradiction of this codebase's
+ * own doctrine (`status/statusTone.ts`) that Conviction and Confidence
+ * are intentionally separate signals. It reads "Conviction" now,
+ * matching every other correct usage of this same field elsewhere in
+ * the app (Alpha Product Integration Review, Phase 3).
  */
 function ExecutiveSummaryBar({ analysis, t }: { analysis: HeroAnalysisInput; t: Translate }) {
   return (
@@ -332,7 +340,7 @@ function ExecutiveSummaryBar({ analysis, t }: { analysis: HeroAnalysisInput; t: 
           weight="strong"
         />
       </SummaryStat>
-      <SummaryStat label={t("investmentCase.hero.confidenceLabel")}>
+      <SummaryStat label={t("investmentCase.hero.convictionLabel")}>
         <StatusBadge
           label={t(CONVICTION_LEVEL_KEY[analysis.convictionLevel])}
           tone={CONVICTION_TONE[analysis.convictionLevel]}
@@ -453,13 +461,13 @@ export function HeroCard({
               reconstruction) -- the narrative block right below the
               three-second Summary Bar now carries every sentence that
               explains *why* the bar says what it says: the conclusion,
-              its tension, the top limiting factor, and Confidence's own
+              its tension, the top limiting factor, and Conviction's own
               reason -- one continuous read, not four re-labeled
               sub-sections each repeating a badge the Summary Bar
-              already showed. Confidence's own badge is deliberately not
+              already showed. Conviction's own badge is deliberately not
               repeated here (it's the Summary Bar's own second field);
               only the reason sentence, previously stranded under its
-              own "Confidence" heading below a divider, moved up next to
+              own "Conviction" heading below a divider, moved up next to
               the conclusion it actually explains. */}
           <Text as="p" style={HERO_SENTENCE_STYLE}>
             {t(DECISION_SUPPORT_STATEMENT_KEY[analysis.recommendationLevel])}

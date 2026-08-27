@@ -1066,23 +1066,21 @@ export function InvestmentCasePage() {
   const origin = (location.state as { origin?: string; ticker?: string } | null)?.origin ?? null;
   const originTicker = (location.state as { origin?: string; ticker?: string } | null)?.ticker ?? null;
   const originLabelKey: TranslationKey | null =
-    origin === "dashboard"
-      ? "investmentCase.origin.dashboard"
-      : origin === "portfolio"
-        ? "investmentCase.origin.portfolio"
-        : origin === "history"
-          ? "investmentCase.origin.history"
-          : origin === "daily-brief"
-            ? "investmentCase.origin.dailyBrief"
-            : origin === "discovery"
-              ? "investmentCase.origin.discovery"
-              : origin === "watchlist"
-                ? "investmentCase.origin.watchlist"
-                : origin === "companion"
-                  ? "investmentCase.origin.companion"
-                  : origin === "company"
-                    ? "investmentCase.origin.company"
-                    : null;
+    origin === "portfolio"
+      ? "investmentCase.origin.portfolio"
+      : origin === "history"
+        ? "investmentCase.origin.history"
+        : origin === "daily-brief"
+          ? "investmentCase.origin.dailyBrief"
+          : origin === "discovery"
+            ? "investmentCase.origin.discovery"
+            : origin === "watchlist"
+              ? "investmentCase.origin.watchlist"
+              : origin === "companion"
+                ? "investmentCase.origin.companion"
+                : origin === "company"
+                  ? "investmentCase.origin.company"
+                  : null;
 
   /**
    * Origin-aware return (Sprint 8 audit fix): the badge above already
@@ -1103,33 +1101,29 @@ export function InvestmentCasePage() {
   // explicitly keeps this ternary chain honest about every origin the
   // badge can show, rather than one falling through silently.
   const returnTo: string =
-    origin === "dashboard"
-      ? "/dashboard"
-      : origin === "history"
-        ? "/history"
-        : origin === "daily-brief"
-          ? "/daily-brief"
-          : origin === "discovery"
-            ? "/discovery"
-            : origin === "watchlist"
-              ? "/watchlist"
-              : origin === "company" && originTicker
-                ? `/company/${encodeURIComponent(originTicker)}`
-                : "/portfolio";
+    origin === "history"
+      ? "/history"
+      : origin === "daily-brief"
+        ? "/daily-brief"
+        : origin === "discovery"
+          ? "/discovery"
+          : origin === "watchlist"
+            ? "/watchlist"
+            : origin === "company" && originTicker
+              ? `/company/${encodeURIComponent(originTicker)}`
+              : "/portfolio";
   const returnLabelKey: TranslationKey =
-    origin === "dashboard"
-      ? "investmentCase.returnTo.dashboard"
-      : origin === "history"
-        ? "investmentCase.returnTo.history"
-        : origin === "daily-brief"
-          ? "investmentCase.returnTo.dailyBrief"
-          : origin === "discovery"
-            ? "investmentCase.returnTo.discovery"
-            : origin === "watchlist"
-              ? "investmentCase.returnTo.watchlist"
-              : origin === "company" && originTicker
-                ? "investmentCase.returnTo.company"
-                : "investmentCase.returnTo.portfolio";
+    origin === "history"
+      ? "investmentCase.returnTo.history"
+      : origin === "daily-brief"
+        ? "investmentCase.returnTo.dailyBrief"
+        : origin === "discovery"
+          ? "investmentCase.returnTo.discovery"
+          : origin === "watchlist"
+            ? "investmentCase.returnTo.watchlist"
+            : origin === "company" && originTicker
+              ? "investmentCase.returnTo.company"
+              : "investmentCase.returnTo.portfolio";
 
   const [status, setStatus] = useState<CaseStatus>({ kind: "loading" });
 
@@ -2606,11 +2600,9 @@ export function InvestmentCasePage() {
                   Deliverable 1/7): the bare `/investment-case` route
                   (no `:caseId`) is unreachable from any in-app link --
                   it previously rendered this text with no way forward
-                  at all except the browser's own Back button. Reuses
-                  the same key/route Dashboard's own "go to Portfolio"
-                  link already uses, rather than a new one. */}
+                  at all except the browser's own Back button. */}
               <RouterLink to="/portfolio" style={ACCENT_LINK_STYLE}>
-                {t("dashboard.portfolioStatus.goToPortfolio")}
+                {t("investmentCase.noCaseSelected.goToPortfolio")}
               </RouterLink>
             </Stack>
           )}

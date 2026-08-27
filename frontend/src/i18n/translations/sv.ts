@@ -38,7 +38,6 @@ export const sv: Record<TranslationKey, string> = {
   "shell.header.brand": "Atlas",
   "shell.header.languageAriaLabel": "Välj språk",
   "shell.nav.ariaLabel": "Huvudnavigering",
-  "shell.nav.dashboard": "Översikt",
   "shell.nav.portfolio": "Portfölj",
   "shell.notFound.title": "Sidan hittades inte",
   "shell.notFound.body": "Det finns ingen sida på den här adressen.",
@@ -181,27 +180,18 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.pulse.largestPositionLabel": "Största position",
   "portfolio.pulse.largestPositionValue": "{{ticker}} ({{percent}}%)",
   "portfolio.pulse.concentrationLabel": "Koncentration",
-  "portfolio.pulse.criticalPill": "{{count}} kritiska",
 
   // ---------- Redesign From Zero Sprint V2 ----------
   "portfolio.todaysFocus.biggestOpportunityLabel": "Dagens största möjlighet",
   "portfolio.todaysFocus.biggestRiskLabel": "Dagens största risk",
-
-  // ---------- Portfolio Redesign V1 ----------
-  "portfolio.pulse.attentionItemsLabel": "Uppmärksamhetspunkter",
-  "portfolio.todaysStory.heading": "Vad som hänt idag",
   "portfolio.todaysFocus.whatChangedLabel": "Vad som ändrats",
 
-  // ---------- attention required (Product Sprint 8) ----------
-  "portfolio.attentionRequired.heading": "Kräver uppmärksamhet",
-  // ---------- Implementation Sprint B2 (Hero Reordering) ----------
-  "portfolio.overallConclusion.noIssues": "Atlas ser inga större problem just nu.",
-  "portfolio.overallConclusion.attentionCountOne": "1 innehav kräver uppmärksamhet.",
-  "portfolio.overallConclusion.attentionCountOther": "{{count}} innehav kräver uppmärksamhet.",
-
+  // ---------- Implementation Sprint B2 (Hero Reordering); omformulerad
+  // för att inleda med ägande i Alpha Integration Fix (One Product Pass) ----------
+  "portfolio.overallConclusion.ownershipOne": "Du äger 1 innehav.",
+  "portfolio.overallConclusion.ownershipOther": "Du äger {{count}} innehav.",
 
   // ---------- Portfolio Lower-Half Reconstruction Sprint 6D ----------
-  "portfolio.attention.viewAllRemaining": "Visa {{count}} till",
   "portfolio.attention.reason.concentration": "Koncentration på {{percent}}% — över typisk tröskel för ett enskilt innehav.",
   "portfolio.attention.reason.high_financial_risk": "Finansiell risk är förhöjd.",
   "portfolio.attention.reason.high_valuation_risk": "Värderingsrisk är förhöjd.",
@@ -223,7 +213,6 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.holdingsTable.actionHeader": "Åtgärd",
   "portfolio.holdingsTable.currentViewHeader": "Nuvarande syn",
   "portfolio.holdingsTable.reasonHeader": "Anledning",
-  "portfolio.holdingsTable.showWhyLabel": "Visa varför",
   "portfolio.holdingsTable.openAction": "Öppna",
   "portfolio.holdingsTable.needsUpdateLink": "Behöver uppdaterad andel",
   "portfolio.holdingsTable.showingCount": "Visar {{shown}} av {{total}}",
@@ -239,7 +228,6 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.holdingsTable.attentionHeader": "Uppmärksamhet",
   "portfolio.holdingsTable.attention.none": "—",
   "portfolio.holdingsTable.sortLabel": "Sortera:",
-  "portfolio.holdingsTable.sort.attention": "Uppmärksamhet",
   "portfolio.holdingsTable.sort.weight": "Andel",
   "portfolio.holdingsTable.sort.fit": "Passform",
   "portfolio.holdingsTable.sort.alphabetical": "A–Ö",
@@ -265,7 +253,6 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.weakestHoldings.heading": "Portföljsvagheter",
   "portfolio.weakestHoldings.subheading": "Var kapitalet just nu ser minst attraktivt ut — värt en titt, inte en säljlista.",
   "portfolio.weakestHoldings.empty": "Inga innehav visar just nu svag portföljpassform eller en reduktionsstödd syn.",
-  "portfolio.weakestHoldings.reviewPosition": "Öppna position",
   "portfolio.weakestHoldings.compareAlternatives": "Jämför alternativ",
 
   // ---------- watchlist relationship (Product Sprint 8) ----------
@@ -323,32 +310,8 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.intelligence.confidence.partial": "Delvisa belägg",
   "portfolio.intelligence.confidence.full": "Fullständigt underlag",
 
-  // ---------- dashboard ----------
-  "dashboard.title": "Översikt",
-  "dashboard.portfolioStatus.heading": "Portföljstatus",
-  "dashboard.portfolioStatus.loadError": "Kunde inte läsa in portföljstatus: {{message}}",
-  "dashboard.portfolioStatus.notEstablished": "Ingen portfölj skapad ännu.",
-  "dashboard.portfolioStatus.setupCta": "Skapa portfölj →",
-  "dashboard.portfolioStatus.holdingSingular": "innehav",
-  "dashboard.portfolioStatus.holdingPlural": "innehav",
-  "dashboard.portfolioStatus.summary": "{{count}} {{holdingWord}}",
-  "dashboard.portfolioStatus.cashSuffix": " — {{percent}}% kontanter",
-  "dashboard.portfolioStatus.goToPortfolio": "Gå till portföljen →",
-  "dashboard.monitoring.heading": "Aktiva bevakningsvillkor",
-  "dashboard.notYetImplemented": "Ännu inte implementerat.",
-  "dashboard.outcomes.heading": "Utfall",
-  "dashboard.outcomes.loadError": "Kunde inte läsa in utfall: {{message}}",
-  "dashboard.outcomes.empty": "Inga utfall registrerade ännu.",
-  "dashboard.tradeExecutions.heading": "Genomförda affärer",
-  "dashboard.tradeExecutions.loadError": "Kunde inte läsa in genomförda affärer: {{message}}",
-  "dashboard.tradeExecutions.empty": "Inga affärer registrerade ännu.",
-  "dashboard.signals.heading": "Signaler",
-  "dashboard.workspaces.heading": "Arbetsytor",
-  "dashboard.workspaces.empty": "Inga aktiva arbetsytor ännu.",
-
   // ---------- investment case: shell ----------
   "investmentCase.heading": "Investeringscase",
-  "investmentCase.returnTo.dashboard": "← Tillbaka till Översikt",
   "investmentCase.returnTo.history": "← Tillbaka till Historik",
   "investmentCase.returnTo.portfolio": "← Tillbaka till Portfölj",
   "investmentCase.returnTo.dailyBrief": "← Tillbaka till Dagens genomgång",
@@ -356,13 +319,14 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.returnTo.watchlist": "← Tillbaka till bevakningslistan",
   "investmentCase.returnTo.company": "← Tillbaka till bolagsvyn",
   "investmentCase.noCaseSelected": "Inget case valt.",
+  "investmentCase.noCaseSelected.goToPortfolio": "Gå till portföljen →",
   "investmentCase.loadError": "Kunde inte läsa in caset: {{message}}",
   "investmentCase.analysisLoadError": "Atlas kunde inte läsa in sin analys för detta bolag. Försök att uppdatera sidan.",
   "investmentCase.subject": "Ämne: Case {{caseId}}",
   "investmentCase.status.heading": "Status",
   "investmentCase.status.healthy": "Frisk",
   "investmentCase.status.needsReview": "Bör ses över",
-  "investmentCase.status.highPriority": "Hög prioritet",
+  "investmentCase.status.highPriority": "Tidskänsligt",
   "investmentCase.primaryWorkArea.heading": "Primärt arbetsområde",
   "investmentCase.timeline.heading": "Tidslinje",
   "investmentCase.timeline.placeholder":
@@ -390,7 +354,7 @@ export const sv: Record<TranslationKey, string> = {
     "En hög finansiell risk eller värderingsrisk föreligger.",
   "investmentCase.analysis.conviction.reason.noHighFinancialOrValuationRisk":
     "Ingen hög finansiell risk eller värderingsrisk har identifierats.",
-  "investmentCase.analysis.confidence.heading": "Underlag",
+  "investmentCase.analysis.confidence.heading": "Underlagsdjup",
   "investmentCase.analysis.confidence.explanation": "Hur väl de registrerade observationerna för det här caset stöds av underlag.",
   "investmentCase.analysis.thesis.heading": "Nuvarande tes",
   "investmentCase.analysis.thesis.investorDecisionReason": "Investerarens angivna skäl (senaste beslutet)",
@@ -443,7 +407,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.hero.sinceYouWereHere.heading": "Sedan du var här senast",
   "investmentCase.hero.sinceYouWereHere.countOne": "1 förändring sedan föregående analys.",
   "investmentCase.hero.sinceYouWereHere.countOther": "{{count}} förändringar sedan föregående analys.",
-  "investmentCase.hero.confidenceLabel": "Säkerhet",
+  "investmentCase.hero.convictionLabel": "Övertygelse",
   // ---------- Atlas UX Phase 7A (Semantic Investment Model) -- de sju kategorierna + Case DNA ----------
   "investmentCase.ratings.company.label": "Bolag",
   "investmentCase.ratings.investment.label": "Investering",
@@ -983,7 +947,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.intelligence.observationTimeline.evidenceCountOther": "{{count}} beläggposter",
 
   // ---------- sprint 4: navigation ----------
-  "shell.nav.history": "Aktivitet",
+  "shell.nav.history": "Historik",
 
   // ---------- daily brief implementation sprint 1: navigation ----------
   "shell.nav.dailyBrief": "Dagens genomgång",
@@ -1086,22 +1050,6 @@ export const sv: Record<TranslationKey, string> = {
   "history.reviews.securityConfirmation.verificationAmbiguous": "Extern leverantör hittade flera möjliga träffar",
   "history.reviews.securityConfirmation.verificationUnsupported": "Verifiering är inte tillgänglig för denna bekräftelse",
 
-  // ---------- sprint 4: dashboard sections ----------
-  "dashboard.needsAttention.heading": "Kräver uppmärksamhet",
-  "dashboard.needsAttention.empty": "Inget kräver din uppmärksamhet just nu.",
-  // Status-/förklaringsspråket stabiliseringssprint: se motsvarande
-  // kommentar i en.ts.
-  "dashboard.needsAttention.loadError": "Något gick fel vid inläsningen, så det här kan inte visas just nu.",
-  "dashboard.needsAttention.outcomeMissing": "{{security}}: utfall inte rapporterat ännu",
-  "dashboard.needsAttention.tradeMissing": "{{security}}: affär inte rapporterad ännu",
-  "dashboard.needsAttention.reconciliationNeeded": "{{security}}: fördelningen väntar på avstämning",
-  "dashboard.recentActivity.heading": "Senaste aktivitet",
-  "dashboard.recentActivity.empty": "Ingen aktivitet registrerad ännu.",
-  "dashboard.recentActivity.loadError": "Något gick fel vid inläsningen, så det här kan inte visas just nu.",
-  "dashboard.continueWorking.heading": "Fortsätt arbeta",
-  "dashboard.continueWorking.empty": "Ingen nyligen aktivitet i något case ännu.",
-  "dashboard.continueWorking.loadError": "Något gick fel vid inläsningen, så det här kan inte visas just nu.",
-  "dashboard.viewHistoryLink": "Visa aktivitet →",
 
   // ---------- sprint 4: investment case last activity / timeline / outstanding work ----------
   "investmentCase.lastActivity.heading": "Senaste aktivitet",
@@ -1119,7 +1067,6 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.outstandingWork.tradeMissing": "Affär inte rapporterad ännu.",
 
   // ---------- sprint 4: navigation continuity (origin badges) ----------
-  "investmentCase.origin.dashboard": "Öppnat från översikten",
   "investmentCase.origin.portfolio": "Öppnat från portföljen",
   "investmentCase.origin.history": "Återvänt från historiken",
   "investmentCase.origin.dailyBrief": "Öppnad från Dagens genomgång",
@@ -1175,7 +1122,7 @@ export const sv: Record<TranslationKey, string> = {
 
   "investmentCase.strengthConcernPriority.strengthLabel": "Största styrka",
   "investmentCase.strengthConcernPriority.concernLabel": "Största orosmoment",
-  "investmentCase.strengthConcernPriority.priorityLabel": "Aktuell prioritet",
+  "investmentCase.strengthConcernPriority.priorityLabel": "Nästa steg",
   "investmentCase.strengthConcernPriority.noStrength": "Ingen styrka har tydligt bevisstöd ännu.",
   "investmentCase.strengthConcernPriority.noConcern": "Inget orosmoment har tydligt bevisstöd ännu.",
   "investmentCase.currentPriority.none": "Inget är för närvarande utestående för det här caset.",
@@ -1456,7 +1403,6 @@ export const sv: Record<TranslationKey, string> = {
   "dailyBriefAgenda.since.withDate": "Pågående sedan {{date}}.",
   "dailyBriefAgenda.since.withoutDate": "Atlas identifierar detta för närvarande som pågående; det finns ingen uppgift om exakt när det uppstod.",
 
-  "dailyBriefAgenda.empty.noItems": "Atlas har inga väsentliga förändringar att rapportera idag.",
   "dailyBriefAgenda.empty.noWatchlistOpportunities": "Inga bevakningslistemöjligheter kräver granskning just nu.",
 
   // ---------- discovery v1 implementation sprint ----------
@@ -1935,8 +1881,7 @@ export const sv: Record<TranslationKey, string> = {
   "stance.compare.bothStancesTied": "Atlas ser för närvarande likadant på båda bolagen.",
   "stance.compare.oneOrBothTooUncertain": "Atlas kan för närvarande inte rekommendera det ena bolaget framför det andra eftersom minst ett av dem har begränsad analystäckning.",
   "stance.compare.heading": "Atlas syn",
-  "stance.portfolio.columnLabel": "Rekommendation",
-  "stance.portfolio.sortLabel": "Rekommendation",
+  "stance.portfolio.sortLabel": "Nuvarande syn",
   "stance.discovery.badgeLabel": "Atlas syn",
   "stance.dailyBrief.currentViewLabel": "Atlas nuvarande syn:",
   "stance.compare.fitScopeNote": "Detta avser endast hur respektive bolags dimensioner för närvarande värderas mot din portfölj, inte Atlas övergripande rekommendation ovan.",
@@ -2372,7 +2317,7 @@ export const sv: Record<TranslationKey, string> = {
   "decisionReliability.level.unavailable": "Otillgänglig",
   "decisionReliability.level.unknown": "Okänd",
   "decisionReliability.change.line": "Tillförlitligheten ändrades från {{previous}} till {{current}}.",
-  "decisionReliability.source.confidence": "Analysens fullständighet",
+  "decisionReliability.source.confidence": "Underlagsdjup",
   "decisionReliability.source.evidenceQuality": "Underlagets kvalitet",
   "decisionReliability.source.readinessBlocker": "Beslutsberedskap",
   "decisionReliability.source.readinessSupport": "Beslutsberedskap",

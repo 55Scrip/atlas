@@ -3,7 +3,6 @@ import { DecisionWorkspacePage } from "./decisionWorkspace/DecisionWorkspacePage
 import { DraftCommitPage } from "./decisionWorkspace/DraftCommitPage";
 import { CompanyWorkspacePage } from "./routes/CompanyWorkspacePage";
 import { DailyBriefPage } from "./routes/DailyBriefPage";
-import { DashboardPage } from "./routes/DashboardPage";
 import { DiscoveryPage } from "./routes/DiscoveryPage";
 import { CandidateDetailPage } from "./discovery/CandidateDetailPage";
 import { CompareCandidatesPage } from "./discovery/CompareCandidatesPage";
@@ -34,7 +33,6 @@ export default function App() {
         <Route path="portfolio/holding/:ticker" element={<HoldingAttentionPage />} />
         <Route path="watchlist" element={<WatchlistPage />} />
         <Route path="company/:ticker" element={<CompanyWorkspacePage />} />
-        <Route path="dashboard" element={<DashboardPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="investment-case" element={<InvestmentCasePage />} />
         <Route path="investment-case/:caseId" element={<InvestmentCasePage />} />

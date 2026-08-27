@@ -1,24 +1,24 @@
-import { NO_PRIORITY_RANK, PRIORITY_LEVEL_RANK, type AnalysisCoverageLevel, type PriorityLevel, type StanceLevel } from "../status/statusTone";
+import type { AnalysisCoverageLevel, StanceLevel } from "../status/statusTone";
 import type { FitRating } from "../portfolioFit/portfolioFitApi";
 
 /**
  * Product Sprint 8 (Portfolio Excellence, Deliverable 6 -- Holding
  * Ordering). A pure, deterministic sort over holdings already fetched
  * elsewhere -- no numeric ranking is invented; every sort key is either
- * a real qualitative signal already computed server-side (the shared
- * Daily Brief Agenda's own `PriorityLevel`, Portfolio Fit's own
- * `FitRating`) or a plain real number the portfolio already carries
- * (`weightPercent`), with ticker as the final, always-available
+ * a real qualitative signal already computed server-side (Portfolio
+ * Fit's own `FitRating`) or a plain real number the portfolio already
+ * carries (`weightPercent`), with ticker as the final, always-available
  * tie-break so the order is never ambiguous.
  *
- * `"attention"` is the default: it's what makes the portfolio "useful
- * immediately" (Deliverable 6's own words) -- holdings the shared
- * Agenda already flagged float to the top, ranked by that same
- * priority (never a second, competing priority order), then by weight
- * (a large position with no flagged issue still outranks a tiny one
- * with none), then alphabetically.
+ * `"weight"` is the default (Alpha Integration Fix, One Product Pass):
+ * the largest positions float to the top first, matching Portfolio's
+ * own doctrine question, "what do I own." The former `"attention"` key
+ * ranked holdings by the shared Daily Brief Agenda's own priority --
+ * removed because it put Portfolio's default ordering in the same job
+ * as Daily Brief's own "what changed" ranking (Alpha Product
+ * Integration Review, Phase 8).
  */
-export type HoldingSortKey = "attention" | "weight" | "fit" | "coverage" | "stance" | "alphabetical";
+export type HoldingSortKey = "weight" | "fit" | "coverage" | "stance" | "alphabetical";
 
 /** Weakest first -- matches this sprint's own "identify weak holdings"
  * framing; `unavailable` sorts last, since it is neither strong nor
@@ -66,7 +66,6 @@ export interface SortableHolding {
 export function sortHoldings<T extends SortableHolding>(
   holdings: T[],
   sortKey: HoldingSortKey,
-  priorityByTicker: Map<string, PriorityLevel>,
   fitRatingByTicker: Map<string, FitRating>,
   coverageByTicker: Map<string, AnalysisCoverageLevel> = new Map(),
   stanceByTicker: Map<string, StanceLevel> = new Map(),
@@ -75,8 +74,6 @@ export function sortHoldings<T extends SortableHolding>(
 
   sorted.sort((a, b) => {
     switch (sortKey) {
-      case "weight":
-        return b.weightPercent - a.weightPercent || a.ticker.localeCompare(b.ticker);
       case "fit": {
         const rankA = fitRatingByTicker.has(a.ticker) ? FIT_RANK[fitRatingByTicker.get(a.ticker)!] : NO_FIT_RANK;
         const rankB = fitRatingByTicker.has(b.ticker) ? FIT_RANK[fitRatingByTicker.get(b.ticker)!] : NO_FIT_RANK;
@@ -94,13 +91,9 @@ export function sortHoldings<T extends SortableHolding>(
       }
       case "alphabetical":
         return a.ticker.localeCompare(b.ticker);
-      case "attention":
-      default: {
-        const rankA = priorityByTicker.has(a.ticker) ? PRIORITY_LEVEL_RANK[priorityByTicker.get(a.ticker)!] : NO_PRIORITY_RANK;
-        const rankB = priorityByTicker.has(b.ticker) ? PRIORITY_LEVEL_RANK[priorityByTicker.get(b.ticker)!] : NO_PRIORITY_RANK;
-        if (rankA !== rankB) return rankB - rankA;
+      case "weight":
+      default:
         return b.weightPercent - a.weightPercent || a.ticker.localeCompare(b.ticker);
-      }
     }
   });
 

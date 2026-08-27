@@ -10,7 +10,6 @@ import {
   type ConvictionLevel,
   type DecisionSupportLevel,
   type EvidenceCoverageLevel,
-  type PriorityLevel,
   type ReviewPriority,
 } from "../status/statusTone";
 import type { StatusTone } from "../foundation";
@@ -21,18 +20,8 @@ import { fetchStanceForHoldings, type TickerStanceView, type StanceView } from "
 import { StanceBadge } from "../stance/StanceBadge";
 import { primaryStanceReason, stanceReasonSentence } from "../stance/describeStance";
 import type { StanceLevel } from "../status/statusTone";
-import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
-import { TickerAgendaCard } from "../dailyBriefAgenda/TickerAgendaCard";
-import { groupAgendaByTicker } from "../dailyBriefAgenda/groupAgendaByTicker";
-import { PriorityBadge } from "../dailyBriefAgenda/PriorityBadge";
-import { agendaItemHeadline } from "../dailyBriefAgenda/describeAgendaHeadline";
 import { fetchDailyBriefAgenda, type AgendaItemView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
-import {
-  hasRealReason,
-  displayPriority,
-  realHeadlineText,
-  sanitizeGroupReasons,
-} from "../dailyBriefAgenda/bookkeepingFilter";
+import { realHeadlineText } from "../dailyBriefAgenda/bookkeepingFilter";
 import { MonitoringFreshnessNote } from "../monitoring/MonitoringFreshnessNote";
 import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNote";
 import { invalidateAlphaPortfolio, setAlphaPortfolioData, useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
@@ -41,22 +30,17 @@ import { sortHoldings, type HoldingSortKey } from "../portfolio/sortHoldings";
 import { deriveInvestmentRating } from "../investmentCase/atlasRatingModel";
 import { CompactRatingBadge } from "../investmentCase/CompactRatingBadge";
 
-/** Product Sprint 8 (Portfolio Excellence, Deliverable 4 -- Unify
- * Attention Surfaces): Portfolio used to run two independent, competing
- * "what matters" computations -- this same shared `/api/daily-brief
- * -agenda` fetch (filtered to `group === "portfolio"`) shown as "Today's
- * Agenda", and a separate client-side derivation (`derivePortfolioActions`,
- * predating the Agenda) shown as "Needs Your Attention". The two could
- * legitimately disagree about the same ticker, since the older
- * derivation had no Portfolio Fit/Case Condition/Assumption input at
- * all. That gap is now closed: the one real signal the Agenda engine
- * didn't yet cover (a missing-evidence gap) was added to the shared
- * backend engine itself (`atlas/alpha/daily_brief_agenda/engine.py`'s
- * `evidence_gap_signal`) rather than kept as a second, competing
- * frontend computation. This fetch is now Portfolio's one and only
- * attention source -- `derivePortfolioActions.ts`/`describePortfolioAction.ts`
- * and the "Needs Your Attention" section they powered are deleted, not
- * left dormant. */
+/** Alpha Integration Fix (One Product Pass): Portfolio no longer treats
+ * the shared `/api/daily-brief-agenda` fetch (filtered to
+ * `group === "portfolio"`) as its own attention/priority source -- the
+ * Alpha Product Integration Review found that doing so put Portfolio in
+ * direct competition with Daily Brief's own "what changed" job across
+ * five separate surfaces on this page (Hero, Pulse's attention count,
+ * "Today's Story," "Attention Required," and the Holdings Table's
+ * Reason column). All five are now gone or reworked to use Portfolio's
+ * own signals (ownership facts, Portfolio Fit, Stance) instead. This
+ * fetch's one remaining, in-scope consumer is
+ * `TodaysBiggestRiskOpportunity`'s own "what changed" line. */
 type DailyBriefAgendaFetchStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; items: AgendaItemView[] };
 
 /** Deliverable 7 (Portfolio Fit Engine) -- `assessments` arrives already
@@ -554,33 +538,21 @@ export function PortfolioPage() {
       ? cockpit.report.holdings.filter((h) => h.analysisCoverage.level !== "no_coverage").length
       : null;
 
-  /** Product Sprint 8 (Portfolio Excellence, Deliverable 13 -- Daily
-   * Brief Integration): the one priority-by-ticker map, built once from
-   * the same shared Agenda fetch every attention-aware element on this
-   * page reads from -- the Holdings Table's own Attention column, its
-   * default sort, and the Pulse card's critical-item count all resolve
-   * through this same map, so a holding can never be shown as Critical
-   * in one place and Normal in another using separate logic.
-   *
-   * Product Simplification Sprint 6E: `displayPriority` replaces the
-   * raw backend `item.priority` here -- Atlas's own bookkeeping
-   * (missing outcomes, missing notes, awaiting reconciliation) can
-   * never inflate a holding to Critical/High on its own; `realItems`
-   * is the same real-content-only subset every count on this page
-   * (the Hero sentence, the Pulse "Attention Items" figure, Attention
-   * Required itself) now shares, so none of them can disagree about
-   * how many things genuinely need attention today. */
+  /** Alpha Integration Fix (One Product Pass): Portfolio no longer
+   * maintains its own priority-ranked view of the shared Daily Brief
+   * Agenda -- "what changed, and how urgent is it" is Daily Brief's own
+   * job (see the Alpha Product Integration Review's Phase 8 finding).
+   * The one remaining, in-scope consumer of the Agenda fetch on this
+   * page is `TodaysBiggestRiskOpportunity`'s own "what changed" line,
+   * which reads real items by ticker only -- no priority ranking, no
+   * attention count. */
   const agendaItems = dailyBriefAgenda.kind === "loaded" ? dailyBriefAgenda.items : [];
-  const realAgendaItems = agendaItems.filter(hasRealReason);
-  const priorityByTicker = new Map<string, PriorityLevel>();
   const agendaItemByTicker = new Map<string, AgendaItemView>();
   for (const item of agendaItems) {
     if (item.ticker) {
-      priorityByTicker.set(item.ticker, displayPriority(item));
       agendaItemByTicker.set(item.ticker, item);
     }
   }
-  const criticalAgendaCount = realAgendaItems.filter((item) => item.priority === "critical").length;
 
   /** Same reasoning, for Portfolio Fit -- one ticker->assessment map,
    * shared by the Holdings Table's Fit column/sort and the Weakest
@@ -610,9 +582,9 @@ export function PortfolioPage() {
 
   /** Atlas Intelligence Sprint 2 (Recommendation Quality &
    * Actionability, Deliverable 6) -- one ticker->Stance map, the same
-   * "single shared fetch, no divergent copies" pattern `fitByTicker`/
-   * `priorityByTicker` above already establish, feeding the Holdings
-   * Table's own Recommendation column and sort. */
+   * "single shared fetch, no divergent copies" pattern `fitByTicker`
+   * above already establishes, feeding the Holdings Table's own
+   * "Current view" column and sort. */
   const stanceEntries = stanceHoldings.kind === "loaded" ? stanceHoldings.entries : [];
   const stanceByTicker = new Map<string, StanceLevel>();
   /** Status Consolidation (Implementation Sprint B3): the same
@@ -664,10 +636,11 @@ export function PortfolioPage() {
 
         {status.kind === "loaded" && status.view.exists && status.view.holdings.length > 0 && (
           <Stack gap="intra-section">
-            {/* Implementation Sprint B2 (Hero Reordering): Decision
-                First's own step 1 -- Atlas's conclusion, before any
-                supporting data. */}
-            <PortfolioHero status={dailyBriefAgenda} view={status.view} t={t} />
+            {/* Alpha Integration Fix (One Product Pass): the Hero leads
+                with ownership, Portfolio's own doctrine question ("what
+                do I own"), not an attention-count verdict -- that's
+                Daily Brief's job. */}
+            <PortfolioHero view={status.view} t={t} />
 
             {status.view.awaitingReconciliation && !showReplaceForm && (
               <Surface tier="primary">
@@ -788,27 +761,21 @@ export function PortfolioPage() {
             )}
 
             {/* Portfolio Redesign V1 -- the Executive Summary Strip now
-                sits directly under the Hero (health + position already
-                live in the Hero itself), ahead of Today's Story and the
-                Risk/Opportunity cards, so every fact promised by "five
+                sits directly under the Hero, ahead of the Risk/
+                Opportunity cards, so every fact promised by "five
                 seconds to understand the portfolio" is visible before
-                any individual holding. Unchanged data, unchanged
-                component -- only its position and its two new fields
-                (Attention Items, Largest Risk/Opportunity tickers). */}
+                any individual holding. Alpha Integration Fix: the
+                Agenda-derived Attention Items figure and critical-item
+                pill are gone -- that surface duplicated Daily Brief's
+                own job (Alpha Product Integration Review, Phase 8). */}
             <PortfolioPulse
               view={status.view}
               largestHolding={largestHolding}
               coveredCount={coveredCount}
-              criticalAgendaCount={criticalAgendaCount}
-              attentionItemCount={realAgendaItems.length}
               biggestRisk={hasDistinctRiskAndOpportunity ? biggestRisk : null}
               biggestOpportunity={hasDistinctRiskAndOpportunity ? biggestOpportunity : null}
               t={t}
             />
-
-            {/* Portfolio Redesign V1 -- "Today's Story": what actually
-                happened, real change events only. */}
-            <TodaysStorySection agendaItems={agendaItems} navigate={navigate} t={t} />
 
             {/* Portfolio Redesign V1 -- "Today's Biggest Risk" /
                 "Today's Biggest Opportunity": the same two tickers the
@@ -826,18 +793,14 @@ export function PortfolioPage() {
               t={t}
             />
 
-            {/* Deliverable 2, step 2: Attention Required -- the one
-                shared `/api/daily-brief-agenda` fetch Daily Brief itself
-                reads, filtered to this portfolio's own items. Portfolio
-                Redesign V1 moved this below Today's Story and the
-                Risk/Opportunity cards: "what actually happened" and
-                "where's the biggest risk/opportunity" now come first,
-                with the fuller priority-by-priority list -- including
-                the persistent conditions Today's Story deliberately
-                excludes -- immediately after, before any individual
-                holding. Still Portfolio's only attention surface
-                (Deliverable 4). */}
-            <AttentionRequiredSection status={dailyBriefAgenda} stanceViewByTicker={stanceViewByTicker} navigate={navigate} t={t} />
+            {/* Alpha Integration Fix (One Product Pass): Attention
+                Required is gone -- it re-ranked this same page's holdings
+                by Daily Brief's own Agenda priority, duplicating Daily
+                Brief's "what changed" job outright (Alpha Product
+                Integration Review, Phase 8). Portfolio Weaknesses further
+                below already answers "which holdings are worth a second
+                look," using Portfolio's own Fit/Decision-Support signals
+                instead of Daily Brief's urgency feed. */}
 
             {/* Deliverable 2, step 3: Holdings -- what do I own, in
                 detail, ordered so what matters is on top by default. */}
@@ -846,8 +809,6 @@ export function PortfolioPage() {
                 <HoldingsTable
                   view={status.view}
                   cockpit={cockpit}
-                  priorityByTicker={priorityByTicker}
-                  agendaItemByTicker={agendaItemByTicker}
                   fitByTicker={fitByTicker}
                   stanceByTicker={stanceByTicker}
                   stanceViewByTicker={stanceViewByTicker}
@@ -1080,54 +1041,33 @@ const PAGE_TITLE_STYLE: CSSProperties = {
  */
 /**
  * Portfolio Pulse (Product Sprint 8, Deliverable 3 -- Portfolio Status)
- * -- the top-of-page status line: total value, holdings count, cash,
- * largest position, concentration, Atlas coverage, and a critical-item
- * pill sourced from the shared Daily Brief Agenda (Deliverable 13) --
- * never a second, independently-derived attention count. Every value
- * here is either read verbatim off the already-fetched `PortfolioView`
- * (cash, concentration) or a plain, undisputed derivation over it
- * (largest position = max-by-weight, computed once in `PortfolioPage`
- * and shared with the sidebar below rather than recomputed here). No
- * health score, grade, or synthetic risk score -- only real counts and
- * real values, honestly disclosed as unavailable where they are.
- * "Covered" is defined as any holding whose real `AnalysisCoverageLevel`
- * is not `no_coverage` -- a holding the cockpit hasn't resolved at all
- * does not count as covered either. Sector Allocation has no real
- * per-holding source anywhere in this codebase (grepped: no `sector`
- * field exists on any company/holding model) and is deliberately not
- * rendered here or anywhere else on this page.
- *
- * Pulse Simplification (live-verification follow-up): the ten Decision
- * Layer "portfolio breakdown" widgets (Deliverable 7/8 of eight
- * separate Decision Layer sprints, each individually correct as "one
- * compact summary line") used to all render here, stacked above this
- * card, before an investor had even seen what they own -- an
- * unlabeled wall of jargon-y counts nobody looked at in aggregate.
- * They are now split two ways and rendered as siblings, after this
- * card and Attention Required: the two that actually answer "what
- * should I do next" (Action Distribution, Opportunity Cost) live in
- * the small, named `DecisionStatusSection`; the rest (context that
- * explains *why*, not *what to do*) live behind one collapsed
- * `DecisionLayerDetailSection`, each under its own label. This
- * component itself only ever renders the real Pulse status line.
- */
-/**
- * Portfolio Redesign V1: renamed in spirit to the Executive Summary
- * Strip -- Concentration/Holdings/Cash moved up into the Hero
- * (`PortfolioHero`) so they're not repeated here; this card now adds
- * the three fields the Hero doesn't cover -- total agenda item count
- * ("Attention Items," distinct from the Critical-only pill that was
- * already here), and the same `biggestOpportunity`/`biggestRisk`
+ * -- the top-of-page status line: total value, largest position,
+ * Atlas coverage, and the same `biggestOpportunity`/`biggestRisk`
  * tickers `TodaysBiggestRiskOpportunity` shows in full just below --
  * a compact mention here, the real reasoning there, never the same
- * sentence twice.
+ * sentence twice. Every value here is either read verbatim off the
+ * already-fetched `PortfolioView` or a plain, undisputed derivation
+ * over it. No health score, grade, or synthetic risk score -- only
+ * real counts and real values, honestly disclosed as unavailable
+ * where they are. "Covered" is defined as any holding whose real
+ * `AnalysisCoverageLevel` is not `no_coverage` -- a holding the
+ * cockpit hasn't resolved at all does not count as covered either.
+ * Sector Allocation has no real per-holding source anywhere in this
+ * codebase (grepped: no `sector` field exists on any company/holding
+ * model) and is deliberately not rendered here or anywhere else on
+ * this page.
+ *
+ * Alpha Integration Fix (One Product Pass): the Agenda-sourced
+ * "Attention Items" figure and critical-item pill are gone. That
+ * count duplicated Daily Brief's own "what changed" job on a page
+ * whose own doctrine is "what do I own" (Alpha Product Integration
+ * Review, Phase 8) -- Concentration/Holdings/Cash live in the Hero
+ * above this card.
  */
 function PortfolioPulse({
   view,
   largestHolding,
   coveredCount,
-  criticalAgendaCount,
-  attentionItemCount,
   biggestRisk,
   biggestOpportunity,
   t,
@@ -1135,8 +1075,6 @@ function PortfolioPulse({
   view: PortfolioView;
   largestHolding: HoldingView | null;
   coveredCount: number | null;
-  criticalAgendaCount: number;
-  attentionItemCount: number;
   biggestRisk: PortfolioFitAssessmentView | null;
   biggestOpportunity: PortfolioFitAssessmentView | null;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
@@ -1171,10 +1109,6 @@ function PortfolioPulse({
             </Text>
           </Stack>
           <Stack gap="metadata">
-            <Label>{t("portfolio.pulse.attentionItemsLabel")}</Label>
-            <Text as="span">{attentionItemCount}</Text>
-          </Stack>
-          <Stack gap="metadata">
             <Label>{t("portfolio.todaysFocus.biggestOpportunityLabel")}</Label>
             <Text as="span">{biggestOpportunity ? biggestOpportunity.ticker : t("portfolio.header.notAvailable")}</Text>
           </Stack>
@@ -1182,9 +1116,6 @@ function PortfolioPulse({
             <Label>{t("portfolio.todaysFocus.biggestRiskLabel")}</Label>
             <Text as="span">{biggestRisk ? biggestRisk.ticker : t("portfolio.header.notAvailable")}</Text>
           </Stack>
-          {criticalAgendaCount > 0 && (
-            <StatusBadge label={t("portfolio.pulse.criticalPill", { count: criticalAgendaCount })} tone="critical" />
-          )}
         </Inline>
       </Surface>
     </Stack>
@@ -1331,56 +1262,27 @@ const HOLDINGS_PAGE_SIZE = 15;
  * Portfolio scroll/expansion state remains explicit, planned follow-up
  * work for a future sprint -- out of scope here.
  */
-/** Product Sprint 8 (Portfolio Excellence, Deliverable 4) -- Portfolio's
- * one and only attention surface, for the items already filtered to
- * `group === "portfolio"` -- a busy portfolio's full agenda (including
- * its Watchlist items) still belongs on Daily Brief itself; this is
- * the portfolio-scoped subset, not a second full copy. `onOpenHolding`
- * also carries the real `AgendaItemView` through router state so the
- * per-holding detail page (`/portfolio/holding/:ticker`) can show the
- * exact same "why" text this section already showed, never a second,
- * independently-worded reason.
- *
- * Portfolio Lower-Half Reconstruction Sprint 6D (Phase 1): now renders
- * `TickerAgendaCard` -- the same compact, one-ticker-one-card component
- * Daily Brief already ships -- instead of the full, always-expanded
- * `AgendaItemRow`. See that component's own definition, just below. */
-
-/** Implementation Sprint B2 (Hero Reordering) -- Decision First's own
- * step 1 for Portfolio: one sentence, before anything else, reusing
- * the exact same `dailyBriefAgenda` fetch `AttentionRequiredSection`
- * already reads immediately below it (the portfolio-scoped subset,
- * already computed, never a second count derived independently -- the
- * two can never disagree about how many items there are). Renders
- * nothing while loading/erroring; `AttentionRequiredSection` already
- * owns disclosing those states with its own heading, so this line
- * would otherwise show and then immediately get replaced, a flash of
- * text no real reader benefits from. */
 /**
- * Portfolio Redesign V1 -- the Hero: one visual block answering
- * "portfolio health, current position, overall narrative" together,
- * rather than a bare conclusion sentence with health/position facts
- * shown separately several sections later. The narrative sentence
- * itself is unchanged (the same real attention-count synthesis Sprint
- * B2 already established); Concentration and Holdings/Cash now sit
- * directly beneath it in the same card, so the one sentence a reader
- * sees first is immediately grounded in the two facts that most
- * qualify it. No new computation -- `concentrationLevel` and
- * `numberOfHoldings`/cash are the same `PortfolioView` fields
- * `PortfolioPulse` (now the Executive Summary Strip below) already
- * reads.
+ * Portfolio Hero (Alpha Integration Fix, One Product Pass) -- one
+ * visual block answering Portfolio's own doctrine question first:
+ * "what do I own." The opening sentence states ownership scale
+ * (holdings count); Concentration and Cash sit directly beneath it in
+ * the same card. This Hero used to lead with an attention-count
+ * verdict synthesized from the shared Daily Brief Agenda -- the Alpha
+ * Product Integration Review's Phase 5 finding was that this quietly
+ * repositioned Portfolio's own opening moment toward "what needs
+ * attention," which is Daily Brief's job, not Portfolio's. No new
+ * computation -- `numberOfHoldings`/`concentrationLevel`/cash are the
+ * same `PortfolioView` fields the Executive Summary Strip below
+ * already reads.
  */
 function PortfolioHero({
-  status,
   view,
   t,
 }: {
-  status: DailyBriefAgendaFetchStatus;
   view: PortfolioView;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  if (status.kind !== "loaded") return null;
-  const count = status.items.filter(hasRealReason).length;
   const cashDisplay =
     view.cashValueAbsolute !== null
       ? view.cashValueAbsolute
@@ -1400,11 +1302,10 @@ function PortfolioHero({
             color: "var(--color-text-primary)",
           }}
         >
-          {count === 0
-            ? t("portfolio.overallConclusion.noIssues")
-            : t(count === 1 ? "portfolio.overallConclusion.attentionCountOne" : "portfolio.overallConclusion.attentionCountOther", {
-                count,
-              })}
+          {t(
+            view.numberOfHoldings === 1 ? "portfolio.overallConclusion.ownershipOne" : "portfolio.overallConclusion.ownershipOther",
+            { count: view.numberOfHoldings },
+          )}
         </Text>
         <Inline gap="inter-section" wrap>
           <Stack gap="metadata">
@@ -1430,192 +1331,16 @@ function PortfolioHero({
 }
 
 /**
- * Portfolio Redesign V1 -- "Today's Story": up to three real change
- * events (`item.nature === "change_event"`), never the persistent
- * conditions (`"persistent_condition"`) Attention Required already
- * covers in full further down. This is the honest distinction the
- * backend already draws between "something happened" and "this is an
- * ongoing state" (`atlas.alpha.daily_brief_agenda.models.SignalNature`,
- * already surfaced elsewhere via `SignalNatureBadge`) -- reused here,
- * not recomputed, to answer "what actually happened" without
- * re-listing every open condition a second time. Items are already
- * priority-sorted (the same shared Agenda fetch every attention-aware
- * element on this page reads); this only filters and caps at three.
- * Renders nothing when no real change happened -- an honest "quiet
- * day," never a fabricated headline.
+ * Alpha Integration Fix (One Product Pass): "Today's Story" and
+ * "Attention Required" -- Portfolio's own priority-ranked re-surfacing
+ * of the shared Daily Brief Agenda -- are removed. Both duplicated
+ * Daily Brief's own "what changed" job outright (Alpha Product
+ * Integration Review, Phase 8); `TodaysBiggestRiskOpportunity` below
+ * remains as Portfolio's one legitimate, Fit-derived read of "what's
+ * most notable in what I own" and `PortfolioWeaknessesSection` further
+ * down remains as the "worth a second look" surface, both using
+ * Portfolio's own signals rather than Daily Brief's urgency feed.
  */
-const TODAYS_STORY_CAP = 3;
-
-function TodaysStorySection({
-  agendaItems,
-  navigate,
-  t,
-}: {
-  agendaItems: AgendaItemView[];
-  navigate: ReturnType<typeof useNavigate>;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  const changeEvents = agendaItems.filter((item) => item.nature === "change_event").slice(0, TODAYS_STORY_CAP);
-  if (changeEvents.length === 0) return null;
-
-  return (
-    <Stack gap="metadata">
-      <Label>{t("portfolio.todaysStory.heading")}</Label>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "var(--space-row)",
-        }}
-      >
-        {changeEvents.map((item) => (
-          <Surface tier="elevated" key={item.id}>
-            <Stack gap="metadata">
-              {item.ticker && (
-                <Text as="span" style={{ fontWeight: 600 }}>
-                  {item.ticker}
-                </Text>
-              )}
-              <Text as="p" color="secondary">
-                {agendaItemHeadline(item, t)}
-              </Text>
-              {item.ticker && item.caseId && (
-                <div>
-                  <Link
-                    href="#"
-                    style={{ color: "var(--global-color-accent)" }}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      navigate(`/investment-case/${item.caseId}`, { state: { origin: "portfolio", ticker: item.ticker } });
-                    }}
-                  >
-                    {t("dailyBriefAgenda.action.openInvestmentCase")} →
-                  </Link>
-                </div>
-              )}
-            </Stack>
-          </Surface>
-        ))}
-      </div>
-    </Stack>
-  );
-}
-
-/** Portfolio Lower-Half Reconstruction Sprint 6D (Phase 1) -- three
- * highest-priority ticker groups, never more, each a compact editorial
- * card (`TickerAgendaCard`) instead of a full verbose `AgendaItemRow`
- * -- the exact same "one ticker, one card, badges/ongoing-sentence/
- * disclosures behind one expand" component Daily Brief already ships
- * (`DailyBriefAgendaSection`), reused verbatim rather than a second,
- * bespoke compact design. `groupAgendaByTicker` is the same pure,
- * already-existing grouping function that component already calls;
- * this only lowers the visible cap from Daily Brief's 5 to this
- * section's own 3, per this sprint's explicit "three highest-priority
- * items" requirement. `stanceViewByTicker` is the same map the
- * Holdings Table's own "Current view" column already reads -- no new
- * fetch. */
-const ATTENTION_CARD_CAP = 3;
-
-function AttentionRequiredSection({
-  status,
-  stanceViewByTicker,
-  navigate,
-  t,
-}: {
-  status: DailyBriefAgendaFetchStatus;
-  stanceViewByTicker: Map<string, StanceView>;
-  navigate: ReturnType<typeof useNavigate>;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  if (status.kind === "loading") {
-    return (
-      <Text role="status" aria-live="polite">
-        {t("common.loading")}
-      </Text>
-    );
-  }
-  // Product Simplification Sprint 6E, Phase 3: Atlas's own internal
-  // bookkeeping (a decision without an outcome, a missing note, an
-  // allocation awaiting reconciliation) is never an investment issue --
-  // a ticker whose entire agenda is that kind of housekeeping has
-  // nothing genuinely worth knowing today and does not get a card here
-  // at all. This is meant to read as "Atlas found a few things worth
-  // knowing," not "here are your 32 outstanding tasks."
-  const realItems = status.kind === "loaded" ? status.items.filter(hasRealReason) : [];
-  if (status.kind === "error" || realItems.length === 0) {
-    return (
-      <Stack gap="metadata">
-        <Heading level={2}>{t("portfolio.attentionRequired.heading")}</Heading>
-        <Text color="tertiary">{t("dailyBriefAgenda.empty.noItems")}</Text>
-      </Stack>
-    );
-  }
-
-  // `HoldingAttentionPage` reads `location.state.agendaItem` to show
-  // the real originating reason -- preserved here via a ticker lookup,
-  // since `TickerAgendaCard`'s own `onOpenHolding` only ever passes a
-  // ticker string, never the full item.
-  const itemByTicker = new Map<string, AgendaItemView>();
-  for (const item of realItems) {
-    if (item.ticker && !itemByTicker.has(item.ticker)) itemByTicker.set(item.ticker, item);
-  }
-
-  const onOpenInvestmentCase = (caseId: string, ticker: string | null) =>
-    navigate(`/investment-case/${caseId}`, { state: { origin: "portfolio", ticker } });
-  const onOpenCandidate = (ticker: string) => navigate(`/discovery/candidate/${encodeURIComponent(ticker)}`);
-  const onCompare = (ticker: string) => navigate(`/discovery/compare?a=${encodeURIComponent(ticker)}`);
-  const onOpenHolding = (ticker: string) =>
-    navigate(`/portfolio/holding/${encodeURIComponent(ticker)}`, { state: { agendaItem: itemByTicker.get(ticker) } });
-  /* Internal Alpha Stabilization: this was a dead no-op click
-     (`() => {}`) -- already being on Portfolio, the honest equivalent
-     of "Go to Portfolio" is scrolling to the top of this same page,
-     not a link that visibly does nothing. */
-  const onGoToPortfolio = () => window.scrollTo({ top: 0, behavior: "smooth" });
-
-  const groups = groupAgendaByTicker(realItems).map(sanitizeGroupReasons);
-  const visible = groups.slice(0, ATTENTION_CARD_CAP);
-  const collapsed = groups.slice(ATTENTION_CARD_CAP);
-
-  return (
-    <Stack gap="metadata">
-      <Heading level={2}>{t("portfolio.attentionRequired.heading")}</Heading>
-      <Stack gap="inter-section">
-        {visible.map((group) => (
-          <Surface tier="elevated" key={group.ticker ?? group.items[0]!.id}>
-            <TickerAgendaCard
-              group={group}
-              stanceByTicker={stanceViewByTicker}
-              onOpenInvestmentCase={onOpenInvestmentCase}
-              onOpenCandidate={onOpenCandidate}
-              onCompare={onCompare}
-              onOpenHolding={onOpenHolding}
-              onGoToPortfolio={onGoToPortfolio}
-            />
-          </Surface>
-        ))}
-      </Stack>
-      {collapsed.length > 0 && (
-        <ExpandableDetail summaryLabel={t("portfolio.attention.viewAllRemaining", { count: collapsed.length })}>
-          <Stack gap="inter-section">
-            {collapsed.map((group) => (
-              <Surface tier="elevated" key={group.ticker ?? group.items[0]!.id}>
-                <TickerAgendaCard
-                  group={group}
-                  stanceByTicker={stanceViewByTicker}
-                  onOpenInvestmentCase={onOpenInvestmentCase}
-                  onOpenCandidate={onOpenCandidate}
-                  onCompare={onCompare}
-                  onOpenHolding={onOpenHolding}
-                  onGoToPortfolio={onGoToPortfolio}
-                />
-              </Surface>
-            ))}
-          </Stack>
-        </ExpandableDetail>
-      )}
-    </Stack>
-  );
-}
 
 /**
  * Redesign From Zero Sprint V2 -- "Today's Biggest Risk" / "Today's
@@ -1807,9 +1532,14 @@ function PortfolioOpportunitiesSection({
 
 /** Shared by Portfolio Opportunities and Portfolio Weaknesses -- the
  * one compact editorial card both sections render, so a company's
- * fit/decision-support signals and its three real actions (Review
- * position, Compare alternatives, Open Investment Case) always look
- * identical regardless of which direction placed it there. */
+ * fit/decision-support signals and its real actions (Compare
+ * alternatives, Open Investment Case) always look identical regardless
+ * of which direction placed it there. Alpha Integration Fix (One
+ * Product Pass): the former "Review position" link to the Holding
+ * Attention waypoint page is gone -- it duplicated Investment Case's
+ * own job one click further away (Alpha Product Integration Review,
+ * Phase 1). "Open Investment Case" now always navigates directly,
+ * creating a Case first if this holding doesn't have one yet. */
 function PortfolioSignalCard({
   ticker,
   weightPercent,
@@ -1857,43 +1587,30 @@ function PortfolioSignalCard({
             style={{ color: "var(--global-color-accent)" }}
             onClick={(event) => {
               event.preventDefault();
-              navigate(`/portfolio/holding/${encodeURIComponent(ticker)}`);
+              navigate(`/discovery/compare?a=${encodeURIComponent(ticker)}`);
             }}
           >
-            {t("portfolio.weakestHoldings.reviewPosition")} →
+            {t("portfolio.weakestHoldings.compareAlternatives")} →
           </Link>
           <Link
             href="#"
             style={{ color: "var(--global-color-accent)" }}
             onClick={(event) => {
               event.preventDefault();
-              navigate(`/discovery/compare?a=${encodeURIComponent(ticker)}`);
+              onOpenCase(ticker, caseId);
             }}
           >
-            {t("portfolio.weakestHoldings.compareAlternatives")} →
+            {t("dailyBriefAgenda.action.openInvestmentCase")} →
           </Link>
-          {caseId && (
-            <Link
-              href="#"
-              style={{ color: "var(--global-color-accent)" }}
-              onClick={(event) => {
-                event.preventDefault();
-                onOpenCase(ticker, caseId);
-              }}
-            >
-              {t("dailyBriefAgenda.action.openInvestmentCase")} →
-            </Link>
-          )}
         </Inline>
       </Stack>
     </Surface>
   );
 }
 
-const HOLDING_SORT_KEYS: HoldingSortKey[] = ["attention", "weight", "fit", "coverage", "stance", "alphabetical"];
+const HOLDING_SORT_KEYS: HoldingSortKey[] = ["weight", "fit", "coverage", "stance", "alphabetical"];
 
 const HOLDING_SORT_LABEL_KEY: Record<HoldingSortKey, TranslationKey> = {
-  attention: "portfolio.holdingsTable.sort.attention",
   weight: "portfolio.holdingsTable.sort.weight",
   fit: "portfolio.holdingsTable.sort.fit",
   coverage: "coverage.portfolio.sortLabel",
@@ -1904,8 +1621,6 @@ const HOLDING_SORT_LABEL_KEY: Record<HoldingSortKey, TranslationKey> = {
 function HoldingsTable({
   view,
   cockpit,
-  priorityByTicker,
-  agendaItemByTicker,
   fitByTicker,
   stanceByTicker,
   stanceViewByTicker,
@@ -1916,8 +1631,6 @@ function HoldingsTable({
 }: {
   view: PortfolioView;
   cockpit: PortfolioCockpitFetchStatus;
-  priorityByTicker: Map<string, PriorityLevel>;
-  agendaItemByTicker: Map<string, AgendaItemView>;
   fitByTicker: Map<string, PortfolioFitAssessmentView>;
   stanceByTicker: Map<string, StanceLevel>;
   stanceViewByTicker: Map<string, StanceView>;
@@ -1945,10 +1658,14 @@ function HoldingsTable({
   };
 
   const [showAllHoldings, setShowAllHoldings] = useState(false);
-  /** Deliverable 6 (Holding Ordering) -- defaults to "attention" so the
-   * portfolio is useful immediately; the other three are cheap client-
-   * side re-sorts over data already on the page, no new fetch. */
-  const [sortKey, setSortKey] = useState<HoldingSortKey>("attention");
+  /** Alpha Integration Fix (One Product Pass): defaults to "weight"
+   * (largest position first) -- Portfolio's own doctrine question is
+   * "what do I own," so its default ordering is ownership-scale, not
+   * Daily Brief's Agenda-derived urgency ranking (the former "attention"
+   * sort key, removed along with the rest of that duplication). The
+   * other keys remain cheap client-side re-sorts over data already on
+   * the page, no new fetch. */
+  const [sortKey, setSortKey] = useState<HoldingSortKey>("weight");
   const fitRatingByTicker = new Map<string, FitRating>();
   for (const [ticker, assessment] of fitByTicker) {
     fitRatingByTicker.set(ticker, assessment.overall);
@@ -1973,7 +1690,6 @@ function HoldingsTable({
   const orderedHoldings = sortHoldings(
     view.holdings,
     sortKey,
-    priorityByTicker,
     fitRatingByTicker,
     coverageByTicker,
     stanceByTicker,
@@ -2024,18 +1740,15 @@ function HoldingsTable({
             <thead>
               <tr>
                 {/* Portfolio Lower-Half Reconstruction Sprint 6D (Phase
-                    2): four columns, matching this sprint's own target
-                    row shape exactly -- Company, Atlas view, one
-                    important reason, Action. Value and Share (real
-                    data, previously two of their own dedicated columns)
-                    now live inside the Company cell, shown only when
-                    genuinely populated -- a portfolio entered as
-                    percent-only no longer renders a permanently-empty
-                    Value column. Why and Change (Sprint B3's own two
-                    columns) are merged into one Reason cell: whichever
-                    of the two is more time-sensitive today (a real
-                    Agenda signal, if any) leads; the other is one click
-                    away in the same cell, never deleted. */}
+                    2): four columns -- Company, Atlas view, Reason,
+                    Action. Value and Share live inside the Company cell,
+                    shown only when genuinely populated -- a portfolio
+                    entered as percent-only no longer renders a
+                    permanently-empty Value column. Alpha Integration Fix
+                    (One Product Pass): the Reason cell now always shows
+                    Stance's own steady-state reasoning -- it no longer
+                    leads with a real-time Daily Brief Agenda signal,
+                    which duplicated Daily Brief's own job. */}
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.tickerHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.currentViewHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.reasonHeader")}</th>
@@ -2056,8 +1769,6 @@ function HoldingsTable({
                     stanceLevel={stanceByTicker.get(holding.ticker)}
                     stanceView={stanceViewByTicker.get(holding.ticker)}
                     investmentLevel={decisionSupportByTicker.get(holding.ticker)}
-                    priority={priorityByTicker.get(holding.ticker)}
-                    agendaItem={agendaItemByTicker.get(holding.ticker)}
                     thisCaseCreateStatus={caseCreateStatus[holding.ticker] ?? { kind: "idle" }}
                     openInvestmentCase={openInvestmentCase}
                     onOpenEditPortfolio={onOpenEditPortfolio}
@@ -2122,53 +1833,25 @@ function HoldingsTable({
 }
 
 /**
- * Portfolio Lower-Half Reconstruction Sprint 6D (Phase 2) -- the
- * Holdings Table's own merged "one important reason" cell. Sprint B3
- * gave the table two separate columns, Why (Stance's own leading
- * reason) and Change (the real Agenda signal, if any); this folds them
- * into one, ranking whichever is more time-sensitive today first:
- * a real Agenda signal (something happened) leads over Why (the
- * steady-state explanation), since "what changed" is the more
- * decision-relevant fact when both are available. The other reason,
- * when it's real, is one click away in the same cell -- never deleted.
- * When there is no real Agenda signal, Why is shown directly with no
- * expand affordance: "nothing changed" is an absence, not a second
- * fact worth hiding behind a click, the same "absence is itself the
- * honest answer" discipline this codebase already applies to Knowledge
- * Coverage.
+ * Alpha Integration Fix (One Product Pass) -- the Holdings Table's
+ * Reason cell now shows only Stance's own steady-state reasoning
+ * sentence. It used to lead with a real-time Daily Brief Agenda signal
+ * (Sprint B3's own "Change" column, folded in here) whenever one
+ * existed -- the Alpha Product Integration Review's Phase 8 finding was
+ * that this made the Holdings Table one of several surfaces on this
+ * page independently re-ranking holdings by Daily Brief's own urgency
+ * feed. "What changed" belongs on Daily Brief; this cell answers only
+ * "why does Atlas hold this view."
  */
 function HoldingReasonCell({
-  agendaItem,
-  priority,
   stanceView,
   t,
 }: {
-  agendaItem: AgendaItemView | undefined;
-  priority: PriorityLevel | undefined;
   stanceView: StanceView | undefined;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   const primaryReason = stanceView ? primaryStanceReason(stanceView) : null;
   const whySentence = primaryReason ? stanceReasonSentence(primaryReason, t) : null;
-  const headline = agendaItem ? realHeadlineText(agendaItem, t) : null;
-
-  if (agendaItem && headline) {
-    return (
-      <Stack gap="metadata">
-        <Inline gap="metadata" align="baseline" wrap>
-          {priority && <PriorityBadge priority={priority} />}
-          <Text as="span">{headline}</Text>
-        </Inline>
-        {whySentence && (
-          <ExpandableDetail summaryLabel={t("portfolio.holdingsTable.showWhyLabel")}>
-            <Text as="p" color="secondary">
-              {whySentence}
-            </Text>
-          </ExpandableDetail>
-        )}
-      </Stack>
-    );
-  }
 
   if (whySentence) {
     return <Text as="span">{whySentence}</Text>;
@@ -2201,8 +1884,6 @@ function HoldingsTableRow({
   stanceLevel,
   stanceView,
   investmentLevel,
-  priority,
-  agendaItem,
   thisCaseCreateStatus,
   openInvestmentCase,
   onOpenEditPortfolio,
@@ -2214,8 +1895,6 @@ function HoldingsTableRow({
   stanceLevel: StanceLevel | undefined;
   stanceView: StanceView | undefined;
   investmentLevel: DecisionSupportLevel | undefined;
-  priority: PriorityLevel | undefined;
-  agendaItem: AgendaItemView | undefined;
   thisCaseCreateStatus: CaseCreateStatus;
   openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
   onOpenEditPortfolio: () => void;
@@ -2224,21 +1903,16 @@ function HoldingsTableRow({
 }) {
   const isCreating = thisCaseCreateStatus.kind === "creating";
   const isAwaitingReconciliation = holding.reconciliationStatus === "AWAITING_RECONCILIATION";
-  const navigate = useNavigate();
 
-  /** Company Workspace v1 -- Holdings rows now open the Company
-   * Workspace first (Portfolio -> Company -> Investment Case), rather
-   * than jumping straight to Investment Case as before. A holding with
-   * no Case yet still needs `openInvestmentCase`'s own create-then-open
-   * flow, since Company Workspace has nothing to resolve without a
-   * `caseId` -- only an already-cased holding routes through Company
-   * Workspace. */
+  /** Alpha Integration Fix (One Product Pass): a Holdings row now opens
+   * the real Investment Case directly, the same fix already made to
+   * Watchlist's own row-click. It used to route through Company
+   * Workspace first -- a mid-flow waypoint whose own content (Hero,
+   * limiting factors, "what changed") duplicates Investment Case
+   * outright (Alpha Product Integration Review, Phase 1). Company
+   * Workspace itself is unchanged and untouched by this fix. */
   function handleRowActivate() {
     if (isCreating) return;
-    if (holding.caseId) {
-      navigate(`/company/${encodeURIComponent(holding.ticker)}`);
-      return;
-    }
     openInvestmentCase(holding.ticker, holding.caseId);
   }
 
@@ -2329,7 +2003,7 @@ function HoldingsTableRow({
           </Inline>
         </td>
         <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)", maxWidth: "320px" }} onClick={(event) => event.stopPropagation()}>
-          <HoldingReasonCell agendaItem={agendaItem} priority={priority} stanceView={stanceView} t={t} />
+          <HoldingReasonCell stanceView={stanceView} t={t} />
         </td>
         <td style={cellStyle}>
           <Link

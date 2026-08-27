@@ -57,15 +57,11 @@ function agendaResponse(overrides: Record<string, unknown> = {}) {
       concentrationLevel: "Elevated",
     },
     items: [
-      // Product Simplification Sprint 6E: the default fixture item is a
-      // real investment signal (Portfolio Fit), not Atlas's own
-      // decision-hygiene bookkeeping -- a `portfolio_status`/
-      // `workflow_gap` item is never allowed to read as Critical to an
-      // investor any more, so using one here would make AAPL silently
-      // vanish from Attention Required and break every test below that
-      // expects it to show up as the portfolio's one real critical
-      // holding. See the dedicated `bookkeepingAgendaItem` fixture
-      // below for coverage of the suppression behavior itself.
+      // The default fixture item is a real investment signal (Portfolio
+      // Fit) -- AAPL's own Today's Biggest Opportunity/Risk card reads
+      // this via `agendaItemByTicker`, the one remaining in-scope
+      // consumer of the shared Daily Brief Agenda on this page (Alpha
+      // Integration Fix, One Product Pass).
       {
         id: "portfolio_fit:AAPL",
         priority: "critical",
@@ -81,40 +77,6 @@ function agendaResponse(overrides: Record<string, unknown> = {}) {
         attentionCategory: null,
         attentionCount: null,
         reasonFacts: [null],
-      },
-    ],
-    ...overrides,
-  };
-}
-
-/** Product Simplification Sprint 6E, Phase 1/3 -- Atlas's own internal
- * decision-hygiene bookkeeping: a `portfolio_status`-sourced item whose
- * entire `reason[]` is workflow housekeeping, never a real investment
- * fact. `workflow_gap` items like this must never be shown to an
- * investor and must never make a ticker read as Critical. */
-function bookkeepingAgendaItem(overrides: Record<string, unknown> = {}) {
-  return {
-    id: "review_portfolio_position:MSFT",
-    priority: "critical",
-    kind: "review_portfolio_position",
-    group: "portfolio",
-    source: "portfolio_status",
-    headline: "MSFT: outcome without execution (1 item(s))",
-    reason: ["MSFT: outcome without execution (1 item(s))"],
-    ticker: "MSFT",
-    caseId: "case-msft",
-    portfolioContext: null,
-    generatedAt: "2026-01-01T00:00:00Z",
-    attentionCategory: "OUTCOME_WITHOUT_EXECUTION",
-    attentionCount: 1,
-    reasonFacts: [
-      {
-        code: "workflow_gap",
-        entity: "MSFT",
-        value: "OUTCOME_WITHOUT_EXECUTION",
-        secondaryValue: null,
-        label: null,
-        count: 1,
       },
     ],
     ...overrides,
@@ -270,50 +232,35 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     expect(screen.getAllByText("Förhöjd").length).toBeGreaterThan(0);
   });
 
-  it("shows one critical pill sourced from the shared Daily Brief Agenda, never a second competing count", async () => {
+  it("Alpha Integration Fix: the Hero leads with ownership, not an attention-count verdict", async () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
-    await waitFor(() => expect(screen.getByText("1 kritiska")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Du äger 2 innehav.")).toBeInTheDocument());
   });
 
-  it("renders Attention Required from the shared Daily Brief Agenda endpoint", async () => {
+  it("Alpha Integration Fix: never renders Attention Required, Today's Story, or an Agenda-sourced critical pill -- that surface duplicated Daily Brief's own job", async () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
-    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
-    // Status Consolidation (Implementation Sprint B3): the same real
-    // signal renders twice by design -- once in the Attention Required
-    // section, once in the Holdings Table's own Reason column below --
-    // the same "one real signal, shown compactly in two places" pattern
-    // established for Watchlist's Hero + table.
-    expect(screen.getAllByText(/Risk fit is poor/).length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getByText("Du äger 2 innehav.")).toBeInTheDocument());
+    expect(screen.queryByText("Kräver uppmärksamhet")).not.toBeInTheDocument();
+    expect(screen.queryByText("Vad som hänt idag")).not.toBeInTheDocument();
+    expect(screen.queryByText(/kritiska/)).not.toBeInTheDocument();
   });
 
-  it("Phase 6E: a ticker whose entire agenda is Atlas's own bookkeeping (a decision without an outcome) never gets a card, and never counts toward Critical", async () => {
-    mockFetch({
-      agenda: agendaResponse({
-        items: [agendaResponse().items[0], bookkeepingAgendaItem()],
-        summary: { holdingsCount: 2, criticalCount: 2, highCount: 0, watchlistOpportunityCount: 0, cashWeightPercent: 5, concentrationLevel: "Elevated" },
-      }),
-    });
+  it("Alpha Integration Fix: the Holdings Table's Reason column shows only Stance's own reasoning, never the Agenda headline or a Priority badge", async () => {
+    mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
-    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
-    // AAPL's real Portfolio Fit issue still shows.
-    expect(screen.getAllByText(/Risk fit is poor/).length).toBeGreaterThan(0);
-    // MSFT's own agenda item is entirely bookkeeping -- no raw or
-    // translated bookkeeping phrase ever reaches the page, in either
-    // Attention Required or the Holdings Table's Reason column, and
-    // the Pulse's critical pill counts only the one real issue (AAPL),
-    // never MSFT's bookkeeping-only "critical" workflow priority.
-    expect(screen.queryByText(/outcome without execution/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/utfall utan verkställande/)).not.toBeInTheDocument();
-    expect(screen.getByText("1 kritiska")).toBeInTheDocument();
-  });
-
-  it("shows the honest empty state for Attention Required when the agenda has no portfolio items", async () => {
-    mockFetch({ agenda: agendaResponse({ items: [], summary: { holdingsCount: 2, criticalCount: 0, highCount: 0, watchlistOpportunityCount: 0, cashWeightPercent: 5, concentrationLevel: "Elevated" } }) });
-    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
-    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
-    expect(screen.getByText("Atlas har inga väsentliga förändringar att rapportera idag.")).toBeInTheDocument();
+    const aaplRowButton = await screen.findByRole("button", { name: "Öppna AAPLs vy" });
+    const aaplRow = within(aaplRowButton.closest("tr")!);
+    // No stance is mocked for this fixture, so both the Current view
+    // cell and the Reason cell show the honest "New" fallback.
+    expect(aaplRow.getAllByText("Nytt")).toHaveLength(2);
+    expect(aaplRow.queryByText(/Risk fit is poor/)).not.toBeInTheDocument();
+    // The same real Agenda headline still renders once, in Today's
+    // Biggest Risk/Opportunity's own "what changed" line -- it was
+    // never deleted, only removed from the surfaces that duplicated
+    // Daily Brief's own job.
+    expect(screen.getAllByText(/Risk fit is poor/).length).toBe(1);
   });
 
   function orderedTickersFromRowButtons(): string[] {
@@ -324,20 +271,20 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     });
   }
 
-  it("orders holdings by attention by default -- AAPL (flagged, lower weight) before MSFT (unflagged, higher weight)", async () => {
+  it("Alpha Integration Fix: orders holdings by weight by default -- MSFT (70%) before AAPL (30%), ownership-first per Portfolio's own doctrine", async () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await waitFor(() => expect(orderedTickersFromRowButtons().length).toBe(2));
-    expect(orderedTickersFromRowButtons()).toEqual(["AAPL", "MSFT"]);
+    expect(orderedTickersFromRowButtons()).toEqual(["MSFT", "AAPL"]);
   });
 
-  it("re-sorts holdings by weight when Weight is selected", async () => {
+  it("re-sorts holdings alphabetically when A–Ö is selected", async () => {
     const user = (await import("@testing-library/user-event")).default.setup();
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await waitFor(() => expect(orderedTickersFromRowButtons().length).toBe(2));
-    await user.click(screen.getByRole("link", { name: "Andel" }));
-    expect(orderedTickersFromRowButtons()).toEqual(["MSFT", "AAPL"]);
+    await user.click(screen.getByRole("link", { name: "A–Ö" }));
+    expect(orderedTickersFromRowButtons()).toEqual(["AAPL", "MSFT"]);
   });
 
   it("shows the same Investment rating in the Holdings Table that Watchlist and Investment Case show, next to (not replacing) Stance (Atlas UX Phase 7B, Phase 5)", async () => {
@@ -402,7 +349,7 @@ describe("Product Simplification Sprint 6E -- Decision Status/Decision Layer Det
   it("never renders Decision Status or Decision Layer Detail -- Phase 5 removed both sections, not just their old jargon labels", async () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
-    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Du äger 2 innehav.")).toBeInTheDocument());
     expect(screen.queryByText("Beslutsläge")).not.toBeInTheDocument();
     expect(screen.queryByText("Detaljerad beslutsstatus")).not.toBeInTheDocument();
   });
@@ -410,7 +357,7 @@ describe("Product Simplification Sprint 6E -- Decision Status/Decision Layer Det
   it("never renders Recent Activity -- Phase 6 removed the portfolio-local activity log entirely", async () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
-    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Du äger 2 innehav.")).toBeInTheDocument());
     expect(screen.queryByText("Senaste aktivitet")).not.toBeInTheDocument();
   });
 });
@@ -421,17 +368,26 @@ describe("Product Simplification Sprint 6E -- Decision Status/Decision Layer Det
  * StrictMode's dev-only mount -> cleanup -> remount cycle, the Daily
  * Brief Agenda fetch's own `AbortController` was found to corrupt not
  * only the first (StrictMode-discarded) request but the second, kept
- * one as well, leaving `dailyBriefAgenda` -- and therefore Attention
- * Required -- stuck at its initial loading state forever, even though
- * the endpoint itself returned a valid 200. These tests don't assert
- * on StrictMode directly (this test harness doesn't render inside it,
- * matching every other test in this file); they instead simulate its
- * observable shape -- an early, superseded request whose result must
- * never win against a later, current one -- directly at the fetch
- * layer, which is what the fix (a plain `cancelled` flag on the
- * effect, replacing `AbortController`) actually guards against.
+ * one as well, leaving `dailyBriefAgenda` stuck at its initial loading
+ * state forever, even though the endpoint itself returned a valid 200.
+ * These tests don't assert on StrictMode directly (this test harness
+ * doesn't render inside it, matching every other test in this file);
+ * they instead simulate its observable shape -- an early, superseded
+ * request whose result must never win against a later, current one --
+ * directly at the fetch layer, which is what the fix (a plain
+ * `cancelled` flag on the effect, replacing `AbortController`) actually
+ * guards against.
+ *
+ * Alpha Integration Fix (One Product Pass): Attention Required, the
+ * surface these tests originally watched to observe the Agenda fetch's
+ * loaded/error state, is gone (it duplicated Daily Brief's own job).
+ * The Agenda fetch itself is unchanged and still feeds one remaining,
+ * in-scope surface -- Today's Biggest Opportunity/Risk's own "what
+ * changed" line, which reads the real headline once loaded and an
+ * honest "no significant changes" fallback otherwise. These tests now
+ * watch that line instead.
  */
-describe("PortfolioPage Attention Required -- loading reliability (Reliability Fix Sprint P2.1)", () => {
+describe("PortfolioPage -- Daily Brief Agenda loading reliability (Reliability Fix Sprint P2.1)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     __resetAlphaPortfolioCacheForTests();
@@ -465,13 +421,16 @@ describe("PortfolioPage Attention Required -- loading reliability (Reliability F
     return deferred;
   }
 
-  it("Scenario A -- a single successful response moves Attention Required out of loading into loaded", async () => {
+  it("Scenario A -- a single successful response replaces the honest fallback with the real Agenda signal", async () => {
     const deferred = mockFetchWithControllableAgenda();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await waitFor(() => expect(deferred.length).toBe(1));
+    // AAPL's own card (Today's Biggest Opportunity, per this fixture's
+    // fit ordering) shows the honest "no significant changes" fallback
+    // until the Agenda resolves -- there is no fabricated headline.
+    await waitFor(() => expect(screen.getAllByText(/Inga betydande förändringar/).length).toBeGreaterThan(0));
     deferred[0]!.resolve(agendaResponse());
-    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
-    expect(screen.getAllByText(/Risk fit is poor/).length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getByText(/Risk fit is poor/)).toBeInTheDocument());
   });
 
   it("Scenario B -- an earlier, superseded request resolving late must never overwrite a later request's own loaded state (the exact StrictMode-shaped race)", async () => {
@@ -488,8 +447,7 @@ describe("PortfolioPage Attention Required -- loading reliability (Reliability F
     await waitFor(() => expect(deferred.length).toBe(2));
     // The second, current request resolves first...
     deferred[1]!.resolve(agendaResponse());
-    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
-    expect(screen.getAllByText(/Risk fit is poor/).length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getByText(/Risk fit is poor/)).toBeInTheDocument());
     // ...and only then does the first, superseded request's own result
     // arrive late, on an already-unmounted instance. Under the pre-fix
     // `AbortController` version this path never mattered because the
@@ -499,15 +457,18 @@ describe("PortfolioPage Attention Required -- loading reliability (Reliability F
     // moved on. Resolving it must not throw and must not disturb the
     // still-mounted instance's own loaded content.
     expect(() => deferred[0]!.resolve(agendaResponse({ items: [] }))).not.toThrow();
-    expect(screen.getAllByText(/Risk fit is poor/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Risk fit is poor/)).toBeInTheDocument();
   });
 
-  it("Scenario C -- a genuine request failure resolves to the error state, never an indefinite loading state", async () => {
+  it("Scenario C -- a genuine request failure resolves honestly, never an indefinite loading state or a crash", async () => {
     const deferred = mockFetchWithControllableAgenda();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await waitFor(() => expect(deferred.length).toBe(1));
     deferred[0]!.reject(new Error("network failure"));
-    await waitFor(() => expect(screen.getByText("Kräver uppmärksamhet")).toBeInTheDocument());
-    expect(screen.getByText("Atlas har inga väsentliga förändringar att rapportera idag.")).toBeInTheDocument();
+    // The page keeps rendering normally -- the Hero's own ownership
+    // fact never depends on the Agenda fetch -- and the risk/
+    // opportunity card keeps its honest fallback rather than hanging.
+    await waitFor(() => expect(screen.getByText("Du äger 2 innehav.")).toBeInTheDocument());
+    expect(screen.getAllByText(/Inga betydande förändringar/).length).toBeGreaterThan(0);
   });
 });

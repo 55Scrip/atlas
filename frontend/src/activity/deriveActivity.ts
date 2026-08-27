@@ -9,10 +9,13 @@ import type { TranslationKey } from "../i18n";
  * already exist, the same way `InvestmentCasePage.tsx` has always
  * cross-referenced Evidence to Observations client-side.
  *
- * Shared by `HistoryPage.tsx`, `DashboardPage.tsx`, and
- * `InvestmentCasePage.tsx`'s own Decision Timeline, so the definition of
- * "what happened" and "what still needs attention" lives in exactly one
- * place rather than three slightly-different copies.
+ * Shared by `HistoryPage.tsx` and `InvestmentCasePage.tsx`'s own
+ * Decision Timeline, so the definition of "what happened" and "what
+ * still needs attention" lives in exactly one place rather than
+ * several slightly-different copies. (`DashboardPage.tsx` also shared
+ * this module before it was retired in the Alpha Integration Fix, One
+ * Product Pass -- it produced no fact not already owned by Portfolio,
+ * Daily Brief, or History.)
  *
  * Deliberately absent: no persisted reconciliation *event* exists
  * anywhere in the backend (`AlphaPortfolioState` carries a single
