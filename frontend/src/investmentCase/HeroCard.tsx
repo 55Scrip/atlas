@@ -41,6 +41,7 @@ import { formatPercent, GAP_KEY, type OutlookGapKind } from "./AtlasOutlookSecti
 import type { TranslationKey } from "../i18n";
 import { StanceSummary } from "../stance/StanceSummary";
 import type { StanceView } from "../stance/stanceApi";
+import { ExpandableDetail } from "./ExpandableDetail";
 
 /**
  * Investment Case Hero (Figma-fidelity rebuild, on top of `APP-003`'s
@@ -575,11 +576,20 @@ export function HeroCard({
               row, are now exclusively the Summary Bar's own job; what's
               left (Valuation Support, Current Price, Current Priority)
               is genuinely supporting reference data, and the heading
-              now says so rather than calling three secondary fields
-              "Key Metrics" when the real key metrics live above. */}
-          <Label>{t("investmentCase.hero.additionalDetailsHeading")}</Label>
-          <Inline gap="inter-section" wrap align="start">
-            <MetricField label={t("investmentCase.keyMetrics.valuationSupportLabel")}>
+              already said so.
+              RC-2, Phase 5 (Investment Case Compression): the section's
+              own docstring already called this "genuinely supporting
+              reference data," yet it rendered eagerly, ahead of Seven
+              Categories/Case DNA lower on the page -- exactly backwards
+              from "first screen answers What/Why/Risk/Upside/Horizon,
+              nothing else." Now behind the same `ExpandableDetail`
+              disclosure primitive already used everywhere else in this
+              codebase for secondary reference data -- collapsed by
+              default, one click away, nothing removed (the price-
+              refresh action inside still works once expanded). */}
+          <ExpandableDetail summaryLabel={t("investmentCase.hero.additionalDetailsHeading")}>
+            <Inline gap="inter-section" wrap align="start">
+              <MetricField label={t("investmentCase.keyMetrics.valuationSupportLabel")}>
               <StatusBadge
                 label={t(VALUATION_SUPPORT_LABEL_KEY[analysis.valuationSupportStatus])}
                 tone={VALUATION_SUPPORT_TONE[analysis.valuationSupportStatus]}
@@ -627,7 +637,8 @@ export function HeroCard({
                   : t(PRIORITY_SENTENCE_KEY[priority])}
               </Text>
             </MetricField>
-          </Inline>
+            </Inline>
+          </ExpandableDetail>
         </>
       )}
 
