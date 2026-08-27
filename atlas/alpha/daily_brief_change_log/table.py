@@ -12,7 +12,7 @@ be the primary key.
 """
 from __future__ import annotations
 
-from sqlalchemy import Column, Integer, MetaData, String, Table
+from sqlalchemy import Boolean, Column, Integer, MetaData, String, Table
 from sqlalchemy.engine import Engine
 
 from atlas.core.infrastructure.persistence.shared.schema_sync import sync_table_schema
@@ -40,6 +40,27 @@ daily_brief_change_log_table = Table(
     # Real, already-computed data used for ordering/materiality at
     # read time -- never re-derived from `value` string-matching.
     Column("priority_rank", Integer, nullable=False),
+    # RC-3, Phase 3 (Per-Case Baseline). True only for a persistent-
+    # finding-shaped fact (case_condition_status/assumption_status/
+    # business_quality/management_credibility -- see `eligibility.py`'s
+    # own `BASELINE_SENSITIVE_CODES`) recorded on the first pass this
+    # case was ever observed by the change log. Occupies its natural
+    # key (so an unchanged repeat of the same fact is never re-surfaced
+    # later) but is excluded from `list_recent` -- the row is real, only
+    # its visibility as a "change" is suppressed. Real transitions
+    # (Investment Decision, Recommendation Conviction, Portfolio
+    # Decision, ...) are never marked baseline: they cannot fire on a
+    # case's own first synthesis by construction (the engine's own
+    # `previous is None` check), so a transition recorded here always
+    # reflects a real, already-computed previous->current move.
+    #
+    # Nullable, matching `seen_at`'s own precedent and this codebase's
+    # `sync_table_schema` discipline (a new NOT NULL column on an
+    # already-existing table would raise `IncompatibleSchemaError`
+    # rather than fabricate a default for pre-existing rows) -- NULL
+    # and `False` are treated identically everywhere this column is
+    # read (`store.py::list_recent`).
+    Column("is_baseline", Boolean, nullable=True),
 )
 
 

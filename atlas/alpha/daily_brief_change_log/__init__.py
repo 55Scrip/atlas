@@ -19,19 +19,30 @@ package exists to fix, by capturing each eligible transition durably
 the first time it is observed, independent of the upstream engines'
 own transient diffing.
 
-This package owns exactly one table (`daily_brief_change_log`, one row
-per (user_id, ticker, reason_code, value, secondary_value) tuple ever
-observed) and exposes three operations: record newly-observed eligible
-changes (idempotent -- the natural key prevents duplicates), list the
-still-live ones for a user, and mark a set of them seen. It reads the
-already-built `DailyBriefAgenda` and nothing else; it has no opinion
-about how that agenda itself is built, only about which of its already-
-real facts are eligible to be remembered as "a change the user should
-be told about" (see `eligibility.py`), and for how long a live entry
-stays part of "what's new" before it archives out (see `store.py`'s own
-`DEFAULT_ARCHIVE_AFTER`).
+This package owns two tables. `daily_brief_change_log` (one row per
+(user_id, ticker, reason_code, value, secondary_value) tuple ever
+observed) is the primary log; it exposes three operations: record
+newly-observed eligible changes (idempotent -- the natural key prevents
+duplicates), list the still-live ones for a user, and mark a set of
+them seen. It reads the already-built `DailyBriefAgenda` and nothing
+else; it has no opinion about how that agenda itself is built, only
+about which of its already-real facts are eligible to be remembered as
+"a change the user should be told about" (see `eligibility.py`), and
+for how long a live entry stays part of "what's new" before it
+archives out (see `store.py`'s own `DEFAULT_ARCHIVE_AFTER`).
 
-Eligibility, archival, and the per-entry NEW/SEEN lifecycle are the
-whole of Daily Brief 2.0's product behavior; everything else in this
-sprint is presentation of what this package already decided.
+`daily_brief_case_baseline` (RC-3, Phase 3 -- one row per (user_id,
+case_id) ever observed) is small and purely supporting: it lets
+`store.py` tell whether a persistent-finding-shaped fact (Case
+Condition, Assumption Status, Business Quality, Management Credibility
+-- see `eligibility.py`'s own `BASELINE_SENSITIVE_CODES`) is being
+observed on a case Atlas is looking at for the very first time, so that
+first look is recorded (for future dedup) but never surfaced as if it
+were a change. See `case_baseline.py`'s own module docstring for why
+this can't be derived from the change log's own rows alone.
+
+Eligibility, archival, per-case baseline, and the per-entry NEW/SEEN
+lifecycle are the whole of Daily Brief's product behavior; everything
+else in this sprint is presentation of what this package already
+decided.
 """

@@ -136,3 +136,60 @@ class TestArchival:
         store.record_if_new(_USER, (_change(),), now=_NOW)
         assert store.list_recent(_USER, now=_NOW + timedelta(hours=25), archive_after=timedelta(hours=24)) == ()
         assert len(store.list_recent(_USER, now=_NOW + timedelta(hours=23), archive_after=timedelta(hours=24))) == 1
+
+
+class TestPerCaseBaseline:
+    """Daily Brief RC-3, Phase 3 -- a persistent-finding-shaped fact
+    (e.g. business_quality) on a case seen for the first time this call
+    must never surface as a live change, but must still occupy its
+    natural key so an unchanged repeat never surfaces later either."""
+
+    def test_a_baseline_sensitive_fact_on_a_newly_seen_case_is_not_returned(self, store: DailyBriefChangeLogStore):
+        change = _change(reason_code="business_quality", value=None, secondary_value=None)
+        recorded = store.record_if_new(_USER, (change,), now=_NOW, newly_baseline_cases=frozenset({"case-nvda"}))
+        assert recorded == ()
+
+    def test_a_baseline_sensitive_fact_on_a_newly_seen_case_never_appears_in_list_recent(self, store: DailyBriefChangeLogStore):
+        change = _change(reason_code="business_quality", value=None, secondary_value=None)
+        store.record_if_new(_USER, (change,), now=_NOW, newly_baseline_cases=frozenset({"case-nvda"}))
+        assert store.list_recent(_USER, now=_NOW) == ()
+
+    def test_the_same_still_true_baseline_fact_is_never_promoted_to_visible_on_a_later_call(self, store: DailyBriefChangeLogStore):
+        """The core of Phase 3: once a case's baseline is established,
+        an unchanged persistent finding must not later "become new"
+        just because it was suppressed the first time."""
+        change = _change(reason_code="business_quality", value=None, secondary_value=None)
+        store.record_if_new(_USER, (change,), now=_NOW, newly_baseline_cases=frozenset({"case-nvda"}))
+        # Second pass: the case is no longer newly-baseline (caller's
+        # own case_baseline store would no longer report it), and the
+        # identical fact is presented again.
+        second = store.record_if_new(_USER, (change,), now=_NOW + timedelta(hours=20), newly_baseline_cases=frozenset())
+        assert second == ()
+        assert store.list_recent(_USER, now=_NOW + timedelta(hours=20)) == ()
+
+    def test_a_baseline_sensitive_fact_on_a_case_not_in_the_newly_baseline_set_is_recorded_normally(self, store: DailyBriefChangeLogStore):
+        change = _change(reason_code="business_quality", value=None, secondary_value=None)
+        recorded = store.record_if_new(_USER, (change,), now=_NOW, newly_baseline_cases=frozenset({"case-other"}))
+        assert len(recorded) == 1
+        assert len(store.list_recent(_USER, now=_NOW)) == 1
+
+    def test_a_real_transition_on_a_newly_seen_case_is_recorded_and_visible_regardless_of_baseline(self, store: DailyBriefChangeLogStore):
+        """Investment Decision transitions are never baseline-gated --
+        they cannot fire on a case's own first synthesis by
+        construction, so a transition here always reflects a real,
+        already-computed previous->current move."""
+        change = _change(reason_code="investment_decision_transition", value="reduce", secondary_value="hold")
+        recorded = store.record_if_new(_USER, (change,), now=_NOW, newly_baseline_cases=frozenset({"case-nvda"}))
+        assert len(recorded) == 1
+        assert len(store.list_recent(_USER, now=_NOW)) == 1
+
+    def test_a_different_baseline_sensitive_fact_for_the_same_case_after_baseline_is_a_real_new_change(self, store: DailyBriefChangeLogStore):
+        """A case's baseline finding is suppressed once; a genuinely
+        different finding for that same case afterward is real and
+        must surface normally."""
+        baseline_fact = _change(reason_code="business_quality", value=None, secondary_value=None)
+        store.record_if_new(_USER, (baseline_fact,), now=_NOW, newly_baseline_cases=frozenset({"case-nvda"}))
+        later_fact = _change(reason_code="assumption_status", value="invalidated", secondary_value=None, label="China revenue growth")
+        recorded = store.record_if_new(_USER, (later_fact,), now=_NOW + timedelta(hours=20), newly_baseline_cases=frozenset())
+        assert len(recorded) == 1
+        assert len(store.list_recent(_USER, now=_NOW + timedelta(hours=20))) == 1

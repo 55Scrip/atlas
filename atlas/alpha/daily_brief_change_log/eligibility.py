@@ -59,7 +59,7 @@ from dataclasses import dataclass
 from atlas.alpha.daily_brief_agenda.models import AgendaItem, DailyBriefAgenda, PriorityLevel
 from atlas.alpha.daily_brief_agenda.reason_facts import ReasonCode, ReasonFact
 
-__all__ = ["EligibleChange", "extract_eligible_changes"]
+__all__ = ["EligibleChange", "extract_eligible_changes", "BASELINE_SENSITIVE_CODES"]
 
 
 @dataclass(frozen=True)
@@ -149,6 +149,26 @@ _REASON_CODE_SEVERITY: dict[ReasonCode, int] = {
     ReasonCode.MANAGEMENT_CREDIBILITY: 4,
     ReasonCode.MONITORING_CHANGE: 5,
 }
+
+
+# RC-3, Phase 3 (Per-Case Baseline) -- the subset of eligible reason
+# codes with no real "previous" semantics: each fires whenever the
+# CURRENT case state satisfies it, not on a genuine transition, so a
+# case's own first-ever synthesis can make one true without anything
+# having changed. `case_baseline.py` uses this set to decide which
+# facts need the baseline gate; every other eligible code (a real
+# previous->current transition, or a verdict the upstream engine has
+# already baseline-gated itself -- see `change_intelligence_thesis_
+# impact`'s own module docstring) is safe to record on a case's first
+# pass exactly as on any later one.
+BASELINE_SENSITIVE_CODES = frozenset(
+    {
+        ReasonCode.CASE_CONDITION_STATUS,
+        ReasonCode.ASSUMPTION_STATUS,
+        ReasonCode.BUSINESS_QUALITY,
+        ReasonCode.MANAGEMENT_CREDIBILITY,
+    }
+)
 
 
 def _is_case_condition_eligible(item: AgendaItem) -> bool:

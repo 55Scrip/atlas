@@ -27,7 +27,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import and_, insert, select, update
 from sqlalchemy.engine import Engine
 
-from atlas.alpha.daily_brief_change_log.eligibility import EligibleChange
+from atlas.alpha.daily_brief_change_log.eligibility import BASELINE_SENSITIVE_CODES, EligibleChange
 from atlas.alpha.daily_brief_change_log.models import ChangeLogEntry
 from atlas.alpha.daily_brief_change_log.table import daily_brief_change_log_table
 
@@ -56,14 +56,30 @@ class DailyBriefChangeLogStore:
         self._engine = engine
 
     def record_if_new(
-        self, user_id: str, changes: tuple[EligibleChange, ...], *, now: datetime | None = None
+        self,
+        user_id: str,
+        changes: tuple[EligibleChange, ...],
+        *,
+        now: datetime | None = None,
+        newly_baseline_cases: frozenset[str] = frozenset(),
     ) -> tuple[ChangeLogEntry, ...]:
         """Idempotent: a change already logged under its own natural
         key (`user_id`, `ticker`, `reason_code`, `value`,
         `secondary_value`) is left untouched, not re-inserted and not
         re-timestamped -- `detected_at` always reflects the first time
         Atlas told the user about it, never the most recent read.
-        Returns only the entries that were genuinely new this call."""
+        Returns only the entries that were genuinely new AND visible
+        this call -- a change recorded as baseline (see below) still
+        occupies its natural key but is never returned, matching
+        `list_recent`'s own exclusion of it.
+
+        `newly_baseline_cases` (RC-3, Phase 3): case ids observed by the
+        change log for the very first time this call. A change whose
+        own `reason_code` is baseline-sensitive (`BASELINE_SENSITIVE_
+        CODES`) AND whose `case_id` is in this set is recorded with
+        `is_baseline=True` instead of as a live NEW change -- Atlas's
+        first look at a case is never announced as if it were a
+        change."""
         detected_at = now or datetime.now(timezone.utc)
         newly_recorded: list[ChangeLogEntry] = []
         with self._engine.begin() as connection:
@@ -81,6 +97,7 @@ class DailyBriefChangeLogStore:
                 ).first()
                 if existing is not None:
                     continue
+                is_baseline = change.reason_code in BASELINE_SENSITIVE_CODES and change.case_id in newly_baseline_cases
                 entry_id = str(uuid.uuid4())
                 connection.execute(
                     insert(daily_brief_change_log_table).values(
@@ -96,8 +113,11 @@ class DailyBriefChangeLogStore:
                         detected_at=detected_at.isoformat(),
                         seen_at=None,
                         priority_rank=change.priority_rank,
+                        is_baseline=is_baseline,
                     )
                 )
+                if is_baseline:
+                    continue
                 newly_recorded.append(
                     ChangeLogEntry(
                         id=entry_id,
@@ -124,7 +144,13 @@ class DailyBriefChangeLogStore:
         state), never soft-hidden client-side. Ordered oldest-first;
         callers that want "most important first" use each entry's own
         real reason code, never a client-invented recency guess (see
-        `synthesis.py`)."""
+        `synthesis.py`). `is_baseline` rows are excluded unconditionally
+        (RC-3, Phase 3) -- they are real, durably recorded (so a later
+        unchanged repeat of the same fact is correctly never re-
+        surfaced), but were never a change the user should see; NULL is
+        treated the same as `False` since the column was added to an
+        already-existing table (`table.py`'s own nullable-column repair
+        discipline)."""
         cutoff = (now or datetime.now(timezone.utc)) - archive_after
         with self._engine.begin() as connection:
             rows = connection.execute(
@@ -133,6 +159,7 @@ class DailyBriefChangeLogStore:
                     and_(
                         daily_brief_change_log_table.c.user_id == user_id,
                         daily_brief_change_log_table.c.detected_at >= cutoff.isoformat(),
+                        daily_brief_change_log_table.c.is_baseline.isnot(True),
                     )
                 )
                 .order_by(daily_brief_change_log_table.c.detected_at.asc())
