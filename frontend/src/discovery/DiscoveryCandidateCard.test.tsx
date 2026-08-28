@@ -23,6 +23,8 @@ function assessment(overrides: Partial<PortfolioFitAssessmentView> = {}): Portfo
     currentWeightPercent: null,
     overall: "good",
     overallReasoning: ["More dimensions rated Good/Excellent than Weak/Poor."],
+    overallReasoningCode: null,
+    overallReasoningCount: null,
     dimensions: [
       { kind: "business", rating: "good", reasoning: ["4 of 6 categories rated Strong."], unavailableReason: null },
       { kind: "risk", rating: "weak", reasoning: ["High financial risk."], unavailableReason: null },

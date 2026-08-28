@@ -14,6 +14,7 @@ import {
 } from "../status/statusTone";
 import type { StatusTone } from "../foundation";
 import type { AnalysisRiskStatus } from "../changeIntelligence/describeChange";
+import { describeFitVerdict } from "../portfolioFit/describeFitVerdict";
 import { FitBadge } from "../portfolioFit/FitBadge";
 import { fetchPortfolioFitForHoldings, type PortfolioFitAssessmentView, type FitRating } from "../portfolioFit/portfolioFitApi";
 import { fetchStanceForHoldings, type TickerStanceView, type StanceView } from "../stance/stanceApi";
@@ -1378,6 +1379,7 @@ function TodaysRiskOpportunityCard({
   onOpenCase: (ticker: string, existingCaseId: string | null) => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
+  const verdictText = describeFitVerdict(assessment, t);
   return (
     <Surface tier="elevated">
       <Stack gap="metadata">
@@ -1385,7 +1387,7 @@ function TodaysRiskOpportunityCard({
         <Text as="span" style={{ fontWeight: 600, fontSize: "var(--type-size-h5)" }}>
           {assessment.ticker}
         </Text>
-        {assessment.overallReasoning[0] && <Text as="p" color="secondary">{assessment.overallReasoning[0]}</Text>}
+        {verdictText && <Text as="p" color="secondary">{verdictText}</Text>}
         <Text as="p" color="tertiary">
           {t("portfolio.todaysFocus.whatChangedLabel")}:{" "}
           {agendaItem && realHeadlineText(agendaItem, t) !== null

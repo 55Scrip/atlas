@@ -1,4 +1,5 @@
 import type { TranslationKey } from "../i18n";
+import { describeFitVerdictCode } from "../portfolioFit/describeFitVerdict";
 import { ATTENTION_CATEGORY_KEY, type AttentionCategory } from "../status/statusTone";
 import type { ReasonFactView } from "./dailyBriefAgendaApi";
 
@@ -87,17 +88,6 @@ const THESIS_IMPACT_KEY: Record<string, TranslationKey> = {
   mixed: "investmentCase.whatChanged.thesisImpact.mixed",
   unchanged: "investmentCase.whatChanged.thesisImpact.unchanged",
   strengthened: "investmentCase.whatChanged.thesisImpact.strengthened",
-};
-
-const PORTFOLIO_FIT_VERDICT_KEY: Record<string, TranslationKey> = {
-  no_dimension_evaluated: "portfolioFit.verdictReason.noDimensionEvaluated",
-  no_company_level_analysis: "portfolioFit.verdictReason.noCompanyLevelAnalysis",
-  risk_gate: "portfolioFit.verdictReason.riskGate",
-  multiple_poor: "portfolioFit.verdictReason.multiplePoorOther",
-  more_weak_poor_than_good_excellent: "portfolioFit.verdictReason.moreWeakPoorThanGoodExcellent",
-  mostly_excellent: "portfolioFit.verdictReason.mostlyExcellent",
-  more_good_excellent_than_weak_poor: "portfolioFit.verdictReason.moreGoodExcellentThanWeakPoor",
-  mixed: "portfolioFit.verdictReason.mixed",
 };
 
 const MONITORING_CATEGORY_KEY: Record<string, TranslationKey> = {
@@ -241,15 +231,8 @@ export function describeReasonFact(fact: ReasonFactView, t: Translate): string |
       const sentence = t(impactKey);
       return fact.count ? `${sentence} ${t("evidenceGraph.section.impact", { count: fact.count })}` : sentence;
     }
-    case "portfolio_fit_verdict": {
-      if (!fact.value) return null;
-      const verdictKey =
-        fact.value === "multiple_poor" && fact.count === 1
-          ? "portfolioFit.verdictReason.multiplePoorOne"
-          : PORTFOLIO_FIT_VERDICT_KEY[fact.value];
-      if (!verdictKey) return null;
-      return fact.count != null ? t(verdictKey, { count: fact.count }) : t(verdictKey);
-    }
+    case "portfolio_fit_verdict":
+      return fact.value ? describeFitVerdictCode(fact.value, fact.count, t) : null;
     case "monitoring_change": {
       if (!fact.value) return null;
       const categoryKey = MONITORING_CATEGORY_KEY[fact.value];

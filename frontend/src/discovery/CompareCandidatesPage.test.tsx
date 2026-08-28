@@ -15,6 +15,8 @@ function assessment(ticker: string, overall: string) {
     currentWeightPercent: null,
     overall,
     overallReasoning: [`${ticker} overall reasoning`],
+    overallReasoningCode: null,
+    overallReasoningCount: null,
     dimensions: [dimension("business", "good"), dimension("risk", "weak")],
     trend: "unavailable",
     dataGaps: [],

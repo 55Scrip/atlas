@@ -1,6 +1,7 @@
 import { Divider, Heading, Inline, Stack, Text } from "../foundation";
 import { useTranslation } from "../i18n";
 import { FIT_TREND_KEY } from "../status/statusTone";
+import { describeFitVerdict } from "./describeFitVerdict";
 import { FitBadge } from "./FitBadge";
 import { FitDimensionRow } from "./FitDimensionRow";
 import { groupFitDimensions } from "./groupFitDimensions";
@@ -36,6 +37,7 @@ export function PortfolioFitSection({ assessment }: { assessment: PortfolioFitAs
   }
 
   const { favorable, unfavorable, other } = groupFitDimensions(assessment.dimensions);
+  const verdictText = describeFitVerdict(assessment, t);
 
   return (
     <Stack gap="metadata">
@@ -49,11 +51,11 @@ export function PortfolioFitSection({ assessment }: { assessment: PortfolioFitAs
           </Text>
         )}
       </Inline>
-      {assessment.overallReasoning.map((line, index) => (
-        <Text key={index} color="secondary" as="p">
-          {line}
+      {verdictText && (
+        <Text color="secondary" as="p">
+          {verdictText}
         </Text>
-      ))}
+      )}
 
       {favorable.length > 0 && (
         <Stack gap="metadata">

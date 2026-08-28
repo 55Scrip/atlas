@@ -91,6 +91,8 @@ function fitAssessment(overrides: Record<string, unknown> = {}) {
     currentWeightPercent: 30,
     overall: "weak",
     overallReasoning: ["More dimensions rated Weak/Poor than Good/Excellent."],
+    overallReasoningCode: null,
+    overallReasoningCount: null,
     dimensions: [],
     trend: "declining",
     dataGaps: [],

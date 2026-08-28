@@ -29,6 +29,8 @@ const CANDIDATES_RESPONSE = [
     currentWeightPercent: null,
     overall: "good",
     overallReasoning: ["More dimensions rated Good/Excellent than Weak/Poor."],
+    overallReasoningCode: null,
+    overallReasoningCount: null,
     dimensions: [],
     trend: "unavailable",
     dataGaps: [],
@@ -107,6 +109,8 @@ describe("DiscoveryPage (Discover Doctrine, 2026-08-27)", () => {
           currentWeightPercent: 33,
           overall: "weak",
           overallReasoning: [],
+          overallReasoningCode: null,
+          overallReasoningCount: null,
           dimensions: [],
           trend: "unavailable",
           dataGaps: [],
@@ -161,6 +165,8 @@ describe("DiscoveryPage (Discover Doctrine, 2026-08-27)", () => {
           currentWeightPercent: null,
           overall: "neutral",
           overallReasoning: ["Fit is currently neutral."],
+          overallReasoningCode: null,
+          overallReasoningCount: null,
           dimensions: [],
           trend: "unavailable",
           dataGaps: [],
@@ -249,8 +255,8 @@ describe("DiscoveryPage (Discover Doctrine, 2026-08-27)", () => {
   it("pre-fills Compare's second candidate with the weakest-fit holding", async () => {
     mockFetch({
       holdingsFit: [
-        { caseId: "case-msft", ticker: "MSFT", isExistingHolding: true, currentWeightPercent: 50, overall: "good", overallReasoning: [], dimensions: [], trend: "unavailable", dataGaps: [], coverage: EMPTY_COVERAGE, generatedAt: "2026-01-01T00:00:00Z" },
-        { caseId: "case-aapl", ticker: "AAPL", isExistingHolding: true, currentWeightPercent: 50, overall: "weak", overallReasoning: [], dimensions: [], trend: "unavailable", dataGaps: [], coverage: EMPTY_COVERAGE, generatedAt: "2026-01-01T00:00:00Z" },
+        { caseId: "case-msft", ticker: "MSFT", isExistingHolding: true, currentWeightPercent: 50, overall: "good", overallReasoning: [], overallReasoningCode: null, overallReasoningCount: null, dimensions: [], trend: "unavailable", dataGaps: [], coverage: EMPTY_COVERAGE, generatedAt: "2026-01-01T00:00:00Z" },
+        { caseId: "case-aapl", ticker: "AAPL", isExistingHolding: true, currentWeightPercent: 50, overall: "weak", overallReasoning: [], overallReasoningCode: null, overallReasoningCount: null, dimensions: [], trend: "unavailable", dataGaps: [], coverage: EMPTY_COVERAGE, generatedAt: "2026-01-01T00:00:00Z" },
       ],
     });
     renderWithProviders(<DiscoveryPage />, { route: "/discovery" });

@@ -34,6 +34,12 @@ export interface PortfolioFitAssessmentView {
   currentWeightPercent: number | null;
   overall: FitRating;
   overallReasoning: string[];
+  /** Implementation Sprint B1.2 -- the semantic counterpart to
+   * `overallReasoning` above; a closed `FitVerdictReasonCode` value.
+   * Prefer `describeFitVerdict` (Sprint 11 Phase 3) over rendering
+   * `overallReasoning` directly. */
+  overallReasoningCode: string | null;
+  overallReasoningCount: number | null;
   dimensions: FitDimensionView[];
   trend: FitTrend;
   dataGaps: string[];

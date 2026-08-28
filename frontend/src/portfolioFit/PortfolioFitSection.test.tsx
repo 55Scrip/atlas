@@ -22,6 +22,8 @@ function assessment(overrides: Partial<PortfolioFitAssessmentView> = {}): Portfo
     currentWeightPercent: 12.5,
     overall: "good",
     overallReasoning: ["More dimensions rated Good/Excellent than Weak/Poor."],
+    overallReasoningCode: null,
+    overallReasoningCount: null,
     dimensions: [
       { kind: "business", rating: "good", reasoning: ["4 of 6 business categories rated Strong, 1 Moderate, 1 Weak."], unavailableReason: null },
       { kind: "risk", rating: "weak", reasoning: ["1 of 4 evaluated risk categories rated High, 1 Moderate, 2 Low."], unavailableReason: null },
@@ -49,13 +51,24 @@ describe("PortfolioFitSection", () => {
     expect(screen.getByText("Portföljpassform är inte tillgänglig för detta case än.")).toBeInTheDocument();
   });
 
-  it("renders the overall rating and its reasoning verbatim", () => {
+  it("renders the overall rating, falling back to the raw sentence when no reasoning code is present", () => {
     renderSection(assessment());
     // "Bra passform" (Good Fit) appears twice by design: once for the
     // overall verdict, once for the Business dimension, which is also
     // rated Good in this fixture -- both are real, distinct badges.
     expect(screen.getAllByText("Bra passform").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("More dimensions rated Good/Excellent than Weak/Poor.")).toBeInTheDocument();
+  });
+
+  it("Sprint 11 Phase 3: prefers the translated, code-driven verdict sentence over the raw English one", () => {
+    renderSection(assessment({ overallReasoningCode: "more_good_excellent_than_weak_poor", overallReasoningCount: null }));
+    expect(screen.getByText("Fler dimensioner är bra eller utmärkta än svaga eller dåliga.")).toBeInTheDocument();
+    expect(screen.queryByText("More dimensions rated Good/Excellent than Weak/Poor.")).not.toBeInTheDocument();
+  });
+
+  it("interpolates the real count for a reasoning code that carries one", () => {
+    renderSection(assessment({ overallReasoningCode: "multiple_poor", overallReasoningCount: 2 }));
+    expect(screen.getByText("2 dimensioner är bedömda som dåliga.")).toBeInTheDocument();
   });
 
   it("groups a Good dimension under 'why it fits' and a Weak one under 'what argues against'", () => {

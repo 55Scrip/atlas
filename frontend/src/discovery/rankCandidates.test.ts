@@ -10,6 +10,8 @@ function assessment(overall: FitRating, overrides: Partial<PortfolioFitAssessmen
     currentWeightPercent: null,
     overall,
     overallReasoning: ["Reasoning."],
+    overallReasoningCode: null,
+    overallReasoningCount: null,
     dimensions: [],
     trend: "unavailable",
     dataGaps: [],

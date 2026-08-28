@@ -23,6 +23,8 @@ function assessment(ticker: string, caseId: string) {
     currentWeightPercent: null,
     overall: "good",
     overallReasoning: ["More dimensions rated Good/Excellent than Weak/Poor."],
+    overallReasoningCode: null,
+    overallReasoningCount: null,
     dimensions: [{ kind: "business", rating: "good", reasoning: ["Strong business."], unavailableReason: null }],
     trend: "unavailable",
     dataGaps: [],
