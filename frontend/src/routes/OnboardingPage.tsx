@@ -9,6 +9,7 @@ import {
   confirmImport,
   fetchEnrichmentProgress,
   previewImport,
+  rememberResolutions,
   toConfirmHolding,
   type EnrichmentProgress,
   type ImportPreview,
@@ -68,6 +69,25 @@ function isInformationalExclusion(row: ParsedHoldingRow): boolean {
   return row.status === "UNSUPPORTED" || row.status === "ERROR" || row.status === "DUPLICATE";
 }
 
+/** Zero-Effort Import Polish (Sprint 11 Phase 1/4): the ticker a row
+ * will actually import with, given the investor's current choices. A
+ * SUGGESTED row defaults to its own high-confidence match -- accepted,
+ * not blocking -- unless the investor has explicitly rejected it, at
+ * which point (like AMBIGUOUS/UNRESOLVED) it needs a real manual
+ * ticker before it counts as resolved. */
+function resolvedTicker(
+  row: ParsedHoldingRow,
+  overrides: Record<number, string>,
+  rejectedSuggestions: Record<number, boolean>,
+): string | null {
+  if (row.status === "RESOLVED") return row.ticker;
+  if (row.status === "SUGGESTED" && !(rejectedSuggestions[row.lineNumber] ?? false)) {
+    return row.ticker;
+  }
+  const override = (overrides[row.lineNumber] ?? "").trim();
+  return override.length >= MIN_MANUAL_TICKER_LENGTH ? override : null;
+}
+
 /** Real Avanza Import Fix (Phase 7): backend validation strings must
  * never reach the UI verbatim -- always a translated, calm message.
  * The raw detail still goes to the console for debugging. */
@@ -92,6 +112,7 @@ export function OnboardingPage() {
   const [manualRows, setManualRows] = useState<ManualRow[]>([{ ...EMPTY_MANUAL_ROW }]);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [overrides, setOverrides] = useState<Record<number, string>>({});
+  const [rejectedSuggestions, setRejectedSuggestions] = useState<Record<number, boolean>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [objective, setObjective] = useState("");
@@ -136,13 +157,14 @@ export function OnboardingPage() {
       const result = await previewImport(text);
       setPreview(result);
       setOverrides({});
+      setRejectedSuggestions({});
       if (result.rows.length === 0) {
         setErrorMessage(t("onboarding.review.noHoldingsFound"));
         setScreen("text");
         return;
       }
       if (!result.needsReview) {
-        await runConfirm(result, {});
+        await runConfirm(result, {}, {});
       } else {
         setScreen("review");
       }
@@ -152,12 +174,29 @@ export function OnboardingPage() {
     }
   }
 
-  async function runConfirm(previewToUse: ImportPreview, overridesToUse: Record<number, string>) {
+  async function runConfirm(
+    previewToUse: ImportPreview,
+    overridesToUse: Record<number, string>,
+    rejectedSuggestionsToUse: Record<number, boolean>,
+  ) {
     setScreen("confirming");
     setErrorMessage(null);
-    const holdings = previewToUse.rows
-      .filter((row) => row.status === "RESOLVED" || overridesToUse[row.lineNumber])
-      .map((row) => toConfirmHolding(row, overridesToUse[row.lineNumber]));
+
+    // Zero-Effort Import Polish (Sprint 11 Phase 1): every SUGGESTED
+    // row the investor accepted (implicitly or explicitly) and every
+    // AMBIGUOUS/UNRESOLVED row they resolved with a manual ticker is a
+    // real name -> ticker resolution worth remembering, so Atlas never
+    // has to ask about the same name again.
+    const resolutionsToRemember: { originalName: string; ticker: string }[] = [];
+    const holdings = [];
+    for (const row of previewToUse.rows) {
+      const ticker = resolvedTicker(row, overridesToUse, rejectedSuggestionsToUse);
+      if (!ticker) continue;
+      holdings.push(toConfirmHolding(row, ticker));
+      if (row.status !== "RESOLVED" && row.originalName) {
+        resolutionsToRemember.push({ originalName: row.originalName, ticker });
+      }
+    }
 
     if (holdings.length === 0) {
       setErrorMessage(t("onboarding.review.errors.nothingToImport"));
@@ -168,6 +207,7 @@ export function OnboardingPage() {
     try {
       const result = await confirmImport(holdings, portfolioExists);
       invalidateAlphaPortfolio();
+      rememberResolutions(resolutionsToRemember).catch(() => {});
       setHoldingsIdentifiedCount(holdings.length);
       if (result.batchId) {
         setBatchId(result.batchId);
@@ -450,10 +490,12 @@ export function OnboardingPage() {
             preview={preview}
             overrides={overrides}
             setOverrides={setOverrides}
+            rejectedSuggestions={rejectedSuggestions}
+            setRejectedSuggestions={setRejectedSuggestions}
             errorMessage={errorMessage}
             portfolioExists={portfolioExists}
             onBack={() => setScreen("choose")}
-            onImport={() => void runConfirm(preview, overrides)}
+            onImport={() => void runConfirm(preview, overrides, rejectedSuggestions)}
             t={t}
           />
         )}
@@ -475,6 +517,8 @@ function ReviewScreen({
   preview,
   overrides,
   setOverrides,
+  rejectedSuggestions,
+  setRejectedSuggestions,
   errorMessage,
   portfolioExists,
   onBack,
@@ -484,6 +528,8 @@ function ReviewScreen({
   preview: ImportPreview;
   overrides: Record<number, string>;
   setOverrides: (updater: (current: Record<number, string>) => Record<number, string>) => void;
+  rejectedSuggestions: Record<number, boolean>;
+  setRejectedSuggestions: (updater: (current: Record<number, boolean>) => Record<number, boolean>) => void;
   errorMessage: string | null;
   portfolioExists: boolean;
   onBack: () => void;
@@ -491,6 +537,7 @@ function ReviewScreen({
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   const attentionRows = preview.rows.filter(needsAttention);
+  const suggestedRows = preview.rows.filter((row) => row.status === "SUGGESTED");
   const resolvedRows = preview.rows.filter((row) => row.status === "RESOLVED");
   const informationalRows = preview.rows.filter(isInformationalExclusion);
 
@@ -498,17 +545,18 @@ function ReviewScreen({
     setOverrides((current) => ({ ...current, [lineNumber]: value }));
   }
 
-  function hasResolvedOverride(row: ParsedHoldingRow): boolean {
-    return (overrides[row.lineNumber]?.trim() ?? "").length >= MIN_MANUAL_TICKER_LENGTH;
+  function setSuggestionRejected(lineNumber: number, rejected: boolean) {
+    setRejectedSuggestions((current) => ({ ...current, [lineNumber]: rejected }));
   }
 
   // Real Avanza Import Fix (Phase 8): one unusual holding must never
   // hold the rest of a real import hostage. Import is enabled as soon
-  // as there is at least one importable holding -- any attention row
-  // the investor hasn't (yet) resolved is simply skipped, never
-  // silently: `willSkipCount` is always shown when it isn't zero.
-  const willSkipCount = attentionRows.filter((row) => !hasResolvedOverride(row)).length;
-  const importableCount = resolvedRows.length + (attentionRows.length - willSkipCount);
+  // as there is at least one importable holding -- any review row the
+  // investor hasn't (yet) resolved is simply skipped, never silently:
+  // `willSkipCount` is always shown when it isn't zero.
+  const reviewRows = [...attentionRows, ...suggestedRows];
+  const willSkipCount = reviewRows.filter((row) => resolvedTicker(row, overrides, rejectedSuggestions) === null).length;
+  const importableCount = resolvedRows.length + reviewRows.length - willSkipCount;
   const canImport = !preview.currencyConflict && importableCount > 0;
 
   return (
@@ -519,6 +567,11 @@ function ReviewScreen({
         {resolvedRows.length > 0 && (
           <Text color="secondary" as="p">
             {"✓ " + t("onboarding.review.resolvedSummary", { count: resolvedRows.length })}
+          </Text>
+        )}
+        {suggestedRows.length > 0 && (
+          <Text color="secondary" as="p">
+            {"? " + t("onboarding.review.suggestedSummary", { count: suggestedRows.length })}
           </Text>
         )}
         {attentionRows.length > 0 && (
@@ -536,6 +589,60 @@ function ReviewScreen({
           <Text color="tertiary" role="alert">
             {t("onboarding.review.currencyConflict")}
           </Text>
+        )}
+
+        {suggestedRows.length > 0 && (
+          <Stack gap="intra-section">
+            {suggestedRows.map((row) => {
+              const rejected = rejectedSuggestions[row.lineNumber] ?? false;
+              const candidate = row.candidates[0];
+              return (
+                <Surface key={row.lineNumber} tier="elevated">
+                  <Stack gap="metadata">
+                    <Text as="p">
+                      {t("onboarding.review.suggestedPrompt", {
+                        name: candidate?.displayName ?? row.originalName ?? row.raw,
+                        ticker: row.ticker ?? "",
+                      })}
+                    </Text>
+                    <Inline gap="row" wrap>
+                      <Text as="label">
+                        <input
+                          type="radio"
+                          name={`suggestion-${row.lineNumber}`}
+                          checked={!rejected}
+                          onChange={() => setSuggestionRejected(row.lineNumber, false)}
+                        />{" "}
+                        {t("onboarding.review.suggestedYes")}
+                      </Text>
+                      <Text as="label">
+                        <input
+                          type="radio"
+                          name={`suggestion-${row.lineNumber}`}
+                          checked={rejected}
+                          onChange={() => setSuggestionRejected(row.lineNumber, true)}
+                        />{" "}
+                        {t("onboarding.review.suggestedNo")}
+                      </Text>
+                    </Inline>
+                    {rejected && (
+                      <Text as="label">
+                        {t("onboarding.review.unresolvedPrompt")}
+                        <br />
+                        <input
+                          type="text"
+                          value={overrides[row.lineNumber] ?? ""}
+                          onChange={(event) => setOverride(row.lineNumber, event.target.value.toUpperCase())}
+                          placeholder={t("onboarding.review.tickerPlaceholder")}
+                          style={{ fontFamily: "monospace", width: "10ch" }}
+                        />
+                      </Text>
+                    )}
+                  </Stack>
+                </Surface>
+              );
+            })}
+          </Stack>
         )}
 
         {attentionRows.length > 0 && (

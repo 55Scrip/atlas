@@ -61,7 +61,7 @@ class TestPreviewImportEndpoint:
     def test_an_unresolved_company_name_asks_for_review(self, client):
         response = client.post(
             "/alpha-portfolio/import/preview",
-            json={"rawText": "Name;Weight\nSchneider Electric;100"},
+            json={"rawText": "Name;Weight\nZelkova Materials Group;100"},
         )
         body = response.json()
         assert body["needsReview"] is True
@@ -98,3 +98,38 @@ class TestPreviewImportEndpoint:
         body = response.json()
         assert body["rows"][0]["alreadyHeld"] is True
         assert body["needsReview"] is False
+
+    def test_a_bounded_abbreviation_match_is_suggested_for_confirmation(self, client):
+        response = client.post(
+            "/alpha-portfolio/import/preview",
+            json={"rawText": "Name;Weight\nTaiwan Semicond Manufacturing;100"},
+        )
+        body = response.json()
+        row = body["rows"][0]
+        assert row["status"] == "SUGGESTED"
+        assert row["ticker"] == "TSM"
+        assert row["candidates"][0]["ticker"] == "TSM"
+
+
+class TestResolutionsEndpoint:
+    def test_remembering_a_resolution_makes_the_next_preview_resolve_it_directly(self, client):
+        response = client.post(
+            "/alpha-portfolio/import/resolutions",
+            json={"resolutions": [{"originalName": "Zelkova Materials Group", "ticker": "ZKVA"}]},
+        )
+        assert response.status_code == 204
+
+        preview = client.post(
+            "/alpha-portfolio/import/preview",
+            json={"rawText": "Name;Weight\nZelkova Materials Group;100"},
+        )
+        body = preview.json()
+        assert body["rows"][0]["status"] == "RESOLVED"
+        assert body["rows"][0]["ticker"] == "ZKVA"
+
+    def test_a_blank_entry_is_silently_ignored(self, client):
+        response = client.post(
+            "/alpha-portfolio/import/resolutions",
+            json={"resolutions": [{"originalName": "  ", "ticker": "  "}]},
+        )
+        assert response.status_code == 204

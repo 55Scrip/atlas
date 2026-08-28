@@ -422,6 +422,138 @@ describe("OnboardingPage (Zero-Effort Portfolio Onboarding)", () => {
     await waitFor(() => expect(fromScratchCalled).toBe(true));
   });
 
+  it("a SUGGESTED row is accepted by default, imports directly, and is remembered", async () => {
+    let capturedResolutionsBody: string | null = null;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes("/api/alpha-portfolio/import/preview")) {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                rows: [
+                  {
+                    lineNumber: 1,
+                    raw: "Taiwan Semicond Manufacturing;100",
+                    originalName: "Taiwan Semicond Manufacturing",
+                    ticker: "TSM",
+                    quantity: null,
+                    price: null,
+                    valueAbsolute: null,
+                    weightPercent: 100,
+                    currency: null,
+                    status: "SUGGESTED",
+                    message: "Atlas believes this is Taiwan Semiconductor Manufacturing (TSM).",
+                    instrumentType: null,
+                    candidates: [{ ticker: "TSM", displayName: "Taiwan Semiconductor Manufacturing" }],
+                    alreadyHeld: false,
+                  },
+                ],
+                headerDetected: false,
+                holdingsFound: 1,
+                resolvedCount: 0,
+                needsReview: true,
+                currencyConflict: false,
+              }),
+          } as Response);
+        }
+        if (url.includes("/api/alpha-portfolio/import/resolutions")) {
+          capturedResolutionsBody = init?.body as string;
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(null) } as Response);
+        }
+        if (url.includes("/api/enrichment-progress/batch-5")) {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({ exists: true, total: 1, doneCount: 1, currentlyAnalyzing: null, complete: true }),
+          } as Response);
+        }
+        if (url.includes("/api/alpha-portfolio/import")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ exists: true, batchId: "batch-5" }),
+          } as Response);
+        }
+        if (url.includes("/api/alpha-portfolio")) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(emptyPortfolioView()) } as Response);
+        }
+        return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+      }),
+    );
+    renderWithProviders(<OnboardingPage />, { route: "/welcome" });
+
+    fireEvent.click(await screen.findByText("Klistra in portfölj"));
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Taiwan Semicond Manufacturing;100" },
+    });
+    fireEvent.click(screen.getByText("Fortsätt"));
+
+    expect(
+      await screen.findByText("Atlas tror att det här är Taiwan Semiconductor Manufacturing (TSM). Stämmer det?"),
+    ).toBeInTheDocument();
+    const importButton = screen.getByText("Importera portfölj");
+    expect(importButton).not.toBeDisabled();
+
+    fireEvent.click(importButton);
+    expect(await screen.findByText("Atlas bygger din investeringsarbetsyta.")).toBeInTheDocument();
+
+    await waitFor(() => expect(capturedResolutionsBody).not.toBeNull());
+    const parsed = JSON.parse(capturedResolutionsBody as unknown as string) as {
+      resolutions: { originalName: string; ticker: string }[];
+    };
+    expect(parsed.resolutions).toEqual([{ originalName: "Taiwan Semicond Manufacturing", ticker: "TSM" }]);
+  });
+
+  it("rejecting a SUGGESTED row requires a manual ticker before it counts as resolved", async () => {
+    mockFetch({
+      "/api/alpha-portfolio/import/preview": () => ({
+        rows: [
+          {
+            lineNumber: 1,
+            raw: "Taiwan Semicond Manufacturing;100",
+            originalName: "Taiwan Semicond Manufacturing",
+            ticker: "TSM",
+            quantity: null,
+            price: null,
+            valueAbsolute: null,
+            weightPercent: 100,
+            currency: null,
+            status: "SUGGESTED",
+            message: "Atlas believes this is Taiwan Semiconductor Manufacturing (TSM).",
+            instrumentType: null,
+            candidates: [{ ticker: "TSM", displayName: "Taiwan Semiconductor Manufacturing" }],
+            alreadyHeld: false,
+          },
+        ],
+        headerDetected: false,
+        holdingsFound: 1,
+        resolvedCount: 0,
+        needsReview: true,
+        currencyConflict: false,
+      }),
+      "/api/alpha-portfolio": emptyPortfolioView,
+    });
+    renderWithProviders(<OnboardingPage />, { route: "/welcome" });
+
+    fireEvent.click(await screen.findByText("Klistra in portfölj"));
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Taiwan Semicond Manufacturing;100" },
+    });
+    fireEvent.click(screen.getByText("Fortsätt"));
+
+    await screen.findByText("Atlas tror att det här är Taiwan Semiconductor Manufacturing (TSM). Stämmer det?");
+    const importButton = screen.getByText("Importera portfölj");
+    expect(importButton).not.toBeDisabled();
+
+    fireEvent.click(screen.getByLabelText("Nej, jag anger det själv"));
+    expect(importButton).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText("Ticker"), { target: { value: "TSMX" } });
+    await waitFor(() => expect(importButton).not.toBeDisabled());
+  });
+
   it("shows a replace warning when a portfolio already exists", async () => {
     mockFetch({
       "/api/alpha-portfolio/import/preview": () => ({

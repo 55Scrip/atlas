@@ -32,6 +32,13 @@ class RowResolutionStatus(str, Enum):
     is true whenever any row is anything other than `RESOLVED`."""
 
     RESOLVED = "RESOLVED"
+    # Zero-Effort Import Polish (Sprint 11 Phase 1): a single lower-
+    # confidence match (an abbreviation/prefix match, not an exact
+    # one) -- carries the one candidate in `candidates`, same shape as
+    # AMBIGUOUS, but the review screen asks a yes/no confirmation
+    # ("Atlas believes this is X. Is that correct?") rather than a
+    # pick-one question, and defaults to accepted rather than blocking.
+    SUGGESTED = "SUGGESTED"
     AMBIGUOUS = "AMBIGUOUS"
     UNRESOLVED = "UNRESOLVED"
     # Real Avanza Import Fix: a genuinely *known* identity (via the

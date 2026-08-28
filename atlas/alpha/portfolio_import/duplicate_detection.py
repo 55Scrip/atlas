@@ -11,13 +11,16 @@ from dataclasses import replace
 from atlas.alpha.portfolio_import.models import ParsedHoldingRow, RowResolutionStatus
 
 
+_TICKER_BEARING_STATUSES = (RowResolutionStatus.RESOLVED, RowResolutionStatus.SUGGESTED)
+
+
 def apply_duplicate_detection(
     rows: tuple[ParsedHoldingRow, ...], existing_tickers: frozenset[str] = frozenset()
 ) -> tuple[ParsedHoldingRow, ...]:
     seen: set[str] = set()
     result: list[ParsedHoldingRow] = []
     for row in rows:
-        if row.status != RowResolutionStatus.RESOLVED or row.ticker is None:
+        if row.status not in _TICKER_BEARING_STATUSES or row.ticker is None:
             result.append(row)
             continue
         if row.ticker in seen:

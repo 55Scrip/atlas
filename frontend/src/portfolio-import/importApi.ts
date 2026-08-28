@@ -7,7 +7,14 @@
  * never parses or resolves anything itself.
  */
 
-export type RowStatus = "RESOLVED" | "AMBIGUOUS" | "UNRESOLVED" | "UNSUPPORTED" | "DUPLICATE" | "ERROR";
+export type RowStatus =
+  | "RESOLVED"
+  | "SUGGESTED"
+  | "AMBIGUOUS"
+  | "UNRESOLVED"
+  | "UNSUPPORTED"
+  | "DUPLICATE"
+  | "ERROR";
 
 /** Real Avanza Import Fix (Phase 7): carries the raw backend detail
  * separately from any investor-facing text, so a caller can log it for
@@ -111,6 +118,22 @@ export function confirmImport(holdings: ConfirmHolding[], isReplace: boolean): P
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   }).then((response) => parseJsonOrThrow<ConfirmImportResult>(response));
+}
+
+/** Zero-Effort Import Polish (Sprint 11 Phase 1): reports a name -> ticker
+ * resolution the investor just confirmed (a SUGGESTED row accepted, or an
+ * AMBIGUOUS/UNRESOLVED row's manual entry) so Atlas never has to ask about
+ * the same name again on a future import. Fire-and-forget -- never blocks
+ * or fails the import flow itself. */
+export function rememberResolutions(resolutions: { originalName: string; ticker: string }[]): Promise<void> {
+  if (resolutions.length === 0) {
+    return Promise.resolve();
+  }
+  return fetch("/api/alpha-portfolio/import/resolutions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resolutions }),
+  }).then(() => undefined);
 }
 
 export interface EnrichmentProgress {

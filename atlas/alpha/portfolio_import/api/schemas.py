@@ -13,6 +13,15 @@ class ImportPreviewRequestBody(CamelModel):
     raw_text: str
 
 
+class ResolvedNameView(CamelModel):
+    original_name: str
+    ticker: str
+
+
+class RememberResolutionsRequestBody(CamelModel):
+    resolutions: list[ResolvedNameView]
+
+
 class ResolutionCandidateView(CamelModel):
     ticker: str
     display_name: str
@@ -34,6 +43,7 @@ class ParsedHoldingRowView(CamelModel):
     currency: str | None = None
     status: str
     message: str | None = None
+    instrument_type: str | None = None
     candidates: list[ResolutionCandidateView] = []
     already_held: bool = False
 
@@ -51,6 +61,7 @@ class ParsedHoldingRowView(CamelModel):
             currency=row.currency,
             status=row.status.value,
             message=row.message,
+            instrument_type=row.instrument_type,
             candidates=[ResolutionCandidateView.from_domain(c) for c in row.candidates],
             already_held=row.already_held,
         )

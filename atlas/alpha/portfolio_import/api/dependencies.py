@@ -14,10 +14,13 @@ service shares, not a second fetch/cache built here.
 from __future__ import annotations
 
 from fastapi import Depends
+from sqlalchemy.engine import Engine
 
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_store
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
-from atlas.alpha.portfolio_import.resolution_service import DiscoverFn
+from atlas.alpha.portfolio_import.alias_store import ResolvedAliasStore
+from atlas.alpha.portfolio_import.alias_table import create_resolved_alias_table
+from atlas.alpha.portfolio_import.resolution_service import DiscoverFn, LookupAliasFn
 from atlas.alpha.portfolio_import.service import PortfolioImportPreviewService
 from atlas.alpha.security_discovery.api.dependencies import get_security_discovery_indexes
 from atlas.alpha.security_discovery.models import SecurityCandidate
@@ -26,10 +29,24 @@ from atlas.alpha.security_discovery.service import (
     TitleIndex,
     discover_security_candidates,
 )
+from atlas.core.infrastructure.api.decision.dependencies import get_decision_engine
 
 
 def get_portfolio_import_preview_service() -> PortfolioImportPreviewService:
     return PortfolioImportPreviewService()
+
+
+def get_resolved_alias_store(
+    engine: Engine = Depends(get_decision_engine),
+) -> ResolvedAliasStore:
+    create_resolved_alias_table(engine)
+    return ResolvedAliasStore(engine)
+
+
+def get_resolved_alias_lookup_fn(
+    store: ResolvedAliasStore = Depends(get_resolved_alias_store),
+) -> LookupAliasFn:
+    return store.lookup
 
 
 def get_existing_tickers(

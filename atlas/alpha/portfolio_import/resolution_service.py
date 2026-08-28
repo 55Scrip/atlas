@@ -1,27 +1,50 @@
-"""Company/ticker resolution -- the full five-step priority: exact
-ticker, exact company name, registry alias lookup, the `security_
-discovery` fallback, and a one-question clarification for genuine
-ambiguity. A row nothing here can resolve becomes `UNRESOLVED`, never a
-guess.
+"""Company/ticker resolution -- progressively weaker strategies, tried
+in order, before Atlas ever asks the user (Zero-Effort Import Polish,
+Sprint 11 Phase 1):
+
+1. An explicit ticker column -- trust it directly.
+2. Exact registry name/alias match, tried against the name as given
+   and against ADR-suffix-stripped / legal-entity-suffix-stripped
+   variants (`name_matching.name_variants`) -- "Schneider Electric SE"
+   matches the registry's "schneider electric" once "SE" is stripped.
+3. A previously learned resolution (`ResolvedAliasStore`) -- a name
+   Atlas has ever resolved before (a genuine ambiguity the investor
+   picked one of, or a manually typed ticker) is remembered, so it is
+   never asked about twice.
+4. A bounded, explainable abbreviation match against the registry
+   (`instrument_registry.fuzzy_lookup_instrument`) -- catches real
+   broker abbreviations ("Semicond" for "Semiconductor"). Lower
+   confidence than an exact match, so this becomes `SUGGESTED`, a
+   one-question yes/no confirmation, never a silent auto-resolve.
+5. `security_discovery`'s own exact ticker-symbol or canonical-title
+   match (SEC-filer coverage), tried against the same name variants.
+6. The ticker-shape-and-uppercase heuristic, on the original name only.
+
+A row nothing here can resolve becomes `UNRESOLVED`, never a guess.
 """
 from __future__ import annotations
 
 import re
 from collections.abc import Callable
 
-from atlas.alpha.portfolio_import.instrument_registry import lookup_instrument
+from atlas.alpha.portfolio_import.instrument_registry import (
+    fuzzy_lookup_instrument,
+    lookup_instrument,
+)
 from atlas.alpha.portfolio_import.models import (
     ColumnRole,
     ParsedHoldingRow,
     ResolutionCandidate,
     RowResolutionStatus,
 )
+from atlas.alpha.portfolio_import.name_matching import name_variants
 from atlas.alpha.portfolio_import.row_parser import RawRow, parse_numeric
 from atlas.alpha.security_discovery.models import SecurityCandidate
 
 _TICKER_SHAPE_PATTERN = re.compile(r"^[A-Za-z]{1,5}([.-][A-Za-z]{1,2})?$")
 
 DiscoverFn = Callable[[str], "tuple[SecurityCandidate, ...]"]
+LookupAliasFn = Callable[[str], "str | None"]
 
 
 def _looks_like_explicit_ticker(trimmed: str) -> bool:
@@ -31,7 +54,12 @@ def _looks_like_explicit_ticker(trimmed: str) -> bool:
     return bool(_TICKER_SHAPE_PATTERN.match(trimmed)) and trimmed == trimmed.upper()
 
 
-def resolve_row(row: RawRow, *, discover: DiscoverFn | None = None) -> ParsedHoldingRow:
+def resolve_row(
+    row: RawRow,
+    *,
+    discover: DiscoverFn | None = None,
+    lookup_alias: LookupAliasFn | None = None,
+) -> ParsedHoldingRow:
     company_name = row.fields.get(ColumnRole.COMPANY_NAME)
     ticker_field = row.fields.get(ColumnRole.TICKER)
 
@@ -47,38 +75,75 @@ def resolve_row(row: RawRow, *, discover: DiscoverFn | None = None) -> ParsedHol
     message: str | None = None
     candidates: tuple[ResolutionCandidate, ...] = ()
     unsupported_instrument_type: str | None = None
+    suggested = False
 
     if ticker_field:
-        # Priority 1: the source already told us the ticker directly.
+        # Step 1: the source already told us the ticker directly.
         ticker = ticker_field.strip().upper()
     elif company_name:
-        registry_hit = lookup_instrument(company_name)
-        if registry_hit is not None:
-            if registry_hit.ticker is not None:
-                # Priority 2/3: exact registry name or alias match.
-                ticker = registry_hit.ticker
-            else:
-                # A genuinely *known* identity Atlas can't hold as
-                # ticker+weight (a fund, an ETP, or an unlisted/private
-                # company) -- not "unknown," never offered a manual-
-                # ticker override (Real Avanza Import Fix, Phase 6).
-                unsupported_instrument_type = registry_hit.instrument_type
-        else:
-            # Priority 4: security_discovery's own exact ticker-symbol
-            # or canonical-title match -- SEC-filer coverage only, so a
-            # Nordic name/ticker this misses still falls through to the
-            # shape heuristic below rather than staying unresolved.
-            discovered = discover(company_name) if discover is not None else ()
-            if len(discovered) == 1:
-                ticker = discovered[0].ticker
-            elif len(discovered) > 1:
-                # Priority 5: genuine ambiguity -- one clarification
-                # question, never a guess (e.g. Berkshire's A/B classes).
-                candidates = tuple(
-                    ResolutionCandidate(ticker=c.ticker, display_name=c.display_name)
-                    for c in discovered
-                )
-            elif _looks_like_explicit_ticker(company_name.strip()):
+        variants = name_variants(company_name)
+
+        # Step 2: exact registry match, across every name variant.
+        for variant in variants:
+            registry_hit = lookup_instrument(variant)
+            if registry_hit is not None:
+                if registry_hit.ticker is not None:
+                    ticker = registry_hit.ticker
+                else:
+                    # A genuinely *known* identity Atlas can't hold as
+                    # ticker+weight (a fund, an ETP, or an unlisted/
+                    # private company) -- not "unknown," never offered
+                    # a manual-ticker override.
+                    unsupported_instrument_type = registry_hit.instrument_type
+                break
+
+        # Step 3: a previously learned resolution, across every variant.
+        if ticker is None and unsupported_instrument_type is None and lookup_alias is not None:
+            for variant in variants:
+                learned = lookup_alias(variant)
+                if learned is not None:
+                    ticker = learned
+                    break
+
+        # Step 4: a bounded abbreviation match against the registry --
+        # lower confidence, so this always asks for confirmation.
+        if ticker is None and unsupported_instrument_type is None:
+            for variant in variants:
+                fuzzy_hit = fuzzy_lookup_instrument(variant)
+                if fuzzy_hit is not None:
+                    ticker = fuzzy_hit.entry.ticker
+                    suggested = True
+                    candidates = (
+                        ResolutionCandidate(
+                            ticker=fuzzy_hit.entry.ticker,
+                            # The registry's own aliases are stored lower-
+                            # cased (they're matching keys, not display
+                            # copy) -- title-case before this ever reaches
+                            # the confirmation prompt the investor reads.
+                            display_name=fuzzy_hit.matched_display_name.title(),
+                        ),
+                    )
+                    break
+
+        # Step 5: security_discovery, across every variant.
+        if ticker is None and unsupported_instrument_type is None and not candidates:
+            for variant in variants:
+                discovered = discover(variant) if discover is not None else ()
+                if len(discovered) == 1:
+                    ticker = discovered[0].ticker
+                    break
+                elif len(discovered) > 1:
+                    # Genuine ambiguity -- one clarification question,
+                    # never a guess (e.g. Berkshire's A/B classes).
+                    candidates = tuple(
+                        ResolutionCandidate(ticker=c.ticker, display_name=c.display_name)
+                        for c in discovered
+                    )
+                    break
+
+        # Step 6: the ticker-shape heuristic, on the original name only.
+        if ticker is None and unsupported_instrument_type is None and not candidates:
+            if _looks_like_explicit_ticker(company_name.strip()):
                 ticker = company_name.strip().upper()
 
     def _parse_field(role: ColumnRole) -> tuple[float | None, bool]:
@@ -131,6 +196,37 @@ def resolve_row(row: RawRow, *, discover: DiscoverFn | None = None) -> ParsedHol
             instrument_type=unsupported_instrument_type,
         )
 
+    if ticker is not None and value_absolute is None and weight is None:
+        return ParsedHoldingRow(
+            line_number=row.line_number,
+            raw=row.raw,
+            original_name=company_name,
+            ticker=ticker,
+            currency=currency,
+            status=RowResolutionStatus.ERROR,
+            message=(
+                "Not enough information to size this holding -- provide a value, "
+                "quantity and price, or a weight percentage."
+            ),
+        )
+
+    if suggested:
+        assert ticker is not None
+        return ParsedHoldingRow(
+            line_number=row.line_number,
+            raw=row.raw,
+            original_name=company_name,
+            ticker=ticker,
+            quantity=quantity,
+            price=price,
+            value_absolute=value_absolute,
+            weight_percent=weight,
+            currency=currency,
+            status=RowResolutionStatus.SUGGESTED,
+            message=f"Atlas believes this is {candidates[0].display_name} ({candidates[0].ticker}).",
+            candidates=candidates,
+        )
+
     if candidates:
         return ParsedHoldingRow(
             line_number=row.line_number,
@@ -158,20 +254,6 @@ def resolve_row(row: RawRow, *, discover: DiscoverFn | None = None) -> ParsedHol
             currency=currency,
             status=RowResolutionStatus.UNRESOLVED,
             message=message or f"Atlas couldn't identify {company_name!r}.",
-        )
-
-    if value_absolute is None and weight is None:
-        return ParsedHoldingRow(
-            line_number=row.line_number,
-            raw=row.raw,
-            original_name=company_name,
-            ticker=ticker,
-            currency=currency,
-            status=RowResolutionStatus.ERROR,
-            message=(
-                "Not enough information to size this holding -- provide a value, "
-                "quantity and price, or a weight percentage."
-            ),
         )
 
     return ParsedHoldingRow(

@@ -56,7 +56,7 @@ class TestCompanyNameResolution:
         assert preview.needs_review is False
 
     def test_unmapped_company_name_is_unresolved_not_guessed(self):
-        raw = "Name;Weight\nSchneider Electric;100"
+        raw = "Name;Weight\nZelkova Materials Group;100"
         preview = _service.preview(raw)
         row = preview.rows[0]
         assert row.status == RowResolutionStatus.UNRESOLVED
@@ -124,7 +124,7 @@ class TestSecurityDiscoveryFallback:
         def discover(query):
             return ()
 
-        raw = "Name;Weight\nSchneider Electric;100"
+        raw = "Name;Weight\nZelkova Materials Group;100"
         preview = _service.preview(raw, discover=discover)
         assert preview.rows[0].status == RowResolutionStatus.UNRESOLVED
 
@@ -133,6 +133,65 @@ class TestSecurityDiscoveryFallback:
         preview = _service.preview(raw)
         assert preview.rows[0].status == RowResolutionStatus.RESOLVED
         assert preview.rows[0].ticker == "AMD"
+
+
+class TestSuggestedResolution:
+    def test_a_bounded_abbreviation_match_is_suggested_not_resolved(self):
+        # "Semicond" is a genuine prefix-abbreviation of "Semiconductor"
+        # -- the registry has no exact alias for this exact phrasing,
+        # so it should only ever reach SUGGESTED, never a silent
+        # RESOLVED auto-guess.
+        raw = "Name;Weight\nTaiwan Semicond Manufacturing;100"
+        preview = _service.preview(raw)
+        row = preview.rows[0]
+        assert row.status == RowResolutionStatus.SUGGESTED
+        assert row.ticker == "TSM"
+        assert len(row.candidates) == 1
+        assert row.candidates[0].ticker == "TSM"
+        assert preview.needs_review is True
+
+    def test_a_suggested_row_still_derives_its_value(self):
+        raw = "Name;Quantity;Price\nTaiwan Semicond Manufacturing;10;100.00"
+        preview = _service.preview(raw)
+        row = preview.rows[0]
+        assert row.status == RowResolutionStatus.SUGGESTED
+        assert row.value_absolute == 1000.00
+
+    def test_a_legal_suffix_variant_still_yields_a_suggestion(self):
+        raw = "Name;Weight\nTaiwan Semicond Manufacturing Holding;100"
+        preview = _service.preview(raw)
+        row = preview.rows[0]
+        assert row.status == RowResolutionStatus.SUGGESTED
+        assert row.ticker == "TSM"
+
+
+class TestLearnedAliasResolution:
+    def test_a_previously_learned_alias_resolves_without_asking_again(self):
+        def lookup_alias(name):
+            return "ZKVA" if name == "Zelkova Materials Group" else None
+
+        raw = "Name;Weight\nZelkova Materials Group;100"
+        preview = _service.preview(raw, lookup_alias=lookup_alias)
+        row = preview.rows[0]
+        assert row.status == RowResolutionStatus.RESOLVED
+        assert row.ticker == "ZKVA"
+        assert preview.needs_review is False
+
+    def test_a_learned_alias_is_only_consulted_after_the_registry(self):
+        # A real registry hit must win even if a (wrong/stale) learned
+        # alias also exists for the same name -- the registry is the
+        # higher-confidence source.
+        def lookup_alias(name):
+            return "WRONG"
+
+        raw = "Name;Weight\nMicrosoft;100"
+        preview = _service.preview(raw, lookup_alias=lookup_alias)
+        assert preview.rows[0].ticker == "MSFT"
+
+    def test_no_lookup_alias_function_behaves_exactly_as_before(self):
+        raw = "Name;Weight\nZelkova Materials Group;100"
+        preview = _service.preview(raw)
+        assert preview.rows[0].status == RowResolutionStatus.UNRESOLVED
 
 
 class TestDuplicateDetection:

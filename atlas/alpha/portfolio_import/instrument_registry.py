@@ -15,6 +15,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from atlas.alpha.portfolio_import.name_matching import token_prefix_match
+
 InstrumentType = str  # "equity" | "fund" | "etp" | "private" | "other"
 
 
@@ -92,6 +94,12 @@ INSTRUMENT_REGISTRY: tuple[InstrumentRegistryEntry, ...] = (
             "taiwan semiconductor",
             "taiwan semiconductor mfg co",
             "taiwan semiconductor manufacturing",
+            # The exact abbreviated form real Avanza exports use --
+            # live-verified 2026-08-28 (Sprint 11 Phase 1). The token-
+            # prefix matcher below would also catch this without the
+            # explicit alias, but a real, confirmed-correct alias is
+            # cheaper and more certain than relying on the fallback.
+            "taiwan semicond mfg co",
             "tsmc",
         ),
         "TSM",
@@ -99,6 +107,11 @@ INSTRUMENT_REGISTRY: tuple[InstrumentRegistryEntry, ...] = (
     ),
     InstrumentRegistryEntry(("astrazeneca",), "AZN", "equity"),
     InstrumentRegistryEntry(("novo nordisk", "novo nordisk b"), "NVO", "equity"),
+    # Euronext Paris, ticker "SU" -- verified 2026-08-28 (Sprint 11
+    # Phase 1). Stored as "SU.PA" (Yahoo-style, unambiguous) rather
+    # than bare "SU", which is Suncor Energy's real NYSE ticker -- a
+    # bare "SU" here would silently misidentify a different company.
+    InstrumentRegistryEntry(("schneider electric", "schneider electric se"), "SU.PA", "equity"),
     # Nasdaq Stockholm large caps -- only high-confidence local tickers.
     InstrumentRegistryEntry(("investor b", "investor ab b", "investor ab class b"), "INVE-B", "equity"),
     InstrumentRegistryEntry(("atlas copco b", "atlas copco ab b"), "ATCO-B", "equity"),
@@ -148,3 +161,27 @@ _LOOKUP: dict[str, InstrumentRegistryEntry] = {
 
 def lookup_instrument(name: str) -> InstrumentRegistryEntry | None:
     return _LOOKUP.get(normalize_for_lookup(name))
+
+
+@dataclass(frozen=True)
+class FuzzyMatch:
+    entry: InstrumentRegistryEntry
+    matched_display_name: str
+
+
+def fuzzy_lookup_instrument(name: str) -> FuzzyMatch | None:
+    """Sprint 11 Phase 1: a bounded, explainable abbreviation match
+    (`name_matching.token_prefix_match`) against every registry alias
+    -- lower confidence than `lookup_instrument`'s exact match, so a
+    caller should surface this as a one-question confirmation
+    ("Atlas believes this is X. Is that correct?"), never a silent
+    auto-resolve. Returns the first match found; the registry is small
+    enough (tens of entries) that a linear scan is the simplest correct
+    approach, not a performance concern worth indexing."""
+    for entry in INSTRUMENT_REGISTRY:
+        if entry.ticker is None:
+            continue  # never suggest a known-unsupported instrument
+        for display_name in entry.display_names:
+            if token_prefix_match(name, display_name):
+                return FuzzyMatch(entry=entry, matched_display_name=display_name)
+    return None
