@@ -116,6 +116,12 @@ class EnrichmentOutcome(str, Enum):
     #: `UNSUPPORTED` above). Isolated per-ticker so one broken ticker
     #: can never abort the rest of the batch.
     FAILED = "failed"
+    #: Zero-Effort Portfolio Onboarding: the shared Alpha Vantage daily
+    #: quota was already exhausted before this ticker's turn, so it was
+    #: never attempted -- an honest, calm deferral (retried once quota
+    #: resets) rather than letting it hit a live provider rate-limit
+    #: error and surface as a confusing `FAILED`/`UNSUPPORTED`.
+    QUOTA_DEFERRED = "quota_deferred"
 
 
 @dataclass(frozen=True)
@@ -154,3 +160,7 @@ class BulkEnrichmentSummary:
     @property
     def failed_count(self) -> int:
         return sum(1 for r in self.results if r.outcome is EnrichmentOutcome.FAILED)
+
+    @property
+    def quota_deferred_count(self) -> int:
+        return sum(1 for r in self.results if r.outcome is EnrichmentOutcome.QUOTA_DEFERRED)

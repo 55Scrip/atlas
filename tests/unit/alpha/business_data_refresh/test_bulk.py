@@ -375,3 +375,72 @@ class TestProviderAwareCompletionAndIngestionPersistence:
             ingestion_result_repository=ingestion_repository,
         )
         assert summary.results[0].outcome is EnrichmentOutcome.SKIPPED_ALREADY_ENRICHED
+
+
+class TestQuotaGateAndProgressTracking:
+    """Zero-Effort Portfolio Onboarding: the quota tracker is now
+    enforced (not just recorded) in this bulk path, and progress is
+    made observable via `EnrichmentProgressStore`."""
+
+    def test_a_ticker_is_deferred_once_the_daily_quota_is_exhausted(self, engine, repository, identity_gate):
+        from atlas.alpha.business_data_refresh.quota import AlphaVantageQuotaTracker
+
+        quota_tracker = AlphaVantageQuotaTracker(engine, daily_limit=0)
+        provider = _FakeProvider(exception=AssertionError("must never be called -- quota already exhausted"))
+        summary = enrich_holdings(
+            ("AAPL",), (provider,), repository, identity_gate=identity_gate, quota_tracker=quota_tracker
+        )
+        assert summary.results[0].outcome is EnrichmentOutcome.QUOTA_DEFERRED
+        assert summary.quota_deferred_count == 1
+
+    def test_omitting_quota_tracker_behaves_exactly_as_before(self, repository, identity_gate):
+        summary = enrich_holdings(
+            ("AAPL",),
+            (_FakeProvider(documents=(_doc(identifier="AAPL:FY:2023", company="AAPL"),)), _identity_provider("AAPL")),
+            repository,
+            identity_gate=identity_gate,
+        )
+        assert summary.results[0].outcome is EnrichmentOutcome.ENRICHED
+
+    def test_progress_is_recorded_done_for_a_completed_ticker(self, engine, repository, identity_gate):
+        from atlas.alpha.enrichment_tracking.models import EnrichmentProgressStatus
+        from atlas.alpha.enrichment_tracking.store import EnrichmentProgressStore
+        from atlas.alpha.enrichment_tracking.table import create_enrichment_progress_table
+
+        create_enrichment_progress_table(engine)
+        store = EnrichmentProgressStore(engine)
+        store.start_batch("batch-1", (("AAPL", "Apple Inc."),))
+        enrich_holdings(
+            ("AAPL",),
+            (_FakeProvider(documents=(_doc(identifier="AAPL:FY:2023", company="AAPL"),)), _identity_provider("AAPL")),
+            repository,
+            identity_gate=identity_gate,
+            progress_store=store,
+            progress_batch_id="batch-1",
+        )
+        batch = store.get_batch("batch-1")
+        assert batch.entries[0].status == EnrichmentProgressStatus.DONE
+        assert batch.complete is True
+
+    def test_progress_is_recorded_deferred_when_quota_is_exhausted(self, engine, repository, identity_gate):
+        from atlas.alpha.business_data_refresh.quota import AlphaVantageQuotaTracker
+        from atlas.alpha.enrichment_tracking.models import EnrichmentProgressStatus
+        from atlas.alpha.enrichment_tracking.store import EnrichmentProgressStore
+        from atlas.alpha.enrichment_tracking.table import create_enrichment_progress_table
+
+        create_enrichment_progress_table(engine)
+        store = EnrichmentProgressStore(engine)
+        store.start_batch("batch-2", (("AAPL", "Apple Inc."),))
+        quota_tracker = AlphaVantageQuotaTracker(engine, daily_limit=0)
+        provider = _FakeProvider(exception=AssertionError("must never be called"))
+        enrich_holdings(
+            ("AAPL",),
+            (provider,),
+            repository,
+            identity_gate=identity_gate,
+            quota_tracker=quota_tracker,
+            progress_store=store,
+            progress_batch_id="batch-2",
+        )
+        batch = store.get_batch("batch-2")
+        assert batch.entries[0].status == EnrichmentProgressStatus.DEFERRED

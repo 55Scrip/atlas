@@ -11,13 +11,19 @@ POST /alpha-portfolio/enrich                        - bulk-enrich every current 
 """
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from sqlalchemy.engine import Engine
 
 from atlas.alpha.business_data_refresh.api.dependencies import get_default_business_data_providers
 from atlas.alpha.business_data_refresh.bulk import enrich_holdings
+from atlas.alpha.business_data_refresh.quota import AlphaVantageQuotaTracker
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.table import create_business_record_table
 from atlas.alpha.canonical_security_gate.factory import build_identity_gate
+from atlas.alpha.enrichment_tracking.store import EnrichmentProgressStore
+from atlas.alpha.enrichment_tracking.table import create_enrichment_progress_table
 from atlas.alpha.ingestion.repository import SqlAlchemyIngestionResultRepository
 from atlas.alpha.ingestion.table import create_ingestion_result_table
 from atlas.alpha.monitoring.api.dependencies import build_monitoring_service
@@ -41,7 +47,7 @@ from atlas.alpha.portfolio.exceptions import (
     OutcomeNotFoundForTradeError,
     TradeAlreadyAppliedError,
 )
-from atlas.alpha.portfolio.models import TransactionType
+from atlas.alpha.portfolio.models import AlphaHolding, TransactionType
 from atlas.alpha.portfolio.projection import derive_portfolio_view
 from atlas.alpha.portfolio.service import (
     AlphaPortfolioService,
@@ -57,7 +63,21 @@ from atlas.core.infrastructure.api.decision.dependencies import get_decision_eng
 router = APIRouter(prefix="/alpha-portfolio", tags=["alpha-portfolio"])
 
 
-def _run_bulk_enrichment_in_background(ticker_case_pairs: tuple[tuple[str, str | None], ...]) -> None:
+def _weight_prioritized_ticker_case_pairs(
+    holdings: tuple[AlphaHolding, ...]
+) -> tuple[tuple[str, str | None], ...]:
+    """Zero-Effort Portfolio Onboarding: the investor's largest,
+    most consequential positions get analyzed first within whatever
+    quota is available that day -- the honest way to spend a hard
+    daily budget, and the reason the first Investment Cases to appear
+    are the ones the investor most wants to see."""
+    ordered = sorted(holdings, key=lambda h: h.weight_percent, reverse=True)
+    return tuple((h.ticker, h.case_id) for h in ordered)
+
+
+def _run_bulk_enrichment_in_background(
+    ticker_case_pairs: tuple[tuple[str, str | None], ...], batch_id: str
+) -> None:
     """Runs on Starlette's background-task thread, after the HTTP
     response has already been sent (Internal Alpha Fix Sprint 1,
     IA-001: "Portfolio import must still complete successfully even if
@@ -82,15 +102,29 @@ def _run_bulk_enrichment_in_background(ticker_case_pairs: tuple[tuple[str, str |
     `IngestionResult` -- the one piece of state a *future* bulk or
     single-ticker enrichment call needs to tell "already tried and
     genuinely unsupported" from "never tried" for this ticker (see
-    `business_data_refresh.completion`'s own module docstring).
+    `business_data_refresh.completion`'s own module docstring). Already
+    given in weight-priority order by the caller
+    (`_weight_prioritized_ticker_case_pairs`).
+
+    `batch_id` (Zero-Effort Portfolio Onboarding) is the same id the
+    route handler already used to seed `enrichment_progress` as
+    `PENDING` before this task was scheduled -- this run only updates
+    those rows in place as it works through them, via the fresh engine
+    below, never a second scheduling mechanism. A real
+    `AlphaVantageQuotaTracker` is passed too, so a ticker past today's
+    exhausted budget is deferred outright rather than left to hit a
+    live provider rate-limit error.
     """
     if not ticker_case_pairs:
         return
     engine = get_decision_engine()
     create_business_record_table(engine)
     create_ingestion_result_table(engine)
+    create_enrichment_progress_table(engine)
     repository = SqlAlchemyBusinessRecordRepository(engine)
     ingestion_result_repository = SqlAlchemyIngestionResultRepository(engine)
+    progress_store = EnrichmentProgressStore(engine)
+    quota_tracker = AlphaVantageQuotaTracker(engine)
     providers = get_default_business_data_providers()
     identity_gate = build_identity_gate(engine)
     tickers = tuple(ticker for ticker, _ in ticker_case_pairs)
@@ -98,6 +132,7 @@ def _run_bulk_enrichment_in_background(ticker_case_pairs: tuple[tuple[str, str |
     enrich_holdings(
         tickers, providers, repository, identity_gate=identity_gate,
         ingestion_result_repository=ingestion_result_repository, case_ids_by_ticker=case_ids_by_ticker,
+        quota_tracker=quota_tracker, progress_store=progress_store, progress_batch_id=batch_id,
     )
     # Internal Alpha Fix Sprint 1, Deliverable 4/5 (Business Refresh /
     # Portfolio Change Integration): chained onto the same background
@@ -134,6 +169,7 @@ def get_portfolio(
 def import_portfolio(
     payload: ImportPortfolioRequestBody,
     background_tasks: BackgroundTasks,
+    engine: Engine = Depends(get_decision_engine),
     service: AlphaPortfolioService = Depends(get_alpha_portfolio_service),
 ) -> PortfolioView:
     try:
@@ -161,15 +197,27 @@ def import_portfolio(
     # enrichment was the confirmed root cause. Scheduled *after* the
     # state is already persisted and the response body already built --
     # a provider outage during enrichment can never fail this import.
-    background_tasks.add_task(
-        _run_bulk_enrichment_in_background, tuple((holding.ticker, holding.case_id) for holding in state.holdings)
+    #
+    # Zero-Effort Portfolio Onboarding: `batch_id` is generated and the
+    # progress table seeded as PENDING synchronously, before the
+    # response is returned -- so the frontend's very first poll already
+    # sees real state, not a 404, even before the background task below
+    # has had a chance to run.
+    batch_id = str(uuid.uuid4())
+    ticker_case_pairs = _weight_prioritized_ticker_case_pairs(state.holdings)
+    create_enrichment_progress_table(engine)
+    EnrichmentProgressStore(engine).start_batch(
+        batch_id, tuple((ticker, None) for ticker, _ in ticker_case_pairs)
     )
-    return PortfolioView.from_domain(state, derive_portfolio_view(state))
+    background_tasks.add_task(_run_bulk_enrichment_in_background, ticker_case_pairs, batch_id)
+    view = PortfolioView.from_domain(state, derive_portfolio_view(state))
+    return view.model_copy(update={"batch_id": batch_id})
 
 
 @router.post("/enrich", response_model=EnrichmentScheduledView, status_code=202)
 def enrich_portfolio(
     background_tasks: BackgroundTasks,
+    engine: Engine = Depends(get_decision_engine),
     service: AlphaPortfolioService = Depends(get_alpha_portfolio_service),
 ) -> EnrichmentScheduledView:
     """Internal Alpha Fix Sprint 1, Part 1's explicit backfill path:
@@ -184,15 +232,22 @@ def enrich_portfolio(
     re-opening Portfolio/Investment Case pages afterward is how the
     result becomes visible, the same "import and enrichment are related
     but separate" principle `import_portfolio` itself now follows.
+
+    Zero-Effort Portfolio Onboarding: also gets a real `batchId`, the
+    same weight-priority ordering and progress tracking `/import`/
+    `/reconcile` have, for the same "show real progress" reason.
     """
     state = service.get_state()
     if state is None:
         raise HTTPException(status_code=404, detail="No Alpha portfolio has been established yet.")
-    tickers = tuple(holding.ticker for holding in state.holdings)
-    background_tasks.add_task(
-        _run_bulk_enrichment_in_background, tuple((holding.ticker, holding.case_id) for holding in state.holdings)
+    batch_id = str(uuid.uuid4())
+    ticker_case_pairs = _weight_prioritized_ticker_case_pairs(state.holdings)
+    create_enrichment_progress_table(engine)
+    EnrichmentProgressStore(engine).start_batch(
+        batch_id, tuple((ticker, None) for ticker, _ in ticker_case_pairs)
     )
-    return EnrichmentScheduledView(scheduled_tickers=list(tickers))
+    background_tasks.add_task(_run_bulk_enrichment_in_background, ticker_case_pairs, batch_id)
+    return EnrichmentScheduledView(scheduled_tickers=[t for t, _ in ticker_case_pairs], batch_id=batch_id)
 
 
 @router.post("/from-scratch", response_model=PortfolioView, status_code=201)
@@ -271,6 +326,7 @@ def apply_trade(
 def reconcile(
     payload: ReconcileRequestBody,
     background_tasks: BackgroundTasks,
+    engine: Engine = Depends(get_decision_engine),
     service: AlphaPortfolioService = Depends(get_alpha_portfolio_service),
 ) -> PortfolioView:
     is_replace_allocation = payload.mode != "UPDATE_HOLDING_WEIGHT"
@@ -313,6 +369,7 @@ def reconcile(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except AlphaPortfolioValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    view = PortfolioView.from_domain(state, derive_portfolio_view(state))
     if is_replace_allocation:
         # Automatic Enrichment Coverage, Implementation Phase 1: the
         # same background-task wiring `/import` already established
@@ -322,10 +379,15 @@ def reconcile(
         # gap. `UPDATE_HOLDING_WEIGHT` never introduces a new ticker, so
         # it is deliberately excluded, mirroring `apply_trade`'s own
         # "only for a genuinely new position" restraint.
-        background_tasks.add_task(
-            _run_bulk_enrichment_in_background, tuple((holding.ticker, holding.case_id) for holding in state.holdings)
+        batch_id = str(uuid.uuid4())
+        ticker_case_pairs = _weight_prioritized_ticker_case_pairs(state.holdings)
+        create_enrichment_progress_table(engine)
+        EnrichmentProgressStore(engine).start_batch(
+            batch_id, tuple((ticker, None) for ticker, _ in ticker_case_pairs)
         )
-    return PortfolioView.from_domain(state, derive_portfolio_view(state))
+        background_tasks.add_task(_run_bulk_enrichment_in_background, ticker_case_pairs, batch_id)
+        view = view.model_copy(update={"batch_id": batch_id})
+    return view
 
 
 @router.get("/trade-log", response_model=list[TradeLogEntryView])

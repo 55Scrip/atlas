@@ -790,6 +790,7 @@ class TestReconcile:
 
 def _empty_fields() -> dict:
     return {
+        "batchId": None,
         "entryMode": None,
         "hasAbsoluteValues": False,
         "holdings": [],

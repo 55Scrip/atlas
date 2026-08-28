@@ -52,9 +52,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from atlas.alpha.business_data_refresh.models import BulkEnrichmentSummary, EnrichmentOutcome, HoldingEnrichmentResult
+from atlas.alpha.business_data_refresh.quota import AlphaVantageQuotaTracker
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.business_data_refresh.service import ensure_company_enriched
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
+from atlas.alpha.enrichment_tracking.store import EnrichmentProgressStore
 from atlas.alpha.ingestion.engine import classify_refresh
 from atlas.alpha.ingestion.repository import SqlAlchemyIngestionResultRepository
 from atlas.analysis_engine.business_data.providers import BusinessDataProvider
@@ -74,6 +76,9 @@ def enrich_holdings(
     identity_gate: CanonicalSecurityIdentityGate,
     ingestion_result_repository: SqlAlchemyIngestionResultRepository | None = None,
     case_ids_by_ticker: dict[str, str] | None = None,
+    quota_tracker: AlphaVantageQuotaTracker | None = None,
+    progress_store: EnrichmentProgressStore | None = None,
+    progress_batch_id: str | None = None,
 ) -> BulkEnrichmentSummary:
     """Deterministic given a deterministic set of provider responses:
     the only non-determinism comes from the underlying providers
@@ -102,9 +107,34 @@ def enrich_holdings(
     `enrich_holdings` behaves exactly as it did before this field
     existed: every provider not yet `SUCCEEDED` stays retryable, and no
     Case is ever read or written.
+
+    `quota_tracker`/`progress_store`/`progress_batch_id` (Zero-Effort
+    Portfolio Onboarding) are optional, the same progressively-enhancing
+    pattern every other dependency here already uses. When
+    `quota_tracker` is given, a ticker's turn is skipped outright --
+    `QUOTA_DEFERRED`, never attempted -- once the shared Alpha Vantage
+    daily budget is exhausted, rather than letting it hit a live
+    provider rate-limit error; this is the one real fix this sprint
+    makes to the quota tracker being *tracked* but not *enforced* in
+    this bulk path. When `progress_store`/`progress_batch_id` are given,
+    each ticker's row in `enrichment_progress` is updated to `ANALYZING`
+    before its call and `DONE`/`DEFERRED` after -- the one thing that
+    makes this already-running background task's progress observable to
+    a polling frontend, not a second scheduling mechanism.
     """
     results: list[HoldingEnrichmentResult] = []
     for ticker in tickers:
+        if quota_tracker is not None and not quota_tracker.has_budget():
+            results.append(
+                HoldingEnrichmentResult(ticker=ticker, outcome=EnrichmentOutcome.QUOTA_DEFERRED, detail=None)
+            )
+            if progress_store is not None and progress_batch_id is not None:
+                progress_store.mark_deferred(progress_batch_id, ticker)
+            continue
+
+        if progress_store is not None and progress_batch_id is not None:
+            progress_store.mark_analyzing(progress_batch_id, ticker)
+
         known_provider_failures: tuple = ()
         if ingestion_result_repository is not None:
             prior = ingestion_result_repository.get_by_ticker(ticker)
@@ -117,7 +147,12 @@ def enrich_holdings(
             )
         except Exception as exc:  # noqa: BLE001 -- one ticker's unexpected failure must never abort the batch
             results.append(HoldingEnrichmentResult(ticker=ticker, outcome=EnrichmentOutcome.FAILED, detail=str(exc)))
+            if progress_store is not None and progress_batch_id is not None:
+                progress_store.mark_done(progress_batch_id, ticker)
             continue
+
+        if progress_store is not None and progress_batch_id is not None:
+            progress_store.mark_done(progress_batch_id, ticker)
 
         if summary is None:
             results.append(

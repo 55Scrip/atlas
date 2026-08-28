@@ -21,6 +21,7 @@ from atlas.alpha.observed_decision_properties.api.router import (
 )
 from atlas.alpha.portfolio.api.router import router as alpha_portfolio_router
 from atlas.alpha.portfolio_import.api.router import router as alpha_portfolio_import_router
+from atlas.alpha.enrichment_tracking.api.router import router as enrichment_progress_router
 from atlas.alpha.portfolio_cockpit.api.router import router as portfolio_cockpit_router
 from atlas.alpha.portfolio_intelligence.api.router import router as portfolio_intelligence_router
 from atlas.alpha.portfolio_status.api.router import router as portfolio_status_router
@@ -129,6 +130,9 @@ def create_app() -> FastAPI:
     # pipeline -- parse/resolve/detect-duplicates only, confirming still
     # goes through alpha_portfolio_router above.
     app.include_router(alpha_portfolio_import_router)
+    # Zero-Effort Portfolio Onboarding: the polling endpoint that makes
+    # the background enrichment task above observable.
+    app.include_router(enrichment_progress_router)
     # Investment Case Engine v1 slice: Watchlist is a sibling
     # composition point with the identical Alpha/Core boundary as
     # Portfolio above -- authored and owned in `atlas/alpha/watchlist/`,

@@ -69,6 +69,7 @@ class EnrichmentScheduledView(CamelModel):
     the request itself has no way to know yet."""
 
     scheduled_tickers: list[str]
+    batch_id: str | None = None
 
 
 class ApplyTradeRequestBody(CamelModel):
@@ -119,6 +120,12 @@ class TradeLogEntryView(CamelModel):
 
 class PortfolioView(CamelModel):
     exists: bool
+    # Zero-Effort Portfolio Onboarding: present only on the response to
+    # an import/reconcile call that scheduled background enrichment --
+    # something concrete a frontend can poll `GET /enrichment-progress/
+    # {batchId}` with immediately, before the background task itself
+    # has even started.
+    batch_id: str | None = None
     entry_mode: str | None = None
     has_absolute_values: bool = False
     holdings: list[HoldingView] = []

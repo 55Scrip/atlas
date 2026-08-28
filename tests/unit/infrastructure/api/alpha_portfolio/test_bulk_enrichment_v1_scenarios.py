@@ -361,3 +361,56 @@ class TestProviderAwareCompletionEndToEnd:
         response = client.post("/alpha-portfolio/enrich")
         assert response.status_code == 202
         assert len(_business_record_repository(engine).get_by_company("AAPL")) == 2
+
+
+class TestEnrichmentProgress:
+    """Zero-Effort Portfolio Onboarding: a real batch id and pollable
+    progress, in weight-priority order."""
+
+    def test_import_returns_a_batch_id_and_progress_is_complete_when_it_returns(self, client, engine, monkeypatch):
+        provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2024", company="AAPL"),))
+        _set_fake_providers(monkeypatch, provider, _identity_provider("AAPL"))
+        response = client.post(
+            "/alpha-portfolio/import", json={"holdings": [{"ticker": "AAPL", "weightPercent": 100.0}]}
+        )
+        batch_id = response.json()["batchId"]
+        assert batch_id is not None
+
+        progress = client.get(f"/enrichment-progress/{batch_id}").json()
+        assert progress["exists"] is True
+        assert progress["total"] == 1
+        assert progress["doneCount"] == 1
+        assert progress["complete"] is True
+
+    def test_unknown_batch_id_reports_not_existing(self, client):
+        progress = client.get("/enrichment-progress/does-not-exist").json()
+        assert progress == {"exists": False, "total": 0, "doneCount": 0, "currentlyAnalyzing": None, "complete": True}
+
+    def test_the_largest_position_is_enriched_first(self, client, engine, monkeypatch):
+        """Weight-prioritized ordering: AMD (70%) must appear before
+        NVDA (30%) in the progress row order, matching the position an
+        investor most wants analyzed first."""
+        provider = _FakeProvider(
+            documents=(
+                _doc(identifier="AMD:FY:2024", company="AMD"),
+                _doc(identifier="NVDA:FY:2024", company="NVDA"),
+            )
+        )
+        _set_fake_providers(monkeypatch, provider, _identity_provider("AMD", "NVDA"))
+        response = client.post(
+            "/alpha-portfolio/import",
+            json={
+                "holdings": [
+                    {"ticker": "NVDA", "weightPercent": 30.0},
+                    {"ticker": "AMD", "weightPercent": 70.0},
+                ]
+            },
+        )
+        batch_id = response.json()["batchId"]
+        progress = client.get(f"/enrichment-progress/{batch_id}").json()
+        assert progress["doneCount"] == 2
+
+        from atlas.alpha.enrichment_tracking.store import EnrichmentProgressStore
+
+        batch = EnrichmentProgressStore(engine).get_batch(batch_id)
+        assert [entry.ticker for entry in batch.entries] == ["AMD", "NVDA"]
