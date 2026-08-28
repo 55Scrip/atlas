@@ -660,7 +660,14 @@ class RecommendationStateView(CamelModel):
     sentence, never in place of it. `RecommendationWithheld.reason`
     itself (`ENGINE_NOT_IMPLEMENTED`/`EVIDENCE_INSUFFICIENT`) is
     deliberately not exposed here -- an internal implementation-status
-    value, not investor-facing content."""
+    value, not investor-facing content.
+
+    `what_would_change` (Calibration Phase 2, Phase 6): the real,
+    populated `ChangeTriggerKind` values from the computed
+    recommendation's own `reasoning.what_would_change` -- empty
+    whenever `recommendation` is `RecommendationWithheld` (no
+    Direction was ever selected, so there is no specific condition to
+    name yet)."""
 
     level: str
     badge_label: str
@@ -668,6 +675,7 @@ class RecommendationStateView(CamelModel):
     conviction_gate_met: bool
     outlook_alignment: RecommendationOutlookAlignmentView
     missing_evaluations: list[str]
+    what_would_change: list[str]
 
     @classmethod
     def from_domain(cls, gate_result, outlook_context: RecommendationOutlookContext) -> "RecommendationStateView":
@@ -678,6 +686,11 @@ class RecommendationStateView(CamelModel):
             if isinstance(recommendation, RecommendationWithheld)
             else []
         )
+        what_would_change = (
+            [trigger.value for trigger in recommendation.reasoning.what_would_change]
+            if not isinstance(recommendation, RecommendationWithheld)
+            else []
+        )
         return cls(
             level=view.level.value,
             badge_label=view.badge_label,
@@ -685,6 +698,7 @@ class RecommendationStateView(CamelModel):
             conviction_gate_met=gate_result.conviction_gate_met,
             outlook_alignment=RecommendationOutlookAlignmentView.from_domain(outlook_context),
             missing_evaluations=missing_evaluations,
+            what_would_change=what_would_change,
         )
 
 

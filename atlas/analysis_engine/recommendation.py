@@ -69,16 +69,20 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import Enum
 
-from atlas.analysis_engine.business_contracts import BusinessAnalysisResult, BusinessCategory
+from atlas.analysis_engine.business_contracts import (
+    BusinessAnalysisResult,
+    BusinessCategory,
+    BusinessCategoryStatus,
+)
 from atlas.analysis_engine.conviction import ConvictionAssessment, ConvictionLevel
 from atlas.analysis_engine.exceptions import AnalysisEngineContractError
 from atlas.analysis_engine.recommendation_conviction import (
     RecommendationConvictionLevel,
     calculate_recommendation_conviction,
 )
-from atlas.analysis_engine.valuation.contracts import ValuationMethodKind
+from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, ValuationStatus
 from atlas.analysis_engine.valuation.models import ValuationEngineResult
-from atlas.analysis_engine.valuation.support import ValuationSupport
+from atlas.analysis_engine.valuation.support import ValuationSupport, ValuationSupportStatus
 from atlas.core.domain.case.value_objects import CaseId
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.outcome.entity import Outcome
@@ -89,7 +93,6 @@ from atlas.decision_engine.contracts import (
     EvaluationState,
     EvidenceCoverageLevel,
     HoldingLinkage,
-    OpenQuestion,
     PortfolioContextSummary,
     PortfolioFinding,
     PortfolioIntelligenceResult,
@@ -108,6 +111,7 @@ __all__ = [
     "evaluate_recommendation_gate",
     "RecommendationDirection",
     "RecommendationConvictionLevel",
+    "ChangeTriggerKind",
     "RecommendationReasoning",
     "RecommendationAlternative",
     "ComputedDirectionalRecommendation",
@@ -148,6 +152,66 @@ class RecommendationDirection(str, Enum):
 # referencing this name from this module.
 
 
+class ChangeTriggerKind(str, Enum):
+    """Calibration Phase 2 (Investment Case Coherence Implementation),
+    Phase 6 -- the closed, deterministic vocabulary for
+    `RecommendationReasoning.what_would_change`. Each member names one
+    condition that would most plausibly move *this* recommendation, not
+    generic investing advice -- selected by `_derive_what_would_change`
+    from the exact same categorical facts `evaluate_recommendation_gate`
+    already reads to select the Direction itself (Growth/Capital
+    Allocation status, Valuation Support, Valuation status, high-risk
+    flag). No new analysis is performed to produce this: it is a
+    presentation-level selection over already-computed conclusions,
+    the same discipline `DecisionSupportLevel`/`StanceReasonCode`
+    already established elsewhere in this codebase.
+
+    `NO_CREDIBLE_TRIGGER_IDENTIFIED` is a real, disclosed member, never
+    an empty tuple standing in for "not computed" -- Phase 6's own
+    instruction: "If Atlas cannot identify a credible change condition,
+    say so honestly."
+    """
+
+    REDUCED_RISK = "reduced_risk"
+    MORE_ATTRACTIVE_VALUATION = "more_attractive_valuation"
+    IMPROVED_GROWTH_EVIDENCE = "improved_growth_evidence"
+    IMPROVED_CAPITAL_ALLOCATION_EVIDENCE = "improved_capital_allocation_evidence"
+    LOWER_VALUATION = "lower_valuation"
+    NO_CREDIBLE_TRIGGER_IDENTIFIED = "no_credible_trigger_identified"
+
+
+def _derive_what_would_change(
+    *,
+    has_high_financial_or_valuation_risk: bool,
+    valuation_support_status: ValuationSupportStatus,
+    growth_status: BusinessCategoryStatus,
+    capital_allocation_status: BusinessCategoryStatus,
+    valuation_status: ValuationStatus,
+) -> tuple[ChangeTriggerKind, ...]:
+    """One honest, deterministic answer to "what would most likely
+    change this recommendation" -- the single strongest blocking
+    condition among the same facts `select_direction` already reads to
+    pick the Direction, never a second analysis. Priority order is
+    fixed and disclosed: a real risk concern outranks a valuation
+    concern, which outranks a business-quality concern, matching the
+    same priority `atlas.alpha.stance.engine.determine_stance` already
+    gives risk over direction elsewhere in this codebase. Returns
+    `NO_CREDIBLE_TRIGGER_IDENTIFIED` rather than an empty tuple when
+    none of these conditions apply -- e.g. a case with no weak
+    dimension at all still gets an honest, real answer, never silence."""
+    if has_high_financial_or_valuation_risk:
+        return (ChangeTriggerKind.REDUCED_RISK,)
+    if valuation_support_status is ValuationSupportStatus.NOT_SUPPORTED:
+        return (ChangeTriggerKind.MORE_ATTRACTIVE_VALUATION,)
+    if growth_status is BusinessCategoryStatus.WEAK:
+        return (ChangeTriggerKind.IMPROVED_GROWTH_EVIDENCE,)
+    if capital_allocation_status is BusinessCategoryStatus.WEAK:
+        return (ChangeTriggerKind.IMPROVED_CAPITAL_ALLOCATION_EVIDENCE,)
+    if valuation_status is ValuationStatus.EXPENSIVE:
+        return (ChangeTriggerKind.LOWER_VALUATION,)
+    return (ChangeTriggerKind.NO_CREDIBLE_TRIGGER_IDENTIFIED,)
+
+
 @dataclass(frozen=True)
 class RecommendationReasoning:
     """`DE-002`'s reasoning content a Recommendation carries, per `DE-007`
@@ -160,17 +224,19 @@ class RecommendationReasoning:
     structurally forces this field empty because *it* is not the
     provider `DE-002` §2.7 requires, a `ComputedDirectionalRecommendation`
     is that provider (`DE-007` §8A's own note); this type does not
-    forbid populating it. No code populates it yet -- there is no
-    change-trigger computation to draw from -- but the field is not
-    artificially locked shut the way `ReasoningFinding.what_would_change`
-    is.
+    forbid populating it. Calibration Phase 2, Phase 6: populated by
+    `_derive_what_would_change` at every real construction site below --
+    a closed `ChangeTriggerKind`, never the free-text `OpenQuestion` type
+    `ReasoningFinding.what_would_change` uses (that type names an
+    evidence-linkage gap; this one names a genuine change condition,
+    a different concept that deserves its own vocabulary).
     """
 
     current_situation: ReasoningSummary
     supporting_evidence: SupportingEvidenceSummary
     contradicting_evidence: ContradictionSummary
     portfolio_context: PortfolioContextSummary
-    what_would_change: tuple[OpenQuestion, ...] = ()
+    what_would_change: tuple[ChangeTriggerKind, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -512,6 +578,13 @@ def evaluate_recommendation_gate(
                 supporting_evidence=reasoning.finding.supporting_evidence,
                 contradicting_evidence=reasoning.finding.contradicting_evidence,
                 portfolio_context=reasoning.finding.portfolio_context,
+                what_would_change=_derive_what_would_change(
+                    has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
+                    valuation_support_status=valuation_support.status,
+                    growth_status=growth_finding.status,
+                    capital_allocation_status=capital_allocation_finding.status,
+                    valuation_status=fcf_yield_finding.status,
+                ),
             ),
             portfolio_factors=portfolio_intelligence.portfolio_factors,
         )

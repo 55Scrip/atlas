@@ -437,6 +437,10 @@ class TestRecommendationWithheld:
         # Decision Log #1, atlas.alpha.decision_support.
         assert "kind" not in body["recommendation"]
         assert "reason" not in body["recommendation"]
+        # Calibration Phase 2, Phase 6: no Direction was ever selected
+        # for a withheld recommendation, so there is no specific change
+        # trigger to name yet -- empty, never a fabricated one.
+        assert body["recommendation"]["whatWouldChange"] == []
 
 
 class TestDeterministicShape:

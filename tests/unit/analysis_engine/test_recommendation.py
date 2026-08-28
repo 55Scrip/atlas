@@ -21,15 +21,18 @@ branch is real."""
 from __future__ import annotations
 
 from atlas.analysis_engine.business import evaluate_business_analysis
+from atlas.analysis_engine.business_contracts import BusinessCategoryStatus
 from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
 from atlas.analysis_engine.conviction import ConvictionAssessment, ConvictionLevel
 from atlas.analysis_engine.recommendation import (
     RECOMMENDATION_GATE_MINIMUM_CONVICTION,
+    ChangeTriggerKind,
     ComputedDirectionalRecommendation,
     RecommendationDirection,
     evaluate_recommendation_gate,
 )
 from atlas.analysis_engine.recommendation_conviction import RecommendationConvictionLevel
+from atlas.analysis_engine.valuation.contracts import ValuationStatus
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
 from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
 from atlas.analysis_engine.valuation.support import ValuationSupport, ValuationSupportGapKind, ValuationSupportStatus
@@ -571,3 +574,98 @@ class TestDirectionSelectorNowWired:
             generated_at=GENERATED_AT,
         )
         assert not hasattr(result.recommendation, "reason")
+
+
+class TestWhatWouldChange:
+    """Calibration Phase 2 (Investment Case Coherence Implementation),
+    Phase 6: `RecommendationReasoning.what_would_change` must be
+    genuinely populated -- not an empty tuple -- for every real
+    `ComputedDirectionalRecommendation`, and must name the specific
+    condition that actually gated this case, not a generic fallback."""
+
+    def test_pure_priority_order_risk_outranks_everything(self):
+        from atlas.analysis_engine.recommendation import _derive_what_would_change
+
+        result = _derive_what_would_change(
+            has_high_financial_or_valuation_risk=True,
+            valuation_support_status=ValuationSupportStatus.NOT_SUPPORTED,
+            growth_status=BusinessCategoryStatus.WEAK,
+            capital_allocation_status=BusinessCategoryStatus.WEAK,
+            valuation_status=ValuationStatus.EXPENSIVE,
+        )
+        assert result == (ChangeTriggerKind.REDUCED_RISK,)
+
+    def test_pure_priority_order_valuation_support_outranks_business(self):
+        from atlas.analysis_engine.recommendation import _derive_what_would_change
+
+        result = _derive_what_would_change(
+            has_high_financial_or_valuation_risk=False,
+            valuation_support_status=ValuationSupportStatus.NOT_SUPPORTED,
+            growth_status=BusinessCategoryStatus.WEAK,
+            capital_allocation_status=BusinessCategoryStatus.WEAK,
+            valuation_status=ValuationStatus.EXPENSIVE,
+        )
+        assert result == (ChangeTriggerKind.MORE_ATTRACTIVE_VALUATION,)
+
+    def test_pure_no_credible_trigger_is_a_real_disclosed_answer_not_silence(self):
+        from atlas.analysis_engine.recommendation import _derive_what_would_change
+
+        result = _derive_what_would_change(
+            has_high_financial_or_valuation_risk=False,
+            valuation_support_status=ValuationSupportStatus.SUPPORTED,
+            growth_status=BusinessCategoryStatus.STRONG,
+            capital_allocation_status=BusinessCategoryStatus.STRONG,
+            valuation_status=ValuationStatus.UNDERVALUED,
+        )
+        assert result == (ChangeTriggerKind.NO_CREDIBLE_TRIGGER_IDENTIFIED,)
+
+    def test_a_real_trim_from_weak_growth_names_improved_growth_evidence(self):
+        """End-to-end: the exact fixture `TestDirectionSelectorNowWired`
+        already uses for a real TRIM (WEAK Growth, everything else
+        insufficient/unsupported) must report the Growth trigger, not a
+        fallback -- the whole point of Phase 6 is that this answer is
+        specific to the case that actually produced it."""
+        engine_input, output, business_analysis = TestDirectionSelectorNowWired()._held_weak_business_result()
+        result = evaluate_recommendation_gate(
+            engine_input,
+            business_evaluation=output.business_evaluation,
+            valuation=output.valuation,
+            portfolio_intelligence=output.portfolio_intelligence,
+            reasoning=output.reasoning,
+            conviction=_assessment(ConvictionLevel.HIGH),
+            business_analysis=business_analysis,
+            valuation_engine=_insufficient_valuation_engine(),
+            valuation_support=_insufficient_valuation_support(),
+            has_high_financial_or_valuation_risk=False,
+            has_open_questions=False,
+            generated_at=GENERATED_AT,
+        )
+        assert isinstance(result.recommendation, ComputedDirectionalRecommendation)
+        assert result.recommendation.reasoning.what_would_change == (ChangeTriggerKind.IMPROVED_GROWTH_EVIDENCE,)
+
+    def test_a_real_buy_from_a_strong_undervalued_case_names_no_credible_trigger(self):
+        """End-to-end: the exact fixture `TestBuyAddNowWired` already
+        uses for a real BUY (everything strong/supported/undervalued)
+        has nothing weak to name -- must honestly say so, never invent
+        a trigger that isn't real."""
+        from tests.unit.decision_engine._fixtures import build_populated_input
+        from atlas.decision_engine.pipeline import run_pipeline
+
+        engine_input = build_populated_input(case_id="what-would-change-buy-wiring")
+        output = run_pipeline(engine_input, generated_at=GENERATED_AT)
+        result = evaluate_recommendation_gate(
+            engine_input,
+            business_evaluation=output.business_evaluation,
+            valuation=output.valuation,
+            portfolio_intelligence=output.portfolio_intelligence,
+            reasoning=output.reasoning,
+            conviction=_assessment(ConvictionLevel.HIGH),
+            business_analysis=_strong_growth_business_analysis(),
+            valuation_engine=_undervalued_valuation_engine(),
+            valuation_support=_supported_valuation_support(),
+            has_high_financial_or_valuation_risk=False,
+            has_open_questions=False,
+            generated_at=GENERATED_AT,
+        )
+        assert isinstance(result.recommendation, ComputedDirectionalRecommendation)
+        assert result.recommendation.reasoning.what_would_change == (ChangeTriggerKind.NO_CREDIBLE_TRIGGER_IDENTIFIED,)
