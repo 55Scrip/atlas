@@ -54,6 +54,20 @@ class TestAbsoluteValueMode:
         summary = derive_portfolio_view(state)
         assert summary.total_value == 1000.0
 
+    def test_real_holding_values_with_no_cash_reported_still_produce_a_real_total(self):
+        # Sprint 11 Phase 2: a real broker import commonly has a real
+        # value for every holding but no cash line at all -- the total
+        # must be the sum of what's actually known, not hidden.
+        state = _state(
+            holdings=(
+                AlphaHolding(ticker="NVDA", weight_percent=60, value_absolute=600.0),
+                AlphaHolding(ticker="AMD", weight_percent=40, value_absolute=400.0),
+            ),
+        )
+        assert state.holdings_have_absolute_values is True
+        summary = derive_portfolio_view(state)
+        assert summary.total_value == 1000.0
+
 
 class TestEmptyPortfolio:
     def test_no_holdings_and_no_cash_produces_a_valid_zero_summary(self):

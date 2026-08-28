@@ -138,6 +138,20 @@ class AlphaPortfolioState:
     preferences: AlphaPreferences = field(default_factory=AlphaPreferences)
 
     @property
+    def holdings_have_absolute_values(self) -> bool:
+        """True whenever every *holding* carries a real absolute value,
+        regardless of cash. Zero-Effort Import Polish (Sprint 11, Phase
+        2): a real broker import very often has a genuine value for
+        every holding but no cash line at all (nothing was reported,
+        not "unknown") -- Portfolio's own display should be able to
+        show a real total in that case, without changing trade
+        application's own Mode A/B semantics, which stay gated on the
+        stricter `has_absolute_values` below (a BUY validated against
+        genuinely-unreported cash needs its own product decision, not
+        a side effect of a display fix)."""
+        return all(holding.value_absolute is not None for holding in self.holdings)
+
+    @property
     def has_absolute_values(self) -> bool:
         """True only if every holding, and cash, carries an absolute value.
 

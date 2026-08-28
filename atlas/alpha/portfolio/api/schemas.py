@@ -147,7 +147,7 @@ class PortfolioView(CamelModel):
         return cls(
             exists=True,
             entry_mode=state.entry_mode.value,
-            has_absolute_values=state.has_absolute_values,
+            has_absolute_values=state.holdings_have_absolute_values,
             holdings=[
                 HoldingView(
                     ticker=holding.ticker,
@@ -163,11 +163,15 @@ class PortfolioView(CamelModel):
             ],
             cash_weight_percent=state.cash_weight_percent,
             cash_value_absolute=state.cash_value_absolute,
-            # Only a meaningful currency figure when every holding and
-            # cash carry a real absolute value — otherwise this stays
-            # None rather than presenting a fabricated total (PFINV-008
-            # Honest Incompleteness).
-            total_value=summary.total_value if state.has_absolute_values else None,
+            # A meaningful currency figure whenever every *holding*
+            # carries a real absolute value — otherwise this stays None
+            # rather than presenting a fabricated total (PFINV-008
+            # Honest Incompleteness). Cash not being reported at all
+            # means none was reported, not "unknown" (Sprint 11 Phase
+            # 2) -- it simply isn't included in the total, the same way
+            # it's excluded from `projection.py`'s summary entirely
+            # when absent.
+            total_value=summary.total_value if state.holdings_have_absolute_values else None,
             # Real, investor-supplied holdings only -- `summary` itself
             # additionally counts the synthetic CASH line `projection.py`
             # adds so the calculation engine can compute cash weight;

@@ -20,16 +20,23 @@ _CASH_TICKER = "CASH"
 def derive_portfolio_view(state: AlphaPortfolioState) -> PortfolioSummary:
     """Return the Portfolio Domain's own summary for the given state.
 
-    When `state.has_absolute_values` is True, each holding's real
-    `value_absolute` is used as `market_value`, so the resulting
-    `total_value`/`cash_value` are meaningful currency figures. When it
-    is False, `weight_percent` is used as a stand-in `market_value` —
-    the same deterministic technique `atlas.adapters.portfolio` already
-    uses for the legacy CLI format — which preserves relative allocation
-    percentages exactly but produces no meaningful currency total.
-    Callers MUST check `state.has_absolute_values` (surfaced as
+    When `state.holdings_have_absolute_values` is True, each holding's
+    real `value_absolute` is used as `market_value`, so the resulting
+    `total_value` is a meaningful currency figure -- cash included at
+    its own real value when reported, otherwise treated as 0 (Sprint
+    11 Phase 2: unreported cash means "none was reported," never
+    "unknown," the same convention import-time weight derivation
+    already uses). When holdings lack real values, `weight_percent` is
+    used as a stand-in `market_value` — the same deterministic
+    technique `atlas.adapters.portfolio` already uses for the legacy
+    CLI format — which preserves relative allocation percentages
+    exactly but produces no meaningful currency total. Callers MUST
+    check `state.holdings_have_absolute_values` (surfaced as
     `hasAbsoluteValues` in `api/schemas.py`) before presenting
-    `total_value`/`cash_value` as real currency.
+    `total_value`/`cash_value` as real currency. This is deliberately
+    a different, looser gate than `state.has_absolute_values`, which
+    still requires cash too and continues to govern trade-application
+    Mode A/B in `service.py`, unaffected by this display-only change.
     """
     holdings = tuple(
         Holding(
@@ -37,7 +44,7 @@ def derive_portfolio_view(state: AlphaPortfolioState) -> PortfolioSummary:
             ticker=holding.ticker,
             market_value=(
                 holding.value_absolute
-                if state.has_absolute_values and holding.value_absolute is not None
+                if state.holdings_have_absolute_values and holding.value_absolute is not None
                 else holding.weight_percent
             ),
             weight=holding.weight_percent / 100,
@@ -48,7 +55,7 @@ def derive_portfolio_view(state: AlphaPortfolioState) -> PortfolioSummary:
     if state.cash_weight_percent is not None or state.cash_value_absolute is not None:
         cash_value = (
             state.cash_value_absolute
-            if state.has_absolute_values and state.cash_value_absolute is not None
+            if state.holdings_have_absolute_values and state.cash_value_absolute is not None
             else (state.cash_weight_percent or 0.0)
         )
         holdings = holdings + (
