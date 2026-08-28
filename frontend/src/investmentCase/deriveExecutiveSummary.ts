@@ -32,8 +32,6 @@ export type RiskStatus = "not_evaluated" | "insufficient_input" | "low" | "moder
 export type EvidenceCoverageLevel = "not_applicable" | "none" | "partial" | "full";
 export type OutstandingWorkKind = "outcome-missing" | "trade-missing" | "reconciliation-needed";
 
-export type CaseStatusLevel = "healthy" | "needs_review" | "high_priority";
-
 export interface RiskFindingLite {
   category: RiskCategory;
   status: RiskStatus;
@@ -132,27 +130,6 @@ export function deriveLimitingFactors(input: {
   return factors.slice(0, 2);
 }
 
-export interface CaseStatusInput {
-  hasOutstandingWork: boolean;
-  isThesisStale: boolean;
-  openQuestionCount: number;
-  evidenceGap: boolean;
-}
-
-/**
- * One clear status word, mirroring the exact severity ordering Portfolio
- * Workspace v3 already established for `AttentionCategory`: a case-level
- * workflow gap (a Decision with no Outcome, an Outcome with no trade
- * recorded, a holding awaiting reconciliation) outranks a stale thesis,
- * an open question, or an evidence gap, which in turn outranks nothing
- * outstanding at all. Three plain words, never a numeric score.
- */
-export function deriveCaseStatus(input: CaseStatusInput): CaseStatusLevel {
-  if (input.hasOutstandingWork) return "high_priority";
-  if (input.isThesisStale || input.openQuestionCount > 0 || input.evidenceGap) return "needs_review";
-  return "healthy";
-}
-
 export type CurrentPriorityKind = "outcomeMissing" | "reconciliationNeeded" | "thesisStale" | "openQuestion" | "none";
 
 /**
@@ -205,5 +182,50 @@ export function deriveOutstandingIssues(input: {
   if (input.outstandingWorkKinds.includes("trade-missing")) issues.push("tradeMissing");
   if (input.outstandingWorkKinds.includes("reconciliation-needed")) issues.push("reconciliationNeeded");
   return issues;
+}
+
+/**
+ * Calibration Phase 2 (Investment Case Coherence Implementation), Phase
+ * 5: the 3-5 factors that actually drove the recommendation, not every
+ * available signal. `strengthKinds`/`challengeKinds` are `strengths[]`/
+ * `risks[]` (`CaseHighlightView[]`, mapped to their `kind`) --
+ * `InvestmentArgumentSection`'s own "Supports the Case"/"Challenges the
+ * Case" data, already the decisive-only classification
+ * `atlas.analysis_engine.investment_case_synthesis` computes server-side
+ * (STRONG business -> a Strength, WEAK -> a Risk, MODERATE -> neither;
+ * the identical rule for Valuation/Risk categories). No new selection
+ * logic is invented here -- only combined into one ranked, capped list
+ * so the Hero can show "why," never a full re-derivation.
+ */
+export type RecommendationDriverDirection = "supports" | "challenges";
+
+/** Mirrors `AnalysisHighlightKind` (`changeIntelligence/describeChange.ts`)
+ * exactly -- redeclared locally rather than imported, the same
+ * deliberate no-cross-file-type-coupling convention this module's own
+ * `RiskCategory`/`ValuationStatus` already follow. */
+export type RecommendationDriverKind =
+  | "growth"
+  | "capital_allocation"
+  | "valuation"
+  | "business_risk"
+  | "financial_risk"
+  | "valuation_risk";
+
+export interface RecommendationDriver {
+  kind: RecommendationDriverKind;
+  direction: RecommendationDriverDirection;
+}
+
+const MAX_RECOMMENDATION_DRIVERS = 5;
+
+export function deriveRecommendationDrivers(input: {
+  strengthKinds: RecommendationDriverKind[];
+  challengeKinds: RecommendationDriverKind[];
+}): RecommendationDriver[] {
+  const drivers: RecommendationDriver[] = [
+    ...input.strengthKinds.map((kind) => ({ kind, direction: "supports" as const })),
+    ...input.challengeKinds.map((kind) => ({ kind, direction: "challenges" as const })),
+  ];
+  return drivers.slice(0, MAX_RECOMMENDATION_DRIVERS);
 }
 

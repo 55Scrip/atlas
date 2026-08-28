@@ -26,6 +26,7 @@ import {
   MONITORING_STATUS_TONE,
   RISK_STATUS_TONE,
   VALUATION_STATUS_TONE,
+  type ChangeTriggerKind,
   type ConvictionLevel,
   type ConvictionReasonCode,
   type DecisionSupportLevel,
@@ -92,6 +93,7 @@ import {
   dimensionLabel,
   HIGHLIGHT_KIND_KEY,
   humanize,
+  OPEN_QUESTION_ORIGIN_KEY,
   RISK_CATEGORY_KEY,
   RISK_DATA_GAP_KEY,
   RISK_STATUS_KEY,
@@ -115,13 +117,12 @@ import {
   type ValuationDataGapKind,
 } from "../changeIntelligence/describeChange";
 import {
-  deriveCaseStatus,
   deriveLimitingFactors,
   deriveOutstandingIssues,
-  type CaseStatusLevel,
   type LimitingFactor,
   type OutstandingIssueKind,
   type OutstandingWorkKind,
+  type RecommendationDriverKind,
 } from "../investmentCase/deriveExecutiveSummary";
 import { LimitingFactorsCard } from "../investmentCase/LimitingFactorsCard";
 import { ValuationSupportCard } from "../investmentCase/ValuationSupportCard";
@@ -824,6 +825,12 @@ interface RecommendationStateView {
    * -- real, per-case `RecommendationWithheld.missing_evaluations`,
    * always `[]` when `level !== "insufficient_evidence"`. */
   missingEvaluations: MissingEvaluationCategory[];
+  /** Calibration Phase 2 (Investment Case Coherence Implementation),
+   * Phase 6 -- the real, populated `ChangeTriggerKind` values from
+   * `ComputedDirectionalRecommendation.reasoning.what_would_change`.
+   * Always `[]` when `level === "insufficient_evidence"` (no Direction
+   * was ever selected, so there is no specific condition to name). */
+  whatWouldChange: ChangeTriggerKind[];
 }
 
 // Investment Case Engine v1 slice (extended Company Data Foundation
@@ -2467,7 +2474,17 @@ export function InvestmentCasePage() {
   const metadataLineParts: string[] =
     investmentCaseAnalysis.kind === "loaded"
       ? [
-          `${t("investmentCase.header.valuationLabel")}: ${t(VALUATION_STATUS_KEY[investmentCaseAnalysis.report.valuationContext.fcfYieldStatus])}`,
+          // Calibration Phase 2 (Investment Case Coherence
+          // Implementation), Phase 4/C4: relabeled from bare
+          // "Valuation" -- this is a vs-own-trading-history comparison
+          // (`fcfYieldStatus`), a genuinely different question than
+          // `ValuationSupportCard`'s own capital-deployment verdict
+          // shown just below. Two real, independently-designed facts
+          // (`atlas.analysis_engine.valuation.support`'s own docstring)
+          // sharing the bare word "Valuation" is exactly the labeling
+          // collision Phase 1's audit found; this line now names what
+          // it actually measures.
+          `${t("investmentCase.header.valuationVsHistoryLabel")}: ${t(VALUATION_STATUS_KEY[investmentCaseAnalysis.report.valuationContext.fcfYieldStatus])}`,
           `${t("investmentCase.header.portfolioFitLabel")}: ${
             portfolioFitStatus.kind === "loaded" && portfolioFitStatus.assessment !== null
               ? t(FIT_RATING_KEY[portfolioFitStatus.assessment.overall])
@@ -2476,19 +2493,16 @@ export function InvestmentCasePage() {
           linkedHolding
             ? `${t("investmentCase.header.currentAllocation", { percent: linkedHolding.weightPercent })}`
             : null,
-          `${t("investmentCase.status.heading")}: ${t(
-            CASE_STATUS_KEY[
-              deriveCaseStatus({
-                hasOutstandingWork: caseOutstandingWork.length > 0,
-                isThesisStale: investmentCaseAnalysis.report.isThesisStale,
-                openQuestionCount: investmentCaseAnalysis.report.openQuestions.length,
-                evidenceGap:
-                  investmentCaseAnalysis.report.evidenceQuality !== null &&
-                  (investmentCaseAnalysis.report.evidenceQuality.coverage === "none" ||
-                    investmentCaseAnalysis.report.evidenceQuality.coverage === "partial"),
-              })
-            ],
-          )}`,
+          // Calibration Phase 2, Phase 2/C6: the "Status" badge that
+          // used to render here (`deriveCaseStatus`, "Worth a look"/
+          // "Time-sensitive"/"Healthy") answered a workflow question
+          // ("does this case need review") from the exact same visual
+          // position -- right beside the ticker -- a reader expects a
+          // recommendation-direction verdict. Removed rather than
+          // relabeled: the real recommendation now leads HeroCard
+          // below, and this workflow signal had no other consumer on
+          // this page (`deriveCaseStatus`/`CaseStatusLevel` removed
+          // from `deriveExecutiveSummary.ts` alongside this).
         ].filter((part): part is string => part !== null)
       : [];
 
@@ -2707,6 +2721,9 @@ export function InvestmentCasePage() {
               stance: report.stance,
               noProviderDataFound: report.noProviderDataFound ?? false,
               convictionReasonCodes: report.conviction.reasons as ConvictionReasonCode[],
+              strengthKinds: report.strengths.map((s) => s.kind) as RecommendationDriverKind[],
+              challengeKinds: report.risks.map((r) => r.kind) as RecommendationDriverKind[],
+              whatWouldChange: report.recommendation.whatWouldChange,
             };
 
             /** Atlas UX Phase 7A (Semantic Investment Model, Foundation
@@ -2751,7 +2768,21 @@ export function InvestmentCasePage() {
                   analysis={heroAnalysis}
                   outstandingWorkKinds={caseOutstandingWork.map((item) => item.kind)}
                   isThesisStale={report.isThesisStale}
-                  openQuestionCount={report.openQuestions.length}
+                  // Calibration Phase 2 (Investment Case Coherence
+                  // Implementation), Phase 3/C1: `report.openQuestions`
+                  // is `decision_engine`'s own evidence-linkage gap list
+                  // (a different, disjoint concept from a business-
+                  // analysis open question -- see the backend's own
+                  // `key_open_questions` docstring). `keyOpenQuestions`
+                  // is the one canonical, investor-facing open-question
+                  // source -- the same list `InvestmentArgumentSection`
+                  // below already renders in full; the Hero now shows
+                  // the identical count and the identical top question,
+                  // never a second, silently-different answer.
+                  openQuestionCount={report.keyOpenQuestions.length}
+                  primaryOpenQuestionKey={
+                    report.keyOpenQuestions[0] ? OPEN_QUESTION_ORIGIN_KEY[report.keyOpenQuestions[0].origin] : null
+                  }
                   t={t}
                   locale={locale}
                   suppressLimitingFactorPreview
@@ -3841,7 +3872,20 @@ export function InvestmentCasePage() {
 
                   <Divider tone="hairline" />
 
+                  {/* Calibration Phase 2 (Investment Case Coherence
+                      Implementation), Phase 9: the Observations record
+                      -- and, nested under each one, the full Evidence/
+                      Knowledge Reference/Reasoning Trace/Judgment/
+                      Decision/Outcome CRUD console -- is real engine-
+                      inspection tooling, not investor-facing analysis.
+                      Nothing is removed (every real record and form
+                      here still works exactly as before); it now sits
+                      behind its own explicit, collapsed-by-default
+                      disclosure, distinct from the legitimate
+                      investor-facing detail above it in this same tab,
+                      so it is reached only intentionally. */}
                   {caseId && (
+            <ExpandableDetail summaryLabel={t("investmentCase.observations.technicalTransparencyLabel")}>
               <Stack gap="inter-section">
                 <Heading level={3}>{t("investmentCase.observations.heading")}</Heading>
 
@@ -5328,7 +5372,8 @@ export function InvestmentCasePage() {
                   </Stack>
                 )}
               </Stack>
-            )}
+            </ExpandableDetail>
+          )}
           </Stack>
             )}
 
@@ -5373,12 +5418,6 @@ const OPEN_QUESTION_KEY: Record<OpenQuestionKind, TranslationKey> = {
 
 // humanize/Translate now live in "../changeIntelligence/describeChange"
 // (imported above).
-
-const CASE_STATUS_KEY: Record<CaseStatusLevel, TranslationKey> = {
-  healthy: "investmentCase.status.healthy",
-  needs_review: "investmentCase.status.needsReview",
-  high_priority: "investmentCase.status.highPriority",
-};
 
 /** Reused verbatim from `PortfolioPage.tsx`'s own lookup (ATLAS-028) --
  * same raw `ConcentrationLevel` enum value, same translation keys. */

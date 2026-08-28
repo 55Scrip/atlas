@@ -29,6 +29,9 @@ function analysis(overrides: Partial<HeroAnalysisInput> = {}): HeroAnalysisInput
     priceFreshness: "fresh",
     stance: null,
     convictionReasonCodes: [],
+    strengthKinds: [],
+    challengeKinds: [],
+    whatWouldChange: [],
     ...overrides,
   };
 }
@@ -235,6 +238,62 @@ describe("HeroCard", () => {
         analysis: analysis({ recommendationLevel: "reduction_supported", noProviderDataFound: true }),
       });
       expect(screen.queryByText("investmentCase.hero.noProviderData")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Calibration Phase 2 (Investment Case Coherence Implementation), Phase 2/C5: Stance is the primary headline", () => {
+    it("renders Stance before the narrower Decision Support statement, never the reverse", () => {
+      renderHero({
+        analysis: analysis({
+          stance: {
+            level: "reduce",
+            reasoning: [{ code: "thesis_weakened" }],
+            supportingSignals: [],
+            limitingSignals: [{ code: "thesis_weakened" }],
+            confidence: "high",
+            missingInformation: [],
+          },
+        }),
+      });
+      const stanceBadge = screen.getByText("stance.level.reduce");
+      const decisionStatement = screen.getByText(/decisionSupport\.statement/);
+      expect(
+        stanceBadge.compareDocumentPosition(decisionStatement) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+  });
+
+  describe("Calibration Phase 2, Phase 5: Recommendation Drivers", () => {
+    it("shows nothing when there are no decisive strengths or challenges", () => {
+      renderHero({ analysis: analysis({ strengthKinds: [], challengeKinds: [] }) });
+      expect(screen.queryByText("investmentCase.drivers.heading")).not.toBeInTheDocument();
+    });
+
+    it("renders each real strength and challenge as its own driver line, reusing the existing sentence banks", () => {
+      renderHero({
+        analysis: analysis({ strengthKinds: ["growth"], challengeKinds: ["financial_risk"] }),
+      });
+      expect(screen.getByText("investmentCase.drivers.heading")).toBeInTheDocument();
+      expect(screen.getByText("investmentCase.argument.supports.growth")).toBeInTheDocument();
+      expect(screen.getByText("investmentCase.argument.challenges.financial_risk")).toBeInTheDocument();
+    });
+  });
+
+  describe("Calibration Phase 2, Phase 6: What Would Change", () => {
+    it("shows nothing when whatWouldChange is empty (e.g. a withheld recommendation)", () => {
+      renderHero({ analysis: analysis({ whatWouldChange: [] }) });
+      expect(screen.queryByText("investmentCase.whatWouldChange.heading")).not.toBeInTheDocument();
+    });
+
+    it("renders the real, disclosed change trigger", () => {
+      renderHero({ analysis: analysis({ whatWouldChange: ["improved_growth_evidence"] }) });
+      expect(screen.getByText("investmentCase.whatWouldChange.heading")).toBeInTheDocument();
+      expect(screen.getByText("investmentCase.whatWouldChange.improvedGrowthEvidence")).toBeInTheDocument();
+    });
+
+    it("renders the honest 'no credible trigger' answer as real content, not silence", () => {
+      renderHero({ analysis: analysis({ whatWouldChange: ["no_credible_trigger_identified"] }) });
+      expect(screen.getByText("investmentCase.whatWouldChange.noCredibleTriggerIdentified")).toBeInTheDocument();
     });
   });
 

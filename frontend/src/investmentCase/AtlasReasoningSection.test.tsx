@@ -76,6 +76,24 @@ describe("AtlasReasoningSection (Product Sprint 13 -- Company Intelligence Excel
     expect(screen.queryByText(/Supporting:|Stödjande:/)).not.toBeInTheDocument();
   });
 
+  it("Calibration Phase 2, Phase 11: raw supporting/contradicting facts sit behind a collapsed-by-default disclosure, never as always-visible primary text", () => {
+    renderSection(
+      baseInput({
+        growthStatus: "moderate",
+        growthFacts: { supporting: ["Revenue grew 24% year over year to $416B"], contradicting: [] },
+      }),
+    );
+    const summary = screen.getByText("Visa underlag");
+    const details = summary.closest("details");
+    expect(details).not.toBeNull();
+    expect(details).not.toHaveAttribute("open");
+  });
+
+  it("shows no evidence-disclosure affordance at all when there are no real facts to show", () => {
+    renderSection(baseInput({ growthStatus: "moderate" }));
+    expect(screen.queryByText("Visa underlag")).not.toBeInTheDocument();
+  });
+
   it("caps a finding evaluated across many periods to a readable count instead of an unreadable wall of text (live-discovered, Deliverable 3)", () => {
     const manyFacts = Array.from({ length: 30 }, (_, i) => `Revenue was ${i} USD for the period ending 20${10 + i}-06-30.`);
     renderSection(

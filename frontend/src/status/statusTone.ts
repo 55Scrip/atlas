@@ -189,6 +189,28 @@ export const DECISION_SUPPORT_TONE: Record<DecisionSupportLevel, StatusTone> = {
   insufficient_evidence: "neutral",
 };
 
+/** Calibration Phase 2 (Investment Case Coherence Implementation),
+ * Phase 6 -- mirrors the backend's `atlas.analysis_engine.recommendation
+ * .ChangeTriggerKind` exactly (6 members). `noCredibleTriggerIdentified`
+ * is a real, disclosed answer ("nothing here would credibly move this
+ * call"), never rendered as if it were missing data. */
+export type ChangeTriggerKind =
+  | "reduced_risk"
+  | "more_attractive_valuation"
+  | "improved_growth_evidence"
+  | "improved_capital_allocation_evidence"
+  | "lower_valuation"
+  | "no_credible_trigger_identified";
+
+export const CHANGE_TRIGGER_KEY: Record<ChangeTriggerKind, TranslationKey> = {
+  reduced_risk: "investmentCase.whatWouldChange.reducedRisk",
+  more_attractive_valuation: "investmentCase.whatWouldChange.moreAttractiveValuation",
+  improved_growth_evidence: "investmentCase.whatWouldChange.improvedGrowthEvidence",
+  improved_capital_allocation_evidence: "investmentCase.whatWouldChange.improvedCapitalAllocationEvidence",
+  lower_valuation: "investmentCase.whatWouldChange.lowerValuation",
+  no_credible_trigger_identified: "investmentCase.whatWouldChange.noCredibleTriggerIdentified",
+};
+
 /** Recommendation / Decision Intelligence Sprint 1 -- mirrors the
  * backend's `atlas.analysis_engine.recommendation_outlook_context
  * .OutlookRecommendationRelationship` exactly (4 members). Disclosure

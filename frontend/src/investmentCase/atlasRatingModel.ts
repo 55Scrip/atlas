@@ -149,6 +149,17 @@ export function derivePortfolioRating(overall: FitRating | null): AtlasRating {
  * low-but-defined score: zero coverage means there is nothing yet to
  * rate the reliability *of*, not a rated-and-found-wanting evidence
  * base.
+ *
+ * Calibration Phase 2 (Investment Case Coherence Implementation),
+ * Phase 4/C7: the scorecard tile this feeds is labeled "Coverage," not
+ * "Evidence" (`investmentCase.ratings.evidence.label`) -- this rating
+ * is a disclosed, accurate re-expression of Coverage, but "Evidence"
+ * is also the word Recommendation Conviction's own
+ * `insufficient_evidence` reason uses for a genuinely different
+ * concept (decision-readiness, not coverage breadth). Same word, two
+ * real facts, right next to each other on the page -- the label
+ * change removes the vocabulary collision without changing what this
+ * function computes.
  */
 const COVERAGE_POINTS: Partial<Record<AnalysisCoverageLevel, number>> = {
   substantial_coverage: 9,

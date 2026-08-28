@@ -28,6 +28,7 @@ import {
   REVIEW_PRIORITY_TONE,
   RISK_STATUS_TONE,
   type AnalysisCoverageLevel,
+  type ChangeTriggerKind,
   type ConvictionLevel,
   type ConvictionReasonCode,
   type DecisionSupportLevel,
@@ -53,7 +54,12 @@ import {
   type ChangeFindingView,
   type Translate,
 } from "../changeIntelligence/describeChange";
-import { deriveLimitingFactors, type LimitingFactor, type OutstandingWorkKind } from "../investmentCase/deriveExecutiveSummary";
+import {
+  deriveLimitingFactors,
+  type LimitingFactor,
+  type OutstandingWorkKind,
+  type RecommendationDriverKind,
+} from "../investmentCase/deriveExecutiveSummary";
 import { LimitingFactorsCard } from "../investmentCase/LimitingFactorsCard";
 import { HeroCard, STRENGTH_SENTENCE_KEY, CHALLENGE_SENTENCE_KEY, type HeroAnalysisInput } from "../investmentCase/HeroCard";
 import { InvestmentArgumentSection } from "../investmentCase/InvestmentArgumentSection";
@@ -204,6 +210,7 @@ interface RecommendationStateView {
   convictionGateMet: boolean;
   outlookAlignment: { shortTerm: OutlookRecommendationRelationship; longTerm: OutlookRecommendationRelationship };
   missingEvaluations: MissingEvaluationCategory[];
+  whatWouldChange: ChangeTriggerKind[];
 }
 
 interface HoldingContextView {
@@ -727,6 +734,9 @@ function CurrentPicture({
     currency: report.marketSnapshot ? report.marketSnapshot.currency : null,
     stance: report.stance,
     convictionReasonCodes: report.conviction.reasons as ConvictionReasonCode[],
+    strengthKinds: report.strengths.map((s) => s.kind) as RecommendationDriverKind[],
+    challengeKinds: report.risks.map((r) => r.kind) as RecommendationDriverKind[],
+    whatWouldChange: report.recommendation.whatWouldChange,
   };
 
   // Implementation Sprint B2 (Hero Reordering): the same real question

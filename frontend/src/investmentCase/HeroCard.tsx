@@ -8,6 +8,7 @@ import {
   type AnalysisValuationStatus,
 } from "../changeIntelligence/describeChange";
 import {
+  CHANGE_TRIGGER_KEY,
   CONVICTION_LEVEL_KEY,
   CONVICTION_REASON_KEY,
   CONVICTION_TONE,
@@ -19,6 +20,7 @@ import {
   VALUATION_SUPPORT_GAP_COPY_KEY,
   VALUATION_SUPPORT_LABEL_KEY,
   VALUATION_SUPPORT_TONE,
+  type ChangeTriggerKind,
   type ConvictionLevel,
   type ConvictionReasonCode,
   type DecisionSupportLevel,
@@ -29,10 +31,12 @@ import {
 import { formatRelativeTime } from "../activity/deriveActivity";
 import {
   deriveCurrentPriority,
+  deriveRecommendationDrivers,
   findMostSevereRisk,
   type CurrentPriorityKind,
   type LimitingFactor,
   type OutstandingWorkKind,
+  type RecommendationDriverKind,
   type RiskFindingLite,
 } from "./deriveExecutiveSummary";
 import { formatFinancialValue } from "./FinancialsTable";
@@ -226,6 +230,17 @@ export interface HeroAnalysisInput {
    * `CompanyWorkspacePage.tsx`'s older call site (which does not fetch
    * this field) keeps its unchanged generic withheld message. */
   noProviderDataFound?: boolean;
+  /** Calibration Phase 2 (Investment Case Coherence Implementation),
+   * Phase 5 -- `strengths[]`/`risks[]` mapped to their `kind`, fed
+   * straight into `deriveRecommendationDrivers`. Real, already-fetched,
+   * already-decisive-only classifications; this component invents no
+   * new selection of its own. */
+  strengthKinds: RecommendationDriverKind[];
+  challengeKinds: RecommendationDriverKind[];
+  /** Calibration Phase 2, Phase 6 -- `report.recommendation.whatWouldChange`,
+   * verbatim. Empty for a withheld recommendation (no Direction was
+   * ever selected, so there is nothing specific to name). */
+  whatWouldChange: ChangeTriggerKind[];
 }
 
 interface HeroCardProps {
@@ -410,6 +425,10 @@ export function HeroCard({
   });
   const mostSevereRisk = findMostSevereRisk(analysis.riskFindings);
   const freshness = formatRelativeTime(analysis.currentAnalysisAt, t);
+  const drivers = deriveRecommendationDrivers({
+    strengthKinds: analysis.strengthKinds,
+    challengeKinds: analysis.challengeKinds,
+  });
 
   return (
     <Stack gap="metadata">
@@ -457,6 +476,17 @@ export function HeroCard({
         <>
           <ExecutiveSummaryBar analysis={analysis} t={t} />
 
+          {/* Calibration Phase 2 (Investment Case Coherence
+              Implementation), Phase 2/C5: Stance is the superset
+              judgment (it reads Conviction, Recommendation, Risk,
+              Coverage, Change Intelligence, AND Portfolio Fit --
+              `atlas.alpha.stance.engine.determine_stance`'s own module
+              docstring), so it is the one true "what does Atlas think
+              right now" headline, moved to render first. The Decision
+              Support statement immediately below it is real, narrower,
+              supporting input -- never a second, competing headline. */}
+          {analysis.stance && <StanceSummary stance={analysis.stance} t={t} />}
+
           {/* Redesign From Zero Sprint V2 (Phase: Investment Case
               reconstruction) -- the narrative block right below the
               three-second Summary Bar now carries every sentence that
@@ -469,7 +499,7 @@ export function HeroCard({
               only the reason sentence, previously stranded under its
               own "Conviction" heading below a divider, moved up next to
               the conclusion it actually explains. */}
-          <Text as="p" style={HERO_SENTENCE_STYLE}>
+          <Text as="p" color="secondary">
             {t(DECISION_SUPPORT_STATEMENT_KEY[analysis.recommendationLevel])}
             {!suppressTensionSentence && ` ${t(HERO_WHY_KEY[tension])}`}
           </Text>
@@ -495,11 +525,47 @@ export function HeroCard({
             </Text>
           )}
 
-          {analysis.stance && (
-            <>
-              <Divider tone="hairline" />
-              <StanceSummary stance={analysis.stance} t={t} />
-            </>
+          {/* Calibration Phase 2, Phase 5: the 3-5 real, already-
+              decisive factors behind the recommendation -- never every
+              available signal, only `strengths[]`/`risks[]`'s own
+              closed classification, capped and combined. */}
+          {drivers.length > 0 && (
+            <Stack gap="metadata">
+              <Label>{t("investmentCase.drivers.heading")}</Label>
+              <ul style={{ margin: 0, paddingLeft: "1.25em", display: "flex", flexDirection: "column", gap: "var(--space-metadata)" }}>
+                {drivers.map((driver, index) => (
+                  <li key={`${driver.kind}-${index}`}>
+                    <Text as="span">
+                      {t(
+                        driver.direction === "supports"
+                          ? STRENGTH_SENTENCE_KEY[driver.kind]
+                          : CHALLENGE_SENTENCE_KEY[driver.kind],
+                      )}
+                    </Text>
+                  </li>
+                ))}
+              </ul>
+            </Stack>
+          )}
+
+          {/* Calibration Phase 2, Phase 6: `RecommendationReasoning
+              .what_would_change`, genuinely populated -- a real,
+              disclosed answer even when nothing here would credibly
+              move the call (`no_credible_trigger_identified`), never
+              silence standing in for "not computed." Always `[]` for a
+              withheld recommendation, so this never renders in that
+              branch. */}
+          {analysis.whatWouldChange.length > 0 && (
+            <Stack gap="metadata">
+              <Label>{t("investmentCase.whatWouldChange.heading")}</Label>
+              <ul style={{ margin: 0, paddingLeft: "1.25em", display: "flex", flexDirection: "column", gap: "var(--space-metadata)" }}>
+                {analysis.whatWouldChange.map((trigger) => (
+                  <li key={trigger}>
+                    <Text as="span">{t(CHANGE_TRIGGER_KEY[trigger])}</Text>
+                  </li>
+                ))}
+              </ul>
+            </Stack>
           )}
 
           <Divider tone="hairline" />

@@ -10,6 +10,7 @@ import {
 } from "../changeIntelligence/describeChange";
 import { BUSINESS_STATUS_TONE, RISK_STATUS_TONE, VALUATION_STATUS_TONE } from "../status/statusTone";
 import type { TranslationKey } from "../i18n";
+import { ExpandableDetail } from "./ExpandableDetail";
 
 /**
  * Atlas Reasoning (Figma-fidelity rebuild): four compact, terse,
@@ -167,15 +168,30 @@ function ReasoningCard({
           <StatusBadge label={statusLabel} tone={tone} />
         </Inline>
         <Text as="p">{interpretation}</Text>
-        {supporting.length > 0 && (
-          <Text color="tertiary" as="p">
-            {t("investmentCase.analysis.business.supportingLabel")}: {supporting.join(", ")}
-          </Text>
-        )}
-        {contradicting.length > 0 && (
-          <Text color="tertiary" as="p">
-            {t("investmentCase.analysis.business.contradictingLabel")}: {contradicting.join(", ")}
-          </Text>
+        {/* Calibration Phase 2 (Investment Case Coherence
+            Implementation), Phase 11: raw datapoint sentences ("Free
+            cash flow was 66,987,000,000 USD for the period ending
+            2026-06-30.") are evidence, not analysis -- they belong
+            behind a deliberate expand, never surfaced as if they were
+            part of the card's own always-visible interpretation. The
+            interpretation sentence above (real, per-company since
+            Product Sprint 13) is unaffected -- only the raw supporting/
+            contradicting facts move behind this disclosure. */}
+        {(supporting.length > 0 || contradicting.length > 0) && (
+          <ExpandableDetail summaryLabel={t("investmentCase.reasoning.showEvidence")}>
+            <Stack gap="metadata">
+              {supporting.length > 0 && (
+                <Text color="tertiary" as="p">
+                  {t("investmentCase.analysis.business.supportingLabel")}: {supporting.join(", ")}
+                </Text>
+              )}
+              {contradicting.length > 0 && (
+                <Text color="tertiary" as="p">
+                  {t("investmentCase.analysis.business.contradictingLabel")}: {contradicting.join(", ")}
+                </Text>
+              )}
+            </Stack>
+          </ExpandableDetail>
         )}
       </Stack>
     </Surface>
