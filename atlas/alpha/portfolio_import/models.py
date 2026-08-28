@@ -32,11 +32,16 @@ class RowResolutionStatus(str, Enum):
     is true whenever any row is anything other than `RESOLVED`."""
 
     RESOLVED = "RESOLVED"
-    # No multi-candidate resolver exists yet (Phase 3: security_discovery
-    # + one-question clarification); reserved for that follow-up so
-    # `ParsedHoldingRow.status` doesn't need to change shape again then.
     AMBIGUOUS = "AMBIGUOUS"
     UNRESOLVED = "UNRESOLVED"
+    # Real Avanza Import Fix: a genuinely *known* identity (via the
+    # registry) that is not a supported equity -- a fund, ETP, or an
+    # unlisted/private company (e.g. SpaceX). Distinct from UNRESOLVED
+    # ("Atlas doesn't know what this is") -- here Atlas knows exactly
+    # what it is and knows it can't be imported as a ticker+weight
+    # holding. Never offered a manual-ticker override; always excluded,
+    # always explained.
+    UNSUPPORTED = "UNSUPPORTED"
     DUPLICATE = "DUPLICATE"
     ERROR = "ERROR"
 
@@ -65,6 +70,10 @@ class ParsedHoldingRow:
     currency: str | None = None
     status: RowResolutionStatus = RowResolutionStatus.ERROR
     message: str | None = None
+    # Populated only when status is UNSUPPORTED -- "fund"/"etp"/"private"/
+    # "other", so the review screen can show a real reason without
+    # parsing `message`.
+    instrument_type: str | None = None
     # Populated only when status is AMBIGUOUS -- the one-question
     # clarification the review screen asks ("Investor A or Investor B?").
     candidates: tuple[ResolutionCandidate, ...] = ()

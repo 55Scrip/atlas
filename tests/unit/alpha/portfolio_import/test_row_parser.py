@@ -21,6 +21,10 @@ class TestNormalizeNumericText:
     def test_strips_currency_code(self):
         assert parse_numeric("654,50 kr") == 654.50
         assert parse_numeric("654.50 SEK") == 654.50
+        assert parse_numeric("654.50 DKK") == 654.50
+        assert parse_numeric("654.50 NOK") == 654.50
+        assert parse_numeric("654.50 GBP") == 654.50
+        assert parse_numeric("£654.50") == 654.50
 
     def test_rejects_non_numeric_text(self):
         assert parse_numeric("N/A") is None
@@ -79,3 +83,91 @@ class TestParseInputHeaderDetection:
         result = parse_input("")
         assert result.rows == ()
         assert result.header_detected is False
+
+
+class TestRealBrokerFlattenedCopy:
+    """Real Avanza Import Fix: a real broker holdings page is not a
+    semantic <table> -- copying it produces one line per DOM fragment
+    (name, % change, action buttons, value), not one line per holding.
+    Fixtures below are a sanitized, structurally-identical reconstruction
+    of that shape (fictional company names, not the reporter's real
+    portfolio), built from the confirmed symptom: ~3x row-count
+    inflation and values never associated with names.
+    """
+
+    def test_name_and_value_on_separate_lines_are_correctly_paired(self):
+        raw = (
+            "Nordic Holding B\n"
+            "+1,2%\n"
+            "Köp\n"
+            "Sälj\n"
+            "233 324 kr\n"
+            "Example Group AB\n"
+            "-0,5%\n"
+            "Köp\n"
+            "Sälj\n"
+            "49 010 kr\n"
+        )
+        result = parse_input(raw)
+        assert result.header_detected is False
+        # Not 10 rows (one per line) -- exactly 2, one per real holding.
+        assert len(result.rows) == 2
+        assert result.rows[0].fields[ColumnRole.COMPANY_NAME] == "Nordic Holding B"
+        assert result.rows[0].fields[ColumnRole.VALUE] == "233 324 kr"
+        assert result.rows[0].fields[ColumnRole.CURRENCY] == "SEK"
+        assert result.rows[1].fields[ColumnRole.COMPANY_NAME] == "Example Group AB"
+        assert result.rows[1].fields[ColumnRole.VALUE] == "49 010 kr"
+
+    def test_ui_control_and_header_noise_never_become_holdings(self):
+        raw = "Innehav\nAndel %\nKurs\nExample Corp\nKöp\nSälj\n100 000 kr\nTotalt\nSumma\n"
+        result = parse_input(raw)
+        assert len(result.rows) == 1
+        assert result.rows[0].fields[ColumnRole.COMPANY_NAME] == "Example Corp"
+
+    def test_standalone_percent_change_is_never_treated_as_weight_or_value(self):
+        raw = "Example Corp\n+3,4%\n100 000 kr\n"
+        result = parse_input(raw)
+        assert len(result.rows) == 1
+        assert result.rows[0].fields.get(ColumnRole.WEIGHT) is None
+        assert result.rows[0].fields[ColumnRole.VALUE] == "100 000 kr"
+
+    def test_a_name_with_no_value_anywhere_becomes_its_own_row_with_no_value(self):
+        raw = "Example Corp\nAnother Corp\n50 000 kr\n"
+        result = parse_input(raw)
+        assert len(result.rows) == 2
+        assert result.rows[0].fields == {ColumnRole.COMPANY_NAME: "Example Corp"}
+        assert result.rows[1].fields[ColumnRole.COMPANY_NAME] == "Another Corp"
+        assert result.rows[1].fields[ColumnRole.VALUE] == "50 000 kr"
+
+    def test_an_orphan_value_with_no_pending_name_is_dropped_not_misattributed(self):
+        raw = "50 000 kr\nExample Corp\n100 000 kr\n"
+        result = parse_input(raw)
+        assert len(result.rows) == 1
+        assert result.rows[0].fields[ColumnRole.COMPANY_NAME] == "Example Corp"
+        assert result.rows[0].fields[ColumnRole.VALUE] == "100 000 kr"
+
+    def test_a_name_containing_a_digit_is_still_split_correctly_from_its_value(self):
+        raw = "3M Company\n45 937 kr\n"
+        result = parse_input(raw)
+        assert result.rows[0].fields[ColumnRole.COMPANY_NAME] == "3M Company"
+        assert result.rows[0].fields[ColumnRole.VALUE] == "45 937 kr"
+
+    def test_name_and_value_on_the_same_line_with_embedded_thousands_space(self):
+        raw = "Nordic Holding B 233 324 kr\nExample Group AB 49 010 kr\n"
+        result = parse_input(raw)
+        assert len(result.rows) == 2
+        assert result.rows[0].fields[ColumnRole.COMPANY_NAME] == "Nordic Holding B"
+        assert result.rows[0].fields[ColumnRole.VALUE] == "233 324 kr"
+
+    def test_flag_emoji_and_pure_symbol_lines_are_ignored(self):
+        raw = "Example Corp\n🇸🇪\n→\n100 000 kr\n"
+        result = parse_input(raw)
+        assert len(result.rows) == 1
+        assert result.rows[0].fields[ColumnRole.VALUE] == "100 000 kr"
+
+    def test_an_ungrouped_four_digit_value_is_not_truncated(self):
+        # Regression: a leading-digit cap of 3 would misparse "1234 kr"
+        # as splitting after the third digit.
+        raw = "Example Corp\n1234 kr\n"
+        result = parse_input(raw)
+        assert result.rows[0].fields[ColumnRole.VALUE] == "1234 kr"

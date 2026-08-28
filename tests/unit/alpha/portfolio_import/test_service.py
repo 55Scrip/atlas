@@ -70,12 +70,17 @@ class TestCompanyNameResolution:
         preview = _service.preview(raw)
         assert preview.rows[0].status == RowResolutionStatus.UNRESOLVED
 
-    def test_unsupported_instrument_type_is_unresolved_with_a_reason(self):
+    def test_unsupported_instrument_type_is_a_distinct_status_with_a_reason(self):
+        # Real Avanza Import Fix: a known private company (or fund/ETP)
+        # is UNSUPPORTED, not UNRESOLVED -- Atlas knows exactly what it
+        # is and knows it can't be imported as a ticker+weight holding.
         raw = "Name;Weight\nSpaceX;100"
         preview = _service.preview(raw)
         row = preview.rows[0]
-        assert row.status == RowResolutionStatus.UNRESOLVED
+        assert row.status == RowResolutionStatus.UNSUPPORTED
+        assert row.instrument_type == "private"
         assert "private" in row.message
+        assert row.ticker is None
 
     def test_explicit_uppercase_ticker_shaped_name_resolves(self):
         raw = "Name;Weight\nAMD;100"

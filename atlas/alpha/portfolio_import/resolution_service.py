@@ -46,6 +46,7 @@ def resolve_row(row: RawRow, *, discover: DiscoverFn | None = None) -> ParsedHol
     ticker: str | None = None
     message: str | None = None
     candidates: tuple[ResolutionCandidate, ...] = ()
+    unsupported_instrument_type: str | None = None
 
     if ticker_field:
         # Priority 1: the source already told us the ticker directly.
@@ -57,10 +58,11 @@ def resolve_row(row: RawRow, *, discover: DiscoverFn | None = None) -> ParsedHol
                 # Priority 2/3: exact registry name or alias match.
                 ticker = registry_hit.ticker
             else:
-                message = (
-                    f"{company_name!r} is a recognized {registry_hit.instrument_type}, "
-                    "not a supported equity holding."
-                )
+                # A genuinely *known* identity Atlas can't hold as
+                # ticker+weight (a fund, an ETP, or an unlisted/private
+                # company) -- not "unknown," never offered a manual-
+                # ticker override (Real Avanza Import Fix, Phase 6).
+                unsupported_instrument_type = registry_hit.instrument_type
         else:
             # Priority 4: security_discovery's own exact ticker-symbol
             # or canonical-title match -- SEC-filer coverage only, so a
@@ -110,6 +112,24 @@ def resolve_row(row: RawRow, *, discover: DiscoverFn | None = None) -> ParsedHol
     currency = row.fields.get(ColumnRole.CURRENCY)
     if currency is not None:
         currency = currency.strip().upper() or None
+
+    if unsupported_instrument_type is not None:
+        return ParsedHoldingRow(
+            line_number=row.line_number,
+            raw=row.raw,
+            original_name=company_name,
+            quantity=quantity,
+            price=price,
+            value_absolute=value_absolute,
+            weight_percent=weight,
+            currency=currency,
+            status=RowResolutionStatus.UNSUPPORTED,
+            message=(
+                f"{company_name!r} is a recognized {unsupported_instrument_type}, "
+                "not a supported equity holding."
+            ),
+            instrument_type=unsupported_instrument_type,
+        )
 
     if candidates:
         return ParsedHoldingRow(

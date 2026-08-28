@@ -149,6 +149,210 @@ describe("OnboardingPage (Zero-Effort Portfolio Onboarding)", () => {
     expect(await screen.findByText("Atlas bygger din investeringsarbetsyta.")).toBeInTheDocument();
   });
 
+  it("a known-unsupported holding (e.g. a private company) never blocks the rest of the import", async () => {
+    mockFetch({
+      "/api/alpha-portfolio/import/preview": () => ({
+        rows: [
+          {
+            lineNumber: 1,
+            raw: "AMD;60000 kr",
+            originalName: "AMD",
+            ticker: "AMD",
+            quantity: null,
+            price: null,
+            valueAbsolute: 60000,
+            weightPercent: null,
+            currency: "SEK",
+            status: "RESOLVED",
+            message: null,
+            instrumentType: null,
+            candidates: [],
+            alreadyHeld: false,
+          },
+          {
+            lineNumber: 2,
+            raw: "SpaceX;16000 kr",
+            originalName: "SpaceX",
+            ticker: null,
+            quantity: null,
+            price: null,
+            valueAbsolute: 16000,
+            weightPercent: null,
+            currency: "SEK",
+            status: "UNSUPPORTED",
+            message: "'SpaceX' is a recognized private, not a supported equity holding.",
+            instrumentType: "private",
+            candidates: [],
+            alreadyHeld: false,
+          },
+        ],
+        headerDetected: false,
+        holdingsFound: 2,
+        resolvedCount: 1,
+        needsReview: true,
+        currencyConflict: false,
+      }),
+      "/api/alpha-portfolio/import": () => ({ exists: true, batchId: "batch-3" }),
+      "/api/enrichment-progress/batch-3": () => ({
+        exists: true,
+        total: 1,
+        doneCount: 1,
+        currentlyAnalyzing: null,
+        complete: true,
+      }),
+      "/api/alpha-portfolio": emptyPortfolioView,
+    });
+    renderWithProviders(<OnboardingPage />, { route: "/welcome" });
+
+    fireEvent.click(await screen.findByText("Klistra in portfölj"));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "AMD;60000 kr\nSpaceX;16000 kr" } });
+    fireEvent.click(screen.getByText("Fortsätt"));
+
+    // The reason is shown, in Atlas's own words -- never a raw ticker
+    // input for something that can never become tradeable.
+    expect(await screen.findByText(/SpaceX.*private/)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Ticker")).not.toBeInTheDocument();
+
+    // Import proceeds -- one unusual holding never holds the rest hostage.
+    const importButton = screen.getByText("Importera portfölj");
+    expect(importButton).not.toBeDisabled();
+    fireEvent.click(importButton);
+    expect(await screen.findByText("Atlas bygger din investeringsarbetsyta.")).toBeInTheDocument();
+  });
+
+  it("import proceeds with an unresolved row left behind, and says so", async () => {
+    mockFetch({
+      "/api/alpha-portfolio/import/preview": () => ({
+        rows: [
+          {
+            lineNumber: 1,
+            raw: "AMD;60000 kr",
+            originalName: "AMD",
+            ticker: "AMD",
+            quantity: null,
+            price: null,
+            valueAbsolute: 60000,
+            weightPercent: null,
+            currency: "SEK",
+            status: "RESOLVED",
+            message: null,
+            instrumentType: null,
+            candidates: [],
+            alreadyHeld: false,
+          },
+          {
+            lineNumber: 2,
+            raw: "Unknown Co;16000 kr",
+            originalName: "Unknown Co",
+            ticker: null,
+            quantity: null,
+            price: null,
+            valueAbsolute: 16000,
+            weightPercent: null,
+            currency: "SEK",
+            status: "UNRESOLVED",
+            message: "Atlas couldn't identify 'Unknown Co'.",
+            instrumentType: null,
+            candidates: [],
+            alreadyHeld: false,
+          },
+        ],
+        headerDetected: false,
+        holdingsFound: 2,
+        resolvedCount: 1,
+        needsReview: true,
+        currencyConflict: false,
+      }),
+      "/api/alpha-portfolio/import": () => ({ exists: true, batchId: "batch-4" }),
+      "/api/enrichment-progress/batch-4": () => ({
+        exists: true,
+        total: 1,
+        doneCount: 1,
+        currentlyAnalyzing: null,
+        complete: true,
+      }),
+      "/api/alpha-portfolio": emptyPortfolioView,
+    });
+    renderWithProviders(<OnboardingPage />, { route: "/welcome" });
+
+    fireEvent.click(await screen.findByText("Klistra in portfölj"));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "AMD;60000 kr\nUnknown Co;16000 kr" } });
+    fireEvent.click(screen.getByText("Fortsätt"));
+
+    const importButton = await screen.findByText("Importera portfölj");
+    expect(importButton).not.toBeDisabled();
+    expect(screen.getByText(/1 innehav du inte löst/)).toBeInTheDocument();
+
+    fireEvent.click(importButton);
+    expect(await screen.findByText("Atlas bygger din investeringsarbetsyta.")).toBeInTheDocument();
+  });
+
+  it("a failed confirm never shows raw backend text, only a translated message", async () => {
+    const rawBackendDetail =
+      "Holding 'AMD' has neither a weight percentage nor enough data to determine its size.";
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/alpha-portfolio/import/preview")) {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                rows: [
+                  {
+                    lineNumber: 1,
+                    raw: "AMD;100",
+                    originalName: "AMD",
+                    ticker: "AMD",
+                    quantity: null,
+                    price: null,
+                    valueAbsolute: null,
+                    weightPercent: 100,
+                    currency: null,
+                    status: "RESOLVED",
+                    message: null,
+                    instrumentType: null,
+                    candidates: [],
+                    alreadyHeld: false,
+                  },
+                ],
+                headerDetected: false,
+                holdingsFound: 1,
+                resolvedCount: 1,
+                needsReview: false,
+                currencyConflict: false,
+              }),
+          } as Response);
+        }
+        if (url.includes("/api/alpha-portfolio/import")) {
+          return Promise.resolve({
+            ok: false,
+            status: 400,
+            json: () => Promise.resolve({ detail: rawBackendDetail }),
+          } as Response);
+        }
+        if (url.includes("/api/alpha-portfolio")) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(emptyPortfolioView()) } as Response);
+        }
+        return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+      }),
+    );
+    renderWithProviders(<OnboardingPage />, { route: "/welcome" });
+
+    fireEvent.click(await screen.findByText("Klistra in portfölj"));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "AMD;100" } });
+    fireEvent.click(screen.getByText("Fortsätt"));
+
+    expect(
+      await screen.findByText("Atlas kunde inte slutföra importen just nu. Försök igen."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(rawBackendDetail, { exact: false })).not.toBeInTheDocument();
+    expect(consoleErrorSpy).toHaveBeenCalledWith("Atlas backend error:", rawBackendDetail);
+    consoleErrorSpy.mockRestore();
+  });
+
   it("manual entry builds a synthetic Company,Quantity,Price submission", async () => {
     let capturedPreviewBody: string | null = null;
     vi.stubGlobal(

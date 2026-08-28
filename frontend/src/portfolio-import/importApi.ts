@@ -7,7 +7,22 @@
  * never parses or resolves anything itself.
  */
 
-export type RowStatus = "RESOLVED" | "AMBIGUOUS" | "UNRESOLVED" | "DUPLICATE" | "ERROR";
+export type RowStatus = "RESOLVED" | "AMBIGUOUS" | "UNRESOLVED" | "UNSUPPORTED" | "DUPLICATE" | "ERROR";
+
+/** Real Avanza Import Fix (Phase 7): carries the raw backend detail
+ * separately from any investor-facing text, so a caller can log it for
+ * debugging without ever rendering it -- backend validation strings
+ * (e.g. "Holding 'X' has neither a weight percentage nor...") must
+ * never reach the UI verbatim. */
+export class BackendError extends Error {
+  readonly detail: string;
+
+  constructor(detail: string) {
+    super(detail);
+    this.name = "BackendError";
+    this.detail = detail;
+  }
+}
 
 export interface ResolutionCandidate {
   ticker: string;
@@ -26,6 +41,7 @@ export interface ParsedHoldingRow {
   currency: string | null;
   status: RowStatus;
   message: string | null;
+  instrumentType: string | null;
   candidates: ResolutionCandidate[];
   alreadyHeld: boolean;
 }
@@ -42,7 +58,7 @@ export interface ImportPreview {
 async function parseJsonOrThrow<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { detail?: string } | null;
-    throw new Error(body?.detail ?? `Backend responded with ${response.status}`);
+    throw new BackendError(body?.detail ?? `Backend responded with ${response.status}`);
   }
   return response.json() as Promise<T>;
 }

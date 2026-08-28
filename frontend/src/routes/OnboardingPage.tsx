@@ -5,6 +5,7 @@ import { Button, Container, Divider, Heading, Inline, Link, Stack, Surface, Text
 import { useTranslation, type TranslationKey } from "../i18n";
 import { invalidateAlphaPortfolio, useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import {
+  BackendError,
   confirmImport,
   fetchEnrichmentProgress,
   previewImport,
@@ -54,8 +55,28 @@ const INPUT_INSTRUCTIONS_KEY: Record<EntryMethod, TranslationKey> = {
   paste: "onboarding.input.instructionsPaste",
 };
 
+/** Rows that genuinely need the investor's input -- a candidate pick or
+ * a manual ticker. Every other non-resolved status (UNSUPPORTED, ERROR,
+ * DUPLICATE) is informational only: Atlas already knows the outcome and
+ * there's nothing to ask, so it's shown as a reason, never a form field
+ * (Real Avanza Import Fix, Phase 4/8). */
 function needsAttention(row: ParsedHoldingRow): boolean {
   return row.status === "AMBIGUOUS" || row.status === "UNRESOLVED";
+}
+
+function isInformationalExclusion(row: ParsedHoldingRow): boolean {
+  return row.status === "UNSUPPORTED" || row.status === "ERROR" || row.status === "DUPLICATE";
+}
+
+/** Real Avanza Import Fix (Phase 7): backend validation strings must
+ * never reach the UI verbatim -- always a translated, calm message.
+ * The raw detail still goes to the console for debugging. */
+function describeError(error: unknown, t: (key: TranslationKey) => string): string {
+  if (error instanceof BackendError) {
+    console.error("Atlas backend error:", error.detail);
+    return t("onboarding.review.errors.submitFailed");
+  }
+  return t("common.unknownError");
 }
 
 export function OnboardingPage() {
@@ -126,7 +147,7 @@ export function OnboardingPage() {
         setScreen("review");
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : t("common.unknownError"));
+      setErrorMessage(describeError(error, t));
       setScreen("text");
     }
   }
@@ -155,7 +176,7 @@ export function OnboardingPage() {
         navigate("/portfolio");
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : t("common.unknownError"));
+      setErrorMessage(describeError(error, t));
       setScreen("review");
     }
   }
@@ -216,19 +237,16 @@ export function OnboardingPage() {
       .then(async (response) => {
         if (response.status === 400) {
           const body = (await response.json()) as { detail?: string };
-          setScratchError(body.detail ?? t("common.invalidInput"));
+          console.error("Atlas backend error:", body.detail);
+          setScratchError(t("common.invalidInput"));
           return;
         }
         if (!response.ok) throw new Error(`Backend responded with ${response.status}`);
         invalidateAlphaPortfolio();
         navigate("/portfolio");
       })
-      .catch((error: unknown) => {
-        setScratchError(
-          t("onboarding.scratch.errors.saveFailed", {
-            message: error instanceof Error ? error.message : t("common.unknownError"),
-          }),
-        );
+      .catch(() => {
+        setScratchError(t("onboarding.scratch.errors.saveFailed"));
       })
       .finally(() => setScratchSubmitting(false));
   }
@@ -474,16 +492,24 @@ function ReviewScreen({
 }) {
   const attentionRows = preview.rows.filter(needsAttention);
   const resolvedRows = preview.rows.filter((row) => row.status === "RESOLVED");
-  const excludedCount = preview.rows.length - attentionRows.length - resolvedRows.length;
+  const informationalRows = preview.rows.filter(isInformationalExclusion);
 
   function setOverride(lineNumber: number, value: string) {
     setOverrides((current) => ({ ...current, [lineNumber]: value }));
   }
 
-  const allAttentionResolved = attentionRows.every(
-    (row) => (overrides[row.lineNumber]?.trim() ?? "").length >= MIN_MANUAL_TICKER_LENGTH,
-  );
-  const canImport = allAttentionResolved && !preview.currencyConflict && resolvedRows.length + attentionRows.length > 0;
+  function hasResolvedOverride(row: ParsedHoldingRow): boolean {
+    return (overrides[row.lineNumber]?.trim() ?? "").length >= MIN_MANUAL_TICKER_LENGTH;
+  }
+
+  // Real Avanza Import Fix (Phase 8): one unusual holding must never
+  // hold the rest of a real import hostage. Import is enabled as soon
+  // as there is at least one importable holding -- any attention row
+  // the investor hasn't (yet) resolved is simply skipped, never
+  // silently: `willSkipCount` is always shown when it isn't zero.
+  const willSkipCount = attentionRows.filter((row) => !hasResolvedOverride(row)).length;
+  const importableCount = resolvedRows.length + (attentionRows.length - willSkipCount);
+  const canImport = !preview.currencyConflict && importableCount > 0;
 
   return (
     <Surface tier="primary">
@@ -500,9 +526,9 @@ function ReviewScreen({
             {"? " + t("onboarding.review.needsAttentionSummary", { count: attentionRows.length })}
           </Text>
         )}
-        {excludedCount > 0 && (
+        {informationalRows.length > 0 && (
           <Text color="tertiary" as="p">
-            {t("onboarding.review.excludedSummary", { count: excludedCount })}
+            {t("onboarding.review.excludedSummary", { count: informationalRows.length })}
           </Text>
         )}
 
@@ -554,7 +580,26 @@ function ReviewScreen({
           </Stack>
         )}
 
+        {informationalRows.length > 0 && (
+          <Stack gap="intra-section">
+            {informationalRows.map((row) => (
+              <Surface key={row.lineNumber} tier="elevated">
+                <Text as="p">{row.originalName ?? row.raw}</Text>
+                <Text color="tertiary" as="p">
+                  {row.message}
+                </Text>
+              </Surface>
+            ))}
+          </Stack>
+        )}
+
         {portfolioExists && <Text color="tertiary">{t("onboarding.review.replaceWarning")}</Text>}
+
+        {willSkipCount > 0 && (
+          <Text color="tertiary" as="p">
+            {t("onboarding.review.willSkipNote", { count: willSkipCount })}
+          </Text>
+        )}
 
         {errorMessage && (
           <Text color="tertiary" role="alert">
