@@ -1877,7 +1877,7 @@ export const en = {
   // ("Wait for more evidence"), the actual low-severity "we simply
   // don't know yet" state -- a reader could not tell a real warning
   // apart from patient waiting. Critical tone is unchanged.
-  "stance.level.avoidDecision": "Red flag found",
+  "stance.level.avoidDecision": "Significant risk identified",
   "stance.level.noRecommendation": "No recommendation",
   "stance.heading": "Atlas's Current View",
   "stance.reason.noCompanyData": "Atlas does not yet have any company data to reason from.",

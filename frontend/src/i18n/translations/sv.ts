@@ -1860,7 +1860,7 @@ export const sv: Record<TranslationKey, string> = {
   "stance.level.wait": "Avvakta mer underlag",
   // Status-/förklaringsspråket stabiliseringssprint: se motsvarande
   // kommentar i en.ts -- samma fix, samma ärlighetsregel.
-  "stance.level.avoidDecision": "Röd flagga hittad",
+  "stance.level.avoidDecision": "Betydande risk identifierad",
   "stance.level.noRecommendation": "Ingen rekommendation",
   "stance.heading": "Atlas nuvarande syn",
   "stance.reason.noCompanyData": "Atlas har ännu inget bolagsunderlag att utgå från.",
