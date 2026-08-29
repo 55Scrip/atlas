@@ -719,7 +719,7 @@ class TestConvictionEndToEnd:
         # for -- see valuation/test_cash_flow.py's own module docstring.
         records = (
             self._record(
-                "annual_report",
+                "financial_statement",
                 date(2022, 12, 31),
                 "fy22",
                 published_at=datetime(2023, 2, 15, tzinfo=timezone.utc),
@@ -727,7 +727,7 @@ class TestConvictionEndToEnd:
                 free_cash_flow=200.0,
             ),
             self._record(
-                "annual_report",
+                "financial_statement",
                 date(2023, 12, 31),
                 "fy23",
                 published_at=datetime(2024, 2, 15, tzinfo=timezone.utc),
@@ -735,21 +735,21 @@ class TestConvictionEndToEnd:
                 free_cash_flow=240.0,
             ),
             self._record(
-                "annual_report",
+                "financial_statement",
                 date(2024, 12, 31),
                 "fy24",
                 published_at=datetime(2025, 2, 15, tzinfo=timezone.utc),
                 revenue=1250.0,
                 free_cash_flow=300.0,
             ),
-            self._record("annual_report", date(2022, 12, 31), "buy22", share_buybacks=50.0),
-            self._record("annual_report", date(2023, 12, 31), "buy23", share_buybacks=60.0),
-            self._record("annual_report", date(2022, 12, 31), "iss22", share_issuance=10.0),
-            self._record("annual_report", date(2023, 12, 31), "iss23", share_issuance=10.0),
-            self._record("annual_report", date(2022, 12, 31), "rep22", debt_repayment=30.0),
-            self._record("annual_report", date(2023, 12, 31), "rep23", debt_repayment=30.0),
-            self._record("annual_report", date(2022, 12, 31), "debt22", debt_issuance=5.0),
-            self._record("annual_report", date(2023, 12, 31), "debt23", debt_issuance=5.0),
+            self._record("financial_statement", date(2022, 12, 31), "buy22", share_buybacks=50.0),
+            self._record("financial_statement", date(2023, 12, 31), "buy23", share_buybacks=60.0),
+            self._record("financial_statement", date(2022, 12, 31), "iss22", share_issuance=10.0),
+            self._record("financial_statement", date(2023, 12, 31), "iss23", share_issuance=10.0),
+            self._record("financial_statement", date(2022, 12, 31), "rep22", debt_repayment=30.0),
+            self._record("financial_statement", date(2023, 12, 31), "rep23", debt_repayment=30.0),
+            self._record("financial_statement", date(2022, 12, 31), "debt22", debt_issuance=5.0),
+            self._record("financial_statement", date(2023, 12, 31), "debt23", debt_issuance=5.0),
             self._record("market_data_snapshot", date(2023, 3, 1), "m22", share_price=50.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2024, 3, 1), "m23", share_price=52.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2025, 3, 1), "m24", share_price=300.0, shares_outstanding=100.0),
@@ -776,17 +776,17 @@ class TestConvictionEndToEnd:
 
         engine_input, output = self._fresh_full_coverage_input()
         records = (
-            self._record("annual_report", date(2022, 12, 31), "fy22", revenue=1250.0, free_cash_flow=100.0),
-            self._record("annual_report", date(2023, 12, 31), "fy23", revenue=1100.0, free_cash_flow=80.0),
-            self._record("annual_report", date(2024, 12, 31), "fy24", revenue=1000.0, free_cash_flow=60.0),
-            self._record("annual_report", date(2022, 12, 31), "buy22", share_buybacks=50.0),
-            self._record("annual_report", date(2023, 12, 31), "buy23", share_buybacks=60.0),
-            self._record("annual_report", date(2022, 12, 31), "iss22", share_issuance=10.0),
-            self._record("annual_report", date(2023, 12, 31), "iss23", share_issuance=10.0),
-            self._record("annual_report", date(2022, 12, 31), "rep22", debt_repayment=30.0),
-            self._record("annual_report", date(2023, 12, 31), "rep23", debt_repayment=30.0),
-            self._record("annual_report", date(2022, 12, 31), "debt22", debt_issuance=5.0),
-            self._record("annual_report", date(2023, 12, 31), "debt23", debt_issuance=5.0),
+            self._record("financial_statement", date(2022, 12, 31), "fy22", revenue=1250.0, free_cash_flow=100.0),
+            self._record("financial_statement", date(2023, 12, 31), "fy23", revenue=1100.0, free_cash_flow=80.0),
+            self._record("financial_statement", date(2024, 12, 31), "fy24", revenue=1000.0, free_cash_flow=60.0),
+            self._record("financial_statement", date(2022, 12, 31), "buy22", share_buybacks=50.0),
+            self._record("financial_statement", date(2023, 12, 31), "buy23", share_buybacks=60.0),
+            self._record("financial_statement", date(2022, 12, 31), "iss22", share_issuance=10.0),
+            self._record("financial_statement", date(2023, 12, 31), "iss23", share_issuance=10.0),
+            self._record("financial_statement", date(2022, 12, 31), "rep22", debt_repayment=30.0),
+            self._record("financial_statement", date(2023, 12, 31), "rep23", debt_repayment=30.0),
+            self._record("financial_statement", date(2022, 12, 31), "debt22", debt_issuance=5.0),
+            self._record("financial_statement", date(2023, 12, 31), "debt23", debt_issuance=5.0),
             self._record("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2023, 12, 31), "m23", share_price=40.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2024, 12, 31), "m24", share_price=20.0, shares_outstanding=100.0),
@@ -812,11 +812,20 @@ class TestConvictionEndToEnd:
 
         engine_input, output = self._fresh_full_coverage_input()
         records = (
-            self._record("annual_report", date(2022, 12, 31), "iss22", share_issuance=100.0),
-            self._record("annual_report", date(2023, 12, 31), "iss23", share_issuance=100.0),
-            self._record("annual_report", date(2022, 12, 31), "buy22", share_buybacks=10.0),
-            self._record("annual_report", date(2023, 12, 31), "fy23", free_cash_flow=100.0),
-            self._record("annual_report", date(2024, 12, 31), "fy24", free_cash_flow=110.0),
+            self._record("financial_statement", date(2022, 12, 31), "iss22", share_issuance=100.0),
+            self._record("financial_statement", date(2023, 12, 31), "iss23", share_issuance=100.0),
+            self._record("financial_statement", date(2022, 12, 31), "buy22", share_buybacks=10.0),
+            self._record("financial_statement", date(2023, 12, 31), "fy23", free_cash_flow=100.0),
+            self._record("financial_statement", date(2024, 12, 31), "fy24", free_cash_flow=110.0),
+            # Rising TOTAL_DEBT alongside dilution: two NEGATIVE Capital
+            # Allocation signals (capital_return, leverage_trend) against
+            # one POSITIVE (cash_generation, needed for Valuation's own
+            # FCF Yield conclusion below) -- negatives genuinely outweigh
+            # positives under the v2 combination rule, same as v1's own
+            # "one negative disqualifies" reached WEAK here before it.
+            self._record("financial_statement", date(2022, 12, 31), "debt22", total_debt=50.0),
+            self._record("financial_statement", date(2023, 12, 31), "debt23", total_debt=150.0),
+            self._record("financial_statement", date(2024, 12, 31), "debt24", total_debt=300.0),
             self._record("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2023, 12, 31), "m23", share_price=50.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2024, 12, 31), "m24", share_price=52.0, shares_outstanding=100.0),
@@ -827,27 +836,35 @@ class TestConvictionEndToEnd:
         assert analysis.conviction.level is ConvictionLevel.LOW
         assert ConvictionReasonCode.HIGH_FINANCIAL_OR_VALUATION_RISK_PRESENT in analysis.conviction.reasons
 
-    def test_business_and_valuation_unavailable_leaves_conviction_unaffected_by_new_wiring(self):
-        """No `business_records` at all: Growth/Capital Allocation/FCF
-        Yield all `INSUFFICIENT_INPUT` -> `business_conclusive` False --
-        missing evidence never manufactures a negative signal, it simply
-        leaves Conviction exactly where it already was before this
-        sprint's wiring existed (capped by the same real open_questions
-        every scenario in this class hits)."""
+    def test_business_and_valuation_unavailable_yields_insufficient_evidence(self):
+        """No `business_records` at all: `assess_data_completeness` finds
+        no real company data, so `analysis_coverage` reads `NO_COVERAGE`
+        and Conviction is `INSUFFICIENT_EVIDENCE` -- regardless of the
+        investor Observation/Evidence `_fresh_full_coverage_input()`
+        still supplies. This is Calibration Phase 4's own intended
+        behavior change: before this sprint, investor evidence coverage
+        alone (`EvidenceCoverageLevel.FULL`) let Conviction reach
+        `MODERATE` here with zero real company data behind it -- exactly
+        the systemic defect this sprint fixes, so this scenario is now
+        deliberately different, not preserved."""
         from atlas.analysis_engine.conviction import ConvictionLevel, ConvictionReasonCode
 
         engine_input, output = self._fresh_full_coverage_input()
         analysis = assemble_analysis(
             engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
         )
-        assert analysis.conviction.level is ConvictionLevel.MODERATE
-        assert ConvictionReasonCode.NO_HIGH_FINANCIAL_OR_VALUATION_RISK in analysis.conviction.reasons
+        assert analysis.conviction.level is ConvictionLevel.INSUFFICIENT_EVIDENCE
+        assert analysis.conviction.reasons == (ConvictionReasonCode.EVIDENCE_COVERAGE_INSUFFICIENT,)
 
     def test_risk_analysis_insufficient_input_never_raises_risk_flag(self):
         """No `business_records` at all -> every Risk category with a
         real evaluator lands on `INSUFFICIENT_INPUT` (uncertainty),
         never `HIGH` -- missing risk evidence must never be silently
-        promoted into a Conviction-lowering signal."""
+        promoted into a Conviction-lowering signal. Conviction itself
+        reaches `INSUFFICIENT_EVIDENCE` here via the `NO_COVERAGE` floor
+        (no company data at all), a separate, earlier-firing branch that
+        never reaches the risk check -- so `HIGH_FINANCIAL_OR_VALUATION
+        _RISK_PRESENT` correctly never appears in its reasons either."""
         from atlas.analysis_engine.contracts import RiskCategory
         from atlas.analysis_engine.conviction import ConvictionReasonCode
         from atlas.analysis_engine.risk.contracts import RiskStatus
@@ -859,7 +876,7 @@ class TestConvictionEndToEnd:
         for category in (RiskCategory.FINANCIAL_RISK, RiskCategory.VALUATION_RISK):
             finding = next(f for f in analysis.risk_analysis.findings if f.category is category)
             assert finding.status is RiskStatus.INSUFFICIENT_INPUT
-        assert ConvictionReasonCode.NO_HIGH_FINANCIAL_OR_VALUATION_RISK in analysis.conviction.reasons
+        assert ConvictionReasonCode.HIGH_FINANCIAL_OR_VALUATION_RISK_PRESENT not in analysis.conviction.reasons
 
     def test_recommendation_gate_reflects_the_new_real_conviction(self):
         """The five-level `ConvictionAssessment` -> `conviction_gate_met`
@@ -893,11 +910,20 @@ class TestConvictionEndToEnd:
 
         engine_input, output = self._fresh_full_coverage_input()
         records = (
-            self._record("annual_report", date(2022, 12, 31), "iss22", share_issuance=100.0),
-            self._record("annual_report", date(2023, 12, 31), "iss23", share_issuance=100.0),
-            self._record("annual_report", date(2022, 12, 31), "buy22", share_buybacks=10.0),
-            self._record("annual_report", date(2023, 12, 31), "fy23", free_cash_flow=100.0),
-            self._record("annual_report", date(2024, 12, 31), "fy24", free_cash_flow=110.0),
+            self._record("financial_statement", date(2022, 12, 31), "iss22", share_issuance=100.0),
+            self._record("financial_statement", date(2023, 12, 31), "iss23", share_issuance=100.0),
+            self._record("financial_statement", date(2022, 12, 31), "buy22", share_buybacks=10.0),
+            self._record("financial_statement", date(2023, 12, 31), "fy23", free_cash_flow=100.0),
+            self._record("financial_statement", date(2024, 12, 31), "fy24", free_cash_flow=110.0),
+            # Rising TOTAL_DEBT alongside dilution: two NEGATIVE Capital
+            # Allocation signals (capital_return, leverage_trend) against
+            # one POSITIVE (cash_generation, needed for Valuation's own
+            # FCF Yield conclusion below) -- negatives genuinely outweigh
+            # positives under the v2 combination rule, same as v1's own
+            # "one negative disqualifies" reached WEAK here before it.
+            self._record("financial_statement", date(2022, 12, 31), "debt22", total_debt=50.0),
+            self._record("financial_statement", date(2023, 12, 31), "debt23", total_debt=150.0),
+            self._record("financial_statement", date(2024, 12, 31), "debt24", total_debt=300.0),
             self._record("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2023, 12, 31), "m23", share_price=50.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2024, 12, 31), "m24", share_price=52.0, shares_outstanding=100.0),
@@ -922,8 +948,8 @@ class TestConvictionEndToEnd:
 
         engine_input, output = self._fresh_full_coverage_input()
         records = (
-            self._record("annual_report", date(2022, 12, 31), "fy22", revenue=1000.0, free_cash_flow=200.0),
-            self._record("annual_report", date(2023, 12, 31), "fy23", revenue=1100.0, free_cash_flow=240.0),
+            self._record("financial_statement", date(2022, 12, 31), "fy22", revenue=1000.0, free_cash_flow=200.0),
+            self._record("financial_statement", date(2023, 12, 31), "fy23", revenue=1100.0, free_cash_flow=240.0),
             self._record("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2023, 12, 31), "m23", share_price=52.0, shares_outstanding=100.0),
         )

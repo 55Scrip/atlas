@@ -118,26 +118,30 @@ class BusinessDataGapKind(str, Enum):
     facts are unavailable, so the leverage signal cannot be computed."""
 
     MISSING_DIVIDEND_DATA = "missing_dividend_data"
-    """Capital Allocation: no `DIVIDENDS` facts exist. Informational
-    this sprint -- dividends do not yet drive `status` (see
-    `atlas.analysis_engine.capital_allocation`'s own module docstring
-    for why), so this reason is always present alongside whatever
-    reasons do drive the outcome, never on its own."""
+    """Capital Allocation (Calibration Phase 4): no `DIVIDENDS` fact
+    exists at all, or the most recent one is zero -- the `dividend`
+    signal is `INSUFFICIENT` (never `NEGATIVE`; see
+    `atlas.analysis_engine.capital_allocation`'s own module docstring)."""
+
+    MISSING_CASH_FLOW_DATA = "missing_cash_flow_data"
+    """Capital Allocation (Calibration Phase 4): no `FREE_CASH_FLOW`
+    fact exists at all, so the `cash_generation` signal is
+    `INSUFFICIENT`. Distinct from Growth's own `MISSING_CASH_FLOW_
+    HISTORY`, which requires two or more periods for a trend --
+    `cash_generation` only ever needs the single most recent fact."""
 
     MISSING_CAPEX_DATA = "missing_capex_data"
     """Capital Allocation: no `CAPITAL_EXPENDITURE` facts exist.
-    Informational this sprint, same status as
-    `MISSING_DIVIDEND_DATA`."""
+    Informational only -- no principled scoring rule for capital
+    expenditure was designed; it never drives `status`."""
 
     MISSING_SHARE_COUNT_HISTORY = "missing_share_count_history"
     """Capital Allocation (Company Data Foundation v1): no
     `SHARES_OUTSTANDING` facts exist. Informational only, same status
-    as `MISSING_CAPEX_DATA`/`MISSING_DIVIDEND_DATA` -- share-count
-    movement (dilution or retirement) is surfaced for context, never
-    folded into `status`, since doing so would require an arbitrary
-    dilution-rate cutoff this sprint has no principled way to justify
-    (the same reasoning `capital_allocation.py`'s own module docstring
-    already gives for CAPEX/dividends)."""
+    as `MISSING_CAPEX_DATA` -- share-count movement (dilution or
+    retirement) is surfaced for context, never folded into `status`,
+    since doing so would require an arbitrary dilution-rate cutoff this
+    sprint has no principled way to justify."""
 
 
 def severity_for_status(status: BusinessCategoryStatus) -> FindingSeverity:

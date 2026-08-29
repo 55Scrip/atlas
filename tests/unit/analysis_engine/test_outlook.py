@@ -115,14 +115,23 @@ def _strong_capital_allocation_records():
 
 
 def _weak_capital_allocation_records():
+    """Dilution (capital_return NEGATIVE) plus rising `TOTAL_DEBT`
+    (leverage_trend NEGATIVE) -- two negative signals outweigh the one
+    positive `cash_generation` signal every scenario's combined
+    `_growth_records`' own real, positive Free Cash Flow otherwise
+    contributes, so this stays WEAK under the v2 combination rule
+    exactly as it was under v1's own "any negative disqualifies" rule."""
     return (
         _make_record(
+            "annual_report", date(2022, 12, 31), "wca22", total_debt=50.0,
+        ),
+        _make_record(
             "annual_report", date(2023, 12, 31), "wca23",
-            share_buybacks=10.0, share_issuance=100.0, debt_repayment=50.0, debt_issuance=5.0,
+            share_buybacks=10.0, share_issuance=100.0, total_debt=150.0,
         ),
         _make_record(
             "annual_report", date(2024, 12, 31), "wca24",
-            share_buybacks=10.0, share_issuance=120.0, debt_repayment=60.0, debt_issuance=5.0,
+            share_buybacks=10.0, share_issuance=120.0, total_debt=300.0,
         ),
     )
 
@@ -861,12 +870,20 @@ class TestLongTermExpectedReturnCalibration:
         assert outlook.conviction is ConvictionLevel.INSUFFICIENT_EVIDENCE
 
     def test_capital_allocation_never_enters_the_return_arithmetic(self):
-        """Capital Allocation populates a Key Driver either way, but the
-        Long-Term Expected Return figure itself is byte-for-byte
-        identical whether real Capital Allocation evidence exists at
-        all -- proof, not just documentation, that share count/buyback
-        evidence stays out of the arithmetic (this module's own
-        docstring on why -- the AAPL stock-split hazard)."""
+        """The Long-Term Expected Return figure itself is byte-for-byte
+        identical whether real buyback/debt Capital Allocation evidence
+        exists at all -- proof, not just documentation, that share
+        count/buyback evidence stays out of the arithmetic (this
+        module's own docstring on why -- the AAPL stock-split hazard).
+
+        Calibration Phase 4: `growth_and_market`'s own real, positive
+        Free Cash Flow now also drives Capital Allocation's
+        `cash_generation` signal (the same shared `FREE_CASH_FLOW`
+        facts `financial_risk.py`'s own signal of the same name already
+        reads) -- so a `CAPITAL_ALLOCATION` driver is present either
+        way, `neutral` from `cash_generation` alone without buyback/debt
+        evidence, `positive` once `_strong_capital_allocation_records`'
+        own corroborating buyback and debt-reduction signals are added."""
         revenue = (100, 108, 115, 124, 130, 140, 148, 158)
         fcf = (40, 35, 44, 39, 48, 43, 52, 47)
         growth_and_market = _cal_growth_records(revenue, fcf, tag="cae") + _cal_market_records(
@@ -881,8 +898,8 @@ class TestLongTermExpectedReturnCalibration:
         assert er_with.high_percent == pytest.approx(er_without.high_percent)
         with_drivers = _driver_kinds(with_capital_allocation.outlook.long_term)
         without_drivers = _driver_kinds(without_capital_allocation.outlook.long_term)
-        assert OutlookDriverKind.CAPITAL_ALLOCATION in with_drivers
-        assert OutlookDriverKind.CAPITAL_ALLOCATION not in without_drivers
+        assert with_drivers[OutlookDriverKind.CAPITAL_ALLOCATION] == "positive"
+        assert without_drivers[OutlookDriverKind.CAPITAL_ALLOCATION] == "neutral"
 
     def test_margin_and_share_count_fields_never_exist_on_the_assumption(self):
         """Structural guardrail, not just prose: `OutlookAssumption` has

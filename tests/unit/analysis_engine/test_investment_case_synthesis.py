@@ -60,18 +60,24 @@ def _weak_growth_records():
 
 
 def _strong_capital_allocation_records():
-    """Buybacks > issuance (capital_return POSITIVE) and repayment >
-    issuance (leverage POSITIVE) -- STRONG per `capital_allocation.py`'s
-    own documented rule table."""
+    """Buybacks > issuance (capital_return POSITIVE) and falling
+    TOTAL_DEBT (leverage_trend POSITIVE) -- two independently-
+    corroborating positive signals, zero negatives -- STRONG per
+    `capital_allocation.py`'s own documented v2 rule table."""
     return (
+        _make_record(
+            "annual_report",
+            date(2022, 12, 31),
+            "ca22",
+            total_debt=150.0,
+        ),
         _make_record(
             "annual_report",
             date(2023, 12, 31),
             "ca23",
             share_buybacks=100.0,
             share_issuance=10.0,
-            debt_repayment=50.0,
-            debt_issuance=5.0,
+            total_debt=100.0,
         ),
         _make_record(
             "annual_report",
@@ -79,8 +85,7 @@ def _strong_capital_allocation_records():
             "ca24",
             share_buybacks=120.0,
             share_issuance=10.0,
-            debt_repayment=60.0,
-            debt_issuance=5.0,
+            total_debt=50.0,
         ),
     )
 

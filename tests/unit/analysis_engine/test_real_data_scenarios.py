@@ -31,7 +31,7 @@ def _dt(year: int, month: int, day: int) -> datetime:
     return datetime(year, month, day, tzinfo=timezone.utc)
 
 
-def _fundamentals_doc(*, period_end: str, revenue: float, fcf: float | None = None, buybacks: float | None = None, issuance: float | None = None, debt_issuance: float | None = None, debt_repayment: float | None = None, content_hash: str | None = None, published_at: datetime | None = None) -> RawBusinessDocument:
+def _fundamentals_doc(*, period_end: str, revenue: float, fcf: float | None = None, buybacks: float | None = None, issuance: float | None = None, debt_issuance: float | None = None, debt_repayment: float | None = None, total_debt: float | None = None, content_hash: str | None = None, published_at: datetime | None = None) -> RawBusinessDocument:
     metadata: dict = {"revenue": revenue, "currency": "USD"}
     if fcf is not None:
         metadata["free_cash_flow"] = fcf
@@ -43,6 +43,8 @@ def _fundamentals_doc(*, period_end: str, revenue: float, fcf: float | None = No
         metadata["debt_issuance"] = debt_issuance
     if debt_repayment is not None:
         metadata["debt_repayment"] = debt_repayment
+    if total_debt is not None:
+        metadata["total_debt"] = total_debt
     return RawBusinessDocument(
         identifier=f"TEST:FY:{period_end}",
         company="TEST",
@@ -163,9 +165,10 @@ class TestGrowthRealDataShapes:
 
 
 class TestCapitalAllocationRealDataShapes:
-    def test_buybacks_exceed_issuance_and_repayment_exceeds_debt_issuance_is_strong(self):
+    def test_buybacks_exceed_issuance_and_debt_is_falling_is_strong(self):
         records = _ingest_all(
-            _fundamentals_doc(period_end="2023-12-31", revenue=100, buybacks=100, issuance=10, debt_issuance=5, debt_repayment=50)
+            _fundamentals_doc(period_end="2022-12-31", revenue=100, total_debt=150),
+            _fundamentals_doc(period_end="2023-12-31", revenue=100, buybacks=100, issuance=10, total_debt=50),
         )
         analysis = _assemble(records)
         capital_allocation = _finding(analysis, BusinessCategory.CAPITAL_ALLOCATION)
@@ -179,9 +182,10 @@ class TestCapitalAllocationRealDataShapes:
         capital_allocation = _finding(analysis, BusinessCategory.CAPITAL_ALLOCATION)
         assert capital_allocation.status.value == "weak"
 
-    def test_debt_issuance_exceeds_repayment_is_weak(self):
+    def test_rising_debt_alongside_dilution_is_weak(self):
         records = _ingest_all(
-            _fundamentals_doc(period_end="2023-12-31", revenue=100, buybacks=100, issuance=10, debt_issuance=100, debt_repayment=5)
+            _fundamentals_doc(period_end="2022-12-31", revenue=100, buybacks=10, issuance=100, total_debt=50),
+            _fundamentals_doc(period_end="2023-12-31", revenue=100, buybacks=10, issuance=100, total_debt=150),
         )
         analysis = _assemble(records)
         capital_allocation = _finding(analysis, BusinessCategory.CAPITAL_ALLOCATION)

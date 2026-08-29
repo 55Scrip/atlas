@@ -43,20 +43,20 @@ def _make_record(source_kind, period_end, identifier, *, published_at=GENERATED_
 
 def _strong_growth_records():
     return (
-        _make_record("annual_report", date(2022, 12, 31), "fy22", revenue=1000.0, free_cash_flow=200.0),
-        _make_record("annual_report", date(2023, 12, 31), "fy23", revenue=1100.0, free_cash_flow=240.0),
-        _make_record("annual_report", date(2024, 12, 31), "fy24", revenue=1250.0, free_cash_flow=300.0),
+        _make_record("financial_statement", date(2022, 12, 31), "fy22", revenue=1000.0, free_cash_flow=200.0),
+        _make_record("financial_statement", date(2023, 12, 31), "fy23", revenue=1100.0, free_cash_flow=240.0),
+        _make_record("financial_statement", date(2024, 12, 31), "fy24", revenue=1250.0, free_cash_flow=300.0),
     )
 
 
 def _strong_capital_allocation_records():
     return (
         _make_record(
-            "annual_report", date(2023, 12, 31), "ca23",
+            "financial_statement", date(2023, 12, 31), "ca23",
             share_buybacks=100.0, share_issuance=10.0, debt_repayment=50.0, debt_issuance=5.0,
         ),
         _make_record(
-            "annual_report", date(2024, 12, 31), "ca24",
+            "financial_statement", date(2024, 12, 31), "ca24",
             share_buybacks=120.0, share_issuance=10.0, debt_repayment=60.0, debt_issuance=5.0,
         ),
     )
@@ -65,15 +65,15 @@ def _strong_capital_allocation_records():
 def _undervalued_valuation_records():
     return (
         _make_record(
-            "annual_report", date(2022, 12, 31), "vfy22",
+            "financial_statement", date(2022, 12, 31), "vfy22",
             published_at=datetime(2023, 2, 15, tzinfo=timezone.utc), free_cash_flow=100.0,
         ),
         _make_record(
-            "annual_report", date(2023, 12, 31), "vfy23",
+            "financial_statement", date(2023, 12, 31), "vfy23",
             published_at=datetime(2024, 2, 15, tzinfo=timezone.utc), free_cash_flow=110.0,
         ),
         _make_record(
-            "annual_report", date(2024, 12, 31), "vfy24",
+            "financial_statement", date(2024, 12, 31), "vfy24",
             published_at=datetime(2025, 2, 15, tzinfo=timezone.utc), free_cash_flow=200.0,
         ),
         _make_record("market_data_snapshot", date(2023, 3, 1), "vm22", share_price=50.0, shares_outstanding=100.0),

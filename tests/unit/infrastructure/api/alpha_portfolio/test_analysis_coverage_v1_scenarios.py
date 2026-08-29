@@ -1,16 +1,22 @@
 """End-to-end proof that `GET /alpha-portfolio/cockpit` exposes a
 separate `analysisCoverage` signal from `conviction` (Internal Alpha
-Fix Sprint 1, Part 2 -- confirmed root cause IA-003).
+Fix Sprint 1, Part 2 -- confirmed root cause IA-003; Conviction itself
+redesigned Calibration Phase 4 -- Conviction & Capital Allocation
+Repair).
 
-The Internal Alpha finding: a holding with `confidence: full`
+The original Internal Alpha finding: a holding with `confidence: full`
 Growth/Capital Allocation/Valuation findings still read `conviction
 .level: "insufficient_evidence"` at the Portfolio level, because
-Conviction is gated on investor-recorded evidence coverage, which none
-of these test holdings ever record. These tests prove `analysisCoverage`
-answers the separate question "does Atlas actually know this company"
-and moves independently of `conviction`, which correctly stays
-`insufficient_evidence` throughout every scenario here (no test in this
-file records a Decision/Observation for any holding).
+Conviction was gated on investor-recorded evidence coverage, which none
+of these test holdings ever record. Calibration Phase 4 fixed that
+directly in Conviction itself, so `conviction` now legitimately moves
+with real company data in these same scenarios -- these tests no longer
+assert Conviction stays floored (that assumption is exactly what this
+sprint overturned), but `analysisCoverage` remains its own, separate
+signal answering "does Atlas actually know this company" (company-data
+breadth), never to be conflated with Conviction ("how strongly can
+Atlas support a recommendation from what it knows") -- see
+`analysis_coverage.py`'s own module docstring.
 """
 from __future__ import annotations
 
@@ -96,9 +102,11 @@ class TestPartialCoverage:
         _persist(client, _statement_document(ticker="AAPL", period_end=date(2024, 12, 31), revenue=1000.0))
         holding = _cockpit_holding(client, "AAPL")
         assert holding["analysisCoverage"]["level"] == "partial_coverage"
-        # Conviction is untouched by this data -- still gated on investor
-        # evidence, which this test never records.
-        assert holding["conviction"]["level"] == "insufficient_evidence"
+        # Calibration Phase 4: real company data exists (one real
+        # period) but neither Growth nor Valuation has concluded
+        # anything yet -- Conviction now correctly reads LOW, not the
+        # pre-redesign floor of INSUFFICIENT_EVIDENCE.
+        assert holding["conviction"]["level"] == "low"
 
 
 class TestSubstantialCoverage:
@@ -135,10 +143,14 @@ class TestSubstantialCoverage:
         # Business Analysis is conclusive either way; whether this
         # reaches SUBSTANTIAL (vs. PARTIAL, if Valuation is not yet
         # conclusive with only fundamentals and no market snapshot) is
-        # itself informative -- assert the honest floor plus the
-        # decoupling from Conviction, which is this file's real claim.
+        # itself informative -- assert the honest floor.
         assert holding["analysisCoverage"]["level"] in ("partial_coverage", "substantial_coverage")
-        assert holding["conviction"]["level"] == "insufficient_evidence"
+        # Calibration Phase 4: Business Analysis is real and conclusive
+        # here (Growth from two periods), so Conviction clears its own
+        # floor too -- no market snapshot means Valuation is not yet
+        # conclusive, capping this at MODERATE rather than the
+        # pre-redesign floor of INSUFFICIENT_EVIDENCE.
+        assert holding["conviction"]["level"] == "moderate"
 
 
 class TestDistributionIsExposed:

@@ -57,7 +57,7 @@ from atlas.analysis_engine.confidence import Confidence
 from atlas.analysis_engine.contracts import RiskCategory, CapabilityStatus
 from atlas.analysis_engine.conviction import calculate_conviction
 from atlas.analysis_engine.findings import Finding, FindingKind, FindingProducer, FindingSeverity
-from atlas.analysis_engine.investment_case_synthesis import synthesize_investment_case
+from atlas.analysis_engine.investment_case_synthesis import derive_case_open_questions, synthesize_investment_case
 from atlas.analysis_engine.models import CanonicalAnalysis, Identity, RiskSection, UnavailableCapability
 from atlas.analysis_engine.outlook import build_outlook
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
@@ -582,13 +582,47 @@ def assemble_analysis(
 
     open_questions = _effective_open_questions(reasoning.open_questions, valuation_conclusive=valuation_conclusive)
 
+    # Calibration Phase 4 (Conviction & Capital Allocation Repair):
+    # Conviction's own inputs below are Atlas's own analytical
+    # knowledge, never investor history -- see `conviction.py`'s own
+    # module docstring for the full investigation. `has_analytical
+    # _contradiction` is a finding that carries BOTH real supporting
+    # AND real contradicting evidence at once (e.g. Capital
+    # Allocation's own two independent signals disagreeing) -- a
+    # genuine internal tension in Atlas's own analysis, never an
+    # investor's Observation classification. `THESIS_RISK` is excluded:
+    # its own `contradicting_facts` are investor Observation ids reused
+    # verbatim from `ContradictionSummary` (`thesis_risk.py`'s own
+    # docstring) -- exactly the investor-history signal this redesign
+    # removes; its `supporting_facts` is always `()` by construction so
+    # it could never trigger this check anyway, but the exclusion is
+    # explicit rather than relying on that incidental fact.
+    has_analytical_contradiction = (
+        any(finding.supporting_evidence and finding.contradicting_evidence for finding in business_analysis.findings)
+        or any(
+            finding.supporting_facts and finding.contradicting_facts
+            for finding in risk_analysis.findings
+            if finding.category is not RiskCategory.THESIS_RISK
+        )
+        or bool(fcf_yield_finding.supporting_facts and fcf_yield_finding.contradicting_facts)
+    )
+    # `derive_case_open_questions` (Atlas's own business-analysis-driven
+    # open questions) replaces `reasoning.open_questions`
+    # (`decision_engine`'s own investor evidence-*linkage* gap list,
+    # still real and still used above/below for `open_questions`'s own,
+    # unrelated consumers -- Calibration Phase 2's own ownership map
+    # already named `key_open_questions`/`derive_case_open_questions`
+    # as the correct owner for a user-facing "open question," never
+    # this evidence-linkage list).
+    analysis_open_questions = derive_case_open_questions(business_analysis, valuation_engine)
+
     conviction_finding_id = FindingKind.CONVICTION_ASSESSED.value
     conviction = calculate_conviction(
         business_state=decision_output.business_evaluation.state,
         valuation_state=decision_output.valuation.state,
-        evidence_coverage=confidence,
-        has_contradicting_evidence=bool(reasoning.contradicting_evidence.observation_classifications),
-        has_open_questions=bool(open_questions),
+        analysis_coverage=analysis_coverage.level,
+        has_contradicting_evidence=has_analytical_contradiction,
+        has_open_questions=bool(analysis_open_questions),
         is_thesis_stale=is_thesis_stale,
         business_conclusive=business_conclusive,
         valuation_conclusive=valuation_conclusive,

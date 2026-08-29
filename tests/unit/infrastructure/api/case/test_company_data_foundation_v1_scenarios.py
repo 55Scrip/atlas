@@ -179,12 +179,14 @@ class TestRicherDataFlowsIntoEvaluators:
         _persist(
             client,
             _statement_document(
+                ticker="AAPL", period_end=date(2023, 12, 31), total_debt=300.0,
+            ),
+            _statement_document(
                 ticker="AAPL",
                 period_end=date(2024, 12, 31),
                 share_buybacks=500.0,
                 share_issuance=50.0,
-                debt_repayment=300.0,
-                debt_issuance=100.0,
+                total_debt=100.0,
                 shares_outstanding=1_000_000.0,
             ),
         )

@@ -71,6 +71,7 @@ __all__ = [
     "AtlasThesis",
     "InvestmentCaseSynthesis",
     "synthesize_investment_case",
+    "derive_case_open_questions",
 ]
 
 #: The most recent N distinct REVENUE periods considered for the
@@ -400,7 +401,7 @@ def _valuation_context(valuation_engine: ValuationEngineResult) -> ValuationCont
     )
 
 
-def _open_questions(
+def derive_case_open_questions(
     business_analysis: BusinessAnalysisResult, valuation_engine: ValuationEngineResult
 ) -> tuple[CaseOpenQuestion, ...]:
     """Fixed, documented rule order -- every question named here traces
@@ -408,7 +409,18 @@ def _open_questions(
     the underlying analysis condition that caused it"). Never padded to
     reach a target count, and never suppressed to reach one either:
     however many of these conditions are genuinely true for this
-    company is exactly how many questions are produced."""
+    company is exactly how many questions are produced.
+
+    Calibration Phase 4 (Conviction & Capital Allocation Repair):
+    promoted from a private function to this package's public surface
+    so `atlas.analysis_engine.pipeline.assemble_analysis` can call it
+    directly, from the identical `business_analysis`/`valuation_engine`
+    values it already holds, to feed Conviction's own
+    `has_open_questions` input from Atlas's own analysis-derived open
+    questions rather than `decision_engine`'s evidence-*linkage* gap
+    list (an investor-history signal -- see this module's own callers
+    for the distinction). No behavior changed for this function's
+    original caller below; only its visibility widened."""
     growth = _business_finding(business_analysis, BusinessCategory.GROWTH)
     capital_allocation = _business_finding(business_analysis, BusinessCategory.CAPITAL_ALLOCATION)
     valuation = _valuation_finding(valuation_engine, ValuationMethodKind.FCF_YIELD_RELATIVE)
@@ -574,7 +586,7 @@ def synthesize_investment_case(
 
     growth = _growth_analysis(business_analysis, business_facts)
     valuation_context = _valuation_context(valuation_engine)
-    open_questions = _open_questions(business_analysis, valuation_engine)
+    open_questions = derive_case_open_questions(business_analysis, valuation_engine)
     atlas_thesis = _atlas_thesis(strengths, risks, open_questions, conviction)
 
     return InvestmentCaseSynthesis(

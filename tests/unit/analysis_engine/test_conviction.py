@@ -1,21 +1,40 @@
 """Decision-table coverage for `atlas.analysis_engine.conviction
-.calculate_conviction` (ATLAS-020 Phase 9; extended ATLAS-026 Phase 4)
--- every branch of the ordered if/elif chain, exercised directly
-against its own inputs rather than through the full pipeline, so each
-branch is isolated."""
+.calculate_conviction` (ATLAS-020 Phase 9; extended ATLAS-026 Phase 4;
+redesigned Calibration Phase 4 -- Conviction & Capital Allocation
+Repair) -- every branch of the ordered if/elif chain, exercised
+directly against its own inputs rather than through the full pipeline,
+so each branch is isolated.
+
+Calibration Phase 4: `evidence_coverage: EvidenceCoverageLevel`
+(investor-Observation-based) was replaced by `analysis_coverage:
+AnalysisCoverageLevel` (Atlas's own company-data-based knowledge), used
+now only for the `NO_COVERAGE` floor -- `business_conclusive`/
+`valuation_conclusive` (already Atlas's own knowledge, not new) became
+the sole signal for both the `LOW` trigger (neither has concluded
+anything) and the `HIGH`/`VERY_HIGH` split (exactly one vs. both), since
+`AnalysisCoverageLevel.SUBSTANTIAL_COVERAGE` is itself defined as
+`business_conclusive and valuation_conclusive` and gating `LOW` on
+`PARTIAL_COVERAGE` too would have made `HIGH` unreachable in real
+pipeline flow (see `conviction.py`'s own module/function docstrings).
+`_BASE_KWARGS` is therefore the "fully conclusive, nothing wrong"
+baseline reaching `VERY_HIGH` by default -- each test below overrides
+only the one dimension it probes."""
 from __future__ import annotations
 
+from atlas.analysis_engine.analysis_coverage import AnalysisCoverageLevel
 from atlas.analysis_engine.conviction import (
     ConvictionLevel,
     ConvictionReasonCode,
     calculate_conviction,
 )
-from atlas.decision_engine.contracts import EvaluationState, EvidenceCoverageLevel
+from atlas.decision_engine.contracts import EvaluationState
 
 _BASE_KWARGS = dict(
     business_state=EvaluationState.EVALUATED,
     valuation_state=EvaluationState.EVALUATED,
-    evidence_coverage=EvidenceCoverageLevel.FULL,
+    analysis_coverage=AnalysisCoverageLevel.SUBSTANTIAL_COVERAGE,
+    business_conclusive=True,
+    valuation_conclusive=True,
     has_contradicting_evidence=False,
     has_open_questions=False,
     is_thesis_stale=False,
@@ -34,16 +53,13 @@ class TestUpstreamNotEvaluated:
         assert result.reasons == (ConvictionReasonCode.UPSTREAM_STAGE_NOT_EVALUATED,)
 
 
-class TestEvidenceCoverageInsufficient:
-    def test_not_applicable_coverage_yields_insufficient_evidence(self):
-        result = calculate_conviction(
-            **{**_BASE_KWARGS, "evidence_coverage": EvidenceCoverageLevel.NOT_APPLICABLE}
-        )
-        assert result.level is ConvictionLevel.INSUFFICIENT_EVIDENCE
-        assert result.reasons == (ConvictionReasonCode.EVIDENCE_COVERAGE_INSUFFICIENT,)
+class TestAnalysisCoverageInsufficient:
+    """Calibration Phase 4: this is now gated on Atlas's own knowledge
+    of the company (real data ingested, real conclusions reached) --
+    never on whether the investor has recorded any Observations."""
 
-    def test_none_coverage_yields_insufficient_evidence(self):
-        result = calculate_conviction(**{**_BASE_KWARGS, "evidence_coverage": EvidenceCoverageLevel.NONE})
+    def test_no_coverage_yields_insufficient_evidence(self):
+        result = calculate_conviction(**{**_BASE_KWARGS, "analysis_coverage": AnalysisCoverageLevel.NO_COVERAGE})
         assert result.level is ConvictionLevel.INSUFFICIENT_EVIDENCE
         assert result.reasons == (ConvictionReasonCode.EVIDENCE_COVERAGE_INSUFFICIENT,)
 
@@ -54,8 +70,14 @@ class TestLowConviction:
         assert result.level is ConvictionLevel.LOW
         assert ConvictionReasonCode.CONTRADICTING_EVIDENCE_PRESENT in result.reasons
 
-    def test_partial_coverage_without_contradiction_yields_low(self):
-        result = calculate_conviction(**{**_BASE_KWARGS, "evidence_coverage": EvidenceCoverageLevel.PARTIAL})
+    def test_neither_business_nor_valuation_conclusive_yields_low(self):
+        """Real company data exists (`analysis_coverage` is not
+        `NO_COVERAGE`) but neither Growth/Capital Allocation nor the
+        Valuation method has concluded anything concrete yet -- e.g.
+        too little history for a trend classification."""
+        result = calculate_conviction(
+            **{**_BASE_KWARGS, "business_conclusive": False, "valuation_conclusive": False}
+        )
         assert result.level is ConvictionLevel.LOW
         assert ConvictionReasonCode.EVIDENCE_COVERAGE_PARTIAL in result.reasons
 
@@ -83,12 +105,7 @@ class TestHighFinancialOrValuationRiskLowersConviction:
         assert result.level is ConvictionLevel.LOW
 
     def test_high_risk_overrides_would_be_very_high(self):
-        result = calculate_conviction(
-            **_BASE_KWARGS,
-            business_conclusive=True,
-            valuation_conclusive=True,
-            has_high_financial_or_valuation_risk=True,
-        )
+        result = calculate_conviction(**{**_BASE_KWARGS, "has_high_financial_or_valuation_risk": True})
         assert result.level is ConvictionLevel.LOW
 
 
@@ -105,29 +122,20 @@ class TestModerateConviction:
 
 
 class TestHighConviction:
-    def test_full_coverage_no_contradiction_no_risk_no_staleness_no_open_questions_yields_high(self):
-        result = calculate_conviction(**_BASE_KWARGS)
+    def test_exactly_one_of_business_or_valuation_conclusive_yields_high(self):
+        result = calculate_conviction(**{**_BASE_KWARGS, "valuation_conclusive": False})
         assert result.level is ConvictionLevel.HIGH
         assert ConvictionReasonCode.BUSINESS_OR_VALUATION_NOT_YET_CONCLUSIVE in result.reasons
-
-    def test_very_high_is_unreachable_with_default_conclusiveness(self):
-        """`business_conclusive`/`valuation_conclusive` default `False`
-        -- the best conviction any caller that doesn't pass them
-        explicitly can reach is `HIGH`, never `VERY_HIGH`."""
-        result = calculate_conviction(**_BASE_KWARGS)
-        assert result.level is not ConvictionLevel.VERY_HIGH
 
 
 class TestVeryHighConviction:
     def test_conclusive_business_and_valuation_yields_very_high(self):
-        result = calculate_conviction(
-            **_BASE_KWARGS, business_conclusive=True, valuation_conclusive=True
-        )
+        result = calculate_conviction(**_BASE_KWARGS)
         assert result.level is ConvictionLevel.VERY_HIGH
         assert ConvictionReasonCode.BUSINESS_AND_VALUATION_CONCLUSIVE in result.reasons
 
     def test_only_one_of_business_or_valuation_conclusive_stays_high(self):
-        result = calculate_conviction(**_BASE_KWARGS, business_conclusive=True, valuation_conclusive=False)
+        result = calculate_conviction(**{**_BASE_KWARGS, "valuation_conclusive": False})
         assert result.level is ConvictionLevel.HIGH
 
 
@@ -156,6 +164,30 @@ class TestNoNumericScore:
         assert isinstance(result.level.value, str)
         assert not hasattr(result, "score")
         assert not hasattr(result, "weight")
+
+
+class TestIndependenceFromUserNotes:
+    """Calibration Phase 4's own core deliverable: Conviction must not
+    require any investor-recorded Decision/Observation to reach a real,
+    non-insufficient level. `_BASE_KWARGS` itself is the proof -- it
+    contains no investor-history concept anywhere (no Decision,
+    Observation, or Evidence record is constructed or referenced by
+    this whole test file) and still reaches every tier from
+    `INSUFFICIENT_EVIDENCE` through `VERY_HIGH`, driven only by
+    `AnalysisCoverageLevel` (company-data-derived) and Atlas's own
+    Business/Valuation/Risk conclusiveness flags."""
+
+    def test_very_high_is_reachable_with_zero_investor_history_concepts_anywhere_in_the_call(self):
+        result = calculate_conviction(**_BASE_KWARGS)
+        assert result.level is ConvictionLevel.VERY_HIGH
+
+    def test_substantial_analysis_coverage_alone_clears_the_insufficient_evidence_floor(self):
+        """The floor question is now "does Atlas have real company data
+        and real conclusions," never "has the investor written
+        anything" -- confirmed by the fact this call constructs no
+        Decision/Observation/Evidence object at all."""
+        result = calculate_conviction(**_BASE_KWARGS)
+        assert result.level is not ConvictionLevel.INSUFFICIENT_EVIDENCE
 
 
 class TestStaticValidation:
@@ -208,4 +240,3 @@ class TestStaticValidation:
         ]
         code_only = "\n".join(code_lines)
         assert not re.search(r"[<>]=?\s*\d", code_only), "Found a numeric comparison threshold in conviction.py"
-
