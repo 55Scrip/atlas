@@ -26,6 +26,7 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from atlas.alpha.business_quality_assessment.api.schemas import BusinessQualityAssessmentView
+from atlas.alpha.industry_intelligence.api.schemas import IndustryContextView
 from atlas.alpha.case_intelligence.api.schemas import (
     EvidenceQualityFindingsSchema,
     OpenQuestionSchema,
@@ -3663,6 +3664,15 @@ class InvestmentCaseAnalysisView(CamelModel):
     reads, never blended into the Core-sourced lists above (the same
     non-conflation discipline `ConvictionLevel`/`RecommendationConviction
     Level` already establish elsewhere in this codebase)."""
+    industry_context: "IndustryContextView | None" = None
+    """Calibration Phase 7 (Industry Intelligence). `None` only when no
+    `IndustryIntelligenceService` was wired for this build, same
+    `stance`/`businessQualityAssessment` precedent above. Always
+    additive: `valuationNote`/`leverageNote`/`moatContext` interpret
+    the existing `valuation`/`businessAnalysis`/`businessQualityAssessment`
+    fields above, never replace them -- see `atlas.alpha.industry
+    _intelligence`'s own module docstring for the "attach, never
+    override" rule."""
     no_provider_data_found: bool = False
     """Import Robustness (Internal Alpha Stabilization 1). `True` only
     when `CanonicalSecurityIdentityGate.latest_resolution_was_no_match`
@@ -3693,6 +3703,7 @@ class InvestmentCaseAnalysisView(CamelModel):
         knowledge_coverage: "InvestmentCaseKnowledgeCoverageView | None" = None,
         business_quality_assessment: "BusinessQualityAssessmentView | None" = None,
         long_term_outlook_quality_drivers: "tuple[OutlookDriver, ...]" = (),
+        industry_context: "IndustryContextView | None" = None,
     ) -> "InvestmentCaseAnalysisView":
         analysis: CanonicalAnalysis = composition.canonical_analysis
 
@@ -3838,4 +3849,5 @@ class InvestmentCaseAnalysisView(CamelModel):
             operational_freshness=operational_freshness,
             knowledge_coverage=knowledge_coverage,
             business_quality_assessment=business_quality_assessment,
+            industry_context=industry_context,
         )

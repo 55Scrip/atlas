@@ -86,6 +86,9 @@ from atlas.alpha.business_quality_assessment.api.dependencies import get_busines
 from atlas.alpha.business_quality_assessment.api.schemas import BusinessQualityAssessmentView
 from atlas.alpha.business_quality_assessment.outlook_context import derive_outlook_quality_drivers
 from atlas.alpha.business_quality_assessment.service import BusinessQualityAssessmentService
+from atlas.alpha.industry_intelligence.api.dependencies import get_industry_intelligence_service
+from atlas.alpha.industry_intelligence.api.schemas import IndustryContextView
+from atlas.alpha.industry_intelligence.service import IndustryIntelligenceService
 from atlas.alpha.business_data_refresh.api.dependencies import (
     get_alpha_vantage_price_provider,
     get_alpha_vantage_quota_tracker,
@@ -326,6 +329,7 @@ def get_investment_case_analysis(
     business_quality_assessment_service: BusinessQualityAssessmentService = Depends(
         get_business_quality_assessment_service
     ),
+    industry_intelligence_service: IndustryIntelligenceService = Depends(get_industry_intelligence_service),
     business_record_repository: SqlAlchemyBusinessRecordRepository = Depends(get_business_record_repository),
     evidence_snapshot_repository: SqlAlchemyEvidenceSnapshotRepository = Depends(get_evidence_snapshot_repository),
     monitoring_result_repository: SqlAlchemyMonitoringResultRepository = Depends(get_monitoring_result_repository),
@@ -389,6 +393,12 @@ def get_investment_case_analysis(
         else ()
     )
 
+    # Calibration Phase 7 (Industry Intelligence): a real, additive
+    # interpretation layer over Valuation/Capital Allocation/Business
+    # Quality -- never a replacement for any of them. See
+    # `atlas.alpha.industry_intelligence`'s own module docstring.
+    industry_context = industry_intelligence_service.context_for_case(case_id)
+
     # Sprint 7, Deliverable 13 -- read-only: this endpoint never
     # triggers a Monitoring run of its own (see `atlas.alpha.monitoring
     # .service`'s own module docstring on why `run()` stays an explicit,
@@ -418,6 +428,9 @@ def get_investment_case_analysis(
             else None
         ),
         long_term_outlook_quality_drivers=long_term_outlook_quality_drivers,
+        industry_context=(
+            IndustryContextView.from_domain(industry_context) if industry_context is not None else None
+        ),
     )
 
     # Internal Alpha Stabilization 1 (MSFT price root cause fix):
