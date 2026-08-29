@@ -84,6 +84,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from atlas.alpha.business_quality_assessment.api.dependencies import get_business_quality_assessment_service
 from atlas.alpha.business_quality_assessment.api.schemas import BusinessQualityAssessmentView
+from atlas.alpha.business_quality_assessment.outlook_context import derive_outlook_quality_drivers
 from atlas.alpha.business_quality_assessment.service import BusinessQualityAssessmentService
 from atlas.alpha.business_data_refresh.api.dependencies import (
     get_alpha_vantage_price_provider,
@@ -376,6 +377,18 @@ def get_investment_case_analysis(
     # -- never a second Investment Case rebuild.
     business_quality_assessment = business_quality_assessment_service.assess_for_case(case_id)
 
+    # Calibration Phase 6 (Valuation & Expected Return Calibration):
+    # Moat/Reinvestment as two new, purely informational Long-Term
+    # Outlook Key Drivers -- never the return arithmetic itself. See
+    # `outlook_context.py`'s own module docstring for why this is
+    # constructed here, one layer above `analysis_engine`, rather than
+    # inside `build_outlook`.
+    long_term_outlook_quality_drivers = (
+        derive_outlook_quality_drivers(business_quality_assessment)
+        if business_quality_assessment is not None
+        else ()
+    )
+
     # Sprint 7, Deliverable 13 -- read-only: this endpoint never
     # triggers a Monitoring run of its own (see `atlas.alpha.monitoring
     # .service`'s own module docstring on why `run()` stays an explicit,
@@ -404,6 +417,7 @@ def get_investment_case_analysis(
             if business_quality_assessment is not None
             else None
         ),
+        long_term_outlook_quality_drivers=long_term_outlook_quality_drivers,
     )
 
     # Internal Alpha Stabilization 1 (MSFT price root cause fix):

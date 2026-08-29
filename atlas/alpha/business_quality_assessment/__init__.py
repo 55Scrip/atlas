@@ -38,6 +38,7 @@ from .models import (
     ReinvestmentOpportunityLevel,
 )
 from .moat import assess_moat
+from .outlook_context import derive_outlook_quality_drivers
 from .reinvestment import assess_reinvestment
 from .service import BusinessQualityAssessmentService
 
@@ -46,6 +47,7 @@ __all__ = [
     "assess_management",
     "assess_moat",
     "assess_reinvestment",
+    "derive_outlook_quality_drivers",
     "BusinessQualityAssessment",
     "BusinessQualityAssessmentService",
     "BusinessQualityDriver",

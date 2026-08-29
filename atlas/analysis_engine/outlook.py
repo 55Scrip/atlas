@@ -230,6 +230,7 @@ __all__ = [
     "OutlookMomentumKind",
     "OutlookDriverKind",
     "OutlookDriver",
+    "DriverDirection",
     "HorizonOutlook",
     "Outlook",
     "build_outlook",
@@ -477,16 +478,41 @@ class OutlookDriverKind(str, Enum):
     real, disclosed evidence that FCF volatility is more likely timing
     noise than eroding unit economics; it does not by itself change
     eligibility or the computed range."""
+    MOAT = "moat"
+    """Long-Term only (Calibration Phase 6). Never constructed by
+    `build_outlook` itself -- this module cannot import
+    `atlas.alpha.business_quality_assessment` (the same one-way Core/
+    alpha boundary Conviction's own `is_thesis_stale` parameter already
+    respects). Constructed one layer up, by
+    `atlas.alpha.business_quality_assessment.derive_outlook_quality
+    _drivers`, from that package's own real `MoatAssessment.level` --
+    reused here purely as a shared, closed-vocabulary type so the
+    alpha-layer-computed driver and every Core-computed driver above
+    serialize into one consistent `key_drivers` list. Informational
+    only, exactly like `CAPITAL_ALLOCATION` above: never a gate, never
+    an input to the return arithmetic."""
+    REINVESTMENT_OPPORTUNITY = "reinvestment_opportunity"
+    """Long-Term only (Calibration Phase 6). Same boundary and reuse
+    pattern as `MOAT` above, from that package's own real
+    `ReinvestmentAssessment.level`. Informational only."""
 
 
-class _DriverDirection(str, Enum):
+class DriverDirection(str, Enum):
     """Reuses the identical three-way vocabulary
     `investment_case_change.ChangeDirection` already established for the
     same "never a numeric score" reason -- not imported directly only
     because that type's own docstring scopes it to *changes between two
     snapshots*, a different concept from "which way does this
     already-known finding point," even though the values are the same
-    shape."""
+    shape.
+
+    Public (Calibration Phase 6) so `atlas.alpha.business_quality
+    _assessment.derive_outlook_quality_drivers` can construct real
+    `OutlookDriver`s of kind `MOAT`/`REINVESTMENT_OPPORTUNITY` without
+    reinventing this vocabulary one layer up -- the same "widen an
+    existing module's public surface, not a new module" precedent
+    `investment_case_synthesis.derive_case_open_questions`'s own
+    promotion already established."""
 
     POSITIVE = "positive"
     NEGATIVE = "negative"
@@ -496,7 +522,7 @@ class _DriverDirection(str, Enum):
 @dataclass(frozen=True)
 class OutlookDriver:
     kind: OutlookDriverKind
-    direction: _DriverDirection
+    direction: DriverDirection
     source_finding_id: str | None
 
 
@@ -877,30 +903,30 @@ def _long_term_valuation(
     return expected_return, None, scenarios, None, recent_fcf_trend
 
 
-def _status_direction_business(status: BizStatus) -> _DriverDirection | None:
+def _status_direction_business(status: BizStatus) -> DriverDirection | None:
     return {
-        BizStatus.STRONG: _DriverDirection.POSITIVE,
-        BizStatus.MODERATE: _DriverDirection.NEUTRAL,
-        BizStatus.WEAK: _DriverDirection.NEGATIVE,
+        BizStatus.STRONG: DriverDirection.POSITIVE,
+        BizStatus.MODERATE: DriverDirection.NEUTRAL,
+        BizStatus.WEAK: DriverDirection.NEGATIVE,
     }.get(status)
 
 
-def _status_direction_risk(status: RiskStatus) -> _DriverDirection | None:
+def _status_direction_risk(status: RiskStatus) -> DriverDirection | None:
     #: Higher risk is the adverse direction -- mirrors
     #: `investment_case_change._risk_category_changes`'s own
     #: "higher rank = closer to HIGH = worse" rule exactly.
     return {
-        RiskStatus.LOW: _DriverDirection.POSITIVE,
-        RiskStatus.MODERATE: _DriverDirection.NEUTRAL,
-        RiskStatus.HIGH: _DriverDirection.NEGATIVE,
+        RiskStatus.LOW: DriverDirection.POSITIVE,
+        RiskStatus.MODERATE: DriverDirection.NEUTRAL,
+        RiskStatus.HIGH: DriverDirection.NEGATIVE,
     }.get(status)
 
 
-def _trend_direction(trend: MetricTrend) -> _DriverDirection:
+def _trend_direction(trend: MetricTrend) -> DriverDirection:
     return {
-        MetricTrend.STRONG_METRIC: _DriverDirection.POSITIVE,
-        MetricTrend.WEAK_METRIC: _DriverDirection.NEGATIVE,
-        MetricTrend.MIXED_METRIC: _DriverDirection.NEUTRAL,
+        MetricTrend.STRONG_METRIC: DriverDirection.POSITIVE,
+        MetricTrend.WEAK_METRIC: DriverDirection.NEGATIVE,
+        MetricTrend.MIXED_METRIC: DriverDirection.NEUTRAL,
     }[trend]
 
 
@@ -916,9 +942,9 @@ def _short_term_drivers(
 
     if fcf_status not in (ValStatus.NOT_EVALUATED, ValStatus.INSUFFICIENT_INPUT):
         direction = {
-            ValStatus.UNDERVALUED: _DriverDirection.POSITIVE,
-            ValStatus.EXPENSIVE: _DriverDirection.NEGATIVE,
-            ValStatus.FAIRLY_VALUED: _DriverDirection.NEUTRAL,
+            ValStatus.UNDERVALUED: DriverDirection.POSITIVE,
+            ValStatus.EXPENSIVE: DriverDirection.NEGATIVE,
+            ValStatus.FAIRLY_VALUED: DriverDirection.NEUTRAL,
         }[fcf_status]
         drivers.append(OutlookDriver(OutlookDriverKind.VALUATION_RERATING, direction, fcf_finding_id))
 
@@ -1015,9 +1041,9 @@ def _long_term_drivers(
         #: mirroring `financial_risk.py`'s own escalation-only debt-trend
         #: read, not `_trend_direction`'s growth-is-good convention.
         debt_direction = {
-            MetricTrend.STRONG_METRIC: _DriverDirection.NEGATIVE,
-            MetricTrend.WEAK_METRIC: _DriverDirection.POSITIVE,
-            MetricTrend.MIXED_METRIC: _DriverDirection.NEUTRAL,
+            MetricTrend.STRONG_METRIC: DriverDirection.NEGATIVE,
+            MetricTrend.WEAK_METRIC: DriverDirection.POSITIVE,
+            MetricTrend.MIXED_METRIC: DriverDirection.NEUTRAL,
         }[debt_trend]
         drivers.append(OutlookDriver(OutlookDriverKind.DEBT_TREND, debt_direction, None))
 
@@ -1026,9 +1052,9 @@ def _long_term_drivers(
 
     if fcf_status not in (ValStatus.NOT_EVALUATED, ValStatus.INSUFFICIENT_INPUT):
         direction = {
-            ValStatus.UNDERVALUED: _DriverDirection.POSITIVE,
-            ValStatus.EXPENSIVE: _DriverDirection.NEGATIVE,
-            ValStatus.FAIRLY_VALUED: _DriverDirection.NEUTRAL,
+            ValStatus.UNDERVALUED: DriverDirection.POSITIVE,
+            ValStatus.EXPENSIVE: DriverDirection.NEGATIVE,
+            ValStatus.FAIRLY_VALUED: DriverDirection.NEUTRAL,
         }[fcf_status]
         drivers.append(OutlookDriver(OutlookDriverKind.VALUATION_RERATING, direction, fcf_finding_id))
 

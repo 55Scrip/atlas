@@ -3235,7 +3235,17 @@ class HorizonOutlookView(CamelModel):
     key_drivers: list[OutlookDriverView]
 
     @classmethod
-    def from_domain(cls, horizon: HorizonOutlook, *, momentum: str) -> "HorizonOutlookView":
+    def from_domain(
+        cls, horizon: HorizonOutlook, *, momentum: str, additional_key_drivers: "tuple[OutlookDriver, ...]" = ()
+    ) -> "HorizonOutlookView":
+        """`additional_key_drivers` (Calibration Phase 6): real
+        `OutlookDriver`s constructed one layer up, outside
+        `analysis_engine` -- see `atlas.alpha.business_quality
+        _assessment.derive_outlook_quality_drivers`'s own module
+        docstring for why they cannot be constructed inside
+        `build_outlook` itself. Appended, never replacing, `horizon
+        .key_drivers` -- the Core-computed drivers are always present
+        first, exactly in their own original order."""
         return cls(
             horizon=horizon.horizon.value,
             expected_return=(
@@ -3248,7 +3258,9 @@ class HorizonOutlookView(CamelModel):
             scenarios_gap=horizon.scenarios_gap.value if horizon.scenarios_gap else None,
             conviction=horizon.conviction.value,
             momentum=momentum,
-            key_drivers=[OutlookDriverView.from_domain(d) for d in horizon.key_drivers],
+            key_drivers=[
+                OutlookDriverView.from_domain(d) for d in (*horizon.key_drivers, *additional_key_drivers)
+            ],
         )
 
 
@@ -3265,7 +3277,11 @@ class OutlookView(CamelModel):
 
     @classmethod
     def from_domain(
-        cls, outlook: Outlook, *, change_intelligence: "ChangeIntelligence | None"
+        cls,
+        outlook: Outlook,
+        *,
+        change_intelligence: "ChangeIntelligence | None",
+        long_term_quality_drivers: "tuple[OutlookDriver, ...]" = (),
     ) -> "OutlookView":
         #: `outlook.py` itself cannot know whether this run's analytical
         #: state is strengthening/weakening/stable -- that needs a
@@ -3280,7 +3296,9 @@ class OutlookView(CamelModel):
         momentum = derive_outlook_momentum(thesis_impact, is_baseline=is_baseline).value
         return cls(
             short_term=HorizonOutlookView.from_domain(outlook.short_term, momentum=momentum),
-            long_term=HorizonOutlookView.from_domain(outlook.long_term, momentum=momentum),
+            long_term=HorizonOutlookView.from_domain(
+                outlook.long_term, momentum=momentum, additional_key_drivers=long_term_quality_drivers
+            ),
         )
 
 
@@ -3674,6 +3692,7 @@ class InvestmentCaseAnalysisView(CamelModel):
         operational_freshness: "CaseOperationalFreshnessView | None" = None,
         knowledge_coverage: "InvestmentCaseKnowledgeCoverageView | None" = None,
         business_quality_assessment: "BusinessQualityAssessmentView | None" = None,
+        long_term_outlook_quality_drivers: "tuple[OutlookDriver, ...]" = (),
     ) -> "InvestmentCaseAnalysisView":
         analysis: CanonicalAnalysis = composition.canonical_analysis
 
@@ -3796,7 +3815,11 @@ class InvestmentCaseAnalysisView(CamelModel):
             growth_analysis=GrowthAnalysisView.from_domain(analysis.synthesis.growth),
             valuation_context=ValuationContextView.from_domain(analysis.synthesis.valuation_context),
             atlas_thesis=AtlasThesisView.from_domain(analysis.synthesis.atlas_thesis),
-            outlook=OutlookView.from_domain(analysis.outlook, change_intelligence=change_intelligence),
+            outlook=OutlookView.from_domain(
+                analysis.outlook,
+                change_intelligence=change_intelligence,
+                long_term_quality_drivers=long_term_outlook_quality_drivers,
+            ),
             key_open_questions=[CaseOpenQuestionView.from_domain(q) for q in analysis.synthesis.open_questions],
             change_intelligence_available=change_intelligence_available,
             is_baseline_case=is_baseline_case,
