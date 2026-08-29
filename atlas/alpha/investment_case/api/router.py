@@ -82,6 +82,9 @@ import logging
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
+from atlas.alpha.business_quality_assessment.api.dependencies import get_business_quality_assessment_service
+from atlas.alpha.business_quality_assessment.api.schemas import BusinessQualityAssessmentView
+from atlas.alpha.business_quality_assessment.service import BusinessQualityAssessmentService
 from atlas.alpha.business_data_refresh.api.dependencies import (
     get_alpha_vantage_price_provider,
     get_alpha_vantage_quota_tracker,
@@ -319,6 +322,9 @@ def get_investment_case_analysis(
     background_tasks: BackgroundTasks,
     service: InvestmentCaseCompositionService = Depends(get_investment_case_composition_service),
     stance_service: StanceService = Depends(get_stance_service),
+    business_quality_assessment_service: BusinessQualityAssessmentService = Depends(
+        get_business_quality_assessment_service
+    ),
     business_record_repository: SqlAlchemyBusinessRecordRepository = Depends(get_business_record_repository),
     evidence_snapshot_repository: SqlAlchemyEvidenceSnapshotRepository = Depends(get_evidence_snapshot_repository),
     monitoring_result_repository: SqlAlchemyMonitoringResultRepository = Depends(get_monitoring_result_repository),
@@ -362,6 +368,14 @@ def get_investment_case_analysis(
 
     materiality = assess_materiality(explanation) if explanation is not None else None
 
+    # Calibration Phase 5 (Business Quality Engine): an additive,
+    # alpha-layer-only synthesis over already-computed sibling
+    # signals (Growth/Capital Allocation findings inside `composition
+    # .canonical_analysis`, plus the already-live business_quality/
+    # management_credibility/capital_allocation Intelligence modules)
+    # -- never a second Investment Case rebuild.
+    business_quality_assessment = business_quality_assessment_service.assess_for_case(case_id)
+
     # Sprint 7, Deliverable 13 -- read-only: this endpoint never
     # triggers a Monitoring run of its own (see `atlas.alpha.monitoring
     # .service`'s own module docstring on why `run()` stays an explicit,
@@ -385,6 +399,11 @@ def get_investment_case_analysis(
         monitoring=_monitoring_status_view(monitoring_result) if monitoring_result is not None else None,
         operational_freshness=_operational_freshness_view(operational_freshness),
         knowledge_coverage=_knowledge_coverage_view(knowledge_coverage),
+        business_quality_assessment=(
+            BusinessQualityAssessmentView.from_domain(business_quality_assessment)
+            if business_quality_assessment is not None
+            else None
+        ),
     )
 
     # Internal Alpha Stabilization 1 (MSFT price root cause fix):

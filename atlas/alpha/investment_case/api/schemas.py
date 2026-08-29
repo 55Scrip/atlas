@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
+from atlas.alpha.business_quality_assessment.api.schemas import BusinessQualityAssessmentView
 from atlas.alpha.case_intelligence.api.schemas import (
     EvidenceQualityFindingsSchema,
     OpenQuestionSchema,
@@ -3632,6 +3633,18 @@ class InvestmentCaseAnalysisView(CamelModel):
     (evaluator coverage) but "does Atlas have the raw knowledge to
     conclude anything at all" (see `atlas.alpha.knowledge_coverage
     .models`'s own module docstring)."""
+    business_quality_assessment: "BusinessQualityAssessmentView | None" = None
+    """Calibration Phase 5 (Business Quality Engine). `None` only when
+    no `BusinessQualityAssessmentService` was wired for this build, same
+    `stance`/`explanation`/`materiality` precedent above. A distinct,
+    separately-traceable driver set from `strengths`/`risks` above --
+    those are `analysis_engine`'s own `HighlightKind` mechanism (Growth/
+    Capital Allocation/Valuation/Risk only, a Core concept this alpha-
+    layer engine cannot write into); `businessQualityAssessment.strengths`/
+    `.weaknesses` are this engine's own Moat/Management/Reinvestment
+    reads, never blended into the Core-sourced lists above (the same
+    non-conflation discipline `ConvictionLevel`/`RecommendationConviction
+    Level` already establish elsewhere in this codebase)."""
     no_provider_data_found: bool = False
     """Import Robustness (Internal Alpha Stabilization 1). `True` only
     when `CanonicalSecurityIdentityGate.latest_resolution_was_no_match`
@@ -3660,6 +3673,7 @@ class InvestmentCaseAnalysisView(CamelModel):
         monitoring: "MonitoringStatusView | None" = None,
         operational_freshness: "CaseOperationalFreshnessView | None" = None,
         knowledge_coverage: "InvestmentCaseKnowledgeCoverageView | None" = None,
+        business_quality_assessment: "BusinessQualityAssessmentView | None" = None,
     ) -> "InvestmentCaseAnalysisView":
         analysis: CanonicalAnalysis = composition.canonical_analysis
 
@@ -3800,4 +3814,5 @@ class InvestmentCaseAnalysisView(CamelModel):
             monitoring=monitoring,
             operational_freshness=operational_freshness,
             knowledge_coverage=knowledge_coverage,
+            business_quality_assessment=business_quality_assessment,
         )
