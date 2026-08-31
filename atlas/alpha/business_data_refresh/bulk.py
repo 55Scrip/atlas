@@ -144,6 +144,17 @@ def enrich_holdings(
             summary = ensure_company_enriched(
                 ticker, providers, repository, identity_gate=identity_gate,
                 known_provider_failures=known_provider_failures,
+                # Calibration Phase 8B: the budget is now also enforced
+                # *inside* one company's enrichment, not only between
+                # companies as the check above does. Without this, the
+                # first ticker of a batch could pass the between-ticker
+                # check with one call left and then spend every
+                # remaining stage's call anyway -- measured at up to 4
+                # Alpha Vantage calls per company against a 25/day free
+                # tier. Stopping mid-company is graceful: completed
+                # stages stay persisted and unstarted ones stay
+                # `NOT_YET_ATTEMPTED`, so the next run resumes them.
+                budget_available=(quota_tracker.has_budget if quota_tracker is not None else None),
             )
         except Exception as exc:  # noqa: BLE001 -- one ticker's unexpected failure must never abort the batch
             results.append(HoldingEnrichmentResult(ticker=ticker, outcome=EnrichmentOutcome.FAILED, detail=str(exc)))

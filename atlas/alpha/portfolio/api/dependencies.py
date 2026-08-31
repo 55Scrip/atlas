@@ -40,6 +40,7 @@ from atlas.analysis_engine.business_data.providers import BusinessDataProvider
 from atlas.core.application.case.create_case import CaseService
 from atlas.core.domain.outcome.repository import OutcomeRepository
 from atlas.core.infrastructure.api.case.dependencies import get_case_service
+from atlas.alpha.business_data_refresh.quota import AlphaVantageQuotaTracker
 from atlas.core.infrastructure.api.decision.dependencies import get_decision_engine
 from atlas.core.infrastructure.api.knowledge_reference.dependencies import get_outcome_repository
 
@@ -96,4 +97,10 @@ def get_alpha_portfolio_service(
         business_data_providers=business_data_providers,
         identity_gate=identity_gate,
         ingestion_result_repository=ingestion_result_repository,
+        # Calibration Phase 8B: the same persisted daily budget
+        # `get_default_business_data_providers` already wires to Alpha
+        # Vantage's `on_request` counter, now also read *before* each
+        # enrichment stage so the single-company add path stops when the
+        # budget is gone instead of only counting past it.
+        quota_tracker=AlphaVantageQuotaTracker(get_decision_engine()),
     )

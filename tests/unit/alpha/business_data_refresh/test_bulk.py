@@ -216,11 +216,21 @@ class TestPerTickerFailureIsolation:
 
         real_ensure = bulk_module.ensure_company_enriched
 
-        def _flaky_ensure(ticker, providers, repo, *, identity_gate, known_provider_failures=()):
+        def _flaky_ensure(ticker, providers, repo, *, identity_gate, known_provider_failures=(), **kwargs):
+            # `**kwargs` absorbs `ensure_company_enriched`'s own
+            # keyword-only additions (Calibration Phase 8B added
+            # `depth`/`budget_available`) -- this double exists to
+            # inject one unexpected exception, not to pin the real
+            # function's signature.
             if ticker == "BROKEN":
                 raise RuntimeError("unexpected bug")
             return real_ensure(
-                ticker, providers, repo, identity_gate=identity_gate, known_provider_failures=known_provider_failures
+                ticker,
+                providers,
+                repo,
+                identity_gate=identity_gate,
+                known_provider_failures=known_provider_failures,
+                **kwargs,
             )
 
         monkeypatch.setattr(bulk_module, "ensure_company_enriched", _flaky_ensure)

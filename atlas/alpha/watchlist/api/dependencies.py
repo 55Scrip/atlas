@@ -28,6 +28,7 @@ from atlas.alpha.watchlist.service import AlphaWatchlistService
 from atlas.alpha.watchlist.store import AlphaWatchlistStore
 from atlas.alpha.watchlist.table import create_alpha_watchlist_entry_table
 from atlas.analysis_engine.business_data.providers import BusinessDataProvider
+from atlas.alpha.business_data_refresh.quota import AlphaVantageQuotaTracker
 from atlas.core.infrastructure.api.decision.dependencies import get_decision_engine
 
 
@@ -70,4 +71,7 @@ def get_alpha_watchlist_service(
         business_data_providers=business_data_providers,
         identity_gate=identity_gate,
         ingestion_result_repository=ingestion_result_repository,
+        # Calibration Phase 8B -- see the identical wiring note in
+        # `atlas.alpha.portfolio.api.dependencies`.
+        quota_tracker=AlphaVantageQuotaTracker(get_decision_engine()),
     )

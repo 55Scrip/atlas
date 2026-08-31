@@ -52,6 +52,9 @@ __all__ = [
     "ProviderCompletion",
     "EnrichmentCompletion",
     "assess_enrichment_completion",
+    "CoverageClassification",
+    "CoverageState",
+    "classify_coverage",
 ]
 
 
@@ -220,3 +223,128 @@ def assess_enrichment_completion(
             )
         )
     return EnrichmentCompletion(ticker=ticker, providers=tuple(completions))
+
+
+class CoverageClassification(str, Enum):
+    """Calibration Phase 8B, Phase 9 -- the one word Atlas uses to say
+    what it can do with a company, and the whole point of separating
+    coverage from depth.
+
+    Deliberately derived from `EnrichmentCompletion` above rather than
+    stored anywhere: this is a *view* of the provider states Atlas
+    already tracks, not a second, independently-mutable lifecycle that
+    could drift out of agreement with them (Phase 3's own "avoid
+    introducing duplicate state systems").
+
+    The four states answer four genuinely different questions, and no
+    two of them may ever collapse into a shared "unknown":
+
+    - `SUPPORTED` -- every required provider succeeded. Atlas has what
+      it needs; nothing is outstanding.
+    - `DEEP_ANALYSIS_PENDING` -- identity and profile resolved, so Atlas
+      *can* analyse this company and every coverage-dependent surface
+      may render immediately, but at least one deeper signal is still
+      being collected. This is the state the Minimal Enrichment
+      Architecture makes common and useful: coverage now, depth later.
+    - `TEMPORARILY_INCOMPLETE` -- Atlas cannot yet say whether the
+      company is supported, but the obstacle is retryable (never
+      attempted, a transient provider failure, or an exhausted daily
+      budget). Trying again later is genuinely worthwhile.
+    - `UNSUPPORTED` -- identity itself failed in a way classified
+      permanent for this ticker. Retrying cannot help; only a new
+      provider could.
+    """
+
+    SUPPORTED = "supported"
+    DEEP_ANALYSIS_PENDING = "deep_analysis_pending"
+    TEMPORARILY_INCOMPLETE = "temporarily_incomplete"
+    UNSUPPORTED = "unsupported"
+
+
+@dataclass(frozen=True)
+class CoverageState:
+    """A classification plus the reason for it, always together --
+    `classification` alone would reintroduce exactly the "one word
+    meaning several things" problem this sprint removes. `reason` names
+    the *cause*, in Phase 8's own failure vocabulary, never a generic
+    "missing"."""
+
+    ticker: str
+    classification: CoverageClassification
+    reason: str
+    completion: EnrichmentCompletion
+
+    @property
+    def can_analyse(self) -> bool:
+        """`True` when coverage-dependent surfaces (Portfolio,
+        Watchlist, Daily Brief, Investment Case) may render this
+        company immediately. Deliberately `True` for
+        `DEEP_ANALYSIS_PENDING` -- that is the entire point of the
+        staged architecture."""
+        return self.classification in (
+            CoverageClassification.SUPPORTED,
+            CoverageClassification.DEEP_ANALYSIS_PENDING,
+        )
+
+
+def classify_coverage(completion: EnrichmentCompletion) -> CoverageState:
+    """Pure and deterministic. Reads only the already-computed
+    per-provider states, so it can never disagree with them.
+
+    Identity (`COMPANY_PROFILE`) is evaluated first and decides the
+    branch, because it is the one signal that determines whether Atlas
+    can say anything at all: it is the sole source of the candidates
+    `CanonicalSecurityIdentityGate` needs, and the same single provider
+    response carries the whole minimal coverage model (name, exchange,
+    currency, country, sector, industry).
+    """
+    profile = completion.status_for(SourceKind.COMPANY_PROFILE)
+    statements = completion.status_for(SourceKind.FINANCIAL_STATEMENT)
+
+    if profile is ProviderCompletionStatus.FAILED_UNSUPPORTED:
+        return CoverageState(
+            ticker=completion.ticker,
+            classification=CoverageClassification.UNSUPPORTED,
+            reason="No configured provider recognises this ticker, and the failure is permanent for it.",
+            completion=completion,
+        )
+    if profile is not ProviderCompletionStatus.SUCCEEDED:
+        reason = (
+            "Identity resolution has not been attempted yet."
+            if profile is ProviderCompletionStatus.NOT_YET_ATTEMPTED
+            else "Identity resolution failed for a retryable reason (provider or budget), not a permanent one."
+        )
+        return CoverageState(
+            ticker=completion.ticker,
+            classification=CoverageClassification.TEMPORARILY_INCOMPLETE,
+            reason=reason,
+            completion=completion,
+        )
+
+    if statements is ProviderCompletionStatus.SUCCEEDED:
+        return CoverageState(
+            ticker=completion.ticker,
+            classification=CoverageClassification.SUPPORTED,
+            reason="Identity, profile and financial statements are all present.",
+            completion=completion,
+        )
+    if statements is ProviderCompletionStatus.FAILED_UNSUPPORTED:
+        # Identity is known, so Atlas can analyse the company as far as
+        # its data allows -- but no retry will ever add financials.
+        # Named as such rather than left "pending" forever, which would
+        # imply work still in progress that will never happen.
+        return CoverageState(
+            ticker=completion.ticker,
+            classification=CoverageClassification.SUPPORTED,
+            reason=(
+                "Identity and profile resolved. No configured provider files financial statements "
+                "for this company, permanently -- analysis proceeds without them."
+            ),
+            completion=completion,
+        )
+    return CoverageState(
+        ticker=completion.ticker,
+        classification=CoverageClassification.DEEP_ANALYSIS_PENDING,
+        reason="Identity and profile resolved; financial statements are still being collected.",
+        completion=completion,
+    )

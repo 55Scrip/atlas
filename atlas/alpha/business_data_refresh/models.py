@@ -41,6 +41,58 @@ class ProviderFailure:
     kind: str = ""
 
 
+class EnrichmentDepth(str, Enum):
+    """How far one `refresh_company_data` run is allowed to go
+    (Calibration Phase 8B -- Minimal Enrichment Architecture).
+
+    The measured cost of a full run is **4 Alpha Vantage calls** per
+    company (`OVERVIEW`, `GLOBAL_QUOTE`, `TIME_SERIES_MONTHLY_ADJUSTED`,
+    `EARNINGS_CALL_TRANSCRIPT`) plus SEC's own keyless, un-quota'd
+    calls. Only the *first* of those four decides whether Atlas can
+    analyse the company at all: `OVERVIEW` is the sole source of the
+    identity candidates `CanonicalSecurityIdentityGate` needs, and the
+    same single response also carries sector, industry, exchange,
+    currency and company name -- the entire minimal coverage model.
+
+    So "can this company be analysed?" costs exactly **one** provider
+    call, and the existing pipeline already makes that call first. This
+    enum exists to let a caller *stop there*, rather than to add a new
+    fetch strategy.
+
+    `FULL` is the default everywhere and reproduces the pre-8B
+    behaviour byte-for-byte -- no existing caller changes.
+    """
+
+    #: Identity + company profile only. Establishes coverage
+    #: (`SUPPORTED` / `UNSUPPORTED`) and nothing else. 1 Alpha Vantage
+    #: call, 0 SEC calls.
+    MINIMAL = "minimal"
+    #: Everything `MINIMAL` does, plus the two stages that need no
+    #: further Alpha Vantage budget beyond one quote: SEC fundamentals
+    #: and the current market snapshot. Deliberately excludes the two
+    #: purely-historical stages.
+    STANDARD = "standard"
+    #: Every stage, including historical market snapshots and earnings
+    #: call transcripts. The default; unchanged behaviour.
+    FULL = "full"
+
+
+#: Which stages each depth is allowed to run, in pipeline order. Read by
+#: `service.refresh_company_data` only -- a stage name here is never a
+#: provider name, so adding a provider never touches this table.
+_STAGES_BY_DEPTH: dict[EnrichmentDepth, frozenset[str]] = {
+    EnrichmentDepth.MINIMAL: frozenset({"profile"}),
+    EnrichmentDepth.STANDARD: frozenset({"profile", "fundamentals"}),
+    EnrichmentDepth.FULL: frozenset({"profile", "fundamentals", "historical", "transcripts"}),
+}
+
+
+def stage_allowed(depth: EnrichmentDepth, stage: str) -> bool:
+    """Pure and total: an unknown stage name is never allowed, rather
+    than defaulting to permitted."""
+    return stage in _STAGES_BY_DEPTH.get(depth, frozenset())
+
+
 @dataclass(frozen=True)
 class RefreshSummary:
     """Exactly the fields Phase 17 requires. `new_records` counts
@@ -84,6 +136,22 @@ class RefreshSummary:
     #: .pipeline.ingest`'s own `evaluated_at`) -- `None` only for a
     #: `RefreshSummary` built before this field existed.
     evaluated_at: datetime | None = None
+    #: Calibration Phase 8B. The depth this run was asked for --
+    #: `FULL` for every pre-8B caller, so an existing `RefreshSummary`
+    #: keeps meaning exactly what it meant before.
+    depth: EnrichmentDepth = EnrichmentDepth.FULL
+    #: Calibration Phase 8B. The stages this run actually completed, in
+    #: order. A caller compares this against `depth` to tell "this run
+    #: did everything it was asked to" from "this run stopped early" --
+    #: without re-deriving it from record counts.
+    completed_stages: tuple[str, ...] = field(default_factory=tuple)
+    #: Calibration Phase 8B. `True` when this run stopped before
+    #: finishing its requested depth because the provider budget was
+    #: exhausted mid-company. Never an error and never a partial
+    #: corruption: every stage that *did* run is fully ingested and
+    #: persisted, and the untouched stages remain genuinely
+    #: `NOT_YET_ATTEMPTED`, so a later run resumes them normally.
+    stopped_for_budget: bool = False
 
 
 class EnrichmentOutcome(str, Enum):

@@ -409,6 +409,7 @@ class AlphaPortfolioService:
         business_data_providers: tuple[BusinessDataProvider, ...] | None = None,
         identity_gate: CanonicalSecurityIdentityGate | None = None,
         ingestion_result_repository: SqlAlchemyIngestionResultRepository | None = None,
+        quota_tracker: "object | None" = None,
     ) -> None:
         self._store = store
         self._trade_log_store = trade_log_store
@@ -419,6 +420,15 @@ class AlphaPortfolioService:
         self._business_data_providers = business_data_providers
         self._identity_gate = identity_gate
         self._ingestion_result_repository = ingestion_result_repository
+        # Calibration Phase 8B. Optional and duck-typed (anything with
+        # `has_budget() -> bool`) so this service never imports the
+        # Alpha Vantage quota tracker, or any provider concept, just to
+        # respect a budget. `None` -- every pre-8B caller -- keeps the
+        # previous unbounded behaviour exactly.
+        self._quota_tracker = quota_tracker
+
+    def _budget_available(self):
+        return self._quota_tracker.has_budget if self._quota_tracker is not None else None
 
     def _known_watchlist_case_ids(self) -> dict[str, str]:
         """(Investment Case Engine v1 slice) Watchlist's own entries,
@@ -484,6 +494,7 @@ class AlphaPortfolioService:
             ticker, self._business_data_providers, self._business_record_repository,
             identity_gate=self._identity_gate,
             known_provider_failures=known_provider_failures,
+            budget_available=self._budget_available(),
         )
         if summary is not None and self._ingestion_result_repository is not None:
             result = classify_refresh(summary, ticker=ticker, case_id=case_id, ran_at=summary.evaluated_at or _utc_now())

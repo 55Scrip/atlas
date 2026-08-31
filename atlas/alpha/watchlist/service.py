@@ -51,6 +51,7 @@ class AlphaWatchlistService:
         business_data_providers: tuple[BusinessDataProvider, ...] | None = None,
         identity_gate: CanonicalSecurityIdentityGate | None = None,
         ingestion_result_repository: SqlAlchemyIngestionResultRepository | None = None,
+        quota_tracker: "object | None" = None,
     ) -> None:
         self._store = store
         self._case_generation_service = case_generation_service
@@ -59,6 +60,13 @@ class AlphaWatchlistService:
         self._business_data_providers = business_data_providers
         self._identity_gate = identity_gate
         self._ingestion_result_repository = ingestion_result_repository
+        # Calibration Phase 8B -- see `AlphaPortfolioService.__init__`'s
+        # own note: optional, duck-typed (`has_budget() -> bool`), and
+        # `None` for every pre-8B caller.
+        self._quota_tracker = quota_tracker
+
+    def _budget_available(self):
+        return self._quota_tracker.has_budget if self._quota_tracker is not None else None
 
     def _trigger_enrichment(self, ticker: str, case_id: str | None = None) -> None:
         """Best-effort, never raises for the caller: `ensure_company_
@@ -97,6 +105,7 @@ class AlphaWatchlistService:
             ticker, self._business_data_providers, self._business_record_repository,
             identity_gate=self._identity_gate,
             known_provider_failures=known_provider_failures,
+            budget_available=self._budget_available(),
         )
         # Atlas Intelligence Sprint 9 (Data Ingestion & Automatic
         # Refresh, Deliverable 4/11) -- records the real, already-

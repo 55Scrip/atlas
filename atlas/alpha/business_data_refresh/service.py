@@ -105,6 +105,7 @@ the identical `CanonicalSecurity` provenance the gate returned.
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from typing import Callable
 
 from atlas.analysis_engine.business_data.models import BusinessRecord, RawBusinessDocument
 from atlas.analysis_engine.business_data.pipeline import IngestionRejected, ingest
@@ -117,7 +118,12 @@ from atlas.analysis_engine.business_data.providers import (
 from atlas.analysis_engine.business_data.sources import SourceKind
 from atlas.analysis_engine.business_data.versioning import DuplicateRecord
 from atlas.alpha.business_data_refresh.completion import assess_enrichment_completion
-from atlas.alpha.business_data_refresh.models import ProviderFailure, RefreshSummary
+from atlas.alpha.business_data_refresh.models import (
+    EnrichmentDepth,
+    ProviderFailure,
+    RefreshSummary,
+    stage_allowed,
+)
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.alpha.canonical_security_gate.provenance import BusinessRecordIdentityProvenance
@@ -142,6 +148,8 @@ def refresh_company_data(
     repository: SqlAlchemyBusinessRecordRepository,
     *,
     identity_gate: CanonicalSecurityIdentityGate,
+    depth: EnrichmentDepth = EnrichmentDepth.FULL,
+    budget_available: "Callable[[], bool] | None" = None,
 ) -> RefreshSummary:
     """One `evaluated_at` timestamp for the whole run (every document
     from every provider is fetched "as of now" together, not at
@@ -164,6 +172,31 @@ def refresh_company_data(
     """
     evaluated_at = _utc_now()
     known_records: list[BusinessRecord] = list(repository.get_by_company(ticker))
+    completed_stages: list[str] = []
+    stopped_for_budget = False
+
+    def _may_run(stage: str) -> bool:
+        """Calibration Phase 8B. Two independent gates, checked in this
+        order and never collapsed: the requested `depth` decides whether
+        a stage is *wanted*, and `budget_available` decides whether
+        there is provider budget left to run it *now*.
+
+        Budget is re-checked before every remaining stage rather than
+        once per company (Phase 8B's own finding: `bulk.py` checked the
+        budget only *between* tickers, so one company could overshoot
+        by every call after its first). Stopping here is always
+        graceful: every stage already completed stays fully ingested
+        and persisted, and a stage never started remains genuinely
+        `NOT_YET_ATTEMPTED` for `assess_enrichment_completion`, so the
+        next run resumes it as ordinary retryable work rather than
+        treating it as a failure."""
+        nonlocal stopped_for_budget
+        if not stage_allowed(depth, stage):
+            return False
+        if budget_available is not None and not budget_available():
+            stopped_for_budget = True
+            return False
+        return True
 
     provider_ids: list[str] = []
     fetched_documents = 0
@@ -203,6 +236,33 @@ def refresh_company_data(
             else:
                 new_versions += 1
 
+    if not _may_run("profile"):
+        # No budget for even the one call that decides whether this
+        # company can be analysed at all. Return *without* calling the
+        # gate: `identity_gate.evaluate()` persists every attempt it is
+        # given, and recording a `NO_MATCH` here would permanently
+        # claim "no provider returned any identity candidate for this
+        # ticker" when the truth is "Atlas never asked." That is
+        # exactly the one-word-meaning-several-things failure this
+        # sprint exists to remove.
+        return RefreshSummary(
+            ticker=ticker,
+            providers_attempted=(),
+            fetched_documents=0,
+            new_records=0,
+            new_versions=0,
+            duplicates_skipped=0,
+            rejected_documents=0,
+            provider_errors=(),
+            identity_gate_outcome="NOT_ATTEMPTED",
+            identity_gate_reason="Provider budget exhausted before identity resolution was attempted.",
+            changed_records=(),
+            evaluated_at=evaluated_at,
+            depth=depth,
+            completed_stages=(),
+            stopped_for_budget=stopped_for_budget,
+        )
+
     profile_documents: list[RawBusinessDocument] = []
     for provider in providers:
         if not isinstance(provider, CompanyProfileProvider):
@@ -233,12 +293,18 @@ def refresh_company_data(
             identity_gate_reason=decision.reason,
             changed_records=(),
             evaluated_at=evaluated_at,
+            depth=depth,
+            completed_stages=(),
+            stopped_for_budget=stopped_for_budget,
         )
 
     identity = decision.provenance
     _ingest_documents(tuple(profile_documents))
+    completed_stages.append("profile")
 
     for provider in providers:
+        if not _may_run("fundamentals"):
+            break
         provider_id = type(provider).__name__
         provider_ids.append(provider_id)
         try:
@@ -248,9 +314,14 @@ def refresh_company_data(
             continue
         _ingest_documents(documents)
 
+    if stage_allowed(depth, "fundamentals") and not stopped_for_budget:
+        completed_stages.append("fundamentals")
+
     for provider in providers:
         if not isinstance(provider, HistoricalMarketDataProvider):
             continue
+        if not _may_run("historical"):
+            break
         provider_id = f"{type(provider).__name__}.fetch_historical_snapshots"
         filing_dates = _known_filing_dates(known_records)
         if not filing_dates:
@@ -272,9 +343,14 @@ def refresh_company_data(
     # date list: the provider itself derives which quarter to request
     # from `evaluated_at` alone (see that Protocol's own docstring for
     # why).
+    if stage_allowed(depth, "historical") and not stopped_for_budget:
+        completed_stages.append("historical")
+
     for provider in providers:
         if not isinstance(provider, EarningsCallTranscriptProvider):
             continue
+        if not _may_run("transcripts"):
+            break
         provider_id = f"{type(provider).__name__}.fetch_earnings_call_transcripts"
         try:
             transcript_documents = provider.fetch_earnings_call_transcripts(
@@ -298,6 +374,10 @@ def refresh_company_data(
         identity_gate_reason=None,
         changed_records=tuple(changed_records),
         evaluated_at=evaluated_at,
+        depth=depth,
+        completed_stages=tuple(completed_stages)
+        + (("transcripts",) if stage_allowed(depth, "transcripts") and not stopped_for_budget else ()),
+        stopped_for_budget=stopped_for_budget,
     )
 
 
@@ -308,6 +388,8 @@ def ensure_company_enriched(
     *,
     identity_gate: CanonicalSecurityIdentityGate,
     known_provider_failures: tuple[ProviderFailure, ...] = (),
+    depth: EnrichmentDepth = EnrichmentDepth.FULL,
+    budget_available: "Callable[[], bool] | None" = None,
 ) -> RefreshSummary | None:
     """Idempotent, automatic-trigger wrapper for the Investment Case
     Engine v1 slice's "add a company" write paths (Watchlist/Portfolio).
@@ -341,4 +423,11 @@ def ensure_company_enriched(
     completion = assess_enrichment_completion(ticker, existing, known_provider_failures)
     if not completion.has_retryable_work:
         return None
-    return refresh_company_data(ticker, providers, repository, identity_gate=identity_gate)
+    return refresh_company_data(
+        ticker,
+        providers,
+        repository,
+        identity_gate=identity_gate,
+        depth=depth,
+        budget_available=budget_available,
+    )
