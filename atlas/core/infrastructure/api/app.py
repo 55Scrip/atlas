@@ -9,6 +9,14 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+# Imported first, and for its import side effect: `atlas.config` reads a
+# repository-root `.env` into `os.environ` (never overriding an already-set
+# variable). Every provider in this codebase reads its credentials with a
+# bare `os.environ.get` at point of use, so this has to happen before any
+# router module constructs one. See `atlas.config.load_local_env` for why
+# a missing `ALPHA_VANTAGE_API_KEY` silently disables the *entire*
+# enrichment pipeline rather than just its market-data leg.
+import atlas.config  # noqa: F401  -- import side effect, see comment above
 from atlas.ai.api.router import router as discovery_chat_router
 from atlas.alpha.case_intelligence.api.router import router as case_intelligence_router
 from atlas.alpha.daily_brief.api.router import router as daily_brief_router

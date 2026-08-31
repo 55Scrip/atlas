@@ -11,3 +11,10 @@ data/processed/*
 tmp/
 frontend/node_modules/
 frontend/dist/
+
+# Local provider credentials (read by atlas.config.load_local_env).
+# Never commit: contains real API keys.
+.env
+
+# Root-level node_modules (frontend/ has its own rule above).
+node_modules/
