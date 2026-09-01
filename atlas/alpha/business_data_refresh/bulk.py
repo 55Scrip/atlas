@@ -79,6 +79,7 @@ def enrich_holdings(
     quota_tracker: AlphaVantageQuotaTracker | None = None,
     progress_store: EnrichmentProgressStore | None = None,
     progress_batch_id: str | None = None,
+    availability_gate: "object | None" = None,
 ) -> BulkEnrichmentSummary:
     """Deterministic given a deterministic set of provider responses:
     the only non-determinism comes from the underlying providers
@@ -180,5 +181,32 @@ def enrich_holdings(
             if case_id is not None:
                 result = classify_refresh(summary, ticker=ticker, case_id=case_id, ran_at=summary.evaluated_at or _utc_now())
                 ingestion_result_repository.upsert(result)
+
+        if summary is not None and summary.daily_quota_exhausted:
+            # Provider & Quota Intelligence, Requirement 3. The provider
+            # itself confirmed the day is spent. Every remaining ticker
+            # would be rejected identically -- learning nothing, and
+            # spending a real call each time. On 2026-09-01 exactly this
+            # loop spent 16 consecutive rejected calls because a
+            # provider rejection was indistinguishable from an ordinary
+            # per-company failure. Abort the batch instead, and record
+            # every untouched ticker honestly as deferred rather than
+            # silently truncating the run.
+            if availability_gate is not None:
+                availability_gate.record_daily_exhausted(
+                    "; ".join(
+                        f.error for f in summary.provider_errors if f.kind == "DailyQuotaExhausted"
+                    )
+                    or "Provider reported its daily quota exhausted."
+                )
+            for remaining in tickers[tickers.index(ticker) + 1:]:
+                results.append(
+                    HoldingEnrichmentResult(
+                        ticker=remaining, outcome=EnrichmentOutcome.QUOTA_DEFERRED, detail=None
+                    )
+                )
+                if progress_store is not None and progress_batch_id is not None:
+                    progress_store.mark_deferred(progress_batch_id, remaining)
+            break
 
     return BulkEnrichmentSummary(results=tuple(results))

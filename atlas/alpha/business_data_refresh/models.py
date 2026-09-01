@@ -152,6 +152,14 @@ class RefreshSummary:
     #: persisted, and the untouched stages remain genuinely
     #: `NOT_YET_ATTEMPTED`, so a later run resumes them normally.
     stopped_for_budget: bool = False
+    #: Provider & Quota Intelligence. `True` when the provider itself
+    #: confirmed its daily allowance is spent during this run. Distinct
+    #: from `stopped_for_budget`, which means Atlas's own counter
+    #: declined to spend more: this one is the provider's word, and a
+    #: batch caller must abort the whole run on it rather than trying
+    #: the next company (every subsequent call would be rejected
+    #: identically, learning nothing and spending real quota).
+    daily_quota_exhausted: bool = False
 
 
 class EnrichmentOutcome(str, Enum):

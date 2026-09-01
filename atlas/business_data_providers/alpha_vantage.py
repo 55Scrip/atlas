@@ -124,6 +124,7 @@ from typing import Any, Callable
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 from atlas.analysis_engine.business_data.sources import SourceKind
 from atlas.business_data_providers.errors import (
+    DailyQuotaExhausted,
     CompanyNotFound,
     MalformedProviderResponse,
     MissingRequiredField,
@@ -198,6 +199,53 @@ def _api_key(explicit: str | None) -> str | None:
     return explicit if explicit is not None else os.environ.get("ALPHA_VANTAGE_API_KEY")
 
 
+#: Alpha Vantage reports its daily allowance and its short-term pacing
+#: limit through the *same* `Information` key, so only the message text
+#: separates them. Both real strings were captured live on 2026-09-01
+#: and are reproduced here verbatim in the parts that actually differ:
+#:
+#:   daily : "We have detected your API key as XXXX and our standard
+#:            API rate limit is 25 requests per day. Please subscribe
+#:            to any of the premium plans ..."
+#:   pacing: "Thank you for using Alpha Vantage! Please consider
+#:            spreading out your free API requests more sparingly
+#:            (1 request per second). ..."
+#:
+#: Note that the *pacing* message also contains the words "25 requests
+#: per day" further along, so matching that phrase alone would classify
+#: both as daily exhaustion. The discriminator therefore keys on the
+#: daily message's own distinctive opening -- the provider announcing it
+#: has "detected your API key" and naming a "standard" limit -- and on
+#: the pacing message's own distinctive request to spread calls out.
+#: Pacing is checked FIRST so a message containing both signatures is
+#: read as the (cheaper, more recoverable) pacing case rather than
+#: silently blocking Atlas for a whole reset cycle.
+_PACING_SIGNATURES: tuple[str, ...] = (
+    "spreading out your free api requests",
+    "request per second",
+    "requests per second",
+    "per minute",
+)
+
+_DAILY_SIGNATURES: tuple[str, ...] = (
+    "detected your api key",
+    "standard api rate limit",
+    "requests per day",
+)
+
+
+def _is_daily_quota_message(message: str) -> bool:
+    """Pure and deterministic. Returns `False` for anything it does not
+    positively recognise as a daily-allowance rejection -- an unknown
+    rate-limit shape stays the short-term `RateLimited` it has always
+    been, so a provider wording change degrades to the previous
+    behaviour instead of blocking Atlas for a full cycle on a guess."""
+    lowered = message.lower()
+    if any(signature in lowered for signature in _PACING_SIGNATURES):
+        return False
+    return any(signature in lowered for signature in _DAILY_SIGNATURES)
+
+
 def _check_for_provider_error(payload: Any, *, context: str) -> None:
     """Alpha Vantage returns HTTP 200 for its own error states -- a
     rate-limited/quota-exhausted call and an unrecognized symbol are
@@ -209,7 +257,10 @@ def _check_for_provider_error(payload: Any, *, context: str) -> None:
     if "Error Message" in payload:
         raise CompanyNotFound(f"{context}: {payload['Error Message']}")
     if "Note" in payload or "Information" in payload:
-        raise RateLimited(f"{context}: {payload.get('Note') or payload.get('Information')}")
+        message = str(payload.get("Note") or payload.get("Information"))
+        if _is_daily_quota_message(message):
+            raise DailyQuotaExhausted(f"{context}: {message}")
+        raise RateLimited(f"{context}: {message}")
 
 
 def _numeric(value: Any) -> float | None:

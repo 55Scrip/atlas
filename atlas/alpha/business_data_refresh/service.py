@@ -126,6 +126,7 @@ from atlas.alpha.business_data_refresh.models import (
 )
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
+from atlas.business_data_providers.errors import DailyQuotaExhausted, RateLimited
 from atlas.alpha.canonical_security_gate.provenance import BusinessRecordIdentityProvenance
 
 __all__ = ["refresh_company_data", "ensure_company_enriched"]
@@ -150,6 +151,7 @@ def refresh_company_data(
     identity_gate: CanonicalSecurityIdentityGate,
     depth: EnrichmentDepth = EnrichmentDepth.FULL,
     budget_available: "Callable[[], bool] | None" = None,
+    on_provider_throttled: "Callable[[Exception], None] | None" = None,
 ) -> RefreshSummary:
     """One `evaluated_at` timestamp for the whole run (every document
     from every provider is fetched "as of now" together, not at
@@ -174,6 +176,8 @@ def refresh_company_data(
     known_records: list[BusinessRecord] = list(repository.get_by_company(ticker))
     completed_stages: list[str] = []
     stopped_for_budget = False
+    identity_blocked_by_throttling = False
+    daily_quota_exhausted = False
 
     def _may_run(stage: str) -> bool:
         """Calibration Phase 8B. Two independent gates, checked in this
@@ -261,6 +265,7 @@ def refresh_company_data(
             depth=depth,
             completed_stages=(),
             stopped_for_budget=stopped_for_budget,
+            daily_quota_exhausted=daily_quota_exhausted,
         )
 
     profile_documents: list[RawBusinessDocument] = []
@@ -271,10 +276,65 @@ def refresh_company_data(
         provider_ids.append(provider_id)
         try:
             fetched = provider.fetch_company_profile(company_identifier=ticker, evaluated_at=evaluated_at)
+        except RateLimited as exc:
+            # Provider & Quota Intelligence. A throttled call produced no
+            # identity evidence *about this company* -- it never got that
+            # far. Recorded like any other failure, but also flagged so
+            # the identity gate below is skipped entirely (see the
+            # `identity_blocked_by_throttling` branch) rather than being
+            # handed zero candidates and persisting a `NO_MATCH` that
+            # would permanently assert a company fact Atlas never
+            # established.
+            identity_blocked_by_throttling = True
+            if isinstance(exc, DailyQuotaExhausted):
+                daily_quota_exhausted = True
+            provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc), kind=type(exc).__name__))
+            if on_provider_throttled is not None:
+                on_provider_throttled(exc)
+            continue
         except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
+            if isinstance(exc, DailyQuotaExhausted):
+                # Provider & Quota Intelligence: the provider's own word
+                # that the day is spent. Flagged so a batch caller aborts
+                # rather than attempting the next company.
+                daily_quota_exhausted = True
+                if on_provider_throttled is not None:
+                    on_provider_throttled(exc)
             provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc), kind=type(exc).__name__))
             continue
         profile_documents.extend(fetched)
+
+    if identity_blocked_by_throttling and not profile_documents:
+        # Provider & Quota Intelligence, Requirement 4. `identity_gate
+        # .evaluate()` persists *every* attempt it is given, including
+        # the zero-candidate case, as a `NO_MATCH` resolution record
+        # meaning "no provider returned any identity-bearing candidate
+        # for this ticker." That sentence is false when the provider
+        # refused to answer at all: nothing was learned about the
+        # company. Returning before the gate keeps a throttled attempt
+        # from leaving evidence behind, and reports the real cause
+        # instead.
+        return RefreshSummary(
+            ticker=ticker,
+            providers_attempted=tuple(provider_ids),
+            fetched_documents=0,
+            new_records=0,
+            new_versions=0,
+            duplicates_skipped=0,
+            rejected_documents=0,
+            provider_errors=tuple(provider_errors),
+            identity_gate_outcome="NOT_EVALUATED_PROVIDER_THROTTLED",
+            identity_gate_reason=(
+                "The provider was rate limited before returning any identity data, so identity was "
+                "never evaluated for this company. This is not a statement about the company."
+            ),
+            changed_records=(),
+            evaluated_at=evaluated_at,
+            depth=depth,
+            completed_stages=(),
+            stopped_for_budget=stopped_for_budget,
+            daily_quota_exhausted=daily_quota_exhausted,
+        )
 
     decision = identity_gate.evaluate(
         ticker=ticker, documents=tuple(profile_documents), clock=lambda: evaluated_at
@@ -296,6 +356,7 @@ def refresh_company_data(
             depth=depth,
             completed_stages=(),
             stopped_for_budget=stopped_for_budget,
+            daily_quota_exhausted=daily_quota_exhausted,
         )
 
     identity = decision.provenance
@@ -310,6 +371,13 @@ def refresh_company_data(
         try:
             documents = provider.fetch(company_identifier=ticker, evaluated_at=evaluated_at)
         except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
+            if isinstance(exc, DailyQuotaExhausted):
+                # Provider & Quota Intelligence: the provider's own word
+                # that the day is spent. Flagged so a batch caller aborts
+                # rather than attempting the next company.
+                daily_quota_exhausted = True
+                if on_provider_throttled is not None:
+                    on_provider_throttled(exc)
             provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc), kind=type(exc).__name__))
             continue
         _ingest_documents(documents)
@@ -331,6 +399,13 @@ def refresh_company_data(
                 company_identifier=ticker, filing_dates=filing_dates, evaluated_at=evaluated_at
             )
         except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
+            if isinstance(exc, DailyQuotaExhausted):
+                # Provider & Quota Intelligence: the provider's own word
+                # that the day is spent. Flagged so a batch caller aborts
+                # rather than attempting the next company.
+                daily_quota_exhausted = True
+                if on_provider_throttled is not None:
+                    on_provider_throttled(exc)
             provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc), kind=type(exc).__name__))
             continue
         _ingest_documents(historical_documents)
@@ -357,6 +432,13 @@ def refresh_company_data(
                 company_identifier=ticker, evaluated_at=evaluated_at
             )
         except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
+            if isinstance(exc, DailyQuotaExhausted):
+                # Provider & Quota Intelligence: the provider's own word
+                # that the day is spent. Flagged so a batch caller aborts
+                # rather than attempting the next company.
+                daily_quota_exhausted = True
+                if on_provider_throttled is not None:
+                    on_provider_throttled(exc)
             provider_errors.append(ProviderFailure(provider_id=provider_id, error=str(exc), kind=type(exc).__name__))
             continue
         _ingest_documents(transcript_documents)
@@ -378,6 +460,7 @@ def refresh_company_data(
         completed_stages=tuple(completed_stages)
         + (("transcripts",) if stage_allowed(depth, "transcripts") and not stopped_for_budget else ()),
         stopped_for_budget=stopped_for_budget,
+        daily_quota_exhausted=daily_quota_exhausted,
     )
 
 

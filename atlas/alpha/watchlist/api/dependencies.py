@@ -29,6 +29,11 @@ from atlas.alpha.watchlist.store import AlphaWatchlistStore
 from atlas.alpha.watchlist.table import create_alpha_watchlist_entry_table
 from atlas.analysis_engine.business_data.providers import BusinessDataProvider
 from atlas.alpha.business_data_refresh.quota import AlphaVantageQuotaTracker
+from atlas.alpha.business_data_refresh.provider_state import (
+    ALPHA_VANTAGE_PROVIDER_NAME,
+    ProviderAvailabilityStore,
+    ProviderBudgetGate,
+)
 from atlas.core.infrastructure.api.decision.dependencies import get_decision_engine
 
 
@@ -73,5 +78,12 @@ def get_alpha_watchlist_service(
         ingestion_result_repository=ingestion_result_repository,
         # Calibration Phase 8B -- see the identical wiring note in
         # `atlas.alpha.portfolio.api.dependencies`.
-        quota_tracker=AlphaVantageQuotaTracker(get_decision_engine()),
+        # Provider & Quota Intelligence: the local counter is now wrapped
+        # so a persisted provider rejection outranks it. `has_budget()`
+        # keeps the same shape, so this service is unchanged.
+        quota_tracker=ProviderBudgetGate(
+            AlphaVantageQuotaTracker(get_decision_engine()),
+            ProviderAvailabilityStore(get_decision_engine()),
+            provider_name=ALPHA_VANTAGE_PROVIDER_NAME,
+        ),
     )

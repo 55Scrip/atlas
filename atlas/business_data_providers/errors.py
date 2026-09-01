@@ -30,6 +30,7 @@ __all__ = [
     "MissingRequiredField",
     "UnsupportedUnit",
     "RateLimited",
+    "DailyQuotaExhausted",
 ]
 
 
@@ -81,4 +82,32 @@ class RateLimited(BusinessDataProviderError):
     """The provider explicitly signaled a rate limit -- distinguished
     from a generic `ProviderUnavailable` so a caller can decide to
     retry later specifically because of quota, not because the service
-    is down."""
+    is down.
+
+    **This base class now means specifically a SHORT-TERM limit** -- a
+    pacing/burst rejection a caller may retry within seconds. A
+    provider's *daily* allowance being spent is the `DailyQuotaExhausted`
+    subclass below. Kept as the base (rather than becoming a sibling)
+    so every existing `except RateLimited` and every existing
+    `kind == "RateLimited"` classification keeps catching both cases
+    exactly as before -- the split adds precision without changing what
+    any current handler catches."""
+
+
+class DailyQuotaExhausted(RateLimited):
+    """The provider confirmed its *daily* allowance is spent (Provider &
+    Quota Intelligence sprint).
+
+    Separated from short-term pacing because the two demand wildly
+    different waits -- roughly one second versus up to a full reset
+    cycle -- and collapsing them is what let one throttled run spend 16
+    consecutive calls, each rejected, each learning nothing new.
+
+    Alpha Vantage signals both through the same `Information` key, so
+    only the message text distinguishes them; see
+    `alpha_vantage._check_for_provider_error` for the exact, observed
+    strings this is matched on. **The reset boundary is deliberately not
+    encoded here**: Alpha Vantage does not publish when the daily
+    allowance resets (verified against its own support and premium
+    pages), so any constant would be a guess. Deciding when to retry is
+    the caller's job, from persisted provider state."""
