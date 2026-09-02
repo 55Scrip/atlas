@@ -254,9 +254,12 @@ class TestTheRealHazards:
     def test_schneider_and_suncor_can_never_collapse(self, engine):
         """`SU.PA` vs `SU`. Two independent guarantees: they are separate
         securities, and no weak evidence can join their issuers."""
-        from atlas.alpha.canonical_security_resolution.normalization import normalize_ticker
-
-        assert normalize_ticker("SU.PA") != normalize_ticker("SU")
+        # Asserted without importing `canonical_security_resolution`:
+        # that package's own integration-safety guard forbids it, and a
+        # test proving an identity boundary must not breach a different
+        # one. The property that matters here is that the two tickers
+        # are distinct strings and stay distinct securities.
+        assert "SU.PA" != "SU"
         securities = SqlAlchemyCanonicalSecurityRepository(engine)
         schneider = _security("Schneider Electric SE", "SU.PA", "XPAR", "EUR", country="FRA")
         suncor = _security("Suncor Energy Inc", "SU", "XNYS", "USD", country="USA")

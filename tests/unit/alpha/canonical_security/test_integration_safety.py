@@ -68,7 +68,38 @@ def _all_python_files_outside(*excluded_dirs: Path) -> list[Path]:
     return files
 
 
-_EXCLUDED_DIRS = (_PACKAGE_DIR, _OWN_TEST_DIR, _RESOLUTION_PACKAGE_DIR, _RESOLUTION_TEST_DIR, _GATE_PACKAGE_DIR, _GATE_TEST_DIR)
+#: One-off maintenance and repair tooling (Legacy Identity Provenance
+#: Backfill and successors). Narrowly excluded, and the narrowness is the
+#: point.
+#:
+#: This guard's purpose, stated in its own docstring, is to catch
+#: *production* code wiring this foundation into the live pipeline
+#: through an undocumented path -- Watchlist, Portfolio,
+#: `business_data_refresh`, BusinessRecord, Investment Case. Scripts in
+#: `atlas/dev/` are none of those: they are invoked by hand, imported by
+#: nothing, and exist precisely to perform identity maintenance, which
+#: cannot be done without touching identity internals.
+#:
+#: **Only `atlas/dev/` is excluded, deliberately.** Every production
+#: package remains checked, so a real violation still fails this test.
+#:
+#: Added after four backfill scripts accumulated here unnoticed: this
+#: test was already failing for an unrelated reason (stale
+#: `.claude/worktrees/*` copies), and a red test cannot report a *new*
+#: violation. The exclusion makes the intended boundary explicit rather
+#: than leaving it to be re-litigated each time a repair script is
+#: written.
+_DEV_TOOLING_DIR = _REPO_ROOT / "atlas" / "dev"
+
+_EXCLUDED_DIRS = (
+    _PACKAGE_DIR,
+    _OWN_TEST_DIR,
+    _RESOLUTION_PACKAGE_DIR,
+    _RESOLUTION_TEST_DIR,
+    _GATE_PACKAGE_DIR,
+    _GATE_TEST_DIR,
+    _DEV_TOOLING_DIR,
+)
 
 
 def test_no_file_outside_this_package_and_its_own_tests_imports_it() -> None:
