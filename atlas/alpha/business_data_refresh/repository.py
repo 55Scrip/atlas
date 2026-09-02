@@ -78,6 +78,37 @@ class SqlAlchemyBusinessRecordRepository:
         return {company: tuple(records) for company, records in grouped.items()}
 
 
+    def get_by_canonical_security_ids(
+        self, canonical_security_ids: tuple[str, ...]
+    ) -> tuple[BusinessRecord, ...]:
+        """Issuer-level retrieval primitive (CIK-Backed Issuer Linking,
+        Phase 12).
+
+        Deliberately keyed by *security ids*, not by an issuer id: this
+        package must never import `atlas.alpha.canonical_security` (its
+        own integration-safety guard forbids it), so the caller resolves
+        issuer -> securities and passes the result here. That keeps
+        issuer-level reuse possible without this repository learning what
+        an issuer is.
+
+        Added **alongside** `get_by_company`, which is unchanged -- no
+        existing ticker-based retrieval is replaced.
+        """
+        if not canonical_security_ids:
+            return ()
+        with self._engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    select(business_record_table).where(
+                        business_record_table.c.canonical_security_id.in_(canonical_security_ids)
+                    )
+                )
+                .mappings()
+                .all()
+            )
+        return tuple(_to_record(row) for row in rows)
+
+
 def _to_row(record: BusinessRecord) -> dict[str, Any]:
     return {
         "id": record.id,

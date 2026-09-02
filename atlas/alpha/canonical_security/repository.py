@@ -560,3 +560,31 @@ class SqlAlchemyCanonicalIssuerRepository:
                 )
             ).first()
         return None if row is None else row[0]
+
+    def security_ids_for_issuer(self, issuer_id: str) -> tuple[str, ...]:
+        """Every security belonging to one issuer, sorted for
+        determinism. The other half of issuer-level retrieval: a caller
+        composes this with
+        `SqlAlchemyBusinessRecordRepository.get_by_canonical_security_ids`
+        to reach issuer-level records without either package importing
+        the other."""
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                select(canonical_securities_table.c.id)
+                .where(canonical_securities_table.c.issuer_id == issuer_id)
+                .order_by(canonical_securities_table.c.id)
+            ).all()
+        return tuple(row[0] for row in rows)
+
+    def reassign_security_issuer(self, canonical_security_id: str, issuer_id: str) -> None:
+        """Move one security to a different issuer. Touches only
+        `issuer_id` -- ticker, exchange, currency, share class, listings
+        and provider mappings are all left exactly as they were, which is
+        what keeps issuer reconciliation from ever becoming a security
+        merge."""
+        with self._engine.begin() as connection:
+            connection.execute(
+                update(canonical_securities_table)
+                .where(canonical_securities_table.c.id == canonical_security_id)
+                .values(issuer_id=issuer_id)
+            )
