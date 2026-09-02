@@ -66,6 +66,15 @@ class ProviderFailureClassification(str, Enum):
 
     TRANSIENT = "transient"
     UNSUPPORTED = "unsupported"
+    #: The provider answered successfully and had no identity data for
+    #: the exact symbol form Atlas sent. Neither of the other two: not
+    #: TRANSIENT, because re-sending the identical string will never
+    #: succeed; not UNSUPPORTED, because Atlas has tried exactly one
+    #: form and has no symbol-candidate logic for this provider, so a
+    #: different form may still work. Calling it UNSUPPORTED would
+    #: assert a structural fact about the company that has not been
+    #: established.
+    NO_IDENTITY_FOR_SYMBOL = "no_identity_for_symbol"
 
 
 #: Every kind whose own name means "this provider genuinely has nothing
@@ -97,6 +106,8 @@ def classify_provider_failure(*, provider_id: str, kind: str) -> ProviderFailure
     safe default: retry rather than silently give up on old data)."""
     if provider_id == _ALPHA_VANTAGE_PROFILE_PROVIDER_ID and kind == "MissingRequiredField":
         return ProviderFailureClassification.TRANSIENT
+    if kind == "NoIdentityDataForSymbol":
+        return ProviderFailureClassification.NO_IDENTITY_FOR_SYMBOL
     if kind in _UNSUPPORTED_KINDS:
         return ProviderFailureClassification.UNSUPPORTED
     if kind == "MissingRequiredField":
@@ -120,6 +131,13 @@ class ProviderCompletionStatus(str, Enum):
     NOT_YET_ATTEMPTED = "not_yet_attempted"
     FAILED_TRANSIENT = "failed_transient"
     FAILED_UNSUPPORTED = "failed_unsupported"
+    #: The provider answered and had nothing for the exact symbol form
+    #: sent. Deliberately its own member: collapsing it into
+    #: `NOT_YET_ATTEMPTED` (the pre-2026-09-02 behaviour) made Atlas
+    #: re-ask on every Watchlist/Portfolio action and report the absence
+    #: as retryable, and collapsing it into `FAILED_UNSUPPORTED` would
+    #: claim a structural limit Atlas has not established.
+    FAILED_NO_IDENTITY_FOR_SYMBOL = "failed_no_identity_for_symbol"
 
 
 @dataclass(frozen=True)
@@ -183,6 +201,12 @@ class EnrichmentCompletion:
         when this is `True`, never otherwise (an unsupported-classified
         provider is deliberately excluded here -- Requirement 8's own
         "not retried as though it were a transient failure")."""
+        # `FAILED_NO_IDENTITY_FOR_SYMBOL` is excluded for the same
+        # reason `FAILED_UNSUPPORTED` is: the provider already answered,
+        # and re-sending the identical symbol form cannot produce a
+        # different result. Including it made every Watchlist/Portfolio
+        # action spend a fresh call re-asking a question already
+        # answered -- 11 companies' worth, measured 2026-09-02.
         return any(
             p.status in (ProviderCompletionStatus.NOT_YET_ATTEMPTED, ProviderCompletionStatus.FAILED_TRANSIENT)
             for p in self.providers
@@ -211,12 +235,16 @@ def assess_enrichment_completion(
             )
             if failure is None:
                 status = ProviderCompletionStatus.NOT_YET_ATTEMPTED
-            elif classify_provider_failure(provider_id=failure.provider_id, kind=failure.kind) is (
-                ProviderFailureClassification.UNSUPPORTED
-            ):
-                status = ProviderCompletionStatus.FAILED_UNSUPPORTED
             else:
-                status = ProviderCompletionStatus.FAILED_TRANSIENT
+                classification = classify_provider_failure(
+                    provider_id=failure.provider_id, kind=failure.kind
+                )
+                if classification is ProviderFailureClassification.UNSUPPORTED:
+                    status = ProviderCompletionStatus.FAILED_UNSUPPORTED
+                elif classification is ProviderFailureClassification.NO_IDENTITY_FOR_SYMBOL:
+                    status = ProviderCompletionStatus.FAILED_NO_IDENTITY_FOR_SYMBOL
+                else:
+                    status = ProviderCompletionStatus.FAILED_TRANSIENT
         completions.append(
             ProviderCompletion(
                 document_kind=required.document_kind, provider_id=required.success_provider_id, status=status
@@ -309,11 +337,26 @@ def classify_coverage(completion: EnrichmentCompletion) -> CoverageState:
             completion=completion,
         )
     if profile is not ProviderCompletionStatus.SUCCEEDED:
-        reason = (
-            "Identity resolution has not been attempted yet."
-            if profile is ProviderCompletionStatus.NOT_YET_ATTEMPTED
-            else "Identity resolution failed for a retryable reason (provider or budget), not a permanent one."
-        )
+        if profile is ProviderCompletionStatus.NOT_YET_ATTEMPTED:
+            reason = "Identity resolution has not been attempted yet."
+        elif profile is ProviderCompletionStatus.FAILED_NO_IDENTITY_FOR_SYMBOL:
+            # The honest sentence, and the whole point of the third
+            # status: the provider *did* answer. Saying this failed "for
+            # a retryable reason" -- as Atlas did until 2026-09-02 --
+            # was false, because re-sending the identical symbol will
+            # never succeed. Still classified TEMPORARILY_INCOMPLETE
+            # rather than UNSUPPORTED: only one symbol form has been
+            # tried, so structural unsupportedness is not established.
+            reason = (
+                "The data provider answered but has no identity data for this exact symbol. "
+                "Atlas has only tried one symbol form, so this is not yet a statement about "
+                "whether the company can be covered at all."
+            )
+        else:
+            reason = (
+                "Identity resolution failed for a retryable reason (provider or budget), "
+                "not a permanent one."
+            )
         return CoverageState(
             ticker=completion.ticker,
             classification=CoverageClassification.TEMPORARILY_INCOMPLETE,
@@ -339,6 +382,16 @@ def classify_coverage(completion: EnrichmentCompletion) -> CoverageState:
             reason=(
                 "Identity and profile resolved. No configured provider files financial statements "
                 "for this company, permanently -- analysis proceeds without them."
+            ),
+            completion=completion,
+        )
+    if statements is ProviderCompletionStatus.FAILED_NO_IDENTITY_FOR_SYMBOL:
+        return CoverageState(
+            ticker=completion.ticker,
+            classification=CoverageClassification.DEEP_ANALYSIS_PENDING,
+            reason=(
+                "Identity and profile resolved. The statements provider answered but has no data "
+                "for this exact symbol; Atlas has only tried one symbol form."
             ),
             completion=completion,
         )

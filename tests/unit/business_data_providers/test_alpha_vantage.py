@@ -13,6 +13,7 @@ import pytest
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 from atlas.business_data_providers.alpha_vantage import AlphaVantageMarketDataProvider
 from atlas.business_data_providers.errors import (
+    NoIdentityDataForSymbol,
     CompanyNotFound,
     MalformedProviderResponse,
     MissingRequiredField,
@@ -1057,12 +1058,17 @@ class TestFetchCompanyProfile:
         assert "currency" not in doc.metadata
         assert "fiscal_year_end" not in doc.metadata
 
-    def test_empty_overview_returns_no_documents(self, monkeypatch):
+    def test_empty_overview_raises_no_identity_data_for_symbol(self, monkeypatch):
+        """Changed 2026-09-02. This previously asserted `docs == ()`,
+        which made "the provider answered and had nothing" indistinguishable
+        from "never asked" -- Atlas then told the investor identity had
+        failed for a retryable reason, which was false. See
+        `NoIdentityDataForSymbol`."""
         monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
         fetcher = _fake_fetcher({"OVERVIEW": {}})
         provider = AlphaVantageMarketDataProvider(fetcher)
-        docs = provider.fetch_company_profile(company_identifier="AAPL", evaluated_at=_NOW)
-        assert docs == ()
+        with pytest.raises(NoIdentityDataForSymbol):
+            provider.fetch_company_profile(company_identifier="AAPL", evaluated_at=_NOW)
 
     def test_missing_api_key_raises(self, monkeypatch):
         monkeypatch.delenv("ALPHA_VANTAGE_API_KEY", raising=False)

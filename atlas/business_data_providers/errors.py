@@ -31,6 +31,7 @@ __all__ = [
     "UnsupportedUnit",
     "RateLimited",
     "DailyQuotaExhausted",
+    "NoIdentityDataForSymbol",
 ]
 
 
@@ -111,3 +112,30 @@ class DailyQuotaExhausted(RateLimited):
     allowance resets (verified against its own support and premium
     pages), so any constant would be a guess. Deciding when to retry is
     the caller's job, from persisted provider state."""
+
+
+class NoIdentityDataForSymbol(BusinessDataProviderError):
+    """The provider answered **successfully** and returned no
+    identity-bearing data for this exact symbol string.
+
+    A genuinely distinct outcome from every other member of this module,
+    and the one Atlas previously could not express. Before this existed,
+    `AlphaVantageMarketDataProvider.fetch_company_profile` returned an
+    empty tuple in this case -- raising nothing, recording no
+    `ProviderFailure` -- so `assess_enrichment_completion` saw
+    `NOT_YET_ATTEMPTED` and Atlas told the investor the company's
+    identity had "failed for a retryable reason (provider or budget)".
+    That was false: the provider had answered, and asking again with the
+    identical string will never produce a different result. Confirmed
+    live on 2026-09-02 for eleven companies at once.
+
+    **What this does and does not claim.** It says the provider has
+    nothing for *this symbol form*. It deliberately does **not** say the
+    company is unsupported: Atlas currently sends exactly one form and
+    has no symbol-candidate logic for Alpha Vantage (unlike
+    `sec_ticker_candidates`, which already tries `BRK.B` -> `BRK-B` for
+    SEC). A different form may well succeed. Only once every supported
+    candidate form has been tried and rejected would structural
+    unsupportedness be an honest conclusion -- which is why this is not
+    classified alongside `CompanyNotFound`.
+    """

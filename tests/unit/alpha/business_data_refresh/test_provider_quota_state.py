@@ -20,7 +20,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
 from atlas.alpha.business_data_refresh.bulk import enrich_holdings
-from atlas.alpha.business_data_refresh.models import EnrichmentOutcome
+from atlas.alpha.business_data_refresh.completion import (
+    CoverageClassification,
+    ProviderCompletionStatus,
+    ProviderFailureClassification,
+    assess_enrichment_completion,
+    classify_coverage,
+    classify_provider_failure,
+)
+from atlas.alpha.business_data_refresh.models import EnrichmentOutcome, ProviderFailure
 from atlas.alpha.business_data_refresh.provider_state import (
     ALPHA_VANTAGE_PROVIDER_NAME,
     DEFAULT_DAILY_COOLDOWN,
@@ -35,7 +43,12 @@ from atlas.alpha.canonical_security_gate.factory import build_identity_gate
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 from atlas.analysis_engine.business_data.sources import SourceKind
 from atlas.business_data_providers.alpha_vantage import _check_for_provider_error, _is_daily_quota_message
-from atlas.business_data_providers.errors import DailyQuotaExhausted, RateLimited
+from atlas.business_data_providers.errors import (
+    DailyQuotaExhausted,
+    NoIdentityDataForSymbol,
+    RateLimited,
+)
+from atlas.business_data_providers.alpha_vantage import AlphaVantageMarketDataProvider
 
 _NOW = datetime(2026, 9, 1, 0, 5, tzinfo=timezone.utc)
 
@@ -393,3 +406,113 @@ class TestArchitectureBoundaries:
             source = Path(module).read_text()
             assert "AlphaVantageQuotaTracker" not in source
             assert "ProviderBudgetGate" not in source
+
+
+class TestNoIdentityDataForSymbolIsItsOwnOutcome:
+    """2026-09-02. Alpha Vantage answered successfully for eleven
+    companies at once and returned no identity fields; Atlas recorded no
+    failure at all, so coverage told the investor identity had "failed
+    for a retryable reason (provider or budget)". The provider had
+    answered. Re-sending the identical symbol could never succeed.
+
+    These assert the outcome is distinct from every neighbouring one --
+    the whole point being that five different realities must not share a
+    single reason string.
+    """
+
+    def _completion(self, kind: str, ticker: str = "VOLV-B"):
+        failure = ProviderFailure(
+            provider_id="AlphaVantageMarketDataProvider.fetch_company_profile",
+            error="OVERVIEW returned no identity fields for this symbol form",
+            kind=kind,
+        )
+        return assess_enrichment_completion(ticker, (), (failure,))
+
+    def test_provider_raises_instead_of_returning_empty(self):
+        from datetime import datetime as _dt
+
+        provider = AlphaVantageMarketDataProvider(
+            lambda url, headers=None: {}, api_key="k", sleeper=lambda s: None
+        )
+        with pytest.raises(NoIdentityDataForSymbol):
+            provider.fetch_company_profile(
+                company_identifier="VOLV-B", evaluated_at=_dt(2026, 9, 2, tzinfo=timezone.utc)
+            )
+
+    def test_classified_as_its_own_kind_not_transient_not_unsupported(self):
+        result = classify_provider_failure(provider_id="p", kind="NoIdentityDataForSymbol")
+        assert result is ProviderFailureClassification.NO_IDENTITY_FOR_SYMBOL
+        assert result is not ProviderFailureClassification.TRANSIENT
+        assert result is not ProviderFailureClassification.UNSUPPORTED
+
+    def test_completion_status_is_its_own_member(self):
+        completion = self._completion("NoIdentityDataForSymbol")
+        status = completion.status_for(SourceKind.COMPANY_PROFILE)
+        assert status is ProviderCompletionStatus.FAILED_NO_IDENTITY_FOR_SYMBOL
+        assert status is not ProviderCompletionStatus.NOT_YET_ATTEMPTED
+        assert status is not ProviderCompletionStatus.FAILED_TRANSIENT
+        assert status is not ProviderCompletionStatus.FAILED_UNSUPPORTED
+
+    def test_the_false_retryable_reason_is_gone(self):
+        state = classify_coverage(self._completion("NoIdentityDataForSymbol"))
+        assert "retryable reason" not in state.reason
+        assert "no identity data for this exact symbol" in state.reason.lower()
+
+    def test_reason_does_not_claim_structural_unsupportedness(self):
+        """Only one symbol form has been tried."""
+        state = classify_coverage(self._completion("NoIdentityDataForSymbol"))
+        assert state.classification is not CoverageClassification.UNSUPPORTED
+        assert "one symbol form" in state.reason
+
+    def test_the_profile_leg_itself_is_no_longer_treated_as_retryable(self):
+        """Leg-level, not whole-ticker. `has_retryable_work` stays True
+        here because SEC's statements leg is genuinely NOT_YET_ATTEMPTED
+        -- it was never reached, since the identity gate blocks without
+        a profile. What this asserts is narrower and is the part the
+        fix owns: the *profile* leg is no longer one of the statuses
+        that mean "worth asking again"."""
+        completion = self._completion("NoIdentityDataForSymbol")
+        profile = completion.status_for(SourceKind.COMPANY_PROFILE)
+        assert profile not in (
+            ProviderCompletionStatus.NOT_YET_ATTEMPTED,
+            ProviderCompletionStatus.FAILED_TRANSIENT,
+        )
+
+    def test_all_five_realities_have_distinct_reasons(self):
+        """NOT_ATTEMPTED / throttled / daily-exhausted / transient /
+        answered-with-nothing must never share a reason string."""
+        never = classify_coverage(assess_enrichment_completion("X", (), ()))
+        answered = classify_coverage(self._completion("NoIdentityDataForSymbol"))
+        throttled = classify_coverage(self._completion("RateLimited"))
+        daily = classify_coverage(self._completion("DailyQuotaExhausted"))
+        network = classify_coverage(self._completion("ProviderTimeout"))
+        unsupported = classify_coverage(self._completion("CompanyNotFound"))
+
+        assert never.reason != answered.reason
+        assert throttled.reason != answered.reason
+        assert daily.reason != answered.reason
+        assert network.reason != answered.reason
+        assert unsupported.reason != answered.reason
+        assert unsupported.classification is CoverageClassification.UNSUPPORTED
+        assert answered.classification is not CoverageClassification.UNSUPPORTED
+
+    def test_transient_and_throttled_remain_retryable(self):
+        """The new status must not accidentally make real transient
+        failures un-retryable."""
+        for kind in ("RateLimited", "DailyQuotaExhausted", "ProviderTimeout", "ProviderUnavailable"):
+            completion = self._completion(kind)
+            assert completion.status_for(SourceKind.COMPANY_PROFILE) is (
+                ProviderCompletionStatus.FAILED_TRANSIENT
+            ), kind
+            assert completion.has_retryable_work is True, kind
+
+    def test_genuine_company_not_found_still_unsupported(self):
+        completion = self._completion("CompanyNotFound")
+        assert completion.status_for(SourceKind.COMPANY_PROFILE) is (
+            ProviderCompletionStatus.FAILED_UNSUPPORTED
+        )
+
+    def test_deterministic(self):
+        first = classify_coverage(self._completion("NoIdentityDataForSymbol"))
+        second = classify_coverage(self._completion("NoIdentityDataForSymbol"))
+        assert first.classification is second.classification and first.reason == second.reason

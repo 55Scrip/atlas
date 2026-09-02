@@ -125,6 +125,7 @@ from atlas.analysis_engine.business_data.models import RawBusinessDocument
 from atlas.analysis_engine.business_data.sources import SourceKind
 from atlas.business_data_providers.errors import (
     DailyQuotaExhausted,
+    NoIdentityDataForSymbol,
     CompanyNotFound,
     MalformedProviderResponse,
     MissingRequiredField,
@@ -703,7 +704,15 @@ class AlphaVantageMarketDataProvider:
 
         _shares_outstanding, _currency, identity = self._current_overview(ticker, api_key)
         if not identity:
-            return ()
+            # The call succeeded -- Alpha Vantage returned a parseable
+            # body carrying none of the identity fields in
+            # `_IDENTITY_FIELD_MAP` (in practice a bare `{}` for a
+            # symbol form it does not recognise). Returning `()` here
+            # used to make that indistinguishable from "never asked";
+            # see `NoIdentityDataForSymbol` for the full rationale.
+            raise NoIdentityDataForSymbol(
+                f"Alpha Vantage OVERVIEW({ticker}) returned no identity fields for this symbol form"
+            )
 
         content_hash = hashlib.sha256(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()
         document = RawBusinessDocument(
