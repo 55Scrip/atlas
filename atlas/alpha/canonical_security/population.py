@@ -45,10 +45,32 @@ __all__ = [
 #: `CanonicalSecurity.discover`'s own required arguments, not chosen
 #: independently -- `country` is included because `discover` requires it.
 #:
-#: `asset_type` is deliberately absent: `SecurityType` already degrades
-#: to `OTHER` when a provider omits it, so requiring it would block
-#: creation over a field the model itself treats as optional.
-REQUIRED_PROFILE_FIELDS: tuple[str, ...] = ("name", "exchange", "currency", "country")
+#: **`asset_type` is required, corrected 2026-09-02 by executing the
+#: plan.** An earlier version of this module omitted it, reasoning that
+#: `SecurityType` degrades to `OTHER` when a provider omits it. That
+#: reasoning was about whether a `CanonicalSecurity` can be *constructed*
+#: -- it can -- and missed the question that actually decides the
+#: outcome: whether the Identity Gate will *accept* it.
+#:
+#: `confidence.calculate_confidence`'s Rule 3 requires `exchange_mic`,
+#: `country` **and** `security_type` to all be present to reach `HIGH`.
+#: Without `asset_type` the candidate caps at `MEDIUM`, the gate returns
+#: `MANUAL_CONFIRMATION`, and nothing is created. Running the backfill
+#: proved this: all 16 companies the planner had called ready were
+#: refused, and `asset_type` presence predicts which companies have a
+#: security with 30/30 accuracy across the whole corpus.
+#:
+#: The older profiles predate Sprint O.1, which added `AssetType` to
+#: `_IDENTITY_FIELD_MAP`; the field was in Alpha Vantage's response all
+#: along and simply was not extracted. So the stored evidence is
+#: genuinely incomplete, not merely unparsed -- a refresh is required.
+REQUIRED_PROFILE_FIELDS: tuple[str, ...] = (
+    "name",
+    "exchange",
+    "currency",
+    "country",
+    "asset_type",
+)
 
 
 class PopulationOutcome(str, Enum):
@@ -57,9 +79,9 @@ class PopulationOutcome(str, Enum):
 
     #: A security already exists. Nothing to do.
     ALREADY_PRESENT = "already_present"
-    #: A stored profile document carries everything needed. The Identity
-    #: Gate can be replayed against evidence already held -- **no
-    #: provider call**.
+    #: A stored profile document carries everything the Identity Gate
+    #: needs to reach `AUTO_ACCEPT`. The gate can be replayed against
+    #: evidence already held -- **no provider call**.
     READY_TO_CREATE = "ready_to_create"
     #: No stored profile document, or one missing required fields. Only
     #: a live profile fetch can supply exchange and currency.

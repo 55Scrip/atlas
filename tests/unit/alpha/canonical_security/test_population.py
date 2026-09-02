@@ -5,9 +5,15 @@ depends on *when* it was ingested rather than on what Atlas knows. It is
 pure: it reports what would happen and mutates nothing, so creation stays
 with the Identity Gate.
 
-Real numbers it was validated against: 14 of 36 companies had a security,
-16 more were creatable from stored profile documents with no provider
-call, and 6 genuinely needed one live profile fetch each.
+Corrected 2026-09-02 by executing the plan. The first version reported
+16 companies creatable from stored evidence with no provider call. The
+production gate refused all 16 with MANUAL_CONFIRMATION, because
+`confidence.calculate_confidence` needs `security_type` -- from the
+profile's `asset_type` -- to reach HIGH, and those profiles predate
+Sprint O.1 which added `AssetType` extraction. `asset_type` presence
+predicts which companies have a security with 30/30 accuracy across the
+corpus. The corrected numbers: 14 of 36 present, 0 creatable offline, 22
+each needing one live profile fetch.
 """
 from __future__ import annotations
 
@@ -24,6 +30,7 @@ FULL = {
     "exchange": "NASDAQ",
     "currency": "USD",
     "country": "USA",
+    "asset_type": "Common Stock",
     "sector": "COMMUNICATION SERVICES",
 }
 
@@ -37,10 +44,10 @@ class TestExistingSecurity:
 
 
 class TestOfflineCreation:
-    def test_goog_is_creatable_from_stored_evidence(self):
-        """The proof case, with no special-casing: GOOG's profile was
-        captured before the gate existed and carries everything
-        required."""
+    def test_a_complete_stored_profile_is_creatable_offline(self):
+        """Note GOOG's *real* stored profile does not qualify -- it
+        predates Sprint O.1 and carries no `asset_type`. This asserts the
+        rule, not the live corpus."""
         plan = plan_security_population("GOOG", has_security=False, profiles=(FULL,))
         assert plan.outcome is PopulationOutcome.READY_TO_CREATE
         assert plan.is_actionable_offline is True
@@ -52,13 +59,19 @@ class TestOfflineCreation:
         assert plan.profile["exchange"] == "NASDAQ"
         assert plan.profile["currency"] == "USD"
 
-    def test_asset_type_is_not_required(self):
-        """`SecurityType` already degrades to OTHER when a provider omits
-        it, so requiring it would block creation over a field the model
-        itself treats as optional."""
-        assert "asset_type" not in REQUIRED_PROFILE_FIELDS
-        plan = plan_security_population("X", has_security=False, profiles=(FULL,))
-        assert plan.outcome is PopulationOutcome.READY_TO_CREATE
+    def test_asset_type_is_required(self):
+        """Corrected 2026-09-02 by executing the plan. This test
+        previously asserted the opposite, reasoning that `SecurityType`
+        degrades to `OTHER` when a provider omits it. That is true of
+        *construction* and irrelevant to the outcome: the Identity Gate
+        needs `security_type` to reach HIGH confidence, and without it
+        returns MANUAL_CONFIRMATION and creates nothing. All 16
+        companies the old planner called ready were refused."""
+        assert "asset_type" in REQUIRED_PROFILE_FIELDS
+        without = {key: value for key, value in FULL.items() if key != "asset_type"}
+        plan = plan_security_population("GOOG", has_security=False, profiles=(without,))
+        assert plan.outcome is PopulationOutcome.REQUIRES_PROVIDER_CALL
+        assert "asset_type" in plan.missing_fields
 
 
 class TestProviderCallRequired:
