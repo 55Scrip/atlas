@@ -35,13 +35,18 @@ from atlas.alpha.canonical_security.models import (
     ProviderMapping,
     SecurityIdentifier,
 )
+from atlas.alpha.canonical_security.issuer import CanonicalIssuer, IssuerIdentifier
 from atlas.alpha.canonical_security.table import (
+    canonical_issuer_identifiers_table,
+    canonical_issuers_table,
     canonical_security_identifiers_table,
     canonical_security_listings_table,
     canonical_security_provider_mappings_table,
     canonical_securities_table,
+    create_canonical_security_tables,
 )
 from atlas.alpha.canonical_security.value_objects import (
+    CanonicalIssuerId,
     CanonicalSecurityId,
     MicCode,
     TradingCurrency,
@@ -348,6 +353,7 @@ def _root_to_row(security: CanonicalSecurity) -> dict[str, Any]:
         "country": security.country,
         "trading_currency": security.trading_currency.value,
         "resolution_status": security.resolution_status,
+        "issuer_id": str(security.issuer_id) if security.issuer_id is not None else None,
         "created_at": security.created_at.isoformat(),
         "updated_at": security.updated_at.isoformat(),
     }
@@ -363,6 +369,7 @@ def _listing_to_row(security_id: str, listing: ListingRef) -> dict[str, Any]:
         "relationship": listing.relationship,
         "security_type": listing.security_type,
         "provider_symbol": listing.provider_symbol,
+        "share_class": listing.share_class,
     }
 
 
@@ -405,6 +412,11 @@ def _row_to_security(
         country=root_row["country"],
         trading_currency=TradingCurrency(root_row["trading_currency"]),
         resolution_status=root_row["resolution_status"],
+        issuer_id=(
+            CanonicalIssuerId(uuid.UUID(root_row["issuer_id"]))
+            if root_row.get("issuer_id")
+            else None
+        ),
         listings=tuple(
             ListingRef(
                 ticker=row["ticker"],
@@ -413,6 +425,7 @@ def _row_to_security(
                 relationship=row["relationship"],
                 security_type=row["security_type"],
                 provider_symbol=row["provider_symbol"],
+                share_class=row["share_class"] or "UNKNOWN",
             )
             for row in listing_rows
         ),
@@ -442,3 +455,108 @@ def _row_to_security(
         created_at=datetime.fromisoformat(root_row["created_at"]),
         updated_at=datetime.fromisoformat(root_row["updated_at"]),
     )
+
+
+class SqlAlchemyCanonicalIssuerRepository:
+    """Persistence for `CanonicalIssuer` (Issuer Identity Foundation).
+
+    Deliberately narrow: save, get, and a `find_by_identifier` that is
+    the *only* lookup capable of matching two securities to one issuer.
+    There is intentionally **no `find_by_legal_name`** -- offering one
+    would make the weak-evidence merge this sprint forbids a single
+    convenient call away, and the identity investigation showed name
+    comparison failing in both directions at once. If a future sprint
+    needs name search for a human-facing picker, it should be named so
+    that no caller can mistake it for identity resolution.
+    """
+
+    def __init__(self, engine: Engine) -> None:
+        create_canonical_security_tables(engine)
+        self._engine = engine
+
+    def save(self, issuer: CanonicalIssuer) -> None:
+        with self._engine.begin() as connection:
+            connection.execute(
+                delete(canonical_issuers_table).where(canonical_issuers_table.c.id == str(issuer.id))
+            )
+            connection.execute(
+                delete(canonical_issuer_identifiers_table).where(
+                    canonical_issuer_identifiers_table.c.issuer_id == str(issuer.id)
+                )
+            )
+            connection.execute(
+                insert(canonical_issuers_table).values(
+                    id=str(issuer.id),
+                    legal_name=issuer.legal_name,
+                    jurisdiction=issuer.jurisdiction,
+                    created_at=issuer.created_at.isoformat(),
+                )
+            )
+            for identifier in issuer.identifiers:
+                connection.execute(
+                    insert(canonical_issuer_identifiers_table).values(
+                        issuer_id=str(issuer.id),
+                        identifier_type=identifier.identifier_type,
+                        value=identifier.value,
+                        recorded_at=identifier.recorded_at.isoformat(),
+                    )
+                )
+
+    def get(self, issuer_id: str) -> CanonicalIssuer | None:
+        with self._engine.connect() as connection:
+            row = connection.execute(
+                select(canonical_issuers_table).where(canonical_issuers_table.c.id == issuer_id)
+            ).mappings().first()
+            if row is None:
+                return None
+            identifier_rows = (
+                connection.execute(
+                    select(canonical_issuer_identifiers_table).where(
+                        canonical_issuer_identifiers_table.c.issuer_id == issuer_id
+                    )
+                )
+                .mappings()
+                .all()
+            )
+        return CanonicalIssuer(
+            id=CanonicalIssuerId(uuid.UUID(row["id"])),
+            legal_name=row["legal_name"],
+            jurisdiction=row["jurisdiction"],
+            identifiers=tuple(
+                IssuerIdentifier(
+                    identifier_type=r["identifier_type"],
+                    value=r["value"],
+                    recorded_at=datetime.fromisoformat(r["recorded_at"]),
+                )
+                for r in identifier_rows
+            ),
+            created_at=datetime.fromisoformat(row["created_at"]),
+        )
+
+    def find_by_identifier(self, identifier_type: str, value: str) -> CanonicalIssuer | None:
+        """The only route to reusing an existing issuer -- a registered
+        identifier, never a name."""
+        with self._engine.connect() as connection:
+            row = connection.execute(
+                select(canonical_issuer_identifiers_table.c.issuer_id)
+                .where(canonical_issuer_identifiers_table.c.identifier_type == identifier_type)
+                .where(canonical_issuer_identifiers_table.c.value == value.strip().upper())
+            ).first()
+        return None if row is None else self.get(row[0])
+
+    def issuer_id_for_security(self, canonical_security_id: str) -> str | None:
+        """Issuer Identity Foundation, Phase 9. `BusinessRecord` already
+        carries `canonical_security_id` as identity provenance, so a
+        record's issuer is *derivable* -- no second column is added to
+        `business_records`, and no historical row is rewritten.
+
+        Returns `None` for a record whose security was never resolved.
+        That is the honest answer and is explicitly preferred over
+        guessing an issuer from the record's ticker string."""
+        with self._engine.connect() as connection:
+            row = connection.execute(
+                select(canonical_securities_table.c.issuer_id).where(
+                    canonical_securities_table.c.id == canonical_security_id
+                )
+            ).first()
+        return None if row is None else row[0]

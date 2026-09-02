@@ -27,6 +27,7 @@ from atlas.alpha.canonical_security.exceptions import (
 )
 from atlas.alpha.canonical_security.lifecycle import validate_transition
 from atlas.alpha.canonical_security.value_objects import (
+    CanonicalIssuerId,
     CanonicalSecurityId,
     IdentifierType,
     IdentityConfidence,
@@ -35,6 +36,7 @@ from atlas.alpha.canonical_security.value_objects import (
     ProviderName,
     ResolutionStatus,
     SecurityType,
+    ShareClass,
     TradingCurrency,
     VerificationStatus,
 )
@@ -59,6 +61,18 @@ class ListingRef:
     relationship: ListingRelationship
     security_type: SecurityType
     provider_symbol: str | None = None
+    #: Issuer Identity Foundation, Phase 5. Part of *security* identity,
+    #: never issuer identity: Volvo A and Volvo B are one company and two
+    #: instruments with different voting rights, so an A share must never
+    #: satisfy a lookup for a B share.
+    #:
+    #: Defaults to `"UNKNOWN"`, and every pre-existing listing keeps that
+    #: value. Deliberately **not** inferred from ticker spelling -- the
+    #: `-B` in `VOLV-B` is a Nasdaq Stockholm convention, the `.B` in
+    #: `BRK.B` is a different one, and no approved deterministic mapping
+    #: exists for either. Guessing here would be the same class of error
+    #: as guessing an exchange suffix.
+    share_class: ShareClass = "UNKNOWN"
 
     def __post_init__(self) -> None:
         if not self.ticker or not self.ticker.strip():
@@ -129,6 +143,16 @@ class CanonicalSecurity:
     country: str
     trading_currency: TradingCurrency
     resolution_status: ResolutionStatus
+    #: Issuer Identity Foundation, Phase 3. Every security belongs to
+    #: exactly one issuer; one issuer may own many securities.
+    #:
+    #: Defaulted to `None` rather than made required, so that every
+    #: existing construction site -- `discover()`, the Identity Gate,
+    #: and this package's own tests -- keeps working unchanged. `None`
+    #: means "recorded before the issuer layer existed", never "belongs
+    #: to no company"; `atlas.dev.backfill_canonical_issuers` gives
+    #: every pre-existing row an issuer 1:1.
+    issuer_id: CanonicalIssuerId | None = None
     listings: tuple[ListingRef, ...] = field(default_factory=tuple)
     provider_mappings: tuple[ProviderMapping, ...] = field(default_factory=tuple)
     identifiers: tuple[SecurityIdentifier, ...] = field(default_factory=tuple)

@@ -34,6 +34,11 @@ canonical_securities_table = Table(
     Column("country", String, nullable=False),
     Column("trading_currency", String, nullable=False),
     Column("resolution_status", String, nullable=False, index=True),
+    # Issuer Identity Foundation. Nullable by necessity: `sync_table_schema`
+    # only auto-adds nullable columns -- a NOT NULL column here would make
+    # the existing development database refuse to migrate rather than
+    # fabricate a value. The backfill fills every existing row.
+    Column("issuer_id", String, nullable=True, index=True),
     Column("created_at", String, nullable=False),
     Column("updated_at", String, nullable=False),
 )
@@ -49,6 +54,7 @@ canonical_security_listings_table = Table(
     Column("relationship", String, nullable=False),
     Column("security_type", String, nullable=False),
     Column("provider_symbol", String, nullable=True),
+    Column("share_class", String, nullable=True),
 )
 
 canonical_security_provider_mappings_table = Table(
@@ -77,7 +83,33 @@ canonical_security_identifiers_table = Table(
 )
 
 
+canonical_issuers_table = Table(
+    "canonical_issuers",
+    metadata,
+    Column("id", String, primary_key=True),
+    Column("legal_name", String, nullable=False),
+    Column("jurisdiction", String, nullable=True),
+    Column("created_at", String, nullable=False),
+)
+
+canonical_issuer_identifiers_table = Table(
+    "canonical_issuer_identifiers",
+    metadata,
+    Column("issuer_id", String, primary_key=True),
+    Column("identifier_type", String, primary_key=True),
+    Column("value", String, primary_key=True),
+    Column("recorded_at", String, nullable=False),
+)
+
+
 def create_canonical_security_tables(engine: Engine) -> None:
+    # Issuer first: securities reference it. Both new tables are created
+    # fresh, and the two added columns below are nullable so
+    # `sync_table_schema` can ALTER them into the existing development
+    # database automatically -- a NOT NULL column would make it refuse
+    # rather than fabricate a value (see that module's own docstring).
+    sync_table_schema(engine, canonical_issuers_table)
+    sync_table_schema(engine, canonical_issuer_identifiers_table)
     sync_table_schema(engine, canonical_securities_table)
     sync_table_schema(engine, canonical_security_listings_table)
     sync_table_schema(engine, canonical_security_provider_mappings_table)

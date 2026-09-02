@@ -13,7 +13,10 @@ from __future__ import annotations
 
 from sqlalchemy.engine import Engine
 
-from atlas.alpha.canonical_security.repository import SqlAlchemyCanonicalSecurityRepository
+from atlas.alpha.canonical_security.repository import (
+    SqlAlchemyCanonicalIssuerRepository,
+    SqlAlchemyCanonicalSecurityRepository,
+)
 from atlas.alpha.canonical_security.table import create_canonical_security_tables
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.alpha.canonical_security_resolution.repository import SqlAlchemyResolutionRepository
@@ -34,5 +37,6 @@ def build_identity_gate(engine: Engine) -> CanonicalSecurityIdentityGate:
     return CanonicalSecurityIdentityGate(
         resolution_service=CanonicalSecurityResolutionService(),
         canonical_security_repository=SqlAlchemyCanonicalSecurityRepository(engine),
+        canonical_issuer_repository=SqlAlchemyCanonicalIssuerRepository(engine),
         resolution_repository=SqlAlchemyResolutionRepository(engine),
     )

@@ -145,3 +145,27 @@ class CanonicalStatusRequiresListingError(CanonicalSecurityError):
         super().__init__(
             f"Cannot transition to {requested_status!r}: CanonicalSecurity has no listings"
         )
+
+
+class UnsupportedShareClassError(ValueError):
+    """A share-class value outside the closed `ShareClass` vocabulary."""
+
+    def __init__(self, value: str) -> None:
+        super().__init__(f"Unsupported share class: {value!r}")
+        self.value = value
+
+
+class UnsupportedIssuerIdentifierTypeError(ValueError):
+    """An identifier type outside the closed `IssuerIdentifierType`
+    vocabulary. Note this is issuer-level only: an ISIN is a *security*
+    identifier and belongs to `IdentifierType`."""
+
+    def __init__(self, value: str) -> None:
+        super().__init__(f"Unsupported issuer identifier type: {value!r}")
+        self.value = value
+
+
+class IssuerEquivalenceEvidenceTooWeakError(ValueError):
+    """Raised when something attempts to link a security to an existing
+    issuer on weak evidence alone (name, ticker, exchange or industry
+    similarity). See `issuer.may_link_to_existing_issuer`."""

@@ -43,11 +43,15 @@ integration-safety guards in both canonical-security test directories.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 
+from atlas.alpha.canonical_security.issuer import CanonicalIssuer
 from atlas.alpha.canonical_security.models import CanonicalSecurity
-from atlas.alpha.canonical_security.repository import SqlAlchemyCanonicalSecurityRepository
+from atlas.alpha.canonical_security.repository import (
+    SqlAlchemyCanonicalIssuerRepository,
+    SqlAlchemyCanonicalSecurityRepository,
+)
 from atlas.alpha.canonical_security_gate.candidate_mapping import candidates_from_documents
 from atlas.alpha.canonical_security_gate.provenance import BusinessRecordIdentityProvenance
 from atlas.alpha.canonical_security_resolution.candidates import ProviderCandidate
@@ -104,11 +108,46 @@ class CanonicalSecurityIdentityGate:
         *,
         resolution_service: CanonicalSecurityResolutionService,
         canonical_security_repository: SqlAlchemyCanonicalSecurityRepository,
+        canonical_issuer_repository: "SqlAlchemyCanonicalIssuerRepository | None" = None,
         resolution_repository: SqlAlchemyResolutionRepository,
     ) -> None:
         self._resolution_service = resolution_service
         self._canonical_security_repository = canonical_security_repository
+        # Optional so every existing construction site (this package's
+        # own tests included) keeps working; `build_identity_gate`
+        # always supplies one in production.
+        self._canonical_issuer_repository = canonical_issuer_repository
         self._resolution_repository = resolution_repository
+
+
+    def _ensure_issuer(self, security: CanonicalSecurity) -> CanonicalSecurity:
+        """Issuer Identity Foundation, Phase 13. Every newly-canonical
+        security gets exactly one issuer.
+
+        **The safe default is to create a new issuer, never to reuse an
+        existing one.** Reuse would require proving that two securities
+        are the same company, and the only evidence available at this
+        point is the candidate's company name -- which
+        `issuer.may_link_to_existing_issuer` classifies as weak, for the
+        reason the Volvo diagnostic made concrete: Alpha Vantage
+        returned `VOLVF` (Volvo AB) and `VLVOF` (Volvo Car AB) tied at
+        the same match score. A name cannot separate two companies, so a
+        name is not allowed to join them either.
+
+        The cost of this conservatism is duplicate issuers for the same
+        company across venues. That is a *recoverable* error -- two rows
+        that a later strong identifier can merge -- whereas attaching
+        Volvo Car AB's financials to a Volvo AB holding is not. An
+        already-issuer-linked security is left untouched, so this is
+        idempotent."""
+        if security.issuer_id is not None or self._canonical_issuer_repository is None:
+            return security
+        issuer = CanonicalIssuer.create(
+            legal_name=security.canonical_company_name,
+            jurisdiction=security.country,
+        )
+        self._canonical_issuer_repository.save(issuer)
+        return replace(security, issuer_id=issuer.id)
 
     def evaluate(
         self,
@@ -165,7 +204,8 @@ class CanonicalSecurityIdentityGate:
             and result.canonical_security is not None
             and result.canonical_security.resolution_status == "CANONICAL"
         ):
-            self._canonical_security_repository.save(result.canonical_security)
+            security = self._ensure_issuer(result.canonical_security)
+            self._canonical_security_repository.save(security)
             provenance = BusinessRecordIdentityProvenance(
                 canonical_security_id=str(result.canonical_security.id),
                 resolution_version=result.resolution_version,

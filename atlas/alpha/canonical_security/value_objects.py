@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from atlas.alpha.canonical_security.exceptions import (
+    UnsupportedIssuerIdentifierTypeError,
+    UnsupportedShareClassError,
     InvalidExchangeCodeError,
     InvalidMicCodeError,
     InvalidTradingCurrencyError,
@@ -215,4 +217,70 @@ _IDENTIFIER_TYPES: frozenset[str] = frozenset({"ISIN", "FIGI", "CUSIP", "SEDOL",
 def validate_identifier_type(value: str) -> IdentifierType:
     if value not in _IDENTIFIER_TYPES:
         raise UnsupportedIdentifierTypeError(value)
+    return value  # type: ignore[return-value]
+
+
+@dataclass(frozen=True)
+class CanonicalIssuerId:
+    """Identity of a `CanonicalIssuer` -- the legal/economic company
+    Atlas analyses, as distinct from any tradeable instrument. Same
+    generated-once-never-reused discipline as `CanonicalSecurityId`."""
+
+    value: uuid.UUID = field(default_factory=uuid.uuid4)
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+#: Share class, on the **security** layer only (Issuer Identity
+#: Foundation, Phase 5). Volvo A and Volvo B are one issuer and two
+#: securities with different voting rights, so this can never live on
+#: `CanonicalIssuer`.
+#:
+#: Deliberately closed, matching `SecurityType`/`ListingRelationship`,
+#: with two escape hatches rather than an open string: `OTHER` for a
+#: real class Atlas has seen but not categorised, and `UNKNOWN` for no
+#: evidence at all. The two are not interchangeable -- `UNKNOWN` is the
+#: honest default, `OTHER` is a positive observation.
+#:
+#: **`ADR` is deliberately absent.** A depositary receipt is a listing
+#: relationship, not a share class, and `ListingRelationship` already
+#: owns that fact; adding it here would encode the same thing in two
+#: places and let them disagree. The design brief listed ADR as a
+#: candidate value -- this is a considered departure, recorded here
+#: rather than silently made.
+#:
+#: Kept free of US-specific assumptions: `A`/`B`/`C` are the bare class
+#: letters used in Sweden (Volvo A/B), Germany and the US alike, and
+#: `ORDINARY`/`PREFERRED` cover the non-lettered conventions.
+ShareClass = Literal["A", "B", "C", "ORDINARY", "PREFERRED", "OTHER", "UNKNOWN"]
+_SHARE_CLASSES: frozenset[str] = frozenset(
+    {"A", "B", "C", "ORDINARY", "PREFERRED", "OTHER", "UNKNOWN"}
+)
+
+
+def validate_share_class(value: str) -> ShareClass:
+    if value not in _SHARE_CLASSES:
+        raise UnsupportedShareClassError(value)
+    return value  # type: ignore[return-value]
+
+
+#: Identifiers that name a **reporting entity / legal company**, not an
+#: instrument (Issuer Identity Foundation, Phase 7). Kept separate from
+#: `IdentifierType` because forcing both layers onto one vocabulary is
+#: exactly the conflation this sprint removes: an ISIN names a security,
+#: an LEI names a company, and a system that cannot tell them apart
+#: cannot safely reuse issuer-level data.
+#:
+#: `CIK` appears in both vocabularies. On the issuer layer that is its
+#: correct home -- SEC assigns a CIK to a filer, not to a share class.
+#: Its presence in `IdentifierType` is retained for backward
+#: compatibility with already-written rows and is considered legacy.
+IssuerIdentifierType = Literal["LEI", "CIK"]
+_ISSUER_IDENTIFIER_TYPES: frozenset[str] = frozenset({"LEI", "CIK"})
+
+
+def validate_issuer_identifier_type(value: str) -> IssuerIdentifierType:
+    if value not in _ISSUER_IDENTIFIER_TYPES:
+        raise UnsupportedIssuerIdentifierTypeError(value)
     return value  # type: ignore[return-value]
