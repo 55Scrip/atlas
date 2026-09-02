@@ -78,6 +78,28 @@ class SqlAlchemyBusinessRecordRepository:
         return {company: tuple(records) for company, records in grouped.items()}
 
 
+    def get_by_issuer_id(self, canonical_issuer_id: str) -> tuple[BusinessRecord, ...]:
+        """Issuer-level retrieval for records repaired by the legacy
+        provenance backfill (Phase 13).
+
+        Complements `get_by_canonical_security_ids`, which reaches
+        records through their security. This one reaches records that
+        have *no* provable security but a proven issuer -- exactly the
+        570 legacy SEC records the backfill exists for. Neither replaces
+        `get_by_company`, which is unchanged.
+        """
+        with self._engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    select(business_record_table).where(
+                        business_record_table.c.canonical_issuer_id == canonical_issuer_id
+                    )
+                )
+                .mappings()
+                .all()
+            )
+        return tuple(_to_record(row) for row in rows)
+
     def get_by_canonical_security_ids(
         self, canonical_security_ids: tuple[str, ...]
     ) -> tuple[BusinessRecord, ...]:
@@ -130,6 +152,7 @@ def _to_row(record: BusinessRecord) -> dict[str, Any]:
         "language": record.language,
         "metadata_json": json.dumps(dict(record.metadata), sort_keys=True),
         "canonical_security_id": record.canonical_security_id,
+        "canonical_issuer_id": record.canonical_issuer_id,
         "resolution_version": record.resolution_version,
         "identity_resolved_at": (
             record.identity_resolved_at.isoformat() if record.identity_resolved_at else None
@@ -181,6 +204,7 @@ def _to_record(row: Mapping[str, Any]) -> BusinessRecord:
         language=row["language"],
         metadata=json.loads(row["metadata_json"]),
         canonical_security_id=row.get("canonical_security_id"),
+        canonical_issuer_id=row.get("canonical_issuer_id"),
         resolution_version=row.get("resolution_version"),
         identity_resolved_at=(
             datetime.fromisoformat(row["identity_resolved_at"]) if row.get("identity_resolved_at") else None

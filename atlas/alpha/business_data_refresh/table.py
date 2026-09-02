@@ -51,6 +51,9 @@ business_record_table = Table(
     Column("resolution_version", String, nullable=True),
     Column("identity_resolved_at", String, nullable=True),
     Column("provider_evidence_reference", String, nullable=True),
+    # Legacy Identity Provenance Backfill. Nullable so `sync_table_schema`
+    # adds it to the existing development database automatically.
+    Column("canonical_issuer_id", String, nullable=True, index=True),
 )
 
 

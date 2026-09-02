@@ -166,6 +166,25 @@ class BusinessRecord:
     resolution_version: str | None = None
     identity_resolved_at: datetime | None = None
     provider_evidence_reference: str | None = None
+    # Legacy Identity Provenance Backfill -- a fifth, independent
+    # provenance field, following the same "plain primitive, no package
+    # import" discipline as the four above.
+    #
+    # **Why it is not derived from `canonical_security_id`.** For a
+    # record created through the Identity Gate the issuer *is*
+    # derivable, and that remains the preferred path. But 570 stored
+    # records (22.7% of the corpus) predate the gate: they carry an
+    # authoritative SEC CIK and no security link at all. A CIK proves
+    # which *filer* produced a filing; it does not prove which *security*
+    # generated the record, and Atlas must not invent one. This field
+    # lets such a record say "I belong to this company" while honestly
+    # leaving `canonical_security_id` null.
+    #
+    # It is issuer-level provenance only. A security-specific record --
+    # a price, a market snapshot -- must never reach a security through
+    # this field, because the issuer does not identify which listing's
+    # price it is.
+    canonical_issuer_id: str | None = None
 
     def __post_init__(self) -> None:
         from atlas.analysis_engine.business_data.exceptions import BusinessDataContractError
