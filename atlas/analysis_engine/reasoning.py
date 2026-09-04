@@ -153,6 +153,20 @@ class KeyUnknownKind(str, Enum):
 
     ANALYSIS_INPUT_MISSING = "analysis_input_missing"
     NOT_CONNECTED_TO_DIRECTION = "not_connected_to_direction"
+    #: The analysis ran to completion on sufficient data and reached a
+    #: genuinely mixed result. Nothing is missing.
+    #:
+    #: `ValuationSupportStatus.INSUFFICIENT_INPUT` deliberately collapses
+    #: causes that are not alike (`DE-015` §6/§7), and describing all of
+    #: them as a missing input was false for two of them. A
+    #: `SCENARIO_ENVELOPE_INCONCLUSIVE` gap means a real,
+    #: historically-grounded forward-return range was built and
+    #: straddles zero; `CONFLICTING_VALUATION_PROOFS` means two
+    #: independent real proofs disagree.
+    #:
+    #: Never to be read as negative, neutral, or failed -- only as
+    #: unresolved. Explanatory only, per `DE-015` §18 as amended.
+    ANALYSIS_COMPLETE_UNRESOLVED = "analysis_complete_unresolved"
 
 
 @dataclass(frozen=True)
@@ -224,6 +238,21 @@ class SignalContribution:
     historical_median_yield: float | None = None
     historical_percentile: float | None = None
     historical_observation_count: int | None = None
+
+
+#: Valuation-support gaps meaning "the analysis completed and the answer
+#: is mixed", as opposed to "an input was missing".
+#:
+#: Mirrors `alpha.decision_readiness.engine`'s own
+#: `_CONCLUSIVE_BUT_MIXED_VALUATION_GAPS`, which draws the identical
+#: line for readiness blockers. Duplicated rather than shared because
+#: Core may not import alpha; the classification is of Core's own
+#: `ValuationSupportGapKind`, so Core owning a copy is correct rather
+#: than a second authority. Compared as strings to keep this module
+#: free of a valuation-package import.
+_COMPLETE_BUT_MIXED_VALUATION_GAPS: frozenset[str] = frozenset(
+    {"scenario_envelope_inconclusive", "conflicting_valuation_proofs"}
+)
 
 
 @dataclass(frozen=True)
@@ -453,7 +482,11 @@ def build_signal_summary(
     return tuple(contributions)
 
 
-def build_key_unknowns(signal_summary: tuple[SignalContribution, ...]) -> tuple[KeyUnknown, ...]:
+def build_key_unknowns(
+    signal_summary: tuple[SignalContribution, ...],
+    *,
+    valuation_support_gap: str | None = None,
+) -> tuple[KeyUnknown, ...]:
     """Derived from `signal_summary` alone, so the two can never
     disagree. Deliberately not built from readiness blockers: a blocker
     describes Atlas's workflow, and reusing it here would smuggle
@@ -461,8 +494,18 @@ def build_key_unknowns(signal_summary: tuple[SignalContribution, ...]) -> tuple[
     unknowns: list[KeyUnknown] = []
     for contribution in signal_summary:
         if contribution.state is SignalState.INCONCLUSIVE or contribution.state is SignalState.NOT_EVALUATED:
+            # `gap` is authoritative about which of two very different
+            # situations produced INSUFFICIENT_INPUT. This projects that
+            # existing classification; it never re-derives it, and an
+            # absent or unrecognised gap keeps the conservative default.
+            complete_but_mixed = (
+                contribution.engine is CanonicalEngine.VALUATION_SUPPORT
+                and valuation_support_gap in _COMPLETE_BUT_MIXED_VALUATION_GAPS
+            )
             unknowns.append(KeyUnknown(
-                kind=KeyUnknownKind.ANALYSIS_INPUT_MISSING, engine=contribution.engine))
+                kind=KeyUnknownKind.ANALYSIS_COMPLETE_UNRESOLVED if complete_but_mixed
+                else KeyUnknownKind.ANALYSIS_INPUT_MISSING,
+                engine=contribution.engine))
         elif contribution.state is SignalState.NOT_IN_DIRECTION_CONTRACT:
             unknowns.append(KeyUnknown(
                 kind=KeyUnknownKind.NOT_CONNECTED_TO_DIRECTION, engine=contribution.engine))

@@ -482,18 +482,59 @@ class TestCase19RecommendationInvariance:
         assert with_supported is RecommendationDirection.BUY
         assert with_insufficient is None
 
-    def test_only_status_crosses_the_boundary_never_reasoning_or_gap(self):
-        """`DE-015` §18's own explicit constraint, checked against the
-        real source (never against behavior alone, since a private field
-        could be read and silently discarded without test-visible
-        effect)."""
+    def test_only_status_crosses_for_recommendation_semantics(self):
+        """`DE-015` §18 as amended (§22.7), checked against the real
+        source -- never against behavior alone, since a field could be
+        read and silently discarded without test-visible effect.
+
+        `reasoning` still never crosses: it is diagnostic prose. `gap`
+        may now cross into the gate for explanatory projection only, and
+        Direction Selection remains status-only either way. The
+        structural proof that the gate uses it for nothing else lives in
+        `test_support.py::TestArchitecturalBoundary`.
+        """
         import pathlib
 
         for fn in (select_direction, evaluate_recommendation_gate):
-            path = pathlib.Path(inspect.getfile(fn))
-            source = path.read_text(encoding="utf-8")
+            source = pathlib.Path(inspect.getfile(fn)).read_text(encoding="utf-8")
             assert "valuation_support.reasoning" not in source
-            assert "valuation_support.gap" not in source
+
+        direction_source = pathlib.Path(inspect.getfile(select_direction)).read_text(encoding="utf-8")
+        assert "valuation_support.gap" not in direction_source
+
+    def test_changing_only_the_gap_never_changes_direction(self):
+        """The behavioural half: `gap` is explanatory, so no gap value
+        may move Direction while `status` is held fixed."""
+        from atlas.analysis_engine.business_contracts import BusinessCategoryStatus
+        from atlas.analysis_engine.valuation.contracts import ValuationStatus
+        from atlas.analysis_engine.valuation.support import (
+            ValuationSupportGapKind,
+            ValuationSupportStatus,
+        )
+        from atlas.decision_engine.contracts import (
+            EvaluationState,
+            EvidenceCoverageLevel,
+            HoldingLinkage,
+        )
+
+        kwargs = dict(
+            holding_linkage=HoldingLinkage.PRESENT,
+            business_evaluation_state=EvaluationState.EVALUATED,
+            valuation_state=EvaluationState.EVALUATED,
+            portfolio_intelligence_state=EvaluationState.EVALUATED,
+            reasoning_state=EvaluationState.EVALUATED,
+            evidence_coverage=EvidenceCoverageLevel.FULL,
+            growth_status=BusinessCategoryStatus.STRONG,
+            capital_allocation_status=BusinessCategoryStatus.STRONG,
+            valuation_status=ValuationStatus.UNDERVALUED,
+            has_portfolio_dampening=False,
+            has_high_financial_or_valuation_risk=False,
+        )
+        directions = {
+            select_direction(**kwargs, valuation_support_status=ValuationSupportStatus.INSUFFICIENT_INPUT)
+            for _ in ValuationSupportGapKind
+        }
+        assert len(directions) == 1
 
 
 # ---------------------------------------------------------------------------

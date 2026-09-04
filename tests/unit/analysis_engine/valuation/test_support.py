@@ -285,16 +285,59 @@ class TestArchitecturalBoundary:
         params = inspect.signature(evaluate_recommendation_gate).parameters
         assert "valuation_support" in params
 
-    def test_neither_function_reads_reasoning_or_gap_from_the_source(self):
-        """`DE-015` §18: only the public `status` field crosses the
-        boundary. Checked against real source, not behavior alone."""
+    def test_neither_function_reads_valuation_support_reasoning(self):
+        """`DE-015` §18: `reasoning` is diagnostic prose and never
+        crosses. Checked against real source, not behavior alone."""
         import pathlib
 
         for fn in (select_direction, evaluate_recommendation_gate):
-            path = pathlib.Path(inspect.getfile(fn))
-            source = path.read_text(encoding="utf-8")
+            source = pathlib.Path(inspect.getfile(fn)).read_text(encoding="utf-8")
             assert "valuation_support.reasoning" not in source
-            assert "valuation_support.gap" not in source
+
+    def test_direction_selection_never_reads_the_gap(self):
+        """`DE-015` §18 as amended (§22.7): `gap` may cross for
+        explanatory projection, but Direction Selection remains
+        status-only. This is the half of the original prohibition that
+        the amendment deliberately keeps."""
+        import pathlib
+
+        source = pathlib.Path(inspect.getfile(select_direction)).read_text(encoding="utf-8")
+        assert "valuation_support.gap" not in source
+        assert "gap" not in inspect.signature(select_direction).parameters
+
+    def test_the_gate_reads_the_gap_only_for_explanatory_projection(self):
+        """The amendment's positive half. `gap` appears in the gate
+        exactly once, and only as an argument to the key-unknowns
+        projection -- never to a direction, driver, trigger or
+        conviction call.
+
+        Asserted structurally rather than by comment: this walks the
+        call sites, so a future edit that hands `gap` to a semantic
+        function fails here rather than passing review.
+        """
+        import ast
+        import pathlib
+
+        source = pathlib.Path(inspect.getfile(evaluate_recommendation_gate)).read_text(encoding="utf-8")
+        semantic_calls = {
+            "select_direction",
+            "build_drivers",
+            "_derive_what_would_change",
+            "calculate_recommendation_conviction",
+            "calculate_conviction",
+            "build_signal_summary",
+        }
+        explanatory_calls = {"build_key_unknowns"}
+        seen_explanatory = 0
+        for node in ast.walk(ast.parse(source)):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+                continue
+            passes_gap = "gap" in ast.dump(node)
+            if node.func.id in semantic_calls:
+                assert not passes_gap, f"{node.func.id} must never receive the valuation gap"
+            if node.func.id in explanatory_calls and passes_gap:
+                seen_explanatory += 1
+        assert seen_explanatory == 1, "the gap must reach exactly one explanatory projection"
 
     def test_calculate_recommendation_conviction_signature_has_no_valuation_support_parameter(self):
         params = inspect.signature(calculate_recommendation_conviction).parameters

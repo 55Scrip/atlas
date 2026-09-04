@@ -549,3 +549,117 @@ class TestValuationContextIsDescriptiveOnly:
                 valuation_historical_yields=(0.01, 0.02, 0.03))
 
         assert len({json.dumps(serialize_reasoning(_R()), sort_keys=True) for _ in range(20)}) == 1
+
+
+class TestMixedValuationIsNotMissingInput:
+    """`ValuationSupportStatus.INSUFFICIENT_INPUT` collapses causes that
+    are not alike, and describing all of them as a missing input was
+    false for two.
+
+    A `scenario_envelope_inconclusive` gap means a real,
+    historically-grounded forward-return range was built and straddles
+    zero; nothing is missing. Seven of nine real benchmark companies
+    were being described as lacking input when the analysis had in fact
+    completed. Permitted by `DE-015` §18 as amended under §22.7 --
+    explanatory projection only.
+    """
+
+    def _unknown(self, gap, support=ValuationSupportStatus.INSUFFICIENT_INPUT):
+        summary = build_signal_summary(**_drivers(valuation_support_status=support))
+        found = [u for u in build_key_unknowns(summary, valuation_support_gap=gap)
+                 if u.engine is CanonicalEngine.VALUATION_SUPPORT]
+        return found[0].kind if found else None
+
+    def test_a_straddling_envelope_is_unresolved_not_missing(self):
+        assert self._unknown("scenario_envelope_inconclusive") is \
+            KeyUnknownKind.ANALYSIS_COMPLETE_UNRESOLVED
+
+    def test_conflicting_proofs_are_also_complete_but_unresolved(self):
+        assert self._unknown("conflicting_valuation_proofs") is \
+            KeyUnknownKind.ANALYSIS_COMPLETE_UNRESOLVED
+
+    @pytest.mark.parametrize("gap", [
+        "insufficient_historical_valuation_data",
+        "no_durable_growth_basis",
+        "missing_capital_deployment_valuation_support",
+    ])
+    def test_genuine_missing_input_gaps_stay_missing_input(self, gap):
+        """The control that matters most: this change must never
+        relabel a real data gap as a completed analysis."""
+        assert self._unknown(gap) is KeyUnknownKind.ANALYSIS_INPUT_MISSING
+
+    def test_the_fallback_gap_keeps_the_conservative_default(self):
+        """`no_sufficient_valuation_proof` is not semantically clear, so
+        it keeps existing behaviour rather than being guessed at."""
+        assert self._unknown("no_sufficient_valuation_proof") is \
+            KeyUnknownKind.ANALYSIS_INPUT_MISSING
+
+    def test_an_absent_or_unrecognised_gap_keeps_the_default(self):
+        assert self._unknown(None) is KeyUnknownKind.ANALYSIS_INPUT_MISSING
+        assert self._unknown("some_future_gap") is KeyUnknownKind.ANALYSIS_INPUT_MISSING
+
+    @pytest.mark.parametrize("support", [
+        ValuationSupportStatus.SUPPORTED, ValuationSupportStatus.NOT_SUPPORTED])
+    def test_a_directional_support_yields_no_valuation_unknown(self, support):
+        assert self._unknown("scenario_envelope_inconclusive", support=support) is None
+
+    def test_an_inconsistent_gap_cannot_override_a_directional_status(self):
+        """Adversarial: status is authoritative. A mixed gap arriving
+        alongside SUPPORTED must not manufacture an unknown."""
+        assert self._unknown("scenario_envelope_inconclusive",
+                             support=ValuationSupportStatus.SUPPORTED) is None
+
+    def test_the_gap_reclassifies_only_the_valuation_support_entry(self):
+        summary = build_signal_summary(**_drivers(
+            growth_status=BusinessCategoryStatus.INSUFFICIENT_INPUT,
+            valuation_support_status=ValuationSupportStatus.INSUFFICIENT_INPUT))
+        kinds = {u.engine: u.kind for u in
+                 build_key_unknowns(summary, valuation_support_gap="scenario_envelope_inconclusive")}
+        assert kinds[CanonicalEngine.GROWTH] is KeyUnknownKind.ANALYSIS_INPUT_MISSING
+        assert kinds[CanonicalEngine.VALUATION_SUPPORT] is KeyUnknownKind.ANALYSIS_COMPLETE_UNRESOLVED
+
+    def test_the_gap_never_alters_the_signal_summary(self):
+        """signalSummary carries the growth/valuation measurements added
+        by the two preceding sprints and must be untouched here."""
+        summary = build_signal_summary(**_drivers(
+            valuation_support_status=ValuationSupportStatus.INSUFFICIENT_INPUT))
+        build_key_unknowns(summary, valuation_support_gap="scenario_envelope_inconclusive")
+        assert summary == build_signal_summary(**_drivers(
+            valuation_support_status=ValuationSupportStatus.INSUFFICIENT_INPUT))
+
+    def test_no_recommendation_function_accepts_the_gap(self):
+        import inspect
+        from atlas.analysis_engine.direction_selector import select_direction
+        from atlas.analysis_engine.recommendation import _derive_what_would_change
+        from atlas.analysis_engine.recommendation_conviction import (
+            calculate_recommendation_conviction,
+        )
+        for fn in (select_direction, _derive_what_would_change, build_drivers,
+                   calculate_recommendation_conviction, build_signal_summary):
+            assert not any("gap" in name for name in inspect.signature(fn).parameters)
+
+    def test_round_trip_preserves_the_new_kind(self):
+        from atlas.analysis_engine.reasoning import deserialize_reasoning, serialize_reasoning
+        summary = build_signal_summary(
+            **_drivers(valuation_support_status=ValuationSupportStatus.INSUFFICIENT_INPUT))
+
+        class _R:
+            primary_drivers = counter_drivers = ()
+            what_would_change = ()
+            conviction_reasoning = None
+            signal_summary = summary
+            key_unknowns = build_key_unknowns(
+                summary, valuation_support_gap="scenario_envelope_inconclusive")
+
+        payload = serialize_reasoning(_R())
+        assert {"kind": "analysis_complete_unresolved", "engine": "valuation_support"} in \
+            payload["keyUnknowns"]
+        assert any(u.kind is KeyUnknownKind.ANALYSIS_COMPLETE_UNRESOLVED
+                   for u in deserialize_reasoning(payload).key_unknowns)
+
+    def test_legacy_payload_without_the_kind_still_reads(self):
+        from atlas.analysis_engine.reasoning import deserialize_reasoning
+        legacy = {"schemaVersion": 1, "keyUnknowns": [
+            {"kind": "analysis_input_missing", "engine": "valuation_support"}]}
+        assert deserialize_reasoning(legacy).key_unknowns[0].kind is \
+            KeyUnknownKind.ANALYSIS_INPUT_MISSING

@@ -100,10 +100,18 @@ class TestOnlyStatusCrossesTheNewEdge:
         assert "valuation_support_status.reasoning" not in source
         assert "valuation_support_status.gap" not in source
 
-    def test_recommendation_module_never_reads_valuation_support_reasoning_or_gap(self):
+    def test_recommendation_module_never_reads_valuation_support_reasoning(self):
+        """`reasoning` is diagnostic prose and never crosses.
+
+        `gap` is no longer prohibited here: `DE-015` §18, amended under
+        its own §22.7, permits it to cross for explanatory projection
+        only. `select_direction` remains status-only -- asserted by the
+        sibling test above, which is deliberately unchanged -- and the
+        structural proof that the gate passes `gap` to nothing but the
+        key-unknowns projection lives in
+        `valuation/test_support.py::TestArchitecturalBoundary`.
+        """
         import pathlib
 
-        path = pathlib.Path(inspect.getfile(evaluate_recommendation_gate))
-        source = path.read_text(encoding="utf-8")
+        source = pathlib.Path(inspect.getfile(evaluate_recommendation_gate)).read_text(encoding="utf-8")
         assert "valuation_support.reasoning" not in source
-        assert "valuation_support.gap" not in source

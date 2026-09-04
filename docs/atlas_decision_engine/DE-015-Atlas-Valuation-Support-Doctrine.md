@@ -367,6 +367,32 @@ named throughout this document as "downstream" remain Recommendation's
 (or Portfolio Intelligence's) domain, not `ValuationSupport`'s, and not
 addressed further here.
 
+**Amendment (§22.7 — genuine expressive contradiction).** Recommendation
+MAY additionally consume `ValuationSupport`'s public `gap` field, solely
+for explanatory projection into canonical reasoning. `gap` **SHALL NOT**
+influence Direction Selection, recommendation gating, Recommendation
+Conviction, DecisionSupport, recommendation drivers, what-would-change,
+or any other recommendation-semantic determination, and **SHALL NOT** be
+treated as an additional `ValuationSupport` status. `status` remains the
+sole `ValuationSupport` field that may affect recommendation semantics.
+
+The contradiction this resolves: `INSUFFICIENT_INPUT` deliberately
+collapses causes that are not alike (§6/§7). A
+`SCENARIO_ENVELOPE_INCONCLUSIVE` gap means a real, historically-grounded
+forward-return range was built and genuinely straddles zero — a complete
+analysis whose answer is mixed. Restricted to `status`, canonical
+reasoning could only describe that as a missing analytical input, which
+is false. The distinction already exists in `gap`, already a public
+field of this contract and already consumed outside Valuation by
+`decision_readiness`, `coverage`, and the Investment Case API; this
+amendment removes an inconsistency in which Recommendation alone was
+forbidden to read what the API already publishes.
+
+This is not reopened for naming, convenience, DRY, or test convenience
+(§22's own exclusions). The doctrine's decision logic, status
+vocabulary, Scenario Envelope construction and Direction Selection are
+unchanged.
+
 ---
 
 ## 19. Known Limitations

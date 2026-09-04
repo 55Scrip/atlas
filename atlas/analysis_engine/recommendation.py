@@ -705,7 +705,15 @@ def evaluate_recommendation_gate(
                 primary_drivers=_signal_drivers[0],
                 counter_drivers=_signal_drivers[1],
                 signal_summary=_signal_summary,
-                key_unknowns=build_key_unknowns(_signal_summary),
+                key_unknowns=build_key_unknowns(
+                    _signal_summary,
+                    # DE-015 §18 as amended: `gap` crosses for
+                    # explanatory projection only. It reaches no
+                    # recommendation-semantic call above.
+                    valuation_support_gap=(
+                        valuation_support.gap.value if valuation_support.gap is not None else None
+                    ),
+                ),
                 conviction_reasoning=build_conviction_reasoning(recommendation_conviction),
             ),
             portfolio_factors=portfolio_intelligence.portfolio_factors,
