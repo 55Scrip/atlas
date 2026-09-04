@@ -76,6 +76,16 @@ from atlas.analysis_engine.business_contracts import (
 )
 from atlas.analysis_engine.conviction import ConvictionAssessment, ConvictionLevel
 from atlas.analysis_engine.exceptions import AnalysisEngineContractError
+from atlas.analysis_engine.reasoning import (
+    ConvictionReasoning,
+    InvestmentReason,
+    KeyUnknown,
+    SignalContribution,
+    build_conviction_reasoning,
+    build_drivers,
+    build_key_unknowns,
+    build_signal_summary,
+)
 from atlas.analysis_engine.recommendation_conviction import (
     RecommendationConvictionLevel,
     calculate_recommendation_conviction,
@@ -237,6 +247,20 @@ class RecommendationReasoning:
     contradicting_evidence: ContradictionSummary
     portfolio_context: PortfolioContextSummary
     what_would_change: tuple[ChangeTriggerKind, ...] = ()
+
+    #: Reasoning Domain Closure. Every field below is additive and
+    #: defaults to empty, so the pre-existing construction sites (and
+    #: every test fixture) keep working unchanged. They are populated
+    #: only at this module's own single producer -- see
+    #: `evaluate_recommendation_gate` -- because only there are the
+    #: exact statuses `select_direction` read still in scope. A
+    #: downstream layer that populated them would be reasoning from a
+    #: different set of facts than the direction it explains.
+    primary_drivers: tuple[InvestmentReason, ...] = ()
+    counter_drivers: tuple[InvestmentReason, ...] = ()
+    key_unknowns: tuple[KeyUnknown, ...] = ()
+    signal_summary: tuple[SignalContribution, ...] = ()
+    conviction_reasoning: ConvictionReasoning | None = None
 
 
 @dataclass(frozen=True)
@@ -561,6 +585,27 @@ def evaluate_recommendation_gate(
         has_real_risk_evidence=has_real_risk_evidence,
     )
 
+    # Reasoning Domain Closure: computed once, from exactly the
+    # statuses `select_direction` was handed above. Cheap, pure, and
+    # deliberately positioned after the direction call so it can never
+    # be mistaken for an input to it.
+    _signal_summary = build_signal_summary(
+        growth_status=growth_finding.status,
+        capital_allocation_status=capital_allocation_finding.status,
+        valuation_status=fcf_yield_finding.status,
+        valuation_support_status=valuation_support.status,
+        has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
+        has_real_risk_evidence=has_real_risk_evidence,
+    )
+    _signal_drivers = build_drivers(
+        growth_status=growth_finding.status,
+        capital_allocation_status=capital_allocation_finding.status,
+        valuation_status=fcf_yield_finding.status,
+        valuation_support_status=valuation_support.status,
+        has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
+        has_real_risk_evidence=has_real_risk_evidence,
+    )
+
     recommendation: RecommendationWithheld | ComputedDirectionalRecommendation
     if direction is not None and recommendation_conviction is not None:
         assert reasoning.finding is not None  # guaranteed: select_direction's own hard gate requires reasoning EVALUATED for `direction` to be non-None
@@ -585,6 +630,16 @@ def evaluate_recommendation_gate(
                     capital_allocation_status=capital_allocation_finding.status,
                     valuation_status=fcf_yield_finding.status,
                 ),
+                # Reasoning Domain Closure -- built here and nowhere
+                # else, from the identical statuses passed to
+                # `select_direction` immediately above. Restatement
+                # only: no new analysis, no new engine, and nothing
+                # here can alter the direction already chosen.
+                primary_drivers=_signal_drivers[0],
+                counter_drivers=_signal_drivers[1],
+                signal_summary=_signal_summary,
+                key_unknowns=build_key_unknowns(_signal_summary),
+                conviction_reasoning=build_conviction_reasoning(recommendation_conviction),
             ),
             portfolio_factors=portfolio_intelligence.portfolio_factors,
         )

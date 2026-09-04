@@ -124,6 +124,22 @@ class DecisionSupportView:
     badge_label: str
     statement: str
 
+    #: Reasoning Domain Closure -- additive, and deliberately NOT a
+    #: branching field. `level` remains the only field a frontend
+    #: should branch on; this carries the canonical analytical
+    #: rationale that used to be discarded here.
+    #:
+    #: The distinction this restores: a *branching* contract is not a
+    #: *reasoning* contract. Collapsing a full
+    #: `RecommendationReasoning` to one enum was what left the
+    #: Calibration Phase 9 benchmark reading process states as
+    #: investment reasoning.
+    #:
+    #: `None` means the recommendation was withheld -- there is no
+    #: direction, so there is no reasoning to project. It never means
+    #: "reasoning was not computed".
+    reasoning: RecommendationReasoning | None = None
+
 
 def describe_recommendation(gate_result: RecommendationGateResult) -> DecisionSupportView:
     """Deterministic: reads `gate_result.recommendation` only, never
@@ -137,10 +153,16 @@ def describe_recommendation(gate_result: RecommendationGateResult) -> DecisionSu
     recommendation = gate_result.recommendation
     if isinstance(recommendation, RecommendationWithheld):
         level = DecisionSupportLevel.INSUFFICIENT_EVIDENCE
+        reasoning = None
     else:
         level = _DIRECTION_LEVEL[recommendation.direction]
+        # Projected, never re-derived: this is the object the
+        # recommendation gate already built from the same statuses that
+        # chose `recommendation.direction`.
+        reasoning = recommendation.reasoning
     return DecisionSupportView(
         level=level,
         badge_label=_LEVEL_BADGE_LABEL[level],
         statement=_LEVEL_STATEMENT[level],
+        reasoning=reasoning,
     )
