@@ -24,7 +24,9 @@ ATLAS-031B: live testing with a real key found the free tier rejects a
 second call made less than ~1 second after the first -- every outbound
 call is spaced by an injectable delay (`_sleeper`, default
 `time.sleep`) so production calls are genuinely paced while tests never
-actually wait. No retry, no backoff, no queue -- if Alpha Vantage still
+actually wait. The spacing has since been widened well beyond that
+~1 second observation -- see `_DEFAULT_INTER_REQUEST_DELAY_SECONDS`
+for the measurements and the reasoning. No retry, no backoff, no queue -- if Alpha Vantage still
 rate-limits after the delay, that surfaces through the existing typed
 `RateLimited` error exactly as before.
 
@@ -32,7 +34,7 @@ rate-limits after the delay, that surfaces through the existing typed
 level, not hand-placed between specific call pairs.** A real refresh
 calls `fetch()` (2 requests) and then, moments later,
 `fetch_historical_snapshots()` (2 more requests) on the *same*
-provider instance -- confirmed live to violate the 1-request/second
+provider instance -- confirmed live to violate the short-term rate
 limit, because each method only paced its own internal calls and
 neither knew the other had just run. Every outbound call now funnels
 through `_request_json`, which calls `_pace()` first: `_pace()` tracks
@@ -181,11 +183,39 @@ def _identity_fields(overview: dict[str, Any]) -> dict[str, str]:
             fields[metadata_key] = value.strip()
     return fields
 
-#: Alpha Vantage's free tier rejects a second call made less than
-#: ~1 second after the first -- confirmed by live testing with a real
-#: key. A small safety margin above the observed limit, not a tuned or
-#: documented constant from Alpha Vantage itself.
-_DEFAULT_INTER_REQUEST_DELAY_SECONDS = 1.1
+#: An OPERATIONAL SAFETY CONSTANT, not a documented or proven Alpha
+#: Vantage limit. Alpha Vantage publishes no short-term rate for the
+#: current free tier, and nothing here should be read as a claim about
+#: one.
+#:
+#: The pacing calibration sweep (2026-09-04) measured this directly. At
+#: the previous 1.1s value, 5 of 24 requests were rejected with a
+#: short-term throttle (20.8%) across two runs; 0 of 12 were rejected at
+#: 2s or wider, and 0 of 4 at 13s. The per-arm samples were small -- no
+#: individual spacing was *shown* safe, and the pooled comparison did
+#: not reach significance (Fisher exact p=0.146) -- so 12.0 is chosen on
+#: cost asymmetry rather than on a measured boundary:
+#:
+#:   too fast  costs irreplaceable quota -- a throttled request consumes
+#:             one of only 25 daily calls and returns no data (~5
+#:             calls/day wasted at the observed rate);
+#:   too slow  costs only wall-clock, in a background enrichment job
+#:             where nothing waits on it (a 22-company batch goes from
+#:             ~24s to ~4.4min).
+#:
+#: When one error destroys a scarce resource and the other is nearly
+#: free, the constant belongs at the safe end of the plausible range
+#: rather than at its boundary. 12.0s happens to correspond to five
+#: requests per minute -- the rate Alpha Vantage published for its free
+#: tier historically -- but that has NOT been verified against the
+#: current tier and is not the justification.
+#:
+#: The provider still has no retry and no backoff: a throttle that gets
+#: through this spacing surfaces as the same typed `RateLimited` error
+#: as before. Adaptive pacing would be the better long-term answer,
+#: since the throttle is intermittent rather than a hard wall, but that
+#: is a separate decision.
+_DEFAULT_INTER_REQUEST_DELAY_SECONDS = 12.0
 
 #: Quarter-end (month, day) per Alpha Vantage's own `"YYYYQN"` quarter
 #: format -- lets `_quarter_end_date` derive a real calendar date from a

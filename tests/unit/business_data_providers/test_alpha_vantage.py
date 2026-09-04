@@ -11,7 +11,10 @@ from datetime import datetime, timezone
 import pytest
 
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
-from atlas.business_data_providers.alpha_vantage import AlphaVantageMarketDataProvider
+from atlas.business_data_providers.alpha_vantage import (
+    _DEFAULT_INTER_REQUEST_DELAY_SECONDS,
+    AlphaVantageMarketDataProvider,
+)
 from atlas.business_data_providers.errors import (
     NoIdentityDataForSymbol,
     CompanyNotFound,
@@ -502,7 +505,13 @@ class TestInstanceLevelPacing:
         # TIME_SERIES_MONTHLY_ADJUSTED) -- exactly one sleep should
         # occur (before the second), proving the very first request a
         # freshly constructed instance ever makes is never delayed.
-        assert sleep_calls == [1.1]
+        #
+        # No `inter_request_delay_seconds` is injected here on purpose:
+        # this is the one pacing test that exercises the real default,
+        # so it asserts against the constant rather than a literal. The
+        # claim under test is "exactly one sleep, and not before the
+        # first request" -- the magnitude is whatever production ships.
+        assert sleep_calls == [_DEFAULT_INTER_REQUEST_DELAY_SECONDS]
 
     def test_fetch_then_fetch_historical_snapshots_paces_across_the_method_boundary(self, monkeypatch):
         """The exact regression this corrective fix targets: calling
@@ -1353,3 +1362,156 @@ def _ingest_for_test(document: RawBusinessDocument):
     result = ingest(document, evaluated_at=_NOW)
     assert isinstance(result, IngestedRecord)
     return result.record
+
+
+class TestPacingSafetyConstant:
+    """The pacing calibration sweep (2026-09-04) widened
+    `_DEFAULT_INTER_REQUEST_DELAY_SECONDS` from 1.1s to 12.0s. The
+    value is an operational safety constant chosen on cost asymmetry --
+    a throttled request burns one of only 25 daily calls and returns
+    nothing, while waiting longer costs only wall-clock in a background
+    job -- and NOT a claim about any documented Alpha Vantage limit.
+
+    These tests pin the properties that make that change meaningful:
+    production request starts are genuinely spaced by the wider
+    interval, and the pacing math stays exactly as deterministic under
+    an injected clock as it was at the narrower value. They deliberately
+    do not assert the provider's behaviour under throttling -- that is
+    unchanged, and covered elsewhere.
+    """
+
+    def test_production_default_is_at_least_the_twelve_second_safety_floor(self):
+        """Guards the constant itself. A future edit that narrows the
+        spacing back toward the value measured to throttle should fail
+        here, loudly, rather than silently start burning quota."""
+        assert _DEFAULT_INTER_REQUEST_DELAY_SECONDS >= 12.0
+
+    def test_every_production_request_after_the_first_is_spaced_by_twelve_seconds(self, monkeypatch):
+        """The invariant that actually protects quota: with nothing
+        injected but a fake sleeper and a clock that never advances on
+        its own, a real multi-request production sequence must pace
+        every request after the first by the full default interval.
+
+        `fetch()` makes two real requests (GLOBAL_QUOTE, OVERVIEW), and
+        `fetch_historical_snapshots()` on the same instance makes one
+        more (TIME_SERIES_MONTHLY_ADJUSTED -- its OVERVIEW is reused,
+        per ATLAS-033), so three requests means exactly two sleeps."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        sleep_calls: list[float] = []
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"},
+                "TIME_SERIES_MONTHLY_ADJUSTED": {
+                    "Monthly Adjusted Time Series": {"2023-02-28": {"5. adjusted close": "40.00"}}
+                },
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(fetcher, sleeper=sleep_calls.append, clock=_FakeClock())
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        provider.fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date_(2023, 2, 1),), evaluated_at=_NOW
+        )
+        assert sleep_calls == [12.0, 12.0]
+        assert all(seconds >= 12.0 for seconds in sleep_calls)
+
+    def test_pacing_still_sleeps_only_the_remaining_interval_at_the_wider_value(self, monkeypatch):
+        """Determinism check at 12.0s: the widened constant must not
+        turn the pacing into a flat delay. With 4.5s of real elapsed
+        time already spent between two requests, the provider sleeps
+        the remaining 7.5s -- exact arithmetic on an injected clock, no
+        wall-clock tolerance."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        sleep_calls: list[float] = []
+        clock = _FakeClock()
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"},
+            }
+        )
+
+        def advancing_fetcher(url: str, headers: dict | None) -> object:
+            clock.advance(4.5)
+            return fetcher(url, headers)
+
+        provider = AlphaVantageMarketDataProvider(advancing_fetcher, sleeper=sleep_calls.append, clock=clock)
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert sleep_calls == [7.5]
+
+    def test_pacing_does_not_sleep_when_the_full_interval_already_elapsed(self, monkeypatch):
+        """The other half of the remaining-interval math at the wider
+        value: if more than 12s has genuinely passed, no sleep at all.
+        Without this, widening the constant could have made a slow
+        real-world caller wait twice."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        sleep_calls: list[float] = []
+        clock = _FakeClock()
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"},
+            }
+        )
+
+        def advancing_fetcher(url: str, headers: dict | None) -> object:
+            clock.advance(30.0)
+            return fetcher(url, headers)
+
+        provider = AlphaVantageMarketDataProvider(advancing_fetcher, sleeper=sleep_calls.append, clock=clock)
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert sleep_calls == []
+
+    def test_an_injected_delay_still_overrides_the_default_exactly(self, monkeypatch):
+        """Every other pacing test in this file injects its own
+        `inter_request_delay_seconds`, which is what keeps them
+        deterministic and independent of whatever production ships.
+        This pins that override so a future change to the default can
+        never silently leak into them."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        sleep_calls: list[float] = []
+        fetcher = _fake_fetcher(
+            {
+                "GLOBAL_QUOTE": {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}},
+                "OVERVIEW": {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"},
+            }
+        )
+        provider = AlphaVantageMarketDataProvider(
+            fetcher, sleeper=sleep_calls.append, inter_request_delay_seconds=0.25, clock=_FakeClock()
+        )
+        provider.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        assert sleep_calls == [0.25]
+        assert _DEFAULT_INTER_REQUEST_DELAY_SECONDS != 0.25
+
+    def test_widening_the_constant_changes_no_request_order_or_document_content(self, monkeypatch):
+        """Pacing is a timing concern only. The sequence of outbound
+        calls and the documents produced must be byte-for-byte what
+        they were before the constant moved."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        call_order: list[str] = []
+
+        def fetcher(url: str, headers: dict | None) -> object:
+            if "GLOBAL_QUOTE" in url:
+                call_order.append("GLOBAL_QUOTE")
+                return {"Global Quote": {"05. price": "150.00", "07. latest trading day": "2026-08-07"}}
+            if "OVERVIEW" in url:
+                call_order.append("OVERVIEW")
+                return {"Symbol": "AAPL", "Currency": "USD", "SharesOutstanding": "1000000"}
+            raise AssertionError(f"unexpected URL: {url}")
+
+        fast = AlphaVantageMarketDataProvider(
+            fetcher, sleeper=lambda _: None, inter_request_delay_seconds=1.1, clock=_FakeClock()
+        )
+        fast_documents = fast.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+        fast_order, call_order[:] = list(call_order), []
+
+        slow = AlphaVantageMarketDataProvider(
+            fetcher, sleeper=lambda _: None, inter_request_delay_seconds=12.0, clock=_FakeClock()
+        )
+        slow_documents = slow.fetch(company_identifier="AAPL", evaluated_at=_NOW)
+
+        # Frozen dataclasses, so this compares every field --
+        # source_kind, metadata, content_hash and all.
+        assert fast_order == call_order == ["GLOBAL_QUOTE", "OVERVIEW"]
+        assert list(fast_documents) == list(slow_documents)
+        assert [d.source_kind for d in slow_documents] == ["market_data_snapshot"]

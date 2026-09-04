@@ -291,3 +291,61 @@ class TestRegressionSafety:
     def test_no_duplicate_enrichment_within_one_run(self, harness):
         _, provider, _ = _run(harness)
         assert len(provider.calls) == len(set(provider.calls))
+
+
+class TestPacingChangeIsolation:
+    """The 2026-09-04 pacing sprint widened the Alpha Vantage provider's
+    default inter-request spacing from 1.1s to 12.0s. Pacing lives
+    entirely inside the provider, below `refresh_company_data`, so
+    nothing in this module's behaviour may depend on it.
+
+    These tests pin that separation explicitly rather than leaving it
+    to be inferred from the suite still passing: enrichment is defined
+    by which stages run and which records are written, never by how
+    long the provider waits between HTTP calls.
+    """
+
+    def test_minimal_depth_still_calls_exactly_the_profile_stage(self, harness):
+        """The behaviour the sprint promised not to change. MINIMAL
+        means one provider leg -- the profile -- and nothing else,
+        whatever the spacing constant happens to be."""
+        summary, provider, _ = _run(harness, depth=EnrichmentDepth.MINIMAL)
+        assert provider.calls == ["profile"]
+        assert summary.depth is EnrichmentDepth.MINIMAL
+        assert summary.identity_gate_outcome == "AUTO_ACCEPT"
+
+    def test_minimal_depth_records_and_stages_are_independent_of_provider_pacing(self, harness):
+        """Two identical MINIMAL runs against providers that differ
+        only in how they would pace produce the same stages and the
+        same stored records. `refresh_company_data` never reads a
+        pacing value, so a slower provider is indistinguishable here --
+        which is exactly the property that makes the constant safe to
+        change in isolation."""
+        first, provider_a, repository_a = _run(harness, depth=EnrichmentDepth.MINIMAL)
+
+        engine = create_engine(
+            "sqlite:///:memory:", future=True, poolclass=StaticPool, connect_args={"check_same_thread": False}
+        )
+        create_business_record_table(engine)
+        second, provider_b, repository_b = _run(
+            (SqlAlchemyBusinessRecordRepository(engine), build_identity_gate(engine)),
+            depth=EnrichmentDepth.MINIMAL,
+        )
+
+        assert provider_a.calls == provider_b.calls
+        assert first.completed_stages == second.completed_stages
+        assert first.identity_gate_outcome == second.identity_gate_outcome
+        assert first.stopped_for_budget == second.stopped_for_budget is False
+        assert first.daily_quota_exhausted == second.daily_quota_exhausted is False
+        assert [r.document_type for r in repository_a.get_by_company(_TICKER)] == [
+            r.document_type for r in repository_b.get_by_company(_TICKER)
+        ] == [SourceKind.COMPANY_PROFILE]
+
+    def test_budget_exhaustion_still_short_circuits_before_any_provider_call(self, harness):
+        """ProviderState/budget protection operates independently of
+        pacing: with no budget, the profile leg is never attempted at
+        all, so the spacing constant is never even reached."""
+        summary, provider, _ = _run(harness, depth=EnrichmentDepth.MINIMAL, budget=lambda: False)
+        assert provider.calls == []
+        assert summary.identity_gate_outcome == "NOT_ATTEMPTED"
+        assert summary.stopped_for_budget is True

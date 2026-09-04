@@ -516,3 +516,79 @@ class TestNoIdentityDataForSymbolIsItsOwnOutcome:
         first = classify_coverage(self._completion("NoIdentityDataForSymbol"))
         second = classify_coverage(self._completion("NoIdentityDataForSymbol"))
         assert first.classification is second.classification and first.reason == second.reason
+
+
+class TestPacingConstantIndependence:
+    """2026-09-04. Widening the Alpha Vantage inter-request spacing from
+    1.1s to 12.0s must not touch the quota/provider-state layer at all.
+    The two mechanisms answer different questions -- pacing asks "how
+    long until the next call is safe to make", provider state asks
+    "may a call be made at all" -- and they protect against different
+    failures. Spacing cannot prevent a daily exhaustion, and provider
+    state cannot prevent a short-term throttle.
+
+    These tests pin the separation as a boundary, so a future pacing
+    change cannot quietly become a quota change.
+    """
+
+    def test_provider_state_module_holds_no_pacing_concept(self):
+        """`provider_state.py` must not grow a spacing constant. If
+        pacing ever needs to be adaptive it belongs in the provider,
+        not smuggled into the availability model."""
+        from pathlib import Path
+
+        source = Path("atlas/alpha/business_data_refresh/provider_state.py").read_text()
+        for forbidden in (
+            "_DEFAULT_INTER_REQUEST_DELAY_SECONDS",
+            "inter_request_delay",
+            "time.sleep",
+        ):
+            assert forbidden not in source
+
+    def test_budget_gate_decisions_do_not_consult_any_pacing_value(self, engine):
+        """The gate's answer depends only on the local counter and the
+        persisted provider state. Same inputs, same answer -- there is
+        no timing input that a pacing change could perturb."""
+        store = ProviderAvailabilityStore(engine)
+        gate = ProviderBudgetGate(_FullBudget(), store, provider_name=ALPHA_VANTAGE_PROVIDER_NAME)
+        # UNKNOWN, not AVAILABLE: nothing has been recorded yet, and
+        # the gate reports absence of state as absence rather than as
+        # an optimistic claim. Budget still flows from the counter.
+        assert gate.has_budget() is True
+        assert gate.current_state() is ProviderAvailability.UNKNOWN
+
+        gate.record_daily_exhausted("provider said daily limit reached")
+        assert gate.has_budget() is False
+        assert gate.current_state() is ProviderAvailability.PROVIDER_DAILY_EXHAUSTED
+
+    def test_short_term_throttle_still_leaves_the_provider_available(self, engine):
+        """The discrimination the pacing change does NOT alter: a
+        short-term throttle is a pacing problem, and must never be
+        recorded as daily exhaustion. Wider spacing should make these
+        rarer -- it does not change what one means when it happens."""
+        store = ProviderAvailabilityStore(engine)
+        gate = ProviderBudgetGate(_FullBudget(), store, provider_name=ALPHA_VANTAGE_PROVIDER_NAME)
+        # TRANSIENT, and specifically not UNSUPPORTED: a throttle says
+        # nothing about whether the ticker can ever be served, so it
+        # stays retry-worthy. Wider spacing changes how often this
+        # happens, never what it means.
+        assert (
+            classify_provider_failure(provider_id="alpha_vantage", kind="RateLimited")
+            is ProviderFailureClassification.TRANSIENT
+        )
+        assert (
+            classify_provider_failure(provider_id="alpha_vantage", kind="DailyQuotaExhausted")
+            is ProviderFailureClassification.TRANSIENT
+        )
+        # No state transition was recorded, so budget is untouched.
+        assert gate.has_budget() is True
+        assert gate.current_state() is ProviderAvailability.UNKNOWN
+
+    def test_daily_cooldown_is_a_safety_floor_not_a_pacing_interval(self):
+        """Guards against the two constants ever being conflated: the
+        daily cooldown is measured in hours and gates whole runs; the
+        pacing constant is measured in seconds and gates single
+        requests."""
+        from atlas.business_data_providers.alpha_vantage import _DEFAULT_INTER_REQUEST_DELAY_SECONDS
+
+        assert DEFAULT_DAILY_COOLDOWN.total_seconds() > _DEFAULT_INTER_REQUEST_DELAY_SECONDS * 100
