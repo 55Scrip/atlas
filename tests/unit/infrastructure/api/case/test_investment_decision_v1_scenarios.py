@@ -54,7 +54,16 @@ class TestInvestmentDecisionShape:
         body = client.get(f"/investment-decision/{case_id}").json()
         assert body["caseId"] == case_id
         assert body["action"] == "no_decision"
-        assert set(body) == {"caseId", "action", "qualifiers", "supportingReasons", "blockers", "changeTrigger", "generatedAt"}
+        # `reasoning` is the canonical analytical rationale, added
+        # additively so the persisted payload can reach the benchmark
+        # without being reconstructed from process-state fields. It is
+        # `None` here: a freshly imported holding with no ingested data
+        # produces no directional recommendation, so there is no
+        # rationale to project -- which is distinct from a legacy row,
+        # where the key would be absent from storage entirely.
+        assert set(body) == {"caseId", "action", "qualifiers", "supportingReasons",
+                             "blockers", "changeTrigger", "generatedAt", "reasoning"}
+        assert body["reasoning"] is None
 
     def test_the_decision_view_never_leaks_internal_engine_terminology(self, client):
         """Deliverable 12's own language-boundary check at the wire

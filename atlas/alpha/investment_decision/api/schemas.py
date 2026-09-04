@@ -44,6 +44,28 @@ class InvestmentDecisionView(CamelModel):
     change_trigger: DecisionReasonView | None
     generated_at: datetime
 
+    #: The canonical analytical rationale, projected verbatim from the
+    #: persisted payload. Deliberately passed through rather than
+    #: re-modelled: every value is already a closed-vocabulary token in
+    #: camelCase, and re-typing it here would create a second schema
+    #: for one contract and invite the two to drift.
+    #:
+    #: Never translated and never turned into prose -- display text is
+    #: derived at the presentation edge from these tokens, so wording
+    #: can change without rewriting stored history.
+    #:
+    #: Three states, all distinct and all meaningful:
+    #:   `None`            the row predates reasoning persistence
+    #:                     (LEGACY_RESULT_WITHOUT_REASONING), or no
+    #:                     directional recommendation existed;
+    #:   present, empty    reasoning was computed and found nothing;
+    #:   present, populated the canonical rationale.
+    #:
+    #: `change_trigger` above remains a readiness blocker kept for
+    #: compatibility. It is NOT a fallback for this field, and nothing
+    #: here reads it.
+    reasoning: dict | None = None
+
     @classmethod
     def from_domain(cls, decision: InvestmentDecision) -> "InvestmentDecisionView":
         return cls(
@@ -56,6 +78,9 @@ class InvestmentDecisionView(CamelModel):
             if decision.change_trigger is not None
             else None,
             generated_at=decision.generated_at,
+            # Projection only: the persisted payload is the source. This
+            # layer never reconstructs rationale from process fields.
+            reasoning=decision.reasoning_payload,
         )
 
 
