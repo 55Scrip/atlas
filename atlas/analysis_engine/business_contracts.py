@@ -181,6 +181,29 @@ class BusinessFinding:
     provenance: Provenance
     updated_at: datetime
 
+    #: Continuous growth magnitude, preserved alongside -- never
+    #: instead of -- `status`.
+    #:
+    #: `status` measures monotonicity: STRONG requires every
+    #: consecutive delta positive for both Revenue and Free Cash Flow.
+    #: That discards magnitude entirely, so NVDA (+24.6%/yr revenue,
+    #: +118.2%/yr FCF) and AMAT (+11.3%, +6.2%) both land on MODERATE
+    #: and become indistinguishable to every downstream consumer. These
+    #: fields are the smallest representation that keeps them apart.
+    #:
+    #: Same architectural spirit as `ValuationFinding.current_yield` /
+    #: `.historical_yields`, which are likewise exposed rather than
+    #: discarded after classification. Additive and non-authoritative:
+    #: nothing reads them today, `status` remains the sole input to
+    #: recommendation logic, and no threshold is attached to them.
+    #:
+    #: `None` is a real value meaning "no principled CAGR exists for
+    #: this series" -- fewer than two observations, or a non-positive
+    #: endpoint, where a compound rate is undefined rather than zero. A
+    #: `None` here never changes `status`.
+    revenue_cagr: float | None = None
+    free_cash_flow_cagr: float | None = None
+
 
 @dataclass(frozen=True)
 class BusinessAnalysisResult:

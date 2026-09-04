@@ -58,6 +58,7 @@ from atlas.analysis_engine.business_contracts import (
 )
 from atlas.analysis_engine.business_contracts import BusinessCategoryStatus as Status
 from atlas.analysis_engine.business_facts.contracts import BusinessFactKind
+from atlas.analysis_engine.business_facts.growth_primitives import rolling_growth_observations
 from atlas.analysis_engine.business_facts.models import BusinessFact
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
 from atlas.decision_engine.contracts import EvidenceCoverageLevel
@@ -131,6 +132,36 @@ def classify_metric_trend(kind_facts: list[BusinessFact]) -> tuple[MetricTrend, 
     return trend, tuple(sorted(supporting)), tuple(sorted(contradicting))
 
 
+def _full_span_cagr(kind_facts: list[BusinessFact]) -> float | None:
+    """First-to-last compound annual growth rate, or `None` where no
+    principled rate exists.
+
+    Delegates the arithmetic and every edge case to
+    `growth_primitives.rolling_growth_observations`, the primitive
+    Outlook already uses -- called with `years = len - 1` so it yields
+    exactly one observation spanning the whole series. Reusing it
+    rather than repeating the formula means the positivity guard is
+    shared: an observation is emitted only when both endpoints are
+    strictly positive, so a zero or negative start or end produces
+    `None` instead of a fabricated rate. Free Cash Flow legitimately
+    crosses zero for real companies, and a compound rate across a sign
+    change is not a small error -- it is meaningless.
+
+    `kind_facts` arrives sorted ascending by period from
+    `_facts_by_kind`, which sorts explicitly; this function does not
+    re-sort, matching `classify_metric_trend`'s own contract.
+
+    Periods are treated as one step apart, exactly as
+    `rolling_growth_observations` already treats them everywhere else
+    in this codebase. `BusinessFact.period` is a string, so no calendar
+    arithmetic is available here and none is invented.
+    """
+    if len(kind_facts) < 2:
+        return None
+    observations = rolling_growth_observations(kind_facts, years=len(kind_facts) - 1)
+    return observations[0].rate if observations else None
+
+
 def _confidence(supported_count: int, any_facts_at_all: bool) -> EvidenceCoverageLevel:
     if supported_count == len(_SUPPORTED_KINDS):
         return EvidenceCoverageLevel.FULL
@@ -177,6 +208,12 @@ def evaluate_growth(facts: tuple[BusinessFact, ...], *, evaluated_at: datetime) 
 
     confidence = _confidence(len(trends), any_facts_at_all)
 
+    # Computed from the same `grouped` series the classifier already
+    # read. Purely additive: neither value can reach `status` above,
+    # which is decided before this line runs.
+    revenue_cagr = _full_span_cagr(grouped.get(BusinessFactKind.REVENUE, []))
+    free_cash_flow_cagr = _full_span_cagr(grouped.get(BusinessFactKind.FREE_CASH_FLOW, []))
+
     return BusinessFinding(
         id="business_finding:growth",
         kind=BusinessCategory.GROWTH,
@@ -195,4 +232,6 @@ def evaluate_growth(facts: tuple[BusinessFact, ...], *, evaluated_at: datetime) 
             computed_at=evaluated_at,
         ),
         updated_at=evaluated_at,
+        revenue_cagr=revenue_cagr,
+        free_cash_flow_cagr=free_cash_flow_cagr,
     )
