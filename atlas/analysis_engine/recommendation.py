@@ -182,11 +182,32 @@ class ChangeTriggerKind(str, Enum):
     say so honestly."
     """
 
+    # Reversal conditions -- a present weakness resolving. These were
+    # the only kind this vocabulary had, which is why a case with no
+    # weakness at all could produce nothing but the fallback.
     REDUCED_RISK = "reduced_risk"
     MORE_ATTRACTIVE_VALUATION = "more_attractive_valuation"
     IMPROVED_GROWTH_EVIDENCE = "improved_growth_evidence"
     IMPROVED_CAPITAL_ALLOCATION_EVIDENCE = "improved_capital_allocation_evidence"
     LOWER_VALUATION = "lower_valuation"
+
+    #: Deterioration conditions -- a present *strength* breaking. For a
+    #: HOLD backed by healthy signals the credible change is not that a
+    #: weakness heals, it is that a strength fails; without these the
+    #: only honest answer available was
+    #: `NO_CREDIBLE_TRIGGER_IDENTIFIED`, which dominated 7 of 9 real
+    #: cases and made the field useless for monitoring.
+    #:
+    #: Each names the inverse of a state `select_direction` already
+    #: reads, so none introduces a new analytical fact.
+    FINANCIAL_RISK_BECOMES_ELEVATED = "financial_risk_becomes_elevated"
+    VALUATION_BECOMES_EXPENSIVE = "valuation_becomes_expensive"
+    VALUATION_SUPPORT_LOST = "valuation_support_lost"
+    GROWTH_DETERIORATES = "growth_deteriorates"
+    CAPITAL_ALLOCATION_DETERIORATES = "capital_allocation_deteriorates"
+
+    #: Emitted only when no dimension yields a condition at all -- now
+    #: genuinely rare rather than the default answer.
     NO_CREDIBLE_TRIGGER_IDENTIFIED = "no_credible_trigger_identified"
 
 
@@ -197,29 +218,69 @@ def _derive_what_would_change(
     growth_status: BusinessCategoryStatus,
     capital_allocation_status: BusinessCategoryStatus,
     valuation_status: ValuationStatus,
+    has_real_risk_evidence: bool = False,
 ) -> tuple[ChangeTriggerKind, ...]:
-    """One honest, deterministic answer to "what would most likely
-    change this recommendation" -- the single strongest blocking
-    condition among the same facts `select_direction` already reads to
-    pick the Direction, never a second analysis. Priority order is
-    fixed and disclosed: a real risk concern outranks a valuation
-    concern, which outranks a business-quality concern, matching the
-    same priority `atlas.alpha.stance.engine.determine_stance` already
-    gives risk over direction elsewhere in this codebase. Returns
-    `NO_CREDIBLE_TRIGGER_IDENTIFIED` rather than an empty tuple when
-    none of these conditions apply -- e.g. a case with no weak
-    dimension at all still gets an honest, real answer, never silence."""
+    """Every condition that would materially change this recommendation
+    -- derived from exactly the facts `select_direction` already reads,
+    never a second analysis.
+
+    Two corrections to the original, both found by the 2026-09-04
+    canonical reasoning benchmark:
+
+    **Every applicable condition is emitted, not just the first.** The
+    original returned on first match, so AZN -- which carries elevated
+    risk *and* an expensive valuation -- reported only `REDUCED_RISK`
+    and silently lost `LOWER_VALUATION`. A monitor cannot watch a
+    condition it was never told about.
+
+    **Deterioration conditions exist.** The original vocabulary
+    contained only reversals, so a case whose signals are all healthy
+    had no expressible answer and fell through to
+    `NO_CREDIBLE_TRIGGER_IDENTIFIED` -- 7 of 9 real cases. For a HOLD
+    the credible change is that a strength breaks, which is now
+    representable per dimension.
+
+    One dimension is deliberately silent: `INSUFFICIENT_INPUT`
+    valuation support emits nothing. That is a data gap, not an
+    investment condition, and `key_unknowns` already reports it as
+    `ANALYSIS_INPUT_MISSING`. Emitting it here too would give one fact
+    two owners.
+
+    Order is the existing disclosed precedence -- risk, then valuation,
+    then business quality -- so this list and the driver list tell the
+    same story in the same order. Deterministic: no set iteration, no
+    clock, identical inputs give an identical tuple.
+    """
+    triggers: list[ChangeTriggerKind] = []
+
     if has_high_financial_or_valuation_risk:
-        return (ChangeTriggerKind.REDUCED_RISK,)
-    if valuation_support_status is ValuationSupportStatus.NOT_SUPPORTED:
-        return (ChangeTriggerKind.MORE_ATTRACTIVE_VALUATION,)
-    if growth_status is BusinessCategoryStatus.WEAK:
-        return (ChangeTriggerKind.IMPROVED_GROWTH_EVIDENCE,)
-    if capital_allocation_status is BusinessCategoryStatus.WEAK:
-        return (ChangeTriggerKind.IMPROVED_CAPITAL_ALLOCATION_EVIDENCE,)
+        triggers.append(ChangeTriggerKind.REDUCED_RISK)
+    elif has_real_risk_evidence:
+        # Only when risk was genuinely assessed. Absent evidence must
+        # not masquerade as a reassuring "risk is currently fine".
+        triggers.append(ChangeTriggerKind.FINANCIAL_RISK_BECOMES_ELEVATED)
+
     if valuation_status is ValuationStatus.EXPENSIVE:
-        return (ChangeTriggerKind.LOWER_VALUATION,)
-    return (ChangeTriggerKind.NO_CREDIBLE_TRIGGER_IDENTIFIED,)
+        triggers.append(ChangeTriggerKind.LOWER_VALUATION)
+    elif valuation_status in (ValuationStatus.FAIRLY_VALUED, ValuationStatus.UNDERVALUED):
+        triggers.append(ChangeTriggerKind.VALUATION_BECOMES_EXPENSIVE)
+
+    if valuation_support_status is ValuationSupportStatus.NOT_SUPPORTED:
+        triggers.append(ChangeTriggerKind.MORE_ATTRACTIVE_VALUATION)
+    elif valuation_support_status is ValuationSupportStatus.SUPPORTED:
+        triggers.append(ChangeTriggerKind.VALUATION_SUPPORT_LOST)
+
+    if growth_status is BusinessCategoryStatus.WEAK:
+        triggers.append(ChangeTriggerKind.IMPROVED_GROWTH_EVIDENCE)
+    elif growth_status is BusinessCategoryStatus.STRONG:
+        triggers.append(ChangeTriggerKind.GROWTH_DETERIORATES)
+
+    if capital_allocation_status is BusinessCategoryStatus.WEAK:
+        triggers.append(ChangeTriggerKind.IMPROVED_CAPITAL_ALLOCATION_EVIDENCE)
+    elif capital_allocation_status is BusinessCategoryStatus.STRONG:
+        triggers.append(ChangeTriggerKind.CAPITAL_ALLOCATION_DETERIORATES)
+
+    return tuple(triggers) or (ChangeTriggerKind.NO_CREDIBLE_TRIGGER_IDENTIFIED,)
 
 
 @dataclass(frozen=True)
@@ -624,6 +685,7 @@ def evaluate_recommendation_gate(
                 contradicting_evidence=reasoning.finding.contradicting_evidence,
                 portfolio_context=reasoning.finding.portfolio_context,
                 what_would_change=_derive_what_would_change(
+                    has_real_risk_evidence=has_real_risk_evidence,
                     has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
                     valuation_support_status=valuation_support.status,
                     growth_status=growth_finding.status,

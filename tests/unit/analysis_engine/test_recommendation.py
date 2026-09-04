@@ -593,7 +593,20 @@ class TestWhatWouldChange:
             capital_allocation_status=BusinessCategoryStatus.WEAK,
             valuation_status=ValuationStatus.EXPENSIVE,
         )
-        assert result == (ChangeTriggerKind.REDUCED_RISK,)
+        # Precedence still puts risk first, but every applicable
+        # condition is now emitted rather than only the winner. The
+        # original first-match-wins behaviour silently discarded the
+        # rest: AZN carries elevated risk AND an expensive valuation,
+        # and a monitor cannot watch a condition it was never told
+        # about. Ordering is what precedence governs now, not survival.
+        assert result[0] is ChangeTriggerKind.REDUCED_RISK
+        assert set(result) == {
+            ChangeTriggerKind.REDUCED_RISK,
+            ChangeTriggerKind.LOWER_VALUATION,
+            ChangeTriggerKind.MORE_ATTRACTIVE_VALUATION,
+            ChangeTriggerKind.IMPROVED_GROWTH_EVIDENCE,
+            ChangeTriggerKind.IMPROVED_CAPITAL_ALLOCATION_EVIDENCE,
+        }
 
     def test_pure_priority_order_valuation_support_outranks_business(self):
         from atlas.analysis_engine.recommendation import _derive_what_would_change
@@ -605,7 +618,11 @@ class TestWhatWouldChange:
             capital_allocation_status=BusinessCategoryStatus.WEAK,
             valuation_status=ValuationStatus.EXPENSIVE,
         )
-        assert result == (ChangeTriggerKind.MORE_ATTRACTIVE_VALUATION,)
+        # Valuation still precedes business quality in the ordering;
+        # the business-quality conditions are no longer dropped.
+        assert result.index(ChangeTriggerKind.MORE_ATTRACTIVE_VALUATION) < result.index(
+            ChangeTriggerKind.IMPROVED_GROWTH_EVIDENCE)
+        assert ChangeTriggerKind.IMPROVED_CAPITAL_ALLOCATION_EVIDENCE in result
 
     def test_pure_no_credible_trigger_is_a_real_disclosed_answer_not_silence(self):
         from atlas.analysis_engine.recommendation import _derive_what_would_change
@@ -616,8 +633,68 @@ class TestWhatWouldChange:
             growth_status=BusinessCategoryStatus.STRONG,
             capital_allocation_status=BusinessCategoryStatus.STRONG,
             valuation_status=ValuationStatus.UNDERVALUED,
+            has_real_risk_evidence=True,
         )
-        assert result == (ChangeTriggerKind.NO_CREDIBLE_TRIGGER_IDENTIFIED,)
+        # A case with no weakness at all used to be the ONLY thing this
+        # vocabulary could describe, via the fallback -- which is why 7
+        # of 9 real cases produced nothing else and the field was
+        # useless for monitoring. For a healthy holding the credible
+        # change is that a strength breaks, and that is now expressible.
+        assert ChangeTriggerKind.NO_CREDIBLE_TRIGGER_IDENTIFIED not in result
+        assert set(result) == {
+            ChangeTriggerKind.FINANCIAL_RISK_BECOMES_ELEVATED,
+            ChangeTriggerKind.VALUATION_BECOMES_EXPENSIVE,
+            ChangeTriggerKind.VALUATION_SUPPORT_LOST,
+            ChangeTriggerKind.GROWTH_DETERIORATES,
+            ChangeTriggerKind.CAPITAL_ALLOCATION_DETERIORATES,
+        }
+
+    def test_the_fallback_survives_only_when_no_dimension_speaks(self):
+        """It is still a real, disclosed answer -- just no longer the
+        default one. Reached when every dimension is inconclusive."""
+        from atlas.analysis_engine.recommendation import _derive_what_would_change
+
+        assert _derive_what_would_change(
+            has_high_financial_or_valuation_risk=False,
+            has_real_risk_evidence=False,
+            valuation_support_status=ValuationSupportStatus.INSUFFICIENT_INPUT,
+            growth_status=BusinessCategoryStatus.MODERATE,
+            capital_allocation_status=BusinessCategoryStatus.MODERATE,
+            valuation_status=ValuationStatus.NOT_EVALUATED,
+        ) == (ChangeTriggerKind.NO_CREDIBLE_TRIGGER_IDENTIFIED,)
+
+    def test_a_data_gap_emits_no_condition(self):
+        """`INSUFFICIENT_INPUT` valuation support is a missing input,
+        not an investment condition. `key_unknowns` already reports it
+        as ANALYSIS_INPUT_MISSING; emitting it here too would give one
+        fact two owners."""
+        from atlas.analysis_engine.recommendation import _derive_what_would_change
+
+        result = _derive_what_would_change(
+            has_high_financial_or_valuation_risk=False,
+            has_real_risk_evidence=True,
+            valuation_support_status=ValuationSupportStatus.INSUFFICIENT_INPUT,
+            growth_status=BusinessCategoryStatus.MODERATE,
+            capital_allocation_status=BusinessCategoryStatus.MODERATE,
+            valuation_status=ValuationStatus.FAIRLY_VALUED,
+        )
+        assert ChangeTriggerKind.MORE_ATTRACTIVE_VALUATION not in result
+        assert ChangeTriggerKind.VALUATION_SUPPORT_LOST not in result
+
+    def test_absent_risk_evidence_never_claims_risk_is_fine(self):
+        """Without real risk evidence, `FINANCIAL_RISK_BECOMES_ELEVATED`
+        must not be emitted -- absence of assessment is not a
+        reassuring finding."""
+        from atlas.analysis_engine.recommendation import _derive_what_would_change
+
+        assert ChangeTriggerKind.FINANCIAL_RISK_BECOMES_ELEVATED not in _derive_what_would_change(
+            has_high_financial_or_valuation_risk=False,
+            has_real_risk_evidence=False,
+            valuation_support_status=ValuationSupportStatus.SUPPORTED,
+            growth_status=BusinessCategoryStatus.STRONG,
+            capital_allocation_status=BusinessCategoryStatus.STRONG,
+            valuation_status=ValuationStatus.FAIRLY_VALUED,
+        )
 
     def test_a_real_trim_from_weak_growth_names_improved_growth_evidence(self):
         """End-to-end: the exact fixture `TestDirectionSelectorNowWired`
@@ -668,4 +745,12 @@ class TestWhatWouldChange:
             generated_at=GENERATED_AT,
         )
         assert isinstance(result.recommendation, ComputedDirectionalRecommendation)
-        assert result.recommendation.reasoning.what_would_change == (ChangeTriggerKind.NO_CREDIBLE_TRIGGER_IDENTIFIED,)
+        # A strong, undervalued, well-supported case has no weakness to
+        # heal -- which used to leave the fallback as the only sayable
+        # answer. It now names what would BREAK the case instead, which
+        # is the genuinely monitorable condition for a healthy holding.
+        triggers = result.recommendation.reasoning.what_would_change
+        assert ChangeTriggerKind.NO_CREDIBLE_TRIGGER_IDENTIFIED not in triggers
+        assert ChangeTriggerKind.VALUATION_BECOMES_EXPENSIVE in triggers
+        assert ChangeTriggerKind.VALUATION_SUPPORT_LOST in triggers
+        assert ChangeTriggerKind.GROWTH_DETERIORATES in triggers
