@@ -56,6 +56,11 @@ __all__ = [
     "build_key_unknowns",
     "build_drivers",
     "build_signal_summary",
+    "deserialize_reasoning",
+    "serialize_reasoning",
+    "LEGACY_RESULT_WITHOUT_REASONING",
+    "REASONING_SCHEMA_VERSION",
+    "StoredReasoning",
 ]
 
 
@@ -376,3 +381,131 @@ def build_conviction_reasoning(
         if code in _CONVICTION_PROCESS_CODES
     )
     return ConvictionReasoning(level=assessment.level, evidential_reasons=evidential)
+
+
+# --- Serialization ----------------------------------------------------
+#
+# Covers the canonical *analytical* rationale only: drivers, signal
+# summary, unknowns, the change trigger and conviction reasoning. The
+# `current_situation`/`supporting_evidence`/`contradicting_evidence`/
+# `portfolio_context` summaries embedded alongside them are existing
+# `decision_engine` structures with their own owners, and duplicating
+# them into this payload would make a second copy of a fact that
+# already has a home.
+#
+# Every value written is a closed-vocabulary `.value` string, so the
+# payload is stable across releases and readable without importing a
+# single engine -- the property that lets a benchmark score a stored
+# row directly.
+
+#: Marks a payload written by this version. Absence is meaningful: see
+#: `LEGACY_RESULT_WITHOUT_REASONING`.
+REASONING_SCHEMA_VERSION = 1
+
+#: A historical row produced before reasoning was persisted. This is
+#: NOT "Atlas had no reasoning" -- it is "this row predates reasoning
+#: being stored". Nothing recomputes it, because a reconstruction from
+#: today's code would silently claim to be what the run actually
+#: concluded.
+LEGACY_RESULT_WITHOUT_REASONING = "legacy_result_without_reasoning"
+
+
+def serialize_reasoning(reasoning) -> dict:
+    """Deterministic and total. Field order is fixed and every value is
+    a closed-vocabulary string."""
+    conviction = reasoning.conviction_reasoning
+    return {
+        "schemaVersion": REASONING_SCHEMA_VERSION,
+        "primaryDrivers": [_reason_payload(r) for r in reasoning.primary_drivers],
+        "counterDrivers": [_reason_payload(r) for r in reasoning.counter_drivers],
+        "signalSummary": [
+            {
+                "engine": c.engine.value,
+                "state": c.state.value,
+                "influencedDirection": c.influenced_direction,
+                "sourceStatus": c.source_status,
+            }
+            for c in reasoning.signal_summary
+        ],
+        "keyUnknowns": [{"kind": u.kind.value, "engine": u.engine.value} for u in reasoning.key_unknowns],
+        "whatWouldChange": [t.value for t in reasoning.what_would_change],
+        "recommendationConviction": None if conviction is None else {
+            "level": conviction.level.value if conviction.level is not None else None,
+            "analyticalReasons": [_reason_payload(r) for r in conviction.analytical_reasons],
+            "evidentialReasons": [r.kind.value for r in conviction.evidential_reasons],
+        },
+    }
+
+
+def _reason_payload(reason: InvestmentReason) -> dict:
+    return {
+        "kind": reason.kind.value,
+        "polarity": reason.polarity.value,
+        "engine": reason.engine.value,
+        "sourceStatus": reason.source_status,
+    }
+
+
+def _to_reason(payload: dict) -> InvestmentReason:
+    return InvestmentReason(
+        kind=InvestmentReasonKind(payload["kind"]),
+        polarity=ReasoningPolarity(payload["polarity"]),
+        engine=CanonicalEngine(payload["engine"]),
+        source_status=payload["sourceStatus"],
+    )
+
+
+@dataclass(frozen=True)
+class StoredReasoning:
+    """What a stored row yields. Deliberately not a
+    `RecommendationReasoning`: the persisted payload carries the
+    analytical rationale, not the embedded `decision_engine` summaries,
+    and pretending otherwise would invite a reader to expect fields
+    that were never written."""
+
+    primary_drivers: tuple[InvestmentReason, ...]
+    counter_drivers: tuple[InvestmentReason, ...]
+    signal_summary: tuple[SignalContribution, ...]
+    key_unknowns: tuple[KeyUnknown, ...]
+    what_would_change: tuple[str, ...]
+    conviction: ConvictionReasoning | None
+    schema_version: int = REASONING_SCHEMA_VERSION
+
+
+def deserialize_reasoning(payload: dict | None) -> StoredReasoning | None:
+    """`None` for a legacy row -- callers must report that as
+    `LEGACY_RESULT_WITHOUT_REASONING`, never as empty reasoning."""
+    if not payload:
+        return None
+    conviction_payload = payload.get("recommendationConviction")
+    conviction = None
+    if conviction_payload is not None:
+        level = conviction_payload.get("level")
+        conviction = ConvictionReasoning(
+            level=RecommendationConvictionLevel(level) if level else None,
+            analytical_reasons=tuple(_to_reason(r) for r in conviction_payload.get("analyticalReasons", ())),
+            evidential_reasons=tuple(
+                ProcessStateReason(kind=ProcessStateReasonKind(k))
+                for k in conviction_payload.get("evidentialReasons", ())
+            ),
+        )
+    return StoredReasoning(
+        primary_drivers=tuple(_to_reason(r) for r in payload.get("primaryDrivers", ())),
+        counter_drivers=tuple(_to_reason(r) for r in payload.get("counterDrivers", ())),
+        signal_summary=tuple(
+            SignalContribution(
+                engine=CanonicalEngine(c["engine"]),
+                state=SignalState(c["state"]),
+                influenced_direction=c["influencedDirection"],
+                source_status=c.get("sourceStatus"),
+            )
+            for c in payload.get("signalSummary", ())
+        ),
+        key_unknowns=tuple(
+            KeyUnknown(kind=KeyUnknownKind(u["kind"]), engine=CanonicalEngine(u["engine"]))
+            for u in payload.get("keyUnknowns", ())
+        ),
+        what_would_change=tuple(payload.get("whatWouldChange", ())),
+        conviction=conviction,
+        schema_version=payload.get("schemaVersion", REASONING_SCHEMA_VERSION),
+    )

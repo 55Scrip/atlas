@@ -19,6 +19,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from dataclasses import replace
+
+from atlas.analysis_engine.reasoning import serialize_reasoning
 from atlas.alpha.case_membership import known_cases, resolve_case_id_for_ticker
 from atlas.alpha.decision_readiness.service import DecisionReadinessService
 from atlas.alpha.decision_support import describe_recommendation
@@ -124,7 +127,24 @@ class InvestmentDecisionService:
         inputs = self._build_inputs(case_id)
         if inputs is None:
             return None
-        return synthesize_decision(case_id, inputs, generated_at=_utc_now())
+        decision = synthesize_decision(case_id, inputs, generated_at=_utc_now())
+        # Projection, not derivation: the payload is serialized straight
+        # from the recommendation gate's own object. This layer reads it
+        # and writes it down; it must never build one, or it would be
+        # the second producer this architecture forbids.
+        return replace(decision, reasoning_payload=self._reasoning_payload(case_id))
+
+    def _reasoning_payload(self, case_id: str) -> dict | None:
+        composition = self._composition_service.build(case_id)
+        if composition is None:
+            return None
+        recommendation = composition.canonical_analysis.recommendation.recommendation
+        reasoning = getattr(recommendation, "reasoning", None)
+        if reasoning is None:
+            # A withheld recommendation has no direction and therefore
+            # no analytical rationale to project. Distinct from legacy.
+            return None
+        return serialize_reasoning(reasoning)
 
     def synthesize_for_ticker(self, ticker: str) -> InvestmentDecision | None:
         case_id = resolve_case_id_for_ticker(ticker, self._portfolio_store, self._watchlist_store)

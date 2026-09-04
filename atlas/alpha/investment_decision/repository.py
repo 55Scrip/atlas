@@ -40,6 +40,9 @@ def _result_payload(decision: InvestmentDecision) -> dict:
         "blockers": [_reason_payload(r) for r in decision.blockers],
         "changeTrigger": _reason_payload(decision.change_trigger) if decision.change_trigger is not None else None,
         "generatedAt": decision.generated_at.isoformat(),
+        # Canonical analytical rationale, serialized by the Core
+        # reasoning module. Absent on rows written before this existed.
+        "reasoning": decision.reasoning_payload,
     }
 
 
@@ -52,6 +55,10 @@ def _to_decision(payload: dict) -> InvestmentDecision:
         blockers=tuple(_to_reason(r) for r in payload["blockers"]),
         change_trigger=_to_reason(payload["changeTrigger"]) if payload["changeTrigger"] is not None else None,
         generated_at=datetime.fromisoformat(payload["generatedAt"]),
+        # `.get`, not `[]`: a legacy row simply has no key. Defaulting
+        # to None is what keeps "written before reasoning existed"
+        # distinguishable from "reasoning was computed and empty".
+        reasoning_payload=payload.get("reasoning"),
     )
 
 

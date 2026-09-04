@@ -100,8 +100,23 @@ class InvestmentDecision:
     """Deliverable 5's own "what would most likely change the
     decision" -- the same real fact as `blockers[0]` when one exists
     (resolving it is what would change the decision), `None`
-    otherwise -- never a separately invented prediction."""
+    otherwise -- never a separately invented prediction.
+
+    Reasoning Domain Closure: this remains a READINESS blocker, kept
+    only for backward compatibility. It is no longer the authoritative
+    "what would change the recommendation" -- that is
+    `reasoning_payload["whatWouldChange"]`, produced by the
+    recommendation gate from the same statuses that chose the
+    direction. A readiness blocker describes Atlas's workflow; it was
+    never an investment condition, and presenting it as one is what the
+    Calibration Phase 9 benchmark measured."""
     generated_at: datetime
+
+    #: The canonical analytical rationale, projected from
+    #: `RecommendationReasoning` and never re-derived here. `None` means
+    #: either no directional recommendation existed, or the row predates
+    #: reasoning persistence -- see `LEGACY_RESULT_WITHOUT_REASONING`.
+    reasoning_payload: dict | None = None
 
 
 @dataclass(frozen=True)
