@@ -201,6 +201,30 @@ class SignalContribution:
     revenue_cagr: float | None = None
     free_cash_flow_cagr: float | None = None
 
+    #: Self-relative valuation context, projected from
+    #: `ValuationFinding` and populated on the valuation contribution
+    #: only.
+    #:
+    #: `source_status` alone hides where a company sits inside its own
+    #: history, and `current_yield` alone actively misleads: MSFT
+    #: (0.01816) and NVDA (0.01840) look near-identical while sitting
+    #: at the 10th and 58.8th percentile of their own distributions.
+    #: The median anchors the level, and the observation count is what
+    #: keeps a percentile honest -- AVGO and MA are both at the 50th,
+    #: but from 2 and 14 observations respectively.
+    #:
+    #: Descriptive only. No threshold, no bucket, no qualitative word:
+    #: `ValuationStatus` remains the sole categorical valuation
+    #: judgement, and nothing in the recommendation path reads these.
+    #:
+    #: `historical_percentile` is a fraction in [0.0, 1.0] -- the share
+    #: of historical observations strictly below `current_yield`, ties
+    #: excluded, so the raw series' ordering cannot affect it.
+    current_yield: float | None = None
+    historical_median_yield: float | None = None
+    historical_percentile: float | None = None
+    historical_observation_count: int | None = None
+
 
 @dataclass(frozen=True)
 class KeyUnknown:
@@ -273,6 +297,39 @@ _VALUATION_SUPPORT_REASONS = {
 _INCONCLUSIVE = frozenset({"not_evaluated", "insufficient_input"})
 
 
+def _median(values: tuple[float, ...]) -> float | None:
+    """Standard median of the historical yields. Sorts, so the raw
+    series' ordering is irrelevant; `None` when there is no history to
+    take a median of."""
+    if not values:
+        return None
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[middle]
+    return (ordered[middle - 1] + ordered[middle]) / 2
+
+
+def _percentile(current: float | None, values: tuple[float, ...]) -> float | None:
+    """Share of historical observations strictly below `current`, in
+    [0.0, 1.0].
+
+    Ties are excluded from the numerator, which makes the result
+    independent of the series' ordering -- `historical_yields` is built
+    from a dict and its order is not guaranteed, so nothing here may
+    depend on it. `None` when there is no history, or no current
+    observation to place within it.
+
+    Computable at n=1 and n=2 and projected there, because
+    `historical_observation_count` travels alongside and lets a reader
+    judge how thin that history is. This function attaches no meaning
+    to the number.
+    """
+    if current is None or not values:
+        return None
+    return sum(1 for value in values if value < current) / len(values)
+
+
 def _reason(table, status, engine: CanonicalEngine) -> InvestmentReason | None:
     entry = table.get(status)
     if entry is None:
@@ -340,6 +397,8 @@ def build_signal_summary(
     has_real_risk_evidence: bool,
     growth_revenue_cagr: float | None = None,
     growth_free_cash_flow_cagr: float | None = None,
+    valuation_current_yield: float | None = None,
+    valuation_historical_yields: tuple[float, ...] = (),
 ) -> tuple[SignalContribution, ...]:
     """Total: one entry per `CanonicalEngine` member, every time.
 
@@ -371,6 +430,17 @@ def build_signal_summary(
     contributions = [
         replace(c, revenue_cagr=growth_revenue_cagr, free_cash_flow_cagr=growth_free_cash_flow_cagr)
         if c.engine is CanonicalEngine.GROWTH else c
+        for c in contributions
+    ]
+    contributions = [
+        replace(
+            c,
+            current_yield=valuation_current_yield,
+            historical_median_yield=_median(valuation_historical_yields),
+            historical_percentile=_percentile(valuation_current_yield, valuation_historical_yields),
+            historical_observation_count=len(valuation_historical_yields) or None,
+        )
+        if c.engine is CanonicalEngine.VALUATION else c
         for c in contributions
     ]
     contributions.extend(
@@ -459,6 +529,10 @@ def serialize_reasoning(reasoning) -> dict:
                 # distinguishable through storage and the API.
                 "revenueCagr": c.revenue_cagr,
                 "freeCashFlowCagr": c.free_cash_flow_cagr,
+                "currentYield": c.current_yield,
+                "historicalMedianYield": c.historical_median_yield,
+                "historicalPercentile": c.historical_percentile,
+                "historicalObservationCount": c.historical_observation_count,
             }
             for c in reasoning.signal_summary
         ],
@@ -537,6 +611,10 @@ def deserialize_reasoning(payload: dict | None) -> StoredReasoning | None:
                 # no key, and must read back as absent rather than zero.
                 revenue_cagr=c.get("revenueCagr"),
                 free_cash_flow_cagr=c.get("freeCashFlowCagr"),
+                current_yield=c.get("currentYield"),
+                historical_median_yield=c.get("historicalMedianYield"),
+                historical_percentile=c.get("historicalPercentile"),
+                historical_observation_count=c.get("historicalObservationCount"),
             )
             for c in payload.get("signalSummary", ())
         ),

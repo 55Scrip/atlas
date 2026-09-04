@@ -85,7 +85,12 @@ def collect(database: str) -> list[dict]:
                 "what_would_change": list(stored.what_would_change) if stored else None,
                 "signal_summary": [
                     {"engine": c.engine.value, "state": c.state.value,
-                     "influencedDirection": c.influenced_direction}
+                     "influencedDirection": c.influenced_direction,
+                     "sourceStatus": c.source_status,
+                     "currentYield": c.current_yield,
+                     "historicalMedianYield": c.historical_median_yield,
+                     "historicalPercentile": c.historical_percentile,
+                     "historicalObservationCount": c.historical_observation_count}
                     for c in stored.signal_summary
                 ] if stored else None,
                 "key_unknowns": [
@@ -133,6 +138,21 @@ def main() -> int:
     for row in scorable[:40]:
         print(f"    {str(row['ticker']):8s} {str(row['action']):11s} "
               f"+{row['primary_drivers']} -{row['counter_drivers']}")
+
+    # Engine context, displayed never scored: the benchmark inspects
+    # interpretability and must not decide whether a valuation or a
+    # growth rate is "good".
+    print("\n  VALUATION CONTEXT (descriptive; no threshold applied)")
+    print(f"    {'ticker':8s} {'status':15s} {'yield':>10s} {'median':>10s} {'pctile':>7s} {'n':>4s}")
+    for row in scorable:
+        for signal in row["signal_summary"] or ():
+            if signal.get("engine") != "valuation":
+                continue
+            fmt = lambda v, p=5: "-" if v is None else (f"{v:.{p}f}" if isinstance(v, float) else str(v))
+            print(f"    {str(row['ticker']):8s} {str(signal.get('sourceStatus')):15s} "
+                  f"{fmt(signal.get('currentYield')):>10s} {fmt(signal.get('historicalMedianYield')):>10s} "
+                  f"{fmt(signal.get('historicalPercentile'), 3):>7s} "
+                  f"{fmt(signal.get('historicalObservationCount')):>4s}")
     return 0
 
 

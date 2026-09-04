@@ -377,3 +377,175 @@ class TestGrowthMagnitudeInSignalSummary:
                 **_drivers(), growth_revenue_cagr=0.2464, growth_free_cash_flow_cagr=1.1822)
 
         assert len({json.dumps(serialize_reasoning(_R()), sort_keys=True) for _ in range(20)}) == 1
+
+
+class TestValuationContextInSignalSummary:
+    """Self-relative valuation context in the signal summary.
+
+    `ValuationStatus` hides where a company sits inside its own
+    history, and `current_yield` alone actively misleads: MSFT
+    (0.01816) and NVDA (0.01840) look near-identical while sitting at
+    the 10th and 58.8th percentile of their own distributions. All four
+    fields are required -- the median anchors the level, and the
+    observation count is what keeps a percentile honest.
+    """
+
+    def _valuation(self, **kw):
+        summary = build_signal_summary(**_drivers(), **kw)
+        return {c.engine: c for c in summary}[CanonicalEngine.VALUATION]
+
+    def test_all_four_fields_are_projected(self):
+        v = self._valuation(valuation_current_yield=0.02,
+                            valuation_historical_yields=(0.01, 0.03, 0.05))
+        assert v.current_yield == 0.02
+        assert v.historical_median_yield == 0.03
+        assert v.historical_percentile == pytest.approx(1 / 3)
+        assert v.historical_observation_count == 3
+
+    def test_fields_appear_only_on_the_valuation_contribution(self):
+        for c in build_signal_summary(**_drivers(), valuation_current_yield=0.02,
+                                      valuation_historical_yields=(0.01, 0.03)):
+            if c.engine is not CanonicalEngine.VALUATION:
+                assert c.current_yield is None
+                assert c.historical_median_yield is None
+                assert c.historical_percentile is None
+                assert c.historical_observation_count is None
+
+    def test_the_msft_nvda_case_is_distinguishable(self):
+        """Near-identical yields, opposite self-relative positions."""
+        msft = self._valuation(valuation_current_yield=0.01816,
+                               valuation_historical_yields=(0.010, 0.030, 0.040, 0.050))
+        nvda = self._valuation(valuation_current_yield=0.01840,
+                               valuation_historical_yields=(0.001, 0.002, 0.030, 0.080))
+        assert msft.current_yield != nvda.current_yield  # but barely
+        assert abs(msft.current_yield - nvda.current_yield) < 0.001
+        assert msft.historical_percentile == 0.25
+        assert nvda.historical_percentile == 0.5
+        assert msft != nvda
+
+    def test_equal_percentiles_are_qualified_by_observation_count(self):
+        """AVGO and MA both sit at the 50th percentile; only `n` shows
+        one of them is a two-observation history."""
+        thin = self._valuation(valuation_current_yield=0.015,
+                               valuation_historical_yields=(0.010, 0.020))
+        deep = self._valuation(valuation_current_yield=0.033,
+                               valuation_historical_yields=(0.01, 0.02, 0.04, 0.05))
+        assert thin.historical_percentile == deep.historical_percentile == 0.5
+        assert thin.historical_observation_count == 2
+        assert deep.historical_observation_count == 4
+
+
+class TestValuationEdgeCases:
+    def _v(self, current, history):
+        summary = build_signal_summary(**_drivers(), valuation_current_yield=current,
+                                       valuation_historical_yields=history)
+        return {c.engine: c for c in summary}[CanonicalEngine.VALUATION]
+
+    def test_no_history(self):
+        v = self._v(0.02, ())
+        assert v.current_yield == 0.02
+        assert v.historical_median_yield is None
+        assert v.historical_percentile is None
+        assert v.historical_observation_count is None
+
+    def test_missing_current_yield(self):
+        v = self._v(None, (0.01, 0.02))
+        assert v.current_yield is None
+        assert v.historical_percentile is None
+        assert v.historical_median_yield == pytest.approx(0.015)
+
+    @pytest.mark.parametrize("history,expected_median", [
+        ((0.02,), 0.02),                       # n=1
+        ((0.01, 0.03), 0.02),                  # n=2, even
+        ((0.01, 0.02, 0.03), 0.02),            # odd
+        ((0.02, 0.02, 0.02), 0.02),            # duplicates
+    ])
+    def test_median_contract(self, history, expected_median):
+        assert self._v(0.02, history).historical_median_yield == pytest.approx(expected_median)
+
+    def test_ties_are_excluded_from_the_percentile_numerator(self):
+        """`current` equal to observations counts none of them."""
+        assert self._v(0.02, (0.02, 0.02, 0.02)).historical_percentile == 0.0
+
+    def test_below_every_observation_is_zero(self):
+        assert self._v(0.001, (0.01, 0.02)).historical_percentile == 0.0
+
+    def test_above_every_observation_is_one(self):
+        assert self._v(0.99, (0.01, 0.02)).historical_percentile == 1.0
+
+    def test_zero_current_yield_is_preserved_not_treated_as_missing(self):
+        v = self._v(0.0, (0.01, 0.02))
+        assert v.current_yield == 0.0
+        assert v.historical_percentile == 0.0
+
+    def test_negative_current_yield_passes_through(self):
+        v = self._v(-0.01, (0.01, 0.02))
+        assert v.current_yield == -0.01
+        assert v.historical_percentile == 0.0
+
+    def test_ordering_of_history_is_irrelevant(self):
+        ascending = self._v(0.025, (0.01, 0.02, 0.03, 0.04))
+        shuffled = self._v(0.025, (0.04, 0.01, 0.03, 0.02))
+        assert ascending == shuffled
+
+
+class TestValuationContextIsDescriptiveOnly:
+    def test_no_protected_function_accepts_the_measurements(self):
+        import inspect
+        from atlas.analysis_engine.direction_selector import select_direction
+        from atlas.analysis_engine.recommendation import _derive_what_would_change
+        forbidden = {"current_yield", "historical_median_yield", "historical_percentile",
+                     "historical_observation_count", "valuation_current_yield",
+                     "valuation_historical_yields"}
+        for fn in (select_direction, _derive_what_would_change, build_drivers):
+            assert not (set(inspect.signature(fn).parameters) & forbidden)
+
+    def test_valuation_context_never_changes_key_unknowns(self):
+        plain = build_key_unknowns(build_signal_summary(**_drivers()))
+        rich = build_key_unknowns(build_signal_summary(
+            **_drivers(), valuation_current_yield=0.9,
+            valuation_historical_yields=(0.01, 0.02, 0.03)))
+        assert plain == rich
+
+    def test_round_trip_preserves_values_and_nulls(self):
+        from atlas.analysis_engine.reasoning import deserialize_reasoning, serialize_reasoning
+
+        class _R:
+            primary_drivers = counter_drivers = ()
+            what_would_change = ()
+            conviction_reasoning = None
+            key_unknowns = ()
+            signal_summary = build_signal_summary(
+                **_drivers(), valuation_current_yield=0.0, valuation_historical_yields=())
+
+        payload = serialize_reasoning(_R())
+        v = [s for s in payload["signalSummary"] if s["engine"] == "valuation"][0]
+        assert v["currentYield"] == 0.0
+        assert v["historicalMedianYield"] is None
+        assert v["historicalObservationCount"] is None
+        restored = {c.engine: c for c in deserialize_reasoning(payload).signal_summary}
+        assert restored[CanonicalEngine.VALUATION].current_yield == 0.0
+        assert restored[CanonicalEngine.VALUATION].historical_percentile is None
+
+    def test_legacy_payload_without_the_keys_is_readable(self):
+        from atlas.analysis_engine.reasoning import deserialize_reasoning
+        legacy = {"schemaVersion": 1, "signalSummary": [
+            {"engine": "valuation", "state": "conclusive",
+             "influencedDirection": True, "sourceStatus": "fairly_valued"}]}
+        v = deserialize_reasoning(legacy).signal_summary[0]
+        assert v.current_yield is None and v.historical_observation_count is None
+
+    def test_serialization_is_deterministic(self):
+        import json
+        from atlas.analysis_engine.reasoning import serialize_reasoning
+
+        class _R:
+            primary_drivers = counter_drivers = ()
+            what_would_change = ()
+            conviction_reasoning = None
+            key_unknowns = ()
+            signal_summary = build_signal_summary(
+                **_drivers(), valuation_current_yield=0.0182,
+                valuation_historical_yields=(0.01, 0.02, 0.03))
+
+        assert len({json.dumps(serialize_reasoning(_R()), sort_keys=True) for _ in range(20)}) == 1
