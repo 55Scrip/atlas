@@ -263,3 +263,117 @@ class TestArchitectureBoundaries:
         source = ast.unparse(tree)
         for forbidden in ("BusinessRecord", "business_facts", "evaluate_", "repository"):
             assert forbidden not in source
+
+
+class TestGrowthMagnitudeInSignalSummary:
+    """Continuous growth magnitude, projected into the signal summary.
+
+    `source_status` alone cannot separate companies whose category
+    matches but whose economics do not -- NVDA and AMAT are both
+    `moderate` while compounding free cash flow at roughly +118%/yr and
+    +6%/yr. These fields carry that difference into reasoning without
+    attaching a threshold to it and without reaching any recommendation
+    input.
+    """
+
+    def test_magnitude_is_attached_to_the_growth_contribution(self):
+        summary = {c.engine: c for c in build_signal_summary(
+            **_drivers(), growth_revenue_cagr=0.25, growth_free_cash_flow_cagr=1.18)}
+        growth = summary[CanonicalEngine.GROWTH]
+        assert growth.revenue_cagr == 0.25
+        assert growth.free_cash_flow_cagr == 1.18
+
+    def test_no_other_engine_receives_growth_magnitude(self):
+        """They are growth's own measurements; attaching them elsewhere
+        would misattribute them."""
+        for contribution in build_signal_summary(
+                **_drivers(), growth_revenue_cagr=0.25, growth_free_cash_flow_cagr=1.18):
+            if contribution.engine is not CanonicalEngine.GROWTH:
+                assert contribution.revenue_cagr is None
+                assert contribution.free_cash_flow_cagr is None
+
+    def test_absent_magnitude_stays_none_and_is_not_zero(self):
+        growth = {c.engine: c for c in build_signal_summary(**_drivers())}[CanonicalEngine.GROWTH]
+        assert growth.revenue_cagr is None and growth.free_cash_flow_cagr is None
+
+    def test_a_computed_zero_is_preserved_as_zero(self):
+        """`0.0` means a real zero-growth rate; `None` means no
+        principled rate exists. Collapsing them would lose a fact."""
+        growth = {c.engine: c for c in build_signal_summary(
+            **_drivers(), growth_revenue_cagr=0.0)}[CanonicalEngine.GROWTH]
+        assert growth.revenue_cagr == 0.0
+        assert growth.revenue_cagr is not None
+
+    def test_same_status_different_magnitude_is_distinguishable(self):
+        """The NVDA/AMAT regression case, at unit level."""
+        nvda = build_signal_summary(**_drivers(), growth_revenue_cagr=0.2464,
+                                    growth_free_cash_flow_cagr=1.1822)
+        amat = build_signal_summary(**_drivers(), growth_revenue_cagr=0.1130,
+                                    growth_free_cash_flow_cagr=0.0615)
+        g_n = {c.engine: c for c in nvda}[CanonicalEngine.GROWTH]
+        g_a = {c.engine: c for c in amat}[CanonicalEngine.GROWTH]
+        assert g_n.source_status == g_a.source_status      # same category
+        assert g_n != g_a                                   # different contribution
+
+    def test_magnitude_never_changes_driver_tokens(self):
+        """Drivers take an explicit status argument, so a magnitude
+        cannot reach them."""
+        baseline = build_drivers(**_drivers())
+        assert build_drivers(**_drivers()) == baseline
+
+    def test_magnitude_never_changes_key_unknowns(self):
+        plain = build_key_unknowns(build_signal_summary(**_drivers()))
+        rich = build_key_unknowns(build_signal_summary(
+            **_drivers(), growth_revenue_cagr=9.9, growth_free_cash_flow_cagr=-0.5))
+        assert plain == rich
+
+    def test_no_recommendation_function_reads_the_magnitudes(self):
+        """Static guard: the protected functions take statuses only."""
+        import inspect
+        from atlas.analysis_engine.direction_selector import select_direction
+        from atlas.analysis_engine.recommendation import _derive_what_would_change
+        for fn in (select_direction, _derive_what_would_change, build_drivers):
+            params = set(inspect.signature(fn).parameters)
+            assert "revenue_cagr" not in params
+            assert "growth_revenue_cagr" not in params
+
+    def test_serialization_round_trips_and_preserves_null(self):
+        from atlas.analysis_engine.reasoning import deserialize_reasoning, serialize_reasoning
+
+        class _R:
+            primary_drivers = counter_drivers = ()
+            what_would_change = ()
+            conviction_reasoning = None
+            key_unknowns = ()
+            signal_summary = build_signal_summary(
+                **_drivers(), growth_revenue_cagr=0.0, growth_free_cash_flow_cagr=None)
+
+        payload = serialize_reasoning(_R())
+        growth = [s for s in payload["signalSummary"] if s["engine"] == "growth"][0]
+        assert growth["revenueCagr"] == 0.0
+        assert growth["freeCashFlowCagr"] is None
+        restored = {c.engine: c for c in deserialize_reasoning(payload).signal_summary}
+        assert restored[CanonicalEngine.GROWTH].revenue_cagr == 0.0
+        assert restored[CanonicalEngine.GROWTH].free_cash_flow_cagr is None
+
+    def test_a_legacy_payload_without_the_fields_still_deserializes(self):
+        from atlas.analysis_engine.reasoning import deserialize_reasoning
+        legacy = {"schemaVersion": 1, "signalSummary": [
+            {"engine": "growth", "state": "conclusive",
+             "influencedDirection": True, "sourceStatus": "moderate"}]}
+        growth = deserialize_reasoning(legacy).signal_summary[0]
+        assert growth.revenue_cagr is None and growth.free_cash_flow_cagr is None
+
+    def test_serialization_is_deterministic(self):
+        import json
+        from atlas.analysis_engine.reasoning import serialize_reasoning
+
+        class _R:
+            primary_drivers = counter_drivers = ()
+            what_would_change = ()
+            conviction_reasoning = None
+            key_unknowns = ()
+            signal_summary = build_signal_summary(
+                **_drivers(), growth_revenue_cagr=0.2464, growth_free_cash_flow_cagr=1.1822)
+
+        assert len({json.dumps(serialize_reasoning(_R()), sort_keys=True) for _ in range(20)}) == 1

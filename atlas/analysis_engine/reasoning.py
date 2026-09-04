@@ -27,7 +27,7 @@ status already implies.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 
 from atlas.analysis_engine.analysis_coverage import AnalysisCoverageLevel
@@ -180,6 +180,27 @@ class SignalContribution:
     influenced_direction: bool
     source_status: str | None = None
 
+    #: Continuous magnitude behind a categorical status, projected
+    #: verbatim from the engine's own finding -- never recomputed here.
+    #:
+    #: `source_status` alone cannot separate companies whose category
+    #: matches but whose economics do not: NVDA and AMAT are both
+    #: `moderate` growth while compounding free cash flow at roughly
+    #: +118%/yr and +6%/yr. That difference was measured and preserved
+    #: on `BusinessFinding`, and stopped here.
+    #:
+    #: Explanatory only. No threshold is attached, no qualitative label
+    #: is derived, and nothing in the recommendation path reads these:
+    #: `select_direction`, `build_drivers` and
+    #: `_derive_what_would_change` all take an explicit status
+    #: argument, so a magnitude cannot reach them.
+    #:
+    #: `None` means no principled rate exists (fewer than two
+    #: observations, or a non-positive endpoint) and stays distinct
+    #: from a computed `0.0`.
+    revenue_cagr: float | None = None
+    free_cash_flow_cagr: float | None = None
+
 
 @dataclass(frozen=True)
 class KeyUnknown:
@@ -317,6 +338,8 @@ def build_signal_summary(
     valuation_support_status: ValuationSupportStatus,
     has_high_financial_or_valuation_risk: bool,
     has_real_risk_evidence: bool,
+    growth_revenue_cagr: float | None = None,
+    growth_free_cash_flow_cagr: float | None = None,
 ) -> tuple[SignalContribution, ...]:
     """Total: one entry per `CanonicalEngine` member, every time.
 
@@ -341,6 +364,14 @@ def build_signal_summary(
     contributions = [
         SignalContribution(engine=engine, state=state(value), influenced_direction=True, source_status=value)
         for engine, value in connected
+    ]
+    # Attached to the growth contribution only -- these are growth's
+    # own measurements, and giving them to another engine's entry
+    # would misattribute them.
+    contributions = [
+        replace(c, revenue_cagr=growth_revenue_cagr, free_cash_flow_cagr=growth_free_cash_flow_cagr)
+        if c.engine is CanonicalEngine.GROWTH else c
+        for c in contributions
     ]
     contributions.extend(
         SignalContribution(
@@ -424,6 +455,10 @@ def serialize_reasoning(reasoning) -> dict:
                 "state": c.state.value,
                 "influencedDirection": c.influenced_direction,
                 "sourceStatus": c.source_status,
+                # Explicit nulls: absent and zero must stay
+                # distinguishable through storage and the API.
+                "revenueCagr": c.revenue_cagr,
+                "freeCashFlowCagr": c.free_cash_flow_cagr,
             }
             for c in reasoning.signal_summary
         ],
@@ -498,6 +533,10 @@ def deserialize_reasoning(payload: dict | None) -> StoredReasoning | None:
                 state=SignalState(c["state"]),
                 influenced_direction=c["influencedDirection"],
                 source_status=c.get("sourceStatus"),
+                # `.get`: a row written before these existed simply has
+                # no key, and must read back as absent rather than zero.
+                revenue_cagr=c.get("revenueCagr"),
+                free_cash_flow_cagr=c.get("freeCashFlowCagr"),
             )
             for c in payload.get("signalSummary", ())
         ),

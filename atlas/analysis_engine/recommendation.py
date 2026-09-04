@@ -651,6 +651,9 @@ def evaluate_recommendation_gate(
     # deliberately positioned after the direction call so it can never
     # be mistaken for an input to it.
     _signal_summary = build_signal_summary(
+        # Projected from the finding that owns them; never recomputed.
+        growth_revenue_cagr=growth_finding.revenue_cagr,
+        growth_free_cash_flow_cagr=growth_finding.free_cash_flow_cagr,
         growth_status=growth_finding.status,
         capital_allocation_status=capital_allocation_finding.status,
         valuation_status=fcf_yield_finding.status,
