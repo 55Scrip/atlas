@@ -401,6 +401,92 @@ def _valuation_context(valuation_engine: ValuationEngineResult) -> ValuationCont
     )
 
 
+class CaseOpenQuestionCategory(str, Enum):
+    """`DE-016` §7's partition, applied to this module's own vocabulary.
+
+    `DE-016` §5 defines the categories; this enum names the three that
+    `OpenQuestionOrigin` can actually produce. Every member of
+    `OpenQuestionOrigin` maps to exactly one of these -- `DE-016` §7
+    requires exactly one canonical owner per category, so a question
+    belonging to two would be a doctrine violation, not a modelling
+    convenience."""
+
+    EVIDENTIAL_UNCERTAINTY = "evidential_uncertainty"
+    """`DE-016` §5: an analysis that ran to completion and returned a
+    genuinely mixed or adverse result. Owned by Conviction, and the only
+    category here permitted to affect it."""
+
+    INSUFFICIENT_INPUT = "insufficient_input"
+    """`DE-016` §5's second kind of Analytical Uncertainty: the analysis
+    could not run for want of data. Owned by Coverage -- `DE-016` §7
+    routes it to Conviction only through Coverage, never directly."""
+
+    CAPABILITY_GAP = "capability_gap"
+    """`DE-016` §8: unresolved because Atlas lacks, has not executed, or
+    has not integrated a capability -- not because of evidence held
+    about this company. Owned by the readiness layer. `DE-016` §8.2
+    forbids it from reducing Conviction."""
+
+
+#: `DE-016` §7's partition table, as data. Exhaustive over
+#: `OpenQuestionOrigin` by construction -- `_CASE_OPEN_QUESTION_CATEGORY`
+#: is asserted complete at import, so adding a member to the vocabulary
+#: without classifying it fails immediately rather than silently
+#: defaulting into (or out of) Conviction.
+_CASE_OPEN_QUESTION_CATEGORY: dict[OpenQuestionOrigin, CaseOpenQuestionCategory] = {
+    # Ran to completion; the answer is genuinely mixed or adverse.
+    OpenQuestionOrigin.GROWTH_MIXED: CaseOpenQuestionCategory.EVIDENTIAL_UNCERTAINTY,
+    OpenQuestionOrigin.CAPITAL_ALLOCATION_WEAK: CaseOpenQuestionCategory.EVIDENTIAL_UNCERTAINTY,
+    OpenQuestionOrigin.VALUATION_EXPENSIVE_VERSUS_GROWTH: CaseOpenQuestionCategory.EVIDENTIAL_UNCERTAINTY,
+    # Could not run: no history, no price data. A data gap, not a mixed answer.
+    OpenQuestionOrigin.GROWTH_INCONCLUSIVE: CaseOpenQuestionCategory.INSUFFICIENT_INPUT,
+    OpenQuestionOrigin.CAPITAL_ALLOCATION_INCONCLUSIVE: CaseOpenQuestionCategory.INSUFFICIENT_INPUT,
+    OpenQuestionOrigin.VALUATION_INCONCLUSIVE: CaseOpenQuestionCategory.INSUFFICIENT_INPUT,
+    # "Atlas has no scenario-based valuation support yet -- always true in
+    # v1" (this enum's own docstring). A statement about Atlas, not about
+    # the company: `DE-016` §8.1 exactly.
+    OpenQuestionOrigin.SCENARIO_VALUATION_UNAVAILABLE: CaseOpenQuestionCategory.CAPABILITY_GAP,
+}
+
+assert set(_CASE_OPEN_QUESTION_CATEGORY) == set(OpenQuestionOrigin), (
+    "every OpenQuestionOrigin must have exactly one DE-016 §7 category"
+)
+
+
+def classify_case_open_question(origin: OpenQuestionOrigin) -> CaseOpenQuestionCategory:
+    """`DE-016` §7's owner lookup for one question."""
+    return _CASE_OPEN_QUESTION_CATEGORY[origin]
+
+
+def material_case_open_questions(
+    open_questions: tuple[CaseOpenQuestion, ...],
+) -> tuple[CaseOpenQuestion, ...]:
+    """The subset `DE-016` §7 permits to bear on Recommendation
+    Conviction: Evidential Uncertainty only.
+
+    Filtering, never suppression -- the full list is unchanged and still
+    reaches `CanonicalAnalysis.open_questions` and the readiness layer,
+    as `DE-016` §8.2 requires ("Capability Gaps SHALL remain visible").
+    This function decides what Conviction may *read*, not what Atlas may
+    *say*.
+
+    On materiality: every question in this category is treated as
+    material, per `DE-016` §6's closing rule -- where materiality cannot
+    be determined for a specific item, it is treated as material, because
+    understating uncertainty is the more damaging error. Atlas holds no
+    record of which analytical finding bears on which stated Direction,
+    so a finer judgment is not available today; `DE-016` §17 Q1 names
+    that as the gap a successor clarification must close. This is a
+    deliberate application of the doctrine's own fallback, not an
+    omission."""
+    return tuple(
+        question
+        for question in open_questions
+        if classify_case_open_question(question.origin)
+        is CaseOpenQuestionCategory.EVIDENTIAL_UNCERTAINTY
+    )
+
+
 def derive_case_open_questions(
     business_analysis: BusinessAnalysisResult, valuation_engine: ValuationEngineResult
 ) -> tuple[CaseOpenQuestion, ...]:

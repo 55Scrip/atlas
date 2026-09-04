@@ -57,7 +57,11 @@ from atlas.analysis_engine.confidence import Confidence
 from atlas.analysis_engine.contracts import RiskCategory, CapabilityStatus
 from atlas.analysis_engine.conviction import calculate_conviction
 from atlas.analysis_engine.findings import Finding, FindingKind, FindingProducer, FindingSeverity
-from atlas.analysis_engine.investment_case_synthesis import derive_case_open_questions, synthesize_investment_case
+from atlas.analysis_engine.investment_case_synthesis import (
+    derive_case_open_questions,
+    material_case_open_questions,
+    synthesize_investment_case,
+)
 from atlas.analysis_engine.models import CanonicalAnalysis, Identity, RiskSection, UnavailableCapability
 from atlas.analysis_engine.outlook import build_outlook
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
@@ -657,6 +661,25 @@ def assemble_analysis(
         for finding in findings
     )
 
+    # `DE-016` §7: Recommendation Conviction may read only the open
+    # questions doctrine assigns to it -- Evidential Uncertainty. It read
+    # `open_questions` (decision_engine's evidence-*linkage* gap list)
+    # until this point, every member of which `DE-016` §7 owns elsewhere:
+    # the three linkage gaps are Investor Information Gaps owned by
+    # Coverage (which already counts them, as EvidenceCoverage), and
+    # `BUSINESS_DURABILITY_NOT_ASSESSABLE`/`PORTFOLIO_FACTOR_NOT
+    # _ASSESSABLE`/`VALUATION_THESIS_NOT_DOCUMENTED` are Capability Gaps
+    # owned by the readiness layer, which `DE-016` §8.2 forbids from
+    # reducing Conviction. That list therefore contributes nothing here,
+    # and `analysis_open_questions` -- Atlas's own analysis-derived
+    # questions, the owner Calibration Phase 4 already named for this
+    # input -- is filtered to its Evidential Uncertainty subset instead.
+    #
+    # `open_questions` itself is untouched and still reaches
+    # `CanonicalAnalysis.open_questions` and its Finding list below:
+    # what Conviction may read changed, not what Atlas may say.
+    material_open_questions = material_case_open_questions(analysis_open_questions)
+
     recommendation = evaluate_recommendation_gate(
         engine_input,
         business_evaluation=decision_output.business_evaluation,
@@ -668,7 +691,7 @@ def assemble_analysis(
         valuation_engine=valuation_engine,
         valuation_support=valuation_support,
         has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
-        has_open_questions=bool(open_questions),
+        has_open_questions=bool(material_open_questions),
         generated_at=generated_at,
         has_real_risk_evidence=has_real_risk_evidence,
     )

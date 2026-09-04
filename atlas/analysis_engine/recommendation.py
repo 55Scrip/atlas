@@ -536,6 +536,38 @@ def _safe_has_contradicting_evidence(reasoning: ReasoningResult) -> bool:
     return bool(reasoning.finding.contradicting_evidence.observation_classifications)
 
 
+def _has_material_counter_evidence(reasoning: ReasoningResult) -> bool:
+    """`DE-016` §6's materiality test, applied to Counter-Evidence.
+
+    `DE-004` §3 permits Counter-Evidence at High provided it "is minor
+    and does not meaningfully undermine the conclusion," so presence
+    alone is not the doctrinal question -- materiality is. `DE-016` §6
+    defines material Counter-Evidence as evidence which, taken at face
+    value, could reasonably alter or invalidate the current conclusion,
+    and §6.1 requires that judgment to be made against the specific
+    conclusion Conviction accompanies.
+
+    **Atlas cannot make that judgment today, and `DE-016` says what to do
+    about it.** Nothing records which Observation bears on which stated
+    Direction: `ObservationEvidenceClassification` carries an epistemic
+    status and two counts, none of which is conclusion-relative, and
+    `DE-016` §6.3 forbids manufacturing the missing judgment from counts
+    (that would be the numeric threshold the doctrine explicitly
+    prohibits). So §6's closing rule governs: "Where materiality
+    genuinely cannot be determined for a specific piece of
+    Counter-Evidence, that Counter-Evidence SHALL be treated as
+    material. Understating uncertainty is the more damaging error."
+
+    Every recorded piece of Counter-Evidence is therefore material here.
+    That is this function's doctrinal answer, not an absent
+    implementation -- and it is deliberately a named seam, so the day
+    `DE-016` §17 Q1 supplies a conclusion-relative materiality record,
+    exactly one function changes. Behaviour is identical to reading
+    presence directly; the difference is that the reason is now stated
+    and auditable rather than assumed."""
+    return _safe_has_contradicting_evidence(reasoning)
+
+
 def evaluate_recommendation_gate(
     engine_input: DecisionEngineInput,
     *,
@@ -610,7 +642,7 @@ def evaluate_recommendation_gate(
     )
 
     evidence_coverage = _safe_evidence_coverage(business_evaluation)
-    has_contradicting_evidence = _safe_has_contradicting_evidence(reasoning)
+    has_contradicting_evidence = _has_material_counter_evidence(reasoning)
 
     fundamentals_evidence_present = has_company_fundamentals_evidence(
         growth_status=growth_finding.status,
