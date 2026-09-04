@@ -38,10 +38,23 @@ from atlas.analysis_engine.reasoning import (
 CANONICAL = "canonical"
 CANONICAL_EMPTY = "canonical_empty"
 LEGACY = LEGACY_RESULT_WITHOUT_REASONING
+#: The recommendation was withheld -- no direction, therefore no
+#: analytical rationale to record. Distinct from LEGACY: this row was
+#: written by current code and is telling the truth about itself. The
+#: first version of this harness conflated the two, because both read
+#: back as `None`, and reported 16 freshly-written rows as legacy.
+WITHHELD = "no_directional_recommendation"
 
 
-def classify(payload: dict | None) -> str:
-    stored = deserialize_reasoning(payload)
+def classify(result_payload: dict) -> str:
+    """Reads the raw stored payload, not just the reasoning value: the
+    difference between a missing key and a null value is exactly the
+    difference between "predates the field" and "withheld"."""
+    if "reasoning" not in result_payload:
+        return LEGACY
+    if result_payload["reasoning"] is None:
+        return WITHHELD
+    stored = deserialize_reasoning(result_payload["reasoning"])
     if stored is None:
         return LEGACY
     if not stored.primary_drivers and not stored.counter_drivers:
@@ -58,7 +71,7 @@ def collect(database: str) -> list[dict]:
         )):
             payload = json.loads(result_json or "{}")
             reasoning_payload = payload.get("reasoning")
-            state = classify(reasoning_payload)
+            state = classify(payload)
             stored = deserialize_reasoning(reasoning_payload)
             rows.append({
                 "ticker": ticker,
@@ -109,9 +122,10 @@ def main() -> int:
     print(f"  rows: {len(rows)}   digest: {digest}")
     print(f"  canonical        : {states[CANONICAL]}")
     print(f"  canonical_empty  : {states[CANONICAL_EMPTY]}")
+    print(f"  {WITHHELD:17s}: {states[WITHHELD]}   (no direction -> no rationale to score)")
     print(f"  {LEGACY:17s}: {states[LEGACY]}   (UNSCORABLE for canonical dimensions)")
 
-    scorable = [r for r in rows if r["reasoning_state"] != LEGACY]
+    scorable = [r for r in rows if r["reasoning_state"] in (CANONICAL, CANONICAL_EMPTY)]
     print(f"\n  scorable rows: {len(scorable)} / {len(rows)}")
     distinct = {(tuple(r["primary_drivers"] or ()), tuple(r["counter_drivers"] or ()))
                 for r in scorable}
