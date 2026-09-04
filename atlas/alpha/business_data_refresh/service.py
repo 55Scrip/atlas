@@ -104,6 +104,8 @@ the identical `CanonicalSecurity` provenance the gate returned.
 """
 from __future__ import annotations
 
+from dataclasses import replace
+
 from datetime import date, datetime, timezone
 from typing import Callable
 
@@ -152,6 +154,7 @@ def refresh_company_data(
     depth: EnrichmentDepth = EnrichmentDepth.FULL,
     budget_available: "Callable[[], bool] | None" = None,
     on_provider_throttled: "Callable[[Exception], None] | None" = None,
+    provider_symbol: "Callable[[str, str | None], str] | None" = None,
 ) -> RefreshSummary:
     """One `evaluated_at` timestamp for the whole run (every document
     from every provider is fetched "as of now" together, not at
@@ -268,6 +271,45 @@ def refresh_company_data(
             daily_quota_exhausted=daily_quota_exhausted,
         )
 
+    def _symbol_for(provider: object) -> str:
+        """Which string this provider is asked about.
+
+        Berkshire Class B is the case this exists for: Atlas, the
+        portfolio and the user know it as `BRK.B`, and Alpha Vantage
+        answers only to `BRK-B` (verified live, one request). The
+        resolver is injected rather than imported -- this package may
+        not import `canonical_security` -- and it performs a lookup of
+        a stored, human-approved route. It never derives one spelling
+        from another: a ticker with no route, or a provider that
+        declares no name, goes out unchanged.
+        """
+        if provider_symbol is None:
+            return ticker
+        return provider_symbol(ticker, getattr(provider, "canonical_provider_name", None))
+
+    def _as_canonical(documents: tuple, symbol: str) -> tuple:
+        """Route the request out, bring the answer back under Atlas's
+        own name.
+
+        Providers stamp `company` on their documents from whatever
+        symbol they were handed, so without this a routed fetch would
+        persist records under `BRK-B` -- the provider's spelling
+        leaking into the field every join, the portfolio and the
+        security-provenance work all key on. Rewriting is confined to
+        genuinely routed fetches, so the unrouted path is byte-for-byte
+        unchanged.
+
+        Only `company` is rewritten. `identifier` keeps the provider's
+        own spelling, which is honest: it names the provider's evidence,
+        not Atlas's security.
+        """
+        if symbol == ticker:
+            return documents
+        return tuple(
+            replace(document, company=ticker) if document.company != ticker else document
+            for document in documents
+        )
+
     profile_documents: list[RawBusinessDocument] = []
     for provider in providers:
         if not isinstance(provider, CompanyProfileProvider):
@@ -275,7 +317,11 @@ def refresh_company_data(
         provider_id = f"{type(provider).__name__}.fetch_company_profile"
         provider_ids.append(provider_id)
         try:
-            fetched = provider.fetch_company_profile(company_identifier=ticker, evaluated_at=evaluated_at)
+            symbol = _symbol_for(provider)
+            fetched = _as_canonical(
+                provider.fetch_company_profile(company_identifier=symbol, evaluated_at=evaluated_at),
+                symbol,
+            )
         except RateLimited as exc:
             # Provider & Quota Intelligence. A throttled call produced no
             # identity evidence *about this company* -- it never got that
@@ -369,7 +415,10 @@ def refresh_company_data(
         provider_id = type(provider).__name__
         provider_ids.append(provider_id)
         try:
-            documents = provider.fetch(company_identifier=ticker, evaluated_at=evaluated_at)
+            symbol = _symbol_for(provider)
+            documents = _as_canonical(
+                provider.fetch(company_identifier=symbol, evaluated_at=evaluated_at), symbol
+            )
         except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
             if isinstance(exc, DailyQuotaExhausted):
                 # Provider & Quota Intelligence: the provider's own word
@@ -396,8 +445,11 @@ def refresh_company_data(
             continue
         try:
             historical_documents = provider.fetch_historical_snapshots(
-                company_identifier=ticker, filing_dates=filing_dates, evaluated_at=evaluated_at
+                company_identifier=(symbol := _symbol_for(provider)),
+                filing_dates=filing_dates,
+                evaluated_at=evaluated_at,
             )
+            historical_documents = _as_canonical(historical_documents, symbol)
         except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
             if isinstance(exc, DailyQuotaExhausted):
                 # Provider & Quota Intelligence: the provider's own word
@@ -429,8 +481,9 @@ def refresh_company_data(
         provider_id = f"{type(provider).__name__}.fetch_earnings_call_transcripts"
         try:
             transcript_documents = provider.fetch_earnings_call_transcripts(
-                company_identifier=ticker, evaluated_at=evaluated_at
+                company_identifier=(symbol := _symbol_for(provider)), evaluated_at=evaluated_at
             )
+            transcript_documents = _as_canonical(transcript_documents, symbol)
         except Exception as exc:  # noqa: BLE001 -- reported, never silently swallowed (Phase 13)
             if isinstance(exc, DailyQuotaExhausted):
                 # Provider & Quota Intelligence: the provider's own word

@@ -380,6 +380,13 @@ class AlphaVantageMarketDataProvider:
     never a silent empty result.
     """
 
+    #: This provider's name in the closed `ProviderName` vocabulary.
+    #: Read by the enrichment service to look up a stored symbol
+    #: route (`canonical_security.provider_routing`); absent means
+    #: "never route", which is the correct default for a provider
+    #: whose spelling Atlas already agrees with.
+    canonical_provider_name = "ALPHA_VANTAGE"
+
     def __init__(
         self,
         fetch_json_fn: JsonFetcher | None = None,

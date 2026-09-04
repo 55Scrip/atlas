@@ -102,6 +102,29 @@ canonical_issuer_identifiers_table = Table(
 )
 
 
+#: Provider symbol routing (2026-09-04). Deliberately NOT hung off a
+#: CanonicalSecurity, unlike `canonical_security_provider_mappings`.
+#:
+#: The case that forced this: Berkshire Class B had no CanonicalSecurity
+#: precisely *because* Alpha Vantage could not be asked about `BRK.B`,
+#: so a route recorded against a security could never have been created
+#: -- the security cannot exist until the route does. A ProviderMapping
+#: remains the right home for a provider's claim about a security that
+#: already exists; this table is the bootstrap that gets there, keyed by
+#: canonical ticker alone.
+#:
+#: Holds stored facts only. Nothing derives one spelling from another.
+provider_symbol_routes_table = Table(
+    "provider_symbol_routes",
+    metadata,
+    Column("provider_name", String, primary_key=True),
+    Column("canonical_ticker", String, primary_key=True),
+    Column("provider_symbol", String, nullable=False),
+    Column("evidence", String, nullable=False),
+    Column("recorded_at", String, nullable=False),
+)
+
+
 def create_canonical_security_tables(engine: Engine) -> None:
     # Issuer first: securities reference it. Both new tables are created
     # fresh, and the two added columns below are nullable so
@@ -114,3 +137,4 @@ def create_canonical_security_tables(engine: Engine) -> None:
     sync_table_schema(engine, canonical_security_listings_table)
     sync_table_schema(engine, canonical_security_provider_mappings_table)
     sync_table_schema(engine, canonical_security_identifiers_table)
+    sync_table_schema(engine, provider_symbol_routes_table)

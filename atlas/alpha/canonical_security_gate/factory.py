@@ -40,3 +40,31 @@ def build_identity_gate(engine: Engine) -> CanonicalSecurityIdentityGate:
         canonical_issuer_repository=SqlAlchemyCanonicalIssuerRepository(engine),
         resolution_repository=SqlAlchemyResolutionRepository(engine),
     )
+
+
+def build_provider_symbol_resolver(engine):
+    """The sanctioned seam for provider symbol routing, built here for
+    the same reason `build_identity_gate` is: `business_data_refresh`
+    may not import `canonical_security` directly, so this package hands
+    it a plain callable instead of a domain object.
+
+    Returns `(canonical_ticker, provider_name) -> symbol to send`. The
+    routing table is read once, here, rather than per request. Routes
+    are stored facts; nothing in this path derives one spelling from
+    another, and a ticker with no stored route goes out unchanged.
+    """
+    from atlas.alpha.canonical_security.provider_routing import (
+        build_routing_table,
+        load_routes,
+        resolve_provider_symbol,
+    )
+    from atlas.alpha.canonical_security.table import create_canonical_security_tables
+
+    create_canonical_security_tables(engine)
+    with engine.connect() as connection:
+        routing_table = build_routing_table(load_routes(connection))
+
+    def resolve(canonical_ticker: str, provider_name: str | None) -> str:
+        return resolve_provider_symbol(canonical_ticker, provider_name, routing_table=routing_table)
+
+    return resolve

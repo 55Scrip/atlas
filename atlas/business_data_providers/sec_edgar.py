@@ -707,6 +707,12 @@ class SecEdgarFundamentalsProvider:
     never a fallback identity.
     """
 
+    #: Name in the closed `ProviderName` vocabulary. Present so
+    #: symbol routing is per-provider: SEC keeps whatever notation it
+    #: needs independently of Alpha Vantage. No route is stored for
+    #: SEC today, so this changes nothing at runtime.
+    canonical_provider_name = "SEC_EDGAR"
+
     def __init__(
         self,
         fetch_json_fn: JsonFetcher | None = None,
@@ -788,6 +794,12 @@ class SecEdgarFilingHistoryProvider:
     same cached, live, keyless resolution `SecEdgarFundamentalsProvider`
     already uses, never a second, independent implementation.
     """
+
+    #: Name in the closed `ProviderName` vocabulary. Present so
+    #: symbol routing is per-provider: SEC keeps whatever notation it
+    #: needs independently of Alpha Vantage. No route is stored for
+    #: SEC today, so this changes nothing at runtime.
+    canonical_provider_name = "SEC_EDGAR"
 
     provider_id = "sec_edgar_filings"
     supported_domains = (KnowledgeDomain.REGULATORY_FILINGS,)
