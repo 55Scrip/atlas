@@ -901,6 +901,8 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.actions.trimPosition": "Minska position",
   "investmentCase.actions.removePosition": "Avveckla position",
   "investmentCase.actions.leaveAsIs": "Lämna oförändrad",
+  "investmentCase.canonical.deepAnalysisLabel": "Djupanalys — verksamhet, finanser och ledning",
+  "investmentCase.canonical.evidenceAuditLabel": "Underlag, täckning och datakvalitet",
   "investmentCase.actions.recordManuallyLabel": "Registrera ett beslut manuellt",
   "investmentCase.actions.notLinkedNote":
     "Beslutsåtgärder blir tillgängliga när det här caset kopplas till ett portföljinnehav.",

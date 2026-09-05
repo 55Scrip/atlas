@@ -2803,6 +2803,164 @@ export function InvestmentCasePage() {
                   </>
                 )}
 
+                {/* Convergence Sprint 1B (Investment Case Information
+                    Architecture) -- Atlas's conclusion now opens the case.
+
+                    Sprint 1 moved this block above Portfolio Fit, which was
+                    correct but not sufficient: `InvestmentCaseCanonicalSections`
+                    below renders fifteen analytical sections and sat ~700 lines
+                    of JSX *above* it, so a reader still met the seven-category
+                    bar, Outlook, Investment Argument, Atlas Reasoning, Evidence
+                    and six audit panels before learning what Atlas concluded.
+                    Executive Summary and `AtlasDecisionSummary` are the page's
+                    Level 1 answer; everything below them explains it. */}
+            {/* Executive Summary (Investment Case Workspace v2, Sprint 2;
+                "Discuss this Case" removed in Workspace Migration Phase 3
+                -- Decision Log #2, no embedded Ask Atlas UI) -- the whole
+                "understand in ~10 seconds, no scrolling" section: Atlas
+                Assessment, Current Priority, Portfolio Impact,
+                Outstanding Issues. Renders only once the analysis has
+                loaded; a fetch failure or still-loading state never
+                blocks the rest of the page (same independent-fetch
+                pattern every other section here already uses). */}
+            {investmentCaseAnalysis.kind === "loaded" && (
+              <ExecutiveSummaryCard
+                analysis={investmentCaseAnalysis.report}
+                linkedHolding={linkedHolding}
+                alphaPortfolioStatus={alphaPortfolioStatus}
+                outstandingWorkKinds={caseOutstandingWork.map((item) => item.kind)}
+                t={t}
+              />
+            )}
+
+            <Divider tone="hairline" />
+
+            {/* Convergence Sprint 1 (Investment Case Compression) --
+                this block moved here from below Portfolio Fit and the
+                Evidence Graph. `AtlasDecisionSummary` is the page's own
+                Level 1 answer ("what does Atlas think, and why isn't it
+                more certain"); it previously rendered ~40 lines of JSX
+                and two full analytical sections below the material it
+                exists to summarise, so the reader met Level 3 evidence
+                before the conclusion. Nothing inside the block changed:
+                the nine Decision Layer sections keep their own collapsed
+                disclosure exactly as before. */}
+            {/* Information Compression (Productization Sprint P2, Phase
+                4 -- Decision-Layer Consolidation). The nine Decision
+                Layer sections below (Readiness through Portfolio
+                Decision) all independently restate one underlying
+                question -- "why isn't Atlas more certain, and what
+                would change that" -- each in its own vocabulary.
+                `AtlasDecisionSummary` answers it once, from the two
+                views built to already hold a single authoritative
+                answer (Decision Reliability's own `primaryLimitingReason`,
+                Decision Path's own `nextAchievableImprovement`) -- no
+                new fetch, no new computation. The nine sections
+                themselves are unchanged and un-deleted; they move into
+                one collapsed disclosure immediately below, so every
+                reason, count, and source tag they show remains exactly
+                as reachable as before -- only the default reading path
+                changes. */}
+            {decisionReliabilityStatus.kind === "loaded" && (
+              <AtlasDecisionSummary
+                reliability={decisionReliabilityStatus.reliability}
+                path={decisionPathStatus.kind === "loaded" ? decisionPathStatus.path : null}
+                t={t}
+              />
+            )}
+
+            <ExpandableDetail summaryLabel={t("investmentCase.decisionSummary.viewFullLabel")}>
+              <Stack gap="inter-section">
+                {/* Atlas Intelligence Sprint 11 (Decision Readiness &
+                    Decision Eligibility, Deliverable 6). Independent fetch
+                    (`decisionReadinessStatus`); renders nothing on error,
+                    never blocking the rest of the page. */}
+                {decisionReadinessStatus.kind === "loaded" && (
+                  <DecisionReadinessSection
+                    readiness={decisionReadinessStatus.readiness}
+                    change={decisionReadinessChange}
+                    t={t}
+                  />
+                )}
+
+                {/* Atlas Decision Layer Sprint 1 (Investment Decision
+                    Synthesis, Deliverable 6). Independent fetch
+                    (`investmentDecisionStatus`); renders nothing on error,
+                    never blocking the rest of the page. */}
+                {investmentDecisionStatus.kind === "loaded" && (
+                  <InvestmentDecisionSection
+                    decision={investmentDecisionStatus.decision}
+                    change={investmentDecisionChange}
+                    t={t}
+                  />
+                )}
+
+                {/* Atlas Decision Layer Sprint 2 (Recommendation Strength
+                    & Conviction, Deliverable 6). Independent fetch
+                    (`recommendationConvictionStatus`); renders nothing on
+                    error, never blocking the rest of the page. */}
+                {recommendationConvictionStatus.kind === "loaded" && (
+                  <RecommendationConvictionSection
+                    conviction={recommendationConvictionStatus.conviction}
+                    change={recommendationConvictionChange}
+                    t={t}
+                  />
+                )}
+
+                {/* Atlas Decision Layer Sprint 3 (Decision Path &
+                    Required Progress, Deliverable 6). Independent fetch
+                    (`decisionPathStatus`); renders nothing on error, never
+                    blocking the rest of the page. */}
+                {decisionPathStatus.kind === "loaded" && (
+                  <DecisionPathSection path={decisionPathStatus.path} change={decisionPathChange} t={t} />
+                )}
+
+                {/* Atlas Decision Layer Sprint 4 (Decision Alternatives &
+                    Opportunity Cost, Deliverable 6). Independent fetch
+                    (`opportunityCostStatus`); renders nothing when there
+                    are no real alternatives, never blocking the rest of
+                    the page. */}
+                {opportunityCostStatus.kind === "loaded" && (
+                  <OpportunityCostSection
+                    opportunityCost={opportunityCostStatus.opportunityCost}
+                    currentTicker={resolvedTicker ?? ""}
+                    change={opportunityCostChange}
+                    t={t}
+                  />
+                )}
+
+                {/* Atlas Decision Layer Sprint 5 (Decision Memory,
+                    Deliverable 6). Independent fetch
+                    (`decisionMemoryStatus`); renders nothing on error,
+                    never blocking the rest of the page. */}
+                {decisionMemoryStatus.kind === "loaded" && <DecisionMemorySection memory={decisionMemoryStatus.memory} t={t} />}
+
+                {/* Atlas Decision Layer Sprint 6 (Decision Explanation &
+                    Traceability, Deliverable 6). Independent fetch
+                    (`decisionExplanationStatus`); renders nothing on
+                    error, never blocking the rest of the page. */}
+                {decisionExplanationStatus.kind === "loaded" && (
+                  <DecisionExplanationSection explanation={decisionExplanationStatus.explanation} t={t} />
+                )}
+
+                {/* Atlas Decision Layer Sprint 7 (Decision Reliability,
+                    Deliverable 7). Independent fetch
+                    (`decisionReliabilityStatus`); renders nothing on
+                    error, never blocking the rest of the page. */}
+                {decisionReliabilityStatus.kind === "loaded" && (
+                  <DecisionReliabilitySection reliability={decisionReliabilityStatus.reliability} t={t} />
+                )}
+
+                {/* Atlas Decision Layer Sprint 8 (Portfolio Decision
+                    Synthesis, Deliverable 7). Independent fetch
+                    (`portfolioDecisionStatus`); renders nothing on error,
+                    never blocking the rest of the page. */}
+                {portfolioDecisionStatus.kind === "loaded" && (
+                  <PortfolioDecisionSection decision={portfolioDecisionStatus.decision} t={t} />
+                )}
+              </Stack>
+            </ExpandableDetail>
+
                 {/* Atlas UX Phase 7A -- the seven-category bar and Case
                     DNA lead the page, immediately after the Hero and
                     its own supporting cards, per this sprint's own
@@ -3405,152 +3563,6 @@ export function InvestmentCasePage() {
 
         {caseId && status.kind === "loaded" && (
           <>
-            {/* Executive Summary (Investment Case Workspace v2, Sprint 2;
-                "Discuss this Case" removed in Workspace Migration Phase 3
-                -- Decision Log #2, no embedded Ask Atlas UI) -- the whole
-                "understand in ~10 seconds, no scrolling" section: Atlas
-                Assessment, Current Priority, Portfolio Impact,
-                Outstanding Issues. Renders only once the analysis has
-                loaded; a fetch failure or still-loading state never
-                blocks the rest of the page (same independent-fetch
-                pattern every other section here already uses). */}
-            {investmentCaseAnalysis.kind === "loaded" && (
-              <ExecutiveSummaryCard
-                analysis={investmentCaseAnalysis.report}
-                linkedHolding={linkedHolding}
-                alphaPortfolioStatus={alphaPortfolioStatus}
-                outstandingWorkKinds={caseOutstandingWork.map((item) => item.kind)}
-                t={t}
-              />
-            )}
-
-            <Divider tone="hairline" />
-
-            {/* Convergence Sprint 1 (Investment Case Compression) --
-                this block moved here from below Portfolio Fit and the
-                Evidence Graph. `AtlasDecisionSummary` is the page's own
-                Level 1 answer ("what does Atlas think, and why isn't it
-                more certain"); it previously rendered ~40 lines of JSX
-                and two full analytical sections below the material it
-                exists to summarise, so the reader met Level 3 evidence
-                before the conclusion. Nothing inside the block changed:
-                the nine Decision Layer sections keep their own collapsed
-                disclosure exactly as before. */}
-            {/* Information Compression (Productization Sprint P2, Phase
-                4 -- Decision-Layer Consolidation). The nine Decision
-                Layer sections below (Readiness through Portfolio
-                Decision) all independently restate one underlying
-                question -- "why isn't Atlas more certain, and what
-                would change that" -- each in its own vocabulary.
-                `AtlasDecisionSummary` answers it once, from the two
-                views built to already hold a single authoritative
-                answer (Decision Reliability's own `primaryLimitingReason`,
-                Decision Path's own `nextAchievableImprovement`) -- no
-                new fetch, no new computation. The nine sections
-                themselves are unchanged and un-deleted; they move into
-                one collapsed disclosure immediately below, so every
-                reason, count, and source tag they show remains exactly
-                as reachable as before -- only the default reading path
-                changes. */}
-            {decisionReliabilityStatus.kind === "loaded" && (
-              <AtlasDecisionSummary
-                reliability={decisionReliabilityStatus.reliability}
-                path={decisionPathStatus.kind === "loaded" ? decisionPathStatus.path : null}
-                t={t}
-              />
-            )}
-
-            <ExpandableDetail summaryLabel={t("investmentCase.decisionSummary.viewFullLabel")}>
-              <Stack gap="inter-section">
-                {/* Atlas Intelligence Sprint 11 (Decision Readiness &
-                    Decision Eligibility, Deliverable 6). Independent fetch
-                    (`decisionReadinessStatus`); renders nothing on error,
-                    never blocking the rest of the page. */}
-                {decisionReadinessStatus.kind === "loaded" && (
-                  <DecisionReadinessSection
-                    readiness={decisionReadinessStatus.readiness}
-                    change={decisionReadinessChange}
-                    t={t}
-                  />
-                )}
-
-                {/* Atlas Decision Layer Sprint 1 (Investment Decision
-                    Synthesis, Deliverable 6). Independent fetch
-                    (`investmentDecisionStatus`); renders nothing on error,
-                    never blocking the rest of the page. */}
-                {investmentDecisionStatus.kind === "loaded" && (
-                  <InvestmentDecisionSection
-                    decision={investmentDecisionStatus.decision}
-                    change={investmentDecisionChange}
-                    t={t}
-                  />
-                )}
-
-                {/* Atlas Decision Layer Sprint 2 (Recommendation Strength
-                    & Conviction, Deliverable 6). Independent fetch
-                    (`recommendationConvictionStatus`); renders nothing on
-                    error, never blocking the rest of the page. */}
-                {recommendationConvictionStatus.kind === "loaded" && (
-                  <RecommendationConvictionSection
-                    conviction={recommendationConvictionStatus.conviction}
-                    change={recommendationConvictionChange}
-                    t={t}
-                  />
-                )}
-
-                {/* Atlas Decision Layer Sprint 3 (Decision Path &
-                    Required Progress, Deliverable 6). Independent fetch
-                    (`decisionPathStatus`); renders nothing on error, never
-                    blocking the rest of the page. */}
-                {decisionPathStatus.kind === "loaded" && (
-                  <DecisionPathSection path={decisionPathStatus.path} change={decisionPathChange} t={t} />
-                )}
-
-                {/* Atlas Decision Layer Sprint 4 (Decision Alternatives &
-                    Opportunity Cost, Deliverable 6). Independent fetch
-                    (`opportunityCostStatus`); renders nothing when there
-                    are no real alternatives, never blocking the rest of
-                    the page. */}
-                {opportunityCostStatus.kind === "loaded" && (
-                  <OpportunityCostSection
-                    opportunityCost={opportunityCostStatus.opportunityCost}
-                    currentTicker={resolvedTicker ?? ""}
-                    change={opportunityCostChange}
-                    t={t}
-                  />
-                )}
-
-                {/* Atlas Decision Layer Sprint 5 (Decision Memory,
-                    Deliverable 6). Independent fetch
-                    (`decisionMemoryStatus`); renders nothing on error,
-                    never blocking the rest of the page. */}
-                {decisionMemoryStatus.kind === "loaded" && <DecisionMemorySection memory={decisionMemoryStatus.memory} t={t} />}
-
-                {/* Atlas Decision Layer Sprint 6 (Decision Explanation &
-                    Traceability, Deliverable 6). Independent fetch
-                    (`decisionExplanationStatus`); renders nothing on
-                    error, never blocking the rest of the page. */}
-                {decisionExplanationStatus.kind === "loaded" && (
-                  <DecisionExplanationSection explanation={decisionExplanationStatus.explanation} t={t} />
-                )}
-
-                {/* Atlas Decision Layer Sprint 7 (Decision Reliability,
-                    Deliverable 7). Independent fetch
-                    (`decisionReliabilityStatus`); renders nothing on
-                    error, never blocking the rest of the page. */}
-                {decisionReliabilityStatus.kind === "loaded" && (
-                  <DecisionReliabilitySection reliability={decisionReliabilityStatus.reliability} t={t} />
-                )}
-
-                {/* Atlas Decision Layer Sprint 8 (Portfolio Decision
-                    Synthesis, Deliverable 7). Independent fetch
-                    (`portfolioDecisionStatus`); renders nothing on error,
-                    never blocking the rest of the page. */}
-                {portfolioDecisionStatus.kind === "loaded" && (
-                  <PortfolioDecisionSection decision={portfolioDecisionStatus.decision} t={t} />
-                )}
-              </Stack>
-            </ExpandableDetail>
 
             {/* Product Sprint 4 (Portfolio Fit Engine, Deliverable 8) --
                 a new, always-visible section, the same placement tier as
@@ -5829,113 +5841,134 @@ function InvestmentCaseCanonicalSections({
 
       <Divider tone="hairline" />
 
-      <CoveragePanel coverage={analysis.coverage} t={t} />
+      {/* Convergence Sprint 1B: the evidence/audit layer. Coverage
+          percentages, knowledge-coverage domains, materiality counts,
+          evidence-quality grades and the evidence timeline are how Atlas
+          stays auditable -- they are not how an investor decides. They
+          render unchanged, one disclosure down, so the audit trail is
+          fully inspectable without standing between the reader and the
+          investment case. */}
+      <ExpandableDetail summaryLabel={t("investmentCase.canonical.evidenceAuditLabel")}>
+        <Stack gap="inter-section">
+          <CoveragePanel coverage={analysis.coverage} t={t} />
 
-      {analysis.knowledgeCoverage && (
-        <>
+          {analysis.knowledgeCoverage && (
+            <>
+              <Divider tone="hairline" />
+              <KnowledgeCoveragePanel coverage={analysis.knowledgeCoverage} t={t} />
+            </>
+          )}
+
+          {analysis.materiality && (
+            <>
+              <Divider tone="hairline" />
+              <MaterialityPanel assessment={analysis.materiality} t={t} />
+            </>
+          )}
+
+          {analysis.explanation && (
+            <>
+              <Divider tone="hairline" />
+              <ExplanationPanel explanation={analysis.explanation} t={t} />
+            </>
+          )}
+
+          {analysis.evidenceQualityReport && (
+            <>
+              <Divider tone="hairline" />
+              <EvidenceQualityPanel report={analysis.evidenceQualityReport} t={t} />
+            </>
+          )}
+
+          {analysis.evidenceTimeline && (
+            <>
+              <Divider tone="hairline" />
+              <EvidenceTimelinePanel caseId={analysis.caseId} history={analysis.evidenceTimeline} t={t} />
+            </>
+          )}
+        </Stack>
+      </ExpandableDetail>
+
+      {/* Convergence Sprint 1B: the deep-analysis layer. Management,
+          regulatory, company-health, interpreted financials and the
+          company overview are real analytical depth and are kept in
+          full -- but an investor reads them when investigating, not to
+          learn what Atlas concluded. Unchanged components, one
+          disclosure down. */}
+      <ExpandableDetail summaryLabel={t("investmentCase.canonical.deepAnalysisLabel")}>
+        <Stack gap="inter-section">
+          {/* Product Utilization Sprint 1 (Investment Case Experience
+              Activation). Two new, always-present panels (their own
+              sub-sections handle emptiness individually, the same "real
+              field, honest empty state" shape every other panel here
+              already uses) -- see each panel's own module docstring. */}
           <Divider tone="hairline" />
-          <KnowledgeCoveragePanel coverage={analysis.knowledgeCoverage} t={t} />
-        </>
-      )}
-
-      {analysis.materiality && (
-        <>
-          <Divider tone="hairline" />
-          <MaterialityPanel assessment={analysis.materiality} t={t} />
-        </>
-      )}
-
-      {analysis.explanation && (
-        <>
-          <Divider tone="hairline" />
-          <ExplanationPanel explanation={analysis.explanation} t={t} />
-        </>
-      )}
-
-      {analysis.evidenceQualityReport && (
-        <>
-          <Divider tone="hairline" />
-          <EvidenceQualityPanel report={analysis.evidenceQualityReport} t={t} />
-        </>
-      )}
-
-      {analysis.evidenceTimeline && (
-        <>
-          <Divider tone="hairline" />
-          <EvidenceTimelinePanel caseId={analysis.caseId} history={analysis.evidenceTimeline} t={t} />
-        </>
-      )}
-
-      {/* Product Utilization Sprint 1 (Investment Case Experience
-          Activation). Two new, always-present panels (their own
-          sub-sections handle emptiness individually, the same "real
-          field, honest empty state" shape every other panel here
-          already uses) -- see each panel's own module docstring. */}
-      <Divider tone="hairline" />
-      <ManagementIntelligencePanel
-        regulatoryFilings={analysis.regulatoryFilings}
-        executiveChange={analysis.executiveChangeIntelligence}
-        trackRecord={analysis.executiveTrackRecordIntelligence}
-        governance={analysis.governanceIntelligence}
-        ownership={analysis.ownershipIntelligence}
-        executiveCompensation={analysis.executiveCompensationIntelligence}
-        insiderAlignment={analysis.insiderAlignmentIntelligence}
-        t={t}
-      />
-
-      <Divider tone="hairline" />
-      <RegulatoryIntelligencePanel
-        regulatoryFilings={analysis.regulatoryFilings}
-        riskFactor={analysis.riskFactorIntelligence}
-        legalProceedings={analysis.legalProceedingsIntelligence}
-        t={t}
-      />
-
-      {/* Atlas Intelligence Sprint 7 (Monitoring & Change Detection,
-          Deliverable 13). Deliberately one compact line, not a section
-          -- reuses Evidence Timeline/Materiality above for the full
-          picture; this only reprioritizes/frames it. `latestChangeReason`
-          is a server-generated English sentence (matching how every
-          other `daily_brief_agenda` signal reason already works, since
-          it can carry verbatim investor-authored CaseCondition
-          predicate text that cannot be translated) -- deliberately not
-          shown here, where the rest of the page is fully translated;
-          the status badge alone is enough for a compact line, and the
-          same reason already surfaces, in full, on the Daily Brief
-          agenda item. */}
-      {analysis.monitoring && (
-        <Inline gap="metadata" align="center">
-          <StatusBadge
-            label={t(MONITORING_STATUS_KEY[analysis.monitoring.status])}
-            tone={MONITORING_STATUS_TONE[analysis.monitoring.status]}
+          <ManagementIntelligencePanel
+            regulatoryFilings={analysis.regulatoryFilings}
+            executiveChange={analysis.executiveChangeIntelligence}
+            trackRecord={analysis.executiveTrackRecordIntelligence}
+            governance={analysis.governanceIntelligence}
+            ownership={analysis.ownershipIntelligence}
+            executiveCompensation={analysis.executiveCompensationIntelligence}
+            insiderAlignment={analysis.insiderAlignmentIntelligence}
+            t={t}
           />
-        </Inline>
-      )}
 
-      {/* Atlas Intelligence Sprint 8/9 (Automated Monitoring Operations
-          / Data Ingestion & Automatic Refresh, Deliverable 15/6/7).
-          Deliberately a separate line from the Monitoring status badge
-          above -- operational freshness ("has Atlas recomputed this
-          recently, and did new data even arrive") is never mixed with
-          investment status ("what did Atlas conclude"). */}
-      {analysis.operationalFreshness && (
-        <StatusBadge
-          label={t(DATA_FRESHNESS_STATUS_KEY[analysis.operationalFreshness.dataFreshnessStatus])}
-          tone={DATA_FRESHNESS_STATUS_TONE[analysis.operationalFreshness.dataFreshnessStatus]}
-        />
-      )}
+          <Divider tone="hairline" />
+          <RegulatoryIntelligencePanel
+            regulatoryFilings={analysis.regulatoryFilings}
+            riskFactor={analysis.riskFactorIntelligence}
+            legalProceedings={analysis.legalProceedingsIntelligence}
+            t={t}
+          />
 
-      <Divider tone="hairline" />
+          {/* Atlas Intelligence Sprint 7 (Monitoring & Change Detection,
+              Deliverable 13). Deliberately one compact line, not a section
+              -- reuses Evidence Timeline/Materiality above for the full
+              picture; this only reprioritizes/frames it. `latestChangeReason`
+              is a server-generated English sentence (matching how every
+              other `daily_brief_agenda` signal reason already works, since
+              it can carry verbatim investor-authored CaseCondition
+              predicate text that cannot be translated) -- deliberately not
+              shown here, where the rest of the page is fully translated;
+              the status badge alone is enough for a compact line, and the
+              same reason already surfaces, in full, on the Daily Brief
+              agenda item. */}
+          {analysis.monitoring && (
+            <Inline gap="metadata" align="center">
+              <StatusBadge
+                label={t(MONITORING_STATUS_KEY[analysis.monitoring.status])}
+                tone={MONITORING_STATUS_TONE[analysis.monitoring.status]}
+              />
+            </Inline>
+          )}
 
-      <CompanyHealthAssessmentSection cards={companyHealthCards} t={t} />
+          {/* Atlas Intelligence Sprint 8/9 (Automated Monitoring Operations
+              / Data Ingestion & Automatic Refresh, Deliverable 15/6/7).
+              Deliberately a separate line from the Monitoring status badge
+              above -- operational freshness ("has Atlas recomputed this
+              recently, and did new data even arrive") is never mixed with
+              investment status ("what did Atlas conclude"). */}
+          {analysis.operationalFreshness && (
+            <StatusBadge
+              label={t(DATA_FRESHNESS_STATUS_KEY[analysis.operationalFreshness.dataFreshnessStatus])}
+              tone={DATA_FRESHNESS_STATUS_TONE[analysis.operationalFreshness.dataFreshnessStatus]}
+            />
+          )}
 
-      <Divider tone="hairline" />
+          <Divider tone="hairline" />
 
-      <InterpretedFinancialEvidenceSection financialHistory={analysis.financialHistory} t={t} locale={locale} />
+          <CompanyHealthAssessmentSection cards={companyHealthCards} t={t} />
 
-      <Divider tone="hairline" />
+          <Divider tone="hairline" />
 
-      <CompanyOverviewSection companyProfile={analysis.companyProfile} marketSnapshot={analysis.marketSnapshot} t={t} locale={locale} />
+          <InterpretedFinancialEvidenceSection financialHistory={analysis.financialHistory} t={t} locale={locale} />
+
+          <Divider tone="hairline" />
+
+          <CompanyOverviewSection companyProfile={analysis.companyProfile} marketSnapshot={analysis.marketSnapshot} t={t} locale={locale} />
+        </Stack>
+      </ExpandableDetail>
     </Stack>
   );
 }

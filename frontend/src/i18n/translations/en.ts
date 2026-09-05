@@ -910,6 +910,8 @@ export const en = {
   "investmentCase.actions.trimPosition": "Trim Position",
   "investmentCase.actions.removePosition": "Remove Position",
   "investmentCase.actions.leaveAsIs": "Leave as is",
+  "investmentCase.canonical.deepAnalysisLabel": "Deep analysis — business, financials and leadership",
+  "investmentCase.canonical.evidenceAuditLabel": "Evidence, coverage and data quality",
   "investmentCase.actions.recordManuallyLabel": "Record a decision manually",
   "investmentCase.actions.notLinkedNote":
     "Decision actions become available once this case is linked to a portfolio holding.",

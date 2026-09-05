@@ -59,4 +59,77 @@ describe("Investment Case reading hierarchy", () => {
     expect(before).toBeGreaterThan(-1);
     expect(between).not.toContain("</ExpandableDetail>");
   });
+
+  it("puts Atlas's conclusion above the whole analytical body", () => {
+    // Sprint 1B's core correction. `InvestmentCaseCanonicalSections` renders
+    // the seven-category bar's supporting analysis -- Outlook, Investment
+    // Argument, Atlas Reasoning, Evidence and the audit panels. It sat ~700
+    // lines above the conclusion, so Sprint 1's local reorder was correct but
+    // not sufficient.
+    expect(positionOf("AtlasDecisionSummary")).toBeLessThan(
+      positionOf("InvestmentCaseCanonicalSections"),
+    );
+    expect(positionOf("ExecutiveSummaryCard")).toBeLessThan(
+      positionOf("InvestmentCaseCanonicalSections"),
+    );
+  });
+
+  it("keeps the evidence/audit layer out of the default reading surface", () => {
+    // Coverage percentages, knowledge-coverage domains, materiality counts,
+    // evidence-quality grades and the evidence timeline keep Atlas auditable;
+    // they are not how an investor decides.
+    for (const panel of [
+      "CoveragePanel",
+      "KnowledgeCoveragePanel",
+      "MaterialityPanel",
+      "EvidenceQualityPanel",
+      "EvidenceTimelinePanel",
+    ]) {
+      const at = positionOf(panel);
+      const opened = SOURCE.lastIndexOf("<ExpandableDetail", at);
+      const closedBetween = SOURCE.slice(opened, at).includes("</ExpandableDetail>");
+      expect(opened, `${panel} should sit inside a disclosure`).toBeGreaterThan(-1);
+      expect(closedBetween, `${panel} should sit inside a disclosure`).toBe(false);
+    }
+  });
+
+  it("keeps deep company analysis available but not primary", () => {
+    for (const panel of [
+      "ManagementIntelligencePanel",
+      "RegulatoryIntelligencePanel",
+      "CompanyHealthAssessmentSection",
+      "InterpretedFinancialEvidenceSection",
+      "CompanyOverviewSection",
+    ]) {
+      const at = positionOf(panel);
+      const opened = SOURCE.lastIndexOf("<ExpandableDetail", at);
+      expect(SOURCE.slice(opened, at).includes("</ExpandableDetail>")).toBe(false);
+    }
+  });
+
+  it("keeps the four explaining sections on the default surface", () => {
+    // Reducing default exposure must not mean hiding the investment case
+    // itself: Outlook, Investment Argument, Atlas Reasoning and Evidence are
+    // Level 2 and stay visible.
+    for (const section of [
+      "AtlasOutlookSection",
+      "InvestmentArgumentSection",
+      "AtlasReasoningSection",
+      "EvidenceSection",
+    ]) {
+      const at = positionOf(section);
+      const opened = SOURCE.lastIndexOf("<ExpandableDetail", at);
+      const inDisclosure = opened > -1 && !SOURCE.slice(opened, at).includes("</ExpandableDetail>");
+      expect(inDisclosure, `${section} should stay on the default surface`).toBe(false);
+    }
+  });
+
+  it("invents no Figma-only metric on this page", () => {
+    // Expected Return / Upside / Downside / a Conviction score are target
+    // product semantics the current engine does not produce with those
+    // meanings. Sprint 1B must not introduce them by renaming a
+    // confidence-like value.
+    expect(SOURCE).not.toMatch(/probability-weighted/i);
+    expect(SOURCE).not.toMatch(/intrinsicValue/);
+  });
 });
