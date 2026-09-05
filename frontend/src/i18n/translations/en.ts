@@ -1238,6 +1238,8 @@ export const en = {
   "investmentCase.outlook.driver.fcfGrowthTrend": "Recent free cash flow trend",
   "investmentCase.outlook.driver.debtTrend": "Debt trend",
   "investmentCase.outlook.driver.marginTrend": "Operating margin trend",
+  "investmentCase.outlook.driver.moat": "Business moat",
+  "investmentCase.outlook.driver.reinvestmentOpportunity": "Reinvestment opportunity",
 
   // ---------- long-term expected return v1 ----------
   "investmentCase.outlook.growthAssumptionNote":

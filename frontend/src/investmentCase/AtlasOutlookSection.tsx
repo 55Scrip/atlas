@@ -80,7 +80,9 @@ export type OutlookDriverKind =
   | "valuation_risk"
   | "fcf_growth_trend"
   | "debt_trend"
-  | "margin_trend";
+  | "margin_trend"
+  | "moat"
+  | "reinvestment_opportunity";
 export type OutlookDriverDirection = "positive" | "negative" | "neutral";
 
 export interface OutlookAssumptionView {
@@ -195,6 +197,8 @@ const DRIVER_LABEL_KEY: Record<OutlookDriverKind, TranslationKey> = {
   fcf_growth_trend: "investmentCase.outlook.driver.fcfGrowthTrend",
   debt_trend: "investmentCase.outlook.driver.debtTrend",
   margin_trend: "investmentCase.outlook.driver.marginTrend",
+  moat: "investmentCase.outlook.driver.moat",
+  reinvestment_opportunity: "investmentCase.outlook.driver.reinvestmentOpportunity",
 };
 
 export function formatPercent(value: number): string {

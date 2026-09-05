@@ -1225,6 +1225,8 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.outlook.driver.fcfGrowthTrend": "Senaste trend för fritt kassaflöde",
   "investmentCase.outlook.driver.debtTrend": "Skuldtrend",
   "investmentCase.outlook.driver.marginTrend": "Rörelsemarginaltrend",
+  "investmentCase.outlook.driver.moat": "Konkurrensfördel",
+  "investmentCase.outlook.driver.reinvestmentOpportunity": "Återinvesteringsmöjlighet",
 
   // ---------- long-term expected return v1 ----------
   "investmentCase.outlook.growthAssumptionNote":
