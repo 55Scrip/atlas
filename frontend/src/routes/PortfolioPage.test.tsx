@@ -229,8 +229,11 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await waitFor(() => expect(screen.getByText("2 tillgångar")).toBeInTheDocument());
-    expect(screen.getAllByText("5%").length).toBeGreaterThan(0);
-    expect(screen.getByText("MSFT (70%)")).toBeInTheDocument();
+    // Atlas UX Freeze v1: percentages render at one consistent decimal
+    // place (Design System, Numerical Display Rules) -- "5%"/"70%" were
+    // the pre-freeze raw/unrounded rendering.
+    expect(screen.getAllByText("5.0%").length).toBeGreaterThan(0);
+    expect(screen.getByText("MSFT (70.0%)")).toBeInTheDocument();
     expect(screen.getAllByText("Förhöjd").length).toBeGreaterThan(0);
   });
 

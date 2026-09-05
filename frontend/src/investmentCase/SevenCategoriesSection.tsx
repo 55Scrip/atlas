@@ -99,11 +99,11 @@ function QualitativeDots({ level, kind }: { level: QualitativeLevel; kind: "upsi
   const tone = QUALITATIVE_TONE[kind][level];
   const color =
     tone === "positive"
-      ? "var(--status-positive, #4a9d6f)"
+      ? "var(--color-semantic-green)"
       : tone === "caution"
-        ? "var(--status-caution, #c98a2c)"
+        ? "var(--color-semantic-amber)"
         : tone === "critical"
-          ? "var(--status-critical, #c9503f)"
+          ? "var(--color-semantic-red)"
           : "var(--color-text-tertiary)";
   return (
     <Inline gap="metadata" aria-hidden="true">

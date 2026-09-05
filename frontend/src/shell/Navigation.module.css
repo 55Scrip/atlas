@@ -11,11 +11,32 @@
   border-bottom: var(--width-border-hairline) solid var(--color-border-hairline);
 }
 
+/* Global Shell Responsive Fix -- at narrow widths (375px, the Swedish
+   labels especially, "Bevakningslista" longest of the four) the nav's
+   own padding + inter-link gap pushed the row past the viewport instead
+   of the labels themselves needing to shrink. Font-size is not a lever
+   here: --type-body-min-size is a documented accessibility floor
+   (global.css, UX-012A). So this narrows only the chrome around the
+   labels -- padding and gap fall to the smallest existing spacing token
+   -- while keeping all four tabs on one line, unchanged desktop nav,
+   and no horizontal scroll. */
+@media (max-width: 480px) {
+  .nav {
+    gap: var(--space-metadata);
+    padding-left: var(--space-metadata);
+    padding-right: var(--space-metadata);
+  }
+  .link {
+    letter-spacing: -0.65px;
+  }
+}
+
 .link {
   font-family: var(--type-family-prose);
   font-size: var(--type-body-min-size);
   color: var(--color-text-tertiary);
   text-decoration: none;
+  white-space: nowrap;
   transition: color var(--motion-duration-brief) var(--motion-easing-out);
 }
 .link:hover {

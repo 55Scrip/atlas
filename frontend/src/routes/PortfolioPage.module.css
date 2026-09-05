@@ -1,0 +1,11 @@
+/* Atlas UX Freeze v1 -- the holdings table row is a real click target
+   (role="button", navigates to the Investment Case) with no hover
+   feedback before this. Mirrors WatchlistPage.module.css's own row
+   treatment exactly, so both tables give the same feedback for the
+   same kind of interaction. */
+.row {
+  transition: background var(--motion-duration-brief) var(--motion-easing-out);
+}
+.row:hover {
+  background: var(--surface-elevated);
+}

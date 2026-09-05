@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { CSSProperties, FormEvent } from "react";
-import { Button, Container, Heading, Inline, Stack, Surface, Text } from "../foundation";
+import { Button, Container, Heading, Inline, Stack, Surface, Text, TextField } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNote";
 import { fetchMonitoringStatus, type MonitoringOperationalStatusView } from "../monitoring/monitoringApi";
@@ -11,6 +11,7 @@ import { fetchStanceForCase, type StanceView } from "../stance/stanceApi";
 import { StanceBadge } from "../stance/StanceBadge";
 import { dimensionLabel } from "../changeIntelligence/describeChange";
 import type { Translate } from "../changeIntelligence/describeChange";
+import styles from "./WatchlistPage.module.css";
 
 /**
  * Watchlist Doctrine (2026-08-27) -- Watchlist's own, locked question:
@@ -244,10 +245,26 @@ export function WatchlistPage() {
     setTickerInput("");
   }
 
+  /** Atlas UX Freeze v1 -- the approved atlas-watchlist frame resolves
+   * the pre-freeze implementation's duplicate add-company presentation
+   * (this header button and the empty-state's own CTA both visible at
+   * once) down to one control, without changing either's underlying
+   * action. The empty-state card already offers the identical action
+   * when it is the thing on screen, so the header button is suppressed
+   * for exactly that one state -- every other state (populated list,
+   * or the add form itself open) is unaffected. */
+  const showEmptyState = listStatus.kind === "loaded" && listStatus.entries.length === 0 && !showAddForm;
+
   return (
     <Container width="wide">
       <Stack gap="intra-section">
-        <WatchlistHeader listStatus={listStatus} showAddForm={showAddForm} onOpenAddForm={() => setShowAddForm(true)} t={t} />
+        <WatchlistHeader
+          listStatus={listStatus}
+          showAddForm={showAddForm}
+          hideAddButton={showEmptyState}
+          onOpenAddForm={() => setShowAddForm(true)}
+          t={t}
+        />
         {monitoringStatus && (
           <ScopeFreshnessSummaryNote summary={monitoringStatus.watchlistFreshness} scopeKey="monitoring.freshnessSummary.scope.watchlist" t={t} />
         )}
@@ -274,9 +291,7 @@ export function WatchlistPage() {
             {t("watchlist.loadError")}
           </Text>
         )}
-        {listStatus.kind === "loaded" && listStatus.entries.length === 0 && !showAddForm && (
-          <WatchlistEmptyState onAdd={() => setShowAddForm(true)} t={t} />
-        )}
+        {showEmptyState && <WatchlistEmptyState onAdd={() => setShowAddForm(true)} t={t} />}
         {listStatus.kind === "loaded" && listStatus.entries.length > 0 && (
           <WatchlistTable
             entries={[...listStatus.entries].sort((a, b) => a.ticker.localeCompare(b.ticker))}
@@ -297,11 +312,13 @@ export function WatchlistPage() {
 function WatchlistHeader({
   listStatus,
   showAddForm,
+  hideAddButton,
   onOpenAddForm,
   t,
 }: {
   listStatus: ListStatus;
   showAddForm: boolean;
+  hideAddButton: boolean;
   onOpenAddForm: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
@@ -320,7 +337,7 @@ function WatchlistHeader({
             </Text>
           )}
         </Stack>
-        {!showAddForm && (
+        {!showAddForm && !hideAddButton && (
           <Button variant="primary" onClick={onOpenAddForm}>
             {t("watchlist.addButton")}
           </Button>
@@ -372,12 +389,13 @@ function AddCompanyForm({
               <Text as="label" style={{ display: "block" }}>
                 {t("watchlist.addForm.label")}
                 <br />
-                <input
+                <TextField
                   value={tickerInput}
                   onChange={(event) => setTickerInput(event.target.value)}
                   placeholder={t("watchlist.addForm.placeholder")}
                   disabled={isSubmitting}
                   autoFocus
+                  style={{ marginTop: "var(--space-metadata)" }}
                 />
               </Text>
               {addStatus.kind === "error" && (
@@ -540,6 +558,7 @@ function WatchlistTableRow({
           handleRowActivate();
         }
       }}
+      className={styles.row}
       style={{ cursor: "pointer" }}
     >
       <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)" }}>

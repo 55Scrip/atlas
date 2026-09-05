@@ -363,7 +363,7 @@ function ExecutiveSummaryBar({ analysis, t }: { analysis: HeroAnalysisInput; t: 
       </SummaryStat>
       <SummaryStat label={t("investmentCase.keyMetrics.expectedReturnLabel")}>
         {analysis.longTermExpectedReturn ? (
-          <Text as="span" style={{ fontWeight: 600, fontSize: "var(--type-size-h5)" }}>
+          <Text as="span" style={{ fontWeight: 600, fontSize: "var(--type-size-h5)", fontVariantNumeric: "tabular-nums" }}>
             {formatPercent(analysis.longTermExpectedReturn.lowPercent)} {"→"}{" "}
             {formatPercent(analysis.longTermExpectedReturn.highPercent)}
           </Text>
@@ -384,7 +384,7 @@ function ExecutiveSummaryBar({ analysis, t }: { analysis: HeroAnalysisInput; t: 
       </SummaryStat>
       <SummaryStat label={t("investmentCase.keyMetrics.upsideDownsideLabel")}>
         {analysis.longTermBullReturnPercent != null && analysis.longTermBearReturnPercent != null ? (
-          <Text as="span" style={{ fontWeight: 600, fontSize: "var(--type-size-h5)" }}>
+          <Text as="span" style={{ fontWeight: 600, fontSize: "var(--type-size-h5)", fontVariantNumeric: "tabular-nums" }}>
             {formatPercent(analysis.longTermBullReturnPercent)} {"/"}{" "}
             {formatPercent(analysis.longTermBearReturnPercent)}
           </Text>
@@ -672,7 +672,7 @@ export function HeroCard({
             </MetricField>
             <MetricField label={t("investmentCase.keyMetrics.currentPriceLabel")}>
               <Stack gap="metadata">
-                <Text as="span" style={{ fontWeight: 600 }}>
+                <Text as="span" style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
                   {formatFinancialValue(analysis.sharePrice, analysis.currency, locale)}
                 </Text>
                 {analysis.tradingDay && (

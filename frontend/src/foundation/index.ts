@@ -9,6 +9,7 @@ export { Label } from "./typography/Label";
 
 export { Button } from "./interaction/Button";
 export { Link } from "./interaction/Link";
+export { TextField } from "./interaction/TextField";
 
 export { VisuallyHidden } from "./accessibility/VisuallyHidden";
 export { FocusRing } from "./accessibility/FocusRing";
@@ -22,3 +23,5 @@ export type { AsyncStatus } from "./utility/AsyncSection";
 export { ACCENT_LINK_STYLE } from "./utility/accentLinkStyle";
 
 export type { TextColorToken, SurfaceToken, BorderToken, SpaceToken } from "./tokenRefs";
+
+export { formatCurrency, formatPercentPoints } from "./format";

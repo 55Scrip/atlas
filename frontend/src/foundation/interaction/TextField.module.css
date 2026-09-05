@@ -1,0 +1,41 @@
+/* Atlas UX Freeze v1 — Search field. Mirrors Button.module.css's own
+   token usage (control radius, touch-target height, prose typography,
+   brief-duration border transition) so the two frozen controls read as
+   one family. min-width is sized to the longest current placeholder
+   ("Ticker or company name", 23 characters) plus padding, so the text
+   is never clipped; the field still grows to fill available inline
+   space via flex. */
+.field {
+  composes: focusRing from "../accessibility/focus-ring.module.css";
+  /* Native text-input UA chrome (appearance: auto) silently overrides an
+     author border-radius in every engine tested -- computed border-radius
+     reports 0px despite the declaration below without this reset. */
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: var(--accessibility-touch-target-min);
+  min-width: 22ch;
+  width: 100%;
+  max-width: 22rem;
+  padding: 0 var(--space-row);
+  border: var(--width-border-standard) solid var(--color-border-standard);
+  border-radius: var(--radius-control);
+  background: var(--surface-primary);
+  color: var(--color-text-primary);
+  font-family: var(--type-family-prose);
+  font-size: var(--type-body-min-size);
+  line-height: var(--type-body-line-height);
+  box-sizing: border-box;
+  transition: border-color var(--motion-duration-brief) var(--motion-easing-out);
+}
+
+.field::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.field:hover {
+  border-color: var(--color-border-hairline);
+}
+
+.field:focus-visible {
+  border-color: var(--global-color-accent-border);
+}

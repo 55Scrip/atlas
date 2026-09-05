@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
-import { ACCENT_LINK_STYLE, Button, Container, Divider, Heading, Inline, Label, Link, Stack, Text } from "../foundation";
+import { ACCENT_LINK_STYLE, Button, Container, Divider, Heading, Inline, Label, Link, Stack, Text, TextField } from "../foundation";
 import { useTranslation } from "../i18n";
 import { DiscoveryCandidateCard } from "../discovery/DiscoveryCandidateCard";
 import { rankCandidates, type RankedCandidate } from "../discovery/rankCandidates";
@@ -332,14 +332,13 @@ export function DiscoveryPage() {
             paragraph, never competing with the ranked candidates
             above it. */}
         <Inline gap="row" align="center">
-          <input
+          <TextField
             value={searchQuery}
             placeholder={t("discovery.search.placeholder")}
             onChange={(event) => setSearchQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") submitSearch();
             }}
-            style={{ fontSize: "var(--type-body-min-size)" }}
           />
           <Button variant="tertiary" onClick={submitSearch} disabled={searchStatus.kind === "searching" || searchQuery.trim() === ""}>
             {searchStatus.kind === "searching" ? t("common.submitting") : t("discovery.search.button")}

@@ -1,0 +1,11 @@
+/* Atlas UX Freeze v1 -- the watchlist table row is a real click target
+   (role="button", navigates to the Investment Case) with no hover
+   feedback before this. Mirrors the same brief-duration background
+   transition Button's tertiary variant already uses, kept this quiet
+   since the row also contains its own visible action buttons. */
+.row {
+  transition: background var(--motion-duration-brief) var(--motion-easing-out);
+}
+.row:hover {
+  background: var(--surface-elevated);
+}

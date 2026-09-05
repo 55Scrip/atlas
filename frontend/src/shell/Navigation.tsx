@@ -19,10 +19,17 @@ import styles from "./Navigation.module.css";
  * fact or computation not already owned by Portfolio, Daily Brief, or
  * History -- every section on it was a rollup ending in a link away
  * from Dashboard itself, it was not the app's actual landing page, and
- * no other page linked into it. The five remaining tabs each now match
- * one doctrine question exactly: Daily Brief (what changed), Discovery
- * (what has Atlas found), Portfolio (what I own), Watchlist (what is
- * Atlas monitoring), History (what happened previously).
+ * no other page linked into it.
+ *
+ * Atlas UX Freeze v1: History is removed from primary navigation --
+ * the frozen baseline names exactly four primary destinations (Daily
+ * Brief, Discover, Portfolio, Watchlist), each matching one doctrine
+ * question: Daily Brief (what changed), Discovery (what has Atlas
+ * found), Portfolio (what I own), Watchlist (what is Atlas monitoring).
+ * This is a navigation-tier change only -- the `/history` route and
+ * `HistoryPage` are untouched and remain reachable directly; only the
+ * nav-bar entry point into it is removed pending its own separate
+ * integration decision.
  */
 function navLinkClassName({ isActive }: { isActive: boolean }): string {
   return isActive ? `${styles.link!} ${styles.active!}` : styles.link!;
@@ -44,9 +51,6 @@ export function Navigation() {
       </NavLink>
       <NavLink to="/watchlist" className={navLinkClassName}>
         {t("shell.nav.watchlist")}
-      </NavLink>
-      <NavLink to="/history" className={navLinkClassName}>
-        {t("shell.nav.history")}
       </NavLink>
     </nav>
   );

@@ -2491,7 +2491,7 @@ export function InvestmentCasePage() {
               : t("investmentCase.atlasView.notAvailable")
           }`,
           linkedHolding
-            ? `${t("investmentCase.header.currentAllocation", { percent: linkedHolding.weightPercent })}`
+            ? `${t("investmentCase.header.currentAllocation", { percent: linkedHolding.weightPercent.toFixed(1) })}`
             : null,
           // Calibration Phase 2, Phase 2/C6: the "Status" badge that
           // used to render here (`deriveCaseStatus`, "Worth a look"/
@@ -5505,7 +5505,7 @@ function ExecutiveSummaryCard({
 
   const portfolioImpactParts: string[] = [
     linkedHolding
-      ? t("investmentCase.executiveSummary.portfolioImpact.weight", { percent: linkedHolding.weightPercent })
+      ? t("investmentCase.executiveSummary.portfolioImpact.weight", { percent: linkedHolding.weightPercent.toFixed(1) })
       : null,
     // Corrective pass (compactness): "largest position" and
     // "concentration" both describe the same concentration-relevance
@@ -5523,7 +5523,7 @@ function ExecutiveSummaryCard({
           })
         : null,
     cashWeightPercent !== null
-      ? t("investmentCase.executiveSummary.portfolioImpact.cash", { percent: cashWeightPercent })
+      ? t("investmentCase.executiveSummary.portfolioImpact.cash", { percent: cashWeightPercent.toFixed(1) })
       : null,
   ].filter((part): part is string => part !== null);
 
@@ -6016,7 +6016,7 @@ function CompanyOverviewSection({
         <Stack gap="metadata">
           <Divider tone="hairline" />
           <Label>{t("investmentCase.analysis.financials.marketSnapshotHeading")}</Label>
-          <Inline gap="inter-section" wrap>
+          <Inline gap="inter-section" wrap style={{ fontVariantNumeric: "tabular-nums" }}>
             <Text as="p">
               <Text as="span" color="tertiary">
                 {t("investmentCase.analysis.financials.sharePriceLabel")}:{" "}
@@ -6208,14 +6208,14 @@ function PortfolioContextDetail({
       <Heading level={3}>{t("investmentCase.analysis.business.portfolioContextHeading")}</Heading>
       <Text as="p">
         {t("investmentCase.executiveSummary.portfolioImpact.weight", {
-          percent: linkedHolding.weightPercent,
+          percent: linkedHolding.weightPercent.toFixed(1),
         })}
       </Text>
       {largestHolding && (
         <Text as="p">
           {t("investmentCase.analysis.business.largestPositionLabel", {
             ticker: largestHolding.ticker,
-            percent: largestHolding.weightPercent,
+            percent: largestHolding.weightPercent.toFixed(1),
           })}
         </Text>
       )}
@@ -6230,7 +6230,7 @@ function PortfolioContextDetail({
       )}
       {cashWeightPercent !== null && (
         <Text as="p">
-          {t("investmentCase.executiveSummary.portfolioImpact.cash", { percent: cashWeightPercent })}
+          {t("investmentCase.executiveSummary.portfolioImpact.cash", { percent: cashWeightPercent.toFixed(1) })}
         </Text>
       )}
     </Stack>
@@ -6257,7 +6257,7 @@ function ValuationDetailSection({ analysis, t }: { analysis: InvestmentCaseAnaly
           </Text>
           {fcfYield.currentYield != null && (
             <Text color="secondary" as="p">
-              {t("investmentCase.analysis.valuation.currentYieldLabel")}: {(fcfYield.currentYield * 100).toFixed(2)}%
+              {t("investmentCase.analysis.valuation.currentYieldLabel")}: {(fcfYield.currentYield * 100).toFixed(1)}%
             </Text>
           )}
           {/* Product Sprint 13 (Company Intelligence Excellence):

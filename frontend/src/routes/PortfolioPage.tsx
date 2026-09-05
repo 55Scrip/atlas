@@ -1,7 +1,23 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { ACCENT_LINK_STYLE, Button, Container, Divider, Heading, Inline, Label, Link, Stack, StatusBadge, Surface, Text, VisuallyHidden } from "../foundation";
+import {
+  ACCENT_LINK_STYLE,
+  Button,
+  Container,
+  Divider,
+  formatCurrency,
+  formatPercentPoints,
+  Heading,
+  Inline,
+  Label,
+  Link,
+  Stack,
+  StatusBadge,
+  Surface,
+  Text,
+  VisuallyHidden,
+} from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
   DECISION_SUPPORT_BADGE_KEY,
@@ -30,6 +46,7 @@ import { fetchMonitoringStatus, type MonitoringOperationalStatusView } from "../
 import { sortHoldings, type HoldingSortKey } from "../portfolio/sortHoldings";
 import { deriveInvestmentRating } from "../investmentCase/atlasRatingModel";
 import { CompactRatingBadge } from "../investmentCase/CompactRatingBadge";
+import styles from "./PortfolioPage.module.css";
 
 /** Alpha Integration Fix (One Product Pass): Portfolio no longer treats
  * the shared `/api/daily-brief-agenda` fetch (filtered to
@@ -1086,8 +1103,11 @@ function PortfolioPulse({
         <Inline gap="inter-section" wrap style={{ justifyContent: "space-between" }}>
           <Stack gap="metadata">
             <Label>{t("portfolio.pulse.totalValueLabel")}</Label>
-            <Text as="span" style={{ fontSize: "var(--type-heading-3-size, 1.5rem)", fontWeight: 700 }}>
-              {view.totalValue !== null ? view.totalValue : t("portfolio.pulse.totalValueUnavailable")}
+            <Text
+              as="span"
+              style={{ fontSize: "var(--type-heading-3-size, 1.5rem)", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}
+            >
+              {view.totalValue !== null ? formatCurrency(view.totalValue) : t("portfolio.pulse.totalValueUnavailable")}
             </Text>
           </Stack>
           <Stack gap="metadata">
@@ -1096,7 +1116,10 @@ function PortfolioPulse({
               {largestHolding
                 ? t("portfolio.pulse.largestPositionValue", {
                     ticker: largestHolding.ticker,
-                    percent: largestHolding.weightPercent,
+                    // The translation template already supplies the "%" --
+                    // pass the rounded figure only, not `formatPercentPoints`'s
+                    // own "%"-suffixed string.
+                    percent: largestHolding.weightPercent.toFixed(1),
                   })
                 : t("portfolio.header.notAvailable")}
             </Text>
@@ -1155,7 +1178,8 @@ function PortfolioSidebar({
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   const topHoldings = holdingsByWeightDesc.slice(0, CONCENTRATION_TOP_N);
-  const topWeightSum = Math.round(topHoldings.reduce((sum, h) => sum + h.weightPercent, 0) * 10) / 10;
+  // The translation template already supplies "%" -- one decimal, no suffix.
+  const topWeightSum = topHoldings.reduce((sum, h) => sum + h.weightPercent, 0).toFixed(1);
 
   return (
     <Stack gap="inter-section">
@@ -1174,8 +1198,8 @@ function PortfolioSidebar({
                 <Text as="span">
                   {index + 1}. {holding.ticker}
                 </Text>
-                <Text as="span" color="secondary">
-                  {holding.weightPercent}%
+                <Text as="span" color="secondary" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {formatPercentPoints(holding.weightPercent)}
                 </Text>
               </Inline>
             ))}
@@ -1189,11 +1213,11 @@ function PortfolioSidebar({
             <Text as="span" color="secondary">
               {t("portfolio.allocation.cashLabel")}
             </Text>
-            <Text as="span">
+            <Text as="span" style={{ fontVariantNumeric: "tabular-nums" }}>
               {view.cashValueAbsolute !== null
-                ? view.cashValueAbsolute
+                ? formatCurrency(view.cashValueAbsolute)
                 : view.cashWeightPercent !== null
-                  ? `${view.cashWeightPercent}%`
+                  ? formatPercentPoints(view.cashWeightPercent)
                   : t("portfolio.header.notAvailable")}
             </Text>
           </Inline>
@@ -1201,8 +1225,8 @@ function PortfolioSidebar({
             <Text as="span" color="secondary">
               {t("portfolio.allocation.unallocatedLabel")}
             </Text>
-            <Text as="span">
-              {unallocatedPercent !== null ? `${Math.round(unallocatedPercent * 10) / 10}%` : t("portfolio.header.notAvailable")}
+            <Text as="span" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {unallocatedPercent !== null ? formatPercentPoints(unallocatedPercent) : t("portfolio.header.notAvailable")}
             </Text>
           </Inline>
         </Stack>
@@ -1286,9 +1310,9 @@ function PortfolioHero({
 }) {
   const cashDisplay =
     view.cashValueAbsolute !== null
-      ? view.cashValueAbsolute
+      ? formatCurrency(view.cashValueAbsolute)
       : view.cashWeightPercent !== null
-        ? `${view.cashWeightPercent}%`
+        ? formatPercentPoints(view.cashWeightPercent)
         : t("portfolio.header.notAvailable");
 
   return (
@@ -1323,7 +1347,7 @@ function PortfolioHero({
           </Stack>
           <Stack gap="metadata">
             <Label>{t("portfolio.pulse.cashLabel")}</Label>
-            <Text as="span">{cashDisplay}</Text>
+            <Text as="span" style={{ fontVariantNumeric: "tabular-nums" }}>{cashDisplay}</Text>
           </Stack>
         </Inline>
       </Stack>
@@ -1366,14 +1390,30 @@ function PortfolioHero({
  * Summary Strip's own compact mention of the same two tickers -- this
  * component never re-selects them.
  */
+/** Atlas UX Freeze v1 -- the approved atlas-portfolio frame differentiates
+ * the Opportunity/Risk eyebrows with the same semantic tones the ticker
+ * badges directly below them already use (teal for the positive signal,
+ * amber for the one needing attention); this page previously rendered
+ * both labels in the same neutral tertiary color. Reuses the existing
+ * semantic-color tokens directly (`Label`'s own `color` prop is typed to
+ * the primary/secondary/tertiary text tiers only, not these tones), so
+ * no shared component changes -- a style override at these two call
+ * sites only. */
+const RISK_OPPORTUNITY_TONE_COLOR: Record<"opportunity" | "risk", string> = {
+  opportunity: "var(--color-semantic-green)",
+  risk: "var(--color-semantic-amber)",
+};
+
 function TodaysRiskOpportunityCard({
   label,
+  tone,
   assessment,
   agendaItem,
   onOpenCase,
   t,
 }: {
   label: string;
+  tone: "opportunity" | "risk";
   assessment: PortfolioFitAssessmentView;
   agendaItem: AgendaItemView | undefined;
   onOpenCase: (ticker: string, existingCaseId: string | null) => void;
@@ -1383,7 +1423,7 @@ function TodaysRiskOpportunityCard({
   return (
     <Surface tier="elevated">
       <Stack gap="metadata">
-        <Label>{label}</Label>
+        <Label style={{ color: RISK_OPPORTUNITY_TONE_COLOR[tone] }}>{label}</Label>
         <Text as="span" style={{ fontWeight: 600, fontSize: "var(--type-size-h5)" }}>
           {assessment.ticker}
         </Text>
@@ -1436,6 +1476,7 @@ function TodaysBiggestRiskOpportunity({
     >
       <TodaysRiskOpportunityCard
         label={t("portfolio.todaysFocus.biggestOpportunityLabel")}
+        tone="opportunity"
         assessment={biggestOpportunity}
         agendaItem={agendaItemByTicker.get(biggestOpportunity.ticker)}
         onOpenCase={onOpenCase}
@@ -1443,6 +1484,7 @@ function TodaysBiggestRiskOpportunity({
       />
       <TodaysRiskOpportunityCard
         label={t("portfolio.todaysFocus.biggestRiskLabel")}
+        tone="risk"
         assessment={biggestRisk}
         agendaItem={agendaItemByTicker.get(biggestRisk.ticker)}
         onOpenCase={onOpenCase}
@@ -1569,8 +1611,8 @@ function PortfolioSignalCard({
             {ticker}
           </Text>
           {weightPercent !== null && (
-            <Text as="span" color="secondary">
-              {weightPercent}%
+            <Text as="span" color="secondary" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {formatPercentPoints(weightPercent)}
             </Text>
           )}
         </Inline>
@@ -1709,8 +1751,8 @@ function HoldingsTable({
         </Text>
       )}
       {view.hasAbsoluteValues && view.totalValue !== null && (
-        <Text color="tertiary" as="p">
-          {t("portfolio.holdings.totalValue", { value: view.totalValue })}
+        <Text color="tertiary" as="p" style={{ fontVariantNumeric: "tabular-nums" }}>
+          {t("portfolio.holdings.totalValue", { value: formatCurrency(view.totalValue) })}
         </Text>
       )}
 
@@ -1737,7 +1779,7 @@ function HoldingsTable({
         ))}
       </Inline>
 
-      <div style={{ overflowX: "auto" }}>
+      <div style={{ overflowX: "auto", minWidth: 0 }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
@@ -1931,6 +1973,7 @@ function HoldingsTableRow({
             handleRowActivate();
           }
         }}
+        className={styles.row}
         style={{ cursor: isCreating ? "default" : "pointer" }}
       >
         <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)" }}>
@@ -1939,7 +1982,7 @@ function HoldingsTableRow({
               {holding.ticker}
             </Text>
             <Text as="span" color="tertiary">
-              {holding.weightPercent}%
+              {formatPercentPoints(holding.weightPercent)}
             </Text>
             {/* Real Value, shown only when this portfolio actually has
                 one -- a percent-only portfolio (the common case in this
@@ -1947,7 +1990,7 @@ function HoldingsTableRow({
                 it. */}
             {holding.valueAbsolute !== null && (
               <Text as="span" color="tertiary">
-                {holding.valueAbsolute}
+                {formatCurrency(holding.valueAbsolute)}
               </Text>
             )}
             {isCreating && (

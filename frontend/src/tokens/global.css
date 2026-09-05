@@ -23,14 +23,19 @@
  * focus ring, touch target, opacity, border width, contrast ratios) are
  * unchanged and keep their original citations.
  *
- * One deliberate substitution: `--global-font-family-prose` previously
- * named "DM Sans" per UX-011/UX-012A's own citation, but no DM Sans font
- * file has ever been bundled or linked anywhere in this repository (no
- * `public/` directory, no font package, no `<link>` in index.html) — the
- * app has only ever actually rendered in the `system-ui` fallback. This
- * sprint's approved mockup reference uses a system-font stack directly;
- * that is now the canonical value, so the app finally renders the
- * typeface it has always claimed to use rather than a silent fallback.
+ * Atlas UX Freeze v1 -- the three font-family tokens below name the
+ * Design System's intended typefaces (Fraunces display / Geist prose /
+ * Geist Mono metadata) ahead of the fallback stacks Visual Polish Sprint 1
+ * established.
+ *
+ * **No font file is bundled or fetched, deliberately.** An earlier draft of
+ * this work loaded the three faces from fonts.googleapis.com; that is not
+ * committed, because it would make first paint depend on a third-party CDN
+ * the app has never otherwise required, and no architectural decision in
+ * this repository calls for one. Until a face is bundled locally, each
+ * token resolves to its own fallback chain -- exactly the prior rendering,
+ * with no network request and no layout shift. Naming the intended face
+ * first means bundling one later is a build change, not a token change.
  */
 
 :root {
@@ -52,12 +57,12 @@
   /* Typography primitives — family per this sprint's mockup reference
    * (see file header); body min size and line height are each a UX-012A
    * stated range, floor of each used, unchanged from prior commits. */
-  --global-font-family-prose: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+  --global-font-family-prose: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
-  --global-font-family-display: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua",
-    serif; /* Visual Polish Sprint 1 — mockup reference: editorial serif for Heading only */
-  --global-font-family-metadata: "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas,
-    monospace; /* Visual Polish Sprint 1 — "DM Mono" replaced for the same reason as prose above */
+  --global-font-family-display: "Fraunces", Georgia, "Iowan Old Style", "Palatino Linotype",
+    "Book Antiqua", serif; /* Atlas UX Freeze v1 — editorial serif for Heading only */
+  --global-font-family-metadata: "Geist Mono", "SF Mono", ui-monospace, "Cascadia Code", Menlo,
+    Consolas, monospace; /* Atlas UX Freeze v1 — status pill / metadata labels */
   --global-font-size-body-min: 15px;   /* UX-012A: "minimum of 15–16px at 1x display scale" — floor */
   --global-line-height-body: 1.65;     /* UX-012A: "1.65–1.7 for long-form reading" — floor */
 
