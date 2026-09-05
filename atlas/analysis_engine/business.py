@@ -60,12 +60,12 @@ annual report exists" into "this supports Capital Allocation" is
 exactly the interpretation step neither this sprint nor ATLAS-022 built.
 
 **Even once `external_records` exist, `status` deliberately stays
-`INSUFFICIENT_INPUT`** -- for the four categories still on this path
-(Business Model, Competitive Position, Management, and Durability
-absent a reuse override). Classifying one of them as `WEAK`/`MODERATE`/
-`STRONG` requires *interpreting what a record says* -- a real evaluator
-reading and judging content, which does not exist yet even in design
-for these four -- never *how many records exist*. This function proves
+`INSUFFICIENT_INPUT`** -- for the three categories still on this path
+(Business Model, Competitive Position, Management). Classifying one of
+them as `WEAK`/`MODERATE`/`STRONG` requires *interpreting what a record
+says* -- a real evaluator reading and judging content, which does not
+exist yet even in design for these three -- never *how many records
+exist*. This function proves
 the extensibility path works (confidence and evidence references
 genuinely change) without pretending record-counting is business
 judgment.
@@ -85,6 +85,20 @@ six categories to their own rule-heavy modules rather than computing
 them inline -- the same "stage lives in its own file, orchestrator
 dispatches to it" pattern `atlas.decision_engine.pipeline` already
 established for its own stages.
+
+**Durability graduates the same way (Stage 3).**
+`atlas.analysis_engine.durability.evaluate_durability` now produces this
+category's `BusinessFinding` from the same `BusinessFact`s, through the
+identical dispatch entry -- there is no special durability path. The
+previous branch, which reused `decision_engine`'s permanently
+`INSUFFICIENT_INPUT` `DurabilityFinding` whenever no external record
+overrode it, is removed as unreachable: Durability no longer arrives at
+`_evaluate_category` at all. `decision_engine`'s own `DurabilityFinding`
+is untouched and remains locked -- it answers a different question
+(whether `DecisionEngineInput` *alone* can assess durability, which it
+still cannot), so the readiness layer continues to report
+`business_durability_not_assessable` from it. That is a known, bounded
+gap between the two objects, not an inconsistency to paper over here.
 
 The shared vocabulary every category (and both new evaluators) uses --
 `BusinessCategory`, `BusinessCategoryStatus`, `BusinessDataGapKind`,
@@ -111,6 +125,7 @@ from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.business_data.sources import SourceKind as DocumentSourceKind
 from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
 from atlas.analysis_engine.capital_allocation import evaluate_capital_allocation
+from atlas.analysis_engine.durability import evaluate_durability
 from atlas.analysis_engine.exceptions import AnalysisEngineContractError
 from atlas.analysis_engine.growth import evaluate_growth
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
@@ -192,16 +207,6 @@ def _evaluate_category(
     dependencies: tuple[str, ...] = ()
     update_trigger = UpdateTrigger.EXTERNAL_BUSINESS_DATA_INGESTED
 
-    if category is BusinessCategory.DURABILITY:
-        # Reused, not recomputed -- decision_engine's DurabilityFinding
-        # is the real source of truth for this one category whenever no
-        # external record overrides it; its own state is asserted, not
-        # re-derived, by the caller (see evaluate_business_analysis).
-        if not records:
-            source_kind = SourceKind.DECISION_ENGINE_STAGE
-            dependencies = ("business_analysis_unavailable",)
-            update_trigger = UpdateTrigger.UPSTREAM_STAGE_CHANGED
-
     return BusinessFinding(
         id=f"business_finding:{category.value}",
         kind=category,
@@ -264,6 +269,7 @@ def evaluate_business_analysis(
     dispatch = {
         BusinessCategory.GROWTH: lambda: evaluate_growth(facts, evaluated_at=evaluated_at),
         BusinessCategory.CAPITAL_ALLOCATION: lambda: evaluate_capital_allocation(facts, evaluated_at=evaluated_at),
+        BusinessCategory.DURABILITY: lambda: evaluate_durability(facts, evaluated_at=evaluated_at),
     }
 
     findings = tuple(

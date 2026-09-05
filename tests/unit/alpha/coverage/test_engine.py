@@ -116,10 +116,33 @@ class TestStructurallyLockedDimensionsAreNotApplicable:
         assert "business_model" in assessment.not_applicable_dimensions
         assert "business_model" not in assessment.missing_dimensions
 
-    def test_durability_is_not_applicable(self):
+
+class TestDurabilityParticipatesOnceEvaluated:
+    """Stage 3 gave Durability a real Core evaluator, so it is no longer
+    a structural lock: `_classify_business` reads the finding it is
+    handed, and a category that produces a genuine status becomes a live
+    dimension. Coverage owns no registry of locked categories -- the
+    engine's own docstring is explicit that it "computes nothing that is
+    not already sitting on a `CanonicalAnalysis` it is handed."
+
+    Excluding Durability now would make Coverage claim Atlas had not
+    examined something it demonstrably had."""
+
+    def test_durability_is_no_longer_not_applicable(self):
         assessment = assess_coverage(_assemble(_strong_growth_records()), is_thesis_stale=False)
         durability = next(d for d in assessment.dimensions if d.dimension == "durability")
-        assert durability.level is DimensionCoverageLevel.NOT_APPLICABLE
+        assert durability.level is not DimensionCoverageLevel.NOT_APPLICABLE
+        assert "durability" not in assessment.not_applicable_dimensions
+
+    def test_the_three_categories_without_evaluators_stay_locked(self):
+        """Stage 3 activated exactly one category. The other three have
+        no evaluator, so their capability gap must still never read as a
+        per-company data gap."""
+        assessment = assess_coverage(_assemble(_strong_growth_records()), is_thesis_stale=False)
+        for locked in ("business_model", "competitive_position", "management"):
+            dimension = next(d for d in assessment.dimensions if d.dimension == locked)
+            assert dimension.level is DimensionCoverageLevel.NOT_APPLICABLE
+            assert locked in assessment.not_applicable_dimensions
 
 
 class TestRealConclusionsAreAvailable:
@@ -182,29 +205,30 @@ class TestConfidenceDerivation:
         assert assessment.reasoning
 
     def test_dimensions_unavailable_reason_carries_the_real_count_with_no_data(self):
-        """Every one of the 7 live (non-permanently-locked) dimensions
+        """Every one of the 8 live (non-permanently-locked) dimensions
         reads Unavailable/Insufficient Evidence with zero records --
+        Durability joined them at Stage 3 --
         `NO_COMPANY_DATA` itself is reserved for a stricter, currently
         unreachable case (zero live dimensions at all); this is the
         real "no data" state a fresh Case actually produces."""
         assessment = assess_coverage(_assemble(), is_thesis_stale=False)
         gaps = next(r for r in assessment.reasoning if r.code is ConfidenceReasonCode.DIMENSIONS_UNAVAILABLE)
         conclusive = next(r for r in assessment.reasoning if r.code is ConfidenceReasonCode.DIMENSIONS_CONCLUSIVE)
-        assert gaps.count == 7
+        assert gaps.count == 8
         assert conclusive.count == 0
-        assert conclusive.total == 7
+        assert conclusive.total == 8
 
     def test_dimensions_conclusive_reason_carries_real_counts(self):
-        """7 live dimensions total for any case with real data (Growth,
-        Capital Allocation, FCF Yield, Business/Financial/Valuation/
-        Thesis Risk) -- Growth+Capital Allocation+FCF Yield+Business
+        """8 live dimensions total for any case with real data (Growth,
+        Capital Allocation, Durability, FCF Yield, Business/Financial/
+        Valuation/Thesis Risk) -- Growth+Capital Allocation+FCF Yield+Business
         Risk+Valuation Risk reach a real conclusion here; Financial Risk
         and Thesis Risk remain gaps (no debt facts, no investor
         evidence)."""
         records = _strong_growth_records() + _strong_capital_allocation_records() + _undervalued_valuation_records()
         assessment = assess_coverage(_assemble(records), is_thesis_stale=False)
         conclusive = next(r for r in assessment.reasoning if r.code is ConfidenceReasonCode.DIMENSIONS_CONCLUSIVE)
-        assert conclusive.total == 7
+        assert conclusive.total == 8
         assert conclusive.count is not None and 0 < conclusive.count <= conclusive.total
 
 

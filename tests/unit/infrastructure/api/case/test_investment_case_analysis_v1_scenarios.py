@@ -329,14 +329,20 @@ class TestCoverageAssessment:
         assert dims["business_model"] == "not_applicable"
 
     def test_never_reports_a_permanently_locked_dimension_as_unavailable(self, client):
-        """Business Model/Competitive Position/Management/Durability
-        have no evaluator wired in today regardless of company data --
-        they must always read Not Applicable, never Unavailable, and
-        must never count toward `missingDimensions`."""
+        """Business Model/Competitive Position/Management have no
+        evaluator wired in today regardless of company data -- they must
+        always read Not Applicable, never Unavailable, and must never
+        count toward `missingDimensions`.
+
+        Durability left this set at Stage 3: it now has a real Core
+        evaluator, so its gaps are genuine per-company data gaps and
+        reporting them as such is the honest reading. The contract this
+        test protects -- never present a capability gap as missing
+        company data -- is unchanged."""
         case_id = _import_holding(client, "NVDA")
         body = client.get(f"/cases/{case_id}/analysis").json()
         coverage = body["coverage"]
-        for locked in ("business_model", "competitive_position", "management", "durability"):
+        for locked in ("business_model", "competitive_position", "management"):
             assert locked in coverage["notApplicableDimensions"]
             assert locked not in coverage["missingDimensions"]
 

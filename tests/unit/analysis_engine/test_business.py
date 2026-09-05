@@ -1,6 +1,5 @@
 """Tests for `atlas.analysis_engine.business` (ATLAS-021) -- structural
-completeness of the six-category taxonomy, Durability reuse (not
-recomputation), missing-evidence honesty, and the extensibility slot
+completeness of the six-category taxonomy, missing-evidence honesty, and the extensibility slot
 (`external_records`) actually working end to end rather than being
 decorative.
 
@@ -90,50 +89,61 @@ class TestNoFabrication:
             assert isinstance(finding.status.value, str)
 
 
-class TestDurabilityIsReusedNotRecomputed:
-    def test_durability_finding_matches_decision_engines_own_reason(self):
+class TestDurabilityIsEvaluatedNotReused:
+    """Stage 3: Durability dispatches to
+    `atlas.analysis_engine.durability.evaluate_durability`, exactly like
+    Growth and Capital Allocation. It no longer reuses
+    `decision_engine`'s permanently-`INSUFFICIENT_INPUT`
+    `DurabilityFinding`, and that object is untouched and still locked --
+    it answers a different question (whether `DecisionEngineInput` alone
+    can assess durability, which it still cannot)."""
+
+    def test_durability_is_now_analysis_engine_native(self):
         _, output = run_minimal()
         result = evaluate_business_analysis(output.business_evaluation, evaluated_at=GENERATED_AT)
         durability = next(f for f in result.findings if f.kind is BusinessCategory.DURABILITY)
-        assert durability.status is BusinessCategoryStatus.INSUFFICIENT_INPUT
-        assert durability.provenance.source_kind is SourceKind.DECISION_ENGINE_STAGE
+        assert durability.provenance.source_kind is SourceKind.ANALYSIS_ENGINE_STAGE
+        assert durability.provenance.dependencies != ("business_analysis_unavailable",)
 
-    def test_other_five_categories_are_analysis_engine_native(self):
+    def test_every_category_is_analysis_engine_native(self):
         _, output = run_minimal()
         result = evaluate_business_analysis(output.business_evaluation, evaluated_at=GENERATED_AT)
         for finding in result.findings:
-            if finding.kind is not BusinessCategory.DURABILITY:
-                assert finding.provenance.source_kind is SourceKind.ANALYSIS_ENGINE_STAGE
+            assert finding.provenance.source_kind is SourceKind.ANALYSIS_ENGINE_STAGE
 
-    def test_durability_provenance_depends_on_the_reused_finding(self):
+    def test_durability_dispatches_to_the_core_evaluator(self):
+        """Fails if the dispatch entry is removed: the generic path
+        cannot produce durability's own fact-specific gap reasons."""
         _, output = run_minimal()
         result = evaluate_business_analysis(output.business_evaluation, evaluated_at=GENERATED_AT)
         durability = next(f for f in result.findings if f.kind is BusinessCategory.DURABILITY)
-        assert durability.provenance.dependencies == ("business_analysis_unavailable",)
+        assert BusinessDataGapKind.MISSING_REVENUE_HISTORY in durability.missing_evidence
+        assert BusinessDataGapKind.NO_EXTERNAL_DATA_SOURCE_CONNECTED not in durability.missing_evidence
 
 
 class TestMissingEvidenceIsFirstClass:
     def test_every_category_names_a_real_missing_evidence_reason_by_default(self):
-        """The four categories still on the generic `external_records`
-        path all report the same default reason; Growth and Capital
-        Allocation (ATLAS-023) report their own fact-specific defaults
-        instead -- covered in full by `test_growth.py`/
-        `test_capital_allocation.py`."""
+        """The three categories still on the generic `external_records`
+        path all report the same default reason; Growth, Capital
+        Allocation (ATLAS-023) and Durability (Stage 3) report their own
+        fact-specific defaults instead -- covered in full by
+        `test_growth.py`/`test_capital_allocation.py`/
+        `test_durability.py`."""
         _, output = run_minimal()
         result = evaluate_business_analysis(output.business_evaluation, evaluated_at=GENERATED_AT)
         generic_categories = {
             BusinessCategory.BUSINESS_MODEL,
             BusinessCategory.COMPETITIVE_POSITION,
             BusinessCategory.MANAGEMENT,
-            BusinessCategory.DURABILITY,
         }
         for finding in result.findings:
             if finding.kind in generic_categories:
                 assert finding.missing_evidence == (BusinessDataGapKind.NO_EXTERNAL_DATA_SOURCE_CONNECTED,)
-        growth = next(f for f in result.findings if f.kind is BusinessCategory.GROWTH)
-        assert growth.missing_evidence != ()
-        capital_allocation = next(f for f in result.findings if f.kind is BusinessCategory.CAPITAL_ALLOCATION)
-        assert capital_allocation.missing_evidence != ()
+        for category in (BusinessCategory.GROWTH, BusinessCategory.CAPITAL_ALLOCATION,
+                         BusinessCategory.DURABILITY):
+            finding = next(f for f in result.findings if f.kind is category)
+            assert finding.missing_evidence != ()
+            assert BusinessDataGapKind.NO_EXTERNAL_DATA_SOURCE_CONNECTED not in finding.missing_evidence
 
     def test_confidence_is_not_applicable_by_default(self):
         _, output = run_minimal()
@@ -250,10 +260,11 @@ class TestExtensibility:
         assert set(finding.supporting_evidence) == {"q1", "q2"}
         assert finding.contradicting_evidence == ("t1",)
 
-    def test_durability_can_also_receive_external_records(self):
-        """Durability is reused from decision_engine by default, but the
-        taxonomy is uniform -- a future filing tagged DURABILITY folds
-        in exactly like any other category."""
+    def test_durability_ignores_external_records(self):
+        """Stage 3: Durability reads `BusinessFact`s only, like Growth
+        and Capital Allocation, so a record tagged DURABILITY no longer
+        folds in. The uniform-taxonomy claim now belongs to the three
+        categories still on the generic path."""
         _, output = run_minimal()
         records = (
             ExternalBusinessRecord(
@@ -267,8 +278,8 @@ class TestExtensibility:
             output.business_evaluation, external_records=records, evaluated_at=GENERATED_AT
         )
         durability = next(f for f in result.findings if f.kind is BusinessCategory.DURABILITY)
-        assert durability.supporting_evidence == ("filing-durability-1",)
-        assert durability.provenance.source_kind is SourceKind.EXTERNAL_DATA_SOURCE
+        assert durability.supporting_evidence == ()
+        assert durability.provenance.source_kind is SourceKind.ANALYSIS_ENGINE_STAGE
 
 
 class TestContractValidation:

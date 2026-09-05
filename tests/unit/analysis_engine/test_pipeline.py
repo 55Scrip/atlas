@@ -406,10 +406,12 @@ class TestGrowthAndCapitalAllocationEndToEnd:
         growth = next(f for f in analysis.business_analysis.findings if f.kind is BusinessCategory.GROWTH)
         assert growth.status is BusinessCategoryStatus.STRONG
 
-        # Other categories remain honestly unevaluated -- exactly the
-        # intended "mixture" architecture (Phase 10).
-        durability = next(f for f in analysis.business_analysis.findings if f.kind is BusinessCategory.DURABILITY)
-        assert durability.status is BusinessCategoryStatus.INSUFFICIENT_INPUT
+        # Categories with no evaluator remain honestly unevaluated --
+        # exactly the intended "mixture" architecture (Phase 10).
+        # Durability was the control here until Stage 3 gave it a real
+        # evaluator; Management still has none, so it carries the point.
+        management = next(f for f in analysis.business_analysis.findings if f.kind is BusinessCategory.MANAGEMENT)
+        assert management.status is BusinessCategoryStatus.INSUFFICIENT_INPUT
 
     def test_growth_category_assessed_finding_reflects_the_real_status_in_the_flat_list(self):
         from datetime import date
@@ -761,13 +763,15 @@ class TestConvictionEndToEnd:
         assert ConvictionReasonCode.HIGH_FINANCIAL_OR_VALUATION_RISK_PRESENT in analysis.conviction.reasons
         assert analysis.recommendation.conviction_gate_met is False
 
-    def test_weak_business_and_cheap_valuation_reaches_moderate_uncapped_by_business_risk(self):
+    def test_weak_business_and_cheap_valuation_is_capped_by_contradiction_not_business_risk(self):
         """Growth WEAK is a real negative Business Risk signal (visible
         on `analysis.risk_analysis`) that Conviction deliberately never
         reads directly -- with Capital Allocation STRONG and Valuation
-        UNDERVALUED (both LOW risk), Conviction reaches the same
-        MODERATE ceiling real open_questions impose today, proving
-        Business Risk's independence from Conviction end to end."""
+        UNDERVALUED (both LOW risk), the Business Risk input is still
+        reported as clear, proving Business Risk's independence from
+        Conviction end to end. Since Stage 3 the cap on this fixture
+        comes from Durability's own contradicting evidence instead;
+        the reason codes below separate the two causes explicitly."""
         from datetime import date
 
         from atlas.analysis_engine.contracts import RiskCategory
@@ -798,8 +802,23 @@ class TestConvictionEndToEnd:
             f for f in analysis.risk_analysis.findings if f.category is RiskCategory.BUSINESS_RISK
         )
         assert business_risk.status is RiskStatus.HIGH
-        assert analysis.conviction.level is ConvictionLevel.MODERATE
+
+        # Stage 3 changed what this fixture produces, and the change is
+        # real rather than incidental. Three years of falling revenue
+        # (1250 -> 1100 -> 1000) now yield WEAK Durability, whose finding
+        # carries contradicting evidence (declining demand) alongside
+        # supporting evidence (free cash flow positive every period).
+        # That mixed finding satisfies `has_analytical_contradiction`,
+        # which Calibration Phase 4 deliberately pointed at every
+        # BusinessFinding's own evidence, and Conviction drops to LOW.
+        #
+        # The assertion this test exists for is unchanged and still
+        # holds: Business Risk being HIGH is NOT what capped Conviction.
+        # The reason codes below prove that -- the risk input is still
+        # reported as clear, and the cap comes from contradiction.
+        assert analysis.conviction.level is ConvictionLevel.LOW
         assert ConvictionReasonCode.NO_HIGH_FINANCIAL_OR_VALUATION_RISK in analysis.conviction.reasons
+        assert ConvictionReasonCode.CONTRADICTING_EVIDENCE_PRESENT in analysis.conviction.reasons
 
     def test_high_financial_risk_with_cheap_valuation_still_forces_low(self):
         """Dilution (Capital Allocation WEAK) drives Financial Risk HIGH
@@ -1023,10 +1042,17 @@ class TestOpenQuestionsMigration:
         )
         assert not any(q.kind is OpenQuestionKind.VALUATION_THESIS_NOT_DOCUMENTED for q in analysis.open_questions)
 
-    def test_durability_question_never_retired(self):
-        """Durability is a different concept from Growth/Capital
-        Allocation -- real Business/Valuation data must never make this
-        question disappear."""
+    def test_durability_question_is_retired_only_once_really_assessed(self):
+        """Stage 3 gave Durability a real Core evaluator, so
+        decision_engine's own permanently-locked durability question can
+        now go stale exactly the way the Valuation one already could.
+
+        Its user-facing rendering is the literal sentence "Atlas has no
+        business-fact data to assess durability from"; leaving it in
+        place while `CanonicalAnalysis` carries a real Durability status
+        would have Atlas deny evidence it demonstrably holds."""
+        from atlas.analysis_engine.business_contracts import BusinessCategory
+        from atlas.analysis_engine.business_contracts import BusinessCategoryStatus as Status
         from atlas.decision_engine.contracts import OpenQuestionKind
 
         engine_input, output = run_populated()
@@ -1037,7 +1063,33 @@ class TestOpenQuestionsMigration:
             business_records=self._valuation_records(),
             generated_at=GENERATED_AT,
         )
-        assert any(q.kind is OpenQuestionKind.BUSINESS_DURABILITY_NOT_ASSESSABLE for q in analysis.open_questions)
+        durability = next(
+            f for f in analysis.business_analysis.findings if f.kind is BusinessCategory.DURABILITY
+        )
+        assert durability.status is not Status.INSUFFICIENT_INPUT, (
+            "fixture no longer produces an assessed durability; this test proves nothing")
+        assert not any(
+            q.kind is OpenQuestionKind.BUSINESS_DURABILITY_NOT_ASSESSABLE for q in analysis.open_questions
+        )
+
+    def test_durability_question_is_kept_when_the_company_lacks_the_facts(self):
+        """The other half, and the one that matters most for honesty:
+        insufficient input is a real data gap and is never suppressed
+        into an assessed conclusion. Without business records Durability
+        cannot be evaluated, so the question must survive."""
+        from atlas.analysis_engine.business_contracts import BusinessCategory
+        from atlas.analysis_engine.business_contracts import BusinessCategoryStatus as Status
+        from atlas.decision_engine.contracts import OpenQuestionKind
+
+        engine_input, output = run_populated()
+        analysis = assemble_analysis(engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT)
+        durability = next(
+            f for f in analysis.business_analysis.findings if f.kind is BusinessCategory.DURABILITY
+        )
+        assert durability.status is Status.INSUFFICIENT_INPUT
+        assert any(
+            q.kind is OpenQuestionKind.BUSINESS_DURABILITY_NOT_ASSESSABLE for q in analysis.open_questions
+        )
 
     def test_all_seven_portfolio_factor_questions_never_retired(self):
         from atlas.decision_engine.contracts import OpenQuestionKind
@@ -1070,10 +1122,15 @@ class TestOpenQuestionsMigration:
 
     def test_ceiling_is_honestly_unchanged_by_this_fix_alone(self):
         """The brutally honest finding this sprint's own audit surfaced:
-        retiring the one genuinely stale question does not, by itself,
-        let Conviction exceed MODERATE -- Durability and the seven
-        Portfolio-factor questions remain, so `has_open_questions` stays
-        True either way."""
+        retiring the genuinely stale questions does not, by itself, let
+        Conviction exceed its ceiling -- the seven Portfolio-factor
+        questions remain, so `has_open_questions` stays True either way.
+
+        Stage 3 raised the count from one retired question to two: the
+        same `business_records` that make Valuation conclusive also give
+        Durability enough facts to reach a real status, so both
+        decision_engine-level questions go stale together. The point of
+        the test is unchanged -- Conviction still does not move."""
         engine_input, output = run_populated()
         without_valuation = assemble_analysis(
             engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT
@@ -1085,7 +1142,7 @@ class TestOpenQuestionsMigration:
             business_records=self._valuation_records(),
             generated_at=GENERATED_AT,
         )
-        assert len(with_valuation.open_questions) == len(without_valuation.open_questions) - 1
+        assert len(with_valuation.open_questions) == len(without_valuation.open_questions) - 2
         assert with_valuation.open_questions != without_valuation.open_questions
         assert with_valuation.conviction.level == without_valuation.conviction.level
 

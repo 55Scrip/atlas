@@ -156,13 +156,25 @@ class CanonicalAnalysis:
     `valuation_engine`. When `valuation_engine`'s `FCF_YIELD_RELATIVE`
     finding reaches a real conclusion, that specific question no longer
     reflects `CanonicalAnalysis`'s true state and is omitted here.
-    `BUSINESS_DURABILITY_NOT_ASSESSABLE` and every
-    `PORTFOLIO_FACTOR_NOT_ASSESSABLE` entry are never removed --
-    confirmed genuinely, permanently unresolved (Durability has no data
-    source at all; the seven portfolio factors are correctly out of
+
+    Stage 3 added the second such case, on the identical grounds:
+    `BUSINESS_DURABILITY_NOT_ASSESSABLE` checks decision_engine's own
+    permanently-locked `durability` field, structurally blind to this
+    package's own real `durability.evaluate_durability`. When that
+    evaluator reaches a real status the question is omitted too. **The
+    previous wording here -- that Durability was "confirmed genuinely,
+    permanently unresolved (Durability has no data source at all)" --
+    described the pre-Stage-3 world and is no longer true of
+    `CanonicalAnalysis`; it remains true of the decision_engine object,
+    which is unchanged and still locked.** A company that genuinely
+    lacks the business facts keeps the question: `INSUFFICIENT_INPUT` is
+    never suppressed, only a real conclusion displaces it.
+
+    Every `PORTFOLIO_FACTOR_NOT_ASSESSABLE` entry is still never
+    removed -- the seven portfolio factors are correctly out of
     decision_engine's/this package's own reach, an architectural
     boundary, not staleness -- the same boundary `atlas.analysis_engine
-    .risk`'s own `PORTFOLIO_RISK` category respects). This field feeds
+    .risk`'s own `PORTFOLIO_RISK` category respects. This field feeds
     `conviction.calculate_conviction`'s own `has_open_questions` input;
     `reasoning.finding.open_questions` itself is never mutated."""
 

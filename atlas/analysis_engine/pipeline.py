@@ -428,7 +428,10 @@ def _risk_category_findings(risk_analysis: RiskAnalysisResult) -> tuple[Finding,
 
 
 def _effective_open_questions(
-    open_questions: tuple[OpenQuestion, ...], *, valuation_conclusive: bool
+    open_questions: tuple[OpenQuestion, ...],
+    *,
+    valuation_conclusive: bool,
+    durability_conclusive: bool,
 ) -> tuple[OpenQuestion, ...]:
     """ATLAS-027 Phase 2: `reasoning.finding.open_questions`, corrected
     for exactly one proven-stale case -- never a wholesale filter, never
@@ -442,20 +445,46 @@ def _effective_open_questions(
     When that real method reaches a genuine conclusion
     (`valuation_conclusive`), the decision_engine-level question no
     longer describes `CanonicalAnalysis`'s true state and is omitted.
-    Every other question -- `BUSINESS_DURABILITY_NOT_ASSESSABLE`,
-    every `PORTFOLIO_FACTOR_NOT_ASSESSABLE` -- is untouched: both were
-    individually audited and confirmed genuinely, permanently
-    unresolved (see this function's own module docstring reference in
-    `models.py::CanonicalAnalysis.open_questions`), not merely
-    inconvenient for reaching a higher Conviction level.
+    `OpenQuestionKind.BUSINESS_DURABILITY_NOT_ASSESSABLE` is the same
+    shape, and became stale the same way at Stage 3. It is built from
+    `decision_engine`'s own `BusinessEvaluationResult.durability` -- a
+    hardcoded constant, permanently `INSUFFICIENT_INPUT` and locked to
+    it by `DurabilityFinding.__post_init__`, structurally blind to this
+    package's own real `durability.evaluate_durability`. When that real
+    evaluator reaches a genuine conclusion (`durability_conclusive`),
+    the decision_engine-level question no longer describes
+    `CanonicalAnalysis`'s true state and is omitted. Its user-facing
+    rendering is the literal sentence "Atlas has no business-fact data
+    to assess durability from," which a case with a real durability
+    status contradicts outright -- this omission exists to stop Atlas
+    denying evidence it demonstrably holds, never to raise Conviction.
+
+    **An earlier revision of this docstring recorded durability as
+    "genuinely, permanently unresolved."** That was true of the
+    `decision_engine` object, which is unchanged and still locked, and
+    it stopped being true of `CanonicalAnalysis` when Stage 3 dispatched
+    a Core-native evaluator. The claim is corrected here rather than
+    left standing.
+
+    **Insufficient input is not suppressed.** `durability_conclusive`
+    is false whenever the evaluator returns `INSUFFICIENT_INPUT` or
+    `NOT_EVALUATED`, so a company that simply lacks the business facts
+    keeps its open question and is still reported as a real data gap --
+    the one thing this correction must never launder into an assessed
+    conclusion.
+
+    Every `PORTFOLIO_FACTOR_NOT_ASSESSABLE` remains untouched: those
+    were individually audited and confirmed genuinely unresolved, and
+    no evaluator exists for them.
     """
-    if not valuation_conclusive:
+    stale: set[OpenQuestionKind] = set()
+    if valuation_conclusive:
+        stale.add(OpenQuestionKind.VALUATION_THESIS_NOT_DOCUMENTED)
+    if durability_conclusive:
+        stale.add(OpenQuestionKind.BUSINESS_DURABILITY_NOT_ASSESSABLE)
+    if not stale:
         return open_questions
-    return tuple(
-        question
-        for question in open_questions
-        if question.kind is not OpenQuestionKind.VALUATION_THESIS_NOT_DOCUMENTED
-    )
+    return tuple(question for question in open_questions if question.kind not in stale)
 
 
 def assemble_analysis(
@@ -553,6 +582,14 @@ def assemble_analysis(
         growth_finding.status not in _inconclusive_business_statuses
         and capital_allocation_finding.status not in _inconclusive_business_statuses
     )
+    # Stage 3: read only for `_effective_open_questions` below -- a real
+    # durability status makes decision_engine's own permanently-locked
+    # durability question stale. Deliberately NOT folded into
+    # `business_conclusive` above, which Conviction and Analysis
+    # Coverage both read: that would change what those two mean, which
+    # is a separate decision from correcting a stale sentence.
+    durability_finding = next(f for f in business_analysis.findings if f.kind is BusinessCategory.DURABILITY)
+    durability_conclusive = durability_finding.status not in _inconclusive_business_statuses
 
     has_high_financial_or_valuation_risk = any(
         risk_finding.status is RiskStatus.HIGH
@@ -584,7 +621,11 @@ def assemble_analysis(
         valuation_conclusive=valuation_conclusive,
     )
 
-    open_questions = _effective_open_questions(reasoning.open_questions, valuation_conclusive=valuation_conclusive)
+    open_questions = _effective_open_questions(
+        reasoning.open_questions,
+        valuation_conclusive=valuation_conclusive,
+        durability_conclusive=durability_conclusive,
+    )
 
     # Calibration Phase 4 (Conviction & Capital Allocation Repair):
     # Conviction's own inputs below are Atlas's own analytical
