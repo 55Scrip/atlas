@@ -1,4 +1,5 @@
 import { Divider, Inline, Label, Stack, StatusBadge, StatusText, Text } from "../foundation";
+import { ExpandableDetail } from "./ExpandableDetail";
 import {
   CHANGE_DIRECTION_SYMBOL,
   describeChange,
@@ -319,57 +320,68 @@ function HorizonPanel({
         </Stack>
       </Inline>
 
-      {horizon.scenarios[0] && (
-        <Text as="p" color="tertiary">
-          {t(
-            horizon.scenarios[0].assumption.growthRate != null
-              ? "investmentCase.outlook.growthScenariosCaption"
-              : horizon.scenarios[0].assumption.observationCount === 1
-                ? "investmentCase.outlook.scenariosCaptionOne"
-                : "investmentCase.outlook.scenariosCaptionOther",
-            {
-              count: String(horizon.scenarios[0].assumption.observationCount),
-              growthCount: String(horizon.scenarios[0].assumption.growthObservationCount ?? 0),
-            },
-          )}
-        </Text>
-      )}
-      <Inline gap="inter-section" wrap align="start">
-        {horizon.scenarios.length > 0 ? (
-          horizon.scenarios.map((scenario) => <ScenarioField key={scenario.kind} scenario={scenario} t={t} />)
-        ) : (
-          <UnavailableField
-            label={
-              headingKey === "longTerm"
-                ? `${t("investmentCase.outlook.growthBullCaseLabel")} / ${t("investmentCase.outlook.growthBaseCaseLabel")} / ${t("investmentCase.outlook.growthBearCaseLabel")}`
-                : `${t("investmentCase.outlook.bullCaseLabel")} / ${t("investmentCase.outlook.baseCaseLabel")} / ${t("investmentCase.outlook.bearCaseLabel")}`
-            }
-            gap={horizon.scenariosGap ?? "no_durable_growth_trajectory"}
-            t={t}
-          />
+      {/* Convergence Sprint 1C: scenarios, their assumption prose and the
+          key-driver list are the horizon's *workings*. On a real case they
+          ran to roughly two screens per horizon -- three scenario values,
+          three assumption sentences and up to a dozen driver bullets --
+          ahead of Portfolio Fit and the investment argument. The horizon's
+          own conclusion (expected-return range, conviction, momentum) stays
+          visible; the derivation is one click down, unchanged. */}
+      <ExpandableDetail summaryLabel={t("investmentCase.outlook.scenarioDetailLabel")}>
+        <Stack gap="metadata">
+        {horizon.scenarios[0] && (
+          <Text as="p" color="tertiary">
+            {t(
+              horizon.scenarios[0].assumption.growthRate != null
+                ? "investmentCase.outlook.growthScenariosCaption"
+                : horizon.scenarios[0].assumption.observationCount === 1
+                  ? "investmentCase.outlook.scenariosCaptionOne"
+                  : "investmentCase.outlook.scenariosCaptionOther",
+              {
+                count: String(horizon.scenarios[0].assumption.observationCount),
+                growthCount: String(horizon.scenarios[0].assumption.growthObservationCount ?? 0),
+              },
+            )}
+          </Text>
         )}
-      </Inline>
+        <Inline gap="inter-section" wrap align="start">
+          {horizon.scenarios.length > 0 ? (
+            horizon.scenarios.map((scenario) => <ScenarioField key={scenario.kind} scenario={scenario} t={t} />)
+          ) : (
+            <UnavailableField
+              label={
+                headingKey === "longTerm"
+                  ? `${t("investmentCase.outlook.growthBullCaseLabel")} / ${t("investmentCase.outlook.growthBaseCaseLabel")} / ${t("investmentCase.outlook.growthBearCaseLabel")}`
+                  : `${t("investmentCase.outlook.bullCaseLabel")} / ${t("investmentCase.outlook.baseCaseLabel")} / ${t("investmentCase.outlook.bearCaseLabel")}`
+              }
+              gap={horizon.scenariosGap ?? "no_durable_growth_trajectory"}
+              t={t}
+            />
+          )}
+        </Inline>
+        </Stack>
+        <Stack gap="metadata">
+          <Label>{t("investmentCase.outlook.keyDriversLabel")}</Label>
+          {horizon.keyDrivers.length === 0 ? (
+            <Text color="secondary">{t("investmentCase.outlook.noDrivers")}</Text>
+          ) : (
+            <Stack gap="metadata">
+              {horizon.keyDrivers.map((driver, index) => (
+                <Text as="p" key={`${driver.kind}-${index}`}>
+                  <span aria-hidden="true">{CHANGE_DIRECTION_SYMBOL[driver.direction]} </span>
+                  {t(DRIVER_LABEL_KEY[driver.kind])}
+                </Text>
+              ))}
+            </Stack>
+          )}
+        </Stack>
+      </ExpandableDetail>
 
       <Stack gap="metadata">
         <Label>{t("investmentCase.outlook.momentumLabel")}</Label>
         <StatusText label={t(MOMENTUM_KEY[horizon.momentum])} tone={MOMENTUM_TONE[horizon.momentum]} />
       </Stack>
 
-      <Stack gap="metadata">
-        <Label>{t("investmentCase.outlook.keyDriversLabel")}</Label>
-        {horizon.keyDrivers.length === 0 ? (
-          <Text color="secondary">{t("investmentCase.outlook.noDrivers")}</Text>
-        ) : (
-          <Stack gap="metadata">
-            {horizon.keyDrivers.map((driver, index) => (
-              <Text as="p" key={`${driver.kind}-${index}`}>
-                <span aria-hidden="true">{CHANGE_DIRECTION_SYMBOL[driver.direction]} </span>
-                {t(DRIVER_LABEL_KEY[driver.kind])}
-              </Text>
-            ))}
-          </Stack>
-        )}
-      </Stack>
     </Stack>
   );
 }

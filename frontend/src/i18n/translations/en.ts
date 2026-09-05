@@ -1202,6 +1202,7 @@ export const en = {
   "investmentCase.outlook.baseCaseLabel": "Valuation Base",
   "investmentCase.outlook.bearCaseLabel": "Valuation Bear",
   "investmentCase.outlook.momentumLabel": "Momentum",
+  "investmentCase.outlook.scenarioDetailLabel": "Scenarios, assumptions and drivers",
   "investmentCase.outlook.keyDriversLabel": "Key Drivers",
   "investmentCase.outlook.whatChangedLabel": "What Changed",
   "investmentCase.outlook.noDrivers": "No key drivers identified yet.",

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 // Vite's `?raw` import -- already typed by `vite/client` in tsconfig, so
 // this needs no Node type definitions.
 import SOURCE from "../routes/InvestmentCasePage.tsx?raw";
+import OUTLOOK_SOURCE from "./AtlasOutlookSection.tsx?raw";
 
 /**
  * Convergence Sprint 1 (Investment Case Compression) -- source-order
@@ -131,5 +132,21 @@ describe("Investment Case reading hierarchy", () => {
     // confidence-like value.
     expect(SOURCE).not.toMatch(/probability-weighted/i);
     expect(SOURCE).not.toMatch(/intrinsicValue/);
+  });
+
+  it("keeps the outlook's workings out of the default surface", () => {
+    // Sprint 1C. Each horizon rendered three scenario values, three
+    // assumption sentences and up to a dozen unranked driver labels -- about
+    // two screens per horizon, twice over. The horizon's conclusion
+    // (expected-return range, conviction, momentum) stays visible; the
+    // derivation is one click down.
+    const outlook = OUTLOOK_SOURCE;
+    const disclosure = outlook.indexOf("investmentCase.outlook.scenarioDetailLabel");
+    const close = outlook.indexOf("</ExpandableDetail>", disclosure);
+    const inside = outlook.slice(disclosure, close);
+    expect(inside).toContain("ScenarioField");
+    expect(inside).toContain("keyDriversLabel");
+    // Momentum is a single line and stays on the default surface.
+    expect(outlook.indexOf("momentumLabel")).toBeGreaterThan(close);
   });
 });

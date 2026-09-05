@@ -1189,6 +1189,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.outlook.baseCaseLabel": "Värdering — bas",
   "investmentCase.outlook.bearCaseLabel": "Värdering — pessimistiskt",
   "investmentCase.outlook.momentumLabel": "Momentum",
+  "investmentCase.outlook.scenarioDetailLabel": "Scenarier, antaganden och drivkrafter",
   "investmentCase.outlook.keyDriversLabel": "Nyckeldrivkrafter",
   "investmentCase.outlook.whatChangedLabel": "Vad som ändrats",
   "investmentCase.outlook.noDrivers": "Inga nyckeldrivkrafter identifierade ännu.",
