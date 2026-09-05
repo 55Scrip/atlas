@@ -98,3 +98,41 @@ describe("PortfolioFitSection", () => {
     expect(screen.getByText("Portfolio cash position has not been recorded.")).toBeInTheDocument();
   });
 });
+
+describe("PortfolioFitSection — Convergence Sprint 1 compression", () => {
+  // `ExpandableDetail` is a native <details>. Its children stay in the DOM
+  // when closed, so "is it on the primary reading surface?" is asserted the
+  // way this codebase already asserts it (AtlasReasoningSection.test.tsx):
+  // via the `open` attribute and containment, never by queryByText absence.
+
+  it("shows the distilled result on the primary surface", () => {
+    renderSection(assessment());
+    expect(screen.getByText(/More dimensions rated Good\/Excellent/)).toBeInTheDocument();
+    const verdict = screen.getByText(/More dimensions rated Good\/Excellent/);
+    expect(verdict.closest("details")).toBeNull();
+  });
+
+  it("keeps every per-dimension row closed by default", () => {
+    renderSection(assessment());
+    const details = screen.getByText("Alla dimensioner").closest("details");
+    expect(details).not.toBeNull();
+    expect(details).not.toHaveAttribute("open");
+    // Before this sprint these rows rendered inline, ahead of the page's own
+    // Atlas conclusion.
+    expect(details).toContainElement(screen.getByText(/4 of 6 business categories rated Strong/));
+    expect(details).toContainElement(screen.getByText(/1 of 4 evaluated risk categories rated High/));
+  });
+
+  it("preserves honest data gaps rather than dropping them", () => {
+    renderSection(assessment());
+    const details = screen.getByText("Alla dimensioner").closest("details");
+    expect(details).toContainElement(
+      screen.getByText(/cash_impact: Portfolio cash position has not been recorded\./),
+    );
+  });
+
+  it("renders no disclosure affordance when there is nothing behind it", () => {
+    renderSection(assessment({ dimensions: [], dataGaps: [] }));
+    expect(screen.queryByText("Alla dimensioner")).not.toBeInTheDocument();
+  });
+});

@@ -2890,8 +2890,28 @@ export function InvestmentCasePage() {
                       quick-action panel above (which requires an
                       existing holding) -- recording an actual decision
                       on a brand-new candidate via the existing,
-                      previously-unreachable Decision Draft system. */}
-                  {caseId && <StartDecisionSection caseId={caseId} ticker={resolvedTicker} />}
+                      previously-unreachable Decision Draft system.
+
+                      Convergence Sprint 1: moved behind a disclosure
+                      rather than rendered inline. The form asks the
+                      investor for a BUY/WATCH/PASS choice, a required
+                      free-text thesis and a 0-100 confidence value --
+                      Level 1 *input* standing between the reader and
+                      Atlas's own Level 1 conclusion, which is the
+                      opposite of this page's job. Nothing about it
+                      changed: same component, same `caseId`/`ticker`,
+                      same Decision Draft calls, same persistence.
+                      `Decision.reason` still feeds Decision Memory's
+                      thesis history (`DE-005` section 1) and
+                      `Decision.confidence` still feeds investor pattern
+                      recognition, so neither field is removed or
+                      reinterpreted here -- the terminal-action model is
+                      explicitly out of this sprint's scope. */}
+                  {caseId && (
+                    <ExpandableDetail summaryLabel={t("investmentCase.actions.recordManuallyLabel")}>
+                      <StartDecisionSection caseId={caseId} ticker={resolvedTicker} />
+                    </ExpandableDetail>
+                  )}
                 </Stack>
               )}
               {linkedHolding && (
@@ -3406,33 +3426,16 @@ export function InvestmentCasePage() {
 
             <Divider tone="hairline" />
 
-            {/* Product Sprint 4 (Portfolio Fit Engine, Deliverable 8) --
-                a new, always-visible section, the same placement tier as
-                Business/Valuation/Risk/Evidence above (not hidden behind
-                a tab click, matching Portfolio Fit's own stated product
-                priority). Independent fetch (`portfolioFitStatus`); a
-                still-loading or failed fetch never blocks the rest of
-                the page, the same pattern every section on this page
-                already follows. */}
-            {portfolioFitStatus.kind === "loaded" && <PortfolioFitSection assessment={portfolioFitStatus.assessment} />}
-            {portfolioFitStatus.kind === "loading" && (
-              <Text role="status" aria-live="polite">
-                {t("portfolioFit.section.loading")}
-              </Text>
-            )}
-            {portfolioFitStatus.kind === "error" && (
-              <Text color="tertiary" role="alert">
-                {t("portfolioFit.section.unavailable")}
-              </Text>
-            )}
-
-            {/* Atlas Intelligence Sprint 10 (Evidence Graph &
-                Dependency Understanding, Deliverable 6). Independent
-                fetch (`evidenceGraphStatus`); renders nothing at all
-                on error or when the graph is genuinely empty -- never
-                a placeholder, never blocking the rest of the page. */}
-            {evidenceGraphStatus.kind === "loaded" && <EvidenceGraphSection graph={evidenceGraphStatus.graph} t={t} />}
-
+            {/* Convergence Sprint 1 (Investment Case Compression) --
+                this block moved here from below Portfolio Fit and the
+                Evidence Graph. `AtlasDecisionSummary` is the page's own
+                Level 1 answer ("what does Atlas think, and why isn't it
+                more certain"); it previously rendered ~40 lines of JSX
+                and two full analytical sections below the material it
+                exists to summarise, so the reader met Level 3 evidence
+                before the conclusion. Nothing inside the block changed:
+                the nine Decision Layer sections keep their own collapsed
+                disclosure exactly as before. */}
             {/* Information Compression (Productization Sprint P2, Phase
                 4 -- Decision-Layer Consolidation). The nine Decision
                 Layer sections below (Readiness through Portfolio
@@ -3548,6 +3551,34 @@ export function InvestmentCasePage() {
                 )}
               </Stack>
             </ExpandableDetail>
+
+            {/* Product Sprint 4 (Portfolio Fit Engine, Deliverable 8) --
+                a new, always-visible section, the same placement tier as
+                Business/Valuation/Risk/Evidence above (not hidden behind
+                a tab click, matching Portfolio Fit's own stated product
+                priority). Independent fetch (`portfolioFitStatus`); a
+                still-loading or failed fetch never blocks the rest of
+                the page, the same pattern every section on this page
+                already follows. */}
+            {portfolioFitStatus.kind === "loaded" && <PortfolioFitSection assessment={portfolioFitStatus.assessment} />}
+            {portfolioFitStatus.kind === "loading" && (
+              <Text role="status" aria-live="polite">
+                {t("portfolioFit.section.loading")}
+              </Text>
+            )}
+            {portfolioFitStatus.kind === "error" && (
+              <Text color="tertiary" role="alert">
+                {t("portfolioFit.section.unavailable")}
+              </Text>
+            )}
+
+            {/* Atlas Intelligence Sprint 10 (Evidence Graph &
+                Dependency Understanding, Deliverable 6). Independent
+                fetch (`evidenceGraphStatus`); renders nothing at all
+                on error or when the graph is genuinely empty -- never
+                a placeholder, never blocking the rest of the page. */}
+            {evidenceGraphStatus.kind === "loaded" && <EvidenceGraphSection graph={evidenceGraphStatus.graph} t={t} />}
+
 
             <Divider tone="hairline" />
 

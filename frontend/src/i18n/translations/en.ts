@@ -910,6 +910,7 @@ export const en = {
   "investmentCase.actions.trimPosition": "Trim Position",
   "investmentCase.actions.removePosition": "Remove Position",
   "investmentCase.actions.leaveAsIs": "Leave as is",
+  "investmentCase.actions.recordManuallyLabel": "Record a decision manually",
   "investmentCase.actions.notLinkedNote":
     "Decision actions become available once this case is linked to a portfolio holding.",
   "investmentCase.actions.deferredWatchlist": "Watchlist actions are not yet available in Alpha.",
@@ -1764,6 +1765,7 @@ export const en = {
   "portfolioFit.section.whyItFits": "Why it fits",
   "portfolioFit.section.whatArguesAgainst": "What argues against it",
   "portfolioFit.section.other": "Other dimensions",
+  "portfolioFit.section.allDimensions": "All fit dimensions",
   "portfolioFit.section.dataGapsHeading": "What Atlas could not evaluate:",
   "portfolioFit.badge.label": "Portfolio Fit",
   "portfolioFit.portfolioSection.empty": "No holdings have an evaluated Portfolio Fit yet.",

@@ -901,6 +901,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.actions.trimPosition": "Minska position",
   "investmentCase.actions.removePosition": "Avveckla position",
   "investmentCase.actions.leaveAsIs": "Lämna oförändrad",
+  "investmentCase.actions.recordManuallyLabel": "Registrera ett beslut manuellt",
   "investmentCase.actions.notLinkedNote":
     "Beslutsåtgärder blir tillgängliga när det här caset kopplas till ett portföljinnehav.",
   "investmentCase.actions.deferredWatchlist": "Bevakningslista-åtgärder är inte tillgängliga i Alpha ännu.",
@@ -1754,6 +1755,7 @@ export const sv: Record<TranslationKey, string> = {
   "portfolioFit.section.whyItFits": "Varför det passar",
   "portfolioFit.section.whatArguesAgainst": "Vad som talar emot",
   "portfolioFit.section.other": "Övriga dimensioner",
+  "portfolioFit.section.allDimensions": "Alla dimensioner",
   "portfolioFit.section.dataGapsHeading": "Vad Atlas inte kunde utvärdera:",
   "portfolioFit.badge.label": "Portföljpassform",
   "portfolioFit.portfolioSection.empty": "Inga innehav har en utvärderad portföljpassform än.",

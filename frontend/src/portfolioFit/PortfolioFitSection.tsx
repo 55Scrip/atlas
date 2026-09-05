@@ -1,4 +1,5 @@
 import { Divider, Heading, Inline, Stack, Text } from "../foundation";
+import { ExpandableDetail } from "../investmentCase/ExpandableDetail";
 import { useTranslation } from "../i18n";
 import { FIT_TREND_KEY } from "../status/statusTone";
 import { describeFitVerdict } from "./describeFitVerdict";
@@ -18,6 +19,16 @@ import type { PortfolioFitAssessmentView } from "./portfolioFitApi";
  * its own). Every sentence rendered here is `assessment`'s own
  * `reasoning`/`overallReasoning` text, verbatim -- this component adds
  * no generated prose.
+ *
+ * Convergence Sprint 1 (Investment Case Compression): the default view
+ * is now the rating badge, the trend and the one-sentence verdict --
+ * the distilled result and its implication. The per-dimension rows
+ * (why it fits / what argues against it / other) and the data-gap list
+ * move behind one disclosure: on a real Case they ran to roughly a full
+ * screen of allocation/risk/business/valuation/contribution/cash rows,
+ * ahead of the page's own Atlas conclusion. Nothing is dropped and no
+ * rating is recomputed -- every row remains one click away, rendered by
+ * the same `FitDimensionRow` from the same `assessment`.
  *
  * The favorable/unfavorable/other grouping and the per-dimension row
  * (`groupFitDimensions`/`FitDimensionRow`) are shared with Discovery's
@@ -57,54 +68,61 @@ export function PortfolioFitSection({ assessment }: { assessment: PortfolioFitAs
         </Text>
       )}
 
-      {favorable.length > 0 && (
-        <Stack gap="metadata">
-          <Text as="p" style={{ fontWeight: 600 }}>
-            {t("portfolioFit.section.whyItFits")}
-          </Text>
-          {favorable.map((dimension) => (
-            <FitDimensionRow key={dimension.kind} dimension={dimension} />
-          ))}
-        </Stack>
-      )}
-
-      {unfavorable.length > 0 && (
-        <Stack gap="metadata">
-          <Text as="p" style={{ fontWeight: 600 }}>
-            {t("portfolioFit.section.whatArguesAgainst")}
-          </Text>
-          {unfavorable.map((dimension) => (
-            <FitDimensionRow key={dimension.kind} dimension={dimension} />
-          ))}
-        </Stack>
-      )}
-
-      {other.length > 0 && (
-        <Stack gap="metadata">
-          <Text as="p" style={{ fontWeight: 600 }}>
-            {t("portfolioFit.section.other")}
-          </Text>
-          {other.map((dimension) => (
-            <FitDimensionRow key={dimension.kind} dimension={dimension} />
-          ))}
-        </Stack>
-      )}
-
-      {assessment.dataGaps.length > 0 && (
-        <>
-          <Divider tone="hairline" />
+      {(favorable.length > 0 || unfavorable.length > 0 || other.length > 0 || assessment.dataGaps.length > 0) && (
+        <ExpandableDetail summaryLabel={t("portfolioFit.section.allDimensions")}>
           <Stack gap="metadata">
-            <Text color="tertiary" as="p">
-              {t("portfolioFit.section.dataGapsHeading")}
-            </Text>
-            {assessment.dataGaps.map((gap, index) => (
-              <Text key={index} color="tertiary" as="p">
-                {gap}
-              </Text>
-            ))}
+            {favorable.length > 0 && (
+              <Stack gap="metadata">
+                <Text as="p" style={{ fontWeight: 600 }}>
+                  {t("portfolioFit.section.whyItFits")}
+                </Text>
+                {favorable.map((dimension) => (
+                  <FitDimensionRow key={dimension.kind} dimension={dimension} />
+                ))}
+              </Stack>
+            )}
+
+            {unfavorable.length > 0 && (
+              <Stack gap="metadata">
+                <Text as="p" style={{ fontWeight: 600 }}>
+                  {t("portfolioFit.section.whatArguesAgainst")}
+                </Text>
+                {unfavorable.map((dimension) => (
+                  <FitDimensionRow key={dimension.kind} dimension={dimension} />
+                ))}
+              </Stack>
+            )}
+
+            {other.length > 0 && (
+              <Stack gap="metadata">
+                <Text as="p" style={{ fontWeight: 600 }}>
+                  {t("portfolioFit.section.other")}
+                </Text>
+                {other.map((dimension) => (
+                  <FitDimensionRow key={dimension.kind} dimension={dimension} />
+                ))}
+              </Stack>
+            )}
+
+            {assessment.dataGaps.length > 0 && (
+              <>
+                <Divider tone="hairline" />
+                <Stack gap="metadata">
+                  <Text color="tertiary" as="p">
+                    {t("portfolioFit.section.dataGapsHeading")}
+                  </Text>
+                  {assessment.dataGaps.map((gap, index) => (
+                    <Text key={index} color="tertiary" as="p">
+                      {gap}
+                    </Text>
+                  ))}
+                </Stack>
+              </>
+            )}
           </Stack>
-        </>
+        </ExpandableDetail>
       )}
+
     </Stack>
   );
 }
