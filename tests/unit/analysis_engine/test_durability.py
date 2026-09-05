@@ -65,11 +65,8 @@ def _healthy_margins():
 
 
 def _healthy_balance_sheet():
-    return (
-        series(Kind.FREE_CASH_FLOW, [15.0, 17.0, 19.0])
-        + series(Kind.TOTAL_DEBT, [50.0, 45.0, 40.0])
-        + series(Kind.CASH, [30.0, 35.0, 40.0])
-    )
+    """FCF only -- net debt is no longer a durability signal."""
+    return series(Kind.FREE_CASH_FLOW, [15.0, 17.0, 19.0])
 
 
 class TestOverallStatus:
@@ -99,22 +96,29 @@ class TestOverallStatus:
         )
         assert finding.status is Status.STRONG
 
-    def test_mixed_signals_are_moderate(self):
-        """Revenue dipped and recovered above its start; everything else
-        healthy. Neither STRONG (something fell) nor WEAK (no erosion)."""
+    def test_a_split_verdict_is_moderate(self):
+        """Revenue ends above its starting level but below its own
+        median -- the two references disagree, which is exactly what
+        MODERATE reports."""
         finding = run(
-            series(Kind.REVENUE, [100.0, 90.0, 105.0]),
-            series(Kind.NET_INCOME, [20.0, 18.0, 22.0]),
+            series(Kind.REVENUE, [100.0, 140.0, 150.0, 110.0]),
+            series(Kind.NET_INCOME, [20.0, 28.0, 30.0, 22.0]),
             _healthy_balance_sheet(),
         )
         assert finding.status is Status.MODERATE
 
-    def test_two_strong_sub_assessments_alone_do_not_reach_strong(self):
-        """The deliberate rule: STRONG requires all three clauses
-        answered, not one or two answered well."""
-        finding = run(_healthy_margins())
-        assert finding.status is Status.MODERATE
-        assert finding.confidence is EvidenceCoverageLevel.PARTIAL
+    def test_dip_and_recovery_stays_strong(self):
+        """The rule change this sprint exists for: Doctrine asks about
+        surviving a bad year, not avoiding one. The old monotonic rule
+        called this MODERATE."""
+        finding = run(
+            series(Kind.REVENUE, [100.0, 60.0, 105.0]),
+            series(Kind.NET_INCOME, [20.0, 8.0, 24.0]),
+            _healthy_balance_sheet(),
+        )
+        assert finding.status is Status.STRONG
+
+
 
 
 class TestDemandDurability:
@@ -167,14 +171,15 @@ class TestMarginDurability:
         assert BusinessDataGapKind.INSUFFICIENT_HISTORICAL_PERIODS in finding.missing_evidence
 
     def test_shrinking_margin_on_growing_revenue_is_caught(self):
-        """Revenue rises every period while net margin collapses --
-        durability must not be fooled by the top line alone."""
+        """Revenue rises every period while net margin collapses to
+        below both its median and its start -- durability must not be
+        fooled by the top line, and the veto rule must surface it."""
         finding = run(
             series(Kind.REVENUE, [100.0, 200.0, 400.0]),
             series(Kind.NET_INCOME, [30.0, 20.0, 12.0]),
             _healthy_balance_sheet(),
         )
-        assert finding.status is Status.MODERATE
+        assert finding.status is Status.WEAK
 
 
 class TestBalanceSheetResilience:
@@ -190,26 +195,38 @@ class TestBalanceSheetResilience:
         finding = run(series(Kind.FREE_CASH_FLOW, [10.0, -2.0, 8.0]))
         assert finding.status is Status.MODERATE
 
-    def test_rising_net_debt_is_adverse(self):
+    def test_net_debt_is_not_a_durability_signal(self):
+        """Removed deliberately: Doctrine asks whether the business can
+        survive a bad year, not whether debt falls monotonically, and a
+        growing company funding expansion with debt is not fragile.
+        Debt and cash facts must therefore change nothing."""
+        base = tuple(_healthy_margins() + _healthy_balance_sheet())
+        debt = tuple(series(Kind.TOTAL_DEBT, [10.0, 500.0, 9000.0]) + series(Kind.CASH, [900.0, 50.0, 1.0]))
+        assert evaluate_durability(base + debt, evaluated_at=EVALUATED_AT) == evaluate_durability(
+            base, evaluated_at=EVALUATED_AT)
+
+
+class TestVetoAggregation:
+    def test_one_weak_clause_makes_the_whole_finding_weak(self):
+        """Doctrine states the three clauses conjunctively. The previous
+        unanimity rule required all three WEAK at once, which left a
+        genuinely deteriorating business reading MODERATE."""
         finding = run(
-            series(Kind.TOTAL_DEBT, [40.0, 60.0, 90.0]),
-            series(Kind.CASH, [30.0, 25.0, 20.0]),
+            series(Kind.REVENUE, [100.0, 110.0, 120.0]),
+            series(Kind.NET_INCOME, [20.0, 22.0, 25.0]),
+            series(Kind.FREE_CASH_FLOW, [-1.0, -2.0, -3.0]),
         )
         assert finding.status is Status.WEAK
 
-    def test_net_cash_position_is_handled(self):
-        """Debt below cash is negative net debt -- a real position for
-        several holdings, and falling further must read as improving."""
-        finding = run(
-            series(Kind.TOTAL_DEBT, [30.0, 20.0, 10.0]),
-            series(Kind.CASH, [50.0, 60.0, 70.0]),
-        )
-        assert finding.status is Status.MODERATE  # strong component, but only one clause answered
-        assert finding.contradicting_evidence == ()
+    def test_strong_requires_all_three_clauses_answered(self):
+        """Two strong clauses and one unanswerable is two thirds of
+        durability, not durability."""
+        finding = run(_healthy_margins())
+        assert finding.status is Status.MODERATE
+        assert finding.confidence is EvidenceCoverageLevel.PARTIAL
 
-    def test_net_debt_needs_both_cash_and_debt(self):
-        finding = run(series(Kind.TOTAL_DEBT, [40.0, 50.0]))
-        assert BusinessDataGapKind.MISSING_DEBT_DATA in finding.missing_evidence
+    def test_all_three_strong_is_strong(self):
+        assert run(_healthy_margins(), _healthy_balance_sheet()).status is Status.STRONG
 
 
 class TestInsufficientInput:
