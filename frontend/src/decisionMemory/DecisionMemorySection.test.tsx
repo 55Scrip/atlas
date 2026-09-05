@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { LanguageProvider, useTranslation } from "../i18n";
 import { DecisionMemorySection } from "./DecisionMemorySection";
@@ -158,6 +158,76 @@ describe("DecisionMemorySection", () => {
       </LanguageProvider>,
     );
     expect(screen.getByText("Visa fullständig historik")).toBeInTheDocument();
+  });
+
+  it("renders two distinct history entries even when their contentHash is identical, with no React duplicate-key warning", () => {
+    // `contentHash` is computed only over the decision-relevant fields
+    // and deliberately excludes `recordedAt` (`atlas.alpha
+    // .decision_memory.engine.build_snapshot`) -- a real decision state
+    // that changes and later cycles back to an earlier configuration
+    // (e.g. BUY -> HOLD -> BUY with everything else unchanged) produces
+    // two distinct, real timeline rows sharing one `contentHash`. This
+    // reproduces exactly that: two entries, same `contentHash`,
+    // different `recordedAt` -- both must render, and using
+    // `contentHash` as the list key (the bug) would make React warn.
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const entryA = snapshot({ contentHash: "same-hash", action: "add", recordedAt: "2026-01-01T00:00:00Z" });
+    const entryB = snapshot({ contentHash: "same-hash", action: "hold", recordedAt: "2026-01-03T00:00:00Z" });
+    const cyclingMemory = memory({
+      currentSnapshot: entryB,
+      history: {
+        caseId: "case-1",
+        entries: [
+          {
+            snapshot: entryA,
+            change: {
+              caseId: "case-1",
+              isBaseline: true,
+              previousAction: null,
+              currentAction: "add",
+              recommendationChanged: false,
+              convictionDirection: null,
+              readinessDirection: null,
+              decisionPathDirection: null,
+              blockersResolved: [],
+              blockersAdded: [],
+              alternativeChanged: false,
+              detectedAt: "2026-01-01T00:00:00Z",
+            },
+          },
+          {
+            snapshot: entryB,
+            change: {
+              caseId: "case-1",
+              isBaseline: false,
+              previousAction: "add",
+              currentAction: "hold",
+              recommendationChanged: true,
+              convictionDirection: null,
+              readinessDirection: null,
+              decisionPathDirection: null,
+              blockersResolved: [],
+              blockersAdded: [],
+              alternativeChanged: false,
+              detectedAt: "2026-01-03T00:00:00Z",
+            },
+          },
+        ],
+      },
+    });
+
+    renderSection(cyclingMemory);
+    const expandButton = screen.getByText("Visa fullständig historik");
+    expandButton.click();
+
+    expect(screen.getByText(new Date(entryA.recordedAt).toLocaleString())).toBeInTheDocument();
+    expect(screen.getByText(new Date(entryB.recordedAt).toLocaleString())).toBeInTheDocument();
+
+    const keyWarning = consoleError.mock.calls.find((call) => String(call[0]).includes("same key"));
+    expect(keyWarning).toBeUndefined();
+
+    consoleError.mockRestore();
   });
 
   it("never renders raw technical or memory/learning vocabulary", () => {

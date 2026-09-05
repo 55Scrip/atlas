@@ -14,8 +14,22 @@ import type { DecisionMemoryChangeView, DecisionMemoryView, DecisionSnapshotView
  * "kompakt, evidence first, progressively disclosed" shape: the
  * current snapshot always visible, the latest real change as the
  * compact answer, the full append-only history one click away.
- * `key`s on history entries use `snapshot.contentHash` -- a real,
- * stable identity, never an array index.
+ *
+ * `key`s on history entries use `snapshot.recordedAt`, never
+ * `snapshot.contentHash` and never an array index. `contentHash`
+ * (`atlas.alpha.decision_memory.engine`'s own `content_hash`) is
+ * computed only over the decision-relevant fields and deliberately
+ * excludes `recorded_at` -- it exists so the repository's `add` can be
+ * idempotent-by-content against the current head, not to identify a
+ * row. Two distinct, real snapshots (recorded at different times) can
+ * legitimately hash identically if the decision state cycles back to
+ * an earlier configuration (e.g. BUY -> HOLD -> BUY with every other
+ * field unchanged) -- the idempotency check only ever compares against
+ * the immediate current head, not the full history, so this is not an
+ * edge case to special-case away. `recordedAt` is the real per-case
+ * unique identity: the backend's own table primary key is the
+ * synthetic `f"{case_id}:{recorded_at}"` (`decision_memory/table.py`),
+ * and every entry rendered here already belongs to one fixed `caseId`.
  */
 export function DecisionMemorySection({
   memory,
@@ -43,7 +57,7 @@ export function DecisionMemorySection({
           <ExpandableDetail summaryLabel={t("decisionMemory.section.expandLabel")}>
             <Stack gap="metadata">
               {[...memory.history.entries].reverse().map((entry) => (
-                <HistoryEntryRow key={entry.snapshot.contentHash} entry={entry} t={t} />
+                <HistoryEntryRow key={entry.snapshot.recordedAt} entry={entry} t={t} />
               ))}
             </Stack>
           </ExpandableDetail>
