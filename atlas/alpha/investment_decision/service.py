@@ -141,8 +141,14 @@ class InvestmentDecisionService:
         recommendation = composition.canonical_analysis.recommendation.recommendation
         reasoning = getattr(recommendation, "reasoning", None)
         if reasoning is None:
-            # A withheld recommendation has no direction and therefore
-            # no analytical rationale to project. Distinct from legacy.
+            # Not "withheld, therefore nothing to say" -- since the
+            # Recommendation Reasoning Convergence sprint a withheld
+            # outcome carries its own canonical reasoning too
+            # (`RecommendationWithheldWithReasoning`). `None` here now
+            # means the gate produced a bare `RecommendationWithheld`
+            # -- a `decision_engine`-level outcome that never ran the
+            # analysis engine at all. Genuinely absent, and distinct
+            # from a legacy row (which this layer never writes).
             return None
         return serialize_reasoning(reasoning)
 

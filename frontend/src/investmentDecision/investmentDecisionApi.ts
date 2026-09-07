@@ -5,6 +5,8 @@
  * adds no logic of its own beyond the wire-format mapping.
  */
 
+import type { RecommendationReasoningView } from "./reasoningContract";
+
 export type DecisionAction = "buy" | "add" | "hold" | "reduce" | "exit" | "wait" | "no_decision";
 
 export type DecisionReasonSource = "readiness_blocker" | "readiness_support" | "stance";
@@ -34,6 +36,24 @@ export interface InvestmentDecisionView {
   blockers: DecisionReasonView[];
   changeTrigger: DecisionReasonView | null;
   generatedAt: string;
+
+  /**
+   * The canonical analytical rationale the recommendation gate
+   * produced, projected verbatim by the backend. Declared here because
+   * it was always on the wire and never typed -- the boundary loss
+   * that left every component re-explaining its own local state.
+   *
+   * `null` for a row that predates reasoning persistence, and for an
+   * outcome the analysis engine never produced. It is NOT null merely
+   * because the recommendation was withheld: a withheld outcome
+   * carries the direction-independent half of the same rationale.
+   * `action` remains the only field that states what Atlas
+   * recommends; nothing in here may be read as a direction.
+   *
+   * `changeTrigger` above stays a readiness blocker kept for
+   * compatibility, and is not a fallback for this field.
+   */
+  reasoning: RecommendationReasoningView | null;
 }
 
 export interface DecisionChangeView {

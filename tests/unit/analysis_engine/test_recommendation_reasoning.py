@@ -212,7 +212,13 @@ class TestSingleProducer:
                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) \
                         and node.func.id == "RecommendationReasoning":
                     sites.append(str(path))
-        assert sites == ["atlas/analysis_engine/recommendation.py"], sites
+        # One module, and within it exactly the recommendation gate's
+        # two branches -- directional and withheld. Both read the same
+        # hoisted `_signal_summary`/`_signal_drivers`/`_what_would
+        # _change`/`_key_unknowns`, so neither is a second *producer*;
+        # they are two assemblies of one production.
+        assert set(sites) == {"atlas/analysis_engine/recommendation.py"}, sites
+        assert len(sites) == 2, sites
 
     def test_no_module_outside_the_gate_derives_a_change_trigger(self):
         """Counts CALLS, not mentions -- `reasoning.py` cites the

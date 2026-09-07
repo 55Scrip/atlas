@@ -38,11 +38,21 @@ from atlas.analysis_engine.reasoning import (
 CANONICAL = "canonical"
 CANONICAL_EMPTY = "canonical_empty"
 LEGACY = LEGACY_RESULT_WITHOUT_REASONING
-#: The recommendation was withheld -- no direction, therefore no
-#: analytical rationale to record. Distinct from LEGACY: this row was
-#: written by current code and is telling the truth about itself. The
-#: first version of this harness conflated the two, because both read
-#: back as `None`, and reported 16 freshly-written rows as legacy.
+#: A row whose `reasoning` key is present and explicitly `null`.
+#: Distinct from LEGACY: this row was written by current code and is
+#: telling the truth about itself. The first version of this harness
+#: conflated the two, because both read back as `None`, and reported 16
+#: freshly-written rows as legacy.
+#:
+#: Since the Recommendation Reasoning Convergence sprint this state is
+#: NO LONGER the normal shape of a withheld recommendation: a withheld
+#: outcome now carries the direction-independent half of the canonical
+#: rationale and classifies as `CANONICAL`/`CANONICAL_EMPTY` like any
+#: other. It remains reachable, and now means something narrower --
+#: the recommendation gate attached no reasoning at all, which happens
+#: only for an outcome the analysis engine never produced. Rows
+#: persisted before that sprint keep this state and stay readable
+#: exactly as before.
 WITHHELD = "no_directional_recommendation"
 
 

@@ -450,10 +450,26 @@ export function HeroCard({
               {t("investmentCase.hero.withheld.closing")}
             </Text>
           )}
-          <StatusBadge
-            label={t(DECISION_SUPPORT_BADGE_KEY[analysis.recommendationLevel])}
-            tone={DECISION_SUPPORT_TONE[analysis.recommendationLevel]}
-          />
+          {/* Recommendation Reasoning Convergence, Phase H (Stance
+              semantics). Stance already announces itself ("Atlas
+              nuvarande syn" + badge, `StanceSummary`); the
+              recommendation state directly above it did not, so the
+              two badges sat side by side with only one of them saying
+              which question it answered -- and "Värt att se över"
+              reads as a verdict when nothing else claims that role.
+              This adds the missing half of the pair: the same
+              label-plus-badge shape, naming this badge as the
+              *recommendation* state. Label only -- no Stance semantics,
+              no enum values, and no recommendation logic changed. */}
+          <Inline gap="row" align="center">
+            <Text as="span" color="secondary" style={{ fontWeight: 600 }}>
+              {t("investmentCase.hero.recommendationLabel")}
+            </Text>
+            <StatusBadge
+              label={t(DECISION_SUPPORT_BADGE_KEY[analysis.recommendationLevel])}
+              tone={DECISION_SUPPORT_TONE[analysis.recommendationLevel]}
+            />
+          </Inline>
           {/* `UX-022` §4: the real, per-case missing-evaluation stages --
               alongside the fixed sentence above, never replacing it. */}
           {analysis.missingEvaluations.length > 0 && (

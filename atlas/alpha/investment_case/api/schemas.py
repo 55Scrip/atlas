@@ -666,10 +666,16 @@ class RecommendationStateView(CamelModel):
 
     `what_would_change` (Calibration Phase 2, Phase 6): the real,
     populated `ChangeTriggerKind` values from the computed
-    recommendation's own `reasoning.what_would_change` -- empty
-    whenever `recommendation` is `RecommendationWithheld` (no
-    Direction was ever selected, so there is no specific condition to
-    name yet)."""
+    recommendation's own `reasoning.what_would_change`, empty on the
+    withheld branch.
+
+    Since the Recommendation Reasoning Convergence sprint that empty
+    list is a *scope* decision, not a statement about what exists: a
+    withheld outcome does carry `what_would_change` now, and the
+    product reads it -- through `/investment-decision`, which serves
+    the whole canonical rationale as one object. Populating it here
+    too would give one concept two API homes and invite them to
+    drift, which is the duplication that sprint existed to remove."""
 
     level: str
     badge_label: str

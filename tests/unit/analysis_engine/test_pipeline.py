@@ -490,7 +490,23 @@ class TestGrowthAndCapitalAllocationEndToEnd:
             engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
         )
         assert without_records.conviction == with_records.conviction
-        assert without_records.recommendation.recommendation == with_records.recommendation.recommendation
+
+        # The *outcome* is what must be uncoupled. Since the
+        # Recommendation Reasoning Convergence sprint a withheld
+        # outcome also carries the analytical rationale it always had
+        # available, and that rationale restates Growth's own status by
+        # design -- restating evidence is the opposite of secretly
+        # deciding on it, which is what this test guards.
+        without = dataclasses.replace(without_records.recommendation.recommendation, reasoning=None)
+        with_ = dataclasses.replace(with_records.recommendation.recommendation, reasoning=None)
+        assert without == with_
+
+        # ... and the rationale genuinely did move, which is the point:
+        # no direction was stated either way, yet Atlas is not silent.
+        assert (
+            without_records.recommendation.recommendation.reasoning
+            != with_records.recommendation.recommendation.reasoning
+        )
 
     def test_determinism_holds_through_the_full_fact_extraction_chain(self):
         from datetime import date

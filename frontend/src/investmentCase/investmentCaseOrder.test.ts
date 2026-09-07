@@ -134,6 +134,47 @@ describe("Investment Case reading hierarchy", () => {
     expect(SOURCE).not.toMatch(/intrinsicValue/);
   });
 
+  it("renders canonical reasoning directly under Atlas's conclusion", () => {
+    // Recommendation Reasoning Convergence. The one primary investment
+    // explanation belongs with the conclusion it explains -- above
+    // Portfolio Fit and the Evidence Graph, and above the Decision
+    // Layer disclosure, not appended as a tenth analytical module at
+    // the bottom of the page.
+    expect(positionOf("AtlasDecisionSummary")).toBeLessThan(positionOf("AtlasInvestmentReasoning"));
+    expect(positionOf("AtlasInvestmentReasoning")).toBeLessThan(positionOf("PortfolioFitSection"));
+    expect(positionOf("AtlasInvestmentReasoning")).toBeLessThan(positionOf("EvidenceGraphSection"));
+    expect(positionOf("AtlasInvestmentReasoning")).toBeLessThan(positionOf("DecisionReadinessSection"));
+  });
+
+  it("adds no new section inventory for canonical reasoning", () => {
+    // The sprint follows Investment Case Compression: reasoning had to
+    // become visible without the page becoming long again. One card,
+    // rendered once, reusing the already-loaded `investmentDecision`
+    // fetch -- no second fetch, and no second render site.
+    const occurrences = SOURCE.split("<AtlasInvestmentReasoning").length - 1;
+    expect(occurrences).toBe(1);
+    expect(SOURCE).not.toContain("fetchRecommendationReasoning");
+  });
+
+  it("does not rank or re-derive reasoning in the page", () => {
+    // Ordering is the backend's own `_ENGINE_PRECEDENCE`, applied
+    // before serialization. The page may not sort, score or threshold
+    // canonical drivers.
+    const start = SOURCE.indexOf("<AtlasInvestmentReasoning");
+    const block = SOURCE.slice(start, start + 400);
+    expect(block).not.toMatch(/\.sort\(/);
+    expect(block).not.toMatch(/\.filter\(/);
+  });
+
+  it("leaves Decision Memory exactly where it was", () => {
+    // Recommendation Reasoning Convergence, Phase N. Decision Memory
+    // records what the *investor* decided; canonical reasoning states
+    // what *Atlas* concluded. The sprint touches neither the section
+    // nor its position inside the Decision Layer disclosure.
+    expect(positionOf("DecisionMemorySection")).toBeGreaterThan(positionOf("DecisionReadinessSection"));
+    expect(SOURCE).toContain("decisionMemoryStatus.kind === \"loaded\"");
+  });
+
   it("keeps the outlook's workings out of the default surface", () => {
     // Sprint 1C. Each horizon rendered three scenario values, three
     // assumption sentences and up to a dozen unranked driver labels -- about

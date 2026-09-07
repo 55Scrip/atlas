@@ -29,6 +29,7 @@ from atlas.analysis_engine.recommendation import (
     ChangeTriggerKind,
     ComputedDirectionalRecommendation,
     RecommendationDirection,
+    RecommendationWithheldWithReasoning,
     evaluate_recommendation_gate,
 )
 from atlas.analysis_engine.recommendation_conviction import RecommendationConvictionLevel
@@ -42,6 +43,7 @@ from atlas.decision_engine.contracts import (
     HoldingLinkage,
     PortfolioHoldingContext,
     RecommendationOutcomeKind,
+    RecommendationWithheld,
     RecommendationWithheldReason,
 )
 from atlas.decision_engine.stages.recommendation import determine_recommendation
@@ -754,3 +756,183 @@ class TestWhatWouldChange:
         assert ChangeTriggerKind.VALUATION_BECOMES_EXPENSIVE in triggers
         assert ChangeTriggerKind.VALUATION_SUPPORT_LOST in triggers
         assert ChangeTriggerKind.GROWTH_DETERIORATES in triggers
+
+
+class TestReasoningAvailabilityIsNotRecommendationEligibility:
+    """Recommendation Reasoning Convergence -- the sprint's whole point,
+    stated as a pair of controls.
+
+    "Atlas may withhold a recommendation without withholding its
+    reasoning" is only safe if the converse never becomes true: reasoning
+    turning up must not create, upgrade, or imply a direction. Every test
+    below flips exactly one thing and pins what may and may not move with
+    it.
+    """
+
+    def _directional_setup(self):
+        from tests.unit.decision_engine._fixtures import build_populated_input
+        from atlas.decision_engine.pipeline import run_pipeline
+
+        engine_input = build_populated_input(case_id="reasoning-convergence")
+        output = run_pipeline(engine_input, generated_at=GENERATED_AT)
+        return engine_input, output
+
+    def _gate(self, engine_input, output):
+        return _call_gate(
+            engine_input,
+            output,
+            conviction=_assessment(ConvictionLevel.HIGH),
+            business_analysis=_strong_growth_business_analysis(),
+            valuation_engine=_undervalued_valuation_engine(),
+            valuation_support=_supported_valuation_support(),
+        )
+
+    # -- M1 ----------------------------------------------------------
+    def test_directional_recommendation_still_produces_canonical_reasoning(self):
+        engine_input, output = self._directional_setup()
+        result = self._gate(engine_input, output)
+        assert isinstance(result.recommendation, ComputedDirectionalRecommendation)
+        reasoning = result.recommendation.reasoning
+        assert reasoning.primary_drivers
+        assert reasoning.signal_summary
+        assert reasoning.what_would_change
+        # All four DE-002 summaries, structurally required on this branch.
+        assert reasoning.current_situation is not None
+        assert reasoning.supporting_evidence is not None
+        assert reasoning.contradicting_evidence is not None
+        assert reasoning.portfolio_context is not None
+        assert reasoning.conviction_reasoning is not None
+
+    # -- M2 / M4: the paired control ---------------------------------
+    def test_withheld_carries_the_same_reasoning_the_directional_branch_would_have(self):
+        """The strongest available control: identical inputs, and the
+        ONLY difference is whether Direction Selection reached a
+        direction. Every direction-independent field must be identical
+        object-for-object -- proving the withheld branch projects the
+        one production, never a second, quieter analysis."""
+        from unittest.mock import patch
+
+        engine_input, output = self._directional_setup()
+        directional = self._gate(engine_input, output).recommendation
+        assert isinstance(directional, ComputedDirectionalRecommendation)
+
+        with patch("atlas.analysis_engine.direction_selector.select_direction", return_value=None):
+            withheld = self._gate(engine_input, output).recommendation
+
+        assert isinstance(withheld, RecommendationWithheldWithReasoning)
+        assert withheld.reasoning is not None
+        for field in ("primary_drivers", "counter_drivers", "signal_summary",
+                      "key_unknowns", "what_would_change", "current_situation",
+                      "supporting_evidence", "contradicting_evidence", "portfolio_context"):
+            assert getattr(withheld.reasoning, field) == getattr(directional.reasoning, field), field
+
+    # -- M3 ----------------------------------------------------------
+    def test_reasoning_on_a_withheld_outcome_never_becomes_directional(self):
+        from unittest.mock import patch
+
+        engine_input, output = self._directional_setup()
+        with patch("atlas.analysis_engine.direction_selector.select_direction", return_value=None):
+            withheld = self._gate(engine_input, output).recommendation
+
+        assert not isinstance(withheld, ComputedDirectionalRecommendation)
+        assert isinstance(withheld, RecommendationWithheld)
+        assert withheld.kind is RecommendationOutcomeKind.RECOMMENDATION_WITHHELD
+        # Structural, not conventional: the fields do not exist at all.
+        assert not hasattr(withheld, "direction")
+        assert not hasattr(withheld, "direction_statement")
+        assert not hasattr(withheld, "conviction_level")
+        # And nothing downstream may read a direction out of it.
+        from atlas.alpha.decision_support import DecisionSupportLevel, describe_recommendation
+        with patch("atlas.analysis_engine.direction_selector.select_direction", return_value=None):
+            gate_result = self._gate(engine_input, output)
+        assert describe_recommendation(gate_result).level is DecisionSupportLevel.INSUFFICIENT_EVIDENCE
+
+    # -- M4: gate outcome unchanged by reasoning availability ---------
+    def test_gate_outcome_is_identical_with_and_without_reasoning_attached(self):
+        """Negative control for the same invariant, from the other
+        side: strip the reasoning off the withheld outcome and the
+        outcome itself is byte-identical to the bare
+        `determine_recommendation` result the gate has always produced."""
+        import dataclasses as dc
+
+        engine_input, output = run_minimal()
+        result = _call_gate(engine_input, output, conviction=_assessment(ConvictionLevel.HIGH))
+        assert isinstance(result.recommendation, RecommendationWithheldWithReasoning)
+
+        expected = determine_recommendation(
+            engine_input,
+            business_evaluation=output.business_evaluation,
+            valuation=output.valuation,
+            portfolio_intelligence=output.portfolio_intelligence,
+            reasoning=output.reasoning,
+            generated_at=GENERATED_AT,
+        )
+        stripped = dc.replace(result.recommendation, reasoning=None)
+        for field in dc.fields(expected):
+            # `reason` excepted: the gate has always corrected
+            # `determine_recommendation`'s stale `ENGINE_NOT_IMPLEMENTED`
+            # at this call site (see `recommendation.py`'s own comment).
+            # Pre-existing, and asserted explicitly below.
+            if field.name == "reason":
+                continue
+            assert getattr(stripped, field.name) == getattr(expected, field.name), field.name
+        assert stripped.reason is RecommendationWithheldReason.EVIDENCE_INSUFFICIENT
+
+    def test_withholding_reason_and_missing_evaluations_survive_unchanged(self):
+        engine_input, output = run_minimal()
+        result = _call_gate(engine_input, output, conviction=_assessment(ConvictionLevel.HIGH))
+        withheld = result.recommendation
+        assert withheld.reason is RecommendationWithheldReason.EVIDENCE_INSUFFICIENT
+        assert withheld.required_before_recommendation
+
+    # -- M5 ----------------------------------------------------------
+    def test_withheld_reasoning_may_not_carry_recommendation_conviction(self):
+        """`DE-004` §3's Recommendation Conviction is conviction in a
+        *stated direction*. Positive control: constructing one anyway
+        is rejected structurally, not by convention."""
+        import pytest
+
+        from atlas.analysis_engine.exceptions import AnalysisEngineContractError
+        from atlas.analysis_engine.reasoning import ConvictionReasoning
+        from atlas.analysis_engine.recommendation import RecommendationReasoning
+        from datetime import timezone
+
+        with pytest.raises(AnalysisEngineContractError):
+            RecommendationWithheldWithReasoning(
+                kind=RecommendationOutcomeKind.RECOMMENDATION_WITHHELD,
+                reason=RecommendationWithheldReason.EVIDENCE_INSUFFICIENT,
+                missing_evaluations=(),
+                required_before_recommendation=(),
+                generated_at=GENERATED_AT,
+                reasoning=RecommendationReasoning(
+                    conviction_reasoning=ConvictionReasoning(
+                        level=RecommendationConvictionLevel.MEDIUM,
+                        analytical_reasons=(),
+                        evidential_reasons=(),
+                    ),
+                ),
+            )
+
+    def test_every_real_withheld_outcome_omits_recommendation_conviction(self):
+        engine_input, output = run_minimal()
+        result = _call_gate(engine_input, output, conviction=_assessment(ConvictionLevel.HIGH))
+        assert result.recommendation.reasoning.conviction_reasoning is None
+
+    def test_a_directional_recommendation_may_not_be_built_on_absent_reasoning(self):
+        """Negative control for the loosened `RecommendationReasoning`
+        fields: they are optional for the withheld branch only."""
+        import pytest
+
+        from atlas.analysis_engine.exceptions import AnalysisEngineContractError
+        from atlas.analysis_engine.recommendation import (
+            ComputedDirectionalRecommendation as CDR,
+            RecommendationReasoning,
+        )
+
+        engine_input, output = self._directional_setup()
+        real = self._gate(engine_input, output).recommendation
+        with pytest.raises(AnalysisEngineContractError):
+            import dataclasses as dc
+            dc.replace(real, reasoning=RecommendationReasoning(
+                primary_drivers=real.reasoning.primary_drivers))
+        assert CDR is type(real)

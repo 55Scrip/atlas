@@ -56,14 +56,28 @@ class TestInvestmentDecisionShape:
         assert body["action"] == "no_decision"
         # `reasoning` is the canonical analytical rationale, added
         # additively so the persisted payload can reach the benchmark
-        # without being reconstructed from process-state fields. It is
-        # `None` here: a freshly imported holding with no ingested data
-        # produces no directional recommendation, so there is no
-        # rationale to project -- which is distinct from a legacy row,
-        # where the key would be absent from storage entirely.
+        # without being reconstructed from process-state fields.
+        #
+        # It is present here even though `action` is `no_decision`.
+        # Before the Recommendation Reasoning Convergence sprint this
+        # asserted `is None`, on the premise that a withheld
+        # recommendation has no rationale to project. That premise was
+        # wrong: the rationale is built from the engine statuses alone
+        # and existed all along -- it was computed and then discarded.
+        # A withheld outcome now carries it, and only two things still
+        # read back as `None`: a legacy row (whose key is absent from
+        # storage entirely) and an outcome the analysis engine never
+        # produced.
         assert set(body) == {"caseId", "action", "qualifiers", "supportingReasons",
                              "blockers", "changeTrigger", "generatedAt", "reasoning"}
-        assert body["reasoning"] is None
+        assert body["reasoning"] is not None
+        assert body["reasoning"]["signalSummary"]
+        # ...and carrying it did not smuggle a recommendation back in.
+        # Recommendation Conviction is conviction in a *stated*
+        # direction; there is none, so it is absent -- and `action`
+        # stays `no_decision`, asserted above.
+        assert body["reasoning"]["recommendationConviction"] is None
+        assert "direction" not in body["reasoning"]
 
     def test_the_decision_view_never_leaks_internal_engine_terminology(self, client):
         """Deliverable 12's own language-boundary check at the wire

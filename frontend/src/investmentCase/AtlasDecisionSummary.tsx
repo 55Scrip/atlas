@@ -31,10 +31,21 @@ import type { DecisionPathView } from "../decisionPath/decisionPathApi";
 export function AtlasDecisionSummary({
   reliability,
   path,
+  canonicalReasoningStatesWhatWouldChange = false,
   t,
 }: {
   reliability: DecisionReliabilityView | null;
   path: DecisionPathView | null;
+  /** Recommendation Reasoning Convergence, Phase I. `AtlasInvestment
+   * Reasoning` renders immediately below this card and states what
+   * would change the assessment from the canonical
+   * `what_would_change` -- `DE-002` §2.7's designated provider. When
+   * it does, the Decision Path improvement line below is the same
+   * question answered a second time in a second vocabulary, so it is
+   * subordinated rather than repeated: `DecisionPathSection` still
+   * shows it in full, unchanged, in the disclosure directly beneath.
+   * Defaults to `false`, so every other caller is unaffected. */
+  canonicalReasoningStatesWhatWouldChange?: boolean;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   if (!reliability) return null;
@@ -49,7 +60,9 @@ export function AtlasDecisionSummary({
   const isPrimary = (reason: DecisionReliabilityView["limitingReasons"][number]) =>
     primary !== null && reason.source === primary.source && reason.reference.id === primary.reference.id;
   const supportingLimits = reliability.limitingReasons.filter((reason) => !isPrimary(reason)).slice(0, 2);
-  const nextImprovement = path?.nextAchievableImprovement ?? null;
+  const nextImprovement = canonicalReasoningStatesWhatWouldChange
+    ? null
+    : path?.nextAchievableImprovement ?? null;
 
   return (
     <Surface tier="primary">

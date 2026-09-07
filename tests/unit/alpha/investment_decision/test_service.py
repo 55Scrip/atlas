@@ -220,6 +220,37 @@ class TestSynthesizeForCase:
         assert decision is not None
         assert decision.action.value == "no_decision"
 
+    def test_a_withheld_decision_still_exposes_canonical_reasoning(self, harness):
+        """Recommendation Reasoning Convergence, end to end through the
+        real service: `NO_DECISION` no longer means `reasoning_payload
+        is None`. Atlas may withhold a recommendation without
+        withholding its reasoning."""
+        from atlas.analysis_engine.reasoning import deserialize_reasoning
+
+        case_id = harness.import_holding("NVDA")
+        decision = harness.investment_decision_service.synthesize_for_case(case_id)
+        assert decision.action.value == "no_decision"
+        assert decision.reasoning_payload is not None
+
+        stored = deserialize_reasoning(decision.reasoning_payload)
+        assert stored is not None
+        # The direction-independent rationale is real content...
+        assert stored.signal_summary
+        assert stored.key_unknowns
+        assert stored.what_would_change
+        # ...and Recommendation Conviction, which is conviction in a
+        # stated direction, is absent because no direction was stated.
+        assert stored.conviction is None
+
+    def test_withheld_reasoning_does_not_move_the_action(self, harness):
+        """Negative control for the same invariant at the service edge:
+        reasoning is present, and the action is still `no_decision`."""
+        case_id = harness.import_holding("NVDA")
+        decision = harness.investment_decision_service.synthesize_for_case(case_id)
+        assert decision.reasoning_payload is not None
+        assert decision.action.value == "no_decision"
+        assert decision.reasoning_payload.get("recommendationConviction") is None
+
     def test_repeated_calls_are_idempotent_when_nothing_changed(self, harness):
         case_id = harness.import_holding("NVDA")
         first = harness.investment_decision_service.synthesize_for_case(case_id)

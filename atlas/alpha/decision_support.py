@@ -135,9 +135,16 @@ class DecisionSupportView:
     #: Calibration Phase 9 benchmark reading process states as
     #: investment reasoning.
     #:
-    #: `None` means the recommendation was withheld -- there is no
-    #: direction, so there is no reasoning to project. It never means
-    #: "reasoning was not computed".
+    #: `None` means the recommendation gate attached no reasoning to
+    #: this outcome. Since the Recommendation Reasoning Convergence
+    #: sprint that is *not* the same as "withheld": a withheld outcome
+    #: carries the direction-independent half of the same canonical
+    #: rationale (`RecommendationWithheldWithReasoning`), and it is
+    #: projected here unchanged. It never means "reasoning was not
+    #: computed", and it never implies a direction -- `level` remains
+    #: the only field that may be branched on, and a withheld outcome
+    #: still maps to `INSUFFICIENT_EVIDENCE` regardless of how much
+    #: reasoning it carries.
     reasoning: RecommendationReasoning | None = None
 
 
@@ -149,11 +156,21 @@ def describe_recommendation(gate_result: RecommendationGateResult) -> DecisionSu
     `RecommendationWithheld.reason`/`.missing_evaluations` remain
     available on the domain object for diagnostics, but this module
     deliberately never branches on them: the Migration Review specifies
-    one fixed sentence for this state, not a reason-dependent one."""
+    one fixed sentence for this state, not a reason-dependent one.
+
+    The same applies to the reasoning a withheld outcome now carries:
+    it is projected onto the view, and it changes `level`/`badge_label`
+    /`statement` by exactly nothing."""
     recommendation = gate_result.recommendation
     if isinstance(recommendation, RecommendationWithheld):
         level = DecisionSupportLevel.INSUFFICIENT_EVIDENCE
-        reasoning = None
+        # Projected, never derived -- and deliberately not allowed to
+        # move `level`: reasoning availability is not recommendation
+        # eligibility. `getattr` because the bare
+        # `decision_engine`-level `RecommendationWithheld` (produced
+        # when the analysis engine never ran) genuinely has no
+        # reasoning field at all.
+        reasoning = getattr(recommendation, "reasoning", None)
     else:
         level = _DIRECTION_LEVEL[recommendation.direction]
         # Projected, never re-derived: this is the object the

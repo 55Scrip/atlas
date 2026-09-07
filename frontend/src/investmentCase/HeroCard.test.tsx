@@ -313,3 +313,39 @@ describe("HeroCard", () => {
     });
   });
 });
+
+describe("HeroCard -- Stance is not the recommendation", () => {
+  /** Recommendation Reasoning Convergence, Phase H. The withheld hero
+   * shows two badges: the recommendation state, and Stance. Before
+   * this sprint only Stance said which question it answered, so
+   * "Värt att se över" was the only labelled verdict on screen. */
+  const withheldWithStance = () =>
+    analysis({
+      recommendationLevel: "insufficient_evidence",
+      stance: {
+        level: "review",
+        reasoning: [],
+        supportingSignals: [],
+        limitingSignals: [],
+        confidence: "moderate",
+        missingInformation: [],
+      },
+    });
+
+  it("labels the recommendation badge as the recommendation", () => {
+    renderHero({ analysis: withheldWithStance() });
+    expect(screen.getByText("investmentCase.hero.recommendationLabel")).toBeInTheDocument();
+  });
+
+  it("keeps Stance under its own separate heading", () => {
+    renderHero({ analysis: withheldWithStance() });
+    expect(screen.getByText("stance.heading")).toBeInTheDocument();
+  });
+
+  it("does not present the Stance level as a directional recommendation", () => {
+    renderHero({ analysis: withheldWithStance() });
+    // The recommendation state stays `insufficient_evidence` -- the
+    // Stance level never substitutes for it.
+    expect(screen.getByText(/decisionSupport.badge.insufficient_evidence/)).toBeInTheDocument();
+  });
+});

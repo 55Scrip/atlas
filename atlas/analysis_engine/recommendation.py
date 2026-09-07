@@ -303,10 +303,17 @@ class RecommendationReasoning:
     a different concept that deserves its own vocabulary).
     """
 
-    current_situation: ReasoningSummary
-    supporting_evidence: SupportingEvidenceSummary
-    contradicting_evidence: ContradictionSummary
-    portfolio_context: PortfolioContextSummary
+    #: The four `decision_engine` summaries this type embeds by
+    #: reference. `None` only on the withheld branch, and only when the
+    #: Reasoning engine itself never reached EVALUATED -- there is then
+    #: no narrative to embed, and inventing one would be the fabrication
+    #: `DE-002` §2.2 forbids. A `ComputedDirectionalRecommendation`
+    #: still structurally requires all four (its own `__post_init__`):
+    #: a stated direction may never be explained by absent reasoning.
+    current_situation: ReasoningSummary | None = None
+    supporting_evidence: SupportingEvidenceSummary | None = None
+    contradicting_evidence: ContradictionSummary | None = None
+    portfolio_context: PortfolioContextSummary | None = None
     what_would_change: tuple[ChangeTriggerKind, ...] = ()
 
     #: Reasoning Domain Closure. Every field below is additive and
@@ -416,6 +423,76 @@ class ComputedDirectionalRecommendation:
                 "ComputedDirectionalRecommendation.conviction_reason must be "
                 "non-empty -- DE-004 §3 requires the specific evidentiary "
                 "basis for the level, never a bare label."
+            )
+        if any(
+            summary is None
+            for summary in (
+                self.reasoning.current_situation,
+                self.reasoning.supporting_evidence,
+                self.reasoning.contradicting_evidence,
+                self.reasoning.portfolio_context,
+            )
+        ):
+            raise AnalysisEngineContractError(
+                "ComputedDirectionalRecommendation.reasoning must carry all "
+                "four DE-002 summaries -- they are optional on "
+                "RecommendationReasoning only so a withheld outcome may "
+                "carry the direction-independent rationale it does have. A "
+                "stated direction explained by absent reasoning is exactly "
+                "the unattributed claim DE-002 §2.2/§2.3 forbid."
+            )
+
+
+@dataclass(frozen=True)
+class RecommendationWithheldWithReasoning(RecommendationWithheld):
+    """A withheld outcome that still states *what Atlas understands*.
+
+    `DE-004` §4 requires a withheld outcome to say why the evidence is
+    insufficient; it never required Atlas to discard the analysis it
+    did complete. The direction-independent half of
+    `RecommendationReasoning` -- drivers, counter-drivers, signal
+    summary, key unknowns, change triggers -- is produced from the
+    engine statuses alone (`build_drivers`, `build_signal_summary`,
+    `build_key_unknowns`, `_derive_what_would_change` all take statuses
+    and no direction), so it is exactly as true when no direction was
+    selected as when one was.
+
+    Why a subtype rather than a field on `RecommendationWithheld`
+    itself: `RecommendationReasoning` is an `atlas.analysis_engine`
+    type (it embeds `InvestmentReason`/`KeyUnknown`/`SignalContribution`
+    /`ConvictionReasoning`, all owned here), and
+    `atlas.decision_engine` may never import `atlas.analysis_engine`
+    (`tests/test_architecture_boundaries.py`). Widening the parent
+    would either break that one-way boundary or type the field `object`
+    and lose every guarantee below. Inheriting keeps
+    `isinstance(x, RecommendationWithheld)` -- the check `pipeline.py`
+    and every existing consumer already make -- true and unchanged.
+
+    Structural guarantees, all inherited or enforced here:
+
+    - no `direction` field and no `conviction_level` field exist on
+      this type either (`DE-002` §4: both "omitted entirely") --
+      carrying reasoning may not smuggle back the thing that was
+      withheld;
+    - `reasoning.conviction_reasoning` must be `None`. Recommendation
+      Conviction is defined (`DE-004` §3) as conviction *in a stated
+      direction*; there is no direction here, and
+      `calculate_recommendation_conviction` returns `None` in exactly
+      this case. A level stated anyway would be a hidden
+      recommendation wearing a rationale's clothes.
+    """
+
+    reasoning: RecommendationReasoning | None = None
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.reasoning is not None and self.reasoning.conviction_reasoning is not None:
+            raise AnalysisEngineContractError(
+                "RecommendationWithheldWithReasoning.reasoning"
+                ".conviction_reasoning must be None -- DE-004 §3's "
+                "Recommendation Conviction is conviction in a stated "
+                "direction, and no direction was stated. Withheld "
+                "reasoning may never become a hidden recommendation."
             )
 
 
@@ -703,7 +780,32 @@ def evaluate_recommendation_gate(
         has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
         has_real_risk_evidence=has_real_risk_evidence,
     )
+    _what_would_change = _derive_what_would_change(
+        has_real_risk_evidence=has_real_risk_evidence,
+        has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
+        valuation_support_status=valuation_support.status,
+        growth_status=growth_finding.status,
+        capital_allocation_status=capital_allocation_finding.status,
+        valuation_status=fcf_yield_finding.status,
+    )
+    _key_unknowns = build_key_unknowns(
+        _signal_summary,
+        # DE-015 §18 as amended: `gap` crosses for explanatory
+        # projection only. It reaches no recommendation-semantic call
+        # above.
+        valuation_support_gap=(valuation_support.gap.value if valuation_support.gap is not None else None),
+    )
 
+    # Recommendation Reasoning Convergence: every ingredient above is
+    # computed from the engine statuses alone -- none of the four
+    # producers takes a direction argument -- so all of them exist, and
+    # are equally true, on both branches below. Which branch runs
+    # decides whether Atlas states a *direction*, never whether it may
+    # state its *reasoning*: reasoning availability is not
+    # recommendation eligibility. Hoisting them above the branch is
+    # what makes that structural rather than a promise: there is one
+    # producer and one set of values, and the withheld branch cannot
+    # drift into being a second, quieter analysis.
     recommendation: RecommendationWithheld | ComputedDirectionalRecommendation
     if direction is not None and recommendation_conviction is not None:
         assert reasoning.finding is not None  # guaranteed: select_direction's own hard gate requires reasoning EVALUATED for `direction` to be non-None
@@ -721,14 +823,7 @@ def evaluate_recommendation_gate(
                 supporting_evidence=reasoning.finding.supporting_evidence,
                 contradicting_evidence=reasoning.finding.contradicting_evidence,
                 portfolio_context=reasoning.finding.portfolio_context,
-                what_would_change=_derive_what_would_change(
-                    has_real_risk_evidence=has_real_risk_evidence,
-                    has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
-                    valuation_support_status=valuation_support.status,
-                    growth_status=growth_finding.status,
-                    capital_allocation_status=capital_allocation_finding.status,
-                    valuation_status=fcf_yield_finding.status,
-                ),
+                what_would_change=_what_would_change,
                 # Reasoning Domain Closure -- built here and nowhere
                 # else, from the identical statuses passed to
                 # `select_direction` immediately above. Restatement
@@ -737,27 +832,57 @@ def evaluate_recommendation_gate(
                 primary_drivers=_signal_drivers[0],
                 counter_drivers=_signal_drivers[1],
                 signal_summary=_signal_summary,
-                key_unknowns=build_key_unknowns(
-                    _signal_summary,
-                    # DE-015 §18 as amended: `gap` crosses for
-                    # explanatory projection only. It reaches no
-                    # recommendation-semantic call above.
-                    valuation_support_gap=(
-                        valuation_support.gap.value if valuation_support.gap is not None else None
-                    ),
-                ),
+                key_unknowns=_key_unknowns,
                 conviction_reasoning=build_conviction_reasoning(recommendation_conviction),
             ),
             portfolio_factors=portfolio_intelligence.portfolio_factors,
         )
     else:
-        recommendation = determine_recommendation(
+        withheld = determine_recommendation(
             engine_input,
             business_evaluation=business_evaluation,
             valuation=valuation,
             portfolio_intelligence=portfolio_intelligence,
             reasoning=reasoning,
             generated_at=generated_at,
+        )
+        recommendation = RecommendationWithheldWithReasoning(
+            kind=withheld.kind,
+            reason=withheld.reason,
+            missing_evaluations=withheld.missing_evaluations,
+            required_before_recommendation=withheld.required_before_recommendation,
+            generated_at=withheld.generated_at,
+            current_situation=withheld.current_situation,
+            portfolio_context=withheld.portfolio_context,
+            reasoning=RecommendationReasoning(
+                # Embedded only when the Reasoning engine actually
+                # reached EVALUATED. `reasoning.finding is None` is a
+                # real state on this branch (it is one of the things
+                # `select_direction`'s hard gate withholds on), and an
+                # absent narrative must read as absent.
+                current_situation=(
+                    reasoning.finding.current_situation if reasoning.finding is not None else None
+                ),
+                supporting_evidence=(
+                    reasoning.finding.supporting_evidence if reasoning.finding is not None else None
+                ),
+                contradicting_evidence=(
+                    reasoning.finding.contradicting_evidence if reasoning.finding is not None else None
+                ),
+                portfolio_context=(
+                    reasoning.finding.portfolio_context if reasoning.finding is not None else None
+                ),
+                # Identical objects the directional branch would have
+                # used -- same producers, same statuses, same call.
+                what_would_change=_what_would_change,
+                primary_drivers=_signal_drivers[0],
+                counter_drivers=_signal_drivers[1],
+                signal_summary=_signal_summary,
+                key_unknowns=_key_unknowns,
+                # Never populated here; the type's own __post_init__
+                # rejects it. See that docstring.
+                conviction_reasoning=None,
+            ),
         )
         if not recommendation.missing_evaluations:
             # `determine_recommendation` always stamps `ENGINE_NOT

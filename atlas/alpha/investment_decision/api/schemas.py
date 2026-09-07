@@ -56,8 +56,11 @@ class InvestmentDecisionView(CamelModel):
     #:
     #: Three states, all distinct and all meaningful:
     #:   `None`            the row predates reasoning persistence
-    #:                     (LEGACY_RESULT_WITHOUT_REASONING), or no
-    #:                     directional recommendation existed;
+    #:                     (LEGACY_RESULT_WITHOUT_REASONING). Since the
+    #:                     Recommendation Reasoning Convergence sprint
+    #:                     a withheld recommendation is NOT one of
+    #:                     these states -- it carries its own
+    #:                     direction-independent rationale;
     #:   present, empty    reasoning was computed and found nothing;
     #:   present, populated the canonical rationale.
     #:

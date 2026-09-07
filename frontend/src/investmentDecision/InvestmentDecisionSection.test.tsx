@@ -13,6 +13,7 @@ function decision(overrides: Partial<InvestmentDecisionView> = {}): InvestmentDe
     blockers: [],
     changeTrigger: null,
     generatedAt: "2026-01-01T00:00:00Z",
+    reasoning: null,
     ...overrides,
   };
 }

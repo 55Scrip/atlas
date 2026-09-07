@@ -485,7 +485,20 @@ class TestRegression:
         with patch("atlas.analysis_engine.pipeline.evaluate_valuation_support", return_value=hypothetical):
             analysis_hypothetical = assemble_analysis(engine_input, decision_output, is_thesis_stale=False, generated_at=EVALUATED_AT)
 
-        assert analysis_real.recommendation == analysis_hypothetical.recommendation
+        # Indistinguishable *to Direction Selection* -- the withheld
+        # outcome itself is byte-identical either way. Since the
+        # Recommendation Reasoning Convergence sprint that outcome also
+        # carries reasoning, and reasoning is allowed to distinguish
+        # what Direction Selection may not: `INSUFFICIENT_INPUT` names
+        # a missing input and `NOT_SUPPORTED` names a completed,
+        # negative one. Saying so in `signal_summary`/`key_unknowns` is
+        # exactly the honesty DE-002 §2.2 requires, and it moves no
+        # direction -- as the identity below proves.
+        assert dataclasses.replace(
+            analysis_real.recommendation.recommendation, reasoning=None
+        ) == dataclasses.replace(
+            analysis_hypothetical.recommendation.recommendation, reasoning=None
+        )
         assert analysis_real.conviction == analysis_hypothetical.conviction
         assert analysis_real.valuation_support != analysis_hypothetical.valuation_support
 

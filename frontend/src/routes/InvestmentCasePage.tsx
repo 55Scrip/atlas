@@ -47,6 +47,7 @@ import {
   type DecisionReadinessView,
 } from "../decisionReadiness/decisionReadinessApi";
 import { fetchPortfolioFitForCase, type PortfolioFitAssessmentView } from "../portfolioFit/portfolioFitApi";
+import { AtlasInvestmentReasoning } from "../investmentDecision/AtlasInvestmentReasoning";
 import { InvestmentDecisionSection } from "../investmentDecision/InvestmentDecisionSection";
 import {
   fetchInvestmentDecision,
@@ -2865,8 +2866,30 @@ export function InvestmentCasePage() {
               <AtlasDecisionSummary
                 reliability={decisionReliabilityStatus.reliability}
                 path={decisionPathStatus.kind === "loaded" ? decisionPathStatus.path : null}
+                canonicalReasoningStatesWhatWouldChange={
+                  investmentDecisionStatus.kind === "loaded" &&
+                  (investmentDecisionStatus.decision.reasoning?.whatWouldChange?.length ?? 0) > 0
+                }
                 t={t}
               />
+            )}
+
+            {/* Recommendation Reasoning Convergence. The canonical
+                rationale the recommendation gate already computes --
+                now also carried on a withheld outcome, and now typed
+                at the network boundary -- read once, here, directly
+                under Atlas's conclusion. It answers the four questions
+                the page previously left to five components each
+                describing its own local state: what supports the view,
+                what weighs against it, what is unresolved, and what
+                would change it. No new fetch (`investmentDecisionStatus`
+                is already loaded for the Decision Layer disclosure
+                below), no new computation, and no new section
+                inventory -- one compact card, four lines. Renders
+                nothing when reasoning is absent (legacy rows), so the
+                page degrades to exactly its previous shape. */}
+            {investmentDecisionStatus.kind === "loaded" && (
+              <AtlasInvestmentReasoning decision={investmentDecisionStatus.decision} t={t} />
             )}
 
             <ExpandableDetail summaryLabel={t("investmentCase.decisionSummary.viewFullLabel")}>
