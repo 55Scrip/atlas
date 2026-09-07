@@ -20,6 +20,8 @@ import {
 } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import {
+  ANALYSIS_COVERAGE_LEVEL_KEY,
+  ANALYSIS_COVERAGE_TONE,
   DECISION_SUPPORT_BADGE_KEY,
   DECISION_SUPPORT_TONE,
   type AnalysisCoverageLevel,
@@ -29,13 +31,12 @@ import {
   type ReviewPriority,
 } from "../status/statusTone";
 import type { StatusTone } from "../foundation";
-import type { AnalysisRiskStatus } from "../changeIntelligence/describeChange";
+import { RISK_CATEGORY_KEY, RISK_STATUS_KEY, type AnalysisRiskStatus } from "../changeIntelligence/describeChange";
 import { describeFitVerdict } from "../portfolioFit/describeFitVerdict";
 import { FitBadge } from "../portfolioFit/FitBadge";
 import { fetchPortfolioFitForHoldings, type PortfolioFitAssessmentView, type FitRating } from "../portfolioFit/portfolioFitApi";
-import { fetchStanceForHoldings, type TickerStanceView, type StanceView } from "../stance/stanceApi";
+import { fetchStanceForHoldings, type TickerStanceView } from "../stance/stanceApi";
 import { StanceBadge } from "../stance/StanceBadge";
-import { primaryStanceReason, stanceReasonSentence } from "../stance/describeStance";
 import type { StanceLevel } from "../status/statusTone";
 import { fetchDailyBriefAgenda, type AgendaItemView } from "../dailyBriefAgenda/dailyBriefAgendaApi";
 import { realHeadlineText } from "../dailyBriefAgenda/bookkeepingFilter";
@@ -44,8 +45,6 @@ import { ScopeFreshnessSummaryNote } from "../monitoring/ScopeFreshnessSummaryNo
 import { invalidateAlphaPortfolio, setAlphaPortfolioData, useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import { fetchMonitoringStatus, type MonitoringOperationalStatusView } from "../monitoring/monitoringApi";
 import { sortHoldings, type HoldingSortKey } from "../portfolio/sortHoldings";
-import { deriveInvestmentRating } from "../investmentCase/atlasRatingModel";
-import { CompactRatingBadge } from "../investmentCase/CompactRatingBadge";
 import styles from "./PortfolioPage.module.css";
 
 /** Alpha Integration Fix (One Product Pass): Portfolio no longer treats
@@ -605,15 +604,8 @@ export function PortfolioPage() {
    * "Current view" column and sort. */
   const stanceEntries = stanceHoldings.kind === "loaded" ? stanceHoldings.entries : [];
   const stanceByTicker = new Map<string, StanceLevel>();
-  /** Status Consolidation (Implementation Sprint B3): the same
-   * already-fetched entries, kept as full `StanceView` objects (not
-   * just `.level`) so the Holdings Table's "Why" column can read
-   * `.reasoning[0]` -- no new fetch, `stanceByTicker` above is
-   * untouched and still feeds `sortHoldings`'s own "stance" sort key. */
-  const stanceViewByTicker = new Map<string, StanceView>();
   for (const entry of stanceEntries) {
     stanceByTicker.set(entry.ticker, entry.stance.level);
-    stanceViewByTicker.set(entry.ticker, entry.stance);
   }
 
   return (
@@ -654,12 +646,6 @@ export function PortfolioPage() {
 
         {status.kind === "loaded" && status.view.exists && status.view.holdings.length > 0 && (
           <Stack gap="intra-section">
-            {/* Alpha Integration Fix (One Product Pass): the Hero leads
-                with ownership, Portfolio's own doctrine question ("what
-                do I own"), not an attention-count verdict -- that's
-                Daily Brief's job. */}
-            <PortfolioHero view={status.view} t={t} />
-
             {status.view.awaitingReconciliation && !showReplaceForm && (
               <Surface tier="primary">
                 <Stack gap="inter-section">
@@ -790,8 +776,6 @@ export function PortfolioPage() {
               view={status.view}
               largestHolding={largestHolding}
               coveredCount={coveredCount}
-              biggestRisk={hasDistinctRiskAndOpportunity ? biggestRisk : null}
-              biggestOpportunity={hasDistinctRiskAndOpportunity ? biggestOpportunity : null}
               t={t}
             />
 
@@ -823,13 +807,15 @@ export function PortfolioPage() {
             {/* Deliverable 2, step 3: Holdings -- what do I own, in
                 detail, ordered so what matters is on top by default. */}
             <Inline gap="inter-section" wrap align="start">
-              <div style={{ flex: "3 1 480px", minWidth: 0 }}>
+              {/* Portfolio Control Room: the comparative table now carries
+                  six columns, so it claims more of the desktop width
+                  before the sidebar is allowed to wrap beneath it. */}
+              <div style={{ flex: "4 1 640px", minWidth: 0 }}>
                 <HoldingsTable
                   view={status.view}
                   cockpit={cockpit}
                   fitByTicker={fitByTicker}
                   stanceByTicker={stanceByTicker}
-                  stanceViewByTicker={stanceViewByTicker}
                   caseCreateStatus={caseCreateStatus}
                   openInvestmentCase={openInvestmentCase}
                   onOpenEditPortfolio={openReplaceForm}
@@ -1086,20 +1072,46 @@ function PortfolioPulse({
   view,
   largestHolding,
   coveredCount,
-  biggestRisk,
-  biggestOpportunity,
   t,
 }: {
   view: PortfolioView;
   largestHolding: HoldingView | null;
   coveredCount: number | null;
-  biggestRisk: PortfolioFitAssessmentView | null;
-  biggestOpportunity: PortfolioFitAssessmentView | null;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
+  const cashDisplay =
+    view.cashValueAbsolute !== null
+      ? formatCurrency(view.cashValueAbsolute)
+      : view.cashWeightPercent !== null
+        ? formatPercentPoints(view.cashWeightPercent)
+        : t("portfolio.header.notAvailable");
+
   return (
     <Stack gap="metadata">
+      {/* Portfolio Control Room. This strip and the separate Portfolio
+          Hero card above it were two stacked full-width blocks of
+          Label+value pairs -- eight statistics, one card each, before
+          the reader reached a single holding. They are one card now.
+          No statistic was dropped and none is recomputed: the Hero's
+          ownership sentence leads, and its Concentration / Holdings /
+          Cash join the strip's own Value / Largest / Coverage /
+          Opportunity / Risk on the same wrapping row. */}
       <Surface tier="primary">
+        <Stack gap="metadata">
+        <Text
+          as="p"
+          style={{
+            fontFamily: "var(--type-family-display)",
+            fontSize: "var(--type-size-h3)",
+            lineHeight: "var(--type-heading-line-height)",
+            color: "var(--color-text-primary)",
+          }}
+        >
+          {t(
+            view.numberOfHoldings === 1 ? "portfolio.overallConclusion.ownershipOne" : "portfolio.overallConclusion.ownershipOther",
+            { count: view.numberOfHoldings },
+          )}
+        </Text>
         <Inline gap="inter-section" wrap style={{ justifyContent: "space-between" }}>
           <Stack gap="metadata">
             <Label>{t("portfolio.pulse.totalValueLabel")}</Label>
@@ -1132,15 +1144,30 @@ function PortfolioPulse({
                 : t("portfolio.header.notAvailable")}
             </Text>
           </Stack>
+          {/* Biggest opportunity / biggest risk are deliberately NOT
+              repeated here. `TodaysBiggestRiskOpportunity` renders the
+              same two tickers immediately below, under the identical
+              labels, and adds what actually changed plus a link into
+              the case -- a bare ticker above it was the weaker of two
+              copies of one fact. */}
           <Stack gap="metadata">
-            <Label>{t("portfolio.todaysFocus.biggestOpportunityLabel")}</Label>
-            <Text as="span">{biggestOpportunity ? biggestOpportunity.ticker : t("portfolio.header.notAvailable")}</Text>
+            <Label>{t("portfolio.pulse.concentrationLabel")}</Label>
+            <Text as="span">
+              {view.concentrationLevel && CONCENTRATION_LEVEL_KEY[view.concentrationLevel]
+                ? t(CONCENTRATION_LEVEL_KEY[view.concentrationLevel]!)
+                : t("portfolio.header.notAvailable")}
+            </Text>
           </Stack>
           <Stack gap="metadata">
-            <Label>{t("portfolio.todaysFocus.biggestRiskLabel")}</Label>
-            <Text as="span">{biggestRisk ? biggestRisk.ticker : t("portfolio.header.notAvailable")}</Text>
+            <Label>{t("portfolio.pulse.holdingsLabel")}</Label>
+            <Text as="span">{t("portfolio.pulse.holdingsCount", { count: view.numberOfHoldings })}</Text>
+          </Stack>
+          <Stack gap="metadata">
+            <Label>{t("portfolio.pulse.cashLabel")}</Label>
+            <Text as="span" style={{ fontVariantNumeric: "tabular-nums" }}>{cashDisplay}</Text>
           </Stack>
         </Inline>
+        </Stack>
       </Surface>
     </Stack>
   );
@@ -1287,74 +1314,6 @@ const HOLDINGS_PAGE_SIZE = 15;
  * Portfolio scroll/expansion state remains explicit, planned follow-up
  * work for a future sprint -- out of scope here.
  */
-/**
- * Portfolio Hero (Alpha Integration Fix, One Product Pass) -- one
- * visual block answering Portfolio's own doctrine question first:
- * "what do I own." The opening sentence states ownership scale
- * (holdings count); Concentration and Cash sit directly beneath it in
- * the same card. This Hero used to lead with an attention-count
- * verdict synthesized from the shared Daily Brief Agenda -- the Alpha
- * Product Integration Review's Phase 5 finding was that this quietly
- * repositioned Portfolio's own opening moment toward "what needs
- * attention," which is Daily Brief's job, not Portfolio's. No new
- * computation -- `numberOfHoldings`/`concentrationLevel`/cash are the
- * same `PortfolioView` fields the Executive Summary Strip below
- * already reads.
- */
-function PortfolioHero({
-  view,
-  t,
-}: {
-  view: PortfolioView;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  const cashDisplay =
-    view.cashValueAbsolute !== null
-      ? formatCurrency(view.cashValueAbsolute)
-      : view.cashWeightPercent !== null
-        ? formatPercentPoints(view.cashWeightPercent)
-        : t("portfolio.header.notAvailable");
-
-  return (
-    <Surface tier="elevated">
-      <Stack gap="metadata">
-        <Text
-          as="p"
-          style={{
-            fontFamily: "var(--type-family-display)",
-            fontSize: "var(--type-size-h3)",
-            lineHeight: "var(--type-heading-line-height)",
-            color: "var(--color-text-primary)",
-          }}
-        >
-          {t(
-            view.numberOfHoldings === 1 ? "portfolio.overallConclusion.ownershipOne" : "portfolio.overallConclusion.ownershipOther",
-            { count: view.numberOfHoldings },
-          )}
-        </Text>
-        <Inline gap="inter-section" wrap>
-          <Stack gap="metadata">
-            <Label>{t("portfolio.pulse.concentrationLabel")}</Label>
-            <Text as="span">
-              {view.concentrationLevel && CONCENTRATION_LEVEL_KEY[view.concentrationLevel]
-                ? t(CONCENTRATION_LEVEL_KEY[view.concentrationLevel]!)
-                : t("portfolio.header.notAvailable")}
-            </Text>
-          </Stack>
-          <Stack gap="metadata">
-            <Label>{t("portfolio.pulse.holdingsLabel")}</Label>
-            <Text as="span">{t("portfolio.pulse.holdingsCount", { count: view.numberOfHoldings })}</Text>
-          </Stack>
-          <Stack gap="metadata">
-            <Label>{t("portfolio.pulse.cashLabel")}</Label>
-            <Text as="span" style={{ fontVariantNumeric: "tabular-nums" }}>{cashDisplay}</Text>
-          </Stack>
-        </Inline>
-      </Stack>
-    </Surface>
-  );
-}
-
 /**
  * Alpha Integration Fix (One Product Pass): "Today's Story" and
  * "Attention Required" -- Portfolio's own priority-ranked re-surfacing
@@ -1667,7 +1626,6 @@ function HoldingsTable({
   cockpit,
   fitByTicker,
   stanceByTicker,
-  stanceViewByTicker,
   caseCreateStatus,
   openInvestmentCase,
   onOpenEditPortfolio,
@@ -1677,7 +1635,6 @@ function HoldingsTable({
   cockpit: PortfolioCockpitFetchStatus;
   fitByTicker: Map<string, PortfolioFitAssessmentView>;
   stanceByTicker: Map<string, StanceLevel>;
-  stanceViewByTicker: Map<string, StanceView>;
   caseCreateStatus: Record<string, CaseCreateStatus>;
   openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
   onOpenEditPortfolio: () => void;
@@ -1725,10 +1682,18 @@ function HoldingsTable({
    * shows next to Stance, so a holding reads the same Investment
    * number here as it does on its own Investment Case. */
   const decisionSupportByTicker = new Map<string, DecisionSupportLevel>();
+  /** Portfolio Control Room: `RiskProjection` is the single
+   * highest-severity risk *category* plus its status
+   * (`analysis_engine.risk.models.RiskProjection` -- "for compact
+   * display only, explicitly never an aggregate score"). Read verbatim
+   * from the cockpit report this page already fetches; nothing is
+   * ranked, scored or combined here. */
+  const riskProjectionByTicker = new Map<string, CockpitRiskProjectionView>();
   if (cockpit.kind === "loaded") {
     for (const holding of cockpit.report.holdings) {
       coverageByTicker.set(holding.ticker, holding.analysisCoverage.level);
       decisionSupportByTicker.set(holding.ticker, holding.decisionSupport.level);
+      riskProjectionByTicker.set(holding.ticker, holding.riskProjection);
     }
   }
   const orderedHoldings = sortHoldings(
@@ -1783,20 +1748,42 @@ function HoldingsTable({
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                {/* Portfolio Lower-Half Reconstruction Sprint 6D (Phase
-                    2): four columns -- Company, Atlas view, Reason,
-                    Action. Value and Share live inside the Company cell,
-                    shown only when genuinely populated -- a portfolio
-                    entered as percent-only no longer renders a
-                    permanently-empty Value column. Alpha Integration Fix
-                    (One Product Pass): the Reason cell now always shows
-                    Stance's own steady-state reasoning -- it no longer
-                    leads with a real-time Daily Brief Agenda signal,
-                    which duplicated Daily Brief's own job. */}
+                {/* Portfolio Control Room. Five comparative columns,
+                    every one a closed categorical vocabulary Atlas
+                    already computes, so a reader can scan down a column
+                    and compare positions rather than reading a
+                    paragraph per row.
+
+                    What each header does NOT claim matters as much as
+                    what it does. There is deliberately no Conviction,
+                    Expected Return, Upside or Downside column: the
+                    field named `conviction` measures how well the
+                    available *analysis* supports a conclusion (its own
+                    reason codes are coverage, contradiction, open
+                    questions), which is the analytical-confidence
+                    concept investment conviction is defined against;
+                    and no probability-weighted return exists anywhere
+                    in the engine. "Största risk" names the single
+                    highest-severity risk *category*, which is what
+                    `RiskProjection` actually is -- not a
+                    permanent-capital-loss estimate, so it is not
+                    labelled "Risk".
+
+                    Recommendation and Atlas view are separate columns
+                    on purpose: they are different concepts (canonical
+                    direction vs. review state) and each header does the
+                    labelling that a bare pair of badges could not. The
+                    Reason column's per-row Stance prose is gone -- it
+                    was the one thing preventing this from being a table
+                    you can compare across; the reasoning it summarised
+                    is one click away in the Investment Case, which owns
+                    that explanation. */}
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.tickerHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.recommendationHeader")}</th>
                 <th style={headerCellStyle}>{t("portfolio.holdingsTable.currentViewHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.reasonHeader")}</th>
-                <th style={headerCellStyle}>{t("portfolio.holdingsTable.actionHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.coverageHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.fitHeader")}</th>
+                <th style={headerCellStyle}>{t("portfolio.holdingsTable.largestRiskHeader")}</th>
               </tr>
             </thead>
             <tbody>
@@ -1811,8 +1798,10 @@ function HoldingsTable({
                     holding={holding}
                     isUnresolvedInCockpit={isUnresolvedInCockpit}
                     stanceLevel={stanceByTicker.get(holding.ticker)}
-                    stanceView={stanceViewByTicker.get(holding.ticker)}
-                    investmentLevel={decisionSupportByTicker.get(holding.ticker)}
+                    recommendationLevel={decisionSupportByTicker.get(holding.ticker)}
+                    coverageLevel={coverageByTicker.get(holding.ticker)}
+                    fitRating={fitRatingByTicker.get(holding.ticker)}
+                    largestRisk={riskProjectionByTicker.get(holding.ticker)}
                     thisCaseCreateStatus={caseCreateStatus[holding.ticker] ?? { kind: "idle" }}
                     openInvestmentCase={openInvestmentCase}
                     onOpenEditPortfolio={onOpenEditPortfolio}
@@ -1887,27 +1876,6 @@ function HoldingsTable({
  * feed. "What changed" belongs on Daily Brief; this cell answers only
  * "why does Atlas hold this view."
  */
-function HoldingReasonCell({
-  stanceView,
-  t,
-}: {
-  stanceView: StanceView | undefined;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  const primaryReason = stanceView ? primaryStanceReason(stanceView) : null;
-  const whySentence = primaryReason ? stanceReasonSentence(primaryReason, t) : null;
-
-  if (whySentence) {
-    return <Text as="span">{whySentence}</Text>;
-  }
-
-  return (
-    <Text color="tertiary" as="span">
-      {t("portfolio.holdingsTable.coverage.new")}
-    </Text>
-  );
-}
-
 /**
  * One dense, clickable row. `role="button"`/`tabIndex`/`onKeyDown` make
  * the whole row a keyboard-operable navigation target (Enter/Space open
@@ -1922,12 +1890,27 @@ function HoldingReasonCell({
  * just says so in plain language and opens the one, same Edit
  * Portfolio panel every other portfolio change goes through.
  */
+/** Portfolio Control Room, Phase J. One honest em dash plus a screen-
+ * reader-only word, used for every unknown in the table. Never a
+ * neutral-looking middle value: a holding Atlas has not assessed must
+ * not read as an average one. */
+function NotAssessedCell({ t }: { t: (key: TranslationKey, params?: Record<string, string | number>) => string }) {
+  return (
+    <Text as="span" color="tertiary">
+      <span aria-hidden="true">{"\u2014"}</span>
+      <VisuallyHidden>{t("portfolio.holdingsTable.notAssessed")}</VisuallyHidden>
+    </Text>
+  );
+}
+
 function HoldingsTableRow({
   holding,
   isUnresolvedInCockpit,
   stanceLevel,
-  stanceView,
-  investmentLevel,
+  recommendationLevel,
+  coverageLevel,
+  fitRating,
+  largestRisk,
   thisCaseCreateStatus,
   openInvestmentCase,
   onOpenEditPortfolio,
@@ -1937,8 +1920,10 @@ function HoldingsTableRow({
   holding: HoldingView;
   isUnresolvedInCockpit: boolean;
   stanceLevel: StanceLevel | undefined;
-  stanceView: StanceView | undefined;
-  investmentLevel: DecisionSupportLevel | undefined;
+  recommendationLevel: DecisionSupportLevel | undefined;
+  coverageLevel: AnalysisCoverageLevel | undefined;
+  fitRating: FitRating | undefined;
+  largestRisk: CockpitRiskProjectionView | undefined;
   thisCaseCreateStatus: CaseCreateStatus;
   openInvestmentCase: (ticker: string, existingCaseId: string | null) => void;
   onOpenEditPortfolio: () => void;
@@ -2028,40 +2013,59 @@ function HoldingsTableRow({
             )}
           </Inline>
         </td>
+        {/* Canonical recommendation, rendered through the identical
+            badge vocabulary the Investment Case hero uses -- so a
+            holding reads the same words on both surfaces. Deliberately
+            not `deriveInvestmentRating`, which turns this categorical
+            canonical value into a frontend-invented 0-10 score. */}
         <td style={cellStyle}>
-          <Inline gap="metadata" wrap>
-            {stanceLevel ? (
-              <StanceBadge level={stanceLevel} weight="strong" />
-            ) : (
-              <Text color="tertiary" as="span">
-                {t("portfolio.holdingsTable.coverage.new")}
-              </Text>
-            )}
-            {/* Atlas UX Phase 7B, Phase 5 -- the same Investment rating
-                Watchlist's own compact cluster and Investment Case's
-                own Seven Categories bar show, so this holding reads the
-                same real number wherever it appears. Stance stays the
-                primary, leftmost badge (Portfolio's own established
-                "what should I do now" signal, unchanged) -- this is an
-                addition, not a redesign of the column. */}
-            {investmentLevel && <CompactRatingBadge labelKey="investmentCase.ratings.investment.label" rating={deriveInvestmentRating(investmentLevel)} t={t} />}
-          </Inline>
-        </td>
-        <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)", maxWidth: "320px" }} onClick={(event) => event.stopPropagation()}>
-          <HoldingReasonCell stanceView={stanceView} t={t} />
+          {recommendationLevel ? (
+            <StatusBadge
+              label={t(DECISION_SUPPORT_BADGE_KEY[recommendationLevel])}
+              tone={DECISION_SUPPORT_TONE[recommendationLevel]}
+              weight="strong"
+            />
+          ) : (
+            <NotAssessedCell t={t} />
+          )}
         </td>
         <td style={cellStyle}>
-          <Link
-            href="#"
-            style={{ color: "var(--global-color-accent)" }}
-            onClick={(event) => {
-              event.stopPropagation();
-              event.preventDefault();
-              handleRowActivate();
-            }}
-          >
-            {t("portfolio.holdingsTable.openAction")}
-          </Link>
+          {stanceLevel ? <StanceBadge level={stanceLevel} /> : <NotAssessedCell t={t} />}
+        </td>
+        {/* Why this column earns its place: 16 of 25 real holdings read
+            "insufficient evidence" as their recommendation. Without
+            coverage beside it the investor cannot tell "Atlas looked
+            and is unconvinced" from "Atlas has no data yet" -- two
+            states that call for completely different action. It was
+            already fetched and already sortable; only the column had
+            been dropped. */}
+        <td style={cellStyle}>
+          {coverageLevel ? (
+            <StatusBadge
+              label={t(ANALYSIS_COVERAGE_LEVEL_KEY[coverageLevel])}
+              tone={ANALYSIS_COVERAGE_TONE[coverageLevel]}
+            />
+          ) : (
+            <NotAssessedCell t={t} />
+          )}
+        </td>
+        {/* Portfolio Fit's own distilled overall verdict, verbatim.
+            `unavailable` is one of its real members -- a disclosed
+            "not evaluated", never a neutral-looking middle score. */}
+        <td style={cellStyle}>
+          {fitRating ? <FitBadge rating={fitRating} /> : <NotAssessedCell t={t} />}
+        </td>
+        <td style={cellStyle}>
+          {largestRisk && largestRisk.status !== "insufficient_input" ? (
+            <Text as="span">
+              {t("portfolio.holdingsTable.riskCell", {
+                category: t(RISK_CATEGORY_KEY[largestRisk.category]),
+                status: t(RISK_STATUS_KEY[largestRisk.status]),
+              })}
+            </Text>
+          ) : (
+            <NotAssessedCell t={t} />
+          )}
         </td>
       </tr>
     </>

@@ -252,20 +252,64 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     expect(screen.queryByText(/kritiska/)).not.toBeInTheDocument();
   });
 
-  it("Alpha Integration Fix: the Holdings Table's Reason column shows only Stance's own reasoning, never the Agenda headline or a Priority badge", async () => {
+  it("Portfolio Control Room: the Holdings Table compares positions with categorical columns, never per-row prose", async () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     const aaplRowButton = await screen.findByRole("button", { name: "Öppna AAPLs vy" });
     const aaplRow = within(aaplRowButton.closest("tr")!);
-    // No stance is mocked for this fixture, so both the Current view
-    // cell and the Reason cell show the honest "New" fallback.
-    expect(aaplRow.getAllByText("Nytt")).toHaveLength(2);
+    // Canonical recommendation, in the Investment Case's own words.
+    expect(aaplRow.getByText("Minskning stöds")).toBeInTheDocument();
+    // Coverage, fit and the largest identified risk, all categorical.
+    expect(aaplRow.getByText("Utvärderat")).toBeInTheDocument();
+    expect(aaplRow.getByText("Svag passform")).toBeInTheDocument();
+    expect(aaplRow.getByText("Finansiell: Måttlig")).toBeInTheDocument();
+    // The Stance prose that used to fill a 320px column is gone from
+    // the row -- the reasoning it summarised lives in the Investment
+    // Case, which owns that explanation.
     expect(aaplRow.queryByText(/Risk fit is poor/)).not.toBeInTheDocument();
     // The same real Agenda headline still renders once, in Today's
-    // Biggest Risk/Opportunity's own "what changed" line -- it was
-    // never deleted, only removed from the surfaces that duplicated
-    // Daily Brief's own job.
+    // Biggest Risk/Opportunity's own "what changed" line.
     expect(screen.getAllByText(/Risk fit is poor/).length).toBe(1);
+  });
+
+  it("does not introduce Figma concepts the engine does not support", async () => {
+    mockFetch();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna AAPLs vy" });
+    const table = document.querySelector("table")!;
+    const text = table.textContent ?? "";
+    // Conviction: the field of that name measures how well the
+    // available analysis supports a conclusion -- coverage,
+    // contradiction, open questions -- which is analytical confidence,
+    // the very thing investment conviction is defined against.
+    expect(text).not.toContain("Övertygelse");
+    // No probability-weighted return exists anywhere in the engine.
+    expect(text).not.toContain("Förv. avkastning");
+    expect(text).not.toContain("Uppsida");
+    expect(text).not.toContain("Nedsida");
+    // `RiskProjection` is the highest-severity risk *category*, not a
+    // permanent-capital-loss estimate, so the header says so.
+    expect(text).toContain("Största risk");
+  });
+
+  it("shows no frontend-invented numeric score for the canonical recommendation", async () => {
+    mockFetch();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await screen.findByRole("button", { name: "Öppna AAPLs vy" });
+    const table = document.querySelector("table")!;
+    // `deriveInvestmentRating` turns a categorical canonical value into
+    // a 0-10 score. The table renders the canonical badge instead.
+    expect(table.textContent ?? "").not.toMatch(/Investering \d/);
+  });
+
+  it("renders unknown analytics honestly rather than as a neutral value", async () => {
+    mockFetch();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    const msftRowButton = await screen.findByRole("button", { name: "Öppna MSFTs vy" });
+    const msftRow = within(msftRowButton.closest("tr")!);
+    // No stance is mocked for this fixture, so the Atlas-view cell is
+    // genuinely unknown and must say so.
+    expect(msftRow.getAllByText("Ej bedömt").length).toBeGreaterThan(0);
   });
 
   function orderedTickersFromRowButtons(): string[] {
@@ -275,6 +319,34 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
       return match[1];
     });
   }
+
+  it("keeps every row a direct route into that holding's own Investment Case", async () => {
+    mockFetch();
+    renderWithProviders(
+      <PortfolioPage />,
+      { route: "/portfolio" },
+    );
+    const aaplRow = await screen.findByRole("button", { name: "Öppna AAPLs vy" });
+    // Row activation is the navigation affordance -- the separate
+    // "Öppna" link column was removed as a redundant second copy of the
+    // same action, so the row must stay keyboard- and pointer-operable.
+    expect(aaplRow.tagName).toBe("TR");
+    expect(aaplRow).toHaveAttribute("tabIndex", "0");
+    expect(screen.getByRole("button", { name: "Öppna MSFTs vy" })).toBeInTheDocument();
+  });
+
+  it("keeps Portfolio Health as one compact strip carrying every statistic", async () => {
+    mockFetch();
+    renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
+    await waitFor(() => expect(screen.getByText("Du äger 2 innehav.")).toBeInTheDocument());
+    // The Hero card and the Pulse strip were merged into one. Nothing
+    // was dropped: ownership, concentration, cash, largest position and
+    // Atlas coverage all still render.
+    expect(screen.getAllByText("5.0%").length).toBeGreaterThan(0);
+    expect(screen.getByText("MSFT (70.0%)")).toBeInTheDocument();
+    expect(screen.getAllByText("Förhöjd").length).toBeGreaterThan(0);
+    expect(screen.getByText("2 tillgångar")).toBeInTheDocument();
+  });
 
   it("Alpha Integration Fix: orders holdings by weight by default -- MSFT (70%) before AAPL (30%), ownership-first per Portfolio's own doctrine", async () => {
     mockFetch();
@@ -292,13 +364,18 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     expect(orderedTickersFromRowButtons()).toEqual(["AAPL", "MSFT"]);
   });
 
-  it("shows the same Investment rating in the Holdings Table that Watchlist and Investment Case show, next to (not replacing) Stance (Atlas UX Phase 7B, Phase 5)", async () => {
+  it("shows the canonical recommendation in the same words the Investment Case uses", async () => {
     mockFetch();
     renderWithProviders(<PortfolioPage />, { route: "/portfolio" });
     await waitFor(() => expect(orderedTickersFromRowButtons().length).toBe(2));
-    // AAPL: reduction_supported -> 3.0 (Weak). MSFT: thesis_intact -> 6.0 (Fair).
-    expect(screen.getByText("Investering 3.0")).toBeInTheDocument();
-    expect(screen.getByText("Investering 6.0")).toBeInTheDocument();
+    // The identical `DECISION_SUPPORT_BADGE_KEY` vocabulary the
+    // Investment Case hero renders, so one holding reads the same
+    // judgment on both surfaces. AAPL: reduction_supported.
+    // MSFT: thesis_intact.
+    const aapl = within(screen.getByRole("button", { name: "Öppna AAPLs vy" }).closest("tr")!);
+    const msft = within(screen.getByRole("button", { name: "Öppna MSFTs vy" }).closest("tr")!);
+    expect(aapl.getByText("Minskning stöds")).toBeInTheDocument();
+    expect(msft.getByText("Tesen kvarstår")).toBeInTheDocument();
   });
 
   it("shows AAPL's weak Portfolio Fit rating once, in Portfolio Weaknesses (no longer duplicated across a separate Fit overview)", async () => {
@@ -307,7 +384,11 @@ describe("PortfolioPage (Product Sprint 8 -- Portfolio Excellence)", () => {
     const heading = await screen.findByText("Portföljsvagheter");
     const section = within(heading.closest("div")!);
     expect(section.getByText("Svag passform")).toBeInTheDocument();
-    expect(screen.getAllByText("Svag passform")).toHaveLength(1);
+    // Twice now, deliberately: once here, and once as AAPL's own Fit
+    // cell in the comparative Holdings Table. The duplication this
+    // guards against was a second *Fit overview section* restating
+    // Weaknesses, not a column in the table people compare in.
+    expect(screen.getAllByText("Svag passform")).toHaveLength(2);
   });
 
   it("lists AAPL in Portfolio Weaknesses (weak fit + reduction-supported) but not MSFT", async () => {
