@@ -9,6 +9,11 @@ import { getAlphaWatchlistSnapshot, setAlphaWatchlistData, useAlphaWatchlist } f
 import { useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import { fetchStanceForCase, type StanceView } from "../stance/stanceApi";
 import { StanceBadge } from "../stance/StanceBadge";
+import { fetchInvestmentDecision, type InvestmentDecisionView } from "../investmentDecision/investmentDecisionApi";
+import { ACTION_KEY, ACTION_TONE } from "../investmentDecision/describeInvestmentDecision";
+import { fetchPortfolioFitForCase, type PortfolioFitAssessmentView } from "../portfolioFit/portfolioFitApi";
+import { FitBadge } from "../portfolioFit/FitBadge";
+import { StatusBadge } from "../foundation";
 import { dimensionLabel } from "../changeIntelligence/describeChange";
 import type { Translate } from "../changeIntelligence/describeChange";
 import styles from "./WatchlistPage.module.css";
@@ -81,6 +86,17 @@ type RowStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; ide
 
 type StanceStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; stance: StanceView | null };
 
+/** Convergence Sprint 3. Both endpoints below are composition-only --
+ * neither takes a price provider, a quota tracker or a refresh
+ * coordinator, so adding them costs no provider call. That mattered
+ * enough to check: this page's existing per-row identity fetch hits
+ * `/cases/{id}/analysis`, which does depend on all three and writes an
+ * evidence snapshot, purely to read a company name (see the identity
+ * effect's own note). This sprint does not make that worse. */
+type DecisionStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; decision: InvestmentDecisionView };
+
+type FitStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; fit: PortfolioFitAssessmentView | null };
+
 type AddStatus =
   | { kind: "idle" }
   | { kind: "submitting" }
@@ -115,6 +131,8 @@ export function WatchlistPage() {
   const listStatus: ListStatus = useAlphaWatchlist();
   const [rowStatuses, setRowStatuses] = useState<Record<string, RowStatus>>({});
   const [stanceStatuses, setStanceStatuses] = useState<Record<string, StanceStatus>>({});
+  const [decisionStatuses, setDecisionStatuses] = useState<Record<string, DecisionStatus>>({});
+  const [fitStatuses, setFitStatuses] = useState<Record<string, FitStatus>>({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [tickerInput, setTickerInput] = useState("");
   const [addStatus, setAddStatus] = useState<AddStatus>({ kind: "idle" });
@@ -173,6 +191,57 @@ export function WatchlistPage() {
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === "AbortError") return;
           setStanceStatuses((current) => ({ ...current, [entry.ticker]: { kind: "error" } }));
+        });
+    }
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listStatus]);
+
+  /** Atlas's own Investment Decision for this prospect -- the canonical
+   * decision-synthesis layer (`/api/investment-decision/{caseId}`),
+   * read verbatim. Nothing here re-derives or re-ranks it.
+   *
+   * Note what this is NOT: `DecisionSupportLevel`, the vocabulary the
+   * Portfolio table shows. That value is exposed only through the
+   * portfolio cockpit (holdings only) and through the heavy analysis
+   * endpoint, so no provider-free per-case source exists for it -- a
+   * real API gap, recorded rather than papered over. Both express "has
+   * Atlas concluded anything yet"; this column says so in the decision
+   * layer's own words rather than borrowing Portfolio's. */
+  useEffect(() => {
+    if (listStatus.kind !== "loaded") return;
+    const controller = new AbortController();
+    for (const entry of listStatus.entries) {
+      if (decisionStatuses[entry.ticker]) continue;
+      setDecisionStatuses((current) => ({ ...current, [entry.ticker]: { kind: "loading" } }));
+      fetchInvestmentDecision(entry.caseId, controller.signal)
+        .then((decision) => setDecisionStatuses((current) => ({ ...current, [entry.ticker]: { kind: "loaded", decision } })))
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          setDecisionStatuses((current) => ({ ...current, [entry.ticker]: { kind: "error" } }));
+        });
+    }
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listStatus]);
+
+  /** Portfolio Fit for a prospect the investor does not hold. The
+   * engine supports exactly this case (`is_existing_holding` false,
+   * `current_weight_percent` null) and answers "how would this sit in
+   * my portfolio" -- which is the question a watchlist exists to ask.
+   * `unavailable` is one of its own real ratings, never a middle
+   * score. */
+  useEffect(() => {
+    if (listStatus.kind !== "loaded") return;
+    const controller = new AbortController();
+    for (const entry of listStatus.entries) {
+      if (fitStatuses[entry.ticker]) continue;
+      setFitStatuses((current) => ({ ...current, [entry.ticker]: { kind: "loading" } }));
+      fetchPortfolioFitForCase(entry.caseId, controller.signal)
+        .then((fit) => setFitStatuses((current) => ({ ...current, [entry.ticker]: { kind: "loaded", fit } })))
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          setFitStatuses((current) => ({ ...current, [entry.ticker]: { kind: "error" } }));
         });
     }
     return () => controller.abort();
@@ -297,6 +366,8 @@ export function WatchlistPage() {
             entries={[...listStatus.entries].sort((a, b) => a.ticker.localeCompare(b.ticker))}
             rowStatuses={rowStatuses}
             stanceStatuses={stanceStatuses}
+            decisionStatuses={decisionStatuses}
+            fitStatuses={fitStatuses}
             heldTickers={heldTickers}
             navigate={navigate}
             locale={locale}
@@ -450,10 +521,26 @@ function waitingForLine(stance: StanceView, t: Translate): string {
   return t("watchlist.table.waitingForLabel", { items: labels.join(", ") });
 }
 
+/** Convergence Sprint 3, Phase J. One honest em dash for every unknown
+ * in the table, with the word behind it for screen readers. A prospect
+ * Atlas has not been able to judge must never read as a mediocre one. */
+function UnknownCell({ t }: { t: (key: TranslationKey, params?: Record<string, string | number>) => string }) {
+  return (
+    <Text as="span" color="tertiary">
+      <span aria-hidden="true">{"\u2014"}</span>
+      <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
+        {t("watchlist.table.notAssessed")}
+      </span>
+    </Text>
+  );
+}
+
 function WatchlistTable({
   entries,
   rowStatuses,
   stanceStatuses,
+  decisionStatuses,
+  fitStatuses,
   heldTickers,
   navigate,
   locale,
@@ -463,6 +550,8 @@ function WatchlistTable({
   entries: WatchlistEntryView[];
   rowStatuses: Record<string, RowStatus>;
   stanceStatuses: Record<string, StanceStatus>;
+  decisionStatuses: Record<string, DecisionStatus>;
+  fitStatuses: Record<string, FitStatus>;
   heldTickers: Set<string>;
   navigate: ReturnType<typeof useNavigate>;
   locale: string;
@@ -474,10 +563,25 @@ function WatchlistTable({
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
+            {/* Convergence Sprint 3. Five comparative columns, every
+                one a closed categorical vocabulary Atlas already
+                computes, so prospects can be scanned down a column
+                instead of read one row at a time. "Monitoring since"
+                lost its own column and moved into the prospect cell --
+                it is context, not something anyone compares on.
+
+                Deliberately absent, because no provider-free per-case
+                source exists for them: valuation state, analysis depth
+                and the risk projection (cockpit-only or behind the
+                heavy analysis endpoint). Also absent because the
+                engine has no such concept at all: Conviction, Expected
+                Return, Upside, Downside. None of those is approximated
+                from something adjacent. */}
             <th style={headerCellStyle}>{t("watchlist.table.companyHeader")}</th>
-            <th style={headerCellStyle}>{t("watchlist.table.monitoringSinceHeader")}</th>
-            <th style={headerCellStyle}>{t("watchlist.table.waitingForHeader")}</th>
+            <th style={headerCellStyle}>{t("watchlist.table.decisionHeader")}</th>
             <th style={headerCellStyle}>{t("watchlist.table.currentViewHeader")}</th>
+            <th style={headerCellStyle}>{t("watchlist.table.fitHeader")}</th>
+            <th style={headerCellStyle}>{t("watchlist.table.waitingForHeader")}</th>
             <th style={headerCellStyle} />
           </tr>
         </thead>
@@ -488,6 +592,8 @@ function WatchlistTable({
               entry={entry}
               rowStatus={rowStatuses[entry.ticker]}
               stanceStatus={stanceStatuses[entry.ticker]}
+              decisionStatus={decisionStatuses[entry.ticker]}
+              fitStatus={fitStatuses[entry.ticker]}
               isHeld={heldTickers.has(entry.ticker)}
               navigate={navigate}
               locale={locale}
@@ -505,6 +611,8 @@ function WatchlistTableRow({
   entry,
   rowStatus,
   stanceStatus,
+  decisionStatus,
+  fitStatus,
   isHeld,
   navigate,
   locale,
@@ -514,6 +622,8 @@ function WatchlistTableRow({
   entry: WatchlistEntryView;
   rowStatus: RowStatus | undefined;
   stanceStatus: StanceStatus | undefined;
+  decisionStatus: DecisionStatus | undefined;
+  fitStatus: FitStatus | undefined;
   isHeld: boolean;
   navigate: ReturnType<typeof useNavigate>;
   locale: string;
@@ -525,6 +635,8 @@ function WatchlistTableRow({
   const sector = loaded?.companyProfile?.sector;
   const monitoringSince = new Date(entry.addedAt).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
   const stance = stanceStatus?.kind === "loaded" ? stanceStatus.stance : null;
+  const decision = decisionStatus?.kind === "loaded" ? decisionStatus.decision : null;
+  const fit = fitStatus?.kind === "loaded" ? fitStatus.fit : null;
 
   const [removeStatus, setRemoveStatus] = useState<RemoveStatus>({ kind: "idle" });
 
@@ -577,6 +689,13 @@ function WatchlistTableRow({
                 {sector}
               </Text>
             )}
+            {/* Monitoring-since is context, not something anyone
+                compares prospects on -- it moved out of its own column
+                and in here, where it costs a line instead of a sixth
+                of the table's width. */}
+            <Text as="span" color="tertiary" style={{ fontSize: "var(--type-body-min-size)" }}>
+              {t("watchlist.table.monitoringSince", { date: monitoringSince })}
+            </Text>
             {isHeld && (
               <Text as="span" color="tertiary" style={{ fontSize: "var(--type-body-min-size)" }}>
                 {t("watchlist.table.alsoHeld")}
@@ -585,36 +704,31 @@ function WatchlistTableRow({
           </Inline>
         </Stack>
       </td>
-      <td style={{ ...cellStyle, fontVariantNumeric: "tabular-nums" }}>
-        <Text as="span" color="secondary">
-          {t("watchlist.table.monitoringSince", { date: monitoringSince })}
-        </Text>
-      </td>
       <td style={cellStyle}>
+        {decision ? (
+          <StatusBadge label={t(ACTION_KEY[decision.action])} tone={ACTION_TONE[decision.action]} weight="strong" />
+        ) : (
+          <UnknownCell t={t} />
+        )}
+      </td>
+      <td style={cellStyle}>{stance ? <StanceBadge level={stance.level} /> : <UnknownCell t={t} />}</td>
+      <td style={cellStyle}>{fit ? <FitBadge rating={fit.overall} /> : <UnknownCell t={t} />}</td>
+      <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)", maxWidth: "260px" }}>
         {stance ? (
           <Text as="span" color="secondary">
             {waitingForLine(stance, t)}
           </Text>
-        ) : stanceStatus?.kind === "error" ? (
-          <Text as="span" color="tertiary">
-            {t("watchlist.table.notAvailable")}
-          </Text>
         ) : (
-          <Text as="span" color="tertiary">
-            {t("watchlist.table.notAvailable")}
-          </Text>
+          <UnknownCell t={t} />
         )}
       </td>
-      <td style={cellStyle}>{stance ? <StanceBadge level={stance.level} /> : <Text color="tertiary">{t("watchlist.table.notAvailable")}</Text>}</td>
       <td style={cellStyle} onClick={(event) => event.stopPropagation()}>
         {removeStatus.kind === "idle" && (
           <Inline gap="row" wrap>
-            <Button
-              variant="primary"
-              onClick={() => navigate(`/investment-case/${entry.caseId}`, { state: { origin: "watchlist", ticker: entry.ticker } })}
-            >
-              {t("watchlist.table.openInvestmentCase")}
-            </Button>
+            {/* The primary "Open Investment Case" button is gone: the
+                whole row is already a keyboard-operable button that
+                does exactly that, so this was a second copy of one
+                action taking a third of the row's action column. */}
             <Button variant="tertiary" onClick={() => navigate(`/discovery/compare?a=${encodeURIComponent(entry.ticker)}`)}>
               {t("watchlist.table.compareButton")}
             </Button>
