@@ -175,7 +175,14 @@ export const sv: Record<TranslationKey, string> = {
   "portfolio.cockpit.risk.category.business_risk": "Verksamhet",
   "portfolio.cockpit.risk.category.financial_risk": "Finansiell",
   "portfolio.cockpit.risk.category.valuation_risk": "Värdering",
-  "portfolio.cockpit.risk.category.thesis_risk": "Tes",
+  // Canonical Reasoning Consolidation, Conflict 2. Was "Tes".
+  // `thesis_risk` is a *risk category*, and rendering it as the bare
+  // noun "Tes" put it in direct collision with the thesis-state
+  // vocabulary: NVDA showed "Atlas saknar fortfarande: Tes" beside
+  // "Den nuvarande tesen kvarstår oförändrad." Those are different
+  // concepts -- an unevaluated risk category versus the canonical
+  // HOLD direction -- and the label now says which one it is.
+  "portfolio.cockpit.risk.category.thesis_risk": "Tesrisk",
   "portfolio.cockpit.business.growthLabel": "Tillväxt",
   "portfolio.cockpit.business.capitalAllocationLabel": "Kapitalallokering",
   "portfolio.cockpit.business.not_evaluated": "Inte utvärderad",
@@ -450,7 +457,12 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.ratings.investment.label": "Investering",
   "investmentCase.ratings.portfolio.label": "Portfölj",
   "investmentCase.ratings.evidence.label": "Täckning",
-  "investmentCase.ratings.upside.label": "Uppsida",
+  // Canonical Reasoning Consolidation, Phase F. Was "Uppsida". This
+  // tile thresholds the Long-Term *Bull scenario* return bound; no
+  // scenario probabilities exist, so it is not the canonical Upside
+  // concept and must not be labelled as though it were. The label
+  // now names its derivation.
+  "investmentCase.ratings.upside.label": "Värderingsimplicerad uppsida",
   "investmentCase.ratings.risk.label": "Risk",
   "investmentCase.ratings.horizon.label": "Tidshorisont",
   "investmentCase.ratings.tier.excellent": "Utmärkt",
@@ -904,6 +916,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.actions.leaveAsIs": "Lämna oförändrad",
   "investmentCase.canonical.deepAnalysisLabel": "Djupanalys — verksamhet, finanser och ledning",
   "investmentCase.canonical.evidenceAuditLabel": "Underlag, täckning och datakvalitet",
+  "investmentCase.canonical.supportingAnalysisLabel": "Visa underbyggande analys",
   "investmentCase.actions.recordManuallyLabel": "Registrera ett beslut manuellt",
   "investmentCase.actions.notLinkedNote":
     "Beslutsåtgärder blir tillgängliga när det här caset kopplas till ett portföljinnehav.",
@@ -1257,6 +1270,12 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.argument.supports.capital_allocation":
     "Kapitalallokeringen har varit disciplinerad nog för att stödja caset.",
   "investmentCase.argument.supports.valuation": "Dagens värdering stödjer caset snarare än att motverka det.",
+  "investmentCase.argument.supports.business_risk":
+    "Den underliggande affären ser motståndskraftig ut och talar för caset.",
+  "investmentCase.argument.supports.financial_risk":
+    "Den finansiella ställningen är lågriskad och talar för caset.",
+  "investmentCase.argument.supports.valuation_risk":
+    "Värderingen är inte utsträckt och talar för caset.",
   "investmentCase.argument.challenges.growth": "Avtagande tillväxt talar mot caset.",
   "investmentCase.argument.challenges.capital_allocation":
     "Kapitalallokeringen arbetar för närvarande mot aktieägarna, vilket talar mot caset.",
@@ -2188,7 +2207,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentReasoning.row.indicatesAgainst": "Underlaget talar emot",
   "investmentReasoning.row.unresolved": "Viktigaste osäkerhet",
   "investmentReasoning.row.wouldChange": "Vad skulle ändra bilden",
-  "investmentReasoning.row.wouldStrengthen": "Vad skulle behöva förändras",
+  "investmentReasoning.row.needsResolving": "Vad som behöver lösas",
   "investmentReasoning.empty.supports": "Inget i underlaget talar tydligt för.",
   "investmentReasoning.empty.opposes": "Inget i underlaget talar tydligt emot.",
   "investmentReasoning.reason.growthStrong": "Stark tillväxt",
@@ -2212,8 +2231,8 @@ export const sv: Record<TranslationKey, string> = {
   "investmentReasoning.engine.businessQuality": "affärskvalitet",
   "investmentReasoning.engine.industryContext": "branschbild",
   "investmentReasoning.engine.expectedReturn": "förväntad avkastning",
-  "investmentReasoning.unknown.inputMissing": "Underlag saknas för {{engine}}",
-  "investmentReasoning.unknown.unresolved": "Olöst efter analys: {{engine}}",
+  "investmentReasoning.unknown.inputMissing": "Underlag saknas: {{engine}}",
+  "investmentReasoning.unknown.unresolved": "Går inte att avgöra ännu: {{engine}}",
   "investmentReasoning.trigger.reducedRisk": "Lägre risk",
   "investmentReasoning.trigger.moreAttractiveValuation": "Mer attraktiv värdering",
   "investmentReasoning.trigger.improvedGrowthEvidence": "Bättre underlag för tillväxt",

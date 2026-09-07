@@ -721,12 +721,6 @@ function CurrentPicture({
     isBaselineCase: report.isBaselineCase,
     latestChangeCount: report.latestChanges.length,
     currentAnalysisAt: report.currentAnalysisAt,
-    longTermExpectedReturn: longTerm.expectedReturn
-      ? { lowPercent: longTerm.expectedReturn.lowPercent, highPercent: longTerm.expectedReturn.highPercent }
-      : null,
-    longTermExpectedReturnGap: longTerm.expectedReturnGap,
-    longTermBullReturnPercent: longTermBull ? longTermBull.returnPercent : null,
-    longTermBearReturnPercent: longTermBear ? longTermBear.returnPercent : null,
     outlookAlignmentLongTerm: report.recommendation.outlookAlignment.longTerm,
     limitingFactors,
     missingEvaluations: report.recommendation.missingEvaluations,

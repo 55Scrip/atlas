@@ -16,6 +16,14 @@ import OUTLOOK_SOURCE from "./AtlasOutlookSection.tsx?raw";
  * a narrow, honest proxy, not a page snapshot.
  */
 
+/** True when `tag` renders inside an open `<ExpandableDetail>` -- i.e.
+ * behind progressive disclosure rather than on the default surface. */
+function inDisclosure(tag: string): boolean {
+  const at = positionOf(tag);
+  const opened = SOURCE.lastIndexOf("<ExpandableDetail", at);
+  return opened > -1 && !SOURCE.slice(opened, at).includes("</ExpandableDetail>");
+}
+
 function positionOf(tag: string): number {
   const index = SOURCE.indexOf(`<${tag}`);
   expect(index, `${tag} should still be rendered by InvestmentCasePage`).toBeGreaterThan(-1);
@@ -40,13 +48,19 @@ describe("Investment Case reading hierarchy", () => {
   });
 
   it("keeps the nine Decision Layer sections behind a disclosure", () => {
-    // AtlasDecisionSummary exists to state their shared meaning once. They
-    // are un-deleted and still reachable, but must not restate that meaning
-    // nine times on the primary surface.
-    const summaryEnd = positionOf("AtlasDecisionSummary");
-    const disclosure = SOURCE.indexOf("<ExpandableDetail", summaryEnd);
-    expect(disclosure).toBeGreaterThan(summaryEnd);
-    expect(disclosure).toBeLessThan(positionOf("DecisionReadinessSection"));
+    // They are un-deleted and still reachable, but must not restate one
+    // shared meaning nine times on the primary surface.
+    expect(inDisclosure("DecisionReadinessSection")).toBe(true);
+    expect(inDisclosure("DecisionReliabilitySection")).toBe(true);
+  });
+
+  it("keeps the uncertainty summary behind that same disclosure", () => {
+    // Canonical Reasoning Consolidation, Phase K. "Varför Atlas inte är
+    // säkrare" summarises the nine sections below it; canonical
+    // reasoning's own key unknowns now own primary uncertainty, so this
+    // card belongs with the sections it summarises, not above them.
+    expect(inDisclosure("AtlasDecisionSummary")).toBe(true);
+    expect(positionOf("AtlasInvestmentReasoning")).toBeLessThan(positionOf("AtlasDecisionSummary"));
   });
 
   it("does not render the manual decision form inline", () => {
@@ -67,7 +81,7 @@ describe("Investment Case reading hierarchy", () => {
     // Argument, Atlas Reasoning, Evidence and the audit panels. It sat ~700
     // lines above the conclusion, so Sprint 1's local reorder was correct but
     // not sufficient.
-    expect(positionOf("AtlasDecisionSummary")).toBeLessThan(
+    expect(positionOf("AtlasInvestmentReasoning")).toBeLessThan(
       positionOf("InvestmentCaseCanonicalSections"),
     );
     expect(positionOf("ExecutiveSummaryCard")).toBeLessThan(
@@ -108,20 +122,12 @@ describe("Investment Case reading hierarchy", () => {
     }
   });
 
-  it("keeps the four explaining sections on the default surface", () => {
+  it("keeps Outlook and Evidence on the default surface", () => {
     // Reducing default exposure must not mean hiding the investment case
-    // itself: Outlook, Investment Argument, Atlas Reasoning and Evidence are
-    // Level 2 and stay visible.
-    for (const section of [
-      "AtlasOutlookSection",
-      "InvestmentArgumentSection",
-      "AtlasReasoningSection",
-      "EvidenceSection",
-    ]) {
-      const at = positionOf(section);
-      const opened = SOURCE.lastIndexOf("<ExpandableDetail", at);
-      const inDisclosure = opened > -1 && !SOURCE.slice(opened, at).includes("</ExpandableDetail>");
-      expect(inDisclosure, `${section} should stay on the default surface`).toBe(false);
+    // itself. Outlook and Evidence add information the primary narrative
+    // does not carry, and stay visible.
+    for (const section of ["AtlasOutlookSection", "EvidenceSection"]) {
+      expect(inDisclosure(section), `${section} should stay on the default surface`).toBe(false);
     }
   });
 
@@ -140,10 +146,10 @@ describe("Investment Case reading hierarchy", () => {
     // Portfolio Fit and the Evidence Graph, and above the Decision
     // Layer disclosure, not appended as a tenth analytical module at
     // the bottom of the page.
-    expect(positionOf("AtlasDecisionSummary")).toBeLessThan(positionOf("AtlasInvestmentReasoning"));
     expect(positionOf("AtlasInvestmentReasoning")).toBeLessThan(positionOf("PortfolioFitSection"));
     expect(positionOf("AtlasInvestmentReasoning")).toBeLessThan(positionOf("EvidenceGraphSection"));
     expect(positionOf("AtlasInvestmentReasoning")).toBeLessThan(positionOf("DecisionReadinessSection"));
+    expect(inDisclosure("AtlasInvestmentReasoning")).toBe(false);
   });
 
   it("adds no new section inventory for canonical reasoning", () => {
@@ -173,6 +179,36 @@ describe("Investment Case reading hierarchy", () => {
     // nor its position inside the Decision Layer disclosure.
     expect(positionOf("DecisionMemorySection")).toBeGreaterThan(positionOf("DecisionReadinessSection"));
     expect(SOURCE).toContain("decisionMemoryStatus.kind === \"loaded\"");
+  });
+
+  it("keeps the supporting analysis reachable behind disclosure", () => {
+    // Phases I/J moved these off the default path. They must still be
+    // rendered -- moving is not deleting, and their evidence drill-down
+    // is the reason they exist.
+    for (const section of ["InvestmentArgumentSection", "AtlasReasoningSection"]) {
+      expect(inDisclosure(section), `${section} should be behind disclosure`).toBe(true);
+    }
+    expect(SOURCE).toContain("investmentCase.canonical.supportingAnalysisLabel");
+  });
+
+  it("does not headline re-rating scenario bounds as canonical return metrics", () => {
+    // Phase F. `ExpectedReturnRange` and the Bull/Bear `returnPercent`
+    // are valuation re-rating bounds with no scenario probabilities.
+    // They may not be threaded into the Hero's summary strip, where
+    // they sat under the labels "Förväntad avkastning" and "Uppsida /
+    // nedsida" beside the recommendation itself.
+    const hero = SOURCE.indexOf("<HeroCard");
+    const heroProps = SOURCE.slice(hero, SOURCE.indexOf("/>", hero));
+    for (const field of [
+      "longTermExpectedReturn",
+      "longTermExpectedReturnGap",
+      "longTermBullReturnPercent",
+      "longTermBearReturnPercent",
+    ]) {
+      expect(heroProps, `${field} must not reach the Hero`).not.toContain(field);
+    }
+    // The values themselves stay on the page, in the Outlook section.
+    expect(positionOf("AtlasOutlookSection")).toBeGreaterThan(-1);
   });
 
   it("keeps the outlook's workings out of the default surface", () => {

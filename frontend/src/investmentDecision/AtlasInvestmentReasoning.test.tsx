@@ -65,13 +65,24 @@ describe("AtlasInvestmentReasoning -- directional case", () => {
     expect(screen.getByText(/Stark tillväxt/)).toBeInTheDocument();
     expect(screen.getByText(/Lågt värderad/)).toBeInTheDocument();
     expect(screen.getByText(/Förhöjd finansiell risk/)).toBeInTheDocument();
-    expect(screen.getByText(/Olöst efter analys: värderingsstöd/)).toBeInTheDocument();
+    expect(screen.getByText(/Går inte att avgöra ännu: värderingsstöd/)).toBeInTheDocument();
     expect(screen.getByText(/Lägre risk/)).toBeInTheDocument();
   });
 
-  it("states the recommendation Atlas actually reached", () => {
-    renderCard(decision({ action: "buy" }));
-    expect(screen.getByText(/Atlas slutsats: Köp\./)).toBeInTheDocument();
+  it("does not restate the recommendation in a second vocabulary", () => {
+    // Canonical Reasoning Consolidation, Conflict 1 regression. This
+    // card used to print "Atlas slutsats: Behåll." directly beneath the
+    // Hero, which announces the identical canonical
+    // `RecommendationDirection.HOLD` as "Tesen kvarstår". One judgment
+    // must not arrive twice in two vocabularies. The Hero owns the
+    // recommendation statement; this card owns the reasoning.
+    const { container } = renderCard(decision({ action: "hold" }));
+    const text = container.textContent ?? "";
+    expect(text).not.toContain("Atlas slutsats");
+    expect(text).not.toContain("Behåll");
+    expect(text).not.toContain("Tesen kvarstår");
+    // ...and the reasoning it does own is still there.
+    expect(screen.getByText(/Stark tillväxt/)).toBeInTheDocument();
   });
 
   it("does not state that a recommendation is withheld", () => {
@@ -96,15 +107,32 @@ describe("AtlasInvestmentReasoning -- withheld case", () => {
     renderCard(withheld());
     expect(screen.getByText(/Stark tillväxt/)).toBeInTheDocument();
     expect(screen.getByText(/Förhöjd finansiell risk/)).toBeInTheDocument();
-    expect(screen.getByText(/Olöst efter analys: värderingsstöd/)).toBeInTheDocument();
+    expect(screen.getByText(/Går inte att avgöra ännu: värderingsstöd/)).toBeInTheDocument();
   });
 
   it("frames the same drivers as evidence, never as an action", () => {
     renderCard(withheld());
     expect(screen.getByText(/Underlaget talar för/)).toBeInTheDocument();
     expect(screen.getByText(/Underlaget talar emot/)).toBeInTheDocument();
-    // Negative control: the directional framing must be absent.
+    // Negative control: no directional framing anywhere.
     expect(screen.queryByText(/Atlas slutsats/)).not.toBeInTheDocument();
+  });
+
+  it("labels the unresolved row as the decision blocker, not as mere uncertainty", () => {
+    // Phase L: for a withheld case `key_unknowns` is what has to be
+    // resolved before Atlas can take a position -- the engine's own
+    // division of labour, not a relabelling invented here.
+    renderCard(withheld());
+    expect(screen.getByText(/Vad som behöver lösas/)).toBeInTheDocument();
+    expect(screen.queryByText(/Viktigaste osäkerhet/)).not.toBeInTheDocument();
+  });
+
+  it("does not promise that the change triggers would unlock a decision", () => {
+    // MU's triggers are "financial risk rises" / "valuation becomes
+    // expensive". Neither would let Atlas decide, so this row keeps the
+    // same honest label it has on the directional branch.
+    renderCard(withheld());
+    expect(screen.getByText(/Vad skulle ändra bilden/)).toBeInTheDocument();
   });
 
   it("never renders a directional action word for a withheld outcome", () => {

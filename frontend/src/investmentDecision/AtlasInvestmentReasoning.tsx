@@ -1,6 +1,5 @@
 import { Stack, Surface, Text } from "../foundation";
 import type { TranslationKey } from "../i18n";
-import { ACTION_KEY } from "./describeInvestmentDecision";
 import { CHANGE_TRIGGER_KEY, keyUnknownLabel, reasonKindLabel } from "./describeRecommendationReasoning";
 import type { InvestmentDecisionView } from "./investmentDecisionApi";
 
@@ -72,11 +71,26 @@ export function AtlasInvestmentReasoning({
           {t("investmentReasoning.heading")}
         </Text>
 
-        <Text as="p" color={isWithheld ? "secondary" : "primary"}>
-          {isWithheld
-            ? t("investmentReasoning.state.withheld")
-            : t("investmentReasoning.state.directional", { action: t(ACTION_KEY[decision.action]) })}
-        </Text>
+        {/* Canonical Reasoning Consolidation, Conflict 1. This line used
+            to restate the recommendation for the directional case too
+            ("Atlas slutsats: Behåll."), while the Hero -- reading the
+            identical canonical `RecommendationDirection.HOLD` through
+            `_DIRECTION_LEVEL` -- announced it as "Tesen kvarstår". One
+            judgment, two vocabularies, stacked one above the other.
+            The Hero owns the recommendation statement; this card owns
+            the reasoning, and no longer names the direction at all.
+
+            The withheld line stays, because it is not a restatement:
+            the Hero's badge says "Vet inte än", which reports low
+            evidence support without ever saying that Atlas is
+            declining to take a direction. That is the one thing a
+            withheld case most needs stated plainly, and it is stated
+            once, here. */}
+        {isWithheld && (
+          <Text as="p" color="secondary">
+            {t("investmentReasoning.state.withheld")}
+          </Text>
+        )}
 
         <ReasoningRow
           label={t(isWithheld ? "investmentReasoning.row.indicatesFor" : "investmentReasoning.row.supports")}
@@ -88,12 +102,33 @@ export function AtlasInvestmentReasoning({
           items={opposing.map((reason) => reasonKindLabel(reason, t))}
           emptyLabel={t("investmentReasoning.empty.opposes")}
         />
+        {/* Phase L. For a withheld outcome the investor's question is
+            "what has to be resolved before Atlas can take a position",
+            and the canonical field that answers it is `key_unknowns`
+            -- not `what_would_change`. That is the engine's own
+            division of labour, stated in `_derive_what_would_change`:
+            an `INSUFFICIENT_INPUT` valuation support deliberately
+            emits no change trigger, "a data gap, not an investment
+            condition", precisely because `key_unknowns` already owns
+            it. So the withheld case relabels this row to the blocker
+            it already is. No new field, no new inference. */}
         {unknowns.length > 0 && (
-          <ReasoningRow label={t("investmentReasoning.row.unresolved")} items={unknowns} emptyLabel={null} />
+          <ReasoningRow
+            label={t(isWithheld ? "investmentReasoning.row.needsResolving" : "investmentReasoning.row.unresolved")}
+            items={unknowns}
+            emptyLabel={null}
+          />
         )}
+        {/* `what_would_change` means the same thing on both branches --
+            "every condition that would materially change this picture",
+            reversals and deteriorations alike. It is deliberately NOT
+            relabelled as "what Atlas needs" for the withheld case:
+            MU's triggers are "financial risk rises" and "valuation
+            becomes expensive", neither of which would let Atlas reach a
+            decision. Calling them that would be a false promise. */}
         {triggers.length > 0 && (
           <ReasoningRow
-            label={t(isWithheld ? "investmentReasoning.row.wouldStrengthen" : "investmentReasoning.row.wouldChange")}
+            label={t("investmentReasoning.row.wouldChange")}
             items={triggers.map((trigger) => t(CHANGE_TRIGGER_KEY[trigger]))}
             emptyLabel={null}
           />

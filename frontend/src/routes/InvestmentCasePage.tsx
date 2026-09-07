@@ -2706,12 +2706,6 @@ export function InvestmentCasePage() {
               isBaselineCase: report.isBaselineCase,
               latestChangeCount: report.latestChanges.length,
               currentAnalysisAt: report.currentAnalysisAt,
-              longTermExpectedReturn: longTerm.expectedReturn
-                ? { lowPercent: longTerm.expectedReturn.lowPercent, highPercent: longTerm.expectedReturn.highPercent }
-                : null,
-              longTermExpectedReturnGap: longTerm.expectedReturnGap,
-              longTermBullReturnPercent: longTermBull ? longTermBull.returnPercent : null,
-              longTermBearReturnPercent: longTermBear ? longTermBear.returnPercent : null,
               outlookAlignmentLongTerm: report.recommendation.outlookAlignment.longTerm,
               limitingFactors,
               missingEvaluations: report.recommendation.missingEvaluations,
@@ -2862,18 +2856,6 @@ export function InvestmentCasePage() {
                 reason, count, and source tag they show remains exactly
                 as reachable as before -- only the default reading path
                 changes. */}
-            {decisionReliabilityStatus.kind === "loaded" && (
-              <AtlasDecisionSummary
-                reliability={decisionReliabilityStatus.reliability}
-                path={decisionPathStatus.kind === "loaded" ? decisionPathStatus.path : null}
-                canonicalReasoningStatesWhatWouldChange={
-                  investmentDecisionStatus.kind === "loaded" &&
-                  (investmentDecisionStatus.decision.reasoning?.whatWouldChange?.length ?? 0) > 0
-                }
-                t={t}
-              />
-            )}
-
             {/* Recommendation Reasoning Convergence. The canonical
                 rationale the recommendation gate already computes --
                 now also carried on a withheld outcome, and now typed
@@ -2894,6 +2876,30 @@ export function InvestmentCasePage() {
 
             <ExpandableDetail summaryLabel={t("investmentCase.decisionSummary.viewFullLabel")}>
               <Stack gap="inter-section">
+                {/* Canonical Reasoning Consolidation, Phase K. This card
+                    ("Varför Atlas inte är säkrare") used to be a
+                    dominant default-path block. Its message -- the
+                    single biggest limit on Atlas's confidence -- is now
+                    owned above by canonical reasoning's own
+                    `key_unknowns`, which names the most
+                    decision-relevant uncertainty rather than the
+                    evidence-machinery reason behind it. Kept intact and
+                    moved here, where it does what it was built for:
+                    summarising the nine Decision Layer sections it sits
+                    on top of. Nothing was deleted and nothing became
+                    less reachable -- only the default reading path
+                    changed. */}
+                {decisionReliabilityStatus.kind === "loaded" && (
+                  <AtlasDecisionSummary
+                    reliability={decisionReliabilityStatus.reliability}
+                    path={decisionPathStatus.kind === "loaded" ? decisionPathStatus.path : null}
+                    canonicalReasoningStatesWhatWouldChange={
+                      investmentDecisionStatus.kind === "loaded" &&
+                      (investmentDecisionStatus.decision.reasoning?.whatWouldChange?.length ?? 0) > 0
+                    }
+                    t={t}
+                  />
+                )}
                 {/* Atlas Intelligence Sprint 11 (Decision Readiness &
                     Decision Eligibility, Deliverable 6). Independent fetch
                     (`decisionReadinessStatus`); renders nothing on error,
@@ -5846,17 +5852,41 @@ function InvestmentCaseCanonicalSections({
 
       <Divider tone="hairline" />
 
-      <InvestmentArgumentSection
-        strengthKinds={strengthKinds}
-        riskKinds={riskKinds}
-        openQuestionOrigins={analysis.keyOpenQuestions.map((q) => q.origin)}
-        factsForKind={factsForHighlightKind}
-        t={t}
-      />
+      {/* Canonical Reasoning Consolidation, Phases I and J. These two
+          used to render on the default path, immediately below the
+          Outlook, each producing its own version of "what supports and
+          what opposes this case":
 
-      <Divider tone="hairline" />
+          - `InvestmentArgumentSection` states the same synthesis
+            highlights canonical reasoning already states ("Capital
+            allocation has been disciplined enough to support the case"
+            beside "Stark kapitalallokering"). What it adds is the
+            evidence drill-down behind each one, which is supporting
+            detail, not a second conclusion.
+          - `AtlasReasoningSection`'s four dimension cards (Growth,
+            Valuation, Financial Health, Business Quality) are
+            analytical *inputs*. Left on the default path they asked the
+            reader to synthesise a recommendation that
+            `AtlasInvestmentReasoning` had already synthesised above.
 
-      <AtlasReasoningSection input={reasoningInput} t={t} />
+          Both render unchanged and lose no drill-down; they move one
+          disclosure down, so the primary path carries one investment
+          explanation instead of three. */}
+      <ExpandableDetail summaryLabel={t("investmentCase.canonical.supportingAnalysisLabel")}>
+        <Stack gap="inter-section">
+          <InvestmentArgumentSection
+            strengthKinds={strengthKinds}
+            riskKinds={riskKinds}
+            openQuestionOrigins={analysis.keyOpenQuestions.map((q) => q.origin)}
+            factsForKind={factsForHighlightKind}
+            t={t}
+          />
+
+          <Divider tone="hairline" />
+
+          <AtlasReasoningSection input={reasoningInput} t={t} />
+        </Stack>
+      </ExpandableDetail>
 
       <Divider tone="hairline" />
 

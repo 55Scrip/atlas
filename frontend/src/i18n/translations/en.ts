@@ -176,7 +176,9 @@ export const en = {
   "portfolio.cockpit.risk.category.business_risk": "Business",
   "portfolio.cockpit.risk.category.financial_risk": "Financial",
   "portfolio.cockpit.risk.category.valuation_risk": "Valuation",
-  "portfolio.cockpit.risk.category.thesis_risk": "Thesis",
+  // See sv.ts for the full rationale (Conflict 2): this names a risk
+  // category, not the investment thesis itself.
+  "portfolio.cockpit.risk.category.thesis_risk": "Thesis risk",
   "portfolio.cockpit.business.growthLabel": "Growth",
   "portfolio.cockpit.business.capitalAllocationLabel": "Capital allocation",
   "portfolio.cockpit.business.not_evaluated": "Not evaluated",
@@ -451,7 +453,9 @@ export const en = {
   "investmentCase.ratings.investment.label": "Investment",
   "investmentCase.ratings.portfolio.label": "Portfolio",
   "investmentCase.ratings.evidence.label": "Coverage",
-  "investmentCase.ratings.upside.label": "Upside",
+  // See sv.ts (Phase F): this is the Bull scenario bound, not a
+  // probability-weighted upside.
+  "investmentCase.ratings.upside.label": "Valuation-implied upside",
   "investmentCase.ratings.risk.label": "Risk",
   "investmentCase.ratings.horizon.label": "Horizon",
   "investmentCase.ratings.tier.excellent": "Excellent",
@@ -913,6 +917,7 @@ export const en = {
   "investmentCase.actions.leaveAsIs": "Leave as is",
   "investmentCase.canonical.deepAnalysisLabel": "Deep analysis — business, financials and leadership",
   "investmentCase.canonical.evidenceAuditLabel": "Evidence, coverage and data quality",
+  "investmentCase.canonical.supportingAnalysisLabel": "Show supporting analysis",
   "investmentCase.actions.recordManuallyLabel": "Record a decision manually",
   "investmentCase.actions.notLinkedNote":
     "Decision actions become available once this case is linked to a portfolio holding.",
@@ -1270,6 +1275,12 @@ export const en = {
   "investmentCase.argument.supports.capital_allocation":
     "Capital allocation has been disciplined enough to support the case.",
   "investmentCase.argument.supports.valuation": "Today's valuation supports the case rather than working against it.",
+  "investmentCase.argument.supports.business_risk":
+    "The underlying business economics look resilient, which supports the case.",
+  "investmentCase.argument.supports.financial_risk":
+    "The financial position is low-risk, which supports the case.",
+  "investmentCase.argument.supports.valuation_risk":
+    "Valuation is not currently stretched, which supports the case.",
   "investmentCase.argument.challenges.growth": "Weakening growth works against the case.",
   "investmentCase.argument.challenges.capital_allocation":
     "Capital allocation is currently working against shareholders, which works against the case.",
@@ -2205,7 +2216,7 @@ export const en = {
   "investmentReasoning.row.indicatesAgainst": "Evidence against",
   "investmentReasoning.row.unresolved": "Main uncertainty",
   "investmentReasoning.row.wouldChange": "What would change the view",
-  "investmentReasoning.row.wouldStrengthen": "What would need to change",
+  "investmentReasoning.row.needsResolving": "What needs resolving",
   "investmentReasoning.empty.supports": "Nothing in the evidence clearly speaks in favour.",
   "investmentReasoning.empty.opposes": "Nothing in the evidence clearly speaks against.",
   "investmentReasoning.reason.growthStrong": "Strong growth",
@@ -2229,8 +2240,8 @@ export const en = {
   "investmentReasoning.engine.businessQuality": "business quality",
   "investmentReasoning.engine.industryContext": "industry context",
   "investmentReasoning.engine.expectedReturn": "expected return",
-  "investmentReasoning.unknown.inputMissing": "Evidence missing for {{engine}}",
-  "investmentReasoning.unknown.unresolved": "Unresolved after analysis: {{engine}}",
+  "investmentReasoning.unknown.inputMissing": "Evidence missing: {{engine}}",
+  "investmentReasoning.unknown.unresolved": "Cannot be determined yet: {{engine}}",
   "investmentReasoning.trigger.reducedRisk": "Lower risk",
   "investmentReasoning.trigger.moreAttractiveValuation": "A more attractive valuation",
   "investmentReasoning.trigger.improvedGrowthEvidence": "Better evidence on growth",

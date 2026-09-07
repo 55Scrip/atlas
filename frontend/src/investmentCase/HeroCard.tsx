@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { Button, Divider, Heading, Inline, Label, Stack, StatusBadge, StatusText, Surface, Text, VisuallyHidden } from "../foundation";
+import { Button, Divider, Heading, Inline, Label, Stack, StatusBadge, Surface, Text, VisuallyHidden } from "../foundation";
 import type { Translate } from "../changeIntelligence/describeChange";
 import {
   type AnalysisBusinessStatus,
@@ -41,7 +41,6 @@ import {
 } from "./deriveExecutiveSummary";
 import { formatFinancialValue } from "./FinancialsTable";
 import { deriveHeroHasNotableChange, deriveHeroTension, type HeroTensionKind } from "./deriveHeroNarrative";
-import { formatPercent, GAP_KEY, type OutlookGapKind } from "./AtlasOutlookSection";
 import type { TranslationKey } from "../i18n";
 import { StanceSummary } from "../stance/StanceSummary";
 import type { StanceView } from "../stance/stanceApi";
@@ -107,23 +106,37 @@ const PRIORITY_SENTENCE_KEY: Record<CurrentPriorityKind, TranslationKey> = {
  * `_valuation_highlights`), so this bank must only ever be read against
  * `strengths[]`. Reading it against `risks[]` would print a positive
  * sentence under a negative heading -- see `CHALLENGE_SENTENCE_KEY`
- * below for that direction. */
+ * below for that direction.
+ *
+ * Canonical Reasoning Consolidation, Conflict 3. The three risk kinds
+ * used to point at `challenges.*` here, on the stated premise that they
+ * "only ever appear as risks server-side." That premise was false:
+ * `_risk_highlights` puts a risk kind in `strengths[]` whenever its
+ * finding is `LOW` (and in `risks[]` only when `HIGH`), which is why
+ * NVDA -- whose Financial Risk is genuinely `LOW` -- rendered "an
+ * identified financial risk speaks against the case" in the *Supports*
+ * column, directly contradicting canonical reasoning's
+ * `financial_risk_not_elevated`. The three sentences below are the
+ * frontend's rendering of the synthesis engine's own positive labels
+ * for these kinds ("a low-risk financial position", "resilient
+ * underlying business economics", "valuation that is not currently
+ * stretched" -- `investment_case_synthesis.py`'s `highlight_labels`).
+ * No engine changed; the frontend was reading the wrong bank. */
 export const STRENGTH_SENTENCE_KEY: Record<AnalysisHighlightKind, TranslationKey> = {
   growth: "investmentCase.argument.supports.growth",
   capital_allocation: "investmentCase.argument.supports.capital_allocation",
   valuation: "investmentCase.argument.supports.valuation",
-  business_risk: "investmentCase.argument.challenges.business_risk",
-  financial_risk: "investmentCase.argument.challenges.financial_risk",
-  valuation_risk: "investmentCase.argument.challenges.valuation_risk",
+  business_risk: "investmentCase.argument.supports.business_risk",
+  financial_risk: "investmentCase.argument.supports.financial_risk",
+  valuation_risk: "investmentCase.argument.supports.valuation_risk",
 };
 
 /** Shared with `InvestmentArgumentSection`'s Challenges column -- the
  * negative-direction counterpart to `STRENGTH_SENTENCE_KEY` above, for
- * reading against `risks[]`. Business Risk/Financial Risk/Valuation Risk
- * only ever appear as risks server-side, so their sentence is identical
- * either way; Growth/Capital Allocation/Valuation need their own
- * negative framing here since the same `kind` can legitimately appear in
- * either column depending on the underlying finding's direction. */
+ * reading against `risks[]`, where a risk kind means its finding was
+ * `HIGH`. Every kind needs its own negative framing here: the same
+ * `kind` legitimately appears in either column depending on the
+ * underlying finding's direction. */
 export const CHALLENGE_SENTENCE_KEY: Record<AnalysisHighlightKind, TranslationKey> = {
   growth: "investmentCase.argument.challenges.growth",
   capital_allocation: "investmentCase.argument.challenges.capital_allocation",
@@ -151,19 +164,14 @@ export interface HeroAnalysisInput {
   isBaselineCase: boolean;
   latestChangeCount: number;
   currentAnalysisAt: string;
-  /** Long-Term Expected Return v1 / Calibration Sprint -- `null` exactly
-   * when `longTermExpectedReturnGap` is non-null (mirrors the backend's
-   * own `HorizonOutlook` "exactly one of the two" invariant). */
-  longTermExpectedReturn: { lowPercent: number; highPercent: number } | null;
-  longTermExpectedReturnGap: OutlookGapKind | null;
-  /** The Long-Term Bull/Bear scenario's own `returnPercent` -- `null`
-   * whenever Long-Term's scenarios are themselves gapped (the same
-   * `expectedReturnGap` case in practice, since both are gated by the
-   * identical eligibility check, but read independently rather than
-   * assumed equivalent -- see `atlas.analysis_engine.outlook`'s own
-   * "checked independently" convention for `expected_return`/`scenarios`). */
-  longTermBullReturnPercent: number | null;
-  longTermBearReturnPercent: number | null;
+  /* Canonical Reasoning Consolidation, Phase F: the four Long-Term
+     expected-return / Bull-Bear fields this input used to carry are
+     gone. They fed only the summary strip's "Förväntad avkastning" and
+     "Uppsida / nedsida" stats, which claimed probability-weighted
+     semantics the outlook engine does not produce. `AtlasOutlookSection`
+     reads the identical values straight from `analysis.outlook` and
+     labels them correctly, so nothing needed to be threaded through
+     here to keep them on the page. */
   /** Recommendation / Decision Intelligence Sprint 1 -- see this file's
    * own module docstring. */
   outlookAlignmentLongTerm: OutlookRecommendationRelationship;
@@ -361,37 +369,23 @@ function ExecutiveSummaryBar({ analysis, t }: { analysis: HeroAnalysisInput; t: 
           tone={CONVICTION_TONE[analysis.convictionLevel]}
         />
       </SummaryStat>
-      <SummaryStat label={t("investmentCase.keyMetrics.expectedReturnLabel")}>
-        {analysis.longTermExpectedReturn ? (
-          <Text as="span" style={{ fontWeight: 600, fontSize: "var(--type-size-h5)", fontVariantNumeric: "tabular-nums" }}>
-            {formatPercent(analysis.longTermExpectedReturn.lowPercent)} {"→"}{" "}
-            {formatPercent(analysis.longTermExpectedReturn.highPercent)}
-          </Text>
-        ) : (
-          <Stack gap="metadata">
-            <StatusText label={t("investmentCase.keyMetrics.notYetAvailable")} tone="neutral" />
-            {/* Redesign From Zero Sprint V2: the gap explanation used to
-                live in a now-removed duplicate Expected Return block --
-                folded in here so the real reason Expected Return isn't
-                available yet stays reachable, not lost in the merge. */}
-            {analysis.longTermExpectedReturnGap && (
-              <Text as="p" color="tertiary">
-                {t(GAP_KEY[analysis.longTermExpectedReturnGap])}
-              </Text>
-            )}
-          </Stack>
-        )}
-      </SummaryStat>
-      <SummaryStat label={t("investmentCase.keyMetrics.upsideDownsideLabel")}>
-        {analysis.longTermBullReturnPercent != null && analysis.longTermBearReturnPercent != null ? (
-          <Text as="span" style={{ fontWeight: 600, fontSize: "var(--type-size-h5)", fontVariantNumeric: "tabular-nums" }}>
-            {formatPercent(analysis.longTermBullReturnPercent)} {"/"}{" "}
-            {formatPercent(analysis.longTermBearReturnPercent)}
-          </Text>
-        ) : (
-          <StatusText label={t("investmentCase.keyMetrics.notYetAvailable")} tone="neutral" />
-        )}
-      </SummaryStat>
+      {/* Canonical Reasoning Consolidation, Phase F. Expected Return
+          and Upside/Downside used to headline this strip. Both rendered
+          Long-Term Outlook's `ExpectedReturnRange` and its Bull/Bear
+          `returnPercent` -- which the architecture audit established
+          are *valuation re-rating scenario bounds*, carrying no
+          scenario probabilities and no probability weighting. Under the
+          labels "Förväntad avkastning" and "Uppsida / nedsida" they
+          claimed semantics the engine does not produce, at the highest
+          visual weight on the page, next to the recommendation.
+
+          Nothing is lost and no number changed: `AtlasOutlookSection`
+          renders the identical range further down under its own
+          already-correct label, "Värderingsimplicerat
+          avkastningsintervall" (valuation-implied return range), with
+          the Bull/Bear scenarios and their assumptions one disclosure
+          below that. The figures now appear only where they are named
+          for what they are. */}
     </Inline>
   );
 }

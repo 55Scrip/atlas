@@ -15,10 +15,6 @@ function analysis(overrides: Partial<HeroAnalysisInput> = {}): HeroAnalysisInput
     isBaselineCase: false,
     latestChangeCount: 0,
     currentAnalysisAt: "2026-01-01T00:00:00Z",
-    longTermExpectedReturn: { lowPercent: 5, highPercent: 20 },
-    longTermExpectedReturnGap: null,
-    longTermBullReturnPercent: 20,
-    longTermBearReturnPercent: 5,
     outlookAlignmentLongTerm: "corroborates",
     valuationSupportStatus: "insufficient_input",
     limitingFactors: [{ kind: "valuationGap", gap: "insufficient_historical_valuation_data" }],
@@ -340,6 +336,19 @@ describe("HeroCard -- Stance is not the recommendation", () => {
   it("keeps Stance under its own separate heading", () => {
     renderHero({ analysis: withheldWithStance() });
     expect(screen.getByText("stance.heading")).toBeInTheDocument();
+  });
+
+  it("puts the recommendation before Stance in reading order", () => {
+    // Phase G: Stance stays available, but Recommendation leads. Both
+    // carry an explicit label, so neither can be mistaken for the
+    // other -- and the recommendation is the one read first.
+    const { container } = renderHero({ analysis: withheldWithStance() });
+    const text = container.textContent ?? "";
+    const rec = text.indexOf("investmentCase.hero.recommendationLabel");
+    const stance = text.indexOf("stance.heading");
+    expect(rec).toBeGreaterThan(-1);
+    expect(stance).toBeGreaterThan(-1);
+    expect(rec).toBeLessThan(stance);
   });
 
   it("does not present the Stance level as a directional recommendation", () => {
