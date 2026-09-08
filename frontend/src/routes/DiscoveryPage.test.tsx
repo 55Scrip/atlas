@@ -39,6 +39,21 @@ const CANDIDATES_RESPONSE = [
   },
 ];
 
+/** Sprint 4B: the passive candidate universe. Backend-decided
+ * eligibility -- holdings and active Watchlist prospects are already
+ * excluded there -- carrying canonical enum values only. */
+const DISCOVERY_CANDIDATES = [
+  {
+    ticker: "NVDA",
+    caseId: "case-nvda",
+    companyName: "NVIDIA Corporation",
+    decisionSupportLevel: "thesis_intact",
+    analysisCoverageLevel: "substantial_coverage",
+    fitRating: "good",
+    stanceLevel: null,
+  },
+];
+
 function mockFetch(overrides: Partial<Record<string, unknown>> = {}) {
   vi.stubGlobal(
     "fetch",
@@ -49,6 +64,12 @@ function mockFetch(overrides: Partial<Record<string, unknown>> = {}) {
       }
       if (url.includes("/api/alpha-watchlist")) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.watchlist ?? WATCHLIST_RESPONSE) } as Response);
+      }
+      if (url.includes("/api/discovery-candidates")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.discoveryCandidates ?? DISCOVERY_CANDIDATES) } as Response);
+      }
+      if (url.includes("/api/case-identity/ensure")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ caseId: "case-ensured", ticker: "NVDA" }) } as Response);
       }
       if (url.includes("/api/portfolio-fit/candidates")) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.candidates ?? CANDIDATES_RESPONSE) } as Response);
@@ -100,6 +121,11 @@ describe("DiscoveryPage (Discover Doctrine, 2026-08-27)", () => {
   it("never shows an already-held ticker as a candidate, even when it is also on the Watchlist (Phase 6)", async () => {
     mockFetch({
       watchlist: [{ ticker: "AAPL", caseId: "case-aapl", addedAt: "2026-01-01T00:00:00Z" }],
+      // Sprint 4B: eligibility moved to the backend, which excludes
+      // holdings and active Watchlist prospects before Discovery ever
+      // sees them. An empty universe must render the honest empty
+      // state, never a padded one.
+      discoveryCandidates: [],
       candidates: [],
       holdingsFit: [
         {
@@ -151,12 +177,26 @@ describe("DiscoveryPage (Discover Doctrine, 2026-08-27)", () => {
     expect(screen.queryByText(/Jensen Huang/)).not.toBeInTheDocument();
     expect(screen.queryByText(/appointed/)).not.toBeInTheDocument();
     // The synthesized Fit reasoning is still the one real sentence shown.
-    expect(screen.getByText("More dimensions rated Good/Excellent than Weak/Poor.")).toBeInTheDocument();
+    // The Fit badge carries the rating; the backend's pre-rendered
+    // English sentence is no longer printed into the Swedish UI.
+    expect(screen.getByText("Bra passform")).toBeInTheDocument();
+    expect(screen.queryByText(/More dimensions rated/)).not.toBeInTheDocument();
   });
 
   it("moves a candidate with an elevated Agenda priority into Worth reviewing when its own Fit doesn't already qualify it for Highest opportunity", async () => {
     mockFetch({
       watchlist: [{ ticker: "AMD", caseId: "case-amd", addedAt: "2026-01-01T00:00:00Z" }],
+      discoveryCandidates: [
+        {
+          ticker: "AMD",
+          caseId: "case-amd",
+          companyName: "Advanced Micro Devices Inc",
+          decisionSupportLevel: "insufficient_evidence",
+          analysisCoverageLevel: "substantial_coverage",
+          fitRating: "neutral",
+          stanceLevel: null,
+        },
+      ],
       candidates: [
         {
           caseId: "case-amd",
@@ -302,6 +342,7 @@ describe("DiscoveryPage (Discover Doctrine, 2026-08-27)", () => {
         }
         if (url.includes("/api/alpha-portfolio") && !url.includes("trade-log")) return Promise.resolve({ ok: true, json: () => Promise.resolve(PORTFOLIO_RESPONSE) } as Response);
         if (url.includes("/api/alpha-watchlist")) return Promise.resolve({ ok: true, json: () => Promise.resolve(WATCHLIST_RESPONSE) } as Response);
+        if (url.includes("/api/discovery-candidates")) return Promise.resolve({ ok: true, json: () => Promise.resolve(DISCOVERY_CANDIDATES) } as Response);
         if (url.includes("/api/portfolio-fit/candidates")) return Promise.resolve({ ok: true, json: () => Promise.resolve(CANDIDATES_RESPONSE) } as Response);
         if (url.includes("/api/portfolio-fit/holdings")) return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response);
         if (url.includes("/api/stance/candidates")) return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response);
@@ -315,5 +356,94 @@ describe("DiscoveryPage (Discover Doctrine, 2026-08-27)", () => {
     await user.click(screen.getAllByText("Ta bort från bevakningslistan")[0]!);
     // Optimistically removed, then restored once the failed DELETE resolves.
     await waitFor(() => expect(screen.getAllByText("NVDA").length).toBeGreaterThan(0));
+  });
+});
+
+describe("DiscoveryPage -- Sprint 4B candidate universe and direct Case entry", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    __resetAlphaWatchlistCacheForTests();
+    __resetAlphaPortfolioCacheForTests();
+  });
+
+  it("sources passive candidates from the Discovery universe, not from the Watchlist", async () => {
+    const requested: string[] = [];
+    mockFetch();
+    const original = globalThis.fetch as typeof fetch;
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      requested.push(String(input));
+      return original(input as RequestInfo, init);
+    }));
+    renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
+    await waitFor(() => expect(screen.getAllByText("NVDA").length).toBeGreaterThan(0));
+    expect(requested.some((url) => url.includes("/api/discovery-candidates"))).toBe(true);
+  });
+
+  it("renders the honest empty state when Atlas has no eligible candidates", async () => {
+    mockFetch({ discoveryCandidates: [] });
+    renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
+    // Never padded with Watchlist echoes to make the page look full.
+    await waitFor(() =>
+      expect(screen.getByText("Ingen kandidat sticker ut som en toppmöjlighet just nu.")).toBeInTheDocument(),
+    );
+  });
+
+  it("opens a candidate's Investment Case directly, without joining the Watchlist", async () => {
+    const calls: Array<{ url: string; method: string | undefined }> = [];
+    mockFetch();
+    const original = globalThis.fetch as typeof fetch;
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), method: init?.method });
+      return original(input as RequestInfo, init);
+    }));
+    const user = userEvent.setup();
+    renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "Öppna investeringscase" }).length).toBeGreaterThan(0));
+    await user.click(screen.getAllByRole("button", { name: "Öppna investeringscase" })[0]!);
+
+    await waitFor(() => expect(calls.some((c) => c.url.includes("/api/case-identity/ensure"))).toBe(true));
+    // The whole point: no Watchlist write anywhere in the flow.
+    expect(calls.some((c) => c.url.includes("/api/alpha-watchlist") && c.method === "POST")).toBe(false);
+  });
+
+  it("opens a search result's Investment Case directly, without joining the Watchlist", async () => {
+    const calls: Array<{ url: string; method: string | undefined }> = [];
+    mockFetch({ search: [{ ticker: "ASML", displayName: "ASML Holding NV", securityType: "common_stock" }] });
+    const original = globalThis.fetch as typeof fetch;
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), method: init?.method });
+      return original(input as RequestInfo, init);
+    }));
+    const user = userEvent.setup();
+    renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
+    await user.type(screen.getByPlaceholderText(/ticker/i), "ASML");
+    await user.click(screen.getByRole("button", { name: "Sök" }));
+    await waitFor(() => expect(screen.getByText(/ASML Holding NV/)).toBeInTheDocument());
+    await user.click(screen.getByText(/ASML Holding NV/));
+
+    await waitFor(() => expect(calls.some((c) => c.url.includes("/api/case-identity/ensure"))).toBe(true));
+    expect(calls.some((c) => c.url.includes("/api/alpha-watchlist") && c.method === "POST")).toBe(false);
+  });
+
+  it("keeps a search match presented as a search result, never as an Atlas ranking", async () => {
+    mockFetch({ search: [{ ticker: "ASML", displayName: "ASML Holding NV", securityType: "common_stock" }] });
+    const user = userEvent.setup();
+    renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
+    await user.type(screen.getByPlaceholderText(/ticker/i), "ASML");
+    await user.click(screen.getByRole("button", { name: "Sök" }));
+    await waitFor(() => expect(screen.getByText(/ASML Holding NV/)).toBeInTheDocument());
+    // Honest state label, and no tier or recommendation language.
+    expect(screen.getByText("Ny kandidat — ännu inte utvärderad")).toBeInTheDocument();
+  });
+
+  it("introduces no investment metric the engine does not compute", async () => {
+    mockFetch();
+    renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
+    await waitFor(() => expect(screen.getAllByText("NVDA").length).toBeGreaterThan(0));
+    const text = document.body.textContent ?? "";
+    for (const invented of ["Övertygelse", "Förv. avkastning", "Uppsida", "Nedsida"]) {
+      expect(text).not.toContain(invented);
+    }
+    expect(text).not.toMatch(/\d+\s*\/\s*10/);
   });
 });

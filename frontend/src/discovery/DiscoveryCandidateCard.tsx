@@ -3,7 +3,7 @@ import { useTranslation, type TranslationKey } from "../i18n";
 import { FitBadge } from "../portfolioFit/FitBadge";
 import { FitDimensionRow } from "../portfolioFit/FitDimensionRow";
 import { groupFitDimensions } from "../portfolioFit/groupFitDimensions";
-import type { PortfolioFitAssessmentView } from "../portfolioFit/portfolioFitApi";
+import type { FitRating, PortfolioFitAssessmentView } from "../portfolioFit/portfolioFitApi";
 import { StanceBadge } from "../stance/StanceBadge";
 import type { StanceLevel } from "../stance/stanceApi";
 import { TickerExplanationDetail } from "../explainability/TickerExplanationDetail";
@@ -35,7 +35,8 @@ export function DiscoveryCandidateCard({
   ticker,
   displayName,
   reasonKey,
-  assessment,
+  fit,
+  assessment = null,
   stance = null,
   variant,
   isOnWatchlist,
@@ -52,7 +53,15 @@ export function DiscoveryCandidateCard({
    * construction, so a generic "On your Watchlist" line would only
    * repeat what the section heading above it already says. */
   reasonKey?: TranslationKey;
-  assessment: PortfolioFitAssessmentView | null;
+  /** Sprint 4B: the canonical Fit *rating*, not the whole assessment.
+   * The card only ever needed `.overall` -- and the assessment's
+   * `overallReasoning[0]`, a pre-rendered English sentence, was
+   * backend prose rendered verbatim into a Swedish UI. It is gone;
+   * the badge already says what the rating is. */
+  fit: FitRating | null;
+  /** Only the `"full"` variant needs the whole assessment, for its
+   * per-dimension breakdown. The compact variants read `fit` alone. */
+  assessment?: PortfolioFitAssessmentView | null;
   stance?: StanceLevel | null;
   variant: "primary" | "secondary" | "full";
   /** Only meaningful for `variant="full"` -- `resolve_case_id_for_
@@ -71,8 +80,7 @@ export function DiscoveryCandidateCard({
   onCompare?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
-  const canEvaluate = assessment !== null || isOnWatchlist === true || isHolding === true;
-  const verdictSentence = assessment !== null && assessment.overallReasoning.length > 0 ? assessment.overallReasoning[0] : null;
+  const canEvaluate = fit !== null || isOnWatchlist === true || isHolding === true;
 
   if (variant === "secondary") {
     return (
@@ -81,16 +89,11 @@ export function DiscoveryCandidateCard({
           <Text as="span" style={{ fontWeight: 600 }}>
             {ticker}
           </Text>
-          {assessment !== null ? (
-            <FitBadge rating={assessment.overall} />
+          {fit !== null ? (
+            <FitBadge rating={fit} />
           ) : (
             <Text color="tertiary" as="span">
               {t(canEvaluate ? "discovery.card.fitPending" : "discovery.card.noCaseYet")}
-            </Text>
-          )}
-          {verdictSentence && (
-            <Text color="tertiary" as="span">
-              {verdictSentence}
             </Text>
           )}
         </Inline>
@@ -112,14 +115,9 @@ export function DiscoveryCandidateCard({
             </Heading>
             <Inline gap="metadata" align="center">
               {stance !== null && <StanceBadge level={stance} />}
-              {assessment !== null && <FitBadge rating={assessment.overall} />}
+              {fit !== null && <FitBadge rating={fit} />}
             </Inline>
           </Inline>
-          {verdictSentence && (
-            <Text color="secondary" as="p">
-              {verdictSentence}
-            </Text>
-          )}
           <Inline gap="row" align="center" wrap>
             <Button variant="primary" onClick={onOpenCase}>
               {t("discovery.card.openCase")}
@@ -176,12 +174,6 @@ export function DiscoveryCandidateCard({
         {assessment === null && (
           <Text color="tertiary" as="p">
             {t(canEvaluate ? "discovery.card.fitPending" : "discovery.card.noCaseYet")}
-          </Text>
-        )}
-
-        {verdictSentence && (
-          <Text color="secondary" as="p">
-            {verdictSentence}
           </Text>
         )}
 

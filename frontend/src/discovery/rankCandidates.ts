@@ -19,7 +19,7 @@
  *   text that field's own item carries (Phase 5 -- Discover must never
  *   render a raw event announcement as a candidate's own verdict).
  */
-import type { FitRating, PortfolioFitAssessmentView } from "../portfolioFit/portfolioFitApi";
+import type { FitRating } from "../portfolioFit/portfolioFitApi";
 import type { StanceLevel } from "../stance/stanceApi";
 import { FIT_RATING_TONE, NO_PRIORITY_RANK, PRIORITY_LEVEL_RANK, STANCE_LEVEL_TONE, type PriorityLevel } from "../status/statusTone";
 
@@ -28,7 +28,12 @@ export type OpportunityTier = "highest" | "worthReviewing" | "everythingElse";
 export interface RankedCandidate {
   ticker: string;
   caseId: string | null;
-  assessment: PortfolioFitAssessmentView | null;
+  /** Sprint 4B: the Fit *rating*, not the whole assessment -- ranking
+   * only ever read `.overall`, and a candidate now arrives from the
+   * Discovery candidate endpoint, which carries the rating alone.
+   * `null` means Portfolio Fit genuinely could not evaluate it and is
+   * ranked last, never quietly treated as neutral. */
+  fit: FitRating | null;
   stance: StanceLevel | null;
   priority: PriorityLevel | null;
 }
@@ -73,9 +78,9 @@ const STANCE_RANK: Record<StanceLevel, number> = {
  * attention there.
  */
 function classify(candidate: RankedCandidate): OpportunityTier {
-  const assessment = candidate.assessment;
-  if (assessment === null) return "everythingElse";
-  const fitTone = FIT_RATING_TONE[assessment.overall];
+  const fit = candidate.fit;
+  if (fit === null) return "everythingElse";
+  const fitTone = FIT_RATING_TONE[fit];
   const stanceTone = candidate.stance ? STANCE_LEVEL_TONE[candidate.stance] : "neutral";
   const elevatedPriority = candidate.priority === "critical" || candidate.priority === "high";
 
@@ -89,7 +94,7 @@ function classify(candidate: RankedCandidate): OpportunityTier {
 }
 
 function compareRank(a: RankedCandidate, b: RankedCandidate): number {
-  const fitRankOf = (c: RankedCandidate) => (c.assessment ? FIT_RANK[c.assessment.overall] : 6);
+  const fitRankOf = (c: RankedCandidate) => (c.fit ? FIT_RANK[c.fit] : 6);
   const fitDiff = fitRankOf(a) - fitRankOf(b);
   if (fitDiff !== 0) return fitDiff;
   const stanceRankOf = (c: RankedCandidate) => (c.stance ? STANCE_RANK[c.stance] : 7);

@@ -72,10 +72,12 @@ class TestOneCanonicalEnsureCaseIdCallerSet:
     def test_ensure_case_id_is_only_called_from_the_known_allowed_set(self):
         """(Investment Case Engine v1 slice) `ensure_case_id` is the
         single-ticket primitive `ensure_cases` itself now delegates to
-        (this package's own definition) and `AlphaWatchlistService
-        .add_ticker` calls directly for its one write path. Any other
-        call site would mean Case-generation decision logic had started
-        spreading outside this package's one canonical owner."""
+        (this package's own definition), `AlphaWatchlistService
+        .add_ticker` calls for its one write path, and the
+        `/case-identity/ensure` controller calls to open a Case without
+        membership. Any other call site would mean Case-generation
+        decision logic had started spreading outside this package's one
+        canonical owner."""
         alpha_dir = _PACKAGE_DIR.parent
         callers = []
         for path in alpha_dir.rglob("*.py"):
@@ -84,5 +86,14 @@ class TestOneCanonicalEnsureCaseIdCallerSet:
             text = path.read_text(encoding="utf-8")
             if "ensure_case_id(" in text:
                 callers.append(path)
-        expected = {alpha_dir / "watchlist" / "service.py"}
+        # Sprint 4B adds the second sanctioned caller: the
+        # `/case-identity/ensure` route, which is how Discovery and
+        # Search open an Investment Case without forcing Watchlist
+        # membership. It is a thin controller -- it validates the
+        # ticker and delegates; no Case-generation decision logic
+        # moved out of this package, which is what this guard is for.
+        expected = {
+            alpha_dir / "watchlist" / "service.py",
+            alpha_dir / "case_instrument" / "api" / "router.py",
+        }
         assert set(callers) == expected, f"Expected exactly {expected}, found: {callers}"

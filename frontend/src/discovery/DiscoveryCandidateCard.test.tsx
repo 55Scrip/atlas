@@ -40,7 +40,7 @@ function assessment(overrides: Partial<PortfolioFitAssessmentView> = {}): Portfo
 function renderCard(props: Partial<Parameters<typeof DiscoveryCandidateCard>[0]> = {}) {
   return render(
     <LanguageProvider>
-      <DiscoveryCandidateCard ticker="NVDA" assessment={assessment()} variant="primary" onOpenCase={vi.fn()} {...props} />
+      <DiscoveryCandidateCard ticker="NVDA" fit="good" assessment={assessment()} variant="primary" onOpenCase={vi.fn()} {...props} />
     </LanguageProvider>,
   );
 }
@@ -52,9 +52,13 @@ describe("DiscoveryCandidateCard -- primary variant (Discover Doctrine, Highest 
     expect(screen.getByText("Bra passform")).toBeInTheDocument();
   });
 
-  it("shows exactly one sentence -- the synthesized Fit reasoning, never a raw event headline", () => {
+  it("states the Fit rating as a badge and renders no backend prose", () => {
+    // Sprint 4B: the card used to print `assessment.overallReasoning[0]`
+    // -- a pre-rendered English sentence -- straight into a Swedish UI.
+    // The badge already says what the rating is.
     renderCard();
-    expect(screen.getByText("More dimensions rated Good/Excellent than Weak/Poor.")).toBeInTheDocument();
+    expect(screen.getByText("Bra passform")).toBeInTheDocument();
+    expect(screen.queryByText(/More dimensions rated/)).not.toBeInTheDocument();
   });
 
   it("shows the Stance badge alongside Fit when a Stance level is provided", () => {
@@ -94,7 +98,7 @@ describe("DiscoveryCandidateCard -- primary variant (Discover Doctrine, Highest 
     expect(screen.getByRole("button", { name: "Jämför" })).toBeInTheDocument();
     rerender(
       <LanguageProvider>
-        <DiscoveryCandidateCard ticker="NVDA" assessment={assessment()} variant="primary" onOpenCase={vi.fn()} />
+        <DiscoveryCandidateCard ticker="NVDA" fit="good" assessment={assessment()} variant="primary" onOpenCase={vi.fn()} />
       </LanguageProvider>,
     );
     expect(screen.queryByRole("button", { name: "Jämför" })).not.toBeInTheDocument();
@@ -116,16 +120,16 @@ describe("DiscoveryCandidateCard -- secondary variant (Worth reviewing / Everyth
   function renderSecondary(props: Partial<Parameters<typeof DiscoveryCandidateCard>[0]> = {}) {
     return render(
       <LanguageProvider>
-        <DiscoveryCandidateCard ticker="NVDA" assessment={assessment()} variant="secondary" onOpenCase={vi.fn()} {...props} />
+        <DiscoveryCandidateCard ticker="NVDA" fit="good" assessment={assessment()} variant="secondary" onOpenCase={vi.fn()} {...props} />
       </LanguageProvider>,
     );
   }
 
-  it("shows ticker, rating, and one-line verdict, nothing more (Phase 3)", () => {
+  it("shows ticker and rating, nothing more (Phase 3)", () => {
     renderSecondary();
     expect(screen.getByText("NVDA")).toBeInTheDocument();
     expect(screen.getByText("Bra passform")).toBeInTheDocument();
-    expect(screen.getByText("More dimensions rated Good/Excellent than Weak/Poor.")).toBeInTheDocument();
+    expect(screen.queryByText(/More dimensions rated/)).not.toBeInTheDocument();
   });
 
   it("shows only one action -- Open Investment Case, never Compare or Remove from Watchlist", () => {
@@ -136,7 +140,7 @@ describe("DiscoveryCandidateCard -- secondary variant (Worth reviewing / Everyth
   });
 
   it("shows a disclosed 'fit pending' state, never a fabricated rating, when no assessment exists yet", () => {
-    renderSecondary({ assessment: null });
+    renderSecondary({ fit: null, assessment: null });
     expect(screen.getByText("Bygg investeringscaset innan Atlas kan utvärdera portföljpassform.")).toBeInTheDocument();
   });
 
@@ -152,6 +156,7 @@ describe("DiscoveryCandidateCard -- full variant (Candidate Detail)", () => {
     return render(
       <LanguageProvider>
         <DiscoveryCandidateCard
+          fit="good"
           ticker="NVDA"
           reasonKey="discovery.card.reason.watchlist"
           assessment={assessment()}
@@ -180,7 +185,7 @@ describe("DiscoveryCandidateCard -- full variant (Candidate Detail)", () => {
 
   it("shows the disclosed-gap message and an Add-to-Watchlist action for a candidate with neither a Case nor a Watchlist entry", () => {
     const onAdd = vi.fn();
-    renderFull({ assessment: null, isOnWatchlist: false, isHolding: false, onAddToWatchlist: onAdd });
+    renderFull({ fit: null, assessment: null, isOnWatchlist: false, isHolding: false, onAddToWatchlist: onAdd });
     expect(screen.getByText("Bygg investeringscaset innan Atlas kan utvärdera portföljpassform.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Lägg till i bevakningslistan för att utvärdera" })).toBeInTheDocument();
   });

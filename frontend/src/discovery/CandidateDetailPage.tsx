@@ -459,6 +459,7 @@ export function CandidateDetailPage() {
         {fitStatus.kind !== "loading" && (
           <DiscoveryCandidateCard
             ticker={ticker}
+            fit={fitStatus.kind === "loaded" && fitStatus.assessment ? fitStatus.assessment.overall : null}
             reasonKey={isOnWatchlist ? "discovery.card.reason.watchlist" : isHolding ? "discovery.card.reason.holding" : "discovery.card.reason.search"}
             assessment={fitStatus.kind === "loaded" ? fitStatus.assessment : null}
             stance={stanceStatus.kind === "loaded" ? (stanceStatus.stance?.level ?? null) : null}

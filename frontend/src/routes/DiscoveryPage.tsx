@@ -7,6 +7,11 @@ import { DiscoveryCandidateCard } from "../discovery/DiscoveryCandidateCard";
 import { rankCandidates, type RankedCandidate } from "../discovery/rankCandidates";
 import { searchSecurities, type SecurityCandidateView } from "../discovery/securityDiscoveryApi";
 import {
+  ensureCaseForTicker,
+  fetchDiscoveryCandidates,
+  type DiscoveryCandidateView,
+} from "../discovery/discoveryCandidatesApi";
+import {
   getAlphaWatchlistSnapshot,
   removeTickerFromWatchlist,
   setAlphaWatchlistData,
@@ -93,8 +98,17 @@ export function DiscoveryPage() {
   const [holdingsFitStatus, setHoldingsFitStatus] = useState<CandidateFitStatus>({ kind: "loading" });
   const [stanceCandidatesStatus, setStanceCandidatesStatus] = useState<StanceCandidatesStatus>({ kind: "loading" });
   const [dailyBriefAgenda, setDailyBriefAgenda] = useState<DailyBriefAgendaFetchStatus>({ kind: "loading" });
+  /** Sprint 4B: the passive candidate universe now comes from the
+   * backend -- securities Atlas has analysed that the investor is not
+   * already following. It used to be `nonHeldWatchlistEntries`, so
+   * Discovery could only ever show back the prospects the investor had
+   * added themselves. */
+  const [candidateStatus, setCandidateStatus] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; candidates: DiscoveryCandidateView[] }
+  >({ kind: "loading" });
   const [searchQuery, setSearchQuery] = useState("");
   const [searchStatus, setSearchStatus] = useState<SearchStatus>({ kind: "idle" });
+  const [openingTicker, setOpeningTicker] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -145,6 +159,17 @@ export function DiscoveryPage() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchDiscoveryCandidates(controller.signal)
+      .then((candidates) => setCandidateStatus({ kind: "loaded", candidates }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setCandidateStatus({ kind: "error" });
+      });
+    return () => controller.abort();
+  }, []);
+
   function submitSearch() {
     const query = searchQuery.trim();
     if (query === "") return;
@@ -154,8 +179,20 @@ export function DiscoveryPage() {
       .catch(() => setSearchStatus({ kind: "error" }));
   }
 
-  function openCandidate(ticker: string) {
-    navigate(`/discovery/candidate/${encodeURIComponent(ticker)}`);
+  /** Sprint 4B: straight to the Investment Case.
+   *
+   * This used to route through `/discovery/candidate/:ticker`, whose
+   * Open-Case button silently did nothing for a company that was
+   * neither held nor watchlisted -- there was no branch for it,
+   * because a Case had no instrument of its own and adding to the
+   * Watchlist was the only way to get one. Sprint 4A fixed that;
+   * `ensureCaseForTicker` reuses an existing Case or creates a bound
+   * one, and mutates no membership. */
+  function openCaseForTicker(ticker: string) {
+    setOpeningTicker(ticker);
+    ensureCaseForTicker(ticker)
+      .then((caseId) => navigate(`/investment-case/${caseId}`, { state: { origin: "discovery", ticker } }))
+      .catch(() => setOpeningTicker(null));
   }
 
   function removeFromWatchlist(ticker: string) {
@@ -187,21 +224,29 @@ export function DiscoveryPage() {
     }
   }
 
-  /** Phase 6 -- a security already held is not a candidate to consider
-   * buying; it already is one, and Portfolio already shows its current
-   * state. Excluded here, before ranking, rather than ranked and then
-   * hidden -- so it never occupies a "highest opportunity" slot a real
-   * candidate could have used. */
-  const nonHeldWatchlistEntries = watchlistStatus.kind === "loaded" ? watchlistStatus.entries.filter((e) => !heldTickers.has(e.ticker)) : [];
-  const rankedCandidateInputs: RankedCandidate[] = nonHeldWatchlistEntries.map((entry) => ({
-    ticker: entry.ticker,
-    caseId: entry.caseId,
-    assessment: candidateFitByTicker.get(entry.ticker) ?? null,
-    stance: stanceByTicker.get(entry.ticker) ?? null,
-    priority: priorityByTicker.get(entry.ticker) ?? null,
+  /** Sprint 4B. Eligibility is the backend's decision and ranking is
+   * this page's -- kept apart on purpose. The endpoint has already
+   * excluded holdings ("already owned, Portfolio shows its state") and
+   * active Watchlist prospects ("already explicitly monitored"), so
+   * nothing is filtered here; `rankCandidates` receives an
+   * already-eligible set and only decides the order.
+   *
+   * `fit` and `stance` arrive on the candidate itself. A `null` is a
+   * real answer -- Portfolio Fit or Stance genuinely could not
+   * evaluate the company -- and `rankCandidates` ranks it last rather
+   * than treating it as neutral. Agenda priority stays a local lookup:
+   * it is Daily Brief's signal and only exists for companies that feed
+   * it, which is honestly `null` for an independent candidate. */
+  const candidates = candidateStatus.kind === "loaded" ? candidateStatus.candidates : [];
+  const rankedCandidateInputs: RankedCandidate[] = candidates.map((candidate) => ({
+    ticker: candidate.ticker,
+    caseId: candidate.caseId,
+    fit: candidate.fitRating,
+    stance: candidate.stanceLevel,
+    priority: priorityByTicker.get(candidate.ticker) ?? null,
   }));
   const ranked = rankCandidates(rankedCandidateInputs);
-  const isFitDataLoading = candidateFitStatus.kind === "loading" || watchlistStatus.kind === "loading";
+  const isFitDataLoading = candidateStatus.kind === "loading";
 
   const evaluatedHoldings =
     holdingsFitStatus.kind === "loaded" ? holdingsFitStatus.assessments.filter((a) => a.overall !== "unavailable") : [];
@@ -257,12 +302,10 @@ export function DiscoveryPage() {
                     <DiscoveryCandidateCard
                       key={candidate.caseId ?? candidate.ticker}
                       ticker={candidate.ticker}
-                      assessment={candidate.assessment}
+                      fit={candidate.fit}
                       stance={candidate.stance}
                       variant="primary"
-                      onOpenCase={() =>
-                        navigate(`/investment-case/${candidate.caseId}`, { state: { origin: "discovery", ticker: candidate.ticker } })
-                      }
+                      onOpenCase={() => openCaseForTicker(candidate.ticker)}
                       onRemoveFromWatchlist={() => removeFromWatchlist(candidate.ticker)}
                       onCompare={() => navigate(compareHref(candidate.ticker))}
                     />
@@ -283,11 +326,9 @@ export function DiscoveryPage() {
                       <DiscoveryCandidateCard
                         key={candidate.caseId ?? candidate.ticker}
                         ticker={candidate.ticker}
-                        assessment={candidate.assessment}
+                        fit={candidate.fit}
                         variant="secondary"
-                        onOpenCase={() =>
-                          navigate(`/investment-case/${candidate.caseId}`, { state: { origin: "discovery", ticker: candidate.ticker } })
-                        }
+                        onOpenCase={() => openCaseForTicker(candidate.ticker)}
                       />
                     ))}
                   </Stack>
@@ -312,11 +353,9 @@ export function DiscoveryPage() {
                       <DiscoveryCandidateCard
                         key={candidate.caseId ?? candidate.ticker}
                         ticker={candidate.ticker}
-                        assessment={candidate.assessment}
+                        fit={candidate.fit}
                         variant="secondary"
-                        onOpenCase={() =>
-                          navigate(`/investment-case/${candidate.caseId}`, { state: { origin: "discovery", ticker: candidate.ticker } })
-                        }
+                        onOpenCase={() => openCaseForTicker(candidate.ticker)}
                       />
                     ))}
                   </Stack>
@@ -370,7 +409,7 @@ export function DiscoveryPage() {
                   style={{ color: "var(--color-text-secondary)", display: "block" }}
                   onClick={(event) => {
                     event.preventDefault();
-                    openCandidate(result.ticker);
+                    openCaseForTicker(result.ticker);
                   }}
                 >
                   <Inline gap="row" align="baseline" wrap style={{ justifyContent: "space-between" }}>

@@ -21,6 +21,8 @@ from atlas.ai.api.router import router as discovery_chat_router
 from atlas.alpha.case_intelligence.api.router import router as case_intelligence_router
 from atlas.alpha.daily_brief.api.router import router as daily_brief_router
 from atlas.alpha.portfolio_fit.api.router import router as portfolio_fit_router
+from atlas.alpha.discovery_candidates.api.router import router as discovery_candidates_router
+from atlas.alpha.case_instrument.api.router import router as case_identity_router
 from atlas.alpha.daily_brief_agenda.api.router import router as daily_brief_agenda_router
 from atlas.alpha.investment_case.api.router import router as investment_case_router
 from atlas.alpha.investment_case_history.api.router import router as investment_case_history_router
@@ -207,6 +209,13 @@ def create_app() -> FastAPI:
     # a deterministic, qualitative Portfolio Fit assessment. Stores
     # nothing of its own; see that package's own `__init__.py`.
     app.include_router(portfolio_fit_router)
+    # Sprint 4B: the Discovery candidate universe -- securities Atlas
+    # knows about that the investor is not already following. A pure
+    # read over bound Cases; it creates nothing and calls no provider.
+    app.include_router(discovery_candidates_router)
+    # Sprint 4B: resolve an Investment Case for a security without
+    # forcing Watchlist membership -- what Discovery and Search need.
+    app.include_router(case_identity_router)
     # Daily Brief Agenda / Priority Engine (Product Sprint 6): a further
     # Alpha-layer orchestration -- authored and owned in `atlas/alpha
     # /daily_brief_agenda/`, composing Change Intelligence, Portfolio
