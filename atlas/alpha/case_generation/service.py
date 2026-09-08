@@ -17,16 +17,35 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import replace
+from datetime import datetime, timezone
 
+from atlas.alpha.case_instrument.models import CaseInstrumentBinding
+from atlas.alpha.case_instrument.repository import CaseInstrumentBindingRepository
 from atlas.alpha.portfolio.models import AlphaHolding
 from atlas.core.application.case.create_case import CaseService
 
 __all__ = ["CaseGenerationService"]
 
 
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 class CaseGenerationService:
-    def __init__(self, case_service: CaseService) -> None:
+    def __init__(
+        self,
+        case_service: CaseService,
+        binding_repository: CaseInstrumentBindingRepository | None = None,
+    ) -> None:
         self._case_service = case_service
+        #: Alpha Case Instrument Binding. Optional only so the many
+        #: existing construction sites keep working unchanged; every
+        #: production wiring passes it. When absent this service
+        #: behaves exactly as it did before the binding existed --
+        #: which is the behaviour that produced identity-less Cases,
+        #: so a caller that can create Cases for real tickers should
+        #: always supply it.
+        self._binding_repository = binding_repository
 
     def ensure_case_id(
         self,
@@ -48,12 +67,40 @@ class CaseGenerationService:
         behavior before this slice existed.
         """
         if current_case_id is not None:
+            self._bind(current_case_id, ticker)
             return current_case_id
         if known_case_ids_by_ticker is not None:
             cross_context_case_id = known_case_ids_by_ticker.get(ticker)
             if cross_context_case_id is not None:
+                self._bind(cross_context_case_id, ticker)
                 return cross_context_case_id
-        return str(self._case_service.create().id)
+        # (4) the binding itself is now a resolution source, and the
+        # authoritative one: a Case already bound to this instrument is
+        # reused even when neither membership context knows about it.
+        # This is what lets a Case be opened from Discovery or search
+        # without first joining the Watchlist.
+        bound = self._binding_repository.get_by_instrument_key(ticker) if self._binding_repository else None
+        if bound is not None:
+            return bound.case_id
+        case_id = str(self._case_service.create().id)
+        self._bind(case_id, ticker)
+        return case_id
+
+    def _bind(self, case_id: str, ticker: str) -> None:
+        """Record which instrument this Case is about.
+
+        Called on every path, not only creation: a Case that predates
+        the binding table, or one resolved from the other membership
+        context, gets its identity written down the first time anyone
+        asks. Idempotent, and raises rather than rewriting if the Case
+        is already bound to a different instrument -- see
+        `CaseInstrumentBindingRepository.bind`.
+        """
+        if self._binding_repository is None:
+            return
+        self._binding_repository.bind(
+            CaseInstrumentBinding(case_id=case_id, instrument_key=ticker, bound_at=_utc_now())
+        )
 
     def ensure_cases(
         self,

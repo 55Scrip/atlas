@@ -26,6 +26,7 @@ from fastapi import Depends
 from sqlalchemy.engine import Engine
 
 from atlas.alpha.business_data_refresh.api.dependencies import get_business_record_repository
+from atlas.alpha.case_instrument.dependencies import get_case_instrument_binding_repository
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.evidence_timeline.api.dependencies import get_evidence_snapshot_repository
 from atlas.alpha.evidence_timeline.repository import SqlAlchemyEvidenceSnapshotRepository
@@ -81,6 +82,7 @@ def build_monitoring_service(engine: Engine) -> MonitoringService:
         business_record_repository=business_record_repository,
         watchlist_store=watchlist_store,
         snapshot_repository=get_investment_case_snapshot_repository(engine=engine),
+        binding_repository=get_case_instrument_binding_repository(engine=engine),
     )
     stance_service = get_stance_service(
         composition_service=composition_service,

@@ -27,6 +27,8 @@ from atlas.alpha.business_data_refresh.api.dependencies import (
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
 from atlas.alpha.canonical_security_gate.gate import CanonicalSecurityIdentityGate
 from atlas.alpha.case_generation.service import CaseGenerationService
+from atlas.alpha.case_instrument.dependencies import get_case_instrument_binding_repository
+from atlas.alpha.case_instrument.repository import CaseInstrumentBindingRepository
 from atlas.alpha.ingestion.api.dependencies import get_ingestion_result_repository
 from atlas.alpha.ingestion.repository import SqlAlchemyIngestionResultRepository
 from atlas.alpha.portfolio.service import AlphaPortfolioService
@@ -66,8 +68,12 @@ def get_alpha_trade_log_store(
 
 def get_case_generation_service(
     case_service: CaseService = Depends(get_case_service),
+    binding_repository: CaseInstrumentBindingRepository = Depends(get_case_instrument_binding_repository),
 ) -> CaseGenerationService:
-    return CaseGenerationService(case_service)
+    """The one canonical Case-generation owner, now also the writer of
+    each new Case's instrument binding -- so a Case can never again be
+    created for a real ticker without recording which ticker it is."""
+    return CaseGenerationService(case_service, binding_repository)
 
 
 def get_alpha_watchlist_store_for_portfolio(

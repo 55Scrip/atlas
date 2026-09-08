@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime, timezone
 
 from atlas.alpha.business_data_refresh.repository import SqlAlchemyBusinessRecordRepository
+from atlas.alpha.case_instrument.repository import CaseInstrumentBindingRepository
 from atlas.alpha.investment_case.company_profile import extract_company_profile
 from atlas.alpha.investment_case.financial_history import extract_financial_history, extract_market_snapshot
 from atlas.alpha.investment_case.models import CurrentThesis, InvestmentCaseComposition
@@ -102,6 +103,7 @@ class InvestmentCaseCompositionService:
         business_record_repository: SqlAlchemyBusinessRecordRepository,
         watchlist_store: AlphaWatchlistStore | None = None,
         snapshot_repository: SqlAlchemyInvestmentCaseSnapshotRepository | None = None,
+        binding_repository: CaseInstrumentBindingRepository | None = None,
     ) -> None:
         self._case_repository = case_repository
         self._decision_repository = decision_repository
@@ -123,6 +125,13 @@ class InvestmentCaseCompositionService:
         # `build_many`: its only real consumer, Portfolio Cockpit, is a
         # Portfolio-only surface with no Watchlist entries to resolve.
         self._watchlist_store = watchlist_store
+        #: Alpha Case Instrument Binding -- the authoritative answer to
+        #: "which instrument is this Case about". Optional so the many
+        #: existing construction sites keep working; when it is absent
+        #: (or has no row for a Case yet) resolution falls back to the
+        #: membership lookups below, which is what every caller did
+        #: before this table existed.
+        self._binding_repository = binding_repository
         # (Investment Case Monitoring & Change Intelligence v1) Optional,
         # trailing, same backward-compatible-extension shape as
         # `watchlist_store` above: every call site built before this
@@ -399,15 +408,27 @@ class InvestmentCaseCompositionService:
         if state is not None:
             holding = next((h for h in state.holdings if h.case_id == case_id_str), None)
 
-        # Investment Case Engine v1 slice: a Case with no Portfolio
-        # holding may still be a Watchlist company -- fall back to
-        # Watchlist to resolve this Case's own ticker so its persisted
-        # `BusinessRecord`s (Company Profile, Financial History, Market
-        # Snapshot) are still surfaced. `holding_context` itself is
-        # deliberately NOT set from this fallback: it specifically means
-        # "held as a Portfolio position," and a Watchlist-only company
-        # is honestly not one.
-        ticker: str | None = holding.ticker if holding is not None else None
+        # Which instrument is this Case about? The binding answers it
+        # first and authoritatively (Alpha Case Instrument Binding):
+        # membership describes the investor's relationship to a
+        # company, and asking it what the company *is* was backwards.
+        # A Case bound here resolves with no Portfolio holding and no
+        # Watchlist entry -- current or removed -- which is what lets
+        # one be opened straight from Discovery or search.
+        #
+        # The two membership lookups below remain as an explicit
+        # compatibility fallback for a Case written before the binding
+        # table existed and not yet backfilled. They are no longer an
+        # identity authority: nothing consults them once a binding
+        # exists. `holding_context` is still deliberately NOT set from
+        # the Watchlist fallback -- it means "held as a Portfolio
+        # position," and a Watchlist-only company honestly is not one.
+        ticker: str | None = None
+        if self._binding_repository is not None:
+            binding = self._binding_repository.get_by_case_id(case_id_str)
+            ticker = binding.instrument_key if binding is not None else None
+        if ticker is None:
+            ticker = holding.ticker if holding is not None else None
         if ticker is None and self._watchlist_store is not None:
             watchlist_entry = self._watchlist_store.get_by_case_id(case_id_str)
             ticker = watchlist_entry.ticker if watchlist_entry is not None else None

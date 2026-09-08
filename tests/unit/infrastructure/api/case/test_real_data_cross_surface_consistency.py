@@ -26,6 +26,7 @@ from atlas.alpha.business_data_refresh.table import create_business_record_table
 from atlas.alpha.discovery_context.service import DiscoveryContextService
 from atlas.alpha.evidence_timeline.api.dependencies import get_evidence_snapshot_repository
 from atlas.alpha.ingestion.api.dependencies import get_ingestion_result_repository
+from atlas.alpha.case_instrument.dependencies import get_case_instrument_binding_repository
 from atlas.alpha.investment_case.api.dependencies import get_investment_case_composition_service
 from atlas.alpha.investment_case_change.repository import SqlAlchemyInvestmentCaseSnapshotRepository
 from atlas.alpha.investment_case_change.table import create_investment_case_snapshot_table
@@ -126,6 +127,7 @@ def _discovery_context_service(engine: Engine) -> DiscoveryContextService:
         business_record_repository=business_record_repository,
         snapshot_repository=snapshot_repository,
         watchlist_store=watchlist_store,
+        binding_repository=get_case_instrument_binding_repository(engine=engine),
     )
     portfolio_intelligence_service = PortfolioIntelligenceService(
         portfolio_store,

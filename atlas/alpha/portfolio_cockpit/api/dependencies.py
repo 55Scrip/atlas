@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from fastapi import Depends
 
+from atlas.alpha.case_instrument.dependencies import get_case_instrument_binding_repository
+from atlas.alpha.case_instrument.repository import CaseInstrumentBindingRepository
 from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_store, get_alpha_trade_log_store
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
@@ -44,6 +46,7 @@ def get_investment_case_composition_service(
     portfolio_store: AlphaPortfolioStore = Depends(get_alpha_portfolio_store),
     trade_log_store: AlphaTradeLogStore = Depends(get_alpha_trade_log_store),
     business_record_repository: SqlAlchemyBusinessRecordRepository = Depends(get_business_record_repository),
+    binding_repository: CaseInstrumentBindingRepository = Depends(get_case_instrument_binding_repository),
 ) -> InvestmentCaseCompositionService:
     return InvestmentCaseCompositionService(
         case_repository=case_repository,
@@ -54,6 +57,7 @@ def get_investment_case_composition_service(
         portfolio_store=portfolio_store,
         trade_log_store=trade_log_store,
         business_record_repository=business_record_repository,
+        binding_repository=binding_repository,
     )
 
 
