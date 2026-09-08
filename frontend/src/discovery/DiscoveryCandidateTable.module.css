@@ -1,0 +1,10 @@
+/* Sprint 4C -- mirrors WatchlistPage.module.css exactly: the row is a
+   real click target (role="button", opens the Investment Case) and had
+   no hover feedback without this. Same brief-duration transition
+   Button's tertiary variant uses. */
+.row {
+  transition: background var(--motion-duration-brief) var(--motion-easing-out);
+}
+.row:hover {
+  background: var(--surface-elevated);
+}

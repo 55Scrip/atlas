@@ -1,4 +1,4 @@
-import { Button, Divider, Heading, Inline, Link, Stack, Surface, Text } from "../foundation";
+import { Button, Divider, Heading, Inline, Stack, StatusBadge, Surface, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import { FitBadge } from "../portfolioFit/FitBadge";
 import { FitDimensionRow } from "../portfolioFit/FitDimensionRow";
@@ -6,6 +6,12 @@ import { groupFitDimensions } from "../portfolioFit/groupFitDimensions";
 import type { FitRating, PortfolioFitAssessmentView } from "../portfolioFit/portfolioFitApi";
 import { StanceBadge } from "../stance/StanceBadge";
 import type { StanceLevel } from "../stance/stanceApi";
+import {
+  DECISION_SUPPORT_BADGE_KEY,
+  DECISION_SUPPORT_STATEMENT_KEY,
+  DECISION_SUPPORT_TONE,
+  type DecisionSupportLevel,
+} from "../status/statusTone";
 import { TickerExplanationDetail } from "../explainability/TickerExplanationDetail";
 import { TickerEvidenceQualityDetail } from "../evidenceQuality/TickerEvidenceQualityDetail";
 import { TickerEvidenceTimelineDetail } from "../evidenceTimeline/TickerEvidenceTimelineDetail";
@@ -13,18 +19,34 @@ import { TickerEvidenceTimelineDetail } from "../evidenceTimeline/TickerEvidence
 /**
  * Discover Doctrine (2026-08-27) -- three variants, one component:
  *
- * `"primary"` -- a Highest-opportunity card (Phase 2): ticker, Stance +
- * Fit verdict, one sentence, Open Investment Case as the one primary
- * action, Compare and Remove from Watchlist available but visually
- * secondary/tertiary (Phase 7). No expandables, no raw event headline,
- * no dimension breakdown -- everything below the one sentence belongs
- * to Investment Case, not here (Phase 4/10/11).
+ * `"primary"` -- a Highest-opportunity card (Phase 2): ticker, Decision
+ * Support + Stance + Fit verdict, one sentence, Open Investment Case as
+ * the one primary action, Compare available but visually tertiary
+ * (Phase 7). No expandables, no raw event headline, no dimension
+ * breakdown -- everything below the one sentence belongs to Investment
+ * Case, not here (Phase 4/10/11).
+ *
+ * Sprint 4C compacts it to three lines and gives it the one sentence
+ * it had been missing since Sprint 4B removed the backend's
+ * pre-rendered English Fit prose: the Decision Support *statement*,
+ * looked up locally from the canonical level the candidate already
+ * carries. That is "why Atlas shows this" said in Atlas's own
+ * vocabulary, not a new claim -- and "Remove from Watchlist" is gone,
+ * because the candidate universe excludes actively watched companies
+ * by construction, so on a Discovery card that control could only ever
+ * be an action that silently did nothing.
  *
  * `"secondary"` -- a Worth-reviewing / Everything-else row (Phase 3):
  * ticker, rating, one-line verdict, Open Investment Case. Nothing more
  * -- no Surface/card chrome, deliberately a plain scannable row so the
  * visual weight difference from a primary card is immediate, not
- * something a reader has to notice by counting elements.
+ * something a reader has to notice by counting elements. Sprint 4C
+ * renders the two lower tiers as `DiscoveryCandidateTable` instead --
+ * a dense row could carry one signal, and fourteen of them made a
+ * list rather than a comparison -- so this variant currently has no
+ * caller. It is kept, still covered, as the one lightweight rendering
+ * for a context that wants a candidate without a table around it;
+ * nothing in the product renders it today.
  *
  * `"full"` -- Candidate Detail's own full-page rendering, unchanged
  * from before except the raw Agenda headline is gone (Phase 5) --
@@ -38,6 +60,7 @@ export function DiscoveryCandidateCard({
   fit,
   assessment = null,
   stance = null,
+  decisionSupport = null,
   variant,
   isOnWatchlist,
   isHolding,
@@ -48,10 +71,11 @@ export function DiscoveryCandidateCard({
 }: {
   ticker: string;
   displayName?: string | null;
-  /** Only rendered for `variant="full"` -- Discover's own primary/
-   * secondary cards are exclusively Watchlist candidates by
-   * construction, so a generic "On your Watchlist" line would only
-   * repeat what the section heading above it already says. */
+  /** Only rendered for `variant="full"`. Discovery's own ranked tiers
+   * never pass one: since Sprint 4B they are the independent candidate
+   * universe -- companies the investor neither owns nor watches -- so
+   * a membership line there would state something that is true of
+   * every row by construction. */
   reasonKey?: TranslationKey;
   /** Sprint 4B: the canonical Fit *rating*, not the whole assessment.
    * The card only ever needed `.overall` -- and the assessment's
@@ -63,15 +87,20 @@ export function DiscoveryCandidateCard({
    * per-dimension breakdown. The compact variants read `fit` alone. */
   assessment?: PortfolioFitAssessmentView | null;
   stance?: StanceLevel | null;
+  /** Sprint 4C, `"primary"` only. The candidate's canonical
+   * `DecisionSupportLevel`, straight off `DiscoveryCandidateView` --
+   * rendered as the same badge and the same sentence Portfolio,
+   * Watchlist and Investment Case already show for that level, never a
+   * Discovery-specific rewording of it. */
+  decisionSupport?: DecisionSupportLevel | null;
   variant: "primary" | "secondary" | "full";
   /** Only meaningful for `variant="full"` -- `resolve_case_id_for_
    * ticker` can resolve a real, evaluable Case through a path neither
    * boolean covers on its own, so `assessment !== null` is checked
    * first; these two only extend `canEvaluate` further for a ticker
-   * that has a real Case but no Fit assessment yet. Discover's own
-   * primary/secondary cards never need either -- every candidate
-   * reaching them is already a Watchlist entry, which always has a
-   * real `caseId` by construction. */
+   * that has a real Case but no Fit assessment yet. Discovery's own
+   * ranked tiers never need either -- every candidate reaching them
+   * arrives from the backend universe with a real bound `caseId`. */
   isOnWatchlist?: boolean;
   isHolding?: boolean;
   onOpenCase: () => void;
@@ -108,16 +137,28 @@ export function DiscoveryCandidateCard({
     return (
       <Surface tier="primary">
         <Stack gap="metadata">
-          <Inline gap="row" align="center" style={{ justifyContent: "space-between" }}>
+          <Inline gap="row" align="center" wrap style={{ justifyContent: "space-between" }}>
             <Heading level={4}>
               {ticker}
               {displayName ? <Text as="span" color="tertiary"> — {displayName}</Text> : null}
             </Heading>
-            <Inline gap="metadata" align="center">
+            <Inline gap="metadata" align="center" wrap>
+              {decisionSupport !== null && (
+                <StatusBadge
+                  label={t(DECISION_SUPPORT_BADGE_KEY[decisionSupport])}
+                  tone={DECISION_SUPPORT_TONE[decisionSupport]}
+                  weight="strong"
+                />
+              )}
               {stance !== null && <StanceBadge level={stance} />}
               {fit !== null && <FitBadge rating={fit} />}
             </Inline>
           </Inline>
+          {decisionSupport !== null && (
+            <Text color="secondary" as="p">
+              {t(DECISION_SUPPORT_STATEMENT_KEY[decisionSupport])}
+            </Text>
+          )}
           <Inline gap="row" align="center" wrap>
             <Button variant="primary" onClick={onOpenCase}>
               {t("discovery.card.openCase")}
@@ -126,17 +167,6 @@ export function DiscoveryCandidateCard({
               <Button variant="tertiary" onClick={onCompare}>
                 {t("discovery.card.compare")}
               </Button>
-            )}
-            {onRemoveFromWatchlist && (
-              <Link
-                href="#"
-                onClick={(event) => {
-                  event.preventDefault();
-                  onRemoveFromWatchlist();
-                }}
-              >
-                {t("discovery.card.removeFromWatchlist")}
-              </Link>
             )}
           </Inline>
         </Stack>

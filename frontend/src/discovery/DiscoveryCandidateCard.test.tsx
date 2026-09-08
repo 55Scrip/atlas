@@ -104,9 +104,28 @@ describe("DiscoveryCandidateCard -- primary variant (Discover Doctrine, Highest 
     expect(screen.queryByRole("button", { name: "Jämför" })).not.toBeInTheDocument();
   });
 
-  it("shows Remove from Watchlist as a plain link, not a button, only when the callback is provided", () => {
+  /** Sprint 4C. A Discovery candidate is, by the backend's own
+   * eligibility rule, a company the investor is *not* actively
+   * watching -- so this control could never remove anything. It was
+   * rendered anyway and silently did nothing when clicked. */
+  it("never offers Remove from Watchlist, even when a callback is passed", () => {
     renderCard({ onRemoveFromWatchlist: vi.fn() });
-    expect(screen.getByRole("link", { name: "Ta bort från bevakningslistan" })).toBeInTheDocument();
+    expect(screen.queryByText("Ta bort från bevakningslistan")).not.toBeInTheDocument();
+  });
+
+  /** Sprint 4C: "why Atlas shows this" -- the canonical Decision
+   * Support level the candidate already carries, rendered as the same
+   * badge and the same sentence every other surface uses for it. */
+  it("states why Atlas shows the candidate, using Decision Support's own canonical badge and sentence", () => {
+    renderCard({ decisionSupport: "entry_supported" });
+    expect(screen.getByText("Nyinvestering stöds")).toBeInTheDocument();
+    expect(screen.getByText("Nuvarande underlag stöder att inleda en position.")).toBeInTheDocument();
+  });
+
+  it("says nothing about decision support when the candidate carries no level", () => {
+    renderCard();
+    expect(screen.queryByText("Nyinvestering stöds")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Nuvarande underlag/)).not.toBeInTheDocument();
   });
 
   it("never renders a numeric score anywhere on the card", () => {
