@@ -11,6 +11,10 @@ ticker, and creates no Case. It writes down what the data already says.
 
 Idempotent -- running it twice binds nothing the second time.
 
+Refuses to run outside a development environment, before it reads or
+writes anything -- the guard `atlas/dev/__init__.py` requires of every
+command in this package.
+
 A Case whose memberships name two different securities is an integrity
 defect, not a tie to break. Those are reported and left unbound;
 preferring Portfolio over Watchlist would be the same backwards guess
@@ -35,9 +39,12 @@ from atlas.alpha.portfolio.table import create_alpha_portfolio_state_table
 from atlas.alpha.watchlist.store import AlphaWatchlistStore
 from atlas.alpha.watchlist.table import create_alpha_watchlist_entry_table
 from atlas.core.infrastructure.config.database import resolve_database_path
+from atlas.dev.guard import ensure_development_environment
 
 
 def main() -> int:
+    ensure_development_environment()
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", default=None, help="Path to the Atlas database (default: the resolved one).")
     arguments = parser.parse_args()
