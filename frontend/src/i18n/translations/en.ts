@@ -1612,6 +1612,7 @@ export const en = {
   "watchlist.table.currentViewHeader": "Current view",
   "watchlist.table.decisionHeader": "Atlas decision",
   "watchlist.table.fitHeader": "Fit",
+  "watchlist.table.coverageHeader": "Analysis depth",
   "watchlist.attention.noSignificantChanges": "No significant changes",
   "watchlist.table.monitoringSince": "Since {{date}}",
   "watchlist.table.waitingForNothing": "Atlas has what it needs to evaluate this.",

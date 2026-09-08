@@ -1612,6 +1612,7 @@ export const sv: Record<TranslationKey, string> = {
   "watchlist.table.currentViewHeader": "Nuvarande syn",
   "watchlist.table.decisionHeader": "Atlas beslut",
   "watchlist.table.fitHeader": "Passform",
+  "watchlist.table.coverageHeader": "Analysdjup",
   "watchlist.attention.noSignificantChanges": "Inga betydande förändringar",
   "watchlist.table.monitoringSince": "Sedan {{date}}",
   "watchlist.table.waitingForNothing": "Atlas har det som behövs för att utvärdera det här.",

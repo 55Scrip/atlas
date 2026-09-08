@@ -9,8 +9,13 @@ import { getAlphaWatchlistSnapshot, setAlphaWatchlistData, useAlphaWatchlist } f
 import { useAlphaPortfolio } from "../portfolio/alphaPortfolioData";
 import { fetchStanceForCase, type StanceView } from "../stance/stanceApi";
 import { StanceBadge } from "../stance/StanceBadge";
-import { fetchInvestmentDecision, type InvestmentDecisionView } from "../investmentDecision/investmentDecisionApi";
-import { ACTION_KEY, ACTION_TONE } from "../investmentDecision/describeInvestmentDecision";
+import { fetchWatchlistSummary, type WatchlistEntrySummaryView } from "../watchlist/watchlistSummaryApi";
+import {
+  ANALYSIS_COVERAGE_LEVEL_KEY,
+  ANALYSIS_COVERAGE_TONE,
+  DECISION_SUPPORT_BADGE_KEY,
+  DECISION_SUPPORT_TONE,
+} from "../status/statusTone";
 import { fetchPortfolioFitForCase, type PortfolioFitAssessmentView } from "../portfolioFit/portfolioFitApi";
 import { FitBadge } from "../portfolioFit/FitBadge";
 import { StatusBadge } from "../foundation";
@@ -73,27 +78,24 @@ interface PortfolioView {
 }
 type PortfolioStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; view: PortfolioView };
 
-interface CaseIdentityLite {
-  companyProfile: { name: string | null; sector: string | null } | null;
-}
-
 type ListStatus =
   | { kind: "loading" }
   | { kind: "error" }
   | { kind: "loaded"; entries: WatchlistEntryView[] };
 
-type RowStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; identity: CaseIdentityLite };
-
 type StanceStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; stance: StanceView | null };
 
-/** Convergence Sprint 3. Both endpoints below are composition-only --
- * neither takes a price provider, a quota tracker or a refresh
- * coordinator, so adding them costs no provider call. That mattered
- * enough to check: this page's existing per-row identity fetch hits
- * `/cases/{id}/analysis`, which does depend on all three and writes an
- * evidence snapshot, purely to read a company name (see the identity
- * effect's own note). This sprint does not make that worse. */
-type DecisionStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; decision: InvestmentDecisionView };
+/** Convergence Sprint 3B. One request composes every prospect's
+ * identity, canonical recommendation state and analysis depth from
+ * persisted state -- replacing the per-row `/cases/{id}/analysis`
+ * fetch, which depended on the Alpha Vantage price provider, the quota
+ * tracker and the price refresh coordinator, wrote an evidence
+ * snapshot on every call, and could schedule a background price
+ * refresh, all to read a company name. */
+type SummaryStatus =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "loaded"; byTicker: Map<string, WatchlistEntrySummaryView> };
 
 type FitStatus = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; fit: PortfolioFitAssessmentView | null };
 
@@ -129,9 +131,8 @@ export function WatchlistPage() {
   const locale = language === "sv" ? "sv-SE" : "en-US";
 
   const listStatus: ListStatus = useAlphaWatchlist();
-  const [rowStatuses, setRowStatuses] = useState<Record<string, RowStatus>>({});
   const [stanceStatuses, setStanceStatuses] = useState<Record<string, StanceStatus>>({});
-  const [decisionStatuses, setDecisionStatuses] = useState<Record<string, DecisionStatus>>({});
+  const [summaryStatus, setSummaryStatus] = useState<SummaryStatus>({ kind: "loading" });
   const [fitStatuses, setFitStatuses] = useState<Record<string, FitStatus>>({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [tickerInput, setTickerInput] = useState("");
@@ -153,25 +154,24 @@ export function WatchlistPage() {
     return () => controller.abort();
   }, []);
 
+  /** One request for the whole list. It replaces a per-entry
+   * `/cases/{id}/analysis` fetch whose response this page used for two
+   * strings -- the company name and its sector -- while that endpoint
+   * reached the price provider, the quota tracker and the refresh
+   * coordinator, and wrote an evidence snapshot each time. Its own
+   * code says the lazy refresh it schedules is for "a single-ticker
+   * view like this one (never Portfolio/Watchlist's own list
+   * endpoints)"; calling it once per row defeated exactly that. */
   useEffect(() => {
     if (listStatus.kind !== "loaded") return;
     const controller = new AbortController();
-    for (const entry of listStatus.entries) {
-      if (rowStatuses[entry.ticker]) continue;
-      setRowStatuses((current) => ({ ...current, [entry.ticker]: { kind: "loading" } }));
-      fetch(`/api/cases/${entry.caseId}/analysis`, { signal: controller.signal })
-        .then((r) => {
-          if (!r.ok) throw new Error(`Backend responded with ${r.status}`);
-          return r.json() as Promise<CaseIdentityLite>;
-        })
-        .then((identity) => setRowStatuses((current) => ({ ...current, [entry.ticker]: { kind: "loaded", identity } })))
-        .catch((error: unknown) => {
-          if (error instanceof DOMException && error.name === "AbortError") return;
-          setRowStatuses((current) => ({ ...current, [entry.ticker]: { kind: "error" } }));
-        });
-    }
+    fetchWatchlistSummary(controller.signal)
+      .then((rows) => setSummaryStatus({ kind: "loaded", byTicker: new Map(rows.map((row) => [row.ticker, row])) }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setSummaryStatus({ kind: "error" });
+      });
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listStatus]);
 
   /** Phase 4 -- one Stance fetch per row, the real source for both the
@@ -191,34 +191,6 @@ export function WatchlistPage() {
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === "AbortError") return;
           setStanceStatuses((current) => ({ ...current, [entry.ticker]: { kind: "error" } }));
-        });
-    }
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listStatus]);
-
-  /** Atlas's own Investment Decision for this prospect -- the canonical
-   * decision-synthesis layer (`/api/investment-decision/{caseId}`),
-   * read verbatim. Nothing here re-derives or re-ranks it.
-   *
-   * Note what this is NOT: `DecisionSupportLevel`, the vocabulary the
-   * Portfolio table shows. That value is exposed only through the
-   * portfolio cockpit (holdings only) and through the heavy analysis
-   * endpoint, so no provider-free per-case source exists for it -- a
-   * real API gap, recorded rather than papered over. Both express "has
-   * Atlas concluded anything yet"; this column says so in the decision
-   * layer's own words rather than borrowing Portfolio's. */
-  useEffect(() => {
-    if (listStatus.kind !== "loaded") return;
-    const controller = new AbortController();
-    for (const entry of listStatus.entries) {
-      if (decisionStatuses[entry.ticker]) continue;
-      setDecisionStatuses((current) => ({ ...current, [entry.ticker]: { kind: "loading" } }));
-      fetchInvestmentDecision(entry.caseId, controller.signal)
-        .then((decision) => setDecisionStatuses((current) => ({ ...current, [entry.ticker]: { kind: "loaded", decision } })))
-        .catch((error: unknown) => {
-          if (error instanceof DOMException && error.name === "AbortError") return;
-          setDecisionStatuses((current) => ({ ...current, [entry.ticker]: { kind: "error" } }));
         });
     }
     return () => controller.abort();
@@ -248,15 +220,13 @@ export function WatchlistPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listStatus]);
 
-  function fetchRowIdentity(ticker: string, caseId: string) {
-    setRowStatuses((current) => ({ ...current, [ticker]: { kind: "loading" } }));
-    fetch(`/api/cases/${caseId}/analysis`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`Backend responded with ${r.status}`);
-        return r.json() as Promise<CaseIdentityLite>;
-      })
-      .then((identity) => setRowStatuses((current) => ({ ...current, [ticker]: { kind: "loaded", identity } })))
-      .catch(() => setRowStatuses((current) => ({ ...current, [ticker]: { kind: "error" } })));
+  /** After an add, recompose the list from persisted state. Adding a
+   * ticker legitimately enriches it server-side; reading the list back
+   * afterwards must not enrich anything again. */
+  function refreshSummary() {
+    fetchWatchlistSummary()
+      .then((rows) => setSummaryStatus({ kind: "loaded", byTicker: new Map(rows.map((row) => [row.ticker, row])) }))
+      .catch(() => setSummaryStatus({ kind: "error" }));
   }
 
   function handleAddSubmit(event: FormEvent) {
@@ -288,7 +258,7 @@ export function WatchlistPage() {
         } else if (!current.entries.some((e) => e.ticker === entry.ticker)) {
           setAlphaWatchlistData([...current.entries, entry]);
         }
-        fetchRowIdentity(entry.ticker, entry.caseId);
+        refreshSummary();
         setAddStatus({ kind: "success", ticker: entry.ticker });
         setTickerInput("");
       })
@@ -300,12 +270,6 @@ export function WatchlistPage() {
     if (snapshot.kind === "loaded") {
       setAlphaWatchlistData(snapshot.entries.filter((e) => e.ticker !== ticker));
     }
-    setRowStatuses((current) => {
-      if (!(ticker in current)) return current;
-      const next = { ...current };
-      delete next[ticker];
-      return next;
-    });
   }
 
   function closeAddForm() {
@@ -364,9 +328,8 @@ export function WatchlistPage() {
         {listStatus.kind === "loaded" && listStatus.entries.length > 0 && (
           <WatchlistTable
             entries={[...listStatus.entries].sort((a, b) => a.ticker.localeCompare(b.ticker))}
-            rowStatuses={rowStatuses}
+            summaryStatus={summaryStatus}
             stanceStatuses={stanceStatuses}
-            decisionStatuses={decisionStatuses}
             fitStatuses={fitStatuses}
             heldTickers={heldTickers}
             navigate={navigate}
@@ -537,9 +500,8 @@ function UnknownCell({ t }: { t: (key: TranslationKey, params?: Record<string, s
 
 function WatchlistTable({
   entries,
-  rowStatuses,
+  summaryStatus,
   stanceStatuses,
-  decisionStatuses,
   fitStatuses,
   heldTickers,
   navigate,
@@ -548,9 +510,8 @@ function WatchlistTable({
   t,
 }: {
   entries: WatchlistEntryView[];
-  rowStatuses: Record<string, RowStatus>;
+  summaryStatus: SummaryStatus;
   stanceStatuses: Record<string, StanceStatus>;
-  decisionStatuses: Record<string, DecisionStatus>;
   fitStatuses: Record<string, FitStatus>;
   heldTickers: Set<string>;
   navigate: ReturnType<typeof useNavigate>;
@@ -580,6 +541,7 @@ function WatchlistTable({
             <th style={headerCellStyle}>{t("watchlist.table.companyHeader")}</th>
             <th style={headerCellStyle}>{t("watchlist.table.decisionHeader")}</th>
             <th style={headerCellStyle}>{t("watchlist.table.currentViewHeader")}</th>
+            <th style={headerCellStyle}>{t("watchlist.table.coverageHeader")}</th>
             <th style={headerCellStyle}>{t("watchlist.table.fitHeader")}</th>
             <th style={headerCellStyle}>{t("watchlist.table.waitingForHeader")}</th>
             <th style={headerCellStyle} />
@@ -590,9 +552,8 @@ function WatchlistTable({
             <WatchlistTableRow
               key={entry.ticker}
               entry={entry}
-              rowStatus={rowStatuses[entry.ticker]}
+              summary={summaryStatus.kind === "loaded" ? summaryStatus.byTicker.get(entry.ticker) : undefined}
               stanceStatus={stanceStatuses[entry.ticker]}
-              decisionStatus={decisionStatuses[entry.ticker]}
               fitStatus={fitStatuses[entry.ticker]}
               isHeld={heldTickers.has(entry.ticker)}
               navigate={navigate}
@@ -609,9 +570,8 @@ function WatchlistTable({
 
 function WatchlistTableRow({
   entry,
-  rowStatus,
+  summary,
   stanceStatus,
-  decisionStatus,
   fitStatus,
   isHeld,
   navigate,
@@ -620,9 +580,8 @@ function WatchlistTableRow({
   t,
 }: {
   entry: WatchlistEntryView;
-  rowStatus: RowStatus | undefined;
+  summary: WatchlistEntrySummaryView | undefined;
   stanceStatus: StanceStatus | undefined;
-  decisionStatus: DecisionStatus | undefined;
   fitStatus: FitStatus | undefined;
   isHeld: boolean;
   navigate: ReturnType<typeof useNavigate>;
@@ -630,12 +589,10 @@ function WatchlistTableRow({
   onRemoved: (ticker: string) => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  const loaded = rowStatus?.kind === "loaded" ? rowStatus.identity : null;
-  const companyName = loaded?.companyProfile?.name ?? entry.ticker;
-  const sector = loaded?.companyProfile?.sector;
+  const companyName = summary?.companyName ?? entry.ticker;
+  const sector = summary?.sector;
   const monitoringSince = new Date(entry.addedAt).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
   const stance = stanceStatus?.kind === "loaded" ? stanceStatus.stance : null;
-  const decision = decisionStatus?.kind === "loaded" ? decisionStatus.decision : null;
   const fit = fitStatus?.kind === "loaded" ? fitStatus.fit : null;
 
   const [removeStatus, setRemoveStatus] = useState<RemoveStatus>({ kind: "idle" });
@@ -704,14 +661,46 @@ function WatchlistTableRow({
           </Inline>
         </Stack>
       </td>
+      {/* Convergence Sprint 3B, Phases G/H. This used to render the
+          Investment Decision layer's `DecisionAction` through its own
+          translation bank -- "Inget beslut ännu", "Behåll", "Minska".
+          `ACTION_BY_DECISION_SUPPORT_LEVEL` is a pure 1:1 lookup over
+          `DecisionSupportLevel` with no additional inputs, so those
+          were a second investor-facing vocabulary for a value Portfolio
+          and the Investment Case already name "Vet inte än", "Tesen
+          kvarstår", "Minskning stöds". The canonical level now arrives
+          on the wire and is rendered through the one shared bank, so
+          the same state reads the same way wherever it appears. The
+          column heading still differs by surface; the state label does
+          not. */}
       <td style={cellStyle}>
-        {decision ? (
-          <StatusBadge label={t(ACTION_KEY[decision.action])} tone={ACTION_TONE[decision.action]} weight="strong" />
+        {summary ? (
+          <StatusBadge
+            label={t(DECISION_SUPPORT_BADGE_KEY[summary.decisionSupportLevel])}
+            tone={DECISION_SUPPORT_TONE[summary.decisionSupportLevel]}
+            weight="strong"
+          />
         ) : (
           <UnknownCell t={t} />
         )}
       </td>
       <td style={cellStyle}>{stance ? <StanceBadge level={stance.level} /> : <UnknownCell t={t} />}</td>
+      {/* Analysis depth, the one extra field this sprint's lightweight
+          composition made available for free. It carries the same
+          weight here as on Portfolio: it separates "Atlas looked and
+          is unconvinced" from "Atlas has no data yet", two states that
+          call for completely different action but read identically
+          without it. */}
+      <td style={cellStyle}>
+        {summary ? (
+          <StatusBadge
+            label={t(ANALYSIS_COVERAGE_LEVEL_KEY[summary.analysisCoverageLevel])}
+            tone={ANALYSIS_COVERAGE_TONE[summary.analysisCoverageLevel]}
+          />
+        ) : (
+          <UnknownCell t={t} />
+        )}
+      </td>
       <td style={cellStyle}>{fit ? <FitBadge rating={fit.overall} /> : <UnknownCell t={t} />}</td>
       <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)", maxWidth: "260px" }}>
         {stance ? (

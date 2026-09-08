@@ -7,18 +7,16 @@ import { __resetAlphaWatchlistCacheForTests } from "../discovery/watchlistAction
 import { __resetAlphaPortfolioCacheForTests } from "../portfolio/alphaPortfolioData";
 
 const ENTRY = { ticker: "NVDA", caseId: "case-nvda", addedAt: "2026-01-01T00:00:00Z" };
-const IDENTITY = { companyProfile: { name: "NVIDIA Corp", sector: "Technology" } };
-const EMPTY_PORTFOLIO = { exists: true, holdings: [] };
-const DECISION = {
+const SUMMARY = {
+  ticker: "NVDA",
   caseId: "case-nvda",
-  action: "wait",
-  qualifiers: [],
-  supportingReasons: [],
-  blockers: [],
-  changeTrigger: null,
-  generatedAt: "2026-01-01T00:00:00Z",
-  reasoning: null,
+  addedAt: "2026-01-01T00:00:00Z",
+  companyName: "NVIDIA Corp",
+  sector: "Technology",
+  decisionSupportLevel: "thesis_intact",
+  analysisCoverageLevel: "substantial_coverage",
 };
+const EMPTY_PORTFOLIO = { exists: true, holdings: [] };
 const FIT = { caseId: "case-nvda", ticker: "NVDA", isExistingHolding: false, currentWeightPercent: null, overall: "good", overallReasoning: [], dimensions: [], trend: "unchanged", dataGaps: [] };
 
 function stance(overrides: Partial<Record<string, unknown>> = {}) {
@@ -37,11 +35,10 @@ function mockFetch(
   overrides: {
     entries?: unknown[];
     stance?: unknown;
-    identity?: unknown;
+    summary?: unknown[];
     portfolio?: unknown;
-    decision?: unknown;
     fit?: unknown;
-    decisionOk?: boolean;
+    summaryOk?: boolean;
     fitOk?: boolean;
   } = {},
 ) {
@@ -49,15 +46,16 @@ function mockFetch(
     "fetch",
     vi.fn((input: RequestInfo | URL) => {
       const url = String(input);
-      if (url.includes("/api/cases/") && url.includes("/analysis")) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.identity ?? IDENTITY) } as Response);
+      // Deliberately unhandled: the heavy `/cases/{id}/analysis`
+      // endpoint must never be reached by ordinary Watchlist
+      // composition, so this stub rejects it like any other unexpected
+      // request.
+      if (url.includes("/api/alpha-watchlist/summary")) {
+        if (overrides.summaryOk === false) return Promise.resolve({ ok: false, status: 500 } as Response);
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.summary ?? [SUMMARY]) } as Response);
       }
       if (url.includes("/api/stance/case/")) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.stance ?? stance()) } as Response);
-      }
-      if (url.includes("/api/investment-decision/")) {
-        if (overrides.decisionOk === false) return Promise.resolve({ ok: false, status: 404 } as Response);
-        return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.decision ?? DECISION) } as Response);
       }
       if (url.includes("/api/portfolio-fit/case/")) {
         if (overrides.fitOk === false) return Promise.resolve({ ok: false, status: 404 } as Response);
@@ -91,9 +89,8 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
       vi.fn((input: RequestInfo | URL) => {
         const url = String(input);
         requestedUrls.push(url);
-        if (url.includes("/api/cases/") && url.includes("/analysis")) return Promise.resolve({ ok: true, json: () => Promise.resolve(IDENTITY) } as Response);
+        if (url.includes("/api/alpha-watchlist/summary")) return Promise.resolve({ ok: true, json: () => Promise.resolve([SUMMARY]) } as Response);
         if (url.includes("/api/stance/case/")) return Promise.resolve({ ok: true, json: () => Promise.resolve(stance()) } as Response);
-        if (url.includes("/api/investment-decision/")) return Promise.resolve({ ok: true, json: () => Promise.resolve(DECISION) } as Response);
         if (url.includes("/api/portfolio-fit/case/")) return Promise.resolve({ ok: true, json: () => Promise.resolve(FIT) } as Response);
         if (url.includes("/api/alpha-watchlist")) return Promise.resolve({ ok: true, json: () => Promise.resolve([ENTRY]) } as Response);
         if (url.includes("/api/alpha-portfolio") && !url.includes("trade-log")) return Promise.resolve({ ok: true, json: () => Promise.resolve(EMPTY_PORTFOLIO) } as Response);
@@ -196,8 +193,8 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
           deleteCalled = true;
           return Promise.resolve({ ok: true } as Response);
         }
-        if (url.includes("/api/cases/") && url.includes("/analysis")) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve(IDENTITY) } as Response);
+        if (url.includes("/api/alpha-watchlist/summary")) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve([SUMMARY]) } as Response);
         }
         if (url.includes("/api/stance/case/")) {
           return Promise.resolve({ ok: true, json: () => Promise.resolve(stance()) } as Response);
@@ -220,20 +217,31 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
     expect(screen.queryByRole("button", { name: /Bekräfta/ })).not.toBeInTheDocument();
   });
 
-  it("shows Atlas's own decision for the prospect, read verbatim from the decision layer", async () => {
-    mockFetch({ decision: { ...DECISION, action: "wait" } });
+  it("names the canonical decision state exactly as Portfolio and the Investment Case do", async () => {
+    // Convergence Sprint 3B. `thesis_intact` reads "Tesen kvarstår"
+    // everywhere. It used to read "Behåll" here, because this column
+    // rendered the Investment Decision layer's `DecisionAction` -- a
+    // pure 1:1 relabelling of the same canonical level -- through its
+    // own translation bank.
+    mockFetch({ summary: [{ ...SUMMARY, decisionSupportLevel: "thesis_intact" }] });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
     const row = within((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })) as HTMLElement);
-    expect(row.getByText("Vänta")).toBeInTheDocument();
+    expect(row.getByText("Tesen kvarstår")).toBeInTheDocument();
+    for (const actionWord of ["Behåll", "Minska", "Inget beslut ännu", "Vänta"]) {
+      expect(row.queryByText(actionWord)).not.toBeInTheDocument();
+    }
   });
 
   it("keeps the decision and the current view as separate, separately labelled columns", async () => {
-    mockFetch({ decision: { ...DECISION, action: "wait" }, stance: stance({ level: "maintain" }) });
+    mockFetch({
+      summary: [{ ...SUMMARY, decisionSupportLevel: "insufficient_evidence" }],
+      stance: stance({ level: "maintain" }),
+    });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
     const row = within((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })) as HTMLElement);
     // Two different concepts. Neither is collapsed into the other, and
     // each sits under a header that says which one it is.
-    expect(row.getByText("Vänta")).toBeInTheDocument();
+    expect(row.getByText("Vet inte än")).toBeInTheDocument();
     expect(row.getByText("Synen är oförändrad")).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Atlas beslut" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Nuvarande syn" })).toBeInTheDocument();
@@ -255,12 +263,12 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
   });
 
   it("renders an unreachable signal as honestly unknown, never as a mediocre verdict", async () => {
-    mockFetch({ decisionOk: false, fitOk: false });
+    mockFetch({ summaryOk: false, fitOk: false });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
     const row = within((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })) as HTMLElement);
     await waitFor(() => expect(row.getAllByText("Ej bedömt").length).toBeGreaterThan(0));
     expect(row.queryByText("Neutral passform")).not.toBeInTheDocument();
-    expect(row.queryByText("Inget beslut ännu")).not.toBeInTheDocument();
+    expect(row.queryByText("Vet inte än")).not.toBeInTheDocument();
   });
 
   it("introduces no Figma concept the engine does not compute", async () => {
@@ -281,12 +289,92 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
     expect(text).not.toMatch(/(Investering|Poäng)\s\d/);
   });
 
+  it("never calls the heavy case-analysis endpoint to compose the list", async () => {
+    // Convergence Sprint 3B, Phase P. `/cases/{id}/analysis` depends on
+    // the Alpha Vantage price provider, the quota tracker and the price
+    // refresh coordinator, writes an evidence snapshot, and can
+    // schedule a background price refresh. Watchlist called it once per
+    // entry, for a company name.
+    const requested: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        requested.push(url);
+        if (url.includes("/api/alpha-watchlist/summary")) return Promise.resolve({ ok: true, json: () => Promise.resolve([SUMMARY]) } as Response);
+        if (url.includes("/api/stance/case/")) return Promise.resolve({ ok: true, json: () => Promise.resolve(stance()) } as Response);
+        if (url.includes("/api/portfolio-fit/case/")) return Promise.resolve({ ok: true, json: () => Promise.resolve(FIT) } as Response);
+        if (url.includes("/api/alpha-watchlist")) return Promise.resolve({ ok: true, json: () => Promise.resolve([ENTRY]) } as Response);
+        if (url.includes("/api/alpha-portfolio") && !url.includes("trade-log")) return Promise.resolve({ ok: true, json: () => Promise.resolve(EMPTY_PORTFOLIO) } as Response);
+        if (url.includes("/api/monitoring/status")) return Promise.resolve({ ok: false, status: 500 } as Response);
+        return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+      }),
+    );
+    renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
+    await waitFor(() => expect(screen.getAllByText("NVIDIA Corp").length).toBeGreaterThan(0));
+    expect(requested.some((url) => url.includes("/analysis"))).toBe(false);
+    // Positive control: the identity it needed did arrive, from the
+    // lightweight summary -- so the assertion above is not passing
+    // because nothing was fetched at all.
+    expect(requested.some((url) => url.includes("/api/alpha-watchlist/summary"))).toBe(true);
+  });
+
+  it("composes the whole list from one summary request, not one per entry", async () => {
+    const requested: string[] = [];
+    const entries = [
+      { ticker: "NVDA", caseId: "case-nvda", addedAt: "2026-01-01T00:00:00Z" },
+      { ticker: "AAPL", caseId: "case-aapl", addedAt: "2026-01-01T00:00:00Z" },
+      { ticker: "MSFT", caseId: "case-msft", addedAt: "2026-01-01T00:00:00Z" },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        requested.push(url);
+        if (url.includes("/api/alpha-watchlist/summary")) return Promise.resolve({ ok: true, json: () => Promise.resolve(entries.map((e) => ({ ...SUMMARY, ...e, companyName: `${e.ticker} Inc` }))) } as Response);
+        if (url.includes("/api/stance/case/")) return Promise.resolve({ ok: true, json: () => Promise.resolve(stance()) } as Response);
+        if (url.includes("/api/portfolio-fit/case/")) return Promise.resolve({ ok: true, json: () => Promise.resolve(FIT) } as Response);
+        if (url.includes("/api/alpha-watchlist")) return Promise.resolve({ ok: true, json: () => Promise.resolve(entries) } as Response);
+        if (url.includes("/api/alpha-portfolio") && !url.includes("trade-log")) return Promise.resolve({ ok: true, json: () => Promise.resolve(EMPTY_PORTFOLIO) } as Response);
+        if (url.includes("/api/monitoring/status")) return Promise.resolve({ ok: false, status: 500 } as Response);
+        return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+      }),
+    );
+    renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
+    await waitFor(() => expect(screen.getAllByText("NVDA Inc").length).toBeGreaterThan(0));
+    expect(requested.filter((url) => url.includes("/api/alpha-watchlist/summary"))).toHaveLength(1);
+  });
+
+  it("shows analysis depth so an unevaluated prospect is not read as an unconvincing one", async () => {
+    mockFetch({
+      summary: [{ ...SUMMARY, decisionSupportLevel: "insufficient_evidence", analysisCoverageLevel: "no_coverage" }],
+    });
+    renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
+    const row = within((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })) as HTMLElement);
+    expect(row.getByText("Vet inte än")).toBeInTheDocument();
+    expect(row.getByText("Inte utvärderat")).toBeInTheDocument();
+  });
+
+  it("renders an unknown state honestly when the summary cannot be reached", async () => {
+    mockFetch({ summaryOk: false });
+    renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
+    const row = within((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })) as HTMLElement);
+    await waitFor(() => expect(row.getAllByText("Ej bedömt").length).toBeGreaterThan(0));
+    // The ticker still identifies the row (as both name-fallback and
+    // ticker); no invented company name appears.
+    expect(row.getAllByText("NVDA").length).toBeGreaterThan(0);
+    expect(row.queryByText("NVIDIA Corp")).not.toBeInTheDocument();
+  });
+
   it("sorts entries alphabetically by ticker, never implying an unstated urgency ranking", async () => {
     const entries = [
       { ticker: "NVDA", caseId: "case-nvda", addedAt: "2026-01-01T00:00:00Z" },
       { ticker: "AAPL", caseId: "case-aapl", addedAt: "2026-01-01T00:00:00Z" },
     ];
-    mockFetch({ entries });
+    mockFetch({
+      entries,
+      summary: [SUMMARY, { ...SUMMARY, ticker: "AAPL", caseId: "case-aapl", companyName: "Apple Inc" }],
+    });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
     await waitFor(() => expect(screen.getAllByText(/^(AAPL|NVDA)$/).length).toBe(2));
     const tickerCells = screen.getAllByText(/^(AAPL|NVDA)$/);

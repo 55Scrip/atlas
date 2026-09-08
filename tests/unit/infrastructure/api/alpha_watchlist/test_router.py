@@ -277,3 +277,164 @@ class TestWatchlistToPortfolioPreservesKnowledge:
         assert analysis["companyProfile"]["name"] == "Meta Platforms, Inc."
         assert analysis["holdingContext"]["held"] is True
         assert analysis["holdingContext"]["ticker"] == "META"
+
+
+class TestWatchlistSummaryIsProviderFree:
+    """Convergence Sprint 3B. Watchlist used to read company identity
+    from `GET /cases/{case_id}/analysis`, once per entry. That endpoint
+    depends on the Alpha Vantage price provider, the quota tracker and
+    the price refresh coordinator, writes an evidence snapshot on every
+    call, and can schedule a background price refresh -- its own code
+    says that refresh is for "a single-ticker view like this one (never
+    Portfolio/Watchlist's own list endpoints)". Twenty prospects meant
+    twenty provider-touching calls to draw a list.
+
+    These tests pin the invariant that replaced it: composing the whole
+    Watchlist reads persisted state only.
+    """
+
+    def test_summary_returns_the_persisted_company_identity(self, client):
+        client.post("/alpha-watchlist", json={"ticker": "META"})
+        response = client.get("/alpha-watchlist/summary")
+        assert response.status_code == 200, response.text
+        [row] = response.json()
+        assert row["ticker"] == "META"
+        assert row["companyName"] == "Meta Platforms, Inc."
+        assert row["sector"] == "Communication Services"
+        assert row["caseId"]
+        assert row["addedAt"]
+
+    def test_composing_the_summary_calls_no_provider(self, client, provider):
+        client.post("/alpha-watchlist", json={"ticker": "META"})
+        calls_after_add = list(provider.call_count)
+        for _ in range(3):
+            assert client.get("/alpha-watchlist/summary").status_code == 200
+        # Enrichment on add is legitimate and untouched; *reading* the
+        # list afterwards must add nothing to it, however many times.
+        assert provider.call_count == calls_after_add
+
+    def _dependency_names(self, client, path: str) -> set[str]:
+        """Every callable FastAPI resolves for one route, transitively."""
+        # This app mounts each router through a wrapper, so the routes
+        # live on `original_router`, not directly on `app.routes`.
+        candidates = []
+        for entry in client.app.routes:
+            original = getattr(entry, "original_router", None)
+            candidates.extend(original.routes if original is not None else [entry])
+        route = next(r for r in candidates if getattr(r, "path", None) == path)
+        names: set[str] = set()
+        pending = [route.dependant]
+        while pending:
+            dependant = pending.pop()
+            if dependant.call is not None:
+                names.add(getattr(dependant.call, "__name__", repr(dependant.call)))
+            pending.extend(dependant.dependencies)
+        return names
+
+    def test_the_summary_route_depends_on_no_provider_quota_or_refresh_machinery(self, client):
+        names = self._dependency_names(client, "/alpha-watchlist/summary")
+        for forbidden in (
+            "get_alpha_vantage_price_provider",
+            "get_alpha_vantage_quota_tracker",
+            "get_price_refresh_coordinator",
+            "get_default_business_data_providers",
+            "get_evidence_snapshot_repository",
+            "get_monitoring_service",
+        ):
+            assert forbidden not in names, f"{forbidden} reached the Watchlist summary route"
+
+    def test_the_heavy_analysis_route_does_depend_on_all_of_them(self, client):
+        """Positive control. Without this, the assertion above could be
+        passing because the dependency walk finds nothing at all."""
+        names = self._dependency_names(client, "/cases/{case_id}/analysis")
+        for expected in (
+            "get_alpha_vantage_price_provider",
+            "get_alpha_vantage_quota_tracker",
+            "get_price_refresh_coordinator",
+            "get_evidence_snapshot_repository",
+        ):
+            assert expected in names, f"expected {expected} on the analysis route"
+
+    def test_the_summary_reads_the_store_not_the_provider_backed_service(self, client):
+        """`get_alpha_watchlist_service` pulls in business-data
+        providers and the identity gate for the add path's enrichment.
+        A read must not touch it."""
+        names = self._dependency_names(client, "/alpha-watchlist/summary")
+        assert "get_alpha_watchlist_store" in names
+        assert "get_alpha_watchlist_service" not in names
+
+    def test_summary_exposes_canonical_enum_values_never_rendered_text(self, client):
+        client.post("/alpha-watchlist", json={"ticker": "META"})
+        [row] = client.get("/alpha-watchlist/summary").json()
+        from atlas.alpha.decision_support import DecisionSupportLevel
+        from atlas.analysis_engine.analysis_coverage import AnalysisCoverageLevel
+
+        assert row["decisionSupportLevel"] in {level.value for level in DecisionSupportLevel}
+        assert row["analysisCoverageLevel"] in {level.value for level in AnalysisCoverageLevel}
+
+    def test_summary_agrees_with_the_canonical_analysis_endpoint(self, client):
+        """The summary is a projection, not a second opinion."""
+        entry = client.post("/alpha-watchlist", json={"ticker": "META"}).json()
+        [row] = client.get("/alpha-watchlist/summary").json()
+        analysis = client.get(f"/cases/{entry['caseId']}/analysis").json()
+        assert row["decisionSupportLevel"] == analysis["recommendation"]["level"]
+        assert row["companyName"] == analysis["companyProfile"]["name"]
+        assert row["sector"] == analysis["companyProfile"]["sector"]
+        # `analysisCoverageLevel` has no counterpart on this view --
+        # the Investment Case exposes the finer-grained per-dimension
+        # `coverage` instead -- so it is cross-checked against the
+        # canonical enum in the test above rather than invented here.
+
+    def test_an_empty_watchlist_returns_an_empty_list(self, client):
+        assert client.get("/alpha-watchlist/summary").json() == []
+
+    def test_a_removed_entry_disappears_from_the_summary(self, client):
+        client.post("/alpha-watchlist", json={"ticker": "META"})
+        client.delete("/alpha-watchlist/META")
+        assert client.get("/alpha-watchlist/summary").json() == []
+
+
+class TestWatchlistSummaryScales:
+    """Convergence Sprint 3B, Phase T. The real Watchlist holds one
+    prospect today, so the invariant that matters is the one that only
+    shows up at size: rendering N existing prospects must not cost N
+    provider calls. Provider calls are counted through the same fake
+    the rest of this file uses -- no network anywhere.
+    """
+
+    @pytest.mark.parametrize("size", [1, 5, 20])
+    def test_composing_n_prospects_costs_zero_provider_calls(self, client, provider, size):
+        tickers = [f"TCK{index:02d}" for index in range(size)]
+        for ticker in tickers:
+            client.post("/alpha-watchlist", json={"ticker": ticker})
+
+        # Adding a ticker legitimately enriches it once -- that is the
+        # add path, and it is untouched by this sprint.
+        assert len(provider.call_count) == size
+        calls_after_add = list(provider.call_count)
+
+        response = client.get("/alpha-watchlist/summary")
+        assert response.status_code == 200, response.text
+        assert len(response.json()) == size
+        # Reading is a different responsibility from refreshing.
+        assert provider.call_count == calls_after_add
+
+    def test_repeated_reads_never_accumulate_provider_calls(self, client, provider):
+        for index in range(5):
+            client.post("/alpha-watchlist", json={"ticker": f"RPT{index}"})
+        calls_after_add = list(provider.call_count)
+        for _ in range(10):
+            client.get("/alpha-watchlist/summary")
+        assert provider.call_count == calls_after_add
+
+    def test_every_prospect_carries_its_own_identity_at_size(self, client):
+        """Guards the failure `build_many` would have introduced: a
+        watchlist-only Case there resolves no ticker and no business
+        records, so every row would have come back nameless and
+        analysed from nothing."""
+        for index in range(5):
+            client.post("/alpha-watchlist", json={"ticker": f"IDN{index}"})
+        rows = client.get("/alpha-watchlist/summary").json()
+        assert len(rows) == 5
+        assert all(row["companyName"] for row in rows)
+        assert all(row["analysisCoverageLevel"] != "no_coverage" for row in rows)

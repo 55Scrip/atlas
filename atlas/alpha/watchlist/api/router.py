@@ -28,7 +28,16 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 
 from atlas.alpha.monitoring.api.dependencies import build_monitoring_service
 from atlas.alpha.watchlist.api.dependencies import get_alpha_watchlist_service
-from atlas.alpha.watchlist.api.schemas import AddWatchlistTickerRequestBody, WatchlistEntryView
+from atlas.alpha.investment_case.api.dependencies import get_investment_case_composition_service
+from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
+from atlas.alpha.decision_support import describe_recommendation
+from atlas.alpha.watchlist.api.dependencies import get_alpha_watchlist_store
+from atlas.alpha.watchlist.api.schemas import (
+    AddWatchlistTickerRequestBody,
+    WatchlistEntrySummaryView,
+    WatchlistEntryView,
+)
+from atlas.alpha.watchlist.store import AlphaWatchlistStore
 from atlas.alpha.watchlist.exceptions import (
     AlphaWatchlistEntryNotFoundError,
     AlphaWatchlistValidationError,
@@ -58,6 +67,63 @@ def list_watchlist(
     service: AlphaWatchlistService = Depends(get_alpha_watchlist_service),
 ) -> list[WatchlistEntryView]:
     return [WatchlistEntryView.from_domain(entry) for entry in service.list_all()]
+
+
+@router.get("/summary", response_model=list[WatchlistEntrySummaryView])
+def list_watchlist_summary(
+    store: AlphaWatchlistStore = Depends(get_alpha_watchlist_store),
+    composition_service: InvestmentCaseCompositionService = Depends(get_investment_case_composition_service),
+) -> list[WatchlistEntrySummaryView]:
+    """Everything a Watchlist list surface needs, composed once.
+
+    Provider-free by construction, and deliberately so. The two
+    dependencies are the Watchlist store and the composition service;
+    neither takes a provider, a quota tracker or a refresh coordinator,
+    and nothing here writes. Note it reads `get_alpha_watchlist_store`
+    rather than `get_alpha_watchlist_service` -- the service pulls in
+    business-data providers and the identity gate for the *add* path's
+    enrichment, which a read has no business touching.
+
+    Deliberately `build`, not `build_many`, despite `build_many` being
+    the batched read `portfolio_cockpit` uses. `build_many` resolves a
+    Case's ticker only from a Portfolio holding -- its own docstring
+    says the Watchlist path exists "in `build`, never `build_many`" --
+    and passes `business_records=()` for any Case without a holding.
+    A watchlist-only prospect would therefore come back analysed from
+    no company data at all: no name, and a coverage and recommendation
+    level describing an empty record set rather than what Atlas knows.
+    Correct semantics outrank a cheaper read, so this pays four table
+    scans per Case instead. That is a database cost, not a provider
+    cost, and it replaces one provider-touching HTTP call per entry.
+
+    A Case that does not resolve is simply absent from the response --
+    `build`'s own honest-absence contract, carried through. The caller
+    shows an unknown state for it rather than an invented one.
+
+    Composition only: `describe_recommendation` reads the gate result
+    the composition already carries, and `analysis_coverage` is read
+    off it verbatim. No evaluator runs here, and no analysis is
+    recomputed.
+    """
+    summaries: list[WatchlistEntrySummaryView] = []
+    for entry in store.list_all():
+        composition = composition_service.build(entry.case_id)
+        if composition is None:
+            continue
+        analysis = composition.canonical_analysis
+        profile = composition.company_profile
+        summaries.append(
+            WatchlistEntrySummaryView(
+                ticker=entry.ticker,
+                case_id=entry.case_id,
+                added_at=entry.added_at,
+                company_name=profile.name if profile is not None else None,
+                sector=profile.sector if profile is not None else None,
+                decision_support_level=describe_recommendation(analysis.recommendation).level.value,
+                analysis_coverage_level=analysis.analysis_coverage.level.value,
+            )
+        )
+    return summaries
 
 
 @router.post("", response_model=WatchlistEntryView, status_code=201)
