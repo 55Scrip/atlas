@@ -57,10 +57,18 @@ type DailyBriefAgendaFetchStatus = { kind: "loading" } | { kind: "error" } | { k
  * `rankCandidates.ts` from three real, already-computed categorical
  * signals (Portfolio Fit, Stance, Agenda priority) -- no new ranking
  * engine, no numeric score invented anywhere:
- * 1. Highest opportunity -- a small number of primary cards.
- * 2. Worth reviewing -- the dense comparative table.
- * 3. Everything else -- the remainder, behind one disclosure, never
- *    dropped.
+ * 1. Atlas supports a new position -- a small number of primary cards.
+ * 2. No conclusion yet -- the dense comparative table. Named for what
+ *    the band means rather than borrowing Stance's own "worth
+ *    reviewing" wording, which is a different, shared vocabulary and
+ *    reads as a contradiction when it appears as a badge on a card in
+ *    tier 1.
+ * 3. Entry not supported -- behind one disclosure, never dropped.
+ *
+ * Convergence Sprint 4D re-based all three on Atlas's own canonical
+ * conclusion about entering, rather than on how the company happens to
+ * suit this portfolio; see `rankCandidates.ts` for why, and for the
+ * measurement that forced it.
  *
  * Convergence Sprint 4C settles three things Sprint 4B's universe
  * exposed:
@@ -229,6 +237,7 @@ export function DiscoveryPage() {
     fit: candidate.fitRating,
     stance: candidate.stanceLevel,
     priority: priorityByTicker.get(candidate.ticker) ?? null,
+    decisionSupport: candidate.decisionSupportLevel,
   }));
   const ranked = rankCandidates(rankedCandidateInputs);
 
@@ -340,9 +349,9 @@ export function DiscoveryPage() {
             {/* 1. Highest opportunity -- the page's entire reason to
                 exist (Phase 2/13). */}
             <Stack gap="metadata">
-              <Label>{t("discovery.highestOpportunity.heading")}</Label>
+              <Label>{t("discovery.entrySupported.heading")}</Label>
               {highestCandidates.length === 0 ? (
-                <Text color="tertiary">{t("discovery.highestOpportunity.empty")}</Text>
+                <Text color="tertiary">{t("discovery.entrySupported.empty")}</Text>
               ) : (
                 <Stack gap="row">
                   {highestCandidates.map((candidate) => (
@@ -368,10 +377,13 @@ export function DiscoveryPage() {
               <>
                 <Divider tone="hairline" />
                 <Stack gap="metadata">
-                  <Label>{t("discovery.worthReviewing.heading")}</Label>
+                  <Label>{t("discovery.notConcluded.heading")}</Label>
+                  <Text color="tertiary" as="p">
+                    {t("discovery.notConcluded.explanation")}
+                  </Text>
                   <DiscoveryCandidateTable
                     candidates={worthReviewingCandidates}
-                    captionKey="discovery.worthReviewing.heading"
+                    captionKey="discovery.notConcluded.heading"
                     onOpenCase={openCaseForTicker}
                   />
                 </Stack>
@@ -387,14 +399,14 @@ export function DiscoveryPage() {
                 <ExpandableDetail
                   summaryLabel={t(
                     everythingElseCandidates.length === 1
-                      ? "discovery.everythingElse.headingOne"
-                      : "discovery.everythingElse.headingOther",
+                      ? "discovery.notSupported.headingOne"
+                      : "discovery.notSupported.headingOther",
                     { count: everythingElseCandidates.length },
                   )}
                 >
                   <DiscoveryCandidateTable
                     candidates={everythingElseCandidates}
-                    captionKey="discovery.everythingElse.caption"
+                    captionKey="discovery.notSupported.caption"
                     onOpenCase={openCaseForTicker}
                   />
                 </ExpandableDetail>

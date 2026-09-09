@@ -2,7 +2,6 @@ import type { CSSProperties } from "react";
 import { StatusBadge, Text } from "../foundation";
 import { useTranslation, type TranslationKey } from "../i18n";
 import { FitBadge } from "../portfolioFit/FitBadge";
-import { StanceBadge } from "../stance/StanceBadge";
 import {
   ANALYSIS_COVERAGE_LEVEL_KEY,
   ANALYSIS_COVERAGE_TONE,
@@ -77,7 +76,6 @@ export function DiscoveryCandidateTable({
           <tr>
             <th style={headerCellStyle}>{t("discovery.table.companyHeader")}</th>
             <th style={headerCellStyle}>{t("discovery.table.decisionHeader")}</th>
-            <th style={headerCellStyle}>{t("discovery.table.currentViewHeader")}</th>
             <th style={headerCellStyle}>{t("discovery.table.coverageHeader")}</th>
             <th style={headerCellStyle}>{t("discovery.table.fitHeader")}</th>
           </tr>
@@ -141,13 +139,21 @@ function DiscoveryCandidateRow({
           tone={DECISION_SUPPORT_TONE[candidate.decisionSupportLevel]}
         />
       </td>
-      {/* A `null` Stance or Fit is a real answer -- the engine could
-          not evaluate this company -- never rendered as a middling
-          one, and never left as an empty cell the reader has to
+      {/* Sprint 4D removed the Stance column. It read `review` for 20
+          of 22 live candidates -- a pure moderate-confidence gate, not
+          a comparison -- and it is the one signal here that folds
+          Portfolio Fit into itself, so a column of it next to the Fit
+          column stated the same portfolio-relative fact twice under a
+          heading that promised something else. Stance still orders
+          candidates that tie on conclusion and fit, and still keeps a
+          critical-toned candidate out of the supported tier; it just
+          no longer costs a fifth of the width to say the same word
+          twenty times.
+
+          A `null` Fit is a real answer -- Portfolio Fit could not
+          evaluate this company -- never rendered as a middling one,
+          and never left as an empty cell the reader has to
           interpret. */}
-      <td style={cellStyle}>
-        {candidate.stanceLevel !== null ? <StanceBadge level={candidate.stanceLevel} /> : <UnknownCell />}
-      </td>
       <td style={cellStyle}>
         <StatusBadge
           label={t(ANALYSIS_COVERAGE_LEVEL_KEY[candidate.analysisCoverageLevel])}

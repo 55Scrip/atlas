@@ -47,7 +47,10 @@ const DISCOVERY_CANDIDATES = [
     ticker: "NVDA",
     caseId: "case-nvda",
     companyName: "NVIDIA Corporation",
-    decisionSupportLevel: "thesis_intact",
+    // Sprint 4D: the tier is Atlas's own conclusion about entering.
+    // `thesis_intact` is a statement about an existing position, so it
+    // no longer belongs in the fixture for "renders as a primary card".
+    decisionSupportLevel: "entry_supported",
     analysisCoverageLevel: "substantial_coverage",
     fitRating: "good",
     stanceLevel: null,
@@ -101,7 +104,7 @@ describe("DiscoveryPage (Discover Doctrine, 2026-08-27)", () => {
   it("renders a good-Fit candidate as a large card in Highest opportunity", async () => {
     mockFetch();
     renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
-    await waitFor(() => expect(screen.getByText("Största möjligheterna")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Atlas stöder en ny position")).toBeInTheDocument());
     expect(screen.getAllByText("NVDA").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Bra passform").length).toBeGreaterThan(0);
   });
@@ -188,7 +191,7 @@ describe("DiscoveryPage (Discover Doctrine, 2026-08-27)", () => {
       ).toBeInTheDocument(),
     );
     expect(screen.queryByText("AAPL")).not.toBeInTheDocument();
-    expect(screen.queryByText("Största möjligheterna")).not.toBeInTheDocument();
+    expect(screen.queryByText("Atlas stöder en ny position")).not.toBeInTheDocument();
   });
 
   it("never renders a raw Daily Brief Agenda headline on a candidate card (Phase 5)", async () => {
@@ -274,8 +277,8 @@ describe("DiscoveryPage (Discover Doctrine, 2026-08-27)", () => {
       },
     });
     renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
-    await waitFor(() => expect(screen.getByText("Värt att se över")).toBeInTheDocument());
-    expect(screen.getByText("Ingen kandidat sticker ut som en toppmöjlighet just nu.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Ingen slutsats ännu")).toBeInTheDocument());
+    expect(screen.getByText("Inget av dessa bolag har just nu Atlas stöd för en ny position.")).toBeInTheDocument();
     expect(screen.getAllByText("AMD").length).toBeGreaterThan(0);
   });
 
@@ -512,11 +515,17 @@ describe("DiscoveryPage -- Sprint 4C Discovery UX convergence", () => {
   it("renders the three tiers in fixed priority order, dense tiers as a comparative table", async () => {
     mockFetch({
       discoveryCandidates: [
-        // Highest: positive Fit, no disagreeing Stance.
+        // Supported: Atlas concludes current evidence supports entering.
         universeCandidate(),
-        // Worth reviewing: positive Fit, but a caution-toned Stance.
-        universeCandidate({ ticker: "CRM", caseId: "case-crm", companyName: "Salesforce.com Inc", stanceLevel: "review" }),
-        // Everything else: nothing currently pulling attention there.
+        // Not concluded yet: Atlas studied it and withheld a conclusion.
+        universeCandidate({
+          ticker: "CRM",
+          caseId: "case-crm",
+          companyName: "Salesforce.com Inc",
+          decisionSupportLevel: "insufficient_evidence",
+          stanceLevel: "review",
+        }),
+        // Entry not supported: a real, evaluated "no".
         universeCandidate({
           ticker: "UNP",
           caseId: "case-unp",
@@ -528,7 +537,7 @@ describe("DiscoveryPage -- Sprint 4C Discovery UX convergence", () => {
       ],
     });
     renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
-    await waitFor(() => expect(screen.getByText("Största möjligheterna")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Atlas stöder en ny position")).toBeInTheDocument());
 
     // Highest opportunity stays a card with its own primary action.
     expect(screen.getByRole("button", { name: "Öppna investeringscase" })).toBeInTheDocument();
@@ -537,18 +546,25 @@ describe("DiscoveryPage -- Sprint 4C Discovery UX convergence", () => {
     expect(screen.getByRole("button", { name: "Öppna investeringscaset för UNP" })).toBeInTheDocument();
 
     const text = document.body.textContent ?? "";
-    expect(text.indexOf("Största möjligheterna")).toBeLessThan(text.indexOf("Värt att se över"));
-    expect(text.indexOf("Värt att se över")).toBeLessThan(text.indexOf("1 bolag till"));
+    expect(text.indexOf("Atlas stöder en ny position")).toBeLessThan(text.indexOf("Ingen slutsats ännu"));
+    expect(text.indexOf("Ingen slutsats ännu")).toBeLessThan(text.indexOf("1 bolag där Atlas inte stöder att gå in"));
   });
 
   it("keeps every candidate reachable -- the Everything-else tier is collapsed, never dropped", async () => {
     mockFetch({
       discoveryCandidates: [
-        universeCandidate({ ticker: "XOM", caseId: "case-xom", companyName: "Exxon Mobil Corp", fitRating: null, stanceLevel: null }),
+        universeCandidate({
+          ticker: "XOM",
+          caseId: "case-xom",
+          companyName: "Exxon Mobil Corp",
+          decisionSupportLevel: "no_action_supported",
+          fitRating: null,
+          stanceLevel: null,
+        }),
       ],
     });
     renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
-    await waitFor(() => expect(screen.getByText("1 bolag till")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("1 bolag där Atlas inte stöder att gå in")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Öppna investeringscaset för XOM" })).toBeInTheDocument();
   });
 
@@ -579,7 +595,7 @@ describe("DiscoveryPage -- Sprint 4C Discovery UX convergence", () => {
       ),
     ).toBeInTheDocument();
     const text = document.body.textContent ?? "";
-    expect(text.indexOf("Största möjligheterna")).toBeLessThan(text.indexOf("Sök efter ett bolag"));
+    expect(text.indexOf("Atlas stöder en ny position")).toBeLessThan(text.indexOf("Sök efter ett bolag"));
   });
 
   /** A search result for a company Atlas has already analysed used to
@@ -640,7 +656,13 @@ describe("DiscoveryPage -- Sprint 4C Discovery UX convergence", () => {
     const calls: Array<{ url: string; method: string | undefined }> = [];
     mockFetch({
       discoveryCandidates: [
-        universeCandidate({ ticker: "CRM", caseId: "case-crm", companyName: "Salesforce.com Inc", stanceLevel: "review" }),
+        universeCandidate({
+          ticker: "CRM",
+          caseId: "case-crm",
+          companyName: "Salesforce.com Inc",
+          decisionSupportLevel: "insufficient_evidence",
+          stanceLevel: "review",
+        }),
       ],
     });
     const original = globalThis.fetch as typeof fetch;
@@ -671,5 +693,132 @@ describe("DiscoveryPage -- Sprint 4C Discovery UX convergence", () => {
     await waitFor(() =>
       expect(screen.getByText("Kunde inte öppna investeringscaset. Försök igen.")).toBeInTheDocument(),
     );
+  });
+});
+
+/**
+ * Convergence Sprint 4D. The page-level half of the ranking
+ * reconciliation: `rankCandidates.test.ts` proves the ordering rules,
+ * these prove the surface actually renders them, and that the reason a
+ * candidate ranks where it does is the same reason the row states.
+ */
+describe("DiscoveryPage -- Sprint 4D ranking reconciliation", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    __resetAlphaWatchlistCacheForTests();
+    __resetAlphaPortfolioCacheForTests();
+  });
+
+  function c(overrides: Partial<Record<string, unknown>> = {}) {
+    return {
+      ticker: "ASML",
+      caseId: "case-asml",
+      companyName: "ASML Holding NV ADR",
+      decisionSupportLevel: "entry_supported",
+      analysisCoverageLevel: "substantial_coverage",
+      fitRating: "good",
+      stanceLevel: "review",
+      ...overrides,
+    };
+  }
+
+  /** The governing product rule, rendered: a company whose case Atlas
+   * supports outranks one it withheld judgment on, even when the
+   * portfolio prefers the latter -- and the poor fit stays visible
+   * rather than being quietly resolved away. */
+  it("ranks a supported entry with weak Fit above an unconcluded one with good Fit, and still shows the weak Fit", async () => {
+    mockFetch({
+      discoveryCandidates: [
+        c({ ticker: "GOODFIT", caseId: "case-good", companyName: "Fits Well Inc", decisionSupportLevel: "insufficient_evidence", fitRating: "good" }),
+        c({ ticker: "WEAKFIT", caseId: "case-weak", companyName: "Fits Poorly Inc", decisionSupportLevel: "entry_supported", fitRating: "weak" }),
+      ],
+    });
+    renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
+    await waitFor(() => expect(screen.getByText("Atlas stöder en ny position")).toBeInTheDocument());
+
+    const text = document.body.textContent ?? "";
+    expect(text.indexOf("WEAKFIT")).toBeLessThan(text.indexOf("GOODFIT"));
+    // The weak fit is disclosed on the card, not hidden to protect the ranking.
+    expect(screen.getAllByText("Svag passform").length).toBeGreaterThan(0);
+  });
+
+  it("keeps an evaluated refusal out of the supported tier however well it fits", async () => {
+    mockFetch({
+      discoveryCandidates: [c({ ticker: "REFUSED", caseId: "case-ref", decisionSupportLevel: "no_action_supported", fitRating: "excellent" })],
+    });
+    renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
+    await waitFor(() =>
+      expect(screen.getByText("Inget av dessa bolag har just nu Atlas stöd för en ny position.")).toBeInTheDocument(),
+    );
+    expect(screen.getByText("1 bolag där Atlas inte stöder att gå in")).toBeInTheDocument();
+  });
+
+  /** Withheld is not negative: it must not be filed with Atlas's real
+   * "no", and it must not be dressed up as support either. */
+  it("separates a withheld conclusion from an evaluated refusal on the surface", async () => {
+    mockFetch({
+      discoveryCandidates: [
+        c({ ticker: "WITHHELD", caseId: "case-w", decisionSupportLevel: "insufficient_evidence" }),
+        c({ ticker: "REFUSED", caseId: "case-r", decisionSupportLevel: "no_action_supported" }),
+      ],
+    });
+    renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
+    await waitFor(() => expect(screen.getByText("Ingen slutsats ännu")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Öppna investeringscaset för WITHHELD" })).toBeInTheDocument();
+    expect(screen.getByText("1 bolag där Atlas inte stöder att gå in")).toBeInTheDocument();
+  });
+
+  /** Phase T: the ranking key and the stated reason must be the same
+   * fact. The card leads with the very conclusion that put it there. */
+  it("states the conclusion that decided the ranking, in Atlas's own canonical sentence", async () => {
+    mockFetch({ discoveryCandidates: [c()] });
+    renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
+    await waitFor(() => expect(screen.getByText("Nuvarande underlag stöder att inleda en position.")).toBeInTheDocument());
+    expect(screen.getAllByText("Nyinvestering stöds").length).toBeGreaterThan(0);
+  });
+
+  it("never exposes a score, an expected return or a conviction claim at any universe size", async () => {
+    const many = Array.from({ length: 20 }, (_, i) =>
+      c({
+        ticker: `T${i}`,
+        caseId: `case-${i}`,
+        companyName: `Company ${i}`,
+        decisionSupportLevel: i < 3 ? "entry_supported" : i < 14 ? "insufficient_evidence" : "no_action_supported",
+      }),
+    );
+    mockFetch({ discoveryCandidates: many });
+    renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
+    await waitFor(() => expect(screen.getByText("Atlas stöder en ny position")).toBeInTheDocument());
+    const text = document.body.textContent ?? "";
+    for (const invented of ["Övertygelse", "Förväntad avkastning", "Uppsida", "Nedsida", "Poäng", "Rank"]) {
+      expect(text).not.toContain(invented);
+    }
+    expect(text).not.toMatch(/\d+\s*\/\s*10/);
+    expect(text).not.toMatch(/\d+\s*%/);
+  });
+
+  /** Provider safety: rendering the list is a read of already-composed
+   * state, whatever its size. The only endpoints touched are the
+   * page's own fixed set -- never one request per candidate. */
+  it.each([1, 5, 20])("renders %i candidates without a single per-candidate request", async (size) => {
+    const requested: string[] = [];
+    mockFetch({
+      discoveryCandidates: Array.from({ length: size }, (_, i) => c({ ticker: `T${i}`, caseId: `case-${i}`, companyName: `Company ${i}` })),
+    });
+    const original = globalThis.fetch as typeof fetch;
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      requested.push(String(input));
+      return original(input as RequestInfo, init);
+    }));
+    renderWithProviders(<DiscoveryPage />, { route: "/discovery" });
+    await waitFor(() => expect(screen.getAllByText("T0").length).toBeGreaterThan(0));
+
+    expect(requested.filter((url) => url.includes("/api/discovery-candidates"))).toHaveLength(1);
+    for (const perCase of ["/api/investment-case", "/api/analysis", "/api/decision-explanation", "/api/stance/case", "/api/portfolio-fit/case"]) {
+      expect(requested.filter((url) => url.includes(perCase))).toHaveLength(0);
+    }
+    // Whatever the universe size, the request set is the page's own
+    // fixed set -- it does not grow with the number of candidates.
+    expect(new Set(requested).size).toBeLessThanOrEqual(6);
   });
 });

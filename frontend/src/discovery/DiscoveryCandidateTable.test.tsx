@@ -21,24 +21,27 @@ function candidate(overrides: Partial<DiscoveryCandidateView> = {}): DiscoveryCa
 function renderTable(candidates: DiscoveryCandidateView[], onOpenCase = vi.fn()) {
   render(
     <LanguageProvider>
-      <DiscoveryCandidateTable candidates={candidates} captionKey="discovery.worthReviewing.heading" onOpenCase={onOpenCase} />
+      <DiscoveryCandidateTable candidates={candidates} captionKey="discovery.notConcluded.heading" onOpenCase={onOpenCase} />
     </LanguageProvider>,
   );
   return onOpenCase;
 }
 
-describe("DiscoveryCandidateTable (Convergence Sprint 4C -- dense candidate IA)", () => {
-  it("renders one comparable column per canonical signal the candidate already carries", () => {
+describe("DiscoveryCandidateTable (dense candidate IA, Sprints 4C/4D)", () => {
+  /** Sprint 4D dropped the Stance column: `review` for 20 of 22 live
+   * candidates, and the one signal here that folds Portfolio Fit into
+   * itself, so beside the Fit column it stated the same
+   * portfolio-relative fact twice. */
+  it("renders one comparable column per canonical signal, and no column that repeats another", () => {
     renderTable([candidate()]);
     const headers = screen.getAllByRole("columnheader").map((cell) => cell.textContent);
-    expect(headers).toEqual(["Bolag", "Beslutsstöd", "Nuvarande syn", "Analysdjup", "Passform"]);
+    expect(headers).toEqual(["Bolag", "Beslutsstöd", "Analysdjup", "Passform"]);
   });
 
   it("renders every categorical value through the one shared vocabulary, never a Discovery-only wording", () => {
     renderTable([candidate()]);
     const row = screen.getByRole("row", { name: /ASML/ });
     expect(within(row).getByText("Nyinvestering stöds")).toBeInTheDocument();
-    expect(within(row).getByText("Värt att se över")).toBeInTheDocument();
     expect(within(row).getByText("Utvärderat")).toBeInTheDocument();
     expect(within(row).getByText("Bra passform")).toBeInTheDocument();
     expect(within(row).getByText("ASML Holding NV ADR")).toBeInTheDocument();
@@ -50,7 +53,7 @@ describe("DiscoveryCandidateTable (Convergence Sprint 4C -- dense candidate IA)"
   it("names an unevaluated signal instead of leaving the cell blank or inventing a neutral value", () => {
     renderTable([candidate({ ticker: "XOM", caseId: "case-xom", fitRating: null, stanceLevel: null })]);
     const row = screen.getByRole("row", { name: /XOM/ });
-    expect(within(row).getAllByText("Ej bedömt")).toHaveLength(2);
+    expect(within(row).getAllByText("Ej bedömt")).toHaveLength(1);
     expect(within(row).queryByText("Neutral passform")).not.toBeInTheDocument();
   });
 
