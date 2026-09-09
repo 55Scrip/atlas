@@ -17,7 +17,7 @@ import { TickerEvidenceQualityDetail } from "../evidenceQuality/TickerEvidenceQu
 import { TickerEvidenceTimelineDetail } from "../evidenceTimeline/TickerEvidenceTimelineDetail";
 
 /**
- * Discover Doctrine (2026-08-27) -- three variants, one component:
+ * Discover Doctrine (2026-08-27) -- two variants, one component:
  *
  * `"primary"` -- a Highest-opportunity card (Phase 2): ticker, Decision
  * Support + Stance + Fit verdict, one sentence, Open Investment Case as
@@ -35,18 +35,6 @@ import { TickerEvidenceTimelineDetail } from "../evidenceTimeline/TickerEvidence
  * because the candidate universe excludes actively watched companies
  * by construction, so on a Discovery card that control could only ever
  * be an action that silently did nothing.
- *
- * `"secondary"` -- a Worth-reviewing / Everything-else row (Phase 3):
- * ticker, rating, one-line verdict, Open Investment Case. Nothing more
- * -- no Surface/card chrome, deliberately a plain scannable row so the
- * visual weight difference from a primary card is immediate, not
- * something a reader has to notice by counting elements. Sprint 4C
- * renders the two lower tiers as `DiscoveryCandidateTable` instead --
- * a dense row could carry one signal, and fourteen of them made a
- * list rather than a comparison -- so this variant currently has no
- * caller. It is kept, still covered, as the one lightweight rendering
- * for a context that wants a candidate without a table around it;
- * nothing in the product renders it today.
  *
  * `"full"` -- Candidate Detail's own full-page rendering, unchanged
  * from before except the raw Agenda headline is gone (Phase 5) --
@@ -84,7 +72,7 @@ export function DiscoveryCandidateCard({
    * the badge already says what the rating is. */
   fit: FitRating | null;
   /** Only the `"full"` variant needs the whole assessment, for its
-   * per-dimension breakdown. The compact variants read `fit` alone. */
+   * per-dimension breakdown. The primary variant reads `fit` alone. */
   assessment?: PortfolioFitAssessmentView | null;
   stance?: StanceLevel | null;
   /** Sprint 4C, `"primary"` only. The candidate's canonical
@@ -93,7 +81,7 @@ export function DiscoveryCandidateCard({
    * Watchlist and Investment Case already show for that level, never a
    * Discovery-specific rewording of it. */
   decisionSupport?: DecisionSupportLevel | null;
-  variant: "primary" | "secondary" | "full";
+  variant: "primary" | "full";
   /** Only meaningful for `variant="full"` -- `resolve_case_id_for_
    * ticker` can resolve a real, evaluable Case through a path neither
    * boolean covers on its own, so `assessment !== null` is checked
@@ -110,28 +98,6 @@ export function DiscoveryCandidateCard({
 }) {
   const { t } = useTranslation();
   const canEvaluate = fit !== null || isOnWatchlist === true || isHolding === true;
-
-  if (variant === "secondary") {
-    return (
-      <Inline gap="row" align="center" wrap style={{ justifyContent: "space-between" }}>
-        <Inline gap="row" align="baseline" wrap>
-          <Text as="span" style={{ fontWeight: 600 }}>
-            {ticker}
-          </Text>
-          {fit !== null ? (
-            <FitBadge rating={fit} />
-          ) : (
-            <Text color="tertiary" as="span">
-              {t(canEvaluate ? "discovery.card.fitPending" : "discovery.card.noCaseYet")}
-            </Text>
-          )}
-        </Inline>
-        <Button variant="tertiary" onClick={onOpenCase}>
-          {t("discovery.card.openCase")}
-        </Button>
-      </Inline>
-    );
-  }
 
   if (variant === "primary") {
     return (

@@ -24,7 +24,8 @@ import styles from "./DiscoveryCandidateTable.module.css";
  * separate lines. This is the same table treatment Watchlist already
  * uses for exactly the same job -- scan a column, not a row at a time
  * -- reusing its own cell/header styling conventions and its
- * keyboard-operable row.
+ * native keyboard-operable case control while preserving real table
+ * semantics for assistive technology.
  *
  * Every column is a closed categorical vocabulary Atlas already
  * computes and already sends on `DiscoveryCandidateView`, rendered
@@ -100,42 +101,39 @@ function DiscoveryCandidateRow({
 }) {
   const { t } = useTranslation();
 
-  /* The whole row opens the Investment Case, exactly as a Watchlist
-     row does -- no separate button repeating the row's own single
-     action in a sixth column. Sprint 4B made that a direct
-     `ensureCaseForTicker` call, so no intermediary page and no
-     membership side effect stands between the row and the Case. */
+  /* Sprint 4D. The row used to override its native table role with
+     `role="button"`. That made it keyboard-operable but stopped assistive
+     technology from exposing it as a row. A native button in the
+     company cell now owns focus and activation; pointer users can still
+     click anywhere on the row. */
   function activate() {
     onOpenCase(candidate.ticker);
   }
 
   return (
-    <tr
-      role="button"
-      tabIndex={0}
-      aria-label={t("discovery.table.rowAriaLabel", { ticker: candidate.ticker })}
-      onClick={activate}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          activate();
-        }
-      }}
-      className={styles.row}
-      style={{ cursor: "pointer" }}
-    >
+    <tr className={styles.row} onClick={activate}>
       <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)" }}>
-        <Text as="span" style={{ fontWeight: 600 }}>
-          {candidate.ticker}
-        </Text>
-        {candidate.companyName !== null && (
-          <>
-            {" "}
-            <Text as="span" color="tertiary">
-              {candidate.companyName}
-            </Text>
-          </>
-        )}
+        <button
+          type="button"
+          className={styles.caseButton}
+          aria-label={t("discovery.table.rowAriaLabel", { ticker: candidate.ticker })}
+          onClick={(event) => {
+            event.stopPropagation();
+            activate();
+          }}
+        >
+          <Text as="span" style={{ fontWeight: 600 }}>
+            {candidate.ticker}
+          </Text>
+          {candidate.companyName !== null && (
+            <>
+              {" "}
+              <Text as="span" color="tertiary">
+                {candidate.companyName}
+              </Text>
+            </>
+          )}
+        </button>
       </td>
       <td style={cellStyle}>
         <StatusBadge

@@ -36,7 +36,7 @@ describe("DiscoveryCandidateTable (Convergence Sprint 4C -- dense candidate IA)"
 
   it("renders every categorical value through the one shared vocabulary, never a Discovery-only wording", () => {
     renderTable([candidate()]);
-    const row = screen.getByRole("button", { name: "Öppna investeringscaset för ASML" });
+    const row = screen.getByRole("row", { name: /ASML/ });
     expect(within(row).getByText("Nyinvestering stöds")).toBeInTheDocument();
     expect(within(row).getByText("Värt att se över")).toBeInTheDocument();
     expect(within(row).getByText("Utvärderat")).toBeInTheDocument();
@@ -49,7 +49,7 @@ describe("DiscoveryCandidateTable (Convergence Sprint 4C -- dense candidate IA)"
    * never left as an empty cell the reader has to interpret. */
   it("names an unevaluated signal instead of leaving the cell blank or inventing a neutral value", () => {
     renderTable([candidate({ ticker: "XOM", caseId: "case-xom", fitRating: null, stanceLevel: null })]);
-    const row = screen.getByRole("button", { name: "Öppna investeringscaset för XOM" });
+    const row = screen.getByRole("row", { name: /XOM/ });
     expect(within(row).getAllByText("Ej bedömt")).toHaveLength(2);
     expect(within(row).queryByText("Neutral passform")).not.toBeInTheDocument();
   });
@@ -60,7 +60,7 @@ describe("DiscoveryCandidateTable (Convergence Sprint 4C -- dense candidate IA)"
       candidate({ ticker: "AAPL", caseId: "case-aapl" }),
       candidate({ ticker: "CRM", caseId: "case-crm" }),
     ]);
-    const order = screen.getAllByRole("button").map((row) => row.getAttribute("aria-label"));
+    const order = screen.getAllByRole("button").map((button) => button.getAttribute("aria-label"));
     expect(order).toEqual([
       "Öppna investeringscaset för TSM",
       "Öppna investeringscaset för AAPL",
@@ -70,17 +70,19 @@ describe("DiscoveryCandidateTable (Convergence Sprint 4C -- dense candidate IA)"
 
   it("opens the Investment Case when the row is clicked", async () => {
     const onOpenCase = renderTable([candidate()]);
-    await userEvent.click(screen.getByRole("button", { name: "Öppna investeringscaset för ASML" }));
+    await userEvent.click(screen.getByRole("row", { name: /ASML/ }));
     expect(onOpenCase).toHaveBeenCalledWith("ASML");
   });
 
-  /** The row is the action, so it has to answer the keyboard the way a
-   * button does -- the same contract the Watchlist row already meets. */
-  it("opens the Investment Case from the keyboard, with Enter and with Space", async () => {
+  /** Sprint 4D: keep native table-row semantics and let a native button
+   * own focus/keyboard activation instead of overriding `<tr>`'s role. */
+  it("preserves table semantics and opens from a native keyboard control", async () => {
     const onOpenCase = renderTable([candidate()]);
-    const row = screen.getByRole("button", { name: "Öppna investeringscaset för ASML" });
-    expect(row).toHaveAttribute("tabindex", "0");
-    row.focus();
+    const row = screen.getByRole("row", { name: /ASML/ });
+    expect(row).not.toHaveAttribute("role");
+    expect(row).not.toHaveAttribute("tabindex");
+    const button = within(row).getByRole("button", { name: "Öppna investeringscaset för ASML" });
+    button.focus();
     await userEvent.keyboard("{Enter}");
     await userEvent.keyboard(" ");
     expect(onOpenCase).toHaveBeenCalledTimes(2);

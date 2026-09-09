@@ -135,41 +135,6 @@ describe("DiscoveryCandidateCard -- primary variant (Discover Doctrine, Highest 
   });
 });
 
-describe("DiscoveryCandidateCard -- secondary variant (Worth reviewing / Everything else)", () => {
-  function renderSecondary(props: Partial<Parameters<typeof DiscoveryCandidateCard>[0]> = {}) {
-    return render(
-      <LanguageProvider>
-        <DiscoveryCandidateCard ticker="NVDA" fit="good" assessment={assessment()} variant="secondary" onOpenCase={vi.fn()} {...props} />
-      </LanguageProvider>,
-    );
-  }
-
-  it("shows ticker and rating, nothing more (Phase 3)", () => {
-    renderSecondary();
-    expect(screen.getByText("NVDA")).toBeInTheDocument();
-    expect(screen.getByText("Bra passform")).toBeInTheDocument();
-    expect(screen.queryByText(/More dimensions rated/)).not.toBeInTheDocument();
-  });
-
-  it("shows only one action -- Open Investment Case, never Compare or Remove from Watchlist", () => {
-    renderSecondary({ onCompare: vi.fn(), onRemoveFromWatchlist: vi.fn() });
-    expect(screen.getByRole("button", { name: "Öppna investeringscase" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Jämför" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Ta bort från bevakningslistan")).not.toBeInTheDocument();
-  });
-
-  it("shows a disclosed 'fit pending' state, never a fabricated rating, when no assessment exists yet", () => {
-    renderSecondary({ fit: null, assessment: null });
-    expect(screen.getByText("Bygg investeringscaset innan Atlas kan utvärdera portföljpassform.")).toBeInTheDocument();
-  });
-
-  it("never renders any expandable disclosure", () => {
-    renderSecondary();
-    expect(screen.queryByText("Varför?")).not.toBeInTheDocument();
-    expect(screen.queryByText("Bevisunderlagets kvalitet")).not.toBeInTheDocument();
-  });
-});
-
 describe("DiscoveryCandidateCard -- full variant (Candidate Detail)", () => {
   function renderFull(props: Partial<Parameters<typeof DiscoveryCandidateCard>[0]> = {}) {
     return render(

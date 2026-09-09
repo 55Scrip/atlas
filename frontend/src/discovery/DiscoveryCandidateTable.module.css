@@ -1,10 +1,26 @@
-/* Sprint 4C -- mirrors WatchlistPage.module.css exactly: the row is a
-   real click target (role="button", opens the Investment Case) and had
-   no hover feedback without this. Same brief-duration transition
-   Button's tertiary variant uses. */
+/* Sprint 4C/4D -- pointer users can activate the full row, while the
+   company-cell button remains the sole keyboard control so the native
+   table row role is preserved. */
 .row {
+  cursor: pointer;
   transition: background var(--motion-duration-brief) var(--motion-easing-out);
 }
 .row:hover {
   background: var(--surface-elevated);
+}
+
+.caseButton {
+  appearance: none;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.caseButton:focus-visible {
+  outline: var(--width-focus-ring) solid var(--color-focus-ring);
 }
