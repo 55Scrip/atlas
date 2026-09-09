@@ -94,11 +94,13 @@ def _identity_provider(*tickers: str) -> _IdentityProvider:
     return _IdentityProvider(tickers=tuple(tickers))
 
 
-def _doc(*, identifier: str, company: str, revenue: float = 100.0) -> RawBusinessDocument:
+def _doc(
+    *, identifier: str, company: str, revenue: float = 100.0, source_kind: str = "financial_statement"
+) -> RawBusinessDocument:
     return RawBusinessDocument(
         identifier=identifier,
         company=company,
-        source_kind="financial_statement",
+        source_kind=source_kind,
         published_at=_EVALUATED_AT,
         provider_id="fake_provider",
         raw_reference="https://example.test/doc",
@@ -172,7 +174,13 @@ class TestRealProgress:
 
 class TestAlreadyEnriched:
     def test_an_already_minimally_complete_ticker_is_skipped(self, repository, identity_gate):
-        provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2023", company="AAPL"),))
+        # All three required legs -- market data is a required signal.
+        provider = _FakeProvider(
+            documents=(
+                _doc(identifier="AAPL:FY:2023", company="AAPL"),
+                _doc(identifier="AAPL:snapshot", company="AAPL", source_kind="market_data_snapshot"),
+            )
+        )
         enrich_holdings(
             ("AAPL",), (provider, _identity_provider("AAPL")), repository, identity_gate=identity_gate
         )  # first pass: real enrichment
@@ -369,6 +377,10 @@ class TestProviderAwareCompletionAndIngestionPersistence:
                 identity_gate_outcome="AUTO_ACCEPT",
                 provider_failures=(
                     ProviderFailure(provider_id="SecEdgarFundamentalsProvider", error="not an SEC filer", kind="CompanyNotFound"),
+                    # The market leg is settled the same way, so this
+                    # still isolates what the test is about: a
+                    # classified-unsupported failure is not retried.
+                    ProviderFailure(provider_id="AlphaVantageMarketDataProvider", error="no quote", kind="CompanyNotFound"),
                 ),
             )
         )

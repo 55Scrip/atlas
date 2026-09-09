@@ -68,7 +68,7 @@ describe("ExplanationPanel (Atlas Intelligence Sprint 3)", () => {
       limitingFactors: [{ code: "confidence_limited" }],
     });
     expect(screen.getByText("En allvarlig risk föreligger för närvarande.")).toBeInTheDocument();
-    expect(screen.getByText("Atlas egen tillförlitlighet i den här analysen är begränsad.")).toBeInTheDocument();
+    expect(screen.getByText("Atlas har bara utvärderat en begränsad del av den här analysen.")).toBeInTheDocument();
   });
 
   it("renders the real counted confidence-driver sentence, matching the Coverage panel's own precedent", () => {

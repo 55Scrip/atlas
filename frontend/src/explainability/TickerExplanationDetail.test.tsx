@@ -48,7 +48,7 @@ describe("TickerExplanationDetail (Materiality-powered, Atlas Intelligence)", ()
 
     await waitFor(() => expect(screen.getByText(/Tillväxt/)).toBeInTheDocument());
     expect(screen.queryByText(/insufficient_historical_periods/)).not.toBeInTheDocument();
-    expect(screen.getByText("Atlas egen tillförlitlighet i den här analysen är begränsad.")).toBeInTheDocument();
+    expect(screen.getByText("Atlas har bara utvärderat en begränsad del av den här analysen.")).toBeInTheDocument();
     expect(screen.getByText("En allvarlig risk föreligger för närvarande.")).toBeInTheDocument();
   });
 

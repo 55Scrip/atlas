@@ -66,11 +66,13 @@ class _IdentityProvider:
         )
 
 
-def _doc(*, identifier: str, company: str = "NVDA", content_hash: str) -> RawBusinessDocument:
+def _doc(
+    *, identifier: str, company: str = "NVDA", content_hash: str, source_kind: str = "financial_statement"
+) -> RawBusinessDocument:
     return RawBusinessDocument(
         identifier=identifier,
         company=company,
-        source_kind="financial_statement",
+        source_kind=source_kind,
         published_at=_EVALUATED_AT,
         provider_id="fake_provider",
         raw_reference="https://example.test/doc",
@@ -140,7 +142,15 @@ class TestRefresh:
 
 class TestEnsureEnrichedAndRecord:
     def test_returns_none_and_records_nothing_when_already_minimally_complete(self, engine):
-        service = _service(engine, documents=(_doc(identifier="doc-1", content_hash="v1"),))
+        # Every required leg, market data included, so the ticker is
+        # genuinely complete rather than merely partly enriched.
+        service = _service(
+            engine,
+            documents=(
+                _doc(identifier="doc-1", content_hash="v1"),
+                _doc(identifier="doc-snapshot", content_hash="v-snap", source_kind="market_data_snapshot"),
+            ),
+        )
         service.refresh("NVDA", "case-1")  # establishes real, minimally-complete records
         result = service.ensure_enriched_and_record("NVDA", "case-1")
         assert result is None

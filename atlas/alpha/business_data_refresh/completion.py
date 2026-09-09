@@ -12,16 +12,34 @@ a ticker with only Alpha Vantage identity stayed permanently
 unenriched for SEC fundamentals -- confirmed the actual, observed
 shape of the real 32-case investigation this sprint acts on.
 
-**Two required provider signals only, this sprint** -- exactly the two
-the governing investigation named: Alpha Vantage's identity leg
-(`COMPANY_PROFILE`) and SEC's fundamentals leg (`FINANCIAL_STATEMENT`).
-Not a generic, arbitrary-provider-count model: asset-type-based
-applicability (would a *third* provider, or *no* provider, genuinely
-apply to a given ticker -- ETFs, crypto, private companies) is
-explicitly out of this sprint's scope (see the investigation's own
-"Explicitly out of scope" list). Both signals are therefore always
-`REQUIRED` for every ticker this sprint evaluates; `_REQUIRED_PROVIDERS`
-is the one place a future sprint narrows that per asset type.
+**Three required provider signals** -- Alpha Vantage's identity leg
+(`COMPANY_PROFILE`), SEC's fundamentals leg (`FINANCIAL_STATEMENT`),
+and Alpha Vantage's market leg (`MARKET_DATA_SNAPSHOT`). Not a generic,
+arbitrary-provider-count model: asset-type-based applicability (would a
+*fourth* provider, or *no* provider, genuinely apply to a given ticker
+-- ETFs, crypto, private companies) remains out of scope. All three are
+therefore `REQUIRED` for every ticker; `_REQUIRED_PROVIDERS` is the one
+place a future sprint narrows that per asset type.
+
+**Why the market leg was added (Data Coverage & Decision Honesty).**
+The two-signal model had the same shape of defect it was built to fix,
+one layer further out. A ticker that obtained a profile and statements
+-- even through two unrelated partial-depth runs that never included a
+market-data stage -- was marked complete forever, so `ensure_company
+_enriched` never asked again. Seven analysed securities were in exactly
+that state (measured: BRK.B, INTC, MC, NEE, VRT, VST, VZ -- 9 to 22
+years of SEC financials each, zero market snapshots), and the
+consequence was not cosmetic: `SHARE_PRICE`/`SHARES_OUTSTANDING`
+arrive only on a `MARKET_DATA_SNAPSHOT`, so `evaluate_fcf_yield
+_relative` could not compute a market cap, valuation stayed
+inconclusive, and `select_direction` withheld a recommendation before
+reaching its own matrix. Atlas reported those companies as
+"insufficient evidence" when the missing evidence was a price it had
+never asked for.
+
+Completion is a question about what Atlas has, not about which run
+happened to fetch it -- so the fix belongs here rather than in any
+one caller's depth choice.
 
 **Reuses `atlas.alpha.ingestion.models.IngestionResult.provider_failures`
 rather than inventing new persistence** -- this module never touches a
@@ -160,7 +178,7 @@ class _RequiredProvider:
     failure_provider_id: str
 
 
-#: This sprint's exactly-two required signals -- see module docstring.
+#: The required signals -- see module docstring.
 _REQUIRED_PROVIDERS: tuple[_RequiredProvider, ...] = (
     _RequiredProvider(
         document_kind=SourceKind.COMPANY_PROFILE,
@@ -171,6 +189,17 @@ _REQUIRED_PROVIDERS: tuple[_RequiredProvider, ...] = (
         document_kind=SourceKind.FINANCIAL_STATEMENT,
         success_provider_id="sec_edgar",
         failure_provider_id="SecEdgarFundamentalsProvider",
+    ),
+    #: The market leg. `AlphaVantageMarketDataProvider.fetch` (one
+    #: `GLOBAL_QUOTE`) is the only source of the `SHARE_PRICE` and
+    #: `SHARES_OUTSTANDING` valuation facts, and it reports failures
+    #: under the bare class name -- the main refresh loop's own
+    #: `provider_id = type(provider).__name__`, unlike the two
+    #: `.method`-suffixed optional passes.
+    _RequiredProvider(
+        document_kind=SourceKind.MARKET_DATA_SNAPSHOT,
+        success_provider_id="alpha_vantage",
+        failure_provider_id="AlphaVantageMarketDataProvider",
     ),
 )
 

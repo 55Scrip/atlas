@@ -632,7 +632,15 @@ class TestEnsureCompanyEnriched:
         assert len(repository.get_by_company("AAPL")) == 2
 
     def test_an_already_enriched_company_makes_no_provider_call_at_all(self, repository, identity_gate):
-        provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2023"),))
+        # All three required legs, since market data became a required
+        # signal: statements, profile (via the identity provider) and a
+        # market snapshot.
+        provider = _FakeProvider(
+            documents=(
+                _doc(identifier="AAPL:FY:2023"),
+                _doc(identifier="AAPL:snapshot", source_kind="market_data_snapshot"),
+            )
+        )
         ensure_company_enriched(
             "AAPL", (provider, _identity_provider("AAPL")), repository, identity_gate=identity_gate
         )
@@ -640,7 +648,7 @@ class TestEnsureCompanyEnriched:
         calling_provider = _FakeProvider(exception=AssertionError("must never be called"))
         result = ensure_company_enriched("AAPL", (calling_provider,), repository, identity_gate=identity_gate)
         assert result is None
-        assert len(repository.get_by_company("AAPL")) == 2  # unchanged
+        assert len(repository.get_by_company("AAPL")) == 3  # unchanged
 
     def test_a_different_ticker_is_still_fetched_independently(self, repository, identity_gate):
         provider = _FakeProvider(
@@ -758,6 +766,10 @@ class TestEnsureCompanyEnriched:
 
         known_sec_failure = (
             ProviderFailure(provider_id="SecEdgarFundamentalsProvider", error="not an SEC filer", kind="CompanyNotFound"),
+            # The market leg is settled the same way, so this test still
+            # isolates the one thing it is about: an UNSUPPORTED failure
+            # is not retried.
+            ProviderFailure(provider_id="AlphaVantageMarketDataProvider", error="no quote", kind="CompanyNotFound"),
         )
         calling_again = _FakeCompanyProfileProvider(profile_documents=(_profile_doc(company="XYZ"),))
         result = ensure_company_enriched(
@@ -767,7 +779,12 @@ class TestEnsureCompanyEnriched:
         assert len(calling_again.profile_call_count) == 0  # never called -- nothing retryable remains
 
     def test_a_financial_statement_alone_stops_further_retries(self, repository, identity_gate):
-        provider = _FakeProvider(documents=(_doc(identifier="AAPL:FY:2023", source_kind="financial_statement"),))
+        provider = _FakeProvider(
+            documents=(
+                _doc(identifier="AAPL:FY:2023", source_kind="financial_statement"),
+                _doc(identifier="AAPL:snapshot", source_kind="market_data_snapshot"),
+            )
+        )
         ensure_company_enriched(
             "AAPL", (provider, _identity_provider("AAPL")), repository, identity_gate=identity_gate
         )

@@ -36,6 +36,17 @@ def _profile_record() -> BusinessRecord:
     return _record(identifier="profile", source_kind="company_profile", metadata={"name": "Test Co"})
 
 
+def _snapshot_record() -> BusinessRecord:
+    """The market leg (Data Coverage & Decision Honesty). `SHARE_PRICE`
+    and `SHARES_OUTSTANDING` arrive only here, so without it valuation
+    -- and therefore any recommendation direction -- is unreachable."""
+    return _record(
+        identifier="snapshot",
+        source_kind="market_data_snapshot",
+        metadata={"currency": "USD", "share_price": 100.0, "shares_outstanding": 1000.0},
+    )
+
+
 def _statement_record() -> BusinessRecord:
     from datetime import date
 
@@ -107,12 +118,26 @@ class TestAssessEnrichmentCompletion:
         assert completion.is_fully_complete is False
         assert completion.has_retryable_work is True
 
-    def test_both_records_present_is_fully_complete(self):
-        completion = assess_enrichment_completion("XYZ", (_profile_record(), _statement_record()))
+    def test_all_three_records_present_is_fully_complete(self):
+        completion = assess_enrichment_completion(
+            "XYZ", (_profile_record(), _statement_record(), _snapshot_record())
+        )
         assert completion.status_for(SourceKind.COMPANY_PROFILE) is ProviderCompletionStatus.SUCCEEDED
         assert completion.status_for(SourceKind.FINANCIAL_STATEMENT) is ProviderCompletionStatus.SUCCEEDED
+        assert completion.status_for(SourceKind.MARKET_DATA_SNAPSHOT) is ProviderCompletionStatus.SUCCEEDED
         assert completion.is_fully_complete is True
         assert completion.has_retryable_work is False
+
+    def test_profile_and_statements_without_market_data_are_not_complete(self):
+        """The defect this signal exists for. Seven analysed securities
+        (BRK.B, INTC, MC, NEE, VRT, VST, VZ) held years of SEC financials
+        and a profile, and were therefore treated as permanently
+        enriched -- while carrying no price at all, which is the one
+        input valuation cannot proceed without."""
+        completion = assess_enrichment_completion("XYZ", (_profile_record(), _statement_record()))
+        assert completion.status_for(SourceKind.MARKET_DATA_SNAPSHOT) is ProviderCompletionStatus.NOT_YET_ATTEMPTED
+        assert completion.is_fully_complete is False
+        assert completion.has_retryable_work is True
 
     def test_sec_only_remains_eligible_for_alpha_vantage(self):
         """A ticker with only SEC data must remain eligible for the
@@ -143,7 +168,11 @@ class TestAssessEnrichmentCompletion:
         applicable is not retried as though it were a transient
         failure."""
         failures = (ProviderFailure(provider_id=_SEC_FUNDAMENTALS_ID, error="not an SEC filer", kind="CompanyNotFound"),)
-        completion = assess_enrichment_completion("XYZ", (_profile_record(),), failures)
+        # The other two legs are satisfied so this isolates SEC's own
+        # status: the only outstanding signal is the unsupported one.
+        completion = assess_enrichment_completion(
+            "XYZ", (_profile_record(), _snapshot_record()), failures
+        )
         assert completion.status_for(SourceKind.FINANCIAL_STATEMENT) is ProviderCompletionStatus.FAILED_UNSUPPORTED
         assert completion.is_fully_complete is False  # honestly incomplete, not silently treated as done
         assert completion.has_retryable_work is False  # but nothing left worth retrying
@@ -171,4 +200,8 @@ class TestAssessEnrichmentCompletion:
     def test_every_required_provider_is_always_named(self):
         completion = assess_enrichment_completion("XYZ", ())
         document_kinds = {p.document_kind for p in completion.providers}
-        assert document_kinds == {SourceKind.COMPANY_PROFILE, SourceKind.FINANCIAL_STATEMENT}
+        assert document_kinds == {
+            SourceKind.COMPANY_PROFILE,
+            SourceKind.FINANCIAL_STATEMENT,
+            SourceKind.MARKET_DATA_SNAPSHOT,
+        }

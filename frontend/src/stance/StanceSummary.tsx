@@ -2,7 +2,7 @@ import { Inline, Stack, StatusBadge, Text } from "../foundation";
 import type { Translate } from "../changeIntelligence/describeChange";
 import { STANCE_LEVEL_KEY, STANCE_LEVEL_TONE } from "../status/statusTone";
 import { cautionaryStanceReason, primaryStanceReason, showsCautionarySentence, stanceReasonSentence } from "./describeStance";
-import { coverageDimensionLabel } from "../coverage/describeCoverage";
+import { describeDimensions, partitionMissingInformation } from "./partitionMissingInformation";
 import type { StanceView } from "./stanceApi";
 
 /**
@@ -18,6 +18,9 @@ import type { StanceView } from "./stanceApi";
 export function StanceSummary({ stance, t }: { stance: StanceView; t: Translate }) {
   const primary = primaryStanceReason(stance);
   const cautionary = showsCautionarySentence(stance) ? cautionaryStanceReason(stance) : null;
+  const { companySpecific: companyGaps, engineUnsupported: engineGaps } = partitionMissingInformation(
+    stance.missingInformation,
+  );
 
   return (
     <Stack gap="metadata">
@@ -37,9 +40,17 @@ export function StanceSummary({ stance, t }: { stance: StanceView; t: Translate 
           {t("stance.whileCautiousLabel")}: {stanceReasonSentence(cautionary, t)}
         </Text>
       )}
-      {stance.missingInformation.length > 0 && (
+      {/* Data Coverage & Decision Honesty: what this company is short
+          of, and what Atlas cannot evaluate for anyone, are different
+          statements and are no longer said in one breath. */}
+      {companyGaps.length > 0 && (
         <Text as="p" color="tertiary">
-          {t("stance.missingInformationLabel")} {stance.missingInformation.map((d) => coverageDimensionLabel(d, t)).join(", ")}
+          {t("stance.missingInformationLabel")} {describeDimensions(companyGaps, t)}
+        </Text>
+      )}
+      {engineGaps.length > 0 && (
+        <Text as="p" color="tertiary">
+          {t("stance.notYetEvaluatedByAtlasLabel")} {describeDimensions(engineGaps, t)}
         </Text>
       )}
     </Stack>
