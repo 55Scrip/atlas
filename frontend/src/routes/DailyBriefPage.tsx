@@ -195,12 +195,20 @@ export function DailyBriefPage() {
             {t("common.loading")}
           </Text>
         )}
-        {status.kind === "error" && <Text color="secondary">{status.message}</Text>}
+        {/* Final Pre-Alpha Convergence: this printed `error.message`
+            verbatim -- "Backend responded with 500", in English, into a
+            Swedish UI. What the investor needs to know is that today's
+            brief could not be built, not what the transport said. */}
+        {status.kind === "error" && (
+          <Text color="tertiary" role="alert">
+            {t("dailyBrief.agenda.unavailable")}
+          </Text>
+        )}
 
         {status.kind === "loaded" && (
           <>
             <SinceYourLastVisitSection viewState={viewState} changeLogStatus={changeLogStatus} onOpen={openChangeFromCard} />
-            <AtlasIsWatchingTodaySection />
+            <ScheduledEventsCapabilityNote />
           </>
         )}
 
@@ -222,26 +230,31 @@ export function DailyBriefPage() {
         {status.kind === "loaded" && (
           <>
             <Divider tone="hairline" />
-
             <PortfolioSummarySection agenda={status.agenda} />
+          </>
+        )}
 
-            {openDrafts.length > 0 && (
-              <>
-                <Divider tone="hairline" />
-                <Stack gap="metadata">
-                  <Heading level={2}>{t("dailyBrief.openDrafts.heading")}</Heading>
-                  <Stack gap="row">
-                    {openDrafts.map((draft) => (
-                      <RouterLink key={draft.draftId} to={`/decision-drafts/${draft.draftId}/commit`} style={ACCENT_LINK_STYLE}>
-                        {t("dailyBrief.openDrafts.resumeLink", {
-                          subject: draft.subject ?? t("decisionWorkspace.startDecision.resumeFallbackSubject"),
-                        })}
-                      </RouterLink>
-                    ))}
-                  </Stack>
-                </Stack>
-              </>
-            )}
+        {/* Final Pre-Alpha Convergence: unfinished decisions the
+            investor started are their own fetch and the most actionable
+            thing on this page. They used to render inside the agenda's
+            own `loaded` branch, so a failed agenda -- a different
+            endpoint, carrying different facts -- silently swallowed
+            them. Nothing here reads the agenda. */}
+        {openDrafts.length > 0 && (
+          <>
+            <Divider tone="hairline" />
+            <Stack gap="metadata">
+              <Heading level={2}>{t("dailyBrief.openDrafts.heading")}</Heading>
+              <Stack gap="row">
+                {openDrafts.map((draft) => (
+                  <RouterLink key={draft.draftId} to={`/decision-drafts/${draft.draftId}/commit`} style={ACCENT_LINK_STYLE}>
+                    {t("dailyBrief.openDrafts.resumeLink", {
+                      subject: draft.subject ?? t("decisionWorkspace.startDecision.resumeFallbackSubject"),
+                    })}
+                  </RouterLink>
+                ))}
+              </Stack>
+            </Stack>
           </>
         )}
       </Stack>
@@ -381,23 +394,28 @@ function ChangeGroupCard({ group, onOpen }: { group: TickerChangeGroupView; onOp
   );
 }
 
-/** Phase 7, Section 2: "Atlas is watching today" -- forward-looking
- * catalysts that may materially affect a holding. No scheduled-catalyst
- * data source exists anywhere in this codebase today (`CanonicalAnalysis
- * .catalysts` is an explicit `UnavailableCapability`, and every
- * leadership-change event's own `effective_date`/`announcement_date` is
- * hardcoded `None`) -- a documented structural gap, not an oversight
- * this sprint invents data to paper over. This section therefore always
- * shows the honest calm state; wiring it to real data is future work
- * once a catalyst-aware provider exists. */
-function AtlasIsWatchingTodaySection() {
+/** Was "Atlas is watching today" -- a second-level section promising
+ * forward-looking catalysts, under which Atlas stated: "Today looks
+ * quiet. No scheduled events are expected to materially affect your
+ * portfolio."
+ *
+ * Atlas cannot know that. No scheduled-catalyst data source exists
+ * anywhere in this codebase (`CanonicalAnalysis.catalysts` is an
+ * explicit `UnavailableCapability`, and every leadership-change event's
+ * own `effective_date`/`announcement_date` is hardcoded `None`), so
+ * that sentence was a hardcoded reassurance rendered as a finding --
+ * the one thing a brief must never do. A quiet day Atlas actually
+ * looked at and a subject Atlas cannot see are different states, and
+ * only the first may be reported as calm.
+ *
+ * What remains is the honest half: a quiet capability note, not a
+ * heading-level section, since a structurally permanent gap should not
+ * compete for attention with real change. "Since your last visit" is
+ * unaffected -- its calm state is genuine, computed from a real change
+ * log. */
+function ScheduledEventsCapabilityNote() {
   const { t } = useTranslation();
-  return (
-    <Stack gap="metadata">
-      <Heading level={2}>{t("dailyBrief.watchingToday.heading")}</Heading>
-      <Text color="secondary">{t("dailyBrief.watchingToday.calm")}</Text>
-    </Stack>
-  );
+  return <Text color="tertiary">{t("dailyBrief.scheduledEvents.notTracked")}</Text>;
 }
 
 /** RC-3, Phase 2 -- the former "N things need your attention today"

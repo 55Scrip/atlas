@@ -11,9 +11,18 @@ type Status =
 /**
  * First-run router (Alpha Sprint 1A). Determines whether an Alpha
  * portfolio has already been established and sends the investor to the
- * right destination: `/welcome` if not, `/portfolio` if so. Replaces
+ * right destination: `/welcome` if not, Daily Brief if so. Replaces
  * `PlatformStatusPage` at `/` — that bootstrap smoke test was never a
  * product screen and now lives at `/platform-status`.
+ *
+ * Final Pre-Alpha Convergence: an established portfolio now opens Daily
+ * Brief, not Portfolio. Daily Brief is the start surface — it answers
+ * "what deserves my attention today," which is the question someone
+ * opening Atlas is actually asking. Portfolio answers "what is the
+ * current state of what I own," which is where they go next, and it
+ * stays one click away in primary navigation. The first-run branch is
+ * unchanged: with no portfolio there is nothing to brief on, so
+ * `/welcome` still comes first.
  */
 export function IndexRoute() {
   const { t } = useTranslation();
@@ -39,5 +48,5 @@ export function IndexRoute() {
     );
   }
 
-  return <Navigate to={status.exists ? "/portfolio" : "/welcome"} replace />;
+  return <Navigate to={status.exists ? "/daily-brief" : "/welcome"} replace />;
 }

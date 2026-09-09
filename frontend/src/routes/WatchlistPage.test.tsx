@@ -162,11 +162,20 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
     expect(screen.getByRole("button", { name: "Jämför" })).toBeInTheDocument();
     // The separate "Open Investment Case" button was a second copy of
     // what activating the row already does, taking a third of the
-    // action column. The row remains a keyboard-operable button.
+    // action column.
     expect(screen.queryByRole("button", { name: "Öppna investeringscase" })).not.toBeInTheDocument();
-    const row = screen.getByRole("button", { name: "Öppna investeringscase för NVDA" });
-    expect(row.tagName).toBe("TR");
-    expect(row).toHaveAttribute("tabIndex", "0");
+    // Final Pre-Alpha Convergence: the way into the case is a real
+    // button in the company cell, matching Discovery's identical table.
+    // The row used to carry `role="button"` itself, which overrode the
+    // native table row role and nested Compare/Remove inside a control
+    // claiming to be a button.
+    const control = screen.getByRole("button", { name: "Öppna investeringscase för NVDA" });
+    expect(control.tagName).toBe("BUTTON");
+    const row = control.closest("tr")!;
+    expect(row).not.toHaveAttribute("role");
+    expect(row).not.toHaveAttribute("tabIndex");
+    // Compare still sits in the row, no longer nested in a button.
+    expect(within(row).getByRole("button", { name: "Jämför" })).toBeInTheDocument();
   });
 
   it("activates the whole row into the real Investment Case", async () => {
@@ -225,7 +234,7 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
     // own translation bank.
     mockFetch({ summary: [{ ...SUMMARY, decisionSupportLevel: "thesis_intact" }] });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    const row = within((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })) as HTMLElement);
+    const row = within(((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })).closest("tr")) as HTMLElement);
     expect(row.getByText("Tesen kvarstår")).toBeInTheDocument();
     for (const actionWord of ["Behåll", "Minska", "Inget beslut ännu", "Vänta"]) {
       expect(row.queryByText(actionWord)).not.toBeInTheDocument();
@@ -238,7 +247,7 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
       stance: stance({ level: "maintain" }),
     });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    const row = within((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })) as HTMLElement);
+    const row = within(((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })).closest("tr")) as HTMLElement);
     // Two different concepts. Neither is collapsed into the other, and
     // each sits under a header that says which one it is.
     expect(row.getByText("Vet inte än")).toBeInTheDocument();
@@ -250,14 +259,14 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
   it("shows Fit only from the canonical Portfolio Fit verdict", async () => {
     mockFetch({ fit: { ...FIT, overall: "good" } });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    const row = within((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })) as HTMLElement);
+    const row = within(((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })).closest("tr")) as HTMLElement);
     expect(row.getByText("Bra passform")).toBeInTheDocument();
   });
 
   it("shows Fit's own unavailable rating rather than inventing a neutral one", async () => {
     mockFetch({ fit: { ...FIT, overall: "unavailable" } });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    const row = within((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })) as HTMLElement);
+    const row = within(((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })).closest("tr")) as HTMLElement);
     expect(row.getByText("Inte tillgängligt än")).toBeInTheDocument();
     expect(row.queryByText("Neutral passform")).not.toBeInTheDocument();
   });
@@ -265,7 +274,7 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
   it("renders an unreachable signal as honestly unknown, never as a mediocre verdict", async () => {
     mockFetch({ summaryOk: false, fitOk: false });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    const row = within((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })) as HTMLElement);
+    const row = within(((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })).closest("tr")) as HTMLElement);
     await waitFor(() => expect(row.getAllByText("Ej bedömt").length).toBeGreaterThan(0));
     expect(row.queryByText("Neutral passform")).not.toBeInTheDocument();
     expect(row.queryByText("Vet inte än")).not.toBeInTheDocument();
@@ -350,7 +359,7 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
       summary: [{ ...SUMMARY, decisionSupportLevel: "insufficient_evidence", analysisCoverageLevel: "no_coverage" }],
     });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    const row = within((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })) as HTMLElement);
+    const row = within(((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })).closest("tr")) as HTMLElement);
     expect(row.getByText("Vet inte än")).toBeInTheDocument();
     expect(row.getByText("Inte utvärderat")).toBeInTheDocument();
   });
@@ -358,7 +367,7 @@ describe("WatchlistPage (Watchlist Doctrine, 2026-08-27 -- Monitoring Workspace)
   it("renders an unknown state honestly when the summary cannot be reached", async () => {
     mockFetch({ summaryOk: false });
     renderWithProviders(<WatchlistPage />, { route: "/watchlist" });
-    const row = within((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })) as HTMLElement);
+    const row = within(((await screen.findByRole("button", { name: "Öppna investeringscase för NVDA" })).closest("tr")) as HTMLElement);
     await waitFor(() => expect(row.getAllByText("Ej bedömt").length).toBeGreaterThan(0));
     // The ticker still identifies the row (as both name-fallback and
     // ticker); no invented company name appears.

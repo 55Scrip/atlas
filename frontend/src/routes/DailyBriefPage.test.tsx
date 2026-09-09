@@ -170,12 +170,20 @@ describe("DailyBriefPage (Daily Brief 2.0 -- Since your last visit)", () => {
     expect(markSeenCalls.length).toBe(0);
   });
 
-  it("always shows the calm 'Atlas is watching today' fallback -- no scheduled-catalyst data source exists (documented gap)", async () => {
+  /** Final Pre-Alpha Convergence. Atlas has no scheduled-catalyst data
+   * source at all, so it may say it does not track events -- it may not
+   * say no events are expected. A calm finding and a blind spot are
+   * different states, and only the first can be reported as calm. */
+  it("discloses that scheduled events are not tracked, and never claims none are expected", async () => {
     mockFetch({});
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
     await waitFor(() =>
-      expect(screen.getByText("Idag ser lugnt ut. Inga schemalagda händelser väntas påverka din portfölj väsentligt.")).toBeInTheDocument(),
+      expect(
+        screen.getByText("Atlas följer ännu inte schemalagda bolagshändelser, så den här genomgången kan inte säga vad som väntar idag."),
+      ).toBeInTheDocument(),
     );
+    expect(screen.queryByText(/Inga schemalagda händelser väntas/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Det här bevakar Atlas idag")).not.toBeInTheDocument();
   });
 });
 
@@ -227,6 +235,88 @@ describe("DailyBriefPage summary strip (RC-3, Phase 1/2 -- current-portfolio-sta
       }),
     );
     renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
-    await waitFor(() => expect(screen.getByText(/Backend responded with 500/)).toBeInTheDocument());
+    // The investor is told the brief could not be built -- not what the
+    // transport said. The raw `error.message` used to be printed here.
+    await waitFor(() =>
+      expect(screen.getByText("Atlas kunde inte sammanställa dagens genomgång. Försök att uppdatera sidan.")).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/Backend responded with 500/)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Final Pre-Alpha Convergence. Daily Brief composes several independent
+ * endpoints. A failure in one of them must not erase facts another one
+ * successfully returned -- the same defect class Sprint 4C found and
+ * fixed in Discovery.
+ */
+describe("DailyBriefPage -- one failed dependency does not erase the rest", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /** Unfinished decisions the investor already started are the most
+   * actionable thing on this page, and they come from their own
+   * endpoint. They used to render inside the agenda's `loaded` branch,
+   * so a failed agenda silently swallowed them. */
+  it("still surfaces an open decision draft when the agenda fetch fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/daily-brief/view-state")) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ lastViewedAt: "2026-08-26T09:00:00Z" }) } as Response);
+        }
+        if (url.includes("/api/decision-drafts")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve([{ draftId: "draft-1", caseId: "case-nvda", subject: "NVDA", createdAt: "2026-08-20T00:00:00Z" }]),
+          } as Response);
+        }
+        return Promise.resolve({ ok: false, status: 500 } as Response);
+      }),
+    );
+    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
+    await waitFor(() => expect(screen.getByText("Pågående beslut")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: "Återuppta: NVDA →" })).toBeInTheDocument();
+    // And the failure is still reported, never silently swallowed.
+    expect(screen.getByText("Atlas kunde inte sammanställa dagens genomgång. Försök att uppdatera sidan.")).toBeInTheDocument();
+  });
+
+  /** Daily Brief must never depend on the investor watching anything.
+   * Watchlist is a different surface with a different job. */
+  it("renders its own content with an empty Watchlist and an empty Portfolio", async () => {
+    mockFetch({ agenda: agendaResponse({ items: [], summary: { holdingsCount: 0, criticalCount: 0, highCount: 0, watchlistOpportunityCount: 0, cashWeightPercent: null, concentrationLevel: null } }) });
+    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
+    await waitFor(() => expect(screen.getByText("Sedan ditt senaste besök")).toBeInTheDocument());
+    expect(screen.getByText("Atlas bevakar 0 innehav.")).toBeInTheDocument();
+  });
+
+  /** A quiet day is a real product state. Atlas reports it rather than
+   * manufacturing activity to fill the page. */
+  it("reports a genuinely quiet day instead of padding the page", async () => {
+    mockFetch({ changeGroups: [] });
+    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
+    await waitFor(() =>
+      expect(screen.getByText("Allt är under kontroll. Inget har förändrats sedan ditt senaste besök.")).toBeInTheDocument(),
+    );
+  });
+
+  it("says it is loading rather than showing a false quiet state before data arrives", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
+    expect(screen.getAllByRole("status").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Allt är under kontroll. Inget har förändrats sedan ditt senaste besök.")).not.toBeInTheDocument();
+  });
+
+  it("invents no score, expected return or conviction anywhere on the brief", async () => {
+    mockFetch({});
+    renderWithProviders(<DailyBriefPage />, { route: "/daily-brief" });
+    await waitFor(() => expect(screen.getByText("Atlas bevakar 3 innehav.")).toBeInTheDocument());
+    const text = document.body.textContent ?? "";
+    for (const invented of ["Övertygelse", "Förväntad avkastning", "Uppsida", "Nedsida", "Poäng", "Hälsopoäng"]) {
+      expect(text).not.toContain(invented);
+    }
+    expect(text).not.toMatch(/\d+\s*\/\s*10/);
   });
 });

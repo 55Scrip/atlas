@@ -615,22 +615,25 @@ function WatchlistTableRow({
     setRemoveStatus({ kind: "idle" });
   }
 
+  /* Final Pre-Alpha Convergence. The row used to carry `role="button"`
+     and its own key handling, which overrode the native table row role
+     and put focusable buttons (Compare, Remove) inside a control that
+     claimed to be a button itself. Discovery's identical table already
+     moved to a real button in the company cell; this is the same
+     change, so the one pattern behaves the same way on both surfaces.
+     Pointer users still activate anywhere on the row. */
   return (
-    <tr
-      role="button"
-      tabIndex={0}
-      aria-label={t("watchlist.table.rowAriaLabel", { ticker: entry.ticker })}
-      onClick={handleRowActivate}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          handleRowActivate();
-        }
-      }}
-      className={styles.row}
-      style={{ cursor: "pointer" }}
-    >
+    <tr className={styles.row} onClick={handleRowActivate}>
       <td style={{ ...cellStyle, fontFamily: "var(--type-family-prose)" }}>
+        <button
+          type="button"
+          className={styles.caseButton}
+          aria-label={t("watchlist.table.rowAriaLabel", { ticker: entry.ticker })}
+          onClick={(event) => {
+            event.stopPropagation();
+            handleRowActivate();
+          }}
+        >
         <Stack gap="metadata">
           <Inline gap="metadata" align="baseline" wrap>
             <Text as="span" style={{ fontWeight: 600 }}>
@@ -660,6 +663,7 @@ function WatchlistTableRow({
             )}
           </Inline>
         </Stack>
+        </button>
       </td>
       {/* Convergence Sprint 3B, Phases G/H. This used to render the
           Investment Decision layer's `DecisionAction` through its own

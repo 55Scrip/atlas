@@ -30,6 +30,16 @@ import styles from "./Navigation.module.css";
  * `HistoryPage` are untouched and remain reachable directly; only the
  * nav-bar entry point into it is removed pending its own separate
  * integration decision.
+ *
+ * Final Pre-Alpha Convergence: the four destinations are unchanged,
+ * but their order now follows how the investor actually moves through
+ * Atlas rather than the order they happened to be built in. Daily Brief
+ * first because it is the start page and answers "what needs my
+ * attention"; Portfolio second because current holdings are the
+ * investor's own control room; Watchlist third for prospects they
+ * explicitly chose to monitor; Discovery last because it is
+ * exploratory. Discovery sat second, ahead of the portfolio the
+ * investor actually owns.
  */
 function navLinkClassName({ isActive }: { isActive: boolean }): string {
   return isActive ? `${styles.link!} ${styles.active!}` : styles.link!;
@@ -43,14 +53,14 @@ export function Navigation() {
       <NavLink to="/daily-brief" className={navLinkClassName}>
         {t("shell.nav.dailyBrief")}
       </NavLink>
-      <NavLink to="/discovery" className={navLinkClassName}>
-        {t("shell.nav.discovery")}
-      </NavLink>
       <NavLink to="/portfolio" className={navLinkClassName}>
         {t("shell.nav.portfolio")}
       </NavLink>
       <NavLink to="/watchlist" className={navLinkClassName}>
         {t("shell.nav.watchlist")}
+      </NavLink>
+      <NavLink to="/discovery" className={navLinkClassName}>
+        {t("shell.nav.discovery")}
       </NavLink>
     </nav>
   );
