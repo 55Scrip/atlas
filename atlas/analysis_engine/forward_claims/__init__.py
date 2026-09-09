@@ -23,9 +23,29 @@ from atlas.analysis_engine.forward_claims.extraction import (
     extract_forward_claims,
 )
 from atlas.analysis_engine.forward_claims.models import ForwardClaim
+from atlas.analysis_engine.forward_claims.revisions import (
+    REVISION_ENGINE_VERSION,
+    ClaimComparison,
+    GuidanceRevision,
+    NonRevisionReason,
+    RevisionBasis,
+    RevisionType,
+    compare_claims,
+    detect_revisions,
+    group_claims,
+)
 
 __all__ = [
+    "REVISION_ENGINE_VERSION",
     "ClaimBound",
+    "ClaimComparison",
+    "GuidanceRevision",
+    "NonRevisionReason",
+    "RevisionBasis",
+    "RevisionType",
+    "compare_claims",
+    "detect_revisions",
+    "group_claims",
     "ClaimRejectionReason",
     "ClaimSubject",
     "ClaimType",
