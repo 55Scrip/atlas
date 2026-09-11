@@ -126,20 +126,43 @@ class TestIdempotency:
         assert {r.version.version_number for r in records} == {1}
         assert len({r.identifier for r in records}) == 2
 
-    def test_backfilled_quarters_carry_distinct_reported_at_timestamps(self, engine):
-        """Stage 2 orders claims by `reported_at`, which the provider
-        stamps from `evaluated_at`. Fetching every quarter "now" would
-        make them all simultaneous and Stage 2 would correctly refuse to
-        order them -- back-dating is what makes revision detection
-        possible at all."""
-        repository = SqlAlchemyBusinessRecordRepository(engine)
-        for quarter, when in (("2026Q2", NOW), ("2026Q1", datetime(2026, 6, 10, tzinfo=timezone.utc))):
-            result = ingest(statement(ticker="VST", quarter=quarter, index=0, published_at=when), evaluated_at=when)
-            assert isinstance(result, IngestedRecord)
-            repository.add(result.record)
 
-        timestamps = sorted(r.published_at for r in repository.get_by_company("VST"))
-        assert timestamps[0] < timestamps[1]
+
+class TestBackfillTime:
+    """Stage 3.1. The back-dated instant only chooses which quarter the
+    provider serves. It is not when the call happened, and it must not
+    become when Atlas received the data either."""
+
+    def test_backfilled_records_keep_the_real_ingestion_time(self, monkeypatch, tmp_path):
+        database = tmp_path / "atlas.db"
+        _seed(database, [("VST", "2026Q2")])
+        _run(monkeypatch, _CountingTranscriptProvider(), database, "--quarters", "1")
+
+        engine = create_engine(f"sqlite:///{database}", future=True)
+        (backfilled,) = [
+            r for r in SqlAlchemyBusinessRecordRepository(engine).get_by_company("VST")
+            if r.metadata["quarter"] == "2026Q1"
+        ]
+        assert backfilled.version.created_at == NOW  # when this run actually ingested it
+        assert backfilled.provenance.computed_at == NOW
+        assert backfilled.published_at < NOW  # only the as-of instant that selected 2026Q1
+
+    def test_claims_from_backfilled_calls_order_by_period_not_by_fetch_time(self, monkeypatch, tmp_path):
+        """Two calls fetched in the same instant still order correctly:
+        chronology comes from each call's reporting period."""
+        from atlas.analysis_engine.forward_claims import detect_revisions, extract_forward_claims
+
+        records = []
+        for quarter, content in (("2026Q1", "We expect 2027 revenue of $10 billion."),
+                                 ("2026Q2", "We expect 2027 revenue of $11 billion.")):
+            result = ingest(statement(ticker="VST", quarter=quarter, index=0, published_at=NOW, content=content),
+                            evaluated_at=NOW)
+            records.append(result.record)
+        claims = tuple(c for r in records for c in extract_forward_claims(r, extracted_at=NOW)[0])
+        (revision,), _ = detect_revisions(claims)
+        assert revision.new_source_period == "2026Q2"
+        assert revision.evidence[0].prior_source_period == "2026Q1"
+        assert all(c.statement_at is None for c in claims)
 
 
 class TestProviderBoundary:

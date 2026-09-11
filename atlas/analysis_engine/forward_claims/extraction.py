@@ -78,6 +78,7 @@ from atlas.analysis_engine.forward_claims.contracts import (
     HorizonKind,
 )
 from atlas.analysis_engine.forward_claims.models import ForwardClaim
+from atlas.analysis_engine.forward_claims.source_time import period_ordinal, transcript_period
 
 __all__ = ["EXTRACTOR_VERSION", "RejectedCandidate", "classify_claimant", "extract_forward_claims"]
 
@@ -446,7 +447,15 @@ def extract_forward_claims(
     speaker = record.metadata.get("speaker")
     role = classify_claimant(title if isinstance(title, str) else None)
 
-    source_year = record.period_end.year if record.period_end is not None else None
+    # The reporting period's own year, from the provider's label -- never
+    # from `period_end`, which for a transcript is Atlas's calendar
+    # reading of that label (see `source_time`). A record without a
+    # label falls back to its stored period.
+    source_period = transcript_period(record)
+    ordinal = period_ordinal(source_period)
+    source_year = (
+        ordinal[0] if ordinal is not None else (record.period_end.year if record.period_end is not None else None)
+    )
 
     for sentence in _SENTENCE.split(content):
         sentence = sentence.strip()
@@ -636,7 +645,10 @@ def extract_forward_claims(
                     source_record_id=record.id,
                     source_kind=record.document_type,
                     source_text=sentence,
-                    reported_at=record.published_at,
+                    source_period=source_period,
+                    # Alpha Vantage supplies no call date, and none is
+                    # derived from a fetch, ingestion or period date.
+                    statement_at=None,
                     extracted_at=extracted_at,
                     extractor_version=EXTRACTOR_VERSION,
                 )

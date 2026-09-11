@@ -108,20 +108,20 @@ class TestDefect2PartialRangeMoves:
     """Salesforce "raise[d] the low end" from $41.0-41.3B to $41.1-41.3B.
     Nothing moved down, so this is a raise -- not a mixed change."""
 
-    def _range(self, low, high, at):
-        return claim(bound=ClaimBound.RANGE, low=low, high=high, reported_at=at)
+    def _range(self, low, high, period):
+        return claim(bound=ClaimBound.RANGE, low=low, high=high, period=period)
 
     def test_raising_only_the_low_end_is_raised(self):
-        assert compare_claims(self._range(41.0, 41.3, Q1_AT), self._range(41.1, 41.3, Q2_AT)).revision_type is RevisionType.RAISED
+        assert compare_claims(self._range(41.0, 41.3, "2026Q1"), self._range(41.1, 41.3, "2026Q2")).revision_type is RevisionType.RAISED
 
     def test_raising_only_the_high_end_is_raised(self):
-        assert compare_claims(self._range(180, 190, Q1_AT), self._range(180, 195, Q2_AT)).revision_type is RevisionType.RAISED
+        assert compare_claims(self._range(180, 190, "2026Q1"), self._range(180, 195, "2026Q2")).revision_type is RevisionType.RAISED
 
     def test_lowering_only_the_high_end_is_lowered(self):
-        assert compare_claims(self._range(41.0, 41.3, Q1_AT), self._range(41.0, 41.2, Q2_AT)).revision_type is RevisionType.LOWERED
+        assert compare_claims(self._range(41.0, 41.3, "2026Q1"), self._range(41.0, 41.2, "2026Q2")).revision_type is RevisionType.LOWERED
 
     def test_lowering_only_the_low_end_is_lowered(self):
-        assert compare_claims(self._range(180, 190, Q1_AT), self._range(175, 190, Q2_AT)).revision_type is RevisionType.LOWERED
+        assert compare_claims(self._range(180, 190, "2026Q1"), self._range(175, 190, "2026Q2")).revision_type is RevisionType.LOWERED
 
 
 class TestDefect3FiscalAndCalendarYearsNeverCollapse:
@@ -162,8 +162,8 @@ class TestRangeTruthTable:
         ],
     )
     def test_directions(self, old, new, expected):
-        a = claim(bound=ClaimBound.RANGE, low=old[0], high=old[1], reported_at=Q1_AT)
-        b = claim(bound=ClaimBound.RANGE, low=new[0], high=new[1], reported_at=Q2_AT)
+        a = claim(bound=ClaimBound.RANGE, low=old[0], high=old[1], period="2026Q1")
+        b = claim(bound=ClaimBound.RANGE, low=new[0], high=new[1], period="2026Q2")
         assert compare_claims(a, b).revision_type is expected
 
     @_pytest.mark.parametrize(
@@ -175,20 +175,20 @@ class TestRangeTruthTable:
         ],
     )
     def test_opposing_endpoint_moves_are_mixed(self, old, new):
-        a = claim(bound=ClaimBound.RANGE, low=old[0], high=old[1], reported_at=Q1_AT)
-        b = claim(bound=ClaimBound.RANGE, low=new[0], high=new[1], reported_at=Q2_AT)
+        a = claim(bound=ClaimBound.RANGE, low=old[0], high=old[1], period="2026Q1")
+        b = claim(bound=ClaimBound.RANGE, low=new[0], high=new[1], period="2026Q2")
         result = compare_claims(a, b)
         assert result.revision_type is None
         assert result.reason is NonRevisionReason.MIXED_RANGE_CHANGE
 
     def test_an_unchanged_midpoint_does_not_make_a_widening_a_reaffirmation(self):
-        a = claim(bound=ClaimBound.RANGE, low=180, high=190, reported_at=Q1_AT)
-        b = claim(bound=ClaimBound.RANGE, low=175, high=195, reported_at=Q2_AT)  # same 185 midpoint
+        a = claim(bound=ClaimBound.RANGE, low=180, high=190, period="2026Q1")
+        b = claim(bound=ClaimBound.RANGE, low=175, high=195, period="2026Q2")  # same 185 midpoint
         assert compare_claims(a, b).revision_type is not RevisionType.REAFFIRMED
 
     def test_a_raised_midpoint_does_not_make_a_mixed_move_a_raise(self):
-        a = claim(bound=ClaimBound.RANGE, low=180, high=200, reported_at=Q1_AT)
-        b = claim(bound=ClaimBound.RANGE, low=190, high=195, reported_at=Q2_AT)  # midpoint 190 -> 192.5
+        a = claim(bound=ClaimBound.RANGE, low=180, high=200, period="2026Q1")
+        b = claim(bound=ClaimBound.RANGE, low=190, high=195, period="2026Q2")  # midpoint 190 -> 192.5
         assert compare_claims(a, b).reason is NonRevisionReason.MIXED_RANGE_CHANGE
 
 
@@ -335,8 +335,8 @@ class TestInvariantsOnRealShapes:
 
     def test_raised_revenue_and_raised_capex_are_the_same_fact(self):
         crm = compare_claims(
-            claim(bound=ClaimBound.RANGE, low=41.0, high=41.3, reported_at=Q1_AT),
-            claim(bound=ClaimBound.RANGE, low=41.1, high=41.3, reported_at=Q2_AT),
+            claim(bound=ClaimBound.RANGE, low=41.0, high=41.3, period="2026Q1"),
+            claim(bound=ClaimBound.RANGE, low=41.1, high=41.3, period="2026Q2"),
         )
         googl = detect_revisions(claims_of(statement(GOOGL_Q2, quarter="2026Q2", at=Q2_AT)))[0][0]
         assert crm.revision_type is googl.revision_type is RevisionType.RAISED

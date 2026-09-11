@@ -198,18 +198,18 @@ class TestQualifiers:
 
 
 class TestTimeSemantics:
-    def test_a_claim_is_dated_from_its_source_never_from_its_horizon(self):
-        published = datetime(2026, 8, 25, tzinfo=timezone.utc)
-        claims, _ = claims_for("We expect revenue of $12 billion in 2028.", published_at=published)
-        assert claims[0].reported_at == published
+    def test_a_claim_is_placed_by_its_sources_period_never_by_its_horizon(self):
+        claims, _ = claims_for("We expect revenue of $12 billion in 2028.")
+        assert claims[0].source_period == "2026Q2"
         assert claims[0].horizon_period == "2028"
-        # FY2028 guidance issued in 2026 is evidence available in 2026.
-        assert claims[0].reported_at.year < int(claims[0].horizon_period)
 
-    def test_a_claim_can_never_predate_the_source_that_carries_it(self):
-        record = transcript(VST_SENTENCE)
+    def test_a_fetch_time_is_never_presented_as_when_management_spoke(self):
+        """The record's `published_at` is when the fetch was evaluated,
+        and Alpha Vantage supplies no call date -- so the claim's
+        statement time is unknown, not the fetch time."""
+        record = transcript(VST_SENTENCE, published_at=datetime(2026, 8, 25, tzinfo=timezone.utc))
         claims, _ = extract_forward_claims(record, extracted_at=EXTRACTED_AT)
-        assert all(c.reported_at >= record.published_at for c in claims)
+        assert claims and all(c.statement_at is None for c in claims)
 
 
 class TestDeterminism:

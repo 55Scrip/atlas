@@ -36,6 +36,7 @@ from atlas.analysis_engine.forward_claims.revisions import (
     detect_revisions,
     group_claims,
 )
+from atlas.analysis_engine.forward_claims.source_time import period_ordinal, statement_age, transcript_period
 
 __all__ = [
     "REVISION_ENGINE_VERSION",
@@ -59,4 +60,7 @@ __all__ = [
     "RejectedCandidate",
     "classify_claimant",
     "extract_forward_claims",
+    "period_ordinal",
+    "statement_age",
+    "transcript_period",
 ]

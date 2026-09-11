@@ -36,12 +36,23 @@ is the verbatim passage, never a paraphrase and never generated prose.
 A claim whose passage cannot be located in its own source record is a
 claim Atlas cannot defend, so extraction produces none.
 
-**Time is two separate questions.** `reported_at` is when Atlas could
-first have known the statement; `horizon_period` is the future period
-the statement is about. Conflating them is precisely the failure this
-package exists to prevent: FY2027 guidance issued in 2026 is evidence
-available in 2026, and nothing here ever dates a claim from its
-horizon.
+**Time is three separate questions** (Stage 3.1), and a claim answers
+each only with what its source actually says:
+
+- `source_period` -- the fiscal quarter the call reported on, the
+  provider's own label ("2025Q3"). It orders one company's calls.
+- `statement_at` -- when management said it. `None` unless the source
+  supplies it, and Alpha Vantage does not: a fetch or ingestion time is
+  never substituted, because it would make years-old guidance look
+  fresh. `source_time.statement_age` is the one way to ask how old a
+  claim is, and it answers `None` without a statement date.
+- `horizon_period` -- the future period the guidance is about. Never
+  used to date the claim: FY2027 guidance issued in 2026 is not a 2027
+  statement.
+
+A claim deliberately carries no ingestion time: that belongs to the
+source record (`source_record_id`), as operational metadata, and is not
+evidence of when anything was said.
 """
 from __future__ import annotations
 
@@ -121,9 +132,15 @@ class ForwardClaim:
     """The verbatim sentence. Must be a substring of the source record's
     own content; extraction asserts this before constructing a claim."""
 
-    reported_at: datetime
-    """When Atlas could first have known this. Inherited from the source
-    record's `published_at`, never derived from `horizon_period`."""
+    source_period: str | None
+    """The fiscal quarter the source transcript reports on, as the
+    provider labels it ("2025Q3") -- a period identity, never a date, and
+    ordered only against the same company's periods. `None` when the
+    source carries no such label."""
+    statement_at: datetime | None
+    """When management made the statement, when a source says so;
+    otherwise `None`. Unknown is the honest value for every Alpha Vantage
+    transcript: the provider supplies no call date."""
     extracted_at: datetime
     extractor_version: str
     """Which rule set produced this claim. Deterministic rules will

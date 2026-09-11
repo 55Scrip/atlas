@@ -29,10 +29,16 @@ provider exactly as written. The provider is obtained from
 `business_data_refresh`'s own composition rather than imported here --
 `atlas.business_data_providers` has exactly one sanctioned caller, and a
 dev script reaching past it would be a second, undisclosed route to a
-real network call. Back-dating also fixes timestamps: the provider
-stamps `published_at` from `evaluated_at`, so every quarter fetched
-"now" would share one instant and Stage 2 would correctly refuse to
-order them.
+real network call.
+
+**The back-dated instant selects a quarter; it is not a date of
+anything** (Stage 3.1). The provider stamps it onto each statement's
+`published_at`, so those values are only the as-of instants this
+command chose -- never when the call took place, which Alpha Vantage
+does not report. Nothing orders calls by them: Stage 2.1 orders one
+company's calls by their fiscal reporting period. The records' ingestion
+time is the real time this command ran, so the operational record of
+when Atlas received the data stays true.
 
 **Bounded by the provider's own budget.** `DailyQuotaExhausted` stops
 the run immediately; whatever was ingested stays, and the next run
@@ -198,7 +204,8 @@ def main() -> int:
         print("The transcript provider cannot say which quarter it would request; refusing to fetch blind.")
         return 1
 
-    dates = evaluation_dates(latest=_utc_now(), quarters=arguments.quarters)
+    run_at = _utc_now()
+    dates = evaluation_dates(latest=run_at, quarters=arguments.quarters)
     stored = stored_transcript_quarters(engine)
     plan = plan_backfill(tickers=tickers, dates=dates, stored=stored, quarter_for=quarter_for)
 
@@ -255,7 +262,8 @@ def main() -> int:
         known = list(repository.get_by_company(ticker))
         added = same = 0
         for document in documents:
-            result = ingest(document, existing_records=tuple(known), evaluated_at=when)
+            # Ingested at the real run time; `when` only chose the quarter.
+            result = ingest(document, existing_records=tuple(known), evaluated_at=run_at)
             if isinstance(result, IngestionRejected):
                 rejected += 1
                 continue

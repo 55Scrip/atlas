@@ -37,16 +37,24 @@ rather than Atlas choosing between management's memory and its own.
 **Comparison is conservative by construction.** Company, claim type,
 subject, horizon year, horizon kind, unit and bound shape must all
 match, or the pair is incomparable with a named reason.
+
+**Order comes from reporting periods, not dates** (Stage 3.1). Which of
+two calls came first is read from the fiscal quarter each reported on,
+the provider's own label. It used to be read from `published_at`, which
+for a transcript is only the instant a fetch was evaluated as of --
+monotonic by accident of how the backfill ran, not evidence. How long
+ago a revision was announced is a different question, and one this
+module never asks.
 """
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime
 from enum import Enum
 
 from atlas.analysis_engine.forward_claims.contracts import ClaimBound, HorizonKind
 from atlas.analysis_engine.forward_claims.models import ForwardClaim
+from atlas.analysis_engine.forward_claims.source_time import period_ordinal
 
 __all__ = [
     "REVISION_ENGINE_VERSION",
@@ -63,8 +71,9 @@ __all__ = [
 
 #: Bumped when the rules below change in a way that could alter a
 #: classification. v2: partial range moves, horizon kind, and one event
-#: per claim carrying every evidence basis.
-REVISION_ENGINE_VERSION = "guidance-revision-v2"
+#: per claim carrying every evidence basis. v3: chronology from each
+#: call's fiscal reporting period, never from a fetch timestamp.
+REVISION_ENGINE_VERSION = "guidance-revision-v3"
 
 
 class RevisionType(str, Enum):
@@ -99,6 +108,8 @@ class NonRevisionReason(str, Enum):
     INCOMPATIBLE_BOUND = "incompatible_bound"
     """A point and a range are not the same shape of statement."""
     AMBIGUOUS_ORDER = "ambiguous_order"
+    """Which claim came first cannot be established: either lacks a
+    reporting period, or both come from the same one."""
     MIXED_RANGE_CHANGE = "mixed_range_change"
     """One end of a range moved up while the other moved down -- a
     widening or a contraction. Not a direction, and reading one out of it
@@ -142,7 +153,9 @@ class RevisionEvidence:
     prior_value_text: str
     prior_source_record_id: str
     prior_source_text: str
-    prior_reported_at: datetime
+    prior_source_period: str | None
+    """The fiscal quarter of the call that stated the prior -- for a
+    stated prior, the new claim's own call."""
     prior_claim_id: str | None
     """The earlier claim, for an observed prior. Always `None` for a
     stated prior: that value came from the new claim's own sentence."""
@@ -161,7 +174,7 @@ class GuidanceRevision:
 
     Claims are never mutated to record that they were superseded -- a
     revision is a separate, additive relation, so the claim remains what
-    was said on its date.
+    was said on its call.
     """
 
     id: str
@@ -180,7 +193,7 @@ class GuidanceRevision:
     new_value_text: str
     new_source_record_id: str
     new_source_text: str
-    new_reported_at: datetime
+    new_source_period: str | None
     stated_by: str
     stated_by_title: str
 
@@ -242,14 +255,28 @@ def _direction(old_low: float, old_high: float, new_low: float, new_high: float)
     return RevisionType.REAFFIRMED
 
 
+def _chronology(claim: ForwardClaim) -> tuple[int, int] | None:
+    """Where a claim sits in its company's history: the fiscal quarter
+    its call reported on. Chronology between calls is the one temporal
+    question Atlas can answer honestly from the provider's own labels --
+    `_comparability` has already required the same company, so the two
+    labels count the same fiscal calendar. When management actually
+    spoke is a different question (`statement_at`), unknown for every
+    transcript Atlas holds, and never needed here: the order of two calls
+    does not depend on their dates."""
+    return period_ordinal(claim.source_period)
+
+
 def compare_claims(old: ForwardClaim, new: ForwardClaim) -> ClaimComparison:
-    """Pure and deterministic. `old` must have been reported strictly
-    before `new`; equal timestamps are ambiguous rather than resolved by
-    any tiebreak, because a record id is not a clock."""
+    """Pure and deterministic. `old` must come from a strictly earlier
+    reporting period than `new`. A missing period, or the same period for
+    both, is ambiguous rather than resolved by any tiebreak: a record id
+    is not a clock, and neither is a fetch timestamp."""
     reason = _comparability(old, new)
     if reason is not None:
         return ClaimComparison(None, reason)
-    if not old.reported_at < new.reported_at:
+    old_at, new_at = _chronology(old), _chronology(new)
+    if old_at is None or new_at is None or not old_at < new_at:
         return ClaimComparison(None, NonRevisionReason.AMBIGUOUS_ORDER)
     direction = _direction(old.value_low, old.value_high, new.value_low, new.value_high)
     if direction is None:
@@ -270,9 +297,10 @@ def group_claims(claims: tuple[ForwardClaim, ...]) -> dict[GroupKey, list[Forwar
         key = (claim.company, claim.claim_type.value, claim.subject.value, claim.horizon_kind.value, claim.horizon_period)
         groups.setdefault(key, []).append(claim)
     for group in groups.values():
-        # `id` breaks ties only for stable ordering; it never decides
-        # which claim revised the other -- equal times are ambiguous.
-        group.sort(key=lambda c: (c.reported_at, c.id))
+        # By reporting period; `id` breaks ties only for stable ordering
+        # and never decides which claim revised the other -- a shared or
+        # missing period is ambiguous. Claims without a period sort last.
+        group.sort(key=lambda c: (_chronology(c) is None, _chronology(c) or (0, 0), c.id))
     return groups
 
 
@@ -321,7 +349,7 @@ def _observed_evidence(older: ForwardClaim, newer: ForwardClaim) -> RevisionEvid
         prior_value_text=older.value_text,
         prior_source_record_id=older.source_record_id,
         prior_source_text=older.source_text,
-        prior_reported_at=older.reported_at,
+        prior_source_period=older.source_period,
         prior_claim_id=older.id,
     )
 
@@ -349,7 +377,7 @@ def _stated_evidence(claim: ForwardClaim, predecessor: ForwardClaim | None) -> R
         prior_value_text=text,
         prior_source_record_id=claim.source_record_id,
         prior_source_text=claim.source_text,
-        prior_reported_at=claim.reported_at,
+        prior_source_period=claim.source_period,
         prior_claim_id=None,
         corroborates_claim_id=corroborates,
     )
@@ -407,7 +435,7 @@ def detect_revisions(
                     new_value_text=claim.value_text,
                     new_source_record_id=claim.source_record_id,
                     new_source_text=claim.source_text,
-                    new_reported_at=claim.reported_at,
+                    new_source_period=claim.source_period,
                     stated_by=claim.stated_by,
                     stated_by_title=claim.stated_by_title,
                     evidence=tuple(sorted(evidence, key=lambda e: list(RevisionBasis).index(e.basis))),

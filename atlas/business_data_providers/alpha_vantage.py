@@ -333,7 +333,13 @@ def _most_recent_completed_quarter(evaluated_at: datetime) -> str:
     transcript is not yet published, Alpha Vantage's own response says
     so (an empty `transcript` array) and `fetch_earnings_call_transcripts`
     honestly returns `()`, exactly like `fetch_company_profile` does
-    when OVERVIEW carries no identity fields."""
+    when OVERVIEW carries no identity fields.
+
+    Alpha Vantage reads the label as the company's *fiscal* quarter, so
+    for a company whose fiscal year runs ahead of the calendar (CRM,
+    NVDA) this calendar rule selects a fiscal quarter up to a year older
+    than its latest call. The label is still that call's true identity;
+    only "most recent" is not guaranteed."""
     quarter_of_month = (evaluated_at.month - 1) // 3 + 1
     if quarter_of_month == 1:
         return f"{evaluated_at.year - 1}Q4"
@@ -803,7 +809,22 @@ class AlphaVantageMarketDataProvider:
         `_ingest_documents` loop already handles an arbitrary document
         count per provider call with no special case (confirmed by its
         own use for `SecEdgarFundamentalsProvider`'s multi-period
-        `fetch`)."""
+        `fetch`).
+
+        **What the time fields on these documents mean** (Stage 3.1 --
+        see `forward_claims.source_time`). `metadata["quarter"]` is the
+        requested label, which Alpha Vantage serves as the company's
+        *fiscal* quarter: CRM's "2025Q3" is its "Fiscal 2025 Third
+        Quarter". `published_at` is `evaluated_at` -- the instant this
+        fetch was evaluated as of, not when the call took place; Alpha
+        Vantage returns no call date. `period_start`/`period_end` are the
+        *calendar* end of the label (`_quarter_end_date`), which is not
+        the fiscal quarter's end for a company whose fiscal year is not
+        the calendar year -- NVIDIA's "2025Q3" call is dated 20 November
+        2024 in its own text, before the 2025-09-30 stored here. They are
+        left as they are only because existing earnings-call consumers
+        read them; nothing may treat any of the three as evidence of when
+        management spoke."""
         api_key = self._resolved_api_key()
         ticker = company_identifier.upper()
         quarter = self.transcript_quarter_for(evaluated_at)
