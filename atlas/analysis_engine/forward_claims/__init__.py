@@ -36,6 +36,15 @@ from atlas.analysis_engine.forward_claims.revisions import (
     detect_revisions,
     group_claims,
 )
+from atlas.analysis_engine.forward_claims.interpretation import (
+    INTERPRETATION_VERSION,
+    EconomicDimension,
+    ExpectedMovement,
+    GuidanceEconomicInterpretation,
+    OutlookEffect,
+    interpret_revision,
+    interpret_revisions,
+)
 from atlas.analysis_engine.forward_claims.source_time import period_ordinal, statement_age, transcript_period
 
 __all__ = [
@@ -60,6 +69,13 @@ __all__ = [
     "RejectedCandidate",
     "classify_claimant",
     "extract_forward_claims",
+    "INTERPRETATION_VERSION",
+    "EconomicDimension",
+    "ExpectedMovement",
+    "GuidanceEconomicInterpretation",
+    "OutlookEffect",
+    "interpret_revision",
+    "interpret_revisions",
     "period_ordinal",
     "statement_age",
     "transcript_period",
