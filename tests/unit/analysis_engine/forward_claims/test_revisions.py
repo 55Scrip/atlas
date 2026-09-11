@@ -15,6 +15,7 @@ from atlas.analysis_engine.forward_claims import (
     ClaimType,
     ClaimantRole,
     ForwardClaim,
+    HorizonKind,
     NonRevisionReason,
     RevisionBasis,
     RevisionType,
@@ -38,6 +39,7 @@ def claim(
     high: float | None = None,
     unit: str = "USD_BILLION",
     horizon: str = "2027",
+    horizon_kind: HorizonKind = HorizonKind.UNSPECIFIED_YEAR,
     reported_at: datetime = Q1,
     source_text: str = "We expect revenue of $100 billion in 2027.",
     claim_id: str | None = None,
@@ -54,6 +56,7 @@ def claim(
         unit=unit,
         value_text=f"${low}",
         horizon_period=horizon,
+        horizon_kind=horizon_kind,
         horizon_text=horizon,
         claimant_role=ClaimantRole.EXECUTIVE,
         stated_by="A. Executive",
@@ -222,7 +225,7 @@ class TestHistory:
         revisions, _ = detect_revisions(claims)
         # Every original claim is untouched and still reachable.
         assert claims == self._series()
-        assert {r.prior_claim_id for r in revisions} == {"c1", "c2", "c3"}
+        assert {e.prior_claim_id for r in revisions for e in r.evidence} == {"c1", "c2", "c3"}
 
     def test_a_first_claim_is_not_a_revision(self):
         revisions, unrevised = detect_revisions((claim(low=100),))
@@ -262,21 +265,24 @@ class TestPriorValueStatedInTheSameSentence:
         revisions, _ = detect_revisions((self._claim(),))
         assert len(revisions) == 1
         assert revisions[0].revision_type is RevisionType.RAISED
-        assert (revisions[0].prior_value_low, revisions[0].prior_value_high) == (180e9, 190e9)
+        evidence = revisions[0].evidence[0]
+        assert (evidence.prior_value_low, evidence.prior_value_high) == (180e9, 190e9)
 
     def test_it_is_never_presented_as_guidance_atlas_observed(self):
         """Atlas never saw the earlier guidance issued. Claiming an
         earlier observation would fabricate a source event."""
         revision = detect_revisions((self._claim(),))[0][0]
-        assert revision.basis is RevisionBasis.PRIOR_VALUE_STATED_IN_SAME_SOURCE
-        assert revision.prior_claim_id is None
-        assert revision.prior_source_record_id == revision.new_source_record_id
+        (evidence,) = revision.evidence
+        assert evidence.basis is RevisionBasis.PRIOR_VALUE_STATED_IN_SAME_SOURCE
+        assert evidence.prior_claim_id is None
+        assert evidence.prior_source_record_id == revision.new_source_record_id
 
     def test_both_values_are_retrievable_from_the_one_sentence_that_carries_them(self):
         revision = detect_revisions((self._claim(),))[0][0]
-        assert revision.prior_value_text in revision.prior_source_text
+        (evidence,) = revision.evidence
+        assert evidence.prior_value_text in evidence.prior_source_text
         assert revision.new_value_text in revision.new_source_text or revision.new_value_text.startswith("$")
-        assert revision.prior_source_text == self.GOOGL
+        assert evidence.prior_source_text == self.GOOGL
 
     def test_a_historical_comparison_is_not_a_guidance_revision(self):
         """"up from 42% a year ago" describes what happened, and the
@@ -300,9 +306,10 @@ class TestProvenanceAndVersioning:
         revisions, _ = detect_revisions((claim(low=100, reported_at=Q1, claim_id="c1"),
                                          claim(low=110, reported_at=Q2, claim_id="c2")))
         revision = revisions[0]
-        assert revision.prior_claim_id == "c1" and revision.new_claim_id == "c2"
-        assert revision.prior_source_text and revision.new_source_text
-        assert revision.prior_reported_at < revision.new_reported_at
+        (evidence,) = revision.evidence
+        assert evidence.prior_claim_id == "c1" and revision.new_claim_id == "c2"
+        assert evidence.prior_source_text and revision.new_source_text
+        assert evidence.prior_reported_at < revision.new_reported_at
         assert revision.stated_by_title == "Chief Financial Officer"
 
     def test_every_revision_records_which_rules_produced_it(self):

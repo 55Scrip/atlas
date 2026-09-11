@@ -15,6 +15,7 @@ from atlas.analysis_engine.forward_claims.contracts import (
     ClaimSubject,
     ClaimType,
     ClaimantRole,
+    HorizonKind,
 )
 from atlas.analysis_engine.forward_claims.extraction import (
     EXTRACTOR_VERSION,
@@ -29,6 +30,7 @@ from atlas.analysis_engine.forward_claims.revisions import (
     GuidanceRevision,
     NonRevisionReason,
     RevisionBasis,
+    RevisionEvidence,
     RevisionType,
     compare_claims,
     detect_revisions,
@@ -42,6 +44,7 @@ __all__ = [
     "GuidanceRevision",
     "NonRevisionReason",
     "RevisionBasis",
+    "RevisionEvidence",
     "RevisionType",
     "compare_claims",
     "detect_revisions",
@@ -52,6 +55,7 @@ __all__ = [
     "ClaimantRole",
     "EXTRACTOR_VERSION",
     "ForwardClaim",
+    "HorizonKind",
     "RejectedCandidate",
     "classify_claimant",
     "extract_forward_claims",

@@ -49,6 +49,7 @@ from atlas.analysis_engine.forward_claims.contracts import (
     ClaimSubject,
     ClaimType,
     ClaimantRole,
+    HorizonKind,
 )
 from atlas.analysis_engine.forward_claims.models import ForwardClaim
 
@@ -114,8 +115,23 @@ _LOWER = re.compile(r"\b(more\s+than|at\s+least|greater\s+than|in\s+excess\s+of|
 _UPPER = re.compile(r"\b(up\s+to|no\s+more\s+than|less\s+than|below)\b", re.I)
 _APPROX = re.compile(r"\b(approximately|about|around|roughly)\b", re.I)
 
-_YEAR = re.compile(r"\b(?:fiscal\s+year\s+|fiscal\s+|full\s+year\s+|FY\s?)?(20[2-9]\d)\b", re.I)
-_HORIZON_TEXT = re.compile(r"((?:fiscal\s+year\s+|fiscal\s+|full\s+year\s+|FY\s?)?20[2-9]\d)", re.I)
+#: One explicit year and whatever qualifier sits directly in front of
+#: it. The qualifier decides the `HorizonKind`; its absence is recorded
+#: as unspecified rather than assumed to be either.
+_HORIZON = re.compile(
+    r"(?P<text>(?P<prefix>fiscal\s+year\s+|fiscal\s+|FY\s?|calendar\s+year\s+|calendar\s+|CY\s?|full\s+year\s+)?"
+    r"(?P<year>20[2-9]\d))\b",
+    re.I,
+)
+
+
+def _horizon_kind(prefix: str | None) -> HorizonKind:
+    word = (prefix or "").strip().lower()
+    if word.startswith(("fiscal", "fy")):
+        return HorizonKind.FISCAL_YEAR
+    if word.startswith(("calendar", "cy")):
+        return HorizonKind.CALENDAR_YEAR
+    return HorizonKind.UNSPECIFIED_YEAR
 
 
 class RejectedCandidate:
@@ -263,13 +279,25 @@ def extract_forward_claims(
             reject(ClaimRejectionReason.NO_KNOWN_SUBJECT)
             continue
 
-        years = [int(y) for y in _YEAR.findall(sentence)]
-        future_years = [y for y in years if source_year is None or y >= source_year]
-        if not future_years:
+        mentions = [m for m in _HORIZON.finditer(sentence) if source_year is None or int(m.group("year")) >= source_year]
+        if not mentions:
             reject(ClaimRejectionReason.NO_EXPLICIT_FUTURE_PERIOD)
             continue
-        horizon = str(min(future_years))
-        horizon_match = next((m.group(1) for m in _HORIZON_TEXT.finditer(sentence) if horizon in m.group(1)), horizon)
+        horizon = str(min(int(m.group("year")) for m in mentions))
+        at_horizon = [m for m in mentions if m.group("year") == horizon]
+        explicit_kinds = {
+            _horizon_kind(m.group("prefix")) for m in at_horizon
+        } - {HorizonKind.UNSPECIFIED_YEAR}
+        if len(explicit_kinds) > 1:
+            # "fiscal 2026 ... calendar 2026" in one sentence: which of the
+            # two the figure belongs to cannot be read off the text.
+            reject(ClaimRejectionReason.AMBIGUOUS_HORIZON)
+            continue
+        horizon_kind = explicit_kinds.pop() if explicit_kinds else HorizonKind.UNSPECIFIED_YEAR
+        horizon_match = next(
+            (m.group("text") for m in at_horizon if _horizon_kind(m.group("prefix")) is horizon_kind),
+            at_horizon[0].group("text"),
+        )
 
         produced_any = False
         for position, (offset, subject) in enumerate(subject_spans):
@@ -291,7 +319,7 @@ def extract_forward_claims(
                 continue
             bound, low, high, unit, value_text = parsed
 
-            claim_id = f"{record.id}:{subject.value}:{horizon}"
+            claim_id = f"{record.id}:{subject.value}:{horizon_kind.value}:{horizon}"
             if any(c.id == claim_id for c in claims):
                 # One statement, one claim per (subject, horizon): a
                 # repeated figure in the same sentence is the same claim.
@@ -314,6 +342,7 @@ def extract_forward_claims(
                     unit=unit,
                     value_text=value_text,
                     horizon_period=horizon,
+                    horizon_kind=horizon_kind,
                     horizon_text=horizon_match,
                     claimant_role=role,
                     stated_by=speaker if isinstance(speaker, str) else "",

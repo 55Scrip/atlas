@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-__all__ = ["ClaimType", "ClaimSubject", "ClaimBound", "ClaimantRole", "ClaimRejectionReason"]
+__all__ = ["ClaimType", "ClaimSubject", "ClaimBound", "ClaimantRole", "ClaimRejectionReason", "HorizonKind"]
 
 
 class ClaimType(str, Enum):
@@ -61,6 +61,33 @@ class ClaimBound(str, Enum):
     """"up to", "no more than"."""
 
 
+class HorizonKind(str, Enum):
+    """Which year a year number means (Stage 2.1).
+
+    "fiscal year 2026" and "calendar 2026" share a number and are not
+    the same period for any company whose fiscal year does not start in
+    January -- and AMAT, CRM and MU all use both phrasings on real
+    calls. Treating them as one horizon because the digits match would
+    let Atlas compare a fiscal-year figure with a calendar-year one and
+    report the difference as a revision.
+
+    Nothing here resolves one kind into the other: that needs an
+    issuer's fiscal calendar, which Atlas does not model, so the kinds
+    stay distinct and are never compared across.
+    """
+
+    FISCAL_YEAR = "fiscal_year"
+    """Stated as fiscal: "fiscal year 2026", "fiscal 2026", "FY2026"."""
+    CALENDAR_YEAR = "calendar_year"
+    """Stated as calendar: "calendar year 2026", "calendar 2026", "CY2026"."""
+    UNSPECIFIED_YEAR = "unspecified_year"
+    """A year with no fiscal/calendar qualifier: "full year 2026",
+    "2026". It is the issuer's own unqualified usage, so it compares
+    only with other unqualified usage from the same issuer -- never with
+    either explicit kind, which would require deciding which one the
+    company meant."""
+
+
 class ClaimantRole(str, Enum):
     """Who made the statement. The distinction exists because an analyst
     asking "should we expect $7 billion?" and a CFO saying "we expect $7
@@ -86,3 +113,7 @@ class ClaimRejectionReason(str, Enum):
     NO_VALUE = "no_value"
     NO_EXPLICIT_FUTURE_PERIOD = "no_explicit_future_period"
     ATTRIBUTED_TO_A_THIRD_PARTY = "attributed_to_a_third_party"
+    AMBIGUOUS_HORIZON = "ambiguous_horizon"
+    """The same year appears in one sentence as both fiscal and
+    calendar, so which period the figure belongs to cannot be read off
+    the text."""

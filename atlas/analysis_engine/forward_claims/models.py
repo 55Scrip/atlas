@@ -44,6 +44,7 @@ from atlas.analysis_engine.forward_claims.contracts import (
     ClaimSubject,
     ClaimType,
     ClaimantRole,
+    HorizonKind,
 )
 
 __all__ = ["ForwardClaim"]
@@ -54,9 +55,11 @@ class ForwardClaim:
     """One forward-looking statement, grounded in one source record.
 
     `id` is deterministic --
-    `f"{source_record_id}:{subject.value}:{horizon_period}"` -- so the
-    same corpus and the same rules always produce the same claims, and
-    the same statement never yields two.
+    `f"{source_record_id}:{subject.value}:{horizon_kind.value}:{horizon_period}"`
+    -- so the same corpus and the same rules always produce the same
+    claims, and the same statement never yields two. The horizon kind is
+    part of it (Stage 2.1) so a fiscal-year and a calendar-year claim
+    from one sentence can never collapse into one identity.
     """
 
     id: str
@@ -87,6 +90,10 @@ class ForwardClaim:
     year ("2027"). Relative horizons ("next year") are rejected during
     extraction rather than resolved: resolving one requires assuming a
     fiscal calendar the transcript metadata does not state."""
+    horizon_kind: HorizonKind
+    """Whether `horizon_period` is a fiscal year, a calendar year, or a
+    year the speaker did not qualify. Read from the sentence's own
+    wording, never inferred from the company."""
     horizon_text: str
     """The horizon exactly as stated -- "full year 2027"."""
 
