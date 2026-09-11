@@ -765,6 +765,18 @@ class AlphaVantageMarketDataProvider:
         )
         return (document,)
 
+    def transcript_quarter_for(self, evaluated_at: datetime) -> str:
+        """The quarter `fetch_earnings_call_transcripts` would request for
+        this `evaluated_at` -- answered without making the request.
+
+        The provider owns its own transcript cadence (see
+        `EarningsCallTranscriptProvider`), so a caller that wants to know
+        whether it already holds a quarter asks here rather than copying
+        the rule. `fetch_earnings_call_transcripts` calls this same method
+        to build its request, so the answer and the request can never
+        disagree. Pure: no network, no quota, no clock read."""
+        return _most_recent_completed_quarter(evaluated_at)
+
     def fetch_earnings_call_transcripts(
         self, *, company_identifier: str, evaluated_at: datetime
     ) -> tuple[RawBusinessDocument, ...]:
@@ -794,7 +806,7 @@ class AlphaVantageMarketDataProvider:
         `fetch`)."""
         api_key = self._resolved_api_key()
         ticker = company_identifier.upper()
-        quarter = _most_recent_completed_quarter(evaluated_at)
+        quarter = self.transcript_quarter_for(evaluated_at)
 
         entries = self._earnings_call_transcript(ticker, quarter, api_key)
         if not entries:

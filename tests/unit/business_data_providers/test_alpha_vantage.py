@@ -1169,6 +1169,34 @@ class TestEarningsCallTranscripts:
         provider.fetch_earnings_call_transcripts(company_identifier="AAPL", evaluated_at=_NOW)
         assert any("quarter=2026Q2" in url for url in seen_urls)
 
+    @pytest.mark.parametrize(
+        "evaluated_at",
+        [
+            _NOW,
+            datetime(2026, 1, 1, tzinfo=timezone.utc),
+            datetime(2026, 3, 31, 23, 59, tzinfo=timezone.utc),
+            datetime(2026, 4, 1, tzinfo=timezone.utc),
+            datetime(2025, 12, 31, tzinfo=timezone.utc),
+        ],
+    )
+    def test_the_announced_quarter_is_exactly_the_quarter_requested(self, monkeypatch, evaluated_at):
+        """`transcript_quarter_for` lets a caller skip a quarter it
+        already holds before paying for the request. That is only safe if
+        it is the very quarter the fetch would have asked for -- on every
+        date, including the quarter boundaries."""
+        monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
+        requested = []
+
+        def fetcher(url: str, headers):
+            requested.append(url.split("quarter=")[1].split("&")[0])
+            return {"symbol": "AAPL", "transcript": []}
+
+        provider = AlphaVantageMarketDataProvider(fetcher)
+        announced = provider.transcript_quarter_for(evaluated_at)
+        assert requested == []  # answering makes no request
+        provider.fetch_earnings_call_transcripts(company_identifier="AAPL", evaluated_at=evaluated_at)
+        assert requested == [announced]
+
     def test_an_empty_transcript_produces_no_documents(self, monkeypatch):
         monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")
         provider = AlphaVantageMarketDataProvider(_transcript_fetcher([]))
