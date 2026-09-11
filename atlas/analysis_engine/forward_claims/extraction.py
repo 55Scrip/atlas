@@ -51,6 +51,16 @@ operand allowed to come from outside is a year stated as a
 sentence-opening frame ("For the full year 2026, we expect CapEx..."),
 which governs the clause it introduces. Everything else that cannot be
 grounded is rejected -- the same trade as everywhere above.
+
+**Grounded is not enough: the figure must be the company's current
+guidance for the measure itself** (Stage 1.2). A figure the company is
+citing -- its "previously communicated" number, the baseline in "up
+from" -- is skipped, and a measure scoped to part of the company --
+"adjusted EBITDA from these assets", "segment revenue", a named segment
+in front of the measure -- is rejected. Both were real, both were
+locally grounded, and both were hidden only because the genuine claim
+in the same statement happened to come first; these rules hold for any
+sentence on its own, with no competing claim to hide behind.
 """
 from __future__ import annotations
 
@@ -74,7 +84,7 @@ __all__ = ["EXTRACTOR_VERSION", "RejectedCandidate", "classify_claimant", "extra
 #: Bumped whenever a rule below changes in a way that could alter which
 #: claims are produced. Stamped onto every claim so an older claim stays
 #: distinguishable from a newer one without re-reading the source.
-EXTRACTOR_VERSION = "transcript-guidance-v2"
+EXTRACTOR_VERSION = "transcript-guidance-v3"
 
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
 
@@ -171,6 +181,137 @@ _SUB_ANNUAL = re.compile(
 #: around it; it never owns one.
 _DERIVED_AFTER = re.compile(r"^(?:\s+before\s+growth)?\s+(?:ratios?|multiples?|margins?|yields?|per|conversion)\b", re.I)
 _DERIVED_BEFORE = re.compile(r"\b(?:debt|leverage)[\s-]+to[\s-]+$", re.I)
+
+
+#: Words that qualify a measure without narrowing it below the company:
+#: "our fiscal year 2026 revenue", "total net sales", "company revenue".
+#: Skipped when reading what stands directly in front of a measure.
+_COMPANY_QUALIFIERS = frozenset({
+    "our", "its", "the", "total", "company", "company-wide", "consolidated", "overall", "annual",
+    "full", "year", "full-year", "fiscal", "calendar", "gaap", "non-gaap", "reported", "fy", "cy",
+})
+#: A year or a period label. Periods are the sub-annual rule's business,
+#: not a narrowing of the measure: "Q3 total net sales" is a quarter,
+#: not a segment.
+_PERIOD_TOKEN = re.compile(r"(?:FY|CY)?'?(?:20)?\d\d|Q[1-4]|H[12]", re.I)
+
+#: Generic words -- corporate structure, not any company's segment
+#: names -- that narrow a measure below the company: "segment revenue",
+#: "incremental EBITDA", "acquired assets' EBITDA", "other revenue".
+_SUBSET_WORDS = frozenset({
+    "segment", "segments", "division", "divisional", "unit", "units", "business-unit", "subsidiary",
+    "incremental", "additional", "other", "acquired", "acquisition", "asset", "assets", "asset-level",
+    "standalone", "contribution", "contributions", "contribute", "contributes", "contributing", "contributed",
+})
+
+#: A measure restricted to where it comes from: "$270 million of
+#: adjusted EBITDA from these assets", "EBITDA contribution".
+_SUBSET_AFTER = re.compile(
+    r"^(?:\s+before\s+growth)?\s+(?:from|attributable\s+to|contributed\s+by|generated\s+by|associated\s+with|"
+    r"related\s+to|contributions?)\b",
+    re.I,
+)
+
+#: Grammar words that are capitalised only because they open a clause.
+_CLAUSE_OPENERS = frozenset({
+    "in", "for", "on", "at", "by", "with", "of", "and", "or", "but", "as", "to", "from", "over", "a", "an",
+    "the", "this", "that", "these", "those", "our", "its", "their", "we", "i", "it", "so", "now", "then",
+})
+_WORD = re.compile(r"[\w'&-]+")
+
+#: Marks what follows as something the company cites rather than
+#: issues: its own earlier number ("our previously communicated 2026
+#: adjusted EBITDA midpoint opportunity of $6.8 billion", "our previous
+#: estimate of $180 billion to $190 billion"), or a baseline ("up from",
+#: "compared with $8 billion in 2025"). "from" is a baseline only when a
+#: figure or a year follows it ("from $9 billion", "from 2025 levels");
+#: "EBITDA from these assets" is a scope, which the measure-scope rule
+#: reads instead. A marker reaches only as far as the next new-value
+#: word: "from our prior range to $41.3 billion" and "from $9 billion to
+#: $10 billion" issue the figure after "to". Not "initial": "initial
+#: 2027 guidance" is usually guidance being issued.
+_REFERENCE = re.compile(
+    r"\bpreviously\s+(?:communicated|announced|provided|issued|disclosed|shared|stated|discussed|given|guided|"
+    r"outlined|reported)\b|"
+    r"\b(?:prior|previous|original|earlier|last)\s+(?:(?!to\b)[\w-]+\s+){0,4}?(?:estimate|guidance|outlook|"
+    r"range|forecast|target|expectation|view|midpoint|plan)s?\b|"
+    r"\bfrom\s+(?=(?:(?:approximately|about|around|roughly)\s+)?(?:[$€£]|\d))|"
+    r"\bcompared\s+(?:with|to)\b|\bversus\b|\bvs\b\.?|\brelative\s+to\b",
+    re.I,
+)
+_NEW_VALUE = re.compile(r"\b(?:to|now)\b", re.I)
+#: A baseline given as a bare figure -- "from $9 billion to $10 billion"
+#: -- where the "to" after it issues the new value rather than closing a
+#: range.
+_BARE_FROM = re.compile(r"\bfrom\s+(?:(?:approximately|about|around|roughly)\s+)?[$€£]?\s*$", re.I)
+
+
+def _below_company_level(sentence: str, start: int, end: int, clause_start: int) -> bool:
+    """Whether the measure mention at `start:end` is scoped to part of
+    the company. Reads only what is attached to the mention itself --
+    the word directly in front of it, past company-level qualifiers, and
+    what directly follows it -- never the rest of the sentence, so "2026
+    adjusted EBITDA of $6.8 billion to $7.6 billion ..., including the
+    expected contribution from the assets acquired" stays company-level.
+
+    A capitalised modifier ("Semiconductor Systems revenue", "AI capex",
+    "H20 revenue") names a segment, product or programme; acronyms count
+    even at the start of a clause, other words there are capitalised
+    only by grammar. Lower-case segment names ("retail EBITDA") are not
+    recognised: that would need a list of what companies call their
+    segments."""
+    if _SUBSET_AFTER.match(sentence[end:]):
+        return True
+    words = _WORD.findall(sentence[clause_start:start])
+    for position in range(len(words) - 1, -1, -1):
+        word = words[position]
+        if word.lower() in _COMPANY_QUALIFIERS or _PERIOD_TOKEN.fullmatch(word):
+            continue
+        if word.lower() in _SUBSET_WORDS:
+            return True
+        if word.lower() in _CLAUSE_OPENERS or not any(ch.isupper() for ch in word):
+            return False
+        acronym = word.isupper() or any(ch.isdigit() for ch in word)
+        return acronym or position > 0
+    return False
+
+
+def _cited(text: str) -> bool:
+    """Whether the item that ends `text` -- a figure or a year, included
+    so a marker can see what follows it -- lies inside a citation: a
+    reference marker with no new-value word after it."""
+    return any(not _NEW_VALUE.search(text[marker.end() :]) for marker in _REFERENCE.finditer(text))
+
+
+def _cited_figures(sentence: str, figures: list[re.Match[str]], clause_start: int) -> set[int]:
+    """Start offsets of the figures in one clause that the company is
+    citing rather than issuing. Each figure is read from what leads into
+    it -- back to the previous figure or the clause start, so a measure's
+    own words ("our previously communicated 2026 adjusted EBITDA midpoint
+    opportunity of") are part of it. A cited figure may be a range: after
+    "previous estimate of", "$180 billion to $190 billion" is cited
+    whole; after a bare "from", "to" issues the new value instead."""
+    cited: set[int] = set()
+    group: tuple[bool, int] | None = None  # (bare "from", figures so far)
+    previous: re.Match[str] | None = None
+    for figure in figures:
+        lead_in = sentence[previous.end() if previous else clause_start : figure.start("num")]
+        joiner = sentence[previous.end() : figure.start()] if previous else ""
+        if (
+            group is not None
+            and group[1] < 2
+            and _RANGE_JOIN.match(joiner)
+            and not (group[0] and joiner.strip().lower() == "to")
+        ):
+            cited.add(figure.start())
+            group = (group[0], group[1] + 1)
+        elif _cited(sentence[previous.end() if previous else clause_start : figure.end()]):
+            cited.add(figure.start())
+            group = (bool(_BARE_FROM.search(lead_in)), 1)
+        else:
+            group = None
+        previous = figure
+    return cited
 
 
 def _clause_spans(sentence: str) -> list[tuple[int, int]]:
@@ -338,12 +479,12 @@ def extract_forward_claims(
         # claim's subject.
         subject_spans = sorted(
             {
-                (m.start(), s, _names_a_derived_measure(sentence, m))
+                (m.start(), m.end(), s, _names_a_derived_measure(sentence, m))
                 for s, pattern in _SUBJECTS
                 for m in pattern.finditer(sentence)
             }
         )
-        if all(derived for _, _, derived in subject_spans):
+        if all(derived for _, _, _, derived in subject_spans):
             reject(ClaimRejectionReason.NO_KNOWN_SUBJECT)
             continue
 
@@ -374,14 +515,14 @@ def extract_forward_claims(
         opening = clauses[0]
         year_frame = (
             len(clauses) > 1
-            and not any(clause_of(offset) == 0 for offset, _, _ in subject_spans)
+            and not any(clause_of(offset) == 0 for offset, _, _, _ in subject_spans)
             and not any(clause_of(m.start("num")) == 0 for m in has_money)
             and any(clause_of(m.start()) == 0 for m in _HORIZON.finditer(sentence))
         )
 
         failures: list[ClaimRejectionReason] = []
         produced_any = False
-        for offset, subject, derived in subject_spans:
+        for offset, mention_end, subject, derived in subject_spans:
             if derived:
                 continue
             home = clause_of(offset)
@@ -392,7 +533,15 @@ def extract_forward_claims(
             if any(_within(m.start(), scope) for m in _SUB_ANNUAL.finditer(sentence)):
                 failures.append(ClaimRejectionReason.SUB_ANNUAL_HORIZON)
                 continue
-            local_years = [m for m in mentions if _within(m.start(), scope)]
+            # A year inside a citation belongs to the cited figure, not to
+            # the one being issued: "2027 revenue of $10 billion compared
+            # with $8 billion in 2025" is about 2027.
+            local_years = [
+                m
+                for m in mentions
+                if _within(m.start(), scope)
+                and not _cited(sentence[next(a for a, b in scope if a <= m.start() < b) : m.end()])
+            ]
             if not local_years:
                 failures.append(ClaimRejectionReason.UNGROUNDED_OPERANDS)
                 continue
@@ -407,6 +556,12 @@ def extract_forward_claims(
                 (m.group("text") for m in at_horizon if _horizon_kind(m.group("prefix")) is horizon_kind),
                 at_horizon[0].group("text"),
             )
+
+            # The measure: the company's, not part of it. After the period
+            # checks, so "Q4 2026 revenue" is reported as the quarter it is.
+            if _below_company_level(sentence, offset, mention_end, clauses[home][0]):
+                failures.append(ClaimRejectionReason.MEASURE_BELOW_COMPANY_LEVEL)
+                continue
 
             # The figure: from the subject's own clause. One sentence may
             # still carry two claims -- "2026 Adjusted EBITDA guidance range
@@ -428,13 +583,23 @@ def extract_forward_claims(
                 failures.append(ClaimRejectionReason.UNGROUNDED_OPERANDS)
                 continue
             else:
-                here = neighbours.index((offset, subject, derived))
+                here = neighbours.index((offset, mention_end, subject, derived))
                 next_offset = neighbours[here + 1][0] if here + 1 < len(neighbours) else clauses[home][1]
                 owned = [m for m in clause_money if offset < m.start() < next_offset]
             if not owned:
                 failures.append(ClaimRejectionReason.UNGROUNDED_OPERANDS)
                 continue
-            parsed = _parse_value(sentence, owned)
+            # The figure being issued, not one being cited -- the company's
+            # own earlier number or a baseline is skipped: "raising 2026
+            # revenue guidance from $9 billion to $10 billion" issues $10
+            # billion. Stage 2.1 can still read a cited earlier figure from
+            # the claim's source sentence as its stated prior.
+            cited = _cited_figures(sentence, clause_money, clauses[home][0])
+            current = [figure for figure in owned if figure.start() not in cited]
+            if not current:
+                failures.append(ClaimRejectionReason.REFERENCE_VALUE)
+                continue
+            parsed = _parse_value(sentence, current)
             if parsed is None:
                 failures.append(ClaimRejectionReason.NO_VALUE)
                 continue
@@ -483,6 +648,8 @@ def extract_forward_claims(
             for reason in (
                 ClaimRejectionReason.SUB_ANNUAL_HORIZON,
                 ClaimRejectionReason.AMBIGUOUS_HORIZON,
+                ClaimRejectionReason.MEASURE_BELOW_COMPANY_LEVEL,
+                ClaimRejectionReason.REFERENCE_VALUE,
                 ClaimRejectionReason.UNGROUNDED_OPERANDS,
             ):
                 if reason in failures:

@@ -39,7 +39,14 @@ class ClaimSubject(str, Enum):
     """What the claim is about. A closed set, matched against explicit
     surface forms -- an unmatched subject rejects the candidate rather
     than being stored as free text, because a subject Atlas cannot name
-    is one it also cannot later compare against anything."""
+    is one it also cannot later compare against anything.
+
+    Each member means the **company-level** measure: REVENUE is the
+    company's revenue, never a segment's, a product line's or an
+    acquired business's. Stage 2.1 groups claims by company and subject
+    and compares them as one series, so a subset figure filed under the
+    company-level subject would read as the company revising its own
+    guidance."""
 
     REVENUE = "revenue"
     ADJUSTED_EBITDA = "adjusted_ebitda"
@@ -127,3 +134,13 @@ class ClaimRejectionReason(str, Enum):
     """The figure's proposition names a quarter or a half ("for the
     fourth quarter of 2025"). The year is real, but the period is not a
     year, and a full-year claim is the only kind Atlas records."""
+    MEASURE_BELOW_COMPANY_LEVEL = "measure_below_company_level"
+    """The measure is scoped to part of the company -- "adjusted EBITDA
+    from these assets", "segment revenue", "incremental EBITDA", a named
+    segment or product line -- so the figure is not the company-level
+    measure the subject names."""
+    REFERENCE_VALUE = "reference_value"
+    """The figure is one the company cites rather than issues: its own
+    previously communicated number, or a baseline it compares against
+    ("up from", "compared with"). Stage 2.1 may still read such a figure
+    as the stated prior of a current claim; it is never a claim itself."""

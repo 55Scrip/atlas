@@ -21,6 +21,16 @@ nothing in the analysis or decision path -- a boundary
 `tests/unit/analysis_engine/forward_claims/test_integration_safety.py`
 enforces rather than trusts.
 
+**A claim is the company's own current guidance for a company-level
+measure** (Stage 1.2). Not any forward-looking number: a figure the
+company *cites* -- its previously communicated guidance, a comparison
+baseline -- is not guidance it is issuing, and a figure for part of the
+company -- a segment, an acquired business, "these assets" -- is not
+the measure `subject` names. Both can be perfectly grounded in one
+clause and still be the wrong claim, and Stage 2.1 would compare either
+one against the company's real guidance as if management had revised
+it.
+
 **Every claim carries the exact sentence it came from.** `source_text`
 is the verbatim passage, never a paraphrase and never generated prose.
 A claim whose passage cannot be located in its own source record is a
