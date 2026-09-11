@@ -35,6 +35,22 @@ The five conditions a sentence must satisfy, all of them:
 Third-party attribution ("analysts expect", "the street is modelling")
 is rejected even from an executive's mouth: quoting someone else's
 forecast is not issuing guidance.
+
+**All three operands of a claim come from one clause** (Stage 1.1).
+Conditions 4 and 5 are about the sentence; a claim is narrower. Its
+subject, its figure and its year must sit in the same local
+proposition, or the figure is borrowing an operand it does not own.
+Four quarters of real calls showed each way that goes wrong: a
+capital-return figure taking "adjusted EBITDA" from a leverage ratio
+three clauses later, a "current year" figure taking 2026 from a clause
+that gave no number, and a fourth-quarter figure read as a full year.
+A clause ends at a comma, semicolon or colon followed by a space, or at
+a subordinating conjunction; bare "and" does not end one, because real
+guidance coordinates two measures under one verb and one year. The one
+operand allowed to come from outside is a year stated as a
+sentence-opening frame ("For the full year 2026, we expect CapEx..."),
+which governs the clause it introduces. Everything else that cannot be
+grounded is rejected -- the same trade as everywhere above.
 """
 from __future__ import annotations
 
@@ -58,7 +74,7 @@ __all__ = ["EXTRACTOR_VERSION", "RejectedCandidate", "classify_claimant", "extra
 #: Bumped whenever a rule below changes in a way that could alter which
 #: claims are produced. Stamped onto every claim so an older claim stays
 #: distinguishable from a newer one without re-reading the source.
-EXTRACTOR_VERSION = "transcript-guidance-v1"
+EXTRACTOR_VERSION = "transcript-guidance-v2"
 
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
 
@@ -123,6 +139,57 @@ _HORIZON = re.compile(
     r"(?P<year>20[2-9]\d))\b",
     re.I,
 )
+
+
+#: Where one local proposition ends. Punctuation counts only when a
+#: space follows, so the comma inside "$1,485 million" never splits a
+#: figure. The conjunctions always open a subordinate clause -- VST's
+#: "all while achieving an attractive net debt to adjusted EBITDA
+#: ratio", TSLA's "while we are expecting to be around $9 billion for
+#: the current year". Bare "and" is deliberately absent: "our 2026
+#: Adjusted EBITDA guidance range of ... and our adjusted free cash flow
+#: before growth guidance range of ..." is one proposition about two
+#: measures and one year, and "between €44 billion and €60 billion" is
+#: one range.
+_CLAUSE_BREAK = re.compile(r"[,;:]\s+|\s+(?:while|whereas|although|though|because|but)\s+", re.I)
+
+#: A period shorter than a year, anywhere in the figure's proposition:
+#: "fourth quarter of 2025", "Q4 2025", "second half of 2026",
+#: "fiscal 2025 third quarter". Its presence means the year that
+#: proposition names is not proven to be the figure's full-year period.
+_SUB_ANNUAL = re.compile(
+    r"\b(?:(?:first|second|third|fourth|1st|2nd|3rd|4th)[\s-]+(?:fiscal[\s-]+)?(?:quarter|half)|"
+    r"Q[1-4]|H[12])\b",
+    re.I,
+)
+
+#: A subject word naming a different, derived measure -- a ratio, a
+#: margin, a yield, a per-unit figure -- rather than the measure itself.
+#: All from the real corpus: "net debt to adjusted EBITDA ratio", "free
+#: cash flow margin", "net revenue yield", "revenue per gigawatt", "free
+#: cash flow conversion". Such a mention still separates the figures
+#: around it; it never owns one.
+_DERIVED_AFTER = re.compile(r"^(?:\s+before\s+growth)?\s+(?:ratios?|multiples?|margins?|yields?|per|conversion)\b", re.I)
+_DERIVED_BEFORE = re.compile(r"\b(?:debt|leverage)[\s-]+to[\s-]+$", re.I)
+
+
+def _clause_spans(sentence: str) -> list[tuple[int, int]]:
+    spans, start = [], 0
+    for boundary in _CLAUSE_BREAK.finditer(sentence):
+        spans.append((start, boundary.start()))
+        start = boundary.end()
+    spans.append((start, len(sentence)))
+    return spans
+
+
+def _within(position: int, spans: list[tuple[int, int]]) -> bool:
+    return any(start <= position < end for start, end in spans)
+
+
+def _names_a_derived_measure(sentence: str, mention: re.Match[str]) -> bool:
+    return bool(
+        _DERIVED_AFTER.match(sentence[mention.end() :]) or _DERIVED_BEFORE.search(sentence[: mention.start()])
+    )
 
 
 def _horizon_kind(prefix: str | None) -> HorizonKind:
@@ -265,17 +332,18 @@ def extract_forward_claims(
             reject(ClaimRejectionReason.HISTORICAL_STATEMENT)
             continue
 
-        # One sentence may carry guidance for more than one measure --
-        # "2026 Adjusted EBITDA guidance range of $6.8 billion-$7.6
-        # billion and our adjusted free cash flow ... range of $3.925
-        # billion-$4.725 billion" is two claims, and taking only the
-        # first would silently drop the second. Each subject is paired
-        # with the amounts that appear after it and before the next
-        # subject, so a figure is never attached across a boundary.
+        # Every subject mention, in order. One naming a derived measure
+        # ("net debt to adjusted EBITDA ratio") stays in the list as a
+        # boundary between the figures around it, but is never a
+        # claim's subject.
         subject_spans = sorted(
-            {(m.start(), s) for s, pattern in _SUBJECTS for m in pattern.finditer(sentence)}
+            {
+                (m.start(), s, _names_a_derived_measure(sentence, m))
+                for s, pattern in _SUBJECTS
+                for m in pattern.finditer(sentence)
+            }
         )
-        if not subject_spans:
+        if all(derived for _, _, derived in subject_spans):
             reject(ClaimRejectionReason.NO_KNOWN_SUBJECT)
             continue
 
@@ -283,39 +351,92 @@ def extract_forward_claims(
         if not mentions:
             reject(ClaimRejectionReason.NO_EXPLICIT_FUTURE_PERIOD)
             continue
-        horizon = str(min(int(m.group("year")) for m in mentions))
-        at_horizon = [m for m in mentions if m.group("year") == horizon]
-        explicit_kinds = {
-            _horizon_kind(m.group("prefix")) for m in at_horizon
-        } - {HorizonKind.UNSPECIFIED_YEAR}
-        if len(explicit_kinds) > 1:
+        sentence_horizon = str(min(int(m.group("year")) for m in mentions))
+        if len(
+            {_horizon_kind(m.group("prefix")) for m in mentions if m.group("year") == sentence_horizon}
+            - {HorizonKind.UNSPECIFIED_YEAR}
+        ) > 1:
             # "fiscal 2026 ... calendar 2026" in one sentence: which of the
-            # two the figure belongs to cannot be read off the text.
+            # two the figure belongs to cannot be read off the text. Kept
+            # sentence-wide even though each clause is now read on its own
+            # -- grounding narrows what Atlas claims, it never widens it.
             reject(ClaimRejectionReason.AMBIGUOUS_HORIZON)
             continue
-        horizon_kind = explicit_kinds.pop() if explicit_kinds else HorizonKind.UNSPECIFIED_YEAR
-        horizon_match = next(
-            (m.group("text") for m in at_horizon if _horizon_kind(m.group("prefix")) is horizon_kind),
-            at_horizon[0].group("text"),
+
+        clauses = _clause_spans(sentence)
+
+        def clause_of(position: int) -> int | None:
+            return next((i for i, (a, b) in enumerate(clauses) if a <= position < b), None)
+
+        # A sentence-opening clause that states a year and nothing else
+        # ("For the full year 2026, we expect CapEx to be ...") frames the
+        # clause it introduces, and only that one.
+        opening = clauses[0]
+        year_frame = (
+            len(clauses) > 1
+            and not any(clause_of(offset) == 0 for offset, _, _ in subject_spans)
+            and not any(clause_of(m.start("num")) == 0 for m in has_money)
+            and any(clause_of(m.start()) == 0 for m in _HORIZON.finditer(sentence))
         )
 
+        failures: list[ClaimRejectionReason] = []
         produced_any = False
-        for position, (offset, subject) in enumerate(subject_spans):
-            if len(subject_spans) == 1:
-                # Only one measure is named, so every figure in the
-                # sentence is about it -- and the subject may follow its
-                # own number ("more than $10 billion of revenue").
-                owned = has_money
+        for offset, subject, derived in subject_spans:
+            if derived:
+                continue
+            home = clause_of(offset)
+            scope = [clauses[home]] + ([opening] if year_frame and home == 1 else [])
+
+            # The year: from the subject's own proposition, never from
+            # another clause in the same sentence.
+            if any(_within(m.start(), scope) for m in _SUB_ANNUAL.finditer(sentence)):
+                failures.append(ClaimRejectionReason.SUB_ANNUAL_HORIZON)
+                continue
+            local_years = [m for m in mentions if _within(m.start(), scope)]
+            if not local_years:
+                failures.append(ClaimRejectionReason.UNGROUNDED_OPERANDS)
+                continue
+            horizon = str(min(int(m.group("year")) for m in local_years))
+            at_horizon = [m for m in local_years if m.group("year") == horizon]
+            explicit_kinds = {_horizon_kind(m.group("prefix")) for m in at_horizon} - {HorizonKind.UNSPECIFIED_YEAR}
+            if len(explicit_kinds) > 1:
+                failures.append(ClaimRejectionReason.AMBIGUOUS_HORIZON)
+                continue
+            horizon_kind = explicit_kinds.pop() if explicit_kinds else HorizonKind.UNSPECIFIED_YEAR
+            horizon_match = next(
+                (m.group("text") for m in at_horizon if _horizon_kind(m.group("prefix")) is horizon_kind),
+                at_horizon[0].group("text"),
+            )
+
+            # The figure: from the subject's own clause. One sentence may
+            # still carry two claims -- "2026 Adjusted EBITDA guidance range
+            # of $6.8 billion-$7.6 billion and our adjusted free cash flow
+            # ... range of $3.925 billion-$4.725 billion" is two measures in
+            # one clause, and each owns only the figures between it and
+            # the next, so a number is never attached to the wrong one.
+            neighbours = [span for span in subject_spans if clause_of(span[0]) == home]
+            clause_money = [m for m in has_money if clause_of(m.start("num")) == home]
+            if len(neighbours) == 1:
+                # The only measure in its clause owns every figure there,
+                # and may follow its own number ("more than $10 billion of
+                # revenue").
+                owned = clause_money
+            elif any(m.start() < neighbours[0][0] for m in clause_money):
+                # Several measures, and a figure before the first of them:
+                # "$10 billion of revenue and $2 billion of capex" cannot be
+                # paired by position without guessing which way it runs.
+                failures.append(ClaimRejectionReason.UNGROUNDED_OPERANDS)
+                continue
             else:
-                # Several measures share the sentence. Each owns only the
-                # figures between it and the next, so a number is never
-                # attached across a boundary to the wrong measure.
-                next_offset = subject_spans[position + 1][0] if position + 1 < len(subject_spans) else len(sentence)
-                owned = [m for m in has_money if offset < m.start() < next_offset]
+                here = neighbours.index((offset, subject, derived))
+                next_offset = neighbours[here + 1][0] if here + 1 < len(neighbours) else clauses[home][1]
+                owned = [m for m in clause_money if offset < m.start() < next_offset]
             if not owned:
+                failures.append(ClaimRejectionReason.UNGROUNDED_OPERANDS)
                 continue
             parsed = _parse_value(sentence, owned)
             if parsed is None:
+                failures.append(ClaimRejectionReason.NO_VALUE)
                 continue
             bound, low, high, unit, value_text = parsed
 
@@ -356,5 +477,17 @@ def extract_forward_claims(
                 )
             )
         if not produced_any:
-            reject(ClaimRejectionReason.NO_VALUE)
+            # The most specific reason any measure in the sentence failed
+            # on; a sentence with nothing readable at all is NO_VALUE, as
+            # before.
+            for reason in (
+                ClaimRejectionReason.SUB_ANNUAL_HORIZON,
+                ClaimRejectionReason.AMBIGUOUS_HORIZON,
+                ClaimRejectionReason.UNGROUNDED_OPERANDS,
+            ):
+                if reason in failures:
+                    reject(reason)
+                    break
+            else:
+                reject(ClaimRejectionReason.NO_VALUE)
     return tuple(claims), tuple(rejected)

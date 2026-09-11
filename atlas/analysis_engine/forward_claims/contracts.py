@@ -117,3 +117,13 @@ class ClaimRejectionReason(str, Enum):
     """The same year appears in one sentence as both fiscal and
     calendar, so which period the figure belongs to cannot be read off
     the text."""
+    UNGROUNDED_OPERANDS = "ungrounded_operands"
+    """The sentence names a subject, a figure and a future year, but no
+    single clause can be shown to hold all three together -- the figure
+    would have to borrow its subject or its year from a different
+    proposition, or several measures share a clause in an order that
+    does not say which figure is whose."""
+    SUB_ANNUAL_HORIZON = "sub_annual_horizon"
+    """The figure's proposition names a quarter or a half ("for the
+    fourth quarter of 2025"). The year is real, but the period is not a
+    year, and a full-year claim is the only kind Atlas records."""
