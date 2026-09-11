@@ -70,7 +70,7 @@ describe("ManagementIntelligencePanel (Product Utilization Sprint 1)", () => {
         executives: [
           {
             name: "Tim Cook", roleCategory: "ceo", rawTitle: "Chief Executive Officer", company: "AAPL",
-            isInterim: false, firstObservedDate: "2020-01-01", lastObservedDate: "2026-01-01",
+            isInterim: false, firstObservedPeriod: "2020Q1", lastObservedPeriod: "2026Q1",
             sourceTranscripts: ["Q1 2026"], statementCount: 3,
           },
         ],
@@ -88,7 +88,7 @@ describe("ManagementIntelligencePanel (Product Utilization Sprint 1)", () => {
         executives: [
           {
             name: "Jane Smith", roleCategory: "cfo", rawTitle: "Interim CFO", company: "AAPL", isInterim: true,
-            firstObservedDate: "2025-01-01", lastObservedDate: "2026-01-01", sourceTranscripts: ["Q4 2025"], statementCount: 1,
+            firstObservedPeriod: "2025Q1", lastObservedPeriod: "2026Q1", sourceTranscripts: ["Q4 2025"], statementCount: 1,
           },
         ],
         leadershipChanges: [],
@@ -134,7 +134,7 @@ describe("ManagementIntelligencePanel (Product Utilization Sprint 1)", () => {
           {
             executive: {
               name: "Tim Cook", roleCategory: "ceo", rawTitle: null, company: "AAPL", isInterim: false,
-              firstObservedDate: "2020-01-01", lastObservedDate: "2026-01-01", sourceTranscripts: [], statementCount: 0,
+              firstObservedPeriod: "2020Q1", lastObservedPeriod: "2026Q1", sourceTranscripts: [], statementCount: 0,
             },
             ownership: { holdingCount: 1, trend: "insufficient_history" },
             equityCompensation: { hasEquityAwards: false, equityIncentiveKinds: [], hasCashCompensation: false, disclosedComponents: [] },
@@ -154,7 +154,7 @@ describe("ManagementIntelligencePanel (Product Utilization Sprint 1)", () => {
           {
             executive: {
               name: "Jane Smith", roleCategory: "cfo", rawTitle: null, company: "AAPL", isInterim: false,
-              firstObservedDate: "2020-01-01", lastObservedDate: "2026-01-01", sourceTranscripts: [], statementCount: 0,
+              firstObservedPeriod: "2020Q1", lastObservedPeriod: "2026Q1", sourceTranscripts: [], statementCount: 0,
             },
             ownership: { holdingCount: 0, trend: "insufficient_history" },
             equityCompensation: { hasEquityAwards: false, equityIncentiveKinds: [], hasCashCompensation: false, disclosedComponents: [] },

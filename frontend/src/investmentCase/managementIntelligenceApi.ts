@@ -36,8 +36,9 @@ export interface ExecutiveIdentityView {
   rawTitle: string | null;
   company: string | null;
   isInterim: boolean;
-  firstObservedDate: string;
-  lastObservedDate: string;
+  /** Fiscal quarter label of the earliest/latest call observed -- a period, not a date (Stage 3.2). */
+  firstObservedPeriod: string;
+  lastObservedPeriod: string;
   sourceTranscripts: string[];
   statementCount: number;
 }
@@ -49,7 +50,7 @@ export interface LeadershipChangeEventView {
   priorRoleCategory: string | null;
   effectiveDate: string | null;
   announcementDate: string | null;
-  observedDate: string;
+  observedPeriod: string;
   sourceTranscript: string;
   provenance: string;
 }

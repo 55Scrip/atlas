@@ -32,33 +32,20 @@ unknown rather than approximated.
 """
 from __future__ import annotations
 
-import re
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
-from atlas.analysis_engine.business_data.models import BusinessRecord
+from atlas.analysis_engine.business_data.transcript_time import period_ordinal, transcript_period
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from atlas.analysis_engine.forward_claims.models import ForwardClaim
 
 __all__ = ["period_ordinal", "statement_age", "transcript_period"]
 
-_PERIOD = re.compile(r"^(20\d\d)Q([1-4])$")
-
-
-def transcript_period(record: BusinessRecord) -> str | None:
-    """The provider's label for the fiscal quarter a transcript reports
-    on, exactly as stored -- `None` when the record carries no label in
-    the provider's "YYYYQn" form. Never converted to calendar dates."""
-    label = record.metadata.get("quarter")
-    return label if isinstance(label, str) and _PERIOD.match(label) else None
-
-
-def period_ordinal(period: str | None) -> tuple[int, int] | None:
-    """(fiscal year, quarter), for ordering one company's periods. Two
-    ordinals are comparable only for the same company and provider."""
-    match = _PERIOD.match(period) if isinstance(period, str) else None
-    return (int(match.group(1)), int(match.group(2))) if match else None
+#: `transcript_period` and `period_ordinal` live with the transcript
+#: record's own temporal contract (`business_data.transcript_time`, Stage
+#: 3.2), where the legacy earnings-call consumers read them too; they are
+#: re-exported here unchanged.
 
 
 def statement_age(claim: ForwardClaim, *, as_of: datetime) -> timedelta | None:

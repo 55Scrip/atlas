@@ -27,13 +27,20 @@ Intelligence already established.
 `start_date`/`end_date` on `ExecutiveIdentity` are always `None` in this
 build.** No transcript ever states "today is my first day as CEO" or an
 explicit employment start/end date -- only that a named person spoke,
-under a given title, in a given quarter's call. `first_observed_date`/
-`last_observed_date` carry the real evidence Atlas actually has: the
-earliest and latest transcript on which that person was recorded
-speaking under that role. These are evidence-observation windows, never
-a claim about actual HR-recorded employment dates -- the distinction
-Phase 3's own "unknown dates should remain unknown; do not approximate"
-instruction exists to protect.
+under a given title, in a given quarter's call. `first_observed_period`/
+`last_observed_period` carry the real evidence Atlas actually has: the
+fiscal quarters of the earliest and latest calls on which that person
+was recorded speaking under that role. These are evidence-observation
+windows, never a claim about actual HR-recorded employment dates -- the
+distinction Phase 3's own "unknown dates should remain unknown; do not
+approximate" instruction exists to protect.
+
+**Windows are fiscal periods, not dates** (Stage 3.2). They used to be
+dates -- each call's calendar reading of its fiscal-quarter label, or its
+fetch time -- which put a company whose fiscal year leads the calendar
+a year out, and a transcript states no call date that could replace
+them. A quarter label orders one company's calls exactly; it says
+nothing about a calendar date, so nothing here claims one.
 
 **`LeadershipChangeEventType` is a complete, closed vocabulary per
 Phase 4's own list -- but only `APPOINTMENT`/`INTERIM_APPOINTMENT`/
@@ -74,6 +81,7 @@ from datetime import date
 from enum import Enum
 
 from atlas.alpha.investment_case.earnings_call import EarningsCallKnowledge
+from atlas.analysis_engine.business_data.transcript_time import period_ordinal
 
 __all__ = [
     "ExecutiveRoleCategory",
@@ -199,8 +207,8 @@ def _is_interim(title: str | None) -> bool:
 class ExecutiveIdentity:
     """Every field Phase 2 asks for. `start_date`/`end_date` are always
     `None` in this build -- see this module's own docstring for why;
-    `first_observed_date`/`last_observed_date` carry the real evidence
-    window this module actually has."""
+    `first_observed_period`/`last_observed_period` carry the real
+    evidence window this module actually has."""
 
     name: str
     role_category: ExecutiveRoleCategory
@@ -217,29 +225,36 @@ class ExecutiveIdentity:
     not separately preserved on this one record (Phase 6's timeline
     queries and `LeadershipChangeEvent.provenance` strings carry that
     finer-grained history instead)."""
-    first_observed_date: date
-    last_observed_date: date
+    first_observed_period: str
+    """Fiscal quarter of the earliest call this person spoke on in this
+    role -- the provider's label, never a date."""
+    last_observed_period: str
     source_transcripts: tuple[str, ...]
     """Every distinct transcript (by its own `quarter` label) this
     identity was observed speaking in, chronological."""
     statement_count: int
 
 
+def _period_key(period: str) -> tuple[bool, tuple[int, int], str]:
+    """Fiscal-period order for one company's calls; a label not in the
+    provider's form sorts first, by its text."""
+    ordinal = period_ordinal(period)
+    return (ordinal is not None, ordinal or (0, 0), period)
+
+
 def _extract_identities(ticker: str | None, earnings_call: EarningsCallKnowledge) -> tuple[ExecutiveIdentity, ...]:
     accumulators: dict[tuple[str, ExecutiveRoleCategory], dict] = {}
     for transcript in earnings_call.transcripts:
-        observed_date = transcript.fiscal_date_ending or transcript.published_at
         seen_this_transcript: set[tuple[str, ExecutiveRoleCategory]] = set()
         for statement in transcript.statements:
             role_category = _role_category(statement.title)
             if role_category is None:
                 continue
             key = (statement.speaker, role_category)
-            entry = accumulators.setdefault(key, {"dates": [], "transcripts": [], "raw_title": None, "statement_count": 0})
+            entry = accumulators.setdefault(key, {"transcripts": [], "raw_title": None, "statement_count": 0})
             entry["statement_count"] += 1
             entry["raw_title"] = statement.title
             if key not in seen_this_transcript:
-                entry["dates"].append(observed_date)
                 entry["transcripts"].append(transcript.quarter)
                 seen_this_transcript.add(key)
 
@@ -247,12 +262,13 @@ def _extract_identities(ticker: str | None, earnings_call: EarningsCallKnowledge
         ExecutiveIdentity(
             name=name, role_category=role_category, raw_title=entry["raw_title"], company=ticker,
             start_date=None, end_date=None, is_interim=_is_interim(entry["raw_title"]),
-            first_observed_date=min(entry["dates"]), last_observed_date=max(entry["dates"]),
+            first_observed_period=min(entry["transcripts"], key=_period_key),
+            last_observed_period=max(entry["transcripts"], key=_period_key),
             source_transcripts=tuple(entry["transcripts"]), statement_count=entry["statement_count"],
         )
         for (name, role_category), entry in accumulators.items()
     ]
-    identities.sort(key=lambda identity: identity.first_observed_date)
+    identities.sort(key=lambda identity: _period_key(identity.first_observed_period))
     return tuple(identities)
 
 
@@ -263,9 +279,9 @@ def _extract_identities(ticker: str | None, earnings_call: EarningsCallKnowledge
 class SuccessionRelationship:
     role_category: ExecutiveRoleCategory
     outgoing_executive_name: str
-    outgoing_last_observed_date: date
+    outgoing_last_observed_period: str
     incoming_executive_name: str
-    incoming_first_observed_date: date
+    incoming_first_observed_period: str
     evidence: str
     """A disclosed, human-readable statement of exactly what textual
     signal supports this relationship -- Phase 5's own "may represent a
@@ -278,7 +294,7 @@ def _successions(identities: tuple[ExecutiveIdentity, ...]) -> tuple[SuccessionR
     for identity in identities:
         by_role.setdefault(identity.role_category, []).append(identity)
     for group in by_role.values():
-        group.sort(key=lambda identity: identity.first_observed_date)
+        group.sort(key=lambda identity: _period_key(identity.first_observed_period))
 
     successions: list[SuccessionRelationship] = []
     for role_category, group in by_role.items():
@@ -287,8 +303,8 @@ def _successions(identities: tuple[ExecutiveIdentity, ...]) -> tuple[SuccessionR
                 successions.append(
                     SuccessionRelationship(
                         role_category=role_category, outgoing_executive_name=earlier.name,
-                        outgoing_last_observed_date=earlier.last_observed_date, incoming_executive_name=later.name,
-                        incoming_first_observed_date=later.first_observed_date,
+                        outgoing_last_observed_period=earlier.last_observed_period, incoming_executive_name=later.name,
+                        incoming_first_observed_period=later.first_observed_period,
                         evidence=(
                             "The earlier executive's most recently observed title in this role contained "
                             "'interim'; the later executive's title in the same role did not."
@@ -330,8 +346,9 @@ class LeadershipChangeEvent:
     announcement_date: date | None
     """Always `None` in this build -- an earnings call transcript is
     not itself an announcement of the change."""
-    observed_date: date
-    """The real, evidence-based date this event was derived from."""
+    observed_period: str
+    """The fiscal quarter of the call this event was derived from -- the
+    real evidence; no source states when the change actually happened."""
     source_transcript: str
     provenance: str
     """A disclosed, human-readable explanation of exactly how this
@@ -348,13 +365,13 @@ def _leadership_change_events(
     for identity in identities:
         by_role.setdefault(identity.role_category, []).append(identity)
     for group in by_role.values():
-        group.sort(key=lambda identity: identity.first_observed_date)
+        group.sort(key=lambda identity: _period_key(identity.first_observed_period))
 
     by_name: dict[str, list[ExecutiveIdentity]] = {}
     for identity in identities:
         by_name.setdefault(identity.name, []).append(identity)
     for group in by_name.values():
-        group.sort(key=lambda identity: identity.first_observed_date)
+        group.sort(key=lambda identity: _period_key(identity.first_observed_period))
 
     role_change_targets: set[tuple[str, ExecutiveRoleCategory]] = set()
     role_change_sources: set[tuple[str, ExecutiveRoleCategory]] = set()
@@ -368,12 +385,12 @@ def _leadership_change_events(
                 LeadershipChangeEvent(
                     event_type=LeadershipChangeEventType.ROLE_CHANGE, executive_name=name,
                     role_category=later.role_category, prior_role_category=earlier.role_category,
-                    effective_date=None, announcement_date=None, observed_date=later.first_observed_date,
+                    effective_date=None, announcement_date=None, observed_period=later.first_observed_period,
                     source_transcript=later.source_transcripts[0],
                     provenance=(
-                        f"Same individual previously observed as {earlier.role_category.value} through "
-                        f"{earlier.last_observed_date.isoformat()}, subsequently observed as "
-                        f"{later.role_category.value} beginning {later.first_observed_date.isoformat()}."
+                        f"Same individual previously observed as {earlier.role_category.value} through the "
+                        f"{earlier.last_observed_period} call, subsequently observed as "
+                        f"{later.role_category.value} beginning with the {later.first_observed_period} call."
                     ),
                 )
             )
@@ -395,7 +412,7 @@ def _leadership_change_events(
                     LeadershipChangeEvent(
                         event_type=LeadershipChangeEventType.PERMANENT_APPOINTMENT, executive_name=identity.name,
                         role_category=role_category, prior_role_category=None, effective_date=None,
-                        announcement_date=None, observed_date=identity.first_observed_date,
+                        announcement_date=None, observed_period=identity.first_observed_period,
                         source_transcript=identity.source_transcripts[0],
                         provenance=(
                             "First observed without an 'interim' title in this role, immediately following an "
@@ -418,7 +435,7 @@ def _leadership_change_events(
                     LeadershipChangeEvent(
                         event_type=event_type, executive_name=identity.name, role_category=role_category,
                         prior_role_category=None, effective_date=None, announcement_date=None,
-                        observed_date=identity.first_observed_date, source_transcript=identity.source_transcripts[0],
+                        observed_period=identity.first_observed_period, source_transcript=identity.source_transcripts[0],
                         provenance=provenance,
                     )
                 )
@@ -429,69 +446,74 @@ def _leadership_change_events(
                     LeadershipChangeEvent(
                         event_type=LeadershipChangeEventType.DEPARTURE, executive_name=identity.name,
                         role_category=role_category, prior_role_category=None, effective_date=None,
-                        announcement_date=None, observed_date=identity.last_observed_date,
+                        announcement_date=None, observed_period=identity.last_observed_period,
                         source_transcript=identity.source_transcripts[-1],
                         provenance=(
-                            f"Last observed speaking in this role on {identity.last_observed_date.isoformat()}; a "
+                            f"Last observed speaking in this role in the {identity.last_observed_period} call; a "
                             f"different individual ({successor.name}) was subsequently observed in the same role. "
                             "Atlas does not know the reason or exact date of any departure."
                         ),
                     )
                 )
 
-    events.sort(key=lambda event: event.observed_date)
+    events.sort(key=lambda event: _period_key(event.observed_period))
     return tuple(events)
 
 
 # -- Phase 6: Leadership Composition History (query helpers) ----------------
 
 
+def _within(period: str, first: str, last: str) -> bool:
+    return _period_key(first) <= _period_key(period) <= _period_key(last)
+
+
 def executive_at(
-    identities: tuple[ExecutiveIdentity, ...], role_category: ExecutiveRoleCategory, as_of: date
+    identities: tuple[ExecutiveIdentity, ...], role_category: ExecutiveRoleCategory, as_of_period: str
 ) -> ExecutiveIdentity | None:
     """Phase 6's own "who was CEO during this period" -- a pure lookup
-    over already-built `first_observed_date`/`last_observed_date`
-    windows, no new computation."""
+    over already-built observation windows. Asked in fiscal periods (the
+    call's quarter label), the only time the windows are known in."""
     candidates = [
         identity for identity in identities
-        if identity.role_category is role_category and identity.first_observed_date <= as_of <= identity.last_observed_date
+        if identity.role_category is role_category
+        and _within(as_of_period, identity.first_observed_period, identity.last_observed_period)
     ]
     if not candidates:
         return None
-    return max(candidates, key=lambda identity: identity.first_observed_date)
+    return max(candidates, key=lambda identity: _period_key(identity.first_observed_period))
 
 
 def executives_present_during(
-    identities: tuple[ExecutiveIdentity, ...], start: date, end: date
+    identities: tuple[ExecutiveIdentity, ...], first_period: str, last_period: str
 ) -> tuple[ExecutiveIdentity, ...]:
     return tuple(
         identity for identity in identities
-        if identity.first_observed_date <= end and identity.last_observed_date >= start
+        if _period_key(identity.first_observed_period) <= _period_key(last_period)
+        and _period_key(identity.last_observed_period) >= _period_key(first_period)
     )
 
 
 def changes_between(
-    events: tuple[LeadershipChangeEvent, ...], start: date, end: date
+    events: tuple[LeadershipChangeEvent, ...], first_period: str, last_period: str
 ) -> tuple[LeadershipChangeEvent, ...]:
-    return tuple(event for event in events if start <= event.observed_date <= end)
+    return tuple(event for event in events if _within(event.observed_period, first_period, last_period))
 
 
 # -- Phase 7: Management Knowledge Linking -----------------------------------
 
 
 def find_executive_for_statement(
-    identities: tuple[ExecutiveIdentity, ...], speaker: str, statement_date: date
+    identities: tuple[ExecutiveIdentity, ...], speaker: str, reporting_period: str
 ) -> ExecutiveIdentity | None:
-    """Resolves a raw `speaker` name + statement date (the exact shape
-    every `ManagementCommitment`/`GuidanceItem` already carries) to the
-    matching `ExecutiveIdentity` -- Phase 7's own "the CFO at that time
-    said" linkage, provided as a pure function callers opt into. Neither
-    Sprint 8's `management_credibility_intelligence.py` nor Sprint 9's
-    `management_guidance_intelligence.py` is modified to call this --
-    both remain untouched, per this sprint's own non-goals."""
+    """Resolves a raw `speaker` name + the call's fiscal period (the
+    exact shape every `ManagementCommitment`/`GuidanceItem` already
+    carries as `reporting_period`) to the matching `ExecutiveIdentity` --
+    Phase 7's own "the CFO at that time said" linkage, provided as a pure
+    function callers opt into."""
     candidates = [
         identity for identity in identities
-        if identity.name == speaker and identity.first_observed_date <= statement_date <= identity.last_observed_date
+        if identity.name == speaker
+        and _within(reporting_period, identity.first_observed_period, identity.last_observed_period)
     ]
     if not candidates:
         return None

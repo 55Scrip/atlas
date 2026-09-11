@@ -59,6 +59,15 @@ subdivision of an already-classified bucket via the identical exact-
 substring mechanism Sprint 2 already trusts, not a new classifier.
 `"revised guidance"`/`"updated guidance"` are genuinely ambiguous
 (direction not stated) and resolve to `UNSPECIFIED`, honestly.
+
+**"After the commitment" needs to know when the commitment was made**
+(Stage 3.2). The cut-off was the transcript's calendar reading of its
+fiscal-quarter label, which for a company whose fiscal year leads the
+calendar put it a year late. No transcript Atlas holds states when the
+call took place, so a commitment's outcome is `INSUFFICIENT_EVIDENCE`
+until one does -- and execution consistency, which counts only resolved
+outcomes, reports that it has no evidence rather than a follow-through
+record built on a wrong date.
 """
 from __future__ import annotations
 
@@ -179,11 +188,13 @@ class ManagementCommitment:
 
     signal: CommitmentSignal
     commitment_category: CommitmentCategory
-    statement_date: date
+    statement_date: date | None
+    """When the commitment was stated -- `None` unless a source says so
+    (Stage 3.2). Its outcome is measured from this date and is not
+    established without it."""
     reporting_period: str
     """The transcript's own `quarter` (e.g. `"2026Q2"`) -- Alpha
-    Vantage's own format, unchanged."""
-    fiscal_date_ending: date | None
+    Vantage's own format, unchanged: the company's fiscal quarter."""
     speaker: str
     source_transcript: str
     """The same `reporting_period` string, named separately per Phase
@@ -322,19 +333,24 @@ def extract_management_commitments(
     category."""
     commitments: list[ManagementCommitment] = []
     for transcript in earnings_call.transcripts:
-        anchor = transcript.fiscal_date_ending or transcript.published_at
         for statement in transcript.statements:
             signal = _signal_for(statement.categories)
             if signal is None:
                 continue
             category = _commitment_category_for(statement.categories)
-            outcome = _commitment_outcome(
-                category, anchor, financial_statement_history, growth, capital_allocation_history
-            )
+            # Follow-through compares reported periods *after* the
+            # commitment. Without a statement date that cut-off is unknown
+            # -- a fiscal label's calendar reading is not one (Stage 3.2).
+            if transcript.statement_date is None:
+                outcome = CommitmentOutcome.INSUFFICIENT_EVIDENCE
+            else:
+                outcome = _commitment_outcome(
+                    category, transcript.statement_date, financial_statement_history, growth, capital_allocation_history
+                )
             commitments.append(
                 ManagementCommitment(
-                    signal=signal, commitment_category=category, statement_date=transcript.published_at,
-                    reporting_period=transcript.quarter, fiscal_date_ending=transcript.fiscal_date_ending,
+                    signal=signal, commitment_category=category, statement_date=transcript.statement_date,
+                    reporting_period=transcript.quarter,
                     speaker=statement.speaker, source_transcript=transcript.quarter,
                     supporting_quotation=statement.content,
                     revision_direction=(

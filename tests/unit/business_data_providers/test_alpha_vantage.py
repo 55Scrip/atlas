@@ -1221,7 +1221,11 @@ class TestEarningsCallTranscripts:
         assert docs[1].metadata["quarter"] == "2026Q2"
         assert docs[1].source_kind == "transcript"
         assert docs[1].identifier == "AAPL:transcript:2026Q2:1"
-        assert docs[1].period_end == date_(2026, 6, 30)
+        # Stage 3.2: the fiscal label is kept, and no calendar period is
+        # derived from it -- Atlas does not know the issuer's fiscal calendar.
+        assert (docs[1].period_start, docs[1].period_end) == (None, None)
+        # The only timestamp is the fetch's observation instant, not a call date.
+        assert docs[1].published_at == _NOW
 
     def test_a_statement_with_no_sentiment_reported_omits_the_field(self, monkeypatch):
         monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "k")

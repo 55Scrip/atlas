@@ -1059,8 +1059,14 @@ class DailyBriefAgendaService:
                 for event in composition.executive_change_intelligence.leadership_changes:
                     if event.source_transcript != latest_quarter:
                         continue
-                    event_date = event.effective_date or event.observed_date
-                    since = datetime.combine(event_date, datetime.min.time(), tzinfo=timezone.utc)
+                    # Only a real effective date may date the signal. The call
+                    # the change was seen on is known by fiscal period alone
+                    # (Stage 3.2), so without one `since` is unknown.
+                    since = (
+                        datetime.combine(event.effective_date, datetime.min.time(), tzinfo=timezone.utc)
+                        if event.effective_date is not None
+                        else None
+                    )
                     reason = _executive_change_reason(resolved_ticker, event)
                     fact = ReasonFact(
                         ReasonCode.EXECUTIVE_CHANGE,

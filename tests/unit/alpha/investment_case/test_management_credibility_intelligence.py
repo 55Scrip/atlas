@@ -3,6 +3,7 @@
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, datetime, timezone
 
 from atlas.alpha.investment_case.capital_allocation_intelligence import extract_capital_allocation_history
@@ -67,12 +68,23 @@ def _period(year: int, **metadata):
     return result.record
 
 
-def _credibility(records):
+def _knowledge(records, *, spoke_on: dict[str, date] | None = None):
+    """`spoke_on` gives named calls a known statement date. No transcript
+    record carries one (Stage 3.2), so follow-through -- which needs to
+    know when a commitment was made -- is exercised by supplying it."""
+    knowledge = extract_earnings_call_knowledge(records)
+    if spoke_on:
+        knowledge = replace(
+            knowledge, transcripts=tuple(replace(t, statement_date=spoke_on.get(t.quarter)) for t in knowledge.transcripts)
+        )
+    return knowledge
+
+
+def _credibility(records, *, spoke_on: dict[str, date] | None = None):
     fsh = extract_financial_statement_history(records)
     cah = extract_capital_allocation_history(records)
     growth = extract_growth_knowledge(fsh)
-    earnings_call = extract_earnings_call_knowledge(records)
-    return extract_management_credibility(earnings_call, fsh, growth, cah)
+    return extract_management_credibility(_knowledge(records, spoke_on=spoke_on), fsh, growth, cah)
 
 
 class TestEmptyInput:
@@ -156,7 +168,7 @@ class TestOutcomeComparison:
             _statement("2020Q4", 0, "CFO", "We expect margin expansion.", period_end=date(2020, 12, 31)),
         )
         commitments = extract_management_commitments(
-            extract_earnings_call_knowledge(records), extract_financial_statement_history(records),
+            _knowledge(records, spoke_on={"2020Q4": date(2021, 1, 28)}), extract_financial_statement_history(records),
             extract_growth_knowledge(extract_financial_statement_history(records)),
             extract_capital_allocation_history(records),
         )
@@ -169,7 +181,7 @@ class TestOutcomeComparison:
             _statement("2015Q4", 0, "CFO", "We expect margin expansion in coming years.", period_end=date(2015, 12, 31)),
         )
         commitments = extract_management_commitments(
-            extract_earnings_call_knowledge(records), extract_financial_statement_history(records),
+            _knowledge(records, spoke_on={"2015Q4": date(2016, 1, 28)}), extract_financial_statement_history(records),
             extract_growth_knowledge(extract_financial_statement_history(records)),
             extract_capital_allocation_history(records),
         )
@@ -182,7 +194,7 @@ class TestOutcomeComparison:
             _statement("2015Q4", 0, "CFO", "We are committed to cost discipline going forward.", period_end=date(2015, 12, 31)),
         )
         commitments = extract_management_commitments(
-            extract_earnings_call_knowledge(records), extract_financial_statement_history(records),
+            _knowledge(records, spoke_on={"2015Q4": date(2016, 1, 28)}), extract_financial_statement_history(records),
             extract_growth_knowledge(extract_financial_statement_history(records)),
             extract_capital_allocation_history(records),
         )
@@ -196,7 +208,7 @@ class TestOutcomeComparison:
             _statement("2015Q4", 0, "CFO", "We are committed to our share repurchase program and dividend.", period_end=date(2015, 12, 31)),
         )
         commitments = extract_management_commitments(
-            extract_earnings_call_knowledge(records), extract_financial_statement_history(records),
+            _knowledge(records, spoke_on={"2015Q4": date(2016, 1, 28)}), extract_financial_statement_history(records),
             extract_growth_knowledge(extract_financial_statement_history(records)),
             extract_capital_allocation_history(records),
         )
@@ -244,7 +256,7 @@ class TestExecutionConsistencyAndFindings:
         ) + (
             _statement("2015Q4", 0, "CFO", "We expect margin expansion in coming years.", period_end=date(2015, 12, 31)),
         )
-        credibility = _credibility(records)
+        credibility = _credibility(records, spoke_on={"2015Q4": date(2016, 1, 28)})
         assert credibility.execution_consistency is ExecutionConsistency.STRONG_FOLLOW_THROUGH
         kinds = {f.kind for f in credibility.findings}
         assert CredibilityFindingKind.CONSISTENT_FOLLOW_THROUGH in kinds
@@ -259,3 +271,24 @@ class TestExecutionConsistencyAndFindings:
         for finding in credibility.findings:
             if finding.kind is CredibilityFindingKind.CONSISTENT_FOLLOW_THROUGH:
                 assert len(finding.supporting_commitments) > 0
+
+
+class TestUnknownStatementTime:
+    """Stage 3.2. Follow-through compares periods reported *after* a
+    commitment. No transcript says when it was made, and a record's
+    calendar reading of its fiscal label is not an answer."""
+
+    def _fulfilled_if_dated(self):
+        return tuple(_period(2015 + i, revenue=1000.0, net_income=100.0 + i * 30) for i in range(6)) + (
+            _statement("2015Q4", 0, "CFO", "We expect margin expansion in coming years.", period_end=date(2015, 12, 31)),
+        )
+
+    def test_without_a_statement_date_a_commitment_has_no_outcome(self):
+        (commitment,) = _credibility(self._fulfilled_if_dated()).commitments
+        assert commitment.statement_date is None
+        assert commitment.outcome is CommitmentOutcome.INSUFFICIENT_EVIDENCE
+
+    def test_no_follow_through_verdict_is_built_on_an_unknown_date(self):
+        credibility = _credibility(self._fulfilled_if_dated())
+        assert credibility.execution_consistency is ExecutionConsistency.INSUFFICIENT_EVIDENCE
+        assert CredibilityFindingKind.CONSISTENT_FOLLOW_THROUGH not in {f.kind for f in credibility.findings}

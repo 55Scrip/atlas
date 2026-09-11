@@ -101,23 +101,29 @@ class TestEmptyInput:
 
 
 class TestTenureContextLinking:
-    def test_financial_periods_are_windowed_to_tenure(self):
+    def test_calendar_dated_periods_are_not_placed_in_a_fiscal_tenure(self):
+        """Stage 3.2. A tenure is known only as the fiscal quarters of the
+        calls a person spoke on; reported periods carry calendar dates.
+        Placing one in the other needs the issuer's fiscal calendar, so it
+        is not established -- `None`, which is not "none occurred". It
+        used to be done with the transcript's calendar reading of its
+        label, a year off for a company whose fiscal year leads."""
         records = tuple(_period(2015 + i, revenue=1000.0) for i in range(6)) + (
             _statement("2015Q4", 0, "Alice Smith", "CEO", "Update.", period_end=date(2015, 12, 31)),
             _statement("2016Q4", 0, "Alice Smith", "CEO", "Update.", period_end=date(2016, 12, 31)),
         )
-        track_record = _track_record(records)
-        tenure = track_record.tenures[0]
-        assert [p.period_end for p in tenure.context.financial_periods] == [date(2015, 12, 31), date(2016, 12, 31)]
+        tenure = _track_record(records).tenures[0]
+        assert tenure.context.financial_periods is None
+        assert tenure.context.capital_allocation_periods is None
+        assert tenure.context.growth_observations is None
 
-    def test_periods_outside_tenure_are_excluded(self):
-        records = tuple(_period(2015 + i, revenue=1000.0) for i in range(6)) + (
+    def test_calls_outside_the_tenure_window_are_excluded(self):
+        records = (
             _statement("2015Q4", 0, "Alice Smith", "CEO", "Update.", period_end=date(2015, 12, 31)),
+            _statement("2016Q4", 0, "Dave Kim", "CEO", "Update.", period_end=date(2016, 12, 31)),
         )
-        track_record = _track_record(records)
-        tenure = track_record.tenures[0]
-        assert len(tenure.context.financial_periods) == 1
-        assert tenure.context.financial_periods[0].period_end == date(2015, 12, 31)
+        alice = next(t for t in _track_record(records).tenures if t.executive.name == "Alice Smith")
+        assert [t.quarter for t in alice.context.earnings_calls] == ["2015Q4"]
 
     def test_commitments_are_linked_by_date_regardless_of_speaker(self):
         records = (
@@ -137,7 +143,9 @@ class TestGuidanceHistoryLinking:
         track_record = _track_record(records)
         tenure = track_record.tenures[0]
         assert len(tenure.guidance_history.issued) == 1
-        assert len(tenure.guidance_history.fulfilled) == 1
+        # Whether it was fulfilled needs the date it was given, which no
+        # transcript states (Stage 3.2) -- not claimed either way.
+        assert tenure.guidance_history.fulfilled == ()
 
     def test_guidance_by_a_different_speaker_is_not_linked(self):
         records = tuple(_period(2015 + i, revenue=1000.0, net_income=100.0 + i * 30) for i in range(6)) + (

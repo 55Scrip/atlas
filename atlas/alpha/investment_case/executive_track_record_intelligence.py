@@ -63,6 +63,19 @@ since `management_guidance_intelligence.py`'s own outcome comparison
 only resolves once sufficient subsequent financial periods exist.
 Atlas does not claim the resolution was recognized while the executive
 was still serving.
+
+**A tenure is a window of fiscal periods, and only period-labelled
+evidence can be placed in it** (Stage 3.2). Tenures used to be date
+windows built from each call's calendar reading of its fiscal label (or
+its fetch time), and reported financial periods, capital-allocation
+periods and growth observations were attributed to whichever window
+their real dates fell in -- for a company whose fiscal year leads the
+calendar, to the wrong executive by a year. A call states no date that
+could fix this, and mapping a fiscal label to calendar dates would need
+the issuer's fiscal calendar. So calls, commitments and guidance -- all
+labelled with the call's own fiscal quarter -- are placed by period, and
+the date-only records are `None`: not established, which is different
+from none having occurred.
 """
 from __future__ import annotations
 
@@ -88,6 +101,7 @@ from atlas.alpha.investment_case.management_guidance_intelligence import (
     ManagementGuidanceKnowledge,
     RevisionKind,
 )
+from atlas.analysis_engine.business_data.transcript_time import period_ordinal
 
 __all__ = [
     "TemporalAssociation",
@@ -124,8 +138,17 @@ def classify_association(item_date: date, tenure_start: date, tenure_end: date) 
     return TemporalAssociation.DURING_TENURE
 
 
-def _during(item_date: date, tenure_start: date, tenure_end: date) -> bool:
-    return classify_association(item_date, tenure_start, tenure_end) is TemporalAssociation.DURING_TENURE
+def _period_key(period: str) -> tuple[bool, tuple[int, int], str]:
+    ordinal = period_ordinal(period)
+    return (ordinal is not None, ordinal or (0, 0), period)
+
+
+def _during_periods(period: str, executive: ExecutiveIdentity) -> bool:
+    """Whether a call's fiscal period falls inside this executive's
+    observed window -- both are the same company's quarter labels."""
+    return (
+        _period_key(executive.first_observed_period) <= _period_key(period) <= _period_key(executive.last_observed_period)
+    )
 
 
 # -- Phase 2: Executive Tenure Record ----------------------------------------
@@ -163,20 +186,23 @@ def _evidence_completeness(executive: ExecutiveIdentity) -> EvidenceCompleteness
 
 @dataclass(frozen=True)
 class TenureContext:
-    """Every field is a pure date-window filter over an already-real,
+    """Every field is a pure window filter over an already-real,
     already-computed sibling record -- never a new aggregate, never a
     verdict. See this module's own docstring for why no Business/
     Financial Quality "during tenure" verdict is computed here."""
 
-    financial_periods: tuple[IncomeStatementPeriod, ...]
+    financial_periods: tuple[IncomeStatementPeriod, ...] | None
+    """`None`: reported periods carry calendar dates and a tenure is
+    known only as fiscal call periods, so which of them fell inside it
+    is not established (Stage 3.2) -- not "none did"."""
     earnings_calls: tuple[EarningsCallTranscript, ...]
-    capital_allocation_periods: tuple[CapitalAllocationPeriod, ...]
-    growth_observations: tuple[GrowthObservation, ...]
-    """Sprint 6's own revenue observations, filtered to the tenure
-    window -- the single most representative already-computed growth
-    series, reused rather than choosing among six possible metrics."""
+    capital_allocation_periods: tuple[CapitalAllocationPeriod, ...] | None
+    """`None` for the same reason as `financial_periods`."""
+    growth_observations: tuple[GrowthObservation, ...] | None
+    """Sprint 6's own revenue observations would be filtered to the
+    tenure window -- `None` for the same reason as `financial_periods`."""
     commitments: tuple[ManagementCommitment, ...]
-    """Sprint 8's own commitments, filtered by date window only (not
+    """Sprint 8's own commitments, filtered by fiscal period only (not
     speaker) -- company-wide commitment evidence observed during the
     tenure, not necessarily this executive's own statements."""
 
@@ -186,21 +212,13 @@ def _tenure_context(
     earnings_call: EarningsCallKnowledge, capital_allocation_history: CapitalAllocationHistory,
     growth: GrowthKnowledge, commitments: tuple[ManagementCommitment, ...],
 ) -> TenureContext:
-    start, end = executive.first_observed_date, executive.last_observed_date
+    del financial_statement_history, capital_allocation_history, growth  # date-only: not placeable (see docstring)
     return TenureContext(
-        financial_periods=tuple(
-            p for p in financial_statement_history.income_statements if _during(p.period_end, start, end)
-        ),
-        earnings_calls=tuple(
-            t for t in earnings_call.transcripts if _during(t.fiscal_date_ending or t.published_at, start, end)
-        ),
-        capital_allocation_periods=tuple(
-            p for p in capital_allocation_history.periods if _during(p.period_end, start, end)
-        ),
-        growth_observations=tuple(
-            o for o in growth.revenue.observations if _during(o.period_end, start, end)
-        ),
-        commitments=tuple(c for c in commitments if _during(c.statement_date, start, end)),
+        financial_periods=None,
+        earnings_calls=tuple(t for t in earnings_call.transcripts if _during_periods(t.quarter, executive)),
+        capital_allocation_periods=None,
+        growth_observations=None,
+        commitments=tuple(c for c in commitments if _during_periods(c.reporting_period, executive)),
     )
 
 
@@ -224,9 +242,8 @@ _REVISION_KINDS = (RevisionKind.RAISED, RevisionKind.LOWERED, RevisionKind.REAFF
 
 
 def _guidance_history(executive: ExecutiveIdentity, guidance_items: tuple[GuidanceItem, ...]) -> TenureGuidanceHistory:
-    start, end = executive.first_observed_date, executive.last_observed_date
     issued = tuple(
-        g for g in guidance_items if g.speaker == executive.name and _during(g.statement_date, start, end)
+        g for g in guidance_items if g.speaker == executive.name and _during_periods(g.reporting_period, executive)
     )
     return TenureGuidanceHistory(
         issued=issued,
@@ -263,8 +280,8 @@ def _tenure_timeline(
     overlapping = tuple(
         other for other in all_executives
         if other.name != executive.name
-        and other.first_observed_date <= executive.last_observed_date
-        and other.last_observed_date >= executive.first_observed_date
+        and _period_key(other.first_observed_period) <= _period_key(executive.last_observed_period)
+        and _period_key(other.last_observed_period) >= _period_key(executive.first_observed_period)
     )
     return TenureTimeline(own_events=own_events, overlapping_executives=overlapping)
 

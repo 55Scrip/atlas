@@ -443,23 +443,31 @@ def _freshness_dominance_for_earnings_call(
     composition: InvestmentCaseComposition, records: tuple[BusinessRecord, ...], *, evaluated_at: datetime
 ) -> tuple[EvidenceFreshness, EvidenceDominance]:
     """`EarningsCallTranscript` has no `FactQuality` counterpart either
-    -- freshness is graded from the most recent transcript's own
-    `fiscal_date_ending` (a real business event date, the same
-    "graded by its most current entry" reasoning `_freshness_dominance_
-    for_regulatory_filings` already applies), not from when Atlas
-    happened to fetch it. Dominance from a raw count of `TRANSCRIPT`-
-    kind records among `records` -- many individual-statement documents
-    from the *same* quarter are not independent corroboration of one
-    fact, but counting them is still the same honest, real signal
+    -- freshness is graded from when management actually spoke on the
+    most recent call (`statement_date`), the one date that makes a call's
+    content current or not. Alpha Vantage supplies no such date, so today
+    the answer is `NOT_APPLICABLE`: no timestamp exists to grade, which
+    is neither fresh nor stale.
+
+    Until Stage 3.2 this graded the transcript's `fiscal_date_ending` --
+    a calendar reading of a fiscal-quarter label, not a business event --
+    and every company's latest call came out `FRESH`, NVIDIA's included,
+    although its own transcripts date the call before it to May 2025.
+
+    Dominance from a raw count of `TRANSCRIPT`-kind records among
+    `records` -- many individual-statement documents from the *same*
+    quarter are not independent corroboration of one fact, but counting
+    them is still the same honest, real signal
     `_freshness_dominance_for_company_profile`'s own single-record-type
     domain already uses."""
     transcripts = composition.earnings_call.transcripts
     if not transcripts:
         return EvidenceFreshness.NOT_APPLICABLE, EvidenceDominance.NOT_APPLICABLE
-    most_recent = transcripts[-1]  # extract_earnings_call_knowledge already sorts oldest-first
-    reference_date = most_recent.fiscal_date_ending or most_recent.published_at
-    age_days = (evaluated_at.date() - reference_date).days
-    freshness = _freshness_from_age_days(float(age_days))
+    most_recent = transcripts[-1]  # extract_earnings_call_knowledge already sorts oldest-first, by fiscal period
+    if most_recent.statement_date is None:
+        freshness = EvidenceFreshness.NOT_APPLICABLE
+    else:
+        freshness = _freshness_from_age_days(float((evaluated_at.date() - most_recent.statement_date).days))
     transcript_record_count = sum(1 for r in records if r.document_type is SourceKind.TRANSCRIPT)
     dominance = EvidenceDominance.SINGLE_SOURCE if transcript_record_count <= 1 else EvidenceDominance.CORROBORATED
     return freshness, dominance

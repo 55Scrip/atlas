@@ -48,8 +48,8 @@ def _content(accession: str, filed_at: datetime, html: str):
 def _identity(name: str = "Jane Smith") -> ExecutiveIdentity:
     return ExecutiveIdentity(
         name=name, role_category=ExecutiveRoleCategory.CEO, raw_title="Chief Executive Officer", company="Acme Corp",
-        start_date=None, end_date=None, is_interim=False, first_observed_date=date(2023, 1, 1),
-        last_observed_date=date(2024, 12, 31), source_transcripts=("Q1 2023",), statement_count=3,
+        start_date=None, end_date=None, is_interim=False, first_observed_period="2023Q1",
+        last_observed_period="2024Q4", source_transcripts=("Q1 2023",), statement_count=3,
     )
 
 

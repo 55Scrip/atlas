@@ -3,6 +3,7 @@
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, datetime, timezone
 
 from atlas.alpha.investment_case.capital_allocation_intelligence import extract_capital_allocation_history
@@ -63,11 +64,19 @@ def _period(year: int, **metadata):
     return result.record
 
 
-def _guidance(records):
+def _guidance(records, *, spoke_on: dict[str, date] | None = None):
+    """`spoke_on` gives named calls a known statement date. No transcript
+    record carries one (Stage 3.2), so outcome logic -- which needs to
+    know when guidance was given -- is exercised by supplying it here."""
     fsh = extract_financial_statement_history(records)
     cah = extract_capital_allocation_history(records)
     growth = extract_growth_knowledge(fsh)
     earnings_call = extract_earnings_call_knowledge(records)
+    if spoke_on:
+        earnings_call = replace(
+            earnings_call,
+            transcripts=tuple(replace(t, statement_date=spoke_on.get(t.quarter)) for t in earnings_call.transcripts),
+        )
     return extract_management_guidance(earnings_call, fsh, growth, cah)
 
 
@@ -144,7 +153,7 @@ class TestOutcomeLinking:
             _period(2020, revenue=1000.0),
             _statement("2020Q4", 0, "CFO", "We expect revenue to increase next year.", period_end=date(2020, 12, 31)),
         )
-        guidance = _guidance(records)
+        guidance = _guidance(records, spoke_on={"2020Q4": date(2021, 1, 28)})
         assert guidance.guidance_items[0].outcome is GuidanceOutcome.UNRESOLVED
         assert guidance.guidance_items[0].status is GuidanceStatus.ACTIVE
 
@@ -159,7 +168,7 @@ class TestOutcomeLinking:
         records = tuple(_period(2015 + i, revenue=1000.0, net_income=100.0 + i * 30) for i in range(6)) + (
             _statement("2015Q4", 0, "CFO", "We expect margin to improve going forward.", period_end=date(2015, 12, 31)),
         )
-        guidance = _guidance(records)
+        guidance = _guidance(records, spoke_on={"2015Q4": date(2016, 1, 28)})
         assert guidance.guidance_items[0].outcome is GuidanceOutcome.FULFILLED
         assert guidance.guidance_items[0].status is GuidanceStatus.COMPLETED
 
@@ -167,14 +176,14 @@ class TestOutcomeLinking:
         records = tuple(_period(2015 + i, revenue=1000.0 - i * 80) for i in range(6)) + (
             _statement("2015Q4", 0, "CFO", "We expect revenue to increase substantially.", period_end=date(2015, 12, 31)),
         )
-        guidance = _guidance(records)
+        guidance = _guidance(records, spoke_on={"2015Q4": date(2016, 1, 28)})
         assert guidance.guidance_items[0].outcome is GuidanceOutcome.MISSED
 
     def test_decrease_direction_favorable_when_metric_falls(self):
         records = tuple(_period(2015 + i, revenue=1000.0, capital_expenditure=300.0 - i * 40) for i in range(6)) + (
             _statement("2015Q4", 0, "CFO", "We expect to decrease capital expenditure going forward.", period_end=date(2015, 12, 31)),
         )
-        guidance = _guidance(records)
+        guidance = _guidance(records, spoke_on={"2015Q4": date(2016, 1, 28)})
         assert guidance.guidance_items[0].guidance_type is GuidanceType.CAPITAL_EXPENDITURE
         assert guidance.guidance_items[0].outcome is GuidanceOutcome.FULFILLED
 
@@ -218,7 +227,7 @@ class TestGuidanceReliability:
         records = tuple(_period(2015 + i, revenue=1000.0, net_income=100.0 + i * 30) for i in range(6)) + (
             _statement("2015Q4", 0, "CFO", "We expect margin to improve going forward.", period_end=date(2015, 12, 31)),
         )
-        guidance = _guidance(records)
+        guidance = _guidance(records, spoke_on={"2015Q4": date(2016, 1, 28)})
         assert guidance.reliability.total_guidance_count == 1
         assert guidance.reliability.fulfilled_count == 1
 
@@ -226,3 +235,39 @@ class TestGuidanceReliability:
         records = (_statement("2023Q4", 0, "CFO", "We are withdrawing our guidance for the year.", period_end=date(2023, 12, 31)),)
         guidance = _guidance(records)
         assert guidance.reliability.withdrawn_count == 1
+
+
+class TestUnknownStatementTime:
+    """Stage 3.2. "After the guidance" needs to know when it was given.
+    No transcript says, and a record's calendar reading of its fiscal
+    label is not an answer -- so no outcome and no expiry is claimed."""
+
+    def _fulfilled_if_dated(self):
+        return tuple(_period(2015 + i, revenue=1000.0, net_income=100.0 + i * 30) for i in range(6)) + (
+            _statement("2015Q4", 0, "CFO", "We expect margin to improve going forward.", period_end=date(2015, 12, 31)),
+        )
+
+    def test_without_a_statement_date_no_outcome_is_established(self):
+        (item,) = _guidance(self._fulfilled_if_dated()).guidance_items
+        assert item.statement_date is None
+        assert item.outcome is GuidanceOutcome.INSUFFICIENT_EVIDENCE
+
+    def test_the_latest_item_is_unresolved_rather_than_active_or_expired(self):
+        (item,) = _guidance(self._fulfilled_if_dated()).guidance_items
+        assert item.status is GuidanceStatus.UNRESOLVED
+
+    def test_a_stored_calendar_period_end_is_never_used_as_the_cutoff(self):
+        """The record says 2015-12-31. Read as the guidance date, every
+        later fiscal year would count as its outcome."""
+        guidance = _guidance(self._fulfilled_if_dated())
+        assert guidance.reliability.fulfilled_count == 0
+
+    def test_order_still_comes_from_the_fiscal_period(self):
+        records = (
+            _statement("2016Q4", 0, "CFO", "We are raising our outlook to 12% to 14% revenue growth.", period_end=date(2016, 12, 31)),
+            _statement("2015Q4", 0, "CFO", "We expect revenue growth of 8% to 10% next year.", period_end=date(2015, 12, 31)),
+        )
+        items = _guidance(records).guidance_items
+        assert [i.reporting_period for i in items] == ["2015Q4", "2016Q4"]
+        assert items[1].revision_kind is RevisionKind.RAISED
+        assert items[0].status is GuidanceStatus.REVISED

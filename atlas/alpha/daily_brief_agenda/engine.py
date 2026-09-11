@@ -744,9 +744,11 @@ def executive_change_signal(
     a real, mechanical "is this still current news" bound reusing
     already-real transcript-ordering data, never a persisted "since
     last agenda run" comparison this codebase has nowhere to store.
-    `since` is the event's own real `effective_date`/`observed_date`,
-    threaded through, never invented (mirrors `case_condition_signal`'s
-    own "a real `since`, already exists, composed not invented")."""
+    `since` is the event's own real `effective_date`, threaded through,
+    never invented (mirrors `case_condition_signal`'s own "a real
+    `since`, already exists, composed not invented") -- and `None` when
+    there is none: the call the change was seen on is known only by its
+    fiscal period (Stage 3.2), not by a date."""
     return Signal(
         _EXECUTIVE_CHANGE_PRIORITY.get(role_category, PriorityLevel.LOW),
         AgendaItemKind.REVIEW_INVESTMENT_CASE,

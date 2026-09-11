@@ -36,7 +36,9 @@ class EvidenceFreshness(str, Enum):
     STALE = "stale"
     NOT_APPLICABLE = "not_applicable"
     """No timestamped fact exists to grade -- honest absence, never a
-    worst-case default."""
+    worst-case default. Includes evidence that exists but carries no
+    trustworthy date: an earnings call whose statement time no source
+    states is graded neither fresh nor stale (Stage 3.2)."""
 
 
 class EvidenceDominance(str, Enum):

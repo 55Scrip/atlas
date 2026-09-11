@@ -389,7 +389,7 @@ class TestExecutiveIdentityLinking:
         identity = ExecutiveIdentity(
             name="Jane Smith", role_category=ExecutiveRoleCategory.CEO, raw_title="Chief Executive Officer",
             company="Acme Corp", start_date=None, end_date=None, is_interim=False,
-            first_observed_date=date(2023, 1, 1), last_observed_date=date(2023, 12, 31),
+            first_observed_period="2023Q1", last_observed_period="2023Q4",
             source_transcripts=("Q1 2023",), statement_count=3,
         )
         content = _content("DEF 14A", "0001-24-000001", datetime(2024, 3, 1, tzinfo=timezone.utc), _SUMMARY_HTML)
@@ -399,8 +399,8 @@ class TestExecutiveIdentityLinking:
     def test_case_insensitive_match_still_links(self):
         identity = ExecutiveIdentity(
             name="JANE SMITH", role_category=ExecutiveRoleCategory.CEO, raw_title="CEO", company=None,
-            start_date=None, end_date=None, is_interim=False, first_observed_date=date(2023, 1, 1),
-            last_observed_date=date(2023, 12, 31), source_transcripts=(), statement_count=1,
+            start_date=None, end_date=None, is_interim=False, first_observed_period="2023Q1",
+            last_observed_period="2023Q4", source_transcripts=(), statement_count=1,
         )
         content = _content("DEF 14A", "0001-24-000001", datetime(2024, 3, 1, tzinfo=timezone.utc), _SUMMARY_HTML)
         ck = extract_executive_compensation_knowledge((content,), executive_identities=(identity,))
@@ -409,8 +409,8 @@ class TestExecutiveIdentityLinking:
     def test_no_matching_identity_leaves_the_link_honestly_none(self):
         identity = ExecutiveIdentity(
             name="John Doe", role_category=ExecutiveRoleCategory.CFO, raw_title="CFO", company=None,
-            start_date=None, end_date=None, is_interim=False, first_observed_date=date(2023, 1, 1),
-            last_observed_date=date(2023, 12, 31), source_transcripts=(), statement_count=1,
+            start_date=None, end_date=None, is_interim=False, first_observed_period="2023Q1",
+            last_observed_period="2023Q4", source_transcripts=(), statement_count=1,
         )
         content = _content("DEF 14A", "0001-24-000001", datetime(2024, 3, 1, tzinfo=timezone.utc), _SUMMARY_HTML)
         ck = extract_executive_compensation_knowledge((content,), executive_identities=(identity,))

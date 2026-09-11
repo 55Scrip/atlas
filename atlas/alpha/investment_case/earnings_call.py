@@ -42,6 +42,7 @@ from enum import Enum
 
 from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.business_data.sources import SourceKind
+from atlas.analysis_engine.business_data.transcript_time import period_ordinal, transcript_statement_date
 
 __all__ = [
     "CommentaryCategory",
@@ -148,9 +149,14 @@ class ManagementStatement:
 @dataclass(frozen=True)
 class EarningsCallTranscript:
     quarter: str
-    """Alpha Vantage's own format, e.g. `"2026Q2"`."""
-    fiscal_date_ending: date | None
-    published_at: date
+    """Alpha Vantage's own format, e.g. `"2026Q2"` -- the company's
+    *fiscal* quarter, and the only time a transcript reliably carries.
+    It orders one company's calls; it is not a date."""
+    statement_date: date | None
+    """When management spoke on this call -- `None` unless a source
+    states it, which Alpha Vantage does not (Stage 3.2). It is never the
+    record's fetch time or its calendar reading of `quarter`: those made
+    a year-old call look current (see `business_data.transcript_time`)."""
     statements: tuple[ManagementStatement, ...]
     """In original transcript order -- never reordered by category."""
 
@@ -158,8 +164,8 @@ class EarningsCallTranscript:
 @dataclass(frozen=True)
 class EarningsCallKnowledge:
     transcripts: tuple[EarningsCallTranscript, ...]
-    """Chronological, oldest first. Empty, never fabricated, when no
-    `TRANSCRIPT` record has been ingested yet."""
+    """Chronological, oldest first, by fiscal period (`quarter`). Empty,
+    never fabricated, when no `TRANSCRIPT` record has been ingested yet."""
 
 
 def _parse_confidence(value: object) -> float | None:
@@ -204,13 +210,14 @@ def extract_earnings_call_knowledge(business_records: tuple[BusinessRecord, ...]
         transcripts.append(
             EarningsCallTranscript(
                 quarter=quarter,
-                fiscal_date_ending=records[0].period_end,
-                published_at=records[0].published_at.date(),
+                statement_date=transcript_statement_date(records[0]),
                 statements=statements,
             )
         )
 
-    transcripts.sort(key=lambda t: t.fiscal_date_ending or t.published_at)
+    # Fiscal-period order. A label the provider's form does not parse
+    # sorts first, by its text, rather than by any date.
+    transcripts.sort(key=lambda t: (period_ordinal(t.quarter) is not None, period_ordinal(t.quarter) or (0, 0), t.quarter))
     return EarningsCallKnowledge(transcripts=tuple(transcripts))
 
 

@@ -52,6 +52,17 @@ period reference (e.g. "for the back half of the year" vs. "for fiscal
 sprint's own non-goals forbid. The same limitation, disclosed the same
 way, already exists in Sprint 8's own category-level (not per-target)
 comparison.
+
+**Time comes from the call's fiscal period, and an outcome needs a real
+statement date** (Stage 3.2). The timeline is ordered by each call's
+fiscal-quarter label. Outcome comparison and expiry look at reported
+periods *after* the guidance was given, so they need to know when that
+was -- and no transcript Atlas holds says. Until Stage 3.2 the cut-off
+was the transcript's calendar reading of its fiscal label, a year off
+for a company whose fiscal year leads the calendar; now an item without
+a statement date is `INSUFFICIENT_EVIDENCE`, and the latest item of its
+type is `UNRESOLVED` rather than an `ACTIVE` or `EXPIRED` Atlas cannot
+establish.
 """
 from __future__ import annotations
 
@@ -64,6 +75,7 @@ from atlas.alpha.investment_case.capital_allocation_intelligence import CapitalA
 from atlas.alpha.investment_case.earnings_call import CommentaryCategory, EarningsCallKnowledge
 from atlas.alpha.investment_case.financial_statement_intelligence import FinancialStatementHistory, TrendDirection
 from atlas.alpha.investment_case.growth_intelligence import GrowthKnowledge, GrowthObservation, GrowthTrendKnowledge
+from atlas.analysis_engine.business_data.transcript_time import period_ordinal
 
 __all__ = [
     "TrendDirection",
@@ -380,8 +392,12 @@ class GuidanceItem:
     guidance_type: GuidanceType
     speaker: str
     reporting_period: str
-    statement_date: date
-    fiscal_date_ending: date | None
+    """The call's fiscal quarter label -- the order guidance was issued
+    in, not a date."""
+    statement_date: date | None
+    """When the guidance was stated -- `None` unless a source says so
+    (Stage 3.2). Outcomes and expiry are measured from this date and are
+    not established without it."""
     source_transcript: str
     direction: GuidanceDirection
     explicit_target: ExplicitTarget | None
@@ -398,8 +414,7 @@ class _RawGuidance:
     guidance_type: GuidanceType
     speaker: str
     reporting_period: str
-    statement_date: date
-    fiscal_date_ending: date | None
+    statement_date: date | None
     source_transcript: str
     direction: GuidanceDirection
     explicit_target: ExplicitTarget | None
@@ -407,13 +422,16 @@ class _RawGuidance:
     confidence_wording: ConfidenceWording
     supporting_quotation: str
     is_withdrawal: bool
-    anchor: date
+    order: tuple[bool, tuple[int, int], str]
+    """Fiscal-period order of the call it came from (Stage 3.2) -- never
+    a fetch time or a calendar reading of the label."""
 
 
 def _extract_raw_guidance(earnings_call: EarningsCallKnowledge) -> tuple[_RawGuidance, ...]:
     raw: list[_RawGuidance] = []
     for transcript in earnings_call.transcripts:
-        anchor = transcript.fiscal_date_ending or transcript.published_at
+        ordinal = period_ordinal(transcript.quarter)
+        order = (ordinal is not None, ordinal or (0, 0), transcript.quarter)
         for statement in transcript.statements:
             if not (
                 CommentaryCategory.MANAGEMENT_GUIDANCE in statement.categories
@@ -426,12 +444,12 @@ def _extract_raw_guidance(earnings_call: EarningsCallKnowledge) -> tuple[_RawGui
                 _RawGuidance(
                     guidance_type=_guidance_type(statement.content, statement.categories, target),
                     speaker=statement.speaker, reporting_period=transcript.quarter,
-                    statement_date=transcript.published_at, fiscal_date_ending=transcript.fiscal_date_ending,
+                    statement_date=transcript.statement_date,
                     source_transcript=transcript.quarter, direction=_direction(statement.content, target_range),
                     explicit_target=target, explicit_target_range=target_range,
                     confidence_wording=_confidence_wording(statement.content),
                     supporting_quotation=statement.content, is_withdrawal=_is_withdrawal(statement.content),
-                    anchor=anchor,
+                    order=order,
                 )
             )
     return tuple(raw)
@@ -469,7 +487,7 @@ def _revision_kind(current: _RawGuidance, previous: _RawGuidance | None) -> Revi
 
 
 def _status(
-    current: _RawGuidance, is_latest_in_group: bool, outcome: GuidanceOutcome, period_completed: bool,
+    current: _RawGuidance, is_latest_in_group: bool, outcome: GuidanceOutcome, period_completed: bool | None,
 ) -> GuidanceStatus:
     if current.is_withdrawal:
         return GuidanceStatus.WITHDRAWN
@@ -477,6 +495,10 @@ def _status(
         return GuidanceStatus.REVISED
     if outcome in (GuidanceOutcome.FULFILLED, GuidanceOutcome.PARTIALLY_FULFILLED, GuidanceOutcome.MISSED):
         return GuidanceStatus.COMPLETED
+    if period_completed is None:
+        # When the guidance was stated is unknown, so whether its period
+        # has since closed is too: neither active nor expired.
+        return GuidanceStatus.UNRESOLVED
     if period_completed:
         return GuidanceStatus.EXPIRED
     return GuidanceStatus.ACTIVE
@@ -517,7 +539,7 @@ def extract_management_guidance(
     for item in raw_items:
         by_type.setdefault(item.guidance_type, []).append(item)
     for group in by_type.values():
-        group.sort(key=lambda r: r.anchor)
+        group.sort(key=lambda r: r.order)
 
     items: list[GuidanceItem] = []
     for group in by_type.values():
@@ -525,15 +547,26 @@ def extract_management_guidance(
             previous = group[index - 1] if index > 0 else None
             is_latest = index == len(group) - 1
 
-            outcome = _guidance_outcome(item.guidance_type, item.direction, item.anchor, financial_statement_history, growth)
-            period_completed = _period_completed(item.guidance_type, item.anchor, financial_statement_history, growth)
+            # Outcome and expiry compare reported periods *after* the
+            # guidance was given. Without a statement date that cut-off is
+            # unknown -- a fiscal label's calendar reading is not one -- so
+            # neither is established (Stage 3.2).
+            if item.statement_date is None:
+                outcome, period_completed = GuidanceOutcome.INSUFFICIENT_EVIDENCE, None
+            else:
+                outcome = _guidance_outcome(
+                    item.guidance_type, item.direction, item.statement_date, financial_statement_history, growth
+                )
+                period_completed = _period_completed(
+                    item.guidance_type, item.statement_date, financial_statement_history, growth
+                )
             status = _status(item, is_latest, outcome, period_completed)
             revision_kind = _revision_kind(item, previous)
 
             items.append(
                 GuidanceItem(
                     guidance_type=item.guidance_type, speaker=item.speaker, reporting_period=item.reporting_period,
-                    statement_date=item.statement_date, fiscal_date_ending=item.fiscal_date_ending,
+                    statement_date=item.statement_date,
                     source_transcript=item.source_transcript, direction=item.direction,
                     explicit_target=item.explicit_target, explicit_target_range=item.explicit_target_range,
                     confidence_wording=item.confidence_wording, supporting_quotation=item.supporting_quotation,
@@ -541,7 +574,9 @@ def extract_management_guidance(
                 )
             )
 
-    items.sort(key=lambda g: g.statement_date)
+    # Timeline order is fiscal-period order; `sort` is stable, so items
+    # from one call keep their transcript order.
+    items.sort(key=lambda g: (period_ordinal(g.reporting_period) is not None, period_ordinal(g.reporting_period) or (0, 0), g.reporting_period))
     reliability = _reliability(tuple(items))
     return ManagementGuidanceKnowledge(guidance_items=tuple(items), reliability=reliability)
 

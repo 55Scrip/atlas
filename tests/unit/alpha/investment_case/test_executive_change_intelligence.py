@@ -127,8 +127,10 @@ class TestIdentityExtraction:
             _statement("2023Q4", 0, "Alice Smith", "CEO", "Year two.", period_end=date(2023, 12, 31)),
         )
         knowledge = _knowledge(records)
-        assert knowledge.executives[0].first_observed_date == date(2022, 12, 31)
-        assert knowledge.executives[0].last_observed_date == date(2023, 12, 31)
+        # Stage 3.2: the window is the calls' fiscal periods, never the
+        # records' calendar period ends or fetch times.
+        assert knowledge.executives[0].first_observed_period == "2022Q4"
+        assert knowledge.executives[0].last_observed_period == "2023Q4"
         assert knowledge.executives[0].source_transcripts == ("2022Q4", "2023Q4")
 
 
@@ -215,7 +217,7 @@ class TestLeadershipChangeEvents:
         dave_events = [e for e in knowledge.leadership_changes if e.executive_name == "Dave Kim"]
         assert len(dave_events) == 1
         assert dave_events[0].event_type is LeadershipChangeEventType.APPOINTMENT
-        assert dave_events[0].observed_date == date(2023, 12, 31)
+        assert dave_events[0].observed_period == "2023Q4"
 
     def test_succession_produces_permanent_appointment_not_generic_appointment(self):
         records = (
@@ -228,15 +230,15 @@ class TestLeadershipChangeEvents:
 
 
 class TestCompositionQueries:
-    def test_executive_at_returns_the_holder_covering_the_date(self):
+    def test_executive_at_returns_the_holder_covering_the_period(self):
         records = (
             _statement("2022Q4", 0, "Alice Smith", "CEO", "Year one.", period_end=date(2022, 12, 31)),
             _statement("2023Q4", 0, "Dave Kim", "CEO", "Year two.", period_end=date(2023, 12, 31)),
         )
         knowledge = _knowledge(records)
-        assert executive_at(knowledge.executives, ExecutiveRoleCategory.CEO, date(2022, 12, 31)).name == "Alice Smith"
-        assert executive_at(knowledge.executives, ExecutiveRoleCategory.CEO, date(2023, 12, 31)).name == "Dave Kim"
-        assert executive_at(knowledge.executives, ExecutiveRoleCategory.CEO, date(2020, 1, 1)) is None
+        assert executive_at(knowledge.executives, ExecutiveRoleCategory.CEO, "2022Q4").name == "Alice Smith"
+        assert executive_at(knowledge.executives, ExecutiveRoleCategory.CEO, "2023Q4").name == "Dave Kim"
+        assert executive_at(knowledge.executives, ExecutiveRoleCategory.CEO, "2020Q1") is None
 
     def test_executives_present_during_a_range(self):
         records = (
@@ -244,33 +246,33 @@ class TestCompositionQueries:
             _statement("2023Q4", 0, "Dave Kim", "CEO", "Year two.", period_end=date(2023, 12, 31)),
         )
         knowledge = _knowledge(records)
-        present = executives_present_during(knowledge.executives, date(2022, 1, 1), date(2022, 12, 31))
+        present = executives_present_during(knowledge.executives, "2022Q1", "2022Q4")
         assert [e.name for e in present] == ["Alice Smith"]
 
-    def test_changes_between_two_dates(self):
+    def test_changes_between_two_periods(self):
         records = (
             _statement("2022Q4", 0, "Alice Smith", "CEO", "Year one.", period_end=date(2022, 12, 31)),
             _statement("2023Q4", 0, "Dave Kim", "CEO", "Year two.", period_end=date(2023, 12, 31)),
         )
         knowledge = _knowledge(records)
-        changes = changes_between(knowledge.leadership_changes, date(2023, 1, 1), date(2023, 12, 31))
+        changes = changes_between(knowledge.leadership_changes, "2023Q1", "2023Q4")
         assert len(changes) == 1
         assert changes[0].executive_name == "Dave Kim"
         assert changes[0].event_type is LeadershipChangeEventType.APPOINTMENT
 
 
 class TestManagementKnowledgeLinking:
-    def test_find_executive_for_statement_resolves_speaker_and_date(self):
+    def test_find_executive_for_statement_resolves_speaker_and_period(self):
         records = (_statement("2023Q4", 0, "Alice Smith", "CEO", "Update.", period_end=date(2023, 12, 31)),)
         knowledge = _knowledge(records)
-        resolved = find_executive_for_statement(knowledge.executives, "Alice Smith", date(2023, 12, 31))
+        resolved = find_executive_for_statement(knowledge.executives, "Alice Smith", "2023Q4")
         assert resolved is not None
         assert resolved.role_category is ExecutiveRoleCategory.CEO
 
     def test_unknown_speaker_resolves_to_none(self):
         records = (_statement("2023Q4", 0, "Alice Smith", "CEO", "Update.", period_end=date(2023, 12, 31)),)
         knowledge = _knowledge(records)
-        assert find_executive_for_statement(knowledge.executives, "Unknown Person", date(2023, 12, 31)) is None
+        assert find_executive_for_statement(knowledge.executives, "Unknown Person", "2023Q4") is None
 
 
 class TestFindings:

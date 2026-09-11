@@ -929,16 +929,17 @@ class ManagementStatementView(CamelModel):
 
 class EarningsCallTranscriptView(CamelModel):
     quarter: str
-    fiscal_date_ending: date | None
-    published_at: date
+    """The company's fiscal quarter, as the provider labels it."""
+    statement_date: date | None
+    """When management spoke -- `None` unless a source states it (Stage
+    3.2); never a fetch time or a calendar reading of `quarter`."""
     statements: list[ManagementStatementView]
 
     @classmethod
     def from_domain(cls, transcript: EarningsCallTranscript) -> "EarningsCallTranscriptView":
         return cls(
             quarter=transcript.quarter,
-            fiscal_date_ending=transcript.fiscal_date_ending,
-            published_at=transcript.published_at,
+            statement_date=transcript.statement_date,
             statements=[ManagementStatementView.from_domain(s) for s in transcript.statements],
         )
 
@@ -1643,9 +1644,8 @@ class BusinessQualityIntelligenceView(CamelModel):
 class ManagementCommitmentView(CamelModel):
     signal: str
     commitment_category: str
-    statement_date: date
+    statement_date: date | None
     reporting_period: str
-    fiscal_date_ending: date | None
     speaker: str
     source_transcript: str
     supporting_quotation: str
@@ -1657,7 +1657,7 @@ class ManagementCommitmentView(CamelModel):
         return cls(
             signal=commitment.signal.value, commitment_category=commitment.commitment_category.value,
             statement_date=commitment.statement_date, reporting_period=commitment.reporting_period,
-            fiscal_date_ending=commitment.fiscal_date_ending, speaker=commitment.speaker,
+            speaker=commitment.speaker,
             source_transcript=commitment.source_transcript, supporting_quotation=commitment.supporting_quotation,
             revision_direction=commitment.revision_direction.value if commitment.revision_direction is not None else None,
             outcome=commitment.outcome.value,
@@ -1758,8 +1758,7 @@ class GuidanceItemView(CamelModel):
     guidance_type: str
     speaker: str
     reporting_period: str
-    statement_date: date
-    fiscal_date_ending: date | None
+    statement_date: date | None
     source_transcript: str
     direction: str
     explicit_target: ExplicitTargetView | None
@@ -1774,7 +1773,7 @@ class GuidanceItemView(CamelModel):
     def from_domain(cls, item: GuidanceItem) -> "GuidanceItemView":
         return cls(
             guidance_type=item.guidance_type.value, speaker=item.speaker, reporting_period=item.reporting_period,
-            statement_date=item.statement_date, fiscal_date_ending=item.fiscal_date_ending,
+            statement_date=item.statement_date,
             source_transcript=item.source_transcript, direction=item.direction.value,
             explicit_target=ExplicitTargetView.from_domain(item.explicit_target) if item.explicit_target is not None else None,
             explicit_target_range=(
@@ -1830,8 +1829,8 @@ class ExecutiveIdentityView(CamelModel):
     start_date: date | None
     end_date: date | None
     is_interim: bool
-    first_observed_date: date
-    last_observed_date: date
+    first_observed_period: str
+    last_observed_period: str
     source_transcripts: list[str]
     statement_count: int
 
@@ -1840,8 +1839,8 @@ class ExecutiveIdentityView(CamelModel):
         return cls(
             name=identity.name, role_category=identity.role_category.value, raw_title=identity.raw_title,
             company=identity.company, start_date=identity.start_date, end_date=identity.end_date,
-            is_interim=identity.is_interim, first_observed_date=identity.first_observed_date,
-            last_observed_date=identity.last_observed_date, source_transcripts=list(identity.source_transcripts),
+            is_interim=identity.is_interim, first_observed_period=identity.first_observed_period,
+            last_observed_period=identity.last_observed_period, source_transcripts=list(identity.source_transcripts),
             statement_count=identity.statement_count,
         )
 
@@ -1853,7 +1852,7 @@ class LeadershipChangeEventView(CamelModel):
     prior_role_category: str | None
     effective_date: date | None
     announcement_date: date | None
-    observed_date: date
+    observed_period: str
     source_transcript: str
     provenance: str
 
@@ -1864,25 +1863,25 @@ class LeadershipChangeEventView(CamelModel):
             role_category=event.role_category.value,
             prior_role_category=event.prior_role_category.value if event.prior_role_category is not None else None,
             effective_date=event.effective_date, announcement_date=event.announcement_date,
-            observed_date=event.observed_date, source_transcript=event.source_transcript, provenance=event.provenance,
+            observed_period=event.observed_period, source_transcript=event.source_transcript, provenance=event.provenance,
         )
 
 
 class SuccessionRelationshipView(CamelModel):
     role_category: str
     outgoing_executive_name: str
-    outgoing_last_observed_date: date
+    outgoing_last_observed_period: str
     incoming_executive_name: str
-    incoming_first_observed_date: date
+    incoming_first_observed_period: str
     evidence: str
 
     @classmethod
     def from_domain(cls, succession: SuccessionRelationship) -> "SuccessionRelationshipView":
         return cls(
             role_category=succession.role_category.value, outgoing_executive_name=succession.outgoing_executive_name,
-            outgoing_last_observed_date=succession.outgoing_last_observed_date,
+            outgoing_last_observed_period=succession.outgoing_last_observed_period,
             incoming_executive_name=succession.incoming_executive_name,
-            incoming_first_observed_date=succession.incoming_first_observed_date, evidence=succession.evidence,
+            incoming_first_observed_period=succession.incoming_first_observed_period, evidence=succession.evidence,
         )
 
 
@@ -1921,21 +1920,30 @@ class ExecutiveChangeIntelligenceView(CamelModel):
 
 
 class TenureContextView(CamelModel):
-    financial_periods: list[IncomeStatementPeriodView]
+    financial_periods: list[IncomeStatementPeriodView] | None
+    """`None`: not established -- calendar-dated periods cannot be placed
+    in a tenure known only as fiscal call periods (Stage 3.2)."""
     earnings_calls: list[EarningsCallTranscriptView]
-    capital_allocation_periods: list[CapitalAllocationPeriodView]
-    growth_observations: list[GrowthObservationView]
+    capital_allocation_periods: list[CapitalAllocationPeriodView] | None
+    growth_observations: list[GrowthObservationView] | None
     commitments: list[ManagementCommitmentView]
 
     @classmethod
     def from_domain(cls, context: TenureContext) -> "TenureContextView":
         return cls(
-            financial_periods=[IncomeStatementPeriodView.from_domain(p) for p in context.financial_periods],
+            financial_periods=(
+                None if context.financial_periods is None
+                else [IncomeStatementPeriodView.from_domain(p) for p in context.financial_periods]
+            ),
             earnings_calls=[EarningsCallTranscriptView.from_domain(t) for t in context.earnings_calls],
-            capital_allocation_periods=[
-                CapitalAllocationPeriodView.from_domain(p) for p in context.capital_allocation_periods
-            ],
-            growth_observations=[GrowthObservationView.from_domain(o) for o in context.growth_observations],
+            capital_allocation_periods=(
+                None if context.capital_allocation_periods is None
+                else [CapitalAllocationPeriodView.from_domain(p) for p in context.capital_allocation_periods]
+            ),
+            growth_observations=(
+                None if context.growth_observations is None
+                else [GrowthObservationView.from_domain(o) for o in context.growth_observations]
+            ),
             commitments=[ManagementCommitmentView.from_domain(c) for c in context.commitments],
         )
 

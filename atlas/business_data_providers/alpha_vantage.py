@@ -217,11 +217,6 @@ def _identity_fields(overview: dict[str, Any]) -> dict[str, str]:
 #: is a separate decision.
 _DEFAULT_INTER_REQUEST_DELAY_SECONDS = 12.0
 
-#: Quarter-end (month, day) per Alpha Vantage's own `"YYYYQN"` quarter
-#: format -- lets `_quarter_end_date` derive a real calendar date from a
-#: quarter string alone, with no extra API field.
-_QUARTER_END_MONTH_DAY: dict[int, tuple[int, int]] = {1: (3, 31), 2: (6, 30), 3: (9, 30), 4: (12, 31)}
-
 Sleeper = Callable[[float], None]
 Clock = Callable[[], float]
 
@@ -344,18 +339,6 @@ def _most_recent_completed_quarter(evaluated_at: datetime) -> str:
     if quarter_of_month == 1:
         return f"{evaluated_at.year - 1}Q4"
     return f"{evaluated_at.year}Q{quarter_of_month - 1}"
-
-
-def _quarter_end_date(quarter: str) -> date | None:
-    try:
-        year = int(quarter[:4])
-        q = int(quarter[5])
-    except (ValueError, IndexError):
-        return None
-    month_day = _QUARTER_END_MONTH_DAY.get(q)
-    if month_day is None:
-        return None
-    return date(year, *month_day)
 
 
 def _first_on_or_after(sorted_dates: list[date], target: date) -> date | None:
@@ -811,20 +794,21 @@ class AlphaVantageMarketDataProvider:
         own use for `SecEdgarFundamentalsProvider`'s multi-period
         `fetch`).
 
-        **What the time fields on these documents mean** (Stage 3.1 --
-        see `forward_claims.source_time`). `metadata["quarter"]` is the
-        requested label, which Alpha Vantage serves as the company's
+        **What the time fields on these documents mean** (Stages 3.1/3.2
+        -- see `business_data.transcript_time`). `metadata["quarter"]` is
+        the requested label, which Alpha Vantage serves as the company's
         *fiscal* quarter: CRM's "2025Q3" is its "Fiscal 2025 Third
-        Quarter". `published_at` is `evaluated_at` -- the instant this
-        fetch was evaluated as of, not when the call took place; Alpha
-        Vantage returns no call date. `period_start`/`period_end` are the
-        *calendar* end of the label (`_quarter_end_date`), which is not
-        the fiscal quarter's end for a company whose fiscal year is not
-        the calendar year -- NVIDIA's "2025Q3" call is dated 20 November
-        2024 in its own text, before the 2025-09-30 stored here. They are
-        left as they are only because existing earnings-call consumers
-        read them; nothing may treat any of the three as evidence of when
-        management spoke."""
+        Quarter". `period_start`/`period_end` are left empty: the calendar
+        end of a fiscal label is not the fiscal quarter's end for a
+        company whose fiscal year is not the calendar year -- NVIDIA's
+        "2025Q3" call is dated 20 November 2024 in its own text, ten
+        months before the 2025-09-30 Atlas used to store -- and nothing
+        here knows an issuer's fiscal calendar. `published_at` is
+        `evaluated_at`, the instant this fetch was evaluated as of: the
+        record model requires a timestamp and Alpha Vantage returns no
+        call or publication date, so it holds observation time and no
+        consumer reads a transcript's `published_at` as when management
+        spoke."""
         api_key = self._resolved_api_key()
         ticker = company_identifier.upper()
         quarter = self.transcript_quarter_for(evaluated_at)
@@ -833,7 +817,6 @@ class AlphaVantageMarketDataProvider:
         if not entries:
             return ()
 
-        fiscal_date_ending = _quarter_end_date(quarter)
         documents: list[RawBusinessDocument] = []
         for index, entry in enumerate(entries):
             speaker = entry.get("speaker")
@@ -865,8 +848,10 @@ class AlphaVantageMarketDataProvider:
                     provider_id="alpha_vantage",
                     raw_reference=f"{_BASE_URL}?function=EARNINGS_CALL_TRANSCRIPT&symbol={ticker}&quarter={quarter}",
                     content_hash=content_hash,
-                    period_start=fiscal_date_ending,
-                    period_end=fiscal_date_ending,
+                    # No period dates: the label is a fiscal quarter whose
+                    # calendar dates Atlas does not know (Stage 3.2).
+                    period_start=None,
+                    period_end=None,
                     language="en",
                     metadata=metadata,
                 )
