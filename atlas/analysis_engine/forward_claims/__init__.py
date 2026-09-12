@@ -40,12 +40,23 @@ from atlas.analysis_engine.forward_claims.interpretation import (
     INTERPRETATION_VERSION,
     EconomicDimension,
     ExpectedMovement,
+    ForwardEvidenceKind,
     GuidanceEconomicInterpretation,
     OutlookEffect,
     interpret_revision,
     interpret_revisions,
 )
 from atlas.analysis_engine.forward_claims.source_time import period_ordinal, statement_age, transcript_period
+from atlas.analysis_engine.forward_claims.synthesis import (
+    SYNTHESIS_VERSION,
+    DimensionState,
+    DimensionSummary,
+    ForwardEconomicSignal,
+    ForwardEconomicSynthesis,
+    SignalEntry,
+    describe_synthesis,
+    synthesize_forward_signals,
+)
 
 __all__ = [
     "REVISION_ENGINE_VERSION",
@@ -72,6 +83,15 @@ __all__ = [
     "INTERPRETATION_VERSION",
     "EconomicDimension",
     "ExpectedMovement",
+    "ForwardEvidenceKind",
+    "SYNTHESIS_VERSION",
+    "DimensionState",
+    "DimensionSummary",
+    "ForwardEconomicSignal",
+    "ForwardEconomicSynthesis",
+    "SignalEntry",
+    "describe_synthesis",
+    "synthesize_forward_signals",
     "GuidanceEconomicInterpretation",
     "OutlookEffect",
     "interpret_revision",

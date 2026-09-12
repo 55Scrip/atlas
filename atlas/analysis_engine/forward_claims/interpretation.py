@@ -44,6 +44,7 @@ from atlas.analysis_engine.forward_claims.revisions import GuidanceRevision, Rev
 
 __all__ = [
     "INTERPRETATION_VERSION",
+    "ForwardEvidenceKind",
     "EconomicDimension",
     "ExpectedMovement",
     "OutlookEffect",
@@ -54,6 +55,15 @@ __all__ = [
 
 #: Bumped whenever a mapping below changes meaning.
 INTERPRETATION_VERSION = "guidance-interpretation-v1"
+
+
+class ForwardEvidenceKind(str, Enum):
+    """Which kind of forward evidence produced an economic signal (Stage
+    4.2). Only guidance revisions exist today; contracts, capacity,
+    commitments and the like are added here when Atlas can actually
+    extract them -- an unreachable member would read as a capability."""
+
+    GUIDANCE_REVISION = "guidance_revision"
 
 
 class EconomicDimension(str, Enum):
@@ -183,6 +193,22 @@ class GuidanceEconomicInterpretation:
     """One deterministic, factual sentence built from the fields above --
     what changed, never why."""
     interpretation_version: str
+
+    # -- `synthesis.ForwardEconomicSignal` (Stage 4.2) -------------------------
+    # Read-only views so a guidance interpretation can be synthesized
+    # alongside future forward-evidence kinds; no field changes.
+
+    @property
+    def signal_id(self) -> str:
+        return self.revision_id
+
+    @property
+    def source_period(self) -> str | None:
+        return self.new_source_period
+
+    @property
+    def evidence_kind(self) -> "ForwardEvidenceKind":
+        return ForwardEvidenceKind.GUIDANCE_REVISION
 
 
 def _horizon_phrase(horizon_kind: HorizonKind, horizon_period: str) -> str:
