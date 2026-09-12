@@ -35,8 +35,10 @@ never a date, so nothing here is "recent".
 **Not only for guidance.** The synthesis reads anything that satisfies
 `ForwardEconomicSignal` -- a company, a horizon, a dimension, a movement,
 an effect, a period and a provenance id. Guidance interpretations are
-the only kind today; a future contract or capacity interpretation fits
-without changing this module.
+the only kind today. Another kind that revises a single-year figure fits
+without changing this module; state evidence does not -- an executed
+customer commitment (`commitments.py`) has no movement and no single-year
+horizon, so it stays outside until a state-first path exists.
 
 **Separate from historical analysis, and inert.** It reads no business
 fact, valuation, risk or Outlook, and nothing in Atlas's analysis or

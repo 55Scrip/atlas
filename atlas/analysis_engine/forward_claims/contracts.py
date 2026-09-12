@@ -26,6 +26,10 @@ class ClaimType(str, Enum):
     catch it would also catch a sentence merely mentioning a contract.
     They are named here only in this docstring, not as members: an
     unreachable enum member reads as a capability Atlas has.
+
+    Stage 5.1 represents an executed customer commitment as its own type,
+    `commitments.CustomerCommitmentClaim`, never as a member here: it is
+    evidence about state, not guidance about a figure.
     """
 
     GUIDANCE = "guidance"
