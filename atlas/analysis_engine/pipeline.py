@@ -66,6 +66,7 @@ from atlas.analysis_engine.investment_case_synthesis import (
 from atlas.analysis_engine.models import CanonicalAnalysis, Identity, RiskSection, UnavailableCapability
 from atlas.analysis_engine.outlook import build_outlook
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
+from atlas.analysis_engine.reasoning import ELEVATING_RISK_CATEGORIES, RiskDriverBasis
 from atlas.analysis_engine.recommendation import evaluate_recommendation_gate
 from atlas.analysis_engine.recommendation_outlook_context import derive_recommendation_outlook_context
 from atlas.analysis_engine.risk.contracts import RiskStatus
@@ -592,11 +593,15 @@ def assemble_analysis(
     durability_finding = next(f for f in business_analysis.findings if f.kind is BusinessCategory.DURABILITY)
     durability_conclusive = durability_finding.status not in _inconclusive_business_statuses
 
-    has_high_financial_or_valuation_risk = any(
-        risk_finding.status is RiskStatus.HIGH
+    # Named once, so the dampening flag and the disclosed basis of the
+    # `financial_risk` driver are the same fact: which of Financial and
+    # Valuation Risk is HIGH.
+    elevated_risk_categories = tuple(
+        risk_finding.category
         for risk_finding in risk_analysis.findings
-        if risk_finding.category in (RiskCategory.FINANCIAL_RISK, RiskCategory.VALUATION_RISK)
+        if risk_finding.category in ELEVATING_RISK_CATEGORIES and risk_finding.status is RiskStatus.HIGH
     )
+    has_high_financial_or_valuation_risk = bool(elevated_risk_categories)
     # Recommendation Evidence Sufficiency Alignment: any real (not
     # NOT_EVALUATED/INSUFFICIENT_INPUT) risk category is provenance-
     # backed company evidence -- one of the three real evidence sources
@@ -727,6 +732,17 @@ def assemble_analysis(
     # carried -- see `atlas.analysis_engine.forward_context`. It is built
     # here, the one caller allowed to build it, and reaches nothing else.
     forward_context = build_forward_reasoning_context(business_records, extracted_at=generated_at)
+    # The `financial_risk` driver's basis, disclosed alongside it and, like
+    # forward context, only carried by the gate: the categories that raised
+    # the dampening flag above, and Financial Risk's own retained basis.
+    financial_risk_basis = next(
+        f.financial_risk_basis for f in risk_analysis.findings if f.category is RiskCategory.FINANCIAL_RISK
+    )
+    risk_basis = (
+        RiskDriverBasis(elevated_categories=elevated_risk_categories, financial_risk=financial_risk_basis)
+        if financial_risk_basis is not None
+        else None
+    )
     recommendation = evaluate_recommendation_gate(
         engine_input,
         business_evaluation=decision_output.business_evaluation,
@@ -742,6 +758,7 @@ def assemble_analysis(
         generated_at=generated_at,
         has_real_risk_evidence=has_real_risk_evidence,
         forward_context=forward_context,
+        risk_basis=risk_basis,
     )
     # "Recommendation Backend Step 3": `recommendation.recommendation` is
     # now a real union -- `RecommendationWithheld` (no `direction` field,

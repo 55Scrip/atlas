@@ -1,5 +1,7 @@
 """Shared Risk Analysis vocabulary (ATLAS-025, Phase 4/5) -- `RiskStatus`,
-`RiskDataGapKind`, `severity_for_risk_status`.
+`RiskDataGapKind`, `severity_for_risk_status` -- plus the closed vocabulary
+a Financial Risk basis is stated in (`FinancialRiskSignal`,
+`FinancialRiskMetric`, `FinancialRiskCondition`, `FinancialRiskRule`).
 
 Mirrors `atlas.analysis_engine.business_contracts`'s own reason for
 existing: `financial_risk.py`, `business_risk.py`, `valuation_risk.py`,
@@ -17,7 +19,15 @@ from enum import Enum
 
 from atlas.analysis_engine.findings import FindingSeverity
 
-__all__ = ["RiskStatus", "RiskDataGapKind", "severity_for_risk_status"]
+__all__ = [
+    "FinancialRiskCondition",
+    "FinancialRiskMetric",
+    "FinancialRiskRule",
+    "FinancialRiskSignal",
+    "RiskStatus",
+    "RiskDataGapKind",
+    "severity_for_risk_status",
+]
 
 
 class RiskStatus(str, Enum):
@@ -89,3 +99,61 @@ def severity_for_risk_status(status: RiskStatus) -> FindingSeverity:
     if status is RiskStatus.HIGH:
         return FindingSeverity.MATERIAL
     return FindingSeverity.INFO
+
+
+class FinancialRiskSignal(str, Enum):
+    """The three signals `financial_risk.py`'s own rule table reads, in
+    that table's own order. A name for each, so the basis of a Financial
+    Risk level can say which one it rests on."""
+
+    CAPITAL_ALLOCATION = "capital_allocation"
+    CASH_GENERATION = "cash_generation"
+    DEBT_TREND = "debt_trend"
+
+
+class FinancialRiskMetric(str, Enum):
+    """The reported figures Financial Risk reads directly. Values match
+    `BusinessFactKind`'s own, so an observation names the fact it came
+    from without every reader importing the fact layer."""
+
+    FREE_CASH_FLOW = "free_cash_flow"
+    TOTAL_DEBT = "total_debt"
+
+
+class FinancialRiskCondition(str, Enum):
+    """Which branch of a signal's own rule matched -- the rule restated,
+    one member per branch, never a judgment beyond it.
+
+    Debt trend compares reported total debt in absolute terms between
+    consecutive evaluated periods: nothing here is a ratio, a coverage or
+    a rating, and "increased every period" says only that each evaluated
+    period's figure was higher than the one before."""
+
+    CAPITAL_ALLOCATION_WEAK = "capital_allocation_weak"
+    CAPITAL_ALLOCATION_MODERATE = "capital_allocation_moderate"
+    CAPITAL_ALLOCATION_STRONG = "capital_allocation_strong"
+    CAPITAL_ALLOCATION_UNAVAILABLE = "capital_allocation_unavailable"
+    LATEST_FREE_CASH_FLOW_NEGATIVE = "latest_free_cash_flow_negative"
+    LATEST_FREE_CASH_FLOW_NOT_NEGATIVE = "latest_free_cash_flow_not_negative"
+    NO_FREE_CASH_FLOW = "no_free_cash_flow"
+    TOTAL_DEBT_INCREASED_EVERY_PERIOD = "total_debt_increased_every_period"
+    TOTAL_DEBT_DECREASED_EVERY_PERIOD = "total_debt_decreased_every_period"
+    TOTAL_DEBT_NO_CONSISTENT_DIRECTION = "total_debt_no_consistent_direction"
+    TOTAL_DEBT_FEWER_THAN_TWO_PERIODS = "total_debt_fewer_than_two_periods"
+
+
+class FinancialRiskRule(str, Enum):
+    """Which line of Financial Risk's combination table decided the
+    level -- first match wins, in this order."""
+
+    ANY_SIGNAL_HIGH = "any_signal_high"
+    """`HIGH`: at least one signal is `HIGH`. Every `HIGH` signal is
+    named; none offsets another and none is ranked first."""
+    NO_CORE_SIGNAL_ASSESSED = "no_core_signal_assessed"
+    """`INSUFFICIENT_INPUT`: neither capital allocation nor cash
+    generation could be assessed."""
+    CORE_SIGNALS_BOTH_LOW = "core_signals_both_low"
+    """`LOW`: capital allocation and cash generation both `LOW`."""
+    CORE_SIGNAL_NOT_LOW = "core_signal_not_low"
+    """`MODERATE`: no signal `HIGH`, and capital allocation or cash
+    generation is `MODERATE` or could not be assessed."""

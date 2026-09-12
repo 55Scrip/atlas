@@ -2871,7 +2871,7 @@ export function InvestmentCasePage() {
                 nothing when reasoning is absent (legacy rows), so the
                 page degrades to exactly its previous shape. */}
             {investmentDecisionStatus.kind === "loaded" && (
-              <AtlasInvestmentReasoning decision={investmentDecisionStatus.decision} t={t} />
+              <AtlasInvestmentReasoning decision={investmentDecisionStatus.decision} t={t} locale={locale} />
             )}
 
             <ExpandableDetail summaryLabel={t("investmentCase.decisionSummary.viewFullLabel")}>

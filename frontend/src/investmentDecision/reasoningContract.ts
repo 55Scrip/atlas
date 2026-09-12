@@ -150,6 +150,75 @@ export interface RecommendationReasoningView {
    * written before it existed. Context only -- see
    * `ForwardReasoningContextView`. */
   forwardContext?: ForwardReasoningContextView | null;
+  /** What the `financial_risk` driver rests on. `null` when no basis was
+   * carried; absent on rows written before it existed. Disclosure only --
+   * see `RiskDriverBasisView`. */
+  riskBasis?: RiskDriverBasisView | null;
+}
+
+export type RiskLevel = "not_evaluated" | "insufficient_input" | "low" | "moderate" | "high";
+
+export type ElevatingRiskCategory = "financial_risk" | "valuation_risk";
+
+export type FinancialRiskSignal = "capital_allocation" | "cash_generation" | "debt_trend";
+
+export type FinancialRiskCondition =
+  | "capital_allocation_weak"
+  | "capital_allocation_moderate"
+  | "capital_allocation_strong"
+  | "capital_allocation_unavailable"
+  | "latest_free_cash_flow_negative"
+  | "latest_free_cash_flow_not_negative"
+  | "no_free_cash_flow"
+  | "total_debt_increased_every_period"
+  | "total_debt_decreased_every_period"
+  | "total_debt_no_consistent_direction"
+  | "total_debt_fewer_than_two_periods";
+
+export type FinancialRiskRule =
+  | "any_signal_high"
+  | "no_core_signal_assessed"
+  | "core_signals_both_low"
+  | "core_signal_not_low";
+
+/** One reported figure exactly as the fact states it -- `period` is the
+ * period-end date, `value` is in `unit` and never rescaled. */
+export interface FinancialRiskObservationView {
+  metric: "free_cash_flow" | "total_debt";
+  period: string;
+  value: number;
+  unit: string;
+  factId: string;
+  sourceRecordId: string;
+}
+
+export interface FinancialRiskSignalBasisView {
+  signal: FinancialRiskSignal;
+  level: RiskLevel;
+  condition: FinancialRiskCondition;
+  sourceFindingId: string | null;
+  observations: FinancialRiskObservationView[];
+}
+
+/** The Financial Risk evaluator's own basis. `determining` names the
+ * signals the matched rule rests on -- for `high`, every high signal and
+ * nothing else. A signal outside it is never a cause. */
+export interface FinancialRiskBasisView {
+  level: RiskLevel;
+  rule: FinancialRiskRule;
+  determining: FinancialRiskSignal[];
+  signals: FinancialRiskSignalBasisView[];
+}
+
+/**
+ * Why the `financial_risk` driver reads as it does. `elevatedCategories`
+ * is empty exactly when the driver is not elevated -- and can name only
+ * `valuation_risk`, in which case the "elevated financial risk" driver
+ * rests on valuation, not on the company's finances.
+ */
+export interface RiskDriverBasisView {
+  elevatedCategories: ElevatingRiskCategory[];
+  financialRisk: FinancialRiskBasisView;
 }
 
 export type ForwardGuidanceSubject = "revenue" | "adjusted_ebitda" | "free_cash_flow" | "capital_expenditure";

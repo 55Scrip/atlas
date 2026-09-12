@@ -6,11 +6,15 @@ import type {
   ForwardGuidanceContextView,
   ForwardGuidanceSubject,
   ForwardHorizonKind,
+  FinancialRiskObservationView,
+  FinancialRiskSignalBasisView,
   ForwardReasoningContextView,
   GuidanceRevisionKind,
   InvestmentReasonKind,
   InvestmentReasonView,
   KeyUnknownView,
+  RiskDriverBasisView,
+  RiskLevel,
   UnestablishedEconomics,
 } from "./reasoningContract";
 
@@ -200,4 +204,90 @@ export function forwardUnknownLabels(context: ForwardReasoningContextView | null
   if (aspects.length === 0) return [];
   if (ALL_ECONOMICS.every((a) => aspects.includes(a))) return [t("investmentReasoning.forward.unknown.allEconomics")];
   return aspects.map((a) => t(UNESTABLISHED_KEY[a]));
+}
+
+const RISK_LEVEL_KEY: Record<RiskLevel, TranslationKey> = {
+  not_evaluated: "investmentReasoning.riskBasis.level.notEvaluated",
+  insufficient_input: "investmentReasoning.riskBasis.level.insufficientInput",
+  low: "investmentReasoning.riskBasis.level.low",
+  moderate: "investmentReasoning.riskBasis.level.moderate",
+  high: "investmentReasoning.riskBasis.level.high",
+};
+
+/** A reported amount as the fact states it, compacted for reading
+ * ("14,4 md US$" / "$14.4B"). An ISO currency code renders as currency;
+ * any other unit is kept beside the number, never dropped or guessed. */
+export function formatReportedAmount(value: number, unit: string, locale: string): string {
+  const compact = { notation: "compact", minimumFractionDigits: 1, maximumFractionDigits: 1 } as const;
+  if (/^[A-Z]{3}$/.test(unit)) {
+    try {
+      return new Intl.NumberFormat(locale, { ...compact, style: "currency", currency: unit }).format(value);
+    } catch {
+      // Not a currency Intl knows: fall through to the plain form.
+    }
+  }
+  const number = new Intl.NumberFormat(locale, compact).format(value);
+  return unit === "unspecified" ? number : `${number} ${unit}`;
+}
+
+/** Period labels: the period-end year where that is unambiguous within
+ * the series, otherwise the full period-end date. */
+function periodLabels(observations: FinancialRiskObservationView[]): string[] {
+  const years = observations.map((o) => o.period.slice(0, 4));
+  const unique = new Set(years).size === years.length;
+  return observations.map((o, i) => (unique ? (years[i] ?? o.period) : o.period));
+}
+
+/** One firing signal, in its own figures. Only `high` conditions can be
+ * part of an elevated basis; anything else returns `null` and is never
+ * shown as a cause. */
+function firingSignalLabel(signal: FinancialRiskSignalBasisView, t: Translate, locale: string): string | null {
+  const labels = periodLabels(signal.observations);
+  const figures = signal.observations.map(
+    (o, i) => `${labels[i] ?? o.period}: ${formatReportedAmount(o.value, o.unit, locale)}`,
+  );
+  switch (signal.condition) {
+    case "total_debt_increased_every_period":
+      return t("investmentReasoning.riskBasis.debtIncreased", { series: figures.join(" → ") });
+    case "latest_free_cash_flow_negative":
+      return figures[0] ? t("investmentReasoning.riskBasis.cashNegative", { figure: figures[0] }) : null;
+    case "capital_allocation_weak":
+      return t("investmentReasoning.riskBasis.capitalAllocationWeak");
+    default:
+      return null;
+  }
+}
+
+/**
+ * Why "elevated financial risk" is shown -- or `null` when it is not.
+ *
+ * When Financial Risk itself is high: every signal its rule rests on, in
+ * the evaluator's own order, each with its own figures -- none dropped,
+ * none ranked -- followed by the one sentence that bounds it (reported
+ * history, not leverage ratios, coverage, liquidity or ratings).
+ *
+ * When only Valuation Risk is high, the driver does not rest on the
+ * company's finances at all, and the line says exactly that, with the
+ * level Financial Risk actually has.
+ */
+export function riskBasisLabel(
+  basis: RiskDriverBasisView | null | undefined,
+  t: Translate,
+  locale: string,
+): string | null {
+  if (!basis || basis.elevatedCategories.length === 0) return null;
+  const financial = basis.financialRisk;
+  if (!basis.elevatedCategories.includes("financial_risk")) {
+    return t("investmentReasoning.riskBasis.valuationOnly", { level: t(RISK_LEVEL_KEY[financial.level]) });
+  }
+  const parts = financial.determining
+    .map((name) => financial.signals.find((s) => s.signal === name))
+    .filter((s): s is FinancialRiskSignalBasisView => s !== undefined)
+    .map((s) => firingSignalLabel(s, t, locale))
+    .filter((label): label is string => label !== null);
+  if (parts.length === 0) return null;
+  const sentences = [t("investmentReasoning.riskBasis.financial", { basis: parts.join("; ") })];
+  if (basis.elevatedCategories.includes("valuation_risk")) sentences.push(t("investmentReasoning.riskBasis.alsoValuation"));
+  sentences.push(t("investmentReasoning.riskBasis.scope"));
+  return sentences.join(" ");
 }

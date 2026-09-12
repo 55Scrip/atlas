@@ -6,6 +6,7 @@ import {
   forwardUnknownLabels,
   keyUnknownLabel,
   reasonKindLabel,
+  riskBasisLabel,
 } from "./describeRecommendationReasoning";
 import type { InvestmentDecisionView } from "./investmentDecisionApi";
 
@@ -43,9 +44,12 @@ import type { InvestmentDecisionView } from "./investmentDecisionApi";
 export function AtlasInvestmentReasoning({
   decision,
   t,
+  locale = "en-US",
 }: {
   decision: InvestmentDecisionView;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+  /** Number formatting for reported figures; the caller's own language. */
+  locale?: string;
 }) {
   const reasoning = decision.reasoning;
   // Legitimately absent: a legacy row, or an outcome the analysis
@@ -64,6 +68,12 @@ export function AtlasInvestmentReasoning({
   // never the "in favour"/"against" ones.
   const forward = forwardContextLabels(reasoning.forwardContext, t);
   const forwardUnknowns = forwardUnknownLabels(reasoning.forwardContext, t);
+  // Risk basis: why "elevated financial risk" is in the against-row, told
+  // right beneath it. Only for that driver -- a low or moderate level
+  // explains nothing that row claims, so it stays quiet.
+  const riskBasis = opposing.some((reason) => reason.kind === "financial_risk_elevated")
+    ? riskBasisLabel(reasoning.riskBasis, t, locale)
+    : null;
 
   // `no_decision` is the action the backend emits when the
   // recommendation was withheld. It is read here for *wording* only --
@@ -127,6 +137,11 @@ export function AtlasInvestmentReasoning({
           items={opposing.map((reason) => reasonKindLabel(reason, t))}
           emptyLabel={t("investmentReasoning.empty.opposes")}
         />
+        {riskBasis && (
+          <Text as="p" color="tertiary">
+            {riskBasis}
+          </Text>
+        )}
         {forwardItems.length > 0 && (
           <ReasoningRow
             label={t("investmentReasoning.row.forwardContext")}

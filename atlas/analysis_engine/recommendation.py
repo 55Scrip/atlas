@@ -80,7 +80,9 @@ from atlas.analysis_engine.reasoning import (
     ConvictionReasoning,
     ForwardReasoningContext,
     InvestmentReason,
+    InvestmentReasonKind,
     KeyUnknown,
+    RiskDriverBasis,
     SignalContribution,
     build_conviction_reasoning,
     build_drivers,
@@ -338,6 +340,22 @@ class RecommendationReasoning:
     #: selects the direction, the drivers or the conviction reads it.
     #: `None` when Atlas holds no verified forward evidence.
     forward_context: ForwardReasoningContext | None = None
+
+    #: What the `financial_risk` driver rests on -- disclosed, never an
+    #: input. Built by `pipeline.py` from the risk findings, handed to
+    #: `evaluate_recommendation_gate` and placed here after the direction
+    #: is chosen, exactly like `forward_context`.
+    risk_basis: RiskDriverBasis | None = None
+
+    def __post_init__(self) -> None:
+        # A basis must explain the driver actually present: an elevated
+        # basis beside a "not elevated" driver (or none) would be an
+        # explanation of a different reasoning.
+        if self.risk_basis is None:
+            return
+        elevated_driver = any(r.kind is InvestmentReasonKind.FINANCIAL_RISK_ELEVATED for r in self.counter_drivers)
+        if elevated_driver != bool(self.risk_basis.elevated_categories):
+            raise AnalysisEngineContractError("The risk basis does not match the financial-risk driver it explains.")
 
 
 @dataclass(frozen=True)
@@ -671,14 +689,15 @@ def evaluate_recommendation_gate(
     has_portfolio_dampening: bool = False,
     has_real_risk_evidence: bool = False,
     forward_context: ForwardReasoningContext | None = None,
+    risk_basis: RiskDriverBasis | None = None,
 ) -> RecommendationGateResult:
     """Deterministic: identical inputs always produce an identical
     `RecommendationGateResult`.
 
-    `forward_context` is carried, not read: it is placed into the
-    reasoning of whichever outcome the gate reaches, after the direction
-    is chosen, and reaches no call that selects a direction, drivers,
-    change triggers, unknowns or conviction.
+    `forward_context` and `risk_basis` are carried, not read: each is
+    placed into the reasoning of whichever outcome the gate reaches, after
+    the direction is chosen, and reaches no call that selects a direction,
+    drivers, change triggers, unknowns or conviction.
 
     `business_analysis`/`valuation_engine` are the richer,
     `atlas.analysis_engine`-level results (`business.py`'s
@@ -850,6 +869,7 @@ def evaluate_recommendation_gate(
                 key_unknowns=_key_unknowns,
                 conviction_reasoning=build_conviction_reasoning(recommendation_conviction),
                 forward_context=forward_context,
+                risk_basis=risk_basis,
             ),
             portfolio_factors=portfolio_intelligence.portfolio_factors,
         )
@@ -899,6 +919,7 @@ def evaluate_recommendation_gate(
                 # rejects it. See that docstring.
                 conviction_reasoning=None,
                 forward_context=forward_context,
+                risk_basis=risk_basis,
             ),
         )
         if not recommendation.missing_evaluations:

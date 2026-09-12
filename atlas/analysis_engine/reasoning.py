@@ -36,6 +36,13 @@ and no driver slot; it is built by `atlas.analysis_engine.forward_context`
 into the reasoning after the direction is chosen. Reaffirmed guidance is
 "unchanged", not "supportive"; contracted volume travels with the
 economics it does not establish.
+
+**The risk basis is carried the same way.** A `RiskDriverBasis` discloses
+what the `financial_risk` driver rests on -- which risk categories are
+`HIGH`, and the Financial Risk evaluator's own retained basis (signals,
+the rule line that matched, the reported figures it read). It explains
+the driver; it is not a driver, adds none, and is placed into the
+reasoning after the direction is chosen.
 """
 from __future__ import annotations
 
@@ -44,11 +51,20 @@ from enum import Enum
 
 from atlas.analysis_engine.analysis_coverage import AnalysisCoverageLevel
 from atlas.analysis_engine.business_contracts import BusinessCategoryStatus
+from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.recommendation_conviction import (
     RecommendationConvictionAssessment,
     RecommendationConvictionLevel,
     RecommendationConvictionReasonCode,
 )
+from atlas.analysis_engine.risk.contracts import (
+    FinancialRiskCondition,
+    FinancialRiskMetric,
+    FinancialRiskRule,
+    FinancialRiskSignal,
+    RiskStatus,
+)
+from atlas.analysis_engine.risk.models import FinancialRiskBasis, FinancialRiskObservation, FinancialRiskSignalBasis
 from atlas.analysis_engine.valuation.contracts import ValuationStatus
 from atlas.analysis_engine.valuation.support import ValuationSupportStatus
 
@@ -56,6 +72,8 @@ __all__ = [
     "CanonicalEngine",
     "ContractedVolumeContext",
     "ConvictionReasoning",
+    "ELEVATING_RISK_CATEGORIES",
+    "RiskDriverBasis",
     "ForwardGuidanceContext",
     "ForwardGuidanceSubject",
     "ForwardReasoningContext",
@@ -416,6 +434,41 @@ class ForwardReasoningContext:
         return tuple(aspect for aspect in UnestablishedEconomics if aspect in common)
 
 
+#: The risk categories whose `HIGH` raises the `financial_risk` driver
+#: (and dampens the direction), in the order `RiskCategory` declares
+#: them. Valuation Risk is one of them: a `FINANCIAL_RISK_ELEVATED` driver
+#: can rest on valuation alone, and its basis must say so.
+ELEVATING_RISK_CATEGORIES = (RiskCategory.FINANCIAL_RISK, RiskCategory.VALUATION_RISK)
+
+
+@dataclass(frozen=True)
+class RiskDriverBasis:
+    """What the `financial_risk` driver restates -- disclosed, never an
+    input to it.
+
+    `elevated_categories` names every category in
+    `ELEVATING_RISK_CATEGORIES` that is `HIGH`: empty exactly when the
+    driver is not elevated, and naming Valuation Risk when that is what
+    raised it. `financial_risk` is the Financial Risk evaluator's own
+    basis, whatever its level -- so a driver raised by valuation alone
+    still shows that Financial Risk itself was not `HIGH`, rather than
+    borrowing a financial explanation it does not have.
+
+    Placed into the reasoning after the direction is chosen, like
+    forward context; nothing that selects a direction, drivers, change
+    triggers, unknowns or conviction reads it."""
+
+    elevated_categories: tuple[RiskCategory, ...]
+    financial_risk: FinancialRiskBasis
+
+    def __post_init__(self) -> None:
+        if self.elevated_categories != tuple(c for c in ELEVATING_RISK_CATEGORIES if c in self.elevated_categories):
+            raise ValueError("elevated categories are Financial and/or Valuation Risk, once each, in that order")
+        financial_high = self.financial_risk.level is RiskStatus.HIGH
+        if financial_high != (RiskCategory.FINANCIAL_RISK in self.elevated_categories):
+            raise ValueError("Financial Risk is elevated exactly when its own basis is HIGH")
+
+
 #: `RecommendationConvictionReasonCode` -> process vs investment.
 #: Additive: the source enum is untouched, so no stored value changes
 #: meaning. Every current member is evidential; the mapping exists so a
@@ -732,7 +785,78 @@ def serialize_reasoning(reasoning) -> dict:
         # `getattr`: the serializer has always accepted any reasoning-shaped
         # object, and one written before forward context existed has none.
         "forwardContext": _forward_context_payload(getattr(reasoning, "forward_context", None)),
+        # Additive, same rules: `null` when no basis was carried, absent
+        # on rows written before it existed.
+        "riskBasis": _risk_basis_payload(getattr(reasoning, "risk_basis", None)),
     }
+
+
+def _risk_basis_payload(basis: RiskDriverBasis | None) -> dict | None:
+    if basis is None:
+        return None
+    financial = basis.financial_risk
+    return {
+        "elevatedCategories": [c.value for c in basis.elevated_categories],
+        "financialRisk": {
+            "level": financial.level.value,
+            "rule": financial.rule.value,
+            "determining": [s.value for s in financial.determining],
+            "signals": [
+                {
+                    "signal": s.signal.value,
+                    "level": s.level.value,
+                    "condition": s.condition.value,
+                    "sourceFindingId": s.source_finding_id,
+                    "observations": [
+                        {
+                            "metric": o.metric.value,
+                            "period": o.period,
+                            "value": o.value,
+                            "unit": o.unit,
+                            "factId": o.fact_id,
+                            "sourceRecordId": o.source_record_id,
+                        }
+                        for o in s.observations
+                    ],
+                }
+                for s in financial.signals
+            ],
+        },
+    }
+
+
+def _risk_basis_from_payload(payload: dict | None) -> RiskDriverBasis | None:
+    if not payload:
+        return None
+    financial = payload["financialRisk"]
+    return RiskDriverBasis(
+        elevated_categories=tuple(RiskCategory(c) for c in payload["elevatedCategories"]),
+        financial_risk=FinancialRiskBasis(
+            level=RiskStatus(financial["level"]),
+            rule=FinancialRiskRule(financial["rule"]),
+            determining=tuple(FinancialRiskSignal(s) for s in financial["determining"]),
+            signals=tuple(
+                FinancialRiskSignalBasis(
+                    signal=FinancialRiskSignal(s["signal"]),
+                    level=RiskStatus(s["level"]),
+                    condition=FinancialRiskCondition(s["condition"]),
+                    source_finding_id=s.get("sourceFindingId"),
+                    observations=tuple(
+                        FinancialRiskObservation(
+                            metric=FinancialRiskMetric(o["metric"]),
+                            period=o["period"],
+                            value=o["value"],
+                            unit=o["unit"],
+                            fact_id=o["factId"],
+                            source_record_id=o["sourceRecordId"],
+                        )
+                        for o in s["observations"]
+                    ),
+                )
+                for s in financial["signals"]
+            ),
+        ),
+    )
 
 
 def _forward_context_payload(context: ForwardReasoningContext | None) -> dict | None:
@@ -847,6 +971,7 @@ class StoredReasoning:
     conviction: ConvictionReasoning | None
     schema_version: int = REASONING_SCHEMA_VERSION
     forward_context: ForwardReasoningContext | None = None
+    risk_basis: RiskDriverBasis | None = None
 
 
 def deserialize_reasoning(payload: dict | None) -> StoredReasoning | None:
@@ -894,4 +1019,5 @@ def deserialize_reasoning(payload: dict | None) -> StoredReasoning | None:
         conviction=conviction,
         schema_version=payload.get("schemaVersion", REASONING_SCHEMA_VERSION),
         forward_context=_forward_context_from_payload(payload.get("forwardContext")),
+        risk_basis=_risk_basis_from_payload(payload.get("riskBasis")),
     )
