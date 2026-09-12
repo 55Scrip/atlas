@@ -47,14 +47,23 @@ from atlas.analysis_engine.forward_claims.interpretation import (
     interpret_revisions,
 )
 from atlas.analysis_engine.forward_claims.commitments import (
+    LINK_WINDOW,
     CommitmentKind,
     CommitmentStatus,
     CommitmentStatusReading,
+    CommitmentSupport,
     CommitmentTerm,
     CommitmentWindow,
     CommittedQuantity,
     CustomerCommitmentClaim,
+    SourceEvidenceLink,
+    SourceLinkKind,
     read_commitment_status,
+)
+from atlas.analysis_engine.forward_claims.commitment_links import (
+    LINKER_VERSION,
+    find_commitment_links,
+    link_commitment_sentences,
 )
 from atlas.analysis_engine.forward_claims.source_time import period_ordinal, statement_age, transcript_period
 from atlas.analysis_engine.forward_claims.synthesis import (
@@ -117,4 +126,11 @@ __all__ = [
     "CommittedQuantity",
     "CustomerCommitmentClaim",
     "read_commitment_status",
+    "LINK_WINDOW",
+    "CommitmentSupport",
+    "SourceEvidenceLink",
+    "SourceLinkKind",
+    "LINKER_VERSION",
+    "find_commitment_links",
+    "link_commitment_sentences",
 ]
