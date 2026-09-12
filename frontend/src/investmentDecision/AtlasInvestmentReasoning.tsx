@@ -1,6 +1,12 @@
 import { Stack, Surface, Text } from "../foundation";
 import type { TranslationKey } from "../i18n";
-import { CHANGE_TRIGGER_KEY, keyUnknownLabel, reasonKindLabel } from "./describeRecommendationReasoning";
+import {
+  CHANGE_TRIGGER_KEY,
+  forwardContextLabels,
+  forwardUnknownLabels,
+  keyUnknownLabel,
+  reasonKindLabel,
+} from "./describeRecommendationReasoning";
 import type { InvestmentDecisionView } from "./investmentDecisionApi";
 
 /**
@@ -53,6 +59,11 @@ export function AtlasInvestmentReasoning({
     .map((unknown) => keyUnknownLabel(unknown, t))
     .filter((label): label is string => label !== null);
   const triggers = reasoning.whatWouldChange ?? [];
+  // Forward context: verified forward evidence shown *alongside* the
+  // reasoning. It is not a driver and has no side -- it gets its own row,
+  // never the "in favour"/"against" ones.
+  const forward = forwardContextLabels(reasoning.forwardContext, t);
+  const forwardUnknowns = forwardUnknownLabels(reasoning.forwardContext, t);
 
   // `no_decision` is the action the backend emits when the
   // recommendation was withheld. It is read here for *wording* only --
@@ -60,7 +71,21 @@ export function AtlasInvestmentReasoning({
   // and nothing in this card can change it.
   const isWithheld = decision.action === "no_decision";
 
-  if (supporting.length === 0 && opposing.length === 0 && unknowns.length === 0 && triggers.length === 0) {
+  // What contracted volume does not establish always travels with it. On
+  // a directional case that is exactly the "main uncertainty" row. On a
+  // withheld case that row reads "what needs resolving" -- and an
+  // unpriced contract is not what stands between Atlas and a position --
+  // so there the limitation stays attached to the forward row instead.
+  const unresolved = isWithheld ? unknowns : [...unknowns, ...forwardUnknowns];
+  const forwardItems = isWithheld ? [...forward, ...forwardUnknowns] : forward;
+
+  if (
+    supporting.length === 0 &&
+    opposing.length === 0 &&
+    unresolved.length === 0 &&
+    triggers.length === 0 &&
+    forwardItems.length === 0
+  ) {
     return null;
   }
 
@@ -102,6 +127,13 @@ export function AtlasInvestmentReasoning({
           items={opposing.map((reason) => reasonKindLabel(reason, t))}
           emptyLabel={t("investmentReasoning.empty.opposes")}
         />
+        {forwardItems.length > 0 && (
+          <ReasoningRow
+            label={t("investmentReasoning.row.forwardContext")}
+            items={forwardItems}
+            emptyLabel={null}
+          />
+        )}
         {/* Phase L. For a withheld outcome the investor's question is
             "what has to be resolved before Atlas can take a position",
             and the canonical field that answers it is `key_unknowns`
@@ -112,10 +144,10 @@ export function AtlasInvestmentReasoning({
             condition", precisely because `key_unknowns` already owns
             it. So the withheld case relabels this row to the blocker
             it already is. No new field, no new inference. */}
-        {unknowns.length > 0 && (
+        {unresolved.length > 0 && (
           <ReasoningRow
             label={t(isWithheld ? "investmentReasoning.row.needsResolving" : "investmentReasoning.row.unresolved")}
-            items={unknowns}
+            items={unresolved}
             emptyLabel={null}
           />
         )}

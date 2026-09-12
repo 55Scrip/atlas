@@ -207,5 +207,10 @@ def find_commitment_links(record: BusinessRecord) -> tuple[SourceEvidenceLink, .
     role = classify_claimant(title if isinstance(title, str) else None, speaker if isinstance(speaker, str) else None)
     if role is not ClaimantRole.EXECUTIVE:
         return ()
+    if not commitment_noun_pattern().search(content):
+        # No agreement noun anywhere in the turn: no anchor, reference or
+        # acronym definition is possible (a defined acronym's expansion
+        # itself ends in one), so there is nothing to link.
+        return ()
     sentences = [s.strip() for s in _SENTENCE.split(content) if s.strip()]
     return link_commitment_sentences(record.id, sentences)

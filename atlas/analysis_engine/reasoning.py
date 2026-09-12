@@ -24,6 +24,18 @@ merely discouraged.
 This module computes no new analysis. Every value it carries is a
 restatement of an already-computed status, plus the polarity that
 status already implies.
+
+**Forward context is the one exception to "from the direction's own
+statuses", and it is kept out of every directional path.** A
+`ForwardReasoningContext` restates verified forward evidence --
+guidance revisions and executed customer commitments -- that Atlas holds
+but that does not decide the direction: "what else a user should know",
+never "why the direction should change". It has no polarity, no score
+and no driver slot; it is built by `atlas.analysis_engine.forward_context`
+(the only analysis module allowed to read forward evidence) and placed
+into the reasoning after the direction is chosen. Reaffirmed guidance is
+"unchanged", not "supportive"; contracted volume travels with the
+economics it does not establish.
 """
 from __future__ import annotations
 
@@ -42,7 +54,13 @@ from atlas.analysis_engine.valuation.support import ValuationSupportStatus
 
 __all__ = [
     "CanonicalEngine",
+    "ContractedVolumeContext",
     "ConvictionReasoning",
+    "ForwardGuidanceContext",
+    "ForwardGuidanceSubject",
+    "ForwardReasoningContext",
+    "GuidanceRevisionKind",
+    "UnestablishedEconomics",
     "InvestmentReason",
     "InvestmentReasonKind",
     "KeyUnknown",
@@ -273,6 +291,129 @@ class ConvictionReasoning:
     level: RecommendationConvictionLevel | None
     analytical_reasons: tuple[InvestmentReason, ...] = ()
     evidential_reasons: tuple[ProcessStateReason, ...] = ()
+
+
+class ForwardGuidanceSubject(str, Enum):
+    """The guided measure, as the forward-evidence layer names it. The
+    two management-defined measures are flagged on each item: VST's
+    "adjusted free cash flow before growth" is guidance for *a*
+    free-cash-flow measure, never Atlas's own FCF figure."""
+
+    REVENUE = "revenue"
+    ADJUSTED_EBITDA = "adjusted_ebitda"
+    FREE_CASH_FLOW = "free_cash_flow"
+    CAPITAL_EXPENDITURE = "capital_expenditure"
+
+
+class GuidanceRevisionKind(str, Enum):
+    """What management's figure did -- and nothing about whether that is
+    good. `REAFFIRMED` means the numbers did not move."""
+
+    RAISED = "raised"
+    LOWERED = "lowered"
+    REAFFIRMED = "reaffirmed"
+
+
+class UnestablishedEconomics(str, Enum):
+    """Economics a customer commitment does not establish. Carried with
+    every contracted-volume item so volume is never read as money."""
+
+    PRICE = "price"
+    REVENUE_CONTRIBUTION = "revenue_contribution"
+    EARNINGS_CONTRIBUTION = "earnings_contribution"
+    CASH_FLOW_CONTRIBUTION = "cash_flow_contribution"
+
+
+_HORIZON_KINDS = frozenset({"fiscal_year", "calendar_year", "unspecified_year"})
+
+
+@dataclass(frozen=True)
+class ForwardGuidanceContext:
+    """The latest verified revision of one guided measure for one horizon."""
+
+    signal_id: str
+    """The guidance revision's id -- the provenance link back through the
+    interpretation, the revision and its claims to the transcript."""
+    subject: ForwardGuidanceSubject
+    measure_defined_by_management: bool
+    horizon_period: str
+    horizon_kind: str
+    revision: GuidanceRevisionKind
+    value_text: str
+    """The new figure verbatim ("$6.8 billion-$7.6 billion")."""
+    prior_value_text: str | None
+    source_period: str | None
+    revision_count: int
+    """How many verified revisions of this measure and horizon exist,
+    this one included (GOOGL's capex: 2)."""
+
+    def __post_init__(self) -> None:
+        if self.horizon_kind not in _HORIZON_KINDS:
+            raise ValueError(f"unknown horizon kind {self.horizon_kind!r}")
+        if self.revision_count < 1:
+            raise ValueError("a guidance item is at least one revision")
+
+
+@dataclass(frozen=True)
+class ContractedVolumeContext:
+    """One source observation of contracted customer volume. Observations
+    are not agreements: the same agreement can be restated in several, so
+    nothing here may be counted or summed as distinct contracts. Stated
+    quantities are verbatim text only -- there is no number to add up."""
+
+    signal_id: str
+    source_period: str | None
+    counterparty_text: str | None
+    agreement_text: str
+    quantity_texts: tuple[str, ...]
+    """"up to 1,200 megawatts of new load" -- bound words, figure and
+    measure, as stated."""
+    term_years: float | None
+    delivery_start_years: tuple[int, ...]
+    delivery_end_years: tuple[int, ...]
+    not_established: tuple[UnestablishedEconomics, ...]
+
+    def __post_init__(self) -> None:
+        if not self.quantity_texts:
+            raise ValueError("a contracted-volume item states at least one quantity")
+        if not self.not_established:
+            raise ValueError("a contracted-volume item must say which economics it does not establish")
+
+
+@dataclass(frozen=True)
+class ForwardReasoningContext:
+    """Verified forward evidence a user should know alongside the
+    recommendation, which does not decide its direction. No polarity, no
+    score, no materiality; ordered guidance first (by horizon and measure),
+    then contracted volume (fiscal order)."""
+
+    guidance: tuple[ForwardGuidanceContext, ...] = ()
+    contracted_volume: tuple[ContractedVolumeContext, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.guidance and not self.contracted_volume:
+            raise ValueError("an empty forward context is None, never an empty object")
+
+    @property
+    def counterparty_texts(self) -> tuple[str, ...]:
+        """Distinct customer names exactly as the sources state them --
+        "Amazon" and "Amazon Web Services" stay two strings, and two
+        strings are not two customers."""
+        names = {c.counterparty_text for c in self.contracted_volume if c.counterparty_text is not None}
+        return tuple(sorted(names, key=str.casefold))
+
+    @property
+    def unnamed_observation_count(self) -> int:
+        return sum(1 for c in self.contracted_volume if c.counterparty_text is None)
+
+    @property
+    def unestablished_economics(self) -> tuple[UnestablishedEconomics, ...]:
+        """Economics no contracted-volume observation establishes, in the
+        enum's own order."""
+        if not self.contracted_volume:
+            return ()
+        common = set.intersection(*(set(c.not_established) for c in self.contracted_volume))
+        return tuple(aspect for aspect in UnestablishedEconomics if aspect in common)
 
 
 #: `RecommendationConvictionReasonCode` -> process vs investment.
@@ -586,7 +727,90 @@ def serialize_reasoning(reasoning) -> dict:
             "analyticalReasons": [_reason_payload(r) for r in conviction.analytical_reasons],
             "evidentialReasons": [r.kind.value for r in conviction.evidential_reasons],
         },
+        # Additive: `null` when Atlas holds no verified forward evidence
+        # for the company; absent on rows written before it existed.
+        # `getattr`: the serializer has always accepted any reasoning-shaped
+        # object, and one written before forward context existed has none.
+        "forwardContext": _forward_context_payload(getattr(reasoning, "forward_context", None)),
     }
+
+
+def _forward_context_payload(context: ForwardReasoningContext | None) -> dict | None:
+    if context is None:
+        return None
+    return {
+        "guidance": [
+            {
+                "signalId": g.signal_id,
+                "subject": g.subject.value,
+                "measureDefinedByManagement": g.measure_defined_by_management,
+                "horizonPeriod": g.horizon_period,
+                "horizonKind": g.horizon_kind,
+                "revision": g.revision.value,
+                "valueText": g.value_text,
+                "priorValueText": g.prior_value_text,
+                "sourcePeriod": g.source_period,
+                "revisionCount": g.revision_count,
+            }
+            for g in context.guidance
+        ],
+        "contractedVolume": [
+            {
+                "signalId": c.signal_id,
+                "sourcePeriod": c.source_period,
+                "counterpartyText": c.counterparty_text,
+                "agreementText": c.agreement_text,
+                "quantityTexts": list(c.quantity_texts),
+                "termYears": c.term_years,
+                "deliveryStartYears": list(c.delivery_start_years),
+                "deliveryEndYears": list(c.delivery_end_years),
+                "notEstablished": [a.value for a in c.not_established],
+            }
+            for c in context.contracted_volume
+        ],
+        # Projections of the items above, stated once so no reader has to
+        # re-derive them -- and so none is tempted to count contracts.
+        "counterpartyTexts": list(context.counterparty_texts),
+        "unnamedObservationCount": context.unnamed_observation_count,
+        "unestablishedEconomics": [a.value for a in context.unestablished_economics],
+        "identityResolved": False,
+    }
+
+
+def _forward_context_from_payload(payload: dict | None) -> ForwardReasoningContext | None:
+    if not payload:
+        return None
+    return ForwardReasoningContext(
+        guidance=tuple(
+            ForwardGuidanceContext(
+                signal_id=g["signalId"],
+                subject=ForwardGuidanceSubject(g["subject"]),
+                measure_defined_by_management=g["measureDefinedByManagement"],
+                horizon_period=g["horizonPeriod"],
+                horizon_kind=g["horizonKind"],
+                revision=GuidanceRevisionKind(g["revision"]),
+                value_text=g["valueText"],
+                prior_value_text=g.get("priorValueText"),
+                source_period=g.get("sourcePeriod"),
+                revision_count=g["revisionCount"],
+            )
+            for g in payload.get("guidance", ())
+        ),
+        contracted_volume=tuple(
+            ContractedVolumeContext(
+                signal_id=c["signalId"],
+                source_period=c.get("sourcePeriod"),
+                counterparty_text=c.get("counterpartyText"),
+                agreement_text=c["agreementText"],
+                quantity_texts=tuple(c["quantityTexts"]),
+                term_years=c.get("termYears"),
+                delivery_start_years=tuple(c.get("deliveryStartYears", ())),
+                delivery_end_years=tuple(c.get("deliveryEndYears", ())),
+                not_established=tuple(UnestablishedEconomics(a) for a in c["notEstablished"]),
+            )
+            for c in payload.get("contractedVolume", ())
+        ),
+    )
 
 
 def _reason_payload(reason: InvestmentReason) -> dict:
@@ -622,6 +846,7 @@ class StoredReasoning:
     what_would_change: tuple[str, ...]
     conviction: ConvictionReasoning | None
     schema_version: int = REASONING_SCHEMA_VERSION
+    forward_context: ForwardReasoningContext | None = None
 
 
 def deserialize_reasoning(payload: dict | None) -> StoredReasoning | None:
@@ -668,4 +893,5 @@ def deserialize_reasoning(payload: dict | None) -> StoredReasoning | None:
         what_would_change=tuple(payload.get("whatWouldChange", ())),
         conviction=conviction,
         schema_version=payload.get("schemaVersion", REASONING_SCHEMA_VERSION),
+        forward_context=_forward_context_from_payload(payload.get("forwardContext")),
     )

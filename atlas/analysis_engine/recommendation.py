@@ -78,6 +78,7 @@ from atlas.analysis_engine.conviction import ConvictionAssessment, ConvictionLev
 from atlas.analysis_engine.exceptions import AnalysisEngineContractError
 from atlas.analysis_engine.reasoning import (
     ConvictionReasoning,
+    ForwardReasoningContext,
     InvestmentReason,
     KeyUnknown,
     SignalContribution,
@@ -329,6 +330,14 @@ class RecommendationReasoning:
     key_unknowns: tuple[KeyUnknown, ...] = ()
     signal_summary: tuple[SignalContribution, ...] = ()
     conviction_reasoning: ConvictionReasoning | None = None
+
+    #: Verified forward evidence shown alongside the reasoning -- never an
+    #: input to it. Built by `atlas.analysis_engine.forward_context` from
+    #: already-persisted records, handed to `evaluate_recommendation_gate`
+    #: and placed here after the direction is chosen; nothing that
+    #: selects the direction, the drivers or the conviction reads it.
+    #: `None` when Atlas holds no verified forward evidence.
+    forward_context: ForwardReasoningContext | None = None
 
 
 @dataclass(frozen=True)
@@ -661,9 +670,15 @@ def evaluate_recommendation_gate(
     generated_at: datetime,
     has_portfolio_dampening: bool = False,
     has_real_risk_evidence: bool = False,
+    forward_context: ForwardReasoningContext | None = None,
 ) -> RecommendationGateResult:
     """Deterministic: identical inputs always produce an identical
     `RecommendationGateResult`.
+
+    `forward_context` is carried, not read: it is placed into the
+    reasoning of whichever outcome the gate reaches, after the direction
+    is chosen, and reaches no call that selects a direction, drivers,
+    change triggers, unknowns or conviction.
 
     `business_analysis`/`valuation_engine` are the richer,
     `atlas.analysis_engine`-level results (`business.py`'s
@@ -834,6 +849,7 @@ def evaluate_recommendation_gate(
                 signal_summary=_signal_summary,
                 key_unknowns=_key_unknowns,
                 conviction_reasoning=build_conviction_reasoning(recommendation_conviction),
+                forward_context=forward_context,
             ),
             portfolio_factors=portfolio_intelligence.portfolio_factors,
         )
@@ -882,6 +898,7 @@ def evaluate_recommendation_gate(
                 # Never populated here; the type's own __post_init__
                 # rejects it. See that docstring.
                 conviction_reasoning=None,
+                forward_context=forward_context,
             ),
         )
         if not recommendation.missing_evaluations:

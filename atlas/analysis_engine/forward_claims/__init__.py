@@ -1,11 +1,13 @@
 """Forward-looking claim evidence (Stage 1).
 
-Narrative source evidence -> `ForwardClaim` -> **nothing yet**. This
-package is deliberately a leaf: no module in `analysis_engine`'s
-analysis path or in `decision_engine` imports it, so a management
-expectation cannot reach Growth, Capital Allocation, Valuation, FCF
-Yield, Financial Risk, Outlook, Conviction or Recommendation. The
-boundary is enforced by
+Narrative source evidence -> forward claims, commitments and their
+interpretations -> **reasoning context only**. This package is
+deliberately a leaf: the one module that imports it is
+`atlas.analysis_engine.forward_context`, which restates it as
+non-directional context in the recommendation's reasoning. No
+management expectation can reach Growth, Capital Allocation, Valuation,
+FCF Yield, Financial Risk, Outlook, Conviction or a Recommendation's
+direction. The boundary is enforced by
 `tests/unit/analysis_engine/forward_claims/test_integration_safety.py`,
 not by convention.
 """

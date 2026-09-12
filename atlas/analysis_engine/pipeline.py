@@ -57,6 +57,7 @@ from atlas.analysis_engine.confidence import Confidence
 from atlas.analysis_engine.contracts import RiskCategory, CapabilityStatus
 from atlas.analysis_engine.conviction import calculate_conviction
 from atlas.analysis_engine.findings import Finding, FindingKind, FindingProducer, FindingSeverity
+from atlas.analysis_engine.forward_context import build_forward_reasoning_context
 from atlas.analysis_engine.investment_case_synthesis import (
     derive_case_open_questions,
     material_case_open_questions,
@@ -721,6 +722,11 @@ def assemble_analysis(
     # what Conviction may read changed, not what Atlas may say.
     material_open_questions = material_case_open_questions(analysis_open_questions)
 
+    # Forward context: verified forward evidence from the same persisted
+    # records, restated for the reasoning and handed to the gate only to be
+    # carried -- see `atlas.analysis_engine.forward_context`. It is built
+    # here, the one caller allowed to build it, and reaches nothing else.
+    forward_context = build_forward_reasoning_context(business_records, extracted_at=generated_at)
     recommendation = evaluate_recommendation_gate(
         engine_input,
         business_evaluation=decision_output.business_evaluation,
@@ -735,6 +741,7 @@ def assemble_analysis(
         has_open_questions=bool(material_open_questions),
         generated_at=generated_at,
         has_real_risk_evidence=has_real_risk_evidence,
+        forward_context=forward_context,
     )
     # "Recommendation Backend Step 3": `recommendation.recommendation` is
     # now a real union -- `RecommendationWithheld` (no `direction` field,

@@ -146,4 +146,67 @@ export interface RecommendationReasoningView {
   keyUnknowns?: KeyUnknownView[];
   whatWouldChange?: ChangeTriggerKind[];
   recommendationConviction?: RecommendationConvictionReasoningView | null;
+  /** `null` when Atlas holds no verified forward evidence; absent on rows
+   * written before it existed. Context only -- see
+   * `ForwardReasoningContextView`. */
+  forwardContext?: ForwardReasoningContextView | null;
+}
+
+export type ForwardGuidanceSubject = "revenue" | "adjusted_ebitda" | "free_cash_flow" | "capital_expenditure";
+
+/** What management's figure did. `reaffirmed` means the numbers did not
+ * move -- never "supportive". */
+export type GuidanceRevisionKind = "raised" | "lowered" | "reaffirmed";
+
+export type ForwardHorizonKind = "fiscal_year" | "calendar_year" | "unspecified_year";
+
+export type UnestablishedEconomics =
+  | "price"
+  | "revenue_contribution"
+  | "earnings_contribution"
+  | "cash_flow_contribution";
+
+export interface ForwardGuidanceContextView {
+  signalId: string;
+  subject: ForwardGuidanceSubject;
+  /** VST's "adjusted free cash flow before growth" is guidance for *a*
+   * free-cash-flow measure, never Atlas's own FCF -- render it qualified. */
+  measureDefinedByManagement: boolean;
+  horizonPeriod: string;
+  horizonKind: ForwardHorizonKind;
+  revision: GuidanceRevisionKind;
+  valueText: string;
+  priorValueText: string | null;
+  sourcePeriod: string | null;
+  revisionCount: number;
+}
+
+/** One source *observation*, not one agreement: the same agreement can
+ * be restated in several. Quantities are verbatim text only, so there is
+ * nothing here to add up. */
+export interface ContractedVolumeContextView {
+  signalId: string;
+  sourcePeriod: string | null;
+  counterpartyText: string | null;
+  agreementText: string;
+  quantityTexts: string[];
+  termYears: number | null;
+  deliveryStartYears: number[];
+  deliveryEndYears: number[];
+  notEstablished: UnestablishedEconomics[];
+}
+
+/**
+ * Verified forward evidence shown alongside the recommendation. It does
+ * not decide the direction, carries no polarity, and must never be
+ * rendered as a reason for or against. `identityResolved` is always
+ * `false`: observations are not deduplicated into agreements.
+ */
+export interface ForwardReasoningContextView {
+  guidance: ForwardGuidanceContextView[];
+  contractedVolume: ContractedVolumeContextView[];
+  counterpartyTexts: string[];
+  unnamedObservationCount: number;
+  unestablishedEconomics: UnestablishedEconomics[];
+  identityResolved: boolean;
 }
