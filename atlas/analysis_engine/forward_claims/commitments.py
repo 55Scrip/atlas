@@ -108,7 +108,8 @@ __all__ = [
 class CommitmentKind(str, Enum):
     """What the customer committed to take. Two kinds, because the real
     corpus shows exactly two and they do not share a meaning: a
-    gigawatt in one is not a gigawatt in the other."""
+    gigawatt in one is not a gigawatt in the other. A claim's kind is
+    optional -- the source often does not say -- and is never guessed."""
 
     POWER_PURCHASE = "power_purchase"
     """Electricity and/or capacity from the company's generation (VST's
@@ -444,7 +445,11 @@ class CustomerCommitmentClaim:
     Construction enforces the boundary: an invalid claim cannot exist."""
 
     company: str
-    commitment_kind: CommitmentKind
+    commitment_kind: CommitmentKind | None
+    """`None` when the source's own words do not say whether power or
+    products are committed -- "a 20-year contract with Amazon at our
+    Comanche Peak nuclear plant" does not. Never inferred from a unit, an
+    asset or the company's industry."""
 
     counterparty_text: str | None
     """The customer as the source names it ("Amazon Web Services",
@@ -545,7 +550,8 @@ class CustomerCommitmentClaim:
         """Provenance identity: deterministic, one per stated commitment
         per statement. Two commitments in one sentence (AWS and Meta)
         get two ids; the same statement never yields two."""
-        basis = "|".join((self.commitment_kind.value, self.counterparty_text or "", self.agreement_text, self.commitment_text))
+        kind = self.commitment_kind.value if self.commitment_kind is not None else ""
+        basis = "|".join((kind, self.counterparty_text or "", self.agreement_text, self.commitment_text))
         return f"{self.source_record_id}:commitment:{hashlib.sha256(basis.encode()).hexdigest()[:16]}"
 
     @property
@@ -555,7 +561,8 @@ class CustomerCommitmentClaim:
         can move (quantity, term, window, period). Customer names match
         only as stated ("Amazon" and "Amazon Web Services" do not), so a
         missed match is possible and a false one is not. `None` without
-        a named customer: two unnamed commitments cannot be told apart."""
-        if self.counterparty_text is None:
+        a named customer (two unnamed commitments cannot be told apart) or
+        without a stated kind (a gigawatt of what?)."""
+        if self.counterparty_text is None or self.commitment_kind is None:
             return None
         return (self.company, self.commitment_kind, _fold(self.counterparty_text))

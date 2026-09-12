@@ -65,6 +65,15 @@ from atlas.analysis_engine.forward_claims.commitment_links import (
     find_commitment_links,
     link_commitment_sentences,
 )
+from atlas.analysis_engine.forward_claims.commitment_terms import (
+    TERM_READER_VERSION,
+    CommitmentEvidence,
+    WithheldCommitment,
+    WithholdReason,
+    commitment_evidence,
+    extract_customer_commitments,
+    read_commitment_evidence,
+)
 from atlas.analysis_engine.forward_claims.source_time import period_ordinal, statement_age, transcript_period
 from atlas.analysis_engine.forward_claims.synthesis import (
     SYNTHESIS_VERSION,
@@ -133,4 +142,11 @@ __all__ = [
     "LINKER_VERSION",
     "find_commitment_links",
     "link_commitment_sentences",
+    "TERM_READER_VERSION",
+    "CommitmentEvidence",
+    "WithheldCommitment",
+    "WithholdReason",
+    "commitment_evidence",
+    "extract_customer_commitments",
+    "read_commitment_evidence",
 ]
