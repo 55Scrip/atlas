@@ -59,11 +59,13 @@ INTERPRETATION_VERSION = "guidance-interpretation-v1"
 
 class ForwardEvidenceKind(str, Enum):
     """Which kind of forward evidence produced an economic signal (Stage
-    4.2). Only guidance revisions exist today; contracts, capacity,
-    commitments and the like are added here when Atlas can actually
-    extract them -- an unreachable member would read as a capability."""
+    4.2). A member exists only once Atlas can actually extract that kind
+    -- an unreachable member would read as a capability."""
 
     GUIDANCE_REVISION = "guidance_revision"
+    CUSTOMER_COMMITMENT = "customer_commitment"
+    """An executed customer commitment (Stage 5.3), interpreted as state
+    (Stage 5.4)."""
 
 
 class EconomicDimension(str, Enum):
