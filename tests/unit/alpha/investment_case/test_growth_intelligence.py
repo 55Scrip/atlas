@@ -85,6 +85,93 @@ class TestObservationsAndCagr:
         assert knowledge.revenue.cagr is None
 
 
+def _period_ending(period_end: date, **metadata):
+    """A filing for a fiscal year ending on `period_end` -- 52/53-week and
+    non-December year ends, and one year reported under two labels."""
+    document = RawBusinessDocument(
+        identifier=f"TEST:FY:{period_end.isoformat()}:{sorted(metadata.items())}",
+        company="TEST",
+        source_kind="financial_statement",
+        published_at=datetime(period_end.year + 1, 1, 15, tzinfo=timezone.utc),
+        provider_id="sec_edgar",
+        raw_reference="https://example.test/10k",
+        content_hash=f"hash-{period_end.isoformat()}-{sorted(metadata.items())}",
+        language="en",
+        period_start=date(period_end.year - 1, period_end.month, 1),
+        period_end=period_end,
+        metadata={**metadata, "currency": "USD"},
+    )
+    result = ingest(document, evaluated_at=_EVALUATED_AT)
+    assert isinstance(result, IngestedRecord)
+    return result.record
+
+
+#: NVDA's persisted FCF: FY2010-2012, a ten-year gap, then FY2022-2026.
+_NVDA_FCF = {
+    date(2010, 1, 31): 410206000.0, date(2011, 1, 30): 577907000.0, date(2012, 1, 29): 770421000.0,
+    date(2022, 1, 30): 8132000000.0, date(2023, 1, 29): 3808000000.0, date(2024, 1, 28): 27021000000.0,
+    date(2025, 1, 26): 60853000000.0, date(2026, 1, 25): 96676000000.0,
+}
+
+
+class TestFiscalYearsNotListPositions:
+    def test_a_gapped_series_is_annualised_over_its_fiscal_years(self):
+        """Eight reports spanning sixteen fiscal years -- once read as seven."""
+        knowledge = _knowledge(tuple(_period_ending(end, free_cash_flow=v) for end, v in _NVDA_FCF.items()))
+        assert abs(knowledge.free_cash_flow.cagr - ((96676000000.0 / 410206000.0) ** (1 / 16) - 1)) < 1e-12
+
+    def test_no_year_over_year_growth_across_a_missing_year(self):
+        knowledge = _knowledge(tuple(_period_ending(end, free_cash_flow=v) for end, v in _NVDA_FCF.items()))
+        growth = {o.period_end: o.year_over_year_growth for o in knowledge.free_cash_flow.observations}
+        assert growth[date(2022, 1, 30)] is None  # FY2012 -> FY2022 is not one year's growth
+        assert growth[date(2011, 1, 30)] == (577907000.0 - 410206000.0) / 410206000.0
+        assert growth[date(2023, 1, 29)] == (3808000000.0 - 8132000000.0) / 8132000000.0
+
+    def test_52_and_53_week_years_are_consecutive(self):
+        ends = (date(2017, 10, 29), date(2018, 10, 28), date(2019, 11, 3))  # 364 and 371 days
+        knowledge = _knowledge(tuple(_period_ending(end, revenue=100.0 * 1.1 ** i) for i, end in enumerate(ends)))
+        assert [o.year_over_year_growth is not None for o in knowledge.revenue.observations] == [False, True, True]
+        assert abs(knowledge.revenue.cagr - 0.1) < 1e-12
+
+    def test_one_year_under_two_labels_is_one_year(self):
+        """DE labels fiscal 2015 both 2015-10-31 and 2015-11-01."""
+        records = (
+            _period_ending(date(2014, 10, 31), revenue=36066.9),
+            _period_ending(date(2015, 10, 31), revenue=28862.8),
+            _period_ending(date(2015, 11, 1), revenue=28862.8),
+            _period_ending(date(2016, 10, 30), revenue=26644.0),
+        )
+        observations = _knowledge(records).revenue.observations
+        assert [o.year_over_year_growth is not None for o in observations] == [False, True, False, True]
+        assert observations[3].year_over_year_growth == (26644.0 - 28862.8) / 28862.8
+        assert abs(_knowledge(records).revenue.cagr - ((26644.0 / 36066.9) ** 0.5 - 1)) < 1e-12
+
+    def test_a_year_whose_reports_disagree_gives_no_growth_either_side(self):
+        """DE's FY2015 FCF: 3,046.3 in one filing, restated 3,064.8 in the next."""
+        records = (
+            _period_ending(date(2014, 10, 31), free_cash_flow=2477.6),
+            _period_ending(date(2015, 10, 31), free_cash_flow=3046.3),
+            _period_ending(date(2015, 11, 1), free_cash_flow=3064.8),
+            _period_ending(date(2016, 10, 30), free_cash_flow=3125.3),
+        )
+        knowledge = _knowledge(records)
+        assert [o.year_over_year_growth for o in knowledge.free_cash_flow.observations] == [None, None, None, None]
+        assert abs(knowledge.free_cash_flow.cagr - ((3125.3 / 2477.6) ** 0.5 - 1)) < 1e-12
+
+
+    def test_a_change_of_fiscal_year_end_starts_the_span_on_the_current_calendar(self):
+        """GS reported November year ends until 2008, December from 2009."""
+        ends_and_values = (
+            (date(2007, 11, 30), 11599.0), (date(2008, 11, 28), 2322.0),
+            (date(2009, 12, 31), 13385.0), (date(2010, 12, 31), 8354.0), (date(2011, 12, 31), 4442.0),
+        )
+        knowledge = _knowledge(tuple(_period_ending(end, net_income=v) for end, v in ends_and_values))
+        assert abs(knowledge.earnings.cagr - ((4442.0 / 13385.0) ** 0.5 - 1)) < 1e-12
+        growth = [o.year_over_year_growth for o in knowledge.earnings.observations]
+        assert growth[2] is None  # 13 months from November 2008 to December 2009 is not one year's growth
+        assert growth[1] is not None and growth[3] is not None
+
+
 class TestDirectionAndPattern:
     def test_rising_revenue_is_detected(self):
         records = tuple(_period(2020 + i, revenue=1000.0 + i * 500.0) for i in range(4))

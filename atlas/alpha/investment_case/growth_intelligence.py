@@ -64,6 +64,14 @@ followed by renewed growth) is implemented instead.
 non-positive** -- a compound annual growth rate computed across a sign
 change (loss to profit, or vice versa) is not a real percentage; `None`
 is the honest answer, not a misleadingly large or negative number.
+
+**Years are fiscal years, never list positions.** CAGR and year-over-year
+growth read the analysis engine's fiscal-year identity
+(`business_facts.growth_primitives.fiscal_years_apart`) -- an opinion-free
+primitive, not an evaluator, so importing it is not the recomputation the
+boundary above forbids. A CAGR spans the fiscal years between its ends;
+year-over-year growth exists only between consecutive fiscal years;
+duplicate labels of one year are that one year.
 """
 from __future__ import annotations
 
@@ -72,6 +80,7 @@ from datetime import date
 from enum import Enum
 
 from atlas.alpha.investment_case.financial_statement_intelligence import FinancialStatementHistory, TrendDirection
+from atlas.analysis_engine.business_facts.growth_primitives import fiscal_calendar, fiscal_years_apart
 
 __all__ = [
     "TrendDirection",
@@ -229,28 +238,76 @@ def _consistency_from_values(values: tuple[float | None, ...]) -> GrowthConsiste
     return GrowthConsistency.MIXED
 
 
+@dataclass
+class _FiscalYear:
+    """One fiscal year's known reports: the period end and row index of
+    its first report, and its value -- `None` when its reports disagree."""
+
+    period_end: date
+    first_index: int
+    value: float | None
+
+
+def _years_apart(earlier: date, later: date) -> int | None:
+    return fiscal_years_apart(earlier.isoformat(), later.isoformat())
+
+
+def _fiscal_years(period_ends: tuple[date, ...], values: tuple[float | None, ...]) -> list[_FiscalYear]:
+    """Known values grouped into fiscal years, oldest first, by the
+    analysis engine's own fiscal-year identity (`growth_primitives`):
+    a report within two weeks of a year's first report is that same year
+    (DE labels one fiscal year both 2015-10-31 and 2015-11-01). Reports of
+    one year that disagree -- a restated comparative -- leave the year
+    without a value, never averaged or chosen by order."""
+    years: list[_FiscalYear] = []
+    for index, (period_end, value) in enumerate(zip(period_ends, values)):
+        if value is None:
+            continue
+        if years and _years_apart(years[-1].period_end, period_end) == 0:
+            if years[-1].value != value:
+                years[-1].value = None
+            continue
+        years.append(_FiscalYear(period_end=period_end, first_index=index, value=value))
+    return years
+
+
 def _build_observations(period_ends: tuple[date, ...], values: tuple[float | None, ...]) -> tuple[GrowthObservation, ...]:
-    observations: list[GrowthObservation] = []
-    previous: float | None = None
-    for period_end, value in zip(period_ends, values):
-        yoy = None
-        if value is not None and previous is not None and previous != 0:
-            yoy = (value - previous) / abs(previous)
-        observations.append(GrowthObservation(period_end=period_end, value=value, year_over_year_growth=yoy))
-        if value is not None:
-            previous = value
-    return tuple(observations)
+    """Year-over-year growth only between two consecutive fiscal years,
+    carried on the later year's first report: never across a missing year
+    (NVDA's FY2012 -> FY2022 is not one year's growth), never between two
+    reports of one year, never from a year whose reports disagree."""
+    years = _fiscal_years(period_ends, values)
+    growth_at: dict[int, float] = {}
+    for previous, current in zip(years, years[1:]):
+        if previous.value is None or current.value is None or previous.value == 0:
+            continue
+        if _years_apart(previous.period_end, current.period_end) == 1:
+            growth_at[current.first_index] = (current.value - previous.value) / abs(previous.value)
+    return tuple(
+        GrowthObservation(period_end=period_end, value=value, year_over_year_growth=growth_at.get(index))
+        for index, (period_end, value) in enumerate(zip(period_ends, values))
+    )
 
 
-def _cagr(observations: tuple[GrowthObservation, ...]) -> float | None:
-    known = [o for o in observations if o.value is not None]
+def _cagr(period_ends: tuple[date, ...], values: tuple[float | None, ...]) -> float | None:
+    """First to last fiscal year with a single value, annualised over the
+    fiscal years between them -- never over the number of reports, which
+    read NVDA's FY2010 -> FY2026 Free Cash Flow as seven years, not
+    sixteen. Only years on the company's own fiscal calendar count, so a
+    change of year end (GS: November, then December from 2009) starts the
+    span at the first year of the current calendar."""
+    known = [year for year in _fiscal_years(period_ends, values) if year.value is not None]
+    on_calendar = fiscal_calendar([year.period_end.isoformat() for year in known])
+    known = [year for year in known if year.period_end.isoformat() in on_calendar]
     if len(known) < 2:
         return None
-    start_value, end_value = known[0].value, known[-1].value
-    if start_value <= 0 or end_value <= 0:
+    start, end = known[0], known[-1]
+    if start.value <= 0 or end.value <= 0:
         return None
-    years = len(known) - 1
-    return (end_value / start_value) ** (1 / years) - 1
+    years = _years_apart(start.period_end, end.period_end)
+    if not years:
+        return None
+    return (end.value / start.value) ** (1 / years) - 1
 
 
 def _pattern(yoy_rates: tuple[float, ...]) -> GrowthPattern:
@@ -299,7 +356,7 @@ def _growth_trend(
     return GrowthTrendKnowledge(
         metric=metric,
         observations=observations,
-        cagr=_cagr(observations),
+        cagr=_cagr(period_ends, values),
         direction=_trend_direction(known_values),
         pattern=_pattern(known_yoy_rates),
         durability=GrowthDurability(

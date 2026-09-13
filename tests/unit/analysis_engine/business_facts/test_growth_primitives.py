@@ -22,6 +22,7 @@ from atlas.analysis_engine.business_facts.growth_primitives import (
     corroborated_by,
     distribution_summary,
     exclude_future_dated,
+    fiscal_calendar,
     fiscal_year_values,
     fiscal_years_apart,
     real_periods,
@@ -156,6 +157,20 @@ class TestFiscalYearIdentity:
         assert FISCAL_YEAR_END_TOLERANCE_DAYS == 14
         assert fiscal_years_apart("2020-12-31", "2021-01-14") == 0
         assert fiscal_years_apart("2020-12-31", "2021-01-15") is None
+
+
+class TestFiscalCalendar:
+    def test_the_calendar_most_years_share_wins(self):
+        periods = ["2007-11-30", "2008-11-28", "2009-12-31", "2010-12-31", "2011-12-31"]
+        assert fiscal_calendar(periods) == frozenset(periods[2:])
+
+    def test_a_tie_goes_to_the_most_recent_calendar(self):
+        assert fiscal_calendar(["2018-06-30", "2019-06-30", "2020-12-31", "2021-12-31"]) == frozenset(
+            {"2020-12-31", "2021-12-31"}
+        )
+
+    def test_no_periods_is_no_calendar(self):
+        assert fiscal_calendar([]) == frozenset()
 
 
 class TestFiscalYearValues:

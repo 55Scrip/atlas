@@ -89,6 +89,7 @@ __all__ = [
     "sorted_facts_of_kind",
     "exclude_future_dated",
     "real_periods",
+    "fiscal_calendar",
     "fiscal_year_values",
     "fiscal_years_apart",
     "rolling_growth_observations",
@@ -188,22 +189,27 @@ def fiscal_year_values(facts: list[BusinessFact]) -> tuple[FiscalYearValue, ...]
 
 
 def _on_fiscal_calendar(values: list[FiscalYearValue]) -> tuple[FiscalYearValue, ...]:
-    """Only the years on the company's own fiscal calendar: the year end
-    most of its years share (whole fiscal years apart), the most recent
-    calendar on a tie. A quarter end, or a year from before a change of
-    fiscal year end, is off that calendar and takes no part -- no span
+    on_calendar = fiscal_calendar([value.period for value in values])
+    return tuple(value for value in values if value.period in on_calendar)
+
+
+def fiscal_calendar(periods: list[str]) -> frozenset[str]:
+    """The periods (oldest first) on the company's own fiscal calendar: the
+    year end most of its years share (whole fiscal years apart), the most
+    recent calendar on a tie. A quarter end, or a year from before a change
+    of fiscal year end, is off that calendar and takes no part -- no span
     from it is a whole number of the company's fiscal years."""
-    calendars: list[list[FiscalYearValue]] = []
-    for value in values:
+    calendars: list[list[str]] = []
+    for period in periods:
         for calendar in calendars:
-            if fiscal_years_apart(calendar[0].period, value.period) is not None:
-                calendar.append(value)
+            if fiscal_years_apart(calendar[0], period) is not None:
+                calendar.append(period)
                 break
         else:
-            calendars.append([value])
+            calendars.append([period])
     if not calendars:
-        return ()
-    return tuple(max(calendars, key=lambda calendar: (len(calendar), calendar[-1].period_end)))
+        return frozenset()
+    return frozenset(max(calendars, key=lambda calendar: (len(calendar), calendar[-1])))
 
 
 def fiscal_years_apart(start_period: str, end_period: str) -> int | None:
