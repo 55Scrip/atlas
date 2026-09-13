@@ -59,6 +59,7 @@ from atlas.analysis_engine.business_contracts import (
 from atlas.analysis_engine.business_contracts import BusinessCategoryStatus as Status
 from atlas.analysis_engine.business_facts.contracts import BusinessFactKind
 from atlas.analysis_engine.business_facts.growth_primitives import (
+    exclude_future_dated,
     fiscal_year_values,
     fiscal_years_apart,
     rolling_growth_observations,
@@ -90,14 +91,21 @@ class MetricTrend(str, Enum):
     MIXED_METRIC = "mixed_metric"
 
 
-def _facts_by_kind(facts: tuple[BusinessFact, ...]) -> dict[BusinessFactKind, list[BusinessFact]]:
+def _facts_by_kind(facts: tuple[BusinessFact, ...], *, as_of: datetime) -> dict[BusinessFactKind, list[BusinessFact]]:
+    """Realized periods only: a period ending after `as_of` has not happened
+    yet, so it is no growth history -- the same `exclude_future_dated` gate
+    Outlook, Valuation Support's eligibility and the FCF-yield history
+    already apply (a stray FY2027 AAPL annual-report record, $800B revenue,
+    reached Growth's trend and CAGR while every other consumer excluded
+    it)."""
     grouped: dict[BusinessFactKind, list[BusinessFact]] = defaultdict(list)
     for fact in facts:
         if fact.kind in _SUPPORTED_KINDS:
             grouped[fact.kind].append(fact)
-    for kind_facts in grouped.values():
-        kind_facts.sort(key=lambda f: f.period)
-    return grouped
+    return {
+        kind: exclude_future_dated(sorted(kind_facts, key=lambda f: f.period), as_of=as_of)
+        for kind, kind_facts in grouped.items()
+    }
 
 
 def classify_metric_trend(kind_facts: list[BusinessFact]) -> tuple[MetricTrend, tuple[str, ...], tuple[str, ...]]:
@@ -184,7 +192,7 @@ def evaluate_growth(facts: tuple[BusinessFact, ...], *, evaluated_at: datetime) 
     `BusinessRecord`, no provider object, no document content anywhere
     in this function.
     """
-    grouped = _facts_by_kind(facts)
+    grouped = _facts_by_kind(facts, as_of=evaluated_at)
     any_facts_at_all = any(grouped.values())
 
     trends: dict[BusinessFactKind, MetricTrend] = {}

@@ -136,3 +136,34 @@ class TestBackwardCompatibility:
         params = set(inspect.signature(select_direction).parameters)
         assert "revenue_cagr" not in params
         assert "free_cash_flow_cagr" not in params
+
+
+class TestFuturePeriodsAreNotGrowth:
+    """AAPL's stray annual-report record: FY2027 (period 2027-09-26, $800B
+    revenue, $300B FCF) sat past `evaluated_at` and reached Growth's trend
+    and CAGR, while Valuation, Outlook and Valuation Support excluded it."""
+
+    def _aapl(self):
+        revenue = [_fact(BusinessFactKind.REVENUE, v, p) for p, v in (
+            ("2023-09-30", 383.285), ("2024-09-28", 391.035), ("2025-09-27", 416.161), ("2027-09-26", 800.0))]
+        fcf = [_fact(BusinessFactKind.FREE_CASH_FLOW, v, p) for p, v in (
+            ("2023-09-30", 99.584), ("2024-09-28", 108.807), ("2025-09-27", 98.767), ("2027-09-26", 300.0))]
+        return tuple(revenue + fcf)
+
+    def test_a_future_period_never_enters_the_cagr(self):
+        f = _growth(self._aapl())
+        assert f.revenue_cagr == pytest.approx((416.161 / 383.285) ** 0.5 - 1)
+        assert f.free_cash_flow_cagr == pytest.approx((98.767 / 99.584) ** 0.5 - 1)
+
+    def test_a_future_period_never_shapes_the_trend(self):
+        """Without FY2027, FCF's last move is down: the trend is mixed on
+        realized periods, never lifted by a year that has not happened."""
+        facts = self._aapl()
+        f = _growth(facts)
+        future_ids = {x.id for x in facts if x.period == "2027-09-26"}
+        assert not future_ids & set(f.supporting_evidence)
+        assert not future_ids & set(f.provenance.dependencies)
+
+    def test_a_period_ending_on_the_evaluation_date_is_realized(self):
+        on_the_day = _fact(BusinessFactKind.REVENUE, 121.0, _NOW.date().isoformat())
+        assert on_the_day.id in _growth(_series([100.0, 110.0]) + (on_the_day,)).provenance.dependencies
