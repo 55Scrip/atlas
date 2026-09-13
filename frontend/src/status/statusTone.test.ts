@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STANCE_LEVEL_KEY, STANCE_LEVEL_TONE } from "./statusTone";
+import { STANCE_LEVEL_KEY, STANCE_LEVEL_TONE, VALUATION_SUPPORT_GAP_COPY_KEY } from "./statusTone";
 import { en } from "../i18n/translations/en";
 import { sv } from "../i18n/translations/sv";
 
@@ -32,5 +32,24 @@ describe("StanceLevel.avoid_decision -- Status/Explanation Language stabilizatio
   it("wait's own 'not enough data yet' wording is unchanged -- this fix only touched avoid_decision", () => {
     expect(en["stance.level.wait"]).toBe("Wait for more evidence");
     expect(sv["stance.level.wait"]).toBe("Avvakta mer underlag");
+  });
+});
+
+describe("ValuationSupportGapKind.insufficient_historical_valuation_data copy", () => {
+  // The gap covers missing cash-flow history (fewer than two four-year
+  // growth windows -- NVDA, which holds seven yield epochs) as well as
+  // missing valuation history, so its copy must never blame prices alone.
+  const key = VALUATION_SUPPORT_GAP_COPY_KEY.insufficient_historical_valuation_data;
+
+  it("names both cash-flow and valuation history in English, never only prices", () => {
+    expect(en[key]).not.toMatch(/price history/i);
+    expect(en[key]).toMatch(/cash flow/);
+    expect(en[key]).toMatch(/valuation/);
+  });
+
+  it("names both in Swedish, never only prishistorik", () => {
+    expect(sv[key]).not.toMatch(/prishistorik/i);
+    expect(sv[key]).toMatch(/kassaflöde/);
+    expect(sv[key]).toMatch(/värdering/);
   });
 });

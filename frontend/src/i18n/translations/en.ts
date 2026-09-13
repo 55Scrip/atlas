@@ -1168,7 +1168,7 @@ export const en = {
   "investmentCase.valuationSupport.gap.noDurableGrowthBasis":
     "There's no period of real growth yet for Atlas to build a valuation range from.",
   "investmentCase.valuationSupport.gap.insufficientHistoricalValuationData":
-    "There isn't enough price history yet to complete this check.",
+    "There isn't enough history yet — of the company's cash flow or of its valuation — to complete this check.",
   "investmentCase.valuationSupport.gap.scenarioEnvelopeInconclusive":
     "The valuation range includes both a gain and a loss, depending on which scenario is used.",
   "investmentCase.valuationSupport.gap.conflictingValuationProofs":

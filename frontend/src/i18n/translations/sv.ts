@@ -1163,7 +1163,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.valuationSupport.gap.noDurableGrowthBasis":
     "Det finns ännu ingen period av verklig tillväxt för Atlas att bygga ett värderingsintervall utifrån.",
   "investmentCase.valuationSupport.gap.insufficientHistoricalValuationData":
-    "Det finns ännu inte tillräcklig prishistorik för att slutföra denna kontroll.",
+    "Det finns ännu inte tillräckligt med historik — över bolagets kassaflöde eller dess värdering — för att slutföra denna kontroll.",
   "investmentCase.valuationSupport.gap.scenarioEnvelopeInconclusive":
     "Värderingsintervallet innehåller både en uppgång och en nedgång, beroende på vilket scenario som används.",
   "investmentCase.valuationSupport.gap.conflictingValuationProofs":

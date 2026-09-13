@@ -160,7 +160,11 @@ class ValuationSupportGapKind(str, Enum):
     """Not enough real historical data exists to build a range at all --
     covers fewer than two revenue-corroborated growth observations,
     no current Free Cash Flow yield, and no historical yield range,
-    truthfully, without inventing a separate member for each."""
+    truthfully, without inventing a separate member for each. The first
+    is missing *cash-flow* history (NVDA holds seven yield epochs but no
+    Free Cash Flow for FY2013-FY2021, so one four-year growth window), the
+    other two missing *valuation* history -- so every rendering of this
+    member must name both, never only prices."""
 
     SCENARIO_ENVELOPE_INCONCLUSIVE = "scenario_envelope_inconclusive"
     """A real, fully-computed forward-return envelope exists, but it
