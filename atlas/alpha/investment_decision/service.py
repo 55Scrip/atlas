@@ -165,7 +165,7 @@ class InvestmentDecisionService:
     def change_for_case(self, case_id: str, *, ticker: str | None = None) -> DecisionChange | None:
         """Deliverable 10/11 -- reads the cache *before* this call's
         own fresh computation overwrites it."""
-        previous = self._result_repository.get(case_id)
+        previous = self._result_repository.get_comparable(case_id)
         current = self.synthesize_for_case(case_id, ticker=ticker)
         if current is None:
             return None

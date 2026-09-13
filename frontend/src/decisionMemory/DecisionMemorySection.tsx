@@ -51,13 +51,23 @@ export function DecisionMemorySection({
             <ChangeFacts change={memory.latestChange} t={t} />
           </Stack>
         ) : (
-          <Text color="tertiary">{t("decisionMemory.section.baseline")}</Text>
+          // No latest change: either the Case's first decision, or a later
+          // baseline -- Atlas changed how it measures, so the decision was
+          // recorded afresh rather than narrated as a change.
+          <Text color="tertiary">
+            {t(memory.history.entries.length > 1 ? "decisionMemory.section.methodologyBaseline" : "decisionMemory.section.baseline")}
+          </Text>
         )}
         {memory.history.entries.length > 1 && (
           <ExpandableDetail summaryLabel={t("decisionMemory.section.expandLabel")}>
             <Stack gap="metadata">
               {[...memory.history.entries].reverse().map((entry) => (
-                <HistoryEntryRow key={entry.snapshot.recordedAt} entry={entry} t={t} />
+                <HistoryEntryRow
+                  key={entry.snapshot.recordedAt}
+                  entry={entry}
+                  isFirst={entry === memory.history.entries[0]}
+                  t={t}
+                />
               ))}
             </Stack>
           </ExpandableDetail>
@@ -139,9 +149,11 @@ export function ChangeFacts({
 
 function HistoryEntryRow({
   entry,
+  isFirst,
   t,
 }: {
   entry: DecisionTimelineEntryView;
+  isFirst: boolean;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   return (
@@ -153,7 +165,9 @@ function HistoryEntryRow({
         <StatusBadge label={t(ACTION_KEY[entry.snapshot.action as keyof typeof ACTION_KEY])} tone="neutral" />
       </Inline>
       {entry.change.isBaseline ? (
-        <Text color="tertiary">{t("decisionMemory.section.baseline")}</Text>
+        <Text color="tertiary">
+          {t(isFirst ? "decisionMemory.section.baseline" : "decisionMemory.section.methodologyBaseline")}
+        </Text>
       ) : (
         <ChangeFacts change={entry.change} t={t} />
       )}

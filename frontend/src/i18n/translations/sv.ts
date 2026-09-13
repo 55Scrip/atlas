@@ -2436,6 +2436,8 @@ export const sv: Record<TranslationKey, string> = {
   "decisionMemory.section.latestChange": "Senaste förändring",
   "decisionMemory.section.recordedAt": "Registrerad",
   "decisionMemory.section.baseline": "Det här är det första registrerade beslutet för det här caset.",
+  "decisionMemory.section.methodologyBaseline":
+    "Atlas ändrade här hur det mäter, så det här beslutet är en ny utgångspunkt — inte en förändring i bolaget.",
   "decisionMemory.direction.stronger": "stärktes",
   "decisionMemory.direction.weaker": "försvagades",
   "decisionMemory.direction.unchanged": "oförändrad",

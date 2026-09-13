@@ -83,6 +83,7 @@ from atlas.analysis_engine.business_facts.models import BusinessFact
 __all__ = [
     "FISCAL_YEAR_DAYS",
     "FISCAL_YEAR_END_TOLERANCE_DAYS",
+    "ROLLING_GROWTH_METHODOLOGY",
     "FiscalYearValue",
     "GrowthObservation",
     "DistributionSummary",
@@ -124,6 +125,11 @@ def real_periods(facts_sorted_asc: list[BusinessFact]) -> frozenset[str]:
     genuine multi-year ingestion gap as covered."""
     return frozenset(f.period for f in facts_sorted_asc)
 
+
+#: Names how rolling growth windows are built, so the Decision Layer never
+#: reads the change to fiscal-year windows as a change in the company
+#: (`atlas.analysis_engine.methodology`). v1 paired list positions.
+ROLLING_GROWTH_METHODOLOGY = "fiscal_year_windows_v2"
 
 #: The mean Gregorian year. Fiscal calendars are pinned to the civil
 #: calendar (a fixed date, or the weekday nearest one), so a year end

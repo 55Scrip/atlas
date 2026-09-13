@@ -76,6 +76,21 @@ describe("DecisionMemorySection", () => {
     expect(screen.getByText("Det här är det första registrerade beslutet för det här caset.")).toBeInTheDocument();
   });
 
+  it("says a later baseline is a change of method, never 'the first recorded decision'", () => {
+    const first = memory().history.entries[0];
+    if (!first) throw new Error("fixture has a baseline entry");
+    const rebaseline: DecisionTimelineEntryView = {
+      snapshot: snapshot({ recordedAt: "2026-06-01T00:00:00Z" }),
+      change: { ...first.change, detectedAt: "2026-06-01T00:00:00Z" },
+    };
+    renderSection(memory({ history: { caseId: "case-1", entries: [first, rebaseline] } }));
+    const methodText = "Atlas ändrade här hur det mäter, så det här beslutet är en ny utgångspunkt — inte en förändring i bolaget.";
+    // Once as the section's own "no latest change" line, once on the later history row.
+    expect(screen.getAllByText(methodText)).toHaveLength(2);
+    // Only the oldest history row is the first recorded decision.
+    expect(screen.getAllByText("Det här är det första registrerade beslutet för det här caset.")).toHaveLength(1);
+  });
+
   it("shows structured change facts when a real change is present", () => {
     renderSection(
       memory({

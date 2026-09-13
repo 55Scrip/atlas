@@ -43,6 +43,7 @@ from atlas.alpha.recommendation_conviction.models import (
     RecommendationConviction,
     RecommendationStability,
 )
+from atlas.analysis_engine.methodology import comparable_payload, stamp_methodology
 
 __all__ = ["SqlAlchemyOpportunityCostResultRepository"]
 
@@ -259,7 +260,7 @@ class SqlAlchemyOpportunityCostResultRepository:
         self._engine = engine
 
     def upsert(self, opportunity_cost: OpportunityCost, *, ticker: str | None) -> None:
-        payload = json.dumps(_result_payload(opportunity_cost))
+        payload = json.dumps(stamp_methodology(_result_payload(opportunity_cost)))
         with self._engine.begin() as connection:
             connection.execute(
                 delete(opportunity_cost_result_table).where(opportunity_cost_result_table.c.case_id == opportunity_cost.case_id)
@@ -283,6 +284,21 @@ class SqlAlchemyOpportunityCostResultRepository:
                 .first()
             )
         return _to_opportunity_cost(json.loads(row["result_json"])) if row is not None else None
+
+    def get_comparable(self, case_id: str) -> OpportunityCost | None:
+        """The stored result, when it was written under today's analysis
+        methodology -- the only previous result a change may be detected
+        against (`atlas.analysis_engine.methodology`). `None` otherwise."""
+        with self._engine.connect() as connection:
+            row = (
+                connection.execute(
+                    select(opportunity_cost_result_table).where(opportunity_cost_result_table.c.case_id == case_id)
+                )
+                .mappings()
+                .first()
+            )
+        payload = comparable_payload(row["result_json"]) if row is not None else None
+        return _to_opportunity_cost(payload) if payload is not None else None
 
     def list_all(self) -> tuple[OpportunityCost, ...]:
         with self._engine.connect() as connection:

@@ -172,7 +172,7 @@ class OpportunityCostService:
     def change_for_case(self, case_id: str, *, ticker: str | None = None) -> OpportunityCostChange | None:
         """Reads the cache *before* this call's own fresh computation
         overwrites it."""
-        previous = self._result_repository.get(case_id)
+        previous = self._result_repository.get_comparable(case_id)
         current = self.assess_for_case(case_id, ticker=ticker)
         if current is None:
             return None
@@ -188,7 +188,7 @@ class OpportunityCostService:
         `change_for_case`'s, extended to also keep `current`). Preserves
         the identical read-before-write ordering: `previous` is read
         before `assess_for_case` runs and (on a cache miss) upserts."""
-        previous = self._result_repository.get(case_id)
+        previous = self._result_repository.get_comparable(case_id)
         current = self.assess_for_case(case_id, ticker=ticker)
         if current is None:
             return None, None

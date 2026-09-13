@@ -125,7 +125,9 @@ class DecisionMemoryService:
         if inputs is None:
             return None
         snapshot = build_snapshot(case_id, inputs, recorded_at=_utc_now())
-        previous_head = self._repository.get_latest(case_id)
+        # A head from another analysis methodology is no baseline: the new
+        # snapshot starts one (`atlas.analysis_engine.methodology`).
+        previous_head = self._repository.get_latest_comparable(case_id)
         change = detect_decision_change(previous_head, snapshot, detected_at=snapshot.recorded_at)
         written = self._repository.add(case_id, snapshot, change, ticker=ticker)
         return change if written else None

@@ -2445,6 +2445,8 @@ export const en = {
   "decisionMemory.section.latestChange": "Latest change",
   "decisionMemory.section.recordedAt": "Recorded",
   "decisionMemory.section.baseline": "This is the first recorded decision for this case.",
+  "decisionMemory.section.methodologyBaseline":
+    "Atlas changed how it measures here, so this decision is a new starting point — not a change in the company.",
   "decisionMemory.direction.stronger": "strengthened",
   "decisionMemory.direction.weaker": "weakened",
   "decisionMemory.direction.unchanged": "unchanged",

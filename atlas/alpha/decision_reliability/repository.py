@@ -21,6 +21,7 @@ from atlas.alpha.decision_reliability.models import (
     ReliabilitySource,
 )
 from atlas.alpha.decision_reliability.table import decision_reliability_result_table
+from atlas.analysis_engine.methodology import comparable_payload, stamp_methodology
 
 __all__ = ["SqlAlchemyDecisionReliabilityResultRepository"]
 
@@ -82,7 +83,7 @@ class SqlAlchemyDecisionReliabilityResultRepository:
         self._engine = engine
 
     def upsert(self, reliability: DecisionReliability, *, ticker: str | None) -> None:
-        payload = json.dumps(_result_payload(reliability))
+        payload = json.dumps(stamp_methodology(_result_payload(reliability)))
         with self._engine.begin() as connection:
             connection.execute(
                 delete(decision_reliability_result_table).where(
@@ -108,3 +109,18 @@ class SqlAlchemyDecisionReliabilityResultRepository:
                 .first()
             )
         return _to_reliability(json.loads(row["result_json"])) if row is not None else None
+
+    def get_comparable(self, case_id: str) -> DecisionReliability | None:
+        """The stored result, when it was written under today's analysis
+        methodology -- the only previous result a change may be detected
+        against (`atlas.analysis_engine.methodology`). `None` otherwise."""
+        with self._engine.connect() as connection:
+            row = (
+                connection.execute(
+                    select(decision_reliability_result_table).where(decision_reliability_result_table.c.case_id == case_id)
+                )
+                .mappings()
+                .first()
+            )
+        payload = comparable_payload(row["result_json"]) if row is not None else None
+        return _to_reliability(payload) if payload is not None else None

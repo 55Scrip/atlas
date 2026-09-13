@@ -27,6 +27,7 @@ from atlas.alpha.decision_explanation.models import (
 from atlas.alpha.decision_explanation.table import decision_explanation_result_table
 from atlas.alpha.investment_decision.models import DecisionAction
 from atlas.alpha.recommendation_conviction.models import ConvictionStrength
+from atlas.analysis_engine.methodology import comparable_payload, stamp_methodology
 
 __all__ = ["SqlAlchemyDecisionExplanationResultRepository"]
 
@@ -133,7 +134,7 @@ class SqlAlchemyDecisionExplanationResultRepository:
         self._engine = engine
 
     def upsert(self, explanation: DecisionExplanation, *, ticker: str | None) -> None:
-        payload = json.dumps(_result_payload(explanation))
+        payload = json.dumps(stamp_methodology(_result_payload(explanation)))
         with self._engine.begin() as connection:
             connection.execute(
                 delete(decision_explanation_result_table).where(
@@ -159,3 +160,18 @@ class SqlAlchemyDecisionExplanationResultRepository:
                 .first()
             )
         return _to_explanation(json.loads(row["result_json"])) if row is not None else None
+
+    def get_comparable(self, case_id: str) -> DecisionExplanation | None:
+        """The stored result, when it was written under today's analysis
+        methodology -- the only previous result a change may be detected
+        against (`atlas.analysis_engine.methodology`). `None` otherwise."""
+        with self._engine.connect() as connection:
+            row = (
+                connection.execute(
+                    select(decision_explanation_result_table).where(decision_explanation_result_table.c.case_id == case_id)
+                )
+                .mappings()
+                .first()
+            )
+        payload = comparable_payload(row["result_json"]) if row is not None else None
+        return _to_explanation(payload) if payload is not None else None

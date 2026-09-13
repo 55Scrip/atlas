@@ -35,6 +35,7 @@ from atlas.alpha.decision_readiness.models import DecisionReadinessStatus
 from atlas.alpha.investment_decision.models import DecisionAction
 from atlas.alpha.opportunity_cost.models import AlternativeKind
 from atlas.alpha.recommendation_conviction.models import ConvictionStrength, RecommendationStability
+from atlas.analysis_engine.methodology import comparable_payload, stamp_methodology
 
 __all__ = ["SqlAlchemyDecisionMemoryRepository"]
 
@@ -120,6 +121,24 @@ class SqlAlchemyDecisionMemoryRepository:
             )
         return _to_snapshot(row) if row is not None else None
 
+    def get_latest_comparable(self, case_id: str) -> DecisionSnapshot | None:
+        """The current head, when it was recorded under today's analysis
+        methodology -- the only head a new snapshot may be diffed against
+        (`atlas.analysis_engine.methodology`). `None` otherwise: the next
+        snapshot is then a fresh baseline, never a "change"."""
+        with self._engine.connect() as connection:
+            row = (
+                connection.execute(
+                    select(decision_memory_snapshot_table)
+                    .where(decision_memory_snapshot_table.c.case_id == case_id)
+                    .order_by(desc(decision_memory_snapshot_table.c.recorded_at))
+                    .limit(1)
+                )
+                .mappings()
+                .first()
+            )
+        return _to_snapshot(row) if row is not None and comparable_payload(row["snapshot_json"]) is not None else None
+
     def get_previous(self, case_id: str) -> DecisionSnapshot | None:
         with self._engine.connect() as connection:
             rows = (
@@ -155,7 +174,9 @@ class SqlAlchemyDecisionMemoryRepository:
         entries: list[DecisionTimelineEntry] = []
         for index, row in enumerate(rows):
             snapshot = _to_snapshot(row)
-            if index == 0:
+            # A later row without a change is a re-baseline: the head before
+            # it was recorded under another analysis methodology.
+            if index == 0 or row["change_json"] is None:
                 change = detect_decision_change(None, snapshot, detected_at=snapshot.recorded_at)
             else:
                 change = _to_change(json.loads(row["change_json"]), case_id=case_id, detected_at=snapshot.recorded_at)
@@ -174,7 +195,10 @@ class SqlAlchemyDecisionMemoryRepository:
         recomputed here, and never persisted when `change.is_baseline`
         is `True` (a baseline has nothing to persist; `get_history`
         derives it structurally)."""
-        current_head = self.get_latest(case_id)
+        # Only a head from today's methodology absorbs an identical snapshot:
+        # after a method change the same content is written again, as the
+        # new baseline, so the next real change is diffed against it.
+        current_head = self.get_latest_comparable(case_id)
         if current_head is not None and current_head.content_hash == snapshot.content_hash:
             return False
         with self._engine.begin() as connection:
@@ -185,7 +209,7 @@ class SqlAlchemyDecisionMemoryRepository:
                     ticker=ticker,
                     recorded_at=snapshot.recorded_at.isoformat(),
                     content_hash=snapshot.content_hash,
-                    snapshot_json=json.dumps(_snapshot_payload(snapshot), sort_keys=True),
+                    snapshot_json=json.dumps(stamp_methodology(_snapshot_payload(snapshot)), sort_keys=True),
                     change_json=None if change.is_baseline else json.dumps(_change_payload(change), sort_keys=True),
                 )
             )

@@ -27,6 +27,7 @@ from atlas.alpha.portfolio_decision.models import (
 from atlas.alpha.portfolio_decision.table import portfolio_decision_result_table
 from atlas.alpha.recommendation_conviction.models import ConvictionStrength
 from atlas.domains.portfolio.models import ConcentrationLevel
+from atlas.analysis_engine.methodology import comparable_payload, stamp_methodology
 
 __all__ = ["SqlAlchemyPortfolioDecisionResultRepository"]
 
@@ -146,7 +147,7 @@ class SqlAlchemyPortfolioDecisionResultRepository:
         self._engine = engine
 
     def upsert(self, decision: PortfolioDecision, *, ticker: str | None) -> None:
-        payload = json.dumps(_result_payload(decision))
+        payload = json.dumps(stamp_methodology(_result_payload(decision)))
         with self._engine.begin() as connection:
             connection.execute(
                 delete(portfolio_decision_result_table).where(portfolio_decision_result_table.c.case_id == decision.case_id)
@@ -170,3 +171,18 @@ class SqlAlchemyPortfolioDecisionResultRepository:
                 .first()
             )
         return _to_decision(json.loads(row["result_json"])) if row is not None else None
+
+    def get_comparable(self, case_id: str) -> PortfolioDecision | None:
+        """The stored result, when it was written under today's analysis
+        methodology -- the only previous result a change may be detected
+        against (`atlas.analysis_engine.methodology`). `None` otherwise."""
+        with self._engine.connect() as connection:
+            row = (
+                connection.execute(
+                    select(portfolio_decision_result_table).where(portfolio_decision_result_table.c.case_id == case_id)
+                )
+                .mappings()
+                .first()
+            )
+        payload = comparable_payload(row["result_json"]) if row is not None else None
+        return _to_decision(payload) if payload is not None else None

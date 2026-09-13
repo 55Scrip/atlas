@@ -184,7 +184,7 @@ class DecisionReadinessService:
         own fresh computation overwrites it, exactly the same before/
         after ordering `InvestmentCaseCompositionService._assemble`
         already uses for `ChangeIntelligence`."""
-        previous = self._result_repository.get(case_id)
+        previous = self._result_repository.get_comparable(case_id)
         current = self.assess_for_case(case_id, ticker=ticker)
         if current is None:
             return None

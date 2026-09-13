@@ -22,6 +22,7 @@ from atlas.alpha.decision_path.models import (
 from atlas.alpha.decision_path.table import decision_path_result_table
 from atlas.alpha.investment_decision.models import DecisionAction
 from atlas.alpha.recommendation_conviction.models import ConvictionStrength
+from atlas.analysis_engine.methodology import comparable_payload, stamp_methodology
 
 __all__ = ["SqlAlchemyDecisionPathResultRepository"]
 
@@ -78,7 +79,7 @@ class SqlAlchemyDecisionPathResultRepository:
         self._engine = engine
 
     def upsert(self, path: DecisionPath, *, ticker: str | None) -> None:
-        payload = json.dumps(_result_payload(path))
+        payload = json.dumps(stamp_methodology(_result_payload(path)))
         with self._engine.begin() as connection:
             connection.execute(delete(decision_path_result_table).where(decision_path_result_table.c.case_id == path.case_id))
             connection.execute(
@@ -98,6 +99,19 @@ class SqlAlchemyDecisionPathResultRepository:
                 .first()
             )
         return _to_path(json.loads(row["result_json"])) if row is not None else None
+
+    def get_comparable(self, case_id: str) -> DecisionPath | None:
+        """The stored result, when it was written under today's analysis
+        methodology -- the only previous result a change may be detected
+        against (`atlas.analysis_engine.methodology`). `None` otherwise."""
+        with self._engine.connect() as connection:
+            row = (
+                connection.execute(select(decision_path_result_table).where(decision_path_result_table.c.case_id == case_id))
+                .mappings()
+                .first()
+            )
+        payload = comparable_payload(row["result_json"]) if row is not None else None
+        return _to_path(payload) if payload is not None else None
 
     def list_all(self) -> tuple[DecisionPath, ...]:
         with self._engine.connect() as connection:
