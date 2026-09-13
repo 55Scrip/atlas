@@ -38,7 +38,15 @@ from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.business_data.sources import SourceKind as DocumentSourceKind
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
 
-__all__ = ["ValuationFactKind", "ValuationFact", "extract_valuation_facts", "extract_valuation_facts_from_records"]
+__all__ = [
+    "ValuationFactKind",
+    "ValuationFact",
+    "extract_valuation_facts",
+    "extract_valuation_facts_from_records",
+    "PriceBasis",
+    "MarketPriceProvenance",
+    "market_price_provenance",
+]
 
 
 class ValuationFactKind(str, Enum):
@@ -182,3 +190,82 @@ def extract_valuation_facts_from_records(
         resolved.append(fact)
 
     return tuple(resolved)
+
+
+class PriceBasis(str, Enum):
+    """What economic price a market snapshot's `share_price` is
+    (Historical Market-Data Provenance).
+
+    - `RAW`: the price as traded on the observation date (a current
+      `GLOBAL_QUOTE`).
+    - `SPLIT_AND_DIVIDEND_ADJUSTED`: the provider's adjusted close -- back-
+      adjusted for every split and dividend after the observation date,
+      as of the snapshot's retrieval (`MarketPriceProvenance.retrieved_at`).
+      A total-return price: consistent through splits, below the price
+      actually paid by later dividends.
+    - `UNKNOWN`: nothing recorded and nothing to infer it from.
+    """
+
+    RAW = "raw"
+    SPLIT_AND_DIVIDEND_ADJUSTED = "split_and_dividend_adjusted"
+    UNKNOWN = "unknown"
+
+
+#: The endpoint each basis comes from -- how a snapshot written before
+#: `price_basis` was recorded is read. Its persisted `source_reference`
+#: names the endpoint, and the endpoint fixes the basis.
+_BASIS_BY_ENDPOINT = (
+    ("function=TIME_SERIES_MONTHLY_ADJUSTED", PriceBasis.SPLIT_AND_DIVIDEND_ADJUSTED),
+    ("function=GLOBAL_QUOTE", PriceBasis.RAW),
+)
+
+
+@dataclass(frozen=True)
+class MarketPriceProvenance:
+    """Everything a market snapshot says about its price. Read-only
+    provenance: no valuation method reads it yet -- `share_price` alone
+    still feeds the FCF yield, unchanged.
+
+    `basis_recorded` is `False` for a snapshot written before the basis
+    was stored; its basis is then read off the endpoint it came from, and
+    `raw_close`/`dividend_amount` are `None` -- never reconstructed.
+    `dividend_amount` is the provider's per-share amount for the month
+    (an explicit `0.0` when it reported none), `None` when not reported.
+    `retrieved_at` is when this version was fetched: an adjusted close is
+    the provider's state as of then, and a later dividend rescales it."""
+
+    observed_on: str
+    share_price: float | None
+    basis: PriceBasis
+    basis_recorded: bool
+    raw_close: float | None
+    dividend_amount: float | None
+    retrieved_at: datetime
+    source_reference: str
+
+
+def market_price_provenance(record: BusinessRecord) -> MarketPriceProvenance | None:
+    """`None` for anything but a dated market snapshot."""
+    if record.document_type is not DocumentSourceKind.MARKET_DATA_SNAPSHOT:
+        return None
+    period = _record_period(record)
+    if period is None:
+        return None
+    recorded = record.metadata.get("price_basis")
+    if isinstance(recorded, str):
+        basis = next((b for b in PriceBasis if b.value == recorded), PriceBasis.UNKNOWN)
+    else:
+        basis = next(
+            (b for marker, b in _BASIS_BY_ENDPOINT if marker in (record.source_reference or "")),
+            PriceBasis.UNKNOWN,
+        )
+    return MarketPriceProvenance(
+        observed_on=period,
+        share_price=_numeric_value(record.metadata.get("share_price")),
+        basis=basis,
+        basis_recorded=isinstance(recorded, str),
+        raw_close=_numeric_value(record.metadata.get("raw_close")),
+        dividend_amount=_numeric_value(record.metadata.get("dividend_amount")),
+        retrieved_at=record.version.created_at,
+        source_reference=record.source_reference,
+    )

@@ -54,12 +54,31 @@ free-tier-available (321 monthly points back to 1999, no premium gate
 -- unlike `TIME_SERIES_DAILY?outputsize=full`, which is premium-gated),
 and critically **split-adjusted**, confirmed live for NVDA: a 2020 raw
 close of $236.43 vs. an adjusted close of $5.8775 for the same date,
-reflecting NVDA's two real 10-for-1 splits (2021, 2024). Sampling one
+reflecting NVDA's two real 10-for-1 splits (2021, 2024). It is
+**dividend-adjusted** too (Historical Price-Basis Integrity): a re-fetch
+rescaled every earlier AAPL adjusted close by the same 0.999125 after a
+$0.27 dividend, and the live response carries `4. close` (the raw
+close), `5. adjusted close` and `7. dividend amount` per month -- no
+split coefficient. Sampling one
 of the *raw* monthly closes against a *current* (post-split) shares-
 outstanding count would silently fabricate a wildly wrong historical
 market cap; the adjusted series is designed precisely so it can be
 compared on a constant, current-share-basis without that distortion,
 so it is the only series this method reads.
+
+**Historical Market-Data Provenance: every snapshot says what its price
+is.** `share_price` keeps its meaning -- the price valuation reads -- and
+`price_basis` names it: `"split_and_dividend_adjusted"` on a monthly
+historical snapshot (the adjusted close), `"raw"` on a `GLOBAL_QUOTE`
+snapshot. A historical snapshot also carries the month's raw close
+(`raw_close`, provider value unchanged -- never derived from the
+adjusted one) and `dividend_amount` exactly as reported (the provider
+reports an explicit zero; a missing field stays missing). The adjusted
+close is the provider's state at retrieval: a later dividend rescales
+it, which arrives as a new record version beside an unchanged raw
+close. `atlas.analysis_engine.valuation.facts.market_price_provenance`
+reads all of it back, including what a snapshot written before these
+fields existed means.
 
 **A disclosed, honest approximation, not a silently wrong one:**
 `shares_outstanding` used for every historical observation is today's
@@ -321,6 +340,42 @@ def _confirmed_currency_metadata(
     return metadata
 
 
+#: What `share_price` is on a snapshot this provider writes -- the vocabulary
+#: `valuation.facts.PriceBasis` reads back.
+_RAW_PRICE_BASIS = "raw"
+_ADJUSTED_PRICE_BASIS = "split_and_dividend_adjusted"
+
+
+def _with_price_basis(metadata: dict[str, Any], basis: str) -> dict[str, Any]:
+    """`metadata` naming what its `share_price` is. An unconfirmed currency
+    left no price at all, so there is nothing to name."""
+    return {**metadata, "price_basis": basis} if metadata else metadata
+
+
+def _historical_bar_metadata(
+    bar: dict[str, Any], currency: Any, *, adjusted_close: float, shares_outstanding: float | None
+) -> dict[str, Any]:
+    """One monthly bar's snapshot metadata. `share_price` stays the adjusted
+    close (what valuation reads); the raw close and the dividend ride along
+    as the provider reported them. Both are money amounts, so the same
+    currency rule applies: no confirmed currency, no price of any kind."""
+    metadata = _with_price_basis(
+        _confirmed_currency_metadata(
+            currency, share_price=adjusted_close, shares_outstanding=shares_outstanding
+        ),
+        _ADJUSTED_PRICE_BASIS,
+    )
+    if not metadata:
+        return metadata
+    raw_close = _numeric(bar.get("4. close"))
+    if raw_close is not None:
+        metadata["raw_close"] = raw_close
+    dividend_amount = _numeric(bar.get("7. dividend amount"))
+    if dividend_amount is not None:
+        metadata["dividend_amount"] = dividend_amount
+    return metadata
+
+
 def _most_recent_completed_quarter(evaluated_at: datetime) -> str:
     """The most recently *ended* calendar quarter as of `evaluated_at`
     -- no invented reporting-lag heuristic (real lag varies by company
@@ -552,8 +607,11 @@ class AlphaVantageMarketDataProvider:
         # extract_valuation_facts finds no share_price to extract, so
         # FCF Yield honestly reports INSUFFICIENT_INPUT rather than
         # computing a meaningless yield.
-        metadata = _confirmed_currency_metadata(
-            currency, share_price=share_price, shares_outstanding=shares_outstanding
+        metadata = _with_price_basis(
+            _confirmed_currency_metadata(
+                currency, share_price=share_price, shares_outstanding=shares_outstanding
+            ),
+            _RAW_PRICE_BASIS,
         )
 
         content_hash = hashlib.sha256(
@@ -620,8 +678,11 @@ class AlphaVantageMarketDataProvider:
                 f"Alpha Vantage GLOBAL_QUOTE({ticker}) latest trading day {trading_day!r} is not ISO-8601"
             ) from None
 
-        metadata = _confirmed_currency_metadata(
-            known_currency, share_price=share_price, shares_outstanding=known_shares_outstanding
+        metadata = _with_price_basis(
+            _confirmed_currency_metadata(
+                known_currency, share_price=share_price, shares_outstanding=known_shares_outstanding
+            ),
+            _RAW_PRICE_BASIS,
         )
 
         content_hash = hashlib.sha256(
@@ -680,8 +741,8 @@ class AlphaVantageMarketDataProvider:
             adjusted_close = _numeric(bar.get("5. adjusted close"))
             if adjusted_close is None:
                 continue
-            metadata = _confirmed_currency_metadata(
-                currency, share_price=adjusted_close, shares_outstanding=shares_outstanding
+            metadata = _historical_bar_metadata(
+                bar, currency, adjusted_close=adjusted_close, shares_outstanding=shares_outstanding
             )
             content_hash = hashlib.sha256(
                 json.dumps({"date": sampled_date.isoformat(), **metadata}, sort_keys=True).encode("utf-8")

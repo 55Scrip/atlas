@@ -67,8 +67,9 @@ policy, not a statistical truth.
 
 **Share count.** Market capitalisation is share price times the share count
 the provider reports today (`ShareCountMethod.CURRENT_SHARE_COUNT_PROXY`):
-historical prices are split-adjusted to today's share basis, so splits are
-consistent, but buybacks and issuance since each observation are not. The
+historical prices are adjusted to today's share basis, so splits are
+consistent, but buybacks and issuance since each observation are not, and
+the adjustment also removes every later dividend from the price. The
 evidence says so; nothing here calls a historical market capitalisation
 exact.
 

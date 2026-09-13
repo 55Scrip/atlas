@@ -190,11 +190,13 @@ class ShareCountMethod(str, Enum):
 
     `CURRENT_SHARE_COUNT_PROXY`: the market-data provider reports only
     today's shares outstanding (its current company overview), and the
-    historical prices it returns are split-adjusted to today's share
-    basis. Historical market capitalisation is therefore split-adjusted
-    price times *current* shares -- consistent through splits, but blind
-    to buybacks and issuance since. It is a proxy, never an exact
-    historical market capitalisation."""
+    historical prices it returns are adjusted to today's share basis --
+    for splits and, as Historical Price-Basis Integrity proved, for
+    dividends too. Historical market capitalisation is therefore
+    adjusted price times *current* shares -- consistent through splits,
+    but blind to buybacks and issuance since, and below the price paid by
+    every later dividend. It is a proxy, never an exact historical market
+    capitalisation."""
 
     CURRENT_SHARE_COUNT_PROXY = "current_share_count_proxy"
 

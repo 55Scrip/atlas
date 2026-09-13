@@ -426,6 +426,43 @@ def _latest_value_by_end(entries: list[dict[str, Any]]) -> dict[str, dict[str, A
     return by_end
 
 
+def _first_value_by_end(entries: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """The counterpart of `_latest_value_by_end` keeping the *earliest*
+    filing for each date -- the value as first reported, before any later
+    comparative restated it (a split, a correction). Ties on the filing
+    date fall to the lower accession number, so input order never
+    decides."""
+    by_end: dict[str, dict[str, Any]] = {}
+    for entry in entries:
+        key = entry["end"]
+        current = by_end.get(key)
+        rank = (entry.get("filed", ""), entry.get("accn", ""))
+        if current is None or rank < (current.get("filed", ""), current.get("accn", "")):
+            by_end[key] = entry
+    return by_end
+
+
+#: The instant concept whose filing provenance a statement keeps
+#: (Historical Market-Data Provenance): which filing the stored count
+#: came from, and what the first filing reported.
+_PROVENANCE_INSTANT_KEY = "shares_outstanding"
+
+
+def _share_count_provenance(latest: dict[str, Any], first: dict[str, Any]) -> dict[str, Any]:
+    """Metadata naming the filing behind a period-end share count. It is
+    provenance, not content: kept out of the record's content hash, so a
+    refresh never re-versions a statement for it."""
+    provenance: dict[str, Any] = {}
+    if latest.get("filed"):
+        provenance["shares_outstanding_filed"] = latest["filed"]
+    if latest.get("accn"):
+        provenance["shares_outstanding_accession"] = latest["accn"]
+    if first.get("filed"):
+        provenance["shares_outstanding_first_reported"] = float(first["val"])
+        provenance["shares_outstanding_first_reported_filed"] = first["filed"]
+    return provenance
+
+
 def _substitute_currency(unit_key: str, currency: str) -> str:
     """`unit_key` is always either `"USD"` (every dollar-denominated
     concept) or `"USD/shares"` (`eps` alone) across both
@@ -538,18 +575,24 @@ def _extract_documents_for_taxonomy(
     # concept could ever establish (see `_INSTANT_CONCEPT_TAGS`'s own
     # docstring).
     instant_by_end: dict[str, dict[str, float]] = {}
+    share_provenance_by_end: dict[str, dict[str, Any]] = {}
     for metadata_key, (tags, unit_key) in instant_tags.items():
         resolved_instant: dict[str, dict[str, Any]] = {}
+        first_instant: dict[str, dict[str, Any]] = {}
         for tag in tags:
-            entries = _latest_value_by_end(
-                _instant_entries(
-                    taxonomy_facts.get(tag), unit_key=_substitute_currency(unit_key, currency), forms=forms
-                )
+            tag_entries = _instant_entries(
+                taxonomy_facts.get(tag), unit_key=_substitute_currency(unit_key, currency), forms=forms
             )
+            entries = _latest_value_by_end(tag_entries)
+            firsts = _first_value_by_end(tag_entries)
             for end_date, entry in entries.items():
-                resolved_instant.setdefault(end_date, entry)
+                if end_date not in resolved_instant:
+                    resolved_instant[end_date] = entry
+                    first_instant[end_date] = firsts[end_date]
         for end_date, entry in resolved_instant.items():
             instant_by_end.setdefault(end_date, {})[metadata_key] = float(entry["val"])
+            if metadata_key == _PROVENANCE_INSTANT_KEY:
+                share_provenance_by_end[end_date] = _share_count_provenance(entry, first_instant[end_date])
 
     documents: list[RawBusinessDocument] = []
     for (start, end), values in sorted(periods.items()):
@@ -605,8 +648,10 @@ def _extract_documents_for_taxonomy(
         elif debt_total_single is not None:
             values["total_debt"] = debt_total_single
         shares_outstanding = period_instant.get("shares_outstanding")
+        share_provenance: dict[str, Any] = {}
         if shares_outstanding is not None:
             values["shares_outstanding"] = shares_outstanding
+            share_provenance = share_provenance_by_end.get(end, {})
 
         # Capability Expansion Sprint 3: `equity`/`current_assets`/
         # `current_liabilities`/`total_assets`/`goodwill`/
@@ -660,6 +705,7 @@ def _extract_documents_for_taxonomy(
         # itself (`revenue`, `net_income`, ...) is identical either way.
         metadata: dict[str, Any] = {
             **values,
+            **share_provenance,
             "currency": currency,
             "sec_cik": cik10,
             "sec_form": next(iter(forms)),
