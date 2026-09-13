@@ -76,6 +76,7 @@ different individuals.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
@@ -129,15 +130,29 @@ _ROLE_KEYWORDS: tuple[tuple[str, ExecutiveRoleCategory], ...] = (
     ("executive chairman", ExecutiveRoleCategory.EXECUTIVE_CHAIR),
     ("executive chair", ExecutiveRoleCategory.EXECUTIVE_CHAIR),
     ("chairman", ExecutiveRoleCategory.CHAIR),
-    ("chair", ExecutiveRoleCategory.CHAIR),
-    ("president", ExecutiveRoleCategory.PRESIDENT),
+    (r"chair(?:woman|person)?", ExecutiveRoleCategory.CHAIR),
+    (r"(?<!vice )(?<!vice-)president", ExecutiveRoleCategory.PRESIDENT),
     ("board director", ExecutiveRoleCategory.BOARD_DIRECTOR),
-    ("director", ExecutiveRoleCategory.BOARD_DIRECTOR),
+    (r"^director$|(?:independent|non-executive|lead) director", ExecutiveRoleCategory.BOARD_DIRECTOR),
 )
-"""Priority-ordered, literal substring matches only -- a title that
+"""Priority-ordered, literal words and phrases only -- a title that
 matches none of these falls through to the non-executive exclusion
 check below, never a guess (Phase 2's own "do not infer titles that
-are not explicitly supported by source material")."""
+are not explicitly supported by source material").
+
+Each entry matches whole words (`_ROLE_PATTERNS`), never letters inside
+another word: as bare substrings, "cto" matched every "direCTOr" (TSLA's
+"Director, Autopilot Software" was a CTO) and "president" matched every
+"vice president" (VST's "Executive Vice President & Chief Commercial
+Officer" was a President), splitting one person into two identities and
+inventing role changes. A vice president is not the President, and a
+director is a board seat only as the title itself or with a board
+qualifier -- "Director of AI" is a job title, so it falls through to
+`OTHER_EXECUTIVE` like any other titled executive."""
+
+_ROLE_PATTERNS: tuple[tuple[re.Pattern[str], ExecutiveRoleCategory], ...] = tuple(
+    (re.compile(rf"\b(?:{keyword})\b"), category) for keyword, category in _ROLE_KEYWORDS
+)
 
 _INTERIM_KEYWORD = "interim"
 
@@ -190,8 +205,8 @@ def _role_category(title: str | None) -> ExecutiveRoleCategory | None:
         # enough to accidentally fire here, and those three are exactly
         # the ones this exclusion exists to guard against.
         return None
-    for keyword, category in _ROLE_KEYWORDS:
-        if keyword in lowered:
+    for pattern, category in _ROLE_PATTERNS:
+        if pattern.search(lowered):
             return category
     return ExecutiveRoleCategory.OTHER_EXECUTIVE
 

@@ -48,6 +48,96 @@ def _knowledge(records, ticker="AAPL"):
     return extract_executive_change_intelligence(ticker, extract_earnings_call_knowledge(records))
 
 
+def _calls(speaker: str, titled: list[tuple[str, str]]):
+    """One statement per `(quarter, title)` call, each on its own quarter end."""
+    ends = {"Q1": (3, 31), "Q2": (6, 30), "Q3": (9, 30), "Q4": (12, 31)}
+    return tuple(
+        _statement(quarter, index, speaker, title, "Remarks.", period_end=date(int(quarter[:4]), *ends[quarter[4:]]))
+        for index, (quarter, title) in enumerate(titled)
+    )
+
+
+def _roles(title: str) -> ExecutiveRoleCategory | None:
+    executives = _knowledge(_calls("Someone", [("2025Q3", title)])).executives
+    return executives[0].role_category if executives else None
+
+
+class TestWholeWordRoleTitles:
+    """Real persisted titles. As bare substrings, "cto" matched inside
+    "director" and "president" inside "vice president"."""
+
+    def test_a_director_job_title_is_not_a_cto(self):
+        assert _roles("Director, Autopilot Software") is ExecutiveRoleCategory.OTHER_EXECUTIVE
+        assert _roles("Director of Self-Driving AI") is ExecutiveRoleCategory.OTHER_EXECUTIVE
+        assert _roles("Chief Technology Officer") is ExecutiveRoleCategory.CTO
+
+    def test_a_vice_president_is_not_the_president(self):
+        for title in ("Senior Vice President, Vehicle Engineering", "Executive Vice President & Chief Commercial Officer",
+                      "Executive Vice President, Upstream", "Vice-President, Sales"):
+            assert _roles(title) is ExecutiveRoleCategory.OTHER_EXECUTIVE, title
+        assert _roles("President & Chief Business Officer") is ExecutiveRoleCategory.PRESIDENT
+
+    def test_priority_order_is_kept(self):
+        assert _roles("Chairman, President & CEO") is ExecutiveRoleCategory.CEO
+        assert _roles("Executive Vice President and CFO") is ExecutiveRoleCategory.CFO
+        assert _roles("President, Asia Pacific, Europe, Middle East & Africa (incoming CFO)") is ExecutiveRoleCategory.CFO
+        assert _roles("Chief Executive Officer (CEO)") is ExecutiveRoleCategory.CEO
+
+    def test_board_seats_and_chairs_still_classify(self):
+        assert _roles("Director") is ExecutiveRoleCategory.BOARD_DIRECTOR
+        assert _roles("Independent Director") is ExecutiveRoleCategory.BOARD_DIRECTOR
+        assert _roles("Chairwoman") is ExecutiveRoleCategory.CHAIR
+
+    def test_exclusions_are_kept(self):
+        assert _roles("Corporate Vice President, Investor Relations") is None
+        assert _roles("Director of Investor Relations") is None
+        assert _roles("Analyst (Bernstein Research)") is None
+
+    def test_one_director_turned_vp_stays_one_person(self):
+        """TSLA's Ashok Elluswamy -- once a CTO under one title, another role under the next."""
+        knowledge = _knowledge(_calls("Ashok Elluswamy", [("2025Q3", "Director, Autopilot Software"), ("2026Q2", "VP of AI")]))
+        assert [(e.name, e.role_category) for e in knowledge.executives] == [
+            ("Ashok Elluswamy", ExecutiveRoleCategory.OTHER_EXECUTIVE)
+        ]
+        assert not any(e.event_type is LeadershipChangeEventType.ROLE_CHANGE for e in knowledge.leadership_changes)
+
+    def test_one_title_abbreviated_and_spelled_out_stays_one_person(self):
+        """TSLA's Lars Moravy -- "SVP" and "Senior Vice President" are one role."""
+        knowledge = _knowledge(_calls(
+            "Lars Moravy", [("2025Q4", "SVP, Vehicle Engineering"), ("2026Q2", "Senior Vice President, Vehicle Engineering")]
+        ))
+        assert len(knowledge.executives) == 1
+        assert not any(e.event_type is LeadershipChangeEventType.ROLE_CHANGE for e in knowledge.leadership_changes)
+
+    def test_an_evp_is_not_split_off_as_a_president(self):
+        """VST's Stacey Dore."""
+        knowledge = _knowledge(_calls(
+            "Stacey Dore", [("2025Q3", "Senior Executive"), ("2025Q4", "Executive Vice President & Chief Commercial Officer")]
+        ))
+        assert [e.role_category for e in knowledge.executives] == [ExecutiveRoleCategory.OTHER_EXECUTIVE]
+
+    def test_a_real_promotion_to_president_is_still_a_role_change(self):
+        """GOOGL's Philipp Schindler -- a genuine change of title."""
+        knowledge = _knowledge(_calls(
+            "Philipp Schindler", [("2025Q3", "Chief Business Officer"), ("2026Q2", "President & Chief Business Officer")]
+        ))
+        assert [e.role_category for e in knowledge.executives] == [
+            ExecutiveRoleCategory.OTHER_EXECUTIVE, ExecutiveRoleCategory.PRESIDENT,
+        ]
+        (change,) = [e for e in knowledge.leadership_changes if e.event_type is LeadershipChangeEventType.ROLE_CHANGE]
+        assert (change.prior_role_category, change.role_category) == (
+            ExecutiveRoleCategory.OTHER_EXECUTIVE, ExecutiveRoleCategory.PRESIDENT,
+        )
+
+    def test_an_inconsistent_provider_label_is_not_special_cased(self):
+        """ASML's Christophe Fouquet is CEO; one call labels him "Chief
+        Technology Officer". Atlas reads the titles literally."""
+        knowledge = _knowledge(_calls(
+            "Christophe Fouquet", [("2025Q3", "CEO"), ("2026Q1", "Chief Technology Officer"), ("2026Q2", "CEO")]
+        ))
+        assert {e.role_category for e in knowledge.executives} == {ExecutiveRoleCategory.CEO, ExecutiveRoleCategory.CTO}
+
+
 class TestEmptyInput:
     def test_no_transcripts_yields_empty_history(self):
         knowledge = _knowledge(())
