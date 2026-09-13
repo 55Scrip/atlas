@@ -211,6 +211,104 @@ class TestMultiHolderRolesFormNoChain:
         assert _of(knowledge, LeadershipChangeEventType.DEPARTURE) == []
 
 
+class TestOnePersonSpelledTwoWays:
+    """Real transcript labels: each spelling used to be its own identity,
+    so a CEO or CFO seat "changed hands" between a person and themselves."""
+
+    def test_a_dropped_middle_initial_is_one_person(self):
+        """AMAT: "Gary E. Dickerson" (2025Q3) then "Gary Dickerson"."""
+        knowledge = _people([
+            ("Gary E. Dickerson", "2025Q3", "President and CEO"),
+            ("Gary Dickerson", "2025Q4", "President and CEO"),
+            ("Gary Dickerson", "2026Q1", "President and CEO"),
+        ])
+        (ceo,) = knowledge.executives
+        assert ceo.name == "Gary Dickerson" and ceo.name_variants == ("Gary Dickerson", "Gary E. Dickerson")
+        assert _of(knowledge, LeadershipChangeEventType.DEPARTURE) == []
+        assert LeadershipChangeFindingKind.CEO_TRANSITION_OCCURRED not in {f.kind for f in knowledge.findings}
+
+    def test_initials_and_a_short_form_are_one_person(self):
+        """ASML: "Roger Dassen" / "R.J.M. Dassen"; VST: "James Burke" / "Jim Burke",
+        "Kris Moldovan" / "Kristopher Moldovan"."""
+        for calls in (
+            [("Roger Dassen", "2025Q3", "CFO"), ("R.J.M. Dassen", "2025Q4", "CFO"), ("Roger Dassen", "2026Q2", "CFO")],
+            [("James Burke", "2025Q3", "President and CEO"), ("James Burke", "2026Q1", "President and CEO"),
+             ("Jim Burke", "2026Q2", "President and CEO")],
+            [("Kris Moldovan", "2025Q3", "CFO"), ("Kristopher Moldovan", "2025Q4", "CFO"), ("Kris Moldovan", "2026Q2", "CFO")],
+        ):
+            knowledge = _people(calls)
+            assert len(knowledge.executives) == 1, calls
+            assert _of(knowledge, LeadershipChangeEventType.DEPARTURE) == [], calls
+
+    def test_an_accent_and_a_doubled_letter_are_one_person(self):
+        """VST: "Stacey Dore" / "Stacey Doré"; GOOGL: "Philipp" / "Philip" Schindler --
+        whose later promotion to President stays a role change."""
+        assert len(_people([
+            ("Stacey Dore", "2025Q3", "Senior Executive"), ("Stacey Dore", "2026Q1", "Senior Executive"),
+            ("Stacey Doré", "2026Q2", "Senior Executive"),
+        ]).executives) == 1
+        knowledge = _people([
+            ("Philipp Schindler", "2025Q3", "Chief Business Officer"),
+            ("Philip Schindler", "2025Q4", "Chief Business Officer"),
+            ("Philipp Schindler", "2026Q2", "President & Chief Business Officer"),
+        ])
+        assert [(e.name, e.role_category) for e in knowledge.executives] == [
+            ("Philipp Schindler", ExecutiveRoleCategory.OTHER_EXECUTIVE),
+            ("Philipp Schindler", ExecutiveRoleCategory.PRESIDENT),
+        ]
+        assert _of(knowledge, LeadershipChangeEventType.ROLE_CHANGE) == ["Philipp Schindler"]
+
+    def test_the_most_used_spelling_names_the_person(self):
+        knowledge = _people([("Mark J. Murphy", "2025Q3", "CFO"), ("Mark Murphy", "2025Q4", "CFO"), ("Mark Murphy", "2026Q1", "CFO")])
+        assert [e.name for e in knowledge.executives] == ["Mark Murphy"]
+
+    def test_a_raw_label_still_resolves_to_the_person(self):
+        knowledge = _people([
+            ("James Burke", "2025Q3", "President and CEO"), ("James Burke", "2026Q1", "President and CEO"),
+            ("Jim Burke", "2026Q2", "President and CEO"),
+        ])
+        assert find_executive_for_statement(knowledge.executives, "Jim Burke", "2026Q2").name == "James Burke"
+
+    def test_different_given_names_stay_two_people(self):
+        """VST: "Shawn" / "Sean" Stuckey -- neither prefix nor short form."""
+        knowledge = _people([("Shawn Stuckey", "2026Q1", "CFO"), ("Sean Stuckey", "2026Q2", "CFO")])
+        assert len(knowledge.executives) == 2
+
+    def test_a_different_surname_spelling_stays_two_people(self):
+        """CRM: "Srini Talabergata" / "Srini Talabhrigada" -- no near-miss surnames."""
+        knowledge = _people([("Srini Talabergata", "2026Q1", "President"), ("Srini Talabhrigada", "2026Q2", "President")])
+        assert len(knowledge.executives) == 2
+
+    def test_a_real_hand_over_with_a_new_surname_is_kept(self):
+        """MA: Sachin Mehra, then Ling Hai as CFO."""
+        knowledge = _people([("Sachin Mehra", "2025Q3", "CFO"), ("Sachin Mehra", "2026Q2", "CFO"), ("Ling Hai", "2026Q2", "CFO")])
+        assert len(knowledge.executives) == 2
+
+    def test_matching_names_in_distant_windows_stay_two_people(self):
+        knowledge = _people([("Gary E. Dickerson", "2020Q1", "CEO"), ("Gary Dickerson", "2025Q4", "CEO")])
+        assert len(knowledge.executives) == 2
+
+    def test_an_ambiguous_match_merges_nothing(self):
+        knowledge = _people([("J. Smith", "2025Q3", "CFO"), ("John Smith", "2025Q4", "CFO"), ("James Smith", "2025Q4", "CFO")])
+        assert len(knowledge.executives) == 3
+
+
+class TestPlaceholderSpeakers:
+    def test_an_unknown_executive_forms_no_identity_or_event(self):
+        """TSLA: the provider labels unattributed remarks "Unknown Executive"."""
+        records = (
+            _statement("2026Q1", 0, "Unknown Executive", "Executive", "Remarks.", period_end=date(2026, 3, 31)),
+            _statement("2026Q1", 1, "Elon Musk", "CEO", "Remarks.", period_end=date(2026, 3, 31)),
+            _statement("2026Q2", 2, "Unknown Executive", "Executive", "Remarks.", period_end=date(2026, 6, 30)),
+        )
+        earnings_call = extract_earnings_call_knowledge(records)
+        knowledge = extract_executive_change_intelligence("TSLA", earnings_call)
+        assert [e.name for e in knowledge.executives] == ["Elon Musk"]
+        assert all(e.executive_name != "Unknown Executive" for e in knowledge.leadership_changes)
+        # The source evidence itself is kept.
+        assert sum(s.speaker == "Unknown Executive" for t in earnings_call.transcripts for s in t.statements) == 2
+
+
 class TestEmptyInput:
     def test_no_transcripts_yields_empty_history(self):
         knowledge = _knowledge(())

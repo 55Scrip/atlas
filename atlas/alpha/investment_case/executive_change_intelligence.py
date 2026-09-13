@@ -77,6 +77,7 @@ different individuals.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
@@ -248,6 +249,11 @@ class ExecutiveIdentity:
     """Every distinct transcript (by its own `quarter` label) this
     identity was observed speaking in, chronological."""
     statement_count: int
+    name_variants: tuple[str, ...] = ()
+    """Every speaker label the transcripts use for this person, `name`
+    included, sorted -- more than one only when `_same_person_names`
+    recognised spellings of one name ("Jim Burke" is James Burke). Lets a
+    raw speaker label still resolve to its identity."""
 
 
 def _period_key(period: str) -> tuple[bool, tuple[int, int], str]:
@@ -257,18 +263,42 @@ def _period_key(period: str) -> tuple[bool, tuple[int, int], str]:
     return (ordinal is not None, ordinal or (0, 0), period)
 
 
-def _extract_identities(ticker: str | None, earnings_call: EarningsCallKnowledge) -> tuple[ExecutiveIdentity, ...]:
+#: A provider's stand-in for a speaker it could not name ("Unknown
+#: Executive"). The statement stays in the earnings-call evidence, but it
+#: names no one, so it forms no identity -- and no appointment, departure,
+#: tenure or succession -- exactly like an untitled speaker.
+_PLACEHOLDER_SPEAKER = re.compile(r"^\s*(?:unknown|unidentified)\b", re.IGNORECASE)
+
+#: Common short forms of a given name. Generic English usage only -- never a
+#: particular person -- used solely to recognise one person's name spelled
+#: two ways ("Jim Burke" / "James Burke") under the rule in
+#: `_same_person_names`.
+_SHORT_FORMS = {
+    "andy": "andrew", "ben": "benjamin", "bill": "william", "bob": "robert", "chris": "christopher",
+    "dan": "daniel", "dave": "david", "greg": "gregory", "jeff": "jeffrey", "jim": "james",
+    "jimmy": "james", "joe": "joseph", "kris": "kristopher", "matt": "matthew", "mike": "michael",
+    "nick": "nicholas", "pat": "patrick", "rob": "robert", "sam": "samuel", "steve": "steven",
+    "tom": "thomas", "tony": "anthony", "will": "william",
+}
+
+
+def _identities_by_speaker(
+    ticker: str | None, earnings_call: EarningsCallKnowledge, person_of: dict[str, str]
+) -> tuple[ExecutiveIdentity, ...]:
     accumulators: dict[tuple[str, ExecutiveRoleCategory], dict] = {}
     for transcript in earnings_call.transcripts:
         seen_this_transcript: set[tuple[str, ExecutiveRoleCategory]] = set()
         for statement in transcript.statements:
             role_category = _role_category(statement.title)
-            if role_category is None:
+            if role_category is None or _PLACEHOLDER_SPEAKER.match(statement.speaker):
                 continue
-            key = (statement.speaker, role_category)
-            entry = accumulators.setdefault(key, {"transcripts": [], "raw_title": None, "statement_count": 0})
+            key = (person_of.get(statement.speaker, statement.speaker), role_category)
+            entry = accumulators.setdefault(
+                key, {"transcripts": [], "raw_title": None, "statement_count": 0, "speakers": set()}
+            )
             entry["statement_count"] += 1
             entry["raw_title"] = statement.title
+            entry["speakers"].add(statement.speaker)
             if key not in seen_this_transcript:
                 entry["transcripts"].append(transcript.quarter)
                 seen_this_transcript.add(key)
@@ -280,11 +310,100 @@ def _extract_identities(ticker: str | None, earnings_call: EarningsCallKnowledge
             first_observed_period=min(entry["transcripts"], key=_period_key),
             last_observed_period=max(entry["transcripts"], key=_period_key),
             source_transcripts=tuple(entry["transcripts"]), statement_count=entry["statement_count"],
+            name_variants=tuple(sorted(entry["speakers"])),
         )
         for (name, role_category), entry in accumulators.items()
     ]
     identities.sort(key=lambda identity: _period_key(identity.first_observed_period))
     return tuple(identities)
+
+
+def _folded_name(name: str) -> tuple[tuple[str, ...], str]:
+    """(given-name words, surname), case, accents and punctuation folded
+    ("R.J.M. Dassen" -> (("r", "j", "m"), "dassen"))."""
+    folded = "".join(c for c in unicodedata.normalize("NFKD", name) if not unicodedata.combining(c)).lower()
+    words = [word for word in re.split(r"[\s.,]+", folded) if word]
+    return (tuple(words[:-1]), words[-1]) if words else ((), "")
+
+
+def _given_names_match(a: tuple[str, ...], b: tuple[str, ...]) -> bool:
+    if not a or not b:
+        return False
+    first_a, first_b = a[0], b[0]
+    if first_a == first_b:  # middle initials aside: "Gary E." ~ "Gary"
+        return True
+    if len(first_a) == 1 or len(first_b) == 1:  # an initial: "R.J.M." ~ "Roger"
+        return first_a[0] == first_b[0]
+    if min(len(first_a), len(first_b)) >= 3 and (first_a.startswith(first_b) or first_b.startswith(first_a)):
+        return True  # "Kris" ~ "Kristopher", "Philip" ~ "Philipp"
+    return _SHORT_FORMS.get(first_a, first_a) == _SHORT_FORMS.get(first_b, first_b)  # "Jim" ~ "James"
+
+
+def _quarter_index(period: str) -> int | None:
+    ordinal = period_ordinal(period)
+    return ordinal[0] * 4 + ordinal[1] if ordinal is not None else None
+
+
+def _windows_touch(a: ExecutiveIdentity, b: ExecutiveIdentity) -> bool:
+    """The two observation windows overlap or run back to back."""
+    first_a, last_a = _quarter_index(a.first_observed_period), _quarter_index(a.last_observed_period)
+    first_b, last_b = _quarter_index(b.first_observed_period), _quarter_index(b.last_observed_period)
+    if None in (first_a, last_a, first_b, last_b):
+        return False
+    return first_b <= last_a + 1 and first_a <= last_b + 1
+
+
+def _same_person_names(identities: tuple[ExecutiveIdentity, ...]) -> dict[str, str]:
+    """Speaker labels that name one person, mapped to the spelling used most.
+
+    Transcripts spell one executive several ways ("Gary E. Dickerson" /
+    "Gary Dickerson", "Jim Burke" / "James Burke"), and each spelling used
+    to be its own identity -- so a one-seat role "changed hands" between a
+    person and themselves. Two labels are one person only when all hold:
+    the same surname (case, accents and punctuation folded -- never a
+    near-miss surname); compatible given names (identical, an initial, a
+    prefix of three or more letters, or a `_SHORT_FORMS` pair); the same
+    role category in windows that overlap or run back to back; and each
+    label matches exactly the other, and only it. Anything less stays two
+    people -- "Shawn" / "Sean", or two transcriptions of one surname, are
+    not merged."""
+    by_name: dict[str, list[ExecutiveIdentity]] = {}
+    for identity in identities:
+        by_name.setdefault(identity.name, []).append(identity)
+    matches: dict[str, list[str]] = {}
+    for name in by_name:
+        given, surname = _folded_name(name)
+        matches[name] = [
+            other for other in by_name
+            if other != name
+            and _folded_name(other)[1] == surname
+            and _given_names_match(given, _folded_name(other)[0])
+            and any(
+                mine.role_category is theirs.role_category and _windows_touch(mine, theirs)
+                for mine in by_name[name] for theirs in by_name[other]
+            )
+        ]
+
+    def weight(name: str) -> tuple[int, tuple, str]:
+        return (
+            sum(identity.statement_count for identity in by_name[name]),
+            max(_period_key(identity.last_observed_period) for identity in by_name[name]),
+            name,
+        )
+
+    person_of: dict[str, str] = {}
+    for name, found in matches.items():
+        if len(found) == 1 and matches[found[0]] == [name]:
+            canonical = max((name, found[0]), key=weight)
+            if name != canonical:
+                person_of[name] = canonical
+    return person_of
+
+
+def _extract_identities(ticker: str | None, earnings_call: EarningsCallKnowledge) -> tuple[ExecutiveIdentity, ...]:
+    literal = _identities_by_speaker(ticker, earnings_call, {})
+    person_of = _same_person_names(literal)
+    return _identities_by_speaker(ticker, earnings_call, person_of) if person_of else literal
 
 
 # -- Phase 5: Succession Knowledge ------------------------------------------
@@ -540,7 +659,7 @@ def find_executive_for_statement(
     function callers opt into."""
     candidates = [
         identity for identity in identities
-        if identity.name == speaker
+        if speaker in (identity.name, *identity.name_variants)
         and _within(reporting_period, identity.first_observed_period, identity.last_observed_period)
     ]
     if not candidates:

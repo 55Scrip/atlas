@@ -243,7 +243,8 @@ _REVISION_KINDS = (RevisionKind.RAISED, RevisionKind.LOWERED, RevisionKind.REAFF
 
 def _guidance_history(executive: ExecutiveIdentity, guidance_items: tuple[GuidanceItem, ...]) -> TenureGuidanceHistory:
     issued = tuple(
-        g for g in guidance_items if g.speaker == executive.name and _during_periods(g.reporting_period, executive)
+        g for g in guidance_items
+        if g.speaker in (executive.name, *executive.name_variants) and _during_periods(g.reporting_period, executive)
     )
     return TenureGuidanceHistory(
         issued=issued,
