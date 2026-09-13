@@ -7,7 +7,8 @@ using raw `BusinessFact`s only:
    must exist (`growth_primitives.rolling_growth_observations` +
    `.corroborated_by` -- a statistical floor, not a threshold: a range
    cannot exist from fewer than two points).
-2. Revenue corroboration itself (the same call, exact-membership).
+2. Revenue corroboration itself (the same call: Revenue reported for both
+   endpoint fiscal years -- per-year presence, never a bounds check).
 3. The valuation domain, reading raw facts only, refuses extrapolation
    when full-history evidence shows no legitimate growth basis.
 

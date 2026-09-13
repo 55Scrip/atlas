@@ -206,6 +206,12 @@ from enum import Enum
 from atlas.analysis_engine.business_contracts import BusinessAnalysisResult, BusinessCategory
 from atlas.analysis_engine.business_contracts import BusinessCategoryStatus as BizStatus
 from atlas.analysis_engine.business_facts.contracts import BusinessFactKind
+from atlas.analysis_engine.business_facts.growth_primitives import (
+    GrowthObservation,
+    corroborated_by,
+    real_periods,
+    rolling_growth_observations,
+)
 from atlas.analysis_engine.business_facts.models import BusinessFact
 from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.conviction import ConvictionAssessment, ConvictionLevel
@@ -650,34 +656,8 @@ def _recent_trend(facts_sorted_asc: list[BusinessFact]) -> MetricTrend | None:
     return trend
 
 
-def _rolling_cagr_observations(
-    facts_sorted_asc: list[BusinessFact], *, years: int
-) -> tuple[tuple[str, str, float], ...]:
-    """Calibration Sprint: replaces the old single-period YoY delta with
-    a rolling `years`-period CAGR -- `(start_period, end_period, rate)`
-    for every pair of facts exactly `years` apart in the sorted sequence
-    where both are positive (same non-positive-value exclusion as
-    Short-Term's own yield math, for the same "do not invert into a
-    meaningless sign" reason). A single noisy year can no longer swing
-    the whole distribution the way a raw YoY delta could -- each
-    observation already smooths `years` worth of working-capital/capex
-    /timing noise, the same horizon the forward range itself compounds
-    over, so the comparison is apples-to-apples."""
-    observations: list[tuple[str, str, float]] = []
-    for i in range(len(facts_sorted_asc) - years):
-        start, end = facts_sorted_asc[i], facts_sorted_asc[i + years]
-        if start.value > 0 and end.value > 0:
-            rate = (end.value / start.value) ** (1.0 / years) - 1.0
-            observations.append((start.period, end.period, rate))
-    return tuple(observations)
-
-
-def _revenue_periods(revenue_facts_sorted_asc: list[BusinessFact]) -> frozenset[str]:
-    return frozenset(f.period for f in revenue_facts_sorted_asc)
-
-
 def _revenue_corroborated_growth_rates(
-    fcf_cagr_observations: tuple[tuple[str, str, float], ...], revenue_periods: frozenset[str]
+    fcf_cagr_observations: tuple[GrowthObservation, ...], revenue_periods: frozenset[str]
 ) -> tuple[float, ...]:
     """Part 4/6's real, non-arbitrary answer to "extreme historical
     growth can be mathematically correct but economically indefensible":
@@ -686,8 +666,9 @@ def _revenue_corroborated_growth_rates(
     company reports -- has an *actual reported fact at both endpoints*
     of that same rolling span. This is not a percentile cutoff, winsorization,
     or invented "reasonable maximum growth": it is the direct, literal
-    meaning of "corroborated by real evidence." Deliberately an exact
-    per-period membership check, not an earliest-to-latest bounds check
+    meaning of "corroborated by real evidence." Deliberately a per-year
+    presence check (`growth_primitives.corroborated_by`: a Revenue fact
+    for the same fiscal year), not an earliest-to-latest bounds check
     -- this codebase's own real ingestion has genuine multi-year Revenue
     gaps (MSFT's real 2011-2015 stretch, discovered during this
     Calibration Sprint's own live verification) where Free Cash Flow was
@@ -701,9 +682,7 @@ def _revenue_corroborated_growth_rates(
     into the FCF rate -- only its *presence* at the window's endpoints
     gates which FCF observations are trustworthy (Part 6's "preserve the
     tension, do not average" instruction)."""
-    return tuple(
-        rate for start, end, rate in fcf_cagr_observations if start in revenue_periods and end in revenue_periods
-    )
+    return tuple(observation.rate for observation in corroborated_by(fcf_cagr_observations, revenue_periods))
 
 
 def _business_trajectory_eligible(
@@ -758,7 +737,7 @@ def _annualized_return(*, current_yield: float, terminal_yield: float, growth_ra
     `total_multiple` is provably positive given this module's own
     construction (`current_yield`/`terminal_yield` are always positive
     FCF-yield ratios; `growth_rate` is always `> -1.0` since
-    `_rolling_cagr_observations` only ever divides two positive values),
+    `rolling_growth_observations` only ever divides two positive values),
     so the `<= 0` branch below is defensive documentation, not a
     reachable path -- kept for the same reason `cash_flow.py` still
     guards already-impossible-by-construction states explicitly."""
@@ -819,8 +798,10 @@ def _long_term_valuation(
     recent_fcf_trend = _recent_trend(fcf_facts)
 
     years = LONG_TERM_COMPOUNDING_YEARS
-    fcf_cagr_observations = _rolling_cagr_observations(fcf_facts, years=years)
-    revenue_periods = _revenue_periods(revenue_facts)
+    # The shared, fiscal-year-true rolling windows (`growth_primitives`) --
+    # the same windows Valuation Support's Scenario eligibility reads.
+    fcf_cagr_observations = rolling_growth_observations(fcf_facts, years=years)
+    revenue_periods = real_periods(revenue_facts)
     corroborated_rates = _revenue_corroborated_growth_rates(fcf_cagr_observations, revenue_periods)
 
     eligible = _business_trajectory_eligible(

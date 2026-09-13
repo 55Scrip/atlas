@@ -58,7 +58,11 @@ from atlas.analysis_engine.business_contracts import (
 )
 from atlas.analysis_engine.business_contracts import BusinessCategoryStatus as Status
 from atlas.analysis_engine.business_facts.contracts import BusinessFactKind
-from atlas.analysis_engine.business_facts.growth_primitives import rolling_growth_observations
+from atlas.analysis_engine.business_facts.growth_primitives import (
+    fiscal_year_values,
+    fiscal_years_apart,
+    rolling_growth_observations,
+)
 from atlas.analysis_engine.business_facts.models import BusinessFact
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
 from atlas.decision_engine.contracts import EvidenceCoverageLevel
@@ -138,7 +142,8 @@ def _full_span_cagr(kind_facts: list[BusinessFact]) -> float | None:
 
     Delegates the arithmetic and every edge case to
     `growth_primitives.rolling_growth_observations`, the primitive
-    Outlook already uses -- called with `years = len - 1` so it yields
+    Outlook and Valuation Support use -- called with `years` set to the
+    fiscal years between the series' first and last year, so it yields
     exactly one observation spanning the whole series. Reusing it
     rather than repeating the formula means the positivity guard is
     shared: an observation is emitted only when both endpoints are
@@ -147,18 +152,19 @@ def _full_span_cagr(kind_facts: list[BusinessFact]) -> float | None:
     crosses zero for real companies, and a compound rate across a sign
     change is not a small error -- it is meaningless.
 
-    `kind_facts` arrives sorted ascending by period from
-    `_facts_by_kind`, which sorts explicitly; this function does not
-    re-sort, matching `classify_metric_trend`'s own contract.
-
-    Periods are treated as one step apart, exactly as
-    `rolling_growth_observations` already treats them everywhere else
-    in this codebase. `BusinessFact.period` is a string, so no calendar
-    arithmetic is available here and none is invented.
+    The span is counted in fiscal years (`growth_primitives`' fiscal-year
+    identity), never in facts: a series with a missing year used to be
+    annualised over its fact count, so a 16-year span with eight facts
+    read as seven years. A series whose ends are not a whole number of
+    fiscal years apart has no principled span, and so no rate.
     """
-    if len(kind_facts) < 2:
+    series = fiscal_year_values(kind_facts)
+    if len(series) < 2:
         return None
-    observations = rolling_growth_observations(kind_facts, years=len(kind_facts) - 1)
+    span = fiscal_years_apart(series[0].period, series[-1].period)
+    if not span:
+        return None
+    observations = rolling_growth_observations(kind_facts, years=span)
     return observations[0].rate if observations else None
 
 

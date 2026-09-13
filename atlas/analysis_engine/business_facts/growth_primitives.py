@@ -28,15 +28,37 @@ change." That is exactly this module's role, one layer up (rolling
 statistics over facts, not the facts themselves) -- not a new home, the
 natural extension of an already-adopted one.
 
-**Provenance.** Every function here is extracted, not reinvented, from
-`atlas.analysis_engine.outlook`'s own already-real, already-tested
-rolling-CAGR/revenue-corroboration/future-date-exclusion/annualized-return
-math (Calibration Sprint). `outlook.py` is **not** refactored to call this
-module in this sprint -- its own private implementations are left
-untouched, per the explicit instruction to prefer additive extraction over
-unrelated churn. A future sprint may migrate `outlook.py` onto this module
-without changing its observable behavior; that migration is out of this
-sprint's scope.
+**Provenance.** Every function here was extracted, not reinvented, from
+`atlas.analysis_engine.outlook`'s own rolling-CAGR/revenue-corroboration/
+future-date-exclusion/annualized-return math (Calibration Sprint). Since
+Calendar-True Rolling Windows this module is the one rolling-growth
+implementation: Outlook's Long-Term range, Valuation Support's Scenario
+eligibility and Growth's full-span CAGR all read it.
+
+**Fiscal-year identity (Calendar-True Rolling Windows).** A fact carries
+only its period end, so which fiscal year it describes is read from the
+calendar, never from its position in a list. The rolling windows used to
+pair list item `i` with item `i + N` and annualise over `N`: NVDA's history
+jumps from FY2012 to FY2022, so 13-year spans were reported as 4-year
+growth, and DE's filings label one fiscal year both 2015-10-31 and
+2015-11-01, so 2- and 3-year spans passed as 4. The rules now:
+
+- *Same fiscal year.* Period ends within `FISCAL_YEAR_END_TOLERANCE_DAYS`
+  of each other describe one fiscal year. A 52/53-week calendar moves its
+  year end within a seven-day band (2015-10-31 -> 2016-10-30 is one year);
+  two weeks absorbs that band and any weekend shift while staying far
+  below a quarter, so a quarter end can never join an annual one.
+- *One value per fiscal year.* Reports of one fiscal year that agree are
+  one observation. Reports that disagree -- a restated comparative -- are
+  an ambiguity: the year is withheld, never averaged and never chosen by
+  input order (the same rule the FCF-yield history applies per period).
+- *N fiscal years apart.* Two fiscal years are N apart when the days
+  between their period ends lie within the same tolerance of
+  `N * FISCAL_YEAR_DAYS`. An N-year window exists only between two such
+  years: a missing endpoint year means no window -- never the nearest
+  available year, never a longer or shorter span annualised as N.
+- A period that is not an ISO date has no place on a calendar and takes no
+  part (every extracted fact's period is its record's ISO period end).
 
 **Not exported here:** metric-trend classification
 (`atlas.analysis_engine.growth.classify_metric_trend`/`MetricTrend`).
@@ -51,18 +73,24 @@ imports it the same way `outlook.py` already does.
 from __future__ import annotations
 
 import statistics
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from atlas.analysis_engine.business_facts.contracts import BusinessFactKind
 from atlas.analysis_engine.business_facts.models import BusinessFact
 
 __all__ = [
+    "FISCAL_YEAR_DAYS",
+    "FISCAL_YEAR_END_TOLERANCE_DAYS",
+    "FiscalYearValue",
     "GrowthObservation",
     "DistributionSummary",
     "sorted_facts_of_kind",
     "exclude_future_dated",
     "real_periods",
+    "fiscal_year_values",
+    "fiscal_years_apart",
     "rolling_growth_observations",
     "corroborated_by",
     "distribution_summary",
@@ -90,54 +118,174 @@ def exclude_future_dated(facts_sorted_asc: list[BusinessFact], *, as_of: datetim
 
 def real_periods(facts_sorted_asc: list[BusinessFact]) -> frozenset[str]:
     """The exact set of periods a real fact series actually covers --
-    used for exact-membership corroboration (`corroborated_by`), never a
-    bounds check (earliest-to-latest), since a bounds check would wrongly
-    treat a genuine multi-year ingestion gap as covered."""
+    used for per-year corroboration (`corroborated_by`), never a bounds
+    check (earliest-to-latest), since a bounds check would wrongly treat a
+    genuine multi-year ingestion gap as covered."""
     return frozenset(f.period for f in facts_sorted_asc)
+
+
+#: The mean Gregorian year. Fiscal calendars are pinned to the civil
+#: calendar (a fixed date, or the weekday nearest one), so a year end
+#: never drifts from `N * FISCAL_YEAR_DAYS` by more than its own
+#: seven-day band, however many years apart.
+FISCAL_YEAR_DAYS = 365.2425
+
+#: How far apart two period ends may be and still describe one fiscal
+#: year -- and how far a span may miss a whole number of fiscal years.
+#: See the module docstring.
+FISCAL_YEAR_END_TOLERANCE_DAYS = 14
+
+
+def _period_end(period: str) -> date | None:
+    try:
+        return date.fromisoformat(period)
+    except ValueError:
+        return None
+
+
+@dataclass(frozen=True)
+class FiscalYearValue:
+    """One fiscal year's single, unambiguous value. `period` is the
+    earliest period end reported for the year; `fact_ids` are every fact
+    that reported it."""
+
+    period: str
+    period_end: date
+    value: float
+    fact_ids: tuple[str, ...]
+
+
+def fiscal_year_values(facts: list[BusinessFact]) -> tuple[FiscalYearValue, ...]:
+    """The facts as one value per fiscal year, oldest first -- see the
+    module docstring. Input order never matters: facts are ordered by
+    period end, then id. A group of period ends wider than the tolerance
+    (a chain of near-duplicates) has no single identity and is withheld,
+    like a year whose reports disagree."""
+    dated = sorted(
+        ((end, fact) for fact in facts if (end := _period_end(fact.period)) is not None),
+        key=lambda pair: (pair[0], pair[1].id),
+    )
+    groups: list[list[tuple[date, BusinessFact]]] = []
+    for end, fact in dated:
+        if groups and (end - groups[-1][-1][0]).days <= FISCAL_YEAR_END_TOLERANCE_DAYS:
+            groups[-1].append((end, fact))
+        else:
+            groups.append([(end, fact)])
+    values: list[FiscalYearValue] = []
+    for group in groups:
+        first_end = group[0][0]
+        if (group[-1][0] - first_end).days > FISCAL_YEAR_END_TOLERANCE_DAYS:
+            continue
+        if len({(fact.value, fact.unit) for _, fact in group}) != 1:
+            continue
+        values.append(FiscalYearValue(
+            period=first_end.isoformat(),
+            period_end=first_end,
+            value=group[0][1].value,
+            fact_ids=tuple(sorted(fact.id for _, fact in group)),
+        ))
+    return _on_fiscal_calendar(values)
+
+
+def _on_fiscal_calendar(values: list[FiscalYearValue]) -> tuple[FiscalYearValue, ...]:
+    """Only the years on the company's own fiscal calendar: the year end
+    most of its years share (whole fiscal years apart), the most recent
+    calendar on a tie. A quarter end, or a year from before a change of
+    fiscal year end, is off that calendar and takes no part -- no span
+    from it is a whole number of the company's fiscal years."""
+    calendars: list[list[FiscalYearValue]] = []
+    for value in values:
+        for calendar in calendars:
+            if fiscal_years_apart(calendar[0].period, value.period) is not None:
+                calendar.append(value)
+                break
+        else:
+            calendars.append([value])
+    if not calendars:
+        return ()
+    return tuple(max(calendars, key=lambda calendar: (len(calendar), calendar[-1].period_end)))
+
+
+def fiscal_years_apart(start_period: str, end_period: str) -> int | None:
+    """How many whole fiscal years separate two period ends, or `None`
+    when the span is not a whole number of fiscal years within the
+    tolerance (or either period is not a date). `0` is the same year."""
+    start, end = _period_end(start_period), _period_end(end_period)
+    if start is None or end is None:
+        return None
+    days = (end - start).days
+    years = round(days / FISCAL_YEAR_DAYS)
+    if abs(days - years * FISCAL_YEAR_DAYS) > FISCAL_YEAR_END_TOLERANCE_DAYS:
+        return None
+    return years
 
 
 @dataclass(frozen=True)
 class GrowthObservation:
     """One rolling-window growth-rate observation -- a fact about the
-    data, not a conclusion. `rate` is a plain compound annual growth
-    rate between two real, positive-valued facts exactly `years` apart."""
+    data, not a conclusion. `rate` is the compound annual growth rate
+    between two positive fiscal-year values exactly `years` fiscal years
+    apart; the endpoints and their facts are kept so the window's identity
+    can always be checked."""
 
     start_period: str
     end_period: str
     rate: float
+    years: int
+    start_value: float
+    end_value: float
+    source_fact_ids: tuple[str, ...]
 
 
 def rolling_growth_observations(
     facts_sorted_asc: list[BusinessFact], *, years: int
 ) -> tuple[GrowthObservation, ...]:
-    """Every `(start, end, rate)` triple for facts exactly `years` apart
-    in the sorted sequence where both endpoints are positive -- extracted
-    verbatim from `outlook.py::_rolling_cagr_observations`. A single
-    noisy period can no longer swing the whole distribution the way a raw
-    year-over-year delta could; each observation already smooths `years`
-    worth of timing noise."""
+    """Every window from a fiscal year to the fiscal year exactly `years`
+    later where both values are positive, oldest first. The years come
+    from `fiscal_year_values`, so the window is a real `years`-year span
+    and `rate` annualises over exactly that. A start year whose `years`
+    -later year Atlas lacks forms no window at all. A single noisy period
+    can no longer swing the whole distribution the way a raw year-over-year
+    delta could: each observation smooths `years` worth of timing noise.
+    (`facts_sorted_asc` is named for its callers; order is not relied on.)"""
+    series = fiscal_year_values(facts_sorted_asc)
+    ends = [value.period_end for value in series]
+    span, window = timedelta(days=years * FISCAL_YEAR_DAYS), timedelta(days=FISCAL_YEAR_END_TOLERANCE_DAYS)
     observations: list[GrowthObservation] = []
-    for i in range(len(facts_sorted_asc) - years):
-        start, end = facts_sorted_asc[i], facts_sorted_asc[i + years]
+    for start in series:
+        target = start.period_end + span
+        candidates = series[bisect_left(ends, target - window):bisect_right(ends, target + window)]
+        matches = [end for end in candidates if fiscal_years_apart(start.period, end.period) == years]
+        if len(matches) != 1:
+            continue
+        end = matches[0]
         if start.value > 0 and end.value > 0:
-            rate = (end.value / start.value) ** (1.0 / years) - 1.0
-            observations.append(GrowthObservation(start.period, end.period, rate))
+            observations.append(GrowthObservation(
+                start_period=start.period,
+                end_period=end.period,
+                rate=(end.value / start.value) ** (1.0 / years) - 1.0,
+                years=years,
+                start_value=start.value,
+                end_value=end.value,
+                source_fact_ids=start.fact_ids + end.fact_ids,
+            ))
     return tuple(observations)
 
 
 def corroborated_by(
     observations: tuple[GrowthObservation, ...], corroborating_periods: frozenset[str]
 ) -> tuple[GrowthObservation, ...]:
-    """The subset of `observations` whose both endpoints are present in
-    an independent fact series's own real period set -- exact per-period
-    membership, never a bounds check (see `real_periods`). Extracted
-    verbatim from `outlook.py::_revenue_corroborated_growth_rates`'s own
-    filtering logic, generalized beyond Revenue-specifically: this
-    function does not know or care which metric supplied the
-    corroborating periods, only that they are real."""
-    return tuple(
-        obs for obs in observations if obs.start_period in corroborating_periods and obs.end_period in corroborating_periods
-    )
+    """The subset of `observations` where an independent fact series
+    reports both endpoint fiscal years -- per-year presence, never a
+    bounds check (see `real_periods`): a corroborating period counts for
+    an endpoint when it is the same fiscal year. Generalized beyond
+    Revenue: this function does not know or care which metric supplied
+    the corroborating periods, only that they are real."""
+
+    def reported(period: str) -> bool:
+        return any(fiscal_years_apart(period, other) == 0 for other in corroborating_periods)
+
+    return tuple(obs for obs in observations if reported(obs.start_period) and reported(obs.end_period))
 
 
 @dataclass(frozen=True)
