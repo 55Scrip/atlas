@@ -304,9 +304,21 @@ class SuccessionRelationship:
     links the roles," made inspectable rather than only asserted."""
 
 
+#: Categories many people hold at once: `OTHER_EXECUTIVE` is the catch-all
+#: for titled executives without a tracked role ("VP of AI", "SVP, Vehicle
+#: Engineering"), and a board has many directors. Two holders are not one
+#: seat changing hands, so these never form a succession chain -- no
+#: departure, no successor, no "a different individual previously held this
+#: role". Each holder is simply first observed (an appointment), and a
+#: person moving into or out of one is still a role change.
+_MULTI_HOLDER_ROLES = frozenset({ExecutiveRoleCategory.OTHER_EXECUTIVE, ExecutiveRoleCategory.BOARD_DIRECTOR})
+
+
 def _successions(identities: tuple[ExecutiveIdentity, ...]) -> tuple[SuccessionRelationship, ...]:
     by_role: dict[ExecutiveRoleCategory, list[ExecutiveIdentity]] = {}
     for identity in identities:
+        if identity.role_category in _MULTI_HOLDER_ROLES:
+            continue
         by_role.setdefault(identity.role_category, []).append(identity)
     for group in by_role.values():
         group.sort(key=lambda identity: _period_key(identity.first_observed_period))
@@ -415,10 +427,11 @@ def _leadership_change_events(
     succession_incoming = {(s.incoming_executive_name, s.role_category) for s in successions}
 
     for role_category, group in by_role.items():
+        one_seat = role_category not in _MULTI_HOLDER_ROLES
         for index, identity in enumerate(group):
             key = (identity.name, identity.role_category)
-            is_first = index == 0
-            is_last = index == len(group) - 1
+            is_first = index == 0 or not one_seat
+            is_last = index == len(group) - 1 or not one_seat
 
             if key in role_change_targets:
                 pass

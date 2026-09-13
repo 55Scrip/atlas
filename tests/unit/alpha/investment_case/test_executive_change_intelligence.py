@@ -138,6 +138,79 @@ class TestWholeWordRoleTitles:
         assert {e.role_category for e in knowledge.executives} == {ExecutiveRoleCategory.CEO, ExecutiveRoleCategory.CTO}
 
 
+def _people(calls: list[tuple[str, str, str]]):
+    """`(speaker, quarter, title)` statements across one company's calls."""
+    ends = {"Q1": (3, 31), "Q2": (6, 30), "Q3": (9, 30), "Q4": (12, 31)}
+    return _knowledge(tuple(
+        _statement(quarter, index, speaker, title, "Remarks.", period_end=date(int(quarter[:4]), *ends[quarter[4:]]))
+        for index, (speaker, quarter, title) in enumerate(calls)
+    ))
+
+
+def _of(knowledge, kind: LeadershipChangeEventType) -> list[str]:
+    return [e.executive_name for e in knowledge.leadership_changes if e.event_type is kind]
+
+
+class TestMultiHolderRolesFormNoChain:
+    """`OTHER_EXECUTIVE` and `BOARD_DIRECTOR` are held by many people at
+    once: a later holder is not the earlier one's successor."""
+
+    def test_two_other_executives_are_not_a_departure_and_a_successor(self):
+        """TSLA: Ashok Elluswamy, then Lars Moravy, first observed in turn."""
+        knowledge = _people([
+            ("Ashok Elluswamy", "2025Q3", "Director, Autopilot Software"),
+            ("Lars Moravy", "2025Q4", "SVP, Vehicle Engineering"),
+            ("Ashok Elluswamy", "2026Q2", "VP of AI"),
+            ("Lars Moravy", "2026Q2", "Senior Vice President, Vehicle Engineering"),
+        ])
+        assert _of(knowledge, LeadershipChangeEventType.DEPARTURE) == []
+        assert sorted(_of(knowledge, LeadershipChangeEventType.APPOINTMENT)) == ["Ashok Elluswamy", "Lars Moravy"]
+        assert all(
+            "different individual" not in e.provenance for e in knowledge.leadership_changes
+        )
+        assert LeadershipChangeFindingKind.REPEATED_EXECUTIVE_TURNOVER not in {f.kind for f in knowledge.findings}
+
+    def test_an_evp_and_an_svp_are_not_a_succession(self):
+        """VST: Stacey Dore, then Shawn Stuckey."""
+        knowledge = _people([
+            ("Stacey Dore", "2025Q4", "Executive Vice President & Chief Commercial Officer"),
+            ("Stacey Dore", "2026Q1", "Executive Vice President & Chief Commercial Officer"),
+            ("Shawn Stuckey", "2026Q1", "Senior Vice President, Trading & Origination"),
+        ])
+        assert _of(knowledge, LeadershipChangeEventType.DEPARTURE) == []
+        assert knowledge.successions == ()
+
+    def test_an_interim_other_executive_has_no_successor(self):
+        knowledge = _people([
+            ("Michael Spencer", "2025Q3", "Interim Executive Vice President of Finance and Strategy"),
+            ("Jane Doe", "2025Q4", "Chief Marketing Officer"),
+        ])
+        assert knowledge.successions == ()
+        assert _of(knowledge, LeadershipChangeEventType.PERMANENT_APPOINTMENT) == []
+
+    def test_two_directors_are_two_seats(self):
+        knowledge = _people([
+            ("A Director", "2025Q3", "Independent Director"),
+            ("B Director", "2025Q4", "Independent Director"),
+        ])
+        assert _of(knowledge, LeadershipChangeEventType.DEPARTURE) == []
+
+    def test_a_one_seat_role_still_changes_hands(self):
+        knowledge = _people([("Alice Smith", "2025Q3", "CFO"), ("Dave Kim", "2025Q4", "CFO")])
+        assert _of(knowledge, LeadershipChangeEventType.DEPARTURE) == ["Alice Smith"]
+        assert LeadershipChangeFindingKind.CFO_TRANSITION_OCCURRED in {f.kind for f in knowledge.findings}
+
+    def test_a_move_out_of_the_catch_all_is_still_a_role_change(self):
+        """GOOGL: Philipp Schindler, Chief Business Officer, then President."""
+        knowledge = _people([
+            ("Philipp Schindler", "2025Q3", "Chief Business Officer"),
+            ("Someone Else", "2025Q4", "Chief Marketing Officer"),
+            ("Philipp Schindler", "2026Q2", "President & Chief Business Officer"),
+        ])
+        assert _of(knowledge, LeadershipChangeEventType.ROLE_CHANGE) == ["Philipp Schindler"]
+        assert _of(knowledge, LeadershipChangeEventType.DEPARTURE) == []
+
+
 class TestEmptyInput:
     def test_no_transcripts_yields_empty_history(self):
         knowledge = _knowledge(())
