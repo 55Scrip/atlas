@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { LanguageProvider, useTranslation } from "../i18n";
 import { ManagementIntelligencePanel } from "./ManagementIntelligencePanel";
 import type {
   ExecutiveChangeIntelligenceView,
   ExecutiveCompensationIntelligenceView,
+  ExecutiveIdentityView,
   ExecutiveTrackRecordIntelligenceView,
   GovernanceIntelligenceView,
   InsiderAlignmentIntelligenceView,
@@ -166,6 +167,60 @@ describe("ManagementIntelligencePanel (Product Utilization Sprint 1)", () => {
     });
     expect(screen.queryByText("executive_has_no_disclosed_ownership")).not.toBeInTheDocument();
     expect(screen.getByText("Inget redovisat ägande")).toBeInTheDocument();
+  });
+
+  describe("one person observed under two roles (GOOGL: Philipp Schindler)", () => {
+    const asChiefBusinessOfficer: ExecutiveIdentityView = {
+      name: "Philipp Schindler", roleCategory: "other_executive", rawTitle: "Chief Business Officer", company: "GOOGL",
+      isInterim: false, firstObservedPeriod: "2025Q3", lastObservedPeriod: "2026Q1",
+      sourceTranscripts: ["2025Q3", "2025Q4", "2026Q1"], statementCount: 13,
+    };
+    const asPresident: ExecutiveIdentityView = {
+      ...asChiefBusinessOfficer, roleCategory: "president", rawTitle: "President & Chief Business Officer",
+      firstObservedPeriod: "2026Q2", lastObservedPeriod: "2026Q2", sourceTranscripts: ["2026Q2"], statementCount: 2,
+    };
+    const profile = (executive: ExecutiveIdentityView) => ({
+      executive,
+      ownership: { holdingCount: 0, trend: "insufficient_history" },
+      equityCompensation: { hasEquityAwards: false, equityIncentiveKinds: [], hasCashCompensation: false, disclosedComponents: [] },
+      observations: [],
+    });
+
+    it("renders both entries without a duplicate React key", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        renderPanel({
+          executiveChange: { executives: [asChiefBusinessOfficer, asPresident], leadershipChanges: [] },
+          insiderAlignment: { profiles: [profile(asChiefBusinessOfficer), profile(asPresident)], filingsConsidered: [] },
+        });
+        const entries = screen.getAllByText("Philipp Schindler").map((name) => name.closest("li")?.textContent);
+        expect(entries).toHaveLength(4);
+        expect(entries.slice(0, 2)).toEqual([
+          "Philipp SchindlerLedande befattningshavare",
+          "Philipp SchindlerPresident",
+        ]);
+        const keyWarnings = consoleError.mock.calls.filter((call) => String(call[0]).includes("same key"));
+        expect(keyWarnings).toEqual([]);
+      } finally {
+        consoleError.mockRestore();
+      }
+    });
+
+    it("attaches each role's own tenure findings to that role's entry", () => {
+      renderPanel({
+        executiveChange: { executives: [asChiefBusinessOfficer, asPresident], leadershipChanges: [] },
+        trackRecord: {
+          tenures: [
+            { executive: asChiefBusinessOfficer, evidenceCompleteness: "partial",
+              findings: [{ kind: "leadership_transition_during_tenure", evidenceCount: 1 }] },
+            { executive: asPresident, evidenceCompleteness: "partial", findings: [] },
+          ],
+        },
+      });
+      const badge = screen.getByText("Ledarskapsförändring under tjänstgöringstiden");
+      expect(badge.closest("li")).toHaveTextContent("Ledande befattningshavare");
+      expect(badge.closest("li")).not.toHaveTextContent("President");
+    });
   });
 
   it("falls back to a humanized label for an unmapped committee kind, never a raw token", () => {

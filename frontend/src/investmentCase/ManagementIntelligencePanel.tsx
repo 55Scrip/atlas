@@ -79,6 +79,18 @@ function translateOrHumanize(map: Record<string, TranslationKey>, value: string,
 }
 
 /**
+ * An executive's identity is the backend's own: a name *and* a role
+ * category (`executive_change_intelligence._extract_identities` keys on
+ * both), so one person observed under two roles is two entries -- GOOGL's
+ * Philipp Schindler as Chief Business Officer, then as President & Chief
+ * Business Officer. Keyed by name alone, the two collided as React keys and
+ * shared one tenure's findings.
+ */
+function executiveKey(executive: { name: string; roleCategory: string }): string {
+  return `${executive.name}|${executive.roleCategory}`;
+}
+
+/**
  * Product Utilization Sprint 1 (Investment Case Experience Activation).
  * Surfaces six already-computed, already-tested capabilities that had
  * no Investment Case presence at all before this sprint (Capability
@@ -120,7 +132,7 @@ export function ManagementIntelligencePanel({
   insiderAlignment: InsiderAlignmentIntelligenceView;
   t: Translate;
 }) {
-  const tenureByName = new Map(trackRecord.tenures.map((tenure) => [tenure.executive.name, tenure]));
+  const tenureByExecutive = new Map(trackRecord.tenures.map((tenure) => [executiveKey(tenure.executive), tenure]));
   const alignmentStatus = filingContentStatus(
     regulatoryFilings, [...OWNERSHIP_RELEVANT_FORM_TYPES, ...EXECUTIVE_COMPENSATION_RELEVANT_FORM_TYPES],
     insiderAlignment.filingsConsidered,
@@ -147,9 +159,9 @@ export function ManagementIntelligencePanel({
           <>
             <ul style={{ margin: 0, paddingInlineStart: "1.25rem" }}>
               {executiveChange.executives.map((executive) => {
-                const tenure = tenureByName.get(executive.name);
+                const tenure = tenureByExecutive.get(executiveKey(executive));
                 return (
-                  <li key={executive.name}>
+                  <li key={executiveKey(executive)}>
                     <Inline gap="metadata" align="center">
                       <Text as="span" style={{ fontWeight: 600 }}>{executive.name}</Text>
                       <Text as="span" color="secondary">{translateOrHumanize(ROLE_CATEGORY_KEY, executive.roleCategory, t)}</Text>
@@ -203,7 +215,7 @@ export function ManagementIntelligencePanel({
         ) : (
           <ul style={{ margin: 0, paddingInlineStart: "1.25rem" }}>
             {insiderAlignment.profiles.map((profile) => (
-              <li key={profile.executive.name}>
+              <li key={executiveKey(profile.executive)}>
                 <Stack gap="metadata">
                   <Inline gap="metadata" align="center">
                     <Text as="span" style={{ fontWeight: 600 }}>{profile.executive.name}</Text>
