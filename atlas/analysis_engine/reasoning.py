@@ -281,6 +281,16 @@ class SignalContribution:
     historical_percentile: float | None = None
     historical_observation_count: int | None = None
 
+    #: (Valuation Observation Integrity) Whether the valuation history
+    #: may decide -- `ValuationDecisionEligibility.value`, valuation
+    #: contribution only. The yield figures above describe the *prior
+    #: fiscal epochs*, one per fiscal year, whatever the eligibility: a
+    #: limited history stays describable ("below its only earlier
+    #: fiscal year") while `source_status` stays `insufficient_input`,
+    #: because only decision-eligible history may classify. `None` on
+    #: every other engine, and on payloads stored before this existed.
+    evidence_eligibility: str | None = None
+
 
 #: Valuation-support gaps meaning "the analysis completed and the answer
 #: is mixed", as opposed to "an input was missing".
@@ -644,6 +654,7 @@ def build_signal_summary(
     growth_free_cash_flow_cagr: float | None = None,
     valuation_current_yield: float | None = None,
     valuation_historical_yields: tuple[float, ...] = (),
+    valuation_evidence_eligibility: str | None = None,
 ) -> tuple[SignalContribution, ...]:
     """Total: one entry per `CanonicalEngine` member, every time.
 
@@ -665,10 +676,15 @@ def build_signal_summary(
     risk_status = "high" if financial_risk_high else (
         "not_high" if financial_risk_assessed else (
             "not_applicable" if financial_risk_not_applicable else "not_evaluated"))
+    # A valuation method that does not describe the business (a bank's FCF
+    # yield) is `not_applicable`, never an input to go and find.
+    valuation_token = (
+        _NOT_APPLICABLE if valuation_evidence_eligibility == _NOT_APPLICABLE else valuation_status.value
+    )
     connected = (
         (CanonicalEngine.GROWTH, growth_status.value),
         (CanonicalEngine.CAPITAL_ALLOCATION, capital_allocation_status.value),
-        (CanonicalEngine.VALUATION, valuation_status.value),
+        (CanonicalEngine.VALUATION, valuation_token),
         (CanonicalEngine.VALUATION_SUPPORT, valuation_support_status.value),
         (CanonicalEngine.FINANCIAL_RISK, risk_status),
     )
@@ -691,6 +707,7 @@ def build_signal_summary(
             historical_median_yield=_median(valuation_historical_yields),
             historical_percentile=_percentile(valuation_current_yield, valuation_historical_yields),
             historical_observation_count=len(valuation_historical_yields) or None,
+            evidence_eligibility=valuation_evidence_eligibility,
         )
         if c.engine is CanonicalEngine.VALUATION else c
         for c in contributions
@@ -803,6 +820,7 @@ def serialize_reasoning(reasoning) -> dict:
                 "historicalMedianYield": c.historical_median_yield,
                 "historicalPercentile": c.historical_percentile,
                 "historicalObservationCount": c.historical_observation_count,
+                "evidenceEligibility": c.evidence_eligibility,
             }
             for c in reasoning.signal_summary
         ],
@@ -1057,6 +1075,7 @@ def deserialize_reasoning(payload: dict | None) -> StoredReasoning | None:
                 historical_median_yield=c.get("historicalMedianYield"),
                 historical_percentile=c.get("historicalPercentile"),
                 historical_observation_count=c.get("historicalObservationCount"),
+                evidence_eligibility=c.get("evidenceEligibility"),
             )
             for c in payload.get("signalSummary", ())
         ),

@@ -134,6 +134,7 @@ def _to_row(case_id: str, snapshot: AnalyticalSnapshot, change_intelligence: Cha
                 "atlas_thesis_narrative": snapshot.atlas_thesis_narrative,
                 "atlas_thesis_posture": snapshot.atlas_thesis_posture,
                 "financial_risk_methodology": snapshot.financial_risk_methodology,
+                "valuation_methodology": snapshot.valuation_methodology,
             },
             sort_keys=True,
         ),
@@ -235,4 +236,5 @@ def _to_snapshot(row: Mapping[str, Any]) -> AnalyticalSnapshot:
         # which never equals a current method, so Financial Risk is
         # re-baselined rather than compared across methods.
         financial_risk_methodology=payload.get("financial_risk_methodology"),
+        valuation_methodology=payload.get("valuation_methodology"),
     )

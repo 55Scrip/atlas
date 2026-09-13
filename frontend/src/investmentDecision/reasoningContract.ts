@@ -109,7 +109,15 @@ export interface SignalContributionView {
   historicalMedianYield: number | null;
   historicalPercentile: number | null;
   historicalObservationCount: number | null;
+  /** Valuation contribution only: whether the valuation history may
+   * decide. The yield figures above then describe the prior fiscal
+   * years, one each, whatever the eligibility. Absent on rows written
+   * before it existed -- those counted market observations, not years. */
+  evidenceEligibility?: ValuationEvidenceEligibility | null;
 }
+
+/** `ValuationDecisionEligibility` -- see `cash_flow.py`. */
+export type ValuationEvidenceEligibility = "eligible" | "limited" | "insufficient" | "not_applicable";
 
 export interface KeyUnknownView {
   kind: KeyUnknownKind;

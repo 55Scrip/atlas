@@ -46,7 +46,7 @@ from atlas.analysis_engine.risk.contracts import RiskStatus
 from atlas.analysis_engine.valuation.contracts import ValuationStatus
 from atlas.analysis_engine.valuation.support import ValuationSupportStatus
 from tests.unit.analysis_engine.risk.test_financial_risk import company, evaluate
-from tests.unit.analysis_engine.test_real_data_scenarios import _assemble, _dt, _fundamentals_doc, _ingest_all, _market_doc
+from tests.unit.analysis_engine.test_real_data_scenarios import _assemble, _fundamentals_doc, _ingest_all, _valuation_history
 
 FIN, VAL = RiskCategory.FINANCIAL_RISK, RiskCategory.VALUATION_RISK
 _EVALUATED_AT = datetime(2026, 8, 9, tzinfo=timezone.utc)
@@ -251,12 +251,7 @@ class TestThePipeline:
                    for u in reasoning.key_unknowns)
 
     def test_an_expensive_valuation_alone_is_disclosed_as_valuation_not_as_finances(self):
-        records = _ingest_all(
-            _fundamentals_doc(period_end="2021-12-31", revenue=100, fcf=10, published_at=_dt(2022, 2, 15)),
-            _fundamentals_doc(period_end="2022-12-31", revenue=100, fcf=10, published_at=_dt(2023, 2, 15)),
-            _market_doc(snapshot="2022-06-01", price=50, shares=100),
-            _market_doc(snapshot="2023-06-01", price=200, shares=100),
-        )
+        records = _ingest_all(*_valuation_history(50, 50, 50, 200))
         basis = _assemble(records).recommendation.recommendation.reasoning.risk_basis
         assert basis.elevated_categories == (VAL,)
         assert basis.financial_risk.level is not RiskStatus.HIGH
@@ -406,12 +401,7 @@ class TestDriverSplit:
         assert RecommendationReasoning(counter_drivers=(), risk_basis=RiskDriverBasis((VAL,), low_basis())).risk_basis
 
     def test_a_real_valuation_only_case_is_named_as_valuation(self):
-        records = _ingest_all(
-            _fundamentals_doc(period_end="2021-12-31", revenue=100, fcf=10, published_at=_dt(2022, 2, 15)),
-            _fundamentals_doc(period_end="2022-12-31", revenue=100, fcf=10, published_at=_dt(2023, 2, 15)),
-            _market_doc(snapshot="2022-06-01", price=50, shares=100),
-            _market_doc(snapshot="2023-06-01", price=200, shares=100),
-        )
+        records = _ingest_all(*_valuation_history(50, 50, 50, 200))
         analysis = _assemble(records)
         statuses = {f.category: f.status for f in analysis.risk_analysis.findings}
         assert statuses[VAL] is RiskStatus.HIGH and statuses[FIN] is not RiskStatus.HIGH

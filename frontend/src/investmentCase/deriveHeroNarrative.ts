@@ -38,6 +38,8 @@ export type HeroTensionKind =
   | "aligned_negative"
   | "business_strong_valuation_weak"
   | "business_weak_valuation_strong"
+  | "business_strong_valuation_unknown"
+  | "business_weak_valuation_unknown"
   | "insufficient"
   | "neutral";
 
@@ -100,7 +102,12 @@ export function deriveHeroTension(input: HeroTensionInput): HeroTensionKind {
   if (business === null) return "insufficient";
   if (business === "positive" && valuation === "negative") return "business_strong_valuation_weak";
   if (business === "negative" && valuation === "positive") return "business_weak_valuation_strong";
-  if (business === "positive") return "aligned_positive"; // valuation positive, neutral, or unknown
+  // Valuation Observation Integrity: a valuation Atlas cannot yet judge
+  // (too little fiscal-year history, or a method that does not apply) is
+  // said as such -- never "valuation doesn't stand in the way".
+  if (business === "positive" && valuation === null) return "business_strong_valuation_unknown";
+  if (business === "negative" && valuation === null) return "business_weak_valuation_unknown";
+  if (business === "positive") return "aligned_positive"; // valuation positive or neutral
   if (business === "negative") return "aligned_negative";
   // Status/Explanation Language stabilization: `business === "neutral"`
   // is a real, positively-computed "moderate" conclusion (both Growth

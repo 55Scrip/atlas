@@ -239,13 +239,20 @@ class TestRicherDataFlowsIntoEvaluators:
         case_id = _import_holding(client, "AAPL")
         _persist(
             client,
-            _statement_document(ticker="AAPL", period_end=date(2024, 12, 31), free_cash_flow=300.0),
+            # In the quote's currency: FCF yield never divides across currencies.
+            _statement_document(ticker="AAPL", period_end=date(2024, 12, 31), free_cash_flow=300.0, currency="USD"),
             _snapshot_document(ticker="AAPL", share_price=100.0, shares_outstanding=1_000_000.0, currency="USD"),
+            # FCF yield is only formed for a business it describes.
+            _profile_document(ticker="AAPL", industry="CONSUMER ELECTRONICS"),
         )
         body = client.get(f"/cases/{case_id}/analysis").json()
         fcf_yield = next(f for f in body["valuation"]["findings"] if f["kind"] == "fcf_yield_relative")
         assert fcf_yield["status"] == "insufficient_input"
         assert fcf_yield["currentYield"] is not None
+        # Describable, not decidable: no earlier fiscal year to compare with.
+        assert fcf_yield["evidence"]["eligibility"] == "insufficient"
+        assert fcf_yield["evidence"]["priorEpochCount"] == 0
+        assert fcf_yield["evidence"]["shareCountMethod"] == "current_share_count_proxy"
 
 
 class TestUnsupportedQualitativeDimensionsStayHonest:

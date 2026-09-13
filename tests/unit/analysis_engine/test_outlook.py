@@ -59,20 +59,26 @@ def _make_record(source_kind, period_end, identifier, *, published_at=GENERATED_
     return result.record
 
 
-#: Fiscal periods every combined fixture below shares -- `published_at`
-#: is deliberately well before the *next* period's own market
-#: observation date, so `cash_flow.py`'s no-look-ahead rule always finds
-#: an eligible Free Cash Flow fact for every observation below.
-_PERIODS = (date(2022, 12, 31), date(2023, 12, 31), date(2024, 12, 31))
+#: Fiscal periods every combined fixture below shares -- each is an annual
+#: statement filed mid-February, and each market observation follows its
+#: filing, so every observation is its own fiscal epoch. Four periods:
+#: three prior fiscal years make the FCF-yield history decision-eligible
+#: (Valuation Observation Integrity); the fixtures below take the three
+#: scenario-defining values and extend the same trend one year back.
+_PERIODS = (date(2021, 12, 31), date(2022, 12, 31), date(2023, 12, 31), date(2024, 12, 31))
 _PUBLISHED = (
+    datetime(2022, 2, 15, tzinfo=timezone.utc),
     datetime(2023, 2, 15, tzinfo=timezone.utc),
     datetime(2024, 2, 15, tzinfo=timezone.utc),
     datetime(2025, 2, 15, tzinfo=timezone.utc),
 )
-_OBSERVATION_DATES = (date(2023, 3, 1), date(2024, 3, 1), date(2025, 3, 1))
+_OBSERVATION_DATES = (date(2022, 3, 1), date(2023, 3, 1), date(2024, 3, 1), date(2025, 3, 1))
+#: The FCF-yield method applies to operating businesses; the profile says
+#: which kind this is (Valuation Observation Integrity).
+_PROFILE_INDUSTRY = "SEMICONDUCTOR EQUIPMENT & MATERIALS"
 
 
-def _growth_records(*, strong: bool, tag: str):
+def _growth_records(*, strong: bool, tag: str, kind: str = "financial_statement"):
     """One `annual_report` record per period, carrying **both** Revenue
     and Free Cash Flow -- the single source of truth both Growth and
     the FCF Yield evaluator read, so a caller that also attaches market
@@ -81,15 +87,15 @@ def _growth_records(*, strong: bool, tag: str):
     (which `extract_facts_from_records` would honestly drop as
     conflicting, per its own documented policy)."""
     if strong:
-        revenue, fcf = (1000.0, 1100.0, 1250.0), (100.0, 110.0, 200.0)
+        revenue, fcf = (900.0, 1000.0, 1100.0, 1250.0), (90.0, 100.0, 110.0, 200.0)
     else:
-        revenue, fcf = (1250.0, 1100.0, 1000.0), (300.0, 240.0, 200.0)
+        revenue, fcf = (1400.0, 1250.0, 1100.0, 1000.0), (360.0, 300.0, 240.0, 200.0)
     return tuple(
         _make_record(
-            "annual_report", _PERIODS[i], f"{tag}{i}",
+            kind, _PERIODS[i], f"{tag}{i}",
             published_at=_PUBLISHED[i], revenue=revenue[i], free_cash_flow=fcf[i],
         )
-        for i in range(3)
+        for i in range(4)
     )
 
 
@@ -140,13 +146,15 @@ def _market_data_records(prices: tuple[float, float, float], *, tag: str):
     """`market_data_snapshot` documents only -- `SHARE_PRICE`/
     `SHARES_OUTSTANDING` are a disjoint `ValuationFactKind` taxonomy
     from `BusinessFactKind`, so these never conflict with
-    `_growth_records`'s own Free Cash Flow facts at the same period."""
+    `_growth_records`'s own Free Cash Flow facts at the same period.
+    The first price is repeated for the extra, earliest fiscal year."""
+    prices = (prices[0], *prices)
     return tuple(
         _make_record(
             "market_data_snapshot", _OBSERVATION_DATES[i], f"{tag}{i}",
             share_price=prices[i], shares_outstanding=100.0,
         )
-        for i in range(3)
+        for i in range(4)
     )
 
 
@@ -176,7 +184,7 @@ def _single_market_observation_records():
     nothing to build a historical range from (Scenario 8)."""
     return (
         _make_record(
-            "annual_report", date(2024, 12, 31), "sfy24",
+            "financial_statement", date(2024, 12, 31), "sfy24",
             published_at=datetime(2025, 2, 15, tzinfo=timezone.utc), free_cash_flow=100.0,
         ),
         _make_record("market_data_snapshot", date(2025, 3, 1), "sm24", share_price=50.0, shares_outstanding=100.0),
@@ -207,7 +215,7 @@ def _custom_growth_records(revenue: tuple[float, ...], fcf: tuple[float, ...], *
     periods, published = _n_periods(n), _n_published(n)
     return tuple(
         _make_record(
-            "annual_report", periods[i], f"{tag}{i}",
+            "financial_statement", periods[i], f"{tag}{i}",
             published_at=published[i], revenue=revenue[i], free_cash_flow=fcf[i],
         )
         for i in range(n)
@@ -261,17 +269,19 @@ def _single_late_market_observation_records():
     `_single_market_observation_records`, which has only one Free Cash
     Flow fact at all) -- eligibility is genuinely met, but exactly one
     market observation exists, so no historical yield *range* does.
-    Dated at `_OBSERVATION_DATES[2]` (not the generic `_n_observations`
+    Dated at `_OBSERVATION_DATES[-1]` (not the generic `_n_observations`
     helper) so it falls *after* `_strong_growth_records`'s own last
     published Free Cash Flow fact -- otherwise `cash_flow.py`'s own
     no-look-ahead rule would find no eligible fact at all and this
     would exercise `VALUATION_NOT_CONCLUSIVE` instead of the intended
     `NO_HISTORICAL_VALUATION_RANGE`."""
-    return (_make_record("market_data_snapshot", _OBSERVATION_DATES[2], "slm", share_price=53.0, shares_outstanding=100.0),)
+    return (_make_record("market_data_snapshot", _OBSERVATION_DATES[-1], "slm", share_price=53.0, shares_outstanding=100.0),)
 
 
-def _assemble(records=(), *, populated=False):
+def _assemble(records=(), *, populated=False, profile=True):
     engine_input, output = run_populated() if populated else run_minimal()
+    if profile:
+        records = (*records, _make_record("company_profile", None, "profile", industry=_PROFILE_INDUSTRY))
     return assemble_analysis(
         engine_input, output, is_thesis_stale=False, business_records=records, generated_at=GENERATED_AT
     )
@@ -297,10 +307,10 @@ class TestScenario1_StrongBusinessAttractiveValuation:
         assert drivers[OutlookDriverKind.GROWTH] == "positive"
         assert drivers[OutlookDriverKind.CAPITAL_ALLOCATION] == "positive"
 
-    def test_three_periods_is_honestly_insufficient_for_a_rolling_cagr_window(self):
+    def test_four_periods_is_honestly_insufficient_for_a_rolling_cagr_window(self):
         """Calibration Sprint: `_rolling_cagr_observations` needs a fact
         `LONG_TERM_COMPOUNDING_YEARS` (4) periods later than its start to
-        form even one observation -- this fixture's 3 periods can never
+        form even one observation -- this fixture's 4 periods can never
         produce one, regardless of how strong the business looks on a
         raw YoY basis. See `TestLongTermExpectedReturnCalibration` for
         real, populated Long-Term ranges built from fixtures with enough
@@ -479,8 +489,13 @@ class TestScenario9_ConvictionUnavailable:
     with richer, real evidence (`run_populated`)."""
 
     def test_thin_evidence_forces_insufficient_evidence(self):
-        records = _strong_growth_records() + _strong_capital_allocation_records() + _undervalued_market_data()
-        analysis = _assemble(records, populated=False)
+        # Thin *company data*: no annual statements and no profile, only
+        # report figures -- Atlas's own analysis cannot establish itself.
+        records = (
+            _growth_records(strong=True, tag="sg", kind="annual_report")
+            + _strong_capital_allocation_records() + _undervalued_market_data()
+        )
+        analysis = _assemble(records, populated=False, profile=False)
         assert analysis.conviction.level is ConvictionLevel.INSUFFICIENT_EVIDENCE
         assert analysis.outlook.short_term.conviction is ConvictionLevel.INSUFFICIENT_EVIDENCE
         assert analysis.outlook.long_term.conviction is ConvictionLevel.INSUFFICIENT_EVIDENCE
@@ -497,7 +512,7 @@ class TestScenario9_ConvictionUnavailable:
         """When this horizon's own data requirement *is* met, Outlook
         Conviction equals case-wide Conviction verbatim -- never
         independently inflated, never independently deflated beyond the
-        documented cap. Short-Term only here (this fixture's 3 periods
+        documented cap. Short-Term only here (this fixture's 4 periods
         cannot make Long-Term data-sufficient post-Calibration-Sprint --
         see `TestLongTermExpectedReturnCalibration` for the identical
         bounded-derivation check against a Long-Term-eligible fixture)."""
@@ -565,14 +580,13 @@ class TestRerationMathIsSelfConsistent:
         """Semantic Hardening Pass: `observation_count` is real,
         disclosed transparency about how many historical FCF-yield
         observations a scenario's `target_fcf_yield` was drawn from --
-        the fixture here has 3 total market observations (2 historical
-        once the most recent is excluded), and every scenario's
-        assumption must say so."""
+        the fixture here has 4 fiscal epochs (3 prior once the current
+        one is excluded), and every scenario's assumption must say so."""
         records = _strong_growth_records() + _strong_capital_allocation_records() + _undervalued_market_data()
         analysis = _assemble(records)
         for scenario in analysis.outlook.short_term.scenarios:
-            assert scenario.assumption.observation_count == 2
-        assert analysis.outlook.short_term.expected_return.assumption.observation_count == 2
+            assert scenario.assumption.observation_count == 3
+        assert analysis.outlook.short_term.expected_return.assumption.observation_count == 3
 
     def test_headline_range_bounds_are_the_min_and_max_of_the_three_scenarios(self):
         records = _strong_growth_records() + _strong_capital_allocation_records() + _undervalued_market_data()
@@ -613,7 +627,7 @@ def _cal_growth_records(revenue: tuple[float, ...], fcf: tuple[float, ...], *, t
     periods, published = _cal_periods(n), _cal_published(n)
     return tuple(
         _make_record(
-            "annual_report", periods[i], f"{tag}{i}",
+            "financial_statement", periods[i], f"{tag}{i}",
             published_at=published[i], revenue=revenue[i], free_cash_flow=fcf[i],
         )
         for i in range(n)

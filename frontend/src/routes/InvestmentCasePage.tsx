@@ -735,6 +735,19 @@ interface BusinessFindingView {
   updatedAt: string;
 }
 
+/** `ValuationEvidenceView` -- how much fiscal-year history the FCF-yield
+ * comparison rests on, and whether it may decide. */
+interface ValuationEvidenceView {
+  eligibility: "eligible" | "limited" | "insufficient" | "not_applicable";
+  priorEpochCount: number;
+  minimumPriorEpochs: number;
+  position: "above_all_prior" | "within_prior_range" | "below_all_prior" | null;
+  currentFiscalPeriod: string | null;
+  earliestPriorEpoch: string | null;
+  spanYears: number | null;
+  shareCountMethod: "current_share_count_proxy";
+}
+
 interface ValuationFindingView {
   kind: string;
   status: AnalysisValuationStatus;
@@ -745,6 +758,8 @@ interface ValuationFindingView {
   missingEvidence: string[];
   confidence: EvidenceCoverageLevel;
   currentYield: number | null;
+  /** Absent on the scenario methods; `null` never for FCF yield. */
+  evidence?: ValuationEvidenceView | null;
 }
 
 interface RiskFindingView {
@@ -2485,7 +2500,14 @@ export function InvestmentCasePage() {
           // sharing the bare word "Valuation" is exactly the labeling
           // collision Phase 1's audit found; this line now names what
           // it actually measures.
-          `${t("investmentCase.header.valuationVsHistoryLabel")}: ${t(VALUATION_STATUS_KEY[investmentCaseAnalysis.report.valuationContext.fcfYieldStatus])}`,
+          // Valuation Observation Integrity: a method that does not apply
+          // (a bank's FCF yield) is "not applicable", never "not yet".
+          `${t("investmentCase.header.valuationVsHistoryLabel")}: ${
+            investmentCaseAnalysis.report.valuation.findings.find((f) => f.kind === "fcf_yield_relative")?.evidence
+              ?.eligibility === "not_applicable"
+              ? t(RISK_STATUS_KEY.not_applicable)
+              : t(VALUATION_STATUS_KEY[investmentCaseAnalysis.report.valuationContext.fcfYieldStatus])
+          }`,
           `${t("investmentCase.header.portfolioFitLabel")}: ${
             portfolioFitStatus.kind === "loaded" && portfolioFitStatus.assessment !== null
               ? t(FIT_RATING_KEY[portfolioFitStatus.assessment.overall])
@@ -5777,6 +5799,13 @@ function InvestmentCaseCanonicalSections({
     growthFacts: { supporting: growth?.supportingEvidence ?? [], contradicting: growth?.contradictingEvidence ?? [] },
     valuationStatus,
     valuationFacts: { supporting: fcfYield?.supportingFacts ?? [], contradicting: fcfYield?.contradictingFacts ?? [] },
+    valuationEvidence: fcfYield?.evidence
+      ? {
+          eligibility: fcfYield.evidence.eligibility,
+          priorEpochCount: fcfYield.evidence.priorEpochCount,
+          hasCurrentYield: fcfYield.currentYield != null,
+        }
+      : null,
     financialHealthStatus: financialRisk?.status ?? "not_evaluated",
     financialHealthFacts: {
       supporting: financialRisk?.supportingFacts ?? [],
@@ -6377,6 +6406,24 @@ function ValuationDetailSection({ analysis, t }: { analysis: InvestmentCaseAnaly
           {fcfYield.currentYield != null && (
             <Text color="secondary" as="p">
               {t("investmentCase.analysis.valuation.currentYieldLabel")}: {(fcfYield.currentYield * 100).toFixed(1)}%
+            </Text>
+          )}
+          {/* Valuation Observation Integrity: how deep the fiscal-year
+              history is, and the one methodological limit of comparing
+              with the past. Detail-level, so the headline stays quiet. */}
+          {fcfYield.evidence && fcfYield.currentYield != null && fcfYield.evidence.priorEpochCount > 0 && (
+            <Text color="secondary" as="p">
+              {fcfYield.evidence.eligibility === "eligible"
+                ? t("investmentCase.analysis.valuation.history", {
+                    count: fcfYield.evidence.priorEpochCount,
+                    from: (fcfYield.evidence.earliestPriorEpoch ?? "").slice(0, 4),
+                    to: (fcfYield.evidence.currentFiscalPeriod ?? "").slice(0, 4),
+                  })
+                : t("investmentCase.analysis.valuation.historyLimited", {
+                    count: fcfYield.evidence.priorEpochCount,
+                    minimum: fcfYield.evidence.minimumPriorEpochs,
+                  })}{" "}
+              {t("investmentCase.analysis.valuation.shareCountProxy")}
             </Text>
           )}
           {/* Product Sprint 13 (Company Intelligence Excellence):

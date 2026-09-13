@@ -345,7 +345,9 @@ def _insufficient_valuation_engine():
 
     business_facts = extract_facts_from_records((), evaluated_at=GENERATED_AT)
     market_facts = extract_valuation_facts_from_records((), evaluated_at=GENERATED_AT)
-    return evaluate_valuation(business_facts, market_facts, evaluated_at=GENERATED_AT)
+    return evaluate_valuation(
+        business_facts, market_facts, statement_record_ids=frozenset(), industry=None, evaluated_at=GENERATED_AT
+    )
 
 
 def _insufficient_valuation_support():

@@ -47,7 +47,7 @@ from atlas.analysis_engine.valuation.support import (
     evaluate_valuation_support,
 )
 from atlas.decision_engine.contracts import EvaluationState
-from tests.unit.analysis_engine.valuation._fixtures import EVALUATED_AT, fundamentals_record, market_record
+from tests.unit.analysis_engine.valuation._fixtures import EVALUATED_AT, fundamentals_record, market_record, valuation_inputs
 
 
 def _filed(year: int, month: int = 2, day: int = 15) -> datetime:
@@ -57,7 +57,7 @@ def _filed(year: int, month: int = 2, day: int = 15) -> datetime:
 def _evaluate_support(business_facts, valuation_facts, *, generated_at=EVALUATED_AT) -> ValuationSupport:
     """Thin helper matching the real, post-`DE-015` `evaluate_valuation_support`
     signature -- computes `valuation_engine` fresh and calls through."""
-    valuation_engine = evaluate_valuation(business_facts, valuation_facts, evaluated_at=generated_at)
+    valuation_engine = evaluate_valuation(business_facts, valuation_facts, **valuation_inputs(business_facts), evaluated_at=generated_at)
     return evaluate_valuation_support(valuation_engine, business_facts, valuation_facts, generated_at=generated_at)
 
 
@@ -65,20 +65,23 @@ def _undervalued_facts():
     """Real records -> a genuine `ValuationStatus.UNDERVALUED`
     `FCF_YIELD_RELATIVE` finding -- identical fixture shape
     `test_pipeline.py::TestEndToEndFromRealRecords` already established.
-    Deliberately only 3 fundamental periods -- too thin for even one
-    4-year rolling growth window, so the Scenario path stays ineligible
-    regardless of `FCF_YIELD_RELATIVE`'s own status."""
+    Four fundamental periods: three prior fiscal years make the FCF-yield
+    history decision-eligible, yet four periods are still too thin for
+    even one 4-year rolling growth window, so the Scenario path stays
+    ineligible regardless of `FCF_YIELD_RELATIVE`'s own status."""
     records = (
+        fundamentals_record(period_end=date(2021, 12, 31), identifier="uv21", published_at=_filed(2022), free_cash_flow=90.0),
         fundamentals_record(period_end=date(2022, 12, 31), identifier="uv22", published_at=_filed(2023), free_cash_flow=100.0),
         fundamentals_record(period_end=date(2023, 12, 31), identifier="uv23", published_at=_filed(2024), free_cash_flow=110.0),
         fundamentals_record(period_end=date(2024, 12, 31), identifier="uv24", published_at=_filed(2025), free_cash_flow=200.0),
+        market_record(period_end=date(2022, 3, 1), identifier="uvm21", share_price=50.0, shares_outstanding=100.0),
         market_record(period_end=date(2023, 3, 1), identifier="uvm22", share_price=50.0, shares_outstanding=100.0),
         market_record(period_end=date(2024, 3, 1), identifier="uvm23", share_price=52.0, shares_outstanding=100.0),
         market_record(period_end=date(2025, 3, 1), identifier="uvm24", share_price=53.0, shares_outstanding=100.0),
     )
     business_facts = extract_facts_from_records(records, evaluated_at=EVALUATED_AT)
     valuation_facts = extract_valuation_facts_from_records(records, evaluated_at=EVALUATED_AT)
-    valuation_engine = evaluate_valuation(business_facts, valuation_facts, evaluated_at=EVALUATED_AT)
+    valuation_engine = evaluate_valuation(business_facts, valuation_facts, **valuation_inputs(business_facts), evaluated_at=EVALUATED_AT)
     fcf_yield = next(f for f in valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE)
     assert fcf_yield.status is ValuationStatus.UNDERVALUED
     return business_facts, valuation_facts
@@ -86,19 +89,21 @@ def _undervalued_facts():
 
 def _expensive_facts():
     """Identical shape to `test_pipeline.py::TestScenarioE`'s own
-    real-records-produce-`EXPENSIVE` fixture -- same thin, 3-period
-    history, so the Scenario path stays ineligible here too."""
+    real-records-produce-`EXPENSIVE` fixture -- the same four periods, so
+    the Scenario path stays ineligible here too."""
     records = (
+        fundamentals_record(period_end=date(2021, 12, 31), identifier="ex21", published_at=_filed(2022), free_cash_flow=80.0),
         fundamentals_record(period_end=date(2022, 12, 31), identifier="ex22", published_at=_filed(2023), free_cash_flow=100.0),
         fundamentals_record(period_end=date(2023, 12, 31), identifier="ex23", published_at=_filed(2024), free_cash_flow=150.0),
         fundamentals_record(period_end=date(2024, 12, 31), identifier="ex24", published_at=_filed(2025), free_cash_flow=250.0),
+        market_record(period_end=date(2022, 3, 1), identifier="exm21", share_price=10.0, shares_outstanding=100.0),
         market_record(period_end=date(2023, 3, 1), identifier="exm22", share_price=10.0, shares_outstanding=100.0),
         market_record(period_end=date(2024, 3, 1), identifier="exm23", share_price=10.0, shares_outstanding=100.0),
         market_record(period_end=date(2025, 3, 1), identifier="exm24", share_price=90.0, shares_outstanding=100.0),
     )
     business_facts = extract_facts_from_records(records, evaluated_at=EVALUATED_AT)
     valuation_facts = extract_valuation_facts_from_records(records, evaluated_at=EVALUATED_AT)
-    valuation_engine = evaluate_valuation(business_facts, valuation_facts, evaluated_at=EVALUATED_AT)
+    valuation_engine = evaluate_valuation(business_facts, valuation_facts, **valuation_inputs(business_facts), evaluated_at=EVALUATED_AT)
     fcf_yield = next(f for f in valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE)
     assert fcf_yield.status is ValuationStatus.EXPENSIVE
     return business_facts, valuation_facts
@@ -108,16 +113,18 @@ def _fairly_valued_facts():
     """Steady price, steady FCF -- current yield lands strictly between
     the two historical extremes -> `FAIRLY_VALUED`. Same thin history."""
     records = (
+        fundamentals_record(period_end=date(2021, 12, 31), identifier="fv21", published_at=_filed(2022), free_cash_flow=85.0),
         fundamentals_record(period_end=date(2022, 12, 31), identifier="fv22", published_at=_filed(2023), free_cash_flow=90.0),
         fundamentals_record(period_end=date(2023, 12, 31), identifier="fv23", published_at=_filed(2024), free_cash_flow=100.0),
         fundamentals_record(period_end=date(2024, 12, 31), identifier="fv24", published_at=_filed(2025), free_cash_flow=95.0),
+        market_record(period_end=date(2022, 3, 1), identifier="fvm21", share_price=45.0, shares_outstanding=100.0),
         market_record(period_end=date(2023, 3, 1), identifier="fvm22", share_price=40.0, shares_outstanding=100.0),
         market_record(period_end=date(2024, 3, 1), identifier="fvm23", share_price=60.0, shares_outstanding=100.0),
         market_record(period_end=date(2025, 3, 1), identifier="fvm24", share_price=50.0, shares_outstanding=100.0),
     )
     business_facts = extract_facts_from_records(records, evaluated_at=EVALUATED_AT)
     valuation_facts = extract_valuation_facts_from_records(records, evaluated_at=EVALUATED_AT)
-    valuation_engine = evaluate_valuation(business_facts, valuation_facts, evaluated_at=EVALUATED_AT)
+    valuation_engine = evaluate_valuation(business_facts, valuation_facts, **valuation_inputs(business_facts), evaluated_at=EVALUATED_AT)
     fcf_yield = next(f for f in valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE)
     assert fcf_yield.status is ValuationStatus.FAIRLY_VALUED
     return business_facts, valuation_facts
@@ -129,7 +136,7 @@ def _no_data_facts():
     permanent state)."""
     business_facts: tuple = ()
     valuation_facts: tuple = ()
-    valuation_engine = evaluate_valuation(business_facts, valuation_facts, evaluated_at=EVALUATED_AT)
+    valuation_engine = evaluate_valuation(business_facts, valuation_facts, **valuation_inputs(business_facts), evaluated_at=EVALUATED_AT)
     fcf_yield = next(f for f in valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE)
     assert fcf_yield.status is ValuationStatus.INSUFFICIENT_INPUT
     return business_facts, valuation_facts
@@ -391,7 +398,7 @@ class TestArchitecturalBoundary:
             reasoning=output.reasoning,
             conviction=ConvictionAssessment(level=ConvictionLevel.MODERATE, reasons=()),
             business_analysis=business_analysis,
-            valuation_engine=evaluate_valuation((), (), evaluated_at=EVALUATED_AT),
+            valuation_engine=evaluate_valuation((), (), **valuation_inputs(()), evaluated_at=EVALUATED_AT),
             valuation_support=ValuationSupport(
                 status=ValuationSupportStatus.INSUFFICIENT_INPUT,
                 reasoning="No real data supplied in this fixture.",
@@ -510,7 +517,7 @@ class TestRegression:
 
 class TestAdversarialCases:
     """`DE-015` implementation sprint: these fixtures are all deliberately
-    too thin (3 fundamental periods -- fewer than the 4-year rolling
+    too thin (4 fundamental periods -- fewer than the 4-year rolling
     window needs to form even one growth observation) for the Scenario
     path to ever become eligible, and carry no `CASH`/`TOTAL_DEBT` facts
     for the Net-Cash path either -- so every case here still resolves to
@@ -567,7 +574,7 @@ class TestAdversarialCases:
         two *sufficient* proofs) -- verified here to keep the two
         concepts distinct."""
         business_facts, valuation_facts = _undervalued_facts()
-        valuation_engine = evaluate_valuation(business_facts, valuation_facts, evaluated_at=EVALUATED_AT)
+        valuation_engine = evaluate_valuation(business_facts, valuation_facts, **valuation_inputs(business_facts), evaluated_at=EVALUATED_AT)
         kinds_and_statuses = {f.kind: f.status for f in valuation_engine.findings}
         assert kinds_and_statuses[ValuationMethodKind.FCF_YIELD_RELATIVE] is ValuationStatus.UNDERVALUED
         assert kinds_and_statuses[ValuationMethodKind.SCENARIO_BEAR] is ValuationStatus.INSUFFICIENT_INPUT

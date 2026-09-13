@@ -60,19 +60,27 @@ def _strong_capital_allocation_records():
 
 
 def _undervalued_valuation_records():
+    """Annual statements of an operating business, with three prior fiscal
+    years before today's (Valuation Observation Integrity)."""
     return (
         _make_record(
-            "annual_report", date(2022, 12, 31), "vfy22",
+            "financial_statement", date(2021, 12, 31), "vfy21",
+            published_at=datetime(2022, 2, 15, tzinfo=timezone.utc), free_cash_flow=90.0,
+        ),
+        _make_record(
+            "financial_statement", date(2022, 12, 31), "vfy22",
             published_at=datetime(2023, 2, 15, tzinfo=timezone.utc), free_cash_flow=100.0,
         ),
         _make_record(
-            "annual_report", date(2023, 12, 31), "vfy23",
+            "financial_statement", date(2023, 12, 31), "vfy23",
             published_at=datetime(2024, 2, 15, tzinfo=timezone.utc), free_cash_flow=110.0,
         ),
         _make_record(
-            "annual_report", date(2024, 12, 31), "vfy24",
+            "financial_statement", date(2024, 12, 31), "vfy24",
             published_at=datetime(2025, 2, 15, tzinfo=timezone.utc), free_cash_flow=200.0,
         ),
+        _make_record("company_profile", None, "vprofile", industry="SEMICONDUCTOR EQUIPMENT & MATERIALS"),
+        _make_record("market_data_snapshot", date(2022, 3, 1), "vm21", share_price=50.0, shares_outstanding=100.0),
         _make_record("market_data_snapshot", date(2023, 3, 1), "vm22", share_price=50.0, shares_outstanding=100.0),
         _make_record("market_data_snapshot", date(2024, 3, 1), "vm23", share_price=52.0, shares_outstanding=100.0),
         _make_record("market_data_snapshot", date(2025, 3, 1), "vm24", share_price=53.0, shares_outstanding=100.0),

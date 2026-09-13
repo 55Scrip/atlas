@@ -18,6 +18,10 @@ __all__ = [
     "ValuationMethodKind",
     "ValuationDataGapKind",
     "ValuationAssumptionKind",
+    "ValuationDecisionEligibility",
+    "HistoricalYieldPosition",
+    "ShareCountMethod",
+    "ValuationFactExclusionReason",
     "severity_for_valuation_status",
 ]
 
@@ -71,10 +75,11 @@ class ValuationDataGapKind(str, Enum):
     MISSING_SHARE_COUNT = "missing_share_count"
     MISSING_FREE_CASH_FLOW_HISTORY = "missing_free_cash_flow_history"
     INSUFFICIENT_HISTORICAL_VALUATION_PERIODS = "insufficient_historical_valuation_periods"
-    """Fewer than two periods where both a market snapshot and a
-    Free Cash Flow fact share the same period -- there is nothing to
-    compute a historical *range* from, even though a single current
-    yield might be computable."""
+    """Fewer prior fiscal epochs than decision use requires
+    (`cash_flow.MINIMUM_PRIOR_EPOCHS`) -- a current yield may be real,
+    and may even be describable against the few earlier fiscal years
+    that exist, but that history is too thin to let valuation move a
+    recommendation."""
 
     STALE_MARKET_DATA = "stale_market_data"
     """Reserved, not currently constructed (ATLAS-032). The original
@@ -106,6 +111,24 @@ class ValuationDataGapKind(str, Enum):
     example, applied to FCF instead). The data is not missing; it
     simply cannot support this method honestly."""
 
+    VALUATION_METHOD_NOT_APPLICABLE = "valuation_method_not_applicable"
+    """(Valuation Observation Integrity) Free cash flow yield does not
+    describe this business: a bank, dealer or insurer, whose operating
+    cash flow moves with deposits, trading inventories and policyholder
+    flows. Not a missing input -- no data would make the measure
+    meaningful. See `valuation.applicability`."""
+
+    VALUATION_APPLICABILITY_UNKNOWN = "valuation_applicability_unknown"
+    """No company-profile industry is recorded, so whether free cash flow
+    yield describes this business cannot be established. Reported rather
+    than assumed either way, as Financial Risk v2 does."""
+
+    CURRENCY_MISMATCH = "currency_mismatch"
+    """Free cash flow is reported in a different currency from the share
+    price (an ADR quoted in USD over EUR statements, say). Dividing one
+    by the other would mix an exchange rate into the yield, so no
+    observation is formed."""
+
     MISSING_SCENARIO_ASSUMPTIONS = "missing_scenario_assumptions"
     """No forward assumption was explicitly supplied for this scenario
     -- always true this sprint, for all three scenario methods; see
@@ -126,6 +149,63 @@ class ValuationAssumptionKind(str, Enum):
     GROWTH_RATE_ASSUMPTION = "growth_rate_assumption"
     DISCOUNT_RATE_ASSUMPTION = "discount_rate_assumption"
     TERMINAL_MULTIPLE_ASSUMPTION = "terminal_multiple_assumption"
+
+
+class ValuationDecisionEligibility(str, Enum):
+    """(Valuation Observation Integrity) Whether the FCF-yield comparison
+    may influence a recommendation -- kept apart from what the comparison
+    *describes*. Atlas can often say where today's yield sits against a
+    few earlier fiscal years without that history being deep enough to
+    act on.
+
+    - `ELIGIBLE`: a current observation and at least
+      `cash_flow.MINIMUM_PRIOR_EPOCHS` prior fiscal epochs. Only here does
+      `ValuationFinding.status` carry `UNDERVALUED`/`FAIRLY_VALUED`/
+      `EXPENSIVE`.
+    - `LIMITED`: a current observation and one or more prior epochs, but
+      fewer than required. Describable, never decision-active.
+    - `INSUFFICIENT`: no current observation, or no prior epoch at all.
+    - `NOT_APPLICABLE`: the method does not describe this business.
+    """
+
+    ELIGIBLE = "eligible"
+    LIMITED = "limited"
+    INSUFFICIENT = "insufficient"
+    NOT_APPLICABLE = "not_applicable"
+
+
+class HistoricalYieldPosition(str, Enum):
+    """Where the current FCF yield sits against the prior fiscal epochs,
+    in yield terms only. Deliberately not `ValuationStatus`: "below every
+    prior yield" is a description; "expensive" is a conclusion Atlas only
+    draws from decision-eligible history."""
+
+    ABOVE_ALL_PRIOR = "above_all_prior"
+    WITHIN_PRIOR_RANGE = "within_prior_range"
+    BELOW_ALL_PRIOR = "below_all_prior"
+
+
+class ShareCountMethod(str, Enum):
+    """How market capitalisation is formed for every observation.
+
+    `CURRENT_SHARE_COUNT_PROXY`: the market-data provider reports only
+    today's shares outstanding (its current company overview), and the
+    historical prices it returns are split-adjusted to today's share
+    basis. Historical market capitalisation is therefore split-adjusted
+    price times *current* shares -- consistent through splits, but blind
+    to buybacks and issuance since. It is a proxy, never an exact
+    historical market capitalisation."""
+
+    CURRENT_SHARE_COUNT_PROXY = "current_share_count_proxy"
+
+
+class ValuationFactExclusionReason(str, Enum):
+    """Why a free cash flow fact was kept out of the FCF-yield method --
+    the same two source gates Financial Risk v2 applies to its own
+    statement figures."""
+
+    FUTURE_PERIOD = "future_period"
+    NOT_A_FINANCIAL_STATEMENT = "not_a_financial_statement"
 
 
 def severity_for_valuation_status(status: ValuationStatus) -> FindingSeverity:

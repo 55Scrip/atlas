@@ -9,12 +9,12 @@ from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, Valua
 from atlas.analysis_engine.valuation.models import ValuationEngineResult
 from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
 from atlas.decision_engine.contracts import EvaluationState
-from tests.unit.analysis_engine.valuation._fixtures import EVALUATED_AT
+from tests.unit.analysis_engine.valuation._fixtures import EVALUATED_AT, valuation_inputs
 
 
 class TestValuationEngineResultContract:
     def test_rejects_a_partial_method_list(self):
-        result = evaluate_valuation((), (), evaluated_at=EVALUATED_AT)
+        result = evaluate_valuation((), (), **valuation_inputs(()), evaluated_at=EVALUATED_AT)
         incomplete = result.findings[:1]
         try:
             ValuationEngineResult(state=EvaluationState.EVALUATED, findings=incomplete)
@@ -23,14 +23,14 @@ class TestValuationEngineResultContract:
             pass
 
     def test_accepts_all_four_methods(self):
-        result = evaluate_valuation((), (), evaluated_at=EVALUATED_AT)
+        result = evaluate_valuation((), (), **valuation_inputs(()), evaluated_at=EVALUATED_AT)
         assert len(result.findings) == 4
         assert result.state is EvaluationState.EVALUATED
 
 
 class TestImmutability:
     def test_valuation_finding_is_frozen(self):
-        result = evaluate_valuation((), (), evaluated_at=EVALUATED_AT)
+        result = evaluate_valuation((), (), **valuation_inputs(()), evaluated_at=EVALUATED_AT)
         try:
             result.findings[0].status = ValuationStatus.UNDERVALUED
             assert False, "expected FrozenInstanceError"

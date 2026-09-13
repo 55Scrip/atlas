@@ -43,6 +43,7 @@ from atlas.analysis_engine.business_data.versioning import latest_versions
 from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
 from atlas.analysis_engine.investment_case_change import ChangeIntelligence, capture_snapshot, compare_snapshots
 from atlas.analysis_engine.pipeline import assemble_analysis
+from atlas.analysis_engine.valuation.contracts import ValuationMethodKind
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
 from atlas.core.domain.case.entity import Case
 from atlas.core.domain.case.repository import CaseRepository
@@ -228,7 +229,15 @@ class InvestmentCaseCompositionService:
         market_snapshot = extract_market_snapshot(business_records)
         regulatory_filings = extract_regulatory_filings(business_records)
         incentive_intelligence = extract_incentive_intelligence(regulatory_filings)
-        historical_valuation = extract_historical_valuation(business_facts, market_facts)
+        # The FCF-yield finding's own fiscal epochs -- one construction,
+        # read here rather than rebuilt (see `historical_valuation.py`).
+        historical_valuation = extract_historical_valuation(
+            next(
+                finding for finding in canonical_analysis.valuation_engine.findings
+                if finding.kind is ValuationMethodKind.FCF_YIELD_RELATIVE
+            ),
+            market_facts,
+        )
         earnings_call = extract_earnings_call_knowledge(business_records)
         financial_statement_intelligence = extract_financial_statement_history(business_records)
         financial_quality_intelligence = extract_financial_quality(financial_statement_intelligence)

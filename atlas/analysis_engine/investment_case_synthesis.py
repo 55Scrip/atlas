@@ -56,7 +56,7 @@ from atlas.analysis_engine.growth import MetricTrend, classify_metric_trend
 from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.risk.contracts import RiskStatus
 from atlas.analysis_engine.risk.models import RiskAnalysisResult
-from atlas.analysis_engine.valuation.contracts import ValuationMethodKind
+from atlas.analysis_engine.valuation.contracts import ValuationDataGapKind, ValuationMethodKind
 from atlas.analysis_engine.valuation.contracts import ValuationStatus as ValStatus
 from atlas.analysis_engine.valuation.models import ValuationEngineResult
 
@@ -527,7 +527,11 @@ def derive_case_open_questions(
             CaseOpenQuestion(origin=OpenQuestionOrigin.CAPITAL_ALLOCATION_WEAK, reference=capital_allocation.id)
         )
 
-    if valuation.status is ValStatus.INSUFFICIENT_INPUT:
+    if ValuationDataGapKind.VALUATION_METHOD_NOT_APPLICABLE in valuation.missing_evidence:
+        # FCF yield does not describe a bank, dealer or insurer; no input
+        # would resolve that, so it is not a question to ask.
+        pass
+    elif valuation.status is ValStatus.INSUFFICIENT_INPUT:
         questions.append(CaseOpenQuestion(origin=OpenQuestionOrigin.VALUATION_INCONCLUSIVE, reference=valuation.id))
     else:
         if valuation.status is ValStatus.EXPENSIVE and growth.status in (BizStatus.STRONG, BizStatus.MODERATE):

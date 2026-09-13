@@ -59,6 +59,7 @@ from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.investment_case_synthesis import HighlightKind, OpenQuestionOrigin
 from atlas.analysis_engine.risk.contracts import RiskStatus
 from atlas.analysis_engine.risk.financial_risk import FINANCIAL_RISK_METHODOLOGY
+from atlas.analysis_engine.valuation.cash_flow import FCF_YIELD_METHODOLOGY
 
 if TYPE_CHECKING:
     # `capture_snapshot`'s own parameter type only -- `models.py` now
@@ -269,6 +270,12 @@ class AnalyticalSnapshot:
     persisted before the method was recorded. Two snapshots under
     different methods are not compared on Financial Risk: Atlas changing
     how it measures is not the company changing."""
+    valuation_methodology: str | None = None
+    """How the FCF-yield valuation history was constructed
+    (`cash_flow.FCF_YIELD_METHODOLOGY`); `None` for snapshots persisted
+    before it was recorded. Snapshots under different constructions are
+    not compared on valuation -- neither the valuation status, Valuation
+    Risk, nor the valuation highlights -- for the same reason."""
 
 
 @dataclass(frozen=True)
@@ -330,6 +337,7 @@ def capture_snapshot(canonical_analysis: CanonicalAnalysis) -> AnalyticalSnapsho
         # Part of the identity: a new method re-baselines every Case once,
         # rather than leaving a stale-method snapshot to compare against.
         "financial_risk_methodology": FINANCIAL_RISK_METHODOLOGY,
+        "valuation_methodology": FCF_YIELD_METHODOLOGY,
     }
     content_hash = hashlib.sha256(json.dumps(hashed_content, sort_keys=True).encode("utf-8")).hexdigest()
 
@@ -347,6 +355,7 @@ def capture_snapshot(canonical_analysis: CanonicalAnalysis) -> AnalyticalSnapsho
         content_hash=content_hash,
         captured_at=canonical_analysis.generated_at,
         financial_risk_methodology=FINANCIAL_RISK_METHODOLOGY,
+        valuation_methodology=FCF_YIELD_METHODOLOGY,
     )
 
 
@@ -736,6 +745,19 @@ def _is_financial_risk_change(change: ChangeFinding) -> bool:
     )
 
 
+_VALUATION_QUESTION_ORIGINS = frozenset(
+    origin.value for origin, (area, _) in _ORIGIN_DIMENSION.items() if area == "valuation"
+)
+
+
+def _is_valuation_change(change: ChangeFinding) -> bool:
+    return (
+        change.details.get("dimension") in (ValuationMethodKind.FCF_YIELD_RELATIVE.value, RiskCategory.VALUATION_RISK.value)
+        or change.details.get("highlight_kind") in (HighlightKind.VALUATION.value, HighlightKind.VALUATION_RISK.value)
+        or change.details.get("open_question_origin") in _VALUATION_QUESTION_ORIGINS
+    )
+
+
 def compare_snapshots(previous: AnalyticalSnapshot | None, current: AnalyticalSnapshot) -> ChangeIntelligence:
     """`previous=None` means "no prior snapshot exists" -- the first
     analysis ever recorded for this Case. This is a **baseline**, not a
@@ -784,6 +806,10 @@ def compare_snapshots(previous: AnalyticalSnapshot | None, current: AnalyticalSn
         # Different measuring rules on either side: whatever moved on
         # Financial Risk moved because Atlas changed, not the company.
         changes = tuple(c for c in changes if not _is_financial_risk_change(c))
+    if previous.valuation_methodology != current.valuation_methodology:
+        # Likewise for valuation: a corrected history is a new ruler, not
+        # a re-rating.
+        changes = tuple(c for c in changes if not _is_valuation_change(c))
 
     thesis_impact = _thesis_impact(changes)
     return ChangeIntelligence(

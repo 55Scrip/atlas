@@ -339,11 +339,16 @@ function formatYield(value: number, locale: string): string {
 /**
  * Why "expensive" is shown: the valuation evaluator's own figures, as the
  * signal summary projects them -- today's FCF yield against the company's
- * own earlier observations. Nothing is recomputed: "lower than every
- * earlier observation" is read off the projected percentile, and the
- * observation count always travels with it so a thin history reads as
- * thin. A comparison with the company's own past only -- never peers,
- * intrinsic value or expected return. `null` when the figures are absent.
+ * own earlier fiscal years. Nothing is recomputed: "lower than every
+ * earlier year" is read off the projected percentile, and the count always
+ * travels with it. A comparison with the company's own past only -- never
+ * peers, intrinsic value or expected return. `null` when the figures are
+ * absent.
+ *
+ * A row carrying `evidenceEligibility` counts fiscal years and says so,
+ * with the one methodological limit that matters for a comparison with
+ * the past: earlier market values use today's share count. A row stored
+ * before that counted market observations and keeps its original wording.
  */
 export function valuationBasisLabel(
   signalSummary: SignalContributionView[] | undefined,
@@ -357,11 +362,43 @@ export function valuationBasisLabel(
   const percentile = valuation?.historicalPercentile;
   if (current == null || median == null || count == null || percentile == null) return null;
   const params = { current: formatYield(current, locale), median: formatYield(median, locale), count };
-  const body =
-    percentile === 0
+  const byFiscalYear = valuation?.evidenceEligibility != null;
+  const body = byFiscalYear
+    ? percentile === 0
+      ? t("investmentReasoning.valuationBasis.belowAllYears", params)
+      : current < median
+        ? t("investmentReasoning.valuationBasis.belowMedianYears", params)
+        : null
+    : percentile === 0
       ? t(count === 1 ? "investmentReasoning.valuationBasis.belowOnly" : "investmentReasoning.valuationBasis.belowAll", params)
       : current < median
         ? t("investmentReasoning.valuationBasis.belowMedian", params)
         : null;
-  return body === null ? null : `${t(REASON_KIND_KEY.valuation_expensive)}: ${body}`;
+  if (body === null) return null;
+  const line = `${t(REASON_KIND_KEY.valuation_expensive)}: ${body}`;
+  return byFiscalYear ? `${line} ${t("investmentReasoning.valuationBasis.shareCountProxy")}` : line;
+}
+
+/**
+ * The one quiet line for a valuation that may not decide: a current FCF
+ * yield Atlas can see, against too few earlier fiscal years (or none) to
+ * let it move the recommendation -- or a method that does not apply to
+ * the business at all. Stated as history depth, never as "fairly valued".
+ * `null` for a decision-eligible valuation (no clutter where history is
+ * deep), for a legacy row, and when there is no current yield to speak of.
+ */
+export function valuationEvidenceLabel(
+  signalSummary: SignalContributionView[] | undefined,
+  t: Translate,
+  locale: string,
+): string | null {
+  const valuation = (signalSummary ?? []).find((c) => c.engine === "valuation");
+  const eligibility = valuation?.evidenceEligibility;
+  if (eligibility === "not_applicable") return t("investmentReasoning.valuationEvidence.notApplicable");
+  const current = valuation?.currentYield;
+  if ((eligibility !== "limited" && eligibility !== "insufficient") || current == null) return null;
+  const count = valuation?.historicalObservationCount ?? 0;
+  const params = { current: formatYield(current, locale), count };
+  if (count === 0) return t("investmentReasoning.valuationEvidence.none", params);
+  return t(count === 1 ? "investmentReasoning.valuationEvidence.limitedOne" : "investmentReasoning.valuationEvidence.limited", params);
 }

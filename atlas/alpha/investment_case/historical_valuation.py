@@ -14,25 +14,20 @@ unmodified, as `atlas.analysis_engine.valuation.cash_flow
 `EXPENSIVE` classification -- this module never recomputes or
 second-guesses it.
 
-**Per-period FCF-yield computation is intentionally duplicated here,
-not imported, from `cash_flow.py`'s own no-look-ahead rule** (confirmed
-by reading its source: a market observation's *eligible* Free Cash Flow
-fact is the most recent one whose `published_at` is on or before that
-observation's own date; `market_cap = share_price x shares_outstanding`;
-`yield = FCF / market_cap`, excluded when FCF or market cap is
-non-positive). Importing `cash_flow.py`'s own private helpers would
-couple this package to the protected valuation-methodology module this
-sprint's own non-goals forbid redesigning; duplicating this one small,
-pure, well-documented rule keeps this package independent while
-guaranteeing identical numbers for identical inputs -- verified by this
-module's own test suite calling `evaluate_fcf_yield_relative` directly
-as a consistency oracle.
+**One construction, read -- never rebuilt.** This module once duplicated
+`cash_flow.py`'s observation rule to stay independent of it. Valuation
+Observation Integrity corrected that rule (one observation per fiscal
+epoch, fundamentals paired with the fiscal year they represent, eligible
+statement facts only), and two copies of it would now describe two
+different histories. So the time series here is the canonical
+`FcfYieldEvidence` the FCF-yield finding already carries: its prior fiscal
+epochs, oldest first, then the current observation. The statistics below
+(percentile, range, trend, stability, deviations) are this module's own
+descriptive layer over those epochs, and never feed a decision.
 
-Reads `BusinessFact`/`ValuationFact` -- the exact same, already-
-extracted, already-deterministic facts `InvestmentCaseComposition
-.business_facts`/`.market_facts` already carry for resolving a
-`ValuationFinding`'s own `supporting_facts` ids (Product Sprint 14) --
-never a `BusinessRecord`, provider object, or document content.
+Reads the already-computed `ValuationFinding` and the market facts (only
+to name market dates that formed no observation) -- never a
+`BusinessRecord`, provider object, or document content.
 """
 from __future__ import annotations
 
@@ -40,9 +35,8 @@ from dataclasses import dataclass
 from datetime import date
 from enum import Enum
 
-from atlas.analysis_engine.business_facts.contracts import BusinessFactKind
-from atlas.analysis_engine.business_facts.models import BusinessFact
 from atlas.analysis_engine.valuation.facts import ValuationFact, ValuationFactKind
+from atlas.analysis_engine.valuation.models import ValuationFinding
 
 __all__ = [
     "ValuationMetricKind",
@@ -201,55 +195,33 @@ _SUFFICIENT_OBSERVATION_COUNT = 6
 _LIMITED_OBSERVATION_COUNT = 2
 
 
-def _parse_period_date(period: str) -> date | None:
-    try:
-        return date.fromisoformat(period)
-    except ValueError:
-        return None
-
-
-def _eligible_fcf_as_of(fcf_facts: list[BusinessFact], as_of: date) -> BusinessFact | None:
-    """Mirrors `cash_flow._eligible_fcf_as_of` exactly: the most recent
-    Free Cash Flow fact (by `period`) among those whose `published_at`
-    is on or before `as_of`."""
-    eligible = [fact for fact in fcf_facts if fact.published_at.date() <= as_of]
-    if not eligible:
-        return None
-    return max(eligible, key=lambda fact: (fact.period, fact.published_at, fact.id))
-
-
 def _fcf_yield_observations(
-    business_facts: tuple[BusinessFact, ...], market_facts: tuple[ValuationFact, ...]
+    fcf_yield_finding: ValuationFinding, market_facts: tuple[ValuationFact, ...]
 ) -> tuple[tuple[ValuationObservation, ...], tuple[date, ...]]:
-    """Returns (valid observations, chronological; dates sampled but
-    excluded). Mirrors `cash_flow.evaluate_fcf_yield_relative`'s own
-    market-observation/no-look-ahead rule -- see this module's own
-    docstring for why it is duplicated rather than imported."""
-    fcf_facts = [f for f in business_facts if f.kind is BusinessFactKind.FREE_CASH_FLOW]
-    price_by_period = {f.period: f for f in market_facts if f.kind is ValuationFactKind.SHARE_PRICE}
-    shares_by_period = {f.period: f for f in market_facts if f.kind is ValuationFactKind.SHARES_OUTSTANDING}
-    market_periods = sorted(set(price_by_period) & set(shares_by_period))
-
-    observations: list[ValuationObservation] = []
-    excluded: list[date] = []
-    for period in market_periods:
-        observation_date = _parse_period_date(period)
-        if observation_date is None:
+    """Returns (the canonical epochs, chronological, current last; market
+    dates that formed no observation). A date set aside only because
+    another observation already represents its fiscal year is neither."""
+    evidence = fcf_yield_finding.fcf_yield_evidence
+    if evidence is None or evidence.current is None:
+        return (), ()
+    epochs = (*evidence.prior_epochs, evidence.current)
+    observations = tuple(
+        ValuationObservation(period_end=date.fromisoformat(epoch.observed_on), value=epoch.fcf_yield)
+        for epoch in epochs
+    )
+    accounted = {epoch.observed_on for epoch in epochs} | set(evidence.consolidated_observations)
+    prices = {f.period for f in market_facts if f.kind is ValuationFactKind.SHARE_PRICE}
+    shares = {f.period for f in market_facts if f.kind is ValuationFactKind.SHARES_OUTSTANDING}
+    last = evidence.current.observed_on
+    missing = []
+    for period in sorted((prices & shares) - accounted):
+        try:
+            observed = date.fromisoformat(period)
+        except ValueError:
             continue
-        eligible_fcf = _eligible_fcf_as_of(fcf_facts, observation_date)
-        if eligible_fcf is None or eligible_fcf.value <= 0:
-            excluded.append(observation_date)
-            continue
-        price_fact = price_by_period[period]
-        shares_fact = shares_by_period[period]
-        market_cap = price_fact.value * shares_fact.value
-        if market_cap <= 0:
-            excluded.append(observation_date)
-            continue
-        observations.append(ValuationObservation(period_end=observation_date, value=eligible_fcf.value / market_cap))
-
-    observations.sort(key=lambda obs: obs.period_end)
-    return tuple(observations), tuple(sorted(excluded))
+        if period <= last:
+            missing.append(observed)
+    return observations, tuple(missing)
 
 
 def _position_in_range(current: float, historical: tuple[float, ...]) -> ValuationRangePosition:
@@ -339,9 +311,9 @@ def _data_quality(observation_count: int) -> ValuationDataQuality:
 
 
 def _fcf_yield_metric_history(
-    business_facts: tuple[BusinessFact, ...], market_facts: tuple[ValuationFact, ...]
+    fcf_yield_finding: ValuationFinding, market_facts: tuple[ValuationFact, ...]
 ) -> ValuationMetricHistory | None:
-    observations, missing_periods = _fcf_yield_observations(business_facts, market_facts)
+    observations, missing_periods = _fcf_yield_observations(fcf_yield_finding, market_facts)
     if not observations:
         return None
 
@@ -370,14 +342,14 @@ def _fcf_yield_metric_history(
 
 
 def extract_historical_valuation(
-    business_facts: tuple[BusinessFact, ...], market_facts: tuple[ValuationFact, ...]
+    fcf_yield_finding: ValuationFinding, market_facts: tuple[ValuationFact, ...]
 ) -> HistoricalValuationKnowledge:
-    """Pure, no I/O: organizes already-extracted facts into structured
-    knowledge (Phase 3) -- generates no investment conclusion. `metrics`
-    is empty when no `ValuationMetricKind` has at least one valid
-    observation."""
+    """Pure, no I/O: organizes the FCF-yield finding's own fiscal epochs
+    into structured knowledge (Phase 3) -- generates no investment
+    conclusion. `metrics` is empty when there is no current observation
+    (including when the method does not apply)."""
     metrics: list[ValuationMetricHistory] = []
-    fcf_yield = _fcf_yield_metric_history(business_facts, market_facts)
+    fcf_yield = _fcf_yield_metric_history(fcf_yield_finding, market_facts)
     if fcf_yield is not None:
         metrics.append(fcf_yield)
     return HistoricalValuationKnowledge(metrics=tuple(metrics))

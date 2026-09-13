@@ -1,17 +1,14 @@
 """Tests for `atlas.alpha.investment_case.historical_valuation`
-(Capability Expansion Sprint 1, Phases 1 + 3).
+(Capability Expansion Sprint 1; Valuation Observation Integrity).
 
-Reuses `cash_flow.py`'s own test fixtures (`fcf`/`price`/`shares`/
-`_market`) directly -- both the realistic multi-year timeline
-construction and, in `TestConsistencyWithDecisionLayer`, as a ground-
-truth oracle: this module's own `position_in_range`/`current_value`
-must agree with `evaluate_fcf_yield_relative`'s own `ValuationStatus`/
-`current_yield` for the *identical* inputs, since both are meant to
-describe the same underlying reality.
+The time series is the FCF-yield finding's own fiscal epochs -- the prior
+fiscal years, then today's observation -- never a second construction.
+`TestOneConstruction` pins that: whatever the evaluator compared, this
+module describes exactly that, value for value.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date
 
 from atlas.alpha.investment_case.historical_valuation import (
     ValuationDataQuality,
@@ -21,236 +18,176 @@ from atlas.alpha.investment_case.historical_valuation import (
     ValuationTrend,
     extract_historical_valuation,
 )
-from atlas.analysis_engine.valuation.cash_flow import evaluate_fcf_yield_relative
 from atlas.analysis_engine.valuation.contracts import ValuationStatus
-from tests.unit.analysis_engine.valuation.test_cash_flow import _market, fcf, price, shares
-from tests.unit.analysis_engine.valuation._fixtures import EVALUATED_AT
+from tests.unit.analysis_engine.valuation._epochs import (
+    annual_history,
+    evaluate,
+    filed_on,
+    first_quote_day,
+    quote,
+    statement_fcf,
+)
 
 
-def _dt(year: int, month: int, day: int) -> datetime:
-    return datetime(year, month, day, tzinfo=timezone.utc)
+def knowledge(business, market, **kwargs):
+    finding = evaluate(business, market, **kwargs)
+    return finding, extract_historical_valuation(finding, tuple(market))
 
 
-FY2022_PERIOD, FY2022_FILED = "2022-12-31", _dt(2023, 2, 15)
-FY2023_PERIOD, FY2023_FILED = "2023-12-31", _dt(2024, 2, 15)
-FY2024_PERIOD, FY2024_FILED = "2024-12-31", _dt(2025, 2, 15)
-OBS_2023, OBS_2024, OBS_2025 = "2023-03-01", "2024-03-01", "2025-03-01"
+def series(fcf_values, today_price=50.0, price=50.0):
+    """One fiscal year per value (from 2018), the first observation after
+    each filing but the last, and today's price against the last year."""
+    years = list(range(2018, 2018 + len(fcf_values)))
+    business, market = annual_history(dict(zip(years, fcf_values)), {y: price for y in years[:-1]})
+    return business, [*market, *quote("2026-08-20", today_price)]
 
 
 class TestEmptyInput:
     def test_no_facts_at_all_produces_no_metrics(self):
-        knowledge = extract_historical_valuation((), ())
-        assert knowledge.metrics == ()
+        assert knowledge((), ())[1].metrics == ()
+
+    def test_a_method_that_does_not_apply_produces_no_metrics(self):
+        _, result = knowledge(*series((100.0, 110.0, 120.0, 130.0)), industry="BANKS - DIVERSIFIED")
+        assert result.metrics == ()
 
 
 class TestSingleObservation:
-    def test_one_valid_observation_has_a_current_value_but_no_history(self):
-        business_facts = (fcf(100.0, FY2024_PERIOD, FY2024_FILED),)
-        valuation_facts = _market(OBS_2025, 50.0, 100.0)
-        knowledge = extract_historical_valuation(business_facts, valuation_facts)
-        assert len(knowledge.metrics) == 1
-        metric = knowledge.metrics[0]
+    def test_one_fiscal_year_has_a_current_value_but_no_history(self):
+        business, market = annual_history({2024: 100.0}, {})
+        finding, result = knowledge(business, [*market, *quote("2026-08-20", 50.0)])
+        metric = result.metrics[0]
         assert metric.metric is ValuationMetricKind.FCF_YIELD
-        assert metric.current_value == 100.0 / (50.0 * 100.0)
-        assert metric.historical_average is None
-        assert metric.historical_minimum is None
+        assert metric.current_value == finding.current_yield == 100.0 / (50.0 * 100.0)
+        assert metric.historical_average is None and metric.historical_minimum is None
         assert metric.current_percentile is None
         assert metric.position_in_range is ValuationRangePosition.INSUFFICIENT_DATA
         assert metric.trend is ValuationTrend.INSUFFICIENT_DATA
         assert metric.stability is ValuationStability.INSUFFICIENT_DATA
         assert metric.data_quality is ValuationDataQuality.INSUFFICIENT
-        assert metric.coverage_period_start == metric.coverage_period_end == date(2025, 3, 1)
+        assert metric.coverage_period_start == metric.coverage_period_end == date(2026, 8, 20)
 
 
-class TestConsistencyWithDecisionLayer:
-    """The load-bearing guarantee: whatever `cash_flow.py`'s own
-    evaluator concludes, this module's own statistics must agree --
-    verified against the real, unmodified, public
-    `evaluate_fcf_yield_relative` function (never its private helpers)
-    for the identical fixtures its own test suite uses."""
+class TestOneConstruction:
+    """The load-bearing guarantee: the observations here are the
+    evaluator's own epochs, so its classification and this description can
+    never disagree."""
 
-    def test_undervalued_scenario_is_at_or_above_historical_high(self):
-        business_facts = (
-            fcf(100.0, FY2022_PERIOD, FY2022_FILED),
-            fcf(110.0, FY2023_PERIOD, FY2023_FILED),
-            fcf(200.0, FY2024_PERIOD, FY2024_FILED),
-        )
-        valuation_facts = (
-            *_market(OBS_2023, 50.0, 100.0), *_market(OBS_2024, 52.0, 100.0), *_market(OBS_2025, 53.0, 100.0),
-        )
-        finding = evaluate_fcf_yield_relative(business_facts, valuation_facts, evaluated_at=EVALUATED_AT)
+    def test_observations_are_the_prior_epochs_then_the_current_one(self):
+        finding, result = knowledge(*series((100.0, 110.0, 120.0, 200.0), today_price=53.0))
+        evidence = finding.fcf_yield_evidence
+        expected = [*(e.fcf_yield for e in evidence.prior_epochs), evidence.current.fcf_yield]
+        assert [o.value for o in result.metrics[0].observations] == expected
+
+    def test_undervalued_is_at_or_above_the_historical_high(self):
+        finding, result = knowledge(*series((100.0, 110.0, 120.0, 200.0), today_price=53.0))
         assert finding.status is ValuationStatus.UNDERVALUED
+        assert result.metrics[0].position_in_range is ValuationRangePosition.AT_OR_ABOVE_HISTORICAL_HIGH
 
-        knowledge = extract_historical_valuation(business_facts, valuation_facts)
-        metric = knowledge.metrics[0]
-        assert metric.current_value == finding.current_yield
-        assert metric.position_in_range is ValuationRangePosition.AT_OR_ABOVE_HISTORICAL_HIGH
-
-    def test_fairly_valued_scenario_is_within_historical_average_band(self):
-        business_facts = (
-            fcf(100.0, FY2022_PERIOD, FY2022_FILED),
-            fcf(105.0, FY2023_PERIOD, FY2023_FILED),
-            fcf(102.0, FY2024_PERIOD, FY2024_FILED),
-        )
-        valuation_facts = (
-            *_market(OBS_2023, 50.0, 100.0), *_market(OBS_2024, 50.0, 100.0), *_market(OBS_2025, 50.5, 100.0),
-        )
-        finding = evaluate_fcf_yield_relative(business_facts, valuation_facts, evaluated_at=EVALUATED_AT)
+    def test_fairly_valued_is_within_the_historical_band(self):
+        finding, result = knowledge(*series((100.0, 105.0, 110.0, 104.0), today_price=50.0))
         assert finding.status is ValuationStatus.FAIRLY_VALUED
-
-        knowledge = extract_historical_valuation(business_facts, valuation_facts)
-        metric = knowledge.metrics[0]
-        assert metric.current_value == finding.current_yield
-        assert metric.position_in_range in (
+        assert result.metrics[0].position_in_range in (
             ValuationRangePosition.BELOW_HISTORICAL_AVERAGE,
             ValuationRangePosition.AT_HISTORICAL_AVERAGE,
             ValuationRangePosition.ABOVE_HISTORICAL_AVERAGE,
         )
 
-    def test_expensive_scenario_is_at_or_below_historical_low(self):
-        business_facts = (
-            fcf(200.0, FY2022_PERIOD, FY2022_FILED),
-            fcf(150.0, FY2023_PERIOD, FY2023_FILED),
-            fcf(100.0, FY2024_PERIOD, FY2024_FILED),
-        )
-        valuation_facts = (
-            *_market(OBS_2023, 50.0, 100.0), *_market(OBS_2024, 50.0, 100.0), *_market(OBS_2025, 50.0, 100.0),
-        )
-        finding = evaluate_fcf_yield_relative(business_facts, valuation_facts, evaluated_at=EVALUATED_AT)
+    def test_expensive_is_at_or_below_the_historical_low(self):
+        finding, result = knowledge(*series((200.0, 150.0, 120.0, 100.0), today_price=50.0))
         assert finding.status is ValuationStatus.EXPENSIVE
+        assert result.metrics[0].position_in_range is ValuationRangePosition.AT_OR_BELOW_HISTORICAL_LOW
 
-        knowledge = extract_historical_valuation(business_facts, valuation_facts)
-        metric = knowledge.metrics[0]
-        assert metric.current_value == finding.current_yield
-        assert metric.position_in_range is ValuationRangePosition.AT_OR_BELOW_HISTORICAL_LOW
+    def test_historical_statistics_exclude_the_current_observation(self):
+        finding, result = knowledge(*series((100.0, 110.0, 120.0, 200.0), today_price=53.0))
+        prior = finding.fcf_yield_evidence.prior_yields
+        metric = result.metrics[0]
+        assert metric.historical_average == sum(prior) / len(prior)
+        assert (metric.historical_minimum, metric.historical_maximum) == (min(prior), max(prior))
 
-    def test_historical_average_excludes_the_current_observation(self):
-        business_facts = (
-            fcf(100.0, FY2022_PERIOD, FY2022_FILED),
-            fcf(110.0, FY2023_PERIOD, FY2023_FILED),
-            fcf(200.0, FY2024_PERIOD, FY2024_FILED),
-        )
-        valuation_facts = (
-            *_market(OBS_2023, 50.0, 100.0), *_market(OBS_2024, 52.0, 100.0), *_market(OBS_2025, 53.0, 100.0),
-        )
-        knowledge = extract_historical_valuation(business_facts, valuation_facts)
-        metric = knowledge.metrics[0]
-        yield_2023 = 100.0 / (50.0 * 100.0)
-        yield_2024 = 110.0 / (52.0 * 100.0)
-        assert metric.historical_average == (yield_2023 + yield_2024) / 2
-        assert metric.historical_minimum == min(yield_2023, yield_2024)
-        assert metric.historical_maximum == max(yield_2023, yield_2024)
+    def test_refreshes_of_one_fiscal_year_are_neither_observations_nor_gaps(self):
+        business, market = series((100.0, 110.0, 120.0, 130.0))
+        refreshed = [*market, *quote("2026-08-07", 49.0), *quote("2025-11-28", 48.0)]
+        _, result = knowledge(business, refreshed)
+        metric = result.metrics[0]
+        assert len(metric.observations) == 4
+        assert date(2026, 8, 7) not in metric.missing_periods
+        assert date(2025, 11, 28) not in metric.missing_periods
+
+    def test_a_limited_history_is_still_described(self):
+        finding, result = knowledge(*series((100.0, 110.0, 120.0), today_price=80.0))
+        assert finding.status is ValuationStatus.INSUFFICIENT_INPUT
+        assert result.metrics[0].position_in_range is ValuationRangePosition.AT_OR_BELOW_HISTORICAL_LOW
+        assert result.metrics[0].data_quality is ValuationDataQuality.LIMITED
 
 
 class TestTrend:
-    def _observations(self, values: tuple[float, ...]) -> tuple[tuple, tuple]:
-        years = list(range(2020, 2020 + len(values)))
-        business_facts = tuple(
-            fcf(values[i], f"{years[i]}-12-31", _dt(years[i] + 1, 2, 15)) for i in range(len(values))
-        )
-        valuation_facts = tuple(
-            fact for i in range(len(values)) for fact in _market(f"{years[i] + 1}-03-01", 50.0, 100.0)
-        )
-        return business_facts, valuation_facts
-
     def test_fewer_than_four_observations_is_insufficient(self):
-        business_facts, valuation_facts = self._observations((100.0, 110.0, 120.0))
-        metric = extract_historical_valuation(business_facts, valuation_facts).metrics[0]
-        assert metric.trend is ValuationTrend.INSUFFICIENT_DATA
+        _, result = knowledge(*series((100.0, 110.0, 120.0)))
+        assert result.metrics[0].trend is ValuationTrend.INSUFFICIENT_DATA
 
     def test_a_clear_rise_across_the_series_is_rising(self):
-        business_facts, valuation_facts = self._observations((50.0, 60.0, 150.0, 200.0))
-        metric = extract_historical_valuation(business_facts, valuation_facts).metrics[0]
-        assert metric.trend is ValuationTrend.RISING
+        _, result = knowledge(*series((50.0, 60.0, 150.0, 200.0)))
+        assert result.metrics[0].trend is ValuationTrend.RISING
 
     def test_a_clear_fall_across_the_series_is_falling(self):
-        business_facts, valuation_facts = self._observations((200.0, 150.0, 60.0, 50.0))
-        metric = extract_historical_valuation(business_facts, valuation_facts).metrics[0]
-        assert metric.trend is ValuationTrend.FALLING
+        _, result = knowledge(*series((200.0, 150.0, 60.0, 50.0)))
+        assert result.metrics[0].trend is ValuationTrend.FALLING
 
     def test_a_flat_series_is_stable(self):
-        business_facts, valuation_facts = self._observations((100.0, 100.0, 100.0, 100.0))
-        metric = extract_historical_valuation(business_facts, valuation_facts).metrics[0]
-        assert metric.trend is ValuationTrend.STABLE
+        _, result = knowledge(*series((100.0, 100.0, 100.0, 100.0)))
+        assert result.metrics[0].trend is ValuationTrend.STABLE
 
 
 class TestStability:
     def test_a_single_observation_is_insufficient(self):
-        business_facts = (fcf(100.0, FY2024_PERIOD, FY2024_FILED),)
-        valuation_facts = _market(OBS_2025, 50.0, 100.0)
-        metric = extract_historical_valuation(business_facts, valuation_facts).metrics[0]
-        assert metric.stability is ValuationStability.INSUFFICIENT_DATA
+        _, result = knowledge(*series((100.0,)))
+        assert result.metrics[0].stability is ValuationStability.INSUFFICIENT_DATA
 
     def test_near_identical_observations_are_stable(self):
-        business_facts = (
-            fcf(100.0, FY2022_PERIOD, FY2022_FILED), fcf(101.0, FY2023_PERIOD, FY2023_FILED),
-        )
-        valuation_facts = (*_market(OBS_2023, 50.0, 100.0), *_market(OBS_2024, 50.0, 100.0))
-        metric = extract_historical_valuation(business_facts, valuation_facts).metrics[0]
-        assert metric.stability is ValuationStability.STABLE
+        _, result = knowledge(*series((100.0, 101.0)))
+        assert result.metrics[0].stability is ValuationStability.STABLE
 
     def test_widely_swinging_observations_are_volatile(self):
-        business_facts = (
-            fcf(50.0, FY2022_PERIOD, FY2022_FILED), fcf(500.0, FY2023_PERIOD, FY2023_FILED),
-        )
-        valuation_facts = (*_market(OBS_2023, 50.0, 100.0), *_market(OBS_2024, 50.0, 100.0))
-        metric = extract_historical_valuation(business_facts, valuation_facts).metrics[0]
-        assert metric.stability is ValuationStability.VOLATILE
+        _, result = knowledge(*series((50.0, 500.0)))
+        assert result.metrics[0].stability is ValuationStability.VOLATILE
 
 
 class TestSignificantDeviations:
     def test_an_outlier_observation_is_flagged(self):
-        business_facts = (
-            fcf(100.0, "2020-12-31", _dt(2021, 2, 15)),
-            fcf(105.0, "2021-12-31", _dt(2022, 2, 15)),
-            fcf(98.0, "2022-12-31", _dt(2023, 2, 15)),
-            fcf(2000.0, "2023-12-31", _dt(2024, 2, 15)),
-        )
-        valuation_facts = (
-            *_market("2021-03-01", 50.0, 100.0), *_market("2022-03-01", 50.0, 100.0),
-            *_market("2023-03-01", 50.0, 100.0), *_market("2024-03-01", 50.0, 100.0),
-        )
-        metric = extract_historical_valuation(business_facts, valuation_facts).metrics[0]
+        _, result = knowledge(*series((100.0, 105.0, 98.0, 2000.0)))
+        metric = result.metrics[0]
         assert len(metric.significant_deviations) >= 1
-        assert metric.significant_deviations[-1].period_end == date(2024, 3, 1)
+        assert metric.significant_deviations[-1].period_end == date(2026, 8, 20)
 
     def test_a_tight_series_has_no_deviations(self):
-        business_facts = tuple(fcf(100.0 + i, f"{2020+i}-12-31", _dt(2021 + i, 2, 15)) for i in range(3))
-        valuation_facts = tuple(
-            fact for i in range(3) for fact in _market(f"{2021+i}-03-01", 50.0, 100.0)
-        )
-        metric = extract_historical_valuation(business_facts, valuation_facts).metrics[0]
-        assert metric.significant_deviations == ()
+        _, result = knowledge(*series((100.0, 101.0, 102.0)))
+        assert result.metrics[0].significant_deviations == ()
 
 
 class TestMissingPeriods:
-    def test_a_market_observation_with_no_eligible_fcf_is_a_missing_period(self):
-        business_facts = (fcf(100.0, FY2024_PERIOD, FY2024_FILED),)
-        valuation_facts = (*_market(OBS_2023, 50.0, 100.0), *_market(OBS_2025, 52.0, 100.0))
-        metric = extract_historical_valuation(business_facts, valuation_facts).metrics[0]
-        assert date(2023, 3, 1) in metric.missing_periods
-        assert date(2025, 3, 1) not in metric.missing_periods
+    def test_a_price_before_any_fiscal_year_was_public_is_a_missing_period(self):
+        business = [statement_fcf(100.0, "2024-12-31", filed_on(2024))]
+        market = [*quote("2024-06-28", 50.0), *quote("2026-08-20", 52.0)]
+        metric = knowledge(business, market)[1].metrics[0]
+        assert date(2024, 6, 28) in metric.missing_periods
+        assert date(2026, 8, 20) not in metric.missing_periods
 
-    def test_a_non_positive_fcf_observation_is_a_missing_period(self):
-        business_facts = (fcf(-10.0, FY2024_PERIOD, FY2024_FILED),)
-        valuation_facts = _market(OBS_2025, 50.0, 100.0)
-        knowledge = extract_historical_valuation(business_facts, valuation_facts)
-        assert knowledge.metrics == ()  # zero valid observations at all
+    def test_a_non_positive_fiscal_year_is_a_missing_period(self):
+        business, market = annual_history({2021: 100.0, 2022: -10.0, 2023: 120.0}, {2021: 50.0, 2022: 50.0})
+        metric = knowledge(business, [*market, *quote("2026-08-20", 50.0)])[1].metrics[0]
+        assert date.fromisoformat(first_quote_day(2022)) in metric.missing_periods
+
+    def test_no_current_observation_produces_no_metrics(self):
+        business, market = annual_history({2023: 100.0, 2024: -10.0}, {2023: 50.0})
+        _, result = knowledge(business, [*market, *quote("2026-08-20", 50.0)])
+        assert result.metrics == ()
 
 
 class TestDataQuality:
     def test_six_or_more_observations_is_sufficient(self):
-        business_facts = tuple(fcf(100.0 + i, f"{2018+i}-12-31", _dt(2019 + i, 2, 15)) for i in range(6))
-        valuation_facts = tuple(
-            fact for i in range(6) for fact in _market(f"{2019+i}-03-01", 50.0, 100.0)
-        )
-        metric = extract_historical_valuation(business_facts, valuation_facts).metrics[0]
-        assert metric.data_quality is ValuationDataQuality.SUFFICIENT
+        _, result = knowledge(*series(tuple(100.0 + i for i in range(6))))
+        assert result.metrics[0].data_quality is ValuationDataQuality.SUFFICIENT
 
     def test_two_to_five_observations_is_limited(self):
-        business_facts = (
-            fcf(100.0, FY2022_PERIOD, FY2022_FILED), fcf(105.0, FY2023_PERIOD, FY2023_FILED),
-        )
-        valuation_facts = (*_market(OBS_2023, 50.0, 100.0), *_market(OBS_2024, 50.0, 100.0))
-        metric = extract_historical_valuation(business_facts, valuation_facts).metrics[0]
-        assert metric.data_quality is ValuationDataQuality.LIMITED
+        _, result = knowledge(*series((100.0, 105.0)))
+        assert result.metrics[0].data_quality is ValuationDataQuality.LIMITED

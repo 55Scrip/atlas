@@ -100,6 +100,9 @@ def _classify_valuation(status: ValuationStatus, missing_evidence: tuple[Valuati
         return level, reasons
     if ValuationDataGapKind.MISSING_SCENARIO_ASSUMPTIONS in missing_evidence:
         return DimensionCoverageLevel.NOT_APPLICABLE, reasons
+    # FCF yield does not describe a bank, dealer or insurer: not a gap.
+    if ValuationDataGapKind.VALUATION_METHOD_NOT_APPLICABLE in missing_evidence:
+        return DimensionCoverageLevel.NOT_APPLICABLE, reasons
     return DimensionCoverageLevel.UNAVAILABLE, reasons
 
 

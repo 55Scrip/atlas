@@ -115,22 +115,35 @@ def _weak_capital_allocation_records():
     )
 
 
+#: Valuation Observation Integrity: FCF yield prices annual statements of
+#: an operating business, against at least three prior fiscal years.
+_OPERATING_INDUSTRY = "SEMICONDUCTOR EQUIPMENT & MATERIALS"
+
+
 def _undervalued_valuation_records():
-    """Verbatim reuse of `test_pipeline.py::TestValuationEngineEndToEnd
-    ._records`'s own proven UNDERVALUED fixture."""
+    """The same shape as `test_pipeline.py::TestValuationEngineEndToEnd
+    ._records`'s proven UNDERVALUED fixture: four annual statements, a
+    market observation after each of the first three filings and today's,
+    and a company profile."""
     return (
         _make_record(
-            "annual_report", date(2022, 12, 31), "vfy22",
+            "financial_statement", date(2021, 12, 31), "vfy21",
+            published_at=datetime(2022, 2, 15, tzinfo=timezone.utc), free_cash_flow=90.0,
+        ),
+        _make_record(
+            "financial_statement", date(2022, 12, 31), "vfy22",
             published_at=datetime(2023, 2, 15, tzinfo=timezone.utc), free_cash_flow=100.0,
         ),
         _make_record(
-            "annual_report", date(2023, 12, 31), "vfy23",
+            "financial_statement", date(2023, 12, 31), "vfy23",
             published_at=datetime(2024, 2, 15, tzinfo=timezone.utc), free_cash_flow=110.0,
         ),
         _make_record(
-            "annual_report", date(2024, 12, 31), "vfy24",
+            "financial_statement", date(2024, 12, 31), "vfy24",
             published_at=datetime(2025, 2, 15, tzinfo=timezone.utc), free_cash_flow=200.0,
         ),
+        _make_record("market_data_snapshot", date(2022, 3, 1), "vm21", share_price=50.0, shares_outstanding=100.0),
+        _make_record("company_profile", None, "vprofile", industry=_OPERATING_INDUSTRY),
         _make_record("market_data_snapshot", date(2023, 3, 1), "vm22", share_price=50.0, shares_outstanding=100.0),
         _make_record("market_data_snapshot", date(2024, 3, 1), "vm23", share_price=52.0, shares_outstanding=100.0),
         _make_record("market_data_snapshot", date(2025, 3, 1), "vm24", share_price=53.0, shares_outstanding=100.0),
@@ -143,17 +156,23 @@ def _expensive_valuation_records():
     below the historical range."""
     return (
         _make_record(
-            "annual_report", date(2022, 12, 31), "efy22",
+            "financial_statement", date(2021, 12, 31), "efy21",
+            published_at=datetime(2022, 2, 15, tzinfo=timezone.utc), free_cash_flow=90.0,
+        ),
+        _make_record(
+            "financial_statement", date(2022, 12, 31), "efy22",
             published_at=datetime(2023, 2, 15, tzinfo=timezone.utc), free_cash_flow=100.0,
         ),
         _make_record(
-            "annual_report", date(2023, 12, 31), "efy23",
+            "financial_statement", date(2023, 12, 31), "efy23",
             published_at=datetime(2024, 2, 15, tzinfo=timezone.utc), free_cash_flow=110.0,
         ),
         _make_record(
-            "annual_report", date(2024, 12, 31), "efy24",
+            "financial_statement", date(2024, 12, 31), "efy24",
             published_at=datetime(2025, 2, 15, tzinfo=timezone.utc), free_cash_flow=120.0,
         ),
+        _make_record("market_data_snapshot", date(2022, 3, 1), "em21", share_price=20.0, shares_outstanding=100.0),
+        _make_record("company_profile", None, "eprofile", industry=_OPERATING_INDUSTRY),
         _make_record("market_data_snapshot", date(2023, 3, 1), "em22", share_price=20.0, shares_outstanding=100.0),
         _make_record("market_data_snapshot", date(2024, 3, 1), "em23", share_price=22.0, shares_outstanding=100.0),
         _make_record("market_data_snapshot", date(2025, 3, 1), "em24", share_price=500.0, shares_outstanding=100.0),

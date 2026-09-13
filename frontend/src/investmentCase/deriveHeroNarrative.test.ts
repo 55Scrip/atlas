@@ -31,4 +31,17 @@ describe("deriveHeroTension -- Status/Explanation Language stabilization", () =>
       deriveHeroTension({ growthStatus: "strong", capitalAllocationStatus: "moderate", valuationStatus: "undervalued" }),
     ).toBe("aligned_positive");
   });
+
+  it("an unjudgeable valuation is said as such, never 'valuation doesn't stand in the way'", () => {
+    for (const valuationStatus of ["insufficient_input", "not_evaluated"] as const) {
+      expect(deriveHeroTension({ growthStatus: "strong", capitalAllocationStatus: "strong", valuationStatus })).toBe(
+        "business_strong_valuation_unknown",
+      );
+      expect(deriveHeroTension({ growthStatus: "weak", capitalAllocationStatus: "weak", valuationStatus })).toBe(
+        "business_weak_valuation_unknown",
+      );
+    }
+    expect(deriveHeroTension({ growthStatus: "strong", capitalAllocationStatus: "strong", valuationStatus: "fairly_valued" }))
+      .toBe("aligned_positive");
+  });
 });

@@ -85,6 +85,8 @@ export const HERO_WHY_KEY: Record<HeroTensionKind, TranslationKey> = {
   aligned_negative: "investmentCase.hero.why.aligned_negative",
   business_strong_valuation_weak: "investmentCase.hero.why.business_strong_valuation_weak",
   business_weak_valuation_strong: "investmentCase.hero.why.business_weak_valuation_strong",
+  business_strong_valuation_unknown: "investmentCase.hero.why.business_strong_valuation_unknown",
+  business_weak_valuation_unknown: "investmentCase.hero.why.business_weak_valuation_unknown",
   insufficient: "investmentCase.hero.why.insufficient",
   neutral: "investmentCase.hero.why.neutral",
 };

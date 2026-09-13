@@ -26,12 +26,22 @@ def evaluate_valuation(
     business_facts: tuple[BusinessFact, ...],
     valuation_facts: tuple[ValuationFact, ...],
     *,
+    statement_record_ids: frozenset[str],
+    industry: str | None,
     evaluated_at: datetime,
 ) -> ValuationEngineResult:
-    """Deterministic: identical `business_facts`/`valuation_facts`
-    always produce a deeply equal `ValuationEngineResult`.
+    """Deterministic: identical inputs always produce a deeply equal
+    `ValuationEngineResult`. `statement_record_ids` names the records that
+    are annual financial statements and `industry` is the company-profile
+    industry -- the FCF-yield method's eligibility inputs (`cash_flow.py`).
     """
-    fcf_yield_finding = evaluate_fcf_yield_relative(business_facts, valuation_facts, evaluated_at=evaluated_at)
+    fcf_yield_finding = evaluate_fcf_yield_relative(
+        business_facts,
+        valuation_facts,
+        statement_record_ids=statement_record_ids,
+        industry=industry,
+        evaluated_at=evaluated_at,
+    )
     scenario_findings = build_scenario_findings(evaluated_at=evaluated_at)
 
     return ValuationEngineResult(

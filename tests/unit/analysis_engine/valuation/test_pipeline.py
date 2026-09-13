@@ -10,7 +10,7 @@ from atlas.analysis_engine.valuation.contracts import ValuationMethodKind, Valua
 from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
 from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
 from atlas.decision_engine.contracts import EvaluationState
-from tests.unit.analysis_engine.valuation._fixtures import EVALUATED_AT, fundamentals_record, market_record
+from tests.unit.analysis_engine.valuation._fixtures import EVALUATED_AT, fundamentals_record, market_record, valuation_inputs
 
 
 def _filed(year: int, month: int = 2, day: int = 15) -> datetime:
@@ -23,12 +23,12 @@ def _filed(year: int, month: int = 2, day: int = 15) -> datetime:
 
 class TestStructuralCompleteness:
     def test_always_four_findings(self):
-        result = evaluate_valuation((), (), evaluated_at=EVALUATED_AT)
+        result = evaluate_valuation((), (), **valuation_inputs(()), evaluated_at=EVALUATED_AT)
         assert len(result.findings) == 4
         assert result.state is EvaluationState.EVALUATED
 
     def test_names_all_four_method_kinds(self):
-        result = evaluate_valuation((), (), evaluated_at=EVALUATED_AT)
+        result = evaluate_valuation((), (), **valuation_inputs(()), evaluated_at=EVALUATED_AT)
         assert {f.kind for f in result.findings} == set(ValuationMethodKind)
 
 
@@ -36,6 +36,8 @@ class TestEndToEndFromRealRecords:
     def test_real_records_produce_a_real_undervalued_finding(self):
         records = (
             fundamentals_record(
+                period_end=date(2021, 12, 31), identifier="fy21", published_at=_filed(2022), free_cash_flow=90.0
+            ),            fundamentals_record(
                 period_end=date(2022, 12, 31), identifier="fy22", published_at=_filed(2023), free_cash_flow=100.0
             ),
             fundamentals_record(
@@ -44,13 +46,14 @@ class TestEndToEndFromRealRecords:
             fundamentals_record(
                 period_end=date(2024, 12, 31), identifier="fy24", published_at=_filed(2025), free_cash_flow=200.0
             ),
+            market_record(period_end=date(2022, 3, 1), identifier="m21", share_price=50.0, shares_outstanding=100.0),
             market_record(period_end=date(2023, 3, 1), identifier="m22", share_price=50.0, shares_outstanding=100.0),
             market_record(period_end=date(2024, 3, 1), identifier="m23", share_price=52.0, shares_outstanding=100.0),
             market_record(period_end=date(2025, 3, 1), identifier="m24", share_price=53.0, shares_outstanding=100.0),
         )
         business_facts = extract_facts_from_records(records, evaluated_at=EVALUATED_AT)
         valuation_facts = extract_valuation_facts_from_records(records, evaluated_at=EVALUATED_AT)
-        result = evaluate_valuation(business_facts, valuation_facts, evaluated_at=EVALUATED_AT)
+        result = evaluate_valuation(business_facts, valuation_facts, **valuation_inputs(business_facts), evaluated_at=EVALUATED_AT)
 
         fcf_yield = next(f for f in result.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE)
         assert fcf_yield.status is ValuationStatus.UNDERVALUED
@@ -70,6 +73,8 @@ class TestScenarioE_StrongGrowthExpensiveValuation:
 
         records = (
             fundamentals_record(
+                period_end=date(2021, 12, 31), identifier="fy21", published_at=_filed(2022), free_cash_flow=80.0
+            ),            fundamentals_record(
                 period_end=date(2022, 12, 31), identifier="fy22", published_at=_filed(2023), free_cash_flow=100.0
             ),
             fundamentals_record(
@@ -78,6 +83,7 @@ class TestScenarioE_StrongGrowthExpensiveValuation:
             fundamentals_record(
                 period_end=date(2024, 12, 31), identifier="fy24", published_at=_filed(2025), free_cash_flow=250.0
             ),
+            market_record(period_end=date(2022, 3, 1), identifier="m21", share_price=10.0, shares_outstanding=100.0),
             market_record(period_end=date(2023, 3, 1), identifier="m22", share_price=10.0, shares_outstanding=100.0),
             market_record(period_end=date(2024, 3, 1), identifier="m23", share_price=10.0, shares_outstanding=100.0),
             market_record(period_end=date(2025, 3, 1), identifier="m24", share_price=90.0, shares_outstanding=100.0),
@@ -86,7 +92,7 @@ class TestScenarioE_StrongGrowthExpensiveValuation:
         valuation_facts = extract_valuation_facts_from_records(records, evaluated_at=EVALUATED_AT)
 
         growth_finding = evaluate_growth(business_facts, evaluated_at=EVALUATED_AT)
-        valuation_result = evaluate_valuation(business_facts, valuation_facts, evaluated_at=EVALUATED_AT)
+        valuation_result = evaluate_valuation(business_facts, valuation_facts, **valuation_inputs(business_facts), evaluated_at=EVALUATED_AT)
         fcf_yield = next(f for f in valuation_result.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE)
 
         # FCF grew every period (STRONG-eligible single metric -> at
@@ -109,6 +115,6 @@ class TestDeterminism:
         )
         business_facts = extract_facts_from_records(records, evaluated_at=EVALUATED_AT)
         valuation_facts = extract_valuation_facts_from_records(records, evaluated_at=EVALUATED_AT)
-        first = evaluate_valuation(business_facts, valuation_facts, evaluated_at=EVALUATED_AT)
-        second = evaluate_valuation(business_facts, valuation_facts, evaluated_at=EVALUATED_AT)
+        first = evaluate_valuation(business_facts, valuation_facts, **valuation_inputs(business_facts), evaluated_at=EVALUATED_AT)
+        second = evaluate_valuation(business_facts, valuation_facts, **valuation_inputs(business_facts), evaluated_at=EVALUATED_AT)
         assert first == second

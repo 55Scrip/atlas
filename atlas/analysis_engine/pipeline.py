@@ -560,7 +560,20 @@ def assemble_analysis(
 
     business_facts = extract_facts_from_records(business_records, evaluated_at=generated_at)
     market_facts = extract_valuation_facts_from_records(business_records, evaluated_at=generated_at)
-    valuation_engine = evaluate_valuation(business_facts, market_facts, evaluated_at=generated_at)
+    # Annual-statement records and the profile industry, read once here
+    # where records are in hand: Valuation and Financial Risk apply the
+    # same source and applicability gates to the same facts.
+    statement_record_ids = frozenset(
+        record.id for record in business_records if record.document_type is DocumentKind.FINANCIAL_STATEMENT
+    )
+    industry = _company_industry(business_records)
+    valuation_engine = evaluate_valuation(
+        business_facts,
+        market_facts,
+        statement_record_ids=statement_record_ids,
+        industry=industry,
+        evaluated_at=generated_at,
+    )
     # Valuation Support for Capital Deployment (`DE-015`): an independent
     # conclusion derived from valuation_engine plus raw business/valuation
     # facts (never Business Analysis/Outlook/Portfolio Intelligence
@@ -585,10 +598,8 @@ def assemble_analysis(
         valuation_engine,
         reasoning.contradicting_evidence,
         evidence_coverage=confidence,
-        statement_record_ids=frozenset(
-            record.id for record in business_records if record.document_type is DocumentKind.FINANCIAL_STATEMENT
-        ),
-        industry=_company_industry(business_records),
+        statement_record_ids=statement_record_ids,
+        industry=industry,
         evaluated_at=generated_at,
     )
 

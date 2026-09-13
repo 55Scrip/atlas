@@ -119,11 +119,40 @@ export function capFacts(facts: string[]): string[] {
   return facts.slice(0, MAX_DISPLAYED_FACTS);
 }
 
+/** How much fiscal-year history the valuation rests on (Valuation
+ * Observation Integrity). Only read when the status is not a conclusion,
+ * to say *why*: too little history, none yet, or not applicable. */
+export interface ReasoningValuationEvidence {
+  eligibility: "eligible" | "limited" | "insufficient" | "not_applicable";
+  priorEpochCount: number;
+  hasCurrentYield: boolean;
+}
+
+function valuationInterpretation(
+  status: AnalysisValuationStatus,
+  evidence: ReasoningValuationEvidence | null | undefined,
+  t: Translate,
+): string {
+  if (evidence?.eligibility === "not_applicable") return t("investmentCase.reasoning.valuation.notApplicable");
+  if (status === "insufficient_input" && evidence?.hasCurrentYield) {
+    if (evidence.eligibility === "limited") {
+      return evidence.priorEpochCount === 1
+        ? t("investmentCase.reasoning.valuation.limitedOne")
+        : t("investmentCase.reasoning.valuation.limited", { count: evidence.priorEpochCount });
+    }
+    if (evidence.eligibility === "insufficient" && evidence.priorEpochCount === 0) {
+      return t("investmentCase.reasoning.valuation.noHistory");
+    }
+  }
+  return t(VALUATION_INTERPRETATION_KEY[status]);
+}
+
 export interface AtlasReasoningInput {
   growthStatus: AnalysisBusinessStatus;
   growthFacts: ReasoningFacts;
   valuationStatus: AnalysisValuationStatus;
   valuationFacts: ReasoningFacts;
+  valuationEvidence?: ReasoningValuationEvidence | null;
   financialHealthStatus: AnalysisRiskStatus;
   financialHealthFacts: ReasoningFacts;
   businessQualityStatus: AnalysisBusinessStatus;
@@ -234,9 +263,13 @@ export function AtlasReasoningSection({ input, t }: { input: AtlasReasoningInput
         />
         <ReasoningCard
           label={t("investmentCase.reasoning.valuationLabel")}
-          statusLabel={t(VALUATION_STATUS_KEY[input.valuationStatus])}
+          statusLabel={
+            input.valuationEvidence?.eligibility === "not_applicable"
+              ? t(RISK_STATUS_KEY.not_applicable)
+              : t(VALUATION_STATUS_KEY[input.valuationStatus])
+          }
           tone={VALUATION_STATUS_TONE[input.valuationStatus]}
-          interpretation={t(VALUATION_INTERPRETATION_KEY[input.valuationStatus])}
+          interpretation={valuationInterpretation(input.valuationStatus, input.valuationEvidence, t)}
           facts={input.valuationFacts}
           t={t}
         />

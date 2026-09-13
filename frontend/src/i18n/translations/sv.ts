@@ -566,7 +566,13 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.analysis.valuation.gap.missingShareCount": "Aktieantal saknas.",
   "investmentCase.analysis.valuation.gap.missingFreeCashFlowHistory": "Historik för fritt kassaflöde saknas.",
   "investmentCase.analysis.valuation.gap.insufficientHistoricalValuationPeriods":
-    "Det finns inte tillräckligt många historiska perioder för att beräkna ett värderingsintervall.",
+    "För få tidigare räkenskapsår för att värderingen ska få påverka rekommendationen.",
+  "investmentCase.analysis.valuation.gap.valuationMethodNotApplicable":
+    "FCF-avkastning används inte för att värdera banker, försäkringsbolag och värdepappersföretag.",
+  "investmentCase.analysis.valuation.gap.valuationApplicabilityUnknown":
+    "Bolagets bransch saknas, så Atlas kan inte avgöra om FCF-avkastning är tillämplig.",
+  "investmentCase.analysis.valuation.gap.currencyMismatch":
+    "Fritt kassaflöde och aktiekurs anges i olika valutor, så ingen avkastning beräknas.",
   "investmentCase.analysis.valuation.gap.staleMarketData": "Marknadsdatan kan vara inaktuell.",
   "investmentCase.analysis.valuation.gap.noEligibleFundamentalsAsOfObservation":
     "Inga godtagbara fundamenta fanns tillgängliga vid tidpunkten för marknadsobservationen.",
@@ -574,6 +580,10 @@ export const sv: Record<TranslationKey, string> = {
     "Fritt kassaflöde är inte positivt, så en avkastning kan inte beräknas.",
   "investmentCase.analysis.valuation.gap.missingScenarioAssumptions":
     "Inga framåtblickande antaganden har angetts för det här scenariot.",
+  "investmentCase.analysis.valuation.history": "Jämförs med {{count}} tidigare räkenskapsår ({{from}}–{{to}}).",
+  "investmentCase.analysis.valuation.historyLimited":
+    "Bara {{count}} tidigare räkenskapsår att jämföra med; Atlas kräver {{minimum}} innan värderingen får påverka rekommendationen.",
+  "investmentCase.analysis.valuation.shareCountProxy": "Historiska marknadsvärden bygger på dagens antal aktier som approximation.",
   "investmentCase.analysis.valuation.scenarioHeading": "Scenarioanalys",
   "investmentCase.analysis.valuation.scenarioNote": "Inte tillgänglig ännu — framåtblickande antaganden har inte angetts.",
   "investmentCase.analysis.risk.heading": "Risk",
@@ -763,6 +773,10 @@ export const sv: Record<TranslationKey, string> = {
     "Den underliggande verksamheten förblir stark, även om dagens värdering lämnar liten marginal.",
   "investmentCase.hero.why.business_weak_valuation_strong":
     "Värderingen ser attraktiv ut här, även om den underliggande verksamheten väcker frågor som bör redas ut först.",
+  "investmentCase.hero.why.business_strong_valuation_unknown":
+    "De grundläggande förutsättningarna förblir starka; dagens värdering går ännu inte att bedöma mot tillräcklig historik.",
+  "investmentCase.hero.why.business_weak_valuation_unknown":
+    "Verksamheten har försvagats; dagens värdering går ännu inte att bedöma mot tillräcklig historik.",
   "investmentCase.hero.why.insufficient":
     "Underlaget är hittills tunnare än vanligt, så den här bedömningen bör ses som en utgångspunkt snarare än en färdig slutsats.",
   // Status-/förklaringsspråket stabiliseringssprint: se motsvarande
@@ -1306,6 +1320,13 @@ export const sv: Record<TranslationKey, string> = {
     "Dagens FCF-avkastning ligger i linje med bolagets eget historiska intervall — ingen jämförelse med konkurrenter eller analytiker.",
   "investmentCase.reasoning.valuation.expensive":
     "Dagens FCF-avkastning är dyr jämfört med bolagets eget historiska intervall — ingen jämförelse med konkurrenter eller analytiker.",
+  "investmentCase.reasoning.valuation.limited":
+    "Dagens FCF-avkastning kan bara jämföras med {{count}} tidigare räkenskapsår — för lite historik för att värderingen ska påverka rekommendationen.",
+  "investmentCase.reasoning.valuation.limitedOne":
+    "Dagens FCF-avkastning kan bara jämföras med ett tidigare räkenskapsår — för lite historik för att värderingen ska påverka rekommendationen.",
+  "investmentCase.reasoning.valuation.noHistory":
+    "Dagens FCF-avkastning har ännu inget tidigare räkenskapsår att jämföras med, så värderingen påverkar inte rekommendationen.",
+  "investmentCase.reasoning.valuation.notApplicable": "FCF-avkastning används inte för att värdera denna typ av bolag.",
   "investmentCase.reasoning.financialHealth.low":
     "Finansiell risk är låg — skulden är liten i förhållande till kassaflödet från rörelsen.",
   "investmentCase.reasoning.financialHealth.moderate":
@@ -2314,6 +2335,13 @@ export const sv: Record<TranslationKey, string> = {
   "investmentReasoning.riskBasis.level.high": "hög",
   "investmentReasoning.valuationBasis.belowAll": "dagens FCF-avkastning ({{current}}) är lägre än vid alla {{count}} tidigare mätpunkter i bolagets egen historik (median {{median}}) — ingen jämförelse med konkurrenter.",
   "investmentReasoning.valuationBasis.belowOnly": "dagens FCF-avkastning ({{current}}) är lägre än vid den enda tidigare mätpunkten i bolagets egen historik ({{median}}) — ingen jämförelse med konkurrenter.",
+  "investmentReasoning.valuationBasis.belowAllYears": "dagens FCF-avkastning ({{current}}) är lägre än under alla {{count}} tidigare räkenskapsår i bolagets egen historik (median {{median}}) — ingen jämförelse med konkurrenter.",
+  "investmentReasoning.valuationBasis.belowMedianYears": "dagens FCF-avkastning ({{current}}) är lägre än bolagets egen median för {{count}} tidigare räkenskapsår ({{median}}) — ingen jämförelse med konkurrenter.",
+  "investmentReasoning.valuationBasis.shareCountProxy": "Tidigare marknadsvärden bygger på dagens antal aktier.",
+  "investmentReasoning.valuationEvidence.limited": "Begränsat värderingsunderlag: dagens FCF-avkastning ({{current}}) kan bara jämföras med {{count}} tidigare räkenskapsår — för få för att värderingen ska påverka rekommendationen.",
+  "investmentReasoning.valuationEvidence.limitedOne": "Begränsat värderingsunderlag: dagens FCF-avkastning ({{current}}) kan bara jämföras med ett tidigare räkenskapsår — för få för att värderingen ska påverka rekommendationen.",
+  "investmentReasoning.valuationEvidence.none": "Värderingshistorik saknas: dagens FCF-avkastning ({{current}}) har inget tidigare räkenskapsår att jämföras med, så värderingen påverkar inte rekommendationen.",
+  "investmentReasoning.valuationEvidence.notApplicable": "Värdering: FCF-avkastning används inte för att värdera banker, försäkringsbolag och värdepappersföretag.",
   "investmentReasoning.valuationBasis.belowMedian": "dagens FCF-avkastning ({{current}}) är lägre än bolagets historiska median ({{median}}, {{count}} tidigare mätpunkter) — ingen jämförelse med konkurrenter.",
 
   "recommendationConviction.section.heading": "Rekommendationens styrka",

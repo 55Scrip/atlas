@@ -66,7 +66,9 @@ def _insufficient_valuation_engine():
     supplied, matching every real call site's default."""
     business_facts = extract_facts_from_records((), evaluated_at=GENERATED_AT)
     market_facts = extract_valuation_facts_from_records((), evaluated_at=GENERATED_AT)
-    return evaluate_valuation(business_facts, market_facts, evaluated_at=GENERATED_AT)
+    return evaluate_valuation(
+        business_facts, market_facts, statement_record_ids=frozenset(), industry=None, evaluated_at=GENERATED_AT
+    )
 
 
 def _insufficient_valuation_support() -> ValuationSupport:
@@ -294,22 +296,24 @@ def _undervalued_valuation_engine():
     from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
     from atlas.analysis_engine.valuation.facts import extract_valuation_facts_from_records
     from atlas.analysis_engine.valuation.pipeline import evaluate_valuation
-    from tests.unit.analysis_engine.valuation._fixtures import fundamentals_record, market_record
+    from tests.unit.analysis_engine.valuation._fixtures import fundamentals_record, market_record, valuation_inputs
 
     def _filed(year: int) -> "datetime":
         return datetime(year, 2, 15, tzinfo=timezone.utc)
 
     records = (
+        fundamentals_record(period_end=date(2021, 12, 31), identifier="rec21", published_at=_filed(2022), free_cash_flow=90.0),
         fundamentals_record(period_end=date(2022, 12, 31), identifier="rec22", published_at=_filed(2023), free_cash_flow=100.0),
         fundamentals_record(period_end=date(2023, 12, 31), identifier="rec23", published_at=_filed(2024), free_cash_flow=110.0),
         fundamentals_record(period_end=date(2024, 12, 31), identifier="rec24", published_at=_filed(2025), free_cash_flow=200.0),
+        market_record(period_end=date(2022, 3, 1), identifier="recm21", published_at=_filed(2022), share_price=50.0, shares_outstanding=100.0),
         market_record(period_end=date(2023, 3, 1), identifier="recm22", published_at=_filed(2023), share_price=50.0, shares_outstanding=100.0),
         market_record(period_end=date(2024, 3, 1), identifier="recm23", published_at=_filed(2024), share_price=52.0, shares_outstanding=100.0),
         market_record(period_end=date(2025, 3, 1), identifier="recm24", published_at=_filed(2025), share_price=53.0, shares_outstanding=100.0),
     )
     business_facts = extract_facts_from_records(records, evaluated_at=GENERATED_AT)
     market_facts = extract_valuation_facts_from_records(records, evaluated_at=GENERATED_AT)
-    return evaluate_valuation(business_facts, market_facts, evaluated_at=GENERATED_AT)
+    return evaluate_valuation(business_facts, market_facts, **valuation_inputs(business_facts), evaluated_at=GENERATED_AT)
 
 
 class TestBuyAddNowWired:

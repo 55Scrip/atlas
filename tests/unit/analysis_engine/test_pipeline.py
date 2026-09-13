@@ -573,10 +573,15 @@ class TestValuationEngineEndToEnd:
         # no-look-ahead eligibility needs a real publication gap, not
         # same-day fundamentals and market data. See
         # valuation/test_cash_flow.py's own module docstring.
+        # Valuation Observation Integrity: annual statements of an
+        # operating business, three prior fiscal years before today's.
         return (
-            make("annual_report", date(2022, 12, 31), "fy22", published_at=datetime(2023, 2, 15, tzinfo=timezone.utc), free_cash_flow=100.0),
-            make("annual_report", date(2023, 12, 31), "fy23", published_at=datetime(2024, 2, 15, tzinfo=timezone.utc), free_cash_flow=110.0),
-            make("annual_report", date(2024, 12, 31), "fy24", published_at=datetime(2025, 2, 15, tzinfo=timezone.utc), free_cash_flow=200.0),
+            make("financial_statement", date(2021, 12, 31), "fy21", published_at=datetime(2022, 2, 15, tzinfo=timezone.utc), free_cash_flow=90.0),
+            make("financial_statement", date(2022, 12, 31), "fy22", published_at=datetime(2023, 2, 15, tzinfo=timezone.utc), free_cash_flow=100.0),
+            make("financial_statement", date(2023, 12, 31), "fy23", published_at=datetime(2024, 2, 15, tzinfo=timezone.utc), free_cash_flow=110.0),
+            make("financial_statement", date(2024, 12, 31), "fy24", published_at=datetime(2025, 2, 15, tzinfo=timezone.utc), free_cash_flow=200.0),
+            make("company_profile", None, "profile", industry="SEMICONDUCTOR EQUIPMENT & MATERIALS"),
+            make("market_data_snapshot", date(2022, 3, 1), "m21", share_price=50.0, shares_outstanding=100.0),
             make("market_data_snapshot", date(2023, 3, 1), "m22", share_price=50.0, shares_outstanding=100.0),
             make("market_data_snapshot", date(2024, 3, 1), "m23", share_price=52.0, shares_outstanding=100.0),
             make("market_data_snapshot", date(2025, 3, 1), "m24", share_price=53.0, shares_outstanding=100.0),
@@ -623,10 +628,18 @@ class TestValuationEngineEndToEnd:
         while business_conclusive stays False -- confirmed directly,
         not just asserted in prose."""
         engine_input, output = run_minimal()
-        without = assemble_analysis(engine_input, output, is_thesis_stale=False, generated_at=GENERATED_AT)
+        # The same company data either way (the statements and profile a
+        # valuation needs also count as company data); only the market
+        # observations that make the valuation conclusive differ.
+        company_only = tuple(r for r in self._records() if r.document_type.value != "market_data_snapshot")
+        without = assemble_analysis(
+            engine_input, output, is_thesis_stale=False, business_records=company_only, generated_at=GENERATED_AT
+        )
         with_valuation = assemble_analysis(
             engine_input, output, is_thesis_stale=False, business_records=self._records(), generated_at=GENERATED_AT
         )
+        assert without.valuation_engine.findings[0].status.value == "insufficient_input"
+        assert with_valuation.valuation_engine.findings[0].status.value == "undervalued"
         assert without.conviction.level == with_valuation.conviction.level
 
     def test_valuation_method_assessed_findings_appear_in_the_flat_list(self):
@@ -768,6 +781,18 @@ class TestConvictionEndToEnd:
             self._record("financial_statement", date(2023, 12, 31), "rep23", debt_repayment=30.0),
             self._record("financial_statement", date(2022, 12, 31), "debt22", debt_issuance=5.0),
             self._record("financial_statement", date(2023, 12, 31), "debt23", debt_issuance=5.0),
+            # A third prior fiscal year and the profile: the expensive
+            # valuation must be decision-eligible to raise Valuation Risk.
+            self._record(
+                "financial_statement",
+                date(2021, 12, 31),
+                "fy21",
+                published_at=datetime(2022, 2, 15, tzinfo=timezone.utc),
+                revenue=900.0,
+                free_cash_flow=180.0,
+            ),
+            self._record("company_profile", None, "profile", industry="SEMICONDUCTOR EQUIPMENT & MATERIALS"),
+            self._record("market_data_snapshot", date(2022, 3, 1), "m21", share_price=50.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2023, 3, 1), "m22", share_price=50.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2024, 3, 1), "m23", share_price=52.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2025, 3, 1), "m24", share_price=300.0, shares_outstanding=100.0),
@@ -1040,9 +1065,17 @@ class TestOpenQuestionsMigration:
         # See TestValuationEngineEndToEnd._records -- a real filing gap
         # is required for ATLAS-032's no-look-ahead eligibility to pair
         # a fundamental with a later market observation.
+        # Valuation Observation Integrity: a conclusive valuation needs
+        # annual statements of an operating business and three prior
+        # fiscal years before the current one.
         return (
-            make("annual_report", date(2022, 12, 31), "fy22", published_at=datetime(2023, 2, 15, tzinfo=timezone.utc), free_cash_flow=100.0),
-            make("annual_report", date(2023, 12, 31), "fy23", published_at=datetime(2024, 2, 15, tzinfo=timezone.utc), free_cash_flow=110.0),
+            make("financial_statement", date(2020, 12, 31), "fy20", published_at=datetime(2021, 2, 15, tzinfo=timezone.utc), free_cash_flow=80.0),
+            make("financial_statement", date(2021, 12, 31), "fy21", published_at=datetime(2022, 2, 15, tzinfo=timezone.utc), free_cash_flow=90.0),
+            make("financial_statement", date(2022, 12, 31), "fy22", published_at=datetime(2023, 2, 15, tzinfo=timezone.utc), free_cash_flow=100.0),
+            make("financial_statement", date(2023, 12, 31), "fy23", published_at=datetime(2024, 2, 15, tzinfo=timezone.utc), free_cash_flow=110.0),
+            make("company_profile", None, "profile", industry="SEMICONDUCTOR EQUIPMENT & MATERIALS"),
+            make("market_data_snapshot", date(2021, 3, 1), "m20", share_price=50.0, shares_outstanding=100.0),
+            make("market_data_snapshot", date(2022, 3, 1), "m21", share_price=50.0, shares_outstanding=100.0),
             make("market_data_snapshot", date(2023, 3, 1), "m22", share_price=50.0, shares_outstanding=100.0),
             make("market_data_snapshot", date(2024, 3, 1), "m23", share_price=52.0, shares_outstanding=100.0),
         )
@@ -1169,7 +1202,19 @@ class TestOpenQuestionsMigration:
         )
         assert len(with_valuation.open_questions) == len(without_valuation.open_questions) - 2
         assert with_valuation.open_questions != without_valuation.open_questions
-        assert with_valuation.conviction.level == without_valuation.conviction.level
+        # Conviction against the same company data without the market
+        # observations: the statements a valuation needs are company data
+        # in their own right, so that is the like-for-like comparison.
+        company_only = assemble_analysis(
+            engine_input,
+            output,
+            is_thesis_stale=False,
+            business_records=tuple(
+                r for r in self._valuation_records() if r.document_type.value != "market_data_snapshot"
+            ),
+            generated_at=GENERATED_AT,
+        )
+        assert with_valuation.conviction.level == company_only.conviction.level
 
     def test_determinism(self):
         engine_input, output = run_populated()

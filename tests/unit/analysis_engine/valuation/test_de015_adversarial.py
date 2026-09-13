@@ -33,7 +33,7 @@ from atlas.analysis_engine.valuation.support import (
     ValuationSupportStatus,
     evaluate_valuation_support,
 )
-from tests.unit.analysis_engine.valuation._fixtures import fundamentals_record, market_record
+from tests.unit.analysis_engine.valuation._fixtures import fundamentals_record, market_record, valuation_inputs
 
 _GENERATED_AT = datetime(2026, 8, 13, tzinfo=timezone.utc)
 
@@ -45,7 +45,7 @@ def _filed(year: int, month: int = 2, day: int = 15) -> datetime:
 def _support(records, *, generated_at: datetime = _GENERATED_AT):
     business_facts = extract_facts_from_records(records, evaluated_at=generated_at)
     valuation_facts = extract_valuation_facts_from_records(records, evaluated_at=generated_at)
-    valuation_engine = evaluate_valuation(business_facts, valuation_facts, evaluated_at=generated_at)
+    valuation_engine = evaluate_valuation(business_facts, valuation_facts, **valuation_inputs(business_facts), evaluated_at=generated_at)
     return evaluate_valuation_support(valuation_engine, business_facts, valuation_facts, generated_at=generated_at)
 
 
@@ -69,7 +69,7 @@ def _durable_growth_records(tag: str = "dg"):
 
 
 def _envelope_market_records(*, current: float, hist_a: float, hist_b: float, tag: str = "mk"):
-    """3 market records priced so that `FCF_YIELD_RELATIVE`'s own real
+    """4 market records priced so that `FCF_YIELD_RELATIVE`'s own real
     computation (`eligible_fcf / (price * shares)`) produces exactly the
     requested current/historical yields against `_durable_growth_records`'s
     real, published FCF values (140 as of 2023-03, 165 as of 2024-03, 200
@@ -77,6 +77,9 @@ def _envelope_market_records(*, current: float, hist_a: float, hist_b: float, ta
     observation date)."""
     shares = 100.0
     return (
+        # A third prior fiscal year (FY2021, FCF 115) at `hist_a`, so the
+        # history is decision-eligible without moving its extremes.
+        market_record(period_end=date(2022, 3, 1), identifier=f"{tag}22", share_price=115.0 / (hist_a * shares), shares_outstanding=shares),
         market_record(period_end=date(2023, 3, 1), identifier=f"{tag}23", share_price=140.0 / (hist_a * shares), shares_outstanding=shares),
         market_record(period_end=date(2024, 3, 1), identifier=f"{tag}24", share_price=165.0 / (hist_b * shares), shares_outstanding=shares),
         market_record(period_end=date(2025, 3, 1), identifier=f"{tag}25", share_price=200.0 / (current * shares), shares_outstanding=shares),
@@ -110,16 +113,18 @@ class TestCase01NoValuationData:
 class TestCase02UndervaluedAlone:
     def test_undervalued_fcf_yield_alone_never_becomes_supported(self):
         records = (
-            fundamentals_record(period_end=date(2022, 12, 31), identifier="uv22", published_at=_filed(2023), free_cash_flow=100.0),
+            fundamentals_record(period_end=date(2021, 12, 31), identifier="uv21", published_at=_filed(2022), free_cash_flow=90.0),
+        fundamentals_record(period_end=date(2022, 12, 31), identifier="uv22", published_at=_filed(2023), free_cash_flow=100.0),
             fundamentals_record(period_end=date(2023, 12, 31), identifier="uv23", published_at=_filed(2024), free_cash_flow=110.0),
             fundamentals_record(period_end=date(2024, 12, 31), identifier="uv24", published_at=_filed(2025), free_cash_flow=200.0),
-            market_record(period_end=date(2023, 3, 1), identifier="uvm22", share_price=50.0, shares_outstanding=100.0),
+            market_record(period_end=date(2022, 3, 1), identifier="uvm21", share_price=50.0, shares_outstanding=100.0),
+        market_record(period_end=date(2023, 3, 1), identifier="uvm22", share_price=50.0, shares_outstanding=100.0),
             market_record(period_end=date(2024, 3, 1), identifier="uvm23", share_price=52.0, shares_outstanding=100.0),
             market_record(period_end=date(2025, 3, 1), identifier="uvm24", share_price=53.0, shares_outstanding=100.0),
         )
         business_facts = extract_facts_from_records(records, evaluated_at=_GENERATED_AT)
         valuation_facts = extract_valuation_facts_from_records(records, evaluated_at=_GENERATED_AT)
-        valuation_engine = evaluate_valuation(business_facts, valuation_facts, evaluated_at=_GENERATED_AT)
+        valuation_engine = evaluate_valuation(business_facts, valuation_facts, **valuation_inputs(business_facts), evaluated_at=_GENERATED_AT)
         fcf_yield = next(f for f in valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE)
         assert fcf_yield.status is ValuationStatus.UNDERVALUED
 
@@ -135,16 +140,18 @@ class TestCase02UndervaluedAlone:
 class TestCase03ExpensiveAlone:
     def test_expensive_fcf_yield_alone_never_becomes_not_supported(self):
         records = (
-            fundamentals_record(period_end=date(2022, 12, 31), identifier="ex22", published_at=_filed(2023), free_cash_flow=100.0),
+            fundamentals_record(period_end=date(2021, 12, 31), identifier="ex21", published_at=_filed(2022), free_cash_flow=80.0),
+        fundamentals_record(period_end=date(2022, 12, 31), identifier="ex22", published_at=_filed(2023), free_cash_flow=100.0),
             fundamentals_record(period_end=date(2023, 12, 31), identifier="ex23", published_at=_filed(2024), free_cash_flow=150.0),
             fundamentals_record(period_end=date(2024, 12, 31), identifier="ex24", published_at=_filed(2025), free_cash_flow=250.0),
-            market_record(period_end=date(2023, 3, 1), identifier="exm22", share_price=10.0, shares_outstanding=100.0),
+            market_record(period_end=date(2022, 3, 1), identifier="exm21", share_price=10.0, shares_outstanding=100.0),
+        market_record(period_end=date(2023, 3, 1), identifier="exm22", share_price=10.0, shares_outstanding=100.0),
             market_record(period_end=date(2024, 3, 1), identifier="exm23", share_price=10.0, shares_outstanding=100.0),
             market_record(period_end=date(2025, 3, 1), identifier="exm24", share_price=90.0, shares_outstanding=100.0),
         )
         business_facts = extract_facts_from_records(records, evaluated_at=_GENERATED_AT)
         valuation_facts = extract_valuation_facts_from_records(records, evaluated_at=_GENERATED_AT)
-        valuation_engine = evaluate_valuation(business_facts, valuation_facts, evaluated_at=_GENERATED_AT)
+        valuation_engine = evaluate_valuation(business_facts, valuation_facts, **valuation_inputs(business_facts), evaluated_at=_GENERATED_AT)
         fcf_yield = next(f for f in valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE)
         assert fcf_yield.status is ValuationStatus.EXPENSIVE
 

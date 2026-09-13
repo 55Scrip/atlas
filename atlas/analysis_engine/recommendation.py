@@ -812,8 +812,17 @@ def evaluate_recommendation_gate(
         # Projected from the finding that owns them; never recomputed.
         growth_revenue_cagr=growth_finding.revenue_cagr,
         growth_free_cash_flow_cagr=growth_finding.free_cash_flow_cagr,
+        # The prior fiscal epochs, described whatever their eligibility;
+        # `valuation_status` stays the decision-grade status.
         valuation_current_yield=fcf_yield_finding.current_yield,
-        valuation_historical_yields=fcf_yield_finding.historical_yields,
+        valuation_historical_yields=(
+            fcf_yield_finding.fcf_yield_evidence.prior_yields
+            if fcf_yield_finding.fcf_yield_evidence is not None else fcf_yield_finding.historical_yields
+        ),
+        valuation_evidence_eligibility=(
+            fcf_yield_finding.fcf_yield_evidence.eligibility.value
+            if fcf_yield_finding.fcf_yield_evidence is not None else None
+        ),
         growth_status=growth_finding.status,
         capital_allocation_status=capital_allocation_finding.status,
         valuation_status=fcf_yield_finding.status,

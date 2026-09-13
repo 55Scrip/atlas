@@ -299,6 +299,9 @@ export type ValuationDataGapKind =
   | "stale_market_data"
   | "no_eligible_fundamentals_as_of_observation"
   | "cash_flow_not_positive"
+  | "valuation_method_not_applicable"
+  | "valuation_applicability_unknown"
+  | "currency_mismatch"
   | "missing_scenario_assumptions";
 
 export const VALUATION_DATA_GAP_KEY: Record<ValuationDataGapKind, TranslationKey> = {
@@ -311,6 +314,9 @@ export const VALUATION_DATA_GAP_KEY: Record<ValuationDataGapKind, TranslationKey
   no_eligible_fundamentals_as_of_observation:
     "investmentCase.analysis.valuation.gap.noEligibleFundamentalsAsOfObservation",
   cash_flow_not_positive: "investmentCase.analysis.valuation.gap.cashFlowNotPositive",
+  valuation_method_not_applicable: "investmentCase.analysis.valuation.gap.valuationMethodNotApplicable",
+  valuation_applicability_unknown: "investmentCase.analysis.valuation.gap.valuationApplicabilityUnknown",
+  currency_mismatch: "investmentCase.analysis.valuation.gap.currencyMismatch",
   missing_scenario_assumptions: "investmentCase.analysis.valuation.gap.missingScenarioAssumptions",
 };
 

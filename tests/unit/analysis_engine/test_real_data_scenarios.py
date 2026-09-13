@@ -83,6 +83,27 @@ def _market_doc(*, snapshot: str, price: float, shares: float | None = None, con
     )
 
 
+def _profile_doc(industry: str = "SOFTWARE - APPLICATION") -> RawBusinessDocument:
+    return RawBusinessDocument(
+        identifier="TEST:profile", company="TEST", source_kind="company_profile", published_at=_EVALUATED_AT,
+        provider_id="alpha_vantage", raw_reference="https://example.test/overview", content_hash="hash-profile",
+        language="en", metadata={"industry": industry},
+    )
+
+
+def _valuation_history(*prices: float) -> tuple[RawBusinessDocument, ...]:
+    """Valuation Observation Integrity: one annual statement per fiscal year
+    (2019-2022, FCF 10 each, filed mid-February) and one market observation
+    each June after it, priced as given -- the last is today's. Plus the
+    profile saying this is an operating business."""
+    years = range(2023 - len(prices), 2023)
+    return (
+        *(_fundamentals_doc(period_end=f"{y}-12-31", revenue=100, fcf=10, published_at=_dt(y + 1, 2, 15)) for y in years),
+        *(_market_doc(snapshot=f"{y + 1}-06-01", price=p, shares=100) for y, p in zip(years, prices)),
+        _profile_doc(),
+    )
+
+
 def _ingest_all(*documents: RawBusinessDocument) -> tuple:
     records: list = []
     for document in documents:
@@ -215,22 +236,12 @@ class TestValuationRealDataShapes:
         return next(f for f in analysis.valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE)
 
     def test_current_yield_above_historical_range_is_undervalued(self):
-        records = _ingest_all(
-            _fundamentals_doc(period_end="2021-12-31", revenue=100, fcf=10, published_at=_dt(2022, 2, 15)),
-            _fundamentals_doc(period_end="2022-12-31", revenue=100, fcf=10, published_at=_dt(2023, 2, 15)),
-            _market_doc(snapshot="2022-06-01", price=200, shares=100),
-            _market_doc(snapshot="2023-06-01", price=50, shares=100),
-        )
+        records = _ingest_all(*_valuation_history(200, 200, 200, 50))
         analysis = _assemble(records)
         assert self._fcf_finding(analysis).status is ValuationStatus.UNDERVALUED
 
     def test_current_yield_below_historical_range_is_expensive(self):
-        records = _ingest_all(
-            _fundamentals_doc(period_end="2021-12-31", revenue=100, fcf=10, published_at=_dt(2022, 2, 15)),
-            _fundamentals_doc(period_end="2022-12-31", revenue=100, fcf=10, published_at=_dt(2023, 2, 15)),
-            _market_doc(snapshot="2022-06-01", price=50, shares=100),
-            _market_doc(snapshot="2023-06-01", price=200, shares=100),
-        )
+        records = _ingest_all(*_valuation_history(50, 50, 50, 200))
         analysis = _assemble(records)
         assert self._fcf_finding(analysis).status is ValuationStatus.EXPENSIVE
 
@@ -290,12 +301,7 @@ class TestRiskDerivesOnlyFromUpstreamConclusions:
         assert business_risk.status is RiskStatus.LOW
 
     def test_expensive_valuation_produces_high_valuation_risk(self):
-        records = _ingest_all(
-            _fundamentals_doc(period_end="2021-12-31", revenue=100, fcf=10, published_at=_dt(2022, 2, 15)),
-            _fundamentals_doc(period_end="2022-12-31", revenue=100, fcf=10, published_at=_dt(2023, 2, 15)),
-            _market_doc(snapshot="2022-06-01", price=50, shares=100),
-            _market_doc(snapshot="2023-06-01", price=200, shares=100),
-        )
+        records = _ingest_all(*_valuation_history(50, 50, 50, 200))
         analysis = _assemble(records)
         valuation_risk = next(f for f in analysis.risk_analysis.findings if f.category is RiskCategory.VALUATION_RISK)
         assert valuation_risk.status is RiskStatus.HIGH

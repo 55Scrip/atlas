@@ -20,6 +20,15 @@ rule). In this fixed order, first match wins:
    one-to-one interpretation of the existing canonical Valuation
    result... the specific risk of overpaying is low."
 
+**Decision eligibility (Valuation Observation Integrity).** The finding's
+`status` is already decision-grade: it only classifies when the history
+behind it is decision-eligible, and stays `INSUFFICIENT_INPUT` otherwise
+(`cash_flow.py`). So `HIGH` can only ever come from decision-eligible
+`EXPENSIVE` evidence, and limited history is never `MODERATE` -- rule 1
+applies. The one addition: when the FCF-yield method does not describe the
+business at all (a bank, dealer or insurer), Valuation Risk is
+`NOT_APPLICABLE`, never an insufficiency to resolve and never a level.
+
 **Architectural caveat, stated once here and never assumed away
 elsewhere:** `LOW` Valuation Risk describes only this one narrow,
 price-relative-to-history dimension. It is never a claim about overall
@@ -43,7 +52,7 @@ from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
 from atlas.analysis_engine.risk.contracts import RiskDataGapKind, RiskStatus, severity_for_risk_status
 from atlas.analysis_engine.risk.models import RiskFinding
-from atlas.analysis_engine.valuation.contracts import ValuationStatus
+from atlas.analysis_engine.valuation.contracts import ValuationDecisionEligibility, ValuationStatus
 from atlas.analysis_engine.valuation.models import ValuationFinding
 
 __all__ = ["evaluate_valuation_risk"]
@@ -68,7 +77,11 @@ def evaluate_valuation_risk(fcf_yield_finding: ValuationFinding, *, evaluated_at
     `ValuationFinding` for `ValuationMethodKind.FCF_YIELD_RELATIVE` --
     never a `ValuationFact`/`BusinessFact`, never market data directly.
     """
-    if fcf_yield_finding.status in (ValuationStatus.NOT_EVALUATED, ValuationStatus.INSUFFICIENT_INPUT):
+    evidence = fcf_yield_finding.fcf_yield_evidence
+    if evidence is not None and evidence.eligibility is ValuationDecisionEligibility.NOT_APPLICABLE:
+        status = RiskStatus.NOT_APPLICABLE
+        missing = ()
+    elif fcf_yield_finding.status in (ValuationStatus.NOT_EVALUATED, ValuationStatus.INSUFFICIENT_INPUT):
         status = RiskStatus.INSUFFICIENT_INPUT
         missing = (RiskDataGapKind.VALUATION_ASSESSMENT_UNAVAILABLE,)
     else:

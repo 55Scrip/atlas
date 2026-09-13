@@ -9,6 +9,7 @@ import {
   reasonKindLabel,
   riskBasisLabel,
   valuationBasisLabel,
+  valuationEvidenceLabel,
 } from "./describeRecommendationReasoning";
 import type { InvestmentDecisionView } from "./investmentDecisionApi";
 
@@ -84,6 +85,9 @@ export function AtlasInvestmentReasoning({
   // A Financial Risk the measure does not apply to gets one quiet line --
   // never a row of its own, never read as "not elevated".
   const notApplicable = financialRiskNotApplicableLabel(reasoning.riskBasis, t);
+  // A valuation too thin to decide (or not applicable at all) gets one
+  // quiet line saying so -- never silence that reads as "fairly valued".
+  const valuationEvidence = valuationEvidenceLabel(reasoning.signalSummary, t, locale);
 
   // `no_decision` is the action the backend emits when the
   // recommendation was withheld. It is read here for *wording* only --
@@ -105,7 +109,8 @@ export function AtlasInvestmentReasoning({
     unresolved.length === 0 &&
     triggers.length === 0 &&
     forwardItems.length === 0 &&
-    notApplicable === null
+    notApplicable === null &&
+    valuationEvidence === null
   ) {
     return null;
   }
@@ -156,6 +161,11 @@ export function AtlasInvestmentReasoning({
         {valuationBasis && (
           <Text as="p" color="tertiary">
             {valuationBasis}
+          </Text>
+        )}
+        {valuationEvidence && (
+          <Text as="p" color="tertiary">
+            {valuationEvidence}
           </Text>
         )}
         {forwardItems.length > 0 && (

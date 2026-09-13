@@ -117,3 +117,48 @@ describe("capFacts", () => {
     expect(capFacts(["only one"])).toEqual(["only one"]);
   });
 });
+
+describe("the valuation card under Valuation Observation Integrity", () => {
+  it("says a limited history is too thin to decide, never 'not yet evaluated'", () => {
+    renderSection(baseInput({
+      valuationStatus: "insufficient_input",
+      valuationEvidence: { eligibility: "limited", priorEpochCount: 2, hasCurrentYield: true },
+    }));
+    expect(screen.getByText(/kan bara jämföras med 2 tidigare räkenskapsår/)).toBeTruthy();
+    // The other three cards are still unevaluated; the valuation card is not.
+    expect(screen.queryAllByText("Inte utvärderat ännu.")).toHaveLength(3);
+  });
+
+  it("says one earlier fiscal year in the singular", () => {
+    renderSection(baseInput({
+      valuationStatus: "insufficient_input",
+      valuationEvidence: { eligibility: "limited", priorEpochCount: 1, hasCurrentYield: true },
+    }));
+    expect(screen.getByText(/kan bara jämföras med ett tidigare räkenskapsår/)).toBeTruthy();
+  });
+
+  it("says a current yield with no earlier year does not affect the recommendation", () => {
+    renderSection(baseInput({
+      valuationStatus: "insufficient_input",
+      valuationEvidence: { eligibility: "insufficient", priorEpochCount: 0, hasCurrentYield: true },
+    }));
+    expect(screen.getByText(/har ännu inget tidigare räkenskapsår att jämföras med/)).toBeTruthy();
+  });
+
+  it("labels a bank's valuation not applicable instead of not yet enough", () => {
+    renderSection(baseInput({
+      valuationStatus: "insufficient_input",
+      valuationEvidence: { eligibility: "not_applicable", priorEpochCount: 0, hasCurrentYield: false },
+    }));
+    expect(screen.getByText("Ej tillämplig")).toBeTruthy();
+    expect(screen.getByText("FCF-avkastning används inte för att värdera denna typ av bolag.")).toBeTruthy();
+  });
+
+  it("keeps a decision-eligible valuation's own sentence", () => {
+    renderSection(baseInput({
+      valuationStatus: "expensive",
+      valuationEvidence: { eligibility: "eligible", priorEpochCount: 10, hasCurrentYield: true },
+    }));
+    expect(screen.getByText(/Dagens FCF-avkastning är dyr jämfört med bolagets eget historiska intervall/)).toBeTruthy();
+  });
+});

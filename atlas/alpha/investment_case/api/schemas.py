@@ -222,7 +222,7 @@ from atlas.analysis_engine.outlook import (
 from atlas.analysis_engine.recommendation_outlook_context import RecommendationOutlookContext
 from atlas.analysis_engine.risk.models import RiskAnalysisResult, RiskFinding, RiskProjection
 from atlas.analysis_engine.risk.projection import risk_projection
-from atlas.analysis_engine.valuation.models import ValuationEngineResult, ValuationFinding
+from atlas.analysis_engine.valuation.models import FcfYieldEvidence, ValuationEngineResult, ValuationFinding
 from atlas.analysis_engine.valuation.support import ValuationSupport
 from atlas.core.domain.decision.entity import Decision
 from atlas.core.domain.observation.entity import Observation
@@ -348,6 +348,34 @@ class BusinessAnalysisView(CamelModel):
         )
 
 
+class ValuationEvidenceView(CamelModel):
+    """(Valuation Observation Integrity) How much fiscal-year history the
+    FCF-yield comparison rests on, and whether it may decide. Compact by
+    design: counts and the eligibility, not the epochs themselves."""
+
+    eligibility: str
+    prior_epoch_count: int
+    minimum_prior_epochs: int
+    position: str | None
+    current_fiscal_period: str | None
+    earliest_prior_epoch: str | None
+    span_years: float | None
+    share_count_method: str
+
+    @classmethod
+    def from_domain(cls, evidence: FcfYieldEvidence) -> "ValuationEvidenceView":
+        return cls(
+            eligibility=evidence.eligibility.value,
+            prior_epoch_count=evidence.prior_epoch_count,
+            minimum_prior_epochs=evidence.minimum_prior_epochs,
+            position=evidence.position.value if evidence.position is not None else None,
+            current_fiscal_period=evidence.current.fiscal_period if evidence.current is not None else None,
+            earliest_prior_epoch=evidence.earliest_prior_epoch,
+            span_years=evidence.span_years,
+            share_count_method=evidence.share_count_method.value,
+        )
+
+
 class ValuationFindingView(CamelModel):
     kind: str
     status: str
@@ -358,6 +386,7 @@ class ValuationFindingView(CamelModel):
     missing_evidence: list[str]
     confidence: str
     current_yield: float | None
+    evidence: ValuationEvidenceView | None = None
 
     @classmethod
     def from_domain(
@@ -377,6 +406,10 @@ class ValuationFindingView(CamelModel):
             missing_evidence=[m.value for m in finding.missing_evidence],
             confidence=finding.confidence.value,
             current_yield=finding.current_yield,
+            evidence=(
+                ValuationEvidenceView.from_domain(finding.fcf_yield_evidence)
+                if finding.fcf_yield_evidence is not None else None
+            ),
         )
 
 

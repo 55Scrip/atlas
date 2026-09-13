@@ -90,7 +90,10 @@ def _composition(records) -> InvestmentCaseComposition:
         business_facts=business_facts,
         market_facts=market_facts,
         regulatory_filings=extract_regulatory_filings(records),
-        historical_valuation=extract_historical_valuation(business_facts, market_facts),
+        historical_valuation=extract_historical_valuation(
+            next(f for f in canonical_analysis.valuation_engine.findings if f.kind.value == "fcf_yield_relative"),
+            market_facts,
+        ),
         earnings_call=extract_earnings_call_knowledge(records),
         financial_statement_intelligence=financial_statement_intelligence,
         capital_allocation_intelligence=extract_capital_allocation_history(records),
@@ -417,13 +420,18 @@ class TestHistoricalValuationCoverage:
     valid observations -> `AVAILABLE` (mirrors `_data_quality`'s own
     `SUFFICIENT` threshold in `historical_valuation.py`)."""
 
+    # Valuation Observation Integrity: a fiscal year's statement is filed
+    # after the year ends, a market observation follows the filing, and a
+    # profile says the business is one FCF yield describes.
+
     def test_a_single_market_observation_is_partially_available(self):
         records = (
             _make_record(
-                "financial_statement", date(2024, 12, 31), "fy24", published_at=datetime(2024, 12, 31, tzinfo=timezone.utc),
+                "financial_statement", date(2024, 12, 31), "fy24", published_at=datetime(2025, 2, 15, tzinfo=timezone.utc),
                 free_cash_flow=300.0,
             ),
-            _make_record("market_data_snapshot", date(2024, 12, 31), "mkt1", share_price=700.0, shares_outstanding=400.0),
+            _make_record("market_data_snapshot", date(2025, 3, 3), "mkt1", share_price=700.0, shares_outstanding=400.0),
+            _make_record("company_profile", None, "profile", industry="SOFTWARE - APPLICATION"),
         )
         coverage = _assess(records)
         domain = _domain(coverage, KnowledgeDomain.HISTORICAL_VALUATION)
@@ -433,16 +441,16 @@ class TestHistoricalValuationCoverage:
     def test_six_distinct_observations_are_available(self):
         records = tuple(
             _make_record(
-                "financial_statement", date(2018 + i, 12, 31), f"fy{i}", published_at=datetime(2018 + i, 12, 31, tzinfo=timezone.utc),
+                "financial_statement", date(2018 + i, 12, 31), f"fy{i}", published_at=datetime(2019 + i, 2, 15, tzinfo=timezone.utc),
                 free_cash_flow=100.0 + 10.0 * i,
             )
             for i in range(7)
         ) + tuple(
             _make_record(
-                "market_data_snapshot", date(2018 + i, 12, 31), f"mkt{i}", share_price=50.0 + i, shares_outstanding=400.0,
+                "market_data_snapshot", date(2019 + i, 3, 1), f"mkt{i}", share_price=50.0 + i, shares_outstanding=400.0,
             )
             for i in range(7)
-        )
+        ) + (_make_record("company_profile", None, "profile", industry="SOFTWARE - APPLICATION"),)
         coverage = _assess(records)
         domain = _domain(coverage, KnowledgeDomain.HISTORICAL_VALUATION)
         assert domain.level is DimensionCoverageLevel.AVAILABLE
