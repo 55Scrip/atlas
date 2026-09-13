@@ -11,13 +11,14 @@ type Translate = (key: TranslationKey, params?: Record<string, string | number>)
  * the seven-category bar Investment Case leads with, right after the
  * Hero: Company / Investment / Portfolio / Evidence as a rated 0-10
  * number (`atlasRatingModel.ts`, never fabricated -- "Not rated yet"
- * when the real inputs aren't there), Upside / Risk as the brief's own
- * four qualitative levels (independent of each other -- a case can be
- * Very High Upside *and* Very High Risk at once), Horizon as the
- * Long-Term sensitivity's own 4-year compounding duration. No new
- * analysis anywhere here: every value is a direct read of
- * `atlasRatingModel.ts`'s already-tested derivation over data this page
- * already fetched.
+ * when the real inputs aren't there), Risk as the brief's own four
+ * qualitative levels, Horizon as the Long-Term sensitivity's own 4-year
+ * compounding duration, named as a sensitivity. There is no Upside tile:
+ * its only source was a sensitivity endpoint, and scoring one reads as
+ * expected upside (see `atlasRatingModel.ts`), so the bar now has six
+ * tiles under its historical name. No new analysis anywhere here: every
+ * value is a direct read of `atlasRatingModel.ts`'s already-tested
+ * derivation over data this page already fetched.
  *
  * Deliberately no per-tile expand affordance -- the rest of the page,
  * now reordered to Outlook -> Investment Argument -> Atlas Reasoning
@@ -46,9 +47,11 @@ export const RATING_TIER_LABEL_KEY: Record<AtlasRating["tier"], TranslationKey> 
   not_applicable: "investmentCase.ratings.notApplicable",
 };
 
-const QUALITATIVE_TONE: Record<"upside" | "risk", Record<QualitativeLevel, StatusTone>> = {
-  upside: { low: "neutral", moderate: "neutral", high: "positive", very_high: "positive" },
-  risk: { low: "positive", moderate: "neutral", high: "caution", very_high: "critical" },
+const RISK_TONE: Record<QualitativeLevel, StatusTone> = {
+  low: "positive",
+  moderate: "neutral",
+  high: "caution",
+  very_high: "critical",
 };
 
 const QUALITATIVE_LABEL_KEY: Record<QualitativeLevel, TranslationKey> = {
@@ -87,9 +90,9 @@ function RatingTile({ labelKey, rating, t }: { labelKey: TranslationKey; rating:
   );
 }
 
-function QualitativeDots({ level, kind }: { level: QualitativeLevel; kind: "upside" | "risk" }) {
+function QualitativeDots({ level }: { level: QualitativeLevel }) {
   const filled = QUALITATIVE_FILL[level];
-  const tone = QUALITATIVE_TONE[kind][level];
+  const tone = RISK_TONE[level];
   const color =
     tone === "positive"
       ? "var(--color-semantic-green)"
@@ -118,12 +121,10 @@ function QualitativeDots({ level, kind }: { level: QualitativeLevel; kind: "upsi
 
 function QualitativeTile({
   labelKey,
-  kind,
   value,
   t,
 }: {
   labelKey: TranslationKey;
-  kind: "upside" | "risk";
   value: AtlasQualitative;
   t: Translate;
 }) {
@@ -136,7 +137,7 @@ function QualitativeTile({
             <Text as="span" style={{ fontWeight: 700, fontSize: "var(--type-size-h5)" }}>
               {t(QUALITATIVE_LABEL_KEY[value.level])}
             </Text>
-            <QualitativeDots level={value.level} kind={kind} />
+            <QualitativeDots level={value.level} />
           </>
         ) : (
           <Text as="span" color="tertiary">
@@ -177,7 +178,6 @@ export interface SevenCategoriesInput {
   investment: AtlasRating;
   portfolio: AtlasRating;
   evidence: AtlasRating;
-  upside: AtlasQualitative;
   risk: AtlasQualitative;
   horizon: AtlasHorizon;
 }
@@ -190,8 +190,7 @@ export function SevenCategoriesSection({ ratings, t }: { ratings: SevenCategorie
         <RatingTile labelKey="investmentCase.ratings.investment.label" rating={ratings.investment} t={t} />
         <RatingTile labelKey="investmentCase.ratings.portfolio.label" rating={ratings.portfolio} t={t} />
         <RatingTile labelKey="investmentCase.ratings.evidence.label" rating={ratings.evidence} t={t} />
-        <QualitativeTile labelKey="investmentCase.ratings.upside.label" kind="upside" value={ratings.upside} t={t} />
-        <QualitativeTile labelKey="investmentCase.ratings.risk.label" kind="risk" value={ratings.risk} t={t} />
+        <QualitativeTile labelKey="investmentCase.ratings.risk.label" value={ratings.risk} t={t} />
         <HorizonTile horizon={ratings.horizon} t={t} />
       </Inline>
     </Surface>

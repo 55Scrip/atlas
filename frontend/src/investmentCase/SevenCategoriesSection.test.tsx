@@ -12,7 +12,6 @@ function ratings(overrides: Partial<SevenCategoriesInput> = {}): SevenCategories
     investment: { score: 6, tier: "fair" },
     portfolio: { score: 9.5, tier: "excellent" },
     evidence: { score: 4, tier: "weak" },
-    upside: { level: "high" },
     risk: { level: "moderate" },
     horizon: { years: 4 },
     ...overrides,
@@ -46,16 +45,25 @@ describe("SevenCategoriesSection -- Atlas UX Phase 7A (Semantic Investment Model
     expect(screen.getByText("investmentCase.ratings.notApplicable")).toBeInTheDocument();
   });
 
-  it("Upside and Risk render as independent qualitative levels, never a number", () => {
-    renderBar({ upside: { level: "very_high" }, risk: { level: "very_high" } });
-    const veryHighLabels = screen.getAllByText("investmentCase.ratings.qualitative.veryHigh");
-    // A case can carry Very High Upside and Very High Risk at once -- both tiles render independently.
-    expect(veryHighLabels).toHaveLength(2);
+  it("Risk renders as a qualitative level, never a number", () => {
+    renderBar({ risk: { level: "very_high" } });
+    expect(screen.getAllByText("investmentCase.ratings.qualitative.veryHigh")).toHaveLength(1);
     expect(screen.queryByText(/^\d+\.\d\/10$/)).not.toBeInTheDocument();
   });
 
+  it("has no Upside tile: a sensitivity endpoint is never scored as upside", () => {
+    const { container } = renderBar();
+    expect(container.textContent ?? "").not.toMatch(/upside/i);
+    const hidden = [...container.querySelectorAll("[aria-label],[title]")].map(
+      (el) => `${el.getAttribute("aria-label") ?? ""} ${el.getAttribute("title") ?? ""}`,
+    );
+    for (const label of hidden) expect(label).not.toMatch(/upside|uppsida|expected|förväntad|forecast|prognos/i);
+    // Six tiles: Company, Investment, Portfolio, Coverage, Risk, Horizon.
+    expect(screen.getAllByText(/^investmentCase\.ratings\.[a-z]+\.label$/)).toHaveLength(6);
+  });
+
   it("shows 'Not rated yet' for a missing qualitative level, never a guessed one", () => {
-    renderBar({ upside: { level: "missing" } });
+    renderBar({ risk: { level: "missing" } });
     expect(screen.getAllByText("investmentCase.ratings.missing").length).toBeGreaterThan(0);
   });
 

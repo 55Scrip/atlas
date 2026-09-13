@@ -696,9 +696,6 @@ function CurrentPicture({
 
   const growth = report.businessAnalysis.findings.find((f) => f.kind === "growth");
   const capitalAllocation = report.businessAnalysis.findings.find((f) => f.kind === "capital_allocation");
-  const longTerm = report.outlook.longTerm;
-  const longTermBull = longTerm.scenarios.find((s) => s.kind === "bull");
-  const longTermBear = longTerm.scenarios.find((s) => s.kind === "bear");
   const riskFindings = report.risk.findings.map((f) => ({ category: f.category, status: f.status }));
   const valuationSupportStatus = report.valuationSupport.status;
   const valuationSupportGap = report.valuationSupport.gap;

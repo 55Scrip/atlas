@@ -233,17 +233,30 @@ class TestFixtureMatrix:
         assert outlook.long_term.expected_return_gap is OutlookGapKind.NO_DURABLE_GROWTH_TRAJECTORY
         assert outlook.short_term.expected_return is not None
 
-    def test_not_applicable_industry_computes_no_sensitivity(self):
-        """A capital-markets business: the FCF-yield method does not apply,
-        so there is no current yield to re-rate from."""
+    def test_not_applicable_industry_is_named_not_applicable_on_both_horizons(self):
+        """A capital-markets business: the FCF-yield method does not apply.
+        That is not missing data -- the full, clean history below would
+        otherwise produce both horizons -- so it carries its own reason,
+        ahead of the growth gate."""
         records = (
             _cal_growth_records(_REVENUE, _CLEAN_FCF, tag="bank")
             + _cal_market_records(_PRICES, tag="mbank")
             + (_make_record("company_profile", None, "profile", industry="CAPITAL MARKETS"),)
         )
         outlook = _assemble(records, profile=False).outlook
+        for horizon in (outlook.short_term, outlook.long_term):
+            assert horizon.expected_return_gap is OutlookGapKind.VALUATION_NOT_APPLICABLE
+            assert horizon.scenarios_gap is OutlookGapKind.VALUATION_NOT_APPLICABLE
+            assert horizon.scenarios == ()
+
+    def test_missing_data_stays_distinct_from_not_applicable(self):
+        """No market data at all on an applicable business: insufficient,
+        never "not applicable"."""
+        outlook = _assemble(_cal_growth_records(_REVENUE, _CLEAN_FCF, tag="nomkt")).outlook
         assert outlook.short_term.expected_return_gap is OutlookGapKind.VALUATION_NOT_CONCLUSIVE
-        assert outlook.long_term.expected_return_gap is OutlookGapKind.VALUATION_NOT_CONCLUSIVE
+        assert OutlookGapKind.VALUATION_NOT_APPLICABLE not in (
+            outlook.short_term.expected_return_gap, outlook.long_term.expected_return_gap,
+        )
 
 
 class TestAnchorCutArithmetic:

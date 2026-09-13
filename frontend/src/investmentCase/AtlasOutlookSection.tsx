@@ -33,7 +33,14 @@ import type { TranslationKey } from "../i18n";
  *
  * **Precision** is display-only (`formatPercent`): one decimal below
  * 10%, whole percents from 10% -- the engine's own figure is never
- * rounded or capped for the calculation.
+ * rounded or capped for the calculation. Numbers go through
+ * `Intl.NumberFormat` in the page's locale, the same way the reasoning
+ * section formats its yields, so Swedish reads "+4,3 %" and English
+ * "+4.3%".
+ *
+ * **No score.** Nothing here, and nothing reading this payload, turns
+ * an endpoint into an "upside" rating: a sensitivity says what a price
+ * implies under stated assumptions, not how attractive it is.
  *
  * No conviction badge: the case-wide Conviction it echoed read as
  * confidence in a forecast. Momentum and What Changed stay case-wide
@@ -45,7 +52,8 @@ export type OutlookGapKind =
   | "no_historical_valuation_range"
   | "valuation_not_conclusive"
   | "no_durable_growth_trajectory"
-  | "near_zero_fcf_anchor";
+  | "near_zero_fcf_anchor"
+  | "valuation_not_applicable";
 export type ReturnBasis = "cumulative" | "annualized";
 export type ScenarioKind = "bull" | "base" | "bear";
 export type OutlookMomentumKind = "strengthening" | "stable" | "mixed" | "weakening" | "unavailable";
@@ -118,8 +126,13 @@ export interface HorizonOutlookView {
   keyDrivers: OutlookDriverView[];
 }
 
+/** The only role Outlook has: conditional sensitivity arithmetic. Typed
+ * as a literal so a future forecast role could never be rendered with
+ * this section's "not a forecast" copy by accident. */
+export const OUTLOOK_ROLE = "sensitivity";
+
 export interface OutlookView {
-  role: "sensitivity";
+  role: typeof OUTLOOK_ROLE;
   shortTerm: HorizonOutlookView;
   longTerm: HorizonOutlookView;
 }
@@ -129,6 +142,17 @@ export const GAP_KEY: Record<OutlookGapKind, TranslationKey> = {
   valuation_not_conclusive: "investmentCase.outlook.gap.valuationNotConclusive",
   no_durable_growth_trajectory: "investmentCase.outlook.gap.noDurableGrowthTrajectory",
   near_zero_fcf_anchor: "investmentCase.outlook.gap.nearZeroFcfAnchor",
+  valuation_not_applicable: "investmentCase.outlook.gap.valuationNotApplicable",
+};
+
+/** The one-word state above a gap's explanation: not applicable and
+ * withheld are final states, not "not yet computed". */
+const GAP_STATUS_KEY: Record<OutlookGapKind, TranslationKey> = {
+  no_historical_valuation_range: "investmentCase.outlook.notYetComputed",
+  valuation_not_conclusive: "investmentCase.outlook.notYetComputed",
+  no_durable_growth_trajectory: "investmentCase.outlook.notYetComputed",
+  near_zero_fcf_anchor: "investmentCase.outlook.withheldStatus",
+  valuation_not_applicable: "investmentCase.outlook.notApplicable",
 };
 
 const SCENARIO_LABEL_KEY: Record<ScenarioKind, TranslationKey> = {
@@ -187,15 +211,17 @@ const DRIVER_LABEL_KEY: Record<OutlookDriverKind, TranslationKey> = {
 
 /** Display precision only: one decimal below 10%, whole percents from
  * 10% (a "+4998.3%" re-rating implied precision the anchor never had).
- * Never a cap -- the magnitude is shown as computed. */
-export function formatPercent(value: number): string {
-  const percent = value * 100;
+ * Never a cap -- the magnitude is shown as computed. Signed, in the
+ * page's locale; a value that rounds to zero carries no sign. */
+export function formatPercent(value: number, locale: string): string {
   // Decided on the one-decimal rounding, so 9.96% reads "+10%", not "+10.0%".
-  const digits = Math.abs(Number(percent.toFixed(1))) < 10 ? 1 : 0;
-  const rounded = Number(percent.toFixed(digits));
-  const sign = rounded > 0 ? "+" : "";
-  // `rounded` may be -0; `toFixed` never prints its sign.
-  return `${sign}${rounded.toFixed(digits)}%`;
+  const digits = Math.abs(Number((value * 100).toFixed(1))) < 10 ? 1 : 0;
+  return new Intl.NumberFormat(locale, {
+    style: "percent",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+    signDisplay: "exceptZero",
+  }).format(value);
 }
 
 /** A fiscal period end ("2016-12-31") as its fiscal year ("2016"). */
@@ -225,15 +251,15 @@ function describeAnchors(scenario: OutlookScenarioView, t: Translate): string | 
 
 /** Unsigned -- an FCF yield is a ratio, never a gain/loss, so it never
  * carries the `formatPercent` +/- convention returns use. */
-function formatYield(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
+function formatYield(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
 }
 
 function UnavailableField({ label, gap, t }: { label: string; gap: OutlookGapKind; t: Translate }) {
   return (
     <Stack gap="metadata">
       <Label>{label}</Label>
-      <StatusText label={t("investmentCase.outlook.notYetComputed")} tone="neutral" />
+      <StatusText label={t(GAP_STATUS_KEY[gap])} tone="neutral" />
       <Text as="p" color="tertiary">
         {t(GAP_KEY[gap])}
       </Text>
@@ -241,7 +267,20 @@ function UnavailableField({ label, gap, t }: { label: string; gap: OutlookGapKin
   );
 }
 
-function ExpectedReturnField({ expectedReturn, t }: { expectedReturn: ExpectedReturnRangeView; t: Translate }) {
+function ExpectedReturnField({
+  expectedReturn,
+  scenarios,
+  t,
+  locale,
+}: {
+  expectedReturn: ExpectedReturnRangeView;
+  scenarios: OutlookScenarioView[];
+  t: Translate;
+  locale: string;
+}) {
+  // A range over the endpoints shown: say so when one is withheld, so
+  // "−64 % → +4,3 %" is never read as the withheld endpoint's value.
+  const withheld = scenarios.filter((scenario) => scenario.returnPercent === null);
   const isGrowth = expectedReturn.assumption.growthRate != null;
   const years = expectedReturn.assumption.horizonYears ?? (expectedReturn.horizonMonthsHigh ?? 0) / 12;
   const single = expectedReturn.lowPercent === expectedReturn.highPercent;
@@ -250,9 +289,16 @@ function ExpectedReturnField({ expectedReturn, t }: { expectedReturn: ExpectedRe
       <Label>{t(isGrowth ? "investmentCase.outlook.expectedReturnLabel.growth" : "investmentCase.outlook.expectedReturnLabel")}</Label>
       <Text as="p" style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
         {single
-          ? formatPercent(expectedReturn.lowPercent)
-          : `${formatPercent(expectedReturn.lowPercent)} → ${formatPercent(expectedReturn.highPercent)}`}
+          ? formatPercent(expectedReturn.lowPercent, locale)
+          : `${formatPercent(expectedReturn.lowPercent, locale)} → ${formatPercent(expectedReturn.highPercent, locale)}`}
       </Text>
+      {withheld.length > 0 && (
+        <Text as="p" color="secondary">
+          {t("investmentCase.outlook.partialRangeNote", {
+            periods: [...new Set(withheld.flatMap((scenario) => scenario.anchorPeriods.map(fiscalYear)))].sort().join(", "),
+          })}
+        </Text>
+      )}
       <Text as="p" color="tertiary">
         {isGrowth
           ? t("investmentCase.outlook.longTermBasisNote", { years: String(years) })
@@ -261,8 +307,8 @@ function ExpectedReturnField({ expectedReturn, t }: { expectedReturn: ExpectedRe
       <Text as="p" color="tertiary">
         {isGrowth
           ? t("investmentCase.outlook.growthAssumptionNote", {
-              growthRate: formatPercent(expectedReturn.assumption.growthRate ?? 0),
-              targetYield: formatYield(expectedReturn.assumption.targetFcfYield),
+              growthRate: formatPercent(expectedReturn.assumption.growthRate ?? 0, locale),
+              targetYield: formatYield(expectedReturn.assumption.targetFcfYield, locale),
               years: String(years),
             })
           : t("investmentCase.outlook.rerangeAssumptionNote")}
@@ -271,7 +317,7 @@ function ExpectedReturnField({ expectedReturn, t }: { expectedReturn: ExpectedRe
   );
 }
 
-function ScenarioField({ scenario, t }: { scenario: OutlookScenarioView; t: Translate }) {
+function ScenarioField({ scenario, t, locale }: { scenario: OutlookScenarioView; t: Translate; locale: string }) {
   if (scenario.returnPercent === null) {
     // Withheld: the reason names the anchor year. Its assumption (a
     // near-zero yield, "0.0%") would only restate the pathology as if it
@@ -290,16 +336,16 @@ function ScenarioField({ scenario, t }: { scenario: OutlookScenarioView; t: Tran
     <Stack gap="metadata">
       <Label>{t(scenarioLabelKey(scenario))}</Label>
       <Text as="p" style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-        {formatPercent(scenario.returnPercent)}
+        {formatPercent(scenario.returnPercent, locale)}
       </Text>
       <Text as="p" color="tertiary">
         {scenario.assumption.growthRate != null
           ? t("investmentCase.outlook.scenarioGrowthAssumptionNote", {
-              growthRate: formatPercent(scenario.assumption.growthRate),
-              targetYield: formatYield(scenario.assumption.targetFcfYield),
+              growthRate: formatPercent(scenario.assumption.growthRate, locale),
+              targetYield: formatYield(scenario.assumption.targetFcfYield, locale),
             })
           : t("investmentCase.outlook.scenarioAssumptionNote", {
-              targetYield: formatYield(scenario.assumption.targetFcfYield),
+              targetYield: formatYield(scenario.assumption.targetFcfYield, locale),
             })}
       </Text>
       {anchors && (
@@ -315,10 +361,12 @@ function HorizonPanel({
   headingKey,
   horizon,
   t,
+  locale,
 }: {
   headingKey: "shortTerm" | "longTerm";
   horizon: HorizonOutlookView;
   t: Translate;
+  locale: string;
 }) {
   return (
     <Stack gap="metadata" style={{ flex: "1 1 280px", minWidth: 0 }}>
@@ -328,7 +376,7 @@ function HorizonPanel({
 
       <Inline gap="inter-section" wrap align="start">
         {horizon.expectedReturn ? (
-          <ExpectedReturnField expectedReturn={horizon.expectedReturn} t={t} />
+          <ExpectedReturnField expectedReturn={horizon.expectedReturn} scenarios={horizon.scenarios} t={t} locale={locale} />
         ) : (
           <UnavailableField
             label={t(
@@ -368,7 +416,7 @@ function HorizonPanel({
         )}
         <Inline gap="inter-section" wrap align="start">
           {horizon.scenarios.length > 0 ? (
-            horizon.scenarios.map((scenario) => <ScenarioField key={scenario.kind} scenario={scenario} t={t} />)
+            horizon.scenarios.map((scenario) => <ScenarioField key={scenario.kind} scenario={scenario} t={t} locale={locale} />)
           ) : (
             <UnavailableField
               label={
@@ -412,11 +460,16 @@ export function AtlasOutlookSection({
   outlook,
   latestChanges,
   t,
+  locale,
 }: {
   outlook: OutlookView;
   latestChanges: ChangeFindingView[];
   t: Translate;
+  locale: string;
 }) {
+  // Every word below describes a sensitivity; a payload claiming any
+  // other role is not this section's to render.
+  if (outlook.role !== OUTLOOK_ROLE) return null;
   return (
     <Stack gap="metadata">
       <Label>{t("investmentCase.outlook.heading")}</Label>
@@ -425,8 +478,8 @@ export function AtlasOutlookSection({
       </Text>
 
       <Inline gap="inter-section" wrap align="start">
-        <HorizonPanel headingKey="shortTerm" horizon={outlook.shortTerm} t={t} />
-        <HorizonPanel headingKey="longTerm" horizon={outlook.longTerm} t={t} />
+        <HorizonPanel headingKey="shortTerm" horizon={outlook.shortTerm} t={t} locale={locale} />
+        <HorizonPanel headingKey="longTerm" horizon={outlook.longTerm} t={t} locale={locale} />
       </Inline>
 
       <Divider tone="hairline" />

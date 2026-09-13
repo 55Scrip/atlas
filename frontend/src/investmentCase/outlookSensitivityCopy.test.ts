@@ -15,8 +15,8 @@ function sensitivityCopy(dictionary: Record<string, string>): [string, string][]
 }
 
 const FORBIDDEN: Record<"en" | "sv", RegExp[]> = {
-  en: [/expected return/i, /most likely/i, /\blikely\b/i, /\bbull\b/i, /\bbear\b/i, /\bbase\b/i, /6[–-]12/, /3[–-]5/, /price target/i, /\bmonths\b/i],
-  sv: [/förväntad avkastning/i, /förväntat avkastning/i, /sannolik/i, /optimistisk/i, /pessimistisk/i, /\bbas\b/i, /6[–-]12/, /3[–-]5/, /kursmål/i, /månader/i],
+  en: [/expected return/i, /upside/i, /potential (gain|return)/i, /attractive return/i, /most likely/i, /\blikely\b/i, /\bbull\b/i, /\bbear\b/i, /\bbase\b/i, /6[–-]12/, /3[–-]5/, /price target/i, /\bmonths\b/i],
+  sv: [/förväntad avkastning/i, /förväntat avkastning/i, /uppsida/i, /potentiell (vinst|avkastning)/i, /sannolik/i, /optimistisk/i, /pessimistisk/i, /\bbas\b/i, /6[–-]12/, /3[–-]5/, /kursmål/i, /månader/i],
 };
 
 describe("Outlook sensitivity copy -- never worded as a forecast", () => {
@@ -30,13 +30,37 @@ describe("Outlook sensitivity copy -- never worded as a forecast", () => {
     });
   }
 
-  it("only the caption may say 'forecast' -- to say it is not one", () => {
-    for (const [dictionary, word] of [[en, /forecast/i], [sv, /prognos/i]] as const) {
+  it("'forecast' appears only to say the sensitivity is not one", () => {
+    for (const [dictionary, word, negation] of [
+      [en, /forecast/i, /^Not a forecast\b/],
+      [sv, /prognos/i, /^Inte en prognos\b/],
+    ] as const) {
       const mentions = sensitivityCopy(dictionary).filter(([, value]) => word.test(value));
-      expect(mentions.map(([key]) => key)).toEqual(["investmentCase.outlook.caption"]);
+      expect(mentions.map(([key]) => key).sort()).toEqual([
+        "investmentCase.outlook.caption",
+        "investmentCase.ratings.horizon.sensitivityCaption",
+      ]);
+      for (const [key, value] of mentions) expect(value, key).toMatch(negation);
     }
-    expect(en["investmentCase.outlook.caption"]).toMatch(/^Not a forecast\./);
-    expect(sv["investmentCase.outlook.caption"]).toMatch(/^Inte en prognos\./);
+  });
+
+  it("there is no Upside rating copy left to render", () => {
+    for (const dictionary of [en, sv]) {
+      expect(Object.keys(dictionary).filter((key) => /upside/i.test(key))).toEqual([]);
+    }
+  });
+
+  it("the Horizon tile names a sensitivity horizon, not an investment horizon", () => {
+    expect(sv["investmentCase.ratings.horizon.label"]).toBe("Känslighetshorisont");
+    expect(en["investmentCase.ratings.horizon.label"]).toBe("Sensitivity horizon");
+  });
+
+  it("not-applicable says the method does not apply -- never that data is missing", () => {
+    expect(en["investmentCase.outlook.gap.valuationNotApplicable"]).toMatch(/does not apply/);
+    expect(sv["investmentCase.outlook.gap.valuationNotApplicable"]).toMatch(/inte tillämplig/);
+    for (const dictionary of [en, sv]) {
+      expect(dictionary["investmentCase.outlook.gap.valuationNotApplicable"]).not.toMatch(/yet|ännu|missing|saknas|data/i);
+    }
   });
 
   it("names the section, the re-rating and the exact 4-year horizon", () => {

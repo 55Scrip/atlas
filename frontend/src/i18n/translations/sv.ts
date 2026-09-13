@@ -457,17 +457,10 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.ratings.investment.label": "Investering",
   "investmentCase.ratings.portfolio.label": "Portfölj",
   "investmentCase.ratings.evidence.label": "Täckning",
-  // Canonical Reasoning Consolidation, Phase F. Was "Uppsida". This
-  // tile thresholds the Long-Term sensitivity's highest-growth endpoint,
-  // compounded over its 4 years; no scenario probabilities exist, so it
-  // is not the canonical Upside concept and must not be labelled as
-  // though it were. Outlook -> Sensitivity: "Värderingsimplicerad
-  // uppsida" became "Uppsidekänslighet".
-  "investmentCase.ratings.upside.label": "Uppsidekänslighet",
   "investmentCase.ratings.risk.label": "Risk",
-  "investmentCase.ratings.horizon.label": "Tidshorisont",
+  "investmentCase.ratings.horizon.label": "Känslighetshorisont",
   "investmentCase.ratings.horizon.years": "{{years}} år",
-  "investmentCase.ratings.horizon.sensitivityCaption": "Långsiktig känslighet",
+  "investmentCase.ratings.horizon.sensitivityCaption": "Inte en prognos",
   "investmentCase.ratings.tier.excellent": "Utmärkt",
   "investmentCase.ratings.tier.good": "Bra",
   "investmentCase.ratings.tier.fair": "Godtagbar",
@@ -1224,6 +1217,10 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.outlook.gap.valuationNotConclusive": "Ingen aktuell värdering att utgå från ännu.",
   "investmentCase.outlook.gap.noDurableGrowthTrajectory": "Ingen varaktig tillväxthistorik att beräkna en 4-årig känslighet från ännu.",
   "investmentCase.outlook.gap.nearZeroFcfAnchor": "Undanhållen — åren Atlas skulle jämföra mot hade nära noll fritt kassaflöde, så ingen jämförbar siffra finns.",
+  "investmentCase.outlook.gap.valuationNotApplicable": "Atlas värdering med FCF-avkastning är inte tillämplig på den här typen av bolag, så det finns ingen känslighet att visa.",
+  "investmentCase.outlook.notApplicable": "Ej tillämplig",
+  "investmentCase.outlook.withheldStatus": "Undanhållen",
+  "investmentCase.outlook.partialRangeNote": "Undanhållna scenarier ingår inte i intervallet (ankarår {{periods}}).",
   "investmentCase.outlook.shortTermBasisNote": "Direkt omvärdering, ingen tidshorisont.",
   "investmentCase.outlook.longTermBasisNote": "Årlig takt över {{years}} år.",
   "investmentCase.outlook.withheld": "Undanhållen — ankaråret ({{period}}) hade nära noll fritt kassaflöde.",

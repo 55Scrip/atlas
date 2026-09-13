@@ -251,7 +251,7 @@ from atlas.analysis_engine.investment_case_change import ThesisImpact
 from atlas.analysis_engine.investment_case_synthesis import InvestmentCaseSynthesis
 from atlas.analysis_engine.risk.contracts import RiskStatus
 from atlas.analysis_engine.risk.models import RiskAnalysisResult
-from atlas.analysis_engine.valuation.contracts import ValuationMethodKind
+from atlas.analysis_engine.valuation.contracts import ValuationDataGapKind, ValuationMethodKind
 from atlas.analysis_engine.valuation.contracts import ValuationStatus as ValStatus
 from atlas.analysis_engine.valuation.models import FcfYieldEvidence, ValuationEngineResult
 
@@ -340,6 +340,13 @@ class OutlookGapKind(str, Enum):
     market price, missing share count, missing Free Cash Flow, or a
     non-positive Free Cash Flow) -- there is no starting point to
     re-rate from."""
+    VALUATION_NOT_APPLICABLE = "valuation_not_applicable"
+    """The FCF-yield method does not apply to this kind of business (a
+    bank, insurer or securities firm -- `valuation.applicability`), so
+    there is no yield to re-rate, on either horizon. Not missing data:
+    no amount of data would make it apply. Read off the finding's own
+    `ValuationDataGapKind.VALUATION_METHOD_NOT_APPLICABLE`, never
+    re-derived from the industry here."""
     NO_DURABLE_GROWTH_TRAJECTORY = "no_durable_growth_trajectory"
     """Long-Term's own eligibility gate (`_business_trajectory_eligible`)
     was not met: full-history Growth is `WEAK`, or Revenue's or Free Cash
@@ -680,7 +687,12 @@ def _short_term_valuation(
     fcf_finding_current_yield: float | None,
     historical_yields: tuple[float, ...],
     evidence: "FcfYieldEvidence | None" = None,
+    *,
+    method_not_applicable: bool = False,
 ) -> tuple[ExpectedReturnRange | None, OutlookGapKind | None, tuple[OutlookScenario, ...], OutlookGapKind | None]:
+    if method_not_applicable:
+        gap = OutlookGapKind.VALUATION_NOT_APPLICABLE
+        return None, gap, (), gap
     if fcf_finding_current_yield is None:
         gap = OutlookGapKind.VALUATION_NOT_CONCLUSIVE
         return None, gap, (), gap
@@ -868,6 +880,7 @@ def _long_term_valuation(
     historical_yields: tuple[float, ...],
     generated_at: datetime,
     evidence: FcfYieldEvidence | None = None,
+    method_not_applicable: bool = False,
 ) -> tuple[
     ExpectedReturnRange | None,
     OutlookGapKind | None,
@@ -892,6 +905,11 @@ def _long_term_valuation(
         _facts_sorted(business_facts, BusinessFactKind.REVENUE), as_of=generated_at
     )
     recent_fcf_trend = _recent_trend(fcf_facts)
+    # Before the growth gate: when the method does not apply, why the
+    # growth history would or would not qualify is beside the point.
+    if method_not_applicable:
+        gap = OutlookGapKind.VALUATION_NOT_APPLICABLE
+        return None, gap, (), gap, recent_fcf_trend
 
     years = LONG_TERM_COMPOUNDING_YEARS
     # The shared, fiscal-year-true rolling windows (`growth_primitives`) --
@@ -1188,6 +1206,7 @@ def build_outlook(
     fills it in once a `ChangeIntelligence` exists.
     """
     fcf_finding = next(f for f in valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE)
+    method_not_applicable = ValuationDataGapKind.VALUATION_METHOD_NOT_APPLICABLE in fcf_finding.missing_evidence
     growth_finding = next(f for f in business_analysis.findings if f.kind is BusinessCategory.GROWTH)
     capital_allocation_finding = next(
         f for f in business_analysis.findings if f.kind is BusinessCategory.CAPITAL_ALLOCATION
@@ -1201,7 +1220,8 @@ def build_outlook(
     )
 
     short_expected_return, short_return_gap, short_scenarios, short_scenarios_gap = _short_term_valuation(
-        fcf_finding.current_yield, fcf_finding.historical_yields, fcf_finding.fcf_yield_evidence
+        fcf_finding.current_yield, fcf_finding.historical_yields, fcf_finding.fcf_yield_evidence,
+        method_not_applicable=method_not_applicable,
     )
     short_drivers = _short_term_drivers(
         fcf_status=fcf_finding.status,
@@ -1235,6 +1255,7 @@ def build_outlook(
             historical_yields=fcf_finding.historical_yields,
             generated_at=generated_at,
             evidence=fcf_finding.fcf_yield_evidence,
+            method_not_applicable=method_not_applicable,
         )
     )
     margin_trend = _operating_margin_trend(business_facts, generated_at=generated_at)

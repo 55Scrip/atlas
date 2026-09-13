@@ -142,7 +142,6 @@ import {
   deriveInvestmentRating,
   derivePortfolioRating,
   deriveRisk,
-  deriveUpside,
 } from "../investmentCase/atlasRatingModel";
 import { SevenCategoriesSection, CaseDnaLine, type SevenCategoriesInput } from "../investmentCase/SevenCategoriesSection";
 import { AtlasDecisionSummary } from "../investmentCase/AtlasDecisionSummary";
@@ -2695,8 +2694,6 @@ export function InvestmentCasePage() {
             const growth = report.businessAnalysis.findings.find((f) => f.kind === "growth");
             const capitalAllocation = report.businessAnalysis.findings.find((f) => f.kind === "capital_allocation");
             const longTerm = report.outlook.longTerm;
-            const longTermBull = longTerm.scenarios.find((s) => s.kind === "bull");
-            const longTermBear = longTerm.scenarios.find((s) => s.kind === "bear");
             const riskFindings = report.risk.findings.map((f) => ({ category: f.category, status: f.status }));
             const valuationSupportStatus = report.valuationSupport.status as ValuationSupportStatus;
             const valuationSupportGap = report.valuationSupport.gap as ValuationSupportGapKind | null;
@@ -2764,10 +2761,6 @@ export function InvestmentCasePage() {
                 portfolioFitStatus.kind === "loaded" ? (portfolioFitStatus.assessment?.overall ?? null) : null,
               ),
               evidence: deriveEvidenceRating(report.coverage.overallCoverage, report.coverage.overallConfidence),
-              upside: deriveUpside(
-                longTermBull ? longTermBull.returnPercent : null,
-                longTermBull ? longTermBull.assumption.horizonYears : null,
-              ),
               risk: deriveRisk(riskFindings),
               horizon: deriveHorizon(
                 longTerm.expectedReturn
@@ -5877,7 +5870,7 @@ function InvestmentCaseCanonicalSections({
    * them. */
   return (
     <Stack gap="inter-section">
-      <AtlasOutlookSection outlook={analysis.outlook} latestChanges={analysis.latestChanges} t={t} />
+      <AtlasOutlookSection outlook={analysis.outlook} latestChanges={analysis.latestChanges} t={t} locale={locale} />
 
       <Divider tone="hairline" />
 

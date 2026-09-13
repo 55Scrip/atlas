@@ -55,16 +55,10 @@ import { ExpandableDetail } from "./ExpandableDetail";
  * governs its register. Prose is now one sentence, not a paragraph --
  * it supports the hierarchy below it, it does not replace it.
  *
- * Expected Return and Upside/Downside now render Long-Term Outlook's real
- * figures (Long-Term Expected Return v1 / Calibration Sprint) -- Expected
- * Return is `outlook.longTerm.expectedReturn`'s own low/high range;
- * Upside/Downside is the Bull/Bear scenario's own `returnPercent` from
- * that same horizon. Both still render an honest "not yet available"
- * state, unchanged, whenever this specific company's Outlook does not
- * clear Long-Term's own eligibility gate (`OutlookGapKind`) -- never a
- * fabricated figure. This is still a re-rating-plus-growth range, not a
- * price target or a scenario-based valuation -- see
- * `atlas.analysis_engine.outlook`'s own module docstring.
+ * The hero shows nothing derived from Outlook. Expected Return and
+ * Upside/Downside left its Key Metrics row in Phase F (see below), and
+ * Outlook is a sensitivity, not a forecast: its figures appear only in
+ * `AtlasOutlookSection`, conditional and unscored.
  *
  * Outlook -> Sensitivity: the line that said whether Long-Term Outlook
  * "corroborates" or "diverges from" the Recommendation is gone. It read

@@ -184,12 +184,17 @@ export function deriveEvidenceRating(
 }
 
 /**
- * Phase 7A -- Upside and Risk are deliberately *not* 0-10 ratings: the
- * brief's own spec displays them as four qualitative levels
- * (Low/Moderate/High/Very High), independent of each other -- a
- * company can carry Very High Upside and Very High Risk at once. Both
- * are still deterministic reads of real, already-computed data, never
- * a felt judgment.
+ * Phase 7A -- Risk is deliberately *not* a 0-10 rating: the brief's own
+ * spec displays it as four qualitative levels (Low/Moderate/High/Very
+ * High), a deterministic read of real, already-computed data, never a
+ * felt judgment.
+ *
+ * There is no Upside rating (Sensitivity Surface Cleanup). The only
+ * source it ever had was Outlook's sensitivity endpoint, and a
+ * sensitivity says what a price implies under stated historical
+ * assumptions -- bucketing it into "Very High" read as expected upside
+ * (CRM's highest-growth endpoint compounds to +1,294% over four years).
+ * The numbers stay, conditional and unscored, in the sensitivity section.
  */
 export type QualitativeLevel = "low" | "moderate" | "high" | "very_high";
 
@@ -198,28 +203,6 @@ export interface AtlasQualitative {
 }
 
 const QUALITATIVE_MISSING: AtlasQualitative = { level: "missing" };
-
-/**
- * Upside sensitivity -- reads Long-Term Outlook's highest-growth
- * endpoint (`atlas.analysis_engine.outlook`, a sensitivity, never a
- * forecast) and buckets the *4-year cumulative* figure it implies into
- * the brief's four tiers. The engine reports an annualized rate over
- * `years`; the edges below are total-return multiples (doubling the
- * position is Very High, 1.5x High, 1.2x Moderate), so the rate is
- * compounded back to the whole horizon first -- bucketing a 20%/yr rate
- * against a "1.2x" edge would read four years of compounding as one.
- * Both inputs are fractions (`0.2` is +20%). `missing` whenever the
- * endpoint is unavailable or withheld (a non-comparable anchor) --
- * never a guessed tier standing in for absent evidence.
- */
-export function deriveUpside(annualizedReturn: number | null, years: number | null): AtlasQualitative {
-  if (annualizedReturn === null || years === null) return QUALITATIVE_MISSING;
-  const cumulative = (1 + annualizedReturn) ** years - 1;
-  if (cumulative >= 1) return { level: "very_high" };
-  if (cumulative >= 0.5) return { level: "high" };
-  if (cumulative >= 0.2) return { level: "moderate" };
-  return { level: "low" };
-}
 
 /**
  * Risk -- the *worst* real risk finding across Atlas's own four

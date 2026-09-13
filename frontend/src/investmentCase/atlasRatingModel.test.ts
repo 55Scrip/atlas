@@ -6,8 +6,8 @@ import {
   deriveInvestmentRating,
   derivePortfolioRating,
   deriveRisk,
-  deriveUpside,
 } from "./atlasRatingModel";
+import * as ratingModel from "./atlasRatingModel";
 
 describe("deriveCompanyRating -- Atlas Product Lock rating specification", () => {
   it("averages every real, evaluated business category and rounds to one decimal", () => {
@@ -100,27 +100,9 @@ describe("deriveEvidenceRating -- averages Knowledge Coverage's own two real sum
   });
 });
 
-describe("deriveUpside -- the 4-year sensitivity's highest-growth endpoint, compounded, bucketed", () => {
-  it("an unavailable or withheld endpoint is missing, never a guessed tier", () => {
-    expect(deriveUpside(null, 4)).toEqual({ level: "missing" });
-    expect(deriveUpside(0.2, null)).toEqual({ level: "missing" });
-  });
-  it("buckets the 4-year cumulative figure, not the annual rate", () => {
-    // 5%/yr is 21.6% over four years -- moderate, where the annual
-    // rate alone would read as low.
-    expect(deriveUpside(0.05, 4)).toEqual({ level: "moderate" });
-    // 11%/yr is 51.8% over four years -- high.
-    expect(deriveUpside(0.11, 4)).toEqual({ level: "high" });
-    // 19%/yr doubles the position (100.5%) -- very high.
-    expect(deriveUpside(0.19, 4)).toEqual({ level: "very_high" });
-  });
-  it("under a cumulative 20% is low, including a negative endpoint", () => {
-    expect(deriveUpside(0.04, 4)).toEqual({ level: "low" });
-    expect(deriveUpside(-0.1, 4)).toEqual({ level: "low" });
-  });
-  it("reads fractions, never percent numbers", () => {
-    // The engine sends 0.35 for +35%; a percent-scaled 35 would be absurd.
-    expect(deriveUpside(0.35, 1)).toEqual({ level: "moderate" });
+describe("no Upside rating -- a sensitivity endpoint is never scored", () => {
+  it("exports no upside derivation for any surface to bucket a sensitivity with", () => {
+    expect(Object.keys(ratingModel).filter((name) => /upside/i.test(name))).toEqual([]);
   });
 });
 
