@@ -42,7 +42,7 @@ def _drivers(**overrides):
         valuation_status=ValuationStatus.FAIRLY_VALUED,
         valuation_support_status=ValuationSupportStatus.SUPPORTED,
         has_high_financial_or_valuation_risk=False,
-        has_real_risk_evidence=True,
+        financial_risk_assessed=True,
     )
     kwargs.update(overrides)
     return kwargs

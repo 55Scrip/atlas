@@ -58,6 +58,7 @@ from atlas.analysis_engine.business_contracts import BusinessCategoryStatus as B
 from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.investment_case_synthesis import HighlightKind, OpenQuestionOrigin
 from atlas.analysis_engine.risk.contracts import RiskStatus
+from atlas.analysis_engine.risk.financial_risk import FINANCIAL_RISK_METHODOLOGY
 
 if TYPE_CHECKING:
     # `capture_snapshot`'s own parameter type only -- `models.py` now
@@ -95,7 +96,9 @@ __all__ = [
 _COMPARED_RISK_CATEGORIES = (RiskCategory.BUSINESS_RISK, RiskCategory.FINANCIAL_RISK, RiskCategory.VALUATION_RISK)
 
 _INSUFFICIENT_BUSINESS_STATUSES = (BizStatus.NOT_EVALUATED, BizStatus.INSUFFICIENT_INPUT)
-_INSUFFICIENT_RISK_STATUSES = (RiskStatus.NOT_EVALUATED, RiskStatus.INSUFFICIENT_INPUT)
+#: No comparable conclusion. `NOT_APPLICABLE` belongs here: it has no rank
+#: against LOW/MODERATE/HIGH, so moving to or from it is a coverage change.
+_INSUFFICIENT_RISK_STATUSES = (RiskStatus.NOT_EVALUATED, RiskStatus.INSUFFICIENT_INPUT, RiskStatus.NOT_APPLICABLE)
 _INSUFFICIENT_VALUATION_STATUSES = (ValStatus.NOT_EVALUATED, ValStatus.INSUFFICIENT_INPUT)
 
 #: Ordering by which "more" is closer to a real conclusion -- never a
@@ -260,6 +263,12 @@ class AnalyticalSnapshot:
     a real strengths/risks-driven narrative without parsing text."""
     content_hash: str
     captured_at: datetime
+    financial_risk_methodology: str | None = None
+    """How Financial Risk was measured when this snapshot was taken
+    (`financial_risk.FINANCIAL_RISK_METHODOLOGY`); `None` for snapshots
+    persisted before the method was recorded. Two snapshots under
+    different methods are not compared on Financial Risk: Atlas changing
+    how it measures is not the company changing."""
 
 
 @dataclass(frozen=True)
@@ -318,6 +327,9 @@ def capture_snapshot(canonical_analysis: CanonicalAnalysis) -> AnalyticalSnapsho
         "strength_kinds": strength_kinds,
         "risk_highlight_kinds": risk_highlight_kinds,
         "open_question_origins": open_question_origins,
+        # Part of the identity: a new method re-baselines every Case once,
+        # rather than leaving a stale-method snapshot to compare against.
+        "financial_risk_methodology": FINANCIAL_RISK_METHODOLOGY,
     }
     content_hash = hashlib.sha256(json.dumps(hashed_content, sort_keys=True).encode("utf-8")).hexdigest()
 
@@ -334,6 +346,7 @@ def capture_snapshot(canonical_analysis: CanonicalAnalysis) -> AnalyticalSnapsho
         atlas_thesis_posture=canonical_analysis.synthesis.atlas_thesis.posture.value,
         content_hash=content_hash,
         captured_at=canonical_analysis.generated_at,
+        financial_risk_methodology=FINANCIAL_RISK_METHODOLOGY,
     )
 
 
@@ -716,6 +729,13 @@ def _summary_narrative(changes: tuple[ChangeFinding, ...], thesis_impact: Thesis
     return f"Since the previous analysis:\n{bullets}\n\n{_THESIS_IMPACT_SENTENCE[thesis_impact]}"
 
 
+def _is_financial_risk_change(change: ChangeFinding) -> bool:
+    return (
+        change.details.get("dimension") == RiskCategory.FINANCIAL_RISK.value
+        or change.details.get("highlight_kind") == HighlightKind.FINANCIAL_RISK.value
+    )
+
+
 def compare_snapshots(previous: AnalyticalSnapshot | None, current: AnalyticalSnapshot) -> ChangeIntelligence:
     """`previous=None` means "no prior snapshot exists" -- the first
     analysis ever recorded for this Case. This is a **baseline**, not a
@@ -760,6 +780,10 @@ def compare_snapshots(previous: AnalyticalSnapshot | None, current: AnalyticalSn
         )
         + _open_question_changes(previous, current)
     )
+    if previous.financial_risk_methodology != current.financial_risk_methodology:
+        # Different measuring rules on either side: whatever moved on
+        # Financial Risk moved because Atlas changed, not the company.
+        changes = tuple(c for c in changes if not _is_financial_risk_change(c))
 
     thesis_impact = _thesis_impact(changes)
     return ChangeIntelligence(

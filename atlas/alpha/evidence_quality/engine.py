@@ -99,7 +99,8 @@ __all__ = ["assess_evidence_quality"]
 
 _BUSINESS_INCONCLUSIVE = (BusinessCategoryStatus.NOT_EVALUATED, BusinessCategoryStatus.INSUFFICIENT_INPUT)
 _VALUATION_INCONCLUSIVE = (ValuationStatus.NOT_EVALUATED, ValuationStatus.INSUFFICIENT_INPUT)
-_RISK_INCONCLUSIVE = (RiskStatus.NOT_EVALUATED, RiskStatus.INSUFFICIENT_INPUT)
+#: `NOT_APPLICABLE` is not a conclusion either: the measure does not describe the business.
+_RISK_INCONCLUSIVE = (RiskStatus.NOT_EVALUATED, RiskStatus.INSUFFICIENT_INPUT, RiskStatus.NOT_APPLICABLE)
 
 #: Bucket boundaries derived as whole multiples of the one existing,
 #: real threshold this codebase already has (90 days) -- see

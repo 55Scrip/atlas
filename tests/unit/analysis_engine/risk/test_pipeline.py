@@ -35,6 +35,8 @@ def _evaluate(
         valuation_engine,
         contradiction_summary(*contradictions),
         evidence_coverage=evidence_coverage,
+        statement_record_ids=frozenset(),
+        industry="SEMICONDUCTORS",
         evaluated_at=EVALUATED_AT,
     )
 
@@ -99,3 +101,29 @@ class TestDeterminism:
         first = _evaluate(growth=BusinessCategoryStatus.MODERATE, fcf_yield=ValuationStatus.FAIRLY_VALUED)
         second = _evaluate(growth=BusinessCategoryStatus.MODERATE, fcf_yield=ValuationStatus.FAIRLY_VALUED)
         assert first == second
+
+
+class TestFinancialRiskIgnoresCapitalAllocation:
+    """Financial Risk v2 no longer reads Capital Allocation, which contains
+    the debt-trend and free-cash-flow checks a second time. The same facts
+    give the same Financial Risk whatever Capital Allocation concluded."""
+
+    def test_financial_risk_is_identical_across_capital_allocation_statuses(self):
+        from tests.unit.analysis_engine.risk.test_financial_risk import period_facts
+        facts = period_facts("2025-12-31", 1.0, 4.0, 1.0)
+        results = set()
+        for status in (BusinessCategoryStatus.WEAK, BusinessCategoryStatus.MODERATE, BusinessCategoryStatus.STRONG,
+                       BusinessCategoryStatus.INSUFFICIENT_INPUT):
+            result = evaluate_risk(
+                business_analysis_result(growth=BusinessCategoryStatus.MODERATE, capital_allocation=status),
+                facts,
+                valuation_engine_result(fcf_yield=ValuationStatus.FAIRLY_VALUED),
+                contradiction_summary(),
+                evidence_coverage=EvidenceCoverageLevel.PARTIAL,
+                statement_record_ids=frozenset(f.source_record_id for f in facts),
+                industry="SEMICONDUCTORS",
+                evaluated_at=EVALUATED_AT,
+            )
+            results.add(next(f for f in result.findings if f.category is RiskCategory.FINANCIAL_RISK))
+        assert len(results) == 1
+        assert next(iter(results)).status is RiskStatus.LOW

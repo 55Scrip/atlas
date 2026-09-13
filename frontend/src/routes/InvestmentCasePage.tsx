@@ -5673,6 +5673,8 @@ const FINANCIAL_STRENGTH_SUMMARY_KEY: Record<AnalysisRiskStatus, TranslationKey>
   moderate: "investmentCase.companyHealth.financialStrength.moderate",
   high: "investmentCase.companyHealth.financialStrength.high",
   insufficient_input: NOT_YET_EVALUATED_KEY,
+  // Not "not yet evaluated": no further evidence would make the measure apply.
+  not_applicable: "investmentCase.reasoning.financialHealth.notApplicable",
   not_evaluated: NOT_YET_EVALUATED_KEY,
 };
 

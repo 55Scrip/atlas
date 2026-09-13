@@ -77,7 +77,8 @@ __all__ = ["assess_coverage"]
 
 _BUSINESS_INCONCLUSIVE = (BusinessCategoryStatus.NOT_EVALUATED, BusinessCategoryStatus.INSUFFICIENT_INPUT)
 _VALUATION_INCONCLUSIVE = (ValuationStatus.NOT_EVALUATED, ValuationStatus.INSUFFICIENT_INPUT)
-_RISK_INCONCLUSIVE = (RiskStatus.NOT_EVALUATED, RiskStatus.INSUFFICIENT_INPUT)
+#: `NOT_APPLICABLE` is not a conclusion either: the measure does not describe the business.
+_RISK_INCONCLUSIVE = (RiskStatus.NOT_EVALUATED, RiskStatus.INSUFFICIENT_INPUT, RiskStatus.NOT_APPLICABLE)
 
 
 def _classify_business(
@@ -107,6 +108,8 @@ def _classify_risk(status: RiskStatus, missing_evidence: tuple[RiskDataGapKind, 
     if status not in _RISK_INCONCLUSIVE:
         level = DimensionCoverageLevel.PARTIALLY_AVAILABLE if missing_evidence else DimensionCoverageLevel.AVAILABLE
         return level, reasons
+    if status is RiskStatus.NOT_APPLICABLE:
+        return DimensionCoverageLevel.NOT_APPLICABLE, reasons
     if RiskDataGapKind.NO_EVIDENCE_TO_EVALUATE in missing_evidence:
         return DimensionCoverageLevel.INSUFFICIENT_EVIDENCE, reasons
     return DimensionCoverageLevel.UNAVAILABLE, reasons

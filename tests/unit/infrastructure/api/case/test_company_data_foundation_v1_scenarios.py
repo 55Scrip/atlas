@@ -195,17 +195,38 @@ class TestRicherDataFlowsIntoEvaluators:
         assert capital_allocation["status"] == "strong"
         assert "missing_share_count_history" not in capital_allocation["missingEvidence"]
 
-    def test_financial_risk_escalates_to_high_on_a_real_rising_debt_trend(self, client):
+    def test_financial_risk_is_high_on_a_real_heavy_debt_burden(self, client):
+        """Financial Risk v2: debt of 3.5x operating cash flow (free cash
+        flow 80 + capex 20) in the latest aligned year."""
         case_id = _import_holding(client, "AAPL")
         _persist(
             client,
-            _statement_document(ticker="AAPL", period_end=date(2022, 12, 31), total_debt=100.0),
-            _statement_document(ticker="AAPL", period_end=date(2023, 12, 31), total_debt=200.0),
-            _statement_document(ticker="AAPL", period_end=date(2024, 12, 31), total_debt=300.0),
+            _profile_document(ticker="AAPL", industry="CONSUMER ELECTRONICS"),
+            _statement_document(ticker="AAPL", period_end=date(2024, 12, 31), total_debt=350.0,
+                                free_cash_flow=80.0, capital_expenditure=20.0),
         )
         body = client.get(f"/cases/{case_id}/analysis").json()
         financial_risk = next(f for f in body["risk"]["findings"] if f["category"] == "financial_risk")
         assert financial_risk["status"] == "high"
+
+    def test_a_rising_debt_trend_alone_no_longer_makes_financial_risk_high(self, client):
+        """v1 escalated any strictly rising debt history to HIGH, whatever
+        its scale. v2 judges the latest burden: 300 of debt against 400 of
+        operating cash flow is low, however fast it rose."""
+        case_id = _import_holding(client, "AAPL")
+        _persist(
+            client,
+            _profile_document(ticker="AAPL", industry="CONSUMER ELECTRONICS"),
+            _statement_document(ticker="AAPL", period_end=date(2022, 12, 31), total_debt=100.0,
+                                free_cash_flow=350.0, capital_expenditure=50.0),
+            _statement_document(ticker="AAPL", period_end=date(2023, 12, 31), total_debt=200.0,
+                                free_cash_flow=350.0, capital_expenditure=50.0),
+            _statement_document(ticker="AAPL", period_end=date(2024, 12, 31), total_debt=300.0,
+                                free_cash_flow=350.0, capital_expenditure=50.0),
+        )
+        body = client.get(f"/cases/{case_id}/analysis").json()
+        financial_risk = next(f for f in body["risk"]["findings"] if f["category"] == "financial_risk")
+        assert financial_risk["status"] == "low"
 
     def test_current_fcf_yield_is_computable_with_one_period_of_richer_data(self, client):
         """A single fundamentals period plus a market snapshot is not

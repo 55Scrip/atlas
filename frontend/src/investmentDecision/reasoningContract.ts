@@ -156,67 +156,66 @@ export interface RecommendationReasoningView {
   riskBasis?: RiskDriverBasisView | null;
 }
 
-export type RiskLevel = "not_evaluated" | "insufficient_input" | "low" | "moderate" | "high";
+export type RiskLevel = "not_evaluated" | "insufficient_input" | "not_applicable" | "low" | "moderate" | "high";
 
 export type ElevatingRiskCategory = "financial_risk" | "valuation_risk";
 
-export type FinancialRiskSignal = "capital_allocation" | "cash_generation" | "debt_trend";
-
+/** Why Financial Risk v2 reached its level -- one token per branch of
+ * the backend rule. */
 export type FinancialRiskCondition =
-  | "capital_allocation_weak"
-  | "capital_allocation_moderate"
-  | "capital_allocation_strong"
-  | "capital_allocation_unavailable"
-  | "latest_free_cash_flow_negative"
-  | "latest_free_cash_flow_not_negative"
-  | "no_free_cash_flow"
-  | "total_debt_increased_every_period"
-  | "total_debt_decreased_every_period"
-  | "total_debt_no_consistent_direction"
-  | "total_debt_fewer_than_two_periods";
+  | "debt_burden_low"
+  | "debt_burden_moderate"
+  | "debt_burden_high"
+  | "operating_cash_flow_negative"
+  | "operating_cash_flow_zero"
+  | "measure_not_applicable"
+  | "no_eligible_evidence";
 
-export type FinancialRiskRule =
-  | "any_signal_high"
-  | "no_core_signal_assessed"
-  | "core_signals_both_low"
-  | "core_signal_not_low";
-
-/** One reported figure exactly as the fact states it -- `period` is the
- * period-end date, `value` is in `unit` and never rescaled. */
-export interface FinancialRiskObservationView {
-  metric: "free_cash_flow" | "total_debt";
+/** One fiscal period's debt burden, in the facts' own unit and never
+ * rescaled. `operatingCashFlow` is free cash flow plus capital
+ * expenditure; `ratio` is `null` when operating cash flow is not
+ * positive (never divided). */
+export interface DebtBurdenObservationView {
   period: string;
-  value: number;
   unit: string;
-  factId: string;
-  sourceRecordId: string;
+  totalDebt: number;
+  freeCashFlow: number;
+  capitalExpenditure: number;
+  operatingCashFlow: number;
+  ratio: number | null;
+  totalDebtFactId: string;
+  freeCashFlowFactId: string;
+  capitalExpenditureFactId: string;
+  sourceRecordIds: string[];
 }
 
-export interface FinancialRiskSignalBasisView {
-  signal: FinancialRiskSignal;
-  level: RiskLevel;
-  condition: FinancialRiskCondition;
-  sourceFindingId: string | null;
-  observations: FinancialRiskObservationView[];
-}
-
-/** The Financial Risk evaluator's own basis. `determining` names the
- * signals the matched rule rests on -- for `high`, every high signal and
- * nothing else. A signal outside it is never a cause. */
+/**
+ * Financial Risk v2's own basis. `latest` is what the level rests on;
+ * `history` (oldest first, ending with `latest`) is trend context and
+ * never moves the level. `bands` are Atlas policy bands, not
+ * credit-rating thresholds.
+ */
 export interface FinancialRiskBasisView {
   level: RiskLevel;
-  rule: FinancialRiskRule;
-  determining: FinancialRiskSignal[];
-  signals: FinancialRiskSignalBasisView[];
+  condition: FinancialRiskCondition;
+  measure: "gross_debt_to_operating_cash_flow" | null;
+  bands: { lowBelow: number; highFrom: number };
+  latest: DebtBurdenObservationView | null;
+  history: DebtBurdenObservationView[];
+  industry: string | null;
+  gaps: string[];
+  excluded: { factId: string; reason: "future_period" | "not_a_financial_statement" }[];
 }
 
 /**
  * Why the `financial_risk` driver reads as it does. `elevatedCategories`
  * is empty exactly when the driver is not elevated -- and can name only
- * `valuation_risk`, in which case the "elevated financial risk" driver
- * rests on valuation, not on the company's finances.
+ * `valuation_risk`, in which case "elevated financial risk" rests on
+ * valuation, not on the company's finances. `version` is 2; a payload
+ * without it is not interpreted.
  */
 export interface RiskDriverBasisView {
+  version: number;
   elevatedCategories: ElevatingRiskCategory[];
   financialRisk: FinancialRiskBasisView;
 }

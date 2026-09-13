@@ -6,8 +6,7 @@ import type {
   ForwardGuidanceContextView,
   ForwardGuidanceSubject,
   ForwardHorizonKind,
-  FinancialRiskObservationView,
-  FinancialRiskSignalBasisView,
+  DebtBurdenObservationView,
   ForwardReasoningContextView,
   GuidanceRevisionKind,
   InvestmentReasonKind,
@@ -209,6 +208,7 @@ export function forwardUnknownLabels(context: ForwardReasoningContextView | null
 const RISK_LEVEL_KEY: Record<RiskLevel, TranslationKey> = {
   not_evaluated: "investmentReasoning.riskBasis.level.notEvaluated",
   insufficient_input: "investmentReasoning.riskBasis.level.insufficientInput",
+  not_applicable: "investmentReasoning.riskBasis.level.notApplicable",
   low: "investmentReasoning.riskBasis.level.low",
   moderate: "investmentReasoning.riskBasis.level.moderate",
   high: "investmentReasoning.riskBasis.level.high",
@@ -230,64 +230,101 @@ export function formatReportedAmount(value: number, unit: string, locale: string
   return unit === "unspecified" ? number : `${number} ${unit}`;
 }
 
-/** Period labels: the period-end year where that is unambiguous within
- * the series, otherwise the full period-end date. */
-function periodLabels(observations: FinancialRiskObservationView[]): string[] {
-  const years = observations.map((o) => o.period.slice(0, 4));
-  const unique = new Set(years).size === years.length;
-  return observations.map((o, i) => (unique ? (years[i] ?? o.period) : o.period));
+/** "4,2×" -- one decimal, the locale's own separator. */
+export function formatMultiple(ratio: number, locale: string): string {
+  return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(ratio)}×`;
 }
 
-/** One firing signal, in its own figures. Only `high` conditions can be
- * part of an elevated basis; anything else returns `null` and is never
- * shown as a cause. */
-function firingSignalLabel(signal: FinancialRiskSignalBasisView, t: Translate, locale: string): string | null {
-  const labels = periodLabels(signal.observations);
-  const figures = signal.observations.map(
-    (o, i) => `${labels[i] ?? o.period}: ${formatReportedAmount(o.value, o.unit, locale)}`,
-  );
-  switch (signal.condition) {
-    case "total_debt_increased_every_period":
-      return t("investmentReasoning.riskBasis.debtIncreased", { series: figures.join(" → ") });
-    case "latest_free_cash_flow_negative":
-      return figures[0] ? t("investmentReasoning.riskBasis.cashNegative", { figure: figures[0] }) : null;
-    case "capital_allocation_weak":
-      return t("investmentReasoning.riskBasis.capitalAllocationWeak");
+/** The period-end year, unless two observations share one -- then the
+ * full period-end date, so no label is ambiguous. */
+function periodLabel(observation: DebtBurdenObservationView, all: DebtBurdenObservationView[]): string {
+  const year = observation.period.slice(0, 4);
+  return all.filter((o) => o.period.slice(0, 4) === year).length > 1 ? observation.period : year;
+}
+
+/** Level first: what the latest aligned figure says. */
+function financialLevelSentence(basis: RiskDriverBasisView, t: Translate, locale: string): string | null {
+  const financial = basis.financialRisk;
+  const latest = financial.latest;
+  if (!latest) return null;
+  const period = periodLabel(latest, financial.history);
+  switch (financial.condition) {
+    case "debt_burden_high":
+      return latest.ratio === null
+        ? null
+        : t("investmentReasoning.riskBasis.debtBurdenHigh", { multiple: formatMultiple(latest.ratio, locale), period });
+    case "operating_cash_flow_negative":
+      return t("investmentReasoning.riskBasis.operatingCashFlowNegative", {
+        period,
+        value: formatReportedAmount(latest.operatingCashFlow, latest.unit, locale),
+      });
+    case "operating_cash_flow_zero":
+      return t("investmentReasoning.riskBasis.operatingCashFlowZero", { period });
     default:
       return null;
   }
 }
 
+/** Trend second, and only as context: how the same measure stood at the
+ * oldest observation Atlas holds. Never changes the level. */
+function burdenTrendSentence(basis: RiskDriverBasisView, t: Translate, locale: string): string | null {
+  const history = basis.financialRisk.history;
+  const first = history[0];
+  const latest = basis.financialRisk.latest;
+  if (!first || !latest || first === latest || first.ratio === null || latest.ratio === null) return null;
+  const key =
+    latest.ratio > first.ratio
+      ? "investmentReasoning.riskBasis.trendUp"
+      : latest.ratio < first.ratio
+        ? "investmentReasoning.riskBasis.trendDown"
+        : "investmentReasoning.riskBasis.trendFlat";
+  return t(key, { multiple: formatMultiple(first.ratio, locale), period: periodLabel(first, history) });
+}
+
 /**
  * Why "elevated financial risk" is shown -- or `null` when it is not.
  *
- * When Financial Risk itself is high: every signal its rule rests on, in
- * the evaluator's own order, each with its own figures -- none dropped,
- * none ranked -- followed by the one sentence that bounds it (reported
- * history, not leverage ratios, coverage, liquidity or ratings).
+ * When Financial Risk itself is high: the measured level first (debt
+ * relative to cash from operations, with its year), the trend second as
+ * context, then one sentence bounding what was measured -- reported
+ * amounts, not ratings, interest costs, maturities or liquidity.
  *
  * When only Valuation Risk is high, the driver does not rest on the
  * company's finances at all, and the line says exactly that, with the
- * level Financial Risk actually has.
+ * level Financial Risk actually has. A payload of any other basis
+ * version is not read.
  */
 export function riskBasisLabel(
   basis: RiskDriverBasisView | null | undefined,
   t: Translate,
   locale: string,
 ): string | null {
-  if (!basis || basis.elevatedCategories.length === 0) return null;
+  if (!basis || basis.version !== 2 || basis.elevatedCategories.length === 0) return null;
   const financial = basis.financialRisk;
   if (!basis.elevatedCategories.includes("financial_risk")) {
     return t("investmentReasoning.riskBasis.valuationOnly", { level: t(RISK_LEVEL_KEY[financial.level]) });
   }
-  const parts = financial.determining
-    .map((name) => financial.signals.find((s) => s.signal === name))
-    .filter((s): s is FinancialRiskSignalBasisView => s !== undefined)
-    .map((s) => firingSignalLabel(s, t, locale))
-    .filter((label): label is string => label !== null);
-  if (parts.length === 0) return null;
-  const sentences = [t("investmentReasoning.riskBasis.financial", { basis: parts.join("; ") })];
+  const level = financialLevelSentence(basis, t, locale);
+  if (level === null) return null;
+  const sentences = [level];
+  const trend = burdenTrendSentence(basis, t, locale);
+  if (trend) sentences.push(trend);
   if (basis.elevatedCategories.includes("valuation_risk")) sentences.push(t("investmentReasoning.riskBasis.alsoValuation"));
   sentences.push(t("investmentReasoning.riskBasis.scope"));
   return sentences.join(" ");
+}
+
+/**
+ * The one quiet line for a Financial Risk that does not apply: Atlas's
+ * corporate debt measure is not used for banks, dealers and insurers.
+ * Never a warning and never a reassurance; `null` in every other state.
+ */
+export function financialRiskNotApplicableLabel(
+  basis: RiskDriverBasisView | null | undefined,
+  t: Translate,
+): string | null {
+  if (!basis || basis.version !== 2 || basis.financialRisk.level !== "not_applicable") return null;
+  // Raised by valuation alone, the against-row's own basis line already says it.
+  if (basis.elevatedCategories.length > 0) return null;
+  return t("investmentReasoning.riskBasis.notApplicable");
 }

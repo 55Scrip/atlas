@@ -40,9 +40,8 @@ from atlas.analysis_engine.findings import FindingSeverity
 from atlas.analysis_engine.provenance import Provenance
 from atlas.analysis_engine.risk.contracts import (
     FinancialRiskCondition,
-    FinancialRiskMetric,
-    FinancialRiskRule,
-    FinancialRiskSignal,
+    FinancialRiskExclusionReason,
+    FinancialRiskMeasure,
     RiskDataGapKind,
     RiskStatus,
 )
@@ -50,9 +49,10 @@ from atlas.decision_engine.contracts import EvaluationState, EvidenceCoverageLev
 
 __all__ = [
     "EVALUATED_RISK_CATEGORIES",
+    "DebtBurdenBands",
+    "DebtBurdenObservation",
     "FinancialRiskBasis",
-    "FinancialRiskObservation",
-    "FinancialRiskSignalBasis",
+    "FinancialRiskExclusion",
     "RiskFinding",
     "RiskAnalysisResult",
     "RiskProjection",
@@ -71,154 +71,149 @@ EVALUATED_RISK_CATEGORIES = frozenset(
 )
 
 
-#: Every condition belongs to exactly one signal and implies exactly one
-#: signal level -- `financial_risk.py`'s own rule table, indexed.
-_CONDITION_SIGNAL_LEVEL: dict[FinancialRiskCondition, tuple[FinancialRiskSignal, RiskStatus]] = {
-    FinancialRiskCondition.CAPITAL_ALLOCATION_WEAK: (FinancialRiskSignal.CAPITAL_ALLOCATION, RiskStatus.HIGH),
-    FinancialRiskCondition.CAPITAL_ALLOCATION_MODERATE: (FinancialRiskSignal.CAPITAL_ALLOCATION, RiskStatus.MODERATE),
-    FinancialRiskCondition.CAPITAL_ALLOCATION_STRONG: (FinancialRiskSignal.CAPITAL_ALLOCATION, RiskStatus.LOW),
-    FinancialRiskCondition.CAPITAL_ALLOCATION_UNAVAILABLE:
-        (FinancialRiskSignal.CAPITAL_ALLOCATION, RiskStatus.INSUFFICIENT_INPUT),
-    FinancialRiskCondition.LATEST_FREE_CASH_FLOW_NEGATIVE: (FinancialRiskSignal.CASH_GENERATION, RiskStatus.HIGH),
-    FinancialRiskCondition.LATEST_FREE_CASH_FLOW_NOT_NEGATIVE: (FinancialRiskSignal.CASH_GENERATION, RiskStatus.LOW),
-    FinancialRiskCondition.NO_FREE_CASH_FLOW: (FinancialRiskSignal.CASH_GENERATION, RiskStatus.INSUFFICIENT_INPUT),
-    FinancialRiskCondition.TOTAL_DEBT_INCREASED_EVERY_PERIOD: (FinancialRiskSignal.DEBT_TREND, RiskStatus.HIGH),
-    FinancialRiskCondition.TOTAL_DEBT_DECREASED_EVERY_PERIOD: (FinancialRiskSignal.DEBT_TREND, RiskStatus.LOW),
-    FinancialRiskCondition.TOTAL_DEBT_NO_CONSISTENT_DIRECTION:
-        (FinancialRiskSignal.DEBT_TREND, RiskStatus.INSUFFICIENT_INPUT),
-    FinancialRiskCondition.TOTAL_DEBT_FEWER_THAN_TWO_PERIODS:
-        (FinancialRiskSignal.DEBT_TREND, RiskStatus.INSUFFICIENT_INPUT),
+_CONDITION_LEVEL: dict[FinancialRiskCondition, RiskStatus] = {
+    FinancialRiskCondition.DEBT_BURDEN_LOW: RiskStatus.LOW,
+    FinancialRiskCondition.DEBT_BURDEN_MODERATE: RiskStatus.MODERATE,
+    FinancialRiskCondition.DEBT_BURDEN_HIGH: RiskStatus.HIGH,
+    FinancialRiskCondition.OPERATING_CASH_FLOW_NEGATIVE: RiskStatus.HIGH,
+    FinancialRiskCondition.OPERATING_CASH_FLOW_ZERO: RiskStatus.HIGH,
+    FinancialRiskCondition.MEASURE_NOT_APPLICABLE: RiskStatus.NOT_APPLICABLE,
+    FinancialRiskCondition.NO_ELIGIBLE_EVIDENCE: RiskStatus.INSUFFICIENT_INPUT,
 }
 
-_SIGNAL_METRIC = {
-    FinancialRiskSignal.CAPITAL_ALLOCATION: None,
-    FinancialRiskSignal.CASH_GENERATION: FinancialRiskMetric.FREE_CASH_FLOW,
-    FinancialRiskSignal.DEBT_TREND: FinancialRiskMetric.TOTAL_DEBT,
-}
-
-_RULE_LEVEL = {
-    FinancialRiskRule.ANY_SIGNAL_HIGH: RiskStatus.HIGH,
-    FinancialRiskRule.NO_CORE_SIGNAL_ASSESSED: RiskStatus.INSUFFICIENT_INPUT,
-    FinancialRiskRule.CORE_SIGNALS_BOTH_LOW: RiskStatus.LOW,
-    FinancialRiskRule.CORE_SIGNAL_NOT_LOW: RiskStatus.MODERATE,
-}
-
-_SIGNAL_ORDER = tuple(FinancialRiskSignal)
-_CORE_SIGNALS = (FinancialRiskSignal.CAPITAL_ALLOCATION, FinancialRiskSignal.CASH_GENERATION)
+_BURDEN_CONDITIONS = frozenset({
+    FinancialRiskCondition.DEBT_BURDEN_LOW,
+    FinancialRiskCondition.DEBT_BURDEN_MODERATE,
+    FinancialRiskCondition.DEBT_BURDEN_HIGH,
+})
 
 
 @dataclass(frozen=True)
-class FinancialRiskObservation:
-    """One reported figure a Financial Risk signal read, exactly as the
-    `BusinessFact` states it -- metric, period end, value and unit, plus
-    the fact and source record it came from. Never rescaled, never
-    combined with another figure."""
+class DebtBurdenBands:
+    """Atlas policy bands for gross debt / operating cash flow -- where
+    "low" ends and "high" begins. Product policy chosen on the evidence
+    Atlas holds, **not credit-rating thresholds** and not a claim about
+    what any lender or agency would consider safe. Carried in every basis
+    so the classification can always be re-read against the exact
+    policy that produced it."""
 
-    metric: FinancialRiskMetric
-    period: str
-    value: float
-    unit: str
-    fact_id: str
-    source_record_id: str
-
-
-@dataclass(frozen=True)
-class FinancialRiskSignalBasis:
-    """What one signal concluded and on what: its level, the branch of its
-    rule that matched, and the observations (or upstream finding) it read.
-
-    The condition must be literally true of the observations carried --
-    "increased every period" over figures that did not increase is
-    rejected at construction, so a basis cannot describe more than its
-    own evidence shows."""
-
-    signal: FinancialRiskSignal
-    level: RiskStatus
-    condition: FinancialRiskCondition
-    observations: tuple[FinancialRiskObservation, ...] = ()
-    source_finding_id: str | None = None
+    low_below: float
+    high_from: float
 
     def __post_init__(self) -> None:
-        if _CONDITION_SIGNAL_LEVEL[self.condition] != (self.signal, self.level):
-            raise AnalysisEngineContractError(
-                f"{self.condition.value} is not a {self.level.value} {self.signal.value} condition."
-            )
-        metric = _SIGNAL_METRIC[self.signal]
-        if any(o.metric is not metric for o in self.observations):
-            raise AnalysisEngineContractError(f"{self.signal.value} reads only {metric} observations.")
-        if (self.source_finding_id is not None) != (self.signal is FinancialRiskSignal.CAPITAL_ALLOCATION):
-            raise AnalysisEngineContractError("Only the capital allocation signal restates an upstream finding.")
-        values = [o.value for o in self.observations]
-        periods = [o.period for o in self.observations]
-        condition = self.condition
-        if periods != sorted(periods):
-            raise AnalysisEngineContractError("Observations are carried in period order.")
-        if condition in (FinancialRiskCondition.LATEST_FREE_CASH_FLOW_NEGATIVE,
-                         FinancialRiskCondition.LATEST_FREE_CASH_FLOW_NOT_NEGATIVE):
-            negative = condition is FinancialRiskCondition.LATEST_FREE_CASH_FLOW_NEGATIVE
-            if len(values) != 1 or (values[0] < 0) is not negative:
-                raise AnalysisEngineContractError(f"{condition.value} does not describe its observation.")
-        if condition is FinancialRiskCondition.NO_FREE_CASH_FLOW and values:
-            raise AnalysisEngineContractError("no_free_cash_flow carries no observation.")
-        if condition in (FinancialRiskCondition.TOTAL_DEBT_INCREASED_EVERY_PERIOD,
-                         FinancialRiskCondition.TOTAL_DEBT_DECREASED_EVERY_PERIOD):
-            pairs = list(zip(values, values[1:]))
-            rising = condition is FinancialRiskCondition.TOTAL_DEBT_INCREASED_EVERY_PERIOD
-            if not pairs or not all((b > a) if rising else (b < a) for a, b in pairs):
-                raise AnalysisEngineContractError(f"{condition.value} does not describe its observations.")
-        if condition is FinancialRiskCondition.TOTAL_DEBT_FEWER_THAN_TWO_PERIODS and len(values) >= 2:
-            raise AnalysisEngineContractError("total_debt_fewer_than_two_periods carries at most one observation.")
+        if not 0 < self.low_below < self.high_from:
+            raise AnalysisEngineContractError("Debt-burden bands must satisfy 0 < low_below < high_from.")
+
+    def condition_for(self, ratio: float) -> FinancialRiskCondition:
+        if ratio >= self.high_from:
+            return FinancialRiskCondition.DEBT_BURDEN_HIGH
+        if ratio < self.low_below:
+            return FinancialRiskCondition.DEBT_BURDEN_LOW
+        return FinancialRiskCondition.DEBT_BURDEN_MODERATE
+
+
+@dataclass(frozen=True)
+class DebtBurdenObservation:
+    """One fiscal period's debt burden, from three facts that share the
+    period end and the unit: reported total debt, free cash flow and
+    capital expenditure. Operating cash flow is derived here, not stored
+    as a fact of its own: free cash flow plus capital expenditure, the
+    identity the statement provider built free cash flow from.
+
+    `ratio` is `None` exactly when operating cash flow is not positive --
+    Atlas never divides by zero or by a negative figure, and never caps a
+    large ratio: a small positive operating cash flow yields the large
+    number it truly is."""
+
+    period: str
+    unit: str
+    total_debt: float
+    free_cash_flow: float
+    capital_expenditure: float
+    total_debt_fact_id: str
+    free_cash_flow_fact_id: str
+    capital_expenditure_fact_id: str
+    source_record_ids: tuple[str, ...]
+
+    @property
+    def operating_cash_flow(self) -> float:
+        return self.free_cash_flow + self.capital_expenditure
+
+    @property
+    def ratio(self) -> float | None:
+        ocf = self.operating_cash_flow
+        return self.total_debt / ocf if ocf > 0 else None
+
+    @property
+    def fact_ids(self) -> tuple[str, str, str]:
+        return (self.total_debt_fact_id, self.free_cash_flow_fact_id, self.capital_expenditure_fact_id)
+
+    def __post_init__(self) -> None:
+        if not self.source_record_ids or len(set(self.fact_ids)) != 3:
+            raise AnalysisEngineContractError("A debt-burden observation names its three facts and their sources.")
+
+
+@dataclass(frozen=True)
+class FinancialRiskExclusion:
+    """A debt or cash-flow fact left out before anything was computed."""
+
+    fact_id: str
+    reason: FinancialRiskExclusionReason
 
 
 @dataclass(frozen=True)
 class FinancialRiskBasis:
-    """Why Financial Risk reached its level -- the evaluator's own
-    evidence, retained as it decided, never reconstructed afterwards.
+    """Why Financial Risk v2 reached its level -- the evaluator's own
+    evidence, retained as it decided.
 
-    `signals` always names all three signals in rule-table order, firing
-    or not. `determining` names the ones the matched `rule` turned on:
-    for `HIGH`, every `HIGH` signal and nothing else -- none netted
-    against another, none promoted to a main reason. A signal outside
-    `determining` is context, never a cause.
+    - `latest` is the observation the level rests on (absent for
+      `NOT_APPLICABLE`/`INSUFFICIENT_INPUT`); `history` is every aligned
+      observation up to three, oldest first, ending with `latest`. The
+      earlier ones are **trend context only**: they never move the level.
+    - `gaps` says why no level could be reached; `excluded` names the
+      facts the eligibility gates removed, so a left-out figure is
+      visible rather than silently absent.
+    - `industry` is the profile label the applicability gate read.
 
-    Describes reported history only: absolute figures for the periods
-    Atlas holds. No ratio, rating, coverage or forecast is in it."""
+    Describes reported history only: gross debt and cash from operations
+    for periods Atlas holds. No rating, maturity, interest cost, liquidity
+    or forecast is in it."""
 
     level: RiskStatus
-    rule: FinancialRiskRule
-    signals: tuple[FinancialRiskSignalBasis, ...]
-    determining: tuple[FinancialRiskSignal, ...]
+    condition: FinancialRiskCondition
+    bands: DebtBurdenBands
+    measure: FinancialRiskMeasure | None = None
+    latest: DebtBurdenObservation | None = None
+    history: tuple[DebtBurdenObservation, ...] = ()
+    industry: str | None = None
+    gaps: tuple[RiskDataGapKind, ...] = ()
+    excluded: tuple[FinancialRiskExclusion, ...] = ()
 
     def __post_init__(self) -> None:
-        if tuple(s.signal for s in self.signals) != _SIGNAL_ORDER:
-            raise AnalysisEngineContractError("A Financial Risk basis names every signal once, in rule order.")
-        if _RULE_LEVEL[self.rule] is not self.level:
-            raise AnalysisEngineContractError(f"{self.rule.value} does not decide {self.level.value}.")
-        levels = {s.signal: s.level for s in self.signals}
-        core = {levels[s] for s in _CORE_SIGNALS}
-        determining = self.determining
-        matches = {
-            FinancialRiskRule.ANY_SIGNAL_HIGH: RiskStatus.HIGH in levels.values(),
-            FinancialRiskRule.NO_CORE_SIGNAL_ASSESSED: core == {RiskStatus.INSUFFICIENT_INPUT},
-            FinancialRiskRule.CORE_SIGNALS_BOTH_LOW: core == {RiskStatus.LOW},
-            FinancialRiskRule.CORE_SIGNAL_NOT_LOW: core not in ({RiskStatus.LOW}, {RiskStatus.INSUFFICIENT_INPUT}),
-        }
-        # First match wins: the rule named must be the first one its
-        # signals satisfy, or the basis would describe a different level.
-        first = next(rule for rule in FinancialRiskRule if matches[rule])
-        if first is not self.rule:
-            raise AnalysisEngineContractError(f"These signals decide {first.value}, not {self.rule.value}.")
-        if self.rule is FinancialRiskRule.ANY_SIGNAL_HIGH:
-            expected = tuple(s for s in _SIGNAL_ORDER if levels[s] is RiskStatus.HIGH)
-        elif self.rule is FinancialRiskRule.CORE_SIGNAL_NOT_LOW:
-            expected = tuple(s for s in _CORE_SIGNALS if levels[s] is not RiskStatus.LOW)
-        else:
-            expected = _CORE_SIGNALS
-        if not expected or determining != expected:
-            raise AnalysisEngineContractError(f"{self.rule.value} does not rest on {[s.value for s in determining]}.")
-
-    def signal(self, signal: FinancialRiskSignal) -> FinancialRiskSignalBasis:
-        return next(s for s in self.signals if s.signal is signal)
+        if _CONDITION_LEVEL[self.condition] is not self.level:
+            raise AnalysisEngineContractError(f"{self.condition.value} does not decide {self.level.value}.")
+        periods = [o.period for o in self.history]
+        if periods != sorted(set(periods)) or len(self.history) > 3:
+            raise AnalysisEngineContractError("History is at most three distinct periods, oldest first.")
+        rests_on_latest = self.level not in (RiskStatus.NOT_APPLICABLE, RiskStatus.INSUFFICIENT_INPUT)
+        if rests_on_latest != (self.latest is not None) or self.history[-1:] != ((self.latest,) if self.latest else ()):
+            # Without a level there is no history either: a stale or
+            # misaligned figure is reported as a gap, never shown as context.
+            raise AnalysisEngineContractError("A level rests on the latest observation, which ends the history.")
+        if rests_on_latest != (self.measure is FinancialRiskMeasure.GROSS_DEBT_TO_OPERATING_CASH_FLOW):
+            raise AnalysisEngineContractError("Exactly the levels resting on an observation name the measure.")
+        if (self.level is RiskStatus.INSUFFICIENT_INPUT) != bool(self.gaps):
+            raise AnalysisEngineContractError("Gaps explain an insufficient level and nothing else.")
+        latest = self.latest
+        if latest is None:
+            return
+        ocf = latest.operating_cash_flow
+        if self.condition in _BURDEN_CONDITIONS:
+            if latest.ratio is None or self.bands.condition_for(latest.ratio) is not self.condition:
+                raise AnalysisEngineContractError(f"{self.condition.value} does not describe the latest ratio.")
+        elif (self.condition is FinancialRiskCondition.OPERATING_CASH_FLOW_NEGATIVE) != (ocf < 0) or \
+                (self.condition is FinancialRiskCondition.OPERATING_CASH_FLOW_ZERO) != (ocf == 0):
+            raise AnalysisEngineContractError(f"{self.condition.value} does not describe the latest cash flow.")
 
 
 @dataclass(frozen=True)

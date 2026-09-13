@@ -1,7 +1,7 @@
 """Shared Risk Analysis vocabulary (ATLAS-025, Phase 4/5) -- `RiskStatus`,
 `RiskDataGapKind`, `severity_for_risk_status` -- plus the closed vocabulary
-a Financial Risk basis is stated in (`FinancialRiskSignal`,
-`FinancialRiskMetric`, `FinancialRiskCondition`, `FinancialRiskRule`).
+a Financial Risk basis is stated in (`FinancialRiskMeasure`,
+`FinancialRiskCondition`, `FinancialRiskExclusionReason`).
 
 Mirrors `atlas.analysis_engine.business_contracts`'s own reason for
 existing: `financial_risk.py`, `business_risk.py`, `valuation_risk.py`,
@@ -21,9 +21,8 @@ from atlas.analysis_engine.findings import FindingSeverity
 
 __all__ = [
     "FinancialRiskCondition",
-    "FinancialRiskMetric",
-    "FinancialRiskRule",
-    "FinancialRiskSignal",
+    "FinancialRiskExclusionReason",
+    "FinancialRiskMeasure",
     "RiskStatus",
     "RiskDataGapKind",
     "severity_for_risk_status",
@@ -39,10 +38,17 @@ class RiskStatus(str, Enum):
     categorical outcomes), for consistency across sibling evaluators.
     `NOT_EVALUATED` is reserved, never constructed -- every category this
     sprint ships a real evaluator for reaches a genuine conclusion (`LOW`/
-    `MODERATE`/`HIGH`) or an honest `INSUFFICIENT_INPUT`."""
+    `MODERATE`/`HIGH`) or an honest `INSUFFICIENT_INPUT`.
+
+    `NOT_APPLICABLE` (Financial Risk v2) is neither a conclusion nor a
+    gap: the category's measure does not apply to this kind of business
+    (a bank's debt funds its balance sheet, not its operations), so no
+    amount of data would produce a `LOW`/`MODERATE`/`HIGH` from it. It is
+    never a reassurance and never "risk is low"."""
 
     NOT_EVALUATED = "not_evaluated"
     INSUFFICIENT_INPUT = "insufficient_input"
+    NOT_APPLICABLE = "not_applicable"
     LOW = "low"
     MODERATE = "moderate"
     HIGH = "high"
@@ -80,12 +86,33 @@ class RiskDataGapKind(str, Enum):
     at all, which is a different fact from "checked, found none"."""
 
     MISSING_DEBT_HISTORY = "missing_debt_history"
-    """Financial Risk (Company Data Foundation v1): fewer than two
-    `TOTAL_DEBT` facts across distinct periods, so the debt-trend
-    signal could not be assessed. Always informational -- see
-    `financial_risk.py`'s own module docstring for why this signal
-    never lowers `confidence` and only ever escalates `status`, never
-    the reverse."""
+    """Financial Risk v1 (Company Data Foundation v1): fewer than two
+    `TOTAL_DEBT` facts across distinct periods. No longer emitted since
+    Financial Risk v2 -- kept, like the two v1 gaps above, so stored
+    history still reads back."""
+
+    MISSING_DEBT = "missing_debt"
+    """Financial Risk v2: no eligible `TOTAL_DEBT` fact. Absent debt is
+    never read as zero debt."""
+
+    MISSING_OPERATING_CASH_FLOW = "missing_operating_cash_flow"
+    """Financial Risk v2: no eligible `FREE_CASH_FLOW` and
+    `CAPITAL_EXPENDITURE` pair, so operating cash flow cannot be
+    derived."""
+
+    NO_ALIGNED_PERIOD = "no_aligned_period"
+    """Financial Risk v2: debt and cash-flow figures exist, but never for
+    the same fiscal period end in the same unit -- Atlas never divides
+    one year's debt by another year's cash flow."""
+
+    STALE_FINANCIAL_STATEMENTS = "stale_financial_statements"
+    """Financial Risk v2: the latest aligned period ended more than the
+    maximum statement age before the evaluation date."""
+
+    INDUSTRY_UNKNOWN = "industry_unknown"
+    """Financial Risk v2: no company-profile industry, so Atlas cannot
+    establish that its corporate debt measure applies (it does not for
+    banks, dealers or insurers)."""
 
 
 def severity_for_risk_status(status: RiskStatus) -> FindingSeverity:
@@ -96,64 +123,47 @@ def severity_for_risk_status(status: RiskStatus) -> FindingSeverity:
     gap is `ATTENTION` (worth closing), everything else is `INFO`."""
     if status in (RiskStatus.NOT_EVALUATED, RiskStatus.INSUFFICIENT_INPUT):
         return FindingSeverity.ATTENTION
+    # Not a gap worth closing -- more data would not make the measure apply.
+    if status is RiskStatus.NOT_APPLICABLE:
+        return FindingSeverity.INFO
     if status is RiskStatus.HIGH:
         return FindingSeverity.MATERIAL
     return FindingSeverity.INFO
 
 
-class FinancialRiskSignal(str, Enum):
-    """The three signals `financial_risk.py`'s own rule table reads, in
-    that table's own order. A name for each, so the basis of a Financial
-    Risk level can say which one it rests on."""
+class FinancialRiskMeasure(str, Enum):
+    """The one measure Financial Risk v2 classifies on."""
 
-    CAPITAL_ALLOCATION = "capital_allocation"
-    CASH_GENERATION = "cash_generation"
-    DEBT_TREND = "debt_trend"
-
-
-class FinancialRiskMetric(str, Enum):
-    """The reported figures Financial Risk reads directly. Values match
-    `BusinessFactKind`'s own, so an observation names the fact it came
-    from without every reader importing the fact layer."""
-
-    FREE_CASH_FLOW = "free_cash_flow"
-    TOTAL_DEBT = "total_debt"
+    GROSS_DEBT_TO_OPERATING_CASH_FLOW = "gross_debt_to_operating_cash_flow"
+    """Reported total debt divided by operating cash flow (free cash flow
+    plus capital expenditure) for the same fiscal period end. Gross, not
+    net: Atlas's cash figure excludes marketable securities, so a net
+    figure would overstate some companies' debt and flatter none."""
 
 
 class FinancialRiskCondition(str, Enum):
-    """Which branch of a signal's own rule matched -- the rule restated,
-    one member per branch, never a judgment beyond it.
+    """Why Financial Risk v2 reached its level -- one member per branch of
+    `financial_risk.py`'s rule, never a judgment beyond it."""
 
-    Debt trend compares reported total debt in absolute terms between
-    consecutive evaluated periods: nothing here is a ratio, a coverage or
-    a rating, and "increased every period" says only that each evaluated
-    period's figure was higher than the one before."""
-
-    CAPITAL_ALLOCATION_WEAK = "capital_allocation_weak"
-    CAPITAL_ALLOCATION_MODERATE = "capital_allocation_moderate"
-    CAPITAL_ALLOCATION_STRONG = "capital_allocation_strong"
-    CAPITAL_ALLOCATION_UNAVAILABLE = "capital_allocation_unavailable"
-    LATEST_FREE_CASH_FLOW_NEGATIVE = "latest_free_cash_flow_negative"
-    LATEST_FREE_CASH_FLOW_NOT_NEGATIVE = "latest_free_cash_flow_not_negative"
-    NO_FREE_CASH_FLOW = "no_free_cash_flow"
-    TOTAL_DEBT_INCREASED_EVERY_PERIOD = "total_debt_increased_every_period"
-    TOTAL_DEBT_DECREASED_EVERY_PERIOD = "total_debt_decreased_every_period"
-    TOTAL_DEBT_NO_CONSISTENT_DIRECTION = "total_debt_no_consistent_direction"
-    TOTAL_DEBT_FEWER_THAN_TWO_PERIODS = "total_debt_fewer_than_two_periods"
+    DEBT_BURDEN_LOW = "debt_burden_low"
+    DEBT_BURDEN_MODERATE = "debt_burden_moderate"
+    DEBT_BURDEN_HIGH = "debt_burden_high"
+    OPERATING_CASH_FLOW_NEGATIVE = "operating_cash_flow_negative"
+    """Operations consumed cash in the latest aligned period. Says
+    exactly that -- nothing about solvency or distress."""
+    OPERATING_CASH_FLOW_ZERO = "operating_cash_flow_zero"
+    """Operations generated no net cash; the ratio is undefined and is
+    never computed."""
+    MEASURE_NOT_APPLICABLE = "measure_not_applicable"
+    NO_ELIGIBLE_EVIDENCE = "no_eligible_evidence"
 
 
-class FinancialRiskRule(str, Enum):
-    """Which line of Financial Risk's combination table decided the
-    level -- first match wins, in this order."""
+class FinancialRiskExclusionReason(str, Enum):
+    """Why a debt or cash-flow fact was left out before anything was
+    computed from it."""
 
-    ANY_SIGNAL_HIGH = "any_signal_high"
-    """`HIGH`: at least one signal is `HIGH`. Every `HIGH` signal is
-    named; none offsets another and none is ranked first."""
-    NO_CORE_SIGNAL_ASSESSED = "no_core_signal_assessed"
-    """`INSUFFICIENT_INPUT`: neither capital allocation nor cash
-    generation could be assessed."""
-    CORE_SIGNALS_BOTH_LOW = "core_signals_both_low"
-    """`LOW`: capital allocation and cash generation both `LOW`."""
-    CORE_SIGNAL_NOT_LOW = "core_signal_not_low"
-    """`MODERATE`: no signal `HIGH`, and capital allocation or cash
-    generation is `MODERATE` or could not be assessed."""
+    FUTURE_PERIOD = "future_period"
+    """The period ends after the evaluation date -- not a realized
+    figure."""
+    NOT_A_FINANCIAL_STATEMENT = "not_a_financial_statement"
+    """The source record is not a structured financial statement."""

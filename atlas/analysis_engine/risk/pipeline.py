@@ -36,22 +36,29 @@ def evaluate_risk(
     contradicting_evidence: ContradictionSummary,
     *,
     evidence_coverage: EvidenceCoverageLevel,
+    statement_record_ids: frozenset[str],
+    industry: str | None,
     evaluated_at: datetime,
 ) -> RiskAnalysisResult:
     """Deterministic: identical inputs always produce a deeply equal
     `RiskAnalysisResult`.
+
+    `statement_record_ids` (the source records that are structured
+    financial statements) and `industry` (the company-profile industry,
+    `None` when none is recorded) are the two facts about sources Financial
+    Risk v2 needs and cannot derive from `BusinessFact`s alone; the caller
+    reads them from the records it already holds.
     """
     growth_finding = next(f for f in business_analysis.findings if f.kind is BusinessCategory.GROWTH)
-    capital_allocation_finding = next(
-        f for f in business_analysis.findings if f.kind is BusinessCategory.CAPITAL_ALLOCATION
-    )
     fcf_yield_finding = next(
         f for f in valuation_engine.findings if f.kind is ValuationMethodKind.FCF_YIELD_RELATIVE
     )
 
     findings = (
         evaluate_business_risk(growth_finding, evaluated_at=evaluated_at),
-        evaluate_financial_risk(capital_allocation_finding, business_facts, evaluated_at=evaluated_at),
+        evaluate_financial_risk(
+            business_facts, statement_record_ids=statement_record_ids, industry=industry, evaluated_at=evaluated_at
+        ),
         evaluate_valuation_risk(fcf_yield_finding, evaluated_at=evaluated_at),
         evaluate_thesis_risk(
             contradicting_evidence, evidence_coverage=evidence_coverage, evaluated_at=evaluated_at

@@ -57,6 +57,7 @@ const FINANCIAL_HEALTH_INTERPRETATION_KEY: Record<AnalysisRiskStatus, Translatio
   moderate: "investmentCase.reasoning.financialHealth.moderate",
   high: "investmentCase.reasoning.financialHealth.high",
   insufficient_input: "investmentCase.reasoning.notYetEvaluated",
+  not_applicable: "investmentCase.reasoning.financialHealth.notApplicable",
   not_evaluated: "investmentCase.reasoning.notYetEvaluated",
 };
 

@@ -52,6 +52,7 @@ from atlas.analysis_engine.business import (
 )
 from atlas.analysis_engine.business_data.completeness import assess_data_completeness
 from atlas.analysis_engine.business_data.models import BusinessRecord
+from atlas.analysis_engine.business_data.sources import SourceKind as DocumentKind
 from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
 from atlas.analysis_engine.confidence import Confidence
 from atlas.analysis_engine.contracts import RiskCategory, CapabilityStatus
@@ -404,6 +405,21 @@ def _valuation_method_findings(valuation_engine: ValuationEngineResult) -> tuple
     )
 
 
+def _company_industry(business_records: tuple[BusinessRecord, ...]) -> str | None:
+    """The industry the most recently published company profile states,
+    `None` when no profile records one. Read here, where records are
+    already in hand, so Risk Analysis never reads a `BusinessRecord`."""
+    profiles = sorted(
+        (r for r in business_records if r.document_type is DocumentKind.COMPANY_PROFILE),
+        key=lambda r: (r.published_at, r.id),
+    )
+    for profile in reversed(profiles):
+        industry = profile.metadata.get("industry")
+        if isinstance(industry, str) and industry.strip():
+            return industry
+    return None
+
+
 def _risk_category_findings(risk_analysis: RiskAnalysisResult) -> tuple[Finding, ...]:
     """Project each rich `RiskFinding` (ATLAS-025) onto the generic,
     flat `Finding` shape -- mirrors `_business_category_findings`/
@@ -569,6 +585,10 @@ def assemble_analysis(
         valuation_engine,
         reasoning.contradicting_evidence,
         evidence_coverage=confidence,
+        statement_record_ids=frozenset(
+            record.id for record in business_records if record.document_type is DocumentKind.FINANCIAL_STATEMENT
+        ),
+        industry=_company_industry(business_records),
         evaluated_at=generated_at,
     )
 
@@ -602,6 +622,13 @@ def assemble_analysis(
         if risk_finding.category in ELEVATING_RISK_CATEGORIES and risk_finding.status is RiskStatus.HIGH
     )
     has_high_financial_or_valuation_risk = bool(elevated_risk_categories)
+    # Financial Risk's own level, for the reasoning only: whether it may
+    # say "not elevated" is a question about Financial Risk itself, never
+    # answered by another category being real (the evidence test below).
+    financial_risk_status = next(
+        risk_finding.status for risk_finding in risk_analysis.findings
+        if risk_finding.category is RiskCategory.FINANCIAL_RISK
+    )
     # Recommendation Evidence Sufficiency Alignment: any real (not
     # NOT_EVALUATED/INSUFFICIENT_INPUT) risk category is provenance-
     # backed company evidence -- one of the three real evidence sources
@@ -759,6 +786,7 @@ def assemble_analysis(
         has_real_risk_evidence=has_real_risk_evidence,
         forward_context=forward_context,
         risk_basis=risk_basis,
+        financial_risk_status=financial_risk_status,
     )
     # "Recommendation Backend Step 3": `recommendation.recommendation` is
     # now a real union -- `RecommendationWithheld` (no `direction` field,

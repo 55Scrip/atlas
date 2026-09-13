@@ -6,8 +6,11 @@ from atlas.analysis_engine.risk.contracts import RiskDataGapKind, RiskStatus, se
 
 
 class TestRiskStatus:
-    def test_exactly_five_members(self):
-        assert len(RiskStatus) == 5
+    def test_exactly_six_members(self):
+        """Financial Risk v2 added `NOT_APPLICABLE` -- neither a conclusion
+        nor a gap: the category's measure does not describe the business."""
+        assert len(RiskStatus) == 6
+        assert RiskStatus.NOT_APPLICABLE.value == "not_applicable"
 
     def test_is_a_closed_string_enum(self):
         assert issubclass(RiskStatus, str)
@@ -28,6 +31,12 @@ class TestRiskDataGapKind:
             "valuation_assessment_unavailable",
             "no_evidence_to_evaluate",
             "missing_debt_history",  # Company Data Foundation v1: financial_risk.py's own debt-trend signal
+            # Financial Risk v2 (the three v1 financial gaps above are kept for stored history):
+            "missing_debt",
+            "missing_operating_cash_flow",
+            "no_aligned_period",
+            "stale_financial_statements",
+            "industry_unknown",
         }
         assert {member.value for member in RiskDataGapKind} == expected
 
@@ -39,6 +48,9 @@ class TestSeverityForRiskStatus:
 
     def test_high_is_material(self):
         assert severity_for_risk_status(RiskStatus.HIGH) is FindingSeverity.MATERIAL
+
+    def test_not_applicable_is_info_not_a_gap(self):
+        assert severity_for_risk_status(RiskStatus.NOT_APPLICABLE) is FindingSeverity.INFO
 
     def test_low_and_moderate_are_info(self):
         assert severity_for_risk_status(RiskStatus.LOW) is FindingSeverity.INFO

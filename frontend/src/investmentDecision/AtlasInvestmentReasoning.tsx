@@ -2,6 +2,7 @@ import { Stack, Surface, Text } from "../foundation";
 import type { TranslationKey } from "../i18n";
 import {
   CHANGE_TRIGGER_KEY,
+  financialRiskNotApplicableLabel,
   forwardContextLabels,
   forwardUnknownLabels,
   keyUnknownLabel,
@@ -74,6 +75,9 @@ export function AtlasInvestmentReasoning({
   const riskBasis = opposing.some((reason) => reason.kind === "financial_risk_elevated")
     ? riskBasisLabel(reasoning.riskBasis, t, locale)
     : null;
+  // A Financial Risk the measure does not apply to gets one quiet line --
+  // never a row of its own, never read as "not elevated".
+  const notApplicable = financialRiskNotApplicableLabel(reasoning.riskBasis, t);
 
   // `no_decision` is the action the backend emits when the
   // recommendation was withheld. It is read here for *wording* only --
@@ -94,7 +98,8 @@ export function AtlasInvestmentReasoning({
     opposing.length === 0 &&
     unresolved.length === 0 &&
     triggers.length === 0 &&
-    forwardItems.length === 0
+    forwardItems.length === 0 &&
+    notApplicable === null
   ) {
     return null;
   }
@@ -179,6 +184,11 @@ export function AtlasInvestmentReasoning({
             items={triggers.map((trigger) => t(CHANGE_TRIGGER_KEY[trigger]))}
             emptyLabel={null}
           />
+        )}
+        {notApplicable && (
+          <Text as="p" color="tertiary">
+            {notApplicable}
+          </Text>
         )}
       </Stack>
     </Surface>

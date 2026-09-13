@@ -360,25 +360,28 @@ class TestScenario4_MixedEvidence:
         assert drivers[OutlookDriverKind.GROWTH] == "positive"
         assert drivers[OutlookDriverKind.CAPITAL_ALLOCATION] == "negative"
 
-    def test_weak_capital_allocation_correctly_excludes_long_term_via_financial_risk(self):
+    def test_weak_capital_allocation_correctly_excludes_long_term_via_the_debt_trend(self):
         """Long-Term Expected Return v1: Growth alone disagreeing with
         Capital Allocation does not, by itself, block Long-Term -- but
-        this specific fixture's weak Capital Allocation (net share
-        issuance exceeding buybacks) is *also* real evidence of elevated
-        Financial Risk (`financial_risk.py`'s own `capital_allocation
-        _signal: WEAK -> HIGH` rule), and `_business_trajectory_eligible`
-        excludes Long-Term whenever Financial Risk is `HIGH` -- a real,
-        disclosed boundary condition (Part 5), not an arbitrary cutoff.
-        Long-Term Outlook Conviction is correctly forced to
-        `INSUFFICIENT_EVIDENCE` as a result, even though case-wide
-        Conviction itself is not."""
+        this fixture's rising `TOTAL_DEBT` does: `_business_trajectory
+        _eligible` excludes Long-Term whenever total debt rose in every
+        period, a real, disclosed boundary condition (Part 5), not an
+        arbitrary cutoff. Long-Term Outlook Conviction is correctly
+        forced to `INSUFFICIENT_EVIDENCE` as a result, even though
+        case-wide Conviction itself is not.
+
+        Financial Risk v2: weak Capital Allocation no longer makes
+        Financial Risk `HIGH` (v1's `WEAK -> HIGH` rule counted dilution
+        and the debt trend a second time). This fixture's figures come
+        from annual-report records, not structured statements, so
+        Financial Risk has no eligible debt-burden evidence at all."""
         records = _strong_growth_records() + _weak_capital_allocation_records() + _undervalued_market_data()
         analysis = _assemble(records, populated=True)
         assert analysis.risk_analysis.findings
         financial_risk = next(
             f for f in analysis.risk_analysis.findings if f.category.value == "financial_risk"
         )
-        assert financial_risk.status.value == "high"
+        assert financial_risk.status.value != "high"
         assert analysis.outlook.long_term.expected_return_gap is OutlookGapKind.NO_DURABLE_GROWTH_TRAJECTORY
         assert analysis.outlook.long_term.conviction is ConvictionLevel.INSUFFICIENT_EVIDENCE
 

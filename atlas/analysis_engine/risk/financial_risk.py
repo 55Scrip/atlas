@@ -1,112 +1,128 @@
-"""Financial Risk evaluator v1 (ATLAS-025, Phase 6; extended Company
-Data Foundation v1).
+"""Financial Risk evaluator v2 -- scale-aware debt burden.
 
-**The rule table, documented before it was implemented:**
+**What "elevated financial risk" means in Atlas:** reported debt is large
+relative to the cash the company's operations generate, in its latest
+eligible fiscal year -- or operations consumed cash. It does not mean debt
+merely rose, capital allocation is weak, the latest free cash flow was
+negative, or the price is high, and it is never a credit rating: Atlas
+holds no ratings, maturities, interest cost or liquidity facilities.
 
-Two independent signals, deliberately never blended into one number,
-plus one narrower, escalation-only third signal added this sprint:
+**Why v2 replaced v1.** v1 read three signals -- the Capital Allocation
+status, the sign of the latest free cash flow, and whether total debt rose
+in every period of its whole history -- and any one of them made the level
+`HIGH`. The Financial Risk Model Audit found all three unfit as level
+signals: debt direction ignores scale (VST and META were both `HIGH`, at
+about 4.2x and 0.5x debt to operating cash flow) and, compared across a
+full history, only ever fired for companies with short histories; the
+debt trend and the free-cash-flow sign were both counted a second time
+through Capital Allocation, which contains the identical checks; and a
+negative free cash flow is capex-driven as often as it is a warning.
 
-- **`capital_allocation_signal`** -- reused verbatim from
-  `atlas.analysis_engine.capital_allocation.evaluate_capital_allocation`'s
-  own `BusinessFinding.status`, never a second re-derivation of the
-  buyback/issuance or debt-repayment/issuance comparison. Mapped
-  `WEAK -> HIGH`, `MODERATE -> MODERATE`, `STRONG -> LOW`,
-  `INSUFFICIENT_INPUT -> INSUFFICIENT_INPUT`.
-- **`cash_generation_signal`** -- a direct, non-duplicating check
-  Capital Allocation's own rule table does not perform: is the most
-  recent known `FREE_CASH_FLOW` fact's *value* negative. `HIGH` if
-  negative, `LOW` if positive-or-zero, `INSUFFICIENT_INPUT` if no
-  `FREE_CASH_FLOW` fact exists at all. This checks a fact's sign, not a
-  trend -- `growth.py`'s own Growth evaluator only ever compares
-  consecutive periods to each other, never a level against zero, so
-  "persistent negative free cash flow" (Phase 6's own named signal) is
-  genuinely new information, not a duplicate of Growth's own
-  contraction check.
-- **`debt_trend_signal`** (Company Data Foundation v1) -- reuses
-  `growth.classify_metric_trend` verbatim (never a second trend
-  algorithm) over consecutive-period `TOTAL_DEBT` facts: `HIGH` when
-  total debt increased in every consecutive period (a clean, real
-  worsening trend), `LOW` when it decreased in every consecutive
-  period, `INSUFFICIENT_INPUT` for fewer than two periods or a mixed
-  trend. **Deliberately excluded from `confidence` and from the `LOW`/
-  `INSUFFICIENT_INPUT` branches below** -- see "Escalation-only,"
-  below.
+**The rule, documented before it was implemented.** For each company, in
+this fixed order, first match wins:
 
-**Combined, in this fixed order, first match wins:**
+1. **Applicability.** `applicability.debt_burden_measure_applies` on the
+   company-profile industry: `False` -> `NOT_APPLICABLE` (banks, dealers,
+   insurers -- the measure does not describe them); `None` (no industry
+   recorded) -> `INSUFFICIENT_INPUT`, gap `INDUSTRY_UNKNOWN`.
+2. **Eligibility.** Only `TOTAL_DEBT`, `FREE_CASH_FLOW` and
+   `CAPITAL_EXPENDITURE` facts that (a) come from a structured financial
+   statement record and (b) end on or before the evaluation date are
+   read; the rest are listed in the basis as excluded, with the reason.
+3. **Alignment.** An observation needs all three facts for the same period
+   end and in the same unit -- never one year's debt over another year's
+   cash flow. No aligned period -> `INSUFFICIENT_INPUT` with the gap that
+   explains it (`MISSING_DEBT`, `MISSING_OPERATING_CASH_FLOW` or
+   `NO_ALIGNED_PERIOD`).
+4. **Staleness.** The latest aligned period must end no more than
+   `FINANCIAL_STATEMENT_MAX_AGE_DAYS` before the evaluation date, else
+   `INSUFFICIENT_INPUT` / `STALE_FINANCIAL_STATEMENTS`.
+5. **Level.** On that latest observation: operating cash flow (free cash
+   flow plus capital expenditure) below zero -> `HIGH`, operations
+   consumed cash; exactly zero -> `HIGH`, no ratio computed; otherwise
+   gross debt / operating cash flow against `DEBT_BURDEN_BANDS`.
 
-1. `capital_allocation_signal` and `cash_generation_signal` both
-   `INSUFFICIENT_INPUT`, and `debt_trend_signal` is not `HIGH` ->
-   `RiskStatus.INSUFFICIENT_INPUT`.
-2. Any of the three signals is `HIGH` -> `RiskStatus.HIGH` -- an
-   adverse signal on even one computable side is disqualifying, never
-   offset by another side being positive (the same "no hidden
-   weighting" discipline `capital_allocation.py`'s own rule table
-   already applies).
-3. `capital_allocation_signal` and `cash_generation_signal` both
-   computable and `LOW` -> `RiskStatus.LOW` -- `debt_trend_signal`
-   being `LOW` or `INSUFFICIENT_INPUT` never blocks this; it only ever
-   adds real confirming evidence when it fires, never a precondition.
-4. Anything else -> `RiskStatus.MODERATE`.
+Up to two earlier aligned observations travel with the latest as trend
+context. They never change the level: a burden drifting 0.99x -> 1.04x ->
+1.09x is exactly as low or moderate as its latest figure says.
 
-**Escalation-only, by design.** `debt_trend_signal` can turn a would-be
-`LOW`/`MODERATE`/`INSUFFICIENT_INPUT` result into `HIGH`, and its
-supporting `TOTAL_DEBT` fact ids are always added to `supporting_facts`/
-`dependencies` when it fires -- but it is deliberately **excluded from
-`confidence`'s own computation**, which still counts only the original
-two signals exactly as ATLAS-025 defined it. Folding a brand-new fact
-kind into that denominator would silently downgrade every company's
-`confidence` from `FULL` to `PARTIAL` the moment `TOTAL_DEBT` exists as
-a fact kind but is not yet populated for that company -- a real
-regression, not a genuine confidence loss, since the two original
-signals are exactly as knowable as before. A future sprint that wants
-`TOTAL_DEBT` fully weighted into `confidence` needs to make that
-tradeoff deliberately, not inherit it from an additive extension.
+**Atlas policy bands, not credit-rating thresholds.** `DEBT_BURDEN_BANDS`
+(below 1.25x low, 3.0x and above high) were chosen from the 23-company
+distribution Atlas holds (median about 0.8x) as the round cuts with the
+widest margins for the companies whose recommendation depends on them.
+They say where Atlas draws its own line; they say nothing about what a
+lender or rating agency would call safe.
 
-**Never invents a leverage ratio.** No debt-to-EBITDA, debt-to-equity,
-or any other ratio exists anywhere in this evaluator -- `debt_trend_signal`
-is a pure sign-of-consecutive-deltas comparison (the same discipline
-`growth.py` already established for Revenue/FCF), never a threshold
-against an invented "safe" level. Missing `TOTAL_DEBT` facts are never
-treated as "zero debt," and a mixed or single-period debt trend is
-`INSUFFICIENT_INPUT`, never `MODERATE` -- an unclear trend is honestly
-unclear, not a soft warning.
+**Staleness, owned here.** Atlas has no fundamentals-freshness policy to
+reuse (`valuation/cash_flow.py` records that none is owned), so this
+evaluator owns one: two years. It tolerates one pending annual filing for
+an annual reporter and excludes nothing in the current data except
+histories that stopped years ago.
 
-**The basis is the decision, retained.** Each signal returns a
-`FinancialRiskSignalBasis` -- its level, the branch of its rule that
-matched, and the facts (or upstream finding) it read -- and `_combine`
-decides the level from those three bases and nothing else, returning the
-line of the table that matched and the signals it rests on. `status` is
-read from that result, so the disclosed basis and the level cannot
-disagree. Disclosure changes no rule: every branch above is unchanged.
+Never reads Capital Allocation, never reads a `BusinessRecord` -- the
+caller supplies which source records are financial statements and the
+company's profile industry -- and never reads a clock: `evaluated_at` is
+the only notion of now.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from atlas.analysis_engine.business_contracts import BusinessCategoryStatus, BusinessFinding
 from atlas.analysis_engine.business_facts.contracts import BusinessFactKind
 from atlas.analysis_engine.business_facts.models import BusinessFact
 from atlas.analysis_engine.contracts import RiskCategory
-from atlas.analysis_engine.growth import MetricTrend, classify_metric_trend
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
+from atlas.analysis_engine.risk.applicability import debt_burden_measure_applies
 from atlas.analysis_engine.risk.contracts import (
     FinancialRiskCondition,
-    FinancialRiskMetric,
-    FinancialRiskRule,
-    FinancialRiskSignal,
+    FinancialRiskExclusionReason,
+    FinancialRiskMeasure,
     RiskDataGapKind,
     RiskStatus,
     severity_for_risk_status,
 )
 from atlas.analysis_engine.risk.models import (
+    DebtBurdenBands,
+    DebtBurdenObservation,
     FinancialRiskBasis,
-    FinancialRiskObservation,
-    FinancialRiskSignalBasis,
+    FinancialRiskExclusion,
     RiskFinding,
 )
 from atlas.decision_engine.contracts import EvidenceCoverageLevel
 
-__all__ = ["evaluate_financial_risk"]
+__all__ = [
+    "DEBT_BURDEN_BANDS",
+    "FINANCIAL_RISK_METHODOLOGY",
+    "FINANCIAL_STATEMENT_MAX_AGE_DAYS",
+    "assess_financial_risk_basis",
+    "evaluate_financial_risk",
+]
+
+#: Names how Financial Risk is measured, so a change of method is never
+#: read as a change in the company (`investment_case_change` compares
+#: Financial Risk only between snapshots taken under the same method).
+FINANCIAL_RISK_METHODOLOGY = "debt_burden_v2"
+
+#: Atlas policy bands for gross debt / operating cash flow. Not
+#: credit-rating thresholds -- see the module docstring.
+DEBT_BURDEN_BANDS = DebtBurdenBands(low_below=1.25, high_from=3.0)
+
+#: The oldest a latest aligned period may be, in days before the
+#: evaluation date -- two years. See the module docstring.
+FINANCIAL_STATEMENT_MAX_AGE_DAYS = 730
+
+#: Earlier aligned observations carried as trend context, besides the latest.
+_TREND_CONTEXT_PERIODS = 2
+
+_LEVEL = {
+    FinancialRiskCondition.DEBT_BURDEN_LOW: RiskStatus.LOW,
+    FinancialRiskCondition.DEBT_BURDEN_MODERATE: RiskStatus.MODERATE,
+    FinancialRiskCondition.DEBT_BURDEN_HIGH: RiskStatus.HIGH,
+    FinancialRiskCondition.OPERATING_CASH_FLOW_NEGATIVE: RiskStatus.HIGH,
+    FinancialRiskCondition.OPERATING_CASH_FLOW_ZERO: RiskStatus.HIGH,
+}
+
+_BURDEN_KINDS = (BusinessFactKind.TOTAL_DEBT, BusinessFactKind.FREE_CASH_FLOW, BusinessFactKind.CAPITAL_EXPENDITURE)
 
 _ALL_CONSUMERS = (
     Consumer.PORTFOLIO_PAGE,
@@ -115,191 +131,141 @@ _ALL_CONSUMERS = (
     Consumer.HISTORY,
 )
 
-_CAPITAL_ALLOCATION_CONDITIONS = {
-    BusinessCategoryStatus.WEAK: (RiskStatus.HIGH, FinancialRiskCondition.CAPITAL_ALLOCATION_WEAK),
-    BusinessCategoryStatus.MODERATE: (RiskStatus.MODERATE, FinancialRiskCondition.CAPITAL_ALLOCATION_MODERATE),
-    BusinessCategoryStatus.STRONG: (RiskStatus.LOW, FinancialRiskCondition.CAPITAL_ALLOCATION_STRONG),
-}
 
-_METRICS = {
-    BusinessFactKind.FREE_CASH_FLOW: FinancialRiskMetric.FREE_CASH_FLOW,
-    BusinessFactKind.TOTAL_DEBT: FinancialRiskMetric.TOTAL_DEBT,
-}
-
-
-def _observation(fact: BusinessFact) -> FinancialRiskObservation:
-    return FinancialRiskObservation(
-        metric=_METRICS[fact.kind],
-        period=fact.period,
-        value=fact.value,
-        unit=fact.unit,
-        fact_id=fact.id,
-        source_record_id=fact.source_record_id,
-    )
+def _eligible(
+    facts: tuple[BusinessFact, ...], *, statement_record_ids: frozenset[str], evaluated_at: datetime
+) -> tuple[list[BusinessFact], tuple[FinancialRiskExclusion, ...]]:
+    cutoff = evaluated_at.date().isoformat()
+    eligible: list[BusinessFact] = []
+    excluded: list[FinancialRiskExclusion] = []
+    for fact in sorted(facts, key=lambda f: (f.period, f.kind.value, f.id)):
+        if fact.kind not in _BURDEN_KINDS:
+            continue
+        if fact.period > cutoff:
+            excluded.append(FinancialRiskExclusion(fact.id, FinancialRiskExclusionReason.FUTURE_PERIOD))
+        elif fact.source_record_id not in statement_record_ids:
+            excluded.append(FinancialRiskExclusion(fact.id, FinancialRiskExclusionReason.NOT_A_FINANCIAL_STATEMENT))
+        else:
+            eligible.append(fact)
+    return eligible, tuple(excluded)
 
 
-def _capital_allocation_signal(finding: BusinessFinding) -> FinancialRiskSignalBasis:
-    if finding.status is BusinessCategoryStatus.INSUFFICIENT_INPUT:
-        level, condition = RiskStatus.INSUFFICIENT_INPUT, FinancialRiskCondition.CAPITAL_ALLOCATION_UNAVAILABLE
-    else:
-        level, condition = _CAPITAL_ALLOCATION_CONDITIONS[finding.status]
-    return FinancialRiskSignalBasis(
-        signal=FinancialRiskSignal.CAPITAL_ALLOCATION,
-        level=level,
-        condition=condition,
-        source_finding_id=finding.id,
-    )
+def _aligned(eligible: list[BusinessFact]) -> tuple[DebtBurdenObservation, ...]:
+    """One observation per period end where all three kinds exist exactly
+    once in one shared unit; any ambiguity at a period drops that period."""
+    by_period: dict[str, dict[BusinessFactKind, list[BusinessFact]]] = {}
+    for fact in eligible:
+        by_period.setdefault(fact.period, {}).setdefault(fact.kind, []).append(fact)
+    observations = []
+    for period in sorted(by_period):
+        kinds = by_period[period]
+        if any(len(kinds.get(kind, ())) != 1 for kind in _BURDEN_KINDS):
+            continue
+        debt, fcf, capex = (kinds[kind][0] for kind in _BURDEN_KINDS)
+        if len({debt.unit, fcf.unit, capex.unit}) != 1:
+            continue
+        observations.append(DebtBurdenObservation(
+            period=period,
+            unit=debt.unit,
+            total_debt=debt.value,
+            free_cash_flow=fcf.value,
+            capital_expenditure=capex.value,
+            total_debt_fact_id=debt.id,
+            free_cash_flow_fact_id=fcf.id,
+            capital_expenditure_fact_id=capex.id,
+            source_record_ids=tuple(sorted({debt.source_record_id, fcf.source_record_id, capex.source_record_id})),
+        ))
+    return tuple(observations)
 
 
-def _cash_generation_signal(facts: tuple[BusinessFact, ...]) -> FinancialRiskSignalBasis:
-    fcf_facts = [fact for fact in facts if fact.kind is BusinessFactKind.FREE_CASH_FLOW]
-    if not fcf_facts:
-        return FinancialRiskSignalBasis(
-            signal=FinancialRiskSignal.CASH_GENERATION,
-            level=RiskStatus.INSUFFICIENT_INPUT,
-            condition=FinancialRiskCondition.NO_FREE_CASH_FLOW,
-        )
-    most_recent = max(fcf_facts, key=lambda fact: fact.period)
-    if most_recent.value < 0:
-        level, condition = RiskStatus.HIGH, FinancialRiskCondition.LATEST_FREE_CASH_FLOW_NEGATIVE
-    else:
-        level, condition = RiskStatus.LOW, FinancialRiskCondition.LATEST_FREE_CASH_FLOW_NOT_NEGATIVE
-    return FinancialRiskSignalBasis(
-        signal=FinancialRiskSignal.CASH_GENERATION,
-        level=level,
-        condition=condition,
-        observations=(_observation(most_recent),),
-    )
+def _gaps_without_alignment(eligible: list[BusinessFact]) -> tuple[RiskDataGapKind, ...]:
+    kinds = {fact.kind for fact in eligible}
+    gaps = []
+    if BusinessFactKind.TOTAL_DEBT not in kinds:
+        gaps.append(RiskDataGapKind.MISSING_DEBT)
+    if not {BusinessFactKind.FREE_CASH_FLOW, BusinessFactKind.CAPITAL_EXPENDITURE} <= kinds:
+        gaps.append(RiskDataGapKind.MISSING_OPERATING_CASH_FLOW)
+    return tuple(gaps) or (RiskDataGapKind.NO_ALIGNED_PERIOD,)
 
 
-def _debt_trend_signal(facts: tuple[BusinessFact, ...]) -> FinancialRiskSignalBasis:
-    """(Company Data Foundation v1) Reuses `growth.classify_metric_trend`
-    verbatim over consecutive-period `TOTAL_DEBT` facts -- never a
-    second trend algorithm. Rising debt in every consecutive period
-    (`MetricTrend.STRONG_METRIC` in that function's own, growth-neutral
-    vocabulary) is a real worsening signal here (`HIGH`); falling debt
-    in every period (`WEAK_METRIC`) is a real improving signal (`LOW`);
-    fewer than two periods or a mixed trend is honestly
-    `INSUFFICIENT`, never guessed as `MODERATE`.
-
-    The basis carries every `TOTAL_DEBT` fact this signal evaluated, in
-    period order -- the figures the trend was read from, whatever it
-    concluded."""
-    debt_facts = sorted(
-        (fact for fact in facts if fact.kind is BusinessFactKind.TOTAL_DEBT), key=lambda fact: fact.period
-    )
-    observations = tuple(_observation(fact) for fact in debt_facts)
-    if len(debt_facts) < 2:
-        level, condition = RiskStatus.INSUFFICIENT_INPUT, FinancialRiskCondition.TOTAL_DEBT_FEWER_THAN_TWO_PERIODS
-    else:
-        trend, _, _ = classify_metric_trend(debt_facts)
-        if trend is MetricTrend.STRONG_METRIC:  # consistently rising debt
-            level, condition = RiskStatus.HIGH, FinancialRiskCondition.TOTAL_DEBT_INCREASED_EVERY_PERIOD
-        elif trend is MetricTrend.WEAK_METRIC:  # consistently falling debt
-            level, condition = RiskStatus.LOW, FinancialRiskCondition.TOTAL_DEBT_DECREASED_EVERY_PERIOD
-        else:  # mixed trend: no clean signal either way
-            level, condition = RiskStatus.INSUFFICIENT_INPUT, FinancialRiskCondition.TOTAL_DEBT_NO_CONSISTENT_DIRECTION
-    return FinancialRiskSignalBasis(
-        signal=FinancialRiskSignal.DEBT_TREND,
-        level=level,
-        condition=condition,
-        observations=observations,
-    )
+def _level(latest: DebtBurdenObservation) -> FinancialRiskCondition:
+    ocf = latest.operating_cash_flow
+    if ocf < 0:
+        return FinancialRiskCondition.OPERATING_CASH_FLOW_NEGATIVE
+    if ocf == 0:
+        return FinancialRiskCondition.OPERATING_CASH_FLOW_ZERO
+    return DEBT_BURDEN_BANDS.condition_for(latest.total_debt / ocf)
 
 
-def _combine(
-    ca: FinancialRiskSignalBasis, cash: FinancialRiskSignalBasis, debt: FinancialRiskSignalBasis
+def assess_financial_risk_basis(
+    business_facts: tuple[BusinessFact, ...],
+    *,
+    statement_record_ids: frozenset[str],
+    industry: str | None,
+    evaluated_at: datetime,
 ) -> FinancialRiskBasis:
-    """The combination table from this module's docstring, first match
-    wins -- the one place the level is decided. It returns the level
-    together with the line of the table that decided it and the signals
-    that line rests on, so the basis is the decision itself rather than
-    an account written after it."""
-    signals = (ca, cash, debt)
-    core = (ca, cash)
-    high = tuple(s.signal for s in signals if s.level is RiskStatus.HIGH)
-    if high:
-        level, rule, determining = RiskStatus.HIGH, FinancialRiskRule.ANY_SIGNAL_HIGH, high
-    elif all(s.level is RiskStatus.INSUFFICIENT_INPUT for s in core):
-        level, rule = RiskStatus.INSUFFICIENT_INPUT, FinancialRiskRule.NO_CORE_SIGNAL_ASSESSED
-        determining = tuple(s.signal for s in core)
-    elif all(s.level is RiskStatus.LOW for s in core):
-        level, rule = RiskStatus.LOW, FinancialRiskRule.CORE_SIGNALS_BOTH_LOW
-        determining = tuple(s.signal for s in core)
-    else:
-        level, rule = RiskStatus.MODERATE, FinancialRiskRule.CORE_SIGNAL_NOT_LOW
-        determining = tuple(s.signal for s in core if s.level is not RiskStatus.LOW)
-    return FinancialRiskBasis(level=level, rule=rule, signals=signals, determining=determining)
+    """The rule table above, first match wins. Pure and deterministic."""
+    applies = debt_burden_measure_applies(industry)
+    eligible, excluded = _eligible(business_facts, statement_record_ids=statement_record_ids, evaluated_at=evaluated_at)
+    common = dict(bands=DEBT_BURDEN_BANDS, industry=industry, excluded=excluded)
+    if applies is False:
+        return FinancialRiskBasis(
+            level=RiskStatus.NOT_APPLICABLE, condition=FinancialRiskCondition.MEASURE_NOT_APPLICABLE, **common)
+    insufficient = dict(level=RiskStatus.INSUFFICIENT_INPUT, condition=FinancialRiskCondition.NO_ELIGIBLE_EVIDENCE)
+    if applies is None:
+        return FinancialRiskBasis(**insufficient, gaps=(RiskDataGapKind.INDUSTRY_UNKNOWN,), **common)
+    observations = _aligned(eligible)
+    if not observations:
+        return FinancialRiskBasis(**insufficient, gaps=_gaps_without_alignment(eligible), **common)
+    latest = observations[-1]
+    oldest_allowed = (evaluated_at - timedelta(days=FINANCIAL_STATEMENT_MAX_AGE_DAYS)).date().isoformat()
+    if latest.period < oldest_allowed:
+        return FinancialRiskBasis(**insufficient, gaps=(RiskDataGapKind.STALE_FINANCIAL_STATEMENTS,), **common)
+    condition = _level(latest)
+    return FinancialRiskBasis(
+        level=_LEVEL[condition],
+        condition=condition,
+        measure=FinancialRiskMeasure.GROSS_DEBT_TO_OPERATING_CASH_FLOW,
+        latest=latest,
+        history=observations[-(_TREND_CONTEXT_PERIODS + 1):],
+        **common,
+    )
 
 
-def _confidence(computable_count: int, capital_allocation_finding: BusinessFinding) -> EvidenceCoverageLevel:
-    if computable_count == 2:
+def _confidence(basis: FinancialRiskBasis, business_facts: tuple[BusinessFact, ...]) -> EvidenceCoverageLevel:
+    if basis.level is RiskStatus.NOT_APPLICABLE:
+        return EvidenceCoverageLevel.NOT_APPLICABLE
+    if basis.latest is not None:
         return EvidenceCoverageLevel.FULL
-    if computable_count == 1:
-        return EvidenceCoverageLevel.PARTIAL
-    # Both signals insufficient: cash-generation is insufficient only
-    # when zero FREE_CASH_FLOW facts exist, so the Capital Allocation
-    # Finding's own confidence -- which already distinguishes "some
-    # relevant facts, none computable" (NONE) from "no relevant facts
-    # at all" (NOT_APPLICABLE) -- is the most informative signal left.
-    return capital_allocation_finding.confidence
+    # Same distinction Capital Allocation draws: relevant facts exist but
+    # none are usable (NONE) versus no relevant facts at all.
+    if any(fact.kind in _BURDEN_KINDS for fact in business_facts):
+        return EvidenceCoverageLevel.NONE
+    return EvidenceCoverageLevel.NOT_APPLICABLE
 
 
 def evaluate_financial_risk(
-    capital_allocation_finding: BusinessFinding,
     business_facts: tuple[BusinessFact, ...],
     *,
+    statement_record_ids: frozenset[str],
+    industry: str | None,
     evaluated_at: datetime,
 ) -> RiskFinding:
-    """Deterministic: identical inputs always produce a deeply equal
-    `RiskFinding`. Reads the already-computed Capital Allocation
-    `BusinessFinding` plus raw `BusinessFact`s -- never a
-    `BusinessRecord`, never document content."""
-    ca_signal = _capital_allocation_signal(capital_allocation_finding)
-    cash_signal = _cash_generation_signal(business_facts)
-    debt_signal = _debt_trend_signal(business_facts)
-    basis = _combine(ca_signal, cash_signal, debt_signal)
-    status = basis.level
-
-    # `confidence` is computed from exactly these two signals, unchanged
-    # from ATLAS-025 -- see module docstring's "Escalation-only" section
-    # for why `debt_signal` is deliberately excluded from this count.
-    signals = (ca_signal, cash_signal)
-    computable_count = sum(1 for signal in signals if signal.level is not RiskStatus.INSUFFICIENT_INPUT)
-
-    missing: list[RiskDataGapKind] = []
-    if ca_signal.level is RiskStatus.INSUFFICIENT_INPUT:
-        missing.append(RiskDataGapKind.CAPITAL_ALLOCATION_ASSESSMENT_UNAVAILABLE)
-    if cash_signal.level is RiskStatus.INSUFFICIENT_INPUT:
-        missing.append(RiskDataGapKind.MISSING_CASH_FLOW_LEVEL)
-    if debt_signal.level is RiskStatus.INSUFFICIENT_INPUT:
-        missing.append(RiskDataGapKind.MISSING_DEBT_HISTORY)
-
-    # Supporting ids name only what a computable signal rested on: the
-    # Capital Allocation finding when it reached a status, the latest FCF
-    # fact when one exists, and the debt facts only when their trend was
-    # clean. A mixed debt history stays in the basis as evaluated, not
-    # here as support.
-    supporting_ids = tuple(
-        sorted({
-            *((capital_allocation_finding.id,) if ca_signal.level is not RiskStatus.INSUFFICIENT_INPUT else ()),
-            *(o.fact_id for o in cash_signal.observations),
-            *(o.fact_id for o in debt_signal.observations if debt_signal.level is not RiskStatus.INSUFFICIENT_INPUT),
-        })
-    )
-    relevant_fcf_ids = (fact.id for fact in business_facts if fact.kind is BusinessFactKind.FREE_CASH_FLOW)
-    relevant_debt_ids = (fact.id for fact in business_facts if fact.kind is BusinessFactKind.TOTAL_DEBT)
-    dependencies = tuple(sorted({capital_allocation_finding.id, *relevant_fcf_ids, *relevant_debt_ids}))
-
+    """Deterministic: identical facts, statement-record ids, industry and
+    evaluation date always produce a deeply equal `RiskFinding`."""
+    basis = assess_financial_risk_basis(
+        business_facts, statement_record_ids=statement_record_ids, industry=industry, evaluated_at=evaluated_at)
+    supporting_ids = tuple(sorted(basis.latest.fact_ids)) if basis.latest is not None else ()
+    dependencies = tuple(sorted(fact.id for fact in business_facts if fact.kind in _BURDEN_KINDS))
     return RiskFinding(
         id=f"risk_finding:{RiskCategory.FINANCIAL_RISK.value}",
         category=RiskCategory.FINANCIAL_RISK,
-        status=status,
-        severity=severity_for_risk_status(status),
+        status=basis.level,
+        severity=severity_for_risk_status(basis.level),
         supporting_facts=supporting_ids,
         contradicting_facts=(),
-        missing_evidence=tuple(missing),
-        confidence=_confidence(computable_count, capital_allocation_finding),
+        missing_evidence=basis.gaps,
+        confidence=_confidence(basis, business_facts),
         provenance=Provenance(
             source_kind=SourceKind.ANALYSIS_ENGINE_STAGE,
             source_references=supporting_ids,

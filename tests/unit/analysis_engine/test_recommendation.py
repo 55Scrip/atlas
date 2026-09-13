@@ -635,7 +635,7 @@ class TestWhatWouldChange:
             growth_status=BusinessCategoryStatus.STRONG,
             capital_allocation_status=BusinessCategoryStatus.STRONG,
             valuation_status=ValuationStatus.UNDERVALUED,
-            has_real_risk_evidence=True,
+            financial_risk_assessed=True,
         )
         # A case with no weakness at all used to be the ONLY thing this
         # vocabulary could describe, via the fallback -- which is why 7
@@ -658,7 +658,7 @@ class TestWhatWouldChange:
 
         assert _derive_what_would_change(
             has_high_financial_or_valuation_risk=False,
-            has_real_risk_evidence=False,
+            financial_risk_assessed=False,
             valuation_support_status=ValuationSupportStatus.INSUFFICIENT_INPUT,
             growth_status=BusinessCategoryStatus.MODERATE,
             capital_allocation_status=BusinessCategoryStatus.MODERATE,
@@ -674,7 +674,7 @@ class TestWhatWouldChange:
 
         result = _derive_what_would_change(
             has_high_financial_or_valuation_risk=False,
-            has_real_risk_evidence=True,
+            financial_risk_assessed=True,
             valuation_support_status=ValuationSupportStatus.INSUFFICIENT_INPUT,
             growth_status=BusinessCategoryStatus.MODERATE,
             capital_allocation_status=BusinessCategoryStatus.MODERATE,
@@ -691,7 +691,7 @@ class TestWhatWouldChange:
 
         assert ChangeTriggerKind.FINANCIAL_RISK_BECOMES_ELEVATED not in _derive_what_would_change(
             has_high_financial_or_valuation_risk=False,
-            has_real_risk_evidence=False,
+            financial_risk_assessed=False,
             valuation_support_status=ValuationSupportStatus.SUPPORTED,
             growth_status=BusinessCategoryStatus.STRONG,
             capital_allocation_status=BusinessCategoryStatus.STRONG,

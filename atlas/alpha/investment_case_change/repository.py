@@ -133,6 +133,7 @@ def _to_row(case_id: str, snapshot: AnalyticalSnapshot, change_intelligence: Cha
                 "open_question_origins": list(snapshot.open_question_origins),
                 "atlas_thesis_narrative": snapshot.atlas_thesis_narrative,
                 "atlas_thesis_posture": snapshot.atlas_thesis_posture,
+                "financial_risk_methodology": snapshot.financial_risk_methodology,
             },
             sort_keys=True,
         ),
@@ -230,4 +231,8 @@ def _to_snapshot(row: Mapping[str, Any]) -> AnalyticalSnapshot:
         atlas_thesis_posture=payload.get("atlas_thesis_posture"),
         content_hash=row["content_hash"],
         captured_at=datetime.fromisoformat(row["captured_at"]),
+        # Absent on rows written before the method was recorded: `None`,
+        # which never equals a current method, so Financial Risk is
+        # re-baselined rather than compared across methods.
+        financial_risk_methodology=payload.get("financial_risk_methodology"),
     )

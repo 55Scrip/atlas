@@ -237,6 +237,7 @@ export const RISK_STATUS_TONE: Record<AnalysisRiskStatus, StatusTone> = {
   moderate: "caution",
   low: "positive",
   insufficient_input: "neutral",
+  not_applicable: "neutral",
   not_evaluated: "neutral",
 };
 

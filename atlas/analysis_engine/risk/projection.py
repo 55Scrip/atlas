@@ -31,6 +31,9 @@ _TIE_BREAK_ORDER = tuple(category for category in RiskCategory if category in EV
 #: so this mapping is total over the whole `RiskStatus` enum, never a
 #: `KeyError` waiting to happen.
 _SEVERITY_ORDER = (
+    # Lowest: a measure that does not apply is no severity at all, so any
+    # real or insufficient category is projected ahead of it.
+    RiskStatus.NOT_APPLICABLE,
     RiskStatus.NOT_EVALUATED,
     RiskStatus.INSUFFICIENT_INPUT,
     RiskStatus.LOW,

@@ -28,7 +28,7 @@
 export type ConvictionLevel = "very_high" | "high" | "moderate" | "low" | "insufficient_evidence";
 export type ValuationStatus = "not_evaluated" | "insufficient_input" | "undervalued" | "fairly_valued" | "expensive";
 export type RiskCategory = "business_risk" | "financial_risk" | "valuation_risk" | "thesis_risk";
-export type RiskStatus = "not_evaluated" | "insufficient_input" | "low" | "moderate" | "high";
+export type RiskStatus = "not_evaluated" | "insufficient_input" | "not_applicable" | "low" | "moderate" | "high";
 export type EvidenceCoverageLevel = "not_applicable" | "none" | "partial" | "full";
 export type OutstandingWorkKind = "outcome-missing" | "trade-missing" | "reconciliation-needed";
 
@@ -42,6 +42,7 @@ const RISK_SEVERITY_RANK: Record<RiskStatus, number> = {
   moderate: 2,
   low: 1,
   insufficient_input: 0,
+  not_applicable: 0,
   not_evaluated: 0,
 };
 

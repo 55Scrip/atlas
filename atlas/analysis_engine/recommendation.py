@@ -89,6 +89,7 @@ from atlas.analysis_engine.reasoning import (
     build_key_unknowns,
     build_signal_summary,
 )
+from atlas.analysis_engine.risk.contracts import RiskStatus
 from atlas.analysis_engine.recommendation_conviction import (
     RecommendationConvictionLevel,
     calculate_recommendation_conviction,
@@ -221,7 +222,7 @@ def _derive_what_would_change(
     growth_status: BusinessCategoryStatus,
     capital_allocation_status: BusinessCategoryStatus,
     valuation_status: ValuationStatus,
-    has_real_risk_evidence: bool = False,
+    financial_risk_assessed: bool = False,
 ) -> tuple[ChangeTriggerKind, ...]:
     """Every condition that would materially change this recommendation
     -- derived from exactly the facts `select_direction` already reads,
@@ -258,9 +259,9 @@ def _derive_what_would_change(
 
     if has_high_financial_or_valuation_risk:
         triggers.append(ChangeTriggerKind.REDUCED_RISK)
-    elif has_real_risk_evidence:
-        # Only when risk was genuinely assessed. Absent evidence must
-        # not masquerade as a reassuring "risk is currently fine".
+    elif financial_risk_assessed:
+        # Only when Financial Risk itself was assessed. Absent or
+        # not-applicable must not masquerade as "risk is currently fine".
         triggers.append(ChangeTriggerKind.FINANCIAL_RISK_BECOMES_ELEVATED)
 
     if valuation_status is ValuationStatus.EXPENSIVE:
@@ -690,6 +691,7 @@ def evaluate_recommendation_gate(
     has_real_risk_evidence: bool = False,
     forward_context: ForwardReasoningContext | None = None,
     risk_basis: RiskDriverBasis | None = None,
+    financial_risk_status: RiskStatus | None = None,
 ) -> RecommendationGateResult:
     """Deterministic: identical inputs always produce an identical
     `RecommendationGateResult`.
@@ -698,6 +700,13 @@ def evaluate_recommendation_gate(
     placed into the reasoning of whichever outcome the gate reaches, after
     the direction is chosen, and reaches no call that selects a direction,
     drivers, change triggers, unknowns or conviction.
+
+    `financial_risk_status` is Financial Risk's own level, read for the
+    reasoning only: "financial risk is not elevated" (driver, signal
+    summary, change trigger) requires that Financial Risk actually reached
+    a level. `has_real_risk_evidence` -- any risk category real -- keeps
+    its one directional role, the evidence-existence gate. `None` means
+    the caller did not say, and nothing is claimed.
 
     `business_analysis`/`valuation_engine` are the richer,
     `atlas.analysis_engine`-level results (`business.py`'s
@@ -793,6 +802,7 @@ def evaluate_recommendation_gate(
     # statuses `select_direction` was handed above. Cheap, pure, and
     # deliberately positioned after the direction call so it can never
     # be mistaken for an input to it.
+    financial_risk_assessed = financial_risk_status in (RiskStatus.LOW, RiskStatus.MODERATE, RiskStatus.HIGH)
     _signal_summary = build_signal_summary(
         # Projected from the finding that owns them; never recomputed.
         growth_revenue_cagr=growth_finding.revenue_cagr,
@@ -804,7 +814,8 @@ def evaluate_recommendation_gate(
         valuation_status=fcf_yield_finding.status,
         valuation_support_status=valuation_support.status,
         has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
-        has_real_risk_evidence=has_real_risk_evidence,
+        financial_risk_assessed=financial_risk_assessed,
+        financial_risk_not_applicable=financial_risk_status is RiskStatus.NOT_APPLICABLE,
     )
     _signal_drivers = build_drivers(
         growth_status=growth_finding.status,
@@ -812,10 +823,10 @@ def evaluate_recommendation_gate(
         valuation_status=fcf_yield_finding.status,
         valuation_support_status=valuation_support.status,
         has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
-        has_real_risk_evidence=has_real_risk_evidence,
+        financial_risk_assessed=financial_risk_assessed,
     )
     _what_would_change = _derive_what_would_change(
-        has_real_risk_evidence=has_real_risk_evidence,
+        financial_risk_assessed=financial_risk_assessed,
         has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
         valuation_support_status=valuation_support.status,
         growth_status=growth_finding.status,

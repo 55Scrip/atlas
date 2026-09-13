@@ -837,10 +837,12 @@ class TestConvictionEndToEnd:
         assert ConvictionReasonCode.CONTRADICTING_EVIDENCE_PRESENT in analysis.conviction.reasons
 
     def test_high_financial_risk_with_cheap_valuation_still_forces_low(self):
-        """Dilution (Capital Allocation WEAK) drives Financial Risk HIGH
-        even while Valuation is UNDERVALUED (cheap, LOW Valuation Risk)
-        -- proving Financial Risk alone, independent of Valuation Risk,
-        can force LOW."""
+        """A heavy debt burden drives Financial Risk HIGH even while
+        Valuation is UNDERVALUED (cheap, LOW Valuation Risk) -- proving
+        Financial Risk alone, independent of Valuation Risk, can force
+        LOW. Financial Risk v2: the level comes from 2024's total debt
+        (400) over operating cash flow (110 free cash flow + 0 capex),
+        about 3.6x, never from the dilution or the debt trend themselves."""
         from datetime import date
 
         from atlas.analysis_engine.conviction import ConvictionLevel, ConvictionReasonCode
@@ -860,7 +862,9 @@ class TestConvictionEndToEnd:
             # "one negative disqualifies" reached WEAK here before it.
             self._record("financial_statement", date(2022, 12, 31), "debt22", total_debt=50.0),
             self._record("financial_statement", date(2023, 12, 31), "debt23", total_debt=150.0),
-            self._record("financial_statement", date(2024, 12, 31), "debt24", total_debt=300.0),
+            self._record("financial_statement", date(2024, 12, 31), "debt24", total_debt=400.0),
+            self._record("financial_statement", date(2024, 12, 31), "capex24", capital_expenditure=0.0),
+            self._record("company_profile", None, "profile", industry="SEMICONDUCTOR EQUIPMENT & MATERIALS"),
             self._record("market_data_snapshot", date(2022, 12, 31), "m22", share_price=50.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2023, 12, 31), "m23", share_price=50.0, shares_outstanding=100.0),
             self._record("market_data_snapshot", date(2024, 12, 31), "m24", share_price=52.0, shares_outstanding=100.0),
@@ -870,6 +874,11 @@ class TestConvictionEndToEnd:
         )
         assert analysis.conviction.level is ConvictionLevel.LOW
         assert ConvictionReasonCode.HIGH_FINANCIAL_OR_VALUATION_RISK_PRESENT in analysis.conviction.reasons
+        from atlas.analysis_engine.contracts import RiskCategory
+        from atlas.analysis_engine.risk.contracts import RiskStatus
+        statuses = {f.category: f.status for f in analysis.risk_analysis.findings}
+        assert statuses[RiskCategory.FINANCIAL_RISK] is RiskStatus.HIGH
+        assert statuses[RiskCategory.VALUATION_RISK] is not RiskStatus.HIGH
 
     def test_business_and_valuation_unavailable_yields_insufficient_evidence(self):
         """No `business_records` at all: `assess_data_completeness` finds

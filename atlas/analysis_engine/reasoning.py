@@ -39,10 +39,10 @@ economics it does not establish.
 
 **The risk basis is carried the same way.** A `RiskDriverBasis` discloses
 what the `financial_risk` driver rests on -- which risk categories are
-`HIGH`, and the Financial Risk evaluator's own retained basis (signals,
-the rule line that matched, the reported figures it read). It explains
-the driver; it is not a driver, adds none, and is placed into the
-reasoning after the direction is chosen.
+`HIGH`, and Financial Risk v2's own retained basis (the latest aligned
+debt-burden observation, its trend context, the policy bands, or why no
+level was reached). It explains the driver; it is not a driver, adds
+none, and is placed into the reasoning after the direction is chosen.
 """
 from __future__ import annotations
 
@@ -59,12 +59,17 @@ from atlas.analysis_engine.recommendation_conviction import (
 )
 from atlas.analysis_engine.risk.contracts import (
     FinancialRiskCondition,
-    FinancialRiskMetric,
-    FinancialRiskRule,
-    FinancialRiskSignal,
+    FinancialRiskExclusionReason,
+    FinancialRiskMeasure,
+    RiskDataGapKind,
     RiskStatus,
 )
-from atlas.analysis_engine.risk.models import FinancialRiskBasis, FinancialRiskObservation, FinancialRiskSignalBasis
+from atlas.analysis_engine.risk.models import (
+    DebtBurdenBands,
+    DebtBurdenObservation,
+    FinancialRiskBasis,
+    FinancialRiskExclusion,
+)
 from atlas.analysis_engine.valuation.contracts import ValuationStatus
 from atlas.analysis_engine.valuation.support import ValuationSupportStatus
 
@@ -73,6 +78,7 @@ __all__ = [
     "ContractedVolumeContext",
     "ConvictionReasoning",
     "ELEVATING_RISK_CATEGORIES",
+    "RISK_BASIS_VERSION",
     "RiskDriverBasis",
     "ForwardGuidanceContext",
     "ForwardGuidanceSubject",
@@ -518,6 +524,7 @@ _VALUATION_SUPPORT_REASONS = {
 
 #: Statuses that mean "no conclusion", for every status vocabulary here.
 _INCONCLUSIVE = frozenset({"not_evaluated", "insufficient_input"})
+_NOT_APPLICABLE = "not_applicable"
 
 
 def _median(values: tuple[float, ...]) -> float | None:
@@ -568,7 +575,7 @@ def build_drivers(
     valuation_status: ValuationStatus,
     valuation_support_status: ValuationSupportStatus,
     has_high_financial_or_valuation_risk: bool,
-    has_real_risk_evidence: bool,
+    financial_risk_assessed: bool,
 ) -> tuple[tuple[InvestmentReason, ...], tuple[InvestmentReason, ...]]:
     """`(primary_drivers, counter_drivers)` -- supportive and adverse,
     each already in `_ENGINE_PRECEDENCE` order.
@@ -587,7 +594,10 @@ def build_drivers(
             engine=CanonicalEngine.FINANCIAL_RISK,
             source_status="high",
         )
-    elif has_real_risk_evidence:
+    elif financial_risk_assessed:
+        # Only a Financial Risk that reached a level can be "not
+        # elevated". Insufficient or not-applicable is silence, never a
+        # reassurance borrowed from another risk category.
         risk_reason = InvestmentReason(
             kind=InvestmentReasonKind.FINANCIAL_RISK_NOT_ELEVATED,
             polarity=ReasoningPolarity.SUPPORTIVE,
@@ -617,7 +627,8 @@ def build_signal_summary(
     valuation_status: ValuationStatus,
     valuation_support_status: ValuationSupportStatus,
     has_high_financial_or_valuation_risk: bool,
-    has_real_risk_evidence: bool,
+    financial_risk_assessed: bool,
+    financial_risk_not_applicable: bool = False,
     growth_revenue_cagr: float | None = None,
     growth_free_cash_flow_cagr: float | None = None,
     valuation_current_yield: float | None = None,
@@ -632,10 +643,15 @@ def build_signal_summary(
     Calibration Phase 9 could not make.
     """
     def state(status_value: str) -> SignalState:
+        if status_value == _NOT_APPLICABLE:
+            return SignalState.NOT_EVALUATED
         return SignalState.INCONCLUSIVE if status_value in _INCONCLUSIVE else SignalState.CONCLUSIVE
 
+    # `not_applicable` is its own token: the measure does not describe
+    # this business, which is not a missing input (see build_key_unknowns).
     risk_status = "high" if has_high_financial_or_valuation_risk else (
-        "not_high" if has_real_risk_evidence else "not_evaluated")
+        "not_high" if financial_risk_assessed else (
+            "not_applicable" if financial_risk_not_applicable else "not_evaluated"))
     connected = (
         (CanonicalEngine.GROWTH, growth_status.value),
         (CanonicalEngine.CAPITAL_ALLOCATION, capital_allocation_status.value),
@@ -687,6 +703,10 @@ def build_key_unknowns(
     process state back into investment reasoning through a side door."""
     unknowns: list[KeyUnknown] = []
     for contribution in signal_summary:
+        if contribution.source_status == _NOT_APPLICABLE:
+            # The engine's measure does not describe this business; no
+            # input would resolve it, so it is not an unknown to list.
+            continue
         if contribution.state is SignalState.INCONCLUSIVE or contribution.state is SignalState.NOT_EVALUATED:
             # `gap` is authoritative about which of two very different
             # situations produced INSUFFICIENT_INPUT. This projects that
@@ -791,69 +811,85 @@ def serialize_reasoning(reasoning) -> dict:
     }
 
 
+#: The risk-basis wire format. v1 (the Financial-Risk Basis Disclosure
+#: sprint's signal basis) was never read back; a payload without this
+#: version is not interpreted as v2 -- it reads as no basis.
+RISK_BASIS_VERSION = 2
+
+
+def _observation_payload(o: DebtBurdenObservation) -> dict:
+    return {
+        "period": o.period,
+        "unit": o.unit,
+        "totalDebt": o.total_debt,
+        "freeCashFlow": o.free_cash_flow,
+        "capitalExpenditure": o.capital_expenditure,
+        # Derived, stated once so no reader re-derives it.
+        "operatingCashFlow": o.operating_cash_flow,
+        "ratio": o.ratio,
+        "totalDebtFactId": o.total_debt_fact_id,
+        "freeCashFlowFactId": o.free_cash_flow_fact_id,
+        "capitalExpenditureFactId": o.capital_expenditure_fact_id,
+        "sourceRecordIds": list(o.source_record_ids),
+    }
+
+
 def _risk_basis_payload(basis: RiskDriverBasis | None) -> dict | None:
     if basis is None:
         return None
     financial = basis.financial_risk
     return {
+        "version": RISK_BASIS_VERSION,
         "elevatedCategories": [c.value for c in basis.elevated_categories],
         "financialRisk": {
             "level": financial.level.value,
-            "rule": financial.rule.value,
-            "determining": [s.value for s in financial.determining],
-            "signals": [
-                {
-                    "signal": s.signal.value,
-                    "level": s.level.value,
-                    "condition": s.condition.value,
-                    "sourceFindingId": s.source_finding_id,
-                    "observations": [
-                        {
-                            "metric": o.metric.value,
-                            "period": o.period,
-                            "value": o.value,
-                            "unit": o.unit,
-                            "factId": o.fact_id,
-                            "sourceRecordId": o.source_record_id,
-                        }
-                        for o in s.observations
-                    ],
-                }
-                for s in financial.signals
-            ],
+            "condition": financial.condition.value,
+            "measure": financial.measure.value if financial.measure else None,
+            "bands": {"lowBelow": financial.bands.low_below, "highFrom": financial.bands.high_from},
+            "latest": _observation_payload(financial.latest) if financial.latest else None,
+            "history": [_observation_payload(o) for o in financial.history],
+            "industry": financial.industry,
+            "gaps": [g.value for g in financial.gaps],
+            "excluded": [{"factId": e.fact_id, "reason": e.reason.value} for e in financial.excluded],
         },
     }
 
 
+def _observation_from_payload(o: dict) -> DebtBurdenObservation:
+    return DebtBurdenObservation(
+        period=o["period"],
+        unit=o["unit"],
+        total_debt=o["totalDebt"],
+        free_cash_flow=o["freeCashFlow"],
+        capital_expenditure=o["capitalExpenditure"],
+        total_debt_fact_id=o["totalDebtFactId"],
+        free_cash_flow_fact_id=o["freeCashFlowFactId"],
+        capital_expenditure_fact_id=o["capitalExpenditureFactId"],
+        source_record_ids=tuple(o["sourceRecordIds"]),
+    )
+
+
 def _risk_basis_from_payload(payload: dict | None) -> RiskDriverBasis | None:
-    if not payload:
+    if not payload or payload.get("version") != RISK_BASIS_VERSION:
         return None
     financial = payload["financialRisk"]
+    latest = _observation_from_payload(financial["latest"]) if financial.get("latest") else None
+    history = tuple(_observation_from_payload(o) for o in financial.get("history", ()))
     return RiskDriverBasis(
         elevated_categories=tuple(RiskCategory(c) for c in payload["elevatedCategories"]),
         financial_risk=FinancialRiskBasis(
             level=RiskStatus(financial["level"]),
-            rule=FinancialRiskRule(financial["rule"]),
-            determining=tuple(FinancialRiskSignal(s) for s in financial["determining"]),
-            signals=tuple(
-                FinancialRiskSignalBasis(
-                    signal=FinancialRiskSignal(s["signal"]),
-                    level=RiskStatus(s["level"]),
-                    condition=FinancialRiskCondition(s["condition"]),
-                    source_finding_id=s.get("sourceFindingId"),
-                    observations=tuple(
-                        FinancialRiskObservation(
-                            metric=FinancialRiskMetric(o["metric"]),
-                            period=o["period"],
-                            value=o["value"],
-                            unit=o["unit"],
-                            fact_id=o["factId"],
-                            source_record_id=o["sourceRecordId"],
-                        )
-                        for o in s["observations"]
-                    ),
-                )
-                for s in financial["signals"]
+            condition=FinancialRiskCondition(financial["condition"]),
+            bands=DebtBurdenBands(low_below=financial["bands"]["lowBelow"], high_from=financial["bands"]["highFrom"]),
+            measure=FinancialRiskMeasure(financial["measure"]) if financial.get("measure") else None,
+            # The latest is the last history entry; reuse it so the two stay one object.
+            latest=history[-1] if latest is not None and history else latest,
+            history=history,
+            industry=financial.get("industry"),
+            gaps=tuple(RiskDataGapKind(g) for g in financial.get("gaps", ())),
+            excluded=tuple(
+                FinancialRiskExclusion(e["factId"], FinancialRiskExclusionReason(e["reason"]))
+                for e in financial.get("excluded", ())
             ),
         ),
     )

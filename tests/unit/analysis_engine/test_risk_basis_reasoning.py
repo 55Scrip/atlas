@@ -1,8 +1,10 @@
-"""The financial-risk basis in Recommendation Reasoning: carried beside the
-`financial_risk` driver it explains, never read by anything that decides.
+"""Financial Risk v2 in Recommendation Reasoning: the basis travels beside the
+`financial_risk` driver it explains and is never read by anything that
+decides; and "financial risk is not elevated" is said only when Financial
+Risk itself reached a level.
 
-Three layers, as with forward context: the pipeline builds it from the
-same risk findings the dampening flag reads; the gate places it into the
+Three layers, as with forward context: the pipeline builds the basis from
+the same risk findings the dampening flag reads; the gate places it into the
 reasoning after the direction is chosen; the serializer persists it.
 """
 from __future__ import annotations
@@ -10,90 +12,156 @@ from __future__ import annotations
 import ast
 import dataclasses
 import json
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import pytest
 
 from atlas.analysis_engine.business_contracts import BusinessCategoryStatus
+from atlas.analysis_engine.business_data.models import RawBusinessDocument
 from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.exceptions import AnalysisEngineContractError
 from atlas.analysis_engine.reasoning import (
     ELEVATING_RISK_CATEGORIES,
+    RISK_BASIS_VERSION,
+    CanonicalEngine,
+    InvestmentReason,
     InvestmentReasonKind,
+    KeyUnknownKind,
+    ReasoningPolarity,
     RiskDriverBasis,
+    build_drivers,
+    build_key_unknowns,
+    build_signal_summary,
     deserialize_reasoning,
     serialize_reasoning,
 )
-from atlas.analysis_engine.recommendation import RecommendationDirection, RecommendationReasoning
-from atlas.analysis_engine.risk.contracts import FinancialRiskSignal, RiskStatus
-from tests.unit.analysis_engine.risk.test_financial_risk_basis import evaluate, fcf, vst
-from tests.unit.analysis_engine.test_real_data_scenarios import (
-    _assemble,
-    _dt,
-    _fundamentals_doc,
-    _ingest_all,
-    _market_doc,
+from atlas.analysis_engine.recommendation import (
+    ChangeTriggerKind,
+    RecommendationDirection,
+    RecommendationReasoning,
+    _derive_what_would_change,
 )
+from atlas.analysis_engine.risk.contracts import RiskStatus
+from atlas.analysis_engine.valuation.contracts import ValuationStatus
+from atlas.analysis_engine.valuation.support import ValuationSupportStatus
+from tests.unit.analysis_engine.risk.test_financial_risk import company, evaluate
+from tests.unit.analysis_engine.test_real_data_scenarios import _assemble, _dt, _fundamentals_doc, _ingest_all, _market_doc
 
 FIN, VAL = RiskCategory.FINANCIAL_RISK, RiskCategory.VALUATION_RISK
+_EVALUATED_AT = datetime(2026, 8, 9, tzinfo=timezone.utc)
 
 
 def vst_basis() -> RiskDriverBasis:
-    return RiskDriverBasis(elevated_categories=(FIN,), financial_risk=vst().financial_risk_basis)
+    return RiskDriverBasis(elevated_categories=(FIN,), financial_risk=company("VST").financial_risk_basis)
 
 
-def _elevated_driver():
-    from atlas.analysis_engine.reasoning import CanonicalEngine, InvestmentReason, ReasoningPolarity
+def low_basis():
+    return company("META").financial_risk_basis
+
+
+def not_applicable_basis():
+    return evaluate((), "BANKS - DIVERSIFIED").financial_risk_basis
+
+
+def elevated_driver():
     return InvestmentReason(kind=InvestmentReasonKind.FINANCIAL_RISK_ELEVATED, polarity=ReasoningPolarity.ADVERSE,
                             engine=CanonicalEngine.FINANCIAL_RISK, source_status="high")
 
 
-def low_basis():
-    return evaluate(BusinessCategoryStatus.STRONG, fcf(5.0)).financial_risk_basis
+def statement(period_end: str, *, debt: float, fcf: float, capex: float, revenue: float = 100.0) -> RawBusinessDocument:
+    return RawBusinessDocument(
+        identifier=f"TEST:FY:{period_end}", company="TEST", source_kind="financial_statement",
+        published_at=_EVALUATED_AT, provider_id="sec_edgar", raw_reference="https://example.test/filing",
+        content_hash=f"hash-{period_end}-{debt}-{fcf}-{capex}", language="en",
+        period_start=date(int(period_end[:4]), 1, 1), period_end=date.fromisoformat(period_end),
+        metadata={"revenue": revenue, "free_cash_flow": fcf, "capital_expenditure": capex, "total_debt": debt,
+                  "currency": "USD"},
+    )
+
+
+def profile(industry: str) -> RawBusinessDocument:
+    return RawBusinessDocument(
+        identifier="TEST:profile", company="TEST", source_kind="company_profile", published_at=_EVALUATED_AT,
+        provider_id="alpha_vantage", raw_reference="https://example.test/profile", content_hash=f"profile-{industry}",
+        language="en", period_start=None, period_end=None,
+        metadata={"name": "Test Co", "sector": "TEST", "industry": industry},
+    )
 
 
 class TestRiskDriverBasis:
     def test_valuation_alone_can_raise_the_driver_while_financial_risk_is_low(self):
-        basis = RiskDriverBasis(elevated_categories=(VAL,), financial_risk=low_basis())
-        assert basis.financial_risk.level is RiskStatus.LOW
+        assert RiskDriverBasis(elevated_categories=(VAL,), financial_risk=low_basis()).financial_risk.level is RiskStatus.LOW
 
     def test_financial_risk_is_elevated_exactly_when_its_own_basis_is_high(self):
-        with pytest.raises(ValueError):
-            RiskDriverBasis(elevated_categories=(FIN,), financial_risk=low_basis())
-        with pytest.raises(ValueError):
-            RiskDriverBasis(elevated_categories=(), financial_risk=vst().financial_risk_basis)
-        with pytest.raises(ValueError):
-            RiskDriverBasis(elevated_categories=(VAL,), financial_risk=vst().financial_risk_basis)
+        for bad in ((FIN,), ()):
+            basis = low_basis() if bad == (FIN,) else company("VST").financial_risk_basis
+            with pytest.raises(ValueError):
+                RiskDriverBasis(elevated_categories=bad, financial_risk=basis)
 
     def test_categories_are_the_two_elevating_ones_once_each_in_order(self):
         assert ELEVATING_RISK_CATEGORIES == (FIN, VAL)
         for bad in ((VAL, FIN), (FIN, FIN), (RiskCategory.BUSINESS_RISK,)):
             with pytest.raises(ValueError):
-                RiskDriverBasis(elevated_categories=bad, financial_risk=vst().financial_risk_basis)
+                RiskDriverBasis(elevated_categories=bad, financial_risk=company("VST").financial_risk_basis)
 
-
-class TestTheBasisExplainsTheDriverPresent:
-    def _reasoning(self, *, elevated_driver: bool, basis):
-        counter = (_elevated_driver(),) if elevated_driver else ()
-        return RecommendationReasoning(counter_drivers=counter, risk_basis=basis)
-
-    def test_an_elevated_basis_without_the_elevated_driver_is_rejected(self):
+    def test_a_basis_must_explain_the_driver_actually_present(self):
         with pytest.raises(AnalysisEngineContractError):
-            self._reasoning(elevated_driver=False, basis=vst_basis())
-
-    def test_the_elevated_driver_with_a_not_elevated_basis_is_rejected(self):
+            RecommendationReasoning(counter_drivers=(), risk_basis=vst_basis())
         with pytest.raises(AnalysisEngineContractError):
-            self._reasoning(elevated_driver=True, basis=RiskDriverBasis((), low_basis()))
+            RecommendationReasoning(counter_drivers=(elevated_driver(),), risk_basis=RiskDriverBasis((), low_basis()))
 
-    def test_no_basis_is_always_allowed(self):
-        assert self._reasoning(elevated_driver=True, basis=None).risk_basis is None
+
+def _builders(**overrides):
+    kwargs = dict(
+        growth_status=BusinessCategoryStatus.MODERATE, capital_allocation_status=BusinessCategoryStatus.STRONG,
+        valuation_status=ValuationStatus.FAIRLY_VALUED, valuation_support_status=ValuationSupportStatus.SUPPORTED,
+        has_high_financial_or_valuation_risk=False, financial_risk_assessed=False,
+    )
+    kwargs.update(overrides)
+    return kwargs
+
+
+class TestNotElevatedOnlyWhenAssessed:
+    """The audit's blocker: "no elevated financial risk" appeared whenever any
+    risk category was real, even when Financial Risk itself was insufficient
+    or not applicable (AVGO, CRWD, DE, GS, JPM, BRK.B, MC, NEE, VZ)."""
+
+    def test_the_driver_needs_an_assessed_financial_risk(self):
+        primary, _ = build_drivers(**_builders(financial_risk_assessed=False))
+        assert InvestmentReasonKind.FINANCIAL_RISK_NOT_ELEVATED not in [r.kind for r in primary]
+        primary, _ = build_drivers(**_builders(financial_risk_assessed=True))
+        assert InvestmentReasonKind.FINANCIAL_RISK_NOT_ELEVATED in [r.kind for r in primary]
+
+    def test_the_change_trigger_needs_an_assessed_financial_risk(self):
+        kwargs = dict(has_high_financial_or_valuation_risk=False, valuation_support_status=ValuationSupportStatus.SUPPORTED,
+                      growth_status=BusinessCategoryStatus.MODERATE, capital_allocation_status=BusinessCategoryStatus.STRONG,
+                      valuation_status=ValuationStatus.FAIRLY_VALUED)
+        assert ChangeTriggerKind.FINANCIAL_RISK_BECOMES_ELEVATED not in _derive_what_would_change(**kwargs)
+        assert ChangeTriggerKind.FINANCIAL_RISK_BECOMES_ELEVATED in _derive_what_would_change(
+            **kwargs, financial_risk_assessed=True)
+
+    def test_insufficient_is_an_input_missing_unknown(self):
+        summary = build_signal_summary(**_builders())
+        fr = next(c for c in summary if c.engine is CanonicalEngine.FINANCIAL_RISK)
+        assert fr.source_status == "not_evaluated"
+        assert any(u.engine is CanonicalEngine.FINANCIAL_RISK and u.kind is KeyUnknownKind.ANALYSIS_INPUT_MISSING
+                   for u in build_key_unknowns(summary))
+
+    def test_not_applicable_is_neither_reassurance_nor_a_missing_input(self):
+        summary = build_signal_summary(**_builders(financial_risk_not_applicable=True))
+        fr = next(c for c in summary if c.engine is CanonicalEngine.FINANCIAL_RISK)
+        assert fr.source_status == "not_applicable"
+        assert not any(u.engine is CanonicalEngine.FINANCIAL_RISK for u in build_key_unknowns(summary))
+        primary, counter = build_drivers(**_builders())
+        assert not [r for r in primary + counter if r.engine is CanonicalEngine.FINANCIAL_RISK]
 
 
 class TestTheGateCarriesTheBasisWithoutReadingIt:
     """Behavioural twin of the structural firewall below: identical gate
     inputs with and without the basis give identical decisions."""
 
-    def _gates(self, risk_basis):
+    def _gates(self, risk_basis, **extra):
         from tests.unit.analysis_engine.test_recommendation import (
             TestDirectionSelectorNowWired,
             _assessment,
@@ -111,6 +179,7 @@ class TestTheGateCarriesTheBasisWithoutReadingIt:
             conviction=_assessment(ConvictionLevel.HIGH), business_analysis=business_analysis,
             valuation_engine=_insufficient_valuation_engine(), valuation_support=_insufficient_valuation_support(),
             has_high_financial_or_valuation_risk=True, has_open_questions=False, generated_at=GENERATED_AT,
+            financial_risk_status=RiskStatus.HIGH, **extra,
         )
         return (evaluate_recommendation_gate(engine_input, **fields),
                 evaluate_recommendation_gate(engine_input, **fields, risk_basis=risk_basis))
@@ -121,15 +190,12 @@ class TestTheGateCarriesTheBasisWithoutReadingIt:
         a, b = without.recommendation, with_basis.recommendation
         assert a.direction is b.direction is RecommendationDirection.TRIM
         assert (a.conviction_level, a.conviction_reason) == (b.conviction_level, b.conviction_reason)
-        assert without.conviction == with_basis.conviction
         assert dataclasses.replace(b.reasoning, risk_basis=None) == a.reasoning
         assert b.reasoning.risk_basis is basis
 
     def test_the_basis_adds_no_driver(self):
         without, with_basis = (g.recommendation.reasoning for g in self._gates(vst_basis()))
-        assert with_basis.primary_drivers == without.primary_drivers
-        assert with_basis.counter_drivers == without.counter_drivers
-        assert InvestmentReasonKind.FINANCIAL_RISK_ELEVATED in [r.kind for r in with_basis.counter_drivers]
+        assert (with_basis.primary_drivers, with_basis.counter_drivers) == (without.primary_drivers, without.counter_drivers)
         assert not any("debt" in r.kind.value for r in with_basis.primary_drivers + with_basis.counter_drivers)
 
     def test_a_basis_that_contradicts_the_driver_cannot_be_carried(self):
@@ -137,20 +203,52 @@ class TestTheGateCarriesTheBasisWithoutReadingIt:
             self._gates(RiskDriverBasis((), low_basis()))
 
 
-class TestThePipelineBuildsItFromTheSameFindings:
-    def test_rising_total_debt_elevates_financial_risk_and_the_basis_names_the_debt_trend(self):
+class TestThePipeline:
+    def test_high_burden_elevates_financial_risk_and_the_basis_names_the_ratio(self):
         records = _ingest_all(
-            _fundamentals_doc(period_end="2023-12-31", revenue=100, fcf=10, total_debt=14.402),
-            _fundamentals_doc(period_end="2024-12-31", revenue=110, fcf=12, total_debt=16.298),
-            _fundamentals_doc(period_end="2025-12-31", revenue=120, fcf=13, total_debt=17.043),
+            profile("UTILITIES - INDEPENDENT POWER PRODUCERS"),
+            statement("2023-12-31", debt=14.402, fcf=3.777, capex=1.676),
+            statement("2024-12-31", debt=16.298, fcf=2.485, capex=2.078),
+            statement("2025-12-31", debt=17.043, fcf=1.318, capex=2.752),
         )
         analysis = _assemble(records)
         reasoning = analysis.recommendation.recommendation.reasoning
         financial = next(f for f in analysis.risk_analysis.findings if f.category is FIN)
+        assert financial.status is RiskStatus.HIGH
         assert reasoning.risk_basis.elevated_categories == (FIN,)
         assert reasoning.risk_basis.financial_risk is financial.financial_risk_basis
-        assert reasoning.risk_basis.financial_risk.determining == (FinancialRiskSignal.DEBT_TREND,)
+        assert round(financial.financial_risk_basis.latest.ratio, 2) == 4.19
         assert [r.kind for r in reasoning.counter_drivers] == [InvestmentReasonKind.FINANCIAL_RISK_ELEVATED]
+
+    def test_rising_but_small_debt_is_not_elevated(self):
+        records = _ingest_all(
+            profile("INTERNET CONTENT & INFORMATION"),
+            statement("2023-12-31", debt=18.385, fcf=44.068, capex=27.045),
+            statement("2024-12-31", debt=28.826, fcf=54.072, capex=37.256),
+            statement("2025-12-31", debt=58.744, fcf=46.109, capex=69.691),
+        )
+        reasoning = _assemble(records).recommendation.recommendation.reasoning
+        assert reasoning.risk_basis.elevated_categories == ()
+        assert InvestmentReasonKind.FINANCIAL_RISK_NOT_ELEVATED in [r.kind for r in reasoning.primary_drivers]
+
+    def test_a_bank_is_not_applicable_and_never_reassured(self):
+        records = _ingest_all(profile("BANKS - DIVERSIFIED"), statement("2025-12-31", debt=250.0, fcf=-47.0, capex=2.0))
+        analysis = _assemble(records)
+        financial = next(f for f in analysis.risk_analysis.findings if f.category is FIN)
+        reasoning = analysis.recommendation.recommendation.reasoning
+        assert financial.status is RiskStatus.NOT_APPLICABLE
+        kinds = [r.kind for r in reasoning.primary_drivers + reasoning.counter_drivers]
+        assert InvestmentReasonKind.FINANCIAL_RISK_NOT_ELEVATED not in kinds
+        assert InvestmentReasonKind.FINANCIAL_RISK_ELEVATED not in kinds
+        assert ChangeTriggerKind.FINANCIAL_RISK_BECOMES_ELEVATED not in reasoning.what_would_change
+
+    def test_missing_debt_is_insufficient_and_never_reassured(self):
+        records = _ingest_all(profile("SEMICONDUCTORS"), _fundamentals_doc(period_end="2025-12-31", revenue=100, fcf=20))
+        reasoning = _assemble(records).recommendation.recommendation.reasoning
+        kinds = [r.kind for r in reasoning.primary_drivers]
+        assert InvestmentReasonKind.FINANCIAL_RISK_NOT_ELEVATED not in kinds
+        assert any(u.engine is CanonicalEngine.FINANCIAL_RISK and u.kind is KeyUnknownKind.ANALYSIS_INPUT_MISSING
+                   for u in reasoning.key_unknowns)
 
     def test_an_expensive_valuation_alone_is_disclosed_as_valuation_not_as_finances(self):
         records = _ingest_all(
@@ -159,50 +257,44 @@ class TestThePipelineBuildsItFromTheSameFindings:
             _market_doc(snapshot="2022-06-01", price=50, shares=100),
             _market_doc(snapshot="2023-06-01", price=200, shares=100),
         )
-        analysis = _assemble(records)
-        basis = analysis.recommendation.recommendation.reasoning.risk_basis
+        basis = _assemble(records).recommendation.recommendation.reasoning.risk_basis
         assert basis.elevated_categories == (VAL,)
         assert basis.financial_risk.level is not RiskStatus.HIGH
-
-    def test_no_elevated_risk_carries_a_basis_but_no_elevated_category(self):
-        records = _ingest_all(
-            _fundamentals_doc(period_end="2022-12-31", revenue=100, fcf=20),
-            _fundamentals_doc(period_end="2023-12-31", revenue=125, fcf=30),
-        )
-        basis = _assemble(records).recommendation.recommendation.reasoning.risk_basis
-        assert basis.elevated_categories == ()
 
 
 class TestPersistence:
     def test_the_basis_round_trips_through_json(self):
-        for basis in (RiskDriverBasis((VAL,), low_basis()), vst_basis()):
-            reasoning = RecommendationReasoning(counter_drivers=(_elevated_driver(),), risk_basis=basis)
+        for basis in (RiskDriverBasis((VAL,), low_basis()), vst_basis(), RiskDriverBasis((VAL,), not_applicable_basis())):
+            reasoning = RecommendationReasoning(counter_drivers=(elevated_driver(),), risk_basis=basis)
             payload = json.loads(json.dumps(serialize_reasoning(reasoning)))
             assert deserialize_reasoning(payload).risk_basis == basis
 
-    def test_the_payload_is_tokens_facts_and_figures(self):
-        payload = serialize_reasoning(RecommendationReasoning(counter_drivers=(_elevated_driver(),),
-                                                              risk_basis=vst_basis()))
+    def test_the_payload_carries_the_ratio_its_figures_and_their_provenance(self):
+        payload = serialize_reasoning(RecommendationReasoning(counter_drivers=(elevated_driver(),), risk_basis=vst_basis()))
         basis = payload["riskBasis"]
-        assert basis["elevatedCategories"] == ["financial_risk"]
-        assert basis["financialRisk"]["determining"] == ["debt_trend"]
-        debt = basis["financialRisk"]["signals"][2]
-        assert (debt["signal"], debt["level"], debt["condition"]) == (
-            "debt_trend", "high", "total_debt_increased_every_period")
-        assert [(o["period"], o["value"]) for o in debt["observations"]] == [
-            ("2023-12-31", 14.402e9), ("2024-12-31", 16.298e9), ("2025-12-31", 17.043e9)]
-        assert set(debt["observations"][0]) == {"metric", "period", "value", "unit", "factId", "sourceRecordId"}
+        assert basis["version"] == RISK_BASIS_VERSION == 2
+        fr = basis["financialRisk"]
+        assert (fr["level"], fr["condition"], fr["measure"]) == ("high", "debt_burden_high", "gross_debt_to_operating_cash_flow")
+        assert fr["bands"] == {"lowBelow": 1.25, "highFrom": 3.0}
+        latest = fr["latest"]
+        assert round(latest["ratio"], 2) == 4.19
+        assert latest["operatingCashFlow"] == pytest.approx(latest["freeCashFlow"] + latest["capitalExpenditure"])
+        assert latest["freeCashFlowFactId"] and latest["capitalExpenditureFactId"] and latest["totalDebtFactId"]
+        assert [round(o["ratio"], 2) for o in fr["history"]] == [2.64, 3.57, 4.19]
 
-    def test_absent_and_null_both_read_back_as_no_basis(self):
+    def test_a_v1_or_legacy_payload_is_never_read_as_v2(self):
         payload = serialize_reasoning(RecommendationReasoning())
         assert payload["riskBasis"] is None
+        v1 = dict(payload, riskBasis={"elevatedCategories": ["financial_risk"],
+                                      "financialRisk": {"level": "high", "rule": "any_signal_high"}})
+        assert deserialize_reasoning(v1).risk_basis is None
         legacy = {k: v for k, v in payload.items() if k != "riskBasis"}
         assert deserialize_reasoning(legacy).risk_basis is None
-        assert deserialize_reasoning(payload).risk_basis is None
 
 
 class TestFirewall:
-    """Structural: the basis reaches the reasoning and nothing that decides."""
+    """Structural: the basis reaches the reasoning and nothing that decides;
+    Financial Risk's own status reaches only the reasoning builders."""
 
     _DECIDING_CALLS = {
         "select_direction", "build_drivers", "build_signal_summary", "_derive_what_would_change",
@@ -227,25 +319,28 @@ class TestFirewall:
                     inner = {n.id for a in args for n in ast.walk(a) if isinstance(n, ast.Name)}
                     assert "risk_basis" not in inner, name
         assert uses == ["RecommendationReasoning", "RecommendationReasoning"]
-        # And nowhere else: any other read -- a comparison, a derived flag --
-        # would let the basis steer the gate.
-        loads = [n for n in ast.walk(tree) if isinstance(n, ast.Name) and n.id == "risk_basis"
-                 and isinstance(n.ctx, ast.Load)]
+        loads = [n for n in ast.walk(tree) if isinstance(n, ast.Name) and n.id == "risk_basis" and isinstance(n.ctx, ast.Load)]
         assert len(loads) == 2, [n.lineno for n in loads]
 
-    def test_the_pipeline_hands_it_only_to_the_gate(self):
+    def test_financial_risk_status_never_reaches_direction_selection(self):
+        tree = self._tree("atlas/analysis_engine/recommendation.py")
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "select_direction":
+                inner = {n.id for k in node.keywords for n in ast.walk(k.value) if isinstance(n, ast.Name)}
+                assert not {"financial_risk_status", "financial_risk_assessed"} & inner
+
+    def test_the_pipeline_hands_basis_and_status_only_to_the_gate(self):
         tree = self._tree("atlas/analysis_engine/pipeline.py")
-        uses = [getattr(node.func, "id", None) for node in ast.walk(tree) if isinstance(node, ast.Call)
-                and any(k.arg == "risk_basis" or (isinstance(k.value, ast.Name) and k.value.id == "risk_basis")
-                        for k in node.keywords)]
-        assert uses == ["evaluate_recommendation_gate"]
+        for arg in ("risk_basis", "financial_risk_status"):
+            uses = [getattr(node.func, "id", None) for node in ast.walk(tree) if isinstance(node, ast.Call)
+                    and any(k.arg == arg for k in node.keywords)]
+            assert uses == ["evaluate_recommendation_gate"], (arg, uses)
 
     def test_only_the_pipeline_reads_a_findings_financial_risk_basis(self):
         readers = set()
         for path in Path("atlas").rglob("*.py"):
             for node in ast.walk(self._tree(path)):
-                if isinstance(node, ast.Attribute) and node.attr == "financial_risk_basis" \
-                        and isinstance(node.ctx, ast.Load):
+                if isinstance(node, ast.Attribute) and node.attr == "financial_risk_basis" and isinstance(node.ctx, ast.Load):
                     readers.add(str(path))
         assert readers <= {"atlas/analysis_engine/pipeline.py", "atlas/analysis_engine/risk/models.py"}, readers
 

@@ -15,7 +15,7 @@ import type { TranslationKey } from "../i18n";
  */
 
 export type AnalysisRiskCategory = "business_risk" | "financial_risk" | "valuation_risk" | "thesis_risk";
-export type AnalysisRiskStatus = "not_evaluated" | "insufficient_input" | "low" | "moderate" | "high";
+export type AnalysisRiskStatus = "not_evaluated" | "insufficient_input" | "not_applicable" | "low" | "moderate" | "high";
 export type AnalysisBusinessCategory =
   | "business_model"
   | "competitive_position"
@@ -74,6 +74,7 @@ export type Translate = (key: TranslationKey, params?: Record<string, string | n
 export const RISK_STATUS_KEY: Record<AnalysisRiskStatus, TranslationKey> = {
   not_evaluated: "portfolio.cockpit.risk.status.not_evaluated",
   insufficient_input: "portfolio.cockpit.risk.status.insufficient_input",
+  not_applicable: "portfolio.cockpit.risk.status.not_applicable",
   low: "portfolio.cockpit.risk.status.low",
   moderate: "portfolio.cockpit.risk.status.moderate",
   high: "portfolio.cockpit.risk.status.high",
@@ -172,7 +173,11 @@ export function describeChange(change: ChangeFindingView, t: Translate): string 
 
   if (change.category === "analytical_coverage_changed") {
     const label = dimensionLabel(dimension, t);
-    if (change.currentState === "insufficient_input" || change.currentState === "not_evaluated") {
+    if (
+      change.currentState === "insufficient_input" ||
+      change.currentState === "not_evaluated" ||
+      change.currentState === "not_applicable"
+    ) {
       return t("investmentCase.whatChanged.change.coverageLost", { dimension: label });
     }
     return t("investmentCase.whatChanged.change.coverageGained", { dimension: label });
@@ -315,7 +320,12 @@ export type RiskDataGapKind =
   | "missing_cash_flow_level"
   | "valuation_assessment_unavailable"
   | "no_evidence_to_evaluate"
-  | "missing_debt_history";
+  | "missing_debt_history"
+  | "missing_debt"
+  | "missing_operating_cash_flow"
+  | "no_aligned_period"
+  | "stale_financial_statements"
+  | "industry_unknown";
 
 export const RISK_DATA_GAP_KEY: Record<RiskDataGapKind, TranslationKey> = {
   growth_assessment_unavailable: "investmentCase.analysis.risk.gap.growthAssessmentUnavailable",
@@ -324,4 +334,9 @@ export const RISK_DATA_GAP_KEY: Record<RiskDataGapKind, TranslationKey> = {
   valuation_assessment_unavailable: "investmentCase.analysis.risk.gap.valuationAssessmentUnavailable",
   no_evidence_to_evaluate: "investmentCase.analysis.risk.gap.noEvidenceToEvaluate",
   missing_debt_history: "investmentCase.analysis.risk.gap.missingDebtHistory",
+  missing_debt: "investmentCase.analysis.risk.gap.missingDebt",
+  missing_operating_cash_flow: "investmentCase.analysis.risk.gap.missingOperatingCashFlow",
+  no_aligned_period: "investmentCase.analysis.risk.gap.noAlignedPeriod",
+  stale_financial_statements: "investmentCase.analysis.risk.gap.staleFinancialStatements",
+  industry_unknown: "investmentCase.analysis.risk.gap.industryUnknown",
 };
