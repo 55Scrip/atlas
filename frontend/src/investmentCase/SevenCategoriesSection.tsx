@@ -13,10 +13,11 @@ type Translate = (key: TranslationKey, params?: Record<string, string | number>)
  * number (`atlasRatingModel.ts`, never fabricated -- "Not rated yet"
  * when the real inputs aren't there), Upside / Risk as the brief's own
  * four qualitative levels (independent of each other -- a case can be
- * Very High Upside *and* Very High Risk at once), Horizon as Outlook's
- * own real short/long-term timeframe. No new analysis anywhere here:
- * every value is a direct read of `atlasRatingModel.ts`'s already-
- * tested derivation over data this page already fetched.
+ * Very High Upside *and* Very High Risk at once), Horizon as the
+ * Long-Term sensitivity's own 4-year compounding duration. No new
+ * analysis anywhere here: every value is a direct read of
+ * `atlasRatingModel.ts`'s already-tested derivation over data this page
+ * already fetched.
  *
  * Deliberately no per-tile expand affordance -- the rest of the page,
  * now reordered to Outlook -> Investment Argument -> Atlas Reasoning
@@ -58,14 +59,6 @@ const QUALITATIVE_LABEL_KEY: Record<QualitativeLevel, TranslationKey> = {
 };
 
 const QUALITATIVE_FILL: Record<QualitativeLevel, number> = { low: 1, moderate: 2, high: 3, very_high: 4 };
-
-const HORIZON_BUCKET_KEY: Record<Exclude<AtlasHorizon["bucket"], "missing">, TranslationKey> = {
-  near_term: "investmentCase.ratings.horizon.nearTerm",
-  one_to_two_quarters: "investmentCase.ratings.horizon.oneToTwoQuarters",
-  one_to_two_years: "investmentCase.ratings.horizon.oneToTwoYears",
-  three_to_five_years: "investmentCase.ratings.horizon.threeToFiveYears",
-  long_term: "investmentCase.ratings.horizon.longTerm",
-};
 
 const TILE_STYLE: CSSProperties = { flex: "1 1 150px", minWidth: 0 };
 
@@ -160,16 +153,14 @@ function HorizonTile({ horizon, t }: { horizon: AtlasHorizon; t: Translate }) {
     <div style={TILE_STYLE}>
       <Stack gap="metadata">
         <Label>{t("investmentCase.ratings.horizon.label")}</Label>
-        {horizon.bucket !== "missing" ? (
+        {horizon.years !== null ? (
           <>
             <Text as="span" style={{ fontWeight: 700, fontSize: "var(--type-size-h5)" }}>
-              {t(HORIZON_BUCKET_KEY[horizon.bucket])}
+              {t("investmentCase.ratings.horizon.years", { years: horizon.years })}
             </Text>
-            {horizon.monthsLow !== null && horizon.monthsHigh !== null && (
-              <Text as="span" color="tertiary">
-                {t("investmentCase.ratings.horizon.monthRange", { low: horizon.monthsLow, high: horizon.monthsHigh })}
-              </Text>
-            )}
+            <Text as="span" color="tertiary">
+              {t("investmentCase.ratings.horizon.sensitivityCaption")}
+            </Text>
           </>
         ) : (
           <Text as="span" color="tertiary">

@@ -71,6 +71,9 @@ class FitDimensionKind(str, Enum):
     RISK = "risk"
     ALLOCATION = "allocation"
     EXPECTED_CONTRIBUTION = "expected_contribution"
+    """Retired: never produced (Outlook -> Sensitivity -- see the package
+    docstring). Kept only so a previously serialized assessment still
+    reads."""
     CASH_IMPACT = "cash_impact"
 
 

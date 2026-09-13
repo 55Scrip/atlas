@@ -23,7 +23,6 @@ import {
   CONVICTION_LEVEL_KEY,
   CONVICTION_TONE,
   MISSING_EVALUATION_COPY_KEY,
-  OUTLOOK_ALIGNMENT_KEY,
   REVIEW_PRIORITY_KEY,
   REVIEW_PRIORITY_TONE,
   RISK_STATUS_TONE,
@@ -721,7 +720,6 @@ function CurrentPicture({
     isBaselineCase: report.isBaselineCase,
     latestChangeCount: report.latestChanges.length,
     currentAnalysisAt: report.currentAnalysisAt,
-    outlookAlignmentLongTerm: report.recommendation.outlookAlignment.longTerm,
     limitingFactors,
     missingEvaluations: report.recommendation.missingEvaluations,
     sharePrice: report.marketSnapshot ? report.marketSnapshot.sharePrice : null,
@@ -862,11 +860,6 @@ function DecisionSupportCard({
 
         <ExpandableDetail summaryLabel={t("companyWorkspace.decisionSupport.viewFull")}>
           <Stack gap="metadata">
-            {rec.outlookAlignment.longTerm !== "unavailable" && (
-              <Text as="p" color="tertiary">
-                {t(OUTLOOK_ALIGNMENT_KEY[rec.outlookAlignment.longTerm])}
-              </Text>
-            )}
             {limitingFactors.length > 0 && <LimitingFactorsCard factors={limitingFactors} t={t} />}
             {supportingStrengths.length > 0 && (
               <Stack gap="metadata">

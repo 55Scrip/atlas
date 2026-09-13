@@ -14,7 +14,7 @@ function ratings(overrides: Partial<SevenCategoriesInput> = {}): SevenCategories
     evidence: { score: 4, tier: "weak" },
     upside: { level: "high" },
     risk: { level: "moderate" },
-    horizon: { bucket: "three_to_five_years", monthsLow: 36, monthsHigh: 60 },
+    horizon: { years: 4 },
     ...overrides,
   };
 }
@@ -59,15 +59,16 @@ describe("SevenCategoriesSection -- Atlas UX Phase 7A (Semantic Investment Model
     expect(screen.getAllByText("investmentCase.ratings.missing").length).toBeGreaterThan(0);
   });
 
-  it("shows the real month range alongside the Horizon bucket label", () => {
+  it("shows the sensitivity's exact horizon in years, named as a sensitivity", () => {
     renderBar();
-    expect(screen.getByText("investmentCase.ratings.horizon.threeToFiveYears")).toBeInTheDocument();
-    expect(screen.getByText('investmentCase.ratings.horizon.monthRange({"low":36,"high":60})')).toBeInTheDocument();
+    expect(screen.getByText('investmentCase.ratings.horizon.years({"years":4})')).toBeInTheDocument();
+    expect(screen.getByText("investmentCase.ratings.horizon.sensitivityCaption")).toBeInTheDocument();
   });
 
-  it("shows no month range when Horizon itself is missing", () => {
-    renderBar({ horizon: { bucket: "missing", monthsLow: null, monthsHigh: null } });
-    expect(screen.queryByText(/investmentCase\.ratings\.horizon\.monthRange/)).not.toBeInTheDocument();
+  it("shows 'Not rated yet' and no years when Horizon itself is missing", () => {
+    renderBar({ horizon: { years: null } });
+    expect(screen.queryByText(/investmentCase\.ratings\.horizon\.years/)).not.toBeInTheDocument();
+    expect(screen.getAllByText("investmentCase.ratings.missing").length).toBeGreaterThan(0);
   });
 });
 

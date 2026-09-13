@@ -6,8 +6,10 @@ exact same `PortfolioFitAssessment` (Deliverable 1/10). Nothing in this
 module reads a repository, a clock beyond the `now` argument, or any
 other ambient state.
 
-**Why six dimensions, not eight.** The sprint brief names eight example
-dimensions. Two are not separate computations here:
+**Why five dimensions, not eight.** (Six until Outlook -> Sensitivity
+removed Expected Contribution: an uncalibrated sensitivity is no fit
+evidence -- see the package docstring.) The sprint brief names eight
+example dimensions. Two are not separate computations here:
 
 - **Diversification Fit** would need sector/country/asset-class spread.
   `AlphaHolding` carries none of those fields (confirmed against
@@ -49,7 +51,6 @@ from atlas.alpha.portfolio_fit.models import (
 from atlas.analysis_engine.business_contracts import BusinessCategoryStatus
 from atlas.analysis_engine.investment_case_change import ThesisImpact
 from atlas.analysis_engine.models import CanonicalAnalysis
-from atlas.analysis_engine.outlook import HorizonOutlook
 from atlas.analysis_engine.risk.models import EVALUATED_RISK_CATEGORIES, RiskAnalysisResult, RiskStatus
 from atlas.analysis_engine.valuation.models import ValuationEngineResult, ValuationMethodKind, ValuationStatus
 from atlas.analysis_engine.valuation.support import ValuationSupport, ValuationSupportStatus
@@ -273,51 +274,6 @@ def _allocation_fit(
 
 
 # ---------------------------------------------------------------------
-# Expected Contribution
-# ---------------------------------------------------------------------
-
-
-def _expected_contribution_fit(long_term: HorizonOutlook) -> FitDimension:
-    if long_term.expected_return is None:
-        return FitDimension(
-            kind=FitDimensionKind.EXPECTED_CONTRIBUTION,
-            rating=FitRating.UNAVAILABLE,
-            reasoning=(),
-            unavailable_reason=(
-                long_term.expected_return_gap.value.replace("_", " ")
-                if long_term.expected_return_gap is not None
-                else "No long-term expected-return range is available."
-            ),
-        )
-
-    # `ExpectedReturnRange.low_percent`/`high_percent` are fractional
-    # returns (e.g. `0.15` for +15%), matching `ValuationFinding
-    # .current_yield`'s own convention (`outlook.py`'s own docstring) --
-    # converted to percentage points here, once, for both the threshold
-    # comparisons below and the disclosed reasoning text.
-    er = long_term.expected_return
-    low_pct = er.low_percent * 100
-    high_pct = er.high_percent * 100
-    midpoint = (low_pct + high_pct) / 2
-    if low_pct <= -10.0:
-        rating = FitRating.POOR
-    elif midpoint < 0.0:
-        rating = FitRating.WEAK
-    elif midpoint < 8.0:
-        rating = FitRating.NEUTRAL
-    elif midpoint < 15.0:
-        rating = FitRating.GOOD
-    else:
-        rating = FitRating.EXCELLENT
-
-    reasoning = (
-        f"Long-term valuation-implied re-rating range: {low_pct:.1f}% to {high_pct:.1f}% "
-        f"annualized (a re-rating estimate, not a full forecast).",
-    )
-    return FitDimension(kind=FitDimensionKind.EXPECTED_CONTRIBUTION, rating=rating, reasoning=reasoning)
-
-
-# ---------------------------------------------------------------------
 # Cash Impact
 # ---------------------------------------------------------------------
 
@@ -395,9 +351,9 @@ def _overall_fit(
 
     # Trust Hardening Sprint: an overall verdict is a statement about
     # how well *this company* fits the portfolio -- it must never rest
-    # solely on portfolio-structural dimensions (Allocation, Expected
-    # Contribution, Cash Impact) that need no company-specific data at
-    # all. Business/Valuation/Risk are the only dimensions that read
+    # solely on portfolio-structural dimensions (Allocation, Cash
+    # Impact) that need no company-specific data at all.
+    # Business/Valuation/Risk are the only dimensions that read
     # real, ingested company analysis (`CanonicalAnalysis`) -- if none
     # of the three ever reached a real conclusion, Atlas knows nothing
     # about the company itself, and no overall rating may be produced,
@@ -488,7 +444,6 @@ def assess_portfolio_fit(
         _valuation_fit(analysis.valuation_engine, analysis.valuation_support),
         _risk_fit(analysis.risk_analysis),
         _allocation_fit(holding, portfolio_state),
-        _expected_contribution_fit(analysis.outlook.long_term),
         _cash_impact_fit(portfolio_state),
     )
     overall, overall_reasoning, overall_reasoning_code, overall_reasoning_count = _overall_fit(dimensions)

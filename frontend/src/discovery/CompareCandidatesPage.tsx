@@ -132,7 +132,10 @@ type MaterialityCompareStatus =
   | { kind: "error" }
   | { kind: "loaded"; assessmentA: MaterialityAssessmentView; assessmentB: MaterialityAssessmentView };
 
-const DIMENSION_ORDER: FitDimensionKind[] = ["business", "valuation", "risk", "allocation", "expected_contribution", "cash_impact"];
+/** The dimensions Portfolio Fit produces. `expected_contribution` is
+ * retired (Outlook -> Sensitivity) and would only ever render as a row
+ * with no value. */
+const DIMENSION_ORDER: FitDimensionKind[] = ["business", "valuation", "risk", "allocation", "cash_impact"];
 
 /**
  * Deliverable 5/6 -- side-by-side comparison, and candidate-vs-existing-

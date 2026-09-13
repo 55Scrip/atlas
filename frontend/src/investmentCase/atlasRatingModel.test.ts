@@ -100,21 +100,27 @@ describe("deriveEvidenceRating -- averages Knowledge Coverage's own two real sum
   });
 });
 
-describe("deriveUpside -- Long-Term Outlook's own real bull-case return, bucketed", () => {
-  it("null (no real scenario) is missing, never a guessed tier", () => {
-    expect(deriveUpside(null)).toEqual({ level: "missing" });
+describe("deriveUpside -- the 4-year sensitivity's highest-growth endpoint, compounded, bucketed", () => {
+  it("an unavailable or withheld endpoint is missing, never a guessed tier", () => {
+    expect(deriveUpside(null, 4)).toEqual({ level: "missing" });
+    expect(deriveUpside(0.2, null)).toEqual({ level: "missing" });
   });
-  it("under 20% is low", () => {
-    expect(deriveUpside(12)).toEqual({ level: "low" });
+  it("buckets the 4-year cumulative figure, not the annual rate", () => {
+    // 5%/yr is 21.6% over four years -- moderate, where the annual
+    // rate alone would read as low.
+    expect(deriveUpside(0.05, 4)).toEqual({ level: "moderate" });
+    // 11%/yr is 51.8% over four years -- high.
+    expect(deriveUpside(0.11, 4)).toEqual({ level: "high" });
+    // 19%/yr doubles the position (100.5%) -- very high.
+    expect(deriveUpside(0.19, 4)).toEqual({ level: "very_high" });
   });
-  it("20-49% is moderate", () => {
-    expect(deriveUpside(35)).toEqual({ level: "moderate" });
+  it("under a cumulative 20% is low, including a negative endpoint", () => {
+    expect(deriveUpside(0.04, 4)).toEqual({ level: "low" });
+    expect(deriveUpside(-0.1, 4)).toEqual({ level: "low" });
   });
-  it("50-99% is high", () => {
-    expect(deriveUpside(60)).toEqual({ level: "high" });
-  });
-  it("100%+ is very high", () => {
-    expect(deriveUpside(150)).toEqual({ level: "very_high" });
+  it("reads fractions, never percent numbers", () => {
+    // The engine sends 0.35 for +35%; a percent-scaled 35 would be absurd.
+    expect(deriveUpside(0.35, 1)).toEqual({ level: "moderate" });
   });
 });
 
@@ -136,31 +142,16 @@ describe("deriveRisk -- the worst real risk finding, never an average", () => {
   });
 });
 
-describe("deriveHorizon -- Outlook's own real per-horizon month range, never a fabricated quarter count", () => {
-  it("neither horizon available is missing", () => {
-    expect(deriveHorizon(null, null)).toEqual({ bucket: "missing", monthsLow: null, monthsHigh: null });
+describe("deriveHorizon -- the 4-year sensitivity's own compounding duration, never a bucket", () => {
+  it("Long-Term unavailable is missing -- Short-Term's re-rating has no horizon to fall back to", () => {
+    expect(deriveHorizon(null)).toEqual({ years: null });
+    expect(deriveHorizon({ monthsLow: null, monthsHigh: null })).toEqual({ years: null });
   });
-  it("prefers Long-Term when it has a real range, even if Short-Term also has one", () => {
-    expect(deriveHorizon({ monthsLow: 36, monthsHigh: 60 }, { monthsLow: 2, monthsHigh: 4 })).toEqual({
-      bucket: "three_to_five_years",
-      monthsLow: 36,
-      monthsHigh: 60,
-    });
+  it("48 months is 4 years", () => {
+    expect(deriveHorizon({ monthsLow: 48, monthsHigh: 48 })).toEqual({ years: 4 });
   });
-  it("falls back to Short-Term only when Long-Term itself has no real range", () => {
-    expect(deriveHorizon(null, { monthsLow: 2, monthsHigh: 4 })).toEqual({
-      bucket: "near_term",
-      monthsLow: 2,
-      monthsHigh: 4,
-    });
-  });
-  it("buckets a 4-6 month low as one_to_two_quarters", () => {
-    expect(deriveHorizon({ monthsLow: 4, monthsHigh: 8 }, null).bucket).toBe("one_to_two_quarters");
-  });
-  it("buckets a 12-month low as one_to_two_years", () => {
-    expect(deriveHorizon({ monthsLow: 12, monthsHigh: 18 }, null).bucket).toBe("one_to_two_years");
-  });
-  it("buckets a 72-month low as long_term", () => {
-    expect(deriveHorizon({ monthsLow: 72, monthsHigh: 96 }, null).bucket).toBe("long_term");
+  it("a range that is not one whole number of years is not rounded into one", () => {
+    expect(deriveHorizon({ monthsLow: 36, monthsHigh: 60 })).toEqual({ years: null });
+    expect(deriveHorizon({ monthsLow: 30, monthsHigh: 30 })).toEqual({ years: null });
   });
 });

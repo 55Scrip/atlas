@@ -3,6 +3,37 @@ data pipeline behind the Investment Case's Short-Term / Long-Term
 Outlook panels, which have shown only honest "Not yet computed"
 placeholders since the Figma-fidelity rebuild.
 
+**Role: a sensitivity, never a forecast (Outlook -> Sensitivity).**
+`OUTLOOK_ROLE` is `"sensitivity"`. Both horizons are deterministic
+"what would have to be true" arithmetic on the company's own history --
+no probabilities, no expected value, no price target:
+
+- *Short-Term -- re-rating sensitivity.* Today's free cash flow held
+  fixed, re-priced at the company's own historical FCF yields. There is
+  no time in the formula, so it carries no horizon
+  (`ExpectedReturnRange.horizon_months_*` is `None`).
+- *Long-Term -- 4-year FCF + valuation sensitivity.* Historical FCF
+  growth compounded for exactly `LONG_TERM_COMPOUNDING_YEARS`, re-priced
+  at the historical median yield; its horizon is those 48 months.
+- *Bull / Base / Bear* are the richest / median / cheapest historical
+  valuation (Short-Term) or the highest / median / lowest historical
+  growth (Long-Term) -- "base" is the median assumption, never "most
+  likely".
+- *Comparable anchors only.* An anchor fiscal year whose free cash flow is
+  below `NEAR_ZERO_FCF_ANCHOR_RATIO` of the Case's median epoch FCF is a
+  different regime -- a near-zero trough (AMD's FY2016: $4M, a 5,901x
+  multiple, a "+4998%" re-rating) or a far smaller company -- and is not
+  a comparable anchor for today. A Short-Term endpoint anchored there is
+  withheld (the others stay); a Long-Term growth window touching one is
+  left out of the growth range; a near-zero *current* FCF (or, for
+  Long-Term, a near-zero median year behind the shared terminal yield)
+  withholds the horizon. Named `OutlookGapKind.NEAR_ZERO_FCF_ANCHOR`,
+  never shown as a number.
+
+Portfolio Fit does not read Outlook (an uncalibrated implied return is no
+evidence of fit), and nothing decision-facing does: direction, conviction
+and Valuation Support never import this module.
+
 **Reuses, never re-derives.** Every input this module reads is already
 computed elsewhere in `atlas.analysis_engine`: `business_analysis`,
 `valuation_engine`, `risk_analysis`, `conviction`, and `synthesis` are
@@ -222,9 +253,12 @@ from atlas.analysis_engine.risk.contracts import RiskStatus
 from atlas.analysis_engine.risk.models import RiskAnalysisResult
 from atlas.analysis_engine.valuation.contracts import ValuationMethodKind
 from atlas.analysis_engine.valuation.contracts import ValuationStatus as ValStatus
-from atlas.analysis_engine.valuation.models import ValuationEngineResult
+from atlas.analysis_engine.valuation.models import FcfYieldEvidence, ValuationEngineResult
 
 __all__ = [
+    "OUTLOOK_ROLE",
+    "OUTLOOK_METHODOLOGY",
+    "NEAR_ZERO_FCF_ANCHOR_RATIO",
     "OutlookHorizon",
     "ReturnBasis",
     "OutlookGapKind",
@@ -243,24 +277,28 @@ __all__ = [
     "derive_outlook_momentum",
 ]
 
-#: Short-Term's own approximate horizon, named once here rather than
-#: scattered across call sites -- matches the sprint brief's own
-#: "approximately 6-12 months" framing exactly. Structured (months, not
-#: a free-text label) so a caller/frontend renders its own localized
-#: label rather than parsing one.
-SHORT_TERM_HORIZON_MONTHS = (6, 12)
-#: Long-Term's own approximate horizon -- "approximately 3-5 years,"
-#: expressed in months for the identical unit `ExpectedReturnRange`
-#: already carries for Short-Term, so a caller never needs a second unit
-#: system to compare the two.
-LONG_TERM_HORIZON_MONTHS = (36, 60)
-#: The single internal compounding duration Long-Term's return
-#: arithmetic actually uses -- the midpoint of the stated 3-5-year
-#: range, documented here rather than hidden inside a formula (Part 10).
-#: The reader always sees the honest 3-5-year range via
-#: `horizon_months_low`/`horizon_months_high`; this is only the exponent
-#: the growth-compounding/annualization math needs internally.
+#: What Outlook is: a sensitivity -- see the module docstring. Carried to
+#: the API so no presentation layer has to infer it.
+OUTLOOK_ROLE = "sensitivity"
+#: Names how Outlook is constructed and consumed, for the Decision Layer's
+#: methodology identity (`atlas.analysis_engine.methodology`): v2 is the
+#: sensitivity role with comparable-anchor withholding, no longer read by
+#: Portfolio Fit. v1 was the expected-return presentation feeding Fit.
+OUTLOOK_METHODOLOGY = "sensitivity_v2"
+#: The exact compounding duration of the Long-Term sensitivity -- the
+#: formula's own exponent, so the horizon shown is exactly this.
 LONG_TERM_COMPOUNDING_YEARS = 4
+#: Long-Term's horizon, in months: exactly the compounding duration.
+LONG_TERM_HORIZON_MONTHS = (LONG_TERM_COMPOUNDING_YEARS * 12, LONG_TERM_COMPOUNDING_YEARS * 12)
+#: Policy, not a statistical result: an anchor fiscal year whose free cash
+#: flow is below this fraction of the Case's median FCF across its own
+#: valuation epochs (prior fiscal years and the current one) is not a
+#: comparable anchor. Chosen from the persisted corpus: the seven audited
+#: pathological Short-Term anchors sit at 0.004-0.059x (AMD FY2016, META
+#: FY2012, CRWD FY2020, V FY2009, AMAT FY2009, AMZN FY2012, MU FY2024) and
+#: the lowest ordinary anchor at 0.129x, so any cut between 0.06 and 0.12
+#: selects the same set.
+NEAR_ZERO_FCF_ANCHOR_RATIO = 0.1
 #: Mirrors `investment_case_synthesis._RECENT_WINDOW_SIZE` exactly --
 #: the same "most recent N periods" window, reused for the identical
 #: reason, applied to Free Cash Flow instead of Revenue (see
@@ -312,6 +350,13 @@ class OutlookGapKind(str, Enum):
     is a genuine, honest outcome -- a real company's own real historical
     volatility, not a modeling limitation -- and this module never
     loosens the gate or extrapolates through it to avoid reporting it."""
+    NEAR_ZERO_FCF_ANCHOR = "near_zero_fcf_anchor"
+    """The anchor is not comparable: its fiscal year's free cash flow is
+    below `NEAR_ZERO_FCF_ANCHOR_RATIO` of the Case's median epoch FCF. On a
+    scenario: that endpoint is withheld. On a horizon: today's own FCF is
+    such an anchor, or (Long-Term) the median year behind the terminal
+    yield is, or fewer than two growth windows remain once windows
+    touching one are left out."""
 
 
 class OutlookAssumptionKind(str, Enum):
@@ -393,8 +438,10 @@ class ExpectedReturnRange:
     low_percent: float
     high_percent: float
     basis: ReturnBasis
-    horizon_months_low: int
-    horizon_months_high: int
+    horizon_months_low: int | None
+    horizon_months_high: int | None
+    """`None` for Short-Term: an instantaneous re-rating has no horizon.
+    Long-Term's is exactly its compounding duration."""
     assumption: OutlookAssumption
 
 
@@ -431,9 +478,21 @@ class OutlookScenario:
     quietly implying more."""
 
     kind: ScenarioKind
-    return_percent: float
+    return_percent: float | None
+    """`None` exactly when `withheld_reason` is set -- a withheld endpoint
+    is never a zero or a clipped number."""
     assumption: OutlookAssumption
     driver: "OutlookDriverKind"
+    withheld_reason: "OutlookGapKind | None" = None
+    anchor_periods: tuple[str, ...] = ()
+    """The fiscal period(s) this endpoint is anchored on: the yield's
+    fiscal year (Short-Term; two when a median falls between two years),
+    or the growth window's start and end years (Long-Term; four when a
+    median falls between two windows)."""
+
+    def __post_init__(self) -> None:
+        if (self.return_percent is None) != (self.withheld_reason is not None):
+            raise ValueError("An Outlook scenario carries exactly one of return_percent/withheld_reason.")
 
 
 class OutlookMomentumKind(str, Enum):
@@ -576,9 +635,51 @@ def _rerating_return(current_yield: float, target_yield: float) -> float:
     return (current_yield / target_yield) - 1.0
 
 
+def _comparable_anchor_cut(evidence: "FcfYieldEvidence | None") -> float | None:
+    """The FCF below which an anchor fiscal year is not comparable --
+    `NEAR_ZERO_FCF_ANCHOR_RATIO` of the median FCF across the Case's own
+    valuation epochs (prior fiscal years and the current one). `None`
+    when no epochs are known (hand-built fixtures): nothing is judged."""
+    if evidence is None or evidence.current is None or not evidence.prior_epochs:
+        return None
+    fcf = [epoch.free_cash_flow for epoch in evidence.prior_epochs] + [evidence.current.free_cash_flow]
+    return NEAR_ZERO_FCF_ANCHOR_RATIO * statistics.median(fcf)
+
+
+def _median_members(ordered: list) -> list:
+    """The one or two middle items `statistics.median` averages."""
+    middle = len(ordered) // 2
+    return ordered[middle - 1:middle + 1] if len(ordered) % 2 == 0 else [ordered[middle]]
+
+
+def _scenario(kind, return_percent, assumption, driver, anchors, cut, fcf_of):
+    """One endpoint -- withheld, never a number, when any anchor is below
+    the comparable-anchor cut."""
+    periods = tuple(anchors)
+    if cut is not None and any(fcf_of(period) < cut for period in periods):
+        return OutlookScenario(
+            kind=kind, return_percent=None, assumption=assumption, driver=driver,
+            withheld_reason=OutlookGapKind.NEAR_ZERO_FCF_ANCHOR, anchor_periods=periods,
+        )
+    return OutlookScenario(kind=kind, return_percent=return_percent, assumption=assumption, driver=driver, anchor_periods=periods)
+
+
+def _range_over(scenarios: tuple[OutlookScenario, ...], *, basis: ReturnBasis, months: tuple[int, int] | None,
+                assumption: OutlookAssumption) -> ExpectedReturnRange | None:
+    shown = [s.return_percent for s in scenarios if s.return_percent is not None]
+    if not shown:
+        return None
+    return ExpectedReturnRange(
+        low_percent=min(shown), high_percent=max(shown), basis=basis,
+        horizon_months_low=months[0] if months else None, horizon_months_high=months[1] if months else None,
+        assumption=assumption,
+    )
+
+
 def _short_term_valuation(
     fcf_finding_current_yield: float | None,
     historical_yields: tuple[float, ...],
+    evidence: "FcfYieldEvidence | None" = None,
 ) -> tuple[ExpectedReturnRange | None, OutlookGapKind | None, tuple[OutlookScenario, ...], OutlookGapKind | None]:
     if fcf_finding_current_yield is None:
         gap = OutlookGapKind.VALUATION_NOT_CONCLUSIVE
@@ -587,10 +688,23 @@ def _short_term_valuation(
         gap = OutlookGapKind.NO_HISTORICAL_VALUATION_RANGE
         return None, gap, (), gap
 
+    cut = _comparable_anchor_cut(evidence)
+    if cut is not None and evidence.current.free_cash_flow < cut:
+        gap = OutlookGapKind.NEAR_ZERO_FCF_ANCHOR
+        return None, gap, (), gap
+
     current_yield = fcf_finding_current_yield
     low_yield = min(historical_yields)
     high_yield = max(historical_yields)
     median_yield = statistics.median(historical_yields)
+
+    # The fiscal year behind each yield (`historical_yields` is exactly the
+    # sorted prior-epoch yields -- `ValuationFinding` enforces it).
+    epochs = sorted(evidence.prior_epochs, key=lambda e: (e.fcf_yield, e.fiscal_period)) if evidence is not None else []
+    fcf_by_period = {e.fiscal_period: e.free_cash_flow for e in epochs}
+    low_anchor = (epochs[0].fiscal_period,) if epochs else ()
+    high_anchor = (epochs[-1].fiscal_period,) if epochs else ()
+    median_anchor = tuple(e.fiscal_period for e in _median_members(epochs)) if epochs else ()
 
     def _assumption(target_yield: float) -> OutlookAssumption:
         return OutlookAssumption(
@@ -604,39 +718,20 @@ def _short_term_valuation(
     #: reverting toward the *lowest* recorded yield is the Bull case;
     #: reverting toward the *highest* is Bear. See `_rerating_return`'s
     #: own docstring for the underlying market-cap identity.
-    bull_return = _rerating_return(current_yield, low_yield)
-    base_return = _rerating_return(current_yield, median_yield)
-    bear_return = _rerating_return(current_yield, high_yield)
-
+    driver = OutlookDriverKind.VALUATION_RERATING
+    fcf_of = fcf_by_period.__getitem__
     scenarios = (
-        OutlookScenario(
-            kind=ScenarioKind.BULL,
-            return_percent=bull_return,
-            assumption=_assumption(low_yield),
-            driver=OutlookDriverKind.VALUATION_RERATING,
-        ),
-        OutlookScenario(
-            kind=ScenarioKind.BASE,
-            return_percent=base_return,
-            assumption=_assumption(median_yield),
-            driver=OutlookDriverKind.VALUATION_RERATING,
-        ),
-        OutlookScenario(
-            kind=ScenarioKind.BEAR,
-            return_percent=bear_return,
-            assumption=_assumption(high_yield),
-            driver=OutlookDriverKind.VALUATION_RERATING,
-        ),
+        _scenario(ScenarioKind.BULL, _rerating_return(current_yield, low_yield), _assumption(low_yield),
+                  driver, low_anchor, cut, fcf_of),
+        _scenario(ScenarioKind.BASE, _rerating_return(current_yield, median_yield),
+                  _assumption(median_yield), driver, median_anchor, cut, fcf_of),
+        _scenario(ScenarioKind.BEAR, _rerating_return(current_yield, high_yield), _assumption(high_yield),
+                  driver, high_anchor, cut, fcf_of),
     )
-
-    expected_return = ExpectedReturnRange(
-        low_percent=min(bull_return, base_return, bear_return),
-        high_percent=max(bull_return, base_return, bear_return),
-        basis=ReturnBasis.CUMULATIVE,
-        horizon_months_low=SHORT_TERM_HORIZON_MONTHS[0],
-        horizon_months_high=SHORT_TERM_HORIZON_MONTHS[1],
-        assumption=_assumption(median_yield),
-    )
+    expected_return = _range_over(scenarios, basis=ReturnBasis.CUMULATIVE, months=None, assumption=_assumption(median_yield))
+    if expected_return is None:
+        gap = OutlookGapKind.NEAR_ZERO_FCF_ANCHOR
+        return None, gap, (), gap
     return expected_return, None, scenarios, None
 
 
@@ -772,6 +867,7 @@ def _long_term_valuation(
     fcf_finding_current_yield: float | None,
     historical_yields: tuple[float, ...],
     generated_at: datetime,
+    evidence: FcfYieldEvidence | None = None,
 ) -> tuple[
     ExpectedReturnRange | None,
     OutlookGapKind | None,
@@ -820,12 +916,34 @@ def _long_term_valuation(
         gap = OutlookGapKind.NO_HISTORICAL_VALUATION_RANGE
         return None, gap, (), gap, recent_fcf_trend
 
+    # Growth measured from, or to, a non-comparable anchor year (a
+    # near-zero trough or a far smaller company) is no trajectory for
+    # today: AMD's FY2016 -> FY2020 window compounds a $4M base into
+    # 273%/yr. Such windows leave the range; the count gate above is
+    # unchanged, and fewer than two comparable windows withhold it.
+    cut = _comparable_anchor_cut(evidence)
+    if cut is not None and evidence.current.free_cash_flow < cut:
+        gap = OutlookGapKind.NEAR_ZERO_FCF_ANCHOR
+        return None, gap, (), gap, recent_fcf_trend
+    # The terminal (median) yield is every scenario's shared anchor, so a
+    # non-comparable median year withholds the horizon, not one endpoint.
+    if cut is not None:
+        epochs = sorted(evidence.prior_epochs, key=lambda e: (e.fcf_yield, e.fiscal_period))
+        if any(e.free_cash_flow < cut for e in _median_members(epochs)):
+            gap = OutlookGapKind.NEAR_ZERO_FCF_ANCHOR
+            return None, gap, (), gap, recent_fcf_trend
+    windows = sorted(
+        (w for w in corroborated_by(fcf_cagr_observations, revenue_periods)
+         if cut is None or (w.start_value >= cut and w.end_value >= cut)),
+        key=lambda w: (w.rate, w.start_period),
+    )
+    if len(windows) < 2:
+        gap = OutlookGapKind.NEAR_ZERO_FCF_ANCHOR
+        return None, gap, (), gap, recent_fcf_trend
+
     current_yield = fcf_finding_current_yield
     terminal_yield = statistics.median(historical_yields)
-
-    growth_low = min(corroborated_rates)
-    growth_median = statistics.median(corroborated_rates)
-    growth_high = max(corroborated_rates)
+    rates = [w.rate for w in windows]
 
     def _assumption(growth_rate: float) -> OutlookAssumption:
         return OutlookAssumption(
@@ -835,12 +953,18 @@ def _long_term_valuation(
             observation_count=len(historical_yields),
             growth_rate=growth_rate,
             horizon_years=years,
-            growth_observation_count=len(corroborated_rates),
+            growth_observation_count=len(windows),
         )
 
-    def _return_for(growth_rate: float) -> float:
-        return _annualized_return(
-            current_yield=current_yield, terminal_yield=terminal_yield, growth_rate=growth_rate, years=years
+    def _scenario_for(kind: ScenarioKind, growth_rate: float, anchored_on: list[GrowthObservation]) -> OutlookScenario:
+        return OutlookScenario(
+            kind=kind,
+            return_percent=_annualized_return(
+                current_yield=current_yield, terminal_yield=terminal_yield, growth_rate=growth_rate, years=years
+            ),
+            assumption=_assumption(growth_rate),
+            driver=OutlookDriverKind.FCF_GROWTH_TREND,
+            anchor_periods=tuple(period for w in anchored_on for period in (w.start_period, w.end_period)),
         )
 
     #: Higher realized FCF growth is unambiguously the Bull case here --
@@ -848,38 +972,14 @@ def _long_term_valuation(
     #: yield are not the same lever, so there is no valuation-direction
     #: inversion to account for (contrast `_short_term_valuation`'s own
     #: comment on why its own low/high yield mapping is inverted).
-    bull_return = _return_for(growth_high)
-    base_return = _return_for(growth_median)
-    bear_return = _return_for(growth_low)
-
+    growth_median = statistics.median(rates)
     scenarios = (
-        OutlookScenario(
-            kind=ScenarioKind.BULL,
-            return_percent=bull_return,
-            assumption=_assumption(growth_high),
-            driver=OutlookDriverKind.FCF_GROWTH_TREND,
-        ),
-        OutlookScenario(
-            kind=ScenarioKind.BASE,
-            return_percent=base_return,
-            assumption=_assumption(growth_median),
-            driver=OutlookDriverKind.FCF_GROWTH_TREND,
-        ),
-        OutlookScenario(
-            kind=ScenarioKind.BEAR,
-            return_percent=bear_return,
-            assumption=_assumption(growth_low),
-            driver=OutlookDriverKind.FCF_GROWTH_TREND,
-        ),
+        _scenario_for(ScenarioKind.BULL, windows[-1].rate, [windows[-1]]),
+        _scenario_for(ScenarioKind.BASE, growth_median, _median_members(windows)),
+        _scenario_for(ScenarioKind.BEAR, windows[0].rate, [windows[0]]),
     )
-
-    expected_return = ExpectedReturnRange(
-        low_percent=min(bull_return, base_return, bear_return),
-        high_percent=max(bull_return, base_return, bear_return),
-        basis=ReturnBasis.ANNUALIZED,
-        horizon_months_low=LONG_TERM_HORIZON_MONTHS[0],
-        horizon_months_high=LONG_TERM_HORIZON_MONTHS[1],
-        assumption=_assumption(growth_median),
+    expected_return = _range_over(
+        scenarios, basis=ReturnBasis.ANNUALIZED, months=LONG_TERM_HORIZON_MONTHS, assumption=_assumption(growth_median)
     )
     return expected_return, None, scenarios, None, recent_fcf_trend
 
@@ -1101,7 +1201,7 @@ def build_outlook(
     )
 
     short_expected_return, short_return_gap, short_scenarios, short_scenarios_gap = _short_term_valuation(
-        fcf_finding.current_yield, fcf_finding.historical_yields
+        fcf_finding.current_yield, fcf_finding.historical_yields, fcf_finding.fcf_yield_evidence
     )
     short_drivers = _short_term_drivers(
         fcf_status=fcf_finding.status,
@@ -1134,6 +1234,7 @@ def build_outlook(
             fcf_finding_current_yield=fcf_finding.current_yield,
             historical_yields=fcf_finding.historical_yields,
             generated_at=generated_at,
+            evidence=fcf_finding.fcf_yield_evidence,
         )
     )
     margin_trend = _operating_margin_trend(business_facts, generated_at=generated_at)

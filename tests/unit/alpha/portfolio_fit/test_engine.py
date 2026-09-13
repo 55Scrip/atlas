@@ -17,7 +17,6 @@ from atlas.alpha.portfolio_fit.engine import (
     _allocation_fit,
     _business_fit,
     _cash_impact_fit,
-    _expected_contribution_fit,
     _overall_fit,
     _risk_fit,
     _valuation_fit,
@@ -38,17 +37,6 @@ from atlas.analysis_engine.business_contracts import (
     BusinessFinding,
 )
 from atlas.analysis_engine.findings import FindingSeverity
-from atlas.analysis_engine.conviction import ConvictionLevel
-from atlas.analysis_engine.outlook import (
-    ExpectedReturnRange,
-    HorizonOutlook,
-    OutlookAssumption,
-    OutlookAssumptionKind,
-    OutlookGapKind,
-    OutlookHorizon,
-    OutlookMomentumKind,
-    ReturnBasis,
-)
 from atlas.analysis_engine.provenance import Consumer, Provenance, SourceKind, UpdateTrigger
 from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.risk.contracts import RiskStatus
@@ -161,40 +149,6 @@ def _valuation_support(status: ValuationSupportStatus) -> ValuationSupport:
     return ValuationSupport(status=status, reasoning="test", gap=gap)
 
 
-def _outlook_assumption() -> OutlookAssumption:
-    return OutlookAssumption(
-        kind=OutlookAssumptionKind.HISTORICAL_FCF_YIELD_REVERSION,
-        current_fcf_yield=0.05,
-        target_fcf_yield=0.05,
-        observation_count=4,
-    )
-
-
-def _horizon_outlook(low_percent: float | None, high_percent: float | None) -> HorizonOutlook:
-    expected_return = (
-        ExpectedReturnRange(
-            low_percent=low_percent,
-            high_percent=high_percent,
-            basis=ReturnBasis.ANNUALIZED,
-            horizon_months_low=24,
-            horizon_months_high=36,
-            assumption=_outlook_assumption(),
-        )
-        if low_percent is not None
-        else None
-    )
-    return HorizonOutlook(
-        horizon=OutlookHorizon.LONG_TERM,
-        expected_return=expected_return,
-        expected_return_gap=None if expected_return is not None else OutlookGapKind.NO_HISTORICAL_VALUATION_RANGE,
-        scenarios=(),
-        scenarios_gap=OutlookGapKind.NO_HISTORICAL_VALUATION_RANGE,
-        conviction=ConvictionLevel.MODERATE,
-        momentum=OutlookMomentumKind.UNAVAILABLE,
-        key_drivers=(),
-    )
-
-
 def _portfolio_state(*, holdings: tuple[AlphaHolding, ...] = (), cash_weight_percent: float | None = None) -> AlphaPortfolioState:
     return AlphaPortfolioState(
         established_at=_NOW,
@@ -279,19 +233,32 @@ class TestAllocationFit:
         assert result.rating is not FitRating.UNAVAILABLE
 
 
-class TestExpectedContributionFit:
-    def test_high_positive_range_is_excellent(self):
-        result = _expected_contribution_fit(_horizon_outlook(0.12, 0.25))
-        assert result.rating is FitRating.EXCELLENT
+class TestOutlookIsNotAFitInput:
+    """Outlook -> Sensitivity: Outlook's scenarios are conditional
+    sensitivity arithmetic, not an expected return, so they no longer
+    vote in Portfolio Fit. The retired `EXPECTED_CONTRIBUTION` kind stays
+    in the enum only so an old serialized assessment still reads."""
 
-    def test_deeply_negative_low_bound_is_poor(self):
-        result = _expected_contribution_fit(_horizon_outlook(-0.20, -0.05))
-        assert result.rating is FitRating.POOR
+    def test_the_engine_never_imports_outlook(self):
+        import ast
+        import inspect
 
-    def test_no_range_available_is_unavailable(self):
-        result = _expected_contribution_fit(_horizon_outlook(None, None))
-        assert result.rating is FitRating.UNAVAILABLE
-        assert result.unavailable_reason is not None
+        import atlas.alpha.portfolio_fit.engine as engine
+
+        tree = ast.parse(inspect.getsource(engine))
+        imported = {
+            node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module
+        } | {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names}
+        assert not any("outlook" in name for name in imported)
+
+    def test_no_dimension_function_reads_an_outlook(self):
+        import atlas.alpha.portfolio_fit.engine as engine
+
+        assert not hasattr(engine, "_expected_contribution_fit")
+
+    def test_the_retired_kind_is_never_among_the_produced_dimensions(self):
+        assert FitDimensionKind.EXPECTED_CONTRIBUTION not in _PRODUCED_KINDS
+        assert len(_PRODUCED_KINDS) == 5
 
 
 class TestCashImpactFit:
@@ -308,22 +275,31 @@ class TestCashImpactFit:
         assert result.rating is FitRating.UNAVAILABLE
 
 
+_PRODUCED_KINDS = (
+    FitDimensionKind.BUSINESS,
+    FitDimensionKind.VALUATION,
+    FitDimensionKind.RISK,
+    FitDimensionKind.ALLOCATION,
+    FitDimensionKind.CASH_IMPACT,
+)
+
+
 def _dim(kind: FitDimensionKind, rating: FitRating) -> FitDimension:
     return FitDimension(kind=kind, rating=rating, reasoning=())
 
 
 class TestOverallFit:
     def test_all_excellent_is_excellent(self):
-        dims = tuple(_dim(kind, FitRating.EXCELLENT) for kind in FitDimensionKind)
+        dims = tuple(_dim(kind, FitRating.EXCELLENT) for kind in _PRODUCED_KINDS)
         overall, _, code, count = _overall_fit(dims)
         assert overall is FitRating.EXCELLENT
         assert code is FitVerdictReasonCode.MOSTLY_EXCELLENT
-        assert count == len(FitDimensionKind)
+        assert count == len(_PRODUCED_KINDS)
 
     def test_poor_risk_gates_the_overall_verdict_even_with_other_dimensions_excellent(self):
         dims = tuple(
             _dim(kind, FitRating.POOR if kind is FitDimensionKind.RISK else FitRating.EXCELLENT)
-            for kind in FitDimensionKind
+            for kind in _PRODUCED_KINDS
         )
         overall, reasoning, code, count = _overall_fit(dims)
         assert overall is FitRating.POOR
@@ -332,7 +308,7 @@ class TestOverallFit:
         assert count is None
 
     def test_all_unavailable_is_unavailable(self):
-        dims = tuple(_dim(kind, FitRating.UNAVAILABLE) for kind in FitDimensionKind)
+        dims = tuple(_dim(kind, FitRating.UNAVAILABLE) for kind in _PRODUCED_KINDS)
         overall, _, code, _count = _overall_fit(dims)
         assert overall is FitRating.UNAVAILABLE
         assert code is FitVerdictReasonCode.NO_DIMENSION_EVALUATED

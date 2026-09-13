@@ -16,7 +16,6 @@ import {
   DECISION_SUPPORT_STATEMENT_KEY,
   DECISION_SUPPORT_TONE,
   MISSING_EVALUATION_COPY_KEY,
-  OUTLOOK_ALIGNMENT_KEY,
   VALUATION_SUPPORT_GAP_COPY_KEY,
   VALUATION_SUPPORT_LABEL_KEY,
   VALUATION_SUPPORT_TONE,
@@ -25,7 +24,6 @@ import {
   type ConvictionReasonCode,
   type DecisionSupportLevel,
   type MissingEvaluationCategory,
-  type OutlookRecommendationRelationship,
   type ValuationSupportStatus,
 } from "../status/statusTone";
 import { formatRelativeTime } from "../activity/deriveActivity";
@@ -68,14 +66,10 @@ import { ExpandableDetail } from "./ExpandableDetail";
  * price target or a scenario-based valuation -- see
  * `atlas.analysis_engine.outlook`'s own module docstring.
  *
- * Recommendation / Decision Intelligence Sprint 1: a single, disclosed
- * line beneath Key Metrics reports whether Long-Term Outlook currently
- * corroborates or diverges from this Recommendation
- * (`outlookAlignmentLongTerm`) -- computed entirely independently of
- * Direction selection (`atlas.analysis_engine.recommendation_outlook_context`),
- * never its cause. Omitted entirely when unavailable (Recommendation
- * Withheld, or this horizon's Outlook itself unavailable) -- no line is
- * better than a noisy, uninformative one.
+ * Outlook -> Sensitivity: the line that said whether Long-Term Outlook
+ * "corroborates" or "diverges from" the Recommendation is gone. It read
+ * a sensitivity as prospective returns and set it beside the verdict as
+ * if it were evidence for or against it.
  */
 
 /** Exported for `SevenCategoriesSection.tsx`'s `CaseDnaLine` -- the
@@ -174,9 +168,6 @@ export interface HeroAnalysisInput {
      reads the identical values straight from `analysis.outlook` and
      labels them correctly, so nothing needed to be threaded through
      here to keep them on the page. */
-  /** Recommendation / Decision Intelligence Sprint 1 -- see this file's
-   * own module docstring. */
-  outlookAlignmentLongTerm: OutlookRecommendationRelationship;
   /** Alpha Freeze correction sprint (Principal Engineer Review 2.0,
    * finding M-2) -- `DE-015`'s `ValuationSupport.status`, rendered under
    * the safe presentation labels `UX-021`/`UX-022` already specified,
@@ -528,12 +519,6 @@ export function HeroCard({
           {analysis.convictionReasonCodes[0] && (
             <Text as="p" color="secondary">
               {t(CONVICTION_REASON_KEY[analysis.convictionReasonCodes[0]])}
-            </Text>
-          )}
-
-          {analysis.outlookAlignmentLongTerm !== "unavailable" && (
-            <Text as="p" color="tertiary">
-              {t(OUTLOOK_ALIGNMENT_KEY[analysis.outlookAlignmentLongTerm])}
             </Text>
           )}
 

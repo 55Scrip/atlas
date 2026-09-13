@@ -458,13 +458,16 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.ratings.portfolio.label": "Portfölj",
   "investmentCase.ratings.evidence.label": "Täckning",
   // Canonical Reasoning Consolidation, Phase F. Was "Uppsida". This
-  // tile thresholds the Long-Term *Bull scenario* return bound; no
-  // scenario probabilities exist, so it is not the canonical Upside
-  // concept and must not be labelled as though it were. The label
-  // now names its derivation.
-  "investmentCase.ratings.upside.label": "Värderingsimplicerad uppsida",
+  // tile thresholds the Long-Term sensitivity's highest-growth endpoint,
+  // compounded over its 4 years; no scenario probabilities exist, so it
+  // is not the canonical Upside concept and must not be labelled as
+  // though it were. Outlook -> Sensitivity: "Värderingsimplicerad
+  // uppsida" became "Uppsidekänslighet".
+  "investmentCase.ratings.upside.label": "Uppsidekänslighet",
   "investmentCase.ratings.risk.label": "Risk",
   "investmentCase.ratings.horizon.label": "Tidshorisont",
+  "investmentCase.ratings.horizon.years": "{{years}} år",
+  "investmentCase.ratings.horizon.sensitivityCaption": "Långsiktig känslighet",
   "investmentCase.ratings.tier.excellent": "Utmärkt",
   "investmentCase.ratings.tier.good": "Bra",
   "investmentCase.ratings.tier.fair": "Godtagbar",
@@ -476,12 +479,6 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.ratings.qualitative.moderate": "Måttlig",
   "investmentCase.ratings.qualitative.high": "Hög",
   "investmentCase.ratings.qualitative.veryHigh": "Mycket hög",
-  "investmentCase.ratings.horizon.nearTerm": "Kort sikt",
-  "investmentCase.ratings.horizon.oneToTwoQuarters": "1–2 kvartal",
-  "investmentCase.ratings.horizon.oneToTwoYears": "1–2 år",
-  "investmentCase.ratings.horizon.threeToFiveYears": "3–5 år",
-  "investmentCase.ratings.horizon.longTerm": "Lång sikt",
-  "investmentCase.ratings.horizon.monthRange": "{{low}}–{{high}} månader",
   "investmentCase.caseDna.label": "Case DNA",
   "investmentCase.hero.openQuestionLabel": "Öppen fråga",
   "investmentCase.hero.openQuestion.none": "Inga öppna frågor just nu.",
@@ -1184,16 +1181,9 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.keyMetrics.priceRefreshing": "Uppdaterar…",
   "investmentCase.keyMetrics.priceRefreshFailed": "Uppdatering misslyckades",
   "investmentCase.keyMetrics.priceRefreshButton": "Uppdatera",
-  "investmentCase.keyMetrics.expectedReturnLabel": "Förväntad avkastning",
-  "investmentCase.keyMetrics.upsideDownsideLabel": "Uppsida / nedsida",
   "investmentCase.keyMetrics.notYetAvailable": "Inte tillgängligt ännu",
-  "investmentCase.keyMetrics.expectedReturnCaption": "Långsiktigt tillväxt- och återgångsintervall -- inte en kursmålsättning.",
 
-  // ---------- Recommendation / Decision Intelligence Sprint 1: Outlook<->rekommendation-samstämmighet ----------
-  "investmentCase.outlookAlignment.corroborates": "Atlas oberoende beräknade långsiktiga utsikter pekar också på svag förväntad avkastning, vilket överensstämmer med denna rekommendation.",
-  "investmentCase.outlookAlignment.diverges": "Atlas oberoende beräknade långsiktiga utsikter pekar på starkare förväntad avkastning än vad denna rekommendation speglar -- en verklig spänning värd att väga in, inte en motsägelse.",
-  "investmentCase.outlookAlignment.mixed": "Atlas oberoende beräknade långsiktiga utsikter är blandade och varken tydligt bekräftar eller avviker från denna rekommendation.",
-  "investmentCase.outlookAlignment.unavailable": "Långsiktiga utsikter är inte tillgängliga ännu för jämförelse med denna rekommendation.",
+  // ---------- Recommendation / Decision Intelligence Sprint 1 ----------
   "investmentCase.whatWouldChange.heading": "Vad som skulle ändra Atlas syn",
   "investmentCase.whatWouldChange.reducedRisk": "En minskad finansiell risk eller värderingsrisk",
   "investmentCase.whatWouldChange.moreAttractiveValuation": "En väsentligt mer attraktiv värdering",
@@ -1212,15 +1202,15 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.concern.thesis_risk": "Själva tesen bär på en identifierad risk värd att bevaka.",
 
   // ---------- investment case figma-fidelity rebuild: atlas outlook ----------
-  "investmentCase.outlook.heading": "Atlas utsikter",
+  "investmentCase.outlook.heading": "Värderingskänslighet",
+  "investmentCase.outlook.caption": "Inte en prognos. Visar vad dagens pris innebär om bolagets egna historiska värderings- och tillväxtnivåer skulle gälla.",
   "investmentCase.outlook.notYetComputed": "Inte beräknat ännu",
-  "investmentCase.outlook.shortTerm.heading": "Kort sikt",
-  "investmentCase.outlook.longTerm.heading": "Lång sikt",
-  "investmentCase.outlook.expectedReturnLabel": "Värderingsimplicerat avkastningsintervall",
-  "investmentCase.outlook.convictionLabel": "Övertygelse",
-  "investmentCase.outlook.bullCaseLabel": "Värdering — optimistiskt",
-  "investmentCase.outlook.baseCaseLabel": "Värdering — bas",
-  "investmentCase.outlook.bearCaseLabel": "Värdering — pessimistiskt",
+  "investmentCase.outlook.shortTerm.heading": "Omvärdering",
+  "investmentCase.outlook.longTerm.heading": "4 år",
+  "investmentCase.outlook.expectedReturnLabel": "Omvärderingskänslighet",
+  "investmentCase.outlook.bullCaseLabel": "Vid högsta historiska värdering",
+  "investmentCase.outlook.baseCaseLabel": "Vid medianvärdering",
+  "investmentCase.outlook.bearCaseLabel": "Vid lägsta historiska värdering",
   "investmentCase.outlook.momentumLabel": "Momentum",
   "investmentCase.outlook.scenarioDetailLabel": "Scenarier, antaganden och drivkrafter",
   "investmentCase.outlook.keyDriversLabel": "Nyckeldrivkrafter",
@@ -1229,29 +1219,25 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.outlook.noChanges": "Inget har ändrats nyligen.",
 
   // ---------- outlook intelligence sprint 1: real expected return / scenarios / momentum / drivers ----------
-  "investmentCase.outlook.returnBasisNote": "{{basis}}, över {{low}}–{{high}} månader.",
-  "investmentCase.outlook.basis.cumulative": "Kumulativ avkastning",
-  "investmentCase.outlook.basis.annualized": "Årlig avkastning",
   "investmentCase.outlook.gap.noHistoricalValuationRange":
     "Inte tillräckligt med historisk värderingsdata för att bygga ett intervall ännu.",
   "investmentCase.outlook.gap.valuationNotConclusive": "Ingen aktuell värdering att utgå från ännu.",
-  "investmentCase.outlook.gap.noDurableGrowthTrajectory":
-    "Ingen verklig, nyligen uppvisad, varaktig tillväxtbana som Atlas ansvarsfullt kan projicera framåt ännu — aldrig påhittat här.",
+  "investmentCase.outlook.gap.noDurableGrowthTrajectory": "Ingen varaktig tillväxthistorik att beräkna en 4-årig känslighet från ännu.",
+  "investmentCase.outlook.gap.nearZeroFcfAnchor": "Undanhållen — åren Atlas skulle jämföra mot hade nära noll fritt kassaflöde, så ingen jämförbar siffra finns.",
+  "investmentCase.outlook.shortTermBasisNote": "Direkt omvärdering, ingen tidshorisont.",
+  "investmentCase.outlook.longTermBasisNote": "Årlig takt över {{years}} år.",
+  "investmentCase.outlook.withheld": "Undanhållen — ankaråret ({{period}}) hade nära noll fritt kassaflöde.",
+  "investmentCase.outlook.anchorYear": "Ankarår: {{periods}}",
+  "investmentCase.outlook.anchorWindow": "Tillväxtfönster: {{periods}}",
   "investmentCase.outlook.momentum.strengthening": "Förstärks",
   "investmentCase.outlook.momentum.stable": "Stabil",
   "investmentCase.outlook.momentum.mixed": "Blandad",
   "investmentCase.outlook.momentum.weakening": "Försvagas",
-  "investmentCase.outlook.rerangeAssumptionNote":
-    "Förutsätter att det fria kassaflödet ligger kvar på dagens nivå och att endast marknadens egen värderingsmultipel förändras — ingen prognos för verksamhetens utveckling.",
-  "investmentCase.outlook.scenarioAssumptionNote": "Förutsätter att marknaden omvärderar till en FCF-avkastning på {{targetYield}}.",
-  "investmentCase.outlook.scenariosCaptionOne":
-    "Endast värderingsscenarier — baserat på {{count}} historisk FCF-avkastningsobservation, inklusive eventuella ovanliga perioder.",
-  "investmentCase.outlook.scenariosCaptionOther":
-    "Endast värderingsscenarier — baserat på {{count}} historiska FCF-avkastningsobservationer, inklusive eventuella ovanliga perioder.",
-  "investmentCase.outlook.growthScenariosCaption":
-    "Affärstillväxtscenarier som delar ett terminalvärderingsantagande — tillväxten baseras på {{growthCount}} intäktsstyrkta historiska observationer; terminalavkastningen på {{count}} historiska FCF-avkastningsobservationer.",
-  "investmentCase.outlook.convictionCaption":
-    "Speglar caset-övergripande övertygelse, begränsad när denna horisonts egna underlag är otillräckligt — ingen självständigt modellerad utsiktsövertygelse.",
+  "investmentCase.outlook.rerangeAssumptionNote": "Fritt kassaflöde hålls på dagens nivå; bara värderingsmultipeln ändras.",
+  "investmentCase.outlook.scenarioAssumptionNote": "Omvärderat till en FCF-avkastning på {{targetYield}}.",
+  "investmentCase.outlook.scenariosCaptionOne": "Utgår från {{count}} räkenskapsår av bolagets egen FCF-avkastning.",
+  "investmentCase.outlook.scenariosCaptionOther": "Utgår från {{count}} räkenskapsår av bolagets egen FCF-avkastning.",
+  "investmentCase.outlook.growthScenariosCaption": "Tillväxt från {{growthCount}} jämförbara 4-årsfönster i bolagets egen historik; terminal FCF-avkastning från {{count}} räkenskapsår.",
   "investmentCase.outlook.driver.valuationRerating": "Omvärdering",
   "investmentCase.outlook.driver.revenueTrend": "Senaste intäktstrend",
   "investmentCase.outlook.driver.growth": "Tillväxt",
@@ -1266,16 +1252,14 @@ export const sv: Record<TranslationKey, string> = {
   "investmentCase.outlook.driver.reinvestmentOpportunity": "Återinvesteringsmöjlighet",
 
   // ---------- long-term expected return v1 ----------
-  "investmentCase.outlook.growthAssumptionNote":
-    "Förutsätter att det fria kassaflödet växer med {{growthRate}} årligen i {{years}} år, baserat på bolagets egen faktiska historik, och att marknaden sedan omvärderar till en FCF-avkastning på {{targetYield}} — ingen prognos för verksamhetens framtida utveckling.",
-  "investmentCase.outlook.scenarioGrowthAssumptionNote":
-    "Förutsätter {{growthRate}} årlig tillväxt i fritt kassaflöde och en terminal FCF-avkastning på {{targetYield}}.",
+  "investmentCase.outlook.growthAssumptionNote": "Fritt kassaflöde växer {{growthRate}} per år i {{years}} år (bolagets egen median) och värderas sedan till en FCF-avkastning på {{targetYield}}.",
+  "investmentCase.outlook.scenarioGrowthAssumptionNote": "{{growthRate}} årlig tillväxt i fritt kassaflöde, terminal FCF-avkastning {{targetYield}}.",
 
   // ---------- long-term expected return calibration sprint ----------
-  "investmentCase.outlook.growthBullCaseLabel": "Affärstillväxt — optimistiskt",
-  "investmentCase.outlook.growthBaseCaseLabel": "Affärstillväxt — bas",
-  "investmentCase.outlook.growthBearCaseLabel": "Affärstillväxt — pessimistiskt",
-  "investmentCase.outlook.expectedReturnLabel.growth": "Förväntat avkastningsintervall",
+  "investmentCase.outlook.growthBullCaseLabel": "Vid högsta historiska tillväxt",
+  "investmentCase.outlook.growthBaseCaseLabel": "Vid mediantillväxt",
+  "investmentCase.outlook.growthBearCaseLabel": "Vid lägsta historiska tillväxt",
+  "investmentCase.outlook.expectedReturnLabel.growth": "4-årig känslighet",
 
   // ---------- investment case figma-fidelity rebuild: investment argument ----------
   "investmentCase.argument.heading": "Investeringsargument",
@@ -2278,7 +2262,7 @@ export const sv: Record<TranslationKey, string> = {
   "investmentReasoning.engine.financialRisk": "finansiell risk",
   "investmentReasoning.engine.businessQuality": "affärskvalitet",
   "investmentReasoning.engine.industryContext": "branschbild",
-  "investmentReasoning.engine.expectedReturn": "förväntad avkastning",
+  "investmentReasoning.engine.expectedReturn": "värderingskänslighet",
   "investmentReasoning.unknown.inputMissing": "Underlag saknas: {{engine}}",
   "investmentReasoning.unknown.unresolved": "Går inte att avgöra ännu: {{engine}}",
   "investmentReasoning.trigger.reducedRisk": "Lägre risk",

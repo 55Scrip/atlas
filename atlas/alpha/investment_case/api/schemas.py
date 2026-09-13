@@ -211,6 +211,7 @@ from atlas.analysis_engine.investment_case_synthesis import (
 )
 from atlas.analysis_engine.models import CanonicalAnalysis
 from atlas.analysis_engine.outlook import (
+    OUTLOOK_ROLE,
     ExpectedReturnRange,
     HorizonOutlook,
     Outlook,
@@ -3219,13 +3220,16 @@ class OutlookAssumptionView(CamelModel):
 class ExpectedReturnRangeView(CamelModel):
     """Part 4's own explicit requirement, wire-visible: `basis` and both
     horizon bounds are always present alongside the range -- a frontend
-    never has to infer units or horizon."""
+    never has to infer units or horizon. The range spans the endpoints
+    actually shown (a withheld endpoint takes no part), and the horizon
+    bounds are `null` for Short-Term: an instantaneous re-rating has no
+    horizon (Outlook -> Sensitivity)."""
 
     low_percent: float
     high_percent: float
     basis: str
-    horizon_months_low: int
-    horizon_months_high: int
+    horizon_months_low: int | None
+    horizon_months_high: int | None
     assumption: OutlookAssumptionView
 
     @classmethod
@@ -3241,10 +3245,16 @@ class ExpectedReturnRangeView(CamelModel):
 
 
 class OutlookScenarioView(CamelModel):
+    """`returnPercent` is `null` exactly when `withheldReason` names why
+    (a non-comparable anchor) -- render the reason, never a number or a
+    zero. `anchorPeriods` names the fiscal year(s) the endpoint rests on."""
+
     kind: str
-    return_percent: float
+    return_percent: float | None
     assumption: OutlookAssumptionView
     driver: str
+    withheld_reason: str | None
+    anchor_periods: list[str]
 
     @classmethod
     def from_domain(cls, scenario: OutlookScenario) -> "OutlookScenarioView":
@@ -3253,6 +3263,8 @@ class OutlookScenarioView(CamelModel):
             return_percent=scenario.return_percent,
             assumption=OutlookAssumptionView.from_domain(scenario.assumption),
             driver=scenario.driver.value,
+            withheld_reason=scenario.withheld_reason.value if scenario.withheld_reason is not None else None,
+            anchor_periods=list(scenario.anchor_periods),
         )
 
 
@@ -3320,6 +3332,10 @@ class OutlookView(CamelModel):
     derivation rules, and this class's own `from_domain` for why
     `momentum` is computed here rather than on the domain object."""
 
+    role: str
+    """Always `"sensitivity"` (`outlook.OUTLOOK_ROLE`): both horizons are
+    conditional "what would have to be true" arithmetic, never a forecast
+    -- see `atlas.analysis_engine.outlook`'s module docstring."""
     short_term: HorizonOutlookView
     long_term: HorizonOutlookView
 
@@ -3343,6 +3359,7 @@ class OutlookView(CamelModel):
         is_baseline = change_intelligence.is_baseline if change_intelligence is not None else True
         momentum = derive_outlook_momentum(thesis_impact, is_baseline=is_baseline).value
         return cls(
+            role=OUTLOOK_ROLE,
             short_term=HorizonOutlookView.from_domain(outlook.short_term, momentum=momentum),
             long_term=HorizonOutlookView.from_domain(
                 outlook.long_term, momentum=momentum, additional_key_drivers=long_term_quality_drivers

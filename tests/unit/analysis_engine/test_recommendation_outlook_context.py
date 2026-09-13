@@ -147,8 +147,9 @@ def _range(low: float, high: float, *, growth: bool = True) -> ExpectedReturnRan
         low_percent=low,
         high_percent=high,
         basis=ReturnBasis.ANNUALIZED if growth else ReturnBasis.CUMULATIVE,
-        horizon_months_low=36,
-        horizon_months_high=60,
+        # The re-rating has no horizon; the growth sensitivity is 48 months.
+        horizon_months_low=48 if growth else None,
+        horizon_months_high=48 if growth else None,
         assumption=_assumption(growth=growth),
     )
 

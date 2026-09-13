@@ -15,7 +15,6 @@ function analysis(overrides: Partial<HeroAnalysisInput> = {}): HeroAnalysisInput
     isBaselineCase: false,
     latestChangeCount: 0,
     currentAnalysisAt: "2026-01-01T00:00:00Z",
-    outlookAlignmentLongTerm: "corroborates",
     valuationSupportStatus: "insufficient_input",
     limitingFactors: [{ kind: "valuationGap", gap: "insufficient_historical_valuation_data" }],
     missingEvaluations: [],

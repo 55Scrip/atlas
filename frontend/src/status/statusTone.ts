@@ -216,17 +216,11 @@ export const CHANGE_TRIGGER_KEY: Record<ChangeTriggerKind, TranslationKey> = {
  * .OutlookRecommendationRelationship` exactly (4 members). Disclosure
  * only: this fact is never read to alter `DecisionSupportLevel`/the
  * Recommendation copy above -- see that backend module's own docstring
- * for the DE-012/DE-014 boundary this respects. A render-facing caller
- * must present this as independent, correlated context next to the
- * Recommendation, never as its cause. */
+ * for the DE-012/DE-014 boundary this respects. Still on the wire, no
+ * longer rendered (Outlook -> Sensitivity): a sensitivity is no evidence
+ * for or against the Recommendation. */
 export type OutlookRecommendationRelationship = "corroborates" | "diverges" | "mixed" | "unavailable";
 
-export const OUTLOOK_ALIGNMENT_KEY: Record<OutlookRecommendationRelationship, TranslationKey> = {
-  corroborates: "investmentCase.outlookAlignment.corroborates",
-  diverges: "investmentCase.outlookAlignment.diverges",
-  mixed: "investmentCase.outlookAlignment.mixed",
-  unavailable: "investmentCase.outlookAlignment.unavailable",
-};
 
 /** Reuses `AnalysisRiskStatus`/`AnalysisValuationStatus`/
  * `AnalysisBusinessStatus` verbatim from `changeIntelligence
@@ -348,7 +342,9 @@ export const FIT_RATING_TONE: Record<FitRating, StatusTone> = {
 };
 
 /** Mirrors `atlas.alpha.portfolio_fit.models.FitDimensionKind` exactly
- * (six members). */
+ * (six members). `expected_contribution` is retired -- never produced
+ * since Outlook became a sensitivity -- and kept only so an old payload
+ * still types. */
 export type FitDimensionKind = "business" | "valuation" | "risk" | "allocation" | "expected_contribution" | "cash_impact";
 
 export const FIT_DIMENSION_KEY: Record<FitDimensionKind, TranslationKey> = {

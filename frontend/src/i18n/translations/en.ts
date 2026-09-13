@@ -453,11 +453,13 @@ export const en = {
   "investmentCase.ratings.investment.label": "Investment",
   "investmentCase.ratings.portfolio.label": "Portfolio",
   "investmentCase.ratings.evidence.label": "Coverage",
-  // See sv.ts (Phase F): this is the Bull scenario bound, not a
-  // probability-weighted upside.
-  "investmentCase.ratings.upside.label": "Valuation-implied upside",
+  // See sv.ts (Phase F): this is the Long-Term sensitivity's
+  // highest-growth endpoint, not a probability-weighted upside.
+  "investmentCase.ratings.upside.label": "Upside sensitivity",
   "investmentCase.ratings.risk.label": "Risk",
   "investmentCase.ratings.horizon.label": "Horizon",
+  "investmentCase.ratings.horizon.years": "{{years}} years",
+  "investmentCase.ratings.horizon.sensitivityCaption": "Long-term sensitivity",
   "investmentCase.ratings.tier.excellent": "Excellent",
   "investmentCase.ratings.tier.good": "Good",
   "investmentCase.ratings.tier.fair": "Fair",
@@ -469,12 +471,6 @@ export const en = {
   "investmentCase.ratings.qualitative.moderate": "Moderate",
   "investmentCase.ratings.qualitative.high": "High",
   "investmentCase.ratings.qualitative.veryHigh": "Very High",
-  "investmentCase.ratings.horizon.nearTerm": "Near term",
-  "investmentCase.ratings.horizon.oneToTwoQuarters": "1–2 quarters",
-  "investmentCase.ratings.horizon.oneToTwoYears": "1–2 years",
-  "investmentCase.ratings.horizon.threeToFiveYears": "3–5 years",
-  "investmentCase.ratings.horizon.longTerm": "Long term",
-  "investmentCase.ratings.horizon.monthRange": "{{low}}–{{high}} months",
   "investmentCase.caseDna.label": "Case DNA",
   "investmentCase.hero.openQuestionLabel": "Open question",
   "investmentCase.hero.openQuestion.none": "No open questions right now.",
@@ -1189,16 +1185,9 @@ export const en = {
   "investmentCase.keyMetrics.priceRefreshing": "Refreshing…",
   "investmentCase.keyMetrics.priceRefreshFailed": "Refresh failed",
   "investmentCase.keyMetrics.priceRefreshButton": "Refresh",
-  "investmentCase.keyMetrics.expectedReturnLabel": "Expected Return",
-  "investmentCase.keyMetrics.upsideDownsideLabel": "Upside / Downside",
   "investmentCase.keyMetrics.notYetAvailable": "Not yet available",
-  "investmentCase.keyMetrics.expectedReturnCaption": "Long-term, growth-and-reversion range -- not a price target.",
 
-  // ---------- Recommendation / Decision Intelligence Sprint 1: Outlook<->Recommendation alignment ----------
-  "investmentCase.outlookAlignment.corroborates": "Atlas's independently-computed long-term Outlook also implies weak prospective returns, consistent with this recommendation.",
-  "investmentCase.outlookAlignment.diverges": "Atlas's independently-computed long-term Outlook implies stronger prospective returns than this recommendation reflects -- a genuine tension worth weighing, not a contradiction.",
-  "investmentCase.outlookAlignment.mixed": "Atlas's independently-computed long-term Outlook is mixed and does not clearly corroborate or diverge from this recommendation.",
-  "investmentCase.outlookAlignment.unavailable": "Long-term Outlook is not yet available for comparison against this recommendation.",
+  // ---------- Recommendation / Decision Intelligence Sprint 1 ----------
   "investmentCase.whatWouldChange.heading": "What would change Atlas's view",
   "investmentCase.whatWouldChange.reducedRisk": "A reduction in financial or valuation risk",
   "investmentCase.whatWouldChange.moreAttractiveValuation": "A materially more attractive valuation",
@@ -1217,15 +1206,15 @@ export const en = {
   "investmentCase.concern.thesis_risk": "The thesis itself carries an identified risk worth watching.",
 
   // ---------- investment case figma-fidelity rebuild: atlas outlook ----------
-  "investmentCase.outlook.heading": "Atlas Outlook",
+  "investmentCase.outlook.heading": "Valuation sensitivity",
+  "investmentCase.outlook.caption": "Not a forecast. Shows what today's price implies if the company's own historical valuation and growth levels applied.",
   "investmentCase.outlook.notYetComputed": "Not yet computed",
-  "investmentCase.outlook.shortTerm.heading": "Short-Term",
-  "investmentCase.outlook.longTerm.heading": "Long-Term",
-  "investmentCase.outlook.expectedReturnLabel": "Valuation-Implied Return Range",
-  "investmentCase.outlook.convictionLabel": "Conviction",
-  "investmentCase.outlook.bullCaseLabel": "Valuation Bull",
-  "investmentCase.outlook.baseCaseLabel": "Valuation Base",
-  "investmentCase.outlook.bearCaseLabel": "Valuation Bear",
+  "investmentCase.outlook.shortTerm.heading": "Re-rating",
+  "investmentCase.outlook.longTerm.heading": "4 years",
+  "investmentCase.outlook.expectedReturnLabel": "Re-rating sensitivity",
+  "investmentCase.outlook.bullCaseLabel": "At richest historical valuation",
+  "investmentCase.outlook.baseCaseLabel": "At median valuation",
+  "investmentCase.outlook.bearCaseLabel": "At cheapest historical valuation",
   "investmentCase.outlook.momentumLabel": "Momentum",
   "investmentCase.outlook.scenarioDetailLabel": "Scenarios, assumptions and drivers",
   "investmentCase.outlook.keyDriversLabel": "Key Drivers",
@@ -1234,29 +1223,25 @@ export const en = {
   "investmentCase.outlook.noChanges": "Nothing has changed recently.",
 
   // ---------- outlook intelligence sprint 1: real expected return / scenarios / momentum / drivers ----------
-  "investmentCase.outlook.returnBasisNote": "{{basis}}, over {{low}}–{{high}} months.",
-  "investmentCase.outlook.basis.cumulative": "Cumulative return",
-  "investmentCase.outlook.basis.annualized": "Annualized return",
   "investmentCase.outlook.gap.noHistoricalValuationRange":
     "Not enough historical valuation data to build a range yet.",
-  "investmentCase.outlook.gap.valuationNotConclusive": "No current valuation to project from yet.",
-  "investmentCase.outlook.gap.noDurableGrowthTrajectory":
-    "No real, recent, durable growth trajectory Atlas can responsibly project forward yet — never fabricated here.",
+  "investmentCase.outlook.gap.valuationNotConclusive": "No current valuation to start from yet.",
+  "investmentCase.outlook.gap.noDurableGrowthTrajectory": "No durable growth history to compute a 4-year sensitivity from yet.",
+  "investmentCase.outlook.gap.nearZeroFcfAnchor": "Withheld — the years Atlas would compare against had near-zero free cash flow, so no comparable figure exists.",
+  "investmentCase.outlook.shortTermBasisNote": "Instant re-rating, no time horizon.",
+  "investmentCase.outlook.longTermBasisNote": "Annual rate over {{years}} years.",
+  "investmentCase.outlook.withheld": "Withheld — the anchor year ({{period}}) had near-zero free cash flow.",
+  "investmentCase.outlook.anchorYear": "Anchor year: {{periods}}",
+  "investmentCase.outlook.anchorWindow": "Growth window: {{periods}}",
   "investmentCase.outlook.momentum.strengthening": "Strengthening",
   "investmentCase.outlook.momentum.stable": "Stable",
   "investmentCase.outlook.momentum.mixed": "Mixed",
   "investmentCase.outlook.momentum.weakening": "Weakening",
-  "investmentCase.outlook.rerangeAssumptionNote":
-    "Assumes free cash flow stays at its current level and only the market's own valuation multiple changes — not a forecast of business performance.",
-  "investmentCase.outlook.scenarioAssumptionNote": "Assumes the market re-rates to a {{targetYield}} FCF yield.",
-  "investmentCase.outlook.scenariosCaptionOne":
-    "Valuation scenarios only — based on {{count}} historical FCF-yield observation, including any unusual periods.",
-  "investmentCase.outlook.scenariosCaptionOther":
-    "Valuation scenarios only — based on {{count}} historical FCF-yield observations, including any unusual periods.",
-  "investmentCase.outlook.growthScenariosCaption":
-    "Business-growth scenarios sharing one terminal valuation assumption — growth drawn from {{growthCount}} revenue-corroborated historical observation(s); terminal yield from {{count}} historical FCF-yield observation(s).",
-  "investmentCase.outlook.convictionCaption":
-    "Reflects case-wide Conviction, capped when this horizon's own data is insufficient — not an independently modeled Outlook Conviction.",
+  "investmentCase.outlook.rerangeAssumptionNote": "Free cash flow held at today's level; only the valuation multiple changes.",
+  "investmentCase.outlook.scenarioAssumptionNote": "Re-rated to a {{targetYield}} FCF yield.",
+  "investmentCase.outlook.scenariosCaptionOne": "Drawn from {{count}} fiscal year of the company's own FCF yield.",
+  "investmentCase.outlook.scenariosCaptionOther": "Drawn from {{count}} fiscal years of the company's own FCF yield.",
+  "investmentCase.outlook.growthScenariosCaption": "Growth from {{growthCount}} comparable 4-year windows of the company's own history; terminal FCF yield from {{count}} fiscal years.",
   "investmentCase.outlook.driver.valuationRerating": "Valuation re-rating",
   "investmentCase.outlook.driver.revenueTrend": "Recent revenue trend",
   "investmentCase.outlook.driver.growth": "Growth",
@@ -1271,16 +1256,14 @@ export const en = {
   "investmentCase.outlook.driver.reinvestmentOpportunity": "Reinvestment opportunity",
 
   // ---------- long-term expected return v1 ----------
-  "investmentCase.outlook.growthAssumptionNote":
-    "Assumes free cash flow compounds at {{growthRate}} annually for {{years}} years, drawn from this company's own realized history, then the market re-rates to a {{targetYield}} FCF yield — not a forecast of future business performance.",
-  "investmentCase.outlook.scenarioGrowthAssumptionNote":
-    "Assumes {{growthRate}} annual free cash flow growth and a {{targetYield}} terminal FCF yield.",
+  "investmentCase.outlook.growthAssumptionNote": "Free cash flow grows {{growthRate}} a year for {{years}} years (the company's own median), then is valued at a {{targetYield}} FCF yield.",
+  "investmentCase.outlook.scenarioGrowthAssumptionNote": "{{growthRate}} a year FCF growth, {{targetYield}} terminal FCF yield.",
 
   // ---------- long-term expected return calibration sprint ----------
-  "investmentCase.outlook.growthBullCaseLabel": "Business-Growth Bull",
-  "investmentCase.outlook.growthBaseCaseLabel": "Business-Growth Base",
-  "investmentCase.outlook.growthBearCaseLabel": "Business-Growth Bear",
-  "investmentCase.outlook.expectedReturnLabel.growth": "Expected Return Range",
+  "investmentCase.outlook.growthBullCaseLabel": "At highest historical growth",
+  "investmentCase.outlook.growthBaseCaseLabel": "At median growth",
+  "investmentCase.outlook.growthBearCaseLabel": "At lowest historical growth",
+  "investmentCase.outlook.expectedReturnLabel.growth": "4-year sensitivity",
 
   // ---------- investment case figma-fidelity rebuild: investment argument ----------
   "investmentCase.argument.heading": "Investment Argument",
@@ -2287,7 +2270,7 @@ export const en = {
   "investmentReasoning.engine.financialRisk": "financial risk",
   "investmentReasoning.engine.businessQuality": "business quality",
   "investmentReasoning.engine.industryContext": "industry context",
-  "investmentReasoning.engine.expectedReturn": "expected return",
+  "investmentReasoning.engine.expectedReturn": "valuation sensitivity",
   "investmentReasoning.unknown.inputMissing": "Evidence missing: {{engine}}",
   "investmentReasoning.unknown.unresolved": "Cannot be determined yet: {{engine}}",
   "investmentReasoning.trigger.reducedRisk": "Lower risk",

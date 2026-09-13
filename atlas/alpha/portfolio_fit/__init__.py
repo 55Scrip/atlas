@@ -15,8 +15,14 @@ dimension is a direct, disclosed read of an already-computed signal:
 - Allocation Fit <- `AlphaHolding.weight_percent` + the exact same
   concentration thresholds `atlas.domains.portfolio.calculations
   .concentration_level` already uses (reused, not re-derived)
-- Expected Contribution <- `CanonicalAnalysis.outlook` (unmodified)
 - Cash Impact <- `AlphaPortfolioState.cash_weight_percent` (unmodified)
+
+**Outlook is not a Fit input (Outlook -> Sensitivity).** An "Expected
+Contribution" dimension used to rate Outlook's Long-Term implied-return
+range POOR..EXCELLENT. That range is an uncalibrated sensitivity, not an
+expected return, so it is no evidence of how a company fits a portfolio:
+the dimension is gone from the assessment, not rated neutral -- it
+carries zero weight because it does not exist.
 
 No new Core domain type, no new ADR, no new persistence, no new
 aggregate. `engine.py` is pure (no I/O, fully deterministic given its

@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 
 from atlas.analysis_engine.business_facts.growth_primitives import ROLLING_GROWTH_METHODOLOGY
+from atlas.analysis_engine.outlook import OUTLOOK_METHODOLOGY
 from atlas.analysis_engine.risk.financial_risk import FINANCIAL_RISK_METHODOLOGY
 from atlas.analysis_engine.valuation.cash_flow import FCF_YIELD_METHODOLOGY
 
@@ -34,6 +35,9 @@ _COMPONENTS = {
     "financial_risk": FINANCIAL_RISK_METHODOLOGY,
     "valuation": FCF_YIELD_METHODOLOGY,
     "rolling_growth": ROLLING_GROWTH_METHODOLOGY,
+    # Outlook became a sensitivity and left Portfolio Fit, which the
+    # Decision Layer reads through Stance.
+    "outlook": OUTLOOK_METHODOLOGY,
 }
 
 ANALYSIS_METHODOLOGY = ";".join(f"{name}={method}" for name, method in sorted(_COMPONENTS.items()))

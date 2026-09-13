@@ -200,21 +200,24 @@ export interface AtlasQualitative {
 const QUALITATIVE_MISSING: AtlasQualitative = { level: "missing" };
 
 /**
- * Upside -- reads Long-Term Outlook's own real bull-case return
- * percent (`atlas.analysis_engine.outlook`, the identical figure the
- * Hero's own "Upside/Downside" field already shows) and buckets it
- * into the brief's four tiers. `missing` whenever Long-Term Outlook
- * has no real scenario for this case yet (gapped) -- never a guessed
- * tier standing in for absent evidence. Bucket edges are a disclosed,
- * fixed lookup, not a felt judgment: doubling the position (>=100%)
- * is Very High, a real 1.5x (>=50%) is High, a real 1.2x (>=20%) is
- * Moderate, anything real below that is Low.
+ * Upside sensitivity -- reads Long-Term Outlook's highest-growth
+ * endpoint (`atlas.analysis_engine.outlook`, a sensitivity, never a
+ * forecast) and buckets the *4-year cumulative* figure it implies into
+ * the brief's four tiers. The engine reports an annualized rate over
+ * `years`; the edges below are total-return multiples (doubling the
+ * position is Very High, 1.5x High, 1.2x Moderate), so the rate is
+ * compounded back to the whole horizon first -- bucketing a 20%/yr rate
+ * against a "1.2x" edge would read four years of compounding as one.
+ * Both inputs are fractions (`0.2` is +20%). `missing` whenever the
+ * endpoint is unavailable or withheld (a non-comparable anchor) --
+ * never a guessed tier standing in for absent evidence.
  */
-export function deriveUpside(bullReturnPercent: number | null): AtlasQualitative {
-  if (bullReturnPercent === null) return QUALITATIVE_MISSING;
-  if (bullReturnPercent >= 100) return { level: "very_high" };
-  if (bullReturnPercent >= 50) return { level: "high" };
-  if (bullReturnPercent >= 20) return { level: "moderate" };
+export function deriveUpside(annualizedReturn: number | null, years: number | null): AtlasQualitative {
+  if (annualizedReturn === null || years === null) return QUALITATIVE_MISSING;
+  const cumulative = (1 + annualizedReturn) ** years - 1;
+  if (cumulative >= 1) return { level: "very_high" };
+  if (cumulative >= 0.5) return { level: "high" };
+  if (cumulative >= 0.2) return { level: "moderate" };
   return { level: "low" };
 }
 
@@ -244,40 +247,26 @@ export function deriveRisk(findings: { status: AnalysisRiskStatus }[]): AtlasQua
 }
 
 /**
- * Horizon -- "when does Atlas expect the thesis to play out," read
- * from Outlook's own real per-horizon month range
- * (`HorizonOutlookView.expectedReturn.horizonMonthsLow/High`), never a
- * fabricated "3-4 quarters." Long-Term is preferred when it has a real
- * (non-gapped) range -- the more durable thesis timeframe -- falling
- * back to Short-Term's own range only when Long-Term itself has none.
- * `missing` when neither horizon clears its own eligibility gate.
- * Evolves for free: this is a read of Outlook's current output, not a
- * persisted value, so the next analysis automatically produces the
- * next Horizon.
+ * Horizon -- the one horizon Outlook actually has: the Long-Term
+ * sensitivity's compounding duration (`HorizonOutlookView.expectedReturn
+ * .horizonMonthsLow/High`, exactly 48 months). Short-Term is an
+ * instantaneous re-rating with no horizon, so it is never a fallback.
+ * Shown as whole years when both bounds agree on one; `missing` when
+ * Long-Term is unavailable -- never a fabricated "3-5 years" bucket
+ * around a fixed 4-year exponent.
  */
-export type HorizonBucket = "near_term" | "one_to_two_quarters" | "one_to_two_years" | "three_to_five_years" | "long_term";
-
 export interface AtlasHorizon {
-  bucket: HorizonBucket | "missing";
-  monthsLow: number | null;
-  monthsHigh: number | null;
+  years: number | null;
 }
 
-const HORIZON_MISSING: AtlasHorizon = { bucket: "missing", monthsLow: null, monthsHigh: null };
-
-function bucketForMonths(monthsLow: number): HorizonBucket {
-  if (monthsLow < 3) return "near_term";
-  if (monthsLow < 6) return "one_to_two_quarters";
-  if (monthsLow < 24) return "one_to_two_years";
-  if (monthsLow < 60) return "three_to_five_years";
-  return "long_term";
-}
+const HORIZON_MISSING: AtlasHorizon = { years: null };
 
 export function deriveHorizon(
-  longTermRange: { monthsLow: number; monthsHigh: number } | null,
-  shortTermRange: { monthsLow: number; monthsHigh: number } | null,
+  longTermRange: { monthsLow: number | null; monthsHigh: number | null } | null,
 ): AtlasHorizon {
-  const chosen = longTermRange ?? shortTermRange;
-  if (!chosen) return HORIZON_MISSING;
-  return { bucket: bucketForMonths(chosen.monthsLow), monthsLow: chosen.monthsLow, monthsHigh: chosen.monthsHigh };
+  if (!longTermRange || longTermRange.monthsLow === null || longTermRange.monthsLow !== longTermRange.monthsHigh) {
+    return HORIZON_MISSING;
+  }
+  if (longTermRange.monthsLow % 12 !== 0) return HORIZON_MISSING;
+  return { years: longTermRange.monthsLow / 12 };
 }

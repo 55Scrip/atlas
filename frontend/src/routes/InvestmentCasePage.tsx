@@ -2695,7 +2695,6 @@ export function InvestmentCasePage() {
             const growth = report.businessAnalysis.findings.find((f) => f.kind === "growth");
             const capitalAllocation = report.businessAnalysis.findings.find((f) => f.kind === "capital_allocation");
             const longTerm = report.outlook.longTerm;
-            const shortTerm = report.outlook.shortTerm;
             const longTermBull = longTerm.scenarios.find((s) => s.kind === "bull");
             const longTermBear = longTerm.scenarios.find((s) => s.kind === "bear");
             const riskFindings = report.risk.findings.map((f) => ({ category: f.category, status: f.status }));
@@ -2728,7 +2727,6 @@ export function InvestmentCasePage() {
               isBaselineCase: report.isBaselineCase,
               latestChangeCount: report.latestChanges.length,
               currentAnalysisAt: report.currentAnalysisAt,
-              outlookAlignmentLongTerm: report.recommendation.outlookAlignment.longTerm,
               limitingFactors,
               missingEvaluations: report.recommendation.missingEvaluations,
               sharePrice: report.marketSnapshot ? report.marketSnapshot.sharePrice : null,
@@ -2766,14 +2764,14 @@ export function InvestmentCasePage() {
                 portfolioFitStatus.kind === "loaded" ? (portfolioFitStatus.assessment?.overall ?? null) : null,
               ),
               evidence: deriveEvidenceRating(report.coverage.overallCoverage, report.coverage.overallConfidence),
-              upside: deriveUpside(longTermBull ? longTermBull.returnPercent : null),
+              upside: deriveUpside(
+                longTermBull ? longTermBull.returnPercent : null,
+                longTermBull ? longTermBull.assumption.horizonYears : null,
+              ),
               risk: deriveRisk(riskFindings),
               horizon: deriveHorizon(
                 longTerm.expectedReturn
                   ? { monthsLow: longTerm.expectedReturn.horizonMonthsLow, monthsHigh: longTerm.expectedReturn.horizonMonthsHigh }
-                  : null,
-                shortTerm.expectedReturn
-                  ? { monthsLow: shortTerm.expectedReturn.horizonMonthsLow, monthsHigh: shortTerm.expectedReturn.horizonMonthsHigh }
                   : null,
               ),
             };
