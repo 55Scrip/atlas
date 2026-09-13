@@ -8,6 +8,7 @@ import {
   keyUnknownLabel,
   reasonKindLabel,
   riskBasisLabel,
+  valuationBasisLabel,
 } from "./describeRecommendationReasoning";
 import type { InvestmentDecisionView } from "./investmentDecisionApi";
 
@@ -74,6 +75,11 @@ export function AtlasInvestmentReasoning({
   // explains nothing that row claims, so it stays quiet.
   const riskBasis = opposing.some((reason) => reason.kind === "financial_risk_elevated")
     ? riskBasisLabel(reasoning.riskBasis, t, locale)
+    : null;
+  // Valuation is its own reason with its own basis, beneath the same row --
+  // never folded into the financial one.
+  const valuationBasis = opposing.some((reason) => reason.kind === "valuation_expensive")
+    ? valuationBasisLabel(reasoning.signalSummary, t, locale)
     : null;
   // A Financial Risk the measure does not apply to gets one quiet line --
   // never a row of its own, never read as "not elevated".
@@ -145,6 +151,11 @@ export function AtlasInvestmentReasoning({
         {riskBasis && (
           <Text as="p" color="tertiary">
             {riskBasis}
+          </Text>
+        )}
+        {valuationBasis && (
+          <Text as="p" color="tertiary">
+            {valuationBasis}
           </Text>
         )}
         {forwardItems.length > 0 && (

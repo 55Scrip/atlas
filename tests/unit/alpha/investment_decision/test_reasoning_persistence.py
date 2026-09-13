@@ -51,7 +51,7 @@ def _reasoning(**overrides):
         capital_allocation_status=BusinessCategoryStatus.STRONG,
         valuation_status=ValuationStatus.EXPENSIVE,
         valuation_support_status=ValuationSupportStatus.SUPPORTED,
-        has_high_financial_or_valuation_risk=True,
+        financial_risk_high=True,
         financial_risk_assessed=True,
     )
     signals.update(overrides)
@@ -179,7 +179,7 @@ class TestLegacyRows:
             capital_allocation_status=BusinessCategoryStatus.NOT_EVALUATED,
             valuation_status=ValuationStatus.NOT_EVALUATED,
             valuation_support_status=ValuationSupportStatus.INSUFFICIENT_INPUT,
-            has_high_financial_or_valuation_risk=False,
+            financial_risk_high=False,
             financial_risk_assessed=False)))
         assert computed is not None
         assert computed.primary_drivers == () and computed.counter_drivers == ()

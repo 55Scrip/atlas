@@ -90,7 +90,7 @@ def profile(industry: str) -> RawBusinessDocument:
 
 
 class TestRiskDriverBasis:
-    def test_valuation_alone_can_raise_the_driver_while_financial_risk_is_low(self):
+    def test_valuation_alone_is_recorded_as_the_dampening_fact_while_financial_risk_is_low(self):
         assert RiskDriverBasis(elevated_categories=(VAL,), financial_risk=low_basis()).financial_risk.level is RiskStatus.LOW
 
     def test_financial_risk_is_elevated_exactly_when_its_own_basis_is_high(self):
@@ -116,7 +116,7 @@ def _builders(**overrides):
     kwargs = dict(
         growth_status=BusinessCategoryStatus.MODERATE, capital_allocation_status=BusinessCategoryStatus.STRONG,
         valuation_status=ValuationStatus.FAIRLY_VALUED, valuation_support_status=ValuationSupportStatus.SUPPORTED,
-        has_high_financial_or_valuation_risk=False, financial_risk_assessed=False,
+        financial_risk_high=False, financial_risk_assessed=False,
     )
     kwargs.update(overrides)
     return kwargs
@@ -134,7 +134,7 @@ class TestNotElevatedOnlyWhenAssessed:
         assert InvestmentReasonKind.FINANCIAL_RISK_NOT_ELEVATED in [r.kind for r in primary]
 
     def test_the_change_trigger_needs_an_assessed_financial_risk(self):
-        kwargs = dict(has_high_financial_or_valuation_risk=False, valuation_support_status=ValuationSupportStatus.SUPPORTED,
+        kwargs = dict(financial_risk_high=False, valuation_support_status=ValuationSupportStatus.SUPPORTED,
                       growth_status=BusinessCategoryStatus.MODERATE, capital_allocation_status=BusinessCategoryStatus.STRONG,
                       valuation_status=ValuationStatus.FAIRLY_VALUED)
         assert ChangeTriggerKind.FINANCIAL_RISK_BECOMES_ELEVATED not in _derive_what_would_change(**kwargs)
@@ -265,7 +265,9 @@ class TestThePipeline:
 class TestPersistence:
     def test_the_basis_round_trips_through_json(self):
         for basis in (RiskDriverBasis((VAL,), low_basis()), vst_basis(), RiskDriverBasis((VAL,), not_applicable_basis())):
-            reasoning = RecommendationReasoning(counter_drivers=(elevated_driver(),), risk_basis=basis)
+            # The financial driver goes with a basis in which Financial Risk is elevated, and only then.
+            drivers = (elevated_driver(),) if FIN in basis.elevated_categories else ()
+            reasoning = RecommendationReasoning(counter_drivers=drivers, risk_basis=basis)
             payload = json.loads(json.dumps(serialize_reasoning(reasoning)))
             assert deserialize_reasoning(payload).risk_basis == basis
 
@@ -348,3 +350,87 @@ class TestFirewall:
         source = Path("atlas/analysis_engine/pipeline.py").read_text(encoding="utf-8")
         assert "has_high_financial_or_valuation_risk = bool(elevated_risk_categories)" in source
         assert "elevated_categories=elevated_risk_categories" in source
+
+
+class TestDriverSplit:
+    """Financial and valuation risk share one decision effect -- either HIGH
+    dampens the direction -- but never one meaning. Each dimension speaks
+    through its own reason: `FINANCIAL_RISK_ELEVATED` for Financial Risk,
+    `VALUATION_EXPENSIVE` (from the same FCF-yield finding Valuation Risk
+    maps from) for valuation."""
+
+    STATUS = {RiskStatus.HIGH: (True, True), RiskStatus.MODERATE: (False, True), RiskStatus.LOW: (False, True),
+              RiskStatus.INSUFFICIENT_INPUT: (False, False), RiskStatus.NOT_APPLICABLE: (False, False)}
+
+    @pytest.mark.parametrize("financial", list(STATUS))
+    @pytest.mark.parametrize("valuation", [ValuationStatus.EXPENSIVE, ValuationStatus.FAIRLY_VALUED,
+                                           ValuationStatus.UNDERVALUED, ValuationStatus.INSUFFICIENT_INPUT])
+    def test_the_truth_table(self, financial, valuation):
+        high, assessed = self.STATUS[financial]
+        primary, counter = build_drivers(**_builders(financial_risk_high=high, financial_risk_assessed=assessed,
+                                                     valuation_status=valuation))
+        kinds = [r.kind for r in counter]
+        assert (InvestmentReasonKind.FINANCIAL_RISK_ELEVATED in kinds) is (financial is RiskStatus.HIGH)
+        assert (InvestmentReasonKind.VALUATION_EXPENSIVE in kinds) is (valuation is ValuationStatus.EXPENSIVE)
+        not_elevated = InvestmentReasonKind.FINANCIAL_RISK_NOT_ELEVATED in [r.kind for r in primary]
+        assert not_elevated is (financial in (RiskStatus.LOW, RiskStatus.MODERATE))
+        assert sum(k is InvestmentReasonKind.FINANCIAL_RISK_ELEVATED for k in kinds) <= 1
+        assert all(r.polarity is ReasoningPolarity.ADVERSE for r in counter)
+
+    def test_both_high_gives_two_reasons_financial_first(self):
+        _, counter = build_drivers(**_builders(financial_risk_high=True, financial_risk_assessed=True,
+                                               valuation_status=ValuationStatus.EXPENSIVE))
+        assert [r.kind for r in counter] == [InvestmentReasonKind.FINANCIAL_RISK_ELEVATED,
+                                            InvestmentReasonKind.VALUATION_EXPENSIVE]
+        assert [r.engine for r in counter] == [CanonicalEngine.FINANCIAL_RISK, CanonicalEngine.VALUATION]
+
+    def test_valuation_only_never_reports_financial_risk_as_high_in_the_signal_summary(self):
+        summary = build_signal_summary(**_builders(financial_risk_high=False, financial_risk_assessed=True,
+                                                   valuation_status=ValuationStatus.EXPENSIVE))
+        entries = {c.engine: c.source_status for c in summary}
+        assert entries[CanonicalEngine.FINANCIAL_RISK] == "not_high"
+        assert entries[CanonicalEngine.VALUATION] == "expensive"
+
+    def test_the_risk_trigger_speaks_for_financial_risk_only(self):
+        base = dict(valuation_support_status=ValuationSupportStatus.SUPPORTED, growth_status=BusinessCategoryStatus.MODERATE,
+                    capital_allocation_status=BusinessCategoryStatus.MODERATE, valuation_status=ValuationStatus.EXPENSIVE)
+        valuation_only = _derive_what_would_change(financial_risk_high=False, financial_risk_assessed=True, **base)
+        assert ChangeTriggerKind.REDUCED_RISK not in valuation_only
+        assert ChangeTriggerKind.LOWER_VALUATION in valuation_only
+        both = _derive_what_would_change(financial_risk_high=True, financial_risk_assessed=True, **base)
+        assert both[:2] == (ChangeTriggerKind.REDUCED_RISK, ChangeTriggerKind.LOWER_VALUATION)
+
+    def test_a_financial_driver_on_a_valuation_only_basis_is_rejected(self):
+        with pytest.raises(AnalysisEngineContractError):
+            RecommendationReasoning(counter_drivers=(elevated_driver(),), risk_basis=RiskDriverBasis((VAL,), low_basis()))
+        assert RecommendationReasoning(counter_drivers=(), risk_basis=RiskDriverBasis((VAL,), low_basis())).risk_basis
+
+    def test_a_real_valuation_only_case_is_named_as_valuation(self):
+        records = _ingest_all(
+            _fundamentals_doc(period_end="2021-12-31", revenue=100, fcf=10, published_at=_dt(2022, 2, 15)),
+            _fundamentals_doc(period_end="2022-12-31", revenue=100, fcf=10, published_at=_dt(2023, 2, 15)),
+            _market_doc(snapshot="2022-06-01", price=50, shares=100),
+            _market_doc(snapshot="2023-06-01", price=200, shares=100),
+        )
+        analysis = _assemble(records)
+        statuses = {f.category: f.status for f in analysis.risk_analysis.findings}
+        assert statuses[VAL] is RiskStatus.HIGH and statuses[FIN] is not RiskStatus.HIGH
+        reasoning = analysis.recommendation.recommendation.reasoning
+        kinds = [r.kind for r in reasoning.counter_drivers]
+        assert InvestmentReasonKind.FINANCIAL_RISK_ELEVATED not in kinds
+        assert InvestmentReasonKind.VALUATION_EXPENSIVE in kinds
+        assert reasoning.risk_basis.elevated_categories == (VAL,)  # the dampening fact is still recorded
+
+    def test_direction_selection_still_reads_the_shared_flag_and_no_reason_vocabulary(self):
+        tree = TestFirewall._tree("atlas/analysis_engine/recommendation.py")
+        calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and getattr(n.func, "id", None) == "select_direction"]
+        assert len(calls) == 1
+        kw = {k.arg: k.value for k in calls[0].keywords}
+        flag = kw["has_high_financial_or_valuation_risk"]
+        assert isinstance(flag, ast.Name) and flag.id == "has_high_financial_or_valuation_risk"
+        assert "financial_risk_high" not in kw and "financial_risk_status" not in kw
+        selector = Path("atlas/analysis_engine/direction_selector.py").read_text(encoding="utf-8")
+        for token in ("InvestmentReasonKind", "FINANCIAL_RISK_ELEVATED", "VALUATION_EXPENSIVE", "financial_risk_high"):
+            assert token not in selector
+        pipeline = Path("atlas/analysis_engine/pipeline.py").read_text(encoding="utf-8")
+        assert "has_high_financial_or_valuation_risk = bool(elevated_risk_categories)" in pipeline

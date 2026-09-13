@@ -14,6 +14,7 @@ import type {
   KeyUnknownView,
   RiskDriverBasisView,
   RiskLevel,
+  SignalContributionView,
   UnestablishedEconomics,
 } from "./reasoningContract";
 
@@ -287,12 +288,15 @@ function burdenTrendSentence(basis: RiskDriverBasisView, t: Translate, locale: s
  * When Financial Risk itself is high: the measured level first (debt
  * relative to cash from operations, with its year), the trend second as
  * context, then one sentence bounding what was measured -- reported
- * amounts, not ratings, interest costs, maturities or liquidity.
+ * amounts, not ratings, interest costs, maturities or liquidity. It
+ * explains the financial driver only; valuation has its own reason and
+ * its own line (`valuationBasisLabel`).
  *
- * When only Valuation Risk is high, the driver does not rest on the
- * company's finances at all, and the line says exactly that, with the
- * level Financial Risk actually has. A payload of any other basis
- * version is not read.
+ * Legacy rows only: before the financial and valuation drivers were split,
+ * the financial driver could be raised by valuation alone. For such a row
+ * the line says so, with the level Financial Risk actually had -- a stored
+ * row is never re-read as if the split had produced it. A payload of any
+ * other basis version is not read.
  */
 export function riskBasisLabel(
   basis: RiskDriverBasisView | null | undefined,
@@ -309,7 +313,6 @@ export function riskBasisLabel(
   const sentences = [level];
   const trend = burdenTrendSentence(basis, t, locale);
   if (trend) sentences.push(trend);
-  if (basis.elevatedCategories.includes("valuation_risk")) sentences.push(t("investmentReasoning.riskBasis.alsoValuation"));
   sentences.push(t("investmentReasoning.riskBasis.scope"));
   return sentences.join(" ");
 }
@@ -327,4 +330,38 @@ export function financialRiskNotApplicableLabel(
   // Raised by valuation alone, the against-row's own basis line already says it.
   if (basis.elevatedCategories.length > 0) return null;
   return t("investmentReasoning.riskBasis.notApplicable");
+}
+
+function formatYield(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
+}
+
+/**
+ * Why "expensive" is shown: the valuation evaluator's own figures, as the
+ * signal summary projects them -- today's FCF yield against the company's
+ * own earlier observations. Nothing is recomputed: "lower than every
+ * earlier observation" is read off the projected percentile, and the
+ * observation count always travels with it so a thin history reads as
+ * thin. A comparison with the company's own past only -- never peers,
+ * intrinsic value or expected return. `null` when the figures are absent.
+ */
+export function valuationBasisLabel(
+  signalSummary: SignalContributionView[] | undefined,
+  t: Translate,
+  locale: string,
+): string | null {
+  const valuation = (signalSummary ?? []).find((c) => c.engine === "valuation");
+  const current = valuation?.currentYield;
+  const median = valuation?.historicalMedianYield;
+  const count = valuation?.historicalObservationCount;
+  const percentile = valuation?.historicalPercentile;
+  if (current == null || median == null || count == null || percentile == null) return null;
+  const params = { current: formatYield(current, locale), median: formatYield(median, locale), count };
+  const body =
+    percentile === 0
+      ? t(count === 1 ? "investmentReasoning.valuationBasis.belowOnly" : "investmentReasoning.valuationBasis.belowAll", params)
+      : current < median
+        ? t("investmentReasoning.valuationBasis.belowMedian", params)
+        : null;
+  return body === null ? null : `${t(REASON_KIND_KEY.valuation_expensive)}: ${body}`;
 }

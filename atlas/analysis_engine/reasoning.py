@@ -452,13 +452,15 @@ class RiskDriverBasis:
     """What the `financial_risk` driver restates -- disclosed, never an
     input to it.
 
-    `elevated_categories` names every category in
-    `ELEVATING_RISK_CATEGORIES` that is `HIGH`: empty exactly when the
-    driver is not elevated, and naming Valuation Risk when that is what
-    raised it. `financial_risk` is the Financial Risk evaluator's own
-    basis, whatever its level -- so a driver raised by valuation alone
-    still shows that Financial Risk itself was not `HIGH`, rather than
-    borrowing a financial explanation it does not have.
+    `financial_risk` is the Financial Risk evaluator's own basis, whatever
+    its level; it explains `FINANCIAL_RISK_ELEVATED` and nothing else.
+    `elevated_categories` records the dampening fact -- every category in
+    `ELEVATING_RISK_CATEGORIES` that is `HIGH` -- and the financial driver
+    is elevated exactly when Financial Risk is among them. Valuation Risk
+    appearing here never raises the financial driver: it has its own
+    reason, `VALUATION_EXPENSIVE`. (Rows written before that split carried
+    a financial driver raised by valuation alone; for those this field is
+    what says so.)
 
     Placed into the reasoning after the direction is chosen, like
     forward context; nothing that selects a direction, drivers, change
@@ -574,7 +576,7 @@ def build_drivers(
     capital_allocation_status: BusinessCategoryStatus,
     valuation_status: ValuationStatus,
     valuation_support_status: ValuationSupportStatus,
-    has_high_financial_or_valuation_risk: bool,
+    financial_risk_high: bool,
     financial_risk_assessed: bool,
 ) -> tuple[tuple[InvestmentReason, ...], tuple[InvestmentReason, ...]]:
     """`(primary_drivers, counter_drivers)` -- supportive and adverse,
@@ -585,9 +587,18 @@ def build_drivers(
     a neutral-looking one. `NEUTRAL` polarity appears in neither list:
     "fairly valued" is a real finding, carried in `signal_summary`, but
     it argues for nothing and must not pad a driver list.
+
+    **One dimension, one reason.** The financial-risk reason restates
+    Financial Risk alone. Valuation Risk `HIGH` also dampens the direction
+    (the shared `has_high_financial_or_valuation_risk` flag, read by
+    `select_direction` and untouched here), but it is a valuation concern
+    and already has its own reason: `VALUATION_EXPENSIVE`, from the same
+    FCF-yield finding Valuation Risk maps from. Shared decision effect is
+    not shared meaning -- a valuation-only case is never told its
+    financial risk is elevated.
     """
     risk_reason: InvestmentReason | None = None
-    if has_high_financial_or_valuation_risk:
+    if financial_risk_high:
         risk_reason = InvestmentReason(
             kind=InvestmentReasonKind.FINANCIAL_RISK_ELEVATED,
             polarity=ReasoningPolarity.ADVERSE,
@@ -626,7 +637,7 @@ def build_signal_summary(
     capital_allocation_status: BusinessCategoryStatus,
     valuation_status: ValuationStatus,
     valuation_support_status: ValuationSupportStatus,
-    has_high_financial_or_valuation_risk: bool,
+    financial_risk_high: bool,
     financial_risk_assessed: bool,
     financial_risk_not_applicable: bool = False,
     growth_revenue_cagr: float | None = None,
@@ -649,7 +660,9 @@ def build_signal_summary(
 
     # `not_applicable` is its own token: the measure does not describe
     # this business, which is not a missing input (see build_key_unknowns).
-    risk_status = "high" if has_high_financial_or_valuation_risk else (
+    # Financial Risk's own state -- never raised by Valuation Risk, which
+    # reports through the valuation entry.
+    risk_status = "high" if financial_risk_high else (
         "not_high" if financial_risk_assessed else (
             "not_applicable" if financial_risk_not_applicable else "not_evaluated"))
     connected = (

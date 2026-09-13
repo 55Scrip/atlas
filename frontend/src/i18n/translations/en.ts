@@ -2312,7 +2312,6 @@ export const en = {
   "investmentReasoning.riskBasis.trendUp": "The debt burden has risen from {{multiple}} in {{period}}.",
   "investmentReasoning.riskBasis.trendDown": "The debt burden has fallen from {{multiple}} in {{period}}.",
   "investmentReasoning.riskBasis.trendFlat": "The debt burden was also {{multiple}} in {{period}}.",
-  "investmentReasoning.riskBasis.alsoValuation": "Valuation risk is also assessed as high.",
   "investmentReasoning.riskBasis.scope": "The assessment reads reported debt and cash flow — not credit ratings, interest costs, debt maturities or liquidity.",
   "investmentReasoning.riskBasis.valuationOnly": "Basis for elevated financial risk: valuation risk is assessed as high — the valuation is high relative to the company's own history. Financial risk itself: {{level}}.",
   "investmentReasoning.riskBasis.notApplicable": "Financial risk: Atlas's general debt and cash-flow measure is not used for banks, insurers and securities firms.",
@@ -2322,6 +2321,9 @@ export const en = {
   "investmentReasoning.riskBasis.level.low": "low",
   "investmentReasoning.riskBasis.level.moderate": "moderate",
   "investmentReasoning.riskBasis.level.high": "high",
+  "investmentReasoning.valuationBasis.belowAll": "today's FCF yield ({{current}}) is lower than at all {{count}} earlier observations in the company's own history (median {{median}}) — not a comparison with peers.",
+  "investmentReasoning.valuationBasis.belowOnly": "today's FCF yield ({{current}}) is lower than at the only earlier observation in the company's own history ({{median}}) — not a comparison with peers.",
+  "investmentReasoning.valuationBasis.belowMedian": "today's FCF yield ({{current}}) is below the company's own historical median ({{median}}, {{count}} earlier observations) — not a comparison with peers.",
 
   "recommendationConviction.section.heading": "Recommendation Strength",
   "recommendationConviction.section.expandLabel": "Show full reasoning",

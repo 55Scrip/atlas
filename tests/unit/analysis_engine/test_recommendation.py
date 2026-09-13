@@ -589,7 +589,7 @@ class TestWhatWouldChange:
         from atlas.analysis_engine.recommendation import _derive_what_would_change
 
         result = _derive_what_would_change(
-            has_high_financial_or_valuation_risk=True,
+            financial_risk_high=True,
             valuation_support_status=ValuationSupportStatus.NOT_SUPPORTED,
             growth_status=BusinessCategoryStatus.WEAK,
             capital_allocation_status=BusinessCategoryStatus.WEAK,
@@ -614,7 +614,7 @@ class TestWhatWouldChange:
         from atlas.analysis_engine.recommendation import _derive_what_would_change
 
         result = _derive_what_would_change(
-            has_high_financial_or_valuation_risk=False,
+            financial_risk_high=False,
             valuation_support_status=ValuationSupportStatus.NOT_SUPPORTED,
             growth_status=BusinessCategoryStatus.WEAK,
             capital_allocation_status=BusinessCategoryStatus.WEAK,
@@ -630,7 +630,7 @@ class TestWhatWouldChange:
         from atlas.analysis_engine.recommendation import _derive_what_would_change
 
         result = _derive_what_would_change(
-            has_high_financial_or_valuation_risk=False,
+            financial_risk_high=False,
             valuation_support_status=ValuationSupportStatus.SUPPORTED,
             growth_status=BusinessCategoryStatus.STRONG,
             capital_allocation_status=BusinessCategoryStatus.STRONG,
@@ -657,7 +657,7 @@ class TestWhatWouldChange:
         from atlas.analysis_engine.recommendation import _derive_what_would_change
 
         assert _derive_what_would_change(
-            has_high_financial_or_valuation_risk=False,
+            financial_risk_high=False,
             financial_risk_assessed=False,
             valuation_support_status=ValuationSupportStatus.INSUFFICIENT_INPUT,
             growth_status=BusinessCategoryStatus.MODERATE,
@@ -673,7 +673,7 @@ class TestWhatWouldChange:
         from atlas.analysis_engine.recommendation import _derive_what_would_change
 
         result = _derive_what_would_change(
-            has_high_financial_or_valuation_risk=False,
+            financial_risk_high=False,
             financial_risk_assessed=True,
             valuation_support_status=ValuationSupportStatus.INSUFFICIENT_INPUT,
             growth_status=BusinessCategoryStatus.MODERATE,
@@ -690,7 +690,7 @@ class TestWhatWouldChange:
         from atlas.analysis_engine.recommendation import _derive_what_would_change
 
         assert ChangeTriggerKind.FINANCIAL_RISK_BECOMES_ELEVATED not in _derive_what_would_change(
-            has_high_financial_or_valuation_risk=False,
+            financial_risk_high=False,
             financial_risk_assessed=False,
             valuation_support_status=ValuationSupportStatus.SUPPORTED,
             growth_status=BusinessCategoryStatus.STRONG,

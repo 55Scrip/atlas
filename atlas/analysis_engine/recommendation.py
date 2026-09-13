@@ -74,6 +74,7 @@ from atlas.analysis_engine.business_contracts import (
     BusinessCategory,
     BusinessCategoryStatus,
 )
+from atlas.analysis_engine.contracts import RiskCategory
 from atlas.analysis_engine.conviction import ConvictionAssessment, ConvictionLevel
 from atlas.analysis_engine.exceptions import AnalysisEngineContractError
 from atlas.analysis_engine.reasoning import (
@@ -217,7 +218,7 @@ class ChangeTriggerKind(str, Enum):
 
 def _derive_what_would_change(
     *,
-    has_high_financial_or_valuation_risk: bool,
+    financial_risk_high: bool,
     valuation_support_status: ValuationSupportStatus,
     growth_status: BusinessCategoryStatus,
     capital_allocation_status: BusinessCategoryStatus,
@@ -257,7 +258,10 @@ def _derive_what_would_change(
     """
     triggers: list[ChangeTriggerKind] = []
 
-    if has_high_financial_or_valuation_risk:
+    # The risk slot speaks for Financial Risk alone, like the driver it
+    # mirrors. A valuation-only case already says it through
+    # `LOWER_VALUATION` below; "lower risk" there would repeat it.
+    if financial_risk_high:
         triggers.append(ChangeTriggerKind.REDUCED_RISK)
     elif financial_risk_assessed:
         # Only when Financial Risk itself was assessed. Absent or
@@ -355,7 +359,7 @@ class RecommendationReasoning:
         if self.risk_basis is None:
             return
         elevated_driver = any(r.kind is InvestmentReasonKind.FINANCIAL_RISK_ELEVATED for r in self.counter_drivers)
-        if elevated_driver != bool(self.risk_basis.elevated_categories):
+        if elevated_driver != (RiskCategory.FINANCIAL_RISK in self.risk_basis.elevated_categories):
             raise AnalysisEngineContractError("The risk basis does not match the financial-risk driver it explains.")
 
 
@@ -803,6 +807,7 @@ def evaluate_recommendation_gate(
     # deliberately positioned after the direction call so it can never
     # be mistaken for an input to it.
     financial_risk_assessed = financial_risk_status in (RiskStatus.LOW, RiskStatus.MODERATE, RiskStatus.HIGH)
+    financial_risk_high = financial_risk_status is RiskStatus.HIGH
     _signal_summary = build_signal_summary(
         # Projected from the finding that owns them; never recomputed.
         growth_revenue_cagr=growth_finding.revenue_cagr,
@@ -813,7 +818,7 @@ def evaluate_recommendation_gate(
         capital_allocation_status=capital_allocation_finding.status,
         valuation_status=fcf_yield_finding.status,
         valuation_support_status=valuation_support.status,
-        has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
+        financial_risk_high=financial_risk_high,
         financial_risk_assessed=financial_risk_assessed,
         financial_risk_not_applicable=financial_risk_status is RiskStatus.NOT_APPLICABLE,
     )
@@ -822,12 +827,12 @@ def evaluate_recommendation_gate(
         capital_allocation_status=capital_allocation_finding.status,
         valuation_status=fcf_yield_finding.status,
         valuation_support_status=valuation_support.status,
-        has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
+        financial_risk_high=financial_risk_high,
         financial_risk_assessed=financial_risk_assessed,
     )
     _what_would_change = _derive_what_would_change(
         financial_risk_assessed=financial_risk_assessed,
-        has_high_financial_or_valuation_risk=has_high_financial_or_valuation_risk,
+        financial_risk_high=financial_risk_high,
         valuation_support_status=valuation_support.status,
         growth_status=growth_finding.status,
         capital_allocation_status=capital_allocation_finding.status,

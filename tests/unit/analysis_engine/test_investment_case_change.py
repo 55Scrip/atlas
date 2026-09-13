@@ -190,6 +190,38 @@ class TestFinancialRiskTransition:
         assert change.direction is ChangeDirection.POSITIVE
 
 
+class TestFinancialRiskMethodologyChange:
+    """Atlas changing how it measures Financial Risk is not the company
+    changing: across snapshots taken under different methods, Financial
+    Risk (its status and its strength/risk highlight) is re-baselined, not
+    compared. Everything else still compares."""
+
+    def _pair(self, *, previous_method, current_method):
+        previous = dataclasses.replace(
+            _with_risk(_snapshot(risk_highlights=("financial_risk",)), "financial_risk", "high"),
+            financial_risk_methodology=previous_method)
+        current = dataclasses.replace(
+            _with_risk(_snapshot(strengths=("financial_risk",), captured_at=_T1), "financial_risk", "low"),
+            financial_risk_methodology=current_method, valuation_status="expensive")
+        return compare_snapshots(dataclasses.replace(previous, valuation_status="fairly_valued"), current)
+
+    def test_a_method_change_is_not_reported_as_the_company_changing(self):
+        result = self._pair(previous_method=None, current_method="debt_burden_v2")
+        assert not [c for c in result.changes if c.details.get("dimension") == "financial_risk"
+                    or c.details.get("highlight_kind") == "financial_risk"]
+        assert [c.category for c in result.changes] == [ChangeCategory.VALUATION_CHANGED]
+
+    def test_under_one_method_financial_risk_changes_are_still_reported(self):
+        result = self._pair(previous_method="debt_burden_v2", current_method="debt_burden_v2")
+        assert ChangeCategory.FINANCIAL_RISK_CHANGED in [c.category for c in result.changes]
+
+    def test_a_captured_snapshot_records_the_current_method(self):
+        from atlas.analysis_engine.risk.financial_risk import FINANCIAL_RISK_METHODOLOGY
+        engine_input, output = run_minimal()
+        analysis = assemble_analysis(engine_input, output, is_thesis_stale=False, business_records=(), generated_at=GENERATED_AT)
+        assert capture_snapshot(analysis).financial_risk_methodology == FINANCIAL_RISK_METHODOLOGY
+
+
 class TestValuationTransitions:
     """Scenarios 7-8: Valuation direction."""
 

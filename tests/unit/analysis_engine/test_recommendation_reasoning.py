@@ -41,7 +41,7 @@ def _drivers(**overrides):
         capital_allocation_status=BusinessCategoryStatus.STRONG,
         valuation_status=ValuationStatus.FAIRLY_VALUED,
         valuation_support_status=ValuationSupportStatus.SUPPORTED,
-        has_high_financial_or_valuation_risk=False,
+        financial_risk_high=False,
         financial_risk_assessed=True,
     )
     kwargs.update(overrides)
@@ -112,7 +112,7 @@ class TestDriverExtraction:
         order `_derive_what_would_change` already applies, reused rather
         than reinvented."""
         _, counter = build_drivers(**_drivers(
-            has_high_financial_or_valuation_risk=True,
+            financial_risk_high=True,
             valuation_status=ValuationStatus.EXPENSIVE,
             growth_status=BusinessCategoryStatus.WEAK,
             capital_allocation_status=BusinessCategoryStatus.WEAK,

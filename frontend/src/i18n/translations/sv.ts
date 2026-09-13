@@ -2303,7 +2303,6 @@ export const sv: Record<TranslationKey, string> = {
   "investmentReasoning.riskBasis.trendUp": "Skuldbördan har ökat från {{multiple}} {{period}}.",
   "investmentReasoning.riskBasis.trendDown": "Skuldbördan har minskat från {{multiple}} {{period}}.",
   "investmentReasoning.riskBasis.trendFlat": "Skuldbördan var också {{multiple}} {{period}}.",
-  "investmentReasoning.riskBasis.alsoValuation": "Värderingsrisken bedöms också som hög.",
   "investmentReasoning.riskBasis.scope": "Bedömningen bygger på redovisad skuld och kassaflöde — inte på kreditbetyg, räntekostnader, förfallostruktur eller likviditet.",
   "investmentReasoning.riskBasis.valuationOnly": "Grund för förhöjd finansiell risk: värderingsrisken bedöms som hög — värderingen är hög jämfört med bolagets egen historik. Den finansiella risken i sig: {{level}}.",
   "investmentReasoning.riskBasis.notApplicable": "Finansiell risk: Atlas generella mått för skuld och kassaflöde används inte för banker, försäkringsbolag och värdepappersföretag.",
@@ -2313,6 +2312,9 @@ export const sv: Record<TranslationKey, string> = {
   "investmentReasoning.riskBasis.level.low": "låg",
   "investmentReasoning.riskBasis.level.moderate": "måttlig",
   "investmentReasoning.riskBasis.level.high": "hög",
+  "investmentReasoning.valuationBasis.belowAll": "dagens FCF-avkastning ({{current}}) är lägre än vid alla {{count}} tidigare mätpunkter i bolagets egen historik (median {{median}}) — ingen jämförelse med konkurrenter.",
+  "investmentReasoning.valuationBasis.belowOnly": "dagens FCF-avkastning ({{current}}) är lägre än vid den enda tidigare mätpunkten i bolagets egen historik ({{median}}) — ingen jämförelse med konkurrenter.",
+  "investmentReasoning.valuationBasis.belowMedian": "dagens FCF-avkastning ({{current}}) är lägre än bolagets historiska median ({{median}}, {{count}} tidigare mätpunkter) — ingen jämförelse med konkurrenter.",
 
   "recommendationConviction.section.heading": "Rekommendationens styrka",
   "recommendationConviction.section.expandLabel": "Visa fullständig motivering",

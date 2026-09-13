@@ -3,15 +3,17 @@ import { render } from "@testing-library/react";
 import { LanguageProvider, useTranslation } from "../i18n";
 import { en } from "../i18n/translations/en";
 import { AtlasInvestmentReasoning } from "./AtlasInvestmentReasoning";
-import { formatMultiple, formatReportedAmount, riskBasisLabel } from "./describeRecommendationReasoning";
+import { formatMultiple, formatReportedAmount, riskBasisLabel, valuationBasisLabel } from "./describeRecommendationReasoning";
 import type { DecisionAction, InvestmentDecisionView } from "./investmentDecisionApi";
 import type { RecommendationReasoningView, RiskDriverBasisView } from "./reasoningContract";
 
 /**
- * Financial Risk v2 in the reasoning card. The reasoning payloads below are
- * the real `/investment-decision` reasoning for each ticker, serialized from
- * a copy of the live database (signal summary and forward context omitted)
- * -- fixture data, not rules: nothing in the card knows a ticker.
+ * Financial and valuation risk in the reasoning card -- two dimensions, two
+ * reasons, each with its own basis. The reasoning payloads below are the real
+ * `/investment-decision` reasoning for each ticker, serialized from a copy of
+ * the live database (forward context omitted; only the valuation entry of the
+ * signal summary kept). `GOOGL_BEFORE_SPLIT` is GOOGL's row as stored before
+ * the split. Fixture data, not rules: nothing in the card knows a ticker.
  */
 const REAL: Record<string, RecommendationReasoningView> = {
   "AVGO": {
@@ -83,11 +85,174 @@ const REAL: Record<string, RecommendationReasoningView> = {
       "version": 2
     },
     "schemaVersion": 1,
-    "signalSummary": [],
+    "signalSummary": [
+      {
+        "currentYield": 0.015349136525992603,
+        "engine": "valuation",
+        "freeCashFlowCagr": null,
+        "historicalMedianYield": 0.015328176518048757,
+        "historicalObservationCount": 4,
+        "historicalPercentile": 0.5,
+        "influencedDirection": true,
+        "revenueCagr": null,
+        "sourceStatus": "fairly_valued",
+        "state": "conclusive"
+      }
+    ],
     "whatWouldChange": [
       "valuation_becomes_expensive",
       "valuation_support_lost",
       "growth_deteriorates",
+      "capital_allocation_deteriorates"
+    ]
+  },
+  "AZN": {
+    "counterDrivers": [
+      {
+        "engine": "valuation",
+        "kind": "valuation_expensive",
+        "polarity": "adverse",
+        "sourceStatus": "expensive"
+      }
+    ],
+    "forwardContext": null,
+    "keyUnknowns": [
+      {
+        "engine": "valuation_support",
+        "kind": "analysis_complete_unresolved"
+      },
+      {
+        "engine": "business_quality",
+        "kind": "not_connected_to_direction"
+      },
+      {
+        "engine": "industry_context",
+        "kind": "not_connected_to_direction"
+      },
+      {
+        "engine": "expected_return",
+        "kind": "not_connected_to_direction"
+      }
+    ],
+    "primaryDrivers": [
+      {
+        "engine": "financial_risk",
+        "kind": "financial_risk_not_elevated",
+        "polarity": "supportive",
+        "sourceStatus": "not_high"
+      },
+      {
+        "engine": "capital_allocation",
+        "kind": "capital_allocation_strong",
+        "polarity": "supportive",
+        "sourceStatus": "strong"
+      }
+    ],
+    "recommendationConviction": {
+      "analyticalReasons": [],
+      "evidentialReasons": [
+        "company_fundamentals_evidence_only"
+      ],
+      "level": "low"
+    },
+    "riskBasis": {
+      "elevatedCategories": [
+        "valuation_risk"
+      ],
+      "financialRisk": {
+        "bands": {
+          "highFrom": 3.0,
+          "lowBelow": 1.25
+        },
+        "condition": "debt_burden_moderate",
+        "excluded": [],
+        "gaps": [],
+        "history": [
+          {
+            "capitalExpenditure": 1361000000.0,
+            "capitalExpenditureFactId": "700d2b31dbc3a396ed635a399f478ca3:v1:capital_expenditure:2023-12-31",
+            "freeCashFlow": 8984000000.0,
+            "freeCashFlowFactId": "700d2b31dbc3a396ed635a399f478ca3:v1:free_cash_flow:2023-12-31",
+            "operatingCashFlow": 10345000000.0,
+            "period": "2023-12-31",
+            "ratio": 2.657709038182697,
+            "sourceRecordIds": [
+              "700d2b31dbc3a396ed635a399f478ca3:v1"
+            ],
+            "totalDebt": 27494000000.0,
+            "totalDebtFactId": "700d2b31dbc3a396ed635a399f478ca3:v1:total_debt:2023-12-31",
+            "unit": "USD"
+          },
+          {
+            "capitalExpenditure": 1924000000.0,
+            "capitalExpenditureFactId": "f2f6f3cace12ca411fe260e1779e5c0a:v1:capital_expenditure:2024-12-31",
+            "freeCashFlow": 9937000000.0,
+            "freeCashFlowFactId": "f2f6f3cace12ca411fe260e1779e5c0a:v1:free_cash_flow:2024-12-31",
+            "operatingCashFlow": 11861000000.0,
+            "period": "2024-12-31",
+            "ratio": 2.4317511171064834,
+            "sourceRecordIds": [
+              "f2f6f3cace12ca411fe260e1779e5c0a:v1"
+            ],
+            "totalDebt": 28843000000.0,
+            "totalDebtFactId": "f2f6f3cace12ca411fe260e1779e5c0a:v1:total_debt:2024-12-31",
+            "unit": "USD"
+          },
+          {
+            "capitalExpenditure": 2810000000.0,
+            "capitalExpenditureFactId": "220c5e3df6df8bcfac078ddb62986f49:v1:capital_expenditure:2025-12-31",
+            "freeCashFlow": 11765000000.0,
+            "freeCashFlowFactId": "220c5e3df6df8bcfac078ddb62986f49:v1:free_cash_flow:2025-12-31",
+            "operatingCashFlow": 14575000000.0,
+            "period": "2025-12-31",
+            "ratio": 1.9086792452830188,
+            "sourceRecordIds": [
+              "220c5e3df6df8bcfac078ddb62986f49:v1"
+            ],
+            "totalDebt": 27819000000.0,
+            "totalDebtFactId": "220c5e3df6df8bcfac078ddb62986f49:v1:total_debt:2025-12-31",
+            "unit": "USD"
+          }
+        ],
+        "industry": "DRUG MANUFACTURERS - GENERAL",
+        "latest": {
+          "capitalExpenditure": 2810000000.0,
+          "capitalExpenditureFactId": "220c5e3df6df8bcfac078ddb62986f49:v1:capital_expenditure:2025-12-31",
+          "freeCashFlow": 11765000000.0,
+          "freeCashFlowFactId": "220c5e3df6df8bcfac078ddb62986f49:v1:free_cash_flow:2025-12-31",
+          "operatingCashFlow": 14575000000.0,
+          "period": "2025-12-31",
+          "ratio": 1.9086792452830188,
+          "sourceRecordIds": [
+            "220c5e3df6df8bcfac078ddb62986f49:v1"
+          ],
+          "totalDebt": 27819000000.0,
+          "totalDebtFactId": "220c5e3df6df8bcfac078ddb62986f49:v1:total_debt:2025-12-31",
+          "unit": "USD"
+        },
+        "level": "moderate",
+        "measure": "gross_debt_to_operating_cash_flow"
+      },
+      "version": 2
+    },
+    "schemaVersion": 1,
+    "signalSummary": [
+      {
+        "currentYield": 0.04471287476702546,
+        "engine": "valuation",
+        "freeCashFlowCagr": null,
+        "historicalMedianYield": 0.04634977519999553,
+        "historicalObservationCount": 2,
+        "historicalPercentile": 0.0,
+        "influencedDirection": true,
+        "revenueCagr": null,
+        "sourceStatus": "expensive",
+        "state": "conclusive"
+      }
+    ],
+    "whatWouldChange": [
+      "financial_risk_becomes_elevated",
+      "lower_valuation",
       "capital_allocation_deteriorates"
     ]
   },
@@ -222,7 +387,20 @@ const REAL: Record<string, RecommendationReasoningView> = {
       "version": 2
     },
     "schemaVersion": 1,
-    "signalSummary": [],
+    "signalSummary": [
+      {
+        "currentYield": 0.02270145508104856,
+        "engine": "valuation",
+        "freeCashFlowCagr": null,
+        "historicalMedianYield": 0.08353073208067827,
+        "historicalObservationCount": 17,
+        "historicalPercentile": 0.0,
+        "influencedDirection": true,
+        "revenueCagr": null,
+        "sourceStatus": "expensive",
+        "state": "conclusive"
+      }
+    ],
     "whatWouldChange": [
       "reduced_risk",
       "lower_valuation",
@@ -230,6 +408,156 @@ const REAL: Record<string, RecommendationReasoningView> = {
     ]
   },
   "GOOGL": {
+    "counterDrivers": [
+      {
+        "engine": "valuation",
+        "kind": "valuation_expensive",
+        "polarity": "adverse",
+        "sourceStatus": "expensive"
+      }
+    ],
+    "forwardContext": null,
+    "keyUnknowns": [
+      {
+        "engine": "valuation_support",
+        "kind": "analysis_complete_unresolved"
+      },
+      {
+        "engine": "business_quality",
+        "kind": "not_connected_to_direction"
+      },
+      {
+        "engine": "industry_context",
+        "kind": "not_connected_to_direction"
+      },
+      {
+        "engine": "expected_return",
+        "kind": "not_connected_to_direction"
+      }
+    ],
+    "primaryDrivers": [
+      {
+        "engine": "financial_risk",
+        "kind": "financial_risk_not_elevated",
+        "polarity": "supportive",
+        "sourceStatus": "not_high"
+      },
+      {
+        "engine": "capital_allocation",
+        "kind": "capital_allocation_strong",
+        "polarity": "supportive",
+        "sourceStatus": "strong"
+      }
+    ],
+    "recommendationConviction": {
+      "analyticalReasons": [],
+      "evidentialReasons": [
+        "company_fundamentals_evidence_only"
+      ],
+      "level": "low"
+    },
+    "riskBasis": {
+      "elevatedCategories": [
+        "valuation_risk"
+      ],
+      "financialRisk": {
+        "bands": {
+          "highFrom": 3.0,
+          "lowBelow": 1.25
+        },
+        "condition": "debt_burden_low",
+        "excluded": [],
+        "gaps": [],
+        "history": [
+          {
+            "capitalExpenditure": 32251000000.0,
+            "capitalExpenditureFactId": "1e3e75c8fc74a5d21570a2e377aedef8:v2:capital_expenditure:2023-12-31",
+            "freeCashFlow": 69495000000.0,
+            "freeCashFlowFactId": "1e3e75c8fc74a5d21570a2e377aedef8:v2:free_cash_flow:2023-12-31",
+            "operatingCashFlow": 101746000000.0,
+            "period": "2023-12-31",
+            "ratio": 0.1264914591237002,
+            "sourceRecordIds": [
+              "1e3e75c8fc74a5d21570a2e377aedef8:v2"
+            ],
+            "totalDebt": 12870000000.0,
+            "totalDebtFactId": "1e3e75c8fc74a5d21570a2e377aedef8:v2:total_debt:2023-12-31",
+            "unit": "USD"
+          },
+          {
+            "capitalExpenditure": 52535000000.0,
+            "capitalExpenditureFactId": "dfc34251a9e976ee41327d34ebf46b25:v2:capital_expenditure:2024-12-31",
+            "freeCashFlow": 72764000000.0,
+            "freeCashFlowFactId": "dfc34251a9e976ee41327d34ebf46b25:v2:free_cash_flow:2024-12-31",
+            "operatingCashFlow": 125299000000.0,
+            "period": "2024-12-31",
+            "ratio": 0.0948291686286403,
+            "sourceRecordIds": [
+              "dfc34251a9e976ee41327d34ebf46b25:v2"
+            ],
+            "totalDebt": 11882000000.0,
+            "totalDebtFactId": "dfc34251a9e976ee41327d34ebf46b25:v2:total_debt:2024-12-31",
+            "unit": "USD"
+          },
+          {
+            "capitalExpenditure": 91447000000.0,
+            "capitalExpenditureFactId": "397c8c85fc7ce7cb60564022e7be0a70:v2:capital_expenditure:2025-12-31",
+            "freeCashFlow": 73266000000.0,
+            "freeCashFlowFactId": "397c8c85fc7ce7cb60564022e7be0a70:v2:free_cash_flow:2025-12-31",
+            "operatingCashFlow": 164713000000.0,
+            "period": "2025-12-31",
+            "ratio": 0.29471262134743464,
+            "sourceRecordIds": [
+              "397c8c85fc7ce7cb60564022e7be0a70:v2"
+            ],
+            "totalDebt": 48543000000.0,
+            "totalDebtFactId": "397c8c85fc7ce7cb60564022e7be0a70:v2:total_debt:2025-12-31",
+            "unit": "USD"
+          }
+        ],
+        "industry": "INTERNET CONTENT & INFORMATION",
+        "latest": {
+          "capitalExpenditure": 91447000000.0,
+          "capitalExpenditureFactId": "397c8c85fc7ce7cb60564022e7be0a70:v2:capital_expenditure:2025-12-31",
+          "freeCashFlow": 73266000000.0,
+          "freeCashFlowFactId": "397c8c85fc7ce7cb60564022e7be0a70:v2:free_cash_flow:2025-12-31",
+          "operatingCashFlow": 164713000000.0,
+          "period": "2025-12-31",
+          "ratio": 0.29471262134743464,
+          "sourceRecordIds": [
+            "397c8c85fc7ce7cb60564022e7be0a70:v2"
+          ],
+          "totalDebt": 48543000000.0,
+          "totalDebtFactId": "397c8c85fc7ce7cb60564022e7be0a70:v2:total_debt:2025-12-31",
+          "unit": "USD"
+        },
+        "level": "low",
+        "measure": "gross_debt_to_operating_cash_flow"
+      },
+      "version": 2
+    },
+    "schemaVersion": 1,
+    "signalSummary": [
+      {
+        "currentYield": 0.03587738079015575,
+        "engine": "valuation",
+        "freeCashFlowCagr": null,
+        "historicalMedianYield": 0.05419047265590952,
+        "historicalObservationCount": 11,
+        "historicalPercentile": 0.0,
+        "influencedDirection": true,
+        "revenueCagr": null,
+        "sourceStatus": "expensive",
+        "state": "conclusive"
+      }
+    ],
+    "whatWouldChange": [
+      "financial_risk_becomes_elevated",
+      "lower_valuation",
+      "capital_allocation_deteriorates"
+    ]
+  },
+  "GOOGL_BEFORE_SPLIT": {
     "counterDrivers": [
       {
         "engine": "financial_risk",
@@ -359,7 +687,20 @@ const REAL: Record<string, RecommendationReasoningView> = {
       "version": 2
     },
     "schemaVersion": 1,
-    "signalSummary": [],
+    "signalSummary": [
+      {
+        "currentYield": 0.03587738079015575,
+        "engine": "valuation",
+        "freeCashFlowCagr": null,
+        "historicalMedianYield": 0.05419047265590952,
+        "historicalObservationCount": 11,
+        "historicalPercentile": 0.0,
+        "influencedDirection": true,
+        "revenueCagr": null,
+        "sourceStatus": "expensive",
+        "state": "conclusive"
+      }
+    ],
     "whatWouldChange": [
       "reduced_risk",
       "lower_valuation",
@@ -408,7 +749,20 @@ const REAL: Record<string, RecommendationReasoningView> = {
       "version": 2
     },
     "schemaVersion": 1,
-    "signalSummary": [],
+    "signalSummary": [
+      {
+        "currentYield": 0.028059346120372575,
+        "engine": "valuation",
+        "freeCashFlowCagr": null,
+        "historicalMedianYield": 0.11433584279269046,
+        "historicalObservationCount": 8,
+        "historicalPercentile": 0.125,
+        "influencedDirection": true,
+        "revenueCagr": null,
+        "sourceStatus": "fairly_valued",
+        "state": "conclusive"
+      }
+    ],
     "whatWouldChange": [
       "valuation_becomes_expensive"
     ]
@@ -540,7 +894,20 @@ const REAL: Record<string, RecommendationReasoningView> = {
       "version": 2
     },
     "schemaVersion": 1,
-    "signalSummary": [],
+    "signalSummary": [
+      {
+        "currentYield": null,
+        "engine": "valuation",
+        "freeCashFlowCagr": null,
+        "historicalMedianYield": null,
+        "historicalObservationCount": null,
+        "historicalPercentile": null,
+        "influencedDirection": true,
+        "revenueCagr": null,
+        "sourceStatus": "insufficient_input",
+        "state": "inconclusive"
+      }
+    ],
     "whatWouldChange": [
       "reduced_risk",
       "improved_capital_allocation_evidence"
@@ -661,7 +1028,20 @@ const REAL: Record<string, RecommendationReasoningView> = {
       "version": 2
     },
     "schemaVersion": 1,
-    "signalSummary": [],
+    "signalSummary": [
+      {
+        "currentYield": 0.03408405785282661,
+        "engine": "valuation",
+        "freeCashFlowCagr": null,
+        "historicalMedianYield": 0.03055600204220705,
+        "historicalObservationCount": 18,
+        "historicalPercentile": 0.6111111111111112,
+        "influencedDirection": true,
+        "revenueCagr": null,
+        "sourceStatus": "fairly_valued",
+        "state": "conclusive"
+      }
+    ],
     "whatWouldChange": [
       "financial_risk_becomes_elevated",
       "valuation_becomes_expensive"
@@ -669,12 +1049,6 @@ const REAL: Record<string, RecommendationReasoningView> = {
   },
   "SHOP": {
     "counterDrivers": [
-      {
-        "engine": "financial_risk",
-        "kind": "financial_risk_elevated",
-        "polarity": "adverse",
-        "sourceStatus": "high"
-      },
       {
         "engine": "valuation",
         "kind": "valuation_expensive",
@@ -686,6 +1060,10 @@ const REAL: Record<string, RecommendationReasoningView> = {
     "keyUnknowns": [
       {
         "engine": "valuation_support",
+        "kind": "analysis_input_missing"
+      },
+      {
+        "engine": "financial_risk",
         "kind": "analysis_input_missing"
       },
       {
@@ -739,9 +1117,21 @@ const REAL: Record<string, RecommendationReasoningView> = {
       "version": 2
     },
     "schemaVersion": 1,
-    "signalSummary": [],
+    "signalSummary": [
+      {
+        "currentYield": 0.010694353733998251,
+        "engine": "valuation",
+        "freeCashFlowCagr": null,
+        "historicalMedianYield": 0.013630805537875018,
+        "historicalObservationCount": 1,
+        "historicalPercentile": 0.0,
+        "influencedDirection": true,
+        "revenueCagr": null,
+        "sourceStatus": "expensive",
+        "state": "conclusive"
+      }
+    ],
     "whatWouldChange": [
-      "reduced_risk",
       "lower_valuation",
       "growth_deteriorates"
     ]
@@ -877,7 +1267,20 @@ const REAL: Record<string, RecommendationReasoningView> = {
       "version": 2
     },
     "schemaVersion": 1,
-    "signalSummary": [],
+    "signalSummary": [
+      {
+        "currentYield": 0.03108367312305901,
+        "engine": "valuation",
+        "freeCashFlowCagr": null,
+        "historicalMedianYield": 0.048206314420069625,
+        "historicalObservationCount": 17,
+        "historicalPercentile": 0.0,
+        "influencedDirection": true,
+        "revenueCagr": null,
+        "sourceStatus": "expensive",
+        "state": "conclusive"
+      }
+    ],
     "whatWouldChange": [
       "reduced_risk",
       "lower_valuation",
@@ -999,7 +1402,20 @@ const REAL: Record<string, RecommendationReasoningView> = {
       "version": 2
     },
     "schemaVersion": 1,
-    "signalSummary": [],
+    "signalSummary": [
+      {
+        "currentYield": 0.034646925787921286,
+        "engine": "valuation",
+        "freeCashFlowCagr": null,
+        "historicalMedianYield": 0.03389218337507075,
+        "historicalObservationCount": 17,
+        "historicalPercentile": 0.5882352941176471,
+        "influencedDirection": true,
+        "revenueCagr": null,
+        "sourceStatus": "fairly_valued",
+        "state": "conclusive"
+      }
+    ],
     "whatWouldChange": [
       "financial_risk_becomes_elevated",
       "valuation_becomes_expensive",
@@ -1123,7 +1539,20 @@ const REAL: Record<string, RecommendationReasoningView> = {
       "version": 2
     },
     "schemaVersion": 1,
-    "signalSummary": [],
+    "signalSummary": [
+      {
+        "currentYield": 0.025882447007918627,
+        "engine": "valuation",
+        "freeCashFlowCagr": null,
+        "historicalMedianYield": 0.22653718695573472,
+        "historicalObservationCount": 5,
+        "historicalPercentile": 0.2,
+        "influencedDirection": true,
+        "revenueCagr": null,
+        "sourceStatus": "fairly_valued",
+        "state": "conclusive"
+      }
+    ],
     "whatWouldChange": [
       "reduced_risk",
       "valuation_becomes_expensive"
@@ -1174,6 +1603,10 @@ function basisLine(view: InvestmentDecisionView): string | undefined {
   return lines(view).find((line) => line.startsWith("Förhöjd finansiell risk:") || line.startsWith("Grund för förhöjd"));
 }
 
+function valuationLine(view: InvestmentDecisionView): string | undefined {
+  return lines(view).find((line) => line.startsWith("Högt värderad:"));
+}
+
 /** English, through the real dictionary and the same `{{name}}` interpolation. */
 function tEn(key: keyof typeof en, params: Record<string, string | number> = {}): string {
   return Object.entries(params).reduce((s, [k, v]) => s.split("{{" + k + "}}").join(String(v)), en[key] as string);
@@ -1219,10 +1652,15 @@ describe("VST -- elevated because debt is large relative to operating cash flow"
     const all = lines(decision(fixture("VST")));
     expect(all).toContain("Talar för: Inget i underlaget talar tydligt för.");
     expect(all).toContain("Vad skulle ändra bilden: Lägre risk · Om värderingen blir hög");
+    expect(valuationLine(decision(fixture("VST")))).toBeUndefined();
   });
 });
 
 describe("other real Cases", () => {
+  it("INTC: financial risk only -- no valuation reason appears", () => {
+    expect(valuationLine(decision(fixture("INTC"), "no_decision"))).toBeUndefined();
+  });
+
   it("META: rising but small debt is not elevated, and stays quiet", () => {
     const all = lines(decision(fixture("META"), "hold"));
     expect(all.join("\n")).not.toMatch(/Förhöjd finansiell risk|Grund för/);
@@ -1243,21 +1681,66 @@ describe("other real Cases", () => {
     );
   });
 
-  it("CAT: high burden and high valuation risk are both stated", () => {
-    const line = basisLine(decision(fixture("CAT"), "no_decision")) ?? "";
-    expect(line).toContain("3,1× kassaflödet från rörelsen (2025)");
-    expect(line).toContain("Värderingsrisken bedöms också som hög.");
+  it("CAT: both risks are high -- two reasons, two bases, neither explaining the other", () => {
+    const all = lines(decision(fixture("CAT"), "no_decision"));
+    const against = all.indexOf("Underlaget talar emot: Förhöjd finansiell risk · Högt värderad");
+    expect(against).toBeGreaterThanOrEqual(0);
+    expect(all[against + 1]).toBe(
+      "Förhöjd finansiell risk: total skuld motsvarar 3,1× kassaflödet från rörelsen (2025). " +
+        "Skuldbördan har ökat från 2,3× 2023. " +
+        SCOPE_SV,
+    );
+    expect(all[against + 2]).toBe(
+      "Högt värderad: dagens FCF-avkastning (2,3 %) är lägre än vid alla 17 tidigare mätpunkter i bolagets egen historik " +
+        "(median 8,4 %) — ingen jämförelse med konkurrenter.",
+    );
+    expect(all[against + 1]).not.toMatch(/värder|FCF-avkastning/);
+    expect(all[against + 2]).not.toMatch(/skuld|kassaflödet från rörelsen/);
   });
 
-  it("GOOGL: raised by valuation alone -- no financial explanation is borrowed", () => {
-    expect(basisLine(decision(fixture("GOOGL"), "no_decision"))).toBe(
-      "Grund för förhöjd finansiell risk: värderingsrisken bedöms som hög — värderingen är hög jämfört med bolagets egen historik. " +
-        "Den finansiella risken i sig: låg.",
+  it("GOOGL: valuation only -- the concern is named as valuation, never as financial risk", () => {
+    const all = lines(decision(fixture("GOOGL"), "no_decision"));
+    expect(all).toContain("Underlaget talar emot: Högt värderad");
+    expect(all).toContain("Underlaget talar för: Ingen förhöjd finansiell risk · Stark kapitalallokering");
+    expect(valuationLine(decision(fixture("GOOGL"), "no_decision"))).toBe(
+      "Högt värderad: dagens FCF-avkastning (3,6 %) är lägre än vid alla 11 tidigare mätpunkter i bolagets egen historik " +
+        "(median 5,4 %) — ingen jämförelse med konkurrenter.",
+    );
+    // "Ingen förhöjd finansiell risk" belongs in the for-row; nothing else may say it.
+    const text = all.filter((line) => !line.startsWith("Underlaget talar för:")).join("\n");
+    expect(text).not.toMatch(/förhöjd finansiell risk/i);
+    expect(text).not.toMatch(/kassaflödet från rörelsen|Skuldbördan/);
+    expect(basisLine(decision(fixture("GOOGL"), "no_decision"))).toBeUndefined();
+  });
+
+  it("GOOGL in English", () => {
+    expect(plain(valuationBasisLabel(fixture("GOOGL").signalSummary, T, "en-US"))).toBe(
+      "Expensive: today's FCF yield (3.6%) is lower than at all 11 earlier observations in the company's own history " +
+        "(median 5.4%) — not a comparison with peers.",
     );
   });
 
-  it("SHOP: raised by valuation while financial risk could not be assessed -- says so", () => {
-    expect(basisLine(decision(fixture("SHOP"), "no_decision"))).toContain("Den finansiella risken i sig: kunde inte bedömas.");
+  it("SHOP: a one-observation history is stated as exactly that", () => {
+    expect(valuationLine(decision(fixture("SHOP"), "no_decision"))).toBe(
+      "Högt värderad: dagens FCF-avkastning (1,1 %) är lägre än vid den enda tidigare mätpunkten i bolagets egen historik " +
+        "(1,4 %) — ingen jämförelse med konkurrenter.",
+    );
+    const text = lines(decision(fixture("SHOP"), "no_decision")).join("\n");
+    expect(text).not.toContain("Förhöjd finansiell risk");
+    expect(text).toContain("Underlag saknas: finansiell risk");
+  });
+
+  it("AZN: moderate financial risk is not elevated; the valuation concern is valuation", () => {
+    const all = lines(decision(fixture("AZN")));
+    expect(all).toContain("Talar emot: Högt värderad");
+    expect(all.join("\n")).not.toContain("Förhöjd finansiell risk");
+  });
+
+  it("a row stored before the split is rendered as what it was, never re-read", () => {
+    expect(basisLine(decision(fixture("GOOGL_BEFORE_SPLIT"), "no_decision"))).toBe(
+      "Grund för förhöjd finansiell risk: värderingsrisken bedöms som hög — värderingen är hög jämfört med bolagets egen historik. " +
+        "Den finansiella risken i sig: låg.",
+    );
   });
 
   it("GS: not applicable is one quiet line, never a reassurance and never a warning", () => {
