@@ -27,11 +27,17 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect as sa_inspect
 
 from atlas.alpha.security_share_evidence.models import (
+    CURRENT_COVER_SHARE_COUNT,
+    CurrentShareCountEvidence,
+    CurrentShareFiling,
+    CurrentShareScope,
     SecurityShareCountObservation,
     SecurityShareFiling,
     ShareClassLinkKind,
 )
 from atlas.alpha.security_share_evidence.table import (
+    current_share_filings_table,
+    current_share_observations_table,
     security_share_filings_table,
     security_share_observations_table,
 )
@@ -40,6 +46,8 @@ __all__ = ["SqlAlchemySecurityShareEvidenceRepository"]
 
 _filings = security_share_filings_table
 _observations = security_share_observations_table
+_current_filings = current_share_filings_table
+_current = current_share_observations_table
 
 #: `(tickers) -> {ticker: frozenset of the MICs Atlas lists it on}`.
 ListingMics = Callable[[tuple[str, ...]], dict[str, frozenset[str]]]
@@ -63,6 +71,20 @@ def _to_observation(row) -> SecurityShareCountObservation:
         link_kind=ShareClassLinkKind(row["link_kind"]), cover_title=row["cover_title"],
         cover_symbol=row["cover_symbol"], cover_exchange=row["cover_exchange"], cover_mic=row["cover_mic"],
         parser_version=row["parser_version"], recorded_at=datetime.fromisoformat(row["recorded_at"]),
+    )
+
+
+def _to_current(row) -> CurrentShareCountEvidence:
+    return CurrentShareCountEvidence(
+        issuer_cik=row["issuer_cik"], accession=row["accession"], form=row["form"],
+        filing_date=date.fromisoformat(row["filing_date"]), document_period_end=_day(row["document_period_end"]),
+        as_of=date.fromisoformat(row["as_of"]), scope=CurrentShareScope(row["scope"]), class_axis=row["class_axis"],
+        class_member=row["class_member"], shares=row["shares"], unit=row["unit"], decimals=row["decimals"],
+        conflict=bool(row["conflict"]),
+        concept=row["concept"], context_id=row["context_id"], link_kind=ShareClassLinkKind(row["link_kind"]),
+        cover_title=row["cover_title"], cover_symbol=row["cover_symbol"], cover_exchange=row["cover_exchange"],
+        cover_mic=row["cover_mic"], parser_version=row["parser_version"],
+        retrieved_at=datetime.fromisoformat(row["retrieved_at"]), recorded_at=datetime.fromisoformat(row["recorded_at"]),
     )
 
 
@@ -151,3 +173,83 @@ class SqlAlchemySecurityShareEvidenceRepository:
         for ticker, observations in found.items():
             out[ticker] = tuple(sorted(observations, key=lambda o: (o.period_end, o.filing_date, o.accession, o.class_member)))
         return out
+
+    # -- current cover-page share counts (Current Share-Count Evidence v1) ----------------------------
+
+    def current_processed(self, accessions: tuple[str, ...]) -> dict[str, frozenset[str]]:
+        """Accession -> the parser versions it was already recorded under."""
+        if not accessions or not self._has_tables(_current_filings.name):
+            return {}
+        out: dict[str, set[str]] = {}
+        with self._engine.connect() as connection:
+            for accession, version in connection.execute(
+                select(_current_filings.c.accession, _current_filings.c.parser_version)
+                .where(_current_filings.c.accession.in_(accessions))
+            ).all():
+                out.setdefault(accession, set()).add(version)
+        return {k: frozenset(v) for k, v in out.items()}
+
+    def record_current_filing(self, filing: CurrentShareFiling, evidence: tuple[CurrentShareCountEvidence, ...]) -> bool:
+        """Append-only: one transaction per filing and parser version; a
+        filing already recorded under this parser version is left exactly
+        as it is (returns False). Nothing is ever updated or deleted."""
+        if any(e.accession != filing.accession or e.issuer_cik != filing.issuer_cik
+               or e.parser_version != filing.parser_version for e in evidence):
+            raise ValueError("every observation must belong to the filing it is recorded with")
+        if filing.parser_version in self.current_processed((filing.accession,)).get(filing.accession, frozenset()):
+            return False
+        with self._engine.begin() as connection:
+            connection.execute(insert(_current_filings).values(
+                accession=filing.accession, parser_version=filing.parser_version, issuer_cik=filing.issuer_cik,
+                form=filing.form, filing_date=filing.filing_date.isoformat(),
+                document_period_end=_iso(filing.document_period_end), fiscal_period=filing.fiscal_period,
+                instance_url=filing.instance_url, cover_rows=filing.cover_rows,
+                share_classes_reported=filing.share_classes_reported, counts=filing.counts, proven=filing.proven,
+                ambiguous=filing.ambiguous, no_link=filing.no_link, conflicts=filing.conflicts,
+                retrieved_at=filing.retrieved_at.isoformat(), recorded_at=filing.recorded_at.isoformat(),
+            ))
+            for e in evidence:
+                connection.execute(insert(_current).values(
+                    accession=e.accession, context_id=e.context_id, parser_version=e.parser_version,
+                    evidence_type=CURRENT_COVER_SHARE_COUNT, issuer_cik=e.issuer_cik, form=e.form,
+                    filing_date=e.filing_date.isoformat(), document_period_end=_iso(e.document_period_end),
+                    as_of=e.as_of.isoformat(), scope=e.scope.value, class_axis=e.class_axis, class_member=e.class_member,
+                    shares=e.shares, unit=e.unit, decimals=e.decimals, conflict=e.conflict, concept=e.concept,
+                    link_kind=e.link_kind.value,
+                    cover_title=e.cover_title, cover_symbol=e.cover_symbol, cover_exchange=e.cover_exchange,
+                    cover_mic=e.cover_mic, retrieved_at=e.retrieved_at.isoformat(), recorded_at=e.recorded_at.isoformat(),
+                ))
+        return True
+
+    def current_evidence_for_issuers(self, issuer_ciks: frozenset[str]) -> dict[str, tuple[CurrentShareCountEvidence, ...]]:
+        """Every recorded current cover count of each filer, whatever its link."""
+        out: dict[str, tuple[CurrentShareCountEvidence, ...]] = {cik: () for cik in issuer_ciks}
+        if not issuer_ciks or not self._has_tables(_current.name):
+            return out
+        with self._engine.connect() as connection:
+            rows = connection.execute(select(_current).where(_current.c.issuer_cik.in_(tuple(issuer_ciks)))).mappings().all()
+        found: dict[str, list[CurrentShareCountEvidence]] = {}
+        for row in rows:
+            found.setdefault(row["issuer_cik"], []).append(_to_current(row))
+        for cik, evidence in found.items():
+            out[cik] = tuple(sorted(evidence, key=lambda e: (e.as_of, e.filing_date, e.accession, e.context_id)))
+        return out
+
+    def current_joined(self, cik_by_ticker: dict[str, str]) -> dict[str, tuple[CurrentShareCountEvidence, ...]]:
+        """Per Atlas ticker, the current counts its identity joins: the
+        filing's CIK is the ticker's own filer, and a proven link names the
+        ticker's symbol on its listing's MIC -- the historical join, applied
+        to a different evidence type. `()` without the security master."""
+        out: dict[str, tuple[CurrentShareCountEvidence, ...]] = {t: () for t in cik_by_ticker}
+        if not cik_by_ticker or self._listing_mics is None:
+            return out
+        mics = self._listing_mics(tuple(sorted(cik_by_ticker)))
+        by_cik = self.current_evidence_for_issuers(frozenset(cik_by_ticker.values()))
+        for ticker, cik in cik_by_ticker.items():
+            out[ticker] = tuple(
+                e for e in by_cik.get(cik, ())
+                if e.link_kind is ShareClassLinkKind.PROVEN_BY_SHARED_DIMENSION
+                and e.cover_symbol == ticker and e.cover_mic in mics.get(ticker, frozenset())
+            )
+        return out
+

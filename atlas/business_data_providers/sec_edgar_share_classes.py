@@ -42,6 +42,14 @@ entity-wide duration of about a year, or the day before its start -- the
 comparative year-ends the same statements show). Two facts for one member
 and date that disagree are kept as a conflict, never resolved.
 
+**Current cover-page counts** (Current Share-Count Evidence v1) are a
+separate reading of the same instances: `dei:EntityCommonStockSharesOutstanding`
+dated by its own instant (`parse_cover_share_counts`). A class-dimensioned
+count links by the same shared-member rule; an undimensioned count links
+to an undimensioned §12(b) row only when the filing reports no share
+classes at all. Latest 10-K/10-Q filings are located through SEC
+submissions, which are never evidence themselves.
+
 Pure parsing and linking are separate from fetching, so a saved instance
 reparses with no request. Structural only: no score, no conclusion, no
 Atlas identity -- joining a linked symbol to an Atlas security happens
@@ -61,11 +69,18 @@ from atlas.business_data_providers.sec_edgar_identity import SecEdgarIdentity
 
 __all__ = [
     "PARSER_VERSION",
+    "COVER_PARSER_VERSION",
     "CLASS_AXIS",
     "OUTSTANDING_SHARE_CONCEPTS",
     "EXCHANGE_MICS",
     "LinkKind",
+    "CountScope",
     "CoverRow",
+    "CoverShareCount",
+    "CoverShareFiling",
+    "COVER_SHARE_CONCEPTS",
+    "PERIODIC_FORMS",
+    "PeriodicFiling",
     "ClassShareFact",
     "ShareClassFiling",
     "FetchedInstance",
@@ -73,12 +88,17 @@ __all__ = [
     "exchange_mic",
     "filing_index_url",
     "parse_share_class_filing",
+    "parse_cover_share_counts",
+    "latest_periodic_filing",
+    "submissions_url",
     "select_instance",
 ]
 
 #: Stored beside every result: a later parser that reads more (or less)
 #: re-processes a filing instead of trusting an older reading.
 PARSER_VERSION = "share_class_links_v1"
+#: The cover-page share-count reading's own identity (a separate evidence type).
+COVER_PARSER_VERSION = "cover_share_counts_v1"
 
 _XBRLI = "http://www.xbrl.org/2003/instance"
 _XBRLDI = "http://xbrl.org/2006/xbrldi"
@@ -279,9 +299,8 @@ def _is_nil(element) -> bool:
     return element.get("{http://www.w3.org/2001/XMLSchema-instance}nil") in ("true", "1")
 
 
-def parse_share_class_filing(instance_xml: str) -> ShareClassFiling:
-    """Parse one XBRL instance and link its class share facts. Pure: the
-    same instance always gives the same result."""
+def _read_instance(instance_xml: str) -> tuple[tuple[_Context, ...], list[tuple[str, _Context, str | None, str, str | None]]]:
+    """(every context, every non-nil fact as (concept, context, unit, text, decimals))."""
     try:
         root = ElementTree.fromstring(instance_xml)
         names = _Names(_prefixes(instance_xml))
@@ -289,21 +308,28 @@ def parse_share_class_filing(instance_xml: str) -> ShareClassFiling:
         raise MalformedProviderResponse(f"XBRL instance did not parse: {exc}") from exc
     contexts = _contexts(root, names)
     units = _units(root)
-
-    facts: list[tuple[str, _Context, str | None, str]] = []  # (concept, context, unit, text)
+    facts: list[tuple[str, _Context, str | None, str, str | None]] = []
     for element in root:
         ref = element.get("contextRef")
         if ref is None or _is_nil(element) or ref not in contexts:
             continue
-        facts.append((names.of_tag(element.tag), contexts[ref], units.get(element.get("unitRef", "")), (element.text or "").strip()))
+        facts.append((names.of_tag(element.tag), contexts[ref], units.get(element.get("unitRef", "")),
+                      (element.text or "").strip(), element.get("decimals")))
+    return tuple(contexts.values()), facts
 
-    def entity_wide(concept: str) -> str | None:
-        values = {text for c, ctx, _, text in facts if c == concept and not ctx.explicit and not ctx.typed and text}
-        return values.pop() if len(values) == 1 else None
 
-    document_period_end = _day(entity_wide("dei:DocumentPeriodEndDate"))
+def _entity_wide(facts, concept: str) -> str | None:
+    values = {text for c, ctx, _, text, _ in facts if c == concept and not ctx.explicit and not ctx.typed and text}
+    return values.pop() if len(values) == 1 else None
+
+
+def parse_share_class_filing(instance_xml: str) -> ShareClassFiling:
+    """Parse one XBRL instance and link its class share facts. Pure: the
+    same instance always gives the same result."""
+    contexts, facts = _read_instance(instance_xml)
+    document_period_end = _day(_entity_wide(facts, "dei:DocumentPeriodEndDate"))
     annual_durations = [
-        ctx for ctx in contexts.values()
+        ctx for ctx in contexts
         if not ctx.explicit and not ctx.typed and ctx.start and ctx.end
         and _ANNUAL_DAYS[0] <= (ctx.end - ctx.start).days <= _ANNUAL_DAYS[1]
     ]
@@ -313,12 +339,12 @@ def parse_share_class_filing(instance_xml: str) -> ShareClassFiling:
 
     cover_rows = _cover_rows(facts)
     return ShareClassFiling(
-        entity_cik=(entity_wide("dei:EntityCentralIndexKey") or None),
-        document_type=entity_wide("dei:DocumentType"),
-        amendment=(entity_wide("dei:AmendmentFlag") or "").lower() == "true",
+        entity_cik=(_entity_wide(facts, "dei:EntityCentralIndexKey") or None),
+        document_type=_entity_wide(facts, "dei:DocumentType"),
+        amendment=(_entity_wide(facts, "dei:AmendmentFlag") or "").lower() == "true",
         document_period_end=document_period_end,
-        fiscal_year_focus=entity_wide("dei:DocumentFiscalYearFocus"),
-        fiscal_period_focus=entity_wide("dei:DocumentFiscalPeriodFocus"),
+        fiscal_year_focus=_entity_wide(facts, "dei:DocumentFiscalYearFocus"),
+        fiscal_period_focus=_entity_wide(facts, "dei:DocumentFiscalPeriodFocus"),
         annual_period_ends=annual_period_ends,
         cover_rows=cover_rows,
         facts=_class_facts(facts, frozenset(annual_period_ends), cover_rows),
@@ -347,7 +373,7 @@ def _cover_rows(facts) -> tuple[CoverRow, ...]:
     id: one row's facts may sit in more than one context). Only rows with
     a `dei:Security12bTitle` are §12(b) rows."""
     rows: dict[tuple, dict] = {}
-    for concept, ctx, _, text in facts:
+    for concept, ctx, _, text, _ in facts:
         field = _COVER.get(concept)
         if field is None:
             continue
@@ -403,7 +429,7 @@ def _link(member: str, cover_rows: tuple[CoverRow, ...]) -> tuple[LinkKind, Cove
 
 def _class_facts(facts, annual_period_ends: frozenset[date], cover_rows) -> tuple[ClassShareFact, ...]:
     by_key: dict[tuple[str, date], list[tuple[str, str, float]]] = {}
-    for concept, ctx, unit, text in facts:
+    for concept, ctx, unit, text, _ in facts:
         if concept not in OUTSTANDING_SHARE_CONCEPTS or unit != "shares" or ctx.instant is None:
             continue
         member, others = _class_member(ctx)
@@ -427,7 +453,157 @@ def _class_facts(facts, annual_period_ends: frozenset[date], cover_rows) -> tupl
     return tuple(out)
 
 
+# -- current cover-page share counts (Current Share-Count Evidence v1) ------------------------------------
+
+#: The cover-page count of outstanding common shares "as of the latest
+#: practicable date": dated by its own instant context -- never by the
+#: document period end, never by the filing date. A different evidence
+#: type from the period-end balance-sheet count `_class_facts` reads.
+COVER_SHARE_CONCEPTS = frozenset({"dei:EntityCommonStockSharesOutstanding"})
+
+
+class CountScope(str, Enum):
+    #: One member of the class axis: one class of the filer's stock.
+    CLASS = "class"
+    #: Undimensioned: the filer's common stock reported as one count.
+    ISSUER = "issuer"
+
+
+@dataclass(frozen=True)
+class CoverShareCount:
+    """One cover-page share count, as one filing reports and links it.
+    `as_of` is the count's own instant. `shares` is `None` when the filing
+    reports disagreeing values for the same scope and date (`conflict`)."""
+
+    scope: CountScope
+    class_member: str | None
+    as_of: date
+    shares: float | None
+    conflict: bool
+    #: The fact's own `decimals`, as reported (`"INF"` exact, `"-6"` rounded to millions).
+    decimals: str | None
+    concept: str
+    context_id: str
+    link_kind: LinkKind
+    cover: CoverRow | None
+
+
+@dataclass(frozen=True)
+class CoverShareFiling:
+    entity_cik: str | None
+    document_type: str | None
+    amendment: bool
+    document_period_end: date | None
+    fiscal_year_focus: str | None
+    fiscal_period_focus: str | None
+    cover_rows: tuple[CoverRow, ...]
+    #: Whether any share count in the filing carries a class-axis member:
+    #: then an undimensioned cover count is an aggregate, not one security.
+    share_classes_reported: bool
+    counts: tuple[CoverShareCount, ...]
+
+
+def _link_undimensioned(cover_rows: tuple[CoverRow, ...], share_classes_reported: bool) -> tuple[LinkKind, CoverRow | None]:
+    """An undimensioned count and an undimensioned §12(b) row share the
+    default (empty) dimension. That is proof only when the filing reports
+    no share classes at all, and exactly one undimensioned listed row
+    exists -- otherwise the count may span several classes."""
+    if not cover_rows:
+        return LinkKind.NO_LINK, None
+    if share_classes_reported:
+        return LinkKind.AMBIGUOUS, None
+    default = [r for r in cover_rows if r.class_member is None and r.other_dimensions == 0]
+    if len(default) != 1:
+        return LinkKind.AMBIGUOUS, None
+    row = default[0]
+    rivals = [r for r in cover_rows if r is not row and r.symbol == row.symbol and r.exchange == row.exchange]
+    if row.symbol and row.exchange and not row.no_trading_symbol and not rivals:
+        return LinkKind.PROVEN_BY_SHARED_DIMENSION, row
+    return LinkKind.AMBIGUOUS, None
+
+
+def parse_cover_share_counts(instance_xml: str) -> CoverShareFiling:
+    """Parse one 10-K/10-Q instance's cover-page share counts and link each
+    to a §12(b) security by the same-filing rule. Pure."""
+    _, facts = _read_instance(instance_xml)
+    cover_rows = _cover_rows(facts)
+    share_classes_reported = any(
+        unit == "shares" and _class_member(ctx)[0] is not None for _, ctx, unit, _, _ in facts
+    )
+    by_key: dict[tuple[str | None, date], list[tuple[str, str, float, str | None]]] = {}
+    for concept, ctx, unit, text, decimals in facts:
+        if concept not in COVER_SHARE_CONCEPTS or unit != "shares" or ctx.instant is None:
+            continue
+        member, others = _class_member(ctx)
+        if others:
+            continue
+        try:
+            value = float(text)
+        except ValueError:
+            continue
+        by_key.setdefault((member, ctx.instant), []).append((concept, ctx.id, value, decimals))
+    counts = []
+    for (member, as_of), reported in sorted(by_key.items(), key=lambda kv: (kv[0][0] or "", kv[0][1])):
+        values = {v for _, _, v, _ in reported}
+        concept, context_id, _, decimals = min(reported, key=lambda r: r[:3])
+        if member is None:
+            kind, row = _link_undimensioned(cover_rows, share_classes_reported)
+        else:
+            kind, row = _link(member, cover_rows)
+        counts.append(CoverShareCount(
+            scope=CountScope.ISSUER if member is None else CountScope.CLASS, class_member=member, as_of=as_of,
+            shares=values.pop() if len(values) == 1 else None, conflict=len(values) > 1,
+            decimals=decimals, concept=concept, context_id=context_id, link_kind=kind, cover=row,
+        ))
+    return CoverShareFiling(
+        entity_cik=_entity_wide(facts, "dei:EntityCentralIndexKey") or None,
+        document_type=_entity_wide(facts, "dei:DocumentType"),
+        amendment=(_entity_wide(facts, "dei:AmendmentFlag") or "").lower() == "true",
+        document_period_end=_day(_entity_wide(facts, "dei:DocumentPeriodEndDate")),
+        fiscal_year_focus=_entity_wide(facts, "dei:DocumentFiscalYearFocus"),
+        fiscal_period_focus=_entity_wide(facts, "dei:DocumentFiscalPeriodFocus"),
+        cover_rows=cover_rows,
+        share_classes_reported=share_classes_reported,
+        counts=tuple(counts),
+    )
+
+
+#: Periodic reports whose cover page states current shares outstanding.
+PERIODIC_FORMS = frozenset({"10-K", "10-Q"})
+
+
+@dataclass(frozen=True)
+class PeriodicFiling:
+    """Where a filing is -- from SEC submissions, which locate filings and
+    are never share-count evidence."""
+
+    accession: str
+    form: str
+    filing_date: date
+    report_date: date | None
+
+
+def latest_periodic_filing(submissions: object, *, filed_by: date | None = None) -> PeriodicFiling | None:
+    """The most recent original 10-K or 10-Q (never an amendment) in a
+    filer's submissions, filed on or before `filed_by`."""
+    recent = submissions.get("filings", {}).get("recent", {}) if isinstance(submissions, dict) else {}
+    columns = [recent.get(k) or [] for k in ("accessionNumber", "form", "filingDate", "reportDate")]
+    best = None
+    for accession, form, filed, report in zip(*columns):
+        filed_on = _day(filed)
+        if form not in PERIODIC_FORMS or filed_on is None or (filed_by and filed_on > filed_by):
+            continue
+        candidate = PeriodicFiling(accession, form, filed_on, _day(report))
+        if best is None or (candidate.filing_date, candidate.accession) > (best.filing_date, best.accession):
+            best = candidate
+    return best
+
+
 # -- fetching -------------------------------------------------------------------------------------------
+
+
+def submissions_url(cik: str) -> str:
+    return f"https://data.sec.gov/submissions/CIK{int(cik):010d}.json"
 
 
 def filing_index_url(cik: str, accession: str) -> str:
@@ -487,6 +663,12 @@ class SecEdgarShareClassProvider:
             return self._fetch_text(url, self._identity.headers())
         # Large filings' instances run to tens of megabytes.
         return fetch_text(url, self._identity.headers(), timeout=self._instance_timeout)
+
+    def fetch_submissions(self, *, cik: str, on_request=None) -> object:
+        """The filer's submissions index: one request, used only to locate filings."""
+        if on_request:
+            on_request()
+        return self._identity.fetch_json(submissions_url(cik))
 
     def fetch_instance(self, *, cik: str, accession: str, on_request=None) -> FetchedInstance:
         """`on_request()` is called before each request, so a failure
