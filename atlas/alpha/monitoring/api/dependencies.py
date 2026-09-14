@@ -83,6 +83,8 @@ def build_monitoring_service(engine: Engine) -> MonitoringService:
         watchlist_store=watchlist_store,
         snapshot_repository=get_investment_case_snapshot_repository(engine=engine),
         binding_repository=get_case_instrument_binding_repository(engine=engine),
+        # Monitoring reads no descriptive historical market cap.
+        security_share_repository=None,
     )
     stance_service = get_stance_service(
         composition_service=composition_service,

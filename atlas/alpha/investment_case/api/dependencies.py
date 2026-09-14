@@ -4,7 +4,8 @@ Same shared-engine pattern every Alpha API dependencies module uses: one
 physical `atlas.db` file, read-only providers reused directly from
 Case's, Decision's, Observation's, Evidence's, and Outcome's own
 established composition modules -- no new repository implementation, no
-new table.
+new table. (The security-level share-class repository is read-only here
+and creates nothing; see its own dependencies module.)
 
 Deliberately independent of `atlas.alpha.portfolio_cockpit.api
 .dependencies`'s own `get_investment_case_composition_service` (which
@@ -26,6 +27,8 @@ from atlas.alpha.investment_case.service import InvestmentCaseCompositionService
 from atlas.alpha.portfolio.api.dependencies import get_alpha_portfolio_store, get_alpha_trade_log_store
 from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.trade_log_store import AlphaTradeLogStore
+from atlas.alpha.security_share_evidence.dependencies import get_security_share_evidence_repository
+from atlas.alpha.security_share_evidence.repository import SqlAlchemySecurityShareEvidenceRepository
 from atlas.alpha.watchlist.api.dependencies import get_alpha_watchlist_store
 from atlas.alpha.watchlist.store import AlphaWatchlistStore
 from atlas.core.domain.case.repository import CaseRepository
@@ -58,6 +61,9 @@ def get_investment_case_composition_service(
         get_investment_case_snapshot_repository
     ),
     binding_repository: CaseInstrumentBindingRepository = Depends(get_case_instrument_binding_repository),
+    security_share_repository: SqlAlchemySecurityShareEvidenceRepository = Depends(
+        get_security_share_evidence_repository
+    ),
 ) -> InvestmentCaseCompositionService:
     return InvestmentCaseCompositionService(
         case_repository=case_repository,
@@ -71,4 +77,5 @@ def get_investment_case_composition_service(
         watchlist_store=watchlist_store,
         snapshot_repository=snapshot_repository,
         binding_repository=binding_repository,
+        security_share_repository=security_share_repository,
     )

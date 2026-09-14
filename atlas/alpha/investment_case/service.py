@@ -38,8 +38,11 @@ from atlas.alpha.portfolio.store import AlphaPortfolioStore
 from atlas.alpha.portfolio.trade_log_store import AlphaTradeLogStore
 from atlas.alpha.portfolio_intelligence.pipeline_bridge import build_decision_engine_input
 from atlas.alpha.portfolio_status.service import VERY_OLD_CASE_THRESHOLD_DAYS
+from atlas.alpha.security_share_evidence.models import SecurityShareCountObservation
+from atlas.alpha.security_share_evidence.repository import SqlAlchemySecurityShareEvidenceRepository
 from atlas.alpha.watchlist.store import AlphaWatchlistStore
 from atlas.analysis_engine.business_data.models import BusinessRecord
+from atlas.analysis_engine.business_data.sources import SourceKind
 from atlas.analysis_engine.business_data.versioning import latest_versions
 from atlas.analysis_engine.business_facts.extraction import extract_facts_from_records
 from atlas.analysis_engine.investment_case_change import ChangeIntelligence, capture_snapshot, compare_snapshots
@@ -106,6 +109,7 @@ class InvestmentCaseCompositionService:
         watchlist_store: AlphaWatchlistStore | None = None,
         snapshot_repository: SqlAlchemyInvestmentCaseSnapshotRepository | None = None,
         binding_repository: CaseInstrumentBindingRepository | None = None,
+        security_share_repository: SqlAlchemySecurityShareEvidenceRepository | None = None,
     ) -> None:
         self._case_repository = case_repository
         self._decision_repository = decision_repository
@@ -134,6 +138,11 @@ class InvestmentCaseCompositionService:
         #: membership lookups below, which is what every caller did
         #: before this table existed.
         self._binding_repository = binding_repository
+        #: Security-Level Share-Class Evidence v1 -- read only for the
+        #: descriptive `historical_market_cap`. Optional: without it (every
+        #: construction site that predates it) a Case simply has no
+        #: security-level share counts.
+        self._security_share_repository = security_share_repository
         # (Investment Case Monitoring & Change Intelligence v1) Optional,
         # trailing, same backward-compatible-extension shape as
         # `watchlist_store` above: every call site built before this
@@ -172,6 +181,7 @@ class InvestmentCaseCompositionService:
         business_records: tuple[BusinessRecord, ...],
         evaluated_at: datetime,
         shared_issuer: bool,
+        security_share_counts: tuple[SecurityShareCountObservation, ...] = (),
     ) -> InvestmentCaseComposition:
         """The one per-Case assembly implementation -- both `build` and
         `build_many` call only this. Never duplicated, never
@@ -241,7 +251,8 @@ class InvestmentCaseCompositionService:
         # Descriptive only, read from the same epochs; never handed back to
         # anything that decides (see `historical_market_cap.py`).
         historical_market_cap = reconstruct_historical_market_caps(
-            fcf_yield_finding.fcf_yield_evidence, business_records, shared_issuer=shared_issuer
+            fcf_yield_finding.fcf_yield_evidence, business_records, shared_issuer=shared_issuer,
+            security_share_counts=security_share_counts, as_of=evaluated_at.date(),
         )
         earnings_call = extract_earnings_call_knowledge(business_records)
         financial_statement_intelligence = extract_financial_statement_history(business_records)
@@ -452,11 +463,13 @@ class InvestmentCaseCompositionService:
         trades_for_ticker: tuple[AlphaTradeLogEntry, ...] = ()
         business_records: tuple[BusinessRecord, ...] = ()
         shared_issuer = False
+        security_share_counts: tuple[SecurityShareCountObservation, ...] = ()
         if ticker is not None:
             trades_for_ticker = tuple(t for t in all_trades if t.security == ticker)
             every_version = self._business_record_repository.get_by_company(ticker)
             business_records = latest_versions(every_version)
             shared_issuer = bool(self._companies_sharing_an_issuer({ticker: every_version}).get(ticker))
+            security_share_counts = self._security_share_counts({ticker: every_version}).get(ticker, ())
 
         return self._assemble(
             case_id_str,
@@ -470,7 +483,24 @@ class InvestmentCaseCompositionService:
             business_records=business_records,
             evaluated_at=_utc_now(),
             shared_issuer=shared_issuer,
+            security_share_counts=security_share_counts,
         )
+
+    def _security_share_counts(
+        self, records_by_ticker: dict[str, tuple[BusinessRecord, ...]]
+    ) -> dict[str, tuple[SecurityShareCountObservation, ...]]:
+        """Each ticker's proven class-count observations, joined by the CIK
+        of its own SEC statements (any version; exactly one filer, else
+        none), its symbol and its listing's MIC. One query for them all."""
+        if self._security_share_repository is None:
+            return {}
+        cik_by_ticker = {}
+        for ticker, records in records_by_ticker.items():
+            ciks = {str(r.metadata["sec_cik"]) for r in records
+                    if r.document_type is SourceKind.FINANCIAL_STATEMENT and r.metadata.get("sec_cik")}
+            if len(ciks) == 1:
+                cik_by_ticker[ticker] = ciks.pop()
+        return self._security_share_repository.proven_for_securities(cik_by_ticker)
 
     def _companies_sharing_an_issuer(
         self, records_by_ticker: dict[str, tuple[BusinessRecord, ...]]
@@ -573,6 +603,7 @@ class InvestmentCaseCompositionService:
         wanted_tickers = tuple({h.ticker for h in holdings_by_case.values()})
         business_records_by_ticker = self._business_record_repository.get_by_companies(wanted_tickers)
         sharing_by_ticker = self._companies_sharing_an_issuer(business_records_by_ticker)
+        security_shares_by_ticker = self._security_share_counts(business_records_by_ticker)
 
         evaluated_at = _utc_now()
         results: dict[str, InvestmentCaseComposition] = {}
@@ -594,5 +625,6 @@ class InvestmentCaseCompositionService:
                 business_records=business_records,
                 evaluated_at=evaluated_at,
                 shared_issuer=bool(holding is not None and sharing_by_ticker.get(holding.ticker)),
+                security_share_counts=security_shares_by_ticker.get(holding.ticker, ()) if holding is not None else (),
             )
         return results

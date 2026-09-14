@@ -28,10 +28,12 @@ from atlas.alpha.investment_case.historical_market_cap import (
     EndpointKind,
     FactorSource,
     SecurityScope,
+    ShareCountScope,
     ShareCountSource,
     derive_basis_events,
     reconstruct_historical_market_caps,
 )
+from atlas.alpha.security_share_evidence.models import SecurityShareCountObservation, ShareClassLinkKind
 from atlas.analysis_engine.business_data.models import RawBusinessDocument
 from atlas.analysis_engine.business_data.pipeline import ingest
 from atlas.analysis_engine.valuation.cash_flow import FCF_YIELD_METHODOLOGY
@@ -418,6 +420,117 @@ class TestSyntheticMatrix:
         assert reconstruct_historical_market_caps(None, (), shared_issuer=False) is None
 
 
+# -- security-level class counts (Security-Level Share-Class Evidence v1) -------------------------------------
+
+
+def _class_count(period="2020-12-31", filed="2021-02-10", shares=40.0, *, accession=None, member="abc:ClassCMember",
+                 kind=ShareClassLinkKind.PROVEN_BY_SHARED_DIMENSION, conflict=False):
+    """One class count as a filing links it (synthetic: the adapter's real
+    controls live in `test_sec_edgar_share_classes.py`)."""
+    return SecurityShareCountObservation(
+        issuer_cik="0000000001", accession=accession or f"0000000001-{filed[2:4]}-000001", form="10-K",
+        filing_date=date.fromisoformat(filed), fiscal_period=None, document_period_end=None,
+        period_end=date.fromisoformat(period), class_axis="us-gaap:StatementClassOfStockAxis", class_member=member,
+        shares=None if conflict else shares, conflict=conflict, source_concept="us-gaap:CommonStockSharesOutstanding",
+        context_id="c", link_kind=kind, cover_title="t", cover_symbol="SYN", cover_exchange="NASDAQ", cover_mic="XNAS",
+        parser_version="share_class_links_v1", recorded_at=NOW,
+    )
+
+
+def _run_classes(counts, *, shared_issuer=True, as_of=None, **kwargs):
+    records, evidence = _case("SYN", **kwargs)
+    return reconstruct_historical_market_caps(evidence, records, shared_issuer=shared_issuer,
+                                              security_share_counts=tuple(counts), as_of=as_of)
+
+
+class TestSecurityLevelCounts:
+    NO_SPLIT = [1.0] * 10
+
+    def test_a_shared_issuer_is_priced_on_its_own_class_count(self):
+        _synthetic(self.NO_SPLIT, shares=100.0)  # the issuer-level count spans every class
+        result = _run_classes([_class_count(shares=40.0)])
+        e = result.epochs[0]
+        assert (result.security_scope, result.share_count_scope) == (SecurityScope.SHARED_ISSUER, ShareCountScope.SECURITY)
+        assert (e.quality, e.aligned_share_count, e.market_cap) == (AlignmentQuality.FULLY_ALIGNED, 40.0, 400.0)
+        assert (e.share_count_scope, e.share_count_class_member, e.share_count_source) == (
+            ShareCountScope.SECURITY, "abc:ClassCMember", ShareCountSource.FIRST_REPORTED)
+        assert e.share_count_accession == e.first_reported_share_count_accession == "0000000001-21-000001"
+
+    def test_a_shared_issuer_period_without_a_class_count_stays_unsafe(self):
+        _synthetic(self.NO_SPLIT)
+        e = _run_classes([_class_count(period="2019-12-31", filed="2020-02-10")]).epochs[0]
+        assert (e.quality, e.gaps, e.market_cap) == (AlignmentQuality.SECURITY_SCOPE_UNSAFE, (AlignmentGap.SHARED_ISSUER,), None)
+
+    def test_one_share_source_per_case_never_a_mix(self):
+        _synthetic(self.NO_SPLIT, shares=100.0)
+        e = _run_classes([_class_count(period="2019-12-31", filed="2020-02-10")], shared_issuer=False).epochs[0]
+        assert (e.quality, e.gaps) == (AlignmentQuality.INSUFFICIENT, (AlignmentGap.MISSING_PERIOD_SHARES,))
+
+    def test_a_class_restatement_between_filings_names_the_split(self):
+        """The Alphabet shape: a first report before a 20-for-1 split, its
+        restatement after -- the split's factor comes from the class counts."""
+        _synthetic([20.0] * 7 + [1.0] * 3)  # a x20 event in (2021-02-26, 2022-02-26]
+        counts = [_class_count(shares=100.0), _class_count(filed="2023-02-01", shares=2000.0)]
+        result = _run_classes(counts)
+        (event,) = result.basis_events
+        assert (event.factor_source, event.factor) == (FactorSource.SHARE_RESTATEMENT, 20.0)
+        e = result.epochs[0]
+        assert (e.quality, e.aligned_share_count) == (AlignmentQuality.FULLY_ALIGNED, 100.0)
+        assert e.latest_reported_aligned_share_count == pytest.approx(100.0) and e.share_count_revision == pytest.approx(1.0)
+        assert e.latest_reported_share_count_accession == "0000000001-23-000001"
+
+    def test_a_conflicting_class_report_withholds(self):
+        _synthetic(self.NO_SPLIT)
+        e = _run_classes([_class_count(conflict=True)]).epochs[0]
+        assert (e.quality, e.gaps) == (AlignmentQuality.AMBIGUOUS, (AlignmentGap.CONFLICTING_EVIDENCE,))
+
+    def test_a_count_filed_after_the_evaluation_is_not_read(self):
+        _synthetic(self.NO_SPLIT)
+        result = _run_classes([_class_count()], as_of=date(2021, 2, 9))
+        assert result.share_count_scope is ShareCountScope.ISSUER
+        assert result.epochs[0].quality is AlignmentQuality.SECURITY_SCOPE_UNSAFE
+        assert _run_classes([_class_count()], as_of=date(2021, 2, 10)).share_count_scope is ShareCountScope.SECURITY
+
+    @pytest.mark.parametrize("kind", [ShareClassLinkKind.AMBIGUOUS, ShareClassLinkKind.NO_LINK])
+    def test_only_a_proven_link_counts(self, kind):
+        _synthetic(self.NO_SPLIT)
+        result = _run_classes([_class_count(kind=kind)])
+        assert result.share_count_scope is ShareCountScope.ISSUER
+        assert result.epochs[0].quality is AlignmentQuality.SECURITY_SCOPE_UNSAFE
+
+    def test_an_impossible_filing_date_is_ignored(self):
+        _synthetic(self.NO_SPLIT)
+        assert _run_classes([_class_count(filed="2020-12-31")]).share_count_scope is ShareCountScope.ISSUER
+
+    def test_a_foreign_filer_stays_unsafe(self):
+        _synthetic(self.NO_SPLIT, sec_form="20-F")
+        e = _run_classes([_class_count()], shared_issuer=False).epochs[0]
+        assert e.gaps == (AlignmentGap.FOREIGN_FILER,)
+
+    def test_order_does_not_matter(self):
+        _synthetic([20.0] * 7 + [1.0] * 3)
+        counts = [_class_count(shares=100.0), _class_count(filed="2023-02-01", shares=2000.0),
+                  _class_count(period="2019-12-31", filed="2020-02-10", shares=90.0)]
+        assert _run_classes(counts) == _run_classes(counts[::-1])
+
+    def test_without_class_counts_nothing_changes(self):
+        records, evidence = _case("CRM")
+        assert reconstruct_historical_market_caps(evidence, records, shared_issuer=False, security_share_counts=()) == \
+            reconstruct_historical_market_caps(evidence, records, shared_issuer=False)
+        assert reconstruct_historical_market_caps(evidence, records, shared_issuer=False).share_count_scope is \
+            ShareCountScope.ISSUER
+
+    def test_the_wire_says_which_count(self):
+        from atlas.alpha.investment_case.api.schemas import HistoricalMarketCapView
+
+        _synthetic(self.NO_SPLIT)
+        body = HistoricalMarketCapView.from_domain(_run_classes([_class_count()])).model_dump(by_alias=True, mode="json")
+        (epoch,) = body["epochs"]
+        assert (body["securityScope"], body["shareCountScope"], epoch["shareCountScope"]) == (
+            "shared_issuer", "security", "security")
+        assert (epoch["shareCountClassMember"], epoch["shareCountAccession"]) == ("abc:ClassCMember", "0000000001-21-000001")
+
+
 # -- determinism and provenance -----------------------------------------------------------------------------
 
 
@@ -496,17 +609,19 @@ class TestDecisionFirewall:
         reference = harness.fresh_composition_service().build(case_id)
         seen, sentinel = [], object()
 
-        def spy(evidence, records, *, shared_issuer):
-            seen.append((evidence, records, shared_issuer))
+        def spy(evidence, records, *, shared_issuer, security_share_counts, as_of):
+            seen.append((evidence, records, shared_issuer, security_share_counts, as_of))
             return sentinel
 
         monkeypatch.setattr(service_module, "reconstruct_historical_market_caps", spy)
         spied = harness.fresh_composition_service().build(case_id)
         assert spied.historical_market_cap is sentinel
         assert spied.canonical_analysis == reference.canonical_analysis
-        ((evidence, _, shared_issuer),) = seen
+        ((evidence, _, shared_issuer, security_share_counts, as_of),) = seen
         fcf = next(f for f in spied.canonical_analysis.valuation_engine.findings if f.fcf_yield_evidence is not None)
         assert evidence is fcf.fcf_yield_evidence and shared_issuer is False
+        # No security-level repository wired: no class counts, read as of the Case's own clock.
+        assert security_share_counts == () and as_of == NOW.date()
 
 
 class TestApiView:

@@ -993,6 +993,14 @@ class HistoricalMarketCapEpochView(CamelModel):
     aligned_share_count: float | None
     aligned_historical_market_cap: float | None
     aligned_historical_fcf_yield: float | None
+    #: "issuer" (the stored statement's issuer-level count) or "security"
+    #: (this security's own class count, linked inside the filing that
+    #: reports it); for "security", the class member and the filings.
+    share_count_scope: str
+    share_count_class_member: str | None
+    share_count_accession: str | None
+    first_reported_share_count_accession: str | None
+    latest_reported_share_count_accession: str | None
 
     @classmethod
     def from_domain(cls, epoch: HistoricalMarketCapEpoch) -> "HistoricalMarketCapEpochView":
@@ -1012,6 +1020,10 @@ class HistoricalMarketCapEpochView(CamelModel):
             basis_events=[HistoricalMarketCapEventView.from_domain(e) for e in epoch.basis_events],
             cumulative_factor=epoch.cumulative_factor, aligned_share_count=epoch.aligned_share_count,
             aligned_historical_market_cap=epoch.market_cap, aligned_historical_fcf_yield=epoch.aligned_fcf_yield,
+            share_count_scope=epoch.share_count_scope.value, share_count_class_member=epoch.share_count_class_member,
+            share_count_accession=epoch.share_count_accession,
+            first_reported_share_count_accession=epoch.first_reported_share_count_accession,
+            latest_reported_share_count_accession=epoch.latest_reported_share_count_accession,
         )
 
 
@@ -1023,6 +1035,7 @@ class HistoricalMarketCapView(CamelModel):
     role: str = "descriptive"
     methodology: str
     security_scope: str
+    share_count_scope: str
     epoch_count: int
     aligned_epoch_count: int
     exactly_aligned_epoch_count: int
@@ -1033,6 +1046,7 @@ class HistoricalMarketCapView(CamelModel):
     def from_domain(cls, evidence: HistoricalMarketCapEvidence) -> "HistoricalMarketCapView":
         return cls(
             methodology=evidence.methodology, security_scope=evidence.security_scope.value,
+            share_count_scope=evidence.share_count_scope.value,
             epoch_count=len(evidence.epochs), aligned_epoch_count=evidence.aligned_epoch_count,
             exactly_aligned_epoch_count=evidence.exactly_aligned_epoch_count,
             epochs=[HistoricalMarketCapEpochView.from_domain(e) for e in evidence.epochs],

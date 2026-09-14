@@ -56,6 +56,21 @@ called exact. The count used is then the latest reported one.
 security (`shared_issuer`), or a foreign filer's, is never multiplied by
 one security's price: `SECURITY_SCOPE_UNSAFE`.
 
+**Security-level counts** (Security-Level Share-Class Evidence v1). When
+the Case's own security has class counts that annual filings link to its
+trading symbol through a shared XBRL dimension
+(`atlas.alpha.security_share_evidence`), those -- and only those -- are
+the Case's share counts (`ShareCountScope.SECURITY`): one source per Case,
+never mixed with the issuer-level count, which for a multi-class issuer
+spans securities the price does not. They align by exactly the same rules:
+first-reported where its filing is known, restatements narrowing basis
+events. A shared issuer's epoch with no security-level count stays
+`SECURITY_SCOPE_UNSAFE`; a foreign filer stays unsafe whatever it links.
+Only observations filed by the Case's evaluation date are read. The result
+is that one security's market capitalisation -- the scope the decision's
+own proxy already has (the provider's per-listing share count) -- never an
+issuer total: no class is ever added to or allocated from another.
+
 Pure and deterministic: identical records give identical evidence, in any
 order; conflicting duplicates withhold rather than choose.
 """
@@ -66,6 +81,7 @@ from datetime import date, datetime
 from enum import Enum
 from math import prod
 
+from atlas.alpha.security_share_evidence.models import SecurityShareCountObservation, ShareClassLinkKind
 from atlas.analysis_engine.business_data.models import BusinessRecord
 from atlas.analysis_engine.business_data.sources import SourceKind
 from atlas.analysis_engine.valuation.contracts import ValuationDecisionEligibility
@@ -87,6 +103,7 @@ __all__ = [
     "HistoricalMarketCapEpoch",
     "HistoricalMarketCapEvidence",
     "SecurityScope",
+    "ShareCountScope",
     "ShareCountSource",
     "derive_basis_events",
     "reconstruct_historical_market_caps",
@@ -172,6 +189,14 @@ class ShareCountSource(str, Enum):
     LATEST_REPORTED = "latest_reported"
 
 
+class ShareCountScope(str, Enum):
+    #: The issuer-level period-end count on Atlas's stored SEC statement.
+    ISSUER = "issuer"
+    #: This security's own class count, linked to its trading symbol inside
+    #: the filing that reports it (`PROVEN_BY_SHARED_DIMENSION`).
+    SECURITY = "security"
+
+
 class EndpointKind(str, Enum):
     #: A stored monthly close: the event is after (or on or before) that close.
     PRICE_OBSERVATION = "price_observation"
@@ -246,6 +271,13 @@ class HistoricalMarketCapEpoch:
     #: by the same rule (`None` when it is the first report, or not placeable).
     latest_reported_aligned_share_count: float | None = None
     latest_reported_basis_events: tuple[BasisEvent, ...] = ()
+    #: Where the count came from. For `SECURITY`, the class member and the
+    #: filings (first and latest report) whose own cover links it.
+    share_count_scope: ShareCountScope = ShareCountScope.ISSUER
+    share_count_class_member: str | None = None
+    share_count_accession: str | None = None
+    first_reported_share_count_accession: str | None = None
+    latest_reported_share_count_accession: str | None = None
 
     @property
     def share_count_revision(self) -> float | None:
@@ -268,6 +300,7 @@ class HistoricalMarketCapEvidence:
     security_scope: SecurityScope
     epochs: tuple[HistoricalMarketCapEpoch, ...]
     basis_events: tuple[BasisEvent, ...]
+    share_count_scope: ShareCountScope = ShareCountScope.ISSUER
 
     @property
     def aligned_epoch_count(self) -> int:
@@ -298,6 +331,9 @@ class _Count:
     latest_filed: date | None
     first: float | None
     first_filed: date | None
+    class_member: str | None = None
+    first_accession: str | None = None
+    latest_accession: str | None = None
 
 
 def _day(value) -> date | None:
@@ -355,6 +391,42 @@ def _counts(records: tuple[BusinessRecord, ...]) -> dict[str, _Count | None]:
         values = {(c.latest, c.latest_filed, c.first, c.first_filed) for c in counts}
         for c in counts:
             out[c.record_id] = c if len(values) == 1 else None
+    return out
+
+
+def _security_counts(
+    observations: tuple[SecurityShareCountObservation, ...], as_of: date | None
+) -> dict[date, _Count | None]:
+    """The security's own class counts by period end: the first filing's
+    report and the latest filing's (a restatement between them is basis
+    evidence, as for issuer counts). `None` marks a period a filing
+    reports in disagreeing values -- withheld, never chosen between. Each
+    observation was linked inside its own filing; nothing here links."""
+    by_period: dict[date, list[SecurityShareCountObservation]] = {}
+    for o in observations:
+        if o.link_kind is not ShareClassLinkKind.PROVEN_BY_SHARED_DIMENSION:
+            continue  # only a link its own filing proves
+        if as_of is not None and o.filing_date > as_of:
+            continue  # not yet filed when the Case is evaluated
+        if o.filing_date <= o.period_end:
+            continue  # a period-end count cannot be filed by its period end
+        by_period.setdefault(o.period_end, []).append(o)
+    out: dict[date, _Count | None] = {}
+    for period, reported in by_period.items():
+        by_filing: dict[str, set[float | None]] = {}
+        for o in reported:
+            by_filing.setdefault(o.accession, set()).add(o.shares if o.usable else None)
+        if any(len(values) > 1 or None in values for values in by_filing.values()):
+            out[period] = None
+            continue
+        ordered = sorted(reported, key=lambda o: (o.filing_date, o.accession))
+        first, latest = ordered[0], ordered[-1]
+        out[period] = _Count(
+            record_id=f"{first.issuer_cik}/{first.cover_symbol}/{period.isoformat()}", period=period,
+            latest=float(latest.shares), latest_filed=latest.filing_date,
+            first=float(first.shares), first_filed=first.filing_date,
+            class_member=latest.class_member, first_accession=first.accession, latest_accession=latest.accession,
+        )
     return out
 
 
@@ -477,10 +549,15 @@ def reconstruct_historical_market_caps(
     business_records: tuple[BusinessRecord, ...],
     *,
     shared_issuer: bool,
+    security_share_counts: tuple[SecurityShareCountObservation, ...] = (),
+    as_of: date | None = None,
 ) -> HistoricalMarketCapEvidence | None:
     """`business_records` are the Case's latest versions (the same ones the
-    decision read). `None` when the FCF-yield method formed no evidence or
-    does not apply (banks, dealers, insurers) -- nothing to describe."""
+    decision read). `security_share_counts` are the proven class-count
+    observations joined to this Case's own security (by CIK, symbol and
+    MIC -- see `security_share_evidence.repository`); only those filed by
+    `as_of` are read. `None` when the FCF-yield method formed no evidence
+    or does not apply (banks, dealers, insurers) -- nothing to describe."""
     if evidence is None or evidence.eligibility is ValuationDecisionEligibility.NOT_APPLICABLE:
         return None
     forms = {r.metadata.get("sec_form") for r in business_records
@@ -488,39 +565,55 @@ def reconstruct_historical_market_caps(
     scope = (SecurityScope.SHARED_ISSUER if shared_issuer
              else SecurityScope.FOREIGN_FILER if forms - {"10-K"} else SecurityScope.SINGLE_SECURITY)
     prices, conflicts, price_by_record = _prices(business_records)
-    counts = _counts(business_records)
-    events = _events(prices, tuple(c for c in counts.values() if c is not None))
+    security_counts = _security_counts(security_share_counts, as_of)
+    share_scope = ShareCountScope.SECURITY if security_counts else ShareCountScope.ISSUER
+    counts = _counts(business_records) if share_scope is ShareCountScope.ISSUER else {}
+    period_counts = security_counts if share_scope is ShareCountScope.SECURITY else counts
+    events = _events(prices, tuple(c for c in period_counts.values() if c is not None))
     statements = {r.id: r for r in business_records if r.document_type is SourceKind.FINANCIAL_STATEMENT}
     latest_annual_filing = max(
         (d for r in statements.values() if (d := _day(r.published_at)) is not None), default=None
     )
     span = (min(prices), max(prices)) if prices else None
     epochs = tuple(
-        _align_epoch(epoch, scope, price_by_record, conflicts, counts, statements, events, latest_annual_filing, span)
+        _align_epoch(epoch, scope, share_scope, price_by_record, conflicts, counts, security_counts, statements,
+                     events, latest_annual_filing, span)
         for epoch in evidence.prior_epochs
     )
-    return HistoricalMarketCapEvidence(HISTORICAL_MARKET_CAP_METHODOLOGY, scope, epochs, events)
+    return HistoricalMarketCapEvidence(HISTORICAL_MARKET_CAP_METHODOLOGY, scope, epochs, events, share_scope)
 
 
-def _align_epoch(epoch: FcfYieldEpochObservation, scope, price_by_record, conflicts, counts, statements, events,
-                 latest_annual_filing, span) -> HistoricalMarketCapEpoch:
+def _align_epoch(epoch: FcfYieldEpochObservation, scope, share_scope, price_by_record, conflicts, counts,
+                 security_counts, statements, events, latest_annual_filing, span) -> HistoricalMarketCapEpoch:
     base = dict(fiscal_period=epoch.fiscal_period, observed_on=epoch.observed_on, currency=epoch.currency,
-                free_cash_flow=epoch.free_cash_flow, proxy_market_cap=epoch.market_cap_proxy)
+                free_cash_flow=epoch.free_cash_flow, proxy_market_cap=epoch.market_cap_proxy,
+                share_count_scope=share_scope)
 
     def withheld(quality, *gaps, **known):
         return HistoricalMarketCapEpoch(quality=quality, gaps=tuple(gaps), **base, **known)
 
-    if scope is not SecurityScope.SINGLE_SECURITY:
-        gap = AlignmentGap.SHARED_ISSUER if scope is SecurityScope.SHARED_ISSUER else AlignmentGap.FOREIGN_FILER
-        return withheld(AlignmentQuality.SECURITY_SCOPE_UNSAFE, gap)
+    period = _day(epoch.fiscal_period)
+    if scope is SecurityScope.FOREIGN_FILER:
+        return withheld(AlignmentQuality.SECURITY_SCOPE_UNSAFE, AlignmentGap.FOREIGN_FILER)
+    if scope is SecurityScope.SHARED_ISSUER and (share_scope is ShareCountScope.ISSUER or period not in security_counts):
+        # The issuer's count spans securities this price does not; without
+        # this security's own count for the period there is nothing to use.
+        return withheld(AlignmentQuality.SECURITY_SCOPE_UNSAFE, AlignmentGap.SHARED_ISSUER)
 
     on = _day(epoch.observed_on)
     price = price_by_record.get(_record_id_of(epoch.share_price_fact_id))
     statement_id = _record_id_of(epoch.free_cash_flow_fact_id)
-    count = counts.get(statement_id)
-    if on in conflicts or (statement_id in counts and count is None):
+    if share_scope is ShareCountScope.SECURITY:
+        count, conflicted = security_counts.get(period), period in security_counts and security_counts[period] is None
+    else:
+        count, conflicted = counts.get(statement_id), statement_id in counts and counts[statement_id] is None
+    if on in conflicts or conflicted:
         return withheld(AlignmentQuality.AMBIGUOUS, AlignmentGap.CONFLICTING_EVIDENCE)
     known = dict(statement_record_id=statement_id if statement_id in statements else None)
+    if count is not None and count.class_member is not None:
+        known.update(share_count_class_member=count.class_member,
+                     first_reported_share_count_accession=count.first_accession,
+                     latest_reported_share_count_accession=count.latest_accession)
     missing = []
     if price is None or price.on != on:
         missing.append(AlignmentGap.MISSING_RAW_PRICE)
@@ -536,10 +629,10 @@ def _align_epoch(epoch: FcfYieldEpochObservation, scope, price_by_record, confli
     first = latest = None
     if count.first is not None and count.first_filed is not None:
         first = _align_exact(epoch, on, count.first, ShareCountSource.FIRST_REPORTED, count.first_filed,
-                             events, span, base, dict(known))
+                             events, span, base, dict(known, share_count_accession=count.first_accession))
     if count.latest_filed is not None and (first is None or count.latest_filed != count.first_filed):
         latest = _align_exact(epoch, on, count.latest, ShareCountSource.LATEST_REPORTED, count.latest_filed,
-                              events, span, base, dict(known))
+                              events, span, base, dict(known, share_count_accession=count.latest_accession))
     if first is None and latest is None:
         return _align_bounded(on, count, latest_annual_filing, events, span, base, known)
     if first is not None and (first.quality in ALIGNED_QUALITIES or latest is None
