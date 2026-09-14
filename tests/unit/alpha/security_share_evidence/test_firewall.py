@@ -61,8 +61,10 @@ def test_current_share_evidence_is_read_only_by_its_operator_command():
 
 
 def test_the_share_class_adapter_is_reached_only_through_business_data_refresh():
+    # The sibling class-rights adapter reuses the same XBRL plumbing.
     assert _importers("sec_edgar_share_classes", skip="sec_edgar_share_classes.py") == {
-        "atlas/alpha/business_data_refresh/security_share_evidence.py"}
+        "atlas/alpha/business_data_refresh/security_share_evidence.py",
+        "atlas/business_data_providers/sec_edgar_class_rights.py"}
 
 
 def _statement(ticker: str) -> RawBusinessDocument:
