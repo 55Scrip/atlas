@@ -99,6 +99,11 @@ from atlas.alpha.investment_case.growth_intelligence import (
     GrowthTrendKnowledge,
     SegmentGrowthInformation,
 )
+from atlas.alpha.investment_case.historical_market_cap import (
+    BasisEvent,
+    HistoricalMarketCapEpoch,
+    HistoricalMarketCapEvidence,
+)
 from atlas.alpha.investment_case.historical_valuation import (
     HistoricalValuationKnowledge,
     ValuationDeviation,
@@ -933,6 +938,106 @@ class HistoricalValuationView(CamelModel):
     @classmethod
     def from_domain(cls, knowledge: HistoricalValuationKnowledge) -> "HistoricalValuationView":
         return cls(metrics=[ValuationMetricHistoryView.from_domain(m) for m in knowledge.metrics])
+
+
+class HistoricalMarketCapEventView(CamelModel):
+    """A split-like share-basis change, known only to lie after `after` and
+    on or before `onOrBefore` -- never dated more precisely than that."""
+
+    after: date
+    after_kind: str
+    on_or_before: date
+    on_or_before_kind: str
+    factor: float
+    price_factor: float
+    factor_source: str
+    status: str
+    price_record_ids: list[str]
+    statement_record_ids: list[str]
+
+    @classmethod
+    def from_domain(cls, event: BasisEvent) -> "HistoricalMarketCapEventView":
+        return cls(
+            after=event.after, after_kind=event.after_kind.value, on_or_before=event.on_or_before,
+            on_or_before_kind=event.on_or_before_kind.value, factor=event.factor, price_factor=event.price_factor,
+            factor_source=event.factor_source.value, status=event.status.value,
+            price_record_ids=list(event.price_record_ids), statement_record_ids=list(event.statement_record_ids),
+        )
+
+
+class HistoricalMarketCapEpochView(CamelModel):
+    """One prior fiscal epoch: its reconstructed market capitalisation, or
+    why it is withheld, beside the decision's own proxy for the same epoch."""
+
+    fiscal_period: str
+    observed_on: str
+    alignment_quality: str
+    gaps: list[str]
+    currency: str
+    free_cash_flow: float
+    proxy_market_cap: float
+    price_record_id: str | None
+    raw_close: float | None
+    adjusted_close: float | None
+    statement_record_id: str | None
+    share_count: float | None
+    share_count_source: str | None
+    share_count_filed: date | None
+    share_count_filed_bounds: list[date] | None
+    first_reported_share_count: float | None
+    latest_reported_share_count: float | None
+    latest_reported_aligned_share_count: float | None
+    share_count_revision: float | None
+    basis_events: list[HistoricalMarketCapEventView]
+    cumulative_factor: float | None
+    aligned_share_count: float | None
+    aligned_historical_market_cap: float | None
+    aligned_historical_fcf_yield: float | None
+
+    @classmethod
+    def from_domain(cls, epoch: HistoricalMarketCapEpoch) -> "HistoricalMarketCapEpochView":
+        return cls(
+            fiscal_period=epoch.fiscal_period, observed_on=epoch.observed_on,
+            alignment_quality=epoch.quality.value, gaps=[g.value for g in epoch.gaps], currency=epoch.currency,
+            free_cash_flow=epoch.free_cash_flow, proxy_market_cap=epoch.proxy_market_cap,
+            price_record_id=epoch.price_record_id, raw_close=epoch.raw_close, adjusted_close=epoch.adjusted_close,
+            statement_record_id=epoch.statement_record_id, share_count=epoch.share_count,
+            share_count_source=epoch.share_count_source.value if epoch.share_count_source else None,
+            share_count_filed=epoch.share_count_filed,
+            share_count_filed_bounds=list(epoch.share_count_filed_bounds) if epoch.share_count_filed_bounds else None,
+            first_reported_share_count=epoch.first_reported_share_count,
+            latest_reported_share_count=epoch.latest_reported_share_count,
+            latest_reported_aligned_share_count=epoch.latest_reported_aligned_share_count,
+            share_count_revision=epoch.share_count_revision,
+            basis_events=[HistoricalMarketCapEventView.from_domain(e) for e in epoch.basis_events],
+            cumulative_factor=epoch.cumulative_factor, aligned_share_count=epoch.aligned_share_count,
+            aligned_historical_market_cap=epoch.market_cap, aligned_historical_fcf_yield=epoch.aligned_fcf_yield,
+        )
+
+
+class HistoricalMarketCapView(CamelModel):
+    """(Aligned Historical Market Cap) Descriptive evidence only: the
+    valuation above decides on `fiscal_epoch_v2`'s proxy, never on this.
+    `role` says so on the wire."""
+
+    role: str = "descriptive"
+    methodology: str
+    security_scope: str
+    epoch_count: int
+    aligned_epoch_count: int
+    exactly_aligned_epoch_count: int
+    epochs: list[HistoricalMarketCapEpochView]
+    basis_events: list[HistoricalMarketCapEventView]
+
+    @classmethod
+    def from_domain(cls, evidence: HistoricalMarketCapEvidence) -> "HistoricalMarketCapView":
+        return cls(
+            methodology=evidence.methodology, security_scope=evidence.security_scope.value,
+            epoch_count=len(evidence.epochs), aligned_epoch_count=evidence.aligned_epoch_count,
+            exactly_aligned_epoch_count=evidence.exactly_aligned_epoch_count,
+            epochs=[HistoricalMarketCapEpochView.from_domain(e) for e in evidence.epochs],
+            basis_events=[HistoricalMarketCapEventView.from_domain(e) for e in evidence.basis_events],
+        )
 
 
 class ManagementStatementView(CamelModel):
@@ -3608,6 +3713,7 @@ class InvestmentCaseAnalysisView(CamelModel):
     market_snapshot: MarketSnapshotView | None
     regulatory_filings: list[RegulatoryFilingView]
     historical_valuation: HistoricalValuationView
+    historical_market_cap: HistoricalMarketCapView | None = None
     earnings_call: EarningsCallView
     financial_statement_intelligence: FinancialStatementIntelligenceView
     capital_allocation_intelligence: CapitalAllocationIntelligenceView
@@ -3848,6 +3954,10 @@ class InvestmentCaseAnalysisView(CamelModel):
             ),
             regulatory_filings=[RegulatoryFilingView.from_domain(f) for f in composition.regulatory_filings],
             historical_valuation=HistoricalValuationView.from_domain(composition.historical_valuation),
+            historical_market_cap=(
+                HistoricalMarketCapView.from_domain(composition.historical_market_cap)
+                if composition.historical_market_cap is not None else None
+            ),
             earnings_call=EarningsCallView.from_domain(composition.earnings_call),
             financial_statement_intelligence=FinancialStatementIntelligenceView.from_domain(
                 composition.financial_statement_intelligence

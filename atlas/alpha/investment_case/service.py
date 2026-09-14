@@ -27,6 +27,7 @@ from atlas.alpha.investment_case.risk_factor_intelligence import extract_risk_fa
 from atlas.alpha.investment_case.legal_proceedings_intelligence import extract_legal_proceedings_knowledge
 from atlas.alpha.investment_case.growth_intelligence import extract_growth_knowledge
 from atlas.alpha.investment_case.financial_statement_intelligence import extract_financial_statement_history
+from atlas.alpha.investment_case.historical_market_cap import reconstruct_historical_market_caps
 from atlas.alpha.investment_case.historical_valuation import extract_historical_valuation
 from atlas.alpha.investment_case.management_credibility_intelligence import extract_management_credibility
 from atlas.alpha.investment_case.management_guidance_intelligence import extract_management_guidance
@@ -170,6 +171,7 @@ class InvestmentCaseCompositionService:
         trades_for_ticker: tuple[AlphaTradeLogEntry, ...],
         business_records: tuple[BusinessRecord, ...],
         evaluated_at: datetime,
+        shared_issuer: bool,
     ) -> InvestmentCaseComposition:
         """The one per-Case assembly implementation -- both `build` and
         `build_many` call only this. Never duplicated, never
@@ -231,12 +233,15 @@ class InvestmentCaseCompositionService:
         incentive_intelligence = extract_incentive_intelligence(regulatory_filings)
         # The FCF-yield finding's own fiscal epochs -- one construction,
         # read here rather than rebuilt (see `historical_valuation.py`).
-        historical_valuation = extract_historical_valuation(
-            next(
-                finding for finding in canonical_analysis.valuation_engine.findings
-                if finding.kind is ValuationMethodKind.FCF_YIELD_RELATIVE
-            ),
-            market_facts,
+        fcf_yield_finding = next(
+            finding for finding in canonical_analysis.valuation_engine.findings
+            if finding.kind is ValuationMethodKind.FCF_YIELD_RELATIVE
+        )
+        historical_valuation = extract_historical_valuation(fcf_yield_finding, market_facts)
+        # Descriptive only, read from the same epochs; never handed back to
+        # anything that decides (see `historical_market_cap.py`).
+        historical_market_cap = reconstruct_historical_market_caps(
+            fcf_yield_finding.fcf_yield_evidence, business_records, shared_issuer=shared_issuer
         )
         earnings_call = extract_earnings_call_knowledge(business_records)
         financial_statement_intelligence = extract_financial_statement_history(business_records)
@@ -332,6 +337,7 @@ class InvestmentCaseCompositionService:
             market_facts=market_facts,
             regulatory_filings=regulatory_filings,
             historical_valuation=historical_valuation,
+            historical_market_cap=historical_market_cap,
             earnings_call=earnings_call,
             financial_statement_intelligence=financial_statement_intelligence,
             financial_quality_intelligence=financial_quality_intelligence,
@@ -445,9 +451,12 @@ class InvestmentCaseCompositionService:
         all_trades = self._trade_log_store.list_all()
         trades_for_ticker: tuple[AlphaTradeLogEntry, ...] = ()
         business_records: tuple[BusinessRecord, ...] = ()
+        shared_issuer = False
         if ticker is not None:
             trades_for_ticker = tuple(t for t in all_trades if t.security == ticker)
-            business_records = latest_versions(self._business_record_repository.get_by_company(ticker))
+            every_version = self._business_record_repository.get_by_company(ticker)
+            business_records = latest_versions(every_version)
+            shared_issuer = bool(self._companies_sharing_an_issuer({ticker: every_version}).get(ticker))
 
         return self._assemble(
             case_id_str,
@@ -460,7 +469,27 @@ class InvestmentCaseCompositionService:
             trades_for_ticker=trades_for_ticker,
             business_records=business_records,
             evaluated_at=_utc_now(),
+            shared_issuer=shared_issuer,
         )
+
+    def _companies_sharing_an_issuer(
+        self, records_by_ticker: dict[str, tuple[BusinessRecord, ...]]
+    ) -> dict[str, frozenset[str]]:
+        """For each ticker, the other companies filed under any issuer its
+        records name -- in any version, since a later version need not
+        repeat the issuer an earlier one carried. One query for them all."""
+        issuers_by_ticker = {
+            ticker: frozenset(r.canonical_issuer_id for r in records if r.canonical_issuer_id)
+            for ticker, records in records_by_ticker.items()
+        }
+        companies = self._business_record_repository.companies_by_issuer_ids(
+            frozenset().union(*issuers_by_ticker.values()) if issuers_by_ticker else frozenset()
+        )
+        return {
+            ticker: frozenset().union(*(companies.get(i, frozenset()) for i in issuers)) - {ticker}
+            if issuers else frozenset()
+            for ticker, issuers in issuers_by_ticker.items()
+        }
 
     def build_many(self, case_ids: tuple[str, ...]) -> dict[str, InvestmentCaseComposition]:
         """Batch counterpart to `build` (ATLAS-028, Phase 3/22/23).
@@ -543,6 +572,7 @@ class InvestmentCaseCompositionService:
         #: `wanted_tickers` and get `()`, honestly, below.
         wanted_tickers = tuple({h.ticker for h in holdings_by_case.values()})
         business_records_by_ticker = self._business_record_repository.get_by_companies(wanted_tickers)
+        sharing_by_ticker = self._companies_sharing_an_issuer(business_records_by_ticker)
 
         evaluated_at = _utc_now()
         results: dict[str, InvestmentCaseComposition] = {}
@@ -563,5 +593,6 @@ class InvestmentCaseCompositionService:
                 trades_for_ticker=trades_for_ticker,
                 business_records=business_records,
                 evaluated_at=evaluated_at,
+                shared_issuer=bool(holding is not None and sharing_by_ticker.get(holding.ticker)),
             )
         return results

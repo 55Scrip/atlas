@@ -130,6 +130,24 @@ class SqlAlchemyBusinessRecordRepository:
             )
         return tuple(_to_record(row) for row in rows)
 
+    def companies_by_issuer_ids(self, canonical_issuer_ids: frozenset[str]) -> dict[str, frozenset[str]]:
+        """Every company whose records name each issuer (Aligned Historical
+        Market Cap): an issuer filed under more than one company has more
+        than one listed security, so its share count belongs to no single
+        one of them. One narrow query; no record is loaded."""
+        if not canonical_issuer_ids:
+            return {}
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                select(business_record_table.c.canonical_issuer_id, business_record_table.c.company)
+                .where(business_record_table.c.canonical_issuer_id.in_(sorted(canonical_issuer_ids)))
+                .distinct()
+            ).all()
+        out: dict[str, set[str]] = {}
+        for issuer, company in rows:
+            out.setdefault(issuer, set()).add(company)
+        return {issuer: frozenset(companies) for issuer, companies in out.items()}
+
 
 def _to_row(record: BusinessRecord) -> dict[str, Any]:
     return {

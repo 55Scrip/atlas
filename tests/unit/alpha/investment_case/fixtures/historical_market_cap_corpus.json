@@ -1,0 +1,3494 @@
+{
+ "AAPL": {
+  "epochs": [
+   {
+    "adjusted": 5.6377,
+    "available": "2009-10-27",
+    "currency": "USD",
+    "fcf": 9015000000.0,
+    "fiscal": "2009-09-26",
+    "observed": "2009-10-30",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 9.0018,
+    "available": "2010-10-27",
+    "currency": "USD",
+    "fcf": 16590000000.0,
+    "fiscal": "2010-09-25",
+    "observed": "2010-10-29",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 12.1063,
+    "available": "2011-10-26",
+    "currency": "USD",
+    "fcf": 33269000000.0,
+    "fiscal": "2011-09-24",
+    "observed": "2011-10-31",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 17.881,
+    "available": "2012-10-31",
+    "currency": "USD",
+    "fcf": 42561000000.0,
+    "fiscal": "2012-09-29",
+    "observed": "2012-10-31",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 16.0753,
+    "available": "2013-10-30",
+    "currency": "USD",
+    "fcf": 45501000000.0,
+    "fiscal": "2013-09-28",
+    "observed": "2013-10-31",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 23.7748,
+    "available": "2014-10-27",
+    "currency": "USD",
+    "fcf": 50142000000.0,
+    "fiscal": "2014-09-27",
+    "observed": "2014-10-31",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 26.7541,
+    "available": "2015-10-28",
+    "currency": "USD",
+    "fcf": 70019000000.0,
+    "fiscal": "2015-09-26",
+    "observed": "2015-10-30",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 25.9624,
+    "available": "2016-10-26",
+    "currency": "USD",
+    "fcf": 53497000000.0,
+    "fiscal": "2016-09-24",
+    "observed": "2016-10-31",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 40.1379,
+    "available": "2017-11-03",
+    "currency": "USD",
+    "fcf": 51774000000.0,
+    "fiscal": "2017-09-30",
+    "observed": "2017-11-30",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 42.3355,
+    "available": "2018-11-05",
+    "currency": "USD",
+    "fcf": 64121000000.0,
+    "fiscal": "2018-09-29",
+    "observed": "2018-11-30",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 59.6845,
+    "available": "2019-10-31",
+    "currency": "USD",
+    "fcf": 58896000000.0,
+    "fiscal": "2019-09-28",
+    "observed": "2019-10-31",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 105.5085,
+    "available": "2020-10-30",
+    "currency": "USD",
+    "fcf": 73365000000.0,
+    "fiscal": "2020-09-26",
+    "observed": "2020-10-30",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 146.1226,
+    "available": "2021-10-29",
+    "currency": "USD",
+    "fcf": 92953000000.0,
+    "fiscal": "2021-09-25",
+    "observed": "2021-10-29",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 150.4127,
+    "available": "2022-10-28",
+    "currency": "USD",
+    "fcf": 111443000000.0,
+    "fiscal": "2022-09-24",
+    "observed": "2022-10-31",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 187.6717,
+    "available": "2023-11-03",
+    "currency": "USD",
+    "fcf": 99584000000.0,
+    "fiscal": "2023-09-30",
+    "observed": "2023-11-30",
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 235.6315,
+    "available": "2024-11-01",
+    "currency": "USD",
+    "fcf": 108807000000.0,
+    "fiscal": "2024-09-28",
+    "observed": "2024-11-29",
+    "shares": 14594180000.0
+   }
+  ],
+  "monthly": [
+   {
+    "adjusted": 5.6377,
+    "currency": "USD",
+    "dividend": 0.0,
+    "legacy_adjusted": 5.6427,
+    "on": "2009-10-30",
+    "raw": 188.5,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 9.0018,
+    "currency": "USD",
+    "dividend": 0.0,
+    "legacy_adjusted": 9.0097,
+    "on": "2010-10-29",
+    "raw": 300.98,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 12.1063,
+    "currency": "USD",
+    "dividend": 0.0,
+    "legacy_adjusted": 12.1169,
+    "on": "2011-10-31",
+    "raw": 404.78,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 17.881,
+    "currency": "USD",
+    "dividend": 0.0,
+    "legacy_adjusted": 17.8967,
+    "on": "2012-10-31",
+    "raw": 595.32,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 16.0753,
+    "currency": "USD",
+    "dividend": 0.0,
+    "legacy_adjusted": 16.0894,
+    "on": "2013-10-31",
+    "raw": 522.702,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 23.7748,
+    "currency": "USD",
+    "dividend": 0.0,
+    "legacy_adjusted": 23.7957,
+    "on": "2014-10-31",
+    "raw": 108.0,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 26.7541,
+    "currency": "USD",
+    "dividend": 0.0,
+    "legacy_adjusted": 26.7775,
+    "on": "2015-10-30",
+    "raw": 119.5,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 25.9624,
+    "currency": "USD",
+    "dividend": 0.0,
+    "legacy_adjusted": 25.9852,
+    "on": "2016-10-31",
+    "raw": 113.54,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 40.1379,
+    "currency": "USD",
+    "dividend": 0.63,
+    "legacy_adjusted": 40.173,
+    "on": "2017-11-30",
+    "raw": 171.85,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 42.3355,
+    "currency": "USD",
+    "dividend": 0.73,
+    "legacy_adjusted": 42.3725,
+    "on": "2018-11-30",
+    "raw": 178.58,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 59.6845,
+    "currency": "USD",
+    "dividend": 0.0,
+    "legacy_adjusted": 59.7368,
+    "on": "2019-10-31",
+    "raw": 248.76,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 105.5085,
+    "currency": "USD",
+    "dividend": 0.0,
+    "legacy_adjusted": 105.6009,
+    "on": "2020-10-30",
+    "raw": 108.86,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 146.1226,
+    "currency": "USD",
+    "dividend": 0.0,
+    "legacy_adjusted": 146.2506,
+    "on": "2021-10-29",
+    "raw": 149.8,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 150.4127,
+    "currency": "USD",
+    "dividend": 0.0,
+    "legacy_adjusted": 150.5444,
+    "on": "2022-10-31",
+    "raw": 153.34,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 187.6717,
+    "currency": "USD",
+    "dividend": 0.24,
+    "legacy_adjusted": 187.836,
+    "on": "2023-11-30",
+    "raw": 189.95,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 235.6315,
+    "currency": "USD",
+    "dividend": 0.25,
+    "legacy_adjusted": 235.8379,
+    "on": "2024-11-29",
+    "raw": 237.33,
+    "shares": 14594180000.0
+   },
+   {
+    "adjusted": 269.3692,
+    "currency": "USD",
+    "dividend": 0.0,
+    "legacy_adjusted": 269.6051,
+    "on": "2025-10-31",
+    "raw": 270.37,
+    "shares": 14594180000.0
+   }
+  ],
+  "statements": [
+   {
+    "period": "2008-09-27",
+    "published": "2010-10-27",
+    "sec_form": "10-K",
+    "shares": 888325973.0
+   },
+   {
+    "period": "2009-09-26",
+    "published": "2011-10-26",
+    "sec_form": "10-K",
+    "shares": 899805500.0
+   },
+   {
+    "period": "2010-09-25",
+    "published": "2012-10-31",
+    "sec_form": "10-K",
+    "shares": 915970000.0
+   },
+   {
+    "period": "2011-09-24",
+    "published": "2013-10-30",
+    "sec_form": "10-K",
+    "shares": 929277000.0
+   },
+   {
+    "period": "2012-09-29",
+    "published": "2014-10-27",
+    "sec_form": "10-K",
+    "shares": 939208000.0
+   },
+   {
+    "period": "2013-09-28",
+    "published": "2015-10-28",
+    "sec_form": "10-K",
+    "shares": 6294494000.0
+   },
+   {
+    "period": "2014-09-27",
+    "published": "2016-10-26",
+    "sec_form": "10-K",
+    "shares": 5866161000.0
+   },
+   {
+    "period": "2015-09-26",
+    "published": "2017-11-03",
+    "sec_form": "10-K",
+    "shares": 5578753000.0
+   },
+   {
+    "period": "2016-09-24",
+    "published": "2018-11-05",
+    "sec_form": "10-K",
+    "shares": 5336166000.0
+   },
+   {
+    "period": "2017-09-30",
+    "published": "2019-10-31",
+    "sec_form": "10-K",
+    "shares": 5126201000.0
+   },
+   {
+    "period": "2018-09-29",
+    "published": "2020-10-30",
+    "sec_form": "10-K",
+    "shares": 4754986000.0
+   },
+   {
+    "period": "2019-09-28",
+    "published": "2021-10-29",
+    "sec_form": "10-K",
+    "shares": 17772945000.0
+   },
+   {
+    "period": "2020-09-26",
+    "published": "2022-10-28",
+    "sec_form": "10-K",
+    "shares": 16976763000.0
+   },
+   {
+    "period": "2021-09-25",
+    "published": "2023-11-03",
+    "sec_form": "10-K",
+    "shares": 16426786000.0
+   },
+   {
+    "period": "2022-09-24",
+    "published": "2024-11-01",
+    "sec_form": "10-K",
+    "shares": 15943425000.0
+   },
+   {
+    "period": "2023-09-30",
+    "published": "2025-10-31",
+    "sec_form": "10-K",
+    "shares": 15550061000.0
+   },
+   {
+    "period": "2024-09-28",
+    "published": "2025-10-31",
+    "sec_form": "10-K",
+    "shares": 15116786000.0
+   },
+   {
+    "period": "2025-09-27",
+    "published": "2025-10-31",
+    "sec_form": "10-K",
+    "shares": 14773260000.0
+   }
+  ]
+ },
+ "AMAT": {
+  "epochs": [
+   {
+    "adjusted": 10.7152,
+    "available": "2009-12-11",
+    "currency": "USD",
+    "fcf": 84000000.0,
+    "fiscal": "2009-10-25",
+    "observed": "2009-12-31",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 11.0435,
+    "available": "2010-12-10",
+    "currency": "USD",
+    "fcf": 1554000000.0,
+    "fiscal": "2010-10-31",
+    "observed": "2010-12-31",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 8.6271,
+    "available": "2011-12-06",
+    "currency": "USD",
+    "fcf": 2220000000.0,
+    "fiscal": "2011-10-30",
+    "observed": "2011-12-30",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 9.5056,
+    "available": "2012-12-05",
+    "currency": "USD",
+    "fcf": 1689000000.0,
+    "fiscal": "2012-10-28",
+    "observed": "2012-12-31",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 15.0723,
+    "available": "2013-12-04",
+    "currency": "USD",
+    "fcf": 426000000.0,
+    "fiscal": "2013-10-27",
+    "observed": "2013-12-31",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 21.6564,
+    "available": "2014-12-17",
+    "currency": "USD",
+    "fcf": 1559000000.0,
+    "fiscal": "2014-10-26",
+    "observed": "2014-12-31",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 16.5652,
+    "available": "2015-12-09",
+    "currency": "USD",
+    "fcf": 948000000.0,
+    "fiscal": "2015-10-25",
+    "observed": "2015-12-31",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 29.0974,
+    "available": "2016-12-15",
+    "currency": "USD",
+    "fcf": 2313000000.0,
+    "fiscal": "2016-10-30",
+    "observed": "2016-12-30",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 46.511,
+    "available": "2017-12-15",
+    "currency": "USD",
+    "fcf": 3444000000.0,
+    "fiscal": "2017-10-29",
+    "observed": "2017-12-29",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 30.2697,
+    "available": "2018-12-13",
+    "currency": "USD",
+    "fcf": 3165000000.0,
+    "fiscal": "2018-10-28",
+    "observed": "2018-12-31",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 57.4754,
+    "available": "2019-12-13",
+    "currency": "USD",
+    "fcf": 2806000000.0,
+    "fiscal": "2019-10-27",
+    "observed": "2019-12-31",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 82.3493,
+    "available": "2020-12-11",
+    "currency": "USD",
+    "fcf": 3382000000.0,
+    "fiscal": "2020-10-25",
+    "observed": "2020-12-31",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 151.2045,
+    "available": "2021-12-17",
+    "currency": "USD",
+    "fcf": 4774000000.0,
+    "fiscal": "2021-10-31",
+    "observed": "2021-12-31",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 94.436,
+    "available": "2022-12-16",
+    "currency": "USD",
+    "fcf": 4612000000.0,
+    "fiscal": "2022-10-30",
+    "observed": "2022-12-30",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 158.6349,
+    "available": "2023-12-15",
+    "currency": "USD",
+    "fcf": 7594000000.0,
+    "fiscal": "2023-10-29",
+    "observed": "2023-12-29",
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 160.4265,
+    "available": "2024-12-13",
+    "currency": "USD",
+    "fcf": 7487000000.0,
+    "fiscal": "2024-10-27",
+    "observed": "2024-12-31",
+    "shares": 793959000.0
+   }
+  ],
+  "monthly": [
+   {
+    "adjusted": 10.7152,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2009-12-31",
+    "raw": 13.94,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 11.0435,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2010-12-31",
+    "raw": 14.05,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 8.6271,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2011-12-30",
+    "raw": 10.71,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 9.5056,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2012-12-31",
+    "raw": 11.44,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 15.0723,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2013-12-31",
+    "raw": 17.68,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 21.6564,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2014-12-31",
+    "raw": 24.92,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 16.5652,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2015-12-31",
+    "raw": 18.67,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 29.0974,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2016-12-30",
+    "raw": 32.27,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 46.511,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2017-12-29",
+    "raw": 51.12,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 30.2697,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2018-12-31",
+    "raw": 32.74,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 57.4754,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2019-12-31",
+    "raw": 61.04,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 82.3493,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2020-12-31",
+    "raw": 86.3,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 151.2045,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2021-12-31",
+    "raw": 157.36,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 94.436,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2022-12-30",
+    "raw": 97.38,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 158.6349,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2023-12-29",
+    "raw": 162.07,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 160.4265,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2024-12-31",
+    "raw": 162.63,
+    "shares": 793959000.0
+   },
+   {
+    "adjusted": 256.0793,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2025-12-31",
+    "raw": 256.99,
+    "shares": 793959000.0
+   }
+  ],
+  "statements": [
+   {
+    "accession": "0000950123-09-070205",
+    "filed": "2009-12-11",
+    "first_reported": 1330761000.0,
+    "first_reported_accession": "0000950123-09-070205",
+    "first_reported_filed": "2009-12-11",
+    "period": "2008-10-26",
+    "published": "2010-12-10",
+    "sec_form": "10-K",
+    "shares": 1330761000.0
+   },
+   {
+    "accession": "0000950123-10-112754",
+    "filed": "2010-12-10",
+    "first_reported": 1340917000.0,
+    "first_reported_accession": "0000950123-09-070205",
+    "first_reported_filed": "2009-12-11",
+    "period": "2009-10-25",
+    "published": "2011-12-06",
+    "sec_form": "10-K",
+    "shares": 1340917000.0
+   },
+   {
+    "accession": "0001193125-11-332050",
+    "filed": "2011-12-06",
+    "first_reported": 1327998000.0,
+    "first_reported_accession": "0000950123-10-112754",
+    "first_reported_filed": "2010-12-10",
+    "period": "2010-10-31",
+    "published": "2012-12-05",
+    "sec_form": "10-K",
+    "shares": 1328000000.0
+   },
+   {
+    "accession": "0000006951-12-000018",
+    "filed": "2012-12-05",
+    "first_reported": 1306000000.0,
+    "first_reported_accession": "0001193125-11-332050",
+    "first_reported_filed": "2011-12-06",
+    "period": "2011-10-30",
+    "published": "2013-12-04",
+    "sec_form": "10-K",
+    "shares": 1306000000.0
+   },
+   {
+    "accession": "0000006951-13-000044",
+    "filed": "2013-12-04",
+    "first_reported": 1197000000.0,
+    "first_reported_accession": "0000006951-12-000018",
+    "first_reported_filed": "2012-12-05",
+    "period": "2012-10-28",
+    "published": "2014-12-17",
+    "sec_form": "10-K",
+    "shares": 1197000000.0
+   },
+   {
+    "accession": "0000006951-14-000037",
+    "filed": "2014-12-17",
+    "first_reported": 1204000000.0,
+    "first_reported_accession": "0000006951-14-000037",
+    "first_reported_filed": "2014-12-17",
+    "period": "2013-10-27",
+    "published": "2015-12-09",
+    "sec_form": "10-K",
+    "shares": 1204000000.0
+   },
+   {
+    "accession": "0000006951-15-000034",
+    "filed": "2015-12-09",
+    "first_reported": 1221000000.0,
+    "first_reported_accession": "0000006951-14-000037",
+    "first_reported_filed": "2014-12-17",
+    "period": "2014-10-26",
+    "published": "2016-12-15",
+    "sec_form": "10-K",
+    "shares": 1221000000.0
+   },
+   {
+    "accession": "0000006951-16-000068",
+    "filed": "2016-12-15",
+    "first_reported": 1160000000.0,
+    "first_reported_accession": "0000006951-15-000034",
+    "first_reported_filed": "2015-12-09",
+    "period": "2015-10-25",
+    "published": "2017-12-15",
+    "sec_form": "10-K",
+    "shares": 1160000000.0
+   },
+   {
+    "accession": "0000006951-17-000038",
+    "filed": "2017-12-15",
+    "first_reported": 1078000000.0,
+    "first_reported_accession": "0000006951-16-000068",
+    "first_reported_filed": "2016-12-15",
+    "period": "2016-10-30",
+    "published": "2018-12-13",
+    "sec_form": "10-K",
+    "shares": 1078000000.0
+   },
+   {
+    "accession": "0000006951-18-000041",
+    "filed": "2018-12-13",
+    "first_reported": 1060000000.0,
+    "first_reported_accession": "0000006951-17-000038",
+    "first_reported_filed": "2017-12-15",
+    "period": "2017-10-29",
+    "published": "2019-12-13",
+    "sec_form": "10-K",
+    "shares": 1060000000.0
+   },
+   {
+    "accession": "0000006951-19-000046",
+    "filed": "2019-12-13",
+    "first_reported": 967000000.0,
+    "first_reported_accession": "0000006951-18-000041",
+    "first_reported_filed": "2018-12-13",
+    "period": "2018-10-28",
+    "published": "2020-12-11",
+    "sec_form": "10-K",
+    "shares": 967000000.0
+   },
+   {
+    "accession": "0000006951-20-000048",
+    "filed": "2020-12-11",
+    "first_reported": 916000000.0,
+    "first_reported_accession": "0000006951-19-000046",
+    "first_reported_filed": "2019-12-13",
+    "period": "2019-10-27",
+    "published": "2021-12-17",
+    "sec_form": "10-K",
+    "shares": 916000000.0
+   },
+   {
+    "accession": "0000006951-21-000043",
+    "filed": "2021-12-17",
+    "first_reported": 914000000.0,
+    "first_reported_accession": "0000006951-20-000048",
+    "first_reported_filed": "2020-12-11",
+    "period": "2020-10-25",
+    "published": "2022-12-16",
+    "sec_form": "10-K",
+    "shares": 914000000.0
+   },
+   {
+    "accession": "0000006951-22-000043",
+    "filed": "2022-12-16",
+    "first_reported": 892000000.0,
+    "first_reported_accession": "0000006951-21-000043",
+    "first_reported_filed": "2021-12-17",
+    "period": "2021-10-31",
+    "published": "2023-12-15",
+    "sec_form": "10-K",
+    "shares": 892000000.0
+   },
+   {
+    "accession": "0000006951-23-000041",
+    "filed": "2023-12-15",
+    "first_reported": 844000000.0,
+    "first_reported_accession": "0000006951-22-000043",
+    "first_reported_filed": "2022-12-16",
+    "period": "2022-10-30",
+    "published": "2024-12-13",
+    "sec_form": "10-K",
+    "shares": 844000000.0
+   },
+   {
+    "accession": "0000006951-24-000044",
+    "filed": "2024-12-13",
+    "first_reported": 833000000.0,
+    "first_reported_accession": "0000006951-23-000041",
+    "first_reported_filed": "2023-12-15",
+    "period": "2023-10-29",
+    "published": "2025-12-12",
+    "sec_form": "10-K",
+    "shares": 833000000.0
+   },
+   {
+    "accession": "0001628280-25-056742",
+    "filed": "2025-12-12",
+    "first_reported": 818000000.0,
+    "first_reported_accession": "0000006951-24-000044",
+    "first_reported_filed": "2024-12-13",
+    "period": "2024-10-27",
+    "published": "2025-12-12",
+    "sec_form": "10-K",
+    "shares": 818000000.0
+   },
+   {
+    "accession": "0001628280-25-056742",
+    "filed": "2025-12-12",
+    "first_reported": 793000000.0,
+    "first_reported_accession": "0001628280-25-056742",
+    "first_reported_filed": "2025-12-12",
+    "period": "2025-10-26",
+    "published": "2025-12-12",
+    "sec_form": "10-K",
+    "shares": 793000000.0
+   }
+  ]
+ },
+ "AMD": {
+  "epochs": [
+   {
+    "adjusted": 7.35,
+    "available": "2012-02-24",
+    "currency": "USD",
+    "fcf": 132000000.0,
+    "fiscal": "2011-12-31",
+    "observed": "2012-02-29",
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 14.46,
+    "available": "2017-02-21",
+    "currency": "USD",
+    "fcf": 4000000.0,
+    "fiscal": "2016-12-31",
+    "observed": "2017-02-28",
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 45.48,
+    "available": "2020-02-04",
+    "currency": "USD",
+    "fcf": 276000000.0,
+    "fiscal": "2019-12-28",
+    "observed": "2020-02-28",
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 85.64,
+    "available": "2021-01-29",
+    "currency": "USD",
+    "fcf": 777000000.0,
+    "fiscal": "2020-12-26",
+    "observed": "2021-01-29",
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 123.34,
+    "available": "2022-02-03",
+    "currency": "USD",
+    "fcf": 3220000000.0,
+    "fiscal": "2021-12-25",
+    "observed": "2022-02-28",
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 78.58,
+    "available": "2023-02-27",
+    "currency": "USD",
+    "fcf": 3115000000.0,
+    "fiscal": "2022-12-31",
+    "observed": "2023-02-28",
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 167.69,
+    "available": "2024-01-31",
+    "currency": "USD",
+    "fcf": 1121000000.0,
+    "fiscal": "2023-12-30",
+    "observed": "2024-01-31",
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 99.86,
+    "available": "2025-02-05",
+    "currency": "USD",
+    "fcf": 2405000000.0,
+    "fiscal": "2024-12-28",
+    "observed": "2025-02-28",
+    "shares": 1632475000.0
+   }
+  ],
+  "monthly": [
+   {
+    "adjusted": 9.21,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2011-02-28",
+    "raw": 9.21,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 7.35,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2012-02-29",
+    "raw": 7.35,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 2.49,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2013-02-28",
+    "raw": 2.49,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 3.71,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2014-02-28",
+    "raw": 3.71,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 3.11,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2015-02-27",
+    "raw": 3.11,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 2.14,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2016-02-29",
+    "raw": 2.14,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 14.46,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2017-02-28",
+    "raw": 14.46,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 12.11,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2018-02-28",
+    "raw": 12.11,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 23.53,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2019-02-28",
+    "raw": 23.53,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 45.48,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2020-02-28",
+    "raw": 45.48,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 85.64,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2021-01-29",
+    "raw": 85.64,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 123.34,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2022-02-28",
+    "raw": 123.34,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 78.58,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2023-02-28",
+    "raw": 78.58,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 167.69,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2024-01-31",
+    "raw": 167.69,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 99.86,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2025-02-28",
+    "raw": 99.86,
+    "shares": 1632475000.0
+   },
+   {
+    "adjusted": 200.21,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2026-02-27",
+    "raw": 200.21,
+    "shares": 1632475000.0
+   }
+  ],
+  "statements": [
+   {
+    "accession": "0001193125-11-040392",
+    "filed": "2011-02-18",
+    "first_reported": 671000000.0,
+    "first_reported_accession": "0001193125-11-040392",
+    "first_reported_filed": "2011-02-18",
+    "period": "2009-12-26",
+    "published": "2012-02-24",
+    "sec_form": "10-K",
+    "shares": 671000000.0
+   },
+   {
+    "accession": "0001193125-12-075837",
+    "filed": "2012-02-24",
+    "first_reported": 683000000.0,
+    "first_reported_accession": "0001193125-11-040392",
+    "first_reported_filed": "2011-02-18",
+    "period": "2010-12-25",
+    "published": "2013-02-21",
+    "sec_form": "10-K",
+    "shares": 683000000.0
+   },
+   {
+    "accession": "0001193125-12-075837",
+    "filed": "2012-02-24",
+    "first_reported": 698000000.0,
+    "first_reported_accession": "0001193125-12-075837",
+    "first_reported_filed": "2012-02-24",
+    "period": "2011-12-31",
+    "published": "2014-02-18",
+    "sec_form": "10-K",
+    "shares": 698000000.0
+   },
+   {
+    "accession": "0000002488-16-000111",
+    "filed": "2016-02-18",
+    "first_reported": 776000000.0,
+    "first_reported_accession": "0000002488-16-000111",
+    "first_reported_filed": "2016-02-18",
+    "period": "2014-12-27",
+    "published": "2017-02-21",
+    "sec_form": "10-K",
+    "shares": 776000000.0
+   },
+   {
+    "accession": "0000002488-17-000043",
+    "filed": "2017-02-21",
+    "first_reported": 792000000.0,
+    "first_reported_accession": "0000002488-16-000111",
+    "first_reported_filed": "2016-02-18",
+    "period": "2015-12-26",
+    "published": "2018-02-27",
+    "sec_form": "10-K",
+    "shares": 792000000.0
+   },
+   {
+    "accession": "0000002488-18-000042",
+    "filed": "2018-02-27",
+    "first_reported": 935000000.0,
+    "first_reported_accession": "0000002488-17-000043",
+    "first_reported_filed": "2017-02-21",
+    "period": "2016-12-31",
+    "published": "2019-02-08",
+    "sec_form": "10-K",
+    "shares": 935000000.0
+   },
+   {
+    "accession": "0000002488-19-000011",
+    "filed": "2019-02-08",
+    "first_reported": 967000000.0,
+    "first_reported_accession": "0000002488-18-000042",
+    "first_reported_filed": "2018-02-27",
+    "period": "2017-12-30",
+    "published": "2020-02-04",
+    "sec_form": "10-K",
+    "shares": 967000000.0
+   },
+   {
+    "accession": "0000002488-20-000008",
+    "filed": "2020-02-04",
+    "first_reported": 1005000000.0,
+    "first_reported_accession": "0000002488-19-000011",
+    "first_reported_filed": "2019-02-08",
+    "period": "2018-12-29",
+    "published": "2021-01-29",
+    "sec_form": "10-K",
+    "shares": 1005000000.0
+   },
+   {
+    "accession": "0001628280-21-001185",
+    "filed": "2021-01-29",
+    "first_reported": 1170000000.0,
+    "first_reported_accession": "0000002488-20-000008",
+    "first_reported_filed": "2020-02-04",
+    "period": "2019-12-28",
+    "published": "2022-02-03",
+    "sec_form": "10-K",
+    "shares": 1170000000.0
+   },
+   {
+    "accession": "0000002488-22-000016",
+    "filed": "2022-02-03",
+    "first_reported": 1211000000.0,
+    "first_reported_accession": "0001628280-21-001185",
+    "first_reported_filed": "2021-01-29",
+    "period": "2020-12-26",
+    "published": "2023-02-27",
+    "sec_form": "10-K",
+    "shares": 1211000000.0
+   },
+   {
+    "accession": "0000002488-23-000047",
+    "filed": "2023-02-27",
+    "first_reported": 1207000000.0,
+    "first_reported_accession": "0000002488-22-000016",
+    "first_reported_filed": "2022-02-03",
+    "period": "2021-12-25",
+    "published": "2024-01-31",
+    "sec_form": "10-K",
+    "shares": 1207000000.0
+   },
+   {
+    "accession": "0000002488-24-000012",
+    "filed": "2024-01-31",
+    "first_reported": 1612000000.0,
+    "first_reported_accession": "0000002488-23-000047",
+    "first_reported_filed": "2023-02-27",
+    "period": "2022-12-31",
+    "published": "2025-02-05",
+    "sec_form": "10-K",
+    "shares": 1612000000.0
+   },
+   {
+    "accession": "0000002488-25-000012",
+    "filed": "2025-02-05",
+    "first_reported": 1616000000.0,
+    "first_reported_accession": "0000002488-24-000012",
+    "first_reported_filed": "2024-01-31",
+    "period": "2023-12-30",
+    "published": "2026-02-04",
+    "sec_form": "10-K",
+    "shares": 1616000000.0
+   },
+   {
+    "accession": "0000002488-26-000018",
+    "filed": "2026-02-04",
+    "first_reported": 1622000000.0,
+    "first_reported_accession": "0000002488-25-000012",
+    "first_reported_filed": "2025-02-05",
+    "period": "2024-12-28",
+    "published": "2026-02-04",
+    "sec_form": "10-K",
+    "shares": 1622000000.0
+   },
+   {
+    "accession": "0000002488-26-000018",
+    "filed": "2026-02-04",
+    "first_reported": 1630000000.0,
+    "first_reported_accession": "0000002488-26-000018",
+    "first_reported_filed": "2026-02-04",
+    "period": "2025-12-27",
+    "published": "2026-02-04",
+    "sec_form": "10-K",
+    "shares": 1630000000.0
+   }
+  ]
+ },
+ "AMZN": {
+  "epochs": [
+   {
+    "adjusted": 6.2705,
+    "available": "2010-01-29",
+    "currency": "USD",
+    "fcf": 2920000000.0,
+    "fiscal": "2009-12-31",
+    "observed": "2010-01-29",
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 8.482,
+    "available": "2011-01-28",
+    "currency": "USD",
+    "fcf": 2516000000.0,
+    "fiscal": "2010-12-31",
+    "observed": "2011-01-31",
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 8.9845,
+    "available": "2012-02-01",
+    "currency": "USD",
+    "fcf": 2092000000.0,
+    "fiscal": "2011-12-31",
+    "observed": "2012-02-29",
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 13.275,
+    "available": "2013-01-30",
+    "currency": "USD",
+    "fcf": 395000000.0,
+    "fiscal": "2012-12-31",
+    "observed": "2013-01-31",
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 17.9345,
+    "available": "2014-01-31",
+    "currency": "USD",
+    "fcf": 2031000000.0,
+    "fiscal": "2013-12-31",
+    "observed": "2014-01-31",
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 17.7265,
+    "available": "2015-01-30",
+    "currency": "USD",
+    "fcf": 1949000000.0,
+    "fiscal": "2014-12-31",
+    "observed": "2015-01-30",
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 29.35,
+    "available": "2016-01-29",
+    "currency": "USD",
+    "fcf": 7450000000.0,
+    "fiscal": "2015-12-31",
+    "observed": "2016-01-29",
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 42.252,
+    "available": "2017-02-10",
+    "currency": "USD",
+    "fcf": 10466000000.0,
+    "fiscal": "2016-12-31",
+    "observed": "2017-02-28",
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 75.6225,
+    "available": "2018-02-02",
+    "currency": "USD",
+    "fcf": 6410000000.0,
+    "fiscal": "2017-12-31",
+    "observed": "2018-02-28",
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 81.9915,
+    "available": "2019-02-01",
+    "currency": "USD",
+    "fcf": 17296000000.0,
+    "fiscal": "2018-12-31",
+    "observed": "2019-02-28",
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 100.436,
+    "available": "2020-01-31",
+    "currency": "USD",
+    "fcf": 21653000000.0,
+    "fiscal": "2019-12-31",
+    "observed": "2020-01-31",
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 154.6465,
+    "available": "2021-02-03",
+    "currency": "USD",
+    "fcf": 25924000000.0,
+    "fiscal": "2020-12-31",
+    "observed": "2021-02-26",
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 176.76,
+    "available": "2024-02-02",
+    "currency": "USD",
+    "fcf": 32217000000.0,
+    "fiscal": "2023-12-31",
+    "observed": "2024-02-29",
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 212.28,
+    "available": "2025-02-07",
+    "currency": "USD",
+    "fcf": 32878000000.0,
+    "fiscal": "2024-12-31",
+    "observed": "2025-02-28",
+    "shares": 10786314000.0
+   }
+  ],
+  "monthly": [
+   {
+    "adjusted": 6.2705,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2010-01-29",
+    "raw": 125.41,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 8.482,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2011-01-31",
+    "raw": 169.64,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 8.9845,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2012-02-29",
+    "raw": 179.69,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 13.275,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2013-01-31",
+    "raw": 265.5,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 17.9345,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2014-01-31",
+    "raw": 358.69,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 17.7265,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2015-01-30",
+    "raw": 354.53,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 29.35,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2016-01-29",
+    "raw": 587.0,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 42.252,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2017-02-28",
+    "raw": 845.04,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 75.6225,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2018-02-28",
+    "raw": 1512.45,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 81.9915,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2019-02-28",
+    "raw": 1639.83,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 100.436,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2020-01-31",
+    "raw": 2008.72,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 154.6465,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2021-02-26",
+    "raw": 3092.93,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 153.563,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2022-02-28",
+    "raw": 3071.26,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 94.23,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2023-02-28",
+    "raw": 94.23,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 176.76,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2024-02-29",
+    "raw": 176.76,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 212.28,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2025-02-28",
+    "raw": 212.28,
+    "shares": 10786314000.0
+   },
+   {
+    "adjusted": 210.0,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2026-02-27",
+    "raw": 210.0,
+    "shares": 10786314000.0
+   }
+  ],
+  "statements": [
+   {
+    "period": "2008-12-31",
+    "published": "2011-01-28",
+    "sec_form": "10-K",
+    "shares": 428000000.0
+   },
+   {
+    "period": "2009-12-31",
+    "published": "2012-02-01",
+    "sec_form": "10-K",
+    "shares": 444000000.0
+   },
+   {
+    "period": "2010-12-31",
+    "published": "2013-01-30",
+    "sec_form": "10-K",
+    "shares": 451000000.0
+   },
+   {
+    "period": "2011-12-31",
+    "published": "2014-01-31",
+    "sec_form": "10-K",
+    "shares": 455000000.0
+   },
+   {
+    "period": "2012-12-31",
+    "published": "2015-01-30",
+    "sec_form": "10-K",
+    "shares": 454000000.0
+   },
+   {
+    "period": "2013-12-31",
+    "published": "2016-01-29",
+    "sec_form": "10-K",
+    "shares": 459000000.0
+   },
+   {
+    "period": "2014-12-31",
+    "published": "2017-02-10",
+    "sec_form": "10-K",
+    "shares": 465000000.0
+   },
+   {
+    "period": "2015-12-31",
+    "published": "2018-02-02",
+    "sec_form": "10-K",
+    "shares": 471000000.0
+   },
+   {
+    "period": "2016-12-31",
+    "published": "2019-02-01",
+    "sec_form": "10-K",
+    "shares": 477000000.0
+   },
+   {
+    "period": "2017-12-31",
+    "published": "2020-01-31",
+    "sec_form": "10-K",
+    "shares": 484000000.0
+   },
+   {
+    "period": "2018-12-31",
+    "published": "2021-02-03",
+    "sec_form": "10-K",
+    "shares": 491000000.0
+   },
+   {
+    "period": "2019-12-31",
+    "published": "2022-02-04",
+    "sec_form": "10-K",
+    "shares": 498000000.0
+   },
+   {
+    "period": "2020-12-31",
+    "published": "2023-02-03",
+    "sec_form": "10-K",
+    "shares": 503000000.0
+   },
+   {
+    "period": "2021-12-31",
+    "published": "2024-02-02",
+    "sec_form": "10-K",
+    "shares": 10175000000.0
+   },
+   {
+    "period": "2022-12-31",
+    "published": "2025-02-07",
+    "sec_form": "10-K",
+    "shares": 10242000000.0
+   },
+   {
+    "period": "2023-12-31",
+    "published": "2026-02-06",
+    "sec_form": "10-K",
+    "shares": 10383000000.0
+   },
+   {
+    "period": "2024-12-31",
+    "published": "2026-02-06",
+    "sec_form": "10-K",
+    "shares": 10593000000.0
+   },
+   {
+    "period": "2025-12-31",
+    "published": "2026-02-06",
+    "sec_form": "10-K",
+    "shares": 10731000000.0
+   }
+  ]
+ },
+ "CAT": {
+  "epochs": [
+   {
+    "adjusted": 38.3274,
+    "available": "2010-02-19",
+    "currency": "USD",
+    "fcf": 4839000000.0,
+    "fiscal": "2009-12-31",
+    "observed": "2010-02-26",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 70.7724,
+    "available": "2011-02-22",
+    "currency": "USD",
+    "fcf": 3434000000.0,
+    "fiscal": "2010-12-31",
+    "observed": "2011-02-28",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 79.9674,
+    "available": "2012-02-21",
+    "currency": "USD",
+    "fcf": 4442000000.0,
+    "fiscal": "2011-12-31",
+    "observed": "2012-02-29",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 66.1363,
+    "available": "2013-02-19",
+    "currency": "USD",
+    "fcf": 1834000000.0,
+    "fiscal": "2012-12-31",
+    "observed": "2013-02-28",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 71.3216,
+    "available": "2014-02-18",
+    "currency": "USD",
+    "fcf": 7669000000.0,
+    "fiscal": "2013-12-31",
+    "observed": "2014-02-28",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 62.7017,
+    "available": "2015-02-17",
+    "currency": "USD",
+    "fcf": 6518000000.0,
+    "fiscal": "2014-12-31",
+    "observed": "2015-02-27",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 53.3482,
+    "available": "2016-02-16",
+    "currency": "USD",
+    "fcf": 5311000000.0,
+    "fiscal": "2015-12-31",
+    "observed": "2016-02-29",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 78.9932,
+    "available": "2017-02-15",
+    "currency": "USD",
+    "fcf": 4530000000.0,
+    "fiscal": "2016-12-31",
+    "observed": "2017-02-28",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 129.6766,
+    "available": "2018-02-15",
+    "currency": "USD",
+    "fcf": 4808000000.0,
+    "fiscal": "2017-12-31",
+    "observed": "2018-02-28",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 117.978,
+    "available": "2019-02-14",
+    "currency": "USD",
+    "fcf": 5282000000.0,
+    "fiscal": "2018-12-31",
+    "observed": "2019-02-28",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 109.7892,
+    "available": "2020-02-19",
+    "currency": "USD",
+    "fcf": 5856000000.0,
+    "fiscal": "2019-12-31",
+    "observed": "2020-02-28",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 196.1279,
+    "available": "2021-02-17",
+    "currency": "USD",
+    "fcf": 5349000000.0,
+    "fiscal": "2020-12-31",
+    "observed": "2021-02-26",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 173.9345,
+    "available": "2022-02-16",
+    "currency": "USD",
+    "fcf": 6105000000.0,
+    "fiscal": "2021-12-31",
+    "observed": "2022-02-28",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 227.2787,
+    "available": "2023-02-15",
+    "currency": "USD",
+    "fcf": 6470000000.0,
+    "fiscal": "2022-12-31",
+    "observed": "2023-02-28",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 323.2915,
+    "available": "2024-02-16",
+    "currency": "USD",
+    "fcf": 11288000000.0,
+    "fiscal": "2023-12-31",
+    "observed": "2024-02-29",
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 337.9409,
+    "available": "2025-02-14",
+    "currency": "USD",
+    "fcf": 10047000000.0,
+    "fiscal": "2024-12-31",
+    "observed": "2025-02-28",
+    "shares": 459675000.0
+   }
+  ],
+  "monthly": [
+   {
+    "adjusted": 38.3274,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2010-02-26",
+    "raw": 57.05,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 70.7724,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2011-02-28",
+    "raw": 102.93,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 79.9674,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2012-02-29",
+    "raw": 114.21,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 66.1363,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2013-02-28",
+    "raw": 92.37,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 71.3216,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2014-02-28",
+    "raw": 96.97,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 62.7017,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2015-02-27",
+    "raw": 82.9,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 53.3482,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2016-02-29",
+    "raw": 67.7,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 78.9932,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2017-02-28",
+    "raw": 96.66,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 129.6766,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2018-02-28",
+    "raw": 154.63,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 117.978,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2019-02-28",
+    "raw": 137.34,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 109.7892,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2020-02-28",
+    "raw": 124.24,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 196.1279,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2021-02-26",
+    "raw": 215.88,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 173.9345,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2022-02-28",
+    "raw": 187.58,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 227.2787,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2023-02-28",
+    "raw": 239.55,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 323.2915,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2024-02-29",
+    "raw": 333.96,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 337.9409,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2025-02-28",
+    "raw": 343.95,
+    "shares": 459675000.0
+   },
+   {
+    "adjusted": 740.0321,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2026-02-27",
+    "raw": 742.83,
+    "shares": 459675000.0
+   }
+  ],
+  "statements": [
+   {
+    "period": "2008-12-31",
+    "published": "2011-02-22",
+    "sec_form": "10-K",
+    "shares": 601500000.0
+   },
+   {
+    "period": "2009-12-31",
+    "published": "2012-02-21",
+    "sec_form": "10-K",
+    "shares": 624700000.0
+   },
+   {
+    "period": "2010-12-31",
+    "published": "2013-02-19",
+    "sec_form": "10-K",
+    "shares": 638800000.0
+   },
+   {
+    "period": "2011-12-31",
+    "published": "2014-02-18",
+    "sec_form": "10-K",
+    "shares": 647500000.0
+   },
+   {
+    "period": "2012-12-31",
+    "published": "2015-02-17",
+    "sec_form": "10-K",
+    "shares": 655000000.0
+   },
+   {
+    "period": "2013-12-31",
+    "published": "2016-02-16",
+    "sec_form": "10-K",
+    "shares": 637800000.0
+   },
+   {
+    "period": "2014-12-31",
+    "published": "2017-02-15",
+    "sec_form": "10-K",
+    "shares": 606200000.0
+   },
+   {
+    "period": "2015-12-31",
+    "published": "2018-02-15",
+    "sec_form": "10-K",
+    "shares": 582300000.0
+   },
+   {
+    "period": "2016-12-31",
+    "published": "2019-02-14",
+    "sec_form": "10-K",
+    "shares": 586500000.0
+   },
+   {
+    "period": "2017-12-31",
+    "published": "2020-02-19",
+    "sec_form": "10-K",
+    "shares": 597600000.0
+   },
+   {
+    "period": "2018-12-31",
+    "published": "2021-02-17",
+    "sec_form": "10-K",
+    "shares": 575500000.0
+   },
+   {
+    "period": "2019-12-31",
+    "published": "2022-02-16",
+    "sec_form": "10-K",
+    "shares": 550100000.0
+   },
+   {
+    "period": "2020-12-31",
+    "published": "2023-02-15",
+    "sec_form": "10-K",
+    "shares": 545300000.0
+   },
+   {
+    "period": "2021-12-31",
+    "published": "2024-02-16",
+    "sec_form": "10-K",
+    "shares": 535900000.0
+   },
+   {
+    "period": "2022-12-31",
+    "published": "2025-02-14",
+    "sec_form": "10-K",
+    "shares": 516300000.0
+   },
+   {
+    "period": "2023-12-31",
+    "published": "2026-02-13",
+    "sec_form": "10-K",
+    "shares": 499400000.0
+   },
+   {
+    "period": "2024-12-31",
+    "published": "2026-02-13",
+    "sec_form": "10-K",
+    "shares": 477900000.0
+   },
+   {
+    "period": "2025-12-31",
+    "published": "2026-02-13",
+    "sec_form": "10-K",
+    "shares": 465300000.0
+   }
+  ]
+ },
+ "CRM": {
+  "epochs": [
+   {
+    "adjusted": 18.2908,
+    "available": "2010-03-11",
+    "currency": "USD",
+    "fcf": 221410000.0,
+    "fiscal": "2010-01-31",
+    "observed": "2010-03-31",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 32.8178,
+    "available": "2011-03-23",
+    "currency": "USD",
+    "fcf": 368194000.0,
+    "fiscal": "2011-01-31",
+    "observed": "2011-03-31",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 37.9599,
+    "available": "2012-03-09",
+    "currency": "USD",
+    "fcf": 439862000.0,
+    "fiscal": "2012-01-31",
+    "observed": "2012-03-30",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 43.9348,
+    "available": "2013-03-08",
+    "currency": "USD",
+    "fcf": 561296000.0,
+    "fiscal": "2013-01-31",
+    "observed": "2013-03-28",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 56.1032,
+    "available": "2014-03-05",
+    "currency": "USD",
+    "fcf": 576359000.0,
+    "fiscal": "2014-01-31",
+    "observed": "2014-03-31",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 65.6552,
+    "available": "2015-03-06",
+    "currency": "USD",
+    "fcf": 890990000.0,
+    "fiscal": "2015-01-31",
+    "observed": "2015-03-31",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 72.5539,
+    "available": "2016-03-07",
+    "currency": "USD",
+    "fcf": 1387605000.0,
+    "fiscal": "2016-01-31",
+    "observed": "2016-03-31",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 81.0642,
+    "available": "2017-03-06",
+    "currency": "USD",
+    "fcf": 1698000000.0,
+    "fiscal": "2017-01-31",
+    "observed": "2017-03-31",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 114.2899,
+    "available": "2018-03-09",
+    "currency": "USD",
+    "fcf": 2204000000.0,
+    "fiscal": "2018-01-31",
+    "observed": "2018-03-29",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 155.6327,
+    "available": "2019-03-08",
+    "currency": "USD",
+    "fcf": 2803000000.0,
+    "fiscal": "2019-01-31",
+    "observed": "2019-03-29",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 141.4914,
+    "available": "2020-03-05",
+    "currency": "USD",
+    "fcf": 3688000000.0,
+    "fiscal": "2020-01-31",
+    "observed": "2020-03-31",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 208.208,
+    "available": "2021-03-17",
+    "currency": "USD",
+    "fcf": 4091000000.0,
+    "fiscal": "2021-01-31",
+    "observed": "2021-03-31",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 208.6502,
+    "available": "2022-03-11",
+    "currency": "USD",
+    "fcf": 5283000000.0,
+    "fiscal": "2022-01-31",
+    "observed": "2022-03-31",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 196.327,
+    "available": "2023-03-08",
+    "currency": "USD",
+    "fcf": 6313000000.0,
+    "fiscal": "2023-01-31",
+    "observed": "2023-03-31",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 296.3629,
+    "available": "2024-03-06",
+    "currency": "USD",
+    "fcf": 9498000000.0,
+    "fiscal": "2024-01-31",
+    "observed": "2024-03-28",
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 265.2196,
+    "available": "2025-03-05",
+    "currency": "USD",
+    "fcf": 12434000000.0,
+    "fiscal": "2025-01-31",
+    "observed": "2025-03-31",
+    "shares": 819000000.0
+   }
+  ],
+  "monthly": [
+   {
+    "adjusted": 18.2908,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2010-03-31",
+    "raw": 74.45,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 32.8178,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2011-03-31",
+    "raw": 133.58,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 37.9599,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2012-03-30",
+    "raw": 154.51,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 43.9348,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2013-03-28",
+    "raw": 178.83,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 56.1032,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2014-03-31",
+    "raw": 57.09,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 65.6552,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2015-03-31",
+    "raw": 66.81,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 72.5539,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2016-03-31",
+    "raw": 73.83,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 81.0642,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2017-03-31",
+    "raw": 82.49,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 114.2899,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2018-03-29",
+    "raw": 116.3,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 155.6327,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2019-03-29",
+    "raw": 158.37,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 141.4914,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2020-03-31",
+    "raw": 143.98,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 208.208,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2021-03-31",
+    "raw": 211.87,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 208.6502,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2022-03-31",
+    "raw": 212.32,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 196.327,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2023-03-31",
+    "raw": 199.78,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 296.3629,
+    "currency": "USD",
+    "dividend": 0.4,
+    "on": "2024-03-28",
+    "raw": 301.18,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 265.2196,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2025-03-31",
+    "raw": 268.36,
+    "shares": 819000000.0
+   },
+   {
+    "adjusted": 185.6996,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2026-03-31",
+    "raw": 186.67,
+    "shares": 819000000.0
+   }
+  ],
+  "statements": [
+   {
+    "accession": "0001193125-10-053838",
+    "filed": "2010-03-11",
+    "first_reported": 122850062.0,
+    "first_reported_accession": "0001193125-10-053838",
+    "first_reported_filed": "2010-03-11",
+    "period": "2009-01-31",
+    "published": "2011-03-23",
+    "sec_form": "10-K",
+    "shares": 122850062.0
+   },
+   {
+    "accession": "0001193125-11-075314",
+    "filed": "2011-03-23",
+    "first_reported": 127152449.0,
+    "first_reported_accession": "0001193125-10-053838",
+    "first_reported_filed": "2010-03-11",
+    "period": "2010-01-31",
+    "published": "2012-03-09",
+    "sec_form": "10-K",
+    "shares": 127152449.0
+   },
+   {
+    "accession": "0001193125-12-107281",
+    "filed": "2012-03-09",
+    "first_reported": 132921147.0,
+    "first_reported_accession": "0001193125-11-075314",
+    "first_reported_filed": "2011-03-23",
+    "period": "2011-01-31",
+    "published": "2013-03-08",
+    "sec_form": "10-K",
+    "shares": 132921147.0
+   },
+   {
+    "accession": "0001193125-13-098852",
+    "filed": "2013-03-08",
+    "first_reported": 137036541.0,
+    "first_reported_accession": "0001193125-12-107281",
+    "first_reported_filed": "2012-03-09",
+    "period": "2012-01-31",
+    "published": "2014-03-05",
+    "sec_form": "10-K",
+    "shares": 137036541.0
+   },
+   {
+    "accession": "0001193125-14-084762",
+    "filed": "2014-03-05",
+    "first_reported": 146406655.0,
+    "first_reported_accession": "0001193125-13-098852",
+    "first_reported_filed": "2013-03-08",
+    "period": "2013-01-31",
+    "published": "2015-03-06",
+    "sec_form": "10-K",
+    "shares": 585627000.0
+   },
+   {
+    "accession": "0001108524-15-000008",
+    "filed": "2015-03-06",
+    "first_reported": 610143000.0,
+    "first_reported_accession": "0001193125-14-084762",
+    "first_reported_filed": "2014-03-05",
+    "period": "2014-01-31",
+    "published": "2016-03-07",
+    "sec_form": "10-K",
+    "shares": 610143000.0
+   },
+   {
+    "accession": "0001108524-16-000053",
+    "filed": "2016-03-07",
+    "first_reported": 650596000.0,
+    "first_reported_accession": "0001108524-15-000008",
+    "first_reported_filed": "2015-03-06",
+    "period": "2015-01-31",
+    "published": "2017-03-06",
+    "sec_form": "10-K",
+    "shares": 650596000.0
+   },
+   {
+    "accession": "0001108524-17-000006",
+    "filed": "2017-03-06",
+    "first_reported": 670929000.0,
+    "first_reported_accession": "0001108524-16-000053",
+    "first_reported_filed": "2016-03-07",
+    "period": "2016-01-31",
+    "published": "2018-03-09",
+    "sec_form": "10-K",
+    "shares": 670929000.0
+   },
+   {
+    "accession": "0001108524-18-000011",
+    "filed": "2018-03-09",
+    "first_reported": 707460000.0,
+    "first_reported_accession": "0001108524-17-000006",
+    "first_reported_filed": "2017-03-06",
+    "period": "2017-01-31",
+    "published": "2019-03-08",
+    "sec_form": "10-K",
+    "shares": 707460000.0
+   },
+   {
+    "accession": "0001108524-19-000009",
+    "filed": "2019-03-08",
+    "first_reported": 707460000.0,
+    "first_reported_accession": "0001108524-18-000011",
+    "first_reported_filed": "2018-03-09",
+    "period": "2018-01-31",
+    "published": "2020-03-05",
+    "sec_form": "10-K",
+    "shares": 730000000.0
+   },
+   {
+    "accession": "0001108524-20-000014",
+    "filed": "2020-03-05",
+    "first_reported": 770000000.0,
+    "first_reported_accession": "0001108524-19-000009",
+    "first_reported_filed": "2019-03-08",
+    "period": "2019-01-31",
+    "published": "2021-03-17",
+    "sec_form": "10-K",
+    "shares": 770000000.0
+   },
+   {
+    "accession": "0001108524-22-000008",
+    "filed": "2021-03-17",
+    "first_reported": 893000000.0,
+    "first_reported_accession": "0001108524-20-000014",
+    "first_reported_filed": "2020-03-05",
+    "period": "2020-01-31",
+    "published": "2022-03-11",
+    "sec_form": "10-K",
+    "shares": 893000000.0
+   },
+   {
+    "accession": "0001108524-22-000013",
+    "filed": "2022-03-11",
+    "first_reported": 919000000.0,
+    "first_reported_accession": "0001108524-21-000014",
+    "first_reported_filed": "2021-03-17",
+    "period": "2021-01-31",
+    "published": "2023-03-08",
+    "sec_form": "10-K",
+    "shares": 919000000.0
+   },
+   {
+    "accession": "0001108524-23-000011",
+    "filed": "2023-03-08",
+    "first_reported": 989000000.0,
+    "first_reported_accession": "0001108524-22-000013",
+    "first_reported_filed": "2022-03-11",
+    "period": "2022-01-31",
+    "published": "2024-03-06",
+    "sec_form": "10-K",
+    "shares": 989000000.0
+   },
+   {
+    "accession": "0001108524-24-000005",
+    "filed": "2024-03-06",
+    "first_reported": 1009000000.0,
+    "first_reported_accession": "0001108524-23-000011",
+    "first_reported_filed": "2023-03-08",
+    "period": "2023-01-31",
+    "published": "2025-03-05",
+    "sec_form": "10-K",
+    "shares": 981000000.0
+   },
+   {
+    "accession": "0001108524-25-000006",
+    "filed": "2025-03-05",
+    "first_reported": 971000000.0,
+    "first_reported_accession": "0001108524-24-000005",
+    "first_reported_filed": "2024-03-06",
+    "period": "2024-01-31",
+    "published": "2026-03-02",
+    "sec_form": "10-K",
+    "shares": 971000000.0
+   },
+   {
+    "accession": "0001108524-26-000060",
+    "filed": "2026-03-02",
+    "first_reported": 962000000.0,
+    "first_reported_accession": "0001108524-25-000006",
+    "first_reported_filed": "2025-03-05",
+    "period": "2025-01-31",
+    "published": "2026-03-02",
+    "sec_form": "10-K",
+    "shares": 962000000.0
+   },
+   {
+    "accession": "0001108524-26-000060",
+    "filed": "2026-03-02",
+    "first_reported": 929000000.0,
+    "first_reported_accession": "0001108524-26-000060",
+    "first_reported_filed": "2026-03-02",
+    "period": "2026-01-31",
+    "published": "2026-03-02",
+    "sec_form": "10-K",
+    "shares": 929000000.0
+   }
+  ]
+ },
+ "MU": {
+  "epochs": [
+   {
+    "adjusted": 5.2892,
+    "available": "2012-10-29",
+    "currency": "USD",
+    "fcf": 415000000.0,
+    "fiscal": "2012-08-30",
+    "observed": "2012-10-31",
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 17.2375,
+    "available": "2013-10-28",
+    "currency": "USD",
+    "fcf": 369000000.0,
+    "fiscal": "2013-08-29",
+    "observed": "2013-10-31",
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 32.2619,
+    "available": "2014-10-27",
+    "currency": "USD",
+    "fcf": 2592000000.0,
+    "fiscal": "2014-08-28",
+    "observed": "2014-10-31",
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 16.1456,
+    "available": "2015-10-27",
+    "currency": "USD",
+    "fcf": 1187000000.0,
+    "fiscal": "2015-09-03",
+    "observed": "2015-10-30",
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 43.2011,
+    "available": "2017-10-26",
+    "currency": "USD",
+    "fcf": 3419000000.0,
+    "fiscal": "2017-08-31",
+    "observed": "2017-10-31",
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 36.776,
+    "available": "2018-10-15",
+    "currency": "USD",
+    "fcf": 8521000000.0,
+    "fiscal": "2018-08-30",
+    "observed": "2018-10-31",
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 46.36,
+    "available": "2019-10-17",
+    "currency": "USD",
+    "fcf": 3409000000.0,
+    "fiscal": "2019-08-29",
+    "observed": "2019-10-31",
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 49.0802,
+    "available": "2020-10-19",
+    "currency": "USD",
+    "fcf": 83000000.0,
+    "fiscal": "2020-09-03",
+    "observed": "2020-10-30",
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 67.4656,
+    "available": "2021-10-08",
+    "currency": "USD",
+    "fcf": 2438000000.0,
+    "fiscal": "2021-09-02",
+    "observed": "2021-10-29",
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 53.1687,
+    "available": "2022-10-07",
+    "currency": "USD",
+    "fcf": 3114000000.0,
+    "fiscal": "2022-09-01",
+    "observed": "2022-10-31",
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 99.1283,
+    "available": "2024-10-04",
+    "currency": "USD",
+    "fcf": 121000000.0,
+    "fiscal": "2024-08-29",
+    "observed": "2024-10-31",
+    "shares": 1129393000.0
+   }
+  ],
+  "monthly": [
+   {
+    "adjusted": 5.4501,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2011-10-31",
+    "raw": 5.59,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 5.2892,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2012-10-31",
+    "raw": 5.425,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 17.2375,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2013-10-31",
+    "raw": 17.68,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 32.2619,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2014-10-31",
+    "raw": 33.09,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 16.1456,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2015-10-30",
+    "raw": 16.56,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 16.7306,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2016-10-31",
+    "raw": 17.16,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 43.2011,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2017-10-31",
+    "raw": 44.31,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 36.776,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2018-10-31",
+    "raw": 37.72,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 46.36,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2019-10-31",
+    "raw": 47.55,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 49.0802,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2020-10-30",
+    "raw": 50.34,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 67.4656,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2021-10-29",
+    "raw": 69.1,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 53.1687,
+    "currency": "USD",
+    "dividend": 0.115,
+    "on": "2022-10-31",
+    "raw": 54.1,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 66.2333,
+    "currency": "USD",
+    "dividend": 0.115,
+    "on": "2023-10-31",
+    "raw": 66.87,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 99.1283,
+    "currency": "USD",
+    "dividend": 0.115,
+    "on": "2024-10-31",
+    "raw": 99.65,
+    "shares": 1129393000.0
+   },
+   {
+    "adjusted": 223.5443,
+    "currency": "USD",
+    "dividend": 0.115,
+    "on": "2025-10-31",
+    "raw": 223.77,
+    "shares": 1129393000.0
+   }
+  ],
+  "statements": [
+   {
+    "accession": "0000723125-11-000189",
+    "filed": "2011-10-25",
+    "first_reported": 994500000.0,
+    "first_reported_accession": "0000723125-11-000189",
+    "first_reported_filed": "2011-10-25",
+    "period": "2010-09-02",
+    "published": "2012-10-29",
+    "sec_form": "10-K",
+    "shares": 994500000.0
+   },
+   {
+    "accession": "0000723125-12-000156",
+    "filed": "2012-10-29",
+    "first_reported": 984300000.0,
+    "first_reported_accession": "0000723125-11-000189",
+    "first_reported_filed": "2011-10-25",
+    "period": "2011-09-01",
+    "published": "2013-10-28",
+    "sec_form": "10-K",
+    "shares": 984300000.0
+   },
+   {
+    "accession": "0000723125-13-000228",
+    "filed": "2013-10-28",
+    "first_reported": 1017700000.0,
+    "first_reported_accession": "0000723125-12-000156",
+    "first_reported_filed": "2012-10-29",
+    "period": "2012-08-30",
+    "published": "2014-10-27",
+    "sec_form": "10-K",
+    "shares": 1017700000.0
+   },
+   {
+    "accession": "0000723125-14-000195",
+    "filed": "2014-10-27",
+    "first_reported": 1044400000.0,
+    "first_reported_accession": "0000723125-13-000228",
+    "first_reported_filed": "2013-10-28",
+    "period": "2013-08-29",
+    "published": "2015-10-27",
+    "sec_form": "10-K",
+    "shares": 1044000000.0
+   },
+   {
+    "accession": "0000723125-15-000112",
+    "filed": "2015-10-27",
+    "first_reported": 1073000000.0,
+    "first_reported_accession": "0000723125-14-000195",
+    "first_reported_filed": "2014-10-27",
+    "period": "2014-08-28",
+    "published": "2016-10-28",
+    "sec_form": "10-K",
+    "shares": 1073000000.0
+   },
+   {
+    "accession": "0000723125-16-000269",
+    "filed": "2016-10-28",
+    "first_reported": 1084000000.0,
+    "first_reported_accession": "0000723125-15-000112",
+    "first_reported_filed": "2015-10-27",
+    "period": "2015-09-03",
+    "published": "2017-10-26",
+    "sec_form": "10-K",
+    "shares": 1084000000.0
+   },
+   {
+    "accession": "0000723125-17-000131",
+    "filed": "2017-10-26",
+    "first_reported": 1094000000.0,
+    "first_reported_accession": "0000723125-16-000269",
+    "first_reported_filed": "2016-10-28",
+    "period": "2016-09-01",
+    "published": "2018-10-15",
+    "sec_form": "10-K",
+    "shares": 1040000000.0
+   },
+   {
+    "accession": "0000723125-18-000092",
+    "filed": "2018-10-15",
+    "first_reported": 1112000000.0,
+    "first_reported_accession": "0000723125-17-000131",
+    "first_reported_filed": "2017-10-26",
+    "period": "2017-08-31",
+    "published": "2019-10-17",
+    "sec_form": "10-K",
+    "shares": 1112000000.0
+   },
+   {
+    "accession": "0000723125-19-000094",
+    "filed": "2019-10-17",
+    "first_reported": 1161000000.0,
+    "first_reported_accession": "0000723125-18-000092",
+    "first_reported_filed": "2018-10-15",
+    "period": "2018-08-30",
+    "published": "2020-10-19",
+    "sec_form": "10-K",
+    "shares": 1161000000.0
+   },
+   {
+    "accession": "0000723125-20-000082",
+    "filed": "2020-10-19",
+    "first_reported": 1106000000.0,
+    "first_reported_accession": "0000723125-19-000094",
+    "first_reported_filed": "2019-10-17",
+    "period": "2019-08-29",
+    "published": "2021-10-08",
+    "sec_form": "10-K",
+    "shares": 1106000000.0
+   },
+   {
+    "accession": "0000723125-21-000065",
+    "filed": "2021-10-08",
+    "first_reported": 1113000000.0,
+    "first_reported_accession": "0000723125-20-000082",
+    "first_reported_filed": "2020-10-19",
+    "period": "2020-09-03",
+    "published": "2022-10-07",
+    "sec_form": "10-K",
+    "shares": 1113000000.0
+   },
+   {
+    "accession": "0000723125-22-000048",
+    "filed": "2022-10-07",
+    "first_reported": 1119000000.0,
+    "first_reported_accession": "0000723125-21-000065",
+    "first_reported_filed": "2021-10-08",
+    "period": "2021-09-02",
+    "published": "2023-10-06",
+    "sec_form": "10-K",
+    "shares": 1119000000.0
+   },
+   {
+    "accession": "0000723125-23-000054",
+    "filed": "2023-10-06",
+    "first_reported": 1094000000.0,
+    "first_reported_accession": "0000723125-22-000048",
+    "first_reported_filed": "2022-10-07",
+    "period": "2022-09-01",
+    "published": "2024-10-04",
+    "sec_form": "10-K",
+    "shares": 1094000000.0
+   },
+   {
+    "accession": "0000723125-24-000027",
+    "filed": "2024-10-04",
+    "first_reported": 1098000000.0,
+    "first_reported_accession": "0000723125-23-000054",
+    "first_reported_filed": "2023-10-06",
+    "period": "2023-08-31",
+    "published": "2025-10-03",
+    "sec_form": "10-K",
+    "shares": 1098000000.0
+   },
+   {
+    "accession": "0000723125-25-000028",
+    "filed": "2025-10-03",
+    "first_reported": 1109000000.0,
+    "first_reported_accession": "0000723125-24-000027",
+    "first_reported_filed": "2024-10-04",
+    "period": "2024-08-29",
+    "published": "2025-10-03",
+    "sec_form": "10-K",
+    "shares": 1109000000.0
+   },
+   {
+    "accession": "0000723125-25-000028",
+    "filed": "2025-10-03",
+    "first_reported": 1122000000.0,
+    "first_reported_accession": "0000723125-25-000028",
+    "first_reported_filed": "2025-10-03",
+    "period": "2025-08-28",
+    "published": "2025-10-03",
+    "sec_form": "10-K",
+    "shares": 1122000000.0
+   }
+  ]
+ },
+ "TSLA": {
+  "epochs": [
+   {
+    "adjusted": 44.5327,
+    "available": "2020-02-13",
+    "currency": "USD",
+    "fcf": 1078000000.0,
+    "fiscal": "2019-12-31",
+    "observed": "2020-02-28",
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 225.1667,
+    "available": "2021-02-08",
+    "currency": "USD",
+    "fcf": 2786000000.0,
+    "fiscal": "2020-12-31",
+    "observed": "2021-02-26",
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 290.1433,
+    "available": "2022-02-07",
+    "currency": "USD",
+    "fcf": 5015000000.0,
+    "fiscal": "2021-12-31",
+    "observed": "2022-02-28",
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 173.22,
+    "available": "2023-01-31",
+    "currency": "USD",
+    "fcf": 7566000000.0,
+    "fiscal": "2022-12-31",
+    "observed": "2023-01-31",
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 187.29,
+    "available": "2024-01-29",
+    "currency": "USD",
+    "fcf": 4357000000.0,
+    "fiscal": "2023-12-31",
+    "observed": "2024-01-31",
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 404.6,
+    "available": "2025-01-30",
+    "currency": "USD",
+    "fcf": 3581000000.0,
+    "fiscal": "2024-12-31",
+    "observed": "2025-01-31",
+    "shares": 3949547000.0
+   }
+  ],
+  "monthly": [
+   {
+    "adjusted": 2.2273,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2012-02-29",
+    "raw": 33.41,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 2.526,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2013-03-28",
+    "raw": 37.89,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 16.3207,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2014-02-28",
+    "raw": 244.81,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 13.556,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2015-02-27",
+    "raw": 203.34,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 12.7953,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2016-02-29",
+    "raw": 191.93,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 18.5533,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2017-03-31",
+    "raw": 278.3,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 22.8707,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2018-02-28",
+    "raw": 343.06,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 21.3253,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2019-02-28",
+    "raw": 319.88,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 44.5327,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2020-02-28",
+    "raw": 667.99,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 225.1667,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2021-02-26",
+    "raw": 675.5,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 290.1433,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2022-02-28",
+    "raw": 870.43,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 173.22,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2023-01-31",
+    "raw": 173.22,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 187.29,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2024-01-31",
+    "raw": 187.29,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 404.6,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2025-01-31",
+    "raw": 404.6,
+    "shares": 3949547000.0
+   },
+   {
+    "adjusted": 430.41,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2026-01-30",
+    "raw": 430.41,
+    "shares": 3949547000.0
+   }
+  ],
+  "statements": [
+   {
+    "accession": "0001193125-12-081990",
+    "filed": "2012-02-27",
+    "first_reported": 94908370.0,
+    "first_reported_accession": "0001193125-12-081990",
+    "first_reported_filed": "2012-02-27",
+    "period": "2010-12-31",
+    "published": "2013-03-07",
+    "sec_form": "10-K",
+    "shares": 94908370.0
+   },
+   {
+    "accession": "0001193125-13-096241",
+    "filed": "2013-03-07",
+    "first_reported": 104530305.0,
+    "first_reported_accession": "0001193125-12-081990",
+    "first_reported_filed": "2012-02-27",
+    "period": "2011-12-31",
+    "published": "2014-02-26",
+    "sec_form": "10-K",
+    "shares": 104530305.0
+   },
+   {
+    "accession": "0001193125-14-069681",
+    "filed": "2014-02-26",
+    "first_reported": 114214274.0,
+    "first_reported_accession": "0001193125-13-096241",
+    "first_reported_filed": "2013-03-07",
+    "period": "2012-12-31",
+    "published": "2015-02-26",
+    "sec_form": "10-K",
+    "shares": 114214274.0
+   },
+   {
+    "accession": "0001564590-15-001031",
+    "filed": "2015-02-26",
+    "first_reported": 123090990.0,
+    "first_reported_accession": "0001193125-14-069681",
+    "first_reported_filed": "2014-02-26",
+    "period": "2013-12-31",
+    "published": "2016-02-24",
+    "sec_form": "10-K",
+    "shares": 123090990.0
+   },
+   {
+    "accession": "0001564590-16-013195",
+    "filed": "2016-02-24",
+    "first_reported": 125687607.0,
+    "first_reported_accession": "0001564590-15-001031",
+    "first_reported_filed": "2015-02-26",
+    "period": "2014-12-31",
+    "published": "2017-03-01",
+    "sec_form": "10-K",
+    "shares": 125688000.0
+   },
+   {
+    "accession": "0001564590-17-003118",
+    "filed": "2017-03-01",
+    "first_reported": 131425000.0,
+    "first_reported_accession": "0001564590-16-013195",
+    "first_reported_filed": "2016-02-24",
+    "period": "2015-12-31",
+    "published": "2018-02-23",
+    "sec_form": "10-K",
+    "shares": 131425000.0
+   },
+   {
+    "accession": "0001564590-18-002956",
+    "filed": "2018-02-23",
+    "first_reported": 161561000.0,
+    "first_reported_accession": "0001564590-17-003118",
+    "first_reported_filed": "2017-03-01",
+    "period": "2016-12-31",
+    "published": "2019-02-19",
+    "sec_form": "10-K",
+    "shares": 161561000.0
+   },
+   {
+    "accession": "0001564590-19-003165",
+    "filed": "2019-02-19",
+    "first_reported": 168797000.0,
+    "first_reported_accession": "0001564590-18-002956",
+    "first_reported_filed": "2018-02-23",
+    "period": "2017-12-31",
+    "published": "2020-02-13",
+    "sec_form": "10-K",
+    "shares": 168797000.0
+   },
+   {
+    "accession": "0001564590-20-004475",
+    "filed": "2020-02-13",
+    "first_reported": 172603000.0,
+    "first_reported_accession": "0001564590-19-003165",
+    "first_reported_filed": "2019-02-19",
+    "period": "2018-12-31",
+    "published": "2021-02-08",
+    "sec_form": "10-K",
+    "shares": 173000000.0
+   },
+   {
+    "accession": "0001564590-21-004599",
+    "filed": "2021-02-08",
+    "first_reported": 181000000.0,
+    "first_reported_accession": "0001564590-20-004475",
+    "first_reported_filed": "2020-02-13",
+    "period": "2019-12-31",
+    "published": "2022-02-07",
+    "sec_form": "10-K",
+    "shares": 905000000.0
+   },
+   {
+    "accession": "0000950170-22-000796",
+    "filed": "2022-02-07",
+    "first_reported": 960000000.0,
+    "first_reported_accession": "0001564590-21-004599",
+    "first_reported_filed": "2021-02-08",
+    "period": "2020-12-31",
+    "published": "2023-01-31",
+    "sec_form": "10-K",
+    "shares": 960000000.0
+   },
+   {
+    "accession": "0000950170-23-001409",
+    "filed": "2023-01-31",
+    "first_reported": 3100000000.0,
+    "first_reported_accession": "0000950170-23-001409",
+    "first_reported_filed": "2023-01-31",
+    "period": "2021-12-31",
+    "published": "2024-01-29",
+    "sec_form": "10-K",
+    "shares": 3100000000.0
+   },
+   {
+    "accession": "0001628280-24-002390",
+    "filed": "2024-01-29",
+    "first_reported": 3164000000.0,
+    "first_reported_accession": "0000950170-23-001409",
+    "first_reported_filed": "2023-01-31",
+    "period": "2022-12-31",
+    "published": "2025-01-30",
+    "sec_form": "10-K",
+    "shares": 3164000000.0
+   },
+   {
+    "accession": "0001628280-25-003063",
+    "filed": "2025-01-30",
+    "first_reported": 3185000000.0,
+    "first_reported_accession": "0001628280-24-002390",
+    "first_reported_filed": "2024-01-29",
+    "period": "2023-12-31",
+    "published": "2026-01-29",
+    "sec_form": "10-K",
+    "shares": 3185000000.0
+   },
+   {
+    "accession": "0001628280-26-003952",
+    "filed": "2026-01-29",
+    "first_reported": 3216000000.0,
+    "first_reported_accession": "0001628280-25-003063",
+    "first_reported_filed": "2025-01-30",
+    "period": "2024-12-31",
+    "published": "2026-01-29",
+    "sec_form": "10-K",
+    "shares": 3216000000.0
+   },
+   {
+    "accession": "0001628280-26-003952",
+    "filed": "2026-01-29",
+    "first_reported": 3751000000.0,
+    "first_reported_accession": "0001628280-26-003952",
+    "first_reported_filed": "2026-01-29",
+    "period": "2025-12-31",
+    "published": "2026-01-29",
+    "sec_form": "10-K",
+    "shares": 3751000000.0
+   }
+  ]
+ },
+ "VST": {
+  "epochs": [
+   {
+    "adjusted": 16.7294,
+    "available": "2020-02-28",
+    "currency": "USD",
+    "fcf": 2023000000.0,
+    "fiscal": "2019-12-31",
+    "observed": "2020-02-28",
+    "shares": 335635000.0
+   },
+   {
+    "adjusted": 15.482,
+    "available": "2021-02-26",
+    "currency": "USD",
+    "fcf": 2078000000.0,
+    "fiscal": "2020-12-31",
+    "observed": "2021-02-26",
+    "shares": 335635000.0
+   },
+   {
+    "adjusted": 53.5777,
+    "available": "2024-02-29",
+    "currency": "USD",
+    "fcf": 3777000000.0,
+    "fiscal": "2023-12-31",
+    "observed": "2024-02-29",
+    "shares": 335635000.0
+   },
+   {
+    "adjusted": 132.5504,
+    "available": "2025-02-28",
+    "currency": "USD",
+    "fcf": 2485000000.0,
+    "fiscal": "2024-12-31",
+    "observed": "2025-02-28",
+    "shares": 335635000.0
+   }
+  ],
+  "monthly": [
+   {
+    "adjusted": 16.7294,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2020-02-28",
+    "raw": 19.23,
+    "shares": 335635000.0
+   },
+   {
+    "adjusted": 15.482,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2021-02-26",
+    "raw": 17.25,
+    "shares": 335635000.0
+   },
+   {
+    "adjusted": 21.1404,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2022-02-28",
+    "raw": 22.82,
+    "shares": 335635000.0
+   },
+   {
+    "adjusted": 23.1106,
+    "currency": "USD",
+    "dividend": 0.1975,
+    "on": "2023-03-31",
+    "raw": 24.0,
+    "shares": 335635000.0
+   },
+   {
+    "adjusted": 53.5777,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2024-02-29",
+    "raw": 54.54,
+    "shares": 335635000.0
+   },
+   {
+    "adjusted": 132.5504,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2025-02-28",
+    "raw": 133.66,
+    "shares": 335635000.0
+   },
+   {
+    "adjusted": 173.3815,
+    "currency": "USD",
+    "dividend": 0.0,
+    "on": "2026-02-27",
+    "raw": 173.89,
+    "shares": 335635000.0
+   }
+  ],
+  "statements": [
+   {
+    "accession": "0001692819-21-000004",
+    "filed": "2021-02-26",
+    "first_reported": 428398802.0,
+    "first_reported_accession": "0001692819-18-000018",
+    "first_reported_filed": "2018-02-26",
+    "period": "2017-12-31",
+    "published": "2020-02-28",
+    "sec_form": "10-K",
+    "shares": 428398802.0
+   },
+   {
+    "accession": "0001692819-21-000004",
+    "filed": "2021-02-26",
+    "first_reported": 493215309.0,
+    "first_reported_accession": "0001692819-19-000005",
+    "first_reported_filed": "2019-02-28",
+    "period": "2018-12-31",
+    "published": "2021-02-26",
+    "sec_form": "10-K",
+    "shares": 493215309.0
+   },
+   {
+    "accession": "0001692819-21-000004",
+    "filed": "2021-02-26",
+    "first_reported": 487698111.0,
+    "first_reported_accession": "0001692819-20-000005",
+    "first_reported_filed": "2020-02-28",
+    "period": "2019-12-31",
+    "published": "2022-02-25",
+    "sec_form": "10-K",
+    "shares": 487698111.0
+   },
+   {
+    "accession": "0001692819-22-000005",
+    "filed": "2022-02-25",
+    "first_reported": 489305888.0,
+    "first_reported_accession": "0001692819-21-000004",
+    "first_reported_filed": "2021-02-26",
+    "period": "2020-12-31",
+    "published": "2023-03-01",
+    "sec_form": "10-K",
+    "shares": 489305888.0
+   },
+   {
+    "accession": "0001692819-23-000005",
+    "filed": "2023-03-01",
+    "first_reported": 469072597.0,
+    "first_reported_accession": "0001692819-22-000005",
+    "first_reported_filed": "2022-02-25",
+    "period": "2021-12-31",
+    "published": "2024-02-29",
+    "sec_form": "10-K",
+    "shares": 469072597.0
+   },
+   {
+    "accession": "0001692819-24-000012",
+    "filed": "2024-02-29",
+    "first_reported": 389754870.0,
+    "first_reported_accession": "0001692819-23-000005",
+    "first_reported_filed": "2023-03-01",
+    "period": "2022-12-31",
+    "published": "2025-02-28",
+    "sec_form": "10-K",
+    "shares": 389754870.0
+   },
+   {
+    "accession": "0001692819-25-000013",
+    "filed": "2025-02-28",
+    "first_reported": 351457016.0,
+    "first_reported_accession": "0001692819-24-000012",
+    "first_reported_filed": "2024-02-29",
+    "period": "2023-12-31",
+    "published": "2026-02-27",
+    "sec_form": "10-K",
+    "shares": 351457016.0
+   },
+   {
+    "accession": "0001692819-26-000006",
+    "filed": "2026-02-27",
+    "first_reported": 339754307.0,
+    "first_reported_accession": "0001692819-25-000013",
+    "first_reported_filed": "2025-02-28",
+    "period": "2024-12-31",
+    "published": "2026-02-27",
+    "sec_form": "10-K",
+    "shares": 339754307.0
+   },
+   {
+    "accession": "0001692819-26-000006",
+    "filed": "2026-02-27",
+    "first_reported": 338059635.0,
+    "first_reported_accession": "0001692819-26-000006",
+    "first_reported_filed": "2026-02-27",
+    "period": "2025-12-31",
+    "published": "2026-02-27",
+    "sec_form": "10-K",
+    "shares": 338059635.0
+   }
+  ]
+ }
+}

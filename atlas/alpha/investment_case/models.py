@@ -22,6 +22,7 @@ from atlas.alpha.investment_case.financial_history import FinancialPeriod, Marke
 from atlas.alpha.investment_case.financial_quality_intelligence import FinancialQualityKnowledge, extract_financial_quality
 from atlas.alpha.investment_case.growth_intelligence import GrowthKnowledge, extract_growth_knowledge
 from atlas.alpha.investment_case.financial_statement_intelligence import FinancialStatementHistory, SegmentInformation
+from atlas.alpha.investment_case.historical_market_cap import HistoricalMarketCapEvidence
 from atlas.alpha.investment_case.historical_valuation import HistoricalValuationKnowledge
 from atlas.alpha.investment_case.incentive_intelligence import IncentiveKnowledge, extract_incentive_intelligence
 from atlas.alpha.investment_case.insider_alignment_intelligence import (
@@ -376,3 +377,11 @@ class InvestmentCaseComposition:
     by calling the real extraction function with every sibling at its
     own empty default, never a hand-written duplicate of its own honest
     "insufficient" shape."""
+    historical_market_cap: HistoricalMarketCapEvidence | None = None
+    """(Aligned Historical Market Cap) Each prior fiscal epoch's market
+    capitalisation reconstructed from its raw close and split-aligned
+    period-end shares, where persisted evidence proves it -- descriptive
+    only; see `historical_market_cap.py`. Deliberately here, never on
+    `canonical_analysis`: nothing that decides, compares snapshots or
+    persists Decision Layer results reads it. `None` when the FCF-yield
+    method formed no evidence or does not apply."""
