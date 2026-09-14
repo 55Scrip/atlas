@@ -24,8 +24,10 @@ _ALLOWED_IMPORTERS = {
     "atlas/alpha/security_share_evidence/dependencies.py",
     "atlas/alpha/security_share_evidence/repository.py",
     "atlas/alpha/security_share_evidence/table.py",
+    "atlas/alpha/security_share_evidence/current.py",
     "atlas/alpha/business_data_refresh/security_share_evidence.py",
     "atlas/dev/backfill_security_share_evidence.py",
+    "atlas/dev/backfill_current_share_evidence.py",
     "atlas/alpha/investment_case/historical_market_cap.py",
     "atlas/alpha/investment_case/service.py",
     "atlas/alpha/investment_case/api/dependencies.py",
@@ -42,6 +44,20 @@ def test_only_the_write_path_and_the_descriptive_reader_import_it():
     importers = _importers("security_share_evidence")
     assert importers <= _ALLOWED_IMPORTERS, importers - _ALLOWED_IMPORTERS
     assert not [p for p in importers if p.startswith(("atlas/analysis_engine", "atlas/decision_engine", "atlas/core"))]
+
+
+def test_current_share_evidence_is_read_only_by_its_operator_command():
+    """Current Share-Count Evidence v1 is descriptive and diagnostic: no
+    Case, valuation, decision, brief or memory path reads it."""
+    assert _importers("security_share_evidence.current", skip="current.py") == {
+        "atlas/dev/backfill_current_share_evidence.py"}
+    readers = {str(p.relative_to(ROOT)) for p in (ROOT / "atlas").rglob("*.py")
+               if any(name in p.read_text() for name in ("current_joined", "current_evidence_for_issuers",
+                                                         "record_current_filing", "current_share_observations",
+                                                         "current_share_filings"))}
+    assert readers == {"atlas/alpha/security_share_evidence/repository.py",
+                       "atlas/alpha/security_share_evidence/table.py",
+                       "atlas/dev/backfill_current_share_evidence.py"}, readers
 
 
 def test_the_share_class_adapter_is_reached_only_through_business_data_refresh():
