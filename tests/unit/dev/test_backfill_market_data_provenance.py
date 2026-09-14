@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import replace
+from dataclasses import fields, replace
 from datetime import date, datetime, timezone
 
 import pytest
@@ -37,6 +37,7 @@ from atlas.analysis_engine.business_data.pipeline import (
     ingest,
 )
 from atlas.analysis_engine.business_data.versioning import latest_versions
+from atlas.analysis_engine.valuation.contracts import ValuationDecisionEligibility
 from atlas.analysis_engine.valuation.facts import (
     PriceBasis,
     extract_valuation_facts_from_records,
@@ -570,3 +571,185 @@ def test_saved_documents_apply_exactly_like_the_fetched_ones(repository, counter
     apply(loaded, other)
     rows = lambda repo: sorted((r.id, r.content_hash, dict(r.metadata), r.version.created_at) for r in repo.get_by_company("AAPL"))
     assert rows(repository) == rows(other)
+
+
+# -- Held Historical Price Revision Acceptance ---------------------------------------------------------------
+
+from atlas.dev.backfill_market_data_provenance import (  # noqa: E402
+    RevisionKind,
+    classify_price_revision,
+    select_companies,
+)
+
+
+def _rescaled(series: dict, factor: float) -> dict:
+    """The provider's history after a later dividend: every adjusted close
+    rescaled by one factor and re-quoted to four decimals; raw closes untouched."""
+    return {day: {**bar, "5. adjusted close": f"{float(bar['5. adjusted close']) * factor:.4f}"} for day, bar in series.items()}
+
+
+def _nvda_pairs():
+    from tests.unit.alpha.investment_case.test_historical_market_cap import CORPUS as REAL
+
+    return [(b["legacy_adjusted"], b["adjusted"]) for b in REAL["NVDA"]["monthly"] if "legacy_adjusted" in b]
+
+
+class TestRevisionClassification:
+    def test_the_real_nvda_rescale_is_uniform_within_quote_rounding(self):
+        """Adjusted closes from $0.30 to $177: least squares on the quotes
+        finds the one factor; a median of ratios would be pulled by the
+        noisy sub-dollar quotes."""
+        r = classify_price_revision(_nvda_pairs())
+        assert (r.kind, r.months) == (RevisionKind.UNIFORM_RESCALE, 17)
+        assert r.factor == pytest.approx(0.998856, abs=2e-6) and r.max_residual <= 1e-4
+        assert r.dividend_consistent and r.acceptable
+
+    def test_near_uniform_is_not_accepted(self):
+        r = classify_price_revision([(100.0, 99.80), (200.0, 199.70), (300.0, 299.40)])
+        assert r.kind is RevisionKind.NEAR_UNIFORM_RESCALE and not r.acceptable
+
+    def test_non_uniform_is_not_accepted(self):
+        r = classify_price_revision([(100.0, 99.0), (200.0, 199.9)])
+        assert r.kind is RevisionKind.NON_UNIFORM_REVISION and not r.acceptable
+
+    def test_the_dividend_band_is_the_descriptive_drift_band(self):
+        from atlas.alpha.investment_case.historical_market_cap import SMALL_STEP
+        from atlas.dev.backfill_market_data_provenance import DIVIDEND_DRIFT_STEP
+
+        assert DIVIDEND_DRIFT_STEP == SMALL_STEP[1]
+
+    def test_one_month_cannot_show_uniformity(self):
+        assert classify_price_revision([(100.0, 99.8)]).kind is RevisionKind.AMBIGUOUS
+
+    def test_a_split_sized_or_upward_rescale_is_never_dividend_consistent(self):
+        assert not classify_price_revision([(100.0, 50.0), (200.0, 100.0)]).acceptable
+        assert not classify_price_revision([(100.0, 100.2), (200.0, 200.4)]).acceptable
+
+
+class TestHeldRevisionAcceptance:
+    REVISED = _rescaled(SERIES, 0.998)
+
+    def _fetch(self, repository, counter, *, accept, fetcher=None):
+        fetcher = fetcher or _Fetcher({"AAPL": self.REVISED})
+        fetched = fetch([_plan(repository)], [], providers=(_av(fetcher),), gate=counter[1], max_calls=13, fetched_at=NOW)
+        documents = fetched.prices["AAPL"]
+        return fetcher, apply_prices(documents, repository.get_by_company("AAPL"), add=repository.add,
+                                     evaluated_at=NOW, accept_revisions=accept)
+
+    def test_by_default_a_uniform_rescale_is_still_held(self, repository, counter):
+        _core(repository)
+        _, outcome = self._fetch(repository, counter, accept=False)
+        assert (outcome.new_versions, len(outcome.held_revisions)) == (0, 2)
+        assert outcome.revision.kind is RevisionKind.UNIFORM_RESCALE
+        assert all(not is_price_complete(h) for h in _monthly_heads(repository))
+
+    def test_explicit_acceptance_writes_the_revised_price_as_a_new_version(self, repository, counter):
+        legacy = _core(repository)
+        fetcher, outcome = self._fetch(repository, counter, accept=True)
+        assert fetcher.calls == [("TIME_SERIES_MONTHLY_ADJUSTED", "AAPL")]  # one request, no OVERVIEW
+        assert (outcome.new_versions, len(outcome.accepted_revisions), outcome.held_revisions) == (2, 2, [])
+        heads = _monthly_heads(repository)
+        assert [h.metadata["share_price"] for h in heads] == [17.8452, 19.7685]
+        assert [h.version.supersedes for h in heads] == [r.id for r in legacy]
+        for head in heads:
+            p = market_price_provenance(head)
+            assert (p.basis, p.basis_recorded) == (PriceBasis.SPLIT_AND_DIVIDEND_ADJUSTED, True)
+            assert p.raw_close is not None and p.dividend_amount is not None and p.retrieved_at == NOW
+        stored = {r.id: r for r in repository.get_by_company("AAPL")}
+        assert all(stored[r.id] == r for r in legacy)  # the stored version stays, unchanged
+
+    def test_valuation_reads_the_accepted_version(self, repository, counter):
+        from atlas.analysis_engine.valuation.facts import ValuationFactKind, extract_valuation_facts_from_records
+
+        _core(repository)
+        self._fetch(repository, counter, accept=True)
+        facts = extract_valuation_facts_from_records(latest_versions(repository.get_by_company("AAPL")), evaluated_at=NOW)
+        prices = {f.period: f.value for f in facts if f.kind is ValuationFactKind.SHARE_PRICE}
+        assert prices == {"2012-10-31": 17.8452, "2014-05-30": 19.7685}
+
+    def test_a_non_uniform_revision_is_held_even_when_accepting(self, repository, counter):
+        _core(repository)
+        uneven = {**self.REVISED, "2014-05-30": {**SERIES["2014-05-30"], "5. adjusted close": "19.5000"}}
+        _, outcome = self._fetch(repository, counter, accept=True, fetcher=_Fetcher({"AAPL": uneven}))
+        assert outcome.revision.kind is RevisionKind.NON_UNIFORM_REVISION
+        assert (outcome.new_versions, len(outcome.held_revisions)) == (0, 2)
+
+    def test_a_revision_of_anything_but_the_price_is_never_accepted(self, repository, counter):
+        _core(repository)
+        head = _monthly_heads(repository)[0]
+        repository.add(replace(head, id=f"{head.lineage_id}:v2", metadata={**head.metadata, "shares_outstanding": 1.0},
+                               version=replace(head.version, version_number=2, supersedes=head.id)))
+        plan = _plan(repository)
+        assert plan.refusal  # the stored months no longer agree on the share count: refused before any request
+        documents = _av(_Fetcher({"AAPL": self.REVISED})).fetch_historical_snapshots(
+            company_identifier="AAPL", filing_dates=(date(2012, 10, 31), date(2014, 5, 30)), evaluated_at=NOW,
+            known_currency="USD", known_shares_outstanding=SHARES["AAPL"],
+        )
+        outcome = apply_prices(documents, repository.get_by_company("AAPL"), add=repository.add, evaluated_at=NOW,
+                               accept_revisions=True)
+        assert ("2012-10-31", 17.881, 17.8452) not in outcome.accepted_revisions
+        assert _monthly_heads(repository)[0].metadata["shares_outstanding"] == 1.0
+
+    def test_a_second_run_plans_no_request(self, repository, counter):
+        _core(repository)
+        self._fetch(repository, counter, accept=True)
+        assert _plan(repository).calls == 0
+
+    def test_acceptance_writes_only_price_snapshots(self, repository, counter):
+        _core(repository)
+        before = {r.id for r in repository.get_by_company("AAPL")}
+        self._fetch(repository, counter, accept=True)
+        added = [r for r in repository.get_by_company("AAPL") if r.id not in before]
+        assert added and {r.document_type.value for r in added} == {"market_data_snapshot"}
+
+    def test_only_the_named_companies_are_selected(self):
+        categories = {"AAPL": CORE, "MSFT": CORE, "NVDA": CORE, "V": PRICE_ONLY}
+        assert select_companies(["MSFT", "NVDA"], categories, allow_price_only=False) == ["MSFT", "NVDA"]
+        assert select_companies(None, categories, allow_price_only=False) == ["AAPL", "MSFT", "NVDA"]
+
+
+class TestRevisionIsNotCompanyNews:
+    """A uniform rescale of the adjusted history moves historical yields but
+    is no company change: the analytical snapshot and the decision-memory
+    identity carry no price or yield."""
+
+    def _analysis(self, scale):
+        from atlas.analysis_engine.pipeline import assemble_analysis
+        from tests.unit.analysis_engine._fixtures import run_minimal
+
+        def rec(kind, ident, day, published, ref="ref://x", **metadata):
+            doc = RawBusinessDocument(
+                identifier=ident, company="ACME", source_kind=kind, published_at=published, provider_id="p",
+                raw_reference=ref, content_hash=f"{ident}-{sorted(metadata.items())}", language="en",
+                period_start=day, period_end=day, metadata=metadata,
+            )
+            return ingest(doc, evaluated_at=NOW).record
+
+        monthly = "https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol=ACME"
+        records = [rec("company_profile", "ACME:profile", date(2025, 1, 1), NOW, industry="SEMICONDUCTORS")]
+        for y, fcf in zip(range(2019, 2025), (10, 11, 12, 13, 14, 15)):
+            records.append(rec("financial_statement", f"ACME:FY:{y}", date(y, 12, 31),
+                               datetime(y + 1, 2, 10, tzinfo=timezone.utc), free_cash_flow=float(fcf), currency="USD"))
+            records.append(rec("market_data_snapshot", f"ACME:m:{y + 1}", date(y + 1, 2, 28),
+                               datetime(y + 1, 2, 28, tzinfo=timezone.utc), ref=monthly, currency="USD",
+                               share_price=round(100.0 * 1.1 ** (y - 2019) * scale, 4), shares_outstanding=10.0))
+        records.append(rec("market_data_snapshot", "ACME:quote", date(2026, 9, 10), datetime(2026, 9, 10, tzinfo=timezone.utc),
+                           ref="https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=ACME",
+                           currency="USD", share_price=150.0, shares_outstanding=10.0))
+        engine_input, output = run_minimal()
+        return assemble_analysis(engine_input, output, is_thesis_stale=False, business_records=tuple(records), generated_at=NOW)
+
+    def test_a_uniform_rescale_moves_yields_but_creates_no_change_event(self):
+        from atlas.analysis_engine.investment_case_change import capture_snapshot, compare_snapshots
+
+        before, after = self._analysis(1.0), self._analysis(0.998)
+        fb, fa = (next(f for f in a.valuation_engine.findings if f.fcf_yield_evidence is not None) for a in (before, after))
+        assert fb.fcf_yield_evidence.eligibility is ValuationDecisionEligibility.ELIGIBLE
+        assert fb.status is fa.status and fb.fcf_yield_evidence.prior_yields != fa.fcf_yield_evidence.prior_yields
+        sb, sa = capture_snapshot(before), capture_snapshot(after)
+        assert sb.content_hash == sa.content_hash and compare_snapshots(sb, sa).changes == ()
+
+    def test_the_decision_memory_identity_carries_no_price_or_yield(self):
+        from atlas.alpha.decision_memory.engine import DecisionSnapshotInputs
+
+        assert not [f.name for f in fields(DecisionSnapshotInputs) if "yield" in f.name or "price" in f.name]

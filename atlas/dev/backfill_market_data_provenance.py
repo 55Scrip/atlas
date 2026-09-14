@@ -14,6 +14,10 @@ say about those same observations -- and nothing else:
   A month whose adjusted close the provider has since revised (a dividend
   after it was fetched) is **held**, not written: accepting a revision is
   a data refresh, not provenance, and it would move historical yields.
+  `--accept-price-revisions` (named `--tickers` only) is the operator's
+  explicit decision to take such a revision after reviewing it; it is
+  honoured only when a company's revision is one uniform, dividend-sized
+  rescale of every revised month, and the stored versions stay.
 - **SEC share counts** (`--sec`): a statement gains the filing its stored
   count came from and what the first filing reported, through
   `pipeline.enrich_provenance` -- a new version with the same content
@@ -65,6 +69,7 @@ import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timezone
+from enum import Enum
 from pathlib import Path
 
 from sqlalchemy import create_engine, select
@@ -102,6 +107,8 @@ __all__ = [
     "apply_prices",
     "plan_sec",
     "apply_sec",
+    "classify_price_revision",
+    "select_companies",
     "fetch",
     "apply",
     "save_fetched",
@@ -222,6 +229,80 @@ class PriceOutcome:
     already_complete: int = 0
     held_revisions: list[tuple[str, float, float]] = field(default_factory=list)
     held_new_observations: list[str] = field(default_factory=list)
+    #: Months written because the provider's revised adjusted close was
+    #: explicitly accepted (`accept_revisions`): (month, stored, accepted).
+    accepted_revisions: list[tuple[str, float, float]] = field(default_factory=list)
+    revision: "PriceRevision | None" = None
+
+
+#: The provider quotes adjusted closes to four decimals: two independently
+#: rounded quotes of one rescaled price differ from the exact rescale by at
+#: most half a unit in the fourth decimal each.
+_QUOTE_ROUNDING = 0.5e-4
+#: The largest one-year dividend-drift step of the adjusted series -- the
+#: same band `alpha.investment_case.historical_market_cap.SMALL_STEP` draws
+#: (pinned equal by a test; not imported, so the descriptive module keeps
+#: its closed set of importers).
+DIVIDEND_DRIFT_STEP = 1.06
+#: A revision with every month within this of one factor is near-uniform:
+#: economically one rescale, but beyond what quote rounding explains.
+NEAR_UNIFORM_TOLERANCE = 0.001
+
+
+class RevisionKind(str, Enum):
+    UNIFORM_RESCALE = "uniform_rescale"
+    NEAR_UNIFORM_RESCALE = "near_uniform_rescale"
+    NON_UNIFORM_REVISION = "non_uniform_revision"
+    AMBIGUOUS = "ambiguous"
+
+
+@dataclass(frozen=True)
+class PriceRevision:
+    """How one company's revised adjusted closes relate to the stored ones.
+    A later dividend rescales every earlier adjusted close by one factor
+    below 1; nothing else about the stored months changes."""
+
+    kind: RevisionKind
+    months: int
+    factor: float | None
+    min_ratio: float | None
+    max_ratio: float | None
+    max_residual: float | None
+    dividend_consistent: bool
+
+    @property
+    def acceptable(self) -> bool:
+        return self.kind is RevisionKind.UNIFORM_RESCALE and self.dividend_consistent
+
+
+def classify_price_revision(pairs: list[tuple[float, float]]) -> PriceRevision:
+    """`pairs` are (stored, revised) adjusted closes for every revised month
+    of one company. Uniform when each revised quote equals one factor times
+    the stored quote within quote rounding. `dividend_consistent` says only
+    that the factor has the direction and size a later dividend adjustment
+    can have -- it lowers the history by no more than one dividend-drift
+    step (`DIVIDEND_DRIFT_STEP`); a split-sized or upward
+    rescale never passes. It does not attribute the cause."""
+    pairs = [(old, new) for old, new in pairs if old > 0 and new > 0]
+    if len(pairs) < 2:
+        return PriceRevision(RevisionKind.AMBIGUOUS, len(pairs), None, None, None, None, False)
+    ratios = sorted(new / old for old, new in pairs)
+    # Least squares on the quotes themselves: rounding is absolute (four
+    # decimals), so a $0.30 quote's ratio is hundreds of times noisier than
+    # a $170 one's -- a median of ratios would let the noisy ones decide.
+    factor = sum(old * new for old, new in pairs) / sum(old * old for old, _ in pairs)
+    residuals = [abs(new - factor * old) - _QUOTE_ROUNDING * (1 + factor) for old, new in pairs]
+    if max(residuals) <= 1e-12:
+        kind = RevisionKind.UNIFORM_RESCALE
+    elif max(abs(r / factor - 1) for r in ratios) <= NEAR_UNIFORM_TOLERANCE:
+        kind = RevisionKind.NEAR_UNIFORM_RESCALE
+    else:
+        kind = RevisionKind.NON_UNIFORM_REVISION
+    return PriceRevision(
+        kind=kind, months=len(pairs), factor=factor, min_ratio=ratios[0], max_ratio=ratios[-1],
+        max_residual=max(abs(new - factor * old) for old, new in pairs),
+        dividend_consistent=1 / DIVIDEND_DRIFT_STEP <= factor < 1,
+    )
 
 
 def _lineage(document: RawBusinessDocument) -> str:
@@ -243,13 +324,24 @@ def apply_prices(
     *,
     add: Callable[[BusinessRecord], None],
     evaluated_at: datetime,
+    accept_revisions: bool = False,
 ) -> PriceOutcome:
     """Writes a new version only for a month Atlas already holds, whose
     stored metadata the fetched bar repeats exactly apart from
-    `PRICE_PROVENANCE_KEYS`; everything the provider would change is held."""
+    `PRICE_PROVENANCE_KEYS`; everything the provider would change is held.
+
+    `accept_revisions` (Held Historical Price Revision Acceptance) is the
+    operator's explicit decision to take the provider's revised adjusted
+    close as well -- a real valuation-data revision, not provenance. It is
+    honoured only for a revision that changes nothing but `share_price` and
+    is, across every revised month of the company, one uniform dividend-
+    sized rescale (`classify_price_revision`); any other revision stays
+    held. The stored version is kept: the accepted one supersedes it."""
     outcome = PriceOutcome()
     known = list(records)
     heads = {r.lineage_id: r for r in _monthly(latest_versions(records))}
+    pending: list[tuple[RawBusinessDocument, BusinessRecord]] = []
+    revised: list[tuple[RawBusinessDocument, BusinessRecord]] = []
     for document in documents:
         head = heads.get(_lineage(document))
         if head is None:
@@ -258,11 +350,31 @@ def apply_prices(
         if is_price_complete(head):
             outcome.already_complete += 1
             continue
-        if _without(document.metadata, PRICE_PROVENANCE_KEYS) != _without(head.metadata, PRICE_PROVENANCE_KEYS):
-            outcome.held_revisions.append(
-                (head.period_end.isoformat(), head.metadata.get("share_price"), document.metadata.get("share_price"))
-            )
+        stored = _without(head.metadata, PRICE_PROVENANCE_KEYS)
+        fetched = _without(document.metadata, PRICE_PROVENANCE_KEYS)
+        if fetched == stored:
+            pending.append((document, head))
             continue
+        if _without(fetched, {"share_price"}) == _without(stored, {"share_price"}):
+            revised.append((document, head))
+            continue
+        outcome.held_revisions.append(
+            (head.period_end.isoformat(), head.metadata.get("share_price"), document.metadata.get("share_price"))
+        )
+    if revised:
+        outcome.revision = classify_price_revision(
+            [(h.metadata["share_price"], d.metadata["share_price"]) for d, h in revised]
+        )
+        if accept_revisions and outcome.revision.acceptable:
+            outcome.accepted_revisions.extend(
+                (h.period_end.isoformat(), h.metadata["share_price"], d.metadata["share_price"]) for d, h in revised
+            )
+            pending.extend(revised)
+        else:
+            outcome.held_revisions.extend(
+                (h.period_end.isoformat(), h.metadata["share_price"], d.metadata["share_price"]) for d, h in revised
+            )
+    for document, head in sorted(pending, key=lambda pair: pair[1].period_end):
         result = ingest(
             document,
             existing_records=tuple(known),
@@ -347,6 +459,15 @@ def apply_sec(
         add(record)
         outcome.enriched += 1
     return outcome
+
+
+def select_companies(named: list[str] | None, categories: dict[str, str], *, allow_price_only: bool) -> list[str]:
+    """Named tickers exactly as given (each refused later if ineligible);
+    otherwise every core company (and price-only ones only when asked)."""
+    if named:
+        return list(named)
+    wanted = {CORE, PRICE_ONLY} if allow_price_only else {CORE}
+    return [t for t in sorted(categories) if categories[t] in wanted]
 
 
 def _provider(providers, predicate):
@@ -435,17 +556,25 @@ def fetch(
     return fetched
 
 
-def apply(fetched: Fetched, repository: SqlAlchemyBusinessRecordRepository) -> None:
+def apply(fetched: Fetched, repository: SqlAlchemyBusinessRecordRepository, *, accept_revisions: bool = False) -> None:
     """Every write goes through `repository.add`, with the stored records
     re-read per company, so applying the same documents twice is a no-op."""
     if fetched.prices:
         print("\nprices:")
     for ticker, documents in fetched.prices.items():
         outcome = apply_prices(
-            documents, repository.get_by_company(ticker), add=repository.add, evaluated_at=fetched.fetched_at
+            documents, repository.get_by_company(ticker), add=repository.add, evaluated_at=fetched.fetched_at,
+            accept_revisions=accept_revisions,
         )
         print(f"  {ticker:6} new versions {outcome.new_versions:3}  already complete {outcome.already_complete:3}  "
-              f"held revisions {len(outcome.held_revisions):3}  held new {len(outcome.held_new_observations):3}")
+              f"accepted revisions {len(outcome.accepted_revisions):3}  held revisions {len(outcome.held_revisions):3}  "
+              f"held new {len(outcome.held_new_observations):3}")
+        if outcome.revision is not None:
+            r = outcome.revision
+            print(f"         revision: {r.kind.value}, {r.months} months, factor {r.factor:.6f} "
+                  f"(ratios {r.min_ratio:.6f}..{r.max_ratio:.6f}, max residual {r.max_residual:.6f}), "
+                  f"{'direction and size of a dividend adjustment (cause not attributed)' if r.dividend_consistent else 'not a dividend-sized downward rescale'}"
+                  if r.factor is not None else f"         revision: {r.kind.value}, {r.months} months")
         for month, stored, now in outcome.held_revisions[:3]:
             print(f"         held {month}: stored {stored} -> provider now {now}")
     if fetched.sec:
@@ -528,9 +657,16 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Report the plan and the request cost, fetch nothing.")
     parser.add_argument("--save-fetched", default=None, help="Also write the fetched documents to this JSON file.")
     parser.add_argument("--from-fetched", default=None, help="Apply documents saved by --save-fetched; no provider call.")
+    parser.add_argument(
+        "--accept-price-revisions", action="store_true",
+        help="Also accept the provider's revised adjusted closes for the named --tickers, when each company's "
+             "revision is one uniform dividend-sized rescale. A valuation-data revision; off by default.",
+    )
     arguments = parser.parse_args()
     if not (arguments.prices or arguments.sec):
         parser.error("choose --prices, --sec or both")
+    if arguments.accept_price_revisions and not (arguments.tickers and arguments.prices):
+        parser.error("--accept-price-revisions needs --prices and explicit --tickers")
 
     path = arguments.database or resolve_database_path()
     engine = create_engine(f"sqlite:///{path}", future=True)
@@ -538,16 +674,11 @@ def main() -> int:
     repository = SqlAlchemyBusinessRecordRepository(engine)
     issuer_companies = _issuer_companies(engine)
 
-    candidates = (
-        [t.strip().upper() for t in arguments.tickers.split(",") if t.strip()]
-        if arguments.tickers
-        else _stored_companies(engine)
-    )
-    records = {t: repository.get_by_company(t) for t in candidates}
-    categories = {t: classify(t, records[t], issuer_companies=issuer_companies) for t in candidates}
-    if not arguments.tickers:
-        wanted = {CORE, PRICE_ONLY} if arguments.allow_price_only else {CORE}
-        candidates = [t for t in candidates if categories[t] in wanted]
+    named = [t.strip().upper() for t in arguments.tickers.split(",") if t.strip()] if arguments.tickers else None
+    everyone = named or _stored_companies(engine)
+    records = {t: repository.get_by_company(t) for t in everyone}
+    categories = {t: classify(t, records[t], issuer_companies=issuer_companies) for t in everyone}
+    candidates = select_companies(named, categories, allow_price_only=arguments.allow_price_only)
 
     # The counter the provider's own request hook writes, behind the gate
     # every enrichment path reads -- never the database being backfilled.
@@ -598,7 +729,7 @@ def main() -> int:
         if arguments.save_fetched:
             save_fetched(fetched, arguments.save_fetched)
             print(f"\nfetched documents saved to {arguments.save_fetched}")
-    apply(fetched, repository)
+    apply(fetched, repository, accept_revisions=arguments.accept_price_revisions)
     print(f"\nAlpha Vantage requests made: {fetched.av_requests}" + (f" -- stopped: {fetched.stopped}" if fetched.stopped else ""))
     return 0
 

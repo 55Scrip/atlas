@@ -526,3 +526,34 @@ class TestApiView:
         (event,) = fy13["basisEvents"]
         assert event["factorSource"] == "price_step" and len(event["priceRecordIds"]) == 2 and event["statementRecordIds"]
         assert fy13["priceRecordId"] and fy13["statementRecordId"] and fy13["proxyMarketCap"] > 0
+
+
+class TestAcceptedPriceRevisions:
+    """MSFT, NVDA and UNP after their held adjusted-close revisions were
+    accepted (Held Historical Price Revision Acceptance): the stored series
+    before (`legacy_adjusted`) and after is one uniform rescale, and it moves
+    no inferred basis event."""
+
+    @pytest.mark.parametrize("ticker", ["MSFT", "NVDA", "UNP"])
+    def test_split_inference_is_identical_before_and_after_the_rescale(self, ticker):
+        after = _run(ticker).basis_events
+        before = _run(ticker, adjusted_key="legacy_adjusted").basis_events
+        assert [(e.after, e.on_or_before, e.factor_source) for e in before] == [
+            (e.after, e.on_or_before, e.factor_source) for e in after]
+        for a, b in zip(after, before):
+            assert a.factor == pytest.approx(b.factor, rel=1e-6)
+            assert a.price_factor == pytest.approx(b.price_factor, rel=1e-3)
+
+    def test_nvda_splits_are_its_share_restatements_on_persisted_prices(self):
+        events = _run("NVDA").basis_events
+        assert [e.factor_source for e in events] == [FactorSource.SHARE_RESTATEMENT] * 2
+        assert [round(e.factor, 6) for e in events] == [3.998387, 10.001218]
+        assert [round(e.price_factor, 1) for e in events] == [4.0, 10.0]
+
+    def test_nvda_every_epoch_is_exactly_aligned(self):
+        assert {e.quality for e in _run("NVDA").epochs} == {AlignmentQuality.FULLY_ALIGNED}
+
+    def test_msft_and_unp_gain_bounded_history(self):
+        counts = {t: sum(e.quality is AlignmentQuality.FULLY_ALIGNED_BOUNDED for e in _run(t).epochs) for t in ("MSFT", "UNP")}
+        assert counts == {"MSFT": 15, "UNP": 10}
+        assert [round(e.factor, 3) for e in _run("UNP").basis_events] == [1.988]
