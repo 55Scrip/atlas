@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ns0:xbrl xmlns:dei="http://xbrl.sec.gov/dei/2026" xmlns:link="http://www.xbrl.org/2003/linkbase" xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:us-gaap="http://fasb.org/us-gaap/2026" xmlns:xlink="http://www.w3.org/1999/xlink" xml:lang="en-US" xmlns:country="http://xbrl.sec.gov/country/2026" xmlns:crm="http://salesforce.com/20260731" xmlns:ecd="http://xbrl.sec.gov/ecd/2026" xmlns:iso4217="http://www.xbrl.org/2003/iso4217" xmlns:srt="http://fasb.org/srt/2026" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+    <link:schemaRef xlink:href="crm-20260731.xsd" xlink:type="simple" />
+    <ns0:context id="c-1">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001108524</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2026-02-01</ns0:startDate>
+            <ns0:endDate>2026-07-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-2">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001108524</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2026-08-20</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-13">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001108524</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2026-05-01</ns0:startDate>
+            <ns0:endDate>2026-07-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-14">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001108524</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-05-01</ns0:startDate>
+            <ns0:endDate>2025-07-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-15">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001108524</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-02-01</ns0:startDate>
+            <ns0:endDate>2025-07-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:unit id="shares">
+        <ns0:measure>shares</ns0:measure>
+    </ns0:unit>
+    <dei:AmendmentFlag contextRef="c-1" id="f-26">false</dei:AmendmentFlag>
+    <dei:DocumentFiscalYearFocus contextRef="c-1" id="f-27">2027</dei:DocumentFiscalYearFocus>
+    <dei:DocumentFiscalPeriodFocus contextRef="c-1" id="f-28">Q2</dei:DocumentFiscalPeriodFocus>
+    <dei:EntityCentralIndexKey contextRef="c-1" id="f-30">0001108524</dei:EntityCentralIndexKey>
+    <dei:DocumentType contextRef="c-1" id="f-1">10-Q</dei:DocumentType>
+    <dei:DocumentPeriodEndDate contextRef="c-1" id="f-3">2026-07-31</dei:DocumentPeriodEndDate>
+    <dei:Security12bTitle contextRef="c-1" id="f-16">Common Stock, par value $0.001 per share</dei:Security12bTitle>
+    <dei:TradingSymbol contextRef="c-1" id="f-17">CRM</dei:TradingSymbol>
+    <dei:SecurityExchangeName contextRef="c-1" id="f-18">NYSE</dei:SecurityExchangeName>
+    <dei:EntityCommonStockSharesOutstanding contextRef="c-2" decimals="-6" id="f-25" unitRef="shares">823000000</dei:EntityCommonStockSharesOutstanding>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-13" decimals="-6" id="f-175" unitRef="shares">820000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-14" decimals="-6" id="f-176" unitRef="shares">956000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-1" decimals="-6" id="f-177" unitRef="shares">844000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-15" decimals="-6" id="f-178" unitRef="shares">958000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-13" decimals="-6" id="f-1139" unitRef="shares">820000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="c-14" decimals="-6" id="f-1140" unitRef="shares">956000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    </ns0:xbrl>

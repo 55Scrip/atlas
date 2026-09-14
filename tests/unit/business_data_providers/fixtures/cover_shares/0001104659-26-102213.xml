@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ns0:xbrl xmlns:dei="http://xbrl.sec.gov/dei/2025" xmlns:link="http://www.xbrl.org/2003/linkbase" xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:us-gaap="http://fasb.org/us-gaap/2025" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:country="http://xbrl.sec.gov/country/2025" xmlns:de="http://www.deere.com/20260802" xmlns:ecd="http://xbrl.sec.gov/ecd/2025" xmlns:iso4217="http://www.xbrl.org/2003/iso4217" xmlns:srt="http://fasb.org/srt/2025" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <link:schemaRef xlink:href="de-20260802.xsd" xlink:type="simple" />
+    <ns0:context id="Duration_11_3_2025_To_8_2_2026_us-gaap_StatementClassOfStockAxis_us-gaap_CommonStockMember_jI-LgDrYUkuL0ncLUT4S4w">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000315189</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonStockMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-11-03</ns0:startDate>
+            <ns0:endDate>2026-08-02</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="Duration_11_3_2025_To_8_2_2026_us-gaap_StatementClassOfStockAxis_de_Debentures655PercentDue2028Member_N_KHxK9M0UegjHDPzinPJA">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000315189</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">de:Debentures6.55PercentDue2028Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-11-03</ns0:startDate>
+            <ns0:endDate>2026-08-02</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="Duration_5_4_2026_To_8_2_2026_7g11onuqkkWYp-BarzfxKw">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000315189</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2026-05-04</ns0:startDate>
+            <ns0:endDate>2026-08-02</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="Duration_4_28_2025_To_7_27_2025_RkmGEK9f4k66toHliNzCfw">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000315189</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-04-28</ns0:startDate>
+            <ns0:endDate>2025-07-27</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="Duration_10_28_2024_To_7_27_2025_PVoOLy1P4ki39ax9st1zJA">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000315189</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2024-10-28</ns0:startDate>
+            <ns0:endDate>2025-07-27</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="Duration_11_3_2025_To_8_2_2026_GEmDnJZF2UaGxBnTQNanfw">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000315189</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-11-03</ns0:startDate>
+            <ns0:endDate>2026-08-02</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="As_Of_8_2_2026_kTNDgSCvL02hB1uGlnL4dw">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000315189</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2026-08-02</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:unit id="Unit_Standard_shares_Qy-h8LsARkSKGLvmMA-PgQ">
+        <ns0:measure>shares</ns0:measure>
+    </ns0:unit>
+    <dei:EntityCentralIndexKey contextRef="Duration_11_3_2025_To_8_2_2026_GEmDnJZF2UaGxBnTQNanfw" id="Narr_VgLhkOOD3E-FLdFqOhgNhQ">0000315189</dei:EntityCentralIndexKey>
+    <dei:AmendmentFlag contextRef="Duration_11_3_2025_To_8_2_2026_GEmDnJZF2UaGxBnTQNanfw" id="Narr_nwYa20qUBkSxCNYoQ9HP6g">false</dei:AmendmentFlag>
+    <dei:DocumentFiscalPeriodFocus contextRef="Duration_11_3_2025_To_8_2_2026_GEmDnJZF2UaGxBnTQNanfw" id="Narr__KJ47gULPkagq0XFreawuw">Q3</dei:DocumentFiscalPeriodFocus>
+    <dei:DocumentType contextRef="Duration_11_3_2025_To_8_2_2026_GEmDnJZF2UaGxBnTQNanfw" id="Narr_ZJbKoJHqKkKHGmwL8enPWg">10-Q</dei:DocumentType>
+    <dei:DocumentPeriodEndDate contextRef="Duration_11_3_2025_To_8_2_2026_GEmDnJZF2UaGxBnTQNanfw" id="Narr_qgetz9OpZE2UphJjMQDiCA">2026-08-02</dei:DocumentPeriodEndDate>
+    <dei:DocumentFiscalYearFocus contextRef="Duration_11_3_2025_To_8_2_2026_GEmDnJZF2UaGxBnTQNanfw" id="Narr_I6fxmzHyx0aMlSpoeKLSLQ">2026</dei:DocumentFiscalYearFocus>
+    <dei:Security12bTitle contextRef="Duration_11_3_2025_To_8_2_2026_us-gaap_StatementClassOfStockAxis_us-gaap_CommonStockMember_jI-LgDrYUkuL0ncLUT4S4w" id="Tc_Wy1s-lrTpUesRAz6YXgBJw_2_0">Common stock, $1 par value</dei:Security12bTitle>
+    <dei:TradingSymbol contextRef="Duration_11_3_2025_To_8_2_2026_us-gaap_StatementClassOfStockAxis_us-gaap_CommonStockMember_jI-LgDrYUkuL0ncLUT4S4w" id="Tc_TpjrxMikG0GKP8bVAMfnzg_2_2">DE</dei:TradingSymbol>
+    <dei:SecurityExchangeName contextRef="Duration_11_3_2025_To_8_2_2026_us-gaap_StatementClassOfStockAxis_us-gaap_CommonStockMember_jI-LgDrYUkuL0ncLUT4S4w" id="Tc_QzI0qBTyIkG2GWSKOimcRw_2_4">NYSE</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="Duration_11_3_2025_To_8_2_2026_us-gaap_StatementClassOfStockAxis_de_Debentures655PercentDue2028Member_N_KHxK9M0UegjHDPzinPJA" id="Tc_fNzbIWBgZEeuHky7gd9eQg_3_0">6.55% Debentures Due 2028</dei:Security12bTitle>
+    <dei:TradingSymbol contextRef="Duration_11_3_2025_To_8_2_2026_us-gaap_StatementClassOfStockAxis_de_Debentures655PercentDue2028Member_N_KHxK9M0UegjHDPzinPJA" id="Tc_GaqL6DNKzE-57gzEho0brg_3_2">DE28</dei:TradingSymbol>
+    <dei:SecurityExchangeName contextRef="Duration_11_3_2025_To_8_2_2026_us-gaap_StatementClassOfStockAxis_de_Debentures655PercentDue2028Member_N_KHxK9M0UegjHDPzinPJA" id="Tc_fcOJZIsW_UKkT2GNTSDHFw_3_4">NYSE</dei:SecurityExchangeName>
+    <dei:EntityCommonStockSharesOutstanding contextRef="As_Of_8_2_2026_kTNDgSCvL02hB1uGlnL4dw" decimals="INF" id="Narr_f0lROtwdPkaKeJBf9wsU7A" unitRef="Unit_Standard_shares_Qy-h8LsARkSKGLvmMA-PgQ">269625412</dei:EntityCommonStockSharesOutstanding>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="Duration_5_4_2026_To_8_2_2026_7g11onuqkkWYp-BarzfxKw" decimals="-5" id="Tc_LHHzxI0aO0O3UEcH32Z3hA_38_3" unitRef="Unit_Standard_shares_Qy-h8LsARkSKGLvmMA-PgQ">269800000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="Duration_4_28_2025_To_7_27_2025_RkmGEK9f4k66toHliNzCfw" decimals="-5" id="Tc_GYvDTbRy8EOjjYE822HnxQ_38_6" unitRef="Unit_Standard_shares_Qy-h8LsARkSKGLvmMA-PgQ">270700000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="Duration_11_3_2025_To_8_2_2026_GEmDnJZF2UaGxBnTQNanfw" decimals="-5" id="Tc_wlCxbHp6GkGfaHrY2Birdw_38_9" unitRef="Unit_Standard_shares_Qy-h8LsARkSKGLvmMA-PgQ">270100000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="Duration_10_28_2024_To_7_27_2025_PVoOLy1P4ki39ax9st1zJA" decimals="-5" id="Tc_qA4QZnTC00S83udRxnyqQw_38_12" unitRef="Unit_Standard_shares_Qy-h8LsARkSKGLvmMA-PgQ">271100000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="Duration_5_4_2026_To_8_2_2026_7g11onuqkkWYp-BarzfxKw" decimals="-5" id="Tc_Dzx_HufhXUGbCYXUDTKkgg_5_3" unitRef="Unit_Standard_shares_Qy-h8LsARkSKGLvmMA-PgQ">269800000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="Duration_4_28_2025_To_7_27_2025_RkmGEK9f4k66toHliNzCfw" decimals="-5" id="Tc_WNjLtyjzJEm7FNJ4IEo3hA_5_6" unitRef="Unit_Standard_shares_Qy-h8LsARkSKGLvmMA-PgQ">270700000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    </ns0:xbrl>

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ns0:xbrl xmlns:dei="http://xbrl.sec.gov/dei/2025" xmlns:link="http://www.xbrl.org/2003/linkbase" xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:us-gaap="http://fasb.org/us-gaap/2025" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:country="http://xbrl.sec.gov/country/2025" xmlns:cyd="http://xbrl.sec.gov/cyd/2025" xmlns:ecd="http://xbrl.sec.gov/ecd/2025" xmlns:iso4217="http://www.xbrl.org/2003/iso4217" xmlns:msft="http://www.microsoft.com/20260630" xmlns:srt="http://fasb.org/srt/2025" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <link:schemaRef xlink:href="msft-20260630.xsd" xlink:type="simple" />
+    <ns0:context id="C_b53d80eb-0794-4cef-a6c9-ff7934a96bbe">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000789019</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2026-07-23</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="C_c8f8513d-3b46-40a5-a78d-9a87cc9e0f1d">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000789019</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">msft:NotesTwoPointSixTwoFivePercentDueMayTwoTwentyThirtyThreeMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-07-01</ns0:startDate>
+            <ns0:endDate>2026-06-30</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="C_ca004a37-7abb-4b0e-8638-a7c6b14ebb45">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000789019</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2026-06-30</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="C_f092f222-fa0e-4964-ada1-910a80a73255">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000789019</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">msft:NotesThreePointOneTwoFivePercentDueDecemberSixTwentyTwentyEightMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-07-01</ns0:startDate>
+            <ns0:endDate>2026-06-30</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="C_216fddfa-a999-4f27-93ca-784c3ed92065">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000789019</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonStockMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-07-01</ns0:startDate>
+            <ns0:endDate>2026-06-30</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="C_29985a27-1d12-4b7e-9a06-156523f6e71e">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000789019</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-07-01</ns0:startDate>
+            <ns0:endDate>2026-06-30</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="C_528a2210-872f-4ed7-b006-dd38f90dd456">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000789019</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2025-06-30</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="C_7575f467-7692-4974-a3da-f27e7e8e1c47">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000789019</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2024-07-01</ns0:startDate>
+            <ns0:endDate>2025-06-30</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="C_7f83b284-3c69-4779-90ec-f0c89f19f47e">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0000789019</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2023-07-01</ns0:startDate>
+            <ns0:endDate>2024-06-30</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:unit id="U_shares">
+        <ns0:measure>shares</ns0:measure>
+    </ns0:unit>
+    <dei:DocumentFiscalPeriodFocus contextRef="C_29985a27-1d12-4b7e-9a06-156523f6e71e" id="F_21aa40e5-0a47-4a53-a483-0563b9cbbe4c">FY</dei:DocumentFiscalPeriodFocus>
+    <dei:AmendmentFlag contextRef="C_29985a27-1d12-4b7e-9a06-156523f6e71e" id="F_380eda0e-ec94-474a-9068-ce95517ef479">false</dei:AmendmentFlag>
+    <dei:EntityCentralIndexKey contextRef="C_29985a27-1d12-4b7e-9a06-156523f6e71e" id="F_384867f5-ec4e-40f1-9513-95fa225246f6">0000789019</dei:EntityCentralIndexKey>
+    <dei:DocumentType contextRef="C_29985a27-1d12-4b7e-9a06-156523f6e71e" id="F_bff863b5-8e59-4584-a041-0e943a307239">10-K</dei:DocumentType>
+    <dei:DocumentPeriodEndDate contextRef="C_29985a27-1d12-4b7e-9a06-156523f6e71e" id="F_6351fb3a-b839-45d5-a799-854be7c1cb82">2026-06-30</dei:DocumentPeriodEndDate>
+    <dei:DocumentFiscalYearFocus contextRef="C_29985a27-1d12-4b7e-9a06-156523f6e71e" id="F_e31091ce-367b-4e83-afb4-b5837c51dc10">2026</dei:DocumentFiscalYearFocus>
+    <dei:Security12bTitle contextRef="C_216fddfa-a999-4f27-93ca-784c3ed92065" id="F_698af71f-691e-4853-8690-dddffe1e5d8d">Common stock, $0.00000625 par value per share</dei:Security12bTitle>
+    <dei:TradingSymbol contextRef="C_216fddfa-a999-4f27-93ca-784c3ed92065" id="F_c243514d-7ee4-4e04-aa86-fbbecf838610">MSFT</dei:TradingSymbol>
+    <dei:SecurityExchangeName contextRef="C_216fddfa-a999-4f27-93ca-784c3ed92065" id="F_e56bc986-a102-4792-83a9-278de5f39fa5">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="C_f092f222-fa0e-4964-ada1-910a80a73255" id="F_f91b7e3e-d1a3-4f3e-88c3-43a514e9c307">3.125% Notes due 2028</dei:Security12bTitle>
+    <dei:TradingSymbol contextRef="C_f092f222-fa0e-4964-ada1-910a80a73255" id="F_7ac8a51e-621e-4e8a-b14c-cde5ed784d0e">MSFT</dei:TradingSymbol>
+    <dei:SecurityExchangeName contextRef="C_f092f222-fa0e-4964-ada1-910a80a73255" id="F_56d56235-b2a5-42a6-ba47-f511b2e8fb0b">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="C_c8f8513d-3b46-40a5-a78d-9a87cc9e0f1d" id="F_b841adb3-8e78-499f-a818-6101127f5a29">2.625% Notes due 2033</dei:Security12bTitle>
+    <dei:TradingSymbol contextRef="C_c8f8513d-3b46-40a5-a78d-9a87cc9e0f1d" id="F_e81ce341-c6ad-4fb3-b557-a8477995a435">MSFT</dei:TradingSymbol>
+    <dei:SecurityExchangeName contextRef="C_c8f8513d-3b46-40a5-a78d-9a87cc9e0f1d" id="F_27d8b1aa-74fb-4396-8afd-e60df1c8a475">NASDAQ</dei:SecurityExchangeName>
+    <dei:EntityCommonStockSharesOutstanding contextRef="C_b53d80eb-0794-4cef-a6c9-ff7934a96bbe" decimals="0" id="F_26e5f0ba-87ed-4680-8317-8f6e246d35b2" unitRef="U_shares">7425545491</dei:EntityCommonStockSharesOutstanding>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="C_29985a27-1d12-4b7e-9a06-156523f6e71e" decimals="-6" id="F_7b9dc2df-8c85-410f-a36f-7efea6edd316" unitRef="U_shares">7429000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="C_7575f467-7692-4974-a3da-f27e7e8e1c47" decimals="-6" id="F_b11ac30b-c27a-492f-a288-2fc401b2972e" unitRef="U_shares">7433000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="C_7f83b284-3c69-4779-90ec-f0c89f19f47e" decimals="-6" id="F_5ccc3971-3081-461e-a08d-284826876fac" unitRef="U_shares">7431000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    <us-gaap:CommonStockSharesOutstanding contextRef="C_ca004a37-7abb-4b0e-8638-a7c6b14ebb45" decimals="-6" id="F_29929556-6058-4891-915f-cc63c544c19d" unitRef="U_shares">7427000000</us-gaap:CommonStockSharesOutstanding>
+    <us-gaap:CommonStockSharesOutstanding contextRef="C_528a2210-872f-4ed7-b006-dd38f90dd456" decimals="-6" id="F_51de6c0d-15eb-46d8-97c2-5447e7497802" unitRef="U_shares">7434000000</us-gaap:CommonStockSharesOutstanding>
+    <us-gaap:WeightedAverageNumberOfSharesOutstandingBasic contextRef="C_29985a27-1d12-4b7e-9a06-156523f6e71e" decimals="-6" id="F_a136d263-5244-4694-bdd6-6fe11c868c7a" unitRef="U_shares">7429000000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+    </ns0:xbrl>
