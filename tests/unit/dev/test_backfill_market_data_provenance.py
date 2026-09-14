@@ -55,9 +55,11 @@ from atlas.dev.backfill_market_data_provenance import (
     classify,
     fetch,
     is_price_complete,
+    Fetched,
     load_fetched,
     plan_prices,
     plan_sec,
+    restrict,
     save_fetched,
 )
 from tests.unit.business_data_providers.test_market_data_provenance import _BAR_2012_10, _BAR_2014_05
@@ -600,6 +602,45 @@ def test_saved_documents_apply_exactly_like_the_fetched_ones(repository, counter
     apply(loaded, other)
     rows = lambda repo: sorted((r.id, r.content_hash, dict(r.metadata), r.version.created_at) for r in repo.get_by_company("AAPL"))
     assert rows(repository) == rows(other)
+
+
+def test_a_saved_fetch_applies_only_what_the_run_planned(monkeypatch, repository, counter, tmp_path, capsys):
+    """`--from-fetched` with named `--tickers`: a company the saved file holds
+    but the run did not name (or refused) is never written -- so
+    `--accept-price-revisions` cannot reach it."""
+    import sys
+
+    import atlas.dev.backfill_market_data_provenance as command
+
+    engine = _engine()
+    create_business_record_table(engine)
+    target = SqlAlchemyBusinessRecordRepository(engine)
+    for ticker in ("AAPL", "NVDA"):
+        _core(repository, ticker)
+        _core(target, ticker)
+    fetched = fetch([_plan(repository, "AAPL"), _plan(repository, "NVDA")], [],
+                    providers=(_av(_Fetcher({"AAPL": SERIES, "NVDA": SERIES})),), gate=counter[1], max_calls=13,
+                    fetched_at=NOW)
+    path = tmp_path / "fetched.json"
+    save_fetched(fetched, str(path))
+    before = {t: sorted(r.id for r in target.get_by_company(t)) for t in ("AAPL", "NVDA")}
+    monkeypatch.setattr(command, "create_engine", lambda *a, **k: engine)
+    counter_engine = _engine()
+    monkeypatch.setattr(command, "get_decision_engine", lambda: counter_engine)
+    monkeypatch.setattr(sys, "argv", ["cmd", "--database", "x.db", "--tickers", "NVDA", "--prices",
+                                      "--from-fetched", str(path), "--accept-price-revisions"])
+    assert command.main() == 0
+    out = capsys.readouterr().out
+    assert "not applied: AAPL" in out and "Alpha Vantage   : 0 planned -- saved documents" in out
+    assert sorted(r.id for r in target.get_by_company("AAPL")) == before["AAPL"]
+    assert sorted(r.id for r in target.get_by_company("NVDA")) != before["NVDA"]
+
+
+def test_restrict_keeps_only_the_planned_companies():
+    saved = Fetched(fetched_at=NOW, prices={"A": (), "B": ()}, sec={"A": (), "C": ()})
+    kept = restrict(saved, prices=["A"], sec=[])
+    assert (list(kept.prices), list(kept.sec), kept.fetched_at) == (["A"], [], NOW)
+    assert list(saved.prices) == ["A", "B"]  # the loaded fetch itself is untouched
 
 
 # -- Held Historical Price Revision Acceptance ---------------------------------------------------------------

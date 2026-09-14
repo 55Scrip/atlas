@@ -117,6 +117,7 @@ __all__ = [
     "apply",
     "save_fetched",
     "load_fetched",
+    "restrict",
     "main",
 ]
 
@@ -658,6 +659,15 @@ def load_fetched(path: str) -> Fetched:
     )
 
 
+def restrict(fetched: Fetched, *, prices: Iterable[str], sec: Iterable[str]) -> Fetched:
+    """Only the documents this run planned for. A saved fetch may hold more
+    companies than the run names -- or companies whose plan is refused --
+    and nothing, `--accept-price-revisions` least of all, may reach those."""
+    prices, sec = set(prices), set(sec)
+    return replace(fetched, prices={t: d for t, d in fetched.prices.items() if t in prices},
+                   sec={t: d for t, d in fetched.sec.items() if t in sec})
+
+
 def main() -> int:
     ensure_development_environment()
 
@@ -729,19 +739,26 @@ def main() -> int:
     if sec_plans:
         print(f"  total  with count {sum(p.with_count for p in sec_plans)}  with provenance "
               f"{sum(p.with_provenance for p in sec_plans)}  pending {sum(p.pending for p in sec_plans if not p.refusal)}")
-    av_planned = sum(p.calls for p in price_plans)
-    sec_planned = sum(p.calls for p in sec_plans)
-    print(f"\nAlpha Vantage   : {av_planned} planned (cap {arguments.max_calls}; used today {quota.calls_used_today()}, "
-          f"gate {gate.current_state().value})")
+    # Applying a saved fetch asks no provider anything.
+    av_planned = 0 if arguments.from_fetched else sum(p.calls for p in price_plans)
+    sec_planned = 0 if arguments.from_fetched else sum(p.calls for p in sec_plans)
+    source = f" -- saved documents from {arguments.from_fetched}" if arguments.from_fetched else ""
+    print(f"\nAlpha Vantage   : {av_planned} planned{source} (cap {arguments.max_calls}; used today "
+          f"{quota.calls_used_today()}, gate {gate.current_state().value})")
     print(f"SEC EDGAR       : {sec_planned} companyfacts + {1 if sec_planned else 0} ticker map (keyless, uncounted)")
     if arguments.dry_run:
         print("\n[dry run] no provider call made, nothing written.")
         return 0
 
     if arguments.from_fetched:
-        fetched = load_fetched(arguments.from_fetched)
+        saved = load_fetched(arguments.from_fetched)
+        fetched = restrict(saved, prices=(p.ticker for p in price_plans if not p.refusal),
+                           sec=(p.ticker for p in sec_plans if not p.refusal))
         print(f"\napplying documents fetched at {fetched.fetched_at.isoformat()} from {arguments.from_fetched} "
               "-- no provider call")
+        left_out = sorted((set(saved.prices) - set(fetched.prices)) | (set(saved.sec) - set(fetched.sec)))
+        if left_out:
+            print(f"  saved but not planned by this run, not applied: {', '.join(left_out)}")
     else:
         fetched = fetch(
             price_plans, sec_plans, providers=get_default_business_data_providers(), gate=gate,
