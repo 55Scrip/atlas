@@ -673,6 +673,9 @@ _ALLOWED_IMPORTERS = {
     "atlas/alpha/investment_case/models.py",
     "atlas/alpha/investment_case/service.py",
     "atlas/alpha/investment_case/api/schemas.py",
+    # Borrows the share-basis event reader; itself descriptive and firewalled
+    # (tests/unit/alpha/class_rights_evidence/test_firewall.py).
+    "atlas/alpha/issuer_equity/reader.py",
 }
 
 

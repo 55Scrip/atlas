@@ -221,6 +221,35 @@ class SqlAlchemySecurityShareEvidenceRepository:
                 ))
         return True
 
+    def filing_locations(self, accessions: tuple[str, ...]) -> dict[str, tuple[str, str, date, str]]:
+        """Accession -> (issuer CIK, form, filing date, instance URL) for any
+        filing either share-evidence reader already fetched."""
+        out: dict[str, tuple[str, str, date, str]] = {}
+        if not accessions:
+            return out
+        with self._engine.connect() as connection:
+            for table in (_filings, _current_filings):
+                if not self._has_tables(table.name):
+                    continue
+                for row in connection.execute(
+                    select(table.c.accession, table.c.issuer_cik, table.c.form, table.c.filing_date, table.c.instance_url)
+                    .where(table.c.accession.in_(accessions))
+                ).all():
+                    out[row[0]] = (row[1], row[2], date.fromisoformat(row[3]), row[4])
+        return out
+
+    def current_classes_reported(self, accessions: tuple[str, ...]) -> dict[str, bool]:
+        """Accession -> whether that current filing tags any class-axis member
+        on a share fact (its issuer-level count may then span several classes)."""
+        if not accessions or not self._has_tables(_current_filings.name):
+            return {}
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                select(_current_filings.c.accession, _current_filings.c.share_classes_reported)
+                .where(_current_filings.c.accession.in_(accessions))
+            ).all()
+        return {accession: bool(flag) for accession, flag in rows}
+
     def current_evidence_for_issuers(self, issuer_ciks: frozenset[str]) -> dict[str, tuple[CurrentShareCountEvidence, ...]]:
         """Every recorded current cover count of each filer, whatever its link."""
         out: dict[str, tuple[CurrentShareCountEvidence, ...]] = {cik: () for cik in issuer_ciks}

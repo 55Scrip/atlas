@@ -28,6 +28,8 @@ _ALLOWED_IMPORTERS = {
     "atlas/alpha/business_data_refresh/security_share_evidence.py",
     "atlas/dev/backfill_security_share_evidence.py",
     "atlas/dev/backfill_current_share_evidence.py",
+    "atlas/alpha/issuer_equity/reader.py",
+    "atlas/dev/backfill_class_rights_evidence.py",
     "atlas/alpha/investment_case/historical_market_cap.py",
     "atlas/alpha/investment_case/service.py",
     "atlas/alpha/investment_case/api/dependencies.py",
@@ -55,9 +57,12 @@ def test_current_share_evidence_is_read_only_by_its_operator_command():
                if any(name in p.read_text() for name in ("current_joined", "current_evidence_for_issuers",
                                                          "record_current_filing", "current_share_observations",
                                                          "current_share_filings"))}
+    # The issuer common-equity composer's reader is itself descriptive and
+    # firewalled (`tests/unit/alpha/class_rights_evidence/test_firewall.py`).
     assert readers == {"atlas/alpha/security_share_evidence/repository.py",
                        "atlas/alpha/security_share_evidence/table.py",
-                       "atlas/dev/backfill_current_share_evidence.py"}, readers
+                       "atlas/dev/backfill_current_share_evidence.py",
+                       "atlas/alpha/issuer_equity/reader.py"}, readers
 
 
 def test_the_share_class_adapter_is_reached_only_through_business_data_refresh():
