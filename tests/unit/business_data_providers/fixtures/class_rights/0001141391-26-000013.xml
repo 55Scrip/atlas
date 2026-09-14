@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ns0:xbrl xmlns:dei="http://xbrl.sec.gov/dei/2025" xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:us-gaap="http://fasb.org/us-gaap/2025" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xml:lang="en-US" xmlns:country="http://xbrl.sec.gov/country/2025" xmlns:cyd="http://xbrl.sec.gov/cyd/2025" xmlns:ecd="http://xbrl.sec.gov/ecd/2025" xmlns:iso4217="http://www.xbrl.org/2003/iso4217" xmlns:link="http://www.xbrl.org/2003/linkbase" xmlns:ma="http://www.mastercard.us/20251231" xmlns:srt="http://fasb.org/srt/2025" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <ns0:context id="c-1">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001141391</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-2">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001141391</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-3">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001141391</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">ma:TwoPointOnePercentNotesDue2027Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-4">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001141391</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">ma:OnePointZeroPercentNotesDue2029Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-5">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001141391</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">ma:TwoPointFivePercentNotesDue2030Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-6">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001141391</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2025-06-30</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-7">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001141391</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2026-02-06</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-8">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001141391</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2026-02-06</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-9">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001141391</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2024-01-01</ns0:startDate>
+            <ns0:endDate>2024-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-10">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001141391</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2023-01-01</ns0:startDate>
+            <ns0:endDate>2023-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-13">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001141391</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2025-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-16">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001141391</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2024-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:unit id="usd">
+        <ns0:measure>iso4217:USD</ns0:measure>
+    </ns0:unit>
+    <ns0:unit id="shares">
+        <ns0:measure>shares</ns0:measure>
+    </ns0:unit>
+    <ns0:unit id="usdPerShare">
+        <ns0:divide>
+            <ns0:unitNumerator>
+                <ns0:measure>iso4217:USD</ns0:measure>
+            </ns0:unitNumerator>
+            <ns0:unitDenominator>
+                <ns0:measure>shares</ns0:measure>
+            </ns0:unitDenominator>
+        </ns0:divide>
+    </ns0:unit>
+    <dei:EntityCentralIndexKey contextRef="c-1" id="f-41">0001141391</dei:EntityCentralIndexKey>
+    <dei:DocumentFiscalYearFocus contextRef="c-1" id="f-42">2025</dei:DocumentFiscalYearFocus>
+    <dei:DocumentFiscalPeriodFocus contextRef="c-1" id="f-43">FY</dei:DocumentFiscalPeriodFocus>
+    <dei:AmendmentFlag contextRef="c-1" id="f-44">false</dei:AmendmentFlag>
+    <dei:DocumentType contextRef="c-1" id="f-1">10-K</dei:DocumentType>
+    <dei:DocumentAnnualReport contextRef="c-1" id="f-2">true</dei:DocumentAnnualReport>
+    <dei:DocumentPeriodEndDate contextRef="c-1" id="f-4">2025-12-31</dei:DocumentPeriodEndDate>
+    <dei:CurrentFiscalYearEndDate contextRef="c-1" id="f-3">--12-31</dei:CurrentFiscalYearEndDate>
+    <dei:DocumentTransitionReport contextRef="c-1" id="f-5">false</dei:DocumentTransitionReport>
+    <dei:EntityFileNumber contextRef="c-1" id="f-6">001-32877</dei:EntityFileNumber>
+    <dei:EntityRegistrantName contextRef="c-1" id="f-7">Mastercard Incorporated</dei:EntityRegistrantName>
+    <dei:EntityIncorporationStateCountryCode contextRef="c-1" id="f-8">DE</dei:EntityIncorporationStateCountryCode>
+    <dei:EntityTaxIdentificationNumber contextRef="c-1" id="f-9">13-4172551</dei:EntityTaxIdentificationNumber>
+    <dei:EntityAddressAddressLine1 contextRef="c-1" id="f-10">2000 Purchase Street</dei:EntityAddressAddressLine1>
+    <dei:EntityAddressCityOrTown contextRef="c-1" id="f-11">Purchase,</dei:EntityAddressCityOrTown>
+    <dei:EntityAddressStateOrProvince contextRef="c-1" id="f-12">NY</dei:EntityAddressStateOrProvince>
+    <dei:EntityAddressPostalZipCode contextRef="c-1" id="f-13">10577</dei:EntityAddressPostalZipCode>
+    <dei:CityAreaCode contextRef="c-1" id="f-14">914</dei:CityAreaCode>
+    <dei:LocalPhoneNumber contextRef="c-1" id="f-15">249-2000</dei:LocalPhoneNumber>
+    <dei:Security12bTitle contextRef="c-2" id="f-16">Class A Common Stock, par value $0.0001 per share</dei:Security12bTitle>
+    <dei:TradingSymbol contextRef="c-2" id="f-17">MA</dei:TradingSymbol>
+    <dei:SecurityExchangeName contextRef="c-2" id="f-18">NYSE</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-3" id="f-19">2.1% Notes due 2027</dei:Security12bTitle>
+    <dei:TradingSymbol contextRef="c-3" id="f-20">MA27</dei:TradingSymbol>
+    <dei:SecurityExchangeName contextRef="c-3" id="f-21">NYSE</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-4" id="f-22">1.0% Notes due 2029</dei:Security12bTitle>
+    <dei:TradingSymbol contextRef="c-4" id="f-23">MA29A</dei:TradingSymbol>
+    <dei:SecurityExchangeName contextRef="c-4" id="f-24">NYSE</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-5" id="f-25">2.5% Notes due 2030</dei:Security12bTitle>
+    <dei:TradingSymbol contextRef="c-5" id="f-26">MA30</dei:TradingSymbol>
+    <dei:SecurityExchangeName contextRef="c-5" id="f-27">NYSE</dei:SecurityExchangeName>
+    <dei:EntityWellKnownSeasonedIssuer contextRef="c-1" id="f-28">Yes</dei:EntityWellKnownSeasonedIssuer>
+    <dei:EntityVoluntaryFilers contextRef="c-1" id="f-29">No</dei:EntityVoluntaryFilers>
+    <dei:EntityCurrentReportingStatus contextRef="c-1" id="f-30">Yes</dei:EntityCurrentReportingStatus>
+    <dei:EntityInteractiveDataCurrent contextRef="c-1" id="f-31">Yes</dei:EntityInteractiveDataCurrent>
+    <dei:EntityFilerCategory contextRef="c-1" id="f-32">Large Accelerated Filer</dei:EntityFilerCategory>
+    <dei:EntitySmallBusiness contextRef="c-1" id="f-33">false</dei:EntitySmallBusiness>
+    <dei:EntityEmergingGrowthCompany contextRef="c-1" id="f-34">false</dei:EntityEmergingGrowthCompany>
+    <dei:IcfrAuditorAttestationFlag contextRef="c-1" id="f-35">true</dei:IcfrAuditorAttestationFlag>
+    <dei:DocumentFinStmtErrorCorrectionFlag contextRef="c-1" id="f-36">false</dei:DocumentFinStmtErrorCorrectionFlag>
+    <dei:EntityShellCompany contextRef="c-1" id="f-37">false</dei:EntityShellCompany>
+    <dei:EntityPublicFloat contextRef="c-6" decimals="-8" id="f-38" unitRef="usd">505000000000.0</dei:EntityPublicFloat>
+    <dei:EntityCommonStockSharesOutstanding contextRef="c-7" decimals="INF" id="f-39" unitRef="shares">885216386</dei:EntityCommonStockSharesOutstanding>
+    <dei:EntityCommonStockSharesOutstanding contextRef="c-8" decimals="INF" id="f-40" unitRef="shares">6595925</dei:EntityCommonStockSharesOutstanding>
+    <dei:AuditorFirmId contextRef="c-1" id="f-60">238</dei:AuditorFirmId>
+    <dei:AuditorName contextRef="c-1" id="f-61">PricewaterhouseCoopers LLP</dei:AuditorName>
+    <dei:AuditorLocation contextRef="c-1" id="f-62">New York, New York</dei:AuditorLocation>
+    <us-gaap:EarningsPerShareBasic contextRef="c-1" decimals="2" id="f-108" unitRef="usdPerShare">16.54</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-9" decimals="2" id="f-109" unitRef="usdPerShare">13.91</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-10" decimals="2" id="f-110" unitRef="usdPerShare">11.86</us-gaap:EarningsPerShareBasic>
+    <us-gaap:CommonStockSharesIssued contextRef="c-13" decimals="INF" id="f-244" unitRef="shares">1406000000</us-gaap:CommonStockSharesIssued>
+    <us-gaap:CommonStockSharesIssued contextRef="c-16" decimals="INF" id="f-254" unitRef="shares">7000000</us-gaap:CommonStockSharesIssued>
+    <us-gaap:EarningsPerShareBasic contextRef="c-1" decimals="2" id="f-633" unitRef="usdPerShare">16.54</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-9" decimals="2" id="f-634" unitRef="usdPerShare">13.91</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-10" decimals="2" id="f-635" unitRef="usdPerShare">11.86</us-gaap:EarningsPerShareBasic>
+    <us-gaap:StockholdersEquityNoteDisclosureTextBlock contextRef="c-1" id="f-1052">&amp;lt;p&amp;gt;Stockholders&amp;#x27; Equity Classes of Capital Stock Mastercard’s amended and restated certificate of incorporation authorizes the following classes of capital stock: Class Par Value Per Share Authorized Shares (in millions) Dividend and Voting Rights A $0.0001 3,000 One vote per share Dividend rights B $0.0001 1,200 Non-voting Dividend rights Preferred $0.0001 300 No shares issued or outstanding at December 31, 2025 and 2024. Class B Common Stock Conversions Shares of Class B common stock are convertible on a one-for-one basis into shares of Class A common stock.&amp;lt;/p&amp;gt;</us-gaap:StockholdersEquityNoteDisclosureTextBlock>
+    </ns0:xbrl>

@@ -1,0 +1,489 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ns0:xbrl xmlns:dei="http://xbrl.sec.gov/dei/2025" xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:us-gaap="http://fasb.org/us-gaap/2025" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xml:lang="en-US" xmlns:country="http://xbrl.sec.gov/country/2025" xmlns:cyd="http://xbrl.sec.gov/cyd/2025" xmlns:ecd="http://xbrl.sec.gov/ecd/2025" xmlns:goog="http://www.google.com/20251231" xmlns:iso4217="http://www.xbrl.org/2003/iso4217" xmlns:link="http://www.xbrl.org/2003/linkbase" xmlns:srt="http://fasb.org/srt/2025" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <ns0:context id="c-1">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-2">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-3">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-4">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:A2.375SeniorNotesDue2028Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-5">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:A2.500SeniorNotesDue2029Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-6">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:A2.875SeniorNotesDue2031Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-7">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:A3.000SeniorNotesDue2033Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-8">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:A3.125SeniorNotesDue2034Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-9">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:A3.375SeniorNotesDue2037Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-10">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:A3.500SeniorNotesDue2038Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-11">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:A4.000SeniorNotesDue2044Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-12">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:A3.875SeniorNotesDue2045Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-13">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:A4.000SeniorNotesDue2054Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-14">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:A4.375SeniorNotesDue2064Member</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-15">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2025-06-30</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-16">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2026-01-28</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-17">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2026-01-28</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-18">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2026-01-28</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-19">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2024-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-20">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2025-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-21">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2024-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-24">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2024-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-25">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2024-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-27">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2023-01-01</ns0:startDate>
+            <ns0:endDate>2023-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-28">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2024-01-01</ns0:startDate>
+            <ns0:endDate>2024-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-380">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2023-01-01</ns0:startDate>
+            <ns0:endDate>2023-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-381">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2023-01-01</ns0:startDate>
+            <ns0:endDate>2023-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-382">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2023-01-01</ns0:startDate>
+            <ns0:endDate>2023-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-386">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2024-01-01</ns0:startDate>
+            <ns0:endDate>2024-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-387">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2024-01-01</ns0:startDate>
+            <ns0:endDate>2024-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-388">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2024-01-01</ns0:startDate>
+            <ns0:endDate>2024-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:context id="c-392">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+    <ns0:unit id="usd">
+        <ns0:measure>iso4217:USD</ns0:measure>
+    </ns0:unit>
+    <ns0:unit id="shares">
+        <ns0:measure>shares</ns0:measure>
+    </ns0:unit>
+    <ns0:unit id="usdPerShare">
+        <ns0:divide>
+            <ns0:unitNumerator>
+                <ns0:measure>iso4217:USD</ns0:measure>
+            </ns0:unitNumerator>
+            <ns0:unitDenominator>
+                <ns0:measure>shares</ns0:measure>
+            </ns0:unitDenominator>
+        </ns0:divide>
+    </ns0:unit>
+    <dei:AmendmentFlag contextRef="c-1" id="f-70">false</dei:AmendmentFlag>
+    <dei:DocumentFiscalYearFocus contextRef="c-1" id="f-71">2025</dei:DocumentFiscalYearFocus>
+    <dei:DocumentFiscalPeriodFocus contextRef="c-1" id="f-72">FY</dei:DocumentFiscalPeriodFocus>
+    <dei:EntityCentralIndexKey contextRef="c-1" id="f-73">0001652044</dei:EntityCentralIndexKey>
+    <dei:DocumentType contextRef="c-1" id="f-1">10-K</dei:DocumentType>
+    <dei:DocumentAnnualReport contextRef="c-1" id="f-2">true</dei:DocumentAnnualReport>
+    <dei:DocumentPeriodEndDate contextRef="c-1" id="f-4">2025-12-31</dei:DocumentPeriodEndDate>
+    <dei:CurrentFiscalYearEndDate contextRef="c-1" id="f-3">--12-31</dei:CurrentFiscalYearEndDate>
+    <dei:DocumentTransitionReport contextRef="c-1" id="f-5">false</dei:DocumentTransitionReport>
+    <dei:EntityFileNumber contextRef="c-1" id="f-6">001-37580</dei:EntityFileNumber>
+    <dei:EntityRegistrantName contextRef="c-1" id="f-7">Alphabet Inc.</dei:EntityRegistrantName>
+    <dei:EntityIncorporationStateCountryCode contextRef="c-1" id="f-8">DE</dei:EntityIncorporationStateCountryCode>
+    <dei:EntityTaxIdentificationNumber contextRef="c-1" id="f-9">61-1767919</dei:EntityTaxIdentificationNumber>
+    <dei:EntityAddressAddressLine1 contextRef="c-1" id="f-10">1600 Amphitheatre Parkway</dei:EntityAddressAddressLine1>
+    <dei:EntityAddressCityOrTown contextRef="c-1" id="f-11">Mountain View</dei:EntityAddressCityOrTown>
+    <dei:EntityAddressStateOrProvince contextRef="c-1" id="f-12">CA</dei:EntityAddressStateOrProvince>
+    <dei:EntityAddressPostalZipCode contextRef="c-1" id="f-13">94043</dei:EntityAddressPostalZipCode>
+    <dei:CityAreaCode contextRef="c-1" id="f-14">650</dei:CityAreaCode>
+    <dei:LocalPhoneNumber contextRef="c-1" id="f-15">253-0000</dei:LocalPhoneNumber>
+    <dei:Security12bTitle contextRef="c-2" id="f-16">Class A Common Stock, $0.001 par value</dei:Security12bTitle>
+    <dei:TradingSymbol contextRef="c-2" id="f-17">GOOGL</dei:TradingSymbol>
+    <dei:SecurityExchangeName contextRef="c-2" id="f-18">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-3" id="f-19">Class C Capital Stock, $0.001 par value</dei:Security12bTitle>
+    <dei:TradingSymbol contextRef="c-3" id="f-20">GOOG</dei:TradingSymbol>
+    <dei:SecurityExchangeName contextRef="c-3" id="f-21">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-4" id="f-22">2.375% Senior Notes due 2028</dei:Security12bTitle>
+    <dei:NoTradingSymbolFlag contextRef="c-4" id="f-23">true</dei:NoTradingSymbolFlag>
+    <dei:SecurityExchangeName contextRef="c-4" id="f-24">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-5" id="f-25">2.500% Senior Notes due 2029</dei:Security12bTitle>
+    <dei:NoTradingSymbolFlag contextRef="c-5" id="f-26">true</dei:NoTradingSymbolFlag>
+    <dei:SecurityExchangeName contextRef="c-5" id="f-27">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-6" id="f-28">2.875% Senior Notes due 2031</dei:Security12bTitle>
+    <dei:NoTradingSymbolFlag contextRef="c-6" id="f-29">true</dei:NoTradingSymbolFlag>
+    <dei:SecurityExchangeName contextRef="c-6" id="f-30">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-7" id="f-31">3.000% Senior Notes due 2033</dei:Security12bTitle>
+    <dei:NoTradingSymbolFlag contextRef="c-7" id="f-32">true</dei:NoTradingSymbolFlag>
+    <dei:SecurityExchangeName contextRef="c-7" id="f-33">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-8" id="f-34">3.125% Senior Notes due 2034</dei:Security12bTitle>
+    <dei:NoTradingSymbolFlag contextRef="c-8" id="f-35">true</dei:NoTradingSymbolFlag>
+    <dei:SecurityExchangeName contextRef="c-8" id="f-36">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-9" id="f-37">3.375% Senior Notes due 2037</dei:Security12bTitle>
+    <dei:NoTradingSymbolFlag contextRef="c-9" id="f-38">true</dei:NoTradingSymbolFlag>
+    <dei:SecurityExchangeName contextRef="c-9" id="f-39">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-10" id="f-40">3.500% Senior Notes due 2038</dei:Security12bTitle>
+    <dei:NoTradingSymbolFlag contextRef="c-10" id="f-41">true</dei:NoTradingSymbolFlag>
+    <dei:SecurityExchangeName contextRef="c-10" id="f-42">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-11" id="f-43">4.000% Senior Notes due 2044</dei:Security12bTitle>
+    <dei:NoTradingSymbolFlag contextRef="c-11" id="f-44">true</dei:NoTradingSymbolFlag>
+    <dei:SecurityExchangeName contextRef="c-11" id="f-45">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-12" id="f-46">3.875% Senior Notes due 2045</dei:Security12bTitle>
+    <dei:NoTradingSymbolFlag contextRef="c-12" id="f-47">true</dei:NoTradingSymbolFlag>
+    <dei:SecurityExchangeName contextRef="c-12" id="f-48">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-13" id="f-49">4.000% Senior Notes due 2054</dei:Security12bTitle>
+    <dei:NoTradingSymbolFlag contextRef="c-13" id="f-50">true</dei:NoTradingSymbolFlag>
+    <dei:SecurityExchangeName contextRef="c-13" id="f-51">NASDAQ</dei:SecurityExchangeName>
+    <dei:Security12bTitle contextRef="c-14" id="f-52">4.375% Senior Notes due 2064</dei:Security12bTitle>
+    <dei:NoTradingSymbolFlag contextRef="c-14" id="f-53">true</dei:NoTradingSymbolFlag>
+    <dei:SecurityExchangeName contextRef="c-14" id="f-54">NASDAQ</dei:SecurityExchangeName>
+    <dei:EntityWellKnownSeasonedIssuer contextRef="c-1" id="f-55">Yes</dei:EntityWellKnownSeasonedIssuer>
+    <dei:EntityVoluntaryFilers contextRef="c-1" id="f-56">No</dei:EntityVoluntaryFilers>
+    <dei:EntityCurrentReportingStatus contextRef="c-1" id="f-57">Yes</dei:EntityCurrentReportingStatus>
+    <dei:EntityInteractiveDataCurrent contextRef="c-1" id="f-58">Yes</dei:EntityInteractiveDataCurrent>
+    <dei:EntityFilerCategory contextRef="c-1" id="f-59">Large Accelerated Filer</dei:EntityFilerCategory>
+    <dei:EntitySmallBusiness contextRef="c-1" id="f-60">false</dei:EntitySmallBusiness>
+    <dei:EntityEmergingGrowthCompany contextRef="c-1" id="f-61">false</dei:EntityEmergingGrowthCompany>
+    <dei:IcfrAuditorAttestationFlag contextRef="c-1" id="f-62">true</dei:IcfrAuditorAttestationFlag>
+    <dei:DocumentFinStmtErrorCorrectionFlag contextRef="c-1" id="f-63">false</dei:DocumentFinStmtErrorCorrectionFlag>
+    <dei:EntityShellCompany contextRef="c-1" id="f-64">false</dei:EntityShellCompany>
+    <dei:EntityPublicFloat contextRef="c-15" decimals="-11" id="f-65" unitRef="usd">1900000000000</dei:EntityPublicFloat>
+    <dei:EntityCommonStockSharesOutstanding contextRef="c-16" decimals="INF" id="f-66" unitRef="shares">5822000000</dei:EntityCommonStockSharesOutstanding>
+    <dei:EntityCommonStockSharesOutstanding contextRef="c-17" decimals="INF" id="f-67" unitRef="shares">837000000</dei:EntityCommonStockSharesOutstanding>
+    <dei:EntityCommonStockSharesOutstanding contextRef="c-18" decimals="INF" id="f-68" unitRef="shares">5438000000</dei:EntityCommonStockSharesOutstanding>
+    <dei:DocumentsIncorporatedByReferenceTextBlock contextRef="c-1" id="f-69">&lt;div style="margin-top:2pt;text-align:center"&gt;&lt;span style="color:#000000;font-family:'Arial',sans-serif;font-size:9pt;font-weight:700;line-height:120%"&gt;DOCUMENTS INCORPORATED BY REFERENCE&lt;/span&gt;&lt;/div&gt;&lt;div style="margin-top:2pt;text-align:justify"&gt;&lt;span style="color:#000000;font-family:'Arial',sans-serif;font-size:9pt;font-weight:400;line-height:120%"&gt;Portions of the registrant’s Proxy Statement for the 2026 Annual Meeting of Stockholders are incorporated herein by reference in Part III of this Annual Report on Form 10-K to the extent stated herein. Such proxy statement will be filed with the Securities and Exchange Commission within 120 days of the registrant’s fiscal year ended December 31, 2025.&lt;/span&gt;&lt;/div&gt;</dei:DocumentsIncorporatedByReferenceTextBlock>
+    <dei:AuditorFirmId contextRef="c-1" id="f-89">42</dei:AuditorFirmId>
+    <dei:AuditorName contextRef="c-1" id="f-90">Ernst &amp; Young LLP</dei:AuditorName>
+    <dei:AuditorLocation contextRef="c-1" id="f-91">San Jose, California</dei:AuditorLocation>
+    <us-gaap:PreferredStockSharesIssued contextRef="c-20" decimals="INF" id="f-146" unitRef="shares">0</us-gaap:PreferredStockSharesIssued>
+    <us-gaap:PreferredStockSharesOutstanding contextRef="c-20" decimals="INF" id="f-147" unitRef="shares">0</us-gaap:PreferredStockSharesOutstanding>
+    <us-gaap:PreferredStockSharesIssued contextRef="c-19" decimals="INF" id="f-148" unitRef="shares">0</us-gaap:PreferredStockSharesIssued>
+    <us-gaap:PreferredStockSharesOutstanding contextRef="c-19" decimals="INF" id="f-149" unitRef="shares">0</us-gaap:PreferredStockSharesOutstanding>
+    <us-gaap:CommonStockSharesIssued contextRef="c-21" decimals="-6" id="f-164" unitRef="shares">5835000000</us-gaap:CommonStockSharesIssued>
+    <us-gaap:CommonStockSharesOutstanding contextRef="c-24" decimals="-6" id="f-166" unitRef="shares">861000000</us-gaap:CommonStockSharesOutstanding>
+    <us-gaap:CommonStockSharesIssued contextRef="c-25" decimals="-6" id="f-168" unitRef="shares">5515000000</us-gaap:CommonStockSharesIssued>
+    <us-gaap:NetIncomeLoss contextRef="c-27" decimals="-6" id="f-218" unitRef="usd">73795000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-28" decimals="-6" id="f-219" unitRef="usd">100118000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-1" decimals="-6" id="f-220" unitRef="usd">132170000000</us-gaap:NetIncomeLoss>
+    <us-gaap:EarningsPerShareBasic contextRef="c-27" decimals="2" id="f-221" unitRef="usdPerShare">5.84</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-28" decimals="2" id="f-222" unitRef="usdPerShare">8.13</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-1" decimals="2" id="f-223" unitRef="usdPerShare">10.91</us-gaap:EarningsPerShareBasic>
+    <us-gaap:NetIncomeLoss contextRef="c-27" decimals="-6" id="f-227" unitRef="usd">73795000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-28" decimals="-6" id="f-228" unitRef="usd">100118000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-1" decimals="-6" id="f-229" unitRef="usd">132170000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-27" decimals="-6" id="f-282" unitRef="usd">73795000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-28" decimals="-6" id="f-307" unitRef="usd">100118000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-1" decimals="-6" id="f-332" unitRef="usd">132170000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-27" decimals="-6" id="f-340" unitRef="usd">73795000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-28" decimals="-6" id="f-341" unitRef="usd">100118000000</us-gaap:NetIncomeLoss>
+    <us-gaap:NetIncomeLoss contextRef="c-1" decimals="-6" id="f-342" unitRef="usd">132170000000</us-gaap:NetIncomeLoss>
+    <us-gaap:StockholdersEquityNoteDisclosureTextBlock contextRef="c-1" id="f-1319">&amp;lt;p&amp;gt;The rights of the holders of each class of our common and capital stock are identical, except with respect to voting. Each share of Class A common stock is entitled to one vote per share. Each share of Class B common stock is entitled to 10 votes per share. Shares of Class B common stock may be converted at any time at the option of the stockholder and automatically convert upon sale or transfer to Class A common stock.&amp;lt;/p&amp;gt;</us-gaap:StockholdersEquityNoteDisclosureTextBlock>
+    <us-gaap:EarningsPerShareTextBlock contextRef="c-1" id="f-1351">&amp;lt;p&amp;gt;In accordance with our certificate of incorporation, the rights, including the liquidation and dividend rights, of the holders of our Class A, Class B, and Class C stock are identical, except with respect to voting.&amp;lt;/p&amp;gt;</us-gaap:EarningsPerShareTextBlock>
+    <us-gaap:EarningsPerShareBasic contextRef="c-380" decimals="2" id="f-1369" unitRef="usdPerShare">5.84</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-381" decimals="2" id="f-1370" unitRef="usdPerShare">5.84</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-382" decimals="2" id="f-1371" unitRef="usdPerShare">5.84</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-27" decimals="2" id="f-1372" unitRef="usdPerShare">5.84</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-386" decimals="2" id="f-1422" unitRef="usdPerShare">8.13</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-387" decimals="2" id="f-1423" unitRef="usdPerShare">8.13</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-388" decimals="2" id="f-1424" unitRef="usdPerShare">8.13</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-28" decimals="2" id="f-1425" unitRef="usdPerShare">8.13</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-2" decimals="2" id="f-1475" unitRef="usdPerShare">10.91</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-392" decimals="2" id="f-1476" unitRef="usdPerShare">10.91</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-3" decimals="2" id="f-1477" unitRef="usdPerShare">10.91</us-gaap:EarningsPerShareBasic>
+    <us-gaap:EarningsPerShareBasic contextRef="c-1" decimals="2" id="f-1478" unitRef="usdPerShare">10.91</us-gaap:EarningsPerShareBasic>
+    <dei:AuditorName contextRef="c-1" id="f-1827">Ernst &amp; Young LLP</dei:AuditorName>
+    </ns0:xbrl>
