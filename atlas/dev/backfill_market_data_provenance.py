@@ -45,16 +45,20 @@ the plan states how many there will be.
 **Which companies.** Only a company whose Case can later support a
 historical market capitalisation: an applicable FCF-yield valuation, a
 domestic (10-K) filer, one priced security per issuer, and at least
-`_MINIMUM_SHARE_COUNTS` stored period-end counts (`classify`). Multi-class
-issuers, foreign listings and banks are refused outright; a company with
-prices but no share counts is refused unless `--allow-price-only`.
+`_MINIMUM_SHARE_COUNTS` stored period-end counts (`classify`). Foreign
+listings and banks are refused outright; a company with prices but no share
+counts is refused unless `--allow-price-only`. A security of a multi-class
+issuer is refused unless `--allow-multi-class` names it (`--tickers`, prices
+only): its monthly bars are its own, but its issuer-level share count fits
+no single price -- only security-level class counts
+(`backfill_security_share_evidence`) can pair with them.
 
 Creates no Case, no decision and no methodology change; valuation keeps
 reading `share_price`, which no version written here changes.
 
     python -m atlas.dev.backfill_market_data_provenance [--database PATH]
         [--tickers AAPL,MSFT] [--prices] [--sec] [--max-calls N]
-        [--allow-price-only] [--dry-run]
+        [--allow-price-only] [--allow-multi-class] [--dry-run]
         [--save-fetched FILE | --from-fetched FILE]
 
 `--save-fetched`/`--from-fetched` split one run's requests from its writes:
@@ -123,7 +127,8 @@ _MINIMUM_SHARE_COUNTS = 3
 
 CORE = "core"
 PRICE_ONLY = "price_only"
-REFUSED = ("multi_class", "foreign_listing", "not_applicable", "no_price_history", "no_statements")
+MULTI_CLASS = "multi_class"
+REFUSED = (MULTI_CLASS, "foreign_listing", "not_applicable", "no_price_history", "no_statements")
 
 _MONTHLY_ENDPOINT = "function=TIME_SERIES_MONTHLY_ADJUSTED"
 #: What a monthly bar adds on top of the price valuation reads; everything
@@ -164,7 +169,7 @@ def classify(ticker: str, records: tuple[BusinessRecord, ...], *, issuer_compani
     # need not repeat the issuer an earlier one was filed under.
     issuers = {r.canonical_issuer_id for r in records if r.canonical_issuer_id}
     if any(issuer_companies(issuer) - {ticker} for issuer in issuers):
-        return "multi_class"
+        return MULTI_CLASS
     if any(r.metadata.get("sec_form") != "10-K" for r in statements):
         return "foreign_listing"
     industry = next((r.metadata.get("industry") for r in heads if r.document_type is SourceKind.COMPANY_PROFILE), None)
@@ -207,12 +212,21 @@ class PricePlan:
         return 1 if self.pending and self.refusal is None else 0
 
 
-def plan_prices(ticker: str, records: tuple[BusinessRecord, ...], *, category: str, allow_price_only: bool = False) -> PricePlan:
+def plan_prices(
+    ticker: str,
+    records: tuple[BusinessRecord, ...],
+    *,
+    category: str,
+    allow_price_only: bool = False,
+    allow_multi_class: bool = False,
+) -> PricePlan:
     heads = _monthly(latest_versions(records))
     complete = [r for r in heads if is_price_complete(r)]
     pending = tuple(sorted(r.period_end for r in heads if not is_price_complete(r)))
     base = PricePlan(ticker=ticker, category=category, months=len(heads), complete=len(complete), pending=pending)
-    if category in REFUSED:
+    if category == MULTI_CLASS and not allow_multi_class:
+        return replace(base, refusal="multi_class (name it with --allow-multi-class)")
+    if category in REFUSED and category != MULTI_CLASS:
         return replace(base, refusal=category)
     if category == PRICE_ONLY and not allow_price_only:
         return replace(base, refusal="price_only (pass --allow-price-only)")
@@ -654,6 +668,10 @@ def main() -> int:
     parser.add_argument("--sec", action="store_true", help="Backfill SEC share-count provenance.")
     parser.add_argument("--max-calls", type=int, default=13, help="Alpha Vantage requests this run may make.")
     parser.add_argument("--allow-price-only", action="store_true", help="Also backfill prices without share counts.")
+    parser.add_argument(
+        "--allow-multi-class", action="store_true",
+        help="Also backfill prices of the named --tickers' securities of multi-class issuers (prices only).",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Report the plan and the request cost, fetch nothing.")
     parser.add_argument("--save-fetched", default=None, help="Also write the fetched documents to this JSON file.")
     parser.add_argument("--from-fetched", default=None, help="Apply documents saved by --save-fetched; no provider call.")
@@ -667,6 +685,8 @@ def main() -> int:
         parser.error("choose --prices, --sec or both")
     if arguments.accept_price_revisions and not (arguments.tickers and arguments.prices):
         parser.error("--accept-price-revisions needs --prices and explicit --tickers")
+    if arguments.allow_multi_class and not (arguments.tickers and arguments.prices and not arguments.sec):
+        parser.error("--allow-multi-class needs --prices (without --sec) and explicit --tickers")
 
     path = arguments.database or resolve_database_path()
     engine = create_engine(f"sqlite:///{path}", future=True)
@@ -689,7 +709,8 @@ def main() -> int:
     print(f"database        : {path}")
     print(f"companies       : {len(candidates)} ({', '.join(candidates)})")
     price_plans = [
-        plan_prices(t, records[t], category=categories[t], allow_price_only=arguments.allow_price_only) for t in candidates
+        plan_prices(t, records[t], category=categories[t], allow_price_only=arguments.allow_price_only,
+                    allow_multi_class=arguments.allow_multi_class) for t in candidates
     ] if arguments.prices else []
     sec_plans = [plan_sec(t, records[t], category=categories[t]) for t in candidates] if arguments.sec else []
     if price_plans:

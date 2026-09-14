@@ -47,6 +47,7 @@ from atlas.business_data_providers.alpha_vantage import AlphaVantageMarketDataPr
 from atlas.business_data_providers.sec_edgar import SecEdgarFundamentalsProvider
 from atlas.dev.backfill_market_data_provenance import (
     CORE,
+    MULTI_CLASS,
     PRICE_ONLY,
     apply,
     apply_prices,
@@ -291,6 +292,34 @@ class TestPlan:
                                version=replace(head.version, version_number=2, supersedes=head.id)))
         plan = _plan(repository)
         assert plan.refusal and plan.calls == 0
+
+
+class TestMultiClassOptIn:
+    """A security of a multi-class issuer: its bars are its own, so its price
+    provenance may be backfilled -- only when the operator names it."""
+
+    def _multi_class_plan(self, repository, **kwargs):
+        _core(repository)
+        (statement,) = [r for r in repository.get_by_company("AAPL") if r.identifier == "AAPL:fy2021"]
+        repository.add(replace(statement, id=statement.id.replace(":v1", ":v0"), canonical_issuer_id="issuer-1"))
+        records = repository.get_by_company("AAPL")
+        category = classify("AAPL", records, issuer_companies={"issuer-1": {"AAPL", "AAPL.B"}}.get)
+        return category, plan_prices("AAPL", records, category=category, **kwargs)
+
+    def test_refused_without_the_opt_in(self, repository):
+        category, plan = self._multi_class_plan(repository)
+        assert category == MULTI_CLASS and plan.refusal and plan.calls == 0
+
+    def test_planned_with_it_and_still_one_request(self, repository):
+        _, plan = self._multi_class_plan(repository, allow_multi_class=True)
+        assert (plan.refusal, plan.calls, plan.known_shares_outstanding) == (None, 1, SHARES["AAPL"])
+
+    def test_the_opt_in_opens_nothing_else(self, repository):
+        _core(repository)
+        records = repository.get_by_company("AAPL")
+        plan = plan_prices("AAPL", records, category="foreign_listing", allow_multi_class=True)
+        assert plan.refusal == "foreign_listing"
+        assert plan_sec("AAPL", records, category=MULTI_CLASS).refusal == MULTI_CLASS
 
 
 # -- the price backfill -------------------------------------------------------------------------------------
