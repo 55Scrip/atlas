@@ -531,6 +531,111 @@ class TestSecurityLevelCounts:
         assert (epoch["shareCountClassMember"], epoch["shareCountAccession"]) == ("abc:ClassCMember", "0000000001-21-000001")
 
 
+# -- Alphabet: GOOG and GOOGL on their own class counts (GOOG / GOOGL Held Price Revision Acceptance) ------
+
+
+ALPHABET_CIK = "0001652044"
+OWN_MEMBER = {"GOOG": "goog:CapitalClassCMember", "GOOGL": "us-gaap:CommonClassAMember"}
+
+
+def _alphabet_joined(ticker: str, rows=None):
+    """Every class count the persisted Alphabet filings hold (all link
+    kinds), recorded and read back through the production repository's
+    own join (CIK + symbol + MIC)."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import StaticPool
+
+    from atlas.alpha.security_share_evidence.models import SecurityShareFiling
+    from atlas.alpha.security_share_evidence.repository import SqlAlchemySecurityShareEvidenceRepository
+    from atlas.alpha.security_share_evidence.table import create_security_share_evidence_tables
+
+    engine = create_engine("sqlite:///:memory:", future=True, poolclass=StaticPool,
+                           connect_args={"check_same_thread": False})
+    create_security_share_evidence_tables(engine)
+    repo = SqlAlchemySecurityShareEvidenceRepository(
+        engine, listing_mics=lambda tickers: {t: frozenset({"XNAS"}) for t in tickers})
+    by_filing: dict[str, list[SecurityShareCountObservation]] = {}
+    for row in rows if rows is not None else CORPUS[ticker]["class_counts"]:
+        proven = row["link"] == ShareClassLinkKind.PROVEN_BY_SHARED_DIMENSION.value
+        by_filing.setdefault(row["accession"], []).append(SecurityShareCountObservation(
+            issuer_cik=ALPHABET_CIK, accession=row["accession"], form="10-K", filing_date=date.fromisoformat(row["filed"]),
+            fiscal_period=None, document_period_end=None, period_end=date.fromisoformat(row["period"]),
+            class_axis="us-gaap:StatementClassOfStockAxis", class_member=row["member"], shares=row["shares"],
+            conflict=False, source_concept="us-gaap:CommonStockSharesOutstanding", context_id=f"c-{row['member']}",
+            link_kind=ShareClassLinkKind(row["link"]), cover_title="title" if proven else None,
+            cover_symbol=row["symbol"], cover_exchange="NASDAQ" if proven else None, cover_mic=row["mic"],
+            parser_version="share_class_links_v1", recorded_at=NOW,
+        ))
+    for accession, observations in by_filing.items():
+        o = observations[0]
+        repo.record_filing(SecurityShareFiling(
+            issuer_cik=ALPHABET_CIK, accession=accession, form="10-K", filing_date=o.filing_date, fiscal_period=None,
+            document_period_end=None, instance_url="https://www.sec.gov/x", cover_rows=2, dimensioned_cover_rows=2,
+            observations=len(observations), proven=0, ambiguous=0, no_link=0, conflicts=0,
+            parser_version="share_class_links_v1", processed_at=NOW), tuple(observations))
+    return repo.proven_for_securities({ticker: ALPHABET_CIK})[ticker]
+
+
+def _alphabet(ticker: str, *, adjusted_key="adjusted", rows=None):
+    records, evidence = _case(ticker, adjusted_key=adjusted_key)
+    return reconstruct_historical_market_caps(evidence, records, shared_issuer=True,
+                                              security_share_counts=_alphabet_joined(ticker, rows), as_of=NOW.date())
+
+
+@pytest.mark.parametrize("ticker", ["GOOG", "GOOGL"])
+class TestAlphabetClassCounts:
+    """Real controls: GOOG and GOOGL after their held price revisions were
+    accepted, each priced only on its own listed class's count."""
+
+    def test_seven_exact_epochs_on_its_own_class_count(self, ticker):
+        result = _alphabet(ticker)
+        assert (result.security_scope, result.share_count_scope) == (SecurityScope.SHARED_ISSUER, ShareCountScope.SECURITY)
+        aligned = [e for e in result.epochs if e.market_cap is not None]
+        assert [e.fiscal_period for e in aligned] == [f"{y}-12-31" for y in range(2018, 2025)]
+        assert {e.quality for e in aligned} == {AlignmentQuality.FULLY_ALIGNED}
+        own = {(r["period"], r["accession"]): r["shares"] for r in CORPUS[ticker]["class_counts"]
+               if r["member"] == OWN_MEMBER[ticker]}
+        for e in aligned:
+            assert e.share_count_class_member == OWN_MEMBER[ticker]
+            assert e.share_count == own[(e.fiscal_period, e.share_count_accession)]
+            assert e.market_cap == pytest.approx(e.raw_close * e.aligned_share_count)
+
+    def test_class_b_and_the_issuer_total_are_never_the_count(self, ticker):
+        rows = CORPUS[ticker]["class_counts"]
+        assert {r["link"] for r in rows if r["member"] == "us-gaap:CommonClassBMember"} == {"no_link"}
+        assert {o.class_member for o in _alphabet_joined(ticker)} == {OWN_MEMBER[ticker]}
+        by_filing: dict[tuple[str, str], float] = {}
+        for r in rows:
+            by_filing[(r["period"], r["accession"])] = by_filing.get((r["period"], r["accession"]), 0.0) + r["shares"]
+        issuer = {s["period"]: s["shares"] for s in CORPUS[ticker]["statements"]}
+        for e in _alphabet(ticker).epochs:
+            if e.share_count is not None:
+                assert e.share_count not in (issuer.get(e.fiscal_period), by_filing[(e.fiscal_period, e.share_count_accession)])
+
+    def test_pre_2019_covers_link_nothing_so_fy2015_to_fy2017_stay_unsafe(self, ticker):
+        """The FY2018 filing (February 2019) reports 2017 year-end class
+        counts but links no member: later filings naming the member never
+        reach back."""
+        assert any(r["period"] == "2017-12-31" and r["link"] == "no_link" for r in CORPUS[ticker]["class_counts"])
+        for period in ("2015-12-31", "2016-12-31", "2017-12-31"):
+            e = _epoch(_alphabet(ticker), period)
+            assert (e.quality, e.gaps, e.market_cap) == (
+                AlignmentQuality.SECURITY_SCOPE_UNSAFE, (AlignmentGap.SHARED_ISSUER,), None)
+
+    def test_the_2022_split_is_its_class_restatement(self, ticker):
+        (event,) = _alphabet(ticker).basis_events
+        assert (event.after, event.on_or_before) == (date(2022, 2, 28), date(2023, 2, 3))
+        assert event.factor_source is FactorSource.SHARE_RESTATEMENT and event.factor == pytest.approx(20.0, rel=1e-3)
+        assert event.price_factor == pytest.approx(20.0, rel=1e-5)
+
+    def test_the_accepted_rescale_moves_no_event_and_no_aligned_cap(self, ticker):
+        after, before = _alphabet(ticker), _alphabet(ticker, adjusted_key="legacy_adjusted")
+        assert [(e.after, e.on_or_before, e.factor_source, e.status) for e in before.basis_events] == [
+            (e.after, e.on_or_before, e.factor_source, e.status) for e in after.basis_events]
+        assert [(e.fiscal_period, e.quality, e.aligned_share_count, e.market_cap) for e in before.epochs] == [
+            (e.fiscal_period, e.quality, e.aligned_share_count, e.market_cap) for e in after.epochs]
+
+
 # -- determinism and provenance -----------------------------------------------------------------------------
 
 

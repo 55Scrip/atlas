@@ -14,6 +14,7 @@ import hashlib
 import json
 from dataclasses import fields, replace
 from datetime import date, datetime, timezone
+from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine
@@ -694,6 +695,41 @@ class TestRevisionClassification:
     def test_a_split_sized_or_upward_rescale_is_never_dividend_consistent(self):
         assert not classify_price_revision([(100.0, 50.0), (200.0, 100.0)]).acceptable
         assert not classify_price_revision([(100.0, 100.2), (200.0, 200.4)]).acceptable
+
+
+def _alphabet_pairs(ticker: str) -> list[tuple[float, float]]:
+    """(stored, revised) adjusted closes for GOOG or GOOGL's 11 held months
+    (GOOG / GOOGL Held Historical Price Revision Acceptance), from the
+    persisted corpus the descriptive tests rebuild."""
+    corpus = json.loads((Path(__file__).resolve().parents[1] / "alpha" / "investment_case" / "fixtures"
+                         / "historical_market_cap_corpus.json").read_text())
+    return [(b["legacy_adjusted"], b["adjusted"]) for b in corpus[ticker]["monthly"]]
+
+
+class TestAlphabetRevision:
+    """Real controls: each class's revision is one uniform rescale within
+    quote rounding, of the size and direction of one dividend adjustment."""
+
+    @pytest.mark.parametrize("ticker, factor", [("GOOG", 0.9993442), ("GOOGL", 0.9993504)])
+    def test_each_class_is_one_uniform_dividend_sized_rescale(self, ticker, factor):
+        r = classify_price_revision(_alphabet_pairs(ticker))
+        assert (r.kind, r.months, r.acceptable) == (RevisionKind.UNIFORM_RESCALE, 11, True)
+        assert r.factor == pytest.approx(factor, abs=1e-7) and r.max_residual <= 1e-4
+
+    def test_the_two_classes_differ_by_more_than_rounding_and_less_than_a_tenth_of_a_basis_point(self):
+        """Diagnostic, never forced equal: one per-share adjustment on two
+        classes trading at different prices gives two factors."""
+        goog, googl = (classify_price_revision(_alphabet_pairs(t)).factor for t in ("GOOG", "GOOGL"))
+        assert 1.5e-6 < abs(goog - googl) < 1e-5
+
+    @pytest.mark.parametrize("ticker", ["GOOG", "GOOGL"])
+    def test_one_perturbed_month_is_refused(self, ticker):
+        pairs = _alphabet_pairs(ticker)
+        uneven = [(o, n * 1.01) if i == 3 else (o, n) for i, (o, n) in enumerate(pairs)]
+        assert classify_price_revision(uneven).kind is RevisionKind.NON_UNIFORM_REVISION
+        nearly = [(o, n * 1.0003) if i == 3 else (o, n) for i, (o, n) in enumerate(pairs)]
+        r = classify_price_revision(nearly)
+        assert r.kind is RevisionKind.NEAR_UNIFORM_RESCALE and not r.acceptable
 
 
 class TestHeldRevisionAcceptance:
