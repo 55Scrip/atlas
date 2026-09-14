@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xbrli:xbrl xmlns:acec="http://fasb.org/dis/acec/2018-01-31" xmlns:ap="http://fasb.org/dis/ap/2018-01-31" xmlns:aro="http://fasb.org/dis/aro/2018-01-31" xmlns:bc="http://fasb.org/dis/bc/2018-01-31" xmlns:bsoff="http://fasb.org/dis/bsoff/2018-01-31" xmlns:cc="http://fasb.org/dis/cc/2018-01-31" xmlns:cce="http://fasb.org/dis/cce/2018-01-31" xmlns:codification-part="http://fasb.org/codification-part/2018-01-31" xmlns:com="http://fasb.org/stm/com/2018-01-31" xmlns:con="http://fasb.org/dis/con/2018-01-31" xmlns:country="http://xbrl.sec.gov/country/2017-01-31" xmlns:country-all="http://xbrl.sec.gov/country-all/2017-01-31" xmlns:country-ent-all="http://xbrl.sec.gov/country-ent-all/2017-01-31" xmlns:country-ent-std="http://xbrl.sec.gov/country-ent-std/2017-01-31" xmlns:country-std="http://xbrl.sec.gov/country-std/2017-01-31" xmlns:crcgen="http://fasb.org/dis/crcgen/2018-01-31" xmlns:crcpb="http://fasb.org/dis/crcpb/2018-01-31" xmlns:crcrb="http://fasb.org/dis/crcrb/2018-01-31" xmlns:crcsbp="http://fasb.org/dis/crcsbp/2018-01-31" xmlns:ctbl="http://fasb.org/dis/ctbl/2018-01-31" xmlns:currency="http://xbrl.sec.gov/currency/2017-01-31" xmlns:currency-all="http://xbrl.sec.gov/currency-all/2017-01-31" xmlns:currency-ent-all="http://xbrl.sec.gov/currency-ent-all/2017-01-31" xmlns:currency-ent-std="http://xbrl.sec.gov/currency-ent-std/2017-01-31" xmlns:currency-std="http://xbrl.sec.gov/currency-std/2017-01-31" xmlns:dccpoa="http://fasb.org/dis/dccpoa/2018-01-31" xmlns:debt="http://fasb.org/dis/debt/2018-01-31" xmlns:dei="http://xbrl.sec.gov/dei/2018-01-31" xmlns:dei-all="http://xbrl.sec.gov/dei-all/2018-01-31" xmlns:dei-ent-all="http://xbrl.sec.gov/dei-ent-all/2018-01-31" xmlns:dei-ent-std="http://xbrl.sec.gov/dei-ent-std/2018-01-31" xmlns:dei-std="http://xbrl.sec.gov/dei-std/2018-01-31" xmlns:deprecated="http://www.xbrl.org/2009/arcrole/deprecated" xmlns:deprecated1="http://www.xbrl.org/2009/role/deprecated" xmlns:diha="http://fasb.org/dis/diha/2018-01-31" xmlns:disops="http://fasb.org/dis/disops/2018-01-31" xmlns:dr="http://fasb.org/dis/dr/2018-01-31" xmlns:edco="http://fasb.org/dis/edco/2018-01-31" xmlns:ei="http://fasb.org/dis/ei/2018-01-31" xmlns:emjv="http://fasb.org/dis/emjv/2018-01-31" xmlns:eps="http://fasb.org/dis/eps/2018-01-31" xmlns:equity="http://fasb.org/dis/equity/2018-01-31" xmlns:ero="http://fasb.org/dis/ero/2018-01-31" xmlns:eui="http://fasb.org/dis/eui/2018-01-31" xmlns:exch="http://xbrl.sec.gov/exch/2018-01-31" xmlns:exch-all="http://xbrl.sec.gov/exch-all/2018-01-31" xmlns:exch-ent-all="http://xbrl.sec.gov/exch-ent-all/2018-01-31" xmlns:exch-ent-std="http://xbrl.sec.gov/exch-ent-std/2018-01-31" xmlns:exch-std="http://xbrl.sec.gov/exch-std/2018-01-31" xmlns:fifvd="http://fasb.org/dis/fifvd/2018-01-31" xmlns:foct="http://fasb.org/dis/foct/2018-01-31" xmlns:fs-bd="http://fasb.org/dis/fs-bd/2018-01-31" xmlns:fs-bt="http://fasb.org/dis/fs-bt/2018-01-31" xmlns:fs-fhlb="http://fasb.org/dis/fs-fhlb/2018-01-31" xmlns:fs-ins="http://fasb.org/dis/fs-ins/2018-01-31" xmlns:fs-interest="http://fasb.org/dis/fs-interest/2018-01-31" xmlns:fs-mort="http://fasb.org/dis/fs-mort/2018-01-31" xmlns:goog="http://www.google.com/20181231" xmlns:guar="http://fasb.org/dis/guar/2018-01-31" xmlns:hco="http://fasb.org/dis/hco/2018-01-31" xmlns:iago="http://fasb.org/dis/iago/2018-01-31" xmlns:iaoi="http://fasb.org/dis/iaoi/2018-01-31" xmlns:ides="http://fasb.org/dis/ides/2018-01-31" xmlns:inctax="http://fasb.org/dis/inctax/2018-01-31" xmlns:inv="http://fasb.org/dis/inv/2018-01-31" xmlns:invco="http://fasb.org/dis/invco/2018-01-31" xmlns:invest="http://xbrl.sec.gov/invest/2013-01-31" xmlns:invest-all="http://xbrl.sec.gov/invest-all/2013-01-31" xmlns:invest-ent-all="http://xbrl.sec.gov/invest-ent-all/2013-01-31" xmlns:invest-ent-std="http://xbrl.sec.gov/invest-ent-std/2013-01-31" xmlns:invest-std="http://xbrl.sec.gov/invest-std/2013-01-31" xmlns:ir="http://fasb.org/dis/ir/2018-01-31" xmlns:iso4217="http://www.xbrl.org/2003/iso4217" xmlns:lea="http://fasb.org/dis/lea/2018-01-31" xmlns:leas="http://fasb.org/dis/leas/2018-01-31" xmlns:link="http://www.xbrl.org/2003/linkbase" xmlns:naics="http://xbrl.sec.gov/naics/2017-01-31" xmlns:naics-all="http://xbrl.sec.gov/naics-all/2017-01-31" xmlns:naics-ent-all="http://xbrl.sec.gov/naics-ent-all/2017-01-31" xmlns:naics-ent-std="http://xbrl.sec.gov/naics-ent-std/2017-01-31" xmlns:naics-std="http://xbrl.sec.gov/naics-std/2017-01-31" xmlns:negated="http://www.xbrl.org/2009/role/negated" xmlns:net="http://www.xbrl.org/2009/role/net" xmlns:ni="http://fasb.org/dis/ni/2018-01-31" xmlns:nonnum="http://www.xbrl.org/dtr/type/non-numeric" xmlns:nt="http://fasb.org/dis/nt/2018-01-31" xmlns:num="http://www.xbrl.org/dtr/type/numeric" xmlns:ocpfs="http://fasb.org/dis/ocpfs/2018-01-31" xmlns:oi="http://fasb.org/dis/oi/2018-01-31" xmlns:otherexp="http://fasb.org/dis/otherexp/2018-01-31" xmlns:othliab="http://fasb.org/dis/othliab/2018-01-31" xmlns:pay="http://fasb.org/dis/pay/2018-01-31" xmlns:ppe="http://fasb.org/dis/ppe/2018-01-31" xmlns:rcc="http://fasb.org/dis/rcc/2018-01-31" xmlns:rd="http://fasb.org/dis/rd/2018-01-31" xmlns:re="http://fasb.org/dis/re/2018-01-31" xmlns:ref="http://www.xbrl.org/2006/ref" xmlns:reference="http://www.xbrl.org/2009/role/reference" xmlns:regop="http://fasb.org/dis/regop/2018-01-31" xmlns:reorg="http://fasb.org/dis/reorg/2018-01-31" xmlns:rlnro="http://fasb.org/dis/rlnro/2018-01-31" xmlns:rpd="http://fasb.org/dis/rpd/2018-01-31" xmlns:ru="http://fasb.org/dis/ru/2018-01-31" xmlns:scf-dbo="http://fasb.org/stm/scf-dbo/2018-01-31" xmlns:scf-dir="http://fasb.org/stm/scf-dir/2018-01-31" xmlns:scf-indir="http://fasb.org/stm/scf-indir/2018-01-31" xmlns:scf-indira="http://fasb.org/stm/scf-indira/2018-01-31" xmlns:scf-inv="http://fasb.org/stm/scf-inv/2018-01-31" xmlns:scf-re="http://fasb.org/stm/scf-re/2018-01-31" xmlns:scf-sbo="http://fasb.org/stm/scf-sbo/2018-01-31" xmlns:scf-sd="http://fasb.org/stm/scf-sd/2018-01-31" xmlns:schedoi-fednote="http://fasb.org/dis/schedoi-fednote/2018-01-31" xmlns:schedoi-hold="http://fasb.org/dis/schedoi-hold/2018-01-31" xmlns:schedoi-iiaa="http://fasb.org/dis/schedoi-iiaa/2018-01-31" xmlns:schedoi-oocw="http://fasb.org/dis/schedoi-oocw/2018-01-31" xmlns:schedoi-otsh="http://fasb.org/dis/schedoi-otsh/2018-01-31" xmlns:schedoi-shorthold="http://fasb.org/dis/schedoi-shorthold/2018-01-31" xmlns:schedoi-sumhold="http://fasb.org/dis/schedoi-sumhold/2018-01-31" xmlns:se="http://fasb.org/dis/se/2018-01-31" xmlns:sec-cndfir="http://fasb.org/dis/sec-cndfir/2018-01-31" xmlns:sec-mort="http://fasb.org/dis/sec-mort/2018-01-31" xmlns:sec-re="http://fasb.org/dis/sec-re/2018-01-31" xmlns:sec-reins="http://fasb.org/dis/sec-reins/2018-01-31" xmlns:sec-sum="http://fasb.org/dis/sec-sum/2018-01-31" xmlns:sec-supins="http://fasb.org/dis/sec-supins/2018-01-31" xmlns:sec-suppc="http://fasb.org/dis/sec-suppc/2018-01-31" xmlns:sec-vq="http://fasb.org/dis/sec-vq/2018-01-31" xmlns:sfp-clreo="http://fasb.org/stm/sfp-clreo/2018-01-31" xmlns:sfp-cls="http://fasb.org/stm/sfp-cls/2018-01-31" xmlns:sfp-dbo="http://fasb.org/stm/sfp-dbo/2018-01-31" xmlns:sfp-ibo="http://fasb.org/stm/sfp-ibo/2018-01-31" xmlns:sfp-sbo="http://fasb.org/stm/sfp-sbo/2018-01-31" xmlns:sfp-ucreo="http://fasb.org/stm/sfp-ucreo/2018-01-31" xmlns:sheci="http://fasb.org/stm/sheci/2018-01-31" xmlns:sic="http://xbrl.sec.gov/sic/2011-01-31" xmlns:sic-all="http://xbrl.sec.gov/sic-all/2011-01-31" xmlns:sic-ent-all="http://xbrl.sec.gov/sic-ent-all/2011-01-31" xmlns:sic-ent-std="http://xbrl.sec.gov/sic-ent-std/2011-01-31" xmlns:sic-std="http://xbrl.sec.gov/sic-std/2011-01-31" xmlns:soc="http://fasb.org/stm/soc/2018-01-31" xmlns:soi="http://fasb.org/stm/soi/2018-01-31" xmlns:soi-egm="http://fasb.org/stm/soi-egm/2018-01-31" xmlns:soi-indira="http://fasb.org/stm/soi-indira/2018-01-31" xmlns:soi-ins="http://fasb.org/stm/soi-ins/2018-01-31" xmlns:soi-int="http://fasb.org/stm/soi-int/2018-01-31" xmlns:soi-re="http://fasb.org/stm/soi-re/2018-01-31" xmlns:soi-reit="http://fasb.org/stm/soi-reit/2018-01-31" xmlns:soi-sbi="http://fasb.org/stm/soi-sbi/2018-01-31" xmlns:spc="http://fasb.org/stm/spc/2018-01-31" xmlns:sr="http://fasb.org/dis/sr/2018-01-31" xmlns:srt="http://fasb.org/srt/2018-01-31" xmlns:srt-all="http://fasb.org/srt-all/2018-01-31" xmlns:srt-roles="http://fasb.org/srt-roles/2018-01-31" xmlns:srt-std="http://fasb.org/srt-std/2018-01-31" xmlns:srt-types="http://fasb.org/srt-types/2018-01-31" xmlns:stpr="http://xbrl.sec.gov/stpr/2018-01-31" xmlns:stpr-all="http://xbrl.sec.gov/stpr-all-all-all/2018-01-31" xmlns:stpr-ent-all="http://xbrl.sec.gov/stpr-ent-all-all-all/2018-01-31" xmlns:stpr-ent-std="http://xbrl.sec.gov/stpr-ent-std-std-std/2018-01-31" xmlns:stpr-std="http://xbrl.sec.gov/stpr-std-std-std/2018-01-31" xmlns:te="http://fasb.org/dis/te/2018-01-31" xmlns:tin-part="http://fasb.org/tin-part/2018-01-31" xmlns:ts="http://fasb.org/dis/ts/2018-01-31" xmlns:us-arcroles="http://fasb.org/us-arcroles/2018-01-31" xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" xmlns:us-gaap-all="http://fasb.org/us-gaap-all/2018-01-31" xmlns:us-gaap-ent-std="http://fasb.org/us-gaap-ent-std/2018-01-31" xmlns:us-gaap-entryPoint-all="http://fasb.org/us-gaap-entryPoint-all/2018-01-31" xmlns:us-gaap-std="http://fasb.org/us-gaap-std/2018-01-31" xmlns:us-roles="http://fasb.org/us-roles/2018-01-31" xmlns:us-types="http://fasb.org/us-types/2018-01-31" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrldt="http://xbrl.org/2005/xbrldt" xmlns:xbrli="http://www.xbrl.org/2003/instance" xmlns:xl="http://www.xbrl.org/2003/XLink" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<xbrli:context xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FD2016Q4YTD">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:startDate>2016-01-01</xbrli:startDate>
+			<xbrli:endDate>2016-12-31</xbrli:endDate>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FD2016Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:startDate>2016-01-01</xbrli:startDate>
+			<xbrli:endDate>2016-12-31</xbrli:endDate>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FD2016Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:startDate>2016-01-01</xbrli:startDate>
+			<xbrli:endDate>2016-12-31</xbrli:endDate>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FD2016Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:startDate>2016-01-01</xbrli:startDate>
+			<xbrli:endDate>2016-12-31</xbrli:endDate>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FD2017Q4YTD">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:startDate>2017-01-01</xbrli:startDate>
+			<xbrli:endDate>2017-12-31</xbrli:endDate>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:startDate>2017-01-01</xbrli:startDate>
+			<xbrli:endDate>2017-12-31</xbrli:endDate>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:startDate>2017-01-01</xbrli:startDate>
+			<xbrli:endDate>2017-12-31</xbrli:endDate>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:startDate>2017-01-01</xbrli:startDate>
+			<xbrli:endDate>2017-12-31</xbrli:endDate>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FD2018Q4YTD">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:startDate>2018-01-01</xbrli:startDate>
+			<xbrli:endDate>2018-12-31</xbrli:endDate>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:startDate>2018-01-01</xbrli:startDate>
+			<xbrli:endDate>2018-12-31</xbrli:endDate>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:startDate>2018-01-01</xbrli:startDate>
+			<xbrli:endDate>2018-12-31</xbrli:endDate>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:startDate>2018-01-01</xbrli:startDate>
+			<xbrli:endDate>2018-12-31</xbrli:endDate>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FI2017Q4">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:instant>2017-12-31</xbrli:instant>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FI2017Q4_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:instant>2017-12-31</xbrli:instant>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FI2017Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:instant>2017-12-31</xbrli:instant>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FI2017Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:instant>2017-12-31</xbrli:instant>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FI2018Q4">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:instant>2018-12-31</xbrli:instant>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FI2018Q4_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:instant>2018-12-31</xbrli:instant>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FI2018Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:instant>2018-12-31</xbrli:instant>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="FI2018Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:instant>2018-12-31</xbrli:instant>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="I2019Q1Jan31_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:instant>2019-01-31</xbrli:instant>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="I2019Q1Jan31_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:instant>2019-01-31</xbrli:instant>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:context xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" id="I2019Q1Jan31_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember">
+		<xbrli:entity>
+			<xbrli:identifier scheme="http://www.sec.gov/CIK">0001652044</xbrli:identifier>
+			<xbrli:segment>
+				<xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+			</xbrli:segment>
+		</xbrli:entity>
+		<xbrli:period>
+			<xbrli:instant>2019-01-31</xbrli:instant>
+		</xbrli:period>
+	</xbrli:context>
+<xbrli:unit xmlns:xbrli="http://www.xbrl.org/2003/instance" id="shares">
+		<xbrli:measure>xbrli:shares</xbrli:measure>
+	</xbrli:unit>
+<xbrli:unit xmlns:xbrli="http://www.xbrl.org/2003/instance" id="usd">
+		<xbrli:measure>iso4217:USD</xbrli:measure>
+	</xbrli:unit>
+<dei:AmendmentFlag xmlns:dei="http://xbrl.sec.gov/dei/2018-01-31" contextRef="FD2018Q4YTD" id="Fact-F939ABB39BD55540877AD7289B69C469">false</dei:AmendmentFlag>
+<dei:DocumentFiscalPeriodFocus xmlns:dei="http://xbrl.sec.gov/dei/2018-01-31" contextRef="FD2018Q4YTD" id="Fact-72032AF546835CD14ED7D2A460B8D603">FY</dei:DocumentFiscalPeriodFocus>
+<dei:DocumentFiscalYearFocus xmlns:dei="http://xbrl.sec.gov/dei/2018-01-31" contextRef="FD2018Q4YTD" id="Fact-168B57A17ADB53518298934D8B9E172B">2018</dei:DocumentFiscalYearFocus>
+<dei:DocumentPeriodEndDate xmlns:dei="http://xbrl.sec.gov/dei/2018-01-31" contextRef="FD2018Q4YTD" id="Fact-A26701C87C605CF9B9B611003FC41FE7">2018-12-31</dei:DocumentPeriodEndDate>
+<dei:DocumentType xmlns:dei="http://xbrl.sec.gov/dei/2018-01-31" contextRef="FD2018Q4YTD" id="Fact-2A228DBD979955B083F0EBC98F12A67D">10-K</dei:DocumentType>
+<dei:EntityCentralIndexKey xmlns:dei="http://xbrl.sec.gov/dei/2018-01-31" contextRef="FD2018Q4YTD" id="Fact-58575756643751AEAF5F00F5B1353079">0001652044</dei:EntityCentralIndexKey>
+<dei:EntityCommonStockSharesOutstanding xmlns:dei="http://xbrl.sec.gov/dei/2018-01-31" contextRef="I2019Q1Jan31_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="INF" id="Fact-0BE35DC373F650C69A2B2FBFA53A1E18" unitRef="shares">349291348</dei:EntityCommonStockSharesOutstanding>
+<dei:EntityCommonStockSharesOutstanding xmlns:dei="http://xbrl.sec.gov/dei/2018-01-31" contextRef="I2019Q1Jan31_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="INF" id="Fact-60EB0D4EF6F9554F838B25CB82C701B9" unitRef="shares">299360029</dei:EntityCommonStockSharesOutstanding>
+<dei:EntityCommonStockSharesOutstanding xmlns:dei="http://xbrl.sec.gov/dei/2018-01-31" contextRef="I2019Q1Jan31_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="INF" id="Fact-EED0253A492C5650AFBB705D3C81F3EB" unitRef="shares">46535019</dei:EntityCommonStockSharesOutstanding>
+<dei:TradingSymbol xmlns:dei="http://xbrl.sec.gov/dei/2018-01-31" contextRef="FD2018Q4YTD" id="Fact-CCF5CD6ADE9754A88635258B14F996F1">GOOG, GOOGL</dei:TradingSymbol>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FI2017Q4" decimals="-3" id="Fact-2472B98346AF84DA0D81D2A460BFDBA6" unitRef="shares">694783000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FI2017Q4_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="-3" id="Fact-C7B40E089B815CE9DA64D2A46079EB2E" unitRef="shares">349341000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FI2017Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="-3" id="Fact-CD7AA039C27D0BD93C9DD2A4607E16D5" unitRef="shares">298470000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FI2017Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="-3" id="Fact-39B6DC1E8C43BD6FCF6BD2A460CBFEDE" unitRef="shares">46972000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FI2018Q4" decimals="-3" id="Fact-3599EBE1E9D654DB18ACD2A460C21CDE" unitRef="shares">695556000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FI2018Q4_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="-3" id="Fact-9F213557DB60A89366FDD2A460D8FC04" unitRef="shares">349678000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FI2018Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="-3" id="Fact-C8D62BCDE1E39E8E801BD2A460CEF7A2" unitRef="shares">299242000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FI2018Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="-3" id="Fact-628DE0F109C9A21BEE65D2A460D381C7" unitRef="shares">46636000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FD2016Q4YTD" decimals="-6" id="Fact-49D8E26A2E68531CBE59D2A460BC0FBC" unitRef="usd">19478000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FD2017Q4YTD" decimals="-6" id="Fact-2CFA81B8B8CC59BE89ABB40D0D12BF6E" unitRef="usd">12662000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FD2018Q4YTD" decimals="-6" id="Fact-A1EF38708B4B5CD9B6C581A832E7B48D" unitRef="usd">30736000000</us-gaap:NetIncomeLoss>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FD2016Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="-3" id="Fact-A1EE770FDF802160DCC6D2A460A6A206" unitRef="shares">344702000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FD2016Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="-3" id="Fact-8D4C448D2C75101AFED0D2A460A39161" unitRef="shares">294217000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FD2016Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="-3" id="Fact-BC96395C71577C5C5C69D2A460F7CFA4" unitRef="shares">48859000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="-3" id="Fact-13B891EEF1715989942FC031FACB1BB2" unitRef="shares">348151000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="-3" id="Fact-B7152F95C04B512B928D706469030087" unitRef="shares">297604000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="-3" id="Fact-CD9EBD73D6D05849B8EA334E77BA45E4" unitRef="shares">47146000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="-3" id="Fact-857EBA4EBB5B557F901FBA78ECF32BDA" unitRef="shares">349728000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="-3" id="Fact-EEEB89C14ECD5C4CB3918A1C6AA1ADFE" unitRef="shares">298548000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2018-01-31" contextRef="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="-3" id="Fact-5ABA76ADFF7550F49CBADA3245D3E1C7" unitRef="shares">46864000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+</xbrli:xbrl>

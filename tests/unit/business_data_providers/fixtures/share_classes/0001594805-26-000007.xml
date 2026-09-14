@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xbrl
+  xml:lang="en-US"
+  xmlns="http://www.xbrl.org/2003/instance"
+  xmlns:country="http://xbrl.sec.gov/country/2025"
+  xmlns:cyd="http://xbrl.sec.gov/cyd/2025"
+  xmlns:dei="http://xbrl.sec.gov/dei/2025"
+  xmlns:ecd="http://xbrl.sec.gov/ecd/2025"
+  xmlns:iso4217="http://www.xbrl.org/2003/iso4217"
+  xmlns:link="http://www.xbrl.org/2003/linkbase"
+  xmlns:shop="http://www.shopify.com/20251231"
+  xmlns:srt="http://fasb.org/srt/2025"
+  xmlns:us-gaap="http://fasb.org/us-gaap/2025"
+  xmlns:xbrldi="http://xbrl.org/2006/xbrldi"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" id="c-1">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2025-01-01</ns0:startDate>
+            <ns0:endDate>2025-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="c-13">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2025-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="c-14">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2024-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="c-15">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2025-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="c-16">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2024-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="c-17">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">shop:FounderShareMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2024-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" id="c-24">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2024-01-01</ns0:startDate>
+            <ns0:endDate>2024-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" id="c-25">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2023-01-01</ns0:startDate>
+            <ns0:endDate>2023-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="c-26">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementEquityComponentsAxis">us-gaap:CommonStockMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2022-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="c-35">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementEquityComponentsAxis">us-gaap:CommonStockMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2023-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="c-4">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2026-02-06</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="c-44">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementEquityComponentsAxis">us-gaap:CommonStockMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2024-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="c-5">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2026-02-06</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="c-52">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementEquityComponentsAxis">us-gaap:CommonStockMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2025-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="c-6">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001594805</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">shop:FounderShareMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2025-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:unit xmlns:ns0="http://www.xbrl.org/2003/instance" id="shares">
+        <ns0:measure>shares</ns0:measure>
+    </ns0:unit>
+<ns0:unit xmlns:ns0="http://www.xbrl.org/2003/instance" id="usd">
+        <ns0:measure>iso4217:USD</ns0:measure>
+    </ns0:unit>
+<dei:DocumentFiscalYearFocus xmlns:dei="http://xbrl.sec.gov/dei/2025" contextRef="c-1" id="f-41">2025</dei:DocumentFiscalYearFocus>
+<dei:EntityCentralIndexKey xmlns:dei="http://xbrl.sec.gov/dei/2025" contextRef="c-1" id="f-42">0001594805</dei:EntityCentralIndexKey>
+<dei:AmendmentFlag xmlns:dei="http://xbrl.sec.gov/dei/2025" contextRef="c-1" id="f-43">false</dei:AmendmentFlag>
+<dei:DocumentFiscalPeriodFocus xmlns:dei="http://xbrl.sec.gov/dei/2025" contextRef="c-1" id="f-44">FY</dei:DocumentFiscalPeriodFocus>
+<dei:DocumentType xmlns:dei="http://xbrl.sec.gov/dei/2025" contextRef="c-1" id="f-1">10-K</dei:DocumentType>
+<dei:DocumentPeriodEndDate xmlns:dei="http://xbrl.sec.gov/dei/2025" contextRef="c-1" id="f-3">2025-12-31</dei:DocumentPeriodEndDate>
+<dei:Security12bTitle xmlns:dei="http://xbrl.sec.gov/dei/2025" contextRef="c-1" id="f-22">Class A Subordinate Voting Shares</dei:Security12bTitle>
+<dei:TradingSymbol xmlns:dei="http://xbrl.sec.gov/dei/2025" contextRef="c-1" id="f-23">SHOP</dei:TradingSymbol>
+<dei:SecurityExchangeName xmlns:dei="http://xbrl.sec.gov/dei/2025" contextRef="c-1" id="f-24">NASDAQ</dei:SecurityExchangeName>
+<dei:EntityCommonStockSharesOutstanding xmlns:dei="http://xbrl.sec.gov/dei/2025" contextRef="c-4" decimals="INF" id="f-36" unitRef="shares">1226037779</dei:EntityCommonStockSharesOutstanding>
+<dei:EntityCommonStockSharesOutstanding xmlns:dei="http://xbrl.sec.gov/dei/2025" contextRef="c-5" decimals="INF" id="f-37" unitRef="shares">78073594</dei:EntityCommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-6" decimals="INF" id="f-38" unitRef="shares">1</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-13" decimals="INF" id="f-139" unitRef="shares">1225830706</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-14" decimals="INF" id="f-140" unitRef="shares">1215229233</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-15" decimals="INF" id="f-143" unitRef="shares">78073594</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-16" decimals="INF" id="f-145" unitRef="shares">79350906</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-6" decimals="INF" id="f-148" unitRef="shares">1</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-17" decimals="INF" id="f-151" unitRef="shares">1</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:Revenues xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-1" decimals="-6" id="f-170" unitRef="usd">11556000000</us-gaap:Revenues>
+<us-gaap:Revenues xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-24" decimals="-6" id="f-171" unitRef="usd">8880000000</us-gaap:Revenues>
+<us-gaap:Revenues xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-25" decimals="-6" id="f-172" unitRef="usd">7060000000</us-gaap:Revenues>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-1" decimals="-6" id="f-233" unitRef="usd">1231000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-24" decimals="-6" id="f-234" unitRef="usd">2019000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-25" decimals="-6" id="f-235" unitRef="usd">132000000</us-gaap:NetIncomeLoss>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-1" decimals="0" id="f-242" unitRef="shares">1298955860</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-24" decimals="0" id="f-243" unitRef="shares">1289812124</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-25" decimals="0" id="f-244" unitRef="shares">1281554559</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-26" decimals="INF" id="f-260" unitRef="shares">1275128567</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-35" decimals="INF" id="f-283" unitRef="shares">1286570294</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-44" decimals="INF" id="f-302" unitRef="shares">1294580140</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-52" decimals="INF" id="f-325" unitRef="shares">1303904301</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-1" decimals="-6" id="f-331" unitRef="usd">1231000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-24" decimals="-6" id="f-332" unitRef="usd">2019000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-25" decimals="-6" id="f-333" unitRef="usd">132000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-1" decimals="-6" id="f-1539" unitRef="usd">1231000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-24" decimals="-6" id="f-1540" unitRef="usd">2019000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-25" decimals="-6" id="f-1541" unitRef="usd">132000000</us-gaap:NetIncomeLoss>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-1" decimals="0" id="f-1542" unitRef="shares">1298955860</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-24" decimals="0" id="f-1543" unitRef="shares">1289812124</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2025" contextRef="c-25" decimals="0" id="f-1544" unitRef="shares">1281554559</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+</xbrl>

@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xbrl
+  xmlns="http://www.xbrl.org/2003/instance"
+  xmlns:country="http://xbrl.sec.gov/country/2017-01-31"
+  xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31"
+  xmlns:goog="http://www.google.com/20191231"
+  xmlns:iso4217="http://www.xbrl.org/2003/iso4217"
+  xmlns:link="http://www.xbrl.org/2003/linkbase"
+  xmlns:srt="http://fasb.org/srt/2019-01-31"
+  xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31"
+  xmlns:xbrldi="http://xbrl.org/2006/xbrldi"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" id="FD2017Q4YTD">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2017-01-01</ns0:startDate>
+            <ns0:endDate>2017-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2017-01-01</ns0:startDate>
+            <ns0:endDate>2017-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2017-01-01</ns0:startDate>
+            <ns0:endDate>2017-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2017-01-01</ns0:startDate>
+            <ns0:endDate>2017-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" id="FD2018Q4YTD">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2018-01-01</ns0:startDate>
+            <ns0:endDate>2018-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2018-01-01</ns0:startDate>
+            <ns0:endDate>2018-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2018-01-01</ns0:startDate>
+            <ns0:endDate>2018-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2018-01-01</ns0:startDate>
+            <ns0:endDate>2018-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" id="FD2019Q4YTD">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2019-01-01</ns0:startDate>
+            <ns0:endDate>2019-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2019-01-01</ns0:startDate>
+            <ns0:endDate>2019-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2019-01-01</ns0:startDate>
+            <ns0:endDate>2019-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:startDate>2019-01-01</ns0:startDate>
+            <ns0:endDate>2019-12-31</ns0:endDate>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" id="FI2018Q4">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2018-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FI2018Q4_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2018-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FI2018Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2018-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FI2018Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2018-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" id="FI2019Q4">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2019-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FI2019Q4_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2019-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FI2019Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2019-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="FI2019Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2019-12-31</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="I2020Q1Jan27_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">goog:CapitalClassCMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2020-01-27</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="I2020Q1Jan27_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassAMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2020-01-27</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:context xmlns:ns0="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" id="I2020Q1Jan27_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember">
+        <ns0:entity>
+            <ns0:identifier scheme="http://www.sec.gov/CIK">0001652044</ns0:identifier>
+            <ns0:segment>
+                <xbrldi:explicitMember dimension="us-gaap:StatementClassOfStockAxis">us-gaap:CommonClassBMember</xbrldi:explicitMember>
+            </ns0:segment>
+        </ns0:entity>
+        <ns0:period>
+            <ns0:instant>2020-01-27</ns0:instant>
+        </ns0:period>
+    </ns0:context>
+<ns0:unit xmlns:ns0="http://www.xbrl.org/2003/instance" id="shares">
+        <ns0:measure>shares</ns0:measure>
+    </ns0:unit>
+<ns0:unit xmlns:ns0="http://www.xbrl.org/2003/instance" id="usd">
+        <ns0:measure>iso4217:USD</ns0:measure>
+    </ns0:unit>
+<dei:AmendmentFlag xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="FD2019Q4YTD" id="Fact-E9091489AD3251789653C2D156EE131E-wk-Fact-E9091489AD3251789653C2D156EE131E">false</dei:AmendmentFlag>
+<dei:DocumentFiscalPeriodFocus xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="FD2019Q4YTD" id="Fact-0E5B7A73F71C824F9060CB26AB5A8819-wk-Fact-0E5B7A73F71C824F9060CB26AB5A8819">FY</dei:DocumentFiscalPeriodFocus>
+<dei:DocumentFiscalYearFocus xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="FD2019Q4YTD" id="Fact-6CCDB7847D4A521CA530B49E320AB483-wk-Fact-6CCDB7847D4A521CA530B49E320AB483">2019</dei:DocumentFiscalYearFocus>
+<dei:EntityCentralIndexKey xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="FD2019Q4YTD" id="Fact-E90431B354F25159BC983D62A87BED74-wk-Fact-E90431B354F25159BC983D62A87BED74">0001652044</dei:EntityCentralIndexKey>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FI2018Q4" decimals="-3" id="Fact-869F8E1F0DE7613C9522CB26AB95203C-wk-Fact-869F8E1F0DE7613C9522CB26AB95203C" unitRef="shares">695556000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FI2018Q4_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="-3" id="Fact-C91374ECBBD58148C984CB26AB8ADE8A-wk-Fact-C91374ECBBD58148C984CB26AB8ADE8A" unitRef="shares">349678000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FI2018Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="-3" id="Fact-9241BF6592BF5FA62EF9CB26AB94AF60-wk-Fact-9241BF6592BF5FA62EF9CB26AB94AF60" unitRef="shares">299242000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FI2018Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="-3" id="Fact-245AF4B7CBE31E601372CB26AB8FE9B7-wk-Fact-245AF4B7CBE31E601372CB26AB8FE9B7" unitRef="shares">46636000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FI2019Q4" decimals="-3" id="Fact-C5ED71A47AB11C78FE04CB26AB9D9C32-wk-Fact-C5ED71A47AB11C78FE04CB26AB9D9C32" unitRef="shares">688335000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FI2019Q4_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="-3" id="Fact-A1A7A919AA08A4ED9EF5CB26AB90D846-wk-Fact-A1A7A919AA08A4ED9EF5CB26AB90D846" unitRef="shares">342066000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FI2019Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="-3" id="Fact-0FBDB6D6299DCA2EC31DCB26ABA93E34-wk-Fact-0FBDB6D6299DCA2EC31DCB26ABA93E34" unitRef="shares">299828000</us-gaap:CommonStockSharesOutstanding>
+<us-gaap:CommonStockSharesOutstanding xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FI2019Q4_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="-3" id="Fact-5724D251BBAB60CCB494CB26AB996834-wk-Fact-5724D251BBAB60CCB494CB26AB996834" unitRef="shares">46441000</us-gaap:CommonStockSharesOutstanding>
+<dei:DocumentType xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="FD2019Q4YTD" id="d16586222e672-wk-Fact-E3A6B19BACD813FAF0EACB5EB3990AA2">10-K</dei:DocumentType>
+<dei:DocumentPeriodEndDate xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="FD2019Q4YTD" id="d16586222e706-wk-Fact-5E6745C55493689D1127CB69718FA2DE">2019-12-31</dei:DocumentPeriodEndDate>
+<dei:Security12bTitle xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" id="d16586222e887-wk-Fact-5D3C20FAE5F0ED6DC87BF1FB501CB4FC">Class A Common Stock, $0.001 par value</dei:Security12bTitle>
+<dei:TradingSymbol xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" id="d16586222e892-wk-Fact-15D43F76822313BD5178F1FB51B9CAA6">GOOGL</dei:TradingSymbol>
+<dei:SecurityExchangeName xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" id="d16586222e897-wk-Fact-84A90C9B2EB026051640F1FB53112964">NASDAQ</dei:SecurityExchangeName>
+<dei:Security12bTitle xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" id="d16586222e919-wk-Fact-ED54924080ED0322E94CF1FB905323F9">Class C Capital Stock, $0.001 par value</dei:Security12bTitle>
+<dei:TradingSymbol xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" id="d16586222e924-wk-Fact-510AE75EDAF186E0B1DAF1FB91EB5BAA">GOOG</dei:TradingSymbol>
+<dei:SecurityExchangeName xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" id="d16586222e929-wk-Fact-5138FD3EBE231C2471E1F1FB93925C65">NASDAQ</dei:SecurityExchangeName>
+<dei:EntityCommonStockSharesOutstanding xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="I2020Q1Jan27_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="INF" id="d16586222e1160-wk-Fact-7359B71C59E7513F90A07CFC27955EA9" unitRef="shares">299895185</dei:EntityCommonStockSharesOutstanding>
+<dei:EntityCommonStockSharesOutstanding xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="I2020Q1Jan27_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="INF" id="d16586222e1164-wk-Fact-9FAEA230581F5CD19274AF0655D616F7" unitRef="shares">46411073</dei:EntityCommonStockSharesOutstanding>
+<dei:EntityCommonStockSharesOutstanding xmlns:dei="http://xbrl.sec.gov/dei/2019-01-31" contextRef="I2020Q1Jan27_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="INF" id="d16586222e1168-wk-Fact-5ECFCFB613595868A44CB302F229F445" unitRef="shares">340979832</dei:EntityCommonStockSharesOutstanding>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2017Q4YTD" decimals="-6" id="d16602969e1532-wk-Fact-3A87C2FCA1BD105E0F97CB26AB7F41E2" unitRef="usd">12662000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2018Q4YTD" decimals="-6" id="d16602969e1551-wk-Fact-4063F88CD2B8502AB70CEFDE4F4182C0" unitRef="usd">30736000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2019Q4YTD" decimals="-6" id="d16602969e1570-wk-Fact-FE4E4940898558B385E28B57CF959C5E" unitRef="usd">34343000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2017Q4YTD" decimals="-6" id="d16601759e819-wk-Fact-3A87C2FCA1BD105E0F97CB26AB7F41E2" unitRef="usd">12662000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2018Q4YTD" decimals="-6" id="d16601759e838-wk-Fact-4063F88CD2B8502AB70CEFDE4F4182C0" unitRef="usd">30736000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2019Q4YTD" decimals="-6" id="d16601759e857-wk-Fact-FE4E4940898558B385E28B57CF959C5E" unitRef="usd">34343000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2017Q4YTD" decimals="-6" id="d16606352e1640-wk-Fact-3A87C2FCA1BD105E0F97CB26AB7F41E2" unitRef="usd">12662000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2018Q4YTD" decimals="-6" id="d16606352e2479-wk-Fact-4063F88CD2B8502AB70CEFDE4F4182C0" unitRef="usd">30736000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2019Q4YTD" decimals="-6" id="d16606352e3320-wk-Fact-FE4E4940898558B385E28B57CF959C5E" unitRef="usd">34343000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2017Q4YTD" decimals="-6" id="d16609388e879-wk-Fact-3A87C2FCA1BD105E0F97CB26AB7F41E2" unitRef="usd">12662000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2018Q4YTD" decimals="-6" id="d16609388e898-wk-Fact-4063F88CD2B8502AB70CEFDE4F4182C0" unitRef="usd">30736000000</us-gaap:NetIncomeLoss>
+<us-gaap:NetIncomeLoss xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2019Q4YTD" decimals="-6" id="d16609388e917-wk-Fact-FE4E4940898558B385E28B57CF959C5E" unitRef="usd">34343000000</us-gaap:NetIncomeLoss>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="-3" id="d16646462e1163-wk-Fact-52DC0126D9FA0711EA8CCB26ABB89404" unitRef="shares">297604000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="-3" id="d16646462e1182-wk-Fact-3024216F7327C6728950CB26AB9C5643" unitRef="shares">47146000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="-3" id="d16646462e1201-wk-Fact-212FA834234324B4A4E5CB26AB953B59" unitRef="shares">348151000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="-3" id="d16646462e1706-wk-Fact-52DC0126D9FA0711EA8CCB26ABB89404" unitRef="shares">297604000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="-3" id="d16646462e1725-wk-Fact-3024216F7327C6728950CB26AB9C5643" unitRef="shares">47146000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2017Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="-3" id="d16646462e1744-wk-Fact-212FA834234324B4A4E5CB26AB953B59" unitRef="shares">348151000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="-3" id="d16646462e2580-wk-Fact-8FDDCC124D9C515396FCEE7D5E418843" unitRef="shares">298548000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="-3" id="d16646462e2599-wk-Fact-6F3D31BC1D345B1DA197006F3BB13FB3" unitRef="shares">46864000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="-3" id="d16646462e2618-wk-Fact-15D929203351595DB7EEE288E5AF3954" unitRef="shares">349728000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="-3" id="d16646462e3123-wk-Fact-8FDDCC124D9C515396FCEE7D5E418843" unitRef="shares">298548000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="-3" id="d16646462e3142-wk-Fact-6F3D31BC1D345B1DA197006F3BB13FB3" unitRef="shares">46864000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2018Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="-3" id="d16646462e3161-wk-Fact-15D929203351595DB7EEE288E5AF3954" unitRef="shares">349728000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="-3" id="d16646462e3991-wk-Fact-23F3746B4B38508AA1AD7BB7EE82D21B" unitRef="shares">299402000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="-3" id="d16646462e4010-wk-Fact-CDA8DD1B394A5786BA624897EFA1F7F3" unitRef="shares">46527000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="-3" id="d16646462e4029-wk-Fact-133290244A785B19809A0354FA81ED01" unitRef="shares">346667000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassAMember" decimals="-3" id="d16646462e4534-wk-Fact-23F3746B4B38508AA1AD7BB7EE82D21B" unitRef="shares">299402000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_us-gaap_CommonClassBMember" decimals="-3" id="d16646462e4553-wk-Fact-CDA8DD1B394A5786BA624897EFA1F7F3" unitRef="shares">46527000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+<us-gaap:WeightedAverageNumberOfSharesOutstandingBasic xmlns:us-gaap="http://fasb.org/us-gaap/2019-01-31" contextRef="FD2019Q4YTD_us-gaap_StatementClassOfStockAxis_goog_CapitalClassCMember" decimals="-3" id="d16646462e4572-wk-Fact-133290244A785B19809A0354FA81ED01" unitRef="shares">346667000</us-gaap:WeightedAverageNumberOfSharesOutstandingBasic>
+</xbrl>

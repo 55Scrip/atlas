@@ -23,7 +23,7 @@ from atlas.alpha.canonical_security_resolution.repository import SqlAlchemyResol
 from atlas.alpha.canonical_security_resolution.service import CanonicalSecurityResolutionService
 from atlas.alpha.canonical_security_resolution.table import create_resolution_tables
 
-__all__ = ["build_identity_gate"]
+__all__ = ["build_identity_gate", "build_listing_mic_reader"]
 
 
 def build_identity_gate(engine: Engine) -> CanonicalSecurityIdentityGate:
@@ -68,3 +68,34 @@ def build_provider_symbol_resolver(engine):
         return resolve_provider_symbol(canonical_ticker, provider_name, routing_table=routing_table)
 
     return resolve
+
+
+def build_listing_mic_reader(engine):
+    """The sanctioned seam for "on which exchange does Atlas list this
+    ticker" (Security-Level Share-Class Evidence v1), built here for the
+    same reason `build_provider_symbol_resolver` is: its caller may not
+    import `canonical_security` directly, so this package hands it a plain
+    callable instead of a domain object.
+
+    Returns `(tickers) -> {ticker: frozenset of listing MICs}`, every
+    requested ticker present (an unlisted one maps to an empty set).
+    Read-only: unlike the builders above it creates no table -- it serves
+    page loads, and a database without the security master simply lists
+    nothing.
+    """
+    from sqlalchemy import select
+    from sqlalchemy.inspection import inspect as sa_inspect
+
+    from atlas.alpha.canonical_security.table import canonical_security_listings_table as listings
+
+    def listing_mics(tickers: tuple[str, ...]) -> dict[str, frozenset[str]]:
+        found: dict[str, set[str]] = {ticker: set() for ticker in tickers}
+        if tickers and sa_inspect(engine).has_table(listings.name):
+            with engine.connect() as connection:
+                for ticker, mic in connection.execute(
+                    select(listings.c.ticker, listings.c.exchange_mic).where(listings.c.ticker.in_(tuple(tickers)))
+                ).all():
+                    found[ticker].add(mic)
+        return {ticker: frozenset(mics) for ticker, mics in found.items()}
+
+    return listing_mics
