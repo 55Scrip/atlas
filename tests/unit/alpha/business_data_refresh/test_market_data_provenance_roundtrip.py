@@ -101,5 +101,5 @@ def test_share_count_filing_provenance_survives_a_database_round_trip():
     repository.add(record)
     (reloaded,) = repository.get_by_company("AAPL")
     keys = [k for k in record.metadata if k.startswith("shares_outstanding")]
-    assert len(keys) == 5
+    assert len(keys) == 6  # the count and its five provenance keys
     assert {k: reloaded.metadata[k] for k in keys} == {k: record.metadata[k] for k in keys}

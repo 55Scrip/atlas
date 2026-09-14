@@ -451,7 +451,9 @@ _PROVENANCE_INSTANT_KEY = "shares_outstanding"
 def _share_count_provenance(latest: dict[str, Any], first: dict[str, Any]) -> dict[str, Any]:
     """Metadata naming the filing behind a period-end share count. It is
     provenance, not content: kept out of the record's content hash, so a
-    refresh never re-versions a statement for it."""
+    refresh never re-versions a statement for it. Every key written is in
+    `business_data.pipeline.SHARE_COUNT_PROVENANCE_KEYS`, the one set a
+    deliberate provenance enrichment may add to a stored statement."""
     provenance: dict[str, Any] = {}
     if latest.get("filed"):
         provenance["shares_outstanding_filed"] = latest["filed"]
@@ -460,6 +462,8 @@ def _share_count_provenance(latest: dict[str, Any], first: dict[str, Any]) -> di
     if first.get("filed"):
         provenance["shares_outstanding_first_reported"] = float(first["val"])
         provenance["shares_outstanding_first_reported_filed"] = first["filed"]
+        if first.get("accn"):
+            provenance["shares_outstanding_first_reported_accession"] = first["accn"]
     return provenance
 
 

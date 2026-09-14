@@ -704,12 +704,27 @@ class AlphaVantageMarketDataProvider:
         )
 
     def fetch_historical_snapshots(
-        self, *, company_identifier: str, filing_dates: tuple[date, ...], evaluated_at: datetime
+        self,
+        *,
+        company_identifier: str,
+        filing_dates: tuple[date, ...],
+        evaluated_at: datetime,
+        known_currency: str | None = None,
+        known_shares_outstanding: float | None = None,
     ) -> tuple[RawBusinessDocument, ...]:
         """(ATLAS-032) See this module's own docstring for why the
         split-adjusted monthly series is the only correct source here,
         and why `shares_outstanding` is today's figure, disclosed as an
         approximation, not a genuine historical count.
+
+        `known_currency`/`known_shares_outstanding` (Historical Market-Data
+        Backfill): the same carry-forward `fetch_price_only` already uses.
+        Given a confirmed currency Atlas already holds, `OVERVIEW` is not
+        called -- one request, `TIME_SERIES_MONTHLY_ADJUSTED`, instead of
+        two -- and every document carries exactly those two values, so a
+        re-fetched month differs from its stored version only in what the
+        monthly bar itself says. Without them, today's behavior is
+        unchanged.
 
         One document per *distinct sampled date* -- several
         `filing_dates` landing on the same "first available close on
@@ -724,7 +739,10 @@ class AlphaVantageMarketDataProvider:
         api_key = self._resolved_api_key()
         ticker = company_identifier.upper()
 
-        shares_outstanding, currency, _identity = self._current_overview(ticker, api_key)
+        if known_currency is not None:
+            shares_outstanding, currency = known_shares_outstanding, known_currency
+        else:
+            shares_outstanding, currency, _identity = self._current_overview(ticker, api_key)
 
         series = self._monthly_adjusted(ticker, api_key)
         available_dates = sorted(d for d in (self._parse_series_date(key) for key in series) if d is not None)

@@ -16,6 +16,11 @@ from the fields that identify *which document this is* -- provider,
 source kind, company, and the provider's own document identifier --
 never from `content_hash` (which is expected to *change* between
 versions; that is precisely what makes a new version new).
+
+One deliberate exception: `pipeline.enrich_provenance` -- an operator's
+explicit backfill of provenance kept out of the content hash -- appends
+a version with the *same* content hash and only provenance added. Ingestion
+never does that on its own; here an unchanged hash stays a duplicate.
 """
 from __future__ import annotations
 

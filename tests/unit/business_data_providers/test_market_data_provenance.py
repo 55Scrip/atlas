@@ -240,9 +240,18 @@ class TestShareCountFilingProvenance:
         m = doc.metadata
         assert m["shares_outstanding"] == 6_294_494_000.0  # unchanged: the latest filing's value
         assert (m["shares_outstanding_filed"], m["shares_outstanding_accession"]) == ("2014-10-27", "0001193125-14-383437")
-        assert (m["shares_outstanding_first_reported"], m["shares_outstanding_first_reported_filed"]) == (
-            899_213_000.0, "2013-10-30",
-        )
+        assert (
+            m["shares_outstanding_first_reported"],
+            m["shares_outstanding_first_reported_filed"],
+            m["shares_outstanding_first_reported_accession"],
+        ) == (899_213_000.0, "2013-10-30", "0001193125-13-416534")
+
+    def test_every_count_provenance_key_is_one_an_enrichment_may_add(self):
+        from atlas.analysis_engine.business_data.pipeline import SHARE_COUNT_PROVENANCE_KEYS
+
+        (doc,) = self._docs()
+        written = {k for k in doc.metadata if k.startswith("shares_outstanding_")}
+        assert written == SHARE_COUNT_PROVENANCE_KEYS
 
     def test_filing_provenance_never_changes_the_statement_content_hash(self):
         (a,) = self._docs(restated_filed="2014-10-27")
